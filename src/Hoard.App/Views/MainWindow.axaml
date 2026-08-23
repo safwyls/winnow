@@ -1,0 +1,21 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Hoard.App.ViewModels"
+        x:Class="Hoard.App.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="Hoard"
+        Width="1100" Height="720"
+        Background="{StaticResource Ground}">
+
+    <!-- M0 placeholder: dark Ground window with the wordmark in the display
+         style. The library view replaces this in the UI wave. -->
+    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8">
+        <TextBlock Classes="display-l"
+                   Text="{Binding Title}"
+                   HorizontalAlignment="Center"/>
+        <TextBlock Classes="label"
+                   Text="{Binding Subtitle}"
+                   HorizontalAlignment="Center"/>
+    </StackPanel>
+
+</Window>

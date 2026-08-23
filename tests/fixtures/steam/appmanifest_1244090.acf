@@ -1,0 +1,46 @@
+"AppState"
+{
+	"appid"		"1244090"
+	"Universe"		"1"
+	"LauncherPath"		"C:\\Program Files (x86)\\Steam\\steam.exe"
+	"name"		"Sea of Stars: Sunset Edition"
+	"StateFlags"		"4"
+	"installdir"		"Sea of Stars"
+	"lastupdated"		"1787359073"
+	"LastPlayed"		"0"
+	"SizeOnDisk"		"4879401530"
+	"StagingSize"		"0"
+	"buildid"		"23623172"
+	"LastOwner"		"76561197972611406"
+	"DownloadType"		"1"
+	"UpdateResult"		"0"
+	"BytesToDownload"		"4045240816"
+	"BytesDownloaded"		"4045240816"
+	"BytesToStage"		"4908613703"
+	"BytesStaged"		"4908613703"
+	"TargetBuildID"		"23623172"
+	"AutoUpdateBehavior"		"0"
+	"AllowOtherDownloadsWhileRunning"		"0"
+	"ScheduledAutoUpdate"		"0"
+	"InstalledDepots"
+	{
+		"1244091"
+		{
+			"manifest"		"8906669486491690617"
+			"size"		"4879401530"
+		}
+	}
+	"SharedDepots"
+	{
+		"228988"		"228980"
+		"228990"		"228980"
+	}
+	"UserConfig"
+	{
+		"language"		"english"
+	}
+	"MountedConfig"
+	{
+		"language"		"english"
+	}
+}

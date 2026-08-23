@@ -1,0 +1,91 @@
+"UserLocalConfigStore"
+{
+	"Broadcast"
+	{
+		"Permissions"		"1"
+	}
+	"apptickets"
+	{
+		"2686630"		"3800000004000000f00eec0201001001a6fe28002442f0490000000000000000198c886a993ba46a0100cbae0e00010044163c0000000000deadbeefdeadbeefdeadbeefdeadbeef"
+		"1244090"		"3800000004000000f00eec0201001001bafb12002442f0490000000000000000cafebabecafebabecafebabecafebabe"
+	}
+	"Software"
+	{
+		"Valve"
+		{
+			"Steam"
+			{
+				"apps"
+				{
+					"7"
+					{
+						"cloud"
+						{
+							"last_sync_state"		"synchronized"
+						}
+					}
+					"10"
+					{
+						"LastPlayed"		"1527216883"
+						"Playtime"		"358"
+					}
+					"60"
+					{
+						"LastPlayed"		"86400"
+						"Playtime"		"3"
+					}
+					"760"
+					{
+						"cloud"
+						{
+							"quota_bytes"		"20000000000"
+							"quota_files"		"50000"
+							"used_bytes"		"0"
+							"used_files"		"0"
+						}
+					}
+					"1203620"
+					{
+						"LastPlayed"		"1786924992"
+						"Playtime"		"817"
+						"1203620_eula_0"		"14"
+						"cloud"
+						{
+							"last_sync_state"		"synchronized"
+						}
+						"autocloud"
+						{
+							"lastlaunch"		"1786913394"
+							"lastexit"		"1786924990"
+						}
+						"BadgeData"		"020000000816"
+						"Playtime2wks"		"473"
+					}
+					"2686630"
+					{
+						"LastPlayed"		"1787336130"
+						"Playtime"		"244"
+						"cloud"
+						{
+							"last_sync_state"		"synchronized"
+						}
+						"autocloud"
+						{
+							"lastlaunch"		"1787334036"
+							"lastexit"		"1787336129"
+						}
+						"BadgeData"		"020000000816"
+						"Playtime2wks"		"34"
+					}
+					"4588700"
+					{
+						"LastPlayed"		"1787343570"
+						"BadgeData"		"020000000801"
+						"Playtime2wks"		"1"
+						"Playtime"		"1"
+					}
+				}
+			}
+		}
+	}
+}

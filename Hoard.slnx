@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Hoard.App/Hoard.App.csproj" />
+    <Project Path="src/Hoard.Core/Hoard.Core.csproj" />
+    <Project Path="src/Hoard.Data/Hoard.Data.csproj" />
+    <Project Path="src/Hoard.Ingest.Steam/Hoard.Ingest.Steam.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Hoard.Tests/Hoard.Tests.csproj" />
+  </Folder>
+</Solution>
