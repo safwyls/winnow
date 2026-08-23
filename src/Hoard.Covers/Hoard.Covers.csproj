@@ -18,4 +18,14 @@
     <PackageReference Include="SkiaSharp" Version="2.88.9" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- DecodedLru is the memory bound behind CoverCache, and it is internal on
+         purpose: nothing outside this assembly should be able to reach past
+         ICoverCache into its eviction policy. The test project needs it because
+         the policy cannot be exercised through CoverCache — admitting an entry
+         requires an Avalonia WriteableBitmap, and the test projects deliberately
+         start no rendering platform. -->
+    <InternalsVisibleTo Include="Hoard.Covers.Tests" />
+  </ItemGroup>
+
 </Project>

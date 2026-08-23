@@ -45,64 +45,34 @@ public interface ICoverCache
 /// screenfuls of scrollback without eviction thrash — and eviction is cheap
 /// anyway, because the disk cache means a re-decode never touches the network.
 /// </para>
-/// <para>Evicted bitmaps are dropped, not disposed: a tile scrolled just off
-/// screen may still be mid-render with one bound, and disposing a live
-/// <see cref="Bitmap"/> tears down the Skia image underneath it. The GC reclaims
-/// them once the last tile lets go — but the pixels live in native memory the
-/// collector cannot see, so admissions and evictions declare their cost with
-/// <see cref="GC.AddMemoryPressure"/>. Without that, sweeping a large library
-/// repeatedly drifts upward: the managed handles are tiny and nothing tells the
-/// GC that each one is holding a third of a megabyte.</para>
+/// <para>The bound itself lives in <see cref="DecodedLru{TKey,TValue}"/>, which
+/// is where the eviction rule and the <see cref="GC.AddMemoryPressure(long)"/>
+/// accounting are documented — and, because it is free of Avalonia, where they
+/// can be tested without starting a rendering platform.</para>
 /// </summary>
 public sealed class CoverCache : ICoverCache, IDisposable
 {
     private readonly CoverPipeline _pipeline;
-    private readonly CoverCacheOptions _options;
     private readonly ILogger<CoverCache> _log;
 
-    private readonly Lock _gate = new();
-    private readonly Dictionary<Slot, LinkedListNode<Entry>> _index = [];
-    private readonly LinkedList<Entry> _lru = [];
-    private long _bytes;
+    private readonly DecodedLru<Slot, CoverArt> _memory;
 
     private readonly ConcurrentDictionary<Slot, Task<CoverArt?>> _inFlight = new();
 
     public CoverCache(CoverPipeline pipeline, CoverCacheOptions options, ILogger<CoverCache>? log = null)
     {
+        ArgumentNullException.ThrowIfNull(options);
+
         _pipeline = pipeline;
-        _options = options;
         _log = log ?? NullLogger<CoverCache>.Instance;
+        _memory = new DecodedLru<Slot, CoverArt>(options.MaxDecodedBytes);
     }
 
     /// <summary>Decoded pixel bytes currently held. Diagnostics only.</summary>
-    public long DecodedBytes
-    {
-        get
-        {
-            lock (_gate)
-            {
-                return _bytes;
-            }
-        }
-    }
+    public long DecodedBytes => _memory.Bytes;
 
     public bool TryGet(CoverKey key, double displayWidthPixels, out CoverArt art)
-    {
-        var slot = new Slot(key, CoverImaging.SnapWidth(displayWidthPixels));
-        lock (_gate)
-        {
-            if (_index.TryGetValue(slot, out var node))
-            {
-                _lru.Remove(node);
-                _lru.AddFirst(node);
-                art = node.Value.Art;
-                return true;
-            }
-        }
-
-        art = null!;
-        return false;
-    }
+        => _memory.TryGet(new Slot(key, CoverImaging.SnapWidth(displayWidthPixels)), out art);
 
     public Task<CoverArt?> GetAsync(CoverKey key, double displayWidthPixels, CancellationToken ct = default)
     {
@@ -135,7 +105,11 @@ public sealed class CoverCache : ICoverCache, IDisposable
             }
 
             var art = new CoverArt(ToAvalonia(bitmaps.Vivid), ToAvalonia(bitmaps.Floor));
-            Admit(slot, art);
+
+            // Both layers, four bytes a pixel. The decoded height is read off
+            // the bitmap rather than derived from the aspect ratio, because a
+            // capsule that is not exactly 2:3 would otherwise be under-declared.
+            _memory.Admit(slot, art, 2L * slot.Width * art.Vivid.PixelSize.Height * 4L);
             return art;
         }
         catch (Exception ex)
@@ -146,32 +120,6 @@ public sealed class CoverCache : ICoverCache, IDisposable
         finally
         {
             _inFlight.TryRemove(slot, out _);
-        }
-    }
-
-    private void Admit(Slot slot, CoverArt art)
-    {
-        var cost = 2L * slot.Width * (long)art.Vivid.PixelSize.Height * 4L;
-        lock (_gate)
-        {
-            if (_index.ContainsKey(slot))
-            {
-                return;
-            }
-
-            var node = _lru.AddFirst(new Entry(slot, art, cost));
-            _index[slot] = node;
-            _bytes += cost;
-            GC.AddMemoryPressure(cost);
-
-            while (_bytes > _options.MaxDecodedBytes && _lru.Count > 1)
-            {
-                var oldest = _lru.Last!;
-                _lru.RemoveLast();
-                _index.Remove(oldest.Value.Slot);
-                _bytes -= oldest.Value.Bytes;
-                GC.RemoveMemoryPressure(oldest.Value.Bytes);
-            }
         }
     }
 
@@ -204,22 +152,9 @@ public sealed class CoverCache : ICoverCache, IDisposable
 
     public void Dispose()
     {
-        lock (_gate)
-        {
-            foreach (var entry in _lru)
-            {
-                GC.RemoveMemoryPressure(entry.Bytes);
-            }
-
-            _lru.Clear();
-            _index.Clear();
-            _bytes = 0;
-        }
-
+        _memory.Clear();
         _pipeline.Dispose();
     }
 
     private readonly record struct Slot(CoverKey Key, int Width);
-
-    private sealed record Entry(Slot Slot, CoverArt Art, long Bytes);
 }

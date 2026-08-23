@@ -21,7 +21,10 @@ namespace Hoard.Resolve.Matching;
 ///         separators (<c>:</c>, <c>-</c>, <c>–</c>, <c>—</c>, <c>|</c>, <c>~</c>);</item>
 ///   <item>fold roman numerals to arabic (<c>The Witcher III</c> ≡ <c>The Witcher 3</c>);</item>
 ///   <item>extract and remove edition markers, longest phrase first;</item>
-///   <item>drop articles.</item>
+///   <item>drop articles;</item>
+///   <item>fold spelled-out cardinals to arabic (<c>Episode One</c> ≡ <c>Episode 1</c>) —
+///         last, so <c>Day One Edition</c> is lifted out as an edition marker before
+///         its <c>one</c> can be read as a number.</item>
 /// </list>
 ///
 /// <para><b>Why NFD and not NFKD.</b> NFKD would expand <c>™</c> to the letters
@@ -97,6 +100,45 @@ public static partial class TitleNormalizer
     private static readonly string[] Articles = ["the"];
     private static readonly string[] LeadingArticles = ["a", "an"];
 
+    /// <summary>
+    /// Spelled-out cardinals, folded to arabic so they reach
+    /// <see cref="NormalizedTitle.Ordinals"/> and are compared exactly.
+    ///
+    /// <para>Without this the ordinal veto was inconsistent with itself:
+    /// <c>Half-Life 2: Episode II</c> vs <c>Episode III</c> was caught, because
+    /// roman numerals fold, while <c>Episode One</c> vs <c>Episode Two</c> both
+    /// reduced to ordinals <c>[2]</c> — the "2" of Half-Life 2 — scored 0.84 on
+    /// title similarity and queued two games nobody would confuse.</para>
+    ///
+    /// <para>Twenty is the ceiling for the same reason
+    /// <see cref="MaxRomanOrdinal"/> is thirty: past that the word is prose, not
+    /// a sequel number. <c>zero</c> is deliberately absent — <c>Katana Zero</c>,
+    /// <c>Zero Escape</c> and <c>Ground Zero</c> are names.</para>
+    /// </summary>
+    private static readonly Dictionary<string, int> NumberWords = new(StringComparer.Ordinal)
+    {
+        ["one"] = 1,
+        ["two"] = 2,
+        ["three"] = 3,
+        ["four"] = 4,
+        ["five"] = 5,
+        ["six"] = 6,
+        ["seven"] = 7,
+        ["eight"] = 8,
+        ["nine"] = 9,
+        ["ten"] = 10,
+        ["eleven"] = 11,
+        ["twelve"] = 12,
+        ["thirteen"] = 13,
+        ["fourteen"] = 14,
+        ["fifteen"] = 15,
+        ["sixteen"] = 16,
+        ["seventeen"] = 17,
+        ["eighteen"] = 18,
+        ["nineteen"] = 19,
+        ["twenty"] = 20,
+    };
+
     [GeneratedRegex(@"\((1[89]\d{2}|20\d{2})\)", RegexOptions.CultureInvariant)]
     private static partial Regex ParenthesisedYearRegex { get; }
 
@@ -121,6 +163,11 @@ public static partial class TitleNormalizer
         var bundle = ExtractEditions(tokens, BundleEditionPhrases, out tokens);
 
         tokens = DropArticles(tokens);
+
+        // After the edition pass, so "Day One Edition" is lifted out whole
+        // rather than shredded into "day 1 edition"; after articles, so the
+        // leading-word guard sees "Two Thrones", not "The Two Thrones".
+        tokens = FoldNumberWords(tokens);
 
         var ordinals = new List<int>();
         foreach (var token in tokens)
@@ -231,11 +278,29 @@ public static partial class TitleNormalizer
     /// <c>Dark Souls II</c> and <c>Dark Souls III</c> produce ordinals 2 and 3
     /// that can be compared exactly.
     ///
-    /// <para>Two guards keep the fold from firing on ordinary words. Values above
+    /// <para>Three guards keep the fold from firing on ordinary words. Values above
     /// <see cref="MaxRomanOrdinal"/> are left alone, which rules out <c>mix</c>
-    /// (= 1009) and bare <c>l</c>/<c>c</c>/<c>d</c>/<c>m</c>; and a leading
-    /// <c>i</c> is left alone, so <c>I Am Setsuna</c> does not become
-    /// <c>1 am setsuna</c>.</para>
+    /// (= 1009) and bare <c>l</c>/<c>c</c>/<c>d</c>/<c>m</c>; and two guards
+    /// cover the single-letter numerals, which are also just letters:</para>
+    /// <list type="bullet">
+    ///   <item><b>Leading position.</b> A one-letter token at the front of a
+    ///     title is a word or a brand mark, never a sequel number:
+    ///     <c>I Am Setsuna</c>, <c>V Rising</c>, <c>X Rebirth</c>.</item>
+    ///   <item><b>Bare <c>x</c>, anywhere.</b> <c>X</c> is used as a name at
+    ///     least as often as it is used for ten — <c>Mega Man X</c> is a
+    ///     different series from <c>Mega Man</c>, not its tenth entry. Folding
+    ///     it made <c>Mega Man X</c> and <c>Mega Man 10</c> normalise to the
+    ///     same string, scoring 1.00 title similarity with no veto able to
+    ///     separate them, because at that point nothing distinguishable is
+    ///     left. <c>v</c> folds because it does not collide this way:
+    ///     <c>Grand Theft Auto V</c> and <c>Grand Theft Auto 5</c> are one game
+    ///     written two ways, and no <c>Grand Theft Auto 5</c> sequel exists to
+    ///     be confused with.
+    ///     <para>The cost is real and deliberate: <c>Final Fantasy X</c> no
+    ///     longer matches <c>Final Fantasy 10</c>, and instead of a wrong
+    ///     merge candidate the user simply never sees that pair. §5.3 is
+    ///     precision over recall, always.</para></item>
+    /// </list>
     /// </summary>
     private static List<string> FoldRomanNumerals(List<string> tokens)
     {
@@ -243,7 +308,7 @@ public static partial class TitleNormalizer
         for (var i = 0; i < tokens.Count; i++)
         {
             var token = tokens[i];
-            if (i == 0 && token == "i")
+            if (token.Length == 1 && (i == 0 || token == "x"))
             {
                 result.Add(token);
                 continue;
@@ -252,6 +317,31 @@ public static partial class TitleNormalizer
             var value = TryParseRoman(token);
             result.Add(value is > 0 and <= MaxRomanOrdinal
                 ? value.Value.ToString(CultureInfo.InvariantCulture)
+                : token);
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Folds a spelled-out cardinal to arabic, so <c>Episode One</c> and
+    /// <c>Episode 1</c> produce the same ordinal and <c>Episode One</c> and
+    /// <c>Episode Two</c> produce different ones.
+    ///
+    /// <para>The leading token is never folded, for the same reason the roman
+    /// fold leaves a leading <c>i</c> alone: at the front of a title the word
+    /// is the name. <c>Five Nights at Freddy's</c>, <c>Two Point Hospital</c>,
+    /// <c>Seven Kingdoms</c>, <c>One Piece</c> and <c>Nine Sols</c> all start
+    /// with a number word and none of them is a sequel number.</para>
+    /// </summary>
+    private static List<string> FoldNumberWords(List<string> tokens)
+    {
+        var result = new List<string>(tokens.Count);
+        for (var i = 0; i < tokens.Count; i++)
+        {
+            var token = tokens[i];
+            result.Add(i > 0 && NumberWords.TryGetValue(token, out var value)
+                ? value.ToString(CultureInfo.InvariantCulture)
                 : token);
         }
 

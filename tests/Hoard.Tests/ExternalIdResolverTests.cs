@@ -546,5 +546,9 @@ public sealed class ExternalIdResolverTests : IDisposable
 
         public Task<Release?> FindByExternalIdAsync(string provider, string providerId, CancellationToken ct = default)
             => _inner.FindByExternalIdAsync(provider, providerId, ct);
+
+        public Task<IReadOnlyList<Hoard.Core.Queries.ReleaseIdentity>> GetIdentitiesAsync(
+            CancellationToken ct = default)
+            => _inner.GetIdentitiesAsync(ct);
     }
 }

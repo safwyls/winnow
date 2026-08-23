@@ -370,8 +370,13 @@ public sealed class MergeQueueViewModelTests
         Assert.Empty(queue.Candidates);
     }
 
+    /// <summary>
+    /// Zero pending rows has two causes and only one of them is a fact about
+    /// the user's library. Before a sweep has ever completed, the screen must
+    /// not claim the library is unambiguous — nothing has looked.
+    /// </summary>
     [Fact]
-    public async Task An_empty_queue_reads_as_the_normal_state_and_shows_no_count()
+    public async Task An_empty_queue_before_any_sweep_says_the_comparison_has_not_run()
     {
         using var fixture = new MergeQueueFixture();
         var queue = fixture.CreateViewModel();
@@ -380,15 +385,54 @@ public sealed class MergeQueueViewModelTests
 
         Assert.True(queue.ShowEmpty);
         Assert.False(queue.HasPending);
+        Assert.False(queue.HasCompletedSweep);
         Assert.Equal("0", queue.PendingCountText);
         Assert.Equal(0.4, queue.RowOpacity);
 
-        // Directions, not moods: it says what fills the queue, and it does not
-        // congratulate anyone.
+        // Directions, not moods: it says what is about to happen and what fills
+        // the queue. It states nothing about the library, because nothing has
+        // yet looked at the library.
         Assert.Equal(
-            "Nothing to review. Pairs land here only when a scan can't tell two records apart, "
-            + "and nothing merges until you say so.",
+            "Nothing to review yet. Hoard hasn't finished comparing your library for records that "
+            + "might be the same game — that runs in the background after a scan. Anything it can't "
+            + "call lands here, and nothing merges until you say so.",
             queue.EmptyMessage);
+    }
+
+    [Fact]
+    public async Task An_empty_queue_after_a_sweep_says_the_comparison_found_nothing()
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.ResolveState.SetLastSoftMatchSweepAsync(DateTimeOffset.UtcNow);
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+
+        Assert.True(queue.ShowEmpty);
+        Assert.True(queue.HasCompletedSweep);
+
+        Assert.Equal(
+            "Nothing to review. Hoard compared every record in your library and found no two it "
+            + "couldn't tell apart. Anything ambiguous lands here, and nothing merges until you say so.",
+            queue.EmptyMessage);
+    }
+
+    /// <summary>
+    /// With no state repository in the container the screen cannot know, and
+    /// "cannot know" must read as "has not run". The one thing it must never do
+    /// is announce a clean library on the strength of a query it did not make.
+    /// </summary>
+    [Fact]
+    public async Task Without_a_state_repository_the_weaker_claim_is_the_one_made()
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.ResolveState.SetLastSoftMatchSweepAsync(DateTimeOffset.UtcNow);
+
+        var queue = fixture.CreateViewModel(withResolveState: false);
+        await queue.LoadCommand.ExecuteAsync(null);
+
+        Assert.False(queue.HasCompletedSweep);
+        Assert.StartsWith("Nothing to review yet.", queue.EmptyMessage, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -449,6 +493,7 @@ public sealed class MergeQueueViewModelTests
             Works = new WorkRepository(_db.Factory);
             Releases = new ReleaseRepository(_db.Factory);
             Candidates = new MergeCandidateRepository(_db.Factory);
+            ResolveState = new ResolveStateRepository(_db.Factory);
         }
 
         public IWorkRepository Works { get; }
@@ -457,9 +502,11 @@ public sealed class MergeQueueViewModelTests
 
         public IMergeCandidateRepository Candidates { get; }
 
+        public IResolveStateRepository ResolveState { get; }
+
         /// <summary>No cover cache: the queue must compose on procedural art alone.</summary>
-        public MergeQueueViewModel CreateViewModel()
-            => new(Candidates, Releases, Works);
+        public MergeQueueViewModel CreateViewModel(bool withResolveState = true)
+            => new(Candidates, Releases, Works, null, withResolveState ? ResolveState : null);
 
         public MatchSubject Subject(SeededRelease release)
             => new()

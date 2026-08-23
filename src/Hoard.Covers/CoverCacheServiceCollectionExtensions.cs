@@ -54,9 +54,22 @@ public static class CoverCacheServiceCollectionExtensions
                     // are tools or redistributables will never have a capsule,
                     // and retrying them three times each would triple the cost
                     // of the misses. Only transport and server-side faults retry.
+                    //
+                    // 403 DOES retry. The capsule CDN is unauthenticated, so a
+                    // Forbidden is never a statement about this appid — it is a
+                    // WAF or edge node refusing traffic, usually the burst a
+                    // cold library produces on first launch. Retrying with
+                    // backoff is exactly right for that, and a 403 that survives
+                    // the retries surfaces as a failure rather than as "this
+                    // game has no art" (SteamCapsuleSource).
                     ShouldHandle = args => ValueTask.FromResult(
                         args.Outcome.Exception is HttpRequestException or TaskCanceledException
-                        || args.Outcome.Result is { StatusCode: HttpStatusCode.RequestTimeout or HttpStatusCode.TooManyRequests }
+                        || args.Outcome.Result is
+                        {
+                            StatusCode: HttpStatusCode.RequestTimeout
+                                or HttpStatusCode.TooManyRequests
+                                or HttpStatusCode.Forbidden,
+                        }
                         || (int?)args.Outcome.Result?.StatusCode >= 500),
                 }));
 

@@ -111,7 +111,15 @@ public sealed class CoverDiskCache
 
     private static void WriteAtomic(string path, byte[] bytes)
     {
-        var temp = path + "." + Environment.CurrentManagedThreadId.ToString("x") + ".tmp";
+        // A managed thread id is unique within one process and nowhere else.
+        // Two Hoard processes over the same cache directory — a second launch
+        // while the first is still warming, or an app running beside its own
+        // test run — hand out thread id 1 apiece and collide on the temp name,
+        // so one write truncates the other's buffer and the survivor moves a
+        // half-file into place under a name that says it is complete. A GUID
+        // costs one allocation per write and is unique across processes and
+        // machines.
+        var temp = path + "." + Guid.NewGuid().ToString("n") + ".tmp";
         try
         {
             File.WriteAllBytes(temp, bytes);

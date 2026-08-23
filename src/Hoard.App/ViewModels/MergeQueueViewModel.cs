@@ -37,6 +37,7 @@ public partial class MergeQueueViewModel : ObservableObject
     private readonly IReleaseRepository _releases;
     private readonly IWorkRepository _works;
     private readonly ICoverCache? _covers;
+    private readonly IResolveStateRepository? _resolveState;
 
     /// <summary>Display resolution the view last asked for; 0 until it attaches.</summary>
     private double _coverWidthPixels;
@@ -47,12 +48,14 @@ public partial class MergeQueueViewModel : ObservableObject
         IMergeCandidateRepository candidates,
         IReleaseRepository releases,
         IWorkRepository works,
-        ICoverCache? covers = null)
+        ICoverCache? covers = null,
+        IResolveStateRepository? resolveState = null)
     {
         _candidates = candidates;
         _releases = releases;
         _works = works;
         _covers = covers;
+        _resolveState = resolveState;
     }
 
     [ObservableProperty]
@@ -86,13 +89,40 @@ public partial class MergeQueueViewModel : ObservableObject
     public bool ShowEmpty => _loaded && PendingCount == 0;
 
     /// <summary>
-    /// §7: empty states are directions, not moods. An empty queue is the
-    /// normal, healthy state — it means the scan had nothing it could not tell
-    /// apart — so it reads as a fact about the library, not as a chore done.
+    /// True when a soft-match sweep has finished at least once on this
+    /// database, so an empty queue is a finding rather than an absence.
+    ///
+    /// <para>Read from <c>settings</c> on load. False when the state repository
+    /// is not registered at all: "we cannot show that the comparison has run"
+    /// and "it has not run" must produce the same copy, because the one thing
+    /// the screen must never do is claim a clean library on the strength of a
+    /// query it did not make.</para>
     /// </summary>
-    public string EmptyMessage =>
-        "Nothing to review. Pairs land here only when a scan can't tell two records apart, "
-        + "and nothing merges until you say so.";
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(EmptyMessage))]
+    public partial bool HasCompletedSweep { get; set; }
+
+    /// <summary>
+    /// §7: empty states are directions, not moods. Two different empty states,
+    /// because zero pending rows has two different causes and only one of them
+    /// says anything about the user's library.
+    ///
+    /// <para><b>Swept.</b> The comparison ran and found nothing ambiguous. That
+    /// is a fact about the library and the copy may state it.</para>
+    ///
+    /// <para><b>Not swept.</b> Nothing has compared anything yet — the sweep
+    /// runs in the background behind the first scan. Saying "nothing to review"
+    /// here would be describing an unwired feature as a clean bill of health,
+    /// and the user would have no way to tell the difference. So this one
+    /// describes what is about to happen instead: a direction, not a
+    /// verdict.</para>
+    /// </summary>
+    public string EmptyMessage => HasCompletedSweep
+        ? "Nothing to review. Hoard compared every record in your library and found no two it "
+          + "couldn't tell apart. Anything ambiguous lands here, and nothing merges until you say so."
+        : "Nothing to review yet. Hoard hasn't finished comparing your library for records that "
+          + "might be the same game — that runs in the background after a scan. Anything it can't "
+          + "call lands here, and nothing merges until you say so.";
 
     /// <summary>Standing explanation under the screen title.</summary>
     public string IntroMessage =>
@@ -102,6 +132,12 @@ public partial class MergeQueueViewModel : ObservableObject
     [RelayCommand]
     private async Task LoadAsync(CancellationToken ct)
     {
+        // Read before the candidates: the empty state has to know whether the
+        // matcher has ever run, and a null repository (or a read that fails)
+        // must leave this false — never optimistically true.
+        HasCompletedSweep = _resolveState is not null
+            && await _resolveState.GetLastSoftMatchSweepAsync(ct) is not null;
+
         // Already score-descending from the repository; sorted again here so the
         // review order is a property of this screen rather than of one SQL
         // ORDER BY clause, and so a hand-inserted row cannot jump the queue.

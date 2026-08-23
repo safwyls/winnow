@@ -146,19 +146,26 @@ public sealed class TwitchTokenProvider : IIgdbTokenProvider
 
     private async Task<IgdbAccessToken?> MintAsync(IgdbCredentials credentials, CancellationToken ct)
     {
-        // Twitch takes client-credentials parameters in the query string.
-        // Escaped, not interpolated raw: a secret containing '&' would
-        // otherwise silently truncate the request.
-        var uri = new UriBuilder(_options.TokenEndpoint)
-        {
-            Query = string.Join('&',
-                "client_id=" + Uri.EscapeDataString(credentials.ClientId),
-                "client_secret=" + Uri.EscapeDataString(credentials.ClientSecret),
-                "grant_type=client_credentials"),
-        }.Uri;
-
+        // §4.4 documents the client-credentials call with the parameters in the
+        // query string, and Twitch does accept them there — but a URI is the
+        // most-copied string in any HTTP stack. It lands in HttpClient logging,
+        // in `HttpRequestException` messages, in proxy and reverse-proxy access
+        // logs, in Polly's telemetry, and in the request-replay diagnostics this
+        // very module ships. A form-encoded body goes to none of those, and
+        // Twitch accepts `application/x-www-form-urlencoded` for the same
+        // parameters. FormUrlEncodedContent also escapes each value, so a secret
+        // containing '&' cannot truncate the request.
         var http = _httpClientFactory.CreateClient(HttpClientName);
-        using var request = new HttpRequestMessage(HttpMethod.Post, uri);
+        using var request = new HttpRequestMessage(HttpMethod.Post, _options.TokenEndpoint)
+        {
+            Content = new FormUrlEncodedContent(new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["client_id"] = credentials.ClientId,
+                ["client_secret"] = credentials.ClientSecret,
+                ["grant_type"] = "client_credentials",
+            }),
+        };
+
         using var response = await http.SendAsync(request, ct);
 
         if (!response.IsSuccessStatusCode)

@@ -32,6 +32,7 @@ public sealed class EnrichmentSyncService
     private readonly IReleaseRepository _releases;
     private readonly IIgdbClient _igdb;
     private readonly ISteamStoreClient _steamStore;
+    private readonly IUnitOfWorkFactory _unitOfWork;
     private readonly ILogger<EnrichmentSyncService> _logger;
 
     public EnrichmentSyncService(
@@ -39,12 +40,14 @@ public sealed class EnrichmentSyncService
         IReleaseRepository releases,
         IIgdbClient igdb,
         ISteamStoreClient steamStore,
+        IUnitOfWorkFactory unitOfWork,
         ILogger<EnrichmentSyncService> logger)
     {
         _works = works;
         _releases = releases;
         _igdb = igdb;
         _steamStore = steamStore;
+        _unitOfWork = unitOfWork;
         _logger = logger;
     }
 
@@ -72,13 +75,26 @@ public sealed class EnrichmentSyncService
         var fromIgdb = 0;
         if (await _igdb.IsConfiguredAsync(ct))
         {
-            foreach (var (appId, match) in await _igdb.ResolveBySteamAppIdsAsync(appIds, ct: ct))
+            // IsConfiguredAsync only proves credentials EXIST — it reads the
+            // credential store, not the network. Minting can still fail (Twitch
+            // down, credentials revoked, machine offline), and that must not
+            // take the credential-free fallback down with it: the whole point
+            // of step 2 is that it needs nothing from IGDB.
+            try
             {
-                if (!string.IsNullOrWhiteSpace(match.Name))
+                foreach (var (appId, match) in await _igdb.ResolveBySteamAppIdsAsync(appIds, ct: ct))
                 {
-                    titles[appId] = match.Name;
-                    fromIgdb++;
+                    if (!string.IsNullOrWhiteSpace(match.Name))
+                    {
+                        titles[appId] = match.Name;
+                        fromIgdb++;
+                    }
                 }
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogWarning(
+                    ex, "IGDB lookup failed; continuing with the Steam store fallback.");
             }
         }
         else
@@ -103,8 +119,11 @@ public sealed class EnrichmentSyncService
             }
         }
 
-        // 3. Promote. Work and release move together — releases.name holds the
-        //    same placeholder and has no flag of its own.
+        // 3. Promote. Work and release move together, in ONE transaction each:
+        //    clearing name_is_provisional is what removes the work from this
+        //    query's results, so a crash between the two writes would strand a
+        //    work named "Portal 2" beside a release still named "App 620" that
+        //    no future run would ever revisit.
         var promoted = 0;
         foreach (var target in targets)
         {
@@ -113,8 +132,13 @@ public sealed class EnrichmentSyncService
                 continue;
             }
 
-            await _works.UpdateNameAsync(target.WorkId, title, nameIsProvisional: false, ct);
-            await _releases.UpdateNameAsync(target.ReleaseId, title, ct);
+            using (var scope = _unitOfWork.Begin())
+            {
+                await _works.UpdateNameAsync(target.WorkId, title, nameIsProvisional: false, ct);
+                await _releases.UpdateNameAsync(target.ReleaseId, title, ct);
+                scope.Commit();
+            }
+
             promoted++;
         }
 

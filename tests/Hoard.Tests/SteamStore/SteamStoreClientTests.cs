@@ -173,12 +173,21 @@ public class SteamStoreClientTests
     }
 
     /// <summary>
-    /// An appid the response omits entirely — not returned at all rather than
-    /// returned as a failure — is also a miss, because the request itself
-    /// succeeded. Never assume 1:1 request/response alignment.
+    /// A SHORT response is a shape anomaly, not a batch of misses.
+    ///
+    /// <para>docs/spikes/steam-store-tags.md:57-60 verified that appids with no
+    /// store page come back INSIDE the array, so "the store has nothing for this
+    /// appid" always arrives as a present-but-unprojectable item — the case the
+    /// test above covers. An appid simply absent from a 200 is the endpoint
+    /// behaving differently from the way it was verified to behave, and reading
+    /// it as a miss means a 200 carrying 1 of 100 requested items caches the
+    /// other 99 as "Steam has never heard of this game" for the full 7-day TTL.
+    /// The items that DID arrive are still used and still cached — they are real
+    /// data — but nothing negative is written for the ones that did not, so the
+    /// next pass asks again.</para>
     /// </summary>
     [Fact]
-    public async Task An_omitted_appid_is_a_miss_not_a_crash()
+    public async Task A_short_response_is_a_shape_anomaly_not_a_batch_of_misses()
     {
         using var host = new SteamStoreTestHost((request, _) =>
         {
@@ -201,13 +210,43 @@ public class SteamStoreClientTests
 
         var items = await host.Client.GetItemsAsync(["440", "570", "730"]);
 
+        // What arrived is used and kept.
         Assert.Equal(["440"], items.Keys);
         Assert.Empty(items["440"].Tags);
+        Assert.NotNull(await host.Cache.GetAsync(
+            SteamStoreClient.CacheProvider, SteamStoreClient.AppCacheKey("440")));
 
-        var missing = await host.Cache.GetAsync(
-            SteamStoreClient.CacheProvider, SteamStoreClient.AppCacheKey("570"));
-        Assert.NotNull(missing);
-        Assert.Null(missing!.Value.PayloadJson);
+        // What did not arrive is not written at all — not as a hit, and above
+        // all not as a miss.
+        foreach (var unanswered in (string[])["570", "730"])
+        {
+            Assert.Null(await host.Cache.GetAsync(
+                SteamStoreClient.CacheProvider, SteamStoreClient.AppCacheKey(unanswered)));
+        }
+
+        // So the next pass re-asks for them rather than serving a cached
+        // nothing for a week.
+        await host.Client.GetItemsAsync(["570", "730"]);
+        Assert.Equal(2, host.Handler.Requests.Count);
+        Assert.Equal(["570", "730"], host.Handler.Requests[1].RequestedAppIds);
+    }
+
+    /// <summary>
+    /// The degenerate short response — a 200 with no items at all — is the same
+    /// rule, and must not turn a whole batch into cached misses either.
+    /// </summary>
+    [Fact]
+    public async Task An_empty_response_caches_nothing()
+    {
+        using var host = new SteamStoreTestHost((_, _) => FakeStoreHandler.Json(
+            HttpStatusCode.OK, StoreFixtures.Envelope(new { store_items = Array.Empty<object>() })));
+
+        Assert.Empty(await host.Client.GetItemsAsync(["440", "570"]));
+
+        Assert.Null(await host.Cache.GetAsync(
+            SteamStoreClient.CacheProvider, SteamStoreClient.AppCacheKey("440")));
+        Assert.Null(await host.Cache.GetAsync(
+            SteamStoreClient.CacheProvider, SteamStoreClient.AppCacheKey("570")));
     }
 
     // ── Soft failure ─────────────────────────────────────────────────────────

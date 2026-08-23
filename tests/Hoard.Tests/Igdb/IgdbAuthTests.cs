@@ -34,6 +34,82 @@ public class IgdbAuthTests
         Assert.Equal(1, host.Handler.CountFor("games"));
     }
 
+    /// <summary>
+    /// The client secret goes in a form-encoded body, never in the URI.
+    ///
+    /// <para>A URI is the most-copied string in an HTTP stack: it lands in
+    /// <c>HttpClient</c> logging, in <c>HttpRequestException</c> messages, in
+    /// proxy access logs, in Polly telemetry, and in this module's own
+    /// request-replay diagnostics. §4.4 documents the query-string form and
+    /// Twitch accepts it, but the credential in v1 is user-supplied and stored
+    /// locally (§4.2) and there is no reason to spray it across every log that
+    /// happens to record a URL.</para>
+    /// </summary>
+    [Fact]
+    public async Task The_client_secret_never_appears_in_the_token_request_uri()
+    {
+        using var host = new IgdbTestHost(
+            IgdbTestHost.DefaultResponder(), clientSecret: "super-secret-value");
+
+        await host.Client.ResolveBySteamAppIdsAsync(TwoAppIds);
+
+        var token = Assert.Single(
+            host.Handler.Requests, r => string.Equals(r.Endpoint, "token", StringComparison.Ordinal));
+
+        Assert.DoesNotContain("super-secret-value", token.Uri.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain("client_secret", token.Uri.ToString(), StringComparison.Ordinal);
+        Assert.Equal(string.Empty, token.Uri.Query);
+
+        // It is in the body, form-encoded, alongside the other two parameters.
+        Assert.Equal("application/x-www-form-urlencoded", token.ContentType);
+        Assert.Contains("client_secret=super-secret-value", token.Body, StringComparison.Ordinal);
+        Assert.Contains("grant_type=client_credentials", token.Body, StringComparison.Ordinal);
+        Assert.Contains("client_id=test-client", token.Body, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A secret containing reserved characters must survive the round trip —
+    /// the reason the old code escaped its query values, and a property the
+    /// form encoding has to keep.
+    /// </summary>
+    [Fact]
+    public async Task A_secret_with_reserved_characters_is_escaped_not_truncated()
+    {
+        using var host = new IgdbTestHost(
+            IgdbTestHost.DefaultResponder(), clientSecret: "a&b=c d+e%f");
+
+        await host.Client.ResolveBySteamAppIdsAsync(TwoAppIds);
+
+        var token = Assert.Single(
+            host.Handler.Requests, r => string.Equals(r.Endpoint, "token", StringComparison.Ordinal));
+
+        var parsed = ParseForm(token.Body);
+        Assert.Equal("a&b=c d+e%f", parsed["client_secret"]);
+        Assert.Equal("client_credentials", parsed["grant_type"]);
+    }
+
+    /// <summary>
+    /// Minimal <c>application/x-www-form-urlencoded</c> reader: split on the
+    /// separators, then undo percent-encoding and the '+'-for-space convention.
+    /// </summary>
+    private static Dictionary<string, string> ParseForm(string body)
+    {
+        var parsed = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var pair in body.Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var split = pair.IndexOf('=', StringComparison.Ordinal);
+            if (split < 0)
+            {
+                continue;
+            }
+
+            parsed[Uri.UnescapeDataString(pair[..split].Replace('+', ' '))] =
+                Uri.UnescapeDataString(pair[(split + 1)..].Replace('+', ' '));
+        }
+
+        return parsed;
+    }
+
     [Fact]
     public async Task Every_igdb_request_carries_client_id_and_bearer_headers()
     {

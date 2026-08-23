@@ -13,7 +13,16 @@ public sealed class SqliteConnectionFactory : ISqliteConnectionFactory
     /// </summary>
     private readonly AsyncLocal<SqliteUnitOfWork?> _ambient = new();
 
-    public SqliteConnectionFactory(string databasePath)
+    /// <param name="databasePath">Path to the SQLite file.</param>
+    /// <param name="pooling">
+    /// Connection pooling. On for the app. Tests pass <c>false</c>: pooling is a
+    /// process-wide resource, and the only way to release a pooled handle so a
+    /// temp file can be deleted is <c>SqliteConnection.ClearAllPools()</c>,
+    /// which clears every pool in the process — including those belonging to
+    /// other test classes running in parallel. Unpooled connections close when
+    /// disposed, so each test's database is genuinely its own.
+    /// </param>
+    public SqliteConnectionFactory(string databasePath, bool pooling = true)
     {
         DapperConfig.EnsureConfigured();
 
@@ -22,6 +31,7 @@ public sealed class SqliteConnectionFactory : ISqliteConnectionFactory
         {
             DataSource = DatabasePath,
             ForeignKeys = true, // emits PRAGMA foreign_keys=ON on open
+            Pooling = pooling,
         }.ToString();
     }
 

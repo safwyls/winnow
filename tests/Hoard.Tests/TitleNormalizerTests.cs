@@ -38,9 +38,72 @@ public sealed class TitleNormalizerTests
     [InlineData("Dark Souls III", new[] { 3 })]
     [InlineData("Left 4 Dead 2", new[] { 4, 2 })]
     [InlineData("Civilization VI", new[] { 6 })]
-    [InlineData("Final Fantasy X", new[] { 10 })]
+    [InlineData("Grand Theft Auto V", new[] { 5 })]
+    // Spelled-out cardinals fold too, so the ordinal veto is consistent with
+    // itself: "Episode II" vs "Episode III" was always caught, and now
+    // "Episode One" vs "Episode Two" is as well.
+    [InlineData("Half-Life 2: Episode One", new[] { 2, 1 })]
+    [InlineData("Half-Life 2: Episode Two", new[] { 2, 2 })]
+    [InlineData("The Walking Dead: Season Two", new[] { 2 })]
     public void OrdinalsAreExtracted(string title, int[] expected)
         => Assert.Equal(expected, TitleNormalizer.Normalize(title).Ordinals);
+
+    /// <summary>
+    /// A bare "X" is a name at least as often as it is a ten. Folding it made
+    /// <c>Mega Man X</c> and <c>Mega Man 10</c> the same normalised string —
+    /// similarity 1.00, with nothing distinguishable left for a veto to catch —
+    /// so it is left alone. The cost is that <c>Final Fantasy X</c> no longer
+    /// matches <c>Final Fantasy 10</c>: §5.3 is precision over recall, always.
+    /// </summary>
+    [Theory]
+    [InlineData("Mega Man X", "mega man x", new int[0])]
+    [InlineData("Mega Man 10", "mega man 10", new[] { 10 })]
+    [InlineData("Final Fantasy X", "final fantasy x", new int[0])]
+    [InlineData("XCOM 2", "xcom 2", new[] { 2 })]
+    public void ABareXIsALetterNotATen(string title, string expectedCore, int[] expectedOrdinals)
+    {
+        var normalized = TitleNormalizer.Normalize(title);
+
+        Assert.Equal(expectedCore, normalized.Core);
+        Assert.Equal(expectedOrdinals, normalized.Ordinals);
+    }
+
+    /// <summary>
+    /// A one-letter numeral at the FRONT of a title is the title. The guard
+    /// used to cover only "I"; "V Rising" and "X Rebirth" are the same mistake
+    /// with different letters. A number word in front is the same case again —
+    /// "Five Nights at Freddy's" is not the fifth Nights.
+    /// </summary>
+    [Theory]
+    [InlineData("I Am Setsuna", "i am setsuna")]
+    [InlineData("V Rising", "v rising")]
+    [InlineData("X Rebirth", "x rebirth")]
+    [InlineData("Five Nights at Freddy's", "five nights at freddys")]
+    [InlineData("Two Point Hospital", "two point hospital")]
+    [InlineData("One Piece Odyssey", "one piece odyssey")]
+    public void ALeadingNumeralIsTheTitleNotASequelNumber(string title, string expectedCore)
+    {
+        var normalized = TitleNormalizer.Normalize(title);
+
+        Assert.Equal(expectedCore, normalized.Core);
+        Assert.Empty(normalized.Ordinals);
+    }
+
+    /// <summary>
+    /// Number-word folding runs AFTER edition extraction, so "Day One Edition"
+    /// is lifted out whole instead of being shredded into "day 1 edition" —
+    /// which would leave a stray ordinal on every such title and veto it
+    /// against the plain edition it is a bundle of.
+    /// </summary>
+    [Fact]
+    public void DayOneEditionSurvivesNumberWordFolding()
+    {
+        var normalized = TitleNormalizer.Normalize("Dying Light Day One Edition");
+
+        Assert.Contains("day one edition", normalized.BundleEditions);
+        Assert.Equal("dying light", normalized.Core);
+        Assert.Empty(normalized.Ordinals);
+    }
 
     /// <summary>
     /// Roman folding must not fire on ordinary words. "Mix" parses as M+IX

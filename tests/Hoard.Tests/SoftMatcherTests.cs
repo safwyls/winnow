@@ -201,6 +201,18 @@ public sealed class SoftMatcherTests
     [InlineData("Left 4 Dead", "Left 4 Dead 2")]
     [InlineData("Civilization V", "Civilization VI")]
     [InlineData("Fallout 3", "Fallout 4")]
+    // Word-form ordinals. The roman spelling was always caught; these were not,
+    // so the veto was inconsistent with itself — "Episode One" and "Episode Two"
+    // both reduced to the ordinal of Half-Life 2 and scored 0.84 on title
+    // similarity alone.
+    [InlineData("Half-Life 2: Episode One", "Half-Life 2: Episode Two")]
+    [InlineData("Half-Life 2: Episode One", "Half-Life 2: Episode Three")]
+    [InlineData("Half-Life 2: Episode One", "Half-Life 2: Episode 2")]
+    [InlineData("The Walking Dead: Season One", "The Walking Dead: Season Two")]
+    // A bare "X" is a letter, not a ten: Mega Man X is a different series from
+    // Mega Man, and folding it made the two titles identical strings.
+    [InlineData("Mega Man X", "Mega Man 10")]
+    [InlineData("Mega Man X", "Mega Man 2")]
     public void SequelsAreNeverMatched(string left, string right)
     {
         var score = Matcher.Score(Subject(1, left), Subject(2, right));
@@ -242,6 +254,9 @@ public sealed class SoftMatcherTests
     [InlineData("Command & Conquer: Red Alert 2", "Command and Conquer Red Alert 2")]
     [InlineData("Deus Ex: Human Revolution", "Deus Ex Human Revolution - Director's Cut")]
     [InlineData("The Last of Us Part II", "Last of Us Part 2")]
+    // Word-form folding cuts both ways: it separates One from Two, and it joins
+    // One to 1.
+    [InlineData("Half-Life 2: Episode One", "Half-Life 2 Episode 1")]
     public void NormalisationEquivalentsClearTheQueueFloor(string left, string right)
     {
         var score = Matcher.Score(Subject(1, left), Subject(2, right));

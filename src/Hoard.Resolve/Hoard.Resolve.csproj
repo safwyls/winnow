@@ -6,6 +6,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- Abstractions only: Resolve offers an AddSoftMatching() extension so the
+         composition root does not have to know how §5.3 step 2 is assembled. It
+         does not depend on a container implementation. -->
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.11" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.11" />
   </ItemGroup>
 

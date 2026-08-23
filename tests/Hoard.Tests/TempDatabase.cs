@@ -15,7 +15,12 @@ public sealed class TempDatabase : IDisposable
         DatabasePath = Path.Combine(
             Path.GetTempPath(),
             $"hoard-test-{Guid.NewGuid():N}.db");
-        Factory = new SqliteConnectionFactory(DatabasePath);
+        // Unpooled: see the factory's `pooling` parameter. xUnit runs test
+        // classes in parallel, and clearing the process-wide pool on dispose
+        // reached into databases other classes were mid-query against — which
+        // showed up as roughly one bucket-query test failing per five full-suite
+        // runs, a different test each time.
+        Factory = new SqliteConnectionFactory(DatabasePath, pooling: false);
         Initializer = new DatabaseInitializer(Factory);
 
         if (migrate)
@@ -32,9 +37,9 @@ public sealed class TempDatabase : IDisposable
 
     public void Dispose()
     {
-        // Pooled connections keep the file locked on Windows.
-        SqliteConnection.ClearAllPools();
-
+        // No ClearAllPools() here on purpose — this factory is unpooled, so
+        // disposed connections are already closed, and clearing the global pool
+        // would disrupt test classes running in parallel.
         foreach (var suffix in new[] { "", "-wal", "-shm" })
         {
             var path = DatabasePath + suffix;

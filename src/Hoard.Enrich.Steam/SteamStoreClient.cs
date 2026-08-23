@@ -154,35 +154,59 @@ public sealed class SteamStoreClient : ISteamStoreClient
                 continue;
             }
 
-            if (raw.Count == 0)
+            // A SHORT response is already a shape anomaly, not an answer.
+            // docs/spikes/steam-store-tags.md:57-60 verified that appids with no
+            // store page — 760, 1391110 — come back INSIDE the array as
+            // {"success":15,"visible":false,"name":""}; the request still 200s
+            // and still returns one item per appid asked for. So "the store
+            // answered and had nothing for this appid" arrives as a present item
+            // that fails to project, which the loop below handles. An appid
+            // simply absent from the array is the endpoint behaving differently
+            // from the way it was verified to behave.
+            //
+            // The distinction matters because the two readings differ by two
+            // orders of magnitude: a 200 carrying 1 of 100 requested items is
+            // either 99 games Steam has never heard of, or one truncated
+            // response. Recording the first costs 99 cached misses held for the
+            // full 7-day TTL, and nothing re-asks until it expires.
+            var answered = raw.Count >= batch.Length;
+            if (!answered)
             {
-                // A 200 with no items at all for a non-empty request is not a
-                // credible "none of these exist"; it is a shape change wearing a
-                // success code. Do not turn it into a batch of cached misses.
                 _log.LogWarning(
-                    "Steam GetItems returned no store items for {Count} appids; treating the batch as unanswered.",
-                    batch.Length);
-                continue;
+                    "Steam GetItems returned {Returned} store items for {Requested} appids. "
+                    + "Non-store appids come back inside the array, so a short response is a shape "
+                    + "change rather than a batch of misses — the {Missing} unanswered appids are "
+                    + "left uncached and retried next pass. The endpoint is undocumented; check the "
+                    + "contract test.",
+                    raw.Count, batch.Length, batch.Length - raw.Count);
             }
 
             foreach (var appId in batch)
             {
                 // Correlate by id, never by position: the response may omit,
                 // reorder or add items relative to the request.
-                var item = raw.TryGetValue(appId, out var rawItem)
-                    ? SteamStoreJson.TryParseItem(appId, rawItem)
-                    : null;
+                var present = raw.TryGetValue(appId, out var rawItem) && rawItem is not null;
+                var item = present ? SteamStoreJson.TryParseItem(appId, rawItem!) : null;
 
                 if (item is not null)
                 {
                     results[appId] = item;
                 }
 
-                // Every appid in an answered batch gets a row, matched or not.
-                // A null payload records a genuine miss (success != 1, or the
-                // store simply did not return the item); the raw item body is
-                // stored verbatim so nothing has to be refetched to look at a
-                // field this client does not project today.
+                // An appid the response omitted during a short batch is left
+                // out of the cache entirely, so the next pass asks again. It is
+                // NOT written as a miss: a miss is a claim about the store's
+                // contents, and a truncated response is no evidence for one.
+                if (!present && !answered)
+                {
+                    continue;
+                }
+
+                // Every appid the batch actually answered for gets a row,
+                // matched or not. A null payload records a genuine miss
+                // (success != 1, or an item present but unprojectable); the raw
+                // item body is stored verbatim so nothing has to be refetched to
+                // look at a field this client does not project today.
                 await _cache.SetAsync(
                     CacheProvider,
                     AppCacheKey(appId),

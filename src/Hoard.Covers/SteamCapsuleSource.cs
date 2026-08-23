@@ -51,13 +51,23 @@ public sealed class SteamCapsuleSource : ICoverSource
             var url = $"{_options.SteamCdnBaseUrl.TrimEnd('/')}/{key.Id}/{file}";
             using var response = await client.GetAsync(url, ct).ConfigureAwait(false);
 
-            // 404 = this app has no capsule of this shape. Normal, not an error;
-            // the caller records it so we never ask again this month.
-            if (response.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.Forbidden)
+            // 404 = this app has no capsule of this shape. That is an answer
+            // about existence — normal, not an error — and the caller records it
+            // so we never ask again this month.
+            if (response.StatusCode == HttpStatusCode.NotFound)
             {
                 continue;
             }
 
+            // A 403 is NOT an answer about existence. A CDN or WAF block during
+            // first launch — the moment a cold library asks for several hundred
+            // capsules at once — would otherwise read as "no art exists" for
+            // every visible tile, and CoverPipeline would stamp a `.none` marker
+            // on each one. Those markers hold for the full 30-day NegativeTtl
+            // and CoverDiskCache clears them only on a successful write, so the
+            // whole grid would sit on procedural art for a month with no way
+            // back. Surfaced as a transport failure instead: the pipeline logs
+            // it, caches nothing, and the next realization tries again.
             response.EnsureSuccessStatusCode();
             var bytes = await response.Content.ReadAsByteArrayAsync(ct).ConfigureAwait(false);
             if (bytes.Length > 0)

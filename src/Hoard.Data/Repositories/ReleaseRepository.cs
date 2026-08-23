@@ -1,5 +1,6 @@
 using Dapper;
 using Hoard.Core.Domain;
+using Hoard.Core.Queries;
 using Hoard.Core.Repositories;
 
 namespace Hoard.Data.Repositories;
@@ -85,5 +86,27 @@ public sealed class ReleaseRepository : IReleaseRepository
                         FROM external_ids
                         WHERE provider = @provider AND provider_id = @providerId);
             """, new { provider, providerId }, transaction: lease.Transaction, cancellationToken: ct));
+    }
+
+    public async Task<IReadOnlyList<ReleaseIdentity>> GetIdentitiesAsync(CancellationToken ct = default)
+    {
+        using var lease = _factory.Lease();
+
+        // One join, one pass, ix_releases_work_id on the inner side. The
+        // alternative — read releases, then a work per release — is the N+1
+        // that would make the soft-match sweep cost 1,200 round trips on a
+        // 600-game library instead of one.
+        var rows = await lease.Connection.QueryAsync<ReleaseIdentity>(new CommandDefinition("""
+            SELECT r.id                  AS ReleaseId,
+                   r.work_id             AS WorkId,
+                   r.name                AS ReleaseName,
+                   w.name                AS WorkName,
+                   w.first_release_year  AS FirstReleaseYear,
+                   w.name_is_provisional AS NameIsProvisional
+            FROM releases r
+            JOIN works w ON w.id = r.work_id
+            ORDER BY r.id;
+            """, transaction: lease.Transaction, cancellationToken: ct));
+        return rows.AsList();
     }
 }

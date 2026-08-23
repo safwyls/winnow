@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Threading;
 using Hoard.App.Services;
 using Hoard.App.ViewModels;
 using Hoard.Core.Repositories;
@@ -23,6 +24,12 @@ public static class Program
     /// </summary>
     public static IHost? AppHost { get; private set; }
 
+    /// <summary>
+    /// Cancelled when the window closes, so background enrichment stops before
+    /// the host — and the SQLite connection factory with it — is disposed.
+    /// </summary>
+    private static readonly CancellationTokenSource Shutdown = new();
+
     [STAThread]
     public static void Main(string[] args)
     {
@@ -31,6 +38,7 @@ public static class Program
 
         using var host = builder.Build();
         AppHost = host;
+        Task enrichment = Task.CompletedTask;
         try
         {
             host.Start();
@@ -59,28 +67,76 @@ public static class Program
                 // Names for the games the local files could only identify by
                 // appid. This one DOES touch the network, so it must not gate
                 // the window: §7 promises a browsable library immediately with
-                // metadata filling in behind it. Fire and forget, and let the
-                // failure land in the log rather than in front of the user.
-                _ = Task.Run(async () =>
+                // metadata filling in behind it.
+                //
+                // Held rather than dropped: the finally block cancels it and
+                // waits, because `using var host` disposes the service provider
+                // — and the SQLite connection factory with it — and closing the
+                // window two seconds into the first run is a normal thing to do.
+                enrichment = Task.Run(async () =>
                 {
+                    var services = host.Services;
                     try
                     {
-                        await host.Services.GetRequiredService<EnrichmentSyncService>().EnrichAsync();
+                        var report = await services.GetRequiredService<EnrichmentSyncService>()
+                            .EnrichAsync(Shutdown.Token);
+
+                        // §5.3 step 2, after enrichment so it compares real
+                        // titles rather than the "App 620" placeholders it
+                        // skips. Unconditional: a pass that promoted nothing can
+                        // still be the first sweep this library has ever had.
+                        await services.GetRequiredService<LibrarySoftMatchSweep>()
+                            .SweepAsync(Shutdown.Token);
+
+                        // Titles were rewritten underneath a library the UI has
+                        // already loaded; without this they only appear on the
+                        // next launch, which is not what §7's copy promises.
+                        if (report.Promoted > 0)
+                        {
+                            await Dispatcher.UIThread.InvokeAsync(() =>
+                                services.GetRequiredService<LibraryViewModel>()
+                                    .LoadCommand.ExecuteAsync(null));
+                        }
+
+                        // MainWindow loads the queue on open, before the sweep
+                        // has run, so the rail's REVIEW count and the empty
+                        // state are both stale until this reload.
+                        await Dispatcher.UIThread.InvokeAsync(() =>
+                            services.GetRequiredService<MergeQueueViewModel>()
+                                .LoadCommand.ExecuteAsync(null));
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        // Window closed mid-run. Each promotion commits on its
+                        // own, so the next launch resumes from what is left.
                     }
                     catch (Exception ex)
                     {
-                        host.Services.GetRequiredService<ILoggerFactory>()
+                        services.GetRequiredService<ILoggerFactory>()
                             .CreateLogger(typeof(Program))
                             .LogWarning(ex, "Enrichment failed; titles stay provisional until the next run.");
                     }
-                });
+                }, Shutdown.Token);
             }
 
             BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
         }
         finally
         {
+            // Stop enrichment and let it unwind BEFORE the host disposes the
+            // connection factory it is writing through.
+            Shutdown.Cancel();
+            try
+            {
+                enrichment.Wait(TimeSpan.FromSeconds(5));
+            }
+            catch (AggregateException)
+            {
+                // Already logged inside the task; shutdown must not throw.
+            }
+
             host.StopAsync().GetAwaiter().GetResult();
+            Shutdown.Dispose();
             AppHost = null;
         }
     }
@@ -116,6 +172,7 @@ public static class Program
         services.AddSingleton<IGameListRepository, GameListRepository>();
         services.AddSingleton<IMergeCandidateRepository, MergeCandidateRepository>();
         services.AddSingleton<ILibraryQueryRepository, LibraryQueryRepository>();
+        services.AddSingleton<IResolveStateRepository, ResolveStateRepository>();
 
         // Ingest → Resolve → sync (§5.1: the UI reads the database; it never
         // calls these directly. Program composes them, the view models don't).
@@ -126,6 +183,12 @@ public static class Program
         services.AddSingleton<SteamLibrarySource>();
         services.AddSingleton<ExternalIdResolver>();
         services.AddSingleton<SteamSyncService>();
+
+        // §5.3 step 2. Without this the soft matcher exists, is tested, and
+        // never runs — merge_candidates stays empty and the queue's empty state
+        // becomes a false claim about the user's library rather than a
+        // description of a feature that was never wired.
+        services.AddSoftMatching();
 
         // Cover art (§5.4). Steam's portrait capsule needs no credentials, so
         // the grid has real art regardless of IGDB configuration; an IGDB cover
