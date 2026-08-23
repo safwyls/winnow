@@ -52,6 +52,16 @@ public sealed class OwnershipRepository : IOwnershipRepository
         return rows.AsList();
     }
 
+    public async Task UpdateInstallStateAsync(long id, string? installPath, bool installed, CancellationToken ct = default)
+    {
+        using var conn = _factory.Open();
+        await conn.ExecuteAsync(new CommandDefinition("""
+            UPDATE ownerships
+            SET install_path = @installPath, installed = @installed
+            WHERE id = @id;
+            """, new { id, installPath, installed }, cancellationToken: ct));
+    }
+
     public async Task<IReadOnlyList<Ownership>> GetAllAsync(CancellationToken ct = default)
     {
         using var conn = _factory.Open();

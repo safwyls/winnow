@@ -14,6 +14,13 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Hoard.Core\Hoard.Core.csproj" />
     <ProjectReference Include="..\..\src\Hoard.Data\Hoard.Data.csproj" />
+    <ProjectReference Include="..\..\src\Hoard.Ingest.Steam\Hoard.Ingest.Steam.csproj" />
+    <ProjectReference Include="..\..\src\Hoard.Resolve\Hoard.Resolve.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Sanitized real Steam files (tests/fixtures/steam/README.md) — the reader tests parse these. -->
+    <Content Include="..\fixtures\steam\**" LinkBase="fixtures\steam" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
