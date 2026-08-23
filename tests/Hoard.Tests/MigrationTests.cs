@@ -1,4 +1,5 @@
 using Dapper;
+using Hoard.Data;
 using Xunit;
 
 namespace Hoard.Tests;
@@ -45,11 +46,20 @@ public class MigrationTests
         var scripts = conn.Query<string>("SELECT ScriptName FROM SchemaVersions ORDER BY ScriptName;")
             .ToList();
 
-        // Every migration recorded exactly once, in order, after two runs.
-        Assert.Equal(3, scripts.Count);
-        Assert.EndsWith("0001_initial.sql", scripts[0], StringComparison.Ordinal);
-        Assert.EndsWith("0002_provisional_names.sql", scripts[1], StringComparison.Ordinal);
-        Assert.EndsWith("0003_ownership_unique_store.sql", scripts[2], StringComparison.Ordinal);
+        // Derived from the shipped migration set rather than a hard-coded list:
+        // the invariant under test is "every migration recorded exactly once,
+        // in order, after two runs", which is true of any number of them. A
+        // literal list would instead fail on the next migration anyone adds,
+        // which teaches people to edit the assertion rather than read it.
+        var expected = typeof(DatabaseInitializer).Assembly
+            .GetManifestResourceNames()
+            .Where(name => name.EndsWith(".sql", StringComparison.Ordinal))
+            .OrderBy(name => name, StringComparer.Ordinal)
+            .ToList();
+
+        Assert.NotEmpty(expected);
+        Assert.Equal(expected, scripts);
+        Assert.Equal(scripts.Count, scripts.Distinct(StringComparer.Ordinal).Count());
     }
 
     [Fact]

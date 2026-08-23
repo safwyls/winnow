@@ -14,8 +14,8 @@ public sealed class UpdateEventRepository : IUpdateEventRepository
     {
         using var lease = _factory.Lease();
         return await lease.Connection.ExecuteScalarAsync<long>(new CommandDefinition("""
-            INSERT INTO update_events (release_id, kind, build_id, occurred_at, title, raw_json)
-            VALUES (@ReleaseId, @Kind, @BuildId, @OccurredAt, @Title, @RawJson)
+            INSERT INTO update_events (release_id, kind, build_id, occurred_at, title, url, raw_json)
+            VALUES (@ReleaseId, @Kind, @BuildId, @OccurredAt, @Title, @Url, @RawJson)
             RETURNING id;
             """, updateEvent, transaction: lease.Transaction, cancellationToken: ct));
     }
@@ -30,6 +30,7 @@ public sealed class UpdateEventRepository : IUpdateEventRepository
                    build_id    AS BuildId,
                    occurred_at AS OccurredAt,
                    title       AS Title,
+                   url         AS Url,
                    raw_json    AS RawJson
             FROM update_events
             WHERE release_id = @releaseId

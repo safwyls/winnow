@@ -6,6 +6,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- FakeTimeProvider, for SnapshotSchedulerService: the tick schedule is
+         driven by advancing a clock, so a scheduler test costs microseconds
+         instead of the intervals it is asserting about. -->
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" Version="10.9.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.9.0" />
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="4.0.0" />
@@ -20,6 +24,7 @@
     <ProjectReference Include="..\..\src\Hoard.Data\Hoard.Data.csproj" />
     <ProjectReference Include="..\..\src\Hoard.Enrich.Igdb\Hoard.Enrich.Igdb.csproj" />
     <ProjectReference Include="..\..\src\Hoard.Enrich.Steam\Hoard.Enrich.Steam.csproj" />
+    <ProjectReference Include="..\..\src\Hoard.Enrich.Updates\Hoard.Enrich.Updates.csproj" />
     <ProjectReference Include="..\..\src\Hoard.Ingest.Steam\Hoard.Ingest.Steam.csproj" />
     <ProjectReference Include="..\..\src\Hoard.Resolve\Hoard.Resolve.csproj" />
   </ItemGroup>
@@ -29,6 +34,8 @@
     <Content Include="..\fixtures\steam\**" LinkBase="fixtures\steam" CopyToOutputDirectory="PreserveNewest" />
     <!-- Verbatim store-frontend responses (tests/fixtures/steam-store/README.md) — the contract test pins these. -->
     <Content Include="..\fixtures\steam-store\**" LinkBase="fixtures\steam-store" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Verbatim update-signal responses (tests/fixtures/update-signals/README.md) — the contract test pins these. -->
+    <Content Include="..\fixtures\update-signals\**" LinkBase="fixtures\update-signals" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

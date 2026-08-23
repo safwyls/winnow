@@ -8,6 +8,7 @@ using Hoard.Data;
 using Hoard.Data.Repositories;
 using Hoard.Enrich.Igdb;
 using Hoard.Enrich.Steam;
+using Hoard.Enrich.Updates;
 using Hoard.Ingest.Steam;
 using Hoard.Resolve;
 using Microsoft.Extensions.DependencyInjection;
@@ -36,15 +37,26 @@ public static class Program
         var builder = Host.CreateApplicationBuilder(args);
         ConfigureServices(builder.Services);
 
+        // Both flags mean "leave this database alone", so the scheduler has to
+        // honour them too — otherwise rows appear fifteen minutes into UI work
+        // against a fixed or seeded library.
+        var writesSuppressed = args.Contains("--no-sync") || args.Contains("--seed-sample");
+        builder.Services.Configure<SnapshotSchedulerOptions>(o => o.Enabled = !writesSuppressed);
+
         using var host = builder.Build();
         AppHost = host;
         Task enrichment = Task.CompletedTask;
         try
         {
-            host.Start();
-
-            // Migrations run before any UI or repository touches the db.
+            // Migrations run before ANY reader or writer touches the db —
+            // including hosted services, which host.Start() launches. The
+            // scheduler's first tick is an interval away so today's ordering
+            // would survive either way, but "start the workers, then create
+            // their tables" is a trap waiting for the first person who sets
+            // RunOnStartup.
             host.Services.GetRequiredService<DatabaseInitializer>().Initialize();
+
+            host.Start();
 
 #if DEBUG
             // --seed-sample fills an empty database with the M0 sample library
@@ -88,10 +100,20 @@ public static class Program
                         await services.GetRequiredService<LibrarySoftMatchSweep>()
                             .SweepAsync(Shutdown.Token);
 
+                        // §4.5's two signals. Staggered so a day costs tens of
+                        // requests rather than the naive 1,232, and background
+                        // only — never an onboarding path (§5.1, pitfall 3).
+                        var poll = await services.GetRequiredService<UpdateSignalPoller>()
+                            .PollDueBatchAsync(Shutdown.Token);
+
                         // Titles were rewritten underneath a library the UI has
                         // already loaded; without this they only appear on the
                         // next launch, which is not what §7's copy promises.
-                        if (report.Promoted > 0)
+                        // New update events move bucket membership, so they need
+                        // the same refresh — that is the unread badge appearing.
+                        if (report.Promoted > 0
+                            || poll.AnnouncementsRecorded > 0
+                            || poll.BuildPushesRecorded > 0)
                         {
                             await Dispatcher.UIThread.InvokeAsync(() =>
                                 services.GetRequiredService<LibraryViewModel>()
@@ -184,6 +206,14 @@ public static class Program
         services.AddSingleton<ExternalIdResolver>();
         services.AddSingleton<SteamSyncService>();
 
+        // M2 (§5 "Snapshot Scheduler", §8): keeps the longitudinal series
+        // growing while the app sits in the tray, instead of recording one
+        // point per launch. Same instance under both contracts — a separately
+        // constructed SteamSyncService would be a second scanner.
+        services.AddSingleton<ISteamSync>(sp => sp.GetRequiredService<SteamSyncService>());
+        services.AddSingleton(TimeProvider.System);
+        services.AddHostedService<SnapshotSchedulerService>();
+
         // §5.3 step 2. Without this the soft matcher exists, is tested, and
         // never runs — merge_candidates stays empty and the queue's empty state
         // becomes a false claim about the user's library rather than a
@@ -205,6 +235,10 @@ public static class Program
         services.AddIgdbEnrichment();
         services.AddSteamStoreEnrichment();
         services.AddSingleton<EnrichmentSyncService>();
+
+        // M2 (§4.5): the two update signals behind "Patched since". Both
+        // endpoints are keyless, so there is no unconfigured state to handle.
+        services.AddUpdateSignals();
 
         services.AddSingleton<LibraryViewModel>();
 

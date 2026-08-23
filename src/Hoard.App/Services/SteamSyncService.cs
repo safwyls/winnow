@@ -6,6 +6,18 @@ using Microsoft.Extensions.Logging;
 namespace Hoard.App.Services;
 
 /// <summary>
+/// One local Steam scan-and-resolve pass. Exists purely as a seam:
+/// <see cref="SnapshotSchedulerService"/> drives this on a timer and must be
+/// testable without a Steam install on the machine running the tests.
+/// <see cref="SteamSyncService"/> is the only production implementation.
+/// </summary>
+public interface ISteamSync
+{
+    /// <inheritdoc cref="SteamSyncService.SyncAsync"/>
+    Task<SteamSyncReport> SyncAsync(CancellationToken ct = default);
+}
+
+/// <summary>
 /// Joins the two halves of M0: the Steam local-file scan (§4.1) and the
 /// external-id resolver (§5.3 step 1). Ingest emits candidates, Resolve
 /// persists them — this type only sequences the two and never touches a
@@ -16,7 +28,7 @@ namespace Hoard.App.Services;
 /// which is the slow part (§4.3's 200 req/5min), is M1 and explicitly stays
 /// out of the startup path — pitfall 3.</para>
 /// </summary>
-public sealed class SteamSyncService
+public sealed class SteamSyncService : ISteamSync
 {
     private readonly SteamLibrarySource _steam;
     private readonly ExternalIdResolver _resolver;

@@ -6,6 +6,7 @@
     <Project Path="src/Hoard.Data/Hoard.Data.csproj" />
     <Project Path="src/Hoard.Enrich.Igdb/Hoard.Enrich.Igdb.csproj" />
     <Project Path="src/Hoard.Enrich.Steam/Hoard.Enrich.Steam.csproj" />
+    <Project Path="src/Hoard.Enrich.Updates/Hoard.Enrich.Updates.csproj" />
     <Project Path="src/Hoard.Ingest.Steam/Hoard.Ingest.Steam.csproj" />
     <Project Path="src/Hoard.Resolve/Hoard.Resolve.csproj" />
   </Folder>
