@@ -2,15 +2,13 @@ using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Hoard.App.ViewModels;
 
-/// <summary>
-/// Placeholder shell view model for M0. The real library view (tiles,
-/// rails, buckets) arrives with the UI wave.
-/// </summary>
+/// <summary>Window shell: hosts the library view.</summary>
 public partial class MainWindowViewModel : ObservableObject
 {
-    [ObservableProperty]
-    public partial string Title { get; set; } = "Hoard";
+    public MainWindowViewModel(LibraryViewModel library)
+    {
+        Library = library;
+    }
 
-    [ObservableProperty]
-    public partial string Subtitle { get; set; } = "Library view under construction";
+    public LibraryViewModel Library { get; }
 }

@@ -12,18 +12,18 @@ public sealed class UpdateEventRepository : IUpdateEventRepository
 
     public async Task<long> InsertAsync(UpdateEvent updateEvent, CancellationToken ct = default)
     {
-        using var conn = _factory.Open();
-        return await conn.ExecuteScalarAsync<long>(new CommandDefinition("""
+        using var lease = _factory.Lease();
+        return await lease.Connection.ExecuteScalarAsync<long>(new CommandDefinition("""
             INSERT INTO update_events (release_id, kind, build_id, occurred_at, title, raw_json)
             VALUES (@ReleaseId, @Kind, @BuildId, @OccurredAt, @Title, @RawJson)
             RETURNING id;
-            """, updateEvent, cancellationToken: ct));
+            """, updateEvent, transaction: lease.Transaction, cancellationToken: ct));
     }
 
     public async Task<IReadOnlyList<UpdateEvent>> GetByReleaseAsync(long releaseId, CancellationToken ct = default)
     {
-        using var conn = _factory.Open();
-        var rows = await conn.QueryAsync<UpdateEvent>(new CommandDefinition("""
+        using var lease = _factory.Lease();
+        var rows = await lease.Connection.QueryAsync<UpdateEvent>(new CommandDefinition("""
             SELECT id          AS Id,
                    release_id  AS ReleaseId,
                    kind        AS Kind,
@@ -34,7 +34,7 @@ public sealed class UpdateEventRepository : IUpdateEventRepository
             FROM update_events
             WHERE release_id = @releaseId
             ORDER BY occurred_at, id;
-            """, new { releaseId }, cancellationToken: ct));
+            """, new { releaseId }, transaction: lease.Transaction, cancellationToken: ct));
         return rows.AsList();
     }
 }

@@ -20,58 +20,58 @@ public sealed class GameListRepository : IGameListRepository
 
     public async Task<long> InsertAsync(GameList list, CancellationToken ct = default)
     {
-        using var conn = _factory.Open();
-        return await conn.ExecuteScalarAsync<long>(new CommandDefinition("""
+        using var lease = _factory.Lease();
+        return await lease.Connection.ExecuteScalarAsync<long>(new CommandDefinition("""
             INSERT INTO lists (name, description, is_smart, filter_json)
             VALUES (@Name, @Description, @IsSmart, @FilterJson)
             RETURNING id;
-            """, list, cancellationToken: ct));
+            """, list, transaction: lease.Transaction, cancellationToken: ct));
     }
 
     public async Task<GameList?> GetAsync(long id, CancellationToken ct = default)
     {
-        using var conn = _factory.Open();
-        return await conn.QuerySingleOrDefaultAsync<GameList>(new CommandDefinition(
+        using var lease = _factory.Lease();
+        return await lease.Connection.QuerySingleOrDefaultAsync<GameList>(new CommandDefinition(
             $"SELECT {Columns} FROM lists WHERE id = @id;",
-            new { id }, cancellationToken: ct));
+            new { id }, transaction: lease.Transaction, cancellationToken: ct));
     }
 
     public async Task<IReadOnlyList<GameList>> GetAllAsync(CancellationToken ct = default)
     {
-        using var conn = _factory.Open();
-        var rows = await conn.QueryAsync<GameList>(new CommandDefinition(
+        using var lease = _factory.Lease();
+        var rows = await lease.Connection.QueryAsync<GameList>(new CommandDefinition(
             $"SELECT {Columns} FROM lists ORDER BY name;",
-            cancellationToken: ct));
+            transaction: lease.Transaction, cancellationToken: ct));
         return rows.AsList();
     }
 
     public async Task AddItemAsync(ListItem item, CancellationToken ct = default)
     {
-        using var conn = _factory.Open();
-        await conn.ExecuteAsync(new CommandDefinition("""
+        using var lease = _factory.Lease();
+        await lease.Connection.ExecuteAsync(new CommandDefinition("""
             INSERT INTO list_items (list_id, release_id, position)
             VALUES (@ListId, @ReleaseId, @Position)
             ON CONFLICT (list_id, release_id) DO UPDATE SET position = excluded.position;
-            """, item, cancellationToken: ct));
+            """, item, transaction: lease.Transaction, cancellationToken: ct));
     }
 
     public async Task<IReadOnlyList<ListItem>> GetItemsAsync(long listId, CancellationToken ct = default)
     {
-        using var conn = _factory.Open();
-        var rows = await conn.QueryAsync<ListItem>(new CommandDefinition("""
+        using var lease = _factory.Lease();
+        var rows = await lease.Connection.QueryAsync<ListItem>(new CommandDefinition("""
             SELECT list_id AS ListId, release_id AS ReleaseId, position AS Position
             FROM list_items
             WHERE list_id = @listId
             ORDER BY position;
-            """, new { listId }, cancellationToken: ct));
+            """, new { listId }, transaction: lease.Transaction, cancellationToken: ct));
         return rows.AsList();
     }
 
     public async Task RemoveItemAsync(long listId, long releaseId, CancellationToken ct = default)
     {
-        using var conn = _factory.Open();
-        await conn.ExecuteAsync(new CommandDefinition(
+        using var lease = _factory.Lease();
+        await lease.Connection.ExecuteAsync(new CommandDefinition(
             "DELETE FROM list_items WHERE list_id = @listId AND release_id = @releaseId;",
-            new { listId, releaseId }, cancellationToken: ct));
+            new { listId, releaseId }, transaction: lease.Transaction, cancellationToken: ct));
     }
 }

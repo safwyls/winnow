@@ -1,21 +1,385 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:Hoard.App.ViewModels"
+        xmlns:views="using:Hoard.App.Views"
         x:Class="Hoard.App.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="Hoard"
-        Width="1100" Height="720"
+        Width="1180" Height="760"
+        MinWidth="880" MinHeight="560"
         Background="{StaticResource Ground}">
 
-    <!-- M0 placeholder: dark Ground window with the wordmark in the display
-         style. The library view replaces this in the UI wave. -->
-    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8">
-        <TextBlock Classes="display-l"
-                   Text="{Binding Title}"
-                   HorizontalAlignment="Center"/>
-        <TextBlock Classes="label"
-                   Text="{Binding Subtitle}"
-                   HorizontalAlignment="Center"/>
-    </StackPanel>
+    <!--
+        M0 library shell — design-system.md §4 layout, §6 components, and the
+        mock's rail / command bar / cover wall. This is the ONE view that
+        touches ItemsRepeater (docs/spikes/avalonia-dormancy-rendering.md:
+        isolate it so the post-12.0 swap to a virtualizing uniform panel is a
+        single-file change).
+    -->
+
+    <Window.Styles>
+
+        <!-- ══ Rail bucket (§6) ══════════════════════════════════════════════
+             Hover and selection both fill SurfaceRaised; selection adds the
+             2px Volt left edge. Zero-count rows dim to 40% — never hide, so
+             the rail never reflows. -->
+        <Style Selector="Button.bucket">
+            <Setter Property="Height" Value="36"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="CornerRadius" Value="0"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="Button.bucket /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.12"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.bucket:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
+        </Style>
+        <Style Selector="Button.bucket:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
+        </Style>
+        <Style Selector="Button.bucket.selected /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
+        </Style>
+        <Style Selector="Button.bucket.selected Border#Edge">
+            <Setter Property="Background" Value="{StaticResource Volt}"/>
+        </Style>
+
+        <!-- List stub rows in the rail's LISTS section. -->
+        <Style Selector="Button.listrow">
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="Padding" Value="18,0,16,0"/>
+            <Setter Property="CornerRadius" Value="0"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="Button.listrow /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.listrow:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
+        </Style>
+
+        <!-- ══ Command bar ═════════════════════════════════════════════════ -->
+        <Style Selector="TextBox.search">
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="MinHeight" Value="30"/>
+            <Setter Property="Padding" Value="10,0"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="Background" Value="{StaticResource Surface}"/>
+            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+            <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
+            <Setter Property="FontSize" Value="{StaticResource BodySize}"/>
+            <Setter Property="SelectionBrush" Value="#4D4DE8C2"/>
+            <Setter Property="CaretBrush" Value="{StaticResource Volt}"/>
+        </Style>
+        <Style Selector="TextBox.search /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="{StaticResource Surface}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+        <Style Selector="TextBox.search:pointerover /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="{StaticResource Surface}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+        </Style>
+        <Style Selector="TextBox.search:focus /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="{StaticResource Surface}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+        <Style Selector="TextBox.search /template/ TextBlock#PART_Watermark">
+            <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
+        </Style>
+
+        <!-- Segmented grid/list toggle. Volt marks the active segment. -->
+        <Style Selector="Button.seg">
+            <Setter Property="Padding" Value="10,5"/>
+            <Setter Property="CornerRadius" Value="0"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="VerticalAlignment" Value="Stretch"/>
+        </Style>
+        <Style Selector="Button.seg /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.seg:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#1F2C2350"/>
+        </Style>
+        <Style Selector="Button.seg.on /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
+        </Style>
+        <Style Selector="Button.seg Rectangle">
+            <Setter Property="Fill" Value="{StaticResource TextDim}"/>
+        </Style>
+        <Style Selector="Button.seg.on Rectangle">
+            <Setter Property="Fill" Value="{StaticResource Volt}"/>
+        </Style>
+
+        <!-- Inert chrome controls (sort / store filter stubs), mock's .ctl. -->
+        <Style Selector="Button.ctl">
+            <Setter Property="Padding" Value="9,5"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="Button.ctl /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.ctl:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
+        </Style>
+
+        <!-- Density slider — chrome only, so it stays quiet next to the art. -->
+        <Style Selector="Slider.density">
+            <Setter Property="Width" Value="104"/>
+            <Setter Property="MinHeight" Value="0"/>
+            <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
+        </Style>
+        <Style Selector="Slider.density /template/ Track#PART_Track RepeatButton#PART_DecreaseButton /template/ Border">
+            <Setter Property="Background" Value="{StaticResource TextDim}"/>
+            <Setter Property="Height" Value="2"/>
+        </Style>
+        <Style Selector="Slider.density /template/ Track#PART_Track RepeatButton#PART_IncreaseButton /template/ Border">
+            <Setter Property="Background" Value="{StaticResource Line}"/>
+            <Setter Property="Height" Value="2"/>
+        </Style>
+        <Style Selector="Slider.density /template/ Thumb">
+            <Setter Property="Background" Value="{StaticResource TextDim}"/>
+            <Setter Property="Width" Value="12"/>
+            <Setter Property="Height" Value="12"/>
+        </Style>
+        <Style Selector="Slider.density:pointerover /template/ Thumb">
+            <Setter Property="Background" Value="{StaticResource Text}"/>
+        </Style>
+
+    </Window.Styles>
+
+    <Grid ColumnDefinitions="220,*">
+
+        <!-- ══ RAIL (220px) ════════════════════════════════════════════════ -->
+        <Border Grid.Column="0"
+                Background="{StaticResource Surface}"
+                BorderBrush="{StaticResource Line}"
+                BorderThickness="0,0,1,0">
+            <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Margin="0,20">
+
+                    <!-- Total count: every number is Plex Mono, tabular. -->
+                    <StackPanel Orientation="Horizontal" Margin="16,0,16,18" Spacing="8">
+                        <TextBlock Classes="data"
+                                   FontSize="22"
+                                   Text="{Binding Library.TotalCountText}"
+                                   VerticalAlignment="Bottom"/>
+                        <TextBlock Classes="label"
+                                   FontSize="10"
+                                   LetterSpacing="1"
+                                   Text="TITLES"
+                                   Margin="0,0,0,3"
+                                   VerticalAlignment="Bottom"/>
+                    </StackPanel>
+
+                    <ItemsControl ItemsSource="{Binding Library.Buckets}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="vm:BucketViewModel">
+                                <Button Classes="bucket"
+                                        Classes.selected="{Binding IsSelected}"
+                                        Opacity="{Binding RowOpacity}"
+                                        Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Library.SelectBucketCommand}"
+                                        CommandParameter="{Binding}">
+                                    <Grid ColumnDefinitions="2,16,Auto,*,Auto,16">
+                                        <!-- 2px Volt selection edge (§6). -->
+                                        <Border Name="Edge" Grid.Column="0"
+                                                Background="Transparent"/>
+                                        <!-- Flare pip: unread-carrying bucket ONLY. -->
+                                        <Border Grid.Column="2"
+                                                Width="7" Height="7" CornerRadius="4"
+                                                Margin="0,0,8,0"
+                                                Background="{StaticResource Flare}"
+                                                BoxShadow="0 0 8 0 #B3FF5C8A"
+                                                VerticalAlignment="Center"
+                                                IsVisible="{Binding ShowsFlarePip}"/>
+                                        <TextBlock Grid.Column="3"
+                                                   Classes="display-s"
+                                                   Text="{Binding RailLabel}"
+                                                   VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="4"
+                                                   Classes="data"
+                                                   FontSize="11"
+                                                   Foreground="{StaticResource TextDim}"
+                                                   Text="{Binding CountText}"
+                                                   VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <!-- ── LISTS ─────────────────────────────────────────── -->
+                    <Border Margin="16,22,16,8"
+                            Padding="0,14,0,0"
+                            BorderBrush="{StaticResource Line}"
+                            BorderThickness="0,1,0,0">
+                        <TextBlock Classes="label"
+                                   FontSize="10"
+                                   LetterSpacing="1.4"
+                                   Text="LISTS"/>
+                    </Border>
+                    <Button Classes="listrow" IsEnabled="False">
+                        <TextBlock Classes="body"
+                                   Foreground="{StaticResource TextDim}"
+                                   Text="Lists arrive with M1"/>
+                    </Button>
+
+                </StackPanel>
+            </ScrollViewer>
+        </Border>
+
+        <!-- ══ MAIN ════════════════════════════════════════════════════════ -->
+        <Grid Grid.Column="1" RowDefinitions="48,*">
+
+            <!-- ── Command bar ──────────────────────────────────────────── -->
+            <Border Grid.Row="0"
+                    BorderBrush="{StaticResource Line}"
+                    BorderThickness="0,0,0,1">
+                <Grid ColumnDefinitions="Auto,*,Auto"
+                      Margin="20,0" VerticalAlignment="Center">
+                  <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10">
+
+                    <TextBox Name="SearchBox"
+                             Classes="search"
+                             Width="360"
+                             Text="{Binding Library.SearchText, Mode=TwoWay}"
+                             Watermark="{Binding Library.SearchPlaceholder}"/>
+
+                    <!-- Grid / list segmented toggle. -->
+                    <Border BorderBrush="{StaticResource Line}" BorderThickness="1"
+                            CornerRadius="{StaticResource RadiusControl}"
+                            Background="{StaticResource Surface}"
+                            ClipToBounds="True" Height="30">
+                        <StackPanel Orientation="Horizontal">
+                            <Button Classes="seg"
+                                    Classes.on="{Binding Library.IsGridView}"
+                                    Command="{Binding Library.ShowGridViewCommand}"
+                                    ToolTip.Tip="Grid">
+                                <UniformGrid Rows="2" Columns="2" Width="13" Height="13">
+                                    <Rectangle Width="5" Height="5" Margin="0,0,1,1"/>
+                                    <Rectangle Width="5" Height="5" Margin="1,0,0,1"/>
+                                    <Rectangle Width="5" Height="5" Margin="0,1,1,0"/>
+                                    <Rectangle Width="5" Height="5" Margin="1,1,0,0"/>
+                                </UniformGrid>
+                            </Button>
+                            <Button Classes="seg"
+                                    Classes.on="{Binding !Library.IsGridView}"
+                                    Command="{Binding Library.ShowListViewCommand}"
+                                    ToolTip.Tip="List">
+                                <StackPanel Width="13" Height="13" Spacing="3"
+                                            VerticalAlignment="Center">
+                                    <Rectangle Height="2" Width="13"/>
+                                    <Rectangle Height="2" Width="13"/>
+                                    <Rectangle Height="2" Width="13"/>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Sort stub — the default order LoadAsync already applies. -->
+                    <Button Classes="ctl" IsEnabled="False">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Classes="body" FontSize="12"
+                                       Foreground="{StaticResource TextDim}"
+                                       Text="Dormant longest"/>
+                            <Path Data="M 0,0 L 8,0 L 4,5 Z"
+                                  Fill="{StaticResource TextDim}"
+                                  VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+
+                  </StackPanel>
+
+                  <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10">
+                    <TextBlock Classes="label" FontSize="10" Text="DENSITY"
+                               VerticalAlignment="Center"/>
+                    <Slider Name="DensitySlider"
+                            Classes="density"
+                            Minimum="108" Maximum="200"
+                            Value="{Binding Library.TileWidth, Mode=TwoWay}"
+                            VerticalAlignment="Center"
+                            ToolTip.Tip="Tile size"/>
+                  </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- ── Content ──────────────────────────────────────────────── -->
+            <Panel Grid.Row="1">
+
+                <!-- Cover wall. -->
+                <ScrollViewer Name="GridScroll"
+                              IsVisible="{Binding Library.ShowGrid}"
+                              HorizontalScrollBarVisibility="Disabled"
+                              VerticalScrollBarVisibility="Auto"
+                              Padding="0">
+                    <ItemsRepeater Name="TileRepeater"
+                                   Margin="20"
+                                   ItemsSource="{Binding Library.VisibleTiles}">
+                        <ItemsRepeater.Layout>
+                            <UniformGridLayout MinItemWidth="148"
+                                               MinItemHeight="222"
+                                               MinColumnSpacing="16"
+                                               MinRowSpacing="16"
+                                               ItemsStretch="None"
+                                               ItemsJustification="Start"/>
+                        </ItemsRepeater.Layout>
+                        <ItemsRepeater.ItemTemplate>
+                            <DataTemplate DataType="vm:GameTileViewModel">
+                                <views:GameTileView PointerPressed="OnTilePressed"/>
+                            </DataTemplate>
+                        </ItemsRepeater.ItemTemplate>
+                    </ItemsRepeater>
+                </ScrollViewer>
+
+                <!-- List view lands with the M0 review; the grid is the default (§4). -->
+                <Border IsVisible="{Binding Library.ShowListStub}" Padding="20">
+                    <TextBlock Classes="body-l"
+                               Foreground="{StaticResource TextDim}"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               Text="List view arrives with M0 review"/>
+                </Border>
+
+                <!-- Empty states are directions, not moods (§7). -->
+                <Border IsVisible="{Binding Library.ShowEmpty}" Padding="32">
+                    <TextBlock Classes="body-l"
+                               MaxWidth="440"
+                               TextWrapping="Wrap"
+                               TextAlignment="Center"
+                               LineHeight="22"
+                               Foreground="{StaticResource TextDim}"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               Text="{Binding Library.EmptyMessage}"/>
+                </Border>
+
+            </Panel>
+        </Grid>
+    </Grid>
 
 </Window>

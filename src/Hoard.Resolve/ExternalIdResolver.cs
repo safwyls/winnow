@@ -7,11 +7,19 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace Hoard.Resolve;
 
 /// <summary>Counts of what one <see cref="ExternalIdResolver.ResolveAsync"/> pass did.</summary>
+/// <param name="MatchedExisting">Candidates that hit an existing release by external id.</param>
+/// <param name="CreatedReleases">Candidates that minted a new Work + Release.</param>
+/// <param name="PlayRecordsWritten">Play observations appended (unchanged playtime writes none).</param>
+/// <param name="SnapshotsWritten">Playtime snapshots appended.</param>
+/// <param name="NamesPromoted">
+/// Works whose provisional placeholder name was replaced by a real title this pass.
+/// </param>
 public sealed record ResolveResult(
     int MatchedExisting,
     int CreatedReleases,
     int PlayRecordsWritten,
-    int SnapshotsWritten);
+    int SnapshotsWritten,
+    int NamesPromoted = 0);
 
 /// <summary>
 /// The M0 resolver (§5.1, §5.3 step 1): maps <see cref="CandidateOwnership"/>
@@ -27,6 +35,25 @@ public sealed record ResolveResult(
 /// <para>Idempotent by change detection, not by observation time: a re-sync
 /// with unchanged playtime writes no new play_records or playtime_snapshots
 /// even though ObservedAt differs.</para>
+///
+/// <para><b>Provisional names.</b> A candidate may arrive with a null
+/// <see cref="CandidateOwnership.Title"/> — a Steam appid known only from
+/// localconfig playtime, with no installed manifest to name it. Since
+/// <c>works.name</c> is NOT NULL, such a work is created as
+/// <c>"App &lt;provider_id&gt;"</c> with <c>name_is_provisional = 1</c>, and the
+/// M1 enrichment pass replaces it. The promotion is one-way: when a real title
+/// later arrives (the user installs the game) it overwrites the placeholder and
+/// clears the flag, but a real title is never overwritten by a placeholder, so
+/// a game that gets uninstalled keeps its name.</para>
+///
+/// <para><b>Atomicity.</b> The whole pass runs inside one
+/// <see cref="IUnitOfWork"/>: one connection, one transaction, one commit.
+/// A work, its release and its external id are only meaningful together — a
+/// crash between the release insert and the external-id insert would leave a
+/// work no later sync can find by external id, so the next sync mints a
+/// duplicate and the library shows both, forever (§5.3: "get it wrong and the
+/// dataset is untrustworthy"). It is also what makes a cold 615-game sync one
+/// fsync instead of several thousand.</para>
 /// </summary>
 public sealed class ExternalIdResolver
 {
@@ -35,6 +62,7 @@ public sealed class ExternalIdResolver
     private readonly IOwnershipRepository _ownerships;
     private readonly IPlayRecordRepository _playRecords;
     private readonly IPlaytimeSnapshotRepository _snapshots;
+    private readonly IUnitOfWorkFactory _unitOfWork;
     private readonly ILogger<ExternalIdResolver> _logger;
 
     public ExternalIdResolver(
@@ -43,6 +71,7 @@ public sealed class ExternalIdResolver
         IOwnershipRepository ownerships,
         IPlayRecordRepository playRecords,
         IPlaytimeSnapshotRepository snapshots,
+        IUnitOfWorkFactory unitOfWork,
         ILogger<ExternalIdResolver>? logger = null)
     {
         _works = works;
@@ -50,6 +79,7 @@ public sealed class ExternalIdResolver
         _ownerships = ownerships;
         _playRecords = playRecords;
         _snapshots = snapshots;
+        _unitOfWork = unitOfWork;
         _logger = logger ?? NullLogger<ExternalIdResolver>.Instance;
     }
 
@@ -61,6 +91,12 @@ public sealed class ExternalIdResolver
         var created = 0;
         var playRecordsWritten = 0;
         var snapshotsWritten = 0;
+        var namesPromoted = 0;
+
+        // Repositories enlist in this scope automatically; nothing below changes
+        // shape. Dispose without Commit — a throw, a cancellation, a crash —
+        // rolls the entire pass back, leaving no half-built entity behind.
+        using var scope = _unitOfWork.Begin();
 
         foreach (var candidate in candidates)
         {
@@ -80,43 +116,76 @@ public sealed class ExternalIdResolver
             {
                 releaseId = release.Id;
                 matched++;
+
+                if (await PromoteProvisionalNameAsync(release, candidate, ct))
+                {
+                    namesPromoted++;
+                }
             }
 
             var ownershipId = await UpsertOwnershipAsync(releaseId, candidate, ct);
 
-            // A candidate without playtime data is "no observation", not an
-            // observation of zero — never fabricate a play record for it.
-            if (candidate.PlaytimeMinutes is { } minutes)
+            // A candidate carrying neither minutes nor a date is "no
+            // observation", not an observation of zero — never fabricate a play
+            // record for it. A date without minutes IS an observation, though:
+            // an appmanifest LastPlayed on a machine whose userdata is
+            // unreadable is the only evidence of play that machine has, and
+            // discarding it read the entire library as never_touched.
+            if (candidate.PlaytimeMinutes is not null || candidate.LastPlayedAt is not null)
             {
+                var minutes = candidate.PlaytimeMinutes ?? 0;
+
                 if (await AppendPlayRecordIfChangedAsync(ownershipId, minutes, candidate, ct))
                 {
                     playRecordsWritten++;
                 }
 
-                if (await AppendSnapshotIfChangedAsync(ownershipId, minutes, candidate, ct))
+                // Snapshots are a playtime series; a date-only observation has
+                // no point to plot, so it appends nothing.
+                if (candidate.PlaytimeMinutes is not null
+                    && await AppendSnapshotIfChangedAsync(ownershipId, minutes, candidate, ct))
                 {
                     snapshotsWritten++;
                 }
             }
         }
 
+        scope.Commit();
+
         _logger.LogInformation(
             "Resolved {Count} candidates: {Matched} matched, {Created} created, "
-            + "{PlayRecords} play records, {Snapshots} snapshots",
-            candidates.Count, matched, created, playRecordsWritten, snapshotsWritten);
+            + "{PlayRecords} play records, {Snapshots} snapshots, {Promoted} names promoted",
+            candidates.Count, matched, created, playRecordsWritten, snapshotsWritten, namesPromoted);
 
-        return new ResolveResult(matched, created, playRecordsWritten, snapshotsWritten);
+        return new ResolveResult(matched, created, playRecordsWritten, snapshotsWritten, namesPromoted);
     }
+
+    /// <summary>
+    /// The placeholder name for a title-less candidate. Deliberately stable and
+    /// derivable from the provider id so a re-sync produces the same string.
+    /// </summary>
+    private static string ProvisionalName(CandidateOwnership candidate)
+        => $"App {candidate.ProviderId}";
 
     private async Task<long> CreateWorkAndReleaseAsync(CandidateOwnership candidate, CancellationToken ct)
     {
         // M0: Work and Release are 1:1, both named from the raw candidate
         // title. Enrichment/merging refines this later — never here.
-        var workId = await _works.InsertAsync(new Work { Name = candidate.Title }, ct);
+        // A missing title means the source has no name for this app (played but
+        // uninstalled on Steam); works.name is NOT NULL, so mint a flagged
+        // placeholder rather than inventing a title. Whitespace-only counts as
+        // missing: an appmanifest with `"name" ""` would otherwise create a
+        // blank work that is not flagged provisional, so promotion can never
+        // repair it and the library shows a nameless tile forever.
+        var provisional = string.IsNullOrWhiteSpace(candidate.Title);
+        var name = provisional ? ProvisionalName(candidate) : candidate.Title!;
+
+        var workId = await _works.InsertAsync(
+            new Work { Name = name, NameIsProvisional = provisional }, ct);
         var releaseId = await _releases.InsertAsync(new Release
         {
             WorkId = workId,
-            Name = candidate.Title,
+            Name = name,
         }, ct);
 
         await _releases.AddExternalIdAsync(new ExternalId
@@ -127,42 +196,67 @@ public sealed class ExternalIdResolver
         }, ct);
 
         _logger.LogDebug(
-            "Created work/release for {Provider}:{ProviderId} ({Title})",
-            candidate.Provider, candidate.ProviderId, candidate.Title);
+            "Created work/release for {Provider}:{ProviderId} ({Name}, provisional: {Provisional})",
+            candidate.Provider, candidate.ProviderId, name, provisional);
         return releaseId;
     }
 
-    private async Task<long> UpsertOwnershipAsync(
-        long releaseId, CandidateOwnership candidate, CancellationToken ct)
+    /// <summary>
+    /// Promotes a placeholder name to a real title when a later sync supplies
+    /// one. One-way by construction: a candidate with no title cannot demote an
+    /// existing name, and a work already holding a real title is left alone
+    /// (renaming on every sync would fight both enrichment and the user).
+    /// </summary>
+    private async Task<bool> PromoteProvisionalNameAsync(
+        Release release, CandidateOwnership candidate, CancellationToken ct)
     {
-        // M0: one ownership per (release, store). Account attribution is
-        // informational; matching on it would mint duplicate ownerships when
-        // the winning account changes between syncs.
-        var existing = (await _ownerships.GetByReleaseAsync(releaseId, ct))
-            .FirstOrDefault(o => string.Equals(o.Store, candidate.Provider, StringComparison.Ordinal));
-
-        if (existing is null)
+        // Whitespace-only is "no title", not a title: it must neither promote a
+        // placeholder nor overwrite a real name with blanks.
+        if (string.IsNullOrWhiteSpace(candidate.Title))
         {
-            return await _ownerships.InsertAsync(new Ownership
-            {
-                ReleaseId = releaseId,
-                Store = candidate.Provider,
-                AccountRef = candidate.AccountRef,
-                AcquiredAt = candidate.AcquiredAt,
-                InstallPath = candidate.InstallPath,
-                Installed = candidate.Installed,
-            }, ct);
+            return false;
         }
 
-        if (existing.Installed != candidate.Installed
-            || !string.Equals(existing.InstallPath, candidate.InstallPath, StringComparison.Ordinal))
+        var title = candidate.Title!;
+
+        var work = await _works.GetAsync(release.WorkId, ct);
+        if (work is null || !work.NameIsProvisional)
         {
-            await _ownerships.UpdateInstallStateAsync(
-                existing.Id, candidate.InstallPath, candidate.Installed, ct);
+            return false;
         }
 
-        return existing.Id;
+        await _works.UpdateNameAsync(work.Id, title, nameIsProvisional: false, ct);
+
+        // Releases have no flag of their own; in M0 they are 1:1 with the work,
+        // so the placeholder they were created with is promoted alongside it.
+        if (!string.Equals(release.Name, title, StringComparison.Ordinal))
+        {
+            await _releases.UpdateNameAsync(release.Id, title, ct);
+        }
+
+        _logger.LogInformation(
+            "Promoted provisional name {Old} to {New} for {Provider}:{ProviderId}",
+            work.Name, title, candidate.Provider, candidate.ProviderId);
+        return true;
     }
+
+    private Task<long> UpsertOwnershipAsync(
+        long releaseId, CandidateOwnership candidate, CancellationToken ct)
+        // M0: one ownership per (release, store), now enforced by a UNIQUE index
+        // (migration 0003) instead of a read-then-insert. Account attribution is
+        // not part of the key — matching on it would mint duplicate ownerships
+        // when the winning account changes between syncs — but it IS refreshed
+        // on every pass, so it always names the account whose minutes and
+        // last-played the newest play record carries.
+        => _ownerships.UpsertAsync(new Ownership
+        {
+            ReleaseId = releaseId,
+            Store = candidate.Provider,
+            AccountRef = candidate.AccountRef,
+            AcquiredAt = candidate.AcquiredAt,
+            InstallPath = candidate.InstallPath,
+            Installed = candidate.Installed,
+        }, ct);
 
     private async Task<bool> AppendPlayRecordIfChangedAsync(
         long ownershipId, long minutes, CandidateOwnership candidate, CancellationToken ct)
@@ -189,8 +283,10 @@ public sealed class ExternalIdResolver
     private async Task<bool> AppendSnapshotIfChangedAsync(
         long ownershipId, long minutes, CandidateOwnership candidate, CancellationToken ct)
     {
-        var history = await _snapshots.GetByOwnershipAsync(ownershipId, ct);
-        var lastSnapshot = history.Count > 0 ? history[^1] : null;
+        // Only the newest snapshot decides whether this one is a change. Reading
+        // the whole series to look at its last element is an N+1 over a table
+        // that grows for the lifetime of the library.
+        var lastSnapshot = await _snapshots.GetLatestAsync(ownershipId, ct);
         if (lastSnapshot is not null && lastSnapshot.PlaytimeMinutes == minutes)
         {
             return false;

@@ -7,7 +7,14 @@ namespace Hoard.Ingest.Steam;
 /// Install metadata parsed from one <c>appmanifest_&lt;appid&gt;.acf</c>.
 /// </summary>
 /// <param name="AppId">Steam appid as a string.</param>
-/// <param name="Name">Display name at install time (may go stale vs store renames).</param>
+/// <param name="Name">
+/// Display name at install time (may go stale vs store renames). <b>Null when
+/// the manifest carries no usable name</b> — absent, or present but blank
+/// (<c>"name" ""</c>, which Steam does write). Blank is "unnamed", not a name:
+/// downstream, a candidate with no title becomes a flagged provisional work
+/// that enrichment can repair, whereas an empty string would become a
+/// permanently blank work that nothing can.
+/// </param>
 /// <param name="InstallDir">Folder name under <c>steamapps\common\</c> — NOT a full path. Empty when absent.</param>
 /// <param name="BuildId">Currently installed build id.</param>
 /// <param name="StateFlags">Raw bitfield; bit 4 = fully installed.</param>
@@ -18,7 +25,7 @@ namespace Hoard.Ingest.Steam;
 /// </param>
 public sealed record AppManifest(
     string AppId,
-    string Name,
+    string? Name,
     string InstallDir,
     string? BuildId,
     long StateFlags,
@@ -60,9 +67,14 @@ public sealed class AppManifestReader
             return null;
         }
 
+        // A blank name is treated exactly like an absent one (null). See the
+        // AppManifest.Name docs: an empty string here becomes an unrepairable
+        // blank work three layers downstream.
+        var name = KeyValues1.GetString(root, "name");
+
         return new AppManifest(
             AppId: appId,
-            Name: KeyValues1.GetString(root, "name") ?? appId,
+            Name: string.IsNullOrWhiteSpace(name) ? null : name,
             InstallDir: KeyValues1.GetString(root, "installdir") ?? string.Empty,
             BuildId: KeyValues1.GetString(root, "buildid"),
             StateFlags: KeyValues1.GetLong(root, "StateFlags") ?? 0,

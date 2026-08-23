@@ -7,7 +7,10 @@ Local-first desktop app that surfaces forgotten games in large Steam/Epic/GOG li
 - `game-library-design.md` — the build spec. §4 hard constraints and §5.1 module
   boundaries are non-negotiable; §9 lists the known failure modes.
 - `design-system.md` + `tokens.axaml` — visual spec. Flare (#FF5C8A) marks ONLY unread
-  updates; all numbers render in IBM Plex Mono `tnum`.
+  updates; all numbers render in IBM Plex Mono `tnum`. Root `tokens.axaml` is the design
+  RECORD; the compiling copy is `src/Hoard.App/Themes/tokens.axaml` — change tokens there.
+  Fonts are static OFL cuts (Avalonia 11 has no variable-axis API); see
+  `src/Hoard.App/Assets/Fonts/README.md`.
 - `docs/spikes/` — empirical verification results that OVERRIDE spec guesses
   (e.g. exact `localconfig.vdf` key names/units, Avalonia dormancy rendering approach).
 

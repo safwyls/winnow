@@ -21,35 +21,35 @@ public sealed class PlayRecordRepository : IPlayRecordRepository
 
     public async Task<long> InsertAsync(PlayRecord record, CancellationToken ct = default)
     {
-        using var conn = _factory.Open();
-        return await conn.ExecuteScalarAsync<long>(new CommandDefinition("""
+        using var lease = _factory.Lease();
+        return await lease.Connection.ExecuteScalarAsync<long>(new CommandDefinition("""
             INSERT INTO play_records (ownership_id, playtime_minutes, last_played_at, source, observed_at)
             VALUES (@OwnershipId, @PlaytimeMinutes, @LastPlayedAt, @Source, @ObservedAt)
             RETURNING id;
-            """, record, cancellationToken: ct));
+            """, record, transaction: lease.Transaction, cancellationToken: ct));
     }
 
     public async Task<PlayRecord?> GetLatestAsync(long ownershipId, CancellationToken ct = default)
     {
-        using var conn = _factory.Open();
-        return await conn.QuerySingleOrDefaultAsync<PlayRecord>(new CommandDefinition($"""
+        using var lease = _factory.Lease();
+        return await lease.Connection.QuerySingleOrDefaultAsync<PlayRecord>(new CommandDefinition($"""
             SELECT {Columns}
             FROM play_records
             WHERE ownership_id = @ownershipId
             ORDER BY observed_at DESC, id DESC
             LIMIT 1;
-            """, new { ownershipId }, cancellationToken: ct));
+            """, new { ownershipId }, transaction: lease.Transaction, cancellationToken: ct));
     }
 
     public async Task<IReadOnlyList<PlayRecord>> GetByOwnershipAsync(long ownershipId, CancellationToken ct = default)
     {
-        using var conn = _factory.Open();
-        var rows = await conn.QueryAsync<PlayRecord>(new CommandDefinition($"""
+        using var lease = _factory.Lease();
+        var rows = await lease.Connection.QueryAsync<PlayRecord>(new CommandDefinition($"""
             SELECT {Columns}
             FROM play_records
             WHERE ownership_id = @ownershipId
             ORDER BY observed_at, id;
-            """, new { ownershipId }, cancellationToken: ct));
+            """, new { ownershipId }, transaction: lease.Transaction, cancellationToken: ct));
         return rows.AsList();
     }
 }

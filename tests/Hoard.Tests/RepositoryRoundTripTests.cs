@@ -176,6 +176,120 @@ public class RepositoryRoundTripTests : IDisposable
     }
 
     [Fact]
+    public async Task Latest_snapshot_reads_one_row_and_breaks_same_second_ties_by_id()
+    {
+        var (_, _, ownershipId) = await SeedOwnershipAsync();
+        var snapshots = new PlaytimeSnapshotRepository(_db.Factory);
+
+        await snapshots.InsertAsync(new PlaytimeSnapshot
+        {
+            OwnershipId = ownershipId,
+            PlaytimeMinutes = 100,
+            ObservedAt = Utc(2026, 1, 1),
+        });
+
+        // Two observations in the same second — timestamps are stored to
+        // whole-second resolution, so this is routine, not exotic. The later
+        // insert wins, matching PlayRecordRepository.GetLatestAsync.
+        await snapshots.InsertAsync(new PlaytimeSnapshot
+        {
+            OwnershipId = ownershipId,
+            PlaytimeMinutes = 200,
+            ObservedAt = Utc(2026, 2, 1, 9, 30, 0),
+        });
+        await snapshots.InsertAsync(new PlaytimeSnapshot
+        {
+            OwnershipId = ownershipId,
+            PlaytimeMinutes = 300,
+            ObservedAt = Utc(2026, 2, 1, 9, 30, 0),
+        });
+
+        var latest = await snapshots.GetLatestAsync(ownershipId);
+        Assert.NotNull(latest);
+        Assert.Equal(300, latest.PlaytimeMinutes);
+
+        Assert.Null(await snapshots.GetLatestAsync(ownershipId + 999));
+    }
+
+    [Fact]
+    public async Task Ownership_upsert_refreshes_in_place_and_never_duplicates()
+    {
+        var (_, releaseId, _) = await SeedOwnershipAsync();
+        var ownerships = new OwnershipRepository(_db.Factory);
+
+        // SeedOwnershipAsync already inserted (releaseId, 'steam') with no
+        // account, path or acquisition date.
+        var id = await ownerships.UpsertAsync(new Ownership
+        {
+            ReleaseId = releaseId,
+            Store = "steam",
+            AccountRef = "12345678",
+            AcquiredAt = Utc(2016, 10, 28),
+            InstallPath = @"C:\Steam\steamapps\common\Prey",
+            Installed = true,
+        });
+
+        var updated = await ownerships.GetAsync(id);
+        Assert.NotNull(updated);
+        Assert.Equal("12345678", updated.AccountRef);
+        Assert.True(updated.Installed);
+        Assert.Single(await ownerships.GetByReleaseAsync(releaseId));
+
+        // A later scan that names no account must not erase the one on file,
+        // but must still track install state.
+        await ownerships.UpsertAsync(new Ownership
+        {
+            ReleaseId = releaseId,
+            Store = "steam",
+            AccountRef = null,
+            InstallPath = null,
+            Installed = false,
+        });
+
+        var kept = await ownerships.GetAsync(id);
+        Assert.NotNull(kept);
+        Assert.Equal("12345678", kept.AccountRef);
+        Assert.Equal(Utc(2016, 10, 28), kept.AcquiredAt);
+        Assert.False(kept.Installed);
+        Assert.Null(kept.InstallPath);
+        Assert.Single(await ownerships.GetByReleaseAsync(releaseId));
+    }
+
+    [Fact]
+    public async Task A_unit_of_work_rolls_back_every_write_when_it_is_not_committed()
+    {
+        var works = new WorkRepository(_db.Factory);
+
+        using (var scope = _db.Factory.Begin())
+        {
+            await works.InsertAsync(new Work { Name = "Committed" });
+            scope.Commit();
+        }
+
+        using (_db.Factory.Begin())
+        {
+            await works.InsertAsync(new Work { Name = "Abandoned" });
+            // No Commit: leaving the scope discards it.
+        }
+
+        var all = await works.GetAllAsync();
+        Assert.Equal("Committed", Assert.Single(all).Name);
+
+        // The ambient scope is released, so ordinary writes work again.
+        await works.InsertAsync(new Work { Name = "After" });
+        Assert.Equal(2, (await works.GetAllAsync()).Count);
+    }
+
+    [Fact]
+    public void Unit_of_work_scopes_do_not_nest()
+    {
+        using var scope = _db.Factory.Begin();
+
+        // SQLite has one writer; a nested scope would silently join or deadlock.
+        Assert.Throws<InvalidOperationException>(() => _db.Factory.Begin());
+    }
+
+    [Fact]
     public async Task Session_with_note_round_trips()
     {
         var (_, _, ownershipId) = await SeedOwnershipAsync();

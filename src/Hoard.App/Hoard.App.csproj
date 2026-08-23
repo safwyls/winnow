@@ -15,6 +15,11 @@
 
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="11.3.20" />
+    <!-- Virtualizing grid for the cover wall. Last 11.x release is 11.1.5; it
+         floats on Avalonia >= 11.1.5 so it binds against 11.3.20 here. Isolated
+         behind LibraryGridView per docs/spikes/avalonia-dormancy-rendering.md —
+         the maintainers plan to retire ItemsRepeater after 12.0. -->
+    <PackageReference Include="Avalonia.Controls.ItemsRepeater" Version="11.1.5" />
     <PackageReference Include="Avalonia.Desktop" Version="11.3.20" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.20" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
@@ -25,6 +30,7 @@
     <ProjectReference Include="..\Hoard.Core\Hoard.Core.csproj" />
     <ProjectReference Include="..\Hoard.Data\Hoard.Data.csproj" />
     <ProjectReference Include="..\Hoard.Ingest.Steam\Hoard.Ingest.Steam.csproj" />
+    <ProjectReference Include="..\Hoard.Resolve\Hoard.Resolve.csproj" />
   </ItemGroup>
 
 </Project>

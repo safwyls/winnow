@@ -1,5 +1,18 @@
 <!--
     Design tokens — Game Library Manager
+
+    ⚠ THIS FILE IS THE DESIGN REFERENCE, NOT THE BUILD INPUT.
+    The authoritative, compiling copy is src/Hoard.App/Themes/tokens.axaml.
+    It diverges here deliberately, for reasons recorded as TODOs in that file:
+      · the Styles block is keyed (a ResourceDictionary cannot hold an unkeyed
+        child) and promoted into Application.Styles at startup by App.axaml.cs
+      · TimeSpan needs an explicit xmlns:sys="using:System"
+      · a nested xmlns on <Styles> is rejected by the XAML compiler
+      · the FontFeatures "wdth" setters were removed — Avalonia 11 has no
+        variable-axis API, and Bricolage's own wdth axis tops out at 100
+      · TileScrim was retuned to the §5.3 gradient
+    Change tokens THERE. Edit this file only to keep the design record honest.
+
     Merge into App.axaml:
 
         <Application.Resources>

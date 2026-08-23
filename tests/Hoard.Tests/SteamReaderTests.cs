@@ -98,6 +98,79 @@ public class AppManifestReaderTests
 
         Assert.Null(manifest);
     }
+
+    /// <summary>
+    /// The spike's headline rule: KV1 key casing is inconsistent even within a
+    /// single file (<c>appid</c> vs <c>StateFlags</c> vs <c>lastupdated</c>), and
+    /// Valve's own KeyValues is case-insensitive. Every key here is cased
+    /// differently from the lookup that finds it, so this fails outright if
+    /// KeyValues1.Child ever becomes an ordinal comparison.
+    /// </summary>
+    [Fact]
+    public void Keys_are_matched_case_insensitively_whatever_the_file_uses()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"hoard-kv-{Guid.NewGuid():N}.acf");
+        File.WriteAllText(path, """
+            "appstate"
+            {
+                "APPID"		"1203620"
+                "NaMe"		"Elden Ring"
+                "InstallDir"		"ELDEN RING"
+                "BUILDID"		"20240001"
+                "stateflags"		"4"
+                "LastUpdated"		"1786900000"
+                "lastplayed"		"1786924990"
+            }
+            """);
+
+        try
+        {
+            var manifest = new AppManifestReader().Read(path);
+
+            Assert.NotNull(manifest);
+            Assert.Equal("1203620", manifest.AppId);
+            Assert.Equal("Elden Ring", manifest.Name);
+            Assert.Equal("ELDEN RING", manifest.InstallDir);
+            Assert.Equal("20240001", manifest.BuildId);
+            Assert.Equal(4, manifest.StateFlags);
+            Assert.True(manifest.IsFullyInstalled);
+            Assert.Equal(SteamFixtures.Epoch(1786900000), manifest.LastUpdatedUtc);
+            Assert.Equal(SteamFixtures.Epoch(1786924990), manifest.LastPlayedUtc);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void Blank_name_is_read_as_absent_not_as_an_empty_title()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"hoard-kv-{Guid.NewGuid():N}.acf");
+        File.WriteAllText(path, """
+            "AppState"
+            {
+                "appid"		"620"
+                "name"		""
+                "StateFlags"		"4"
+                "installdir"		"Portal 2"
+            }
+            """);
+
+        try
+        {
+            var manifest = new AppManifestReader().Read(path);
+
+            Assert.NotNull(manifest);
+            Assert.Equal("620", manifest.AppId);
+            Assert.Null(manifest.Name);
+            Assert.Equal("Portal 2", manifest.InstallDir);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
 }
 
 public class LocalConfigReaderTests

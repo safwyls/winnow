@@ -29,16 +29,31 @@ public static class LibraryBuckets
 /// <param name="BouncedCeilingMinutes">Playtime strictly below this (and above zero) is Bounced.</param>
 /// <param name="RetiredFloorMinutes">Playtime at or above this is Retired.</param>
 /// <param name="StaleWindowMonths">An update more than this many months after last play marks Stale-but-patched.</param>
+/// <param name="UpdateCorrelationWindowDays">
+/// How far apart a build push and an announcement may be and still count as one
+/// "major update" (§4.5). Neither signal means anything alone: a depot push
+/// fires on DRM bumps, localization files and one-line hotfixes, and
+/// announcements are pure marketing half the time. Only the pair counts.
+/// <para>Default 7 days. Studios do not ship the build and the patch notes
+/// simultaneously — the announcement commonly lands a day or two either side of
+/// the push (a teaser before, a write-up after), and content patches often
+/// trickle out as several depot pushes across a release week. A week absorbs
+/// that without reaching far enough to pair a patch with the *next* month's
+/// unrelated announcement. Tunable, like every other threshold here: both raw
+/// signals are stored, so retuning never re-fetches (§4.5).</para>
+/// </param>
 public sealed record BucketThresholds(
     long BouncedCeilingMinutes,
     long RetiredFloorMinutes,
-    int StaleWindowMonths)
+    int StaleWindowMonths,
+    int UpdateCorrelationWindowDays = 7)
 {
     /// <summary>Conservative defaults; per-genre configuration comes later (§6.1).</summary>
     public static BucketThresholds Default { get; } = new(
         BouncedCeilingMinutes: 120,
         RetiredFloorMinutes: 6_000,
-        StaleWindowMonths: 6);
+        StaleWindowMonths: 6,
+        UpdateCorrelationWindowDays: 7);
 }
 
 /// <summary>One row of the derived-bucket query: the bucket for a single ownership.</summary>

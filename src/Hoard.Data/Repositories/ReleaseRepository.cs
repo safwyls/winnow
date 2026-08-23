@@ -21,61 +21,69 @@ public sealed class ReleaseRepository : IReleaseRepository
 
     public async Task<long> InsertAsync(Release release, CancellationToken ct = default)
     {
-        using var conn = _factory.Open();
-        return await conn.ExecuteScalarAsync<long>(new CommandDefinition("""
+        using var lease = _factory.Lease();
+        return await lease.Connection.ExecuteScalarAsync<long>(new CommandDefinition("""
             INSERT INTO releases (work_id, igdb_version_id, name, platform, edition_note)
             VALUES (@WorkId, @IgdbVersionId, @Name, @Platform, @EditionNote)
             RETURNING id;
-            """, release, cancellationToken: ct));
+            """, release, transaction: lease.Transaction, cancellationToken: ct));
+    }
+
+    public async Task UpdateNameAsync(long id, string name, CancellationToken ct = default)
+    {
+        using var lease = _factory.Lease();
+        await lease.Connection.ExecuteAsync(new CommandDefinition(
+            "UPDATE releases SET name = @name WHERE id = @id;",
+            new { id, name }, transaction: lease.Transaction, cancellationToken: ct));
     }
 
     public async Task<Release?> GetAsync(long id, CancellationToken ct = default)
     {
-        using var conn = _factory.Open();
-        return await conn.QuerySingleOrDefaultAsync<Release>(new CommandDefinition(
+        using var lease = _factory.Lease();
+        return await lease.Connection.QuerySingleOrDefaultAsync<Release>(new CommandDefinition(
             $"SELECT {Columns} FROM releases WHERE id = @id;",
-            new { id }, cancellationToken: ct));
+            new { id }, transaction: lease.Transaction, cancellationToken: ct));
     }
 
     public async Task<IReadOnlyList<Release>> GetByWorkAsync(long workId, CancellationToken ct = default)
     {
-        using var conn = _factory.Open();
-        var rows = await conn.QueryAsync<Release>(new CommandDefinition(
+        using var lease = _factory.Lease();
+        var rows = await lease.Connection.QueryAsync<Release>(new CommandDefinition(
             $"SELECT {Columns} FROM releases WHERE work_id = @workId ORDER BY id;",
-            new { workId }, cancellationToken: ct));
+            new { workId }, transaction: lease.Transaction, cancellationToken: ct));
         return rows.AsList();
     }
 
     public async Task AddExternalIdAsync(ExternalId externalId, CancellationToken ct = default)
     {
-        using var conn = _factory.Open();
-        await conn.ExecuteAsync(new CommandDefinition("""
+        using var lease = _factory.Lease();
+        await lease.Connection.ExecuteAsync(new CommandDefinition("""
             INSERT INTO external_ids (release_id, provider, provider_id)
             VALUES (@ReleaseId, @Provider, @ProviderId);
-            """, externalId, cancellationToken: ct));
+            """, externalId, transaction: lease.Transaction, cancellationToken: ct));
     }
 
     public async Task<IReadOnlyList<ExternalId>> GetExternalIdsAsync(long releaseId, CancellationToken ct = default)
     {
-        using var conn = _factory.Open();
-        var rows = await conn.QueryAsync<ExternalId>(new CommandDefinition("""
+        using var lease = _factory.Lease();
+        var rows = await lease.Connection.QueryAsync<ExternalId>(new CommandDefinition("""
             SELECT release_id AS ReleaseId, provider AS Provider, provider_id AS ProviderId
             FROM external_ids
             WHERE release_id = @releaseId
             ORDER BY provider;
-            """, new { releaseId }, cancellationToken: ct));
+            """, new { releaseId }, transaction: lease.Transaction, cancellationToken: ct));
         return rows.AsList();
     }
 
     public async Task<Release?> FindByExternalIdAsync(string provider, string providerId, CancellationToken ct = default)
     {
-        using var conn = _factory.Open();
-        return await conn.QuerySingleOrDefaultAsync<Release>(new CommandDefinition($"""
+        using var lease = _factory.Lease();
+        return await lease.Connection.QuerySingleOrDefaultAsync<Release>(new CommandDefinition($"""
             SELECT {Columns}
             FROM releases
             WHERE id = (SELECT release_id
                         FROM external_ids
                         WHERE provider = @provider AND provider_id = @providerId);
-            """, new { provider, providerId }, cancellationToken: ct));
+            """, new { provider, providerId }, transaction: lease.Transaction, cancellationToken: ct));
     }
 }
