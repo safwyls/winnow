@@ -2,7 +2,7 @@ namespace Hoard.App.Services;
 
 /// <summary>
 /// The §5.1 dormancy ramp: months since last played → saturation, clamped at
-/// the 0.22 / 0.60 floor (a cover you can't identify is a cover you can't
+/// the 0.22 / 0.68 floor (a cover you can't identify is a cover you can't
 /// choose). Rendered via the two-layer cross-fade settled in
 /// docs/spikes/avalonia-dormancy-rendering.md: a pre-computed "floor" variant
 /// sits under the vivid art, and the vivid layer's opacity is
@@ -11,7 +11,16 @@ namespace Hoard.App.Services;
 public static class Dormancy
 {
     public const double SatFloor = 0.22;
-    public const double BrightFloor = 0.60;
+
+    /// <summary>
+    /// Brightness floor. Raised from the originally documented 0.60 after the
+    /// ramp was first seen on real cover art: 0.60 was calibrated against
+    /// procedural gradients, and it compounds with Steam capsules that are
+    /// already dark. In a library whose default sort opens on its most dormant
+    /// titles, that spent the ramp's dynamic range before the first scroll.
+    /// Saturation, not brightness, is what carries the "dormant" signal.
+    /// </summary>
+    public const double BrightFloor = 0.68;
 
     private const double DaysPerMonth = 30.4375;
 

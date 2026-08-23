@@ -37,6 +37,34 @@ public sealed class MergeCandidateRepository : IMergeCandidateRepository
         return rows.AsList();
     }
 
+    public async Task<MergeCandidate?> FindByPairAsync(
+        long leftReleaseId, long rightReleaseId, CancellationToken ct = default)
+    {
+        using var lease = _factory.Lease();
+
+        // Either orientation: the soft matcher canonicalises to (min, max)
+        // before writing, but a row inserted by hand — or by an earlier build
+        // that did not canonicalise — must still be found, or a re-scan would
+        // insert its mirror image and the user gets asked the same question
+        // twice.
+        return await lease.Connection.QueryFirstOrDefaultAsync<MergeCandidate>(new CommandDefinition("""
+            SELECT id               AS Id,
+                   left_release_id  AS LeftReleaseId,
+                   right_release_id AS RightReleaseId,
+                   score            AS Score,
+                   signals_json     AS SignalsJson,
+                   status           AS Status
+            FROM merge_candidates
+            WHERE (left_release_id = @a AND right_release_id = @b)
+               OR (left_release_id = @b AND right_release_id = @a)
+            ORDER BY id
+            LIMIT 1;
+            """,
+            new { a = leftReleaseId, b = rightReleaseId },
+            transaction: lease.Transaction,
+            cancellationToken: ct));
+    }
+
     public async Task SetStatusAsync(long id, string status, CancellationToken ct = default)
     {
         using var lease = _factory.Lease();

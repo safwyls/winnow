@@ -1,7 +1,9 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Hoard.Core.Domain;
 using Hoard.Core.Queries;
 using Hoard.Core.Repositories;
+using Hoard.Covers;
 
 namespace Hoard.App.ViewModels;
 
@@ -21,6 +23,12 @@ public partial class LibraryViewModel : ObservableObject
     private readonly IReleaseRepository _releases;
     private readonly IWorkRepository _works;
 
+    /// <summary>
+    /// Cover art. Optional so the view still composes (on procedural art) when
+    /// the host has not called <c>AddCoverCache</c> — DI fills the default.
+    /// </summary>
+    private readonly ICoverCache? _covers;
+
     private IReadOnlyList<GameTileViewModel> _allTiles = [];
     private bool _loaded;
 
@@ -28,12 +36,14 @@ public partial class LibraryViewModel : ObservableObject
         ILibraryQueryRepository libraryQueries,
         IOwnershipRepository ownerships,
         IReleaseRepository releases,
-        IWorkRepository works)
+        IWorkRepository works,
+        ICoverCache? covers = null)
     {
         _libraryQueries = libraryQueries;
         _ownerships = ownerships;
         _releases = releases;
         _works = works;
+        _covers = covers;
 
         // §7 copy, exactly. Order matches the mock rail.
         Buckets =
@@ -97,13 +107,25 @@ public partial class LibraryViewModel : ObservableObject
         var ownerships = await _ownerships.GetAllAsync();
         var works = await _works.GetAllAsync();
 
-        // release id → owning work name. Small library, per-work fetch is fine for M0.
+        // release id → owning work name, and release id → the provider id its
+        // cover art is fetched under. Small library, per-work fetch is fine for M0.
         var titleByRelease = new Dictionary<long, string>();
+        var coverKeyByRelease = new Dictionary<long, CoverKey>();
         foreach (var work in works)
         {
             foreach (var release in await _releases.GetByWorkAsync(work.Id))
             {
                 titleByRelease[release.Id] = work.Name;
+
+                // Steam's portrait capsule is the first source; the cover cache
+                // tries any further registered source for the same key, so IGDB
+                // art can fill the gaps without this view model changing.
+                var externalIds = await _releases.GetExternalIdsAsync(release.Id);
+                var steam = externalIds.FirstOrDefault(x => x.Provider == ExternalIdProviders.Steam);
+                if (steam is not null)
+                {
+                    coverKeyByRelease[release.Id] = CoverKey.Steam(steam.ProviderId);
+                }
             }
         }
 
@@ -125,7 +147,9 @@ public partial class LibraryViewModel : ObservableObject
                 // same fact (§5.2): an update landed after the last session.
                 // The derived-bucket query already carries it, so the tile
                 // badge is that bucket membership — nothing else earns Flare.
-                hasUnread: row.Bucket == LibraryBuckets.StaleButPatched));
+                hasUnread: row.Bucket == LibraryBuckets.StaleButPatched,
+                coverKey: coverKeyByRelease.TryGetValue(row.ReleaseId, out var coverKey) ? coverKey : null,
+                covers: _covers));
         }
 
         // Default sort matches the command-bar stub: dormant longest first

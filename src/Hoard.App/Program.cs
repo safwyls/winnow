@@ -2,12 +2,16 @@ using Avalonia;
 using Hoard.App.Services;
 using Hoard.App.ViewModels;
 using Hoard.Core.Repositories;
+using Hoard.Covers;
 using Hoard.Data;
 using Hoard.Data.Repositories;
+using Hoard.Enrich.Igdb;
+using Hoard.Enrich.Steam;
 using Hoard.Ingest.Steam;
 using Hoard.Resolve;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace Hoard.App;
 
@@ -51,6 +55,25 @@ public static class Program
             {
                 host.Services.GetRequiredService<Services.SteamSyncService>()
                     .SyncAsync().GetAwaiter().GetResult();
+
+                // Names for the games the local files could only identify by
+                // appid. This one DOES touch the network, so it must not gate
+                // the window: §7 promises a browsable library immediately with
+                // metadata filling in behind it. Fire and forget, and let the
+                // failure land in the log rather than in front of the user.
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await host.Services.GetRequiredService<EnrichmentSyncService>().EnrichAsync();
+                    }
+                    catch (Exception ex)
+                    {
+                        host.Services.GetRequiredService<ILoggerFactory>()
+                            .CreateLogger(typeof(Program))
+                            .LogWarning(ex, "Enrichment failed; titles stay provisional until the next run.");
+                    }
+                });
             }
 
             BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
@@ -104,7 +127,28 @@ public static class Program
         services.AddSingleton<ExternalIdResolver>();
         services.AddSingleton<SteamSyncService>();
 
+        // Cover art (§5.4). Steam's portrait capsule needs no credentials, so
+        // the grid has real art regardless of IGDB configuration; an IGDB cover
+        // source registered later fills the gaps. Without this the tile's
+        // optional ICoverCache is null and every tile silently falls back to
+        // procedural placeholder art — the grid still works, which is exactly
+        // what makes the omission easy to miss.
+        services.AddCoverCache();
+
+        // Enrichment. IGDB is the designed backbone (§4.4) and wins conflicts;
+        // the keyless Steam store endpoint is the fallback that keeps titles
+        // resolving with no credentials set. Both soft-fail to "no data", and
+        // neither may block a user-facing path (§5.1, pitfall 3).
+        services.AddIgdbEnrichment();
+        services.AddSteamStoreEnrichment();
+        services.AddSingleton<EnrichmentSyncService>();
+
         services.AddSingleton<LibraryViewModel>();
+
+        // MainWindowViewModel takes MergeQueueViewModel as a required
+        // dependency, so omitting this throws at startup rather than at build.
+        services.AddMergeQueue();
+
         services.AddSingleton<MainWindowViewModel>();
     }
 }

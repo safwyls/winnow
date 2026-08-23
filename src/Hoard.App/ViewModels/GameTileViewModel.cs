@@ -1,7 +1,10 @@
 using Avalonia.Media;
 using Avalonia.Media.Immutable;
+using Avalonia.Media.Imaging;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Hoard.App.Services;
+using Hoard.Covers;
 
 namespace Hoard.App.ViewModels;
 
@@ -10,12 +13,19 @@ namespace Hoard.App.ViewModels;
 /// docs/spikes/avalonia-dormancy-rendering.md: a floor variant (saturation
 /// 0.22, brightness 0.60) sits under the vivid art, whose opacity is
 /// <see cref="DisplayAlpha"/> — the ramp value normally, 1.0 under the
-/// pointer (the view animates the change over 140ms). M0 art is procedural
-/// (<see cref="PlaceholderArt"/>); when real covers land, the two brushes
-/// become two decoded bitmaps and nothing else changes.
+/// pointer (the view animates the change over 140ms).
+/// <para>Real cover art (M1) is exactly that swap and nothing more: when
+/// <see cref="VividCover"/> arrives it paints over the procedural
+/// <see cref="PlaceholderArt"/> layers, sharing the same
+/// <see cref="DisplayAlpha"/> and the same 140ms transition. The placeholder
+/// stays underneath as the fallback, so a missing or still-loading cover shows
+/// the title on a Surface field (§7) rather than a hole or a spinner.</para>
 /// </summary>
 public partial class GameTileViewModel : ObservableObject
 {
+    private readonly ICoverCache? _covers;
+    private bool _coverWanted;
+
     public GameTileViewModel(
         long ownershipId,
         string title,
@@ -24,8 +34,12 @@ public partial class GameTileViewModel : ObservableObject
         long playtimeMinutes,
         DateTime? lastPlayedUtc,
         DateTime nowUtc,
-        bool hasUnread = false)
+        bool hasUnread = false,
+        CoverKey? coverKey = null,
+        ICoverCache? covers = null)
     {
+        CoverKey = coverKey;
+        _covers = covers;
         OwnershipId = ownershipId;
         Title = title;
         StoreBadge = store.ToUpperInvariant();
@@ -73,6 +87,82 @@ public partial class GameTileViewModel : ObservableObject
 
     /// <summary>Placeholder-title ink on the floor layer, so the title fades with its art.</summary>
     public IBrush FloorTitleBrush { get; }
+
+    /// <summary>Provider id this tile's art is fetched under; null when we know no id for it.</summary>
+    public CoverKey? CoverKey { get; }
+
+    /// <summary>Real vivid cover, decoded at display resolution. Null until it arrives.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasCover), nameof(ShowPlaceholder))]
+    public partial Bitmap? VividCover { get; set; }
+
+    /// <summary>Real floor variant (sat 0.22 / bright 0.60), pre-computed by the cover cache.</summary>
+    [ObservableProperty]
+    public partial Bitmap? FloorCover { get; set; }
+
+    public bool HasCover => VividCover is not null;
+
+    /// <summary>Procedural art is the fallback: it paints whenever no cover is loaded.</summary>
+    public bool ShowPlaceholder => VividCover is null;
+
+    /// <summary>
+    /// Called when the tile is realized. A memory hit applies synchronously so
+    /// scrolling back never flashes the placeholder; anything else is handed to
+    /// the cover cache and arrives later (§5.1 — art never blocks the UI).
+    /// </summary>
+    public void RequestCover(double displayWidthPixels)
+    {
+        _coverWanted = true;
+        if (_covers is null || CoverKey is not { } key)
+        {
+            return;
+        }
+
+        if (_covers.TryGet(key, displayWidthPixels, out var cached))
+        {
+            Apply(cached);
+            return;
+        }
+
+        _ = LoadCoverAsync(key, displayWidthPixels);
+    }
+
+    /// <summary>
+    /// Called when the tile is recycled out of the visual tree. Dropping the
+    /// references is what makes the cache's memory bound real: off-screen tiles
+    /// keep nothing alive, so the LRU is the only owner of decoded pixels.
+    /// </summary>
+    public void ReleaseCover()
+    {
+        _coverWanted = false;
+        VividCover = null;
+        FloorCover = null;
+    }
+
+    private async Task LoadCoverAsync(CoverKey key, double displayWidthPixels)
+    {
+        var art = await _covers!.GetAsync(key, displayWidthPixels).ConfigureAwait(false);
+        if (art is null)
+        {
+            return;
+        }
+
+        // Covers appear as they arrive; the tile is already on screen showing
+        // its placeholder, so this is a repaint, not a load gate.
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (_coverWanted)
+            {
+                Apply(art);
+            }
+        });
+    }
+
+    private void Apply(CoverArt art)
+    {
+        FloorCover = art.Floor;
+        VividCover = art.Vivid;
+    }
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(DisplayAlpha))]

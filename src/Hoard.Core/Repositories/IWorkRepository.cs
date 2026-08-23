@@ -17,4 +17,13 @@ public interface IWorkRepository
     Task<Work?> GetAsync(long id, CancellationToken ct = default);
 
     Task<IReadOnlyList<Work>> GetAllAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Works still holding a placeholder name, with the external id enrichment
+    /// can resolve them by. Backed by the partial index migration 0002 added for
+    /// exactly this sweep, so it stays cheap and returns nothing once the
+    /// backlog is drained.
+    /// </summary>
+    Task<IReadOnlyList<Queries.ProvisionalNameTarget>> GetProvisionalNameTargetsAsync(
+        string provider, CancellationToken ct = default);
 }

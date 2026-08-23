@@ -27,16 +27,45 @@ public static class PlaceholderArt
         return (start, end);
     }
 
-    /// <summary>The dormancy floor variant of a colour: saturation 0.22, brightness 0.60.</summary>
+    /// <summary>
+    /// The dormancy floor variant of a colour: saturation 0.22, a −6° cool
+    /// shift, then brightness 0.68 — the same composition, in the same order,
+    /// as Hoard.Covers' CoverImaging.FloorMatrix. A placeholder tile and a real
+    /// cover must reach an identical endpoint, or a tile would visibly jump the
+    /// moment its cover finishes downloading.
+    /// </summary>
     public static Color ToFloor(Color c)
     {
-        // Rec.709 luma, matching the SkiaSharp colour-matrix pass the cover
-        // cache pipeline will use for real bitmaps (spike doc, code sketch).
-        var luma = 0.2126 * c.R + 0.7152 * c.G + 0.0722 * c.B;
-        byte Mix(byte channel) =>
-            (byte)Math.Clamp((luma + (channel - luma) * Dormancy.SatFloor) * Dormancy.BrightFloor, 0, 255);
-        return Color.FromArgb(c.A, Mix(c.R), Mix(c.G), Mix(c.B));
+        var (r, g, b) = ((double)c.R, (double)c.G, (double)c.B);
+
+        // 1. Rec.709 luma desaturation toward the floor.
+        var luma = (0.2126 * r) + (0.7152 * g) + (0.0722 * b);
+        var sr = luma + ((r - luma) * Dormancy.SatFloor);
+        var sg = luma + ((g - luma) * Dormancy.SatFloor);
+        var sb = luma + ((b - luma) * Dormancy.SatFloor);
+
+        // 2. Cool shift (§1: dormant reads faded *and cool*, not merely grey).
+        var radians = HueDegrees * Math.PI / 180.0;
+        var cos = Math.Cos(radians);
+        var sin = Math.Sin(radians);
+
+        var hr = (sr * (0.2126 + (cos * 0.7874) - (sin * 0.2126)))
+               + (sg * (0.7152 - (cos * 0.7152) - (sin * 0.7152)))
+               + (sb * (0.0722 - (cos * 0.0722) + (sin * 0.9278)));
+        var hg = (sr * (0.2126 - (cos * 0.2126) + (sin * 0.143)))
+               + (sg * (0.7152 + (cos * 0.2848) + (sin * 0.140)))
+               + (sb * (0.0722 - (cos * 0.0722) - (sin * 0.283)));
+        var hb = (sr * (0.2126 - (cos * 0.2126) - (sin * 0.7874)))
+               + (sg * (0.7152 - (cos * 0.7152) + (sin * 0.7152)))
+               + (sb * (0.0722 + (cos * 0.9278) + (sin * 0.0722)));
+
+        // 3. Brightness scale.
+        byte Clamp(double v) => (byte)Math.Clamp(v * Dormancy.BrightFloor, 0, 255);
+        return Color.FromArgb(c.A, Clamp(hr), Clamp(hg), Clamp(hb));
     }
+
+    /// <summary>The §5.1 cool shift. Mirrors CoverImaging.DefaultHueDegrees.</summary>
+    private const double HueDegrees = -6.0;
 
     /// <summary>A ~155° two-stop gradient brush (mock's <c>linear-gradient(155deg, …)</c>).</summary>
     public static IBrush Gradient(Color start, Color end) =>

@@ -12,8 +12,14 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- View-model tests for the merge confirm queue. Hoard.App is referenced
+         for its ViewModels only — no Avalonia application, dispatcher or
+         rendering is started by any test. -->
+    <ProjectReference Include="..\..\src\Hoard.App\Hoard.App.csproj" />
     <ProjectReference Include="..\..\src\Hoard.Core\Hoard.Core.csproj" />
     <ProjectReference Include="..\..\src\Hoard.Data\Hoard.Data.csproj" />
+    <ProjectReference Include="..\..\src\Hoard.Enrich.Igdb\Hoard.Enrich.Igdb.csproj" />
+    <ProjectReference Include="..\..\src\Hoard.Enrich.Steam\Hoard.Enrich.Steam.csproj" />
     <ProjectReference Include="..\..\src\Hoard.Ingest.Steam\Hoard.Ingest.Steam.csproj" />
     <ProjectReference Include="..\..\src\Hoard.Resolve\Hoard.Resolve.csproj" />
   </ItemGroup>
@@ -21,6 +27,8 @@
   <ItemGroup>
     <!-- Sanitized real Steam files (tests/fixtures/steam/README.md) — the reader tests parse these. -->
     <Content Include="..\fixtures\steam\**" LinkBase="fixtures\steam" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Verbatim store-frontend responses (tests/fixtures/steam-store/README.md) — the contract test pins these. -->
+    <Content Include="..\fixtures\steam-store\**" LinkBase="fixtures\steam-store" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

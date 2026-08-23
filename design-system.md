@@ -137,13 +137,26 @@ Map months-since-last-played to a saturation/brightness pair:
 | Idle | Saturation | Brightness | Reads as |
 |---|---|---|---|
 | < 1 month | 1.00 | 1.00 | Vivid, current |
-| 6 months | 0.72 | 0.88 | Slightly cooled |
-| 1 year | 0.50 | 0.78 | Visibly faded |
-| 2 years | 0.34 | 0.68 | Ghosted |
-| 3+ years / never | 0.22 | 0.60 | Nearly monochrome |
+| 6 months | 0.72 | 0.91 | Slightly cooled |
+| 1 year | 0.50 | 0.83 | Visibly faded |
+| 2 years | 0.34 | 0.74 | Ghosted |
+| 3+ years / never | 0.22 | 0.68 | Nearly monochrome |
 
-Clamp at `0.22 / 0.60` — never fully grey. A cover you can't identify is a cover you can't
+Clamp at `0.22 / 0.68` — never fully grey. A cover you can't identify is a cover you can't
 choose, and the point is to make forgotten games *findable*, not invisible.
+
+A **−6° hue rotation** is part of the floor, composed as
+`saturate() → hue-rotate(-6deg) → brightness()`. It is what makes dormant art read as *cool*
+rather than merely grey (§1). Small, but load-bearing: Steam capsules are mostly warm and
+dark, and without it the floor lands on a neutral-warm mud that looks like a rendering fault
+instead of an encoding.
+
+> **Brightness floor revised.** This was `0.60` until the ramp was first seen on real cover
+> art. `0.60` had been calibrated against procedural placeholder gradients; against real
+> capsules — which are themselves dark — it compounds, and in a library whose default sort
+> opens on its most dormant titles the ramp's dynamic range was spent before the first
+> scroll. Per-tile legibility was never the problem, so the fix is at the floor, not the
+> curve. **Saturation, not brightness, is what carries the dormancy signal.**
 
 **Hover restores full saturation over 140ms.** The game wakes up under the cursor. This is
 the single most important interaction in the app: it makes the dormancy encoding legible by

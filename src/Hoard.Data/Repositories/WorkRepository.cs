@@ -1,5 +1,6 @@
 using Dapper;
 using Hoard.Core.Domain;
+using Hoard.Core.Queries;
 using Hoard.Core.Repositories;
 
 namespace Hoard.Data.Repositories;
@@ -61,6 +62,24 @@ public sealed class WorkRepository : IWorkRepository
         var rows = await lease.Connection.QueryAsync<Work>(new CommandDefinition(
             $"SELECT {Columns} FROM works ORDER BY name;",
             transaction: lease.Transaction, cancellationToken: ct));
+        return rows.AsList();
+    }
+
+    public async Task<IReadOnlyList<ProvisionalNameTarget>> GetProvisionalNameTargetsAsync(
+        string provider, CancellationToken ct = default)
+    {
+        using var lease = _factory.Lease();
+        var rows = await lease.Connection.QueryAsync<ProvisionalNameTarget>(new CommandDefinition("""
+            SELECT w.id  AS WorkId,
+                   r.id  AS ReleaseId,
+                   e.provider    AS Provider,
+                   e.provider_id AS ProviderId
+            FROM works w
+            JOIN releases     r ON r.work_id = w.id
+            JOIN external_ids e ON e.release_id = r.id AND e.provider = @provider
+            WHERE w.name_is_provisional = 1
+            ORDER BY w.id;
+            """, new { provider }, transaction: lease.Transaction, cancellationToken: ct));
         return rows.AsList();
     }
 }

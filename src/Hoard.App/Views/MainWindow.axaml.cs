@@ -18,6 +18,7 @@ public partial class MainWindow : Window
     private const double Gutter = 16;
 
     private LibraryViewModel? _library;
+    private MainWindowViewModel? _shell;
 
     /// <summary>Live column count — what up/down arrow moves selection by.</summary>
     private int _columns = 1;
@@ -38,7 +39,8 @@ public partial class MainWindow : Window
             _library.PropertyChanged -= OnLibraryPropertyChanged;
         }
 
-        _library = (DataContext as MainWindowViewModel)?.Library;
+        _shell = DataContext as MainWindowViewModel;
+        _library = _shell?.Library;
 
         if (_library is not null)
         {
@@ -58,13 +60,41 @@ public partial class MainWindow : Window
         {
             await library.LoadCommand.ExecuteAsync(null);
         }
+
+        // The rail's REVIEW count has to be right before the user looks at it,
+        // so the queue loads with the window rather than on first visit.
+        if (_shell?.MergeQueue is { } queue)
+        {
+            await queue.LoadCommand.ExecuteAsync(null);
+        }
+
+#if DEBUG
+        // --open-queue lands on the merge confirm queue instead of the library,
+        // so the screen can be captured and reviewed without driving the rail.
+        // Debug-only, same convention as --seed-sample.
+        if (_shell is not null && Environment.GetCommandLineArgs().Contains("--open-queue"))
+        {
+            _shell.IsMergeQueueVisible = true;
+        }
+#endif
     }
 
     protected override void OnKeyDown(KeyEventArgs e)
     {
         base.OnKeyDown(e);
 
-        if (e.Handled || _library is null)
+        if (e.Handled)
+        {
+            return;
+        }
+
+        if (_shell is { IsMergeQueueVisible: true })
+        {
+            OnMergeQueueKeyDown(e);
+            return;
+        }
+
+        if (_library is null)
         {
             return;
         }
@@ -111,6 +141,50 @@ public partial class MainWindow : Window
 
             case Key.Enter:
                 // Launching arrives with sessions (M2); selection stays put.
+                e.Handled = true;
+                break;
+        }
+    }
+
+    /// <summary>
+    /// The §8 keyboard floor for the merge confirm queue: arrows walk the
+    /// pairs, <c>S</c>/<c>Enter</c> answers "Same game", <c>D</c> answers
+    /// "Different games", <c>Escape</c> goes back to the library. Both answers
+    /// are one key because the queue's whole job is to be cleared — but they
+    /// are different keys, never one key with a modifier, because "different
+    /// games" is permanent.
+    /// </summary>
+    private void OnMergeQueueKeyDown(KeyEventArgs e)
+    {
+        if (_shell?.MergeQueue is not { } queue)
+        {
+            return;
+        }
+
+        switch (e.Key)
+        {
+            case Key.Up:
+                MergeQueue.ScrollIntoView(queue.MoveSelection(-1));
+                e.Handled = true;
+                break;
+
+            case Key.Down:
+                MergeQueue.ScrollIntoView(queue.MoveSelection(1));
+                e.Handled = true;
+                break;
+
+            case Key.S or Key.Enter:
+                queue.SameGameCommand.Execute(queue.SelectedCandidate);
+                e.Handled = true;
+                break;
+
+            case Key.D:
+                queue.DifferentGamesCommand.Execute(queue.SelectedCandidate);
+                e.Handled = true;
+                break;
+
+            case Key.Escape:
+                _shell.ShowLibraryCommand.Execute(null);
                 e.Handled = true;
                 break;
         }

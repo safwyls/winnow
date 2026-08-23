@@ -203,7 +203,7 @@
                                 <Button Classes="bucket"
                                         Classes.selected="{Binding IsSelected}"
                                         Opacity="{Binding RowOpacity}"
-                                        Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Library.SelectBucketCommand}"
+                                        Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).SelectBucketCommand}"
                                         CommandParameter="{Binding}">
                                     <Grid ColumnDefinitions="2,16,Auto,*,Auto,16">
                                         <!-- 2px Volt selection edge (§6). -->
@@ -233,6 +233,43 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
 
+                    <!-- ── REVIEW ────────────────────────────────────────
+                         The merge confirm queue (§6). Labelled with the
+                         question it asks rather than with "merge": the user
+                         reasons about games, not about records. The row is
+                         permanent so the rail never reflows, but the COUNT
+                         appears only when something is pending — a standing
+                         zero here would be noise. -->
+                    <Border Margin="16,22,16,8"
+                            Padding="0,14,0,0"
+                            BorderBrush="{StaticResource Line}"
+                            BorderThickness="0,1,0,0">
+                        <TextBlock Classes="label"
+                                   FontSize="10"
+                                   LetterSpacing="1.4"
+                                   Text="REVIEW"/>
+                    </Border>
+                    <Button Classes="bucket"
+                            Classes.selected="{Binding IsMergeQueueVisible}"
+                            Opacity="{Binding MergeQueue.RowOpacity}"
+                            Command="{Binding ToggleMergeQueueCommand}"
+                            ToolTip.Tip="Pairs that might be the same game">
+                        <Grid ColumnDefinitions="2,16,*,Auto,16">
+                            <Border Name="Edge" Grid.Column="0" Background="Transparent"/>
+                            <TextBlock Grid.Column="2"
+                                       Classes="display-s"
+                                       Text="SAME GAME?"
+                                       VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="3"
+                                       Classes="data"
+                                       FontSize="11"
+                                       Foreground="{StaticResource TextDim}"
+                                       Text="{Binding MergeQueue.PendingCountText}"
+                                       IsVisible="{Binding MergeQueue.HasPending}"
+                                       VerticalAlignment="Center"/>
+                        </Grid>
+                    </Button>
+
                     <!-- ── LISTS ─────────────────────────────────────────── -->
                     <Border Margin="16,22,16,8"
                             Padding="0,14,0,0"
@@ -253,8 +290,14 @@
             </ScrollViewer>
         </Border>
 
-        <!-- ══ MAIN ════════════════════════════════════════════════════════ -->
-        <Grid Grid.Column="1" RowDefinitions="48,*">
+        <!-- ══ MAIN ════════════════════════════════════════════════════════
+             Two screens share the pane: the library, and the merge confirm
+             queue the rail's REVIEW row opens. The command bar (search,
+             density) belongs to the library, so the queue replaces the whole
+             pane rather than sitting under controls that do not apply to it. -->
+        <Panel Grid.Column="1">
+
+        <Grid RowDefinitions="48,*" IsVisible="{Binding IsLibraryVisible}">
 
             <!-- ── Command bar ──────────────────────────────────────────── -->
             <Border Grid.Row="0"
@@ -380,6 +423,13 @@
 
             </Panel>
         </Grid>
+
+        <!-- ── Merge confirm queue (§5.3 step 3 / §6) ────────────────────── -->
+        <views:MergeQueueView Name="MergeQueue"
+                              DataContext="{Binding MergeQueue}"
+                              IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsMergeQueueVisible}"/>
+
+        </Panel>
     </Grid>
 
 </Window>

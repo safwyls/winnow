@@ -59,7 +59,8 @@
          you cannot identify is a cover you cannot choose.
     -->
     <x:Double x:Key="DormancySatFloor">0.22</x:Double>
-    <x:Double x:Key="DormancyBrightFloor">0.60</x:Double>
+    <x:Double x:Key="DormancyBrightFloor">0.68</x:Double>
+    <x:Double x:Key="DormancyHueDegrees">-6</x:Double>
     <x:Double x:Key="DormancyFullMonths">36</x:Double>
     <sys:TimeSpan x:Key="HoverRestoreDuration">0:0:0.140</sys:TimeSpan>
 
