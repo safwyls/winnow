@@ -1,0 +1,168 @@
+<!--
+    Design tokens — Game Library Manager
+    Merge into App.axaml:
+
+        <Application.Resources>
+            <ResourceDictionary>
+                <ResourceDictionary.MergedDictionaries>
+                    <ResourceInclude Source="avares://Hoard/Themes/tokens.axaml"/>
+                </ResourceDictionary.MergedDictionaries>
+            </ResourceDictionary>
+        </Application.Resources>
+
+    Fonts must be bundled as AvaloniaResource. All three are SIL OFL.
+    Do not fall back to system fonts — the display face is load-bearing.
+-->
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- ══ Colour ══════════════════════════════════════════════════════════
+         Flare is the rarest colour in the app. It marks ONLY unread updates.
+         The moment it becomes a generic accent, the badge stops meaning
+         anything and the product loses its point.
+    -->
+    <Color x:Key="GroundColor">#16112A</Color>
+    <Color x:Key="SurfaceColor">#1F1838</Color>
+    <Color x:Key="SurfaceRaisedColor">#2C2350</Color>
+    <Color x:Key="LineColor">#3D3168</Color>
+    <Color x:Key="TextColor">#F0ECFF</Color>
+    <Color x:Key="TextDimColor">#9B90C4</Color>
+    <Color x:Key="FlareColor">#FF5C8A</Color>
+    <Color x:Key="VoltColor">#4DE8C2</Color>
+    <Color x:Key="AmberColor">#FFB63D</Color>
+    <Color x:Key="AzureColor">#5B9DFF</Color>
+
+    <SolidColorBrush x:Key="Ground"        Color="{StaticResource GroundColor}"/>
+    <SolidColorBrush x:Key="Surface"       Color="{StaticResource SurfaceColor}"/>
+    <SolidColorBrush x:Key="SurfaceRaised" Color="{StaticResource SurfaceRaisedColor}"/>
+    <SolidColorBrush x:Key="Line"          Color="{StaticResource LineColor}"/>
+    <SolidColorBrush x:Key="Text"          Color="{StaticResource TextColor}"/>
+    <SolidColorBrush x:Key="TextDim"       Color="{StaticResource TextDimColor}"/>
+    <SolidColorBrush x:Key="Flare"         Color="{StaticResource FlareColor}"/>
+    <SolidColorBrush x:Key="Volt"          Color="{StaticResource VoltColor}"/>
+    <SolidColorBrush x:Key="Amber"         Color="{StaticResource AmberColor}"/>
+    <SolidColorBrush x:Key="Azure"         Color="{StaticResource AzureColor}"/>
+
+    <!-- Hover overlay scrim on cover tiles -->
+    <LinearGradientBrush x:Key="TileScrim" StartPoint="0%,40%" EndPoint="0%,100%">
+        <GradientStop Offset="0"   Color="#0016112A"/>
+        <GradientStop Offset="0.55" Color="#B316112A"/>
+        <GradientStop Offset="1"   Color="#EB16112A"/>
+    </LinearGradientBrush>
+
+    <!-- ══ Dormancy ramp ══════════════════════════════════════════════════
+         Consumed by the cover renderer. Clamped floor is deliberate: a cover
+         you cannot identify is a cover you cannot choose.
+    -->
+    <x:Double x:Key="DormancySatFloor">0.22</x:Double>
+    <x:Double x:Key="DormancyBrightFloor">0.60</x:Double>
+    <x:Double x:Key="DormancyFullMonths">36</x:Double>
+    <TimeSpan x:Key="HoverRestoreDuration">0:0:0.140</TimeSpan>
+
+    <!-- ══ Type ═══════════════════════════════════════════════════════════ -->
+    <FontFamily x:Key="DisplayFont">avares://Hoard/Assets/Fonts#Bricolage Grotesque</FontFamily>
+    <FontFamily x:Key="BodyFont">avares://Hoard/Assets/Fonts#Plus Jakarta Sans</FontFamily>
+    <FontFamily x:Key="DataFont">avares://Hoard/Assets/Fonts#IBM Plex Mono</FontFamily>
+
+    <x:Double x:Key="DisplayLSize">22</x:Double>
+    <x:Double x:Key="DisplaySSize">12</x:Double>
+    <x:Double x:Key="BodyLSize">15</x:Double>
+    <x:Double x:Key="BodySize">13</x:Double>
+    <x:Double x:Key="LabelSize">11</x:Double>
+    <x:Double x:Key="DataSize">12</x:Double>
+    <x:Double x:Key="DataSSize">10</x:Double>
+
+    <!-- ══ Spacing (4px base) ═════════════════════════════════════════════ -->
+    <x:Double x:Key="Space1">4</x:Double>
+    <x:Double x:Key="Space2">8</x:Double>
+    <x:Double x:Key="Space3">12</x:Double>
+    <x:Double x:Key="Space4">16</x:Double>
+    <x:Double x:Key="Space6">24</x:Double>
+    <x:Double x:Key="Space8">32</x:Double>
+    <x:Double x:Key="Space12">48</x:Double>
+
+    <!-- ══ Geometry ═══════════════════════════════════════════════════════ -->
+    <x:Double x:Key="RailWidth">220</x:Double>
+    <x:Double x:Key="CommandBarHeight">48</x:Double>
+    <x:Double x:Key="TileWidth">148</x:Double>       <!-- 2:3, matches 600x900 capsule -->
+    <x:Double x:Key="TileHeight">222</x:Double>
+    <x:Double x:Key="TileGutter">16</x:Double>
+    <x:Double x:Key="TileMinWidth">108</x:Double>    <!-- density slider bounds -->
+    <x:Double x:Key="TileMaxWidth">200</x:Double>
+    <x:Double x:Key="ListRowHeight">44</x:Double>
+    <x:Double x:Key="BadgeSize">10</x:Double>
+    <CornerRadius x:Key="RadiusTile">6</CornerRadius>
+    <CornerRadius x:Key="RadiusControl">4</CornerRadius>
+    <Thickness x:Key="SelectionEdge">2,0,0,0</Thickness>
+
+    <!-- ══ Text styles ════════════════════════════════════════════════════ -->
+    <Styles xmlns="https://github.com/avaloniaui">
+
+        <Style Selector="TextBlock.display-l">
+            <Setter Property="FontFamily" Value="{StaticResource DisplayFont}"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontSize" Value="{StaticResource DisplayLSize}"/>
+            <Setter Property="FontFeatures" Value="wdth 105"/>
+            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+        </Style>
+
+        <Style Selector="TextBlock.display-s">
+            <Setter Property="FontFamily" Value="{StaticResource DisplayFont}"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontSize" Value="{StaticResource DisplaySSize}"/>
+            <Setter Property="FontFeatures" Value="wdth 110"/>
+            <Setter Property="LetterSpacing" Value="0.72"/>
+            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+        </Style>
+
+        <Style Selector="TextBlock.body-l">
+            <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
+            <Setter Property="FontWeight" Value="Medium"/>
+            <Setter Property="FontSize" Value="{StaticResource BodyLSize}"/>
+            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+        </Style>
+
+        <Style Selector="TextBlock.body">
+            <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
+            <Setter Property="FontSize" Value="{StaticResource BodySize}"/>
+            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+        </Style>
+
+        <Style Selector="TextBlock.label">
+            <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="{StaticResource LabelSize}"/>
+            <Setter Property="LetterSpacing" Value="0.44"/>
+            <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
+        </Style>
+
+        <!-- Every number in the app. tnum is mandatory in list view. -->
+        <Style Selector="TextBlock.data">
+            <Setter Property="FontFamily" Value="{StaticResource DataFont}"/>
+            <Setter Property="FontSize" Value="{StaticResource DataSize}"/>
+            <Setter Property="FontFeatures" Value="tnum"/>
+            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+        </Style>
+
+        <Style Selector="TextBlock.data-s">
+            <Setter Property="FontFamily" Value="{StaticResource DataFont}"/>
+            <Setter Property="FontSize" Value="{StaticResource DataSSize}"/>
+            <Setter Property="FontFeatures" Value="tnum"/>
+            <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
+        </Style>
+
+        <!-- ══ Focus — accessibility floor, not optional ══════════════════ -->
+        <Style Selector=":is(Control):focus-visible">
+            <Setter Property="FocusAdorner">
+                <FocusAdornerTemplate>
+                    <Border BorderBrush="{StaticResource Volt}"
+                            BorderThickness="2"
+                            Margin="-2"
+                            CornerRadius="{StaticResource RadiusControl}"/>
+                </FocusAdornerTemplate>
+            </Setter>
+        </Style>
+
+    </Styles>
+
+</ResourceDictionary>
