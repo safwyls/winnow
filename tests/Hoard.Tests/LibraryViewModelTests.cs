@@ -165,7 +165,7 @@ public sealed class LibraryViewModelTests
         var library = fixture.CreateViewModel();
         await library.LoadCommand.ExecuteAsync(null);
 
-        var neverOpened = library.Buckets.Single(b => b.Name == "Never opened");
+        var neverOpened = library.Buckets.Single(b => b.Name == "Never played");
         library.SelectBucketCommand.Execute(neverOpened);
         library.Sort = LibrarySort.NameDescending;
 
@@ -421,11 +421,11 @@ public sealed class LibraryViewModelTests
         Assert.Null(details.Publisher);
 
         // Zero playtime and no date is the one case that really is "never".
-        Assert.Equal("Never opened", details.LastPlayedText);
+        Assert.Equal("Never played", details.LastPlayedText);
         Assert.False(details.HasLastPlayedDate);
         Assert.Equal("—", details.PlaytimeText);
         Assert.Equal("—", details.IdleText);
-        Assert.Equal("Never opened", details.BucketLabel);
+        Assert.Equal("Never played", details.BucketLabel);
         Assert.Equal("Not installed", details.InstallText);
         Assert.False(details.HasInstallPath);
     }
@@ -460,7 +460,7 @@ public sealed class LibraryViewModelTests
 
     /// <summary>
     /// Playtime with no last-played stamp is common in Steam's local files.
-    /// Calling that "Never opened" would contradict the hours beside it.
+    /// Calling that "Never played" would contradict the hours beside it.
     /// </summary>
     [Fact]
     public async Task Playtime_without_a_date_reads_as_unrecorded_not_as_never()

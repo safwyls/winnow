@@ -232,7 +232,7 @@ Plain and specific. The app knows something faintly embarrassing about the user 
 | Context | Write | Don't write |
 |---|---|---|
 | Bucket: updates missed | `Patched since` | `Needs attention` |
-| Bucket: 0 playtime | `Never opened` | `Pile of shame` |
+| Bucket: 0 playtime | `Never played` | `Pile of shame` |
 | Bucket: low playtime | `Bounced off` | `Barely played` |
 | Bucket: high playtime | `Played out` | `Completed` |
 | Bucket: unrunnable | `Won't run` | `Dead` |
@@ -243,7 +243,7 @@ Plain and specific. The app knows something faintly embarrassing about the user 
 **Empty states are directions, not moods.**
 
 - Patched since, empty: *"Nothing's been patched since you last played. This fills up on its own."*
-- Never opened, empty: *"You've opened everything you own. Genuinely rare."*
+- Never played, empty: *"You've played everything you own. Genuinely rare."*
 - First run, mid-scan: *"Reading your Steam library. Covers and metadata fill in over the next few minutes — you can browse now."*
 
 The last one matters: `appdetails` backfill takes hours (§4.3 of the design doc), so the

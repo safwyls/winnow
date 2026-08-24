@@ -272,7 +272,7 @@ public static class SampleDataSeeder
     // Dormancy ages span the whole §5.1 ramp (weeks → 4 years → never).
     private static readonly Sample[] Samples =
     [
-        // ── Never opened (10) — zero playtime; mixed "no record" / "0-min record".
+        // ── Never played (10) — zero playtime; mixed "no record" / "0-min record".
         new("Tunic", 2022, "steam", 0, null),
         new("Disco Elysium", 2019, "gog", 0, null, EmptyPlayRecord: true),
         new("Return of the Obra Dinn", 2018, "steam", 0, null),

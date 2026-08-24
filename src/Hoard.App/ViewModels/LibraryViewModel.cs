@@ -54,7 +54,7 @@ public partial class LibraryViewModel : ObservableObject
         Buckets =
         [
             new BucketViewModel(LibraryBuckets.StaleButPatched, "Patched since", showsFlarePip: true),
-            new BucketViewModel(LibraryBuckets.NeverTouched, "Never opened"),
+            new BucketViewModel(LibraryBuckets.NeverTouched, "Never played"),
             new BucketViewModel(LibraryBuckets.Bounced, "Bounced off"),
             new BucketViewModel(LibraryBuckets.Retired, "Played out"),
             new BucketViewModel(WontRunKey, "Won't run"),

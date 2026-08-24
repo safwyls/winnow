@@ -25,7 +25,7 @@ Non-negotiable rules:
   resolution. Never decode 600x900 sources eagerly for a full grid.
 - Accessibility floor (design-system.md §8) is not optional: visible 2px Volt focus,
   full keyboard grid navigation, dormancy ramp must be decorative-redundant.
-- Copy follows the §7 table exactly ("Patched since", "Never opened", "Bounced off",
+- Copy follows the §7 table exactly ("Patched since", "Never played", "Bounced off",
   "Played out", "Won't run", "Same game" / "Different games"). Never smug.
 - Placeholder tiles during metadata backfill: title set in Bricolage on a Surface field.
   Never a spinner, never an empty grid.

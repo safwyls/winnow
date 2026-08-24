@@ -51,7 +51,7 @@ public partial class GameDetailsViewModel : ObservableObject
 
     public string StoreBadge => Tile.StoreBadge;
 
-    /// <summary>The §7 bucket name this game currently falls in ("Never opened").</summary>
+    /// <summary>The §7 bucket name this game currently falls in ("Never played").</summary>
     public string BucketLabel { get; }
 
     public string PlaytimeText => Tile.PlaytimeText;

@@ -69,11 +69,11 @@ public partial class GameTileViewModel : ObservableObject
         IdleText = BuildIdleText(lastPlayedUtc, nowUtc);
         // Three states, not two. A game with minutes on the clock and no
         // last-played stamp is common in Steam's local files, and calling that
-        // "Never opened" would contradict the playtime sitting next to it.
+        // "Never played" would contradict the playtime sitting next to it.
         HasLastPlayedDate = lastPlayedUtc is not null;
         LastPlayedText = lastPlayedUtc is { } played
             ? UpdateEventViewModel.LocalDateText(played)
-            : playtimeMinutes <= 0 ? "Never opened" : "Not recorded";
+            : playtimeMinutes <= 0 ? "Never played" : "Not recorded";
         StatText = BuildStatText(playtimeMinutes, lastPlayedUtc, nowUtc);
 
         var (start, end) = PlaceholderArt.VividColors(title);

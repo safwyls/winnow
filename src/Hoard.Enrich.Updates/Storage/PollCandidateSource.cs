@@ -35,7 +35,7 @@ public sealed class SqlitePollCandidateSource : IPollCandidateSource
         // this query returns that the bucket query can never bucket as
         // `stale_but_patched` is a request spent to learn something unshowable.
         //
-        //  - Never opened is excluded. design-system.md §5.2: "Never on
+        //  - Never played is excluded. design-system.md §5.2: "Never on
         //    never-opened games; an unplayed game has nothing to be behind on."
         //    The test is the bucket query's own `never_touched` rule, negated —
         //    zero minutes AND no last-played date — NOT `playtime > 0`. A game
