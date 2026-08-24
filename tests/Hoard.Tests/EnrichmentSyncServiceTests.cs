@@ -221,7 +221,286 @@ public sealed class EnrichmentSyncServiceTests
         Assert.False(await fixture.IsProvisionalAsync(work.WorkId));
     }
 
+    // ── Metadata, not just the name ──────────────────────────────────────────
+
+    /// <summary>
+    /// The bug this pass used to have: IGDB answers with an id, a year, a
+    /// summary and a cover, and the service read <c>Name</c> and threw the rest
+    /// away — leaving four §6 columns empty and two of §5.3's four soft-match
+    /// signals permanently unable to fire.
+    /// </summary>
+    [Fact]
+    public async Task Igdb_metadata_is_stored_alongside_the_promoted_name()
+    {
+        using var fixture = new EnrichmentFixture();
+        var seeded = await fixture.AddProvisionalAsync("620");
+
+        fixture.Igdb.Configured = true;
+        fixture.Igdb.Matches["620"] = new IgdbSteamMatch(
+            "620", 7346, "Portal 2", "https://images.igdb.com/cover.jpg", 2011, "Still alive.");
+        fixture.Igdb.Games[7346] = Game(7346, "Portal 2", publishers: ["Valve"]);
+
+        var report = await fixture.Service.EnrichAsync();
+
+        Assert.Equal(1, report.Promoted);
+        Assert.Equal(1, report.MetadataFilled);
+
+        var work = await fixture.WorkAsync(seeded.WorkId);
+        Assert.Equal("Portal 2", work.Name);
+        Assert.Equal(7346, work.IgdbId);
+        Assert.Equal(2011, work.FirstReleaseYear);
+        Assert.Equal("Still alive.", work.Summary);
+        Assert.Equal("https://images.igdb.com/cover.jpg", work.CoverUrl);
+        Assert.Equal("Valve", work.Publisher);
+    }
+
+    /// <summary>
+    /// The publisher is the one field <c>external_games</c> cannot carry —
+    /// it hangs off <c>involved_companies</c> and needs the second, batched
+    /// <c>/games</c> call. Without that call the publisher signal stays exactly
+    /// as silent as it was before the column existed.
+    /// </summary>
+    [Fact]
+    public async Task The_publisher_comes_from_the_second_games_call()
+    {
+        using var fixture = new EnrichmentFixture();
+        var seeded = await fixture.AddProvisionalAsync("620");
+
+        fixture.Igdb.Configured = true;
+        fixture.Igdb.Matches["620"] = new IgdbSteamMatch("620", 7346, "Portal 2", null, 2011, null);
+        fixture.Igdb.Games[7346] = Game(7346, "Portal 2", publishers: ["Valve"]);
+
+        await fixture.Service.EnrichAsync();
+
+        Assert.Equal([7346L], fixture.Igdb.GameIdsAsked);
+        Assert.Equal("Valve", (await fixture.WorkAsync(seeded.WorkId)).Publisher);
+    }
+
+    /// <summary>
+    /// IGDB returns publishers as a list and the column stores one name, so the
+    /// pick has to be order-independent: two library rows for the same game must
+    /// agree, or a corroborating signal turns into a mismatch penalty. Ordinal
+    /// order, not IGDB's row order.
+    /// </summary>
+    [Fact]
+    public async Task Multiple_publishers_reduce_to_the_same_name_whatever_order_igdb_lists_them_in()
+    {
+        using var fixture = new EnrichmentFixture();
+        var first = await fixture.AddProvisionalAsync("620");
+        var second = await fixture.AddProvisionalAsync("621");
+
+        fixture.Igdb.Configured = true;
+        fixture.Igdb.Matches["620"] = new IgdbSteamMatch("620", 7346, "Skyrim", null, 2011, null);
+        fixture.Igdb.Matches["621"] = new IgdbSteamMatch("621", 7347, "Skyrim", null, 2011, null);
+        fixture.Igdb.Games[7346] = Game(7346, "Skyrim", publishers: ["ZeniMax Media", "Bethesda Softworks"]);
+        fixture.Igdb.Games[7347] = Game(7347, "Skyrim", publishers: ["Bethesda Softworks", "ZeniMax Media"]);
+
+        await fixture.Service.EnrichAsync();
+
+        Assert.Equal("Bethesda Softworks", (await fixture.WorkAsync(first.WorkId)).Publisher);
+        Assert.Equal("Bethesda Softworks", (await fixture.WorkAsync(second.WorkId)).Publisher);
+    }
+
+    /// <summary>
+    /// A source that says nothing must not be able to erase what a source that
+    /// said something already wrote. This is the failure mode that makes an
+    /// "update the row" method unusable for enrichment: every field the partial
+    /// answer did not carry arrives as null.
+    /// </summary>
+    [Fact]
+    public async Task A_null_from_igdb_never_overwrites_a_stored_value()
+    {
+        using var fixture = new EnrichmentFixture();
+        var seeded = await fixture.AddAsync("620", new Work
+        {
+            Name = "Portal 2",
+            FirstReleaseYear = 2011,
+            Summary = "Still alive.",
+            CoverUrl = "https://example.invalid/kept.jpg",
+        });
+
+        // IGDB knows this appid but has no date, no summary and no cover for it.
+        fixture.Igdb.Configured = true;
+        fixture.Igdb.Matches["620"] = new IgdbSteamMatch("620", 7346, "Portal 2", null, null, null);
+        fixture.Igdb.Games[7346] = Game(7346, "Portal 2", publishers: ["Valve"]);
+
+        await fixture.Service.EnrichAsync();
+
+        var work = await fixture.WorkAsync(seeded.WorkId);
+        Assert.Equal(2011, work.FirstReleaseYear);
+        Assert.Equal("Still alive.", work.Summary);
+        Assert.Equal("https://example.invalid/kept.jpg", work.CoverUrl);
+
+        // And the columns that WERE empty are filled — one-way, not read-only.
+        Assert.Equal(7346, work.IgdbId);
+        Assert.Equal("Valve", work.Publisher);
+    }
+
+    /// <summary>A blank string is "I do not know", not a value to store.</summary>
+    [Fact]
+    public async Task A_blank_summary_is_not_stored_as_a_value()
+    {
+        using var fixture = new EnrichmentFixture();
+        var seeded = await fixture.AddProvisionalAsync("620");
+
+        fixture.Igdb.Configured = true;
+        fixture.Igdb.Matches["620"] = new IgdbSteamMatch("620", 7346, "Portal 2", "   ", 2011, "  ");
+        fixture.Igdb.Games[7346] = Game(7346, "Portal 2", publishers: ["   "]);
+
+        await fixture.Service.EnrichAsync();
+
+        var work = await fixture.WorkAsync(seeded.WorkId);
+        Assert.Null(work.Summary);
+        Assert.Null(work.CoverUrl);
+        Assert.Null(work.Publisher);
+        Assert.Equal(2011, work.FirstReleaseYear);
+    }
+
+    // ── Backfill: the 616 works that already have names ──────────────────────
+
+    /// <summary>
+    /// The real starting condition. A library named by an earlier build has no
+    /// provisional works left, so a pass keyed on <c>name_is_provisional</c>
+    /// alone would look at nothing and back-fill nothing — forever.
+    /// </summary>
+    [Fact]
+    public async Task An_already_named_work_with_no_metadata_is_backfilled()
+    {
+        using var fixture = new EnrichmentFixture();
+        var seeded = await fixture.AddNamedAsync("620", "Portal 2");
+
+        fixture.Igdb.Configured = true;
+        fixture.Igdb.Matches["620"] = new IgdbSteamMatch(
+            "620", 7346, "Portal 2 (IGDB spelling)", "https://images.igdb.com/cover.jpg", 2011, "Still alive.");
+        fixture.Igdb.Games[7346] = Game(7346, "Portal 2", publishers: ["Valve"]);
+
+        var report = await fixture.Service.EnrichAsync();
+
+        // No name was outstanding, so nothing was "promoted" — but the work was
+        // still enriched, which is the whole point.
+        Assert.Equal(0, report.Outstanding);
+        Assert.Equal(0, report.Promoted);
+        Assert.Equal(1, report.MetadataFilled);
+
+        var work = await fixture.WorkAsync(seeded.WorkId);
+        Assert.Equal("Portal 2", work.Name);
+        Assert.Equal(2011, work.FirstReleaseYear);
+        Assert.Equal("Valve", work.Publisher);
+    }
+
+    /// <summary>
+    /// The other half of backfill: a work that already has everything is not a
+    /// target, so a warm library costs one query that returns no rows and no
+    /// source is asked anything at all.
+    /// </summary>
+    [Fact]
+    public async Task A_fully_enriched_work_is_never_asked_about_again()
+    {
+        using var fixture = new EnrichmentFixture();
+        await fixture.AddAsync("620", new Work
+        {
+            Name = "Portal 2",
+            IgdbId = 7346,
+            FirstReleaseYear = 2011,
+            Summary = "Still alive.",
+            CoverUrl = "https://example.invalid/cover.jpg",
+            Publisher = "Valve",
+        });
+
+        fixture.Igdb.Configured = true;
+
+        var report = await fixture.Service.EnrichAsync();
+
+        Assert.Equal(0, report.MetadataFilled);
+        Assert.Empty(fixture.Igdb.Asked);
+        Assert.Empty(fixture.Igdb.GameIdsAsked);
+        Assert.Empty(fixture.Steam.Asked);
+    }
+
+    /// <summary>
+    /// A second run over a library the first run enriched writes nothing: every
+    /// target either dropped out of the query or produces an empty patch, so no
+    /// transaction is opened.
+    /// </summary>
+    [Fact]
+    public async Task A_second_run_over_an_enriched_library_writes_nothing()
+    {
+        using var fixture = new EnrichmentFixture();
+        await fixture.AddProvisionalAsync("620");
+
+        fixture.Igdb.Configured = true;
+        fixture.Igdb.Matches["620"] = new IgdbSteamMatch(
+            "620", 7346, "Portal 2", "https://images.igdb.com/cover.jpg", 2011, "Still alive.");
+        fixture.Igdb.Games[7346] = Game(7346, "Portal 2", publishers: ["Valve"]);
+
+        var first = await fixture.Service.EnrichAsync();
+        var second = await fixture.Service.EnrichAsync();
+
+        Assert.Equal(1, first.MetadataFilled);
+        Assert.Equal(0, second.MetadataFilled);
+    }
+
+    /// <summary>
+    /// The Steam store endpoint is undocumented and exists to supply TITLES.
+    /// A work that has a title and only wants a year must never reach it —
+    /// otherwise a credential-free machine hammers it once per game per launch
+    /// to re-learn names it already has.
+    /// </summary>
+    [Fact]
+    public async Task The_steam_fallback_is_not_asked_about_a_work_that_only_needs_metadata()
+    {
+        using var fixture = new EnrichmentFixture();
+        await fixture.AddNamedAsync("620", "Portal 2");
+        await fixture.AddProvisionalAsync("570");
+
+        fixture.Igdb.Configured = false;
+        fixture.Steam.Names["570"] = "Dota 2";
+
+        var report = await fixture.Service.EnrichAsync();
+
+        Assert.Equal(["570"], fixture.Steam.Asked);
+        Assert.Equal(1, report.Promoted);
+    }
+
+    /// <summary>
+    /// Two Steam appids resolving to one IGDB game IS a duplicate in the user's
+    /// library, and <c>works.igdb_id</c> is UNIQUE. The second work keeps the
+    /// metadata — which is what lets the soft matcher see two rows with the same
+    /// year and the same publisher and queue the pair — while the id itself
+    /// stays with the first, because re-pointing identity is a merge and merges
+    /// need a human (§5.3).
+    /// </summary>
+    [Fact]
+    public async Task A_second_appid_for_one_igdb_game_keeps_its_metadata_without_stealing_the_id()
+    {
+        using var fixture = new EnrichmentFixture();
+        var first = await fixture.AddProvisionalAsync("63500");
+        var second = await fixture.AddProvisionalAsync("63501");
+
+        fixture.Igdb.Configured = true;
+        fixture.Igdb.Matches["63500"] = new IgdbSteamMatch("63500", 4123, "Riven", null, 1997, "Myst II.");
+        fixture.Igdb.Matches["63501"] = new IgdbSteamMatch("63501", 4123, "Riven", null, 1997, "Myst II.");
+        fixture.Igdb.Games[4123] = Game(4123, "Riven", publishers: ["Brøderbund"]);
+
+        await fixture.Service.EnrichAsync();
+
+        var left = await fixture.WorkAsync(first.WorkId);
+        var right = await fixture.WorkAsync(second.WorkId);
+
+        Assert.Equal(4123, left.IgdbId);
+        Assert.Null(right.IgdbId);
+
+        // Both sides carry the evidence the matcher needs.
+        Assert.Equal(1997, left.FirstReleaseYear);
+        Assert.Equal(1997, right.FirstReleaseYear);
+        Assert.Equal("Brøderbund", left.Publisher);
+        Assert.Equal("Brøderbund", right.Publisher);
+    }
+
     // ── Fixture ──────────────────────────────────────────────────────────────
+
+    private static IgdbGame Game(long id, string name, IReadOnlyList<string> publishers)
+        => new(id, name, null, null, null, IgdbGame.NoStrings, IgdbGame.NoStrings, publishers);
 
     private sealed record Seeded(long WorkId, long ReleaseId);
 
@@ -250,10 +529,10 @@ public sealed class EnrichmentSyncServiceTests
         public EnrichmentSyncService Service { get; }
 
         public Task<Seeded> AddProvisionalAsync(string appId)
-            => AddAsync(appId, "App " + appId, provisional: true);
+            => AddAsync(appId, new Work { Name = "App " + appId, NameIsProvisional = true });
 
         public Task<Seeded> AddNamedAsync(string appId, string name)
-            => AddAsync(appId, name, provisional: false);
+            => AddAsync(appId, new Work { Name = name });
 
         public async Task<string?> WorkNameAsync(long workId)
             => (await Works.GetAsync(workId))?.Name;
@@ -264,9 +543,17 @@ public sealed class EnrichmentSyncServiceTests
         public async Task<bool> IsProvisionalAsync(long workId)
             => (await Works.GetAsync(workId))?.NameIsProvisional ?? false;
 
-        private async Task<Seeded> AddAsync(string appId, string name, bool provisional)
+        public async Task<Work> WorkAsync(long workId)
         {
-            var workId = await Works.InsertAsync(new Work { Name = name, NameIsProvisional = provisional });
+            var work = await Works.GetAsync(workId);
+            Assert.NotNull(work);
+            return work;
+        }
+
+        public async Task<Seeded> AddAsync(string appId, Work work)
+        {
+            var name = work.Name;
+            var workId = await Works.InsertAsync(work);
             var releaseId = await Releases.InsertAsync(new Release { WorkId = workId, Name = name });
             await Releases.AddExternalIdAsync(new ExternalId
             {
@@ -293,9 +580,18 @@ public sealed class EnrichmentSyncServiceTests
         /// <summary>Thrown from the lookup, the way a dead Twitch endpoint would.</summary>
         public Exception? Throw { get; set; }
 
+        /// <summary>Name-only answers: the <c>external_games</c> shape with no metadata.</summary>
         public Dictionary<string, string> Names { get; } = new(StringComparer.Ordinal);
 
+        /// <summary>Full <c>external_games</c> answers, when a test cares about the metadata.</summary>
+        public Dictionary<string, IgdbSteamMatch> Matches { get; } = new(StringComparer.Ordinal);
+
+        /// <summary>The second call: <c>/games</c>, the only source of the publisher.</summary>
+        public Dictionary<long, IgdbGame> Games { get; } = [];
+
         public List<string> Asked { get; } = [];
+
+        public List<long> GameIdsAsked { get; } = [];
 
         public ValueTask<bool> IsConfiguredAsync(CancellationToken ct = default)
             => ValueTask.FromResult(Configured);
@@ -314,7 +610,11 @@ public sealed class EnrichmentSyncServiceTests
             var matched = new Dictionary<string, IgdbSteamMatch>(StringComparer.Ordinal);
             foreach (var appId in requested)
             {
-                if (Names.TryGetValue(appId, out var name))
+                if (Matches.TryGetValue(appId, out var match))
+                {
+                    matched[appId] = match;
+                }
+                else if (Names.TryGetValue(appId, out var name))
                 {
                     matched[appId] = new IgdbSteamMatch(appId, 1, name, null, null, null);
                 }
@@ -325,7 +625,21 @@ public sealed class EnrichmentSyncServiceTests
 
         public Task<IReadOnlyList<IgdbGame>> GetGamesAsync(
             IEnumerable<long> igdbIds, TimeSpan? cacheTtl = null, CancellationToken ct = default)
-            => Task.FromResult<IReadOnlyList<IgdbGame>>([]);
+        {
+            var requested = igdbIds.ToArray();
+            GameIdsAsked.AddRange(requested);
+
+            var found = new List<IgdbGame>();
+            foreach (var id in requested)
+            {
+                if (Games.TryGetValue(id, out var game))
+                {
+                    found.Add(game);
+                }
+            }
+
+            return Task.FromResult<IReadOnlyList<IgdbGame>>(found);
+        }
     }
 
     private sealed class FakeSteamStoreClient : ISteamStoreClient

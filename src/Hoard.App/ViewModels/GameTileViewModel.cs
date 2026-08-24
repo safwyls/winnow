@@ -4,6 +4,7 @@ using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Hoard.App.Services;
+using Hoard.Core.Domain;
 using Hoard.Covers;
 
 namespace Hoard.App.ViewModels;
@@ -28,6 +29,7 @@ public partial class GameTileViewModel : ObservableObject
 
     public GameTileViewModel(
         long ownershipId,
+        long releaseId,
         string title,
         string store,
         string bucket,
@@ -36,19 +38,42 @@ public partial class GameTileViewModel : ObservableObject
         DateTime nowUtc,
         bool hasUnread = false,
         CoverKey? coverKey = null,
-        ICoverCache? covers = null)
+        ICoverCache? covers = null,
+        Work? work = null,
+        Ownership? ownership = null)
     {
         CoverKey = coverKey;
         _covers = covers;
         OwnershipId = ownershipId;
+        ReleaseId = releaseId;
         Title = title;
+        Store = store;
         StoreBadge = store.ToUpperInvariant();
         Bucket = bucket;
         PlaytimeMinutes = playtimeMinutes;
         LastPlayedUtc = lastPlayedUtc;
         HasUnread = hasUnread;
 
+        // Enrichment fills these in behind a library the user is already
+        // browsing (§7), so every one of them is legitimately null on a fresh
+        // database. Nothing here invents a stand-in — the detail view simply
+        // does not render a row it has no fact for.
+        ReleaseYear = work?.FirstReleaseYear;
+        Summary = string.IsNullOrWhiteSpace(work?.Summary) ? null : work!.Summary;
+        Publisher = string.IsNullOrWhiteSpace(work?.Publisher) ? null : work!.Publisher;
+        Installed = ownership?.Installed ?? false;
+        InstallPath = string.IsNullOrWhiteSpace(ownership?.InstallPath) ? null : ownership!.InstallPath;
+
         DormancyAlpha = Dormancy.VividAlphaFor(lastPlayedUtc, nowUtc);
+        PlaytimeText = BuildPlaytimeText(playtimeMinutes);
+        IdleText = BuildIdleText(lastPlayedUtc, nowUtc);
+        // Three states, not two. A game with minutes on the clock and no
+        // last-played stamp is common in Steam's local files, and calling that
+        // "Never opened" would contradict the playtime sitting next to it.
+        HasLastPlayedDate = lastPlayedUtc is not null;
+        LastPlayedText = lastPlayedUtc is { } played
+            ? UpdateEventViewModel.LocalDateText(played)
+            : playtimeMinutes <= 0 ? "Never opened" : "Not recorded";
         StatText = BuildStatText(playtimeMinutes, lastPlayedUtc, nowUtc);
 
         var (start, end) = PlaceholderArt.VividColors(title);
@@ -59,7 +84,13 @@ public partial class GameTileViewModel : ObservableObject
 
     public long OwnershipId { get; }
 
+    /// <summary>The release this ownership is a license for — the key update events hang off.</summary>
+    public long ReleaseId { get; }
+
     public string Title { get; }
+
+    /// <summary>Store as stored ("steam"); the badge is the uppercased display cut.</summary>
+    public string Store { get; }
 
     public string StoreBadge { get; }
 
@@ -75,6 +106,33 @@ public partial class GameTileViewModel : ObservableObject
 
     /// <summary>Scrim line: "312h · idle 8mo", or "never opened".</summary>
     public string StatText { get; }
+
+    /// <summary>List-view playtime column: "312h", or an em dash at zero.</summary>
+    public string PlaytimeText { get; }
+
+    /// <summary>List-view idle column: "8mo", or an em dash when never played.</summary>
+    public string IdleText { get; }
+
+    /// <summary>Detail view: the date itself, local time — "12 Mar 2023", or why there isn't one.</summary>
+    public string LastPlayedText { get; }
+
+    /// <summary>True when <see cref="LastPlayedText"/> is a date; false when it is a sentence.</summary>
+    public bool HasLastPlayedDate { get; }
+
+    /// <summary>works.first_release_year, or null until enrichment lands it.</summary>
+    public int? ReleaseYear { get; }
+
+    /// <summary>works.summary, or null. Never a placeholder sentence.</summary>
+    public string? Summary { get; }
+
+    /// <summary>works.publisher (migration 0005), or null until enrichment lands it.</summary>
+    public string? Publisher { get; }
+
+    /// <summary>Whether the store's local files say this is on disk right now.</summary>
+    public bool Installed { get; }
+
+    /// <summary>Install directory when installed and known; null otherwise.</summary>
+    public string? InstallPath { get; }
 
     /// <summary>Resting vivid-layer opacity from the §5.1 ramp: α = (S − 0.22) / 0.78.</summary>
     public double DormancyAlpha { get; }
@@ -181,16 +239,28 @@ public partial class GameTileViewModel : ObservableObject
             return "never opened";
         }
 
-        var playtime = playtimeMinutes < 60
-            ? $"{playtimeMinutes}m"
-            : $"{playtimeMinutes / 60}h";
+        var playtime = BuildPlaytimeText(playtimeMinutes);
 
         return lastPlayedUtc is null
             ? playtime
-            : $"{playtime} · idle {IdleText(nowUtc - lastPlayedUtc.Value)}";
+            : $"{playtime} · idle {IdleSpanText(nowUtc - lastPlayedUtc.Value)}";
     }
 
-    private static string IdleText(TimeSpan idle)
+    /// <summary>
+    /// An em dash rather than "0h" at zero playtime: the list's job is to be
+    /// scannable, and a column of zeroes reads as data when it is an absence.
+    /// </summary>
+    private static string BuildPlaytimeText(long playtimeMinutes)
+        => playtimeMinutes <= 0
+            ? "—"
+            : playtimeMinutes < 60
+                ? $"{playtimeMinutes}m"
+                : $"{playtimeMinutes / 60}h";
+
+    private static string BuildIdleText(DateTime? lastPlayedUtc, DateTime nowUtc)
+        => lastPlayedUtc is { } played ? IdleSpanText(nowUtc - played) : "—";
+
+    private static string IdleSpanText(TimeSpan idle)
     {
         var days = Math.Max(0, idle.TotalDays);
         if (days < 30)

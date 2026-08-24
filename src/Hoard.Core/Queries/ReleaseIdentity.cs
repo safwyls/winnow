@@ -11,13 +11,14 @@ namespace Hoard.Core.Queries;
 /// the N+1 that turns a 600-game pass into 1,200 round trips; the join costs
 /// one.</para>
 ///
-/// <para><b>No publisher.</b> §5.3 names publisher as a soft-match signal and
-/// the matcher scores it, but the §6 schema has no publisher column — nothing
-/// in M1 has anywhere to put one. The signal therefore does not fire on
-/// library-internal pairs, which is correct behaviour rather than a gap:
-/// absent evidence contributes nothing and is never renormalised away
-/// (SoftMatchThresholds). When a publisher column lands, this projection is
-/// where it joins the pipeline.</para>
+/// <para><b>Publisher.</b> §5.3 names publisher as a soft-match signal and the
+/// matcher has always scored it, but until migration 0005 there was no column
+/// to read it from, so on every library-internal pair the signal reported
+/// "publisher unknown on at least one side" and contributed nothing — leaving
+/// title similarity as the only evidence in the score. It now joins here, from
+/// <c>works.publisher</c>, alongside the year. Null is still normal and still
+/// correct: absent evidence contributes nothing and is never renormalised away
+/// (SoftMatchThresholds), so an unenriched work scores exactly as it did.</para>
 ///
 /// <para><b>Properties, not positional parameters.</b> SQLite reports every
 /// INTEGER column as <c>Int64</c>, so Dapper cannot match a constructor taking
@@ -52,6 +53,13 @@ public sealed record ReleaseIdentity
 
     /// <summary><c>works.first_release_year</c>, or null. Feeds the ±1-year signal.</summary>
     public int? FirstReleaseYear { get; init; }
+
+    /// <summary>
+    /// <c>works.publisher</c>, or null. Feeds the publisher signal: one
+    /// deterministic name, normalised by the matcher before comparison (see
+    /// migration 0005 for why it is a single string rather than a list).
+    /// </summary>
+    public string? Publisher { get; init; }
 
     /// <summary>
     /// True when the name is a machine-minted placeholder (<c>App 1203620</c>).

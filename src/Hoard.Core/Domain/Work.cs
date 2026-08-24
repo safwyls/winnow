@@ -22,4 +22,14 @@ public sealed record Work
     public int? FirstReleaseYear { get; init; }
     public string? Summary { get; init; }
     public string? CoverUrl { get; init; }
+
+    /// <summary>
+    /// The work's primary publisher, or null when unknown (migration 0005).
+    ///
+    /// <para>One name, not a list: §5.3's publisher signal compares a single
+    /// normalised string, and the writer picks deterministically from IGDB's
+    /// publisher list so that two library rows for the same game agree. Null is
+    /// "unknown" and makes the signal not fire; it is never a mismatch.</para>
+    /// </summary>
+    public string? Publisher { get; init; }
 }

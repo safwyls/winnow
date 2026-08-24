@@ -174,6 +174,51 @@ public class MigrationTests
             conn.Execute("INSERT INTO works (name, name_is_provisional) VALUES ('X', 2);"));
     }
 
+    /// <summary>
+    /// 0005 adds the publisher column §5.3 has always scored and §6 never had
+    /// anywhere to put. Applied on top of the 0004 shape — the state every
+    /// existing database is actually in — with rows already on disk.
+    /// </summary>
+    [Fact]
+    public void Migration_0005_adds_publisher_on_top_of_the_0004_schema()
+    {
+        using var db = new TempDatabase();
+
+        using (var conn = db.Factory.Open())
+        {
+            // Rewind to 0004: drop the column and forget the script ran.
+            conn.Execute("ALTER TABLE works DROP COLUMN publisher;");
+            conn.Execute("DELETE FROM SchemaVersions WHERE ScriptName LIKE '%0005%';");
+
+            // A row written by 0004-era code, which knew nothing about publishers.
+            conn.Execute("INSERT INTO works (name) VALUES ('Riven');");
+        }
+
+        db.Initializer.Initialize();
+
+        using var after = db.Factory.Open();
+
+        Assert.Contains(
+            "publisher",
+            after.Query<string>("SELECT name FROM pragma_table_info('works');"));
+
+        // NULL means "unknown", which the matcher reads as absent evidence
+        // rather than as a mismatch. The pre-existing row is not disturbed.
+        Assert.Null(after.ExecuteScalar<string?>(
+            "SELECT publisher FROM works WHERE name = 'Riven';"));
+
+        // And 0004's work is still standing.
+        Assert.Equal(1, after.ExecuteScalar<long>("""
+            SELECT COUNT(*) FROM sqlite_master
+            WHERE type = 'index' AND name = 'ux_update_events_identity';
+            """));
+
+        var workId = after.ExecuteScalar<long>(
+            "INSERT INTO works (name, publisher) VALUES ('Portal 2', 'Valve') RETURNING id;");
+        Assert.Equal("Valve", after.ExecuteScalar<string>(
+            "SELECT publisher FROM works WHERE id = @workId;", new { workId }));
+    }
+
     [Fact]
     public void Every_connection_has_wal_and_foreign_keys_enabled()
     {

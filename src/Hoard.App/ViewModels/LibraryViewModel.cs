@@ -8,10 +8,12 @@ using Hoard.Covers;
 namespace Hoard.App.ViewModels;
 
 /// <summary>
-/// The M0 library view: rail buckets, command bar, cover grid. Reads the
-/// database only (§5 — the UI never calls ingest or enrichment); buckets come
-/// from the derived-bucket query, tile metadata from an in-memory join over
-/// the repositories. Search and bucket filtering are in-memory for M0.
+/// The library view: rail buckets, command bar, cover grid, list view and the
+/// game detail modal. Reads the database only (§5 — the UI never calls ingest
+/// or enrichment); buckets come from the derived-bucket query, tile metadata
+/// from an in-memory join over the repositories. Search, bucket filtering and
+/// sorting are in-memory: the whole library is a few hundred kilobytes of
+/// projection and re-querying SQLite per keystroke would buy nothing.
 /// </summary>
 public partial class LibraryViewModel : ObservableObject
 {
@@ -22,6 +24,7 @@ public partial class LibraryViewModel : ObservableObject
     private readonly IOwnershipRepository _ownerships;
     private readonly IReleaseRepository _releases;
     private readonly IWorkRepository _works;
+    private readonly IUpdateEventRepository _updateEvents;
 
     /// <summary>
     /// Cover art. Optional so the view still composes (on procedural art) when
@@ -37,12 +40,14 @@ public partial class LibraryViewModel : ObservableObject
         IOwnershipRepository ownerships,
         IReleaseRepository releases,
         IWorkRepository works,
+        IUpdateEventRepository updateEvents,
         ICoverCache? covers = null)
     {
         _libraryQueries = libraryQueries;
         _ownerships = ownerships;
         _releases = releases;
         _works = works;
+        _updateEvents = updateEvents;
         _covers = covers;
 
         // §7 copy, exactly. Order matches the mock rail.
@@ -54,9 +59,27 @@ public partial class LibraryViewModel : ObservableObject
             new BucketViewModel(LibraryBuckets.Retired, "Played out"),
             new BucketViewModel(WontRunKey, "Won't run"),
         ];
+
+        // §4: the view mode is remembered per session — and so is the order, for
+        // the same reason. Both live on this view model, which is a singleton
+        // for the life of the process, so "per session" needs no storage.
+        SortOptions =
+        [
+            new SortOptionViewModel(LibrarySort.DormantLongest, "Dormant longest"),
+            new SortOptionViewModel(LibrarySort.RecentlyPlayed, "Recently played"),
+            new SortOptionViewModel(LibrarySort.PlaytimeHighToLow, "Playtime high→low"),
+            new SortOptionViewModel(LibrarySort.PlaytimeLowToHigh, "Playtime low→high"),
+            new SortOptionViewModel(LibrarySort.NameAscending, "Name A–Z"),
+            new SortOptionViewModel(LibrarySort.NameDescending, "Name Z–A"),
+        ];
+
+        MarkSelectedSortOption();
     }
 
     public IReadOnlyList<BucketViewModel> Buckets { get; }
+
+    /// <summary>The command bar's sort menu, and the labels the list headers share.</summary>
+    public IReadOnlyList<SortOptionViewModel> SortOptions { get; }
 
     [ObservableProperty]
     public partial IReadOnlyList<GameTileViewModel> VisibleTiles { get; set; } = [];
@@ -75,8 +98,22 @@ public partial class LibraryViewModel : ObservableObject
     public double TileHeight => TileWidth * 1.5;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ShowGrid), nameof(ShowListStub))]
+    [NotifyPropertyChangedFor(nameof(ShowGrid), nameof(ShowList))]
     public partial bool IsGridView { get; set; } = true;
+
+    /// <summary>
+    /// Current order (§4: remembered per session, like the view mode). Setting
+    /// it re-sorts the visible set in place — the filter is unaffected, because
+    /// sorting and filtering are independent axes and confusing them is how a
+    /// sort control ends up silently hiding rows.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(
+        nameof(SortLabel),
+        nameof(ShowTitleSortUp), nameof(ShowTitleSortDown),
+        nameof(ShowPlaytimeSortUp), nameof(ShowPlaytimeSortDown),
+        nameof(ShowIdleSortUp), nameof(ShowIdleSortDown))]
+    public partial LibrarySort Sort { get; set; } = LibrarySort.DormantLongest;
 
     [ObservableProperty]
     public partial int TotalCount { get; set; }
@@ -88,17 +125,58 @@ public partial class LibraryViewModel : ObservableObject
     public partial string SearchPlaceholder { get; set; } = "Search…";
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ShowEmpty), nameof(ShowGrid), nameof(ShowListStub))]
+    [NotifyPropertyChangedFor(nameof(ShowEmpty), nameof(ShowGrid), nameof(ShowList))]
     public partial string? EmptyMessage { get; set; }
 
     [ObservableProperty]
     public partial GameTileViewModel? SelectedTile { get; set; }
 
+    /// <summary>
+    /// How many rows list view has selected. §6 asks for multi-select and the
+    /// list gives it (shift/ctrl click, shift+arrows); the count is here so the
+    /// selection is legible rather than an affordance with no readout. What it
+    /// deliberately does NOT come with is bulk list assignment — lists are not
+    /// built, and an action that silently does nothing is worse than no action.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasMultiSelection), nameof(SelectedCountText))]
+    public partial int SelectedCount { get; set; }
+
+    public bool HasMultiSelection => SelectedCount > 1;
+
+    public string SelectedCountText => $"{SelectedCount:N0} selected";
+
+    /// <summary>
+    /// The open detail modal, or null. §5.3 caps the tile at four facts, which
+    /// is only a defensible cap because this exists.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsDetailsOpen))]
+    public partial GameDetailsViewModel? Details { get; set; }
+
+    public bool IsDetailsOpen => Details is not null;
+
     public bool ShowEmpty => EmptyMessage is not null;
 
     public bool ShowGrid => EmptyMessage is null && IsGridView;
 
-    public bool ShowListStub => EmptyMessage is null && !IsGridView;
+    public bool ShowList => EmptyMessage is null && !IsGridView;
+
+    /// <summary>Command-bar button face: the order currently in force.</summary>
+    public string SortLabel => LabelFor(Sort);
+
+    public bool ShowTitleSortUp => Sort == LibrarySort.NameAscending;
+
+    public bool ShowTitleSortDown => Sort == LibrarySort.NameDescending;
+
+    public bool ShowPlaytimeSortUp => Sort == LibrarySort.PlaytimeLowToHigh;
+
+    public bool ShowPlaytimeSortDown => Sort == LibrarySort.PlaytimeHighToLow;
+
+    /// <summary>Least idle first — i.e. recently played at the top.</summary>
+    public bool ShowIdleSortUp => Sort == LibrarySort.RecentlyPlayed;
+
+    public bool ShowIdleSortDown => Sort == LibrarySort.DormantLongest;
 
     [RelayCommand]
     private async Task LoadAsync()
@@ -107,15 +185,15 @@ public partial class LibraryViewModel : ObservableObject
         var ownerships = await _ownerships.GetAllAsync();
         var works = await _works.GetAllAsync();
 
-        // release id → owning work name, and release id → the provider id its
-        // cover art is fetched under. Small library, per-work fetch is fine for M0.
-        var titleByRelease = new Dictionary<long, string>();
+        // release id → its work, and release id → the provider id its cover art
+        // is fetched under. Small library, per-work fetch is fine.
+        var workByRelease = new Dictionary<long, Work>();
         var coverKeyByRelease = new Dictionary<long, CoverKey>();
         foreach (var work in works)
         {
             foreach (var release in await _releases.GetByWorkAsync(work.Id))
             {
-                titleByRelease[release.Id] = work.Name;
+                workByRelease[release.Id] = work;
 
                 // Steam's portrait capsule is the first source; the cover cache
                 // tries any further registered source for the same key, so IGDB
@@ -129,16 +207,20 @@ public partial class LibraryViewModel : ObservableObject
             }
         }
 
-        var storeByOwnership = ownerships.ToDictionary(o => o.Id, o => o.Store);
+        var ownershipById = ownerships.ToDictionary(o => o.Id);
         var now = DateTime.UtcNow;
 
         var tiles = new List<GameTileViewModel>(bucketRows.Count);
         foreach (var row in bucketRows)
         {
+            var work = workByRelease.GetValueOrDefault(row.ReleaseId);
+            var ownership = ownershipById.GetValueOrDefault(row.OwnershipId);
+
             tiles.Add(new GameTileViewModel(
                 ownershipId: row.OwnershipId,
-                title: titleByRelease.GetValueOrDefault(row.ReleaseId, $"Release {row.ReleaseId}"),
-                store: storeByOwnership.GetValueOrDefault(row.OwnershipId, "?"),
+                releaseId: row.ReleaseId,
+                title: work?.Name ?? $"Release {row.ReleaseId}",
+                store: ownership?.Store ?? "?",
                 bucket: row.Bucket,
                 playtimeMinutes: row.PlaytimeMinutes,
                 lastPlayedUtc: row.LastPlayedAt,
@@ -149,15 +231,12 @@ public partial class LibraryViewModel : ObservableObject
                 // badge is that bucket membership — nothing else earns Flare.
                 hasUnread: row.Bucket == LibraryBuckets.StaleButPatched,
                 coverKey: coverKeyByRelease.TryGetValue(row.ReleaseId, out var coverKey) ? coverKey : null,
-                covers: _covers));
+                covers: _covers,
+                work: work,
+                ownership: ownership));
         }
 
-        // Default sort matches the command-bar stub: dormant longest first
-        // (never-played counts as maximally dormant).
-        _allTiles = tiles
-            .OrderBy(t => t.LastPlayedUtc ?? DateTime.MinValue)
-            .ThenBy(t => t.Title, StringComparer.OrdinalIgnoreCase)
-            .ToList();
+        _allTiles = tiles;
 
         foreach (var bucket in Buckets)
         {
@@ -177,10 +256,80 @@ public partial class LibraryViewModel : ObservableObject
     [RelayCommand]
     private void ShowListView() => IsGridView = false;
 
+    /// <summary>Command-bar sort menu.</summary>
+    [RelayCommand]
+    private void SelectSort(SortOptionViewModel? option)
+    {
+        if (option is not null)
+        {
+            Sort = option.Sort;
+        }
+    }
+
+    /// <summary>
+    /// List-view column headers. A header that is already the active sort
+    /// flips direction; one that is not takes its own most useful direction
+    /// first — nobody opens a playtime column wanting the smallest number.
+    /// </summary>
+    [RelayCommand]
+    private void SortByTitle()
+        => Sort = Sort == LibrarySort.NameAscending
+            ? LibrarySort.NameDescending
+            : LibrarySort.NameAscending;
+
+    [RelayCommand]
+    private void SortByPlaytime()
+        => Sort = Sort == LibrarySort.PlaytimeHighToLow
+            ? LibrarySort.PlaytimeLowToHigh
+            : LibrarySort.PlaytimeHighToLow;
+
+    [RelayCommand]
+    private void SortByIdle()
+        => Sort = Sort == LibrarySort.DormantLongest
+            ? LibrarySort.RecentlyPlayed
+            : LibrarySort.DormantLongest;
+
     /// <summary>Rail click: selects a bucket, or clears the filter when it was already selected.</summary>
     [RelayCommand]
     private void SelectBucket(BucketViewModel? bucket)
         => SelectedBucket = ReferenceEquals(SelectedBucket, bucket) ? null : bucket;
+
+    /// <summary>
+    /// Opens the detail modal for a tile. The update events are the only thing
+    /// it has to go to the database for — everything else was already joined at
+    /// load — so the modal appears immediately and the update list fills in.
+    /// </summary>
+    [RelayCommand]
+    private async Task OpenDetailsAsync(GameTileViewModel? tile)
+    {
+        var target = tile ?? SelectedTile;
+        if (target is null)
+        {
+            return;
+        }
+
+        SelectTile(target);
+
+        var events = await _updateEvents.GetByReleaseAsync(target.ReleaseId);
+
+        // Newest first: the update the user missed most recently is the one
+        // they are trying to catch up on (§5.2).
+        var updates = events
+            .OrderByDescending(e => e.OccurredAt)
+            .ThenByDescending(e => e.Id)
+            .Select(UpdateEventViewModel.Create)
+            .ToList();
+
+        Details = new GameDetailsViewModel(
+            target,
+            BucketLabelFor(target.Bucket),
+            updates,
+            publisher: target.Publisher,
+            covers: _covers);
+    }
+
+    [RelayCommand]
+    private void CloseDetails() => Details = null;
 
     public void SelectTile(GameTileViewModel? tile)
     {
@@ -189,22 +338,13 @@ public partial class LibraryViewModel : ObservableObject
             return;
         }
 
-        if (SelectedTile is { } previous)
-        {
-            previous.IsSelected = false;
-        }
-
         SelectedTile = tile;
-        if (tile is not null)
-        {
-            tile.IsSelected = true;
-        }
     }
 
     /// <summary>
-    /// Keyboard grid navigation: moves selection by <paramref name="delta"/>
-    /// visible tiles (±1 = left/right, ±columns = up/down). Returns the new
-    /// selected index, or -1 when the grid is empty.
+    /// Keyboard navigation: moves selection by <paramref name="delta"/> visible
+    /// tiles (±1 = left/right or list row, ±columns = up/down in the grid).
+    /// Returns the new selected index, or -1 when the set is empty.
     /// </summary>
     public int MoveSelection(int delta)
     {
@@ -222,6 +362,28 @@ public partial class LibraryViewModel : ObservableObject
     }
 
     partial void OnSearchTextChanged(string value) => ApplyFilter();
+
+    partial void OnSortChanged(LibrarySort value)
+    {
+        MarkSelectedSortOption();
+        ApplyFilter();
+    }
+
+    partial void OnSelectedTileChanged(GameTileViewModel? oldValue, GameTileViewModel? newValue)
+    {
+        // Selection lives on the tiles because both views bind to it; keeping
+        // the flags in one place stops the grid and the list disagreeing about
+        // what is selected.
+        if (oldValue is not null)
+        {
+            oldValue.IsSelected = false;
+        }
+
+        if (newValue is not null)
+        {
+            newValue.IsSelected = true;
+        }
+    }
 
     partial void OnSelectedBucketChanged(BucketViewModel? value)
     {
@@ -252,7 +414,7 @@ public partial class LibraryViewModel : ObservableObject
             query = query.Where(t => t.Title.Contains(search, StringComparison.OrdinalIgnoreCase));
         }
 
-        var visible = query.ToList();
+        var visible = Order(query).ToList();
         VisibleTiles = visible;
 
         if (SelectedTile is { } selected && !visible.Contains(selected))
@@ -260,7 +422,77 @@ public partial class LibraryViewModel : ObservableObject
             SelectTile(null);
         }
 
+        SelectedCount = SelectedTile is null ? 0 : 1;
         EmptyMessage = BuildEmptyMessage(visible.Count, search);
+    }
+
+    /// <summary>
+    /// Every order ties-breaks on title, so a re-sort of the same set is
+    /// stable and the grid does not shuffle underneath a user who changed
+    /// nothing but the window width.
+    /// </summary>
+    private IEnumerable<GameTileViewModel> Order(IEnumerable<GameTileViewModel> tiles) => Sort switch
+    {
+        // Never played counts as maximally dormant — DateTime.MinValue sorts it
+        // to the front here and to the back under RecentlyPlayed, which is what
+        // "you have never opened this" should do in both directions.
+        LibrarySort.DormantLongest => tiles
+            .OrderBy(t => t.LastPlayedUtc ?? DateTime.MinValue)
+            .ThenBy(t => t.Title, StringComparer.OrdinalIgnoreCase),
+
+        LibrarySort.RecentlyPlayed => tiles
+            .OrderByDescending(t => t.LastPlayedUtc ?? DateTime.MinValue)
+            .ThenBy(t => t.Title, StringComparer.OrdinalIgnoreCase),
+
+        LibrarySort.PlaytimeHighToLow => tiles
+            .OrderByDescending(t => t.PlaytimeMinutes)
+            .ThenBy(t => t.Title, StringComparer.OrdinalIgnoreCase),
+
+        LibrarySort.PlaytimeLowToHigh => tiles
+            .OrderBy(t => t.PlaytimeMinutes)
+            .ThenBy(t => t.Title, StringComparer.OrdinalIgnoreCase),
+
+        LibrarySort.NameDescending => tiles
+            .OrderByDescending(t => t.Title, StringComparer.OrdinalIgnoreCase),
+
+        _ => tiles.OrderBy(t => t.Title, StringComparer.OrdinalIgnoreCase),
+    };
+
+    private void MarkSelectedSortOption()
+    {
+        foreach (var option in SortOptions)
+        {
+            option.IsSelected = option.Sort == Sort;
+        }
+    }
+
+    private string LabelFor(LibrarySort sort)
+    {
+        foreach (var option in SortOptions)
+        {
+            if (option.Sort == sort)
+            {
+                return option.Label;
+            }
+        }
+
+        return string.Empty;
+    }
+
+    /// <summary>§7's bucket names, used by the detail view. Never a raw key.</summary>
+    private string BucketLabelFor(string bucketKey)
+    {
+        foreach (var bucket in Buckets)
+        {
+            if (bucket.Key == bucketKey)
+            {
+                return bucket.Name;
+            }
+        }
+
+        // LibraryBuckets.Active has no rail row: it is the healthy middle of the
+        // library, which the rail deliberately does not offer as a pile.
+        return bucketKey == LibraryBuckets.Active ? "In rotation" : bucketKey;
     }
 
     // §7: empty states are directions, not moods.

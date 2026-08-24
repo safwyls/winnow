@@ -72,4 +72,40 @@ public sealed class MergeCandidateRepository : IMergeCandidateRepository
             "UPDATE merge_candidates SET status = @status WHERE id = @id;",
             new { id, status }, transaction: lease.Transaction, cancellationToken: ct));
     }
+
+    /// <summary>
+    /// The <c>status = 'pending'</c> predicate is the whole safety property, so
+    /// it lives in the statement rather than in a caller's <c>if</c>: there is
+    /// no ordering of C# that can make this rewrite an answered row.
+    /// </summary>
+    public async Task<bool> UpdatePendingScoreAsync(
+        long id, double score, string? signalsJson, CancellationToken ct = default)
+    {
+        using var lease = _factory.Lease();
+        var rows = await lease.Connection.ExecuteAsync(new CommandDefinition("""
+            UPDATE merge_candidates
+            SET score = @score, signals_json = @signalsJson
+            WHERE id = @id AND status = 'pending';
+            """,
+            new { id, score, signalsJson },
+            transaction: lease.Transaction,
+            cancellationToken: ct));
+
+        return rows > 0;
+    }
+
+    /// <summary>
+    /// Same guard, same reason. Deleting is limited to proposals the user has
+    /// not answered; <c>confirmed</c> and <c>rejected</c> rows are unreachable
+    /// from this statement.
+    /// </summary>
+    public async Task<bool> WithdrawPendingAsync(long id, CancellationToken ct = default)
+    {
+        using var lease = _factory.Lease();
+        var rows = await lease.Connection.ExecuteAsync(new CommandDefinition(
+            "DELETE FROM merge_candidates WHERE id = @id AND status = 'pending';",
+            new { id }, transaction: lease.Transaction, cancellationToken: ct));
+
+        return rows > 0;
+    }
 }

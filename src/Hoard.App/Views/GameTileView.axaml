@@ -178,10 +178,23 @@
                 </Panel>
             </Border>
 
-            <!-- Keyboard/pointer selection ring: 2px Volt, offset outward. -->
+            <!-- Keyboard/pointer selection ring (§8's 2px Volt edge).
+                 Drawn INSIDE the tile's own bounds. The mock's
+                 `outline-offset:1px` puts it 3px outside, which the grid then
+                 clips on the first/last column and the top/bottom row — the
+                 ring is the one part of a tile that must never look damaged,
+                 since a half-drawn ring reads as a rendering fault rather than
+                 as selection. Inverting the offset inward keeps the ring and
+                 its 1px separator complete on every tile, and costs 3px of art
+                 on the selected tile only. Tile pitch is untouched, so nothing
+                 reflows. -->
             <Border BorderBrush="{StaticResource Volt}" BorderThickness="2"
-                    CornerRadius="8" Margin="-3" IsHitTestVisible="False"
-                    IsVisible="{Binding IsSelected}"/>
+                    CornerRadius="{StaticResource RadiusTile}"
+                    IsHitTestVisible="False"
+                    IsVisible="{Binding IsSelected}">
+                <Border BorderBrush="{StaticResource Ground}" BorderThickness="1"
+                        CornerRadius="4"/>
+            </Border>
 
             <!-- Unread-update badge (§5.2): 10px Flare dot, 2px Ground ring,
                  soft glow. Flare appears here and on the rail pip — nowhere else. -->

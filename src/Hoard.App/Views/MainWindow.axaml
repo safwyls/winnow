@@ -51,9 +51,6 @@
         <Style Selector="Button.bucket.selected /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
         </Style>
-        <Style Selector="Button.bucket.selected Border#Edge">
-            <Setter Property="Background" Value="{StaticResource Volt}"/>
-        </Style>
 
         <!-- List stub rows in the rail's LISTS section. -->
         <Style Selector="Button.listrow">
@@ -148,6 +145,83 @@
             <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
         </Style>
 
+        <!-- Sort menu (§4's `sort ▾`). Flyout content lives in its own popup
+             root, which styles itself from this window — so these selectors
+             reach it. -->
+        <Style Selector="FlyoutPresenter.sortmenu">
+            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
+            <Setter Property="Padding" Value="4"/>
+            <Setter Property="MinWidth" Value="0"/>
+            <Setter Property="MaxWidth" Value="320"/>
+        </Style>
+        <Style Selector="Button.sortitem">
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="Padding" Value="8,0"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="Button.sortitem /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.sortitem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#4D16112A"/>
+        </Style>
+
+        <!-- ══ List view (§6) ══════════════════════════════════════════════
+             "Same data, no art dependency… 44px rows, Surface ground, Line
+             rules, Volt selection edge." Sortable headers write the same sort
+             state the command-bar menu does. -->
+        <Style Selector="Button.colhead">
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="CornerRadius" Value="0"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="VerticalAlignment" Value="Stretch"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Button.colhead /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.colhead:pointerover TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+        </Style>
+
+        <Style Selector="ListBox.rows">
+            <Setter Property="Background" Value="{StaticResource Surface}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+        </Style>
+        <Style Selector="ListBox.rows ListBoxItem">
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Margin" Value="0"/>
+            <Setter Property="MinHeight" Value="44"/>
+            <Setter Property="CornerRadius" Value="0"/>
+        </Style>
+        <Style Selector="ListBox.rows ListBoxItem /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="CornerRadius" Value="0"/>
+        </Style>
+        <Style Selector="ListBox.rows ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#802C2350"/>
+        </Style>
+        <Style Selector="ListBox.rows ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
+        </Style>
+        <Style Selector="ListBox.rows ListBoxItem:selected:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
+        </Style>
+
         <!-- Density slider — chrome only, so it stays quiet next to the art. -->
         <Style Selector="Slider.density">
             <Setter Property="Width" Value="104"/>
@@ -206,9 +280,16 @@
                                         Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).SelectBucketCommand}"
                                         CommandParameter="{Binding}">
                                     <Grid ColumnDefinitions="2,16,Auto,*,Auto,16">
-                                        <!-- 2px Volt selection edge (§6). -->
-                                        <Border Name="Edge" Grid.Column="0"
-                                                Background="Transparent"/>
+                                        <!-- 2px Volt selection edge (§6). Driven
+                                             from the row's own state, not from a
+                                             `.selected Border#Edge` selector:
+                                             names inside a DataTemplate live in
+                                             their own scope, so such a selector
+                                             silently matches nothing and the
+                                             edge never appears. -->
+                                        <Border Grid.Column="0"
+                                                Background="{StaticResource Volt}"
+                                                IsVisible="{Binding IsSelected}"/>
                                         <!-- Flare pip: unread-carrying bucket ONLY. -->
                                         <Border Grid.Column="2"
                                                 Width="7" Height="7" CornerRadius="4"
@@ -255,7 +336,9 @@
                             Command="{Binding ToggleMergeQueueCommand}"
                             ToolTip.Tip="Pairs that might be the same game">
                         <Grid ColumnDefinitions="2,16,*,Auto,16">
-                            <Border Name="Edge" Grid.Column="0" Background="Transparent"/>
+                            <Border Grid.Column="0"
+                                    Background="{StaticResource Volt}"
+                                    IsVisible="{Binding IsMergeQueueVisible}"/>
                             <TextBlock Grid.Column="2"
                                        Classes="display-s"
                                        Text="SAME GAME?"
@@ -344,21 +427,59 @@
                         </StackPanel>
                     </Border>
 
-                    <!-- Sort stub — the default order LoadAsync already applies. -->
-                    <Button Classes="ctl" IsEnabled="False">
+                    <!-- Sort. The button face is the order in force; the menu
+                         is the same state the list-view column headers write. -->
+                    <Button Name="SortButton" Classes="ctl" ToolTip.Tip="Sort order">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <TextBlock Classes="body" FontSize="12"
                                        Foreground="{StaticResource TextDim}"
-                                       Text="Dormant longest"/>
+                                       Text="{Binding Library.SortLabel}"/>
                             <Path Data="M 0,0 L 8,0 L 4,5 Z"
                                   Fill="{StaticResource TextDim}"
                                   VerticalAlignment="Center"/>
                         </StackPanel>
+                        <Button.Flyout>
+                            <Flyout Placement="BottomEdgeAlignedLeft"
+                                    FlyoutPresenterClasses="sortmenu">
+                                <ItemsControl ItemsSource="{Binding Library.SortOptions}"
+                                              MinWidth="176">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="vm:SortOptionViewModel">
+                                            <Button Classes="sortitem" Click="OnSortItemClick">
+                                                <Grid ColumnDefinitions="14,*">
+                                                    <!-- Volt marks the active order —
+                                                         selection, which is exactly
+                                                         what Volt is for (§2). -->
+                                                    <Border Grid.Column="0"
+                                                            Width="6" Height="6" CornerRadius="3"
+                                                            HorizontalAlignment="Left"
+                                                            VerticalAlignment="Center"
+                                                            Background="{StaticResource Volt}"
+                                                            IsVisible="{Binding IsSelected}"/>
+                                                    <TextBlock Grid.Column="1" Classes="body"
+                                                               Text="{Binding Label}"
+                                                               VerticalAlignment="Center"/>
+                                                </Grid>
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </Flyout>
+                        </Button.Flyout>
                     </Button>
 
                   </StackPanel>
 
                   <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10">
+                    <!-- Multi-select readout: §6 asks the list for multi-select,
+                         so the count says what is picked. Bulk list assignment
+                         is NOT here — lists do not exist yet, and a button that
+                         silently does nothing is worse than no button. -->
+                    <TextBlock Classes="data" FontSize="11"
+                               Foreground="{StaticResource Volt}"
+                               VerticalAlignment="Center"
+                               IsVisible="{Binding Library.HasMultiSelection}"
+                               Text="{Binding Library.SelectedCountText}"/>
                     <TextBlock Classes="label" FontSize="10" Text="DENSITY"
                                VerticalAlignment="Center"/>
                     <Slider Name="DensitySlider"
@@ -380,9 +501,12 @@
                               HorizontalScrollBarVisibility="Disabled"
                               VerticalScrollBarVisibility="Auto"
                               Padding="0">
+                    <!-- ItemsSource is assigned from code-behind, not bound: the
+                         repeater's realization state does not survive being
+                         hidden behind list view, and re-seating the source is
+                         what forces it to rebuild. See MainWindow.RefreshGrid. -->
                     <ItemsRepeater Name="TileRepeater"
-                                   Margin="20"
-                                   ItemsSource="{Binding Library.VisibleTiles}">
+                                   Margin="20">
                         <ItemsRepeater.Layout>
                             <UniformGridLayout MinItemWidth="148"
                                                MinItemHeight="222"
@@ -399,14 +523,131 @@
                     </ItemsRepeater>
                 </ScrollViewer>
 
-                <!-- List view lands with the M0 review; the grid is the default (§4). -->
-                <Border IsVisible="{Binding Library.ShowListStub}" Padding="20">
-                    <TextBlock Classes="body-l"
-                               Foreground="{StaticResource TextDim}"
-                               HorizontalAlignment="Center"
-                               VerticalAlignment="Center"
-                               Text="List view arrives with M0 review"/>
-                </Border>
+                <!-- ── List view (§6) ──────────────────────────────────────
+                     The power-user view: same data, no art dependency, so it
+                     stays readable before a single cover has downloaded.
+                     Virtualized (ListBox's VirtualizingStackPanel) because 616
+                     rows is the normal case, not the stress case. -->
+                <Grid RowDefinitions="30,*" IsVisible="{Binding Library.ShowList}">
+
+                    <!-- Column headers. Clicking one writes the shared sort
+                         state; clicking the active one flips its direction. -->
+                    <Border Grid.Row="0"
+                            Background="{StaticResource Surface}"
+                            BorderBrush="{StaticResource Line}"
+                            BorderThickness="0,0,0,1">
+                        <Grid ColumnDefinitions="2,18,*,84,104,92,20">
+                            <Button Grid.Column="2" Classes="colhead"
+                                    Command="{Binding Library.SortByTitleCommand}">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <TextBlock Classes="label" FontSize="10" Text="TITLE"/>
+                                    <Path Data="M 0,5 L 8,5 L 4,0 Z" Fill="{StaticResource Volt}"
+                                          VerticalAlignment="Center"
+                                          IsVisible="{Binding Library.ShowTitleSortUp}"/>
+                                    <Path Data="M 0,0 L 8,0 L 4,5 Z" Fill="{StaticResource Volt}"
+                                          VerticalAlignment="Center"
+                                          IsVisible="{Binding Library.ShowTitleSortDown}"/>
+                                </StackPanel>
+                            </Button>
+
+                            <TextBlock Grid.Column="3" Classes="label" FontSize="10"
+                                       Text="STORE" VerticalAlignment="Center"/>
+
+                            <Button Grid.Column="4" Classes="colhead"
+                                    HorizontalContentAlignment="Right"
+                                    Command="{Binding Library.SortByPlaytimeCommand}">
+                                <StackPanel Orientation="Horizontal" Spacing="6"
+                                            HorizontalAlignment="Right">
+                                    <Path Data="M 0,5 L 8,5 L 4,0 Z" Fill="{StaticResource Volt}"
+                                          VerticalAlignment="Center"
+                                          IsVisible="{Binding Library.ShowPlaytimeSortUp}"/>
+                                    <Path Data="M 0,0 L 8,0 L 4,5 Z" Fill="{StaticResource Volt}"
+                                          VerticalAlignment="Center"
+                                          IsVisible="{Binding Library.ShowPlaytimeSortDown}"/>
+                                    <TextBlock Classes="label" FontSize="10" Text="PLAYTIME"/>
+                                </StackPanel>
+                            </Button>
+
+                            <Button Grid.Column="5" Classes="colhead"
+                                    HorizontalContentAlignment="Right"
+                                    Command="{Binding Library.SortByIdleCommand}"
+                                    ToolTip.Tip="Time since you last played">
+                                <StackPanel Orientation="Horizontal" Spacing="6"
+                                            HorizontalAlignment="Right">
+                                    <Path Data="M 0,5 L 8,5 L 4,0 Z" Fill="{StaticResource Volt}"
+                                          VerticalAlignment="Center"
+                                          IsVisible="{Binding Library.ShowIdleSortUp}"/>
+                                    <Path Data="M 0,0 L 8,0 L 4,5 Z" Fill="{StaticResource Volt}"
+                                          VerticalAlignment="Center"
+                                          IsVisible="{Binding Library.ShowIdleSortDown}"/>
+                                    <TextBlock Classes="label" FontSize="10" Text="IDLE"/>
+                                </StackPanel>
+                            </Button>
+                        </Grid>
+                    </Border>
+
+                    <ListBox Grid.Row="1"
+                             Name="ListRows"
+                             Classes="rows"
+                             SelectionMode="Multiple"
+                             ItemsSource="{Binding Library.VisibleTiles}"
+                             SelectedItem="{Binding Library.SelectedTile, Mode=TwoWay}"
+                             SelectionChanged="OnListSelectionChanged"
+                             DoubleTapped="OnListDoubleTapped">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate DataType="vm:GameTileViewModel">
+                                <Border BorderBrush="{StaticResource Line}"
+                                        BorderThickness="0,0,0,1"
+                                        Height="44">
+                                    <Grid ColumnDefinitions="2,18,*,84,104,92,20">
+                                        <!-- 2px Volt selection edge (§6), bound to
+                                             the row's own state for the same
+                                             name-scope reason as the rail. -->
+                                        <Border Grid.Column="0"
+                                                Background="{StaticResource Volt}"
+                                                IsVisible="{Binding IsSelected}"/>
+                                        <!-- The unread dot: Flare, here and on
+                                             the tile and the rail pip. Nowhere
+                                             else, ever. -->
+                                        <Border Grid.Column="1"
+                                                Width="8" Height="8" CornerRadius="4"
+                                                HorizontalAlignment="Left"
+                                                VerticalAlignment="Center"
+                                                Margin="6,0,0,0"
+                                                Background="{StaticResource Flare}"
+                                                BoxShadow="0 0 8 0 #B3FF5C8A"
+                                                IsVisible="{Binding HasUnread}"
+                                                ToolTip.Tip="Patched since you played"/>
+                                        <TextBlock Grid.Column="2"
+                                                   Classes="body-l"
+                                                   FontFamily="{StaticResource DisplayFont}"
+                                                   FontWeight="Bold"
+                                                   Text="{Binding Title}"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   VerticalAlignment="Center"
+                                                   Margin="0,0,12,0"/>
+                                        <TextBlock Grid.Column="3"
+                                                   Classes="body" FontSize="11"
+                                                   Foreground="{StaticResource TextDim}"
+                                                   Text="{Binding StoreBadge}"
+                                                   VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="4"
+                                                   Classes="data"
+                                                   Text="{Binding PlaytimeText}"
+                                                   TextAlignment="Right"
+                                                   VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="5"
+                                                   Classes="data"
+                                                   Foreground="{StaticResource TextDim}"
+                                                   Text="{Binding IdleText}"
+                                                   TextAlignment="Right"
+                                                   VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Grid>
 
                 <!-- Empty states are directions, not moods (§7). -->
                 <Border IsVisible="{Binding Library.ShowEmpty}" Padding="32">
@@ -430,6 +671,16 @@
                               IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsMergeQueueVisible}"/>
 
         </Panel>
+
+        <!-- ── Game detail modal (§5.3's other half) ─────────────────────────
+             Spans the rail as well as the pane: it is a modal, so nothing
+             behind it is clickable while it is up. Enter on the selection or a
+             double click opens it; Escape or the scrim closes it. -->
+        <views:GameDetailsView Name="DetailsPanel"
+                               Grid.Column="0" Grid.ColumnSpan="2"
+                               DataContext="{Binding Library.Details}"
+                               IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Library.IsDetailsOpen}"/>
+
     </Grid>
 
 </Window>

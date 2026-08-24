@@ -26,4 +26,48 @@ public interface IWorkRepository
     /// </summary>
     Task<IReadOnlyList<Queries.ProvisionalNameTarget>> GetProvisionalNameTargetsAsync(
         string provider, CancellationToken ct = default);
+
+    /// <summary>
+    /// Works enrichment still has something to do for: a placeholder name, or
+    /// any empty metadata column (<c>igdb_id</c>, <c>first_release_year</c>,
+    /// <c>summary</c>, <c>cover_url</c>, <c>publisher</c>).
+    ///
+    /// <para>Strictly wider than
+    /// <see cref="GetProvisionalNameTargetsAsync"/>, which answers only "who
+    /// still needs a title". On a library named by an earlier build that set is
+    /// empty, so an enrichment pass keyed on it alone would back-fill nothing
+    /// — every work would keep the empty year and publisher that make two of
+    /// §5.3's four soft-match signals permanently silent.</para>
+    ///
+    /// <para>A work with every column filled is not returned, so the set
+    /// shrinks to nothing as the backlog drains and a warm library costs one
+    /// scan that yields no rows. Nothing here touches the network: what stops a
+    /// re-fetch is the caller's metadata cache, not this query.</para>
+    /// </summary>
+    Task<IReadOnlyList<Queries.EnrichmentTarget>> GetEnrichmentTargetsAsync(
+        string provider, CancellationToken ct = default);
+
+    /// <summary>
+    /// Applies enrichment metadata to one work under the one-way promotion
+    /// rule, and reports whether the title was promoted.
+    ///
+    /// <para><b>One way, per column.</b> A null or blank field in
+    /// <paramref name="enrichment"/> means "the source said nothing" and leaves
+    /// the stored value alone — no column is ever cleared, and a real title is
+    /// never reverted to a placeholder. <c>igdb_id</c> goes further and is
+    /// written only when the work has none, because it is the canonical
+    /// identity: re-pointing it is a merge, not enrichment, and merges need a
+    /// human (§5.3).</para>
+    ///
+    /// <para>Deliberately NOT an "update the work" method. A general row update
+    /// takes a whole <see cref="Work"/>, and every field a partial source did
+    /// not know arrives as null — which is precisely how enrichment would erase
+    /// the library it was meant to fill in.</para>
+    /// </summary>
+    /// <returns>
+    /// True when a placeholder title was replaced by a real one, so the caller
+    /// knows to move the release name with it in the same transaction.
+    /// </returns>
+    Task<bool> ApplyEnrichmentAsync(
+        Queries.WorkEnrichment enrichment, CancellationToken ct = default);
 }

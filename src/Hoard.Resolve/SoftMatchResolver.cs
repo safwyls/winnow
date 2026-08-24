@@ -28,9 +28,20 @@ public sealed record SoftMatchRequest(MatchSubject Subject, IReadOnlyList<MatchS
 /// shown first in the review queue. <b>Not</b> merged; nothing here is merged.
 /// </param>
 /// <param name="SkippedBelowFloor">Scored below the queue floor, or vetoed. Discarded, not stored.</param>
-/// <param name="AlreadyPending">A pending row for this pair already existed; left untouched.</param>
+/// <param name="AlreadyPending">A pending row for this pair already existed and stayed pending.</param>
 /// <param name="PreviouslyRejected">The user already said "Different games". Terminal — never re-queued.</param>
 /// <param name="PreviouslyConfirmed">The user already said "Same game". Terminal.</param>
+/// <param name="Rescored">
+/// Subset of <paramref name="AlreadyPending"/> whose stored score and signal
+/// breakdown were refreshed because the evidence changed — almost always
+/// enrichment supplying a release year or publisher that was unknown when the
+/// pair was first queued.
+/// </param>
+/// <param name="Withdrawn">
+/// Subset of <paramref name="SkippedBelowFloor"/> that had a pending row, now
+/// removed: with the new evidence the matcher would not have queued the pair at
+/// all. Only <c>pending</c> rows are ever withdrawn.
+/// </param>
 public sealed record SoftMatchOutcome(
     int Compared,
     int Queued,
@@ -38,7 +49,9 @@ public sealed record SoftMatchOutcome(
     int SkippedBelowFloor,
     int AlreadyPending,
     int PreviouslyRejected,
-    int PreviouslyConfirmed)
+    int PreviouslyConfirmed,
+    int Rescored = 0,
+    int Withdrawn = 0)
 {
     public static SoftMatchOutcome Empty { get; } = new(0, 0, 0, 0, 0, 0, 0);
 
@@ -75,6 +88,22 @@ public sealed record SoftMatchOutcome(
 ///     click through it without reading, which is the failure mode that makes
 ///     the whole human-in-the-loop design worthless.</item>
 /// </list>
+///
+/// <para><b>A pending row tracks the evidence; an answered row tracks the
+/// user.</b> Blocking the insert is right for the pair's identity and wrong for
+/// its score. The 14 pairs queued before enrichment learned how to store a
+/// release year and a publisher were scored on title alone, and under a
+/// pure "already exists, skip" rule they would keep that score — and its
+/// "publisher unknown on at least one side" explanation — for the life of the
+/// database, while an identical pair discovered one launch later scored far
+/// higher. So a pair that is still <c>pending</c> and is compared again is
+/// re-scored in place, and one that no longer clears the queue floor is
+/// withdrawn: the review list is a function of what is known now, not of the
+/// order in which it became known. Both operations are gated on
+/// <c>status = 'pending'</c> inside the SQL
+/// (<see cref="IMergeCandidateRepository.UpdatePendingScoreAsync"/>,
+/// <see cref="IMergeCandidateRepository.WithdrawPendingAsync"/>), so no
+/// ordering of this code can reach an answer the user already gave.</para>
 ///
 /// <para><b>Atomicity.</b> The pass runs in one <see cref="IUnitOfWork"/>, like
 /// <see cref="ExternalIdResolver"/>: a crash mid-pass queues nothing rather than
@@ -126,6 +155,8 @@ public sealed class SoftMatchResolver
         var alreadyPending = 0;
         var previouslyRejected = 0;
         var previouslyConfirmed = 0;
+        var rescored = 0;
+        var withdrawn = 0;
 
         // Two requests can nominate the same pair (A's possibilities include B,
         // B's include A). Scoring it twice is harmless — the matcher is pure —
@@ -134,6 +165,21 @@ public sealed class SoftMatchResolver
         var seen = new HashSet<(long Low, long High)>();
 
         using var scope = _unitOfWork.Begin();
+
+        // The whole pending queue in one read, keyed by canonical pair. A sweep
+        // discards the overwhelming majority of the pairs it proposes, and a
+        // per-pair lookup to ask "was this one queued?" would put an indexed
+        // query behind every one of tens of thousands of comparisons that
+        // currently cost nothing. The queue itself is small by construction —
+        // it is a human's to-do list — so holding it is cheap.
+        var pending = new Dictionary<(long Low, long High), MergeCandidate>();
+        foreach (var candidate in await _candidates.GetPendingAsync(ct))
+        {
+            var key = (
+                Math.Min(candidate.LeftReleaseId, candidate.RightReleaseId),
+                Math.Max(candidate.LeftReleaseId, candidate.RightReleaseId));
+            pending[key] = candidate;
+        }
 
         foreach (var request in requests)
         {
@@ -151,6 +197,8 @@ public sealed class SoftMatchResolver
                 compared++;
 
                 var score = _matcher.Score(request.Subject, possibility);
+                var queuedRow = pending.GetValueOrDefault((low, high));
+
                 if (!score.ShouldQueue)
                 {
                     belowFloor++;
@@ -158,12 +206,59 @@ public sealed class SoftMatchResolver
                         "Discarded {Low}/{High} at {Score:F2}{Veto}",
                         low, high, score.Score,
                         score.VetoReason is null ? string.Empty : $" (veto: {score.VetoReason})");
+
+                    // Queued under thinner evidence than we now have. The
+                    // matcher would not propose it today, so it is withdrawn
+                    // rather than left asking a question the scorer has since
+                    // answered. Only ever a pending row — the SQL says so.
+                    if (queuedRow is not null
+                        && await _candidates.WithdrawPendingAsync(queuedRow.Id, ct))
+                    {
+                        withdrawn++;
+                        _logger.LogInformation(
+                            "Withdrew pending pair {Low}/{High}: rescored {Old:F2} → {New:F2} "
+                            + "on new metadata, below the queue floor.",
+                            low, high, queuedRow.Score, score.Score);
+                    }
+
+                    continue;
+                }
+
+                // Score is stored canonicalised the same way the pair is, so the
+                // row is byte-identical regardless of which side was the subject.
+                var canonical = request.Subject.ReleaseId == low
+                    ? score
+                    : _matcher.Score(possibility, request.Subject);
+
+                if (queuedRow is not null)
+                {
+                    alreadyPending++;
+
+                    // Refresh only on an actual change: an unchanged library
+                    // re-swept on every launch must write nothing at all.
+                    var signals = SoftMatchSignalsJson.Serialize(canonical);
+                    if (canonical.Score != queuedRow.Score
+                        || !string.Equals(signals, queuedRow.SignalsJson, StringComparison.Ordinal))
+                    {
+                        if (await _candidates.UpdatePendingScoreAsync(
+                            queuedRow.Id, canonical.Score, signals, ct))
+                        {
+                            rescored++;
+                            _logger.LogInformation(
+                                "Rescored pending pair {Low}/{High}: {Old:F2} → {New:F2} on new metadata.",
+                                low, high, queuedRow.Score, canonical.Score);
+                        }
+                    }
+
                     continue;
                 }
 
                 var existing = await _candidates.FindByPairAsync(low, high, ct);
                 if (existing is not null)
                 {
+                    // Not in the pending map, so this is an answer the user
+                    // already gave. Both answers are terminal and nothing below
+                    // this point runs for them.
                     switch (existing.Status)
                     {
                         case MergeCandidateStatuses.Rejected:
@@ -181,12 +276,6 @@ public sealed class SoftMatchResolver
 
                     continue;
                 }
-
-                // Score is stored canonicalised the same way the pair is, so the
-                // row is byte-identical regardless of which side was the subject.
-                var canonical = request.Subject.ReleaseId == low
-                    ? score
-                    : _matcher.Score(possibility, request.Subject);
 
                 await _candidates.InsertAsync(new MergeCandidate
                 {
@@ -209,11 +298,14 @@ public sealed class SoftMatchResolver
 
         _logger.LogInformation(
             "Soft match: compared {Compared} pairs, queued {Queued} pending ({Priority} priority), "
-            + "discarded {BelowFloor}, {AlreadyPending} already pending, {Rejected} previously rejected, "
-            + "{Confirmed} previously confirmed. Auto-merged 0 — soft matches never auto-merge (§5.3).",
-            compared, queued, priority, belowFloor, alreadyPending, previouslyRejected, previouslyConfirmed);
+            + "discarded {BelowFloor} ({Withdrawn} withdrawn from the queue), {AlreadyPending} already "
+            + "pending ({Rescored} rescored), {Rejected} previously rejected, {Confirmed} previously "
+            + "confirmed. Auto-merged 0 — soft matches never auto-merge (§5.3).",
+            compared, queued, priority, belowFloor, withdrawn, alreadyPending, rescored,
+            previouslyRejected, previouslyConfirmed);
 
         return new SoftMatchOutcome(
-            compared, queued, priority, belowFloor, alreadyPending, previouslyRejected, previouslyConfirmed);
+            compared, queued, priority, belowFloor, alreadyPending, previouslyRejected,
+            previouslyConfirmed, rescored, withdrawn);
     }
 }

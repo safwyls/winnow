@@ -1,0 +1,225 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Hoard.App.ViewModels"
+             x:Class="Hoard.App.Views.GameDetailsView"
+             x:DataType="vm:GameDetailsViewModel"
+             Focusable="True">
+
+    <!--
+        The game detail modal. design-system.md §5.3 caps the hover overlay at
+        four facts because "the tile is a decision surface, not a detail view" —
+        this is the detail view that cap presupposes.
+
+        Everything on this screen is a fact we hold. Year, publisher and summary
+        arrive with IGDB enrichment behind a library the user is already
+        browsing (§7), so each row is bound and simply absent until its fact
+        exists. No "Unknown", no grey placeholder line: a stand-in that becomes
+        real data an hour later teaches the user to distrust the whole panel.
+    -->
+
+    <UserControl.Styles>
+
+        <!-- Close affordance and patch-notes links: quiet until touched. -->
+        <Style Selector="Button.quiet">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
+            <Setter Property="Padding" Value="8,3"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="Button.quiet /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.quiet:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
+        </Style>
+
+        <Style Selector="Button.link TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource Azure}"/>
+        </Style>
+
+    </UserControl.Styles>
+
+    <Panel>
+
+        <!-- Scrim. Clicking it dismisses — §8's Escape is the keyboard half of
+             the same promise: nothing here traps the user. -->
+        <Border Name="Scrim" Background="#CC16112A" PointerPressed="OnScrimPressed"/>
+
+        <Border Background="{StaticResource Surface}"
+                BorderBrush="{StaticResource Line}"
+                BorderThickness="1"
+                CornerRadius="{StaticResource RadiusTile}"
+                BoxShadow="0 18 48 0 #A6000000"
+                MinWidth="620" MaxWidth="760" MaxHeight="640"
+                Margin="40"
+                HorizontalAlignment="Center" VerticalAlignment="Center">
+
+            <Grid RowDefinitions="Auto,*" Margin="24">
+
+                <!-- ── Head: cover, title, the facts the tile could not fit ── -->
+                <Grid Grid.Row="0" ColumnDefinitions="Auto,*" ColumnSpacing="24">
+
+                    <Border Grid.Column="0"
+                            Width="200" Height="300"
+                            CornerRadius="{StaticResource RadiusTile}"
+                            ClipToBounds="True"
+                            BorderThickness="1" BorderBrush="#993D3168"
+                            VerticalAlignment="Top">
+                        <Panel>
+                            <!-- Placeholder is the fallback, never a hole (§7). -->
+                            <Border Background="{Binding PlaceholderBrush}"
+                                    IsVisible="{Binding ShowPlaceholder}">
+                                <TextBlock Text="{Binding Title}"
+                                           FontFamily="{StaticResource DisplayFont}"
+                                           FontWeight="Bold" FontSize="22" LineHeight="24"
+                                           TextWrapping="Wrap" Foreground="White"
+                                           VerticalAlignment="Bottom" Margin="16"/>
+                            </Border>
+                            <!-- Full saturation: the ramp is a scanning aid for
+                                 the grid, and the user has already scanned. -->
+                            <Image Source="{Binding Cover}" Stretch="UniformToFill"/>
+                        </Panel>
+                    </Border>
+
+                    <StackPanel Grid.Column="1" Spacing="14">
+
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Grid.Column="0"
+                                       Classes="display-l"
+                                       Text="{Binding Title}"
+                                       TextWrapping="Wrap"
+                                       LineHeight="26"
+                                       Margin="0,0,12,0"/>
+                            <Button Grid.Column="1" Classes="quiet"
+                                    Name="CloseButton"
+                                    VerticalAlignment="Top"
+                                    Click="OnClosePressed"
+                                    ToolTip.Tip="Close (Esc)">
+                                <TextBlock Classes="body-l"
+                                           Foreground="{StaticResource TextDim}"
+                                           Text="×"/>
+                            </Button>
+                        </Grid>
+
+                        <!-- Store, bucket and (when known) year — the identity
+                             line. Bucket copy is §7's, never a raw key. -->
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Border BorderBrush="{StaticResource Line}" BorderThickness="1"
+                                    CornerRadius="3" Padding="6,2" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding StoreBadge}"
+                                           FontFamily="{StaticResource BodyFont}"
+                                           FontSize="9" LetterSpacing="0.54"
+                                           Foreground="{StaticResource TextDim}"/>
+                            </Border>
+                            <Border Background="{StaticResource SurfaceRaised}"
+                                    CornerRadius="3" Padding="6,2" VerticalAlignment="Center">
+                                <TextBlock Classes="body" FontSize="11"
+                                           Foreground="{StaticResource TextDim}"
+                                           Text="{Binding BucketLabel}"/>
+                            </Border>
+                            <TextBlock Classes="data" FontSize="11"
+                                       Foreground="{StaticResource TextDim}"
+                                       VerticalAlignment="Center"
+                                       IsVisible="{Binding HasReleaseYear}"
+                                       Text="{Binding ReleaseYearText}"/>
+                            <TextBlock Classes="body" FontSize="11"
+                                       Foreground="{StaticResource TextDim}"
+                                       VerticalAlignment="Center"
+                                       IsVisible="{Binding HasPublisher}"
+                                       Text="{Binding Publisher}"/>
+                        </StackPanel>
+
+                        <!-- Facts. Every number in Plex Mono, tabular (§3). -->
+                        <Grid ColumnDefinitions="*,*,*" RowDefinitions="Auto,Auto"
+                              ColumnSpacing="16" RowSpacing="4">
+                            <TextBlock Grid.Row="0" Grid.Column="0" Classes="label" Text="PLAYTIME"/>
+                            <TextBlock Grid.Row="0" Grid.Column="1" Classes="label" Text="LAST PLAYED"/>
+                            <TextBlock Grid.Row="0" Grid.Column="2" Classes="label" Text="IDLE"/>
+                            <TextBlock Grid.Row="1" Grid.Column="0" Classes="data" FontSize="14"
+                                       Text="{Binding PlaytimeText}"/>
+                            <TextBlock Grid.Row="1" Grid.Column="1" Classes="data" FontSize="14"
+                                       IsVisible="{Binding HasLastPlayedDate}"
+                                       Text="{Binding LastPlayedText}"/>
+                            <TextBlock Grid.Row="1" Grid.Column="1" Classes="body" FontSize="14"
+                                       IsVisible="{Binding LacksLastPlayedDate}"
+                                       Foreground="{StaticResource TextDim}"
+                                       Text="{Binding LastPlayedText}"/>
+                            <TextBlock Grid.Row="1" Grid.Column="2" Classes="data" FontSize="14"
+                                       Text="{Binding IdleText}"/>
+                        </Grid>
+
+                        <StackPanel Spacing="4">
+                            <TextBlock Classes="label" Text="ON DISK"/>
+                            <TextBlock Classes="body" Text="{Binding InstallText}"/>
+                            <TextBlock Classes="data-s"
+                                       Text="{Binding InstallPath}"
+                                       IsVisible="{Binding HasInstallPath}"
+                                       TextWrapping="Wrap"
+                                       TextTrimming="CharacterEllipsis"
+                                       MaxLines="2"/>
+                        </StackPanel>
+
+                    </StackPanel>
+                </Grid>
+
+                <!-- ── Body: summary, then what the user missed ───────────── -->
+                <ScrollViewer Grid.Row="1"
+                              Margin="0,20,0,0"
+                              IsVisible="{Binding HasBody}"
+                              HorizontalScrollBarVisibility="Disabled"
+                              VerticalScrollBarVisibility="Auto">
+                    <StackPanel Spacing="18">
+
+                        <StackPanel Spacing="6" IsVisible="{Binding HasSummary}">
+                            <TextBlock Classes="label" Text="ABOUT"/>
+                            <TextBlock Classes="body"
+                                       Foreground="{StaticResource TextDim}"
+                                       LineHeight="19"
+                                       TextWrapping="Wrap"
+                                       Text="{Binding Summary}"/>
+                        </StackPanel>
+
+                        <!-- §5.2: the badge exists so the user can go read what
+                             changed. Announcements carry a page; build pushes
+                             do not, and offering a dead link would be worse
+                             than offering none. -->
+                        <StackPanel Spacing="8" IsVisible="{Binding HasUpdates}">
+                            <TextBlock Classes="label" Text="{Binding UpdatesHeading}"/>
+                            <ItemsControl ItemsSource="{Binding Updates}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="vm:UpdateEventViewModel">
+                                        <Border BorderBrush="{StaticResource Line}"
+                                                BorderThickness="0,0,0,1"
+                                                Padding="0,8">
+                                            <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="12">
+                                                <TextBlock Grid.Column="0" Classes="body"
+                                                           Text="{Binding Headline}"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           VerticalAlignment="Center"/>
+                                                <TextBlock Grid.Column="1" Classes="data-s"
+                                                           Text="{Binding DateText}"
+                                                           VerticalAlignment="Center"/>
+                                                <Button Grid.Column="2"
+                                                        Classes="quiet link"
+                                                        IsVisible="{Binding HasUrl}"
+                                                        Click="OnUpdateLinkPressed"
+                                                        ToolTip.Tip="{Binding Url}">
+                                                    <TextBlock Classes="body" FontSize="12"
+                                                               Text="Patch notes"/>
+                                                </Button>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+
+                    </StackPanel>
+                </ScrollViewer>
+
+            </Grid>
+        </Border>
+    </Panel>
+
+</UserControl>

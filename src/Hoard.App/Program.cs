@@ -112,7 +112,13 @@ public static class Program
                         // next launch, which is not what §7's copy promises.
                         // New update events move bucket membership, so they need
                         // the same refresh — that is the unread badge appearing.
+                        // MetadataFilled, not just Promoted: after the first run
+                        // every title is already real, so a pass that back-fills
+                        // years, publishers and summaries for hundreds of works
+                        // promotes nothing — and the detail view would keep
+                        // showing the gaps until the next launch.
                         if (report.Promoted > 0
+                            || report.MetadataFilled > 0
                             || poll.AnnouncementsRecorded > 0
                             || poll.BuildPushesRecorded > 0)
                         {

@@ -102,6 +102,7 @@ public sealed class ReleaseRepository : IReleaseRepository
                    r.name                AS ReleaseName,
                    w.name                AS WorkName,
                    w.first_release_year  AS FirstReleaseYear,
+                   w.publisher           AS Publisher,
                    w.name_is_provisional AS NameIsProvisional
             FROM releases r
             JOIN works w ON w.id = r.work_id

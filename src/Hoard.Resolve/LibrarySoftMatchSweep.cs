@@ -180,8 +180,10 @@ public sealed class LibrarySoftMatchSweep
         stopwatch.Stop();
         _logger.LogInformation(
             "Soft-match sweep: {Releases} releases ({Excluded} excluded), {Blocks} blocks, "
-            + "{Pairs} pairs proposed, {Queued} queued for review in {Elapsed:n1}s.{Truncated}",
-            entries.Count, excluded, blocks, pairs, outcome.Queued, stopwatch.Elapsed.TotalSeconds,
+            + "{Pairs} pairs proposed, {Queued} queued for review, {Rescored} rescored on new "
+            + "metadata, {Withdrawn} withdrawn, in {Elapsed:n1}s.{Truncated}",
+            entries.Count, excluded, blocks, pairs, outcome.Queued, outcome.Rescored,
+            outcome.Withdrawn, stopwatch.Elapsed.TotalSeconds,
             truncated ? " Pass was truncated at the comparison ceiling and will resume next run." : string.Empty);
 
         return new SoftMatchSweepReport(
@@ -223,11 +225,11 @@ public sealed class LibrarySoftMatchSweep
                     ReleaseId = identity.ReleaseId,
                     Title = identity.MatchTitle,
                     ReleaseYear = identity.FirstReleaseYear,
+                    Publisher = identity.Publisher,
 
-                    // Publisher and cover hash have no column and no pipeline in
-                    // M1 (see ReleaseIdentity). Left null so the signals do not
-                    // fire, rather than guessed at.
-                    Publisher = null,
+                    // Cover hash still has no pipeline in M1 — Hoard.Resolve
+                    // owns matching, not imaging (see ICoverHashSource). Left
+                    // null so the signal does not fire, rather than guessed at.
                     CoverPerceptualHash = null,
                 },
                 normalized,

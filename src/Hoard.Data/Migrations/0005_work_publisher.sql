@@ -1,0 +1,73 @@
+-- 0005_work_publisher.sql — the missing soft-match signal.
+-- Append-only: never edit this file once shipped; add 0006_*.sql instead.
+--
+-- §5.3 names four soft-match signals: "normalised title + release year within
+-- ±1, publisher match, cover perceptual hash". Three of them had somewhere to
+-- live. Publisher did not, so `SoftMatcher.PublisherSignal` has never once
+-- fired on a library-internal pair: every comparison reported "publisher
+-- unknown on at least one side" and contributed 0.00, which means every pair in
+-- the queue was scored on title alone. That is the exact failure §5.3 warns
+-- about — a fuzzy title matcher with no corroboration is how Prey (2006) meets
+-- Prey (2017).
+--
+-- ── ONE publisher, not a list ────────────────────────────────────────────────
+--
+-- IGDB returns publishers as a LIST (`involved_companies` rows flagged
+-- `publisher = true`); a game can have a developer-publisher plus regional
+-- co-publishers. The matcher compares a single normalised string with ordinal
+-- equality, so the column stores ONE name and the writer picks it
+-- deterministically: the ordinal-first name of the publisher list
+-- (`EnrichmentSyncService.PrimaryPublisher`).
+--
+-- Verified against the live API, not assumed: The Witcher 3 (igdb 1942) returns
+-- four publishers — WB Games, cdp.pl, Spike Chunsoft, Bandai Namco — in an
+-- order that is regional rather than meaningful, and KKnD2 returns three.
+-- Single-publisher games (Breath of the Wild → Nintendo) are the easy case, not
+-- the common one.
+--
+-- Why one string rather than a joined list or a child table:
+--
+--   * A joined list ("Bethesda Softworks; ZeniMax") compares as a whole. Two
+--     rows for the same game that differ by one regional co-publisher — or by
+--     list ORDER — would then read as a publisher MISMATCH and take a -0.15
+--     penalty, which is worse than the signal not firing at all. Turning a
+--     corroborating signal into an active source of false negatives is not an
+--     improvement.
+--   * A `work_publishers` child table would model it properly, but §6's schema
+--     does not have one and set-overlap scoring is a matcher change, not a
+--     column. Not invented here on speculation.
+--   * Determinism is what actually matters for the duplicate case. The pair we
+--     care about is two library rows for the SAME game under different store
+--     ids: both resolve to the same IGDB game, so both see the same publisher
+--     list, so an order-independent pick (ordinal-first) yields the same string
+--     on both sides and the signal fires. Picking "whatever IGDB listed first"
+--     would not survive IGDB reordering its rows between two fetches.
+--
+-- Lossy on purpose, and recoverable: the full publisher list — with genres and
+-- themes from the same `/games` response — is already persisted verbatim in
+-- `metadata_cache` (provider 'igdb', key 'game:<id>'), so nothing is thrown
+-- away and a later milestone that wants set overlap, or §6.1's per-genre bounce
+-- thresholds, can build its table from data already on disk without spending a
+-- single request.
+--
+-- ── No genre/theme columns ───────────────────────────────────────────────────
+--
+-- §6.1 flags per-genre bounce thresholds as a FUTURE need whose source is still
+-- [VERIFY] (HowLongToBeat normalisation vs. per-genre config). §6's schema has
+-- no genre column and inventing one now would guess the shape of a decision
+-- that has not been made. The data is free at fetch time and is kept — see
+-- above — so the cost of waiting is zero.
+--
+-- ── NULL is meaningful ───────────────────────────────────────────────────────
+--
+-- NULL means "we do not know", and the matcher treats it as absent evidence
+-- that contributes nothing rather than as a mismatch (SoftMatchThresholds:
+-- absent evidence is never renormalised away). Enrichment never writes a blank
+-- string, and never overwrites a real value with NULL.
+--
+-- No index. The enrichment backfill asks "which works are missing ANY of
+-- igdb_id / year / summary / cover_url / publisher", a disjunction no single
+-- index can serve; over a 616-row table that is a scan of well under a page of
+-- data, and it returns nothing once the backlog is drained.
+
+ALTER TABLE works ADD COLUMN publisher TEXT;
