@@ -50,7 +50,7 @@ public class CoverSourceFailureTests
         }
 
         Assert.False(File.Exists(disk.NegativePath(key)), "a 403 wrote a 30-day .none marker");
-        Assert.False(disk.IsKnownMissing(key));
+        Assert.False(disk.IsKnownMissing(key, CoverSourceSet.Identity([SteamOnly])));
 
         // The CDN recovers; the grid does too, with no cache to clear.
         var healthy = new FakeCoverCdn();
@@ -78,8 +78,14 @@ public class CoverSourceFailureTests
         Assert.Null(await pipeline.GetAsync(key, 320));
 
         Assert.True(File.Exists(disk.NegativePath(key)));
-        Assert.True(disk.IsKnownMissing(key));
+
+        // The marker is only believed under the source set that wrote it — here
+        // Steam alone, which is what TempCoverDirectory.Pipeline registers.
+        Assert.True(disk.IsKnownMissing(key, CoverSourceSet.Identity([SteamOnly])));
     }
+
+    /// <summary>The one source <see cref="TempCoverDirectory.Pipeline"/> registers.</summary>
+    private const string SteamOnly = "steam-capsule";
 
     /// <summary>
     /// Temp names must be unique across processes, not merely across threads: a

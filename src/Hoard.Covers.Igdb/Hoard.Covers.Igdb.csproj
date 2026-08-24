@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Hoard.Covers.Igdb</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.11" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      The whole reason this project exists. Hoard.Covers is deliberately
+      source-agnostic — it knows about ICoverSource and nothing about who
+      implements one — so the dependency on the IGDB client lives out here,
+      where only the composition root ever sees it. Hoard.Covers must never
+      reference Hoard.Enrich.Igdb; if it did, every consumer of the cover cache
+      would inherit a credential-shaped dependency it has no use for.
+    -->
+    <ProjectReference Include="..\Hoard.Covers\Hoard.Covers.csproj" />
+    <ProjectReference Include="..\Hoard.Enrich.Igdb\Hoard.Enrich.Igdb.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Hoard.Covers.Tests" />
+  </ItemGroup>
+
+</Project>

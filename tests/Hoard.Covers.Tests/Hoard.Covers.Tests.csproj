@@ -13,6 +13,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Hoard.Covers\Hoard.Covers.csproj" />
+    <ProjectReference Include="..\..\src\Hoard.Covers.Igdb\Hoard.Covers.Igdb.csproj" />
     <!-- The floor-variant test asserts the cache's colour matrix and
          PlaceholderArt.ToFloor land on the same pixel: one dormancy floor, two
          renderers. -->

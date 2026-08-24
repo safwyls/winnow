@@ -49,6 +49,16 @@ public sealed class CoverPipeline : IDisposable
         _fetchGate = new SemaphoreSlim(Math.Max(1, options.MaxConcurrentFetches));
     }
 
+    /// <summary>
+    /// The <see cref="CoverSourceSet"/> identity a negative marker for
+    /// <paramref name="key"/> is valid under. Computed per call rather than
+    /// cached in the constructor because a source may only learn late whether it
+    /// can answer at all — IGDB reports a different identity before and after it
+    /// finds credentials, which is what makes "configure IGDB" reopen the
+    /// negatives written while it was silent.
+    /// </summary>
+    public string SourceSetIdFor(CoverKey key) => CoverSourceSet.Identity(_sources, key);
+
     /// <summary>Whether every source has already declined this key (memory or disk marker).</summary>
     public bool IsKnownMissing(CoverKey key)
     {
@@ -57,7 +67,7 @@ public sealed class CoverPipeline : IDisposable
             return true;
         }
 
-        if (!_disk.IsKnownMissing(key))
+        if (!_disk.IsKnownMissing(key, SourceSetIdFor(key)))
         {
             return false;
         }
@@ -98,7 +108,7 @@ public sealed class CoverPipeline : IDisposable
             if (bytes is null)
             {
                 _knownMissing[key] = true;
-                _disk.MarkMissing(key);
+                _disk.MarkMissing(key, SourceSetIdFor(key));
                 return null;
             }
 

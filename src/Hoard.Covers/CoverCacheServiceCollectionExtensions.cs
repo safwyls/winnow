@@ -34,16 +34,37 @@ public static class CoverCacheServiceCollectionExtensions
             return options;
         });
 
+        services.AddCoverImageHttpClient(SteamCapsuleSource.HttpClientName);
+
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<ICoverSource, SteamCapsuleSource>());
+        services.TryAddSingleton<CoverDiskCache>();
+        services.TryAddSingleton<CoverPipeline>();
+        services.TryAddSingleton<ICoverCache, CoverCache>();
+
+        return services;
+    }
+
+    /// <summary>
+    /// A named <see cref="HttpClient"/> for pulling cover art off a public,
+    /// unauthenticated image CDN: identifying User-Agent, 30 second timeout, and
+    /// the retry policy below. Shared so that a cover source added outside this
+    /// assembly — <c>Hoard.Covers.Igdb</c> — inherits the conventions rather
+    /// than approximating them.
+    /// </summary>
+    public static IServiceCollection AddCoverImageHttpClient(this IServiceCollection services, string name)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+
         services
-            .AddHttpClient(SteamCapsuleSource.HttpClientName, client =>
+            .AddHttpClient(name, client =>
             {
-                // Descriptive and contactable: this is an unauthenticated public
-                // CDN and we would rather be identified than rate-limited.
+                // Descriptive and contactable: these are unauthenticated public
+                // CDNs and we would rather be identified than rate-limited.
                 client.DefaultRequestHeaders.UserAgent.ParseAdd(
                     "Hoard/0.1 (+https://github.com/hoard-app/hoard; local-first game library manager)");
                 client.Timeout = TimeSpan.FromSeconds(30);
             })
-            .AddResilienceHandler("hoard-covers", builder => builder
+            .AddResilienceHandler(name, builder => builder
                 .AddRetry(new HttpRetryStrategyOptions
                 {
                     MaxRetryAttempts = 3,
@@ -72,11 +93,6 @@ public static class CoverCacheServiceCollectionExtensions
                         }
                         || (int?)args.Outcome.Result?.StatusCode >= 500),
                 }));
-
-        services.TryAddEnumerable(ServiceDescriptor.Singleton<ICoverSource, SteamCapsuleSource>());
-        services.TryAddSingleton<CoverDiskCache>();
-        services.TryAddSingleton<CoverPipeline>();
-        services.TryAddSingleton<ICoverCache, CoverCache>();
 
         return services;
     }

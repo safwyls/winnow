@@ -13,7 +13,9 @@ namespace Hoard.Covers;
 /// re-derives from its retained <c>.src.jpg</c>, with no re-fetching.</item>
 /// <item><c>{stem}.none</c> — a negative marker. A 404 is a normal outcome and
 /// must not cost a request on every launch; the file's write time carries the
-/// TTL.</item>
+/// TTL and its contents carry the <see cref="CoverSourceSet"/> identity that
+/// produced it, so registering a new source retires prior negatives instead of
+/// leaving the user a month of placeholder art.</item>
 /// </list>
 /// Writes are temp-file + move, so a kill mid-write never leaves a truncated
 /// JPEG that would decode as garbage on the next run.
@@ -43,12 +45,28 @@ public sealed class CoverDiskCache
 
     public string NegativePath(CoverKey key) => Path.Combine(Root, key.CacheStem + ".none");
 
-    /// <summary>True when a previous run established this key has no art anywhere, still within TTL.</summary>
-    public bool IsKnownMissing(CoverKey key)
+    /// <summary>
+    /// True when a previous run established this key has no art anywhere, still
+    /// within TTL <em>and</em> still under the same set of sources.
+    ///
+    /// <para>A marker whose recorded identity differs from
+    /// <paramref name="sourceSetId"/> is deleted and reported as unknown: the
+    /// question it answered is not the question being asked. Markers written
+    /// before identities existed are empty files, so they fail the comparison
+    /// too and are retried — which is precisely what should happen to every
+    /// <c>.none</c> that Steam wrote while it was the only source.</para>
+    /// </summary>
+    public bool IsKnownMissing(CoverKey key, string sourceSetId)
     {
         var path = NegativePath(key);
         if (!File.Exists(path))
         {
+            return false;
+        }
+
+        if (!string.Equals(ReadMarkerSourceSet(path), sourceSetId, StringComparison.Ordinal))
+        {
+            TryDelete(path);
             return false;
         }
 
@@ -62,10 +80,43 @@ public sealed class CoverDiskCache
         return false;
     }
 
-    public void MarkMissing(CoverKey key)
+    /// <summary>
+    /// Records that every source in <paramref name="sourceSetId"/> declined.
+    /// The identity is the payload — see <see cref="IsKnownMissing"/>.
+    /// </summary>
+    public void MarkMissing(CoverKey key, string sourceSetId)
     {
         EnsureRoot();
-        WriteAtomic(NegativePath(key), []);
+        WriteAtomic(NegativePath(key), System.Text.Encoding.UTF8.GetBytes(sourceSetId ?? string.Empty));
+    }
+
+    /// <summary>
+    /// The identity stamped on a marker, or <see langword="null"/> when it
+    /// carries none (a pre-identity marker) or cannot be read.
+    /// </summary>
+    private static string? ReadMarkerSourceSet(string path)
+    {
+        try
+        {
+            var info = new FileInfo(path);
+            if (info.Length is 0 or > CoverSourceSet.MaxLength)
+            {
+                return null;
+            }
+
+            var text = System.Text.Encoding.UTF8.GetString(File.ReadAllBytes(path)).Trim();
+            return text.Length == 0 ? null : text;
+        }
+        catch (IOException)
+        {
+            // A concurrent write. Treat as unreadable; the caller retries the
+            // fetch, which is the safe direction to be wrong in.
+            return null;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return null;
+        }
     }
 
     public bool TryReadSource(CoverKey key, out byte[] bytes) => TryRead(SourcePath(key), out bytes);

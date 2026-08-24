@@ -29,6 +29,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Hoard.Core\Hoard.Core.csproj" />
     <ProjectReference Include="..\Hoard.Covers\Hoard.Covers.csproj" />
+    <ProjectReference Include="..\Hoard.Covers.Igdb\Hoard.Covers.Igdb.csproj" />
     <ProjectReference Include="..\Hoard.Data\Hoard.Data.csproj" />
     <ProjectReference Include="..\Hoard.Enrich.Igdb\Hoard.Enrich.Igdb.csproj" />
     <ProjectReference Include="..\Hoard.Enrich.Steam\Hoard.Enrich.Steam.csproj" />
@@ -38,4 +39,5 @@
   </ItemGroup>
 
 </Project>
+
 

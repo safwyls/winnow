@@ -4,6 +4,7 @@ using Hoard.App.Services;
 using Hoard.App.ViewModels;
 using Hoard.Core.Repositories;
 using Hoard.Covers;
+using Hoard.Covers.Igdb;
 using Hoard.Data;
 using Hoard.Data.Repositories;
 using Hoard.Enrich.Igdb;
@@ -227,6 +228,13 @@ public static class Program
         // procedural placeholder art — the grid still works, which is exactly
         // what makes the omission easy to miss.
         services.AddCoverCache();
+
+        // MUST come after AddCoverCache(): CoverPipeline takes the first source
+        // that answers, in registration order. Steam's 600x900 portrait capsule
+        // is the design system's specified art (§11) and stays first; IGDB only
+        // sees keys Steam declined. Registered before it, IGDB would silently
+        // replace the art on ~520 tiles that were never in question.
+        services.AddIgdbCoverSource();
 
         // Enrichment. IGDB is the designed backbone (§4.4) and wins conflicts;
         // the keyless Steam store endpoint is the fallback that keeps titles

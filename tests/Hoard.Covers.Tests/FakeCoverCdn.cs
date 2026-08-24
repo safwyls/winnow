@@ -23,6 +23,14 @@ internal class FakeCoverCdn : HttpMessageHandler, IHttpClientFactory
     public void AddCapsule(string appId, byte[] jpeg)
         => _files[$"/steam/apps/{appId}/library_600x900_2x.jpg"] = jpeg;
 
+    /// <summary>
+    /// Serves <paramref name="jpeg"/> at one IGDB image rendition. The size
+    /// token is part of the path, so a test that registers only the 2x token
+    /// proves which rendition was asked for: anything else 404s.
+    /// </summary>
+    public void AddIgdbCover(string imageId, byte[] jpeg, string sizeToken = "t_cover_big_2x")
+        => _files[$"/igdb/image/upload/{sizeToken}/{imageId}.jpg"] = jpeg;
+
     public HttpClient CreateClient(string name) => new(this, disposeHandler: false)
     {
         BaseAddress = null,
@@ -99,8 +107,12 @@ internal sealed class TempCoverDirectory : IDisposable
     {
         options ??= Options();
         var source = new SteamCapsuleSource(cdn, options, NullLogger<SteamCapsuleSource>.Instance);
-        return new CoverPipeline([source], new CoverDiskCache(options), options, NullLogger<CoverPipeline>.Instance);
+        return Pipeline(options, source);
     }
+
+    /// <summary>A pipeline over an explicit source list — registration order is resolution order.</summary>
+    public CoverPipeline Pipeline(CoverCacheOptions options, params ICoverSource[] sources)
+        => new(sources, new CoverDiskCache(options), options, NullLogger<CoverPipeline>.Instance);
 
     public void Dispose()
     {
