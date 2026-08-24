@@ -1,4 +1,4 @@
-namespace Hoard.Resolve.Matching;
+namespace Hoard.Core.Matching;
 
 /// <summary>
 /// The structured result of running a raw store title through

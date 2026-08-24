@@ -11,10 +11,11 @@
 
     <!--
         M0 library shell — design-system.md §4 layout, §6 components, and the
-        mock's rail / command bar / cover wall. This is the ONE view that
-        touches ItemsRepeater (docs/spikes/avalonia-dormancy-rendering.md:
-        isolate it so the post-12.0 swap to a virtualizing uniform panel is a
-        single-file change).
+        mock's rail / command bar / cover wall. The cover grid is
+        views:CoverWall, the project's own virtualizing uniform panel — the swap
+        docs/spikes/avalonia-dormancy-rendering.md planned for after 12.0,
+        brought forward because ItemsRepeater's UniformGridLayout could not hold
+        §4's flush-row geometry (CoverWall's remarks carry the measurements).
     -->
 
     <Window.Styles>
@@ -501,26 +502,24 @@
                               HorizontalScrollBarVisibility="Disabled"
                               VerticalScrollBarVisibility="Auto"
                               Padding="0">
-                    <!-- ItemsSource is assigned from code-behind, not bound: the
-                         repeater's realization state does not survive being
-                         hidden behind list view, and re-seating the source is
-                         what forces it to rebuild. See MainWindow.RefreshGrid. -->
-                    <ItemsRepeater Name="TileRepeater"
-                                   Margin="20">
-                        <ItemsRepeater.Layout>
-                            <UniformGridLayout MinItemWidth="148"
-                                               MinItemHeight="222"
-                                               MinColumnSpacing="16"
-                                               MinRowSpacing="16"
-                                               ItemsStretch="None"
-                                               ItemsJustification="Start"/>
-                        </ItemsRepeater.Layout>
-                        <ItemsRepeater.ItemTemplate>
+                    <!-- The wall owns its own geometry: it divides the width it
+                         is measured with, so the column count it realizes
+                         against and the column count it arranges with are the
+                         same number, from the same expression, every pass. That
+                         is the whole reason it exists instead of ItemsRepeater
+                         + UniformGridLayout — see CoverWall's remarks. -->
+                    <views:CoverWall Name="TileWall"
+                                     Margin="20"
+                                     Spacing="16"
+                                     CellAspect="1.5"
+                                     MinCellWidth="{Binding Library.TileWidth}"
+                                     ItemsSource="{Binding Library.VisibleTiles}">
+                        <views:CoverWall.ItemTemplate>
                             <DataTemplate DataType="vm:GameTileViewModel">
                                 <views:GameTileView PointerPressed="OnTilePressed"/>
                             </DataTemplate>
-                        </ItemsRepeater.ItemTemplate>
-                    </ItemsRepeater>
+                        </views:CoverWall.ItemTemplate>
+                    </views:CoverWall>
                 </ScrollViewer>
 
                 <!-- ── List view (§6) ──────────────────────────────────────

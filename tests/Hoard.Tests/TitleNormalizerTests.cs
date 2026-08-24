@@ -1,4 +1,4 @@
-using Hoard.Resolve.Matching;
+using Hoard.Core.Matching;
 using Xunit;
 
 namespace Hoard.Tests;

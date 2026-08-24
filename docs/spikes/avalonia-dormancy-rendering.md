@@ -2,6 +2,18 @@
 
 **Settles:** design-system.md §5.4 [VERIFY]. Researched 2026-08-23 against Avalonia 11.3.x (current stable line).
 
+> **Superseded in part, 2026-08-24 — the ItemsRepeater recommendation only.** The dormancy
+> findings below all still hold and the two-layer cross-fade shipped as described. But
+> `ItemsRepeater` was removed from the app: its `UniformGridLayout` computes items-per-line
+> for the scroll anchor as `floor(available / (itemWidth + spacing))`, charging every item
+> for a trailing gutter, while `FlowLayoutAlgorithm` packs rows greedily and fits one more.
+> §4's flush-row geometry makes that disagreement permanent at every window width — measured
+> at 1180px: anchored on 4 per line while arranging 5, an orphaned tile at every anchor
+> index, line origins drifting ~25%, and a scroll extent 22% longer than the content. The
+> cover wall is now `src/Hoard.App/Views/CoverWall.cs`, a purpose-built virtualizing panel
+> whose quantities are all closed-form, so there is nothing to drift. Do not reintroduce the
+> package. Everything else in this document stands.
+
 ## Findings on the four candidate approaches
 
 1. **Built-in Effect API — NOT AVAILABLE.** Avalonia 11.x ships exactly three effects: `BlurEffect`,

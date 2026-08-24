@@ -3,7 +3,6 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
-using Avalonia.Layout;
 using Avalonia.Threading;
 using Hoard.App.ViewModels;
 
@@ -12,35 +11,20 @@ namespace Hoard.App.Views;
 /// <summary>
 /// The library shell's behaviour: the §8 keyboard floor (arrows across the
 /// grid, <c>/</c> to search, <c>Enter</c> to open the selection, <c>Escape</c>
-/// to close), tile selection, list-view selection, and the tile sizing that
-/// keeps the cover wall on its 2:3 geometry as the density slider and the
-/// window width change.
+/// to close), tile selection, and list-view selection. The cover wall's own
+/// geometry lives in <see cref="CoverWall"/>, which divides the width it is
+/// measured with — the view no longer computes a cell size and pushes it into a
+/// layout object that is measured separately.
 /// </summary>
 public partial class MainWindow : Window
 {
-    private const double GridPadding = 20;
-    private const double Gutter = 16;
-
     private LibraryViewModel? _library;
     private MainWindowViewModel? _shell;
-
-    /// <summary>Live column count — what up/down arrow moves selection by in the grid.</summary>
-    private int _columns = 1;
-
-    /// <summary>
-    /// Set while the cover wall is hidden. A hidden ScrollViewer measures to
-    /// zero, so any geometry computed during that time is meaningless and the
-    /// repeater's realization state was built against a zero viewport — the
-    /// first pass after it comes back has to be forced, not skipped because the
-    /// numbers happen to match.
-    /// </summary>
-    private bool _gridGeometryStale = true;
 
     public MainWindow()
     {
         InitializeComponent();
 
-        GridScroll.SizeChanged += (_, _) => UpdateTileGeometry();
         DetailsPanel.CloseRequested += (_, _) => _library?.CloseDetailsCommand.Execute(null);
     }
 
@@ -60,15 +44,11 @@ public partial class MainWindow : Window
         {
             _library.PropertyChanged += OnLibraryPropertyChanged;
         }
-
-        UpdateTileGeometry();
     }
 
     protected override async void OnOpened(EventArgs e)
     {
         base.OnOpened(e);
-
-        UpdateTileGeometry();
 
         if (_library is { } library)
         {
@@ -145,7 +125,7 @@ public partial class MainWindow : Window
 
         // Up/down walks rows in list view and whole rows of tiles in the grid;
         // the two views are the same sequence read at different widths.
-        var verticalStep = _library.IsGridView ? _columns : 1;
+        var verticalStep = _library.IsGridView ? TileWall.Columns : 1;
 
         switch (e.Key)
         {
@@ -181,8 +161,40 @@ public partial class MainWindow : Window
                 _library.OpenDetailsCommand.Execute(_library.SelectedTile);
                 e.Handled = true;
                 break;
+
+#if DEBUG
+            // --grid-probe writes the wall's realized cell rects to
+            // %TEMP%\hoard-grid-debug.txt. The dead-space bug was invisible in
+            // a screenshot until you could read the anchor's cell position, so
+            // the probe that found it stays reachable.
+            case Key.F9 when Environment.GetCommandLineArgs().Contains("--grid-probe"):
+                DumpGridDiagnostics();
+                e.Handled = true;
+                break;
+#endif
         }
     }
+
+#if DEBUG
+    private void DumpGridDiagnostics()
+    {
+        var text = new System.Text.StringBuilder();
+        text.AppendLine($"scroll offset={GridScroll.Offset} viewport={GridScroll.Viewport} extent={GridScroll.Extent}");
+        text.AppendLine($"wall bounds={TileWall.Bounds} desired={TileWall.DesiredSize} columns={TileWall.Columns} tiles={_library?.VisibleTiles.Count}");
+
+        foreach (var child in TileWall.Children)
+        {
+            if (child.IsVisible && child.DataContext is GameTileViewModel tile)
+            {
+                text.AppendLine($"  {child.Bounds} {tile.Title}");
+            }
+        }
+
+        File.AppendAllText(
+            Path.Combine(Path.GetTempPath(), "hoard-grid-debug.txt"),
+            $"=== {DateTime.Now:HH:mm:ss.fff} ===\n{text}\n");
+    }
+#endif
 
     /// <summary>
     /// The §8 keyboard floor for the merge confirm queue: arrows walk the
@@ -298,29 +310,13 @@ public partial class MainWindow : Window
     {
         switch (e.PropertyName)
         {
-            // VisibleTiles matters as much as the size properties: on first open
-            // the scroll viewer can still be zero-width when OnOpened measures,
-            // so the repeater would otherwise keep the one-column fallback
-            // geometry it was given before the library finished loading.
-            case nameof(LibraryViewModel.TileWidth):
-            case nameof(LibraryViewModel.TileHeight):
-                UpdateTileGeometry();
-                break;
-
             // The visible set changed under a viewport that is still scrolled
             // to wherever the previous, longer set had been left. Nothing
-            // re-anchors it, so a filter down to three tiles leaves the user
-            // looking at empty space below the content.
+            // re-anchors it, so a filter down to three tiles would leave the
+            // user looking at empty space below the content.
             case nameof(LibraryViewModel.VisibleTiles):
-                RefreshGrid();
-                break;
-
             case nameof(LibraryViewModel.IsGridView):
-                // A hidden ScrollViewer measured to zero while the other view
-                // was up; force the wall to lay out again now that it has a
-                // viewport, and start it at the top like any other view change.
-                _gridGeometryStale = true;
-                RefreshGrid();
+                ResetScroll();
                 break;
 
             case nameof(LibraryViewModel.Details):
@@ -336,50 +332,26 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Rebuilds the cover wall for a new visible set — the fix for both halves
-    /// of the "blank grid" report, and the reason <c>ItemsSource</c> is not
-    /// simply bound in XAML.
+    /// Sends both views back to the top. The offset belongs to the scroll
+    /// viewer, not to the list it happens to be showing: filter 616 tiles down
+    /// to three and nothing re-anchors it, so the viewport stays where the long
+    /// set left it — far past the end of the short one — and the user sees empty
+    /// space. Switching views is the same case, since the two panes scroll
+    /// independently and only one of them is ever measured.
     ///
-    /// <para><b>Scroll offset.</b> The offset belongs to the scroll viewer, not
-    /// to the list it happens to be showing. Filter 616 tiles down to three and
-    /// nothing re-anchors it: the viewport stays where the long set left it,
-    /// far past the end of the short one, and the user sees empty space.</para>
-    ///
-    /// <para><b>Realization state.</b> An <c>ItemsRepeater</c> hidden behind
-    /// list view is measured against a zero viewport and unrealizes; when the
-    /// grid comes back, invalidating measure is not enough to rebuild what it
-    /// threw away, and the wall comes back with a partial last row and
-    /// containers still holding the previous set's items. Re-seating
-    /// <c>ItemsSource</c> forces a clean rebuild. It costs one re-realization of
-    /// the ~15 containers actually on screen — virtualization means the other
-    /// 600 were never built either way.</para>
+    /// <para>This is the whole of what the view has to do about a set change.
+    /// <see cref="CoverWall"/> recomputes its geometry and its realized rows
+    /// from the item count on the next measure pass, so there is nothing to
+    /// re-seat and nothing that can be left describing the previous set.</para>
     /// </summary>
-    private void RefreshGrid()
+    private void ResetScroll()
     {
-        // Geometry first: the cell size has to be right before anything is
-        // realized into it, or the rebuild lays out at the previous width.
-        UpdateTileGeometry();
-
         GridScroll.Offset = new Vector(0, 0);
 
         if (ListRows.Scroll is { } listScroll)
         {
             listScroll.Offset = new Vector(0, 0);
         }
-
-        ReseatItems();
-    }
-
-    /// <summary>
-    /// Hands the repeater its items again from scratch. Null first: assigning
-    /// the same collection instance would be a no-op, and assigning a different
-    /// one still lets the repeater try to reuse a realization window that no
-    /// longer describes anything.
-    /// </summary>
-    private void ReseatItems()
-    {
-        TileRepeater.ItemsSource = null;
-        TileRepeater.ItemsSource = _library?.VisibleTiles;
     }
 
     private void MoveSelection(int delta)
@@ -397,70 +369,9 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (TileRepeater.TryGetElement(index) is { } element)
-        {
-            element.BringIntoView();
-        }
-    }
-
-    /// <summary>
-    /// Reflows on available width rather than a fixed column count (§4). The
-    /// density slider sets the *minimum* tile width; the row then divides the
-    /// remaining space evenly and height follows at 2:3, so the wall keeps its
-    /// portrait capsule geometry at every window size.
-    /// </summary>
-    private void UpdateTileGeometry()
-    {
-        if (_library is null || TileRepeater.Layout is not UniformGridLayout layout)
-        {
-            return;
-        }
-
-        // Viewport, not Bounds: Bounds includes the vertical scrollbar, and
-        // overstating the width by its thickness pushes the last column past
-        // the right edge of the visible area, where the presenter clips it.
-        var width = GridScroll.Viewport.Width > 0 ? GridScroll.Viewport.Width : GridScroll.Bounds.Width;
-        var available = width - (GridPadding * 2);
-        if (available <= 0)
-        {
-            // Hidden, or not laid out yet. Writing a one-column fallback here
-            // is what used to leave the wall wrong until something else moved;
-            // leaving the last good geometry alone costs nothing, because the
-            // SizeChanged that follows a real layout will call back in.
-            _gridGeometryStale = true;
-            return;
-        }
-
-        var minWidth = _library.TileWidth;
-
-        var columns = (int)Math.Floor((available + Gutter) / (minWidth + Gutter));
-        _columns = Math.Max(1, columns);
-
-        var tileWidth = Math.Max(minWidth, (available - ((_columns - 1) * Gutter)) / _columns);
-
-        var wasStale = _gridGeometryStale;
-        if (!wasStale && Math.Abs(layout.MinItemWidth - tileWidth) < 0.5)
-        {
-            return;
-        }
-
-        _gridGeometryStale = false;
-
-        // The first real measurement after the wall was hidden. RefreshGrid's
-        // re-seat ran while the viewport was still zero, so the repeater had
-        // nothing to realize against; do it again now that it has.
-        if (wasStale)
-        {
-            Dispatcher.UIThread.Post(ReseatItems, DispatcherPriority.Loaded);
-        }
-
-        layout.MinItemWidth = tileWidth;
-        layout.MinItemHeight = tileWidth * 1.5;
-
-        // UniformGridLayout is an AvaloniaObject, not a Visual — writing its
-        // properties does not invalidate the repeater that hosts it, so items
-        // already realised keep the previous cell size until something else
-        // forces a pass.
-        TileRepeater.InvalidateMeasure();
+        // The target is usually not realized — selection can jump a hundred
+        // rows — so the wall scrolls to the cell, and the scroll is what
+        // realizes the container.
+        TileWall.ScrollIntoView(index);
     }
 }

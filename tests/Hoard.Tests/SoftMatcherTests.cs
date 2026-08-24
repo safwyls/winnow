@@ -1,3 +1,4 @@
+using Hoard.Core.Matching;
 using Hoard.Resolve.Matching;
 using Xunit;
 

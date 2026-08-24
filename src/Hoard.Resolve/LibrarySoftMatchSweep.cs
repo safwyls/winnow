@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Hoard.Core.Matching;
 using Hoard.Core.Queries;
 using Hoard.Core.Repositories;
 using Hoard.Resolve.Matching;

@@ -1,3 +1,5 @@
+using Hoard.Core.Matching;
+
 namespace Hoard.Resolve.Matching;
 
 /// <summary>Where a scored pair lands. Note that none of these means "merge it".</summary>

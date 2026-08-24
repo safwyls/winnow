@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Hoard.Core.Matching;
 
 namespace Hoard.Resolve.Matching;
 

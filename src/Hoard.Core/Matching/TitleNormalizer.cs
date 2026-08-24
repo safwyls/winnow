@@ -2,11 +2,23 @@ using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace Hoard.Resolve.Matching;
+namespace Hoard.Core.Matching;
 
 /// <summary>
 /// Turns a raw store title into a <see cref="NormalizedTitle"/> (§5.3 step 2,
 /// "normalised title"). Pure, deterministic, allocation-cheap, no IO.
+///
+/// <para><b>Why this lives in Core rather than in Hoard.Resolve.</b> It began as
+/// the soft matcher's private machinery, but it is now read by two callers on
+/// opposite sides of the app: the matcher (§5.3 step 2) and the read model's
+/// demo consolidation (<see cref="Hoard.Core.Queries.DemoConsolidation"/>,
+/// which runs inside the derived-bucket query). §5.3 turns on there being ONE
+/// answer to "is this the same title?" — a second normaliser in the query layer
+/// would be a second, silently diverging opinion about sequel ordinals and
+/// edition markers, which is the machinery that stops <c>Portal Demo</c> from
+/// binding to <c>Portal 2</c>. It is pure and BCL-only, so it sits inside
+/// Core's charter unchanged, and the dependency graph stays acyclic: nothing
+/// had to start depending on Hoard.Resolve to reuse it.</para>
 ///
 /// <para>The pipeline, in order — the order matters:</para>
 /// <list type="number">

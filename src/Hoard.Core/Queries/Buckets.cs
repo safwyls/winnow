@@ -64,4 +64,22 @@ public sealed record OwnershipBucket
     public required long PlaytimeMinutes { get; init; }
     public DateTime? LastPlayedAt { get; init; }
     public required string Bucket { get; init; }
+
+    /// <summary>
+    /// How many owned demo releases this row supersedes
+    /// (<see cref="DemoConsolidation"/>) — 0 for almost every row.
+    ///
+    /// <para>The demos themselves are absent from the result: owning both
+    /// <c>Bastion</c> and <c>Bastion Demo</c> yields one row, this one, and the
+    /// demo's tile disappears. A solitary demo is a normal row with a normal
+    /// count of 0.</para>
+    ///
+    /// <para><b>A count, deliberately, and never a total.</b> The demo's
+    /// minutes belong to the demo's own ownership and are still stored,
+    /// unchanged and queryable, there. Adding them to
+    /// <see cref="PlaytimeMinutes"/> would be §6.2's forbidden blend — two
+    /// appids, two achievement sets, two facts — so this row reports only that
+    /// something was folded in, never a merged number.</para>
+    /// </summary>
+    public int ConsolidatedDemoCount { get; init; }
 }

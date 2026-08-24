@@ -21,8 +21,13 @@ Non-negotiable rules:
   as AvaloniaResource. Never rely on system fonts.
 - Dormancy ramp clamps at saturation 0.22 / brightness 0.60 — never fully grey. Hover
   restores full saturation in 140ms. Reduced-motion setting snaps instead of animating.
-- Cover grids are virtualized (`ItemsRepeater`) and bitmaps decode off-thread at display
-  resolution. Never decode 600x900 sources eagerly for a full grid.
+- The cover wall is `Views/CoverWall.cs`, a purpose-built virtualizing panel. Do NOT
+  reintroduce `Avalonia.Controls.ItemsRepeater`: its `UniformGridLayout` charges every item
+  in a row for a trailing gutter when computing items-per-line for the scroll anchor, but
+  packs rows greedily when placing them, so §4's flush-row geometry made the two disagree by
+  one column at every window width — an orphaned tile and a scroll extent 22% too long.
+- Bitmaps decode off-thread at display resolution. Never decode 600x900 sources eagerly for
+  a full grid.
 - Accessibility floor (design-system.md §8) is not optional: visible 2px Volt focus,
   full keyboard grid navigation, dormancy ramp must be decorative-redundant.
 - Copy follows the §7 table exactly ("Patched since", "Never played", "Bounced off",

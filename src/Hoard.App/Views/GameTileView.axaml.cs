@@ -6,21 +6,22 @@ using Hoard.App.ViewModels;
 namespace Hoard.App.Views;
 
 /// <summary>
-/// Code-behind for the cover tile. Two jobs, both forced by ItemsRepeater
-/// recycling.
+/// Code-behind for the cover tile. Two jobs, both forced by container recycling
+/// in <see cref="CoverWall"/>.
 /// <para>Hover: the view model's <see cref="GameTileViewModel.IsPointerOver"/>
 /// drives <see cref="GameTileViewModel.DisplayAlpha"/>, which the vivid art
 /// layer animates over 140ms (§5.1 — "the game wakes up under the cursor").
 /// Avalonia's <c>:pointerover</c> pseudo-class can't reach a view-model
 /// property, so the two pointer events do it explicitly.</para>
-/// <para>Cover art: realization is the load trigger. ItemsRepeater only attaches
-/// containers for tiles that are on screen (plus its buffer), so "visible first"
-/// falls out of attach/detach for free — and detach releases the bitmaps, which
-/// is what keeps the cache's memory bound honest with 616 tiles virtualized.</para>
+/// <para>Cover art: realization is the load trigger. The wall only gives a
+/// container a data context while its cell is on screen (plus a buffer row), so
+/// "visible first" falls out of the context swap for free — and the swap to null
+/// releases the bitmaps, which is what keeps the cache's memory bound honest
+/// with 616 tiles virtualized.</para>
 /// </summary>
 public partial class GameTileView : UserControl
 {
-    /// <summary>Fallback tile width when the container is measured after attach (UniformGridLayout's MinItemWidth).</summary>
+    /// <summary>Fallback tile width when the container is measured after attach (the wall's density minimum).</summary>
     private const double NominalTileWidth = 148;
 
     /// <summary>The view model this container is currently showing art for.</summary>
@@ -47,8 +48,8 @@ public partial class GameTileView : UserControl
     {
         base.OnDataContextChanged(e);
 
-        // ItemsRepeater recycles containers: a tile scrolled away while hovered
-        // would otherwise hand its stale vivid state to the next game.
+        // Containers are recycled: a tile scrolled away while hovered would
+        // otherwise hand its stale vivid state to the next game.
         SetHover(IsPointerOver);
 
         // Recycling swaps the data context without ever detaching, so this — not
