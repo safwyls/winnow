@@ -7,7 +7,10 @@
         Title="Hoard"
         Width="1180" Height="760"
         MinWidth="880" MinHeight="560"
-        Background="{StaticResource Ground}">
+        Background="{StaticResource Ground}"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaChromeHints="NoChrome"
+        ExtendClientAreaTitleBarHeightHint="-1">
 
     <!--
         M0 library shell — design-system.md §4 layout, §6 components, and the
@@ -16,9 +19,75 @@
         docs/spikes/avalonia-dormancy-rendering.md planned for after 12.0,
         brought forward because ItemsRepeater's UniformGridLayout could not hold
         §4's flush-row geometry (CoverWall's remarks carry the measurements).
+
+        The client area is extended over the decorations and the caption is
+        drawn here (§9): a light Windows title bar over a dark library put the
+        brightest band in the window above the art. Behaviour the system used
+        to provide is now ours — drag, double-click to maximise, hover/pressed
+        states, Aero Snap, and the maximised overhang — and lives in
+        MainWindow.axaml.cs.
     -->
 
     <Window.Styles>
+
+        <!-- ══ Window chrome (§9) ═══════════════════════════════════════════
+             Caption buttons at the Windows metric (46 wide) so muscle memory
+             lands on them, but flat and unlit until touched. Close reddens,
+             which is the one caption convention worth keeping: it is the only
+             button here whose mistake cannot be undone. -->
+        <Style Selector="Button.wincontrol">
+            <Setter Property="Width" Value="{StaticResource WindowButtonWidth}"/>
+            <Setter Property="Height" Value="{StaticResource TitleBarHeight}"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="CornerRadius" Value="0"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Button.wincontrol /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="CornerRadius" Value="0"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.10"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.wincontrol:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
+        </Style>
+        <Style Selector="Button.wincontrol:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#254042"/>
+        </Style>
+        <Style Selector="Button.wincontrol Path">
+            <Setter Property="Stroke" Value="{StaticResource TextDim}"/>
+            <Setter Property="StrokeThickness" Value="1"/>
+            <Setter Property="Fill" Value="{x:Null}"/>
+        </Style>
+        <Style Selector="Button.wincontrol:pointerover Path">
+            <Setter Property="Stroke" Value="{StaticResource Text}"/>
+        </Style>
+        <Style Selector="Button.wincontrol.close:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource Danger}"/>
+        </Style>
+        <Style Selector="Button.wincontrol.close:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#B33A35"/>
+        </Style>
+        <Style Selector="Button.wincontrol.close:pointerover Path">
+            <Setter Property="Stroke" Value="#FFF2EF"/>
+        </Style>
+
+        <!-- Fluent's scrollbar keeps its rest/expanded behaviour and its
+             colours come from tokens.axaml; only the stepper arrows go, since
+             a 606-tile wall is scrolled by wheel and thumb and the arrows are
+             two more things drawing attention away from the art. -->
+        <Style Selector="ScrollBar /template/ RepeatButton#PART_LineUpButton">
+            <Setter Property="IsVisible" Value="False"/>
+        </Style>
+        <Style Selector="ScrollBar /template/ RepeatButton#PART_LineDownButton">
+            <Setter Property="IsVisible" Value="False"/>
+        </Style>
 
         <!-- ══ Rail bucket (§6) ══════════════════════════════════════════════
              Hover and selection both fill SurfaceRaised; selection adds the
@@ -119,7 +188,7 @@
             <Setter Property="Background" Value="Transparent"/>
         </Style>
         <Style Selector="Button.seg:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="#1F2C2350"/>
+            <Setter Property="Background" Value="#1F1D3437"/>
         </Style>
         <Style Selector="Button.seg.on /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
@@ -173,7 +242,7 @@
             <Setter Property="Background" Value="Transparent"/>
         </Style>
         <Style Selector="Button.sortitem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="#4D16112A"/>
+            <Setter Property="Background" Value="#4D0F1C1E"/>
         </Style>
 
         <!-- ══ List view (§6) ══════════════════════════════════════════════
@@ -214,7 +283,7 @@
             <Setter Property="CornerRadius" Value="0"/>
         </Style>
         <Style Selector="ListBox.rows ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="#802C2350"/>
+            <Setter Property="Background" Value="#801D3437"/>
         </Style>
         <Style Selector="ListBox.rows ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
@@ -248,7 +317,77 @@
 
     </Window.Styles>
 
-    <Grid ColumnDefinitions="220,*">
+    <!-- OffScreenMargin is the maximised overhang: Windows sizes a maximised
+         window past the work area by the resize border, and with the client
+         area extended that overhang is ours to absorb. Without this the title
+         bar and the first column of tiles are clipped the moment the window
+         is maximised. -->
+    <Panel Margin="{Binding $parent[Window].OffScreenMargin}">
+    <Grid RowDefinitions="36,*">
+
+        <!-- ══ TITLE BAR ═══════════════════════════════════════════════════
+             Well, one step DARKER than Ground: the window opens on an unlit
+             lip and the art is the first thing with light in it. The whole
+             strip is the drag handle; the buttons stop the drag because
+             Button marks the pointer press handled. -->
+        <Border Grid.Row="0"
+                Name="TitleBar"
+                Background="{StaticResource Well}"
+                PointerPressed="OnTitleBarPressed">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+
+                <!-- The mark is the app's own atom: two 2:3 capsules, one
+                     behind the other. A hoard is a stack of these. -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal"
+                            Spacing="9" Margin="12,0,0,0"
+                            VerticalAlignment="Center">
+                    <Canvas Width="16" Height="15" VerticalAlignment="Center">
+                        <Border Canvas.Left="0" Canvas.Top="3"
+                                Width="7" Height="11" CornerRadius="2"
+                                Background="{StaticResource Line}"/>
+                        <Border Canvas.Left="6" Canvas.Top="1"
+                                Width="9" Height="13" CornerRadius="2"
+                                Background="{StaticResource Surface}"
+                                BorderBrush="{StaticResource TextDim}"
+                                BorderThickness="1"/>
+                    </Canvas>
+                    <TextBlock Classes="display-s"
+                               FontSize="11"
+                               LetterSpacing="1.5"
+                               Foreground="{StaticResource TextDim}"
+                               Text="HOARD"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal">
+                    <Button Classes="wincontrol"
+                            Click="OnMinimisePressed"
+                            ToolTip.Tip="Minimise">
+                        <Path Data="M 0,5.5 L 10,5.5"/>
+                    </Button>
+                    <Button Name="MaximiseButton"
+                            Classes="wincontrol"
+                            Click="OnMaximisePressed"
+                            ToolTip.Tip="Maximise">
+                        <Panel Width="11" Height="11">
+                            <Path Name="MaximiseGlyph"
+                                  Data="M 0.5,0.5 L 9.5,0.5 L 9.5,9.5 L 0.5,9.5 Z"/>
+                            <Path Name="RestoreGlyph"
+                                  IsVisible="False"
+                                  Data="M 2.5,2.5 L 2.5,0.5 L 10.5,0.5 L 10.5,8.5 L 8.5,8.5 M 0.5,2.5 L 8.5,2.5 L 8.5,10.5 L 0.5,10.5 Z"/>
+                        </Panel>
+                    </Button>
+                    <Button Classes="wincontrol close"
+                            Click="OnClosePressed"
+                            ToolTip.Tip="Close">
+                        <Path Data="M 0.5,0.5 L 9.5,9.5 M 9.5,0.5 L 0.5,9.5"/>
+                    </Button>
+                </StackPanel>
+
+            </Grid>
+        </Border>
+
+    <Grid Grid.Row="1" ColumnDefinitions="220,*">
 
         <!-- ══ RAIL (220px) ════════════════════════════════════════════════ -->
         <Border Grid.Column="0"
@@ -296,7 +435,7 @@
                                                 Width="7" Height="7" CornerRadius="4"
                                                 Margin="0,0,8,0"
                                                 Background="{StaticResource Flare}"
-                                                BoxShadow="0 0 8 0 #B3FF5C8A"
+                                                BoxShadow="0 0 8 0 #B3FF4D93"
                                                 VerticalAlignment="Center"
                                                 IsVisible="{Binding ShowsFlarePip}"/>
                                         <TextBlock Grid.Column="3"
@@ -614,7 +753,7 @@
                                                 VerticalAlignment="Center"
                                                 Margin="6,0,0,0"
                                                 Background="{StaticResource Flare}"
-                                                BoxShadow="0 0 8 0 #B3FF5C8A"
+                                                BoxShadow="0 0 8 0 #B3FF4D93"
                                                 IsVisible="{Binding HasUnread}"
                                                 ToolTip.Tip="Patched since you played"/>
                                         <TextBlock Grid.Column="2"
@@ -681,5 +820,7 @@
                                IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Library.IsDetailsOpen}"/>
 
     </Grid>
+    </Grid>
+    </Panel>
 
 </Window>

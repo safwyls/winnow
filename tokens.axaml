@@ -11,6 +11,11 @@
       · the FontFeatures "wdth" setters were removed — Avalonia 11 has no
         variable-axis API, and Bricolage's own wdth axis tops out at 100
       · TileScrim was retuned to the §5.3 gradient
+      · the Fluent ScrollBar key overrides are omitted here. They are not
+        design tokens: they are the names Avalonia's own theme happens to read,
+        and they carry values already stated below (Well, TextDim and two steps
+        between Line and TextDim). Recording them twice would only give them
+        somewhere to drift.
     Change tokens THERE. Edit this file only to keep the design record honest.
 
     Merge into App.axaml:
@@ -30,21 +35,30 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <!-- ══ Colour ══════════════════════════════════════════════════════════
+         The neutral family is one dark green-teal ink, stepped five times
+         (design-system.md §2). It replaced the indigo-violet family in the
+         palette revision recorded there: violet made teal look like a tint of
+         the chrome and hot pink like a second brand colour, and the whole set
+         read as the default dark-app purple.
+
          Flare is the rarest colour in the app. It marks ONLY unread updates.
          The moment it becomes a generic accent, the badge stops meaning
          anything and the product loses its point.
     -->
-    <Color x:Key="GroundColor">#16112A</Color>
-    <Color x:Key="SurfaceColor">#1F1838</Color>
-    <Color x:Key="SurfaceRaisedColor">#2C2350</Color>
-    <Color x:Key="LineColor">#3D3168</Color>
-    <Color x:Key="TextColor">#F0ECFF</Color>
-    <Color x:Key="TextDimColor">#9B90C4</Color>
-    <Color x:Key="FlareColor">#FF5C8A</Color>
+    <Color x:Key="WellColor">#050D0E</Color>
+    <Color x:Key="GroundColor">#0F1C1E</Color>
+    <Color x:Key="SurfaceColor">#16282A</Color>
+    <Color x:Key="SurfaceRaisedColor">#1D3437</Color>
+    <Color x:Key="LineColor">#2B4A4C</Color>
+    <Color x:Key="TextColor">#F0EDE7</Color>
+    <Color x:Key="TextDimColor">#8FA5A0</Color>
+    <Color x:Key="FlareColor">#FF4D93</Color>
     <Color x:Key="VoltColor">#4DE8C2</Color>
     <Color x:Key="AmberColor">#FFB63D</Color>
-    <Color x:Key="AzureColor">#5B9DFF</Color>
+    <Color x:Key="AzureColor">#57A8F0</Color>
+    <Color x:Key="DangerColor">#E04B45</Color>
 
+    <SolidColorBrush x:Key="Well"          Color="{StaticResource WellColor}"/>
     <SolidColorBrush x:Key="Ground"        Color="{StaticResource GroundColor}"/>
     <SolidColorBrush x:Key="Surface"       Color="{StaticResource SurfaceColor}"/>
     <SolidColorBrush x:Key="SurfaceRaised" Color="{StaticResource SurfaceRaisedColor}"/>
@@ -55,17 +69,35 @@
     <SolidColorBrush x:Key="Volt"          Color="{StaticResource VoltColor}"/>
     <SolidColorBrush x:Key="Amber"         Color="{StaticResource AmberColor}"/>
     <SolidColorBrush x:Key="Azure"         Color="{StaticResource AzureColor}"/>
+    <!-- Destructive affordances only; today that is the window close button's
+         hover fill and nothing else. -->
+    <SolidColorBrush x:Key="Danger"        Color="{StaticResource DangerColor}"/>
+
+    <!-- Text and states for controls filled with Volt (Play, "Same game"). -->
+    <SolidColorBrush x:Key="VoltInk">#0C2A24</SolidColorBrush>
+    <SolidColorBrush x:Key="VoltHover">#6FEDCE</SolidColorBrush>
+    <SolidColorBrush x:Key="VoltPress">#3BD1AC</SolidColorBrush>
 
     <!-- Hover overlay scrim on cover tiles -->
     <LinearGradientBrush x:Key="TileScrim" StartPoint="0%,40%" EndPoint="0%,100%">
-        <GradientStop Offset="0"   Color="#0016112A"/>
-        <GradientStop Offset="0.55" Color="#B316112A"/>
-        <GradientStop Offset="1"   Color="#EB16112A"/>
+        <GradientStop Offset="0"   Color="#000F1C1E"/>
+        <GradientStop Offset="0.55" Color="#B30F1C1E"/>
+        <GradientStop Offset="1"   Color="#EB0F1C1E"/>
     </LinearGradientBrush>
+
+    <!-- ══ Window chrome ══════════════════════════════════════════════════
+         The app draws its own caption (ExtendClientAreaToDecorationsHint).
+         Well is one step DARKER than Ground: the platform habit of a lighter
+         caption strip puts the brightest band in the window above the art,
+         and the chrome is a stage. See design-system.md §9.
+    -->
+    <x:Double x:Key="TitleBarHeight">36</x:Double>
+    <x:Double x:Key="WindowButtonWidth">46</x:Double>
 
     <!-- ══ Dormancy ramp ══════════════════════════════════════════════════
          Consumed by the cover renderer. Clamped floor is deliberate: a cover
-         you cannot identify is a cover you cannot choose.
+         you cannot identify is a cover you cannot choose. Colour-agnostic —
+         untouched by the palette revision.
     -->
     <x:Double x:Key="DormancySatFloor">0.22</x:Double>
     <x:Double x:Key="DormancyBrightFloor">0.68</x:Double>

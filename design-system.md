@@ -28,22 +28,27 @@ the grid states it without a single label.
 
 ## 2. Palette
 
-Bright, saturated, arcade-adjacent. The chrome is a deep indigo-violet stage; neon appears
-only in signal positions. Cover art supplies the real colour riot, so the interface must be
-vivid enough to hold its own without competing.
+The neutral family is **one dark green-teal ink, stepped six times.** It is not grey and it
+is not black: it has a committed hue, so `Volt` reads as that same ink turned up to full
+voltage — continuous with the room, which is right for a colour marking state the interface
+always has. `Flare` is the only hue in the palette the room cannot produce, which is exactly
+what an unread marker has to be. Cover art supplies all the real colour; the chrome is a
+stage and stays out of the way.
 
 | Token | Hex | Role |
 |---|---|---|
-| `Ground` | `#16112A` | Window background — deep indigo-violet, never black |
-| `Surface` | `#1F1838` | Rail, panels, list rows |
-| `SurfaceRaised` | `#2C2350` | Hover, selection, popovers |
-| `Line` | `#3D3168` | Dividers, borders, tile outlines |
-| `Text` | `#F0ECFF` | Primary text |
-| `TextDim` | `#9B90C4` | Labels, metadata |
-| `Flare` | `#FF5C8A` | **Patched since you played** — the unread signal |
+| `Well` | `#050D0E` | Title bar, scrollbar track — the unlit lip, one step below Ground |
+| `Ground` | `#0F1C1E` | Window background — deep green-teal ink, never black |
+| `Surface` | `#16282A` | Rail, panels, list rows |
+| `SurfaceRaised` | `#1D3437` | Hover, selection, popovers |
+| `Line` | `#2B4A4C` | Dividers, borders, tile outlines |
+| `Text` | `#F0EDE7` | Primary text — warm off-white |
+| `TextDim` | `#8FA5A0` | Labels, metadata — sage, the room's own colour |
+| `Flare` | `#FF4D93` | **Patched since you played** — the unread signal |
 | `Volt` | `#4DE8C2` | **Active / recent / selected** |
 | `Amber` | `#FFB63D` | Attention: high playtime, "played out", warnings |
-| `Azure` | `#5B9DFF` | Informational, links, secondary counts |
+| `Azure` | `#57A8F0` | Informational, links, secondary counts |
+| `Danger` | `#E04B45` | Destructive affordance. Today: the window close button, nothing else |
 
 ### Discipline
 
@@ -52,10 +57,33 @@ and the bucket that counts them. The instant it becomes a generic accent, the ba
 meaning anything and the product loses its point.
 
 `Volt` carries selection and recency. `Amber` carries "you've been here a lot." `Azure` is
-the neutral one and does the boring work.
+the neutral one and does the boring work. `Danger` is the close button's hover fill; it sits
+at hue 2° against `Flare`'s 336° so that a red the size of a caption button can never be
+mistaken for a 10px unread dot.
+
+**Hierarchy is carried by temperature as well as lightness.** `Text` is warm off-white and
+`TextDim` is a cool sage: primary text reads as paper laid on the room, metadata as part of
+the room. Do not "fix" this by neutralising either one.
 
 Never tint cover art with brand colour. The art is content; the interface stays out of it
 except through the saturation ramp in §5.
+
+> **Palette revised — the violet family is gone.** `Ground #16112A`, `Surface #1F1838`,
+> `SurfaceRaised #2C2350`, `Line #3D3168` and `TextDim #9B90C4` were a deep indigo-violet
+> stage, chosen as "arcade-adjacent" before the interface had been seen against 600 real
+> Steam capsules. Three things were wrong with it. Violet sits between teal and hot pink on
+> the wheel, so the chrome read as a *third accent* rather than as ground, and both signal
+> colours lost force against it — `Flare` in particular looked like a brand colour rather
+> than an alarm. It also fought the art: Steam capsules are mostly warm and dark, and a
+> violet field pushes them green by simultaneous contrast, which is the one thing §5.1's
+> cool-shift floor is trying to say on its own. And it had become the default dark-app
+> purple — the thing every generated interface reaches for — which for a library about your
+> own hoard is exactly the wrong register. **The replacement keeps a hued neutral rather
+> than retreating to grey**: grey would have made `Volt` a decoration sitting on top of the
+> chrome instead of the chrome's own colour intensified. `Volt` is unchanged; `Flare` moved
+> 6° hotter (`#FF5C8A` → `#FF4D93`) and to full saturation, because against a green-teal
+> ground the old rose read as salmon; `Azure` moved 8° toward cyan (`#5B9DFF` → `#57A8F0`)
+> so it belongs to this palette rather than the previous one.
 
 ---
 
@@ -196,9 +224,12 @@ Avalonia has no CSS `filter`. Two viable approaches, in preference order:
 Fall back to (2) if (1) is unavailable on any target platform. Do not attempt per-frame
 pixel manipulation on the UI thread.
 
-Covers must be virtualized (`ItemsRepeater`) and decoded off-thread at display resolution,
-not full size. A 1,200-tile grid of 600×900 source bitmaps decoded eagerly will exhaust
-memory.
+Covers must be virtualized and decoded off-thread at display resolution, not full size. A
+1,200-tile grid of 600×900 source bitmaps decoded eagerly will exhaust memory. The panel is
+`Views/CoverWall.cs`, not `ItemsRepeater`: `UniformGridLayout` charges every item in a row
+for a trailing gutter when it computes items-per-line for the scroll anchor but packs rows
+greedily when it places them, so §4's flush-row geometry made the two disagree by one column
+at every window width. Its remarks carry the measurements.
 
 ---
 
@@ -260,6 +291,57 @@ with the title set in Bricolage on a `Surface` field — never a spinner, never 
 - Visible keyboard focus everywhere: 2px `Volt` outline, 2px offset.
 - Full keyboard grid navigation (arrows, `/` to search, `Enter` to launch).
 - Reduced motion disables the hover saturation animation — state snaps instead of fading.
-- `TextDim` on `Surface` measures ~4.9:1. Do not dim further.
+- `TextDim` on `Surface` measures **5.88:1**, and on `SurfaceRaised` — which is what a
+  selected list row puts under the store and idle columns — **5.04:1**. Do not dim further.
+  (The old violet pair measured 4.9:1 on `Surface` and 4.30:1 on `SurfaceRaised`, so the
+  hover state was quietly below the floor; the new family clears it in both.) `Text` on
+  `Surface` is 13.1:1, `Azure` 6.03:1, and `Volt` on `Ground` 11.3:1.
 - Provide a settings toggle to disable the dormancy ramp entirely for users who prefer
   uniform art. The badges and buckets carry the signal without it.
+- The caption buttons are real buttons, so they keep the same 2px `Volt` focus ring and are
+  reachable by Tab like anything else. `Danger` is never the only thing distinguishing
+  close: it has its own glyph and its own tooltip.
+
+---
+
+## 9. Window chrome
+
+The app draws its own title bar. Avalonia's `ExtendClientAreaToDecorationsHint` with
+`ExtendClientAreaChromeHints="NoChrome"` puts the client area over the decorations; the
+caption and its three buttons are ordinary controls in the window's own tree.
+
+**`Well` is one step *darker* than `Ground`, not lighter.** Every desktop platform puts a
+lighter caption strip above a darker body, which means the brightest band in the window sits
+directly above the art. Inverting it makes the first inch of the window an unlit lip and the
+cover wall the first thing on screen with any light in it — which is §1's thesis applied to
+the one surface the OS used to own. The same tone backs the scrollbar track and the detail
+modal's scrim.
+
+The mark at the left is two 2:3 capsules, one behind the other: the app's own atom, and what
+a hoard of them looks like. Nothing else lives in the caption — no menu, no search, no
+status. It is a lip, not a toolbar.
+
+**Behaviour the system used to provide is now ours, and all of it is load-bearing.** Drag
+uses `BeginMoveDrag`, which hands the press to Windows' own move loop — that is what buys
+Aero Snap, the edge previews and Win+Arrow rather than a hand-rolled imitation. The cost is
+that the loop is modal and owns the pointer until release, so the second press of a double
+click may or may not carry an intact click count; the title bar therefore tests both the
+framework's count and its own press clock (500ms, 8px, in *screen* coordinates so that a
+click after a drag is not read as a double). The gesture is deliberately not also wired to
+`DoubleTapped`: Avalonia raises that from the tunnelling half of the same press, and a second
+handler would toggle the window twice and land it back where it started.
+
+`OffScreenMargin` is applied to the window's root panel. Windows sizes a maximised window
+past the work area by the resize border, and with the client area extended that overhang is
+ours to absorb — without it the caption and the first column of tiles are clipped the moment
+the window is maximised. The middle button says what it will do, not what state the window is
+in: maximised, it draws the two-square restore glyph and offers "Restore down".
+
+**Scrollbars** keep Fluent's `ScrollBar` theme — its rest/expanded behaviour is good — and
+only repaint it, by overriding the resource keys its template reads. `Application.Resources`
+outranks `Application.Styles` in Avalonia's lookup, so the token file wins over the theme
+without forking a template that would then have to be maintained. Two changes beyond colour:
+the stepper arrows are hidden, and the resting thumb is widened from Fluent's 2px hairline to
+4px, because a scroll position you have to hunt for is not a scroll position on a 606-tile
+wall. **The thumb is neutral, never `Volt`** — a scrollbar is chrome, and spending the
+selection colour on it would make every scroll position look like a selection.

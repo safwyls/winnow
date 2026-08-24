@@ -59,7 +59,7 @@
 
         <Style Selector="Button.play">
             <Setter Property="Background" Value="{StaticResource Volt}"/>
-            <Setter Property="Foreground" Value="#0C2A24"/>
+            <Setter Property="Foreground" Value="{StaticResource VoltInk}"/>
             <Setter Property="FontWeight" Value="Bold"/>
             <Setter Property="FontSize" Value="12"/>
             <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
@@ -69,12 +69,12 @@
             <Setter Property="HorizontalContentAlignment" Value="Center"/>
         </Style>
         <Style Selector="Button.play:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="#6FEDCE"/>
-            <Setter Property="Foreground" Value="#0C2A24"/>
+            <Setter Property="Background" Value="{StaticResource VoltHover}"/>
+            <Setter Property="Foreground" Value="{StaticResource VoltInk}"/>
         </Style>
         <Style Selector="Button.play:pressed /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="#3BD1AC"/>
-            <Setter Property="Foreground" Value="#0C2A24"/>
+            <Setter Property="Background" Value="{StaticResource VoltPress}"/>
+            <Setter Property="Foreground" Value="{StaticResource VoltInk}"/>
         </Style>
     </UserControl.Styles>
 
@@ -84,7 +84,7 @@
 
             <!-- Rounded clip for the art stack. -->
             <Border CornerRadius="{StaticResource RadiusTile}" ClipToBounds="True"
-                    BorderThickness="1" BorderBrush="#993D3168">
+                    BorderThickness="1" BorderBrush="#992B4A4C">
                 <Panel>
 
                     <!-- Placeholder layers (§7): the title in Bricolage on a
@@ -201,7 +201,7 @@
             <Border Width="14" Height="14" CornerRadius="7"
                     Background="{StaticResource Flare}"
                     BorderBrush="{StaticResource Ground}" BorderThickness="2"
-                    BoxShadow="0 0 10 0 #D9FF5C8A"
+                    BoxShadow="0 0 10 0 #D9FF4D93"
                     HorizontalAlignment="Right" VerticalAlignment="Top"
                     Margin="0,8,8,0"
                     IsVisible="{Binding HasUnread}"/>

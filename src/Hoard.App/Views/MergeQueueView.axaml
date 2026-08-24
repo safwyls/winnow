@@ -30,7 +30,7 @@
                 <Border Width="200" Height="300"
                         CornerRadius="{StaticResource RadiusTile}"
                         ClipToBounds="True"
-                        BorderThickness="1" BorderBrush="#993D3168">
+                        BorderThickness="1" BorderBrush="#992B4A4C">
                     <Panel>
                         <!-- Placeholder (§7): title in Bricolage on a Surface
                              field. Never a spinner, never a hole. -->
@@ -126,15 +126,15 @@
         <Style Selector="Button.answer.same">
             <Setter Property="Background" Value="{StaticResource Volt}"/>
             <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
-            <Setter Property="Foreground" Value="#0C2A24"/>
+            <Setter Property="Foreground" Value="{StaticResource VoltInk}"/>
         </Style>
         <Style Selector="Button.answer.same:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="#6FEDCE"/>
-            <Setter Property="Foreground" Value="#0C2A24"/>
+            <Setter Property="Background" Value="{StaticResource VoltHover}"/>
+            <Setter Property="Foreground" Value="{StaticResource VoltInk}"/>
         </Style>
         <Style Selector="Button.answer.same:pressed /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="#3BD1AC"/>
-            <Setter Property="Foreground" Value="#0C2A24"/>
+            <Setter Property="Background" Value="{StaticResource VoltPress}"/>
+            <Setter Property="Foreground" Value="{StaticResource VoltInk}"/>
         </Style>
 
         <!-- "Different games" is not a cancel and is not destructive: it is the

@@ -20,21 +20,31 @@
                     xmlns:sys="using:System">
 
     <!-- ══ Colour ══════════════════════════════════════════════════════════
+         The neutral family is a single dark green-teal ink, stepped five
+         times. It is not grey: teal reads as that ink turned up to full
+         voltage — continuous with the room, which is right for a colour that
+         marks state the interface always has (selection, recency). Flare is
+         the only hue in the palette that the room cannot produce, which is
+         exactly what an unread marker has to be.
+
          Flare is the rarest colour in the app. It marks ONLY unread updates.
          The moment it becomes a generic accent, the badge stops meaning
          anything and the product loses its point.
     -->
-    <Color x:Key="GroundColor">#16112A</Color>
-    <Color x:Key="SurfaceColor">#1F1838</Color>
-    <Color x:Key="SurfaceRaisedColor">#2C2350</Color>
-    <Color x:Key="LineColor">#3D3168</Color>
-    <Color x:Key="TextColor">#F0ECFF</Color>
-    <Color x:Key="TextDimColor">#9B90C4</Color>
-    <Color x:Key="FlareColor">#FF5C8A</Color>
+    <Color x:Key="WellColor">#050D0E</Color>
+    <Color x:Key="GroundColor">#0F1C1E</Color>
+    <Color x:Key="SurfaceColor">#16282A</Color>
+    <Color x:Key="SurfaceRaisedColor">#1D3437</Color>
+    <Color x:Key="LineColor">#2B4A4C</Color>
+    <Color x:Key="TextColor">#F0EDE7</Color>
+    <Color x:Key="TextDimColor">#8FA5A0</Color>
+    <Color x:Key="FlareColor">#FF4D93</Color>
     <Color x:Key="VoltColor">#4DE8C2</Color>
     <Color x:Key="AmberColor">#FFB63D</Color>
-    <Color x:Key="AzureColor">#5B9DFF</Color>
+    <Color x:Key="AzureColor">#57A8F0</Color>
+    <Color x:Key="DangerColor">#E04B45</Color>
 
+    <SolidColorBrush x:Key="Well"          Color="{StaticResource WellColor}"/>
     <SolidColorBrush x:Key="Ground"        Color="{StaticResource GroundColor}"/>
     <SolidColorBrush x:Key="Surface"       Color="{StaticResource SurfaceColor}"/>
     <SolidColorBrush x:Key="SurfaceRaised" Color="{StaticResource SurfaceRaisedColor}"/>
@@ -45,18 +55,90 @@
     <SolidColorBrush x:Key="Volt"          Color="{StaticResource VoltColor}"/>
     <SolidColorBrush x:Key="Amber"         Color="{StaticResource AmberColor}"/>
     <SolidColorBrush x:Key="Azure"         Color="{StaticResource AzureColor}"/>
+    <!-- Destructive affordances only. Today that is one control: the window
+         close button's hover fill. Hue 2°, far enough from Flare's 336° that
+         a red the size of a caption button can never be mistaken for a 10px
+         unread dot. -->
+    <SolidColorBrush x:Key="Danger"        Color="{StaticResource DangerColor}"/>
+
+    <!-- Ink for text sitting ON Volt (the Play button, "Same game"). Dark
+         enough to read at 9.9:1, and green-teal rather than black so the
+         button looks lit from inside rather than punched out. -->
+    <SolidColorBrush x:Key="VoltInk">#0C2A24</SolidColorBrush>
+    <SolidColorBrush x:Key="VoltHover">#6FEDCE</SolidColorBrush>
+    <SolidColorBrush x:Key="VoltPress">#3BD1AC</SolidColorBrush>
 
     <!-- Hover overlay scrim on cover tiles (§5.3): soft top edge, then Ground
          at 92% across the bottom third so the facts read over any art. -->
     <LinearGradientBrush x:Key="TileScrim" StartPoint="0%,0%" EndPoint="0%,100%">
-        <GradientStop Offset="0"    Color="#0016112A"/>
-        <GradientStop Offset="0.35" Color="#EB16112A"/>
-        <GradientStop Offset="1"    Color="#EB16112A"/>
+        <GradientStop Offset="0"    Color="#000F1C1E"/>
+        <GradientStop Offset="0.35" Color="#EB0F1C1E"/>
+        <GradientStop Offset="1"    Color="#EB0F1C1E"/>
     </LinearGradientBrush>
+
+    <!-- ══ Window chrome ══════════════════════════════════════════════════
+         The app draws its own title bar (ExtendClientAreaToDecorationsHint),
+         so the first inch of the window stops being a light Windows caption
+         bar sitting on a dark UI. Well is DARKER than Ground on purpose: the
+         chrome is a stage, and the platform habit of a lighter caption strip
+         puts the brightest band in the window above the art. Inverting it
+         makes cover art the first thing on screen with any light in it.
+    -->
+    <x:Double x:Key="TitleBarHeight">36</x:Double>
+    <x:Double x:Key="WindowButtonWidth">46</x:Double>
+
+    <!-- ══ Scrollbars ═════════════════════════════════════════════════════
+         Fluent's ScrollBar theme is kept — its rest/expanded behaviour is
+         good — and only repainted, by overriding the keys its template reads.
+         Application.Resources outranks Application.Styles in Avalonia's
+         lookup, so these win over the theme's own values without a template
+         fork. The thumb is neutral, never Volt: a scrollbar is chrome, and
+         spending the selection colour on it would make every scroll position
+         look like a selection.
+    -->
+    <x:Double x:Key="ScrollBarSize">12</x:Double>
+    <!-- Fluent binds this to Rectangle.StrokeThickness, which is a double —
+         a Thickness here type-casts at runtime, not at build. -->
+    <x:Double x:Key="ScrollBarTrackBorderThemeThickness">0</x:Double>
+
+    <SolidColorBrush x:Key="ScrollBarBackground">Transparent</SolidColorBrush>
+    <SolidColorBrush x:Key="ScrollBarBackgroundPointerOver">#D9050D0E</SolidColorBrush>
+    <SolidColorBrush x:Key="ScrollBarBorderBrush">Transparent</SolidColorBrush>
+    <SolidColorBrush x:Key="ScrollBarForeground">#8FA5A0</SolidColorBrush>
+    <SolidColorBrush x:Key="ScrollBarTrackFill">Transparent</SolidColorBrush>
+    <SolidColorBrush x:Key="ScrollBarTrackFillPointerOver">#D9050D0E</SolidColorBrush>
+    <SolidColorBrush x:Key="ScrollBarTrackStroke">Transparent</SolidColorBrush>
+    <SolidColorBrush x:Key="ScrollBarTrackStrokePointerOver">Transparent</SolidColorBrush>
+
+    <SolidColorBrush x:Key="ScrollBarPanningThumbBackground">#4E7679</SolidColorBrush>
+    <SolidColorBrush x:Key="ScrollBarThumbFillPointerOver">#6C9498</SolidColorBrush>
+    <SolidColorBrush x:Key="ScrollBarThumbFillPressed">#8FA5A0</SolidColorBrush>
+    <SolidColorBrush x:Key="ScrollBarThumbFillDisabled">#22393B</SolidColorBrush>
+    <Color x:Key="ScrollBarThumbBackgroundColor">#6C9498</Color>
+
+    <!-- Fluent's resting thumb is a 2px hairline, which on a 606-tile wall is
+         a scroll position you have to hunt for. Widened to 4px at rest; the
+         theme still swells it to the full 12 on hover. -->
+    <ScaleTransform x:Key="VerticalSmallScrollThumbScaleTransform" ScaleX="0.34" ScaleY="1"/>
+    <ScaleTransform x:Key="HorizontalSmallScrollThumbScaleTransform" ScaleX="1" ScaleY="0.34"/>
+
+    <SolidColorBrush x:Key="ScrollBarButtonBackground">Transparent</SolidColorBrush>
+    <SolidColorBrush x:Key="ScrollBarButtonBackgroundPointerOver">Transparent</SolidColorBrush>
+    <SolidColorBrush x:Key="ScrollBarButtonBackgroundPressed">Transparent</SolidColorBrush>
+    <SolidColorBrush x:Key="ScrollBarButtonBackgroundDisabled">Transparent</SolidColorBrush>
+    <SolidColorBrush x:Key="ScrollBarButtonBorderBrush">Transparent</SolidColorBrush>
+    <SolidColorBrush x:Key="ScrollBarButtonBorderBrushPointerOver">Transparent</SolidColorBrush>
+    <SolidColorBrush x:Key="ScrollBarButtonBorderBrushPressed">Transparent</SolidColorBrush>
+    <SolidColorBrush x:Key="ScrollBarButtonBorderBrushDisabled">Transparent</SolidColorBrush>
+    <SolidColorBrush x:Key="ScrollBarButtonArrowForeground">#5A8286</SolidColorBrush>
+    <SolidColorBrush x:Key="ScrollBarButtonArrowForegroundPointerOver">#8FA5A0</SolidColorBrush>
+    <SolidColorBrush x:Key="ScrollBarButtonArrowForegroundPressed">#F0EDE7</SolidColorBrush>
+    <SolidColorBrush x:Key="ScrollBarButtonArrowForegroundDisabled">#22393B</SolidColorBrush>
 
     <!-- ══ Dormancy ramp ══════════════════════════════════════════════════
          Consumed by the cover renderer. Clamped floor is deliberate: a cover
-         you cannot identify is a cover you cannot choose.
+         you cannot identify is a cover you cannot choose. Colour-agnostic —
+         untouched by the palette revision.
     -->
     <x:Double x:Key="DormancySatFloor">0.22</x:Double>
     <x:Double x:Key="DormancyBrightFloor">0.68</x:Double>

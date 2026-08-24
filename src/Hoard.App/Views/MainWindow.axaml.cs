@@ -20,12 +20,111 @@ public partial class MainWindow : Window
 {
     private LibraryViewModel? _library;
     private MainWindowViewModel? _shell;
+    private bool _chromeReady;
+    private DateTime _lastTitleBarPress = DateTime.MinValue;
+    private PixelPoint _lastTitleBarPoint;
 
     public MainWindow()
     {
         InitializeComponent();
 
         DetailsPanel.CloseRequested += (_, _) => _library?.CloseDetailsCommand.Execute(null);
+
+        // WindowState can be written before the caption's controls exist, so
+        // the state handler stays inert until the tree is up.
+        _chromeReady = true;
+        UpdateWindowStateChrome();
+    }
+
+    // ══ Window chrome ═══════════════════════════════════════════════════════
+    // The client area is extended over the decorations, so everything Windows
+    // used to do for the caption is done here. Each of these is load-bearing:
+    // drop one and the window reads as broken rather than as styled.
+
+    /// <summary>
+    /// Drag moves the window; a double press maximises or restores it.
+    ///
+    /// <para><see cref="Window.BeginMoveDrag"/> hands the press to the system's
+    /// own move loop, which is what buys Aero Snap, the edge previews and
+    /// Win+Arrow for free rather than reimplementing them badly. The cost is
+    /// that the loop is modal: it owns the pointer until the button comes up,
+    /// so the second press of a double click reaches us through this handler or
+    /// not at all. Hence both tests below — the framework's click count when the
+    /// move loop leaves it intact, and our own press clock when it does not.
+    /// The two can never both fire for one press, so the window cannot toggle
+    /// twice and appear to ignore the gesture.</para>
+    ///
+    /// <para>The gesture is deliberately NOT wired to <c>DoubleTapped</c> as
+    /// well. Avalonia raises that from the tunnelling half of this same press,
+    /// so a second handler would toggle the window a second time on the same
+    /// click and land it back where it started.</para>
+    /// </summary>
+    private void OnTitleBarPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+        {
+            return;
+        }
+
+        var at = this.PointToScreen(e.GetPosition(this));
+        var now = DateTime.UtcNow;
+
+        // Screen coordinates, not window coordinates: after a drag the pointer
+        // sits at the same place *in the title bar* it started from, and a
+        // window-relative test would read the next click as a double.
+        var repeat = now - _lastTitleBarPress < TimeSpan.FromMilliseconds(500)
+            && Math.Abs(at.X - _lastTitleBarPoint.X) <= 8
+            && Math.Abs(at.Y - _lastTitleBarPoint.Y) <= 8;
+
+        if (e.ClickCount >= 2 || repeat)
+        {
+            _lastTitleBarPress = DateTime.MinValue;
+            ToggleMaximised();
+            e.Handled = true;
+            return;
+        }
+
+        _lastTitleBarPress = now;
+        _lastTitleBarPoint = at;
+
+        BeginMoveDrag(e);
+    }
+
+    private void OnMinimisePressed(object? sender, RoutedEventArgs e)
+        => WindowState = WindowState.Minimized;
+
+    private void OnMaximisePressed(object? sender, RoutedEventArgs e)
+        => ToggleMaximised();
+
+    private void OnClosePressed(object? sender, RoutedEventArgs e) => Close();
+
+    private void ToggleMaximised()
+        => WindowState = WindowState == WindowState.Maximized
+            ? WindowState.Normal
+            : WindowState.Maximized;
+
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+
+        if (_chromeReady && change.Property == WindowStateProperty)
+        {
+            UpdateWindowStateChrome();
+        }
+    }
+
+    /// <summary>
+    /// The middle caption button says what it will do, not what state the
+    /// window is in: a maximised window offers "Restore down" and draws the
+    /// two-square glyph, exactly as the system chrome it replaced did.
+    /// </summary>
+    private void UpdateWindowStateChrome()
+    {
+        var maximised = WindowState == WindowState.Maximized;
+
+        MaximiseGlyph.IsVisible = !maximised;
+        RestoreGlyph.IsVisible = maximised;
+        ToolTip.SetTip(MaximiseButton, maximised ? "Restore down" : "Maximise");
     }
 
     protected override void OnDataContextChanged(EventArgs e)

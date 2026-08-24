@@ -44,7 +44,7 @@
 
         <!-- Scrim. Clicking it dismisses — §8's Escape is the keyboard half of
              the same promise: nothing here traps the user. -->
-        <Border Name="Scrim" Background="#CC16112A" PointerPressed="OnScrimPressed"/>
+        <Border Name="Scrim" Background="#CC050D0E" PointerPressed="OnScrimPressed"/>
 
         <Border Background="{StaticResource Surface}"
                 BorderBrush="{StaticResource Line}"
@@ -64,7 +64,7 @@
                             Width="200" Height="300"
                             CornerRadius="{StaticResource RadiusTile}"
                             ClipToBounds="True"
-                            BorderThickness="1" BorderBrush="#993D3168"
+                            BorderThickness="1" BorderBrush="#992B4A4C"
                             VerticalAlignment="Top">
                         <Panel>
                             <!-- Placeholder is the fallback, never a hole (§7). -->
