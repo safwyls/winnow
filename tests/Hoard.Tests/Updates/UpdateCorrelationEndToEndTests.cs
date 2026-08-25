@@ -134,7 +134,7 @@ public class UpdateCorrelationEndToEndTests : IDisposable
         Assert.Empty(host.Handler.Requests);
 
         var bucket = await BucketFor(release);
-        Assert.Equal("never_touched", bucket.Bucket);
+        Assert.Equal("never_played", bucket.Bucket);
     }
 
     [Fact]
@@ -160,8 +160,12 @@ public class UpdateCorrelationEndToEndTests : IDisposable
 
         await host.Poller.PollDueBatchAsync();
 
+        // 900 minutes with nothing to be behind on: past the refund line, short
+        // of the retired floor, so "not stale" reads `bounced` (§6.1 — Bounced
+        // off now spans that whole band). Any leak would still show up here as
+        // `stale_but_patched`, which is the assertion that matters.
         var bucket = await BucketFor(release);
-        Assert.Equal("active", bucket.Bucket);
+        Assert.Equal("bounced", bucket.Bucket);
     }
 
     // ── Helpers ─────────────────────────────────────────────────────────────

@@ -1,3 +1,6 @@
+using System.Runtime.InteropServices;
+using CommunityToolkit.Mvvm.ComponentModel;
+
 namespace Hoard.App.Services;
 
 /// <summary>
@@ -63,4 +66,90 @@ public static class Dormancy
     /// </summary>
     public static double VividAlphaFor(DateTime? lastPlayedUtc, DateTime nowUtc)
         => (SaturationFor(lastPlayedUtc, nowUtc) - SatFloor) / (1.0 - SatFloor);
+}
+
+/// <summary>
+/// The live state <see cref="Dormancy"/> resolves through: whether covers are
+/// dimmed at all (§8's "settings toggle to disable the dormancy ramp entirely
+/// for users who prefer uniform art"), and whether the hover restore animates.
+///
+/// <para>This is a valve on the ramp, not a bypass of it. <see cref="Dormancy"/>
+/// still computes the whole §5.1 curve; when <see cref="DimsDormantCovers"/> is
+/// off this resolves it to 1.0, which lands the two-layer cross-fade on the
+/// vivid layer at full opacity. Nothing about the cover cache changes: the
+/// pre-computed floor variants stay on disk, stay loaded under the vivid layer,
+/// and stay valid, so turning dimming back on is one property write and the next
+/// paint — never a reload and never a re-render of the cache.</para>
+///
+/// <para>With dimming off the hover restore is a no-op by construction rather
+/// than by a special case: the resting alpha and the hovered alpha are both 1.0,
+/// so there is no value for the 140ms transition to travel.</para>
+/// </summary>
+public partial class DormancyRamp : ObservableObject
+{
+    /// <summary>Settings key the preference persists under.</summary>
+    public const string DimCoversSettingKey = "display.dim_dormant_covers";
+
+    private static readonly bool SystemPrefersReducedMotion = ProbeReducedMotion();
+
+    /// <summary>
+    /// On by default: the ramp is §1's thesis, and a user who wants uniform art
+    /// has to say so. §8 keeps the encoding decorative-redundant either way —
+    /// idle time is text on hover and a sortable column, and the unread badge is
+    /// backed by the rail count.
+    /// </summary>
+    [ObservableProperty]
+    public partial bool DimsDormantCovers { get; set; } = true;
+
+    /// <summary>
+    /// §8: reduced motion snaps the hover restore instead of fading it. Seeded
+    /// from the OS ("Show animations in Windows"), and independent of
+    /// <see cref="DimsDormantCovers"/> — with dimming off there is no value
+    /// changing, so the two settings compose rather than contradict.
+    /// </summary>
+    [ObservableProperty]
+    public partial bool ReducedMotion { get; set; } = SystemPrefersReducedMotion;
+
+    /// <summary>
+    /// Resting vivid-layer opacity for a tile: the §5.1 ramp value, or 1.0 when
+    /// the user has turned dimming off.
+    /// </summary>
+    public double VividAlphaFor(DateTime? lastPlayedUtc, DateTime nowUtc)
+        => DimsDormantCovers ? Dormancy.VividAlphaFor(lastPlayedUtc, nowUtc) : 1.0;
+
+    private const uint SpiGetClientAreaAnimation = 0x1042;
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SystemParametersInfoW(
+        uint uiAction, uint uiParam, ref int pvParam, uint fWinIni);
+
+    /// <summary>
+    /// Avalonia 11 surfaces no reduced-motion setting, so this reads Windows'
+    /// own (SPI_GETCLIENTAREAANIMATION). Anything that fails or is not Windows
+    /// answers "animate" — the accessibility floor is a preference to honour
+    /// when it is stated, never a default to guess at.
+    /// </summary>
+    private static bool ProbeReducedMotion()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return false;
+        }
+
+        try
+        {
+            var animationsEnabled = 1;
+            return SystemParametersInfoW(SpiGetClientAreaAnimation, 0, ref animationsEnabled, 0)
+                && animationsEnabled == 0;
+        }
+        catch (DllNotFoundException)
+        {
+            return false;
+        }
+        catch (EntryPointNotFoundException)
+        {
+            return false;
+        }
+    }
 }

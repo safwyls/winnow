@@ -4,6 +4,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using Hoard.App.ViewModels;
 
 namespace Hoard.App.Views;
@@ -159,6 +160,15 @@ public partial class MainWindow : Window
         if (_shell?.MergeQueue is { } queue)
         {
             await queue.LoadCommand.ExecuteAsync(null);
+        }
+
+        // §8's dimming preference. After the library, deliberately: it is one
+        // row out of a settings table and the wall is already built, so reading
+        // it late costs a repaint of the visible tiles rather than delaying the
+        // first paint of the grid behind an IO round trip.
+        if (_shell?.Display is { } display)
+        {
+            await display.LoadAsync();
         }
 
 #if DEBUG
@@ -353,6 +363,34 @@ public partial class MainWindow : Window
             _library?.OpenDetailsCommand.Execute(tile);
             e.Handled = true;
         }
+    }
+
+    /// <summary>
+    /// Puts focus on the display preference when its popover opens. §8 asks for
+    /// a keyboard-reachable control with a visible focus ring, and a flyout that
+    /// opens without moving focus leaves the only control inside it reachable by
+    /// pointer alone — the button that opened it still holds focus, and Tab from
+    /// there walks the command bar behind the popup.
+    ///
+    /// <para>Posted at input priority rather than run inline: the presenter is
+    /// still being attached when Opened fires, so the content has no visual tree
+    /// to focus into yet.</para>
+    /// </summary>
+    private void OnDisplayFlyoutOpened(object? sender, EventArgs e)
+    {
+        if (sender is not Flyout { Content: Control content })
+        {
+            return;
+        }
+
+        Dispatcher.UIThread.Post(
+            () =>
+            {
+                var toggle = content as CheckBox
+                    ?? content.GetVisualDescendants().OfType<CheckBox>().FirstOrDefault();
+                toggle?.Focus(NavigationMethod.Tab);
+            },
+            DispatcherPriority.Input);
     }
 
     /// <summary>Sort menu row. Sets the shared order, then closes the flyout.</summary>

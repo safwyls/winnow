@@ -199,6 +199,15 @@ Present only when a major update landed after the user's last session (both sign
 §4.5 of the design doc — build push *and* announcement). Never on never-opened games; an
 unplayed game has nothing to be behind on.
 
+**"Never-opened" here means zero recorded playtime, not the `Never played` bucket.** Since
+that bucket became everything under the refund line (design doc §6.1), the two are no longer
+the same set: it holds games with up to two hours of real play, and those can absolutely
+have missed a patch — they are the pile this feature exists for. The badge is `Patched
+since` bucket membership and the bucket query enforces the distinction by testing staleness
+*above* the refund line and below only the genuinely never-opened row. The update poller's
+eligibility filter draws the same line, for the same reason, and must keep drawing it on
+playtime rather than on a bucket name.
+
 Clicking the badge opens the patch notes for the updates you missed. This is the feature
 that closes the loop: notice → context → launch.
 
@@ -263,8 +272,8 @@ Plain and specific. The app knows something faintly embarrassing about the user 
 | Context | Write | Don't write |
 |---|---|---|
 | Bucket: updates missed | `Patched since` | `Needs attention` |
-| Bucket: 0 playtime | `Never played` | `Pile of shame` |
-| Bucket: low playtime | `Bounced off` | `Barely played` |
+| Bucket: under the refund line | `Never played` | `Pile of shame` |
+| Bucket: refund line to retired | `Bounced off` | `Barely played` |
 | Bucket: high playtime | `Played out` | `Completed` |
 | Bucket: unrunnable | `Won't run` | `Dead` |
 | Badge tooltip | `3 updates since you played` | `New content available!` |

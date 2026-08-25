@@ -6,19 +6,48 @@ namespace Hoard.Core.Queries;
 /// </summary>
 public static class LibraryBuckets
 {
-    /// <summary>Zero recorded playtime.</summary>
-    public const string NeverTouched = "never_touched";
+    /// <summary>
+    /// Playtime below the refund line (<see cref="BucketThresholds.BouncedFloorMinutes"/>),
+    /// zero included.
+    ///
+    /// <para>Not "zero minutes": under Steam's two-hour refund window the game
+    /// could still have been handed back, so nothing was really committed to.
+    /// Ninety minutes and no minutes are the same fact about the user — they
+    /// never played it — and splitting them put the larger half of a bundle
+    /// library in a bucket nobody looks at.</para>
+    /// </summary>
+    public const string NeverPlayed = "never_played";
 
-    /// <summary>0 &lt; playtime &lt; bounced ceiling — the highest-value pile.</summary>
+    /// <summary>
+    /// Refund line (inclusive) up to the retired floor — the highest-value pile.
+    /// Past the point of no return and abandoned anyway.
+    /// </summary>
     public const string Bounced = "bounced";
 
-    /// <summary>Played meaningfully, then a release update landed more than the stale window after last play.</summary>
+    /// <summary>
+    /// Opened at all, then a release update landed more than the stale window
+    /// after last play.
+    ///
+    /// <para>Outranks <see cref="NeverPlayed"/> and <see cref="Bounced"/> — the
+    /// badge is this bucket's membership (design-system §5.2) and forty minutes
+    /// of play can absolutely be forty minutes behind a patch. Only a game with
+    /// no minutes AND no last-played date has nothing to be behind on, and only
+    /// that case is tested ahead of this one. <see cref="Retired"/> still
+    /// outranks it: high-playtime games are excluded from surfacing.</para>
+    /// </summary>
     public const string StaleButPatched = "stale_but_patched";
 
     /// <summary>High playtime; excluded from surfacing.</summary>
     public const string Retired = "retired";
 
-    /// <summary>Everything else: played past the bounce threshold and not stale.</summary>
+    /// <summary>
+    /// The residue, and not a rail bucket: with
+    /// <see cref="NeverPlayed"/>, <see cref="Bounced"/> and <see cref="Retired"/>
+    /// now tiling the whole playtime axis, the only rows that reach here are the
+    /// ones with no usable playtime number at all — a real last-played date
+    /// beside zero recorded minutes, which is a source admitting it did not
+    /// measure the session.
+    /// </summary>
     public const string Active = "active";
 }
 
@@ -26,8 +55,20 @@ public static class LibraryBuckets
 /// Tunable thresholds for the derived-bucket query. Deliberately parameters,
 /// not schema: §6.1 requires retuning without migration.
 /// </summary>
-/// <param name="BouncedCeilingMinutes">Playtime strictly below this (and above zero) is Bounced.</param>
-/// <param name="RetiredFloorMinutes">Playtime at or above this is Retired.</param>
+/// <param name="BouncedFloorMinutes">
+/// The boundary between Never played and Bounced off, not a ceiling of either:
+/// playtime strictly below it is <see cref="LibraryBuckets.NeverPlayed"/>,
+/// playtime at or above it is <see cref="LibraryBuckets.Bounced"/> until
+/// <paramref name="RetiredFloorMinutes"/>, which is Bounced's real ceiling.
+/// <para>Default 120 — Steam's refund line, and the only non-arbitrary number
+/// available. Below it the purchase was still reversible, so "I never played
+/// it" is the literal truth; at or above it the user committed and gave up
+/// anyway, which is a different and far more interesting fact.</para>
+/// </param>
+/// <param name="RetiredFloorMinutes">
+/// Playtime at or above this is Retired — and therefore also the ceiling of
+/// Bounced off.
+/// </param>
 /// <param name="StaleWindowMonths">An update more than this many months after last play marks Stale-but-patched.</param>
 /// <param name="UpdateCorrelationWindowDays">
 /// How far apart a build push and an announcement may be and still count as one
@@ -43,14 +84,14 @@ public static class LibraryBuckets
 /// signals are stored, so retuning never re-fetches (§4.5).</para>
 /// </param>
 public sealed record BucketThresholds(
-    long BouncedCeilingMinutes,
+    long BouncedFloorMinutes,
     long RetiredFloorMinutes,
     int StaleWindowMonths,
     int UpdateCorrelationWindowDays = 7)
 {
     /// <summary>Conservative defaults; per-genre configuration comes later (§6.1).</summary>
     public static BucketThresholds Default { get; } = new(
-        BouncedCeilingMinutes: 120,
+        BouncedFloorMinutes: 120,
         RetiredFloorMinutes: 6_000,
         StaleWindowMonths: 6,
         UpdateCorrelationWindowDays: 7);

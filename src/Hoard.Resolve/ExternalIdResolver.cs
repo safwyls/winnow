@@ -130,7 +130,7 @@ public sealed class ExternalIdResolver
             // record for it. A date without minutes IS an observation, though:
             // an appmanifest LastPlayed on a machine whose userdata is
             // unreadable is the only evidence of play that machine has, and
-            // discarding it read the entire library as never_touched.
+            // discarding it read the entire library as never_played.
             if (candidate.PlaytimeMinutes is not null || candidate.LastPlayedAt is not null)
             {
                 var minutes = candidate.PlaytimeMinutes ?? 0;

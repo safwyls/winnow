@@ -35,14 +35,24 @@ public sealed class SqlitePollCandidateSource : IPollCandidateSource
         // this query returns that the bucket query can never bucket as
         // `stale_but_patched` is a request spent to learn something unshowable.
         //
-        //  - Never played is excluded. design-system.md §5.2: "Never on
+        //  - NEVER-OPENED games are excluded. design-system.md §5.2: "Never on
         //    never-opened games; an unplayed game has nothing to be behind on."
-        //    The test is the bucket query's own `never_touched` rule, negated —
-        //    zero minutes AND no last-played date — NOT `playtime > 0`. A game
-        //    with a real last-played date and zero recorded minutes was
-        //    demonstrably launched on a machine whose userdata was unreadable;
-        //    its minutes are unknown, not zero, and dropping it would silently
-        //    exclude exactly the dormant titles this feature exists for.
+        //
+        //    The test is ZERO PLAYTIME — specifically zero minutes AND no
+        //    last-played date — and deliberately NOT membership of the
+        //    `never_played` bucket, which is a different and much larger set.
+        //    That bucket is everything under the refund line (§6.1), so it holds
+        //    games with up to two hours of genuine play on them. Those can
+        //    absolutely have missed a patch, they are the "bounced off it early"
+        //    pile this whole product exists to resurface, and the bucket query
+        //    tests staleness BEFORE the refund line precisely so they can carry
+        //    the badge. Keying this exclusion on the bucket would poll-exclude
+        //    the population the feature is for.
+        //
+        //    Zero minutes beside a real last-played date is not never-opened
+        //    either: the game was demonstrably launched on a machine whose
+        //    userdata was unreadable, so its minutes are unknown, not zero, and
+        //    dropping it would silently exclude the most dormant titles of all.
         //
         //  - Retired is excluded. §6.1 gives `retired` precedence over
         //    `stale_but_patched`, so a 200-hour game cannot show the badge no

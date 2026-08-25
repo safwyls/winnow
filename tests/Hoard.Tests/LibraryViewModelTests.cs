@@ -1,4 +1,5 @@
 using System.Globalization;
+using Hoard.App.Services;
 using Hoard.App.ViewModels;
 using Hoard.Core.Domain;
 using Hoard.Core.Repositories;
@@ -477,7 +478,400 @@ public sealed class LibraryViewModelTests
         Assert.Equal("7m", library.Details.PlaytimeText);
     }
 
+    // ── "All games" (the rail's first row) ───────────────────────────────────
+
+    /// <summary>
+    /// The state the app launches in now has a name and a row. Before this,
+    /// "show me everything" was reachable only by clicking the bucket you were
+    /// already on, and the rail showed no selection at all on launch.
+    /// </summary>
+    [Fact]
+    public async Task All_games_is_selected_on_launch_and_counts_the_whole_library()
+    {
+        using var fixture = new LibraryFixture();
+        await fixture.SeedAsync("Zero Alpha", minutes: 0, lastPlayed: null);
+        await fixture.SeedAsync("Zero Beta", minutes: 0, lastPlayed: null);
+        await fixture.SeedAsync("Played Gamma", minutes: 5_000, lastPlayed: Now.AddDays(-2));
+
+        var library = fixture.CreateViewModel();
+        await library.LoadCommand.ExecuteAsync(null);
+
+        Assert.Null(library.SelectedBucket);
+        Assert.True(library.AllGames.IsSelected);
+        Assert.Equal("ALL GAMES", library.AllGames.RailLabel);
+        Assert.Equal(3, library.AllGames.Count);
+        Assert.Equal("3", library.AllGames.CountText);
+        Assert.Equal(3, library.VisibleTiles.Count);
+
+        // Exactly one row in the rail carries the Volt edge, always.
+        Assert.DoesNotContain(library.Buckets, b => b.IsSelected);
+    }
+
+    [Fact]
+    public async Task Selecting_a_bucket_moves_the_rail_selection_off_all_games_and_back()
+    {
+        using var fixture = new LibraryFixture();
+        await fixture.SeedAsync("Zero Alpha", minutes: 0, lastPlayed: null);
+        await fixture.SeedAsync("Played Gamma", minutes: 5_000, lastPlayed: Now.AddDays(-2));
+
+        var library = fixture.CreateViewModel();
+        await library.LoadCommand.ExecuteAsync(null);
+
+        var neverPlayed = library.Buckets.Single(b => b.Name == "Never played");
+        library.SelectBucketCommand.Execute(neverPlayed);
+
+        Assert.Same(neverPlayed, library.SelectedBucket);
+        Assert.False(library.AllGames.IsSelected);
+        Assert.Single(library.Buckets, b => b.IsSelected);
+        Assert.Equal(["Zero Alpha"], fixture.Titles(library));
+
+        library.SelectBucketCommand.Execute(library.AllGames);
+
+        Assert.Null(library.SelectedBucket);
+        Assert.True(library.AllGames.IsSelected);
+        Assert.DoesNotContain(library.Buckets, b => b.IsSelected);
+        Assert.Equal(2, library.VisibleTiles.Count);
+    }
+
+    /// <summary>
+    /// "All games" is a filter row, not a reset button: it clears the bucket and
+    /// touches nothing else. A control that silently dropped the user's search
+    /// or their sort order would be doing something they did not ask for.
+    /// </summary>
+    [Fact]
+    public async Task All_games_clears_the_bucket_and_leaves_the_search_and_the_sort_alone()
+    {
+        using var fixture = new LibraryFixture();
+        await fixture.SeedAsync("Zero Alpha", minutes: 0, lastPlayed: null);
+        await fixture.SeedAsync("Zero Beta", minutes: 0, lastPlayed: null);
+        await fixture.SeedAsync("Zero Gamma", minutes: 0, lastPlayed: null);
+        await fixture.SeedAsync("Played Zero Delta", minutes: 5_000, lastPlayed: Now.AddDays(-2));
+
+        var library = fixture.CreateViewModel();
+        await library.LoadCommand.ExecuteAsync(null);
+
+        library.SelectBucketCommand.Execute(library.Buckets.Single(b => b.Name == "Never played"));
+        library.Sort = LibrarySort.NameDescending;
+        library.SearchText = "zero";
+
+        Assert.Equal(["Zero Gamma", "Zero Beta", "Zero Alpha"], fixture.Titles(library));
+
+        library.SelectBucketCommand.Execute(library.AllGames);
+
+        Assert.Equal(LibrarySort.NameDescending, library.Sort);
+        Assert.Equal("zero", library.SearchText);
+        Assert.Equal(
+            ["Zero Gamma", "Zero Beta", "Zero Alpha", "Played Zero Delta"],
+            fixture.Titles(library));
+
+        // And the count on the row is the library's, not the filtered set's —
+        // the buckets count that way too, so the rail reads consistently.
+        Assert.Equal(4, library.AllGames.Count);
+    }
+
+    /// <summary>
+    /// Clicking "All games" while it is already selected is a no-op rather than
+    /// a toggle into some third state — there is nothing below "no filter".
+    /// </summary>
+    [Fact]
+    public async Task All_games_clicked_twice_stays_selected()
+    {
+        using var fixture = new LibraryFixture();
+        await fixture.SeedAsync("Anything", minutes: 10, lastPlayed: Now.AddDays(-9));
+
+        var library = fixture.CreateViewModel();
+        await library.LoadCommand.ExecuteAsync(null);
+
+        library.SelectBucketCommand.Execute(library.AllGames);
+        library.SelectBucketCommand.Execute(library.AllGames);
+
+        Assert.Null(library.SelectedBucket);
+        Assert.True(library.AllGames.IsSelected);
+        Assert.Single(library.VisibleTiles);
+    }
+
+    /// <summary>
+    /// The shell's rail command is the one the XAML binds; it also has to bring
+    /// the library back from the merge queue, which is a screen no bucket — and
+    /// no "all games" — describes.
+    /// </summary>
+    [Fact]
+    public async Task All_games_returns_from_the_merge_queue()
+    {
+        using var fixture = new LibraryFixture();
+        await fixture.SeedAsync("Anything", minutes: 10, lastPlayed: Now.AddDays(-9));
+
+        var library = fixture.CreateViewModel();
+        await library.LoadCommand.ExecuteAsync(null);
+
+        var shell = new MainWindowViewModel(library, fixture.CreateMergeQueue())
+        {
+            IsMergeQueueVisible = true,
+        };
+
+        shell.SelectBucketCommand.Execute(library.AllGames);
+
+        Assert.False(shell.IsMergeQueueVisible);
+        Assert.True(shell.IsLibraryVisible);
+        Assert.True(library.AllGames.IsSelected);
+    }
+
+    // ── Dimming (§8's toggle over the §5.1 ramp) ─────────────────────────────
+
+    [Fact]
+    public async Task Covers_dim_with_idle_time_by_default()
+    {
+        using var fixture = new LibraryFixture();
+        await fixture.SeedAsync("Recent", minutes: 600, lastPlayed: Now.AddDays(-3));
+        await fixture.SeedAsync("Ancient", minutes: 600, lastPlayed: Now.AddYears(-4));
+
+        var library = fixture.CreateViewModel();
+        await library.LoadCommand.ExecuteAsync(null);
+
+        Assert.True(library.Ramp.DimsDormantCovers);
+        Assert.Equal(0.0, fixture.Tile(library, "Ancient").DormancyAlpha, 3);
+        Assert.True(fixture.Tile(library, "Recent").DormancyAlpha > 0.9);
+    }
+
+    /// <summary>
+    /// §8: "disable the dormancy ramp entirely for users who prefer uniform
+    /// art." Every cover resolves to the vivid layer at full opacity, and the
+    /// hover restore has nowhere left to travel.
+    /// </summary>
+    [Fact]
+    public async Task Dimming_off_renders_every_cover_vivid_and_makes_the_hover_restore_a_no_op()
+    {
+        using var fixture = new LibraryFixture();
+        await fixture.SeedAsync("Recent", minutes: 600, lastPlayed: Now.AddDays(-3));
+        await fixture.SeedAsync("Ancient", minutes: 600, lastPlayed: Now.AddYears(-4));
+
+        var library = fixture.CreateViewModel();
+        await library.LoadCommand.ExecuteAsync(null);
+
+        var display = new DisplaySettingsViewModel(library.Ramp);
+        display.DimDormantCovers = false;
+
+        foreach (var tile in library.VisibleTiles)
+        {
+            Assert.Equal(1.0, tile.DormancyAlpha, 6);
+            Assert.Equal(1.0, tile.DisplayAlpha, 6);
+
+            tile.IsPointerOver = true;
+            Assert.Equal(1.0, tile.DisplayAlpha, 6);
+            tile.IsPointerOver = false;
+        }
+    }
+
+    /// <summary>
+    /// The toggle flips the value the ramp RESOLVES to; it does not remove the
+    /// ramp. The §5.1 curve is still computed by the same code, and turning the
+    /// preference back on is a property write and a repaint — the tiles are the
+    /// same instances, so nothing the cover cache handed them is disturbed and
+    /// the pre-computed floor variants stay valid on disk.
+    /// </summary>
+    [Fact]
+    public async Task Dimming_back_on_restores_the_ramp_without_rebuilding_a_tile()
+    {
+        using var fixture = new LibraryFixture();
+        await fixture.SeedAsync("Ancient", minutes: 600, lastPlayed: Now.AddYears(-4));
+
+        var library = fixture.CreateViewModel();
+        await library.LoadCommand.ExecuteAsync(null);
+
+        var tile = fixture.Tile(library, "Ancient");
+        var display = new DisplaySettingsViewModel(library.Ramp);
+
+        display.DimDormantCovers = false;
+        Assert.Equal(1.0, tile.DormancyAlpha, 6);
+
+        // The machinery is untouched underneath: the ramp still computes the
+        // floor for this game, the ramp state is simply resolving past it.
+        Assert.Equal(Dormancy.SatFloor, Dormancy.SaturationFor(tile.LastPlayedUtc, DateTime.UtcNow), 6);
+
+        display.DimDormantCovers = true;
+
+        Assert.Equal(0.0, tile.DormancyAlpha, 3);
+        Assert.Same(tile, fixture.Tile(library, "Ancient"));
+        Assert.Same(tile, library.VisibleTiles.Single());
+    }
+
+    /// <summary>A live toggle has to tell the wall, or the preference is a
+    /// property nothing paints from.</summary>
+    [Fact]
+    public async Task Toggling_dimming_raises_the_tile_properties_the_view_binds()
+    {
+        using var fixture = new LibraryFixture();
+        await fixture.SeedAsync("Ancient", minutes: 600, lastPlayed: Now.AddYears(-4));
+
+        var library = fixture.CreateViewModel();
+        await library.LoadCommand.ExecuteAsync(null);
+
+        var tile = library.VisibleTiles[0];
+        var raised = new List<string?>();
+        tile.PropertyChanged += (_, e) => raised.Add(e.PropertyName);
+
+        library.Ramp.DimsDormantCovers = false;
+
+        Assert.Contains(nameof(GameTileViewModel.DormancyAlpha), raised);
+        Assert.Contains(nameof(GameTileViewModel.DisplayAlpha), raised);
+    }
+
+    // ── Dimming: persistence ─────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Turning_dimming_off_writes_the_preference()
+    {
+        var settings = new FakeSettings();
+        var ramp = new DormancyRamp();
+        var display = new DisplaySettingsViewModel(ramp, settings);
+
+        display.DimDormantCovers = false;
+        await display.PendingSave;
+
+        Assert.Equal("false", await settings.GetAsync(DormancyRamp.DimCoversSettingKey));
+        Assert.Equal(1, settings.Writes);
+
+        display.DimDormantCovers = true;
+        await display.PendingSave;
+
+        Assert.Equal("true", await settings.GetAsync(DormancyRamp.DimCoversSettingKey));
+        Assert.Equal(2, settings.Writes);
+    }
+
+    [Fact]
+    public async Task The_stored_preference_is_applied_on_load_and_not_written_back()
+    {
+        var settings = new FakeSettings();
+        settings.Seed(DormancyRamp.DimCoversSettingKey, "false");
+
+        var ramp = new DormancyRamp();
+        var display = new DisplaySettingsViewModel(ramp, settings);
+
+        Assert.True(display.DimDormantCovers);
+
+        await display.LoadAsync();
+
+        Assert.False(display.DimDormantCovers);
+        Assert.False(ramp.DimsDormantCovers);
+
+        // Reading a preference is not changing it: a load that wrote back would
+        // rewrite the row on every launch.
+        Assert.Equal(0, settings.Writes);
+    }
+
+    [Fact]
+    public async Task An_unset_or_unreadable_preference_leaves_the_ramp_on()
+    {
+        var settings = new FakeSettings();
+        var display = new DisplaySettingsViewModel(new DormancyRamp(), settings);
+
+        await display.LoadAsync();
+        Assert.True(display.DimDormantCovers);
+
+        settings.Seed(DormancyRamp.DimCoversSettingKey, "yes please");
+        await display.LoadAsync();
+        Assert.True(display.DimDormantCovers);
+    }
+
+    /// <summary>
+    /// With no store registered the toggle still works for the session. An
+    /// unregistered preference costs persistence, never the control.
+    /// </summary>
+    [Fact]
+    public async Task The_toggle_works_without_a_settings_store()
+    {
+        var ramp = new DormancyRamp();
+        var display = new DisplaySettingsViewModel(ramp);
+
+        await display.LoadAsync();
+        display.DimDormantCovers = false;
+
+        Assert.False(ramp.DimsDormantCovers);
+        Assert.Equal(1.0, ramp.VividAlphaFor(null, DateTime.UtcNow), 6);
+        await display.PendingSave;
+    }
+
+    /// <summary>
+    /// The preference survives a restart, through the real repository and a real
+    /// migrated database — the second view model is a fresh one over the same
+    /// file, which is what the next launch is.
+    /// </summary>
+    [Fact]
+    public async Task The_preference_survives_a_restart()
+    {
+        using var db = new TempDatabase();
+        var settings = new SettingsRepository(db.Factory);
+
+        var first = new DisplaySettingsViewModel(new DormancyRamp(), settings);
+        first.DimDormantCovers = false;
+        await first.PendingSave;
+
+        var ramp = new DormancyRamp();
+        var next = new DisplaySettingsViewModel(ramp, settings);
+        await next.LoadAsync();
+
+        Assert.False(next.DimDormantCovers);
+        Assert.False(ramp.DimsDormantCovers);
+        Assert.Equal(1.0, ramp.VividAlphaFor(null, DateTime.UtcNow), 6);
+    }
+
+    /// <summary>
+    /// §8 asks for both settings. They are orthogonal: reduced motion decides
+    /// whether the restore animates, dimming decides whether there is anything
+    /// to animate. Neither reads or overwrites the other.
+    /// </summary>
+    [Fact]
+    public async Task Reduced_motion_and_dimming_do_not_fight()
+    {
+        using var fixture = new LibraryFixture();
+        await fixture.SeedAsync("Ancient", minutes: 600, lastPlayed: Now.AddYears(-4));
+
+        var ramp = new DormancyRamp { ReducedMotion = true };
+        var library = fixture.CreateViewModel(ramp);
+        await library.LoadCommand.ExecuteAsync(null);
+
+        var tile = library.VisibleTiles[0];
+        Assert.True(tile.SnapDormancy);
+        Assert.Equal(0.0, tile.DormancyAlpha, 3);
+
+        var display = new DisplaySettingsViewModel(ramp);
+        display.DimDormantCovers = false;
+
+        // Dimming off did not disturb the motion preference, and the tile is
+        // uniform either way.
+        Assert.True(ramp.ReducedMotion);
+        Assert.True(tile.SnapDormancy);
+        Assert.Equal(1.0, tile.DisplayAlpha, 6);
+
+        ramp.ReducedMotion = false;
+
+        Assert.False(ramp.DimsDormantCovers);
+        Assert.False(tile.SnapDormancy);
+        Assert.Equal(1.0, tile.DisplayAlpha, 6);
+    }
+
     // ── Fixture ──────────────────────────────────────────────────────────────
+
+    /// <summary>In-memory <see cref="ISettingsRepository"/>: the toggle's
+    /// contract is "what you wrote is what you read", nothing more.</summary>
+    private sealed class FakeSettings : ISettingsRepository
+    {
+        private readonly Dictionary<string, string> _values = new(StringComparer.Ordinal);
+
+        public int Writes { get; private set; }
+
+        public Task<string?> GetAsync(string key, CancellationToken ct = default)
+            => Task.FromResult(_values.GetValueOrDefault(key));
+
+        public Task SetAsync(string key, string value, CancellationToken ct = default)
+        {
+            _values[key] = value;
+            Writes++;
+            return Task.CompletedTask;
+        }
+
+        public void Seed(string key, string value) => _values[key] = value;
+    }
 
     private sealed class LibraryFixture : IDisposable
     {
@@ -507,11 +901,17 @@ public sealed class LibraryViewModelTests
         public ILibraryQueryRepository Queries { get; }
 
         /// <summary>No cover cache: the library must compose on procedural art alone.</summary>
-        public LibraryViewModel CreateViewModel()
-            => new(Queries, Ownerships, Releases, Works, Updates);
+        public LibraryViewModel CreateViewModel(DormancyRamp? ramp = null)
+            => new(Queries, Ownerships, Releases, Works, Updates, covers: null, ramp: ramp);
+
+        public MergeQueueViewModel CreateMergeQueue()
+            => new(new MergeCandidateRepository(_db.Factory), Releases, Works);
 
         public IEnumerable<string> Titles(LibraryViewModel library)
             => library.VisibleTiles.Select(t => t.Title);
+
+        public GameTileViewModel Tile(LibraryViewModel library, string title)
+            => library.VisibleTiles.Single(t => t.Title == title);
 
         /// <summary>Seeds one owned game and returns its release id.</summary>
         public async Task<long> SeedAsync(

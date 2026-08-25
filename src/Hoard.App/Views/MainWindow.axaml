@@ -245,6 +245,91 @@
             <Setter Property="Background" Value="#4D0F1C1E"/>
         </Style>
 
+        <!-- ══ Display preferences popover (§8) ════════════════════════════
+             Same presenter treatment as the sort menu, with room for a line of
+             prose. The checkbox is templated rather than restyled: Fluent's own
+             reads a dozen resource keys for its box, its stroke and its glyph in
+             six states, and overriding all of them to land on this palette is
+             more surface than drawing 16px and a tick. The template keeps the
+             control a real CheckBox, so it toggles on Space, reports its state
+             to automation, and takes the global 2px Volt focus adorner. -->
+        <Style Selector="FlyoutPresenter.prefs">
+            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
+            <Setter Property="Padding" Value="14"/>
+            <Setter Property="MinWidth" Value="0"/>
+            <Setter Property="MaxWidth" Value="360"/>
+        </Style>
+        <Style Selector="CheckBox.pref">
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="MinHeight" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Grid ColumnDefinitions="16,10,*" Background="Transparent">
+                        <!-- §8's 2px Volt focus ring at a 2px offset, drawn in
+                             the template rather than left to the global
+                             FocusAdorner: an adorner needs an adorner layer, and
+                             a flyout is its own popup root — the ring went to
+                             the window's layer and never appeared over the
+                             popup. Negative margin so the ring sits outside the
+                             16px box without widening the column. -->
+                        <Border Grid.Column="0" Name="Ring"
+                                Width="22" Height="22" Margin="-3,0,0,0"
+                                CornerRadius="5"
+                                BorderBrush="{StaticResource Volt}"
+                                BorderThickness="2"
+                                IsHitTestVisible="False"
+                                HorizontalAlignment="Left"
+                                VerticalAlignment="Center"/>
+                        <Panel Grid.Column="0" VerticalAlignment="Center">
+                            <Border Name="Box" Width="16" Height="16"
+                                    CornerRadius="3"
+                                    Background="{StaticResource Surface}"
+                                    BorderBrush="{StaticResource Line}"
+                                    BorderThickness="1"/>
+                            <Path Name="Tick"
+                                  Data="M 0,3.4 L 2.9,6.3 L 8.2,1"
+                                  Stroke="{StaticResource VoltInk}"
+                                  StrokeThickness="2"
+                                  StrokeLineCap="Round"
+                                  StrokeJoin="Round"
+                                  Width="9" Height="8"
+                                  HorizontalAlignment="Center"
+                                  VerticalAlignment="Center"/>
+                        </Panel>
+                        <ContentPresenter Grid.Column="2"
+                                          Content="{TemplateBinding Content}"
+                                          VerticalAlignment="Center"
+                                          FontFamily="{StaticResource BodyFont}"
+                                          FontSize="{StaticResource BodySize}"
+                                          Foreground="{StaticResource Text}"/>
+                    </Grid>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        <Style Selector="CheckBox.pref /template/ Path#Tick">
+            <Setter Property="Opacity" Value="0"/>
+        </Style>
+        <Style Selector="CheckBox.pref /template/ Border#Ring">
+            <Setter Property="Opacity" Value="0"/>
+        </Style>
+        <Style Selector="CheckBox.pref:focus-visible /template/ Border#Ring">
+            <Setter Property="Opacity" Value="1"/>
+        </Style>
+        <Style Selector="CheckBox.pref:pointerover /template/ Border#Box">
+            <Setter Property="BorderBrush" Value="{StaticResource TextDim}"/>
+        </Style>
+        <Style Selector="CheckBox.pref:checked /template/ Border#Box">
+            <Setter Property="Background" Value="{StaticResource Volt}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+        </Style>
+        <Style Selector="CheckBox.pref:checked /template/ Path#Tick">
+            <Setter Property="Opacity" Value="1"/>
+        </Style>
+
         <!-- ══ List view (§6) ══════════════════════════════════════════════
              "Same data, no art dependency… 44px rows, Surface ground, Line
              rules, Volt selection edge." Sortable headers write the same sort
@@ -397,19 +482,57 @@
             <ScrollViewer HorizontalScrollBarVisibility="Disabled">
                 <StackPanel Margin="0,20">
 
-                    <!-- Total count: every number is Plex Mono, tabular. -->
-                    <StackPanel Orientation="Horizontal" Margin="16,0,16,18" Spacing="8">
-                        <TextBlock Classes="data"
-                                   FontSize="22"
-                                   Text="{Binding Library.TotalCountText}"
-                                   VerticalAlignment="Bottom"/>
-                        <TextBlock Classes="label"
-                                   FontSize="10"
-                                   LetterSpacing="1"
-                                   Text="TITLES"
-                                   Margin="0,0,0,3"
-                                   VerticalAlignment="Bottom"/>
-                    </StackPanel>
+                    <!-- ── All games ─────────────────────────────────────────
+                         The rail's first row and the app's launch state, which
+                         until now had no name: clearing a bucket filter meant
+                         clicking the row you were already on, which nothing
+                         says and nobody finds.
+
+                         This REPLACES the "606 TITLES" header that used to sit
+                         here. That header and this row are the same number, and
+                         §7 does not want it stated twice two rows apart — so the
+                         one that also does something keeps it. The count moves
+                         from Data 22 to the bucket rows' Data 11 on purpose: a
+                         rail row that looks like a bucket behaves like a bucket,
+                         and a 22px number would have read as a heading rather
+                         than as a thing to click. The library size is still
+                         legible at a glance from the top of the rail, and the
+                         search box's placeholder still spells it out.
+
+                         Same treatment as a bucket, from the same Button.bucket
+                         style: hover fill, SurfaceRaised selection, the 2px Volt
+                         edge bound to the row's own state (name scopes inside a
+                         DataTemplate are why the buckets do it that way — this
+                         row is not in a template, but it matches them so the two
+                         cannot drift). -->
+                    <Button Classes="bucket"
+                            Classes.selected="{Binding Library.AllGames.IsSelected}"
+                            Command="{Binding SelectBucketCommand}"
+                            CommandParameter="{Binding Library.AllGames}"
+                            ToolTip.Tip="Every title you own">
+                        <Grid ColumnDefinitions="2,16,*,Auto,16">
+                            <Border Grid.Column="0"
+                                    Background="{StaticResource Volt}"
+                                    IsVisible="{Binding Library.AllGames.IsSelected}"/>
+                            <TextBlock Grid.Column="2"
+                                       Classes="display-s"
+                                       Text="{Binding Library.AllGames.RailLabel}"
+                                       VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="3"
+                                       Classes="data"
+                                       FontSize="11"
+                                       Foreground="{StaticResource TextDim}"
+                                       Text="{Binding Library.AllGames.CountText}"
+                                       VerticalAlignment="Center"/>
+                        </Grid>
+                    </Button>
+
+                    <!-- The whole library, then the ways of cutting it. The rule
+                         is the grouping: everything below it is a subset of the
+                         row above it. -->
+                    <Border Margin="16,10,16,10"
+                            Height="1"
+                            Background="{StaticResource Line}"/>
 
                     <ItemsControl ItemsSource="{Binding Library.Buckets}">
                         <ItemsControl.ItemTemplate>
@@ -628,6 +751,53 @@
                             Value="{Binding Library.TileWidth, Mode=TwoWay}"
                             VerticalAlignment="Center"
                             ToolTip.Tip="Tile size"/>
+
+                    <!-- The rule is the seam between two kinds of control.
+                         Everything left of it is per-session (§4 remembers the
+                         view mode, the order and the density for as long as the
+                         process lives); everything right of it is written to
+                         disk and true on the next launch. -->
+                    <Border Width="1" Height="18" Margin="2,0"
+                            Background="{StaticResource Line}"
+                            VerticalAlignment="Center"/>
+
+                    <!-- ── Display preferences (§8) ────────────────────────
+                         §8's "settings toggle to disable the dormancy ramp
+                         entirely" lives behind this rather than beside the
+                         density slider, because it is not the same kind of
+                         thing: density is a knob for the next five minutes,
+                         this is a preference that persists. It also needs a
+                         sentence of explanation, and there is nowhere in a row
+                         of icons to put one. -->
+                    <Button Name="DisplayButton" Classes="ctl"
+                            ToolTip.Tip="Display preferences">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Classes="body" FontSize="12"
+                                       Foreground="{StaticResource TextDim}"
+                                       Text="Display"/>
+                            <Path Data="M 0,0 L 8,0 L 4,5 Z"
+                                  Fill="{StaticResource TextDim}"
+                                  VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <Button.Flyout>
+                            <Flyout Placement="BottomEdgeAlignedRight"
+                                    FlyoutPresenterClasses="prefs"
+                                    Opened="OnDisplayFlyoutOpened">
+                                <StackPanel Width="264" Spacing="8">
+                                    <CheckBox Name="DimCoversToggle"
+                                              Classes="pref"
+                                              Content="Dim dormant covers"
+                                              IsChecked="{Binding Display.DimDormantCovers, Mode=TwoWay}"/>
+                                    <TextBlock Classes="body" FontSize="12"
+                                               Margin="26,0,0,0"
+                                               LineHeight="17"
+                                               TextWrapping="Wrap"
+                                               Foreground="{StaticResource TextDim}"
+                                               Text="Covers fade the longer a game sits unplayed. Off shows every cover at full colour — the unread dots and the rail counts carry the same signal."/>
+                                </StackPanel>
+                            </Flyout>
+                        </Button.Flyout>
+                    </Button>
                   </StackPanel>
                 </Grid>
             </Border>

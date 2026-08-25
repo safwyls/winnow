@@ -202,6 +202,7 @@ public static class Program
         services.AddSingleton<IMergeCandidateRepository, MergeCandidateRepository>();
         services.AddSingleton<ILibraryQueryRepository, LibraryQueryRepository>();
         services.AddSingleton<IResolveStateRepository, ResolveStateRepository>();
+        services.AddSingleton<ISettingsRepository, SettingsRepository>();
 
         // Ingest → Resolve → sync (§5.1: the UI reads the database; it never
         // calls these directly. Program composes them, the view models don't).

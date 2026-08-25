@@ -24,7 +24,17 @@ namespace Hoard.App.ViewModels;
 /// </summary>
 public partial class GameTileViewModel : ObservableObject
 {
+    /// <summary>
+    /// The ramp a tile built without one resolves through — dimming on, motion
+    /// from the OS. Shared because probing the OS setting once per tile on a
+    /// 606-tile wall would be six hundred syscalls for one answer; never
+    /// mutated, because the app's own ramp is the one the library owns.
+    /// </summary>
+    private static readonly DormancyRamp DefaultRamp = new();
+
     private readonly ICoverCache? _covers;
+    private readonly DormancyRamp _ramp;
+    private readonly DateTime _nowUtc;
     private bool _coverWanted;
 
     public GameTileViewModel(
@@ -40,10 +50,13 @@ public partial class GameTileViewModel : ObservableObject
         CoverKey? coverKey = null,
         ICoverCache? covers = null,
         Work? work = null,
-        Ownership? ownership = null)
+        Ownership? ownership = null,
+        DormancyRamp? ramp = null)
     {
         CoverKey = coverKey;
         _covers = covers;
+        _ramp = ramp ?? DefaultRamp;
+        _nowUtc = nowUtc;
         OwnershipId = ownershipId;
         ReleaseId = releaseId;
         Title = title;
@@ -64,7 +77,6 @@ public partial class GameTileViewModel : ObservableObject
         Installed = ownership?.Installed ?? false;
         InstallPath = string.IsNullOrWhiteSpace(ownership?.InstallPath) ? null : ownership!.InstallPath;
 
-        DormancyAlpha = Dormancy.VividAlphaFor(lastPlayedUtc, nowUtc);
         PlaytimeText = BuildPlaytimeText(playtimeMinutes);
         IdleText = BuildIdleText(lastPlayedUtc, nowUtc);
         // Three states, not two. A game with minutes on the clock and no
@@ -134,8 +146,13 @@ public partial class GameTileViewModel : ObservableObject
     /// <summary>Install directory when installed and known; null otherwise.</summary>
     public string? InstallPath { get; }
 
-    /// <summary>Resting vivid-layer opacity from the §5.1 ramp: α = (S − 0.22) / 0.78.</summary>
-    public double DormancyAlpha { get; }
+    /// <summary>
+    /// Resting vivid-layer opacity from the §5.1 ramp: α = (S − 0.22) / 0.78 —
+    /// or 1.0 when the user has turned dimming off. Resolved on read rather than
+    /// baked at construction, so flipping the preference repaints the wall
+    /// without rebuilding a tile or disturbing the cover cache.
+    /// </summary>
+    public double DormancyAlpha => _ramp.VividAlphaFor(LastPlayedUtc, _nowUtc);
 
     /// <summary>Vivid art layer. Placeholder gradient now; display-resolution bitmap later.</summary>
     public IBrush VividBrush { get; }
@@ -229,8 +246,31 @@ public partial class GameTileViewModel : ObservableObject
     [ObservableProperty]
     public partial bool IsSelected { get; set; }
 
-    /// <summary>Hover restores full saturation (140ms transition lives in the view).</summary>
+    /// <summary>
+    /// Hover restores full saturation (140ms transition lives in the view). With
+    /// dimming off this is 1.0 in both states, so the restore is a no-op without
+    /// anything having to special-case it.
+    /// </summary>
     public double DisplayAlpha => IsPointerOver ? 1.0 : DormancyAlpha;
+
+    /// <summary>
+    /// §8: reduced motion snaps the hover restore instead of fading it. The view
+    /// reads this as a style class and drops the cross-fade's transitions.
+    /// </summary>
+    public bool SnapDormancy => _ramp.ReducedMotion;
+
+    /// <summary>
+    /// The ramp's state changed under a tile that is already built. Re-reading
+    /// the two derived values is the whole of it — the art layers, the cover
+    /// cache and the decoded bitmaps are all untouched, which is why the toggle
+    /// costs a repaint rather than a reload.
+    /// </summary>
+    public void RefreshDormancy()
+    {
+        OnPropertyChanged(nameof(DormancyAlpha));
+        OnPropertyChanged(nameof(DisplayAlpha));
+        OnPropertyChanged(nameof(SnapDormancy));
+    }
 
     private static string BuildStatText(long playtimeMinutes, DateTime? lastPlayedUtc, DateTime nowUtc)
     {

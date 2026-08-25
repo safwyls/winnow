@@ -25,9 +25,29 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
     public async Task<IReadOnlyList<OwnershipBucket>> GetOwnershipBucketsAsync(
         BucketThresholds thresholds, CancellationToken ct = default)
     {
-        // Bucket precedence (§6.1): never_touched, bounced, retired,
-        // stale_but_patched, active. Retired outranks stale on purpose —
-        // high-playtime games are excluded from surfacing even when patched.
+        // Bucket precedence (§6.1), in the order the CASE below tests:
+        //
+        //   1. never-opened  — zero minutes AND no last-played date
+        //   2. retired       — at or above the retired floor
+        //   3. stale_but_patched
+        //   4. never_played  — below the refund line
+        //   5. bounced       — refund line up to the retired floor
+        //   6. active        — the residue
+        //
+        // Two of those orderings are load-bearing and neither is obvious.
+        //
+        // Retired outranks stale, as it always has: high-playtime games are
+        // excluded from surfacing even when patched.
+        //
+        // Stale outranks never_played and bounced, which is NEW and is forced by
+        // the refund-line boundary. Bounced now spans everything between the
+        // refund line and the retired floor, so if it were still tested first it
+        // would swallow `stale_but_patched` whole and the rail's flagship bucket
+        // would be permanently empty. Testing staleness first is also what makes
+        // §5.2 true: the badge is bucket membership, and a game with forty
+        // minutes on it CAN be behind on a patch. Only case 1 — the game that
+        // was never opened — has nothing to be behind on, which is why it, and
+        // only it, is tested above staleness.
         const string sql = """
             WITH latest_play AS (
                 -- The newest play record per ownership. observed_at is stored to
@@ -89,22 +109,23 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
                    w.name_is_provisional               AS NameIsProvisional,
                    w.first_release_year                AS FirstReleaseYear,
                    CASE
-                       -- Never touched means no evidence of play at all: no
-                       -- minutes AND no last-played date. Zero minutes beside a
-                       -- real last-played date is not evidence of no play — it
-                       -- is a source admitting it did not measure the session.
-                       -- The case that forces this is an appmanifest LastPlayed
-                       -- on a machine whose userdata/ is unreadable: the game was
-                       -- demonstrably launched and the minutes are unknown, not
-                       -- zero. Unknown is neither "never touched" nor "bounced"
-                       -- (which claims a small, KNOWN number of minutes), so such
-                       -- a row is bucketed on staleness alone below.
+                       -- NEVER OPENED: no evidence of play at all — no minutes
+                       -- AND no last-played date. This is the one row §5.2's
+                       -- "an unplayed game has nothing to be behind on" is about,
+                       -- so it is the one row allowed to outrank staleness.
+                       --
+                       -- Zero minutes beside a REAL last-played date is not this.
+                       -- It is a source admitting it did not measure the session:
+                       -- an appmanifest LastPlayed on a machine whose userdata/ is
+                       -- unreadable, where the game was demonstrably launched and
+                       -- the minutes are unknown, not zero. Unknown minutes are
+                       -- neither "never played" nor "bounced" (both of which claim
+                       -- a KNOWN number of minutes), so such a row falls past
+                       -- every playtime test below and is bucketed on staleness
+                       -- alone.
                        WHEN COALESCE(lp.playtime_minutes, 0) = 0
                             AND lp.last_played_at IS NULL
-                           THEN 'never_touched'
-                       WHEN lp.playtime_minutes > 0
-                            AND lp.playtime_minutes < @BouncedCeilingMinutes
-                           THEN 'bounced'
+                           THEN 'never_played'
                        WHEN lp.playtime_minutes >= @RetiredFloorMinutes
                            THEN 'retired'
                        -- A NULL last_played_at with real playtime is Steam's
@@ -118,6 +139,17 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
                                  OR datetime(mu.occurred_at) >
                                     datetime(lp.last_played_at, '+' || @StaleWindowMonths || ' months'))
                            THEN 'stale_but_patched'
+                       -- Below the refund line the purchase was still reversible,
+                       -- so however many minutes are on the clock, the game was
+                       -- never really played. `> 0` only to leave the unknown-
+                       -- minutes row above to the ELSE.
+                       WHEN lp.playtime_minutes > 0
+                            AND lp.playtime_minutes < @BouncedFloorMinutes
+                           THEN 'never_played'
+                       -- Refund line up to the retired floor, which the retired
+                       -- test above has already carved off.
+                       WHEN lp.playtime_minutes >= @BouncedFloorMinutes
+                           THEN 'bounced'
                        ELSE 'active'
                    END                                 AS Bucket
             FROM ownerships o
@@ -131,7 +163,7 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
         using var lease = _factory.Lease();
         var rows = await lease.Connection.QueryAsync<BucketRow>(new CommandDefinition(sql, new
         {
-            thresholds.BouncedCeilingMinutes,
+            thresholds.BouncedFloorMinutes,
             thresholds.RetiredFloorMinutes,
             thresholds.StaleWindowMonths,
             thresholds.UpdateCorrelationWindowDays,

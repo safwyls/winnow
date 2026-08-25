@@ -44,10 +44,30 @@ public class UpdatePollerTests : IDisposable
         Assert.DoesNotContain(noPlayRecordAtAll, eligible.Select(c => c.ReleaseId));
     }
 
+    /// <summary>
+    /// The exclusion is ZERO PLAYTIME, not the `never_played` bucket. Since that
+    /// bucket became everything under Steam's refund line (§6.1) it holds games
+    /// with up to two hours of real play on them, and those can genuinely have
+    /// missed a patch — they are the "bounced off it early" pile the badge
+    /// exists for. Keying eligibility on bucket membership would silently stop
+    /// polling the population the feature is about.
+    /// </summary>
+    [Fact]
+    public async Task Games_under_the_refund_line_are_still_polled()
+    {
+        await SeedAsync("810", playtimeMinutes: 60, lastPlayed: Now.AddMonths(-8).UtcDateTime);
+        var neverOpened = await SeedAsync("820", playtimeMinutes: 0, lastPlayed: null);
+
+        var eligible = await new SqlitePollCandidateSource(_db.Factory).GetEligibleAsync(6_000);
+
+        Assert.Equal(["810"], eligible.Select(c => c.AppId));
+        Assert.DoesNotContain(neverOpened, eligible.Select(c => c.ReleaseId));
+    }
+
     [Fact]
     public async Task Zero_minutes_with_a_real_last_played_date_is_still_eligible()
     {
-        // The bucket query calls this NOT never_touched: a real last-played date
+        // The bucket query calls this NOT never-opened: a real last-played date
         // beside zero minutes is a source admitting it did not measure the
         // session, not evidence of no play. Excluding it here would silently
         // drop exactly the long-dormant titles the badge exists for.

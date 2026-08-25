@@ -1,5 +1,7 @@
+using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Hoard.App.Services;
 using Hoard.Core.Domain;
 using Hoard.Core.Queries;
 using Hoard.Core.Repositories;
@@ -19,6 +21,13 @@ public partial class LibraryViewModel : ObservableObject
 {
     /// <summary>Rail stub for the unrunnable bucket — no data source in M0, always zero.</summary>
     public const string WontRunKey = "wont_run";
+
+    /// <summary>
+    /// The rail's "All games" row. Not a bucket key — no tile is ever in it, and
+    /// nothing queries it; it is the *absence* of a filter given a name, a count
+    /// and a hit target. Selecting it clears <see cref="SelectedBucket"/>.
+    /// </summary>
+    public const string AllGamesKey = "all_games";
 
     private readonly ILibraryQueryRepository _libraryQueries;
     private readonly IOwnershipRepository _ownerships;
@@ -41,7 +50,8 @@ public partial class LibraryViewModel : ObservableObject
         IReleaseRepository releases,
         IWorkRepository works,
         IUpdateEventRepository updateEvents,
-        ICoverCache? covers = null)
+        ICoverCache? covers = null,
+        DormancyRamp? ramp = null)
     {
         _libraryQueries = libraryQueries;
         _ownerships = ownerships;
@@ -50,11 +60,19 @@ public partial class LibraryViewModel : ObservableObject
         _updateEvents = updateEvents;
         _covers = covers;
 
+        Ramp = ramp ?? new DormancyRamp();
+
+        // One subscription for the whole wall rather than one per tile: the
+        // tiles are replaced wholesale on every reload, and 606 subscriptions to
+        // a process-lifetime object would keep every superseded generation of
+        // them alive. The library owns the tiles, so the library relays.
+        Ramp.PropertyChanged += OnRampChanged;
+
         // §7 copy, exactly. Order matches the mock rail.
         Buckets =
         [
             new BucketViewModel(LibraryBuckets.StaleButPatched, "Patched since", showsFlarePip: true),
-            new BucketViewModel(LibraryBuckets.NeverTouched, "Never played"),
+            new BucketViewModel(LibraryBuckets.NeverPlayed, "Never played"),
             new BucketViewModel(LibraryBuckets.Bounced, "Bounced off"),
             new BucketViewModel(LibraryBuckets.Retired, "Played out"),
             new BucketViewModel(WontRunKey, "Won't run"),
@@ -77,6 +95,24 @@ public partial class LibraryViewModel : ObservableObject
     }
 
     public IReadOnlyList<BucketViewModel> Buckets { get; }
+
+    /// <summary>
+    /// The rail's first row: the whole library, unfiltered. It exists because
+    /// "no filter" was previously reachable only by clicking the bucket you were
+    /// already on — a state the interface is in on every launch and had no way
+    /// of naming. It is a <see cref="BucketViewModel"/> so the rail renders it
+    /// through the one row template and it cannot drift from the bucket
+    /// treatment, but it is deliberately NOT in <see cref="Buckets"/>: nothing
+    /// counts it, filters by it, or labels a tile with it.
+    /// </summary>
+    public BucketViewModel AllGames { get; } = new(AllGamesKey, "All games") { IsSelected = true };
+
+    /// <summary>
+    /// Whether covers dim with age, and whether the hover restore animates.
+    /// Owned here because the tiles resolve through it; the control that writes
+    /// it is <see cref="DisplaySettingsViewModel"/>.
+    /// </summary>
+    public DormancyRamp Ramp { get; }
 
     /// <summary>The command bar's sort menu, and the labels the list headers share.</summary>
     public IReadOnlyList<SortOptionViewModel> SortOptions { get; }
@@ -233,7 +269,8 @@ public partial class LibraryViewModel : ObservableObject
                 coverKey: coverKeyByRelease.TryGetValue(row.ReleaseId, out var coverKey) ? coverKey : null,
                 covers: _covers,
                 work: work,
-                ownership: ownership));
+                ownership: ownership,
+                ramp: Ramp));
         }
 
         _allTiles = tiles;
@@ -242,6 +279,12 @@ public partial class LibraryViewModel : ObservableObject
         {
             bucket.Count = bucketRows.Count(r => r.Bucket == bucket.Key);
         }
+
+        // The rail's own total, on the row that selects it. This is the only
+        // place the rail states the library size — the 22px "606 TITLES" header
+        // that used to sit two rows above it said the same number with no
+        // affordance attached, which is the duplication §7 warns about.
+        AllGames.Count = _allTiles.Count;
 
         TotalCount = _allTiles.Count;
         TotalCountText = TotalCount.ToString("N0");
@@ -289,10 +332,20 @@ public partial class LibraryViewModel : ObservableObject
             ? LibrarySort.RecentlyPlayed
             : LibrarySort.DormantLongest;
 
-    /// <summary>Rail click: selects a bucket, or clears the filter when it was already selected.</summary>
+    /// <summary>
+    /// Rail click. "All games" clears the filter; a bucket selects itself, or
+    /// clears the filter when it was already the selection — the old, invisible
+    /// escape hatch, kept because it costs nothing now that there is a visible
+    /// one, and because a selected row that ignores its own click reads as
+    /// broken.
+    /// </summary>
     [RelayCommand]
     private void SelectBucket(BucketViewModel? bucket)
-        => SelectedBucket = ReferenceEquals(SelectedBucket, bucket) ? null : bucket;
+        => SelectedBucket = bucket is null
+            || bucket.Key == AllGamesKey
+            || ReferenceEquals(SelectedBucket, bucket)
+                ? null
+                : bucket;
 
     /// <summary>
     /// Opens the detail modal for a tile. The update events are the only thing
@@ -392,7 +445,25 @@ public partial class LibraryViewModel : ObservableObject
             bucket.IsSelected = ReferenceEquals(bucket, value);
         }
 
+        // No bucket filter IS the "All games" state — including the one the app
+        // launches in, so the rail is never showing a library nothing in it
+        // claims. Exactly one row in the rail carries the Volt edge, always.
+        AllGames.IsSelected = value is null;
+
         ApplyFilter();
+    }
+
+    /// <summary>
+    /// The dimming preference moved. Every built tile re-reads the ramp; nothing
+    /// is rebuilt and nothing is re-fetched, so the floor variants the cover
+    /// cache holds stay exactly as they were.
+    /// </summary>
+    private void OnRampChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        foreach (var tile in _allTiles)
+        {
+            tile.RefreshDormancy();
+        }
     }
 
     private void ApplyFilter()
@@ -517,8 +588,8 @@ public partial class LibraryViewModel : ObservableObject
         {
             LibraryBuckets.StaleButPatched =>
                 "Nothing's been patched since you last played. This fills up on its own.",
-            LibraryBuckets.NeverTouched =>
-                "You've opened everything you own. Genuinely rare.",
+            LibraryBuckets.NeverPlayed =>
+                "You've played everything you own past the refund window. Genuinely rare.",
             _ => "Nothing here yet.",
         };
     }

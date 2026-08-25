@@ -266,13 +266,16 @@ public static class SampleDataSeeder
          new MergeSide("Deus Ex: Human Revolution - Director's Cut", "238010", 2013, "Square Enix")),
     ];
 
-    // Bucket maths (BucketThresholds.Default): never_touched = 0 min;
-    // bounced < 120 min; retired >= 6000 min; stale_but_patched needs an
-    // update event more than 6 months after last play; the rest are active.
+    // Bucket maths (BucketThresholds.Default): never_played < 120 min (the
+    // refund line, zero included); bounced = 120 min up to 6000; retired >=
+    // 6000; stale_but_patched needs an update event more than 6 months after
+    // last play and outranks both playtime buckets below the retired floor.
+    // `active` is a residue, not a rail bucket, so nothing here seeds into it.
     // Dormancy ages span the whole §5.1 ramp (weeks → 4 years → never).
     private static readonly Sample[] Samples =
     [
-        // ── Never played (10) — zero playtime; mixed "no record" / "0-min record".
+        // ── Never played, never opened (10) — zero playtime; mixed
+        //    "no record" / "0-min record".
         new("Tunic", 2022, "steam", 0, null),
         new("Disco Elysium", 2019, "gog", 0, null, EmptyPlayRecord: true),
         new("Return of the Obra Dinn", 2018, "steam", 0, null),
@@ -284,7 +287,9 @@ public static class SampleDataSeeder
         new("The Pedestrian", 2020, "epic", 0, null),
         new("A Short Hike", 2019, "steam", 0, null, EmptyPlayRecord: true),
 
-        // ── Bounced off (8) — under 2 h, spread across the dormancy ramp.
+        // ── Never played, opened once (8) — under the 2 h refund line, so still
+        //    `never_played`: it could have been refunded, so it was never really
+        //    played. Spread across the dormancy ramp.
         new("Kenshi", 2013, "gog", 23, 38),                    // 23 min, ~3y2mo
         new("Noita", 2020, "steam", 95, 35),
         new("Outer Wilds", 2019, "epic", 110, 26),
@@ -313,7 +318,8 @@ public static class SampleDataSeeder
         new("Project Zomboid", 2013, "steam", 88 * 60, 25, PatchedMonthsAfterPlay: 18),
         new("Satisfactory", 2020, "epic", 64 * 60, 29, PatchedMonthsAfterPlay: 24),
 
-        // ── Active (8) — played past the bounce line, nothing stale.
+        // ── Bounced off (8) — past the refund line, short of Played out, and
+        //    nothing stale: committed and gave up anyway.
         new("Slay the Spire", 2019, "steam", 89 * 60, 27),
         new("Hollow Knight", 2017, "steam", 62 * 60, 40),
         new("Subnautica", 2018, "steam", 44 * 60, 30),

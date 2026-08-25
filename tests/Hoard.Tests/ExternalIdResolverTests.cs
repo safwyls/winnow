@@ -483,7 +483,7 @@ public sealed class ExternalIdResolverTests : IDisposable
     /// <summary>
     /// A machine with appmanifests but no readable userdata knows a last-played
     /// date and no minutes. Gating the play-record write on minutes discarded
-    /// those dates and read the whole library as never_touched.
+    /// those dates and read the whole library as never_played.
     /// </summary>
     [Fact]
     public async Task A_last_played_date_without_minutes_is_still_recorded()
