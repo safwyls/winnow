@@ -35,13 +35,18 @@ public class DemoConsolidationQueryTests : IDisposable
     public void Dispose() => _db.Dispose();
 
     private async Task<Seeded> SeedAsync(
-        string title, long playtimeMinutes, int? year = null, bool provisional = false)
+        string title,
+        long playtimeMinutes,
+        int? year = null,
+        bool provisional = false,
+        string? appType = null)
     {
         var workId = await _works.InsertAsync(new Work
         {
             Name = title,
             FirstReleaseYear = year,
             NameIsProvisional = provisional,
+            SteamAppType = appType,
         });
 
         var releaseId = await _releases.InsertAsync(new Release
@@ -69,8 +74,15 @@ public class DemoConsolidationQueryTests : IDisposable
         return new Seeded(workId, releaseId, ownershipId);
     }
 
+    /// <summary>
+    /// Consolidation only. The non-game filter is left OFF throughout this
+    /// class so its rows are the consolidation decision and nothing else —
+    /// <see cref="NonGameFilterTests"/> owns the interaction between the two,
+    /// and asserts there that consolidation answers identically either way.
+    /// </summary>
     private Task<IReadOnlyList<OwnershipBucket>> QueryAsync()
-        => new LibraryQueryRepository(_db.Factory).GetOwnershipBucketsAsync(BucketThresholds.Default);
+        => new LibraryQueryRepository(_db.Factory).GetOwnershipBucketsAsync(
+            BucketThresholds.Default with { ShowNonGameEntries = true });
 
     [Fact]
     public async Task Demo_beside_its_base_game_yields_one_entry_and_no_merged_playtime()
@@ -228,6 +240,101 @@ public class DemoConsolidationQueryTests : IDisposable
         await SeedAsync("App 107100 Demo", playtimeMinutes: 5, provisional: true);
 
         Assert.Equal(2, (await QueryAsync()).Count);
+    }
+
+    // ── Betas and playtests, through the same query ──────────────────────────
+
+    /// <summary>
+    /// The user's own case: Monster Hunter Wilds is owned and its beta test is
+    /// a separate appid with its own tile. One row comes back, and the beta's
+    /// minutes stay on the beta.
+    /// </summary>
+    [Fact]
+    public async Task A_beta_beside_its_owned_base_game_yields_one_entry()
+    {
+        var full = await SeedAsync("Monster Hunter Wilds", playtimeMinutes: 4_000);
+        var beta = await SeedAsync("Monster Hunter Wilds Beta test", playtimeMinutes: 180);
+
+        var rows = await QueryAsync();
+
+        var row = Assert.Single(rows);
+        Assert.Equal(full.OwnershipId, row.OwnershipId);
+        Assert.Equal(4_000, row.PlaytimeMinutes);
+        Assert.Equal(1, row.ConsolidatedDemoCount);
+
+        // Nothing destroyed: the beta's own 180 minutes are still stored.
+        var record = await _plays.GetLatestAsync(beta.OwnershipId);
+        Assert.NotNull(record);
+        Assert.Equal(180, record.PlaytimeMinutes);
+    }
+
+    /// <summary>
+    /// The other half, and the reason nothing here needs a user-facing undo:
+    /// the user owns the playtest and NOT the game, so the playtest is the only
+    /// evidence of it in the library and stays exactly where it is.
+    /// </summary>
+    [Fact]
+    public async Task A_playtest_with_no_owned_base_stays_visible()
+    {
+        var playtest = await SeedAsync("BitCraft Online Playtest", playtimeMinutes: 60);
+        await SeedAsync("Portal 2", playtimeMinutes: 600);
+
+        var rows = await QueryAsync();
+
+        Assert.Equal(2, rows.Count);
+        Assert.Contains(rows, r => r.OwnershipId == playtest.OwnershipId);
+    }
+
+    /// <summary>
+    /// Valve's own classification, stored by migration 0006 and read here.
+    /// A demo Steam simply named after the game has no marker to find.
+    /// </summary>
+    [Fact]
+    public async Task A_typed_demo_is_consolidated_even_without_a_marker_in_the_title()
+    {
+        var full = await SeedAsync("Enshrouded", playtimeMinutes: 2_000, appType: "Game");
+        var demo = await SeedAsync("Enshrouded", playtimeMinutes: 30, appType: "Demo");
+
+        var row = Assert.Single(await QueryAsync());
+
+        Assert.Equal(full.OwnershipId, row.OwnershipId);
+        Assert.Equal(2_000, row.PlaytimeMinutes);
+        Assert.NotNull(await _ownerships.GetAsync(demo.OwnershipId));
+    }
+
+    /// <summary>
+    /// The disagreement resolved in favour of the storefront: Valve types demos
+    /// <c>Demo</c>, so a <c>Game</c> whose title ends in the word is a real game
+    /// and keeps its tile.
+    /// </summary>
+    [Fact]
+    public async Task A_game_typed_row_is_not_suppressed_by_a_demo_token()
+    {
+        await SeedAsync("Cloudheim", playtimeMinutes: 500, appType: "Game");
+        var lookalike = await SeedAsync("Cloudheim Demo", playtimeMinutes: 12, appType: "Game");
+
+        var rows = await QueryAsync();
+
+        Assert.Equal(2, rows.Count);
+        Assert.Contains(rows, r => r.OwnershipId == lookalike.OwnershipId);
+    }
+
+    /// <summary>
+    /// A tool Valve typed as such is not a variant of the game it accompanies,
+    /// even when its name would have bound. Consolidation leaves it alone —
+    /// hiding non-game entries is a separate, reversible filter
+    /// (<see cref="NonGameFilterTests"/>), and it is off here.
+    /// </summary>
+    [Fact]
+    public async Task A_tool_is_never_consolidated_into_the_game_it_accompanies()
+    {
+        await SeedAsync("Eco", playtimeMinutes: 900, appType: "Game");
+        var server = await SeedAsync("Eco Demo", playtimeMinutes: 0, appType: "Tool");
+
+        var rows = await QueryAsync();
+
+        Assert.Equal(2, rows.Count);
+        Assert.Contains(rows, r => r.OwnershipId == server.OwnershipId);
     }
 
     [Fact]

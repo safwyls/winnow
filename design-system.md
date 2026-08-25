@@ -354,3 +354,194 @@ the stepper arrows are hidden, and the resting thumb is widened from Fluent's 2p
 4px, because a scroll position you have to hunt for is not a scroll position on a 606-tile
 wall. **The thumb is neutral, never `Volt`** — a scrollbar is chrome, and spending the
 selection colour on it would make every scroll position look like a selection.
+
+### 9.1 The resize inset — nothing interactive lives at the window edge
+
+Extending the client area over the decorations does not hand back the pixels the resize
+border sits on. Windows still answers `WM_NCHITTEST` for the outer band with
+`HTRIGHT` / `HTBOTTOM` / `HTBOTTOMRIGHT`, **before the client area sees the pointer at all** —
+so a control flush to the edge is drawn by us and hit-tested by the OS. Measured on this
+window: the band is exactly **8px** on the right and 8px on the bottom.
+
+A 12px scrollbar flush to that edge therefore left 2–4 usable pixels, and the resting 4px
+thumb sat entirely inside the band. The scroll position was visible and unreachable.
+
+**`ScrollBarEdgeInset` (`0,0,10,10`) is the rule that follows: no interactive control may sit
+inside the 8px the OS owns, and anything that would have is stepped 10px in.** Every vertical
+scrollbar at the window edge carries it as a margin; interior ones — the rail's, the detail
+modal's — opt out with `ScrollViewer.inner`, because their edge is a divider of ours rather
+than the window's.
+
+Two alternatives were weighed and rejected. **Widening the thumb** changes nothing: the border
+wins above Avalonia's hit testing entirely, so a wider control is a wider unreachable control.
+**Hooking `WM_NCHITTEST` to answer `HTCLIENT` along the scrollbar's height** would buy the
+scrollbar back by taking away edge-resize down the whole right side of the window — a worse
+trade than ten pixels of ground. The inset costs nothing anyone can see; it leaves the resting
+hairline exactly as subtle as it was, and it lets Fluent's own swell-to-12-on-hover finally
+fire, because the pointer can now reach the track that triggers it.
+
+---
+
+## 10. The detail view
+
+§5.3 caps the tile's hover overlay at four facts — "the tile is a decision surface, not a
+detail view." This is the detail view that cap presupposes. It stays a **modal over the
+library**, opened by `Enter` or a double click, dismissed by `Escape` or a click on the scrim.
+That is not inertia: the library is a scanning surface, and the panel is a decision the user
+made about one tile in the middle of a scan. A modal keeps the wall's scroll position, so
+`Escape` returns them to exactly the row they were reading. A page would turn "go back" into
+navigation and lose their place.
+
+### 10.1 What it answers, in the order people ask
+
+```
+┌─ 200px ────┬──────────────────────────────────────────────────┐
+│            │  Empyrion: Galactic Survival                 [×] │  1 WHAT IS THIS
+│  cover     │  2020 · Eleon Game Studios                       │
+│  200×300   │  [STEAM] [Patched since] [Not installed]         │
+│            │                                                  │
+│            │  37h    SINCE YOU PLAYED               9y 7mo    │  2 MY HISTORY
+│            │  PLAYED ├────────────────────────────────●●┤     │    the gap rail
+│            │         2 Jan 2017                     today     │
+│            │         2 updates landed while you were away.    │
+│            │         Checked once, on 23 Aug 2026.            │
+│            │                                                  │
+│            │  [ Install ] [ Store page ] [ All patch notes ]  │  3 GET ME IN
+│ STEAM APPID├──────────────────────────────────────────────────┤
+│ 383120     │  ABOUT                                (scrolls)  │  4 THE REST
+│            │  Empyrion – Galactic Survival is a 3D open…      │
+│ ON DISK    │                                                  │
+│ C:\…       │  SINCE YOU PLAYED                                │
+│            │  ● v1.19.2 Patch        11 Aug 2026  Patch notes │
+└────────────┴──────────────────────────────────────────────────┘
+```
+
+**Two columns, split by what they are about rather than by where the art fit.** Left is the
+object: its art, the id Steam calls it, where it lives on disk. Right is your relationship
+with it. The divider spans the right column only, because the left one keeps going.
+
+That split is also a bug fix. With everything in one right-hand stack, a game with no
+last-played date left ~130px of nothing beside a 300px cover, and the panel read as broken
+rather than as sparse. Two short reference facts under the art fill exactly that, and they
+belong there on the merits.
+
+### 10.2 Signature: the gap rail
+
+**The one thing Hoard can draw that nothing else can.** Storefronts hold your last-played
+date and they hold a game's patch history; nobody puts them on the same axis. The rail runs
+from your last session to now, with the updates that landed in between marked on it.
+
+- **The rule is §5.1's dormancy ramp turned on its side** — `Volt` at the last-played end
+  fading to `Line` at today, half faded at the half-way point. The user has been looking at
+  desaturating capsules for weeks; this is the one screen with room to say why.
+- **Marks are `Flare`**, legal here and only here in the panel, because they are literally
+  §5.2's unread signal — an update after the last session — plotted in time instead of stacked
+  in a tile corner. Capped at 14; past that a rail is a smear, and the list below stays the
+  exhaustive record.
+- **The rail is normalised, never scaled to duration.** A 14-day gap and a 9-year gap draw the
+  same length, with the span stated as a number beside it. Scaling would make most rails
+  invisible and would be a second, competing encoding of a fact the digits already carry.
+- **Everything it draws is restated in words underneath** (§8: the encoding is
+  decorative-redundant). A user who cannot resolve a 7px dot loses nothing.
+- **No last-played date, no rail.** Two different absences, kept apart by the copy: *"You've
+  never opened this."* and *"Steam has no date for your last session."*
+
+**It is deliberately not a playtime chart.** §1 names longitudinal playtime as the thing
+storefronts discard, and the obvious move is a line through `playtime_snapshots`. On a real
+library that table holds **one reading per game** — measured, 611 of 616 — and a line through
+one point is a decoration pretending to be evidence. What the snapshots honestly support is a
+sentence: *"Checked 12 times since 23 Aug 2026 — up 1h 7m."* The delta is between the first
+and last reading Hoard holds, which is the part it actually watched happen, not the total
+Steam already knew. At one reading it says so; at zero it says nothing at all.
+
+### 10.3 Getting in
+
+`steam://run/<appid>` when the game is on disk, `steam://install/<appid>` when it is not — and
+the button is **named for which one it is**, `Play` or `Install`. A button reading "Play" on an
+uninstalled 60GB game promises something the next hour will not deliver. No appid means no
+primary action at all, never an inert button.
+
+Beside it, `Store page` and `All patch notes` in `Azure`, and `Open folder` when there is a
+path. The folder goes through the launcher's directory entry point as a path — never a `file:`
+URI, which the link model refuses on purpose.
+
+**Every outbound target is built by `GameLink.Create` and nothing else.** Three schemes are
+allowed — `https`, `http`, `steam` — and everything else is refused, including the ones that
+look harmless: `file:`, `javascript:`, `data:`, anything relative, anything carrying a control
+character. `update_events.url` is captured from a network response, so it is untrusted input.
+**A target that fails validation is a null link, and a null link renders no button** — never a
+dead one, and never a URL the data did not supply.
+
+### 10.4 Copy
+
+| Context | Write | Don't write |
+|---|---|---|
+| Rail, updates missed | `2 updates landed while you were away.` | `2 new updates!` |
+| Rail, none recorded | `No updates recorded in that stretch.` | `Nothing has shipped` |
+| Longitudinal record | `Checked 12 times since 23 Aug 2026 — up 1h 7m.` | `12 snapshots` |
+| Record, one reading | `Checked once, on 23 Aug 2026.` | `Insufficient data` |
+| No last-played date | `Steam has no date for your last session.` | `Unknown` |
+| Never opened | `You've never opened this.` | `Never played` |
+| Provisional title | `Steam's local files gave an id and no name.` | *(nothing)* |
+| No summary yet | `No description yet. Hoard fills the year, publisher and summary in from IGDB as it works through your library.` | `No data` |
+
+Two of those are load-bearing. **"No updates recorded in that stretch"** and not "nothing has
+shipped": update polling is staggered across days (§4.5 of the design doc), so an empty rail
+can mean a quiet decade or a turn that has not come round yet, and the interface may only claim
+the one it can support. **"Checked"** and not "sampled" or "snapshotted": name the thing by
+what the person recognises, not by the table it lives in.
+
+### 10.5 What is absent, and why
+
+`acquired_at`, `license_type`, `price_paid_cents`, `platform`, `edition_note` are all in the
+schema and all **empty for every row** this data source produces — Steam's local files carry
+none of them. They are absent from the markup entirely rather than bound and hidden: a row
+that can never appear is dead weight impersonating a feature. `account_ref` is populated and
+still absent, because showing a user their own Steam account id is noise.
+
+**Achievements are not here.** No data exists yet, and §6.2's rule stands regardless: never a
+blended cross-platform completion figure. When they land they are per-release rows, not an
+average.
+
+### 10.6 Text is selectable
+
+Titles, summaries, install paths and appids are `SelectableTextBlock`, not `TextBlock`. Three
+consequences worth recording:
+
+- **`tokens.axaml`'s text styles select on `:is(TextBlock)`, not `TextBlock`.** An Avalonia
+  type selector matches the exact type, so a bare `TextBlock.body` silently skips
+  `SelectableTextBlock`. The failure is not a build error — it is unstyled text in a system
+  font.
+- **Selection needs no focus; `Ctrl+C` does.** `SelectableTextBlock` arrives focusable from its
+  own control theme, so every selectable line is a Tab stop unless told otherwise. The four
+  worth stopping on keep it; everything else sets `Focusable="False"`. With all of them
+  focusable it took five Tab presses to reach `Play`, past a publisher name nobody tabs to a
+  modal to copy.
+- **Focused text gets a raised field, not a ring.** A 2px outline around a five-line paragraph
+  is a box, not an indicator.
+
+### 10.7 Focus is drawn, not adorned
+
+§8's global `FocusAdorner` did not deliver a visible ring in this panel — measured on the
+running window, a few stray pixels at the corners of one button and nothing on the rest. This
+panel draws its own, the same way MainWindow's display-preference checkbox does for the related
+popup-adorner reason.
+
+**The ring is a brush swap on a border whose thickness never changes.** Thickening a border on
+focus reflows the row it sits in, and buttons that shuffle sideways as you tab through them are
+worse than no ring. It is set on `PART_ContentPresenter` rather than on the Button, because
+Fluent's own state styles write that presenter directly and a `TemplateBinding` loses to them
+on hover.
+
+The launch button is the one place the ring is not `Volt`, because on a `Volt` fill it cannot
+be: it is `VoltInk`, the button's own text colour, which reads as the control being armed
+rather than as a new colour arriving.
+
+**No flyout anywhere in this panel, deliberately** — an adorner needs an adorner layer and a
+popup is its own root, so any menu here would need its ring hand-drawn. Three links do not need
+hiding behind one.
+
+**Tab order follows the tree, not `TabIndex`.** Avalonia's tab navigation walks declaration
+order and ignores `TabIndex` on a non-focusable container — measured, not assumed. The right
+column is therefore declared first and placed second by `Grid.Column`, so the keyboard reaches
+`Play` before it reaches an appid.

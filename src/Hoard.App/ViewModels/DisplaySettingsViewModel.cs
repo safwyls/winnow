@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using Hoard.App.Services;
+using Hoard.Core.Queries;
 using Hoard.Core.Repositories;
 
 namespace Hoard.App.ViewModels;
@@ -24,15 +25,28 @@ public partial class DisplaySettingsViewModel : ObservableObject
 {
     private readonly DormancyRamp _ramp;
     private readonly ISettingsRepository? _settings;
+    private readonly Func<Task>? _reloadLibrary;
 
     /// <summary>True while <see cref="LoadAsync"/> is seeding the property, so
     /// reading the stored value does not immediately write it back.</summary>
     private bool _loading;
 
-    public DisplaySettingsViewModel(DormancyRamp ramp, ISettingsRepository? settings = null)
+    /// <param name="reloadLibrary">
+    /// Re-runs the library query. Needed by
+    /// <see cref="ShowNonGameEntries"/> and not by
+    /// <see cref="DimDormantCovers"/>: dimming repaints the same tiles, but
+    /// hiding non-game entries changes which rows the query returns — and the
+    /// rail's counts are computed from those rows, so without a reload the
+    /// counts and the grid would disagree.
+    /// </param>
+    public DisplaySettingsViewModel(
+        DormancyRamp ramp,
+        ISettingsRepository? settings = null,
+        Func<Task>? reloadLibrary = null)
     {
         _ramp = ramp;
         _settings = settings;
+        _reloadLibrary = reloadLibrary;
         DimDormantCovers = ramp.DimsDormantCovers;
     }
 
@@ -43,6 +57,16 @@ public partial class DisplaySettingsViewModel : ObservableObject
     /// </summary>
     [ObservableProperty]
     public partial bool DimDormantCovers { get; set; } = true;
+
+    /// <summary>
+    /// Steam carries tools, dedicated servers, soundtracks and videos alongside
+    /// games; this application is about games, so they are hidden by default and
+    /// this is the way back. Never applies to an entry whose type Valve has not
+    /// told us — unknown is not the same fact as "not a game", and reading it
+    /// that way would empty the library.
+    /// </summary>
+    [ObservableProperty]
+    public partial bool ShowNonGameEntries { get; set; }
 
     /// <summary>
     /// The in-flight write, exposed so a caller — or a test — can wait for the
@@ -63,16 +87,22 @@ public partial class DisplaySettingsViewModel : ObservableObject
             return;
         }
 
-        var stored = await _settings.GetAsync(DormancyRamp.DimCoversSettingKey, ct);
-        if (!bool.TryParse(stored, out var dim))
-        {
-            return;
-        }
+        var storedDim = await _settings.GetAsync(DormancyRamp.DimCoversSettingKey, ct);
+        var storedNonGame = await _settings.GetAsync(
+            BucketThresholds.ShowNonGameEntriesSettingKey, ct);
 
         _loading = true;
         try
         {
-            DimDormantCovers = dim;
+            if (bool.TryParse(storedDim, out var dim))
+            {
+                DimDormantCovers = dim;
+            }
+
+            // Unparseable reads as hidden, which is also the default — the one
+            // authoritative reading of the stored text lives on BucketThresholds
+            // so the query and the toggle can never disagree about it.
+            ShowNonGameEntries = BucketThresholds.ParseShowNonGameEntries(storedNonGame);
         }
         finally
         {
@@ -95,5 +125,25 @@ public partial class DisplaySettingsViewModel : ObservableObject
         PendingSave = _settings.SetAsync(
             DormancyRamp.DimCoversSettingKey,
             value ? "true" : "false");
+    }
+
+    partial void OnShowNonGameEntriesChanged(bool value)
+    {
+        if (_loading)
+        {
+            return;
+        }
+
+        // Reload first: this changes what the query RETURNS, so the tiles and
+        // every rail count have to be recomputed. The write can land after.
+        var reload = _reloadLibrary?.Invoke() ?? Task.CompletedTask;
+
+        PendingSave = _settings is null
+            ? reload
+            : Task.WhenAll(
+                reload,
+                _settings.SetAsync(
+                    BucketThresholds.ShowNonGameEntriesSettingKey,
+                    BucketThresholds.FormatShowNonGameEntries(value)));
     }
 }

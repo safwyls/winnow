@@ -84,16 +84,111 @@ public sealed class SteamCmdBuildInfoClient : IBuildInfoClient
             // rather than serve nothing until the TTL expires.
         }
 
+        var fetched = await FetchAsync(appId, key, ct);
+        return fetched.Outcome switch
+        {
+            FetchOutcome.Unavailable => BuildInfoFetch.Unavailable,
+            _ when fetched.Branch is not null => BuildInfoFetch.Ok(fetched.Branch),
+            _ => BuildInfoFetch.NoData,
+        };
+    }
+
+    /// <inheritdoc />
+    public async Task<AppInfoFetch> GetAppInfoAsync(
+        string appId,
+        TimeSpan? cacheTtl = null,
+        bool cachedOnly = false,
+        CancellationToken ct = default)
+    {
+        if (!IsAppId(appId))
+        {
+            return AppInfoFetch.Unavailable;
+        }
+
+        var key = AppCacheKey(appId);
+        var cutoff = Cutoff(cacheTtl ?? _options.AppInfoCacheTtl);
+
+        if (await _cache.GetAsync(CacheProvider, key, ct) is { } cached && cached.FetchedAt >= cutoff)
+        {
+            if (cached.PayloadJson is null)
+            {
+                // A cached miss: the service answered and had nothing for this
+                // appid — the missing-app body, or the restricted one.
+                return AppInfoFetch.NoDataCached;
+            }
+
+            var cachedInfo = UpdateSignalJson.TryReadCommon(appId, cached.PayloadJson, out var cachedPresent);
+            if (cachedInfo is not null)
+            {
+                return AppInfoFetch.OkCached(cachedInfo);
+            }
+
+            if (cachedPresent)
+            {
+                // A stored body that genuinely carries no `common` — cached
+                // because its `depots` projected, which is the whole reason the
+                // two projections share one row.
+                return AppInfoFetch.NoDataCached;
+            }
+
+            // A stored body that no longer parses at all — a shape change that
+            // landed in the cache before it was noticed. Fall through and
+            // refetch rather than serve nothing until the TTL expires.
+        }
+
+        if (cachedOnly)
+        {
+            // The caller asked to spend nothing at the volunteer service.
+            // Reported as Unavailable, not NoData, so "we did not look" can
+            // never be mistaken for "the service said no".
+            return AppInfoFetch.Unavailable;
+        }
+
+        var fetched = await FetchAsync(appId, key, ct);
+        return fetched.Outcome switch
+        {
+            FetchOutcome.Unavailable => AppInfoFetch.Unavailable,
+            _ when fetched.Info is not null => AppInfoFetch.Ok(fetched.Info),
+            _ => AppInfoFetch.NoData,
+        };
+    }
+
+    /// <summary>
+    /// One request, both projections, one cache write.
+    ///
+    /// <para><b>The body is cached when EITHER projection succeeded.</b> Both
+    /// live in a single <c>metadata_cache</c> row, so caching on the build
+    /// branch alone would discard the <c>common</c> block of every app that has
+    /// one and no public branch — and the loss would be indistinguishable, to
+    /// every later reader, from the service not knowing.</para>
+    ///
+    /// <para><b>Only a GENUINE miss is cached as a null payload.</b> Two
+    /// different bodies project nothing and they are not the same fact. The
+    /// verified missing-app shape —
+    /// <c>{"data":{"999999999":{}},"status":"success"}</c> at HTTP 200 — is
+    /// Steam having no such app, and is stored as a miss. The restricted shape
+    /// (<c>"_missing_token": true, "public_only": "1"</c>, no <c>common</c>, no
+    /// <c>depots</c>) is the mirror declining to describe an app that plainly
+    /// exists, and is stored <i>verbatim</i>: callers still see
+    /// <see cref="AppInfoOutcome.NoData"/>, but the reason survives on disk, so
+    /// "this appid needs a Steam Web API key" stays answerable without spending
+    /// another request to rediscover it.</para>
+    ///
+    /// <para>Nothing at all is cached when the request itself failed. Recording
+    /// "this app has no data" for a whole TTL on the strength of one 503, from a
+    /// service §4.5 already watched go dark, is the single negative this client
+    /// must never write.</para>
+    /// </summary>
+    private async Task<FetchedApp> FetchAsync(string appId, string key, CancellationToken ct)
+    {
         var body = await GetAsync("v1/info/" + appId, ct);
         if (body is null)
         {
-            // Nothing is cached on failure. Caching one would record "this app
-            // has no build data" for the whole TTL on the strength of a single
-            // 503 from a service §4.5 already saw go dark.
-            return BuildInfoFetch.Unavailable;
+            return FetchedApp.Unavailable;
         }
 
         var branch = UpdateSignalJson.TryReadPublicBranch(appId, body, out var present);
+        var info = UpdateSignalJson.TryReadCommon(appId, body, out _);
 
         if (!present)
         {
@@ -102,18 +197,25 @@ public sealed class SteamCmdBuildInfoClient : IBuildInfoClient
                 + "A missing app is a 200 carrying an EMPTY object for the appid, not an absent key — "
                 + "check the contract test.",
                 appId);
-            return BuildInfoFetch.Unavailable;
+            return FetchedApp.Unavailable;
         }
 
         var fetchedAt = _clock.GetUtcNow().UtcDateTime;
+        var payload = UpdateSignalJson.HasAppPayload(appId, body) ? body : null;
+        await _cache.SetAsync(CacheProvider, key, payload, fetchedAt, ct);
 
-        // `present` with no projectable branch is the verified missing-app shape
-        // — {"data":{"999999999":{}},"status":"success"} at HTTP 200 — or a real
-        // app with no public branch. Either way the service answered, so the
-        // answer is cached as a miss.
-        await _cache.SetAsync(CacheProvider, key, branch is null ? null : body, fetchedAt, ct);
+        return new FetchedApp(FetchOutcome.Answered, branch, info);
+    }
 
-        return branch is null ? BuildInfoFetch.NoData : BuildInfoFetch.Ok(branch);
+    private enum FetchOutcome
+    {
+        Answered,
+        Unavailable,
+    }
+
+    private readonly record struct FetchedApp(FetchOutcome Outcome, BuildBranch? Branch, SteamAppInfo? Info)
+    {
+        public static FetchedApp Unavailable { get; } = new(FetchOutcome.Unavailable, null, null);
     }
 
     /// <summary>

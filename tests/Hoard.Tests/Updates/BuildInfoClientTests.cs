@@ -1,4 +1,5 @@
 using System.Net;
+using Hoard.Enrich.Updates;
 using Hoard.Enrich.Updates.Model;
 using Xunit;
 
@@ -131,6 +132,230 @@ public class BuildInfoClientTests
 
         host.Clock.Advance(TimeSpan.FromDays(2));
         await host.Builds.GetPublicBranchAsync(UpdateFixtures.StardewAppId);
+        Assert.Equal(2, host.Handler.CountFor(UpdateHost.SteamCmd));
+    }
+
+    // ── common.name / common.type ────────────────────────────────────────────
+
+    /// <summary>
+    /// The third name source. Everwind Demo is one of the 18 appids that showed
+    /// as <c>App 4028270</c> on the author's library because IGDB has no entry
+    /// and the store endpoint returned nothing — and steamcmd.net names it,
+    /// classifies it, and points at its parent, all in the body this module was
+    /// already fetching.
+    /// </summary>
+    [Fact]
+    public async Task Common_block_is_read_from_the_captured_response()
+    {
+        using var host = new UpdateSignalTestHost(
+            (_, _) => FakeUpdateHandler.Json(HttpStatusCode.OK, UpdateFixtures.DemoAppInfoResponse()));
+
+        var result = await host.Builds.GetAppInfoAsync(UpdateFixtures.DemoAppId);
+
+        Assert.Equal(AppInfoOutcome.Ok, result.Outcome);
+        Assert.Equal("Everwind Demo", result.Info!.Name);
+        Assert.Equal("Demo", result.Info.Type);
+        Assert.Equal("2253100", result.Info.ParentAppId);
+    }
+
+    /// <summary>
+    /// The restricted shape: HTTP 200, a NON-empty inner object, and no
+    /// <c>common</c> at all. Six appids of the author's library answer this way
+    /// and no anonymous request will ever get more. It is an answer — NoData —
+    /// and emphatically not a parse failure or an outage.
+    /// </summary>
+    [Fact]
+    public async Task Missing_token_response_is_no_data_not_a_failure()
+    {
+        using var host = new UpdateSignalTestHost(
+            (_, _) => FakeUpdateHandler.Json(
+                HttpStatusCode.OK, UpdateFixtures.RestrictedAppInfoResponse()));
+
+        var result = await host.Builds.GetAppInfoAsync(UpdateFixtures.RestrictedAppId);
+
+        Assert.Equal(AppInfoOutcome.NoData, result.Outcome);
+        Assert.Null(result.Info);
+    }
+
+    /// <summary>
+    /// …and it is NOT recorded as a genuine miss. Both negatives answer NoData
+    /// to the caller, but only the nonexistent app is stored as a null payload;
+    /// the refusal is stored verbatim, so "Steam has no such app" and "this
+    /// appid needs a Web API key" stay distinguishable on disk without another
+    /// request. Caching a refusal as a miss is the same class of mistake as
+    /// caching a 503 as one.
+    /// </summary>
+    [Fact]
+    public async Task A_refusal_is_cached_verbatim_while_a_nonexistent_app_is_cached_as_a_miss()
+    {
+        using var host = new UpdateSignalTestHost(
+            (request, _) => FakeUpdateHandler.Json(
+                HttpStatusCode.OK,
+                request.AppId == UpdateFixtures.RestrictedAppId
+                    ? UpdateFixtures.RestrictedAppInfoResponse()
+                    : UpdateFixtures.BuildInfoMissing(request.AppId)),
+            now: new DateTimeOffset(Now));
+
+        await host.Builds.GetAppInfoAsync(UpdateFixtures.RestrictedAppId);
+        await host.Builds.GetAppInfoAsync("999999999");
+
+        var refusal = await host.Cache.GetAsync(
+            SteamCmdBuildInfoClient.CacheProvider,
+            SteamCmdBuildInfoClient.AppCacheKey(UpdateFixtures.RestrictedAppId));
+        var miss = await host.Cache.GetAsync(
+            SteamCmdBuildInfoClient.CacheProvider,
+            SteamCmdBuildInfoClient.AppCacheKey("999999999"));
+
+        Assert.NotNull(refusal);
+        Assert.NotNull(refusal.Value.PayloadJson);
+        Assert.Contains("_missing_token", refusal.Value.PayloadJson, StringComparison.Ordinal);
+        Assert.NotNull(miss);
+        Assert.Null(miss.Value.PayloadJson);
+
+        // Both are still answers, so neither is re-asked inside the TTL: the
+        // volunteer service does not pay for our bookkeeping distinction.
+        Assert.Equal(AppInfoOutcome.NoData, (await host.Builds.GetAppInfoAsync(
+            UpdateFixtures.RestrictedAppId)).Outcome);
+        Assert.True((await host.Builds.GetAppInfoAsync(UpdateFixtures.RestrictedAppId)).ServedFromCache);
+        Assert.Equal(2, host.Handler.CountFor(UpdateHost.SteamCmd));
+    }
+
+    /// <summary>
+    /// An outage is not an answer, so nothing is cached and the very next pass
+    /// asks again — the same discipline <see cref="GetPublicBranchAsync"/>
+    /// already had, now proven for the name projection too.
+    /// </summary>
+    [Fact]
+    public async Task An_outage_leaves_the_name_unlearned_and_uncached()
+    {
+        var failing = true;
+
+        using var host = new UpdateSignalTestHost(
+            (request, _) => failing
+                ? FakeUpdateHandler.Json(HttpStatusCode.ServiceUnavailable, "{}")
+                : FakeUpdateHandler.Json(
+                    HttpStatusCode.OK, UpdateFixtures.AppInfoOnly(request.AppId, "Everwind Demo", "Demo")),
+            options => options.MaxRetryAttempts = 1);
+
+        Assert.Equal(
+            AppInfoOutcome.Unavailable,
+            (await host.Builds.GetAppInfoAsync(UpdateFixtures.DemoAppId)).Outcome);
+
+        failing = false;
+        var second = await host.Builds.GetAppInfoAsync(UpdateFixtures.DemoAppId);
+        Assert.Equal(AppInfoOutcome.Ok, second.Outcome);
+        Assert.Equal("Everwind Demo", second.Info!.Name);
+    }
+
+    /// <summary>
+    /// The two projections share one fetch and one <c>metadata_cache</c> row —
+    /// the whole reason this lives on the build-info client rather than in a
+    /// second module. Asking for the build and then the name costs ONE request
+    /// to the volunteer service, not two.
+    /// </summary>
+    [Fact]
+    public async Task The_build_and_the_name_share_one_request()
+    {
+        var updatedAt = new DateTime(2026, 6, 29, 8, 0, 0, DateTimeKind.Utc);
+
+        using var host = new UpdateSignalTestHost(
+            (request, _) => FakeUpdateHandler.Json(
+                HttpStatusCode.OK, UpdateFixtures.BuildInfo(request.AppId, updatedAt)),
+            now: new DateTimeOffset(Now));
+
+        var build = await host.Builds.GetPublicBranchAsync(UpdateFixtures.StardewAppId);
+        var info = await host.Builds.GetAppInfoAsync(UpdateFixtures.StardewAppId);
+
+        Assert.Equal(BuildInfoOutcome.Ok, build.Outcome);
+        Assert.Equal(AppInfoOutcome.Ok, info.Outcome);
+        Assert.Equal("Fixture", info.Info!.Name);
+        Assert.True(info.ServedFromCache);
+        Assert.Equal(1, host.Handler.CountFor(UpdateHost.SteamCmd));
+    }
+
+    /// <summary>
+    /// The reverse direction, and the reason the cache write had to change: a
+    /// body with a <c>common</c> block and NO public branch used to be stored as
+    /// a null payload because the build projection found nothing, which threw
+    /// away the name for the whole TTL.
+    /// </summary>
+    [Fact]
+    public async Task A_body_with_no_public_branch_still_keeps_its_name()
+    {
+        using var host = new UpdateSignalTestHost(
+            (request, _) => FakeUpdateHandler.Json(
+                HttpStatusCode.OK,
+                UpdateFixtures.AppInfoOnly(request.AppId, "Skyrim Creation Kit", "Tool", "72850")),
+            now: new DateTimeOffset(Now));
+
+        // The build call goes first and finds no branch — the order that used to
+        // lose the name.
+        var build = await host.Builds.GetPublicBranchAsync("202480");
+        var info = await host.Builds.GetAppInfoAsync("202480");
+
+        Assert.Equal(BuildInfoOutcome.NoData, build.Outcome);
+        Assert.Equal(AppInfoOutcome.Ok, info.Outcome);
+        Assert.Equal("Skyrim Creation Kit", info.Info!.Name);
+        Assert.Equal("Tool", info.Info.Type);
+        Assert.Equal(1, host.Handler.CountFor(UpdateHost.SteamCmd));
+    }
+
+    /// <summary>
+    /// <c>cachedOnly</c> is the free read: it answers from
+    /// <c>metadata_cache</c> or not at all, so a caller can harvest whatever
+    /// some other pass already paid for without adding a single request.
+    /// </summary>
+    [Fact]
+    public async Task A_cached_only_read_never_issues_a_request()
+    {
+        var updatedAt = new DateTime(2026, 6, 29, 8, 0, 0, DateTimeKind.Utc);
+
+        using var host = new UpdateSignalTestHost(
+            (request, _) => FakeUpdateHandler.Json(
+                HttpStatusCode.OK, UpdateFixtures.BuildInfo(request.AppId, updatedAt)),
+            now: new DateTimeOffset(Now));
+
+        var cold = await host.Builds.GetAppInfoAsync(UpdateFixtures.DotaAppId, cachedOnly: true);
+
+        // Unavailable, not NoData: "we did not look" must never read as "the
+        // service said no".
+        Assert.Equal(AppInfoOutcome.Unavailable, cold.Outcome);
+        Assert.Equal(0, host.Handler.CountFor(UpdateHost.SteamCmd));
+
+        await host.Builds.GetPublicBranchAsync(UpdateFixtures.DotaAppId);
+        var warm = await host.Builds.GetAppInfoAsync(UpdateFixtures.DotaAppId, cachedOnly: true);
+
+        Assert.Equal(AppInfoOutcome.Ok, warm.Outcome);
+        Assert.Equal(1, host.Handler.CountFor(UpdateHost.SteamCmd));
+    }
+
+    /// <summary>
+    /// Names and types age far more slowly than builds do, so the two
+    /// projections read the same cached body under different TTLs.
+    /// </summary>
+    [Fact]
+    public async Task The_name_projection_honours_its_own_longer_ttl()
+    {
+        var updatedAt = new DateTime(2026, 6, 29, 8, 0, 0, DateTimeKind.Utc);
+
+        using var host = new UpdateSignalTestHost(
+            (request, _) => FakeUpdateHandler.Json(
+                HttpStatusCode.OK, UpdateFixtures.BuildInfo(request.AppId, updatedAt)),
+            options =>
+            {
+                options.BuildInfoCacheTtl = TimeSpan.FromDays(14);
+                options.AppInfoCacheTtl = TimeSpan.FromDays(30);
+            },
+            now: new DateTimeOffset(Now));
+
+        await host.Builds.GetAppInfoAsync(UpdateFixtures.StardewAppId);
+        host.Clock.Advance(TimeSpan.FromDays(20));
+
+        // Past the build TTL, inside the name TTL.
+        Assert.True((await host.Builds.GetAppInfoAsync(UpdateFixtures.StardewAppId)).ServedFromCache);
+        Assert.Equal(1, host.Handler.CountFor(UpdateHost.SteamCmd));
+
+        Assert.False((await host.Builds.GetPublicBranchAsync(UpdateFixtures.StardewAppId)).ServedFromCache);
         Assert.Equal(2, host.Handler.CountFor(UpdateHost.SteamCmd));
     }
 

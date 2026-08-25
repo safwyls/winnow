@@ -32,4 +32,19 @@ public sealed record Work
     /// "unknown" and makes the signal not fire; it is never a mismatch.</para>
     /// </summary>
     public string? Publisher { get; init; }
+
+    /// <summary>
+    /// Valve's own <c>common.type</c> for the Steam appid — <c>Game</c>,
+    /// <c>Demo</c>, <c>Tool</c> — or null when nothing has read it (migration
+    /// 0006).
+    ///
+    /// <para>Stored verbatim, including the service's casing, which is not
+    /// stable: Bastion answers lower-case <c>game</c> and Monster Hunter Wilds
+    /// answers <c>Game</c>. Compare case-insensitively, always.</para>
+    ///
+    /// <para>Null means "not known", never "not a demo". Several appids answer
+    /// <c>_missing_token</c> with no <c>common</c> object at all, so the title
+    /// gate in <see cref="Queries.DemoConsolidation"/> stays the fallback.</para>
+    /// </summary>
+    public string? SteamAppType { get; init; }
 }

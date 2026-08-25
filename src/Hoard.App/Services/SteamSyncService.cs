@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using Hoard.Core.Ingest;
+using Hoard.Enrich.SteamWeb;
 using Hoard.Ingest.Steam;
 using Hoard.Resolve;
 using Microsoft.Extensions.Logging;
@@ -32,16 +34,19 @@ public sealed class SteamSyncService : ISteamSync
 {
     private readonly SteamLibrarySource _steam;
     private readonly ExternalIdResolver _resolver;
+    private readonly ISteamWebApiClient? _steamWeb;
     private readonly ILogger<SteamSyncService> _logger;
 
     public SteamSyncService(
         SteamLibrarySource steam,
         ExternalIdResolver resolver,
-        ILogger<SteamSyncService> logger)
+        ILogger<SteamSyncService> logger,
+        ISteamWebApiClient? steamWeb = null)
     {
         _steam = steam;
         _resolver = resolver;
         _logger = logger;
+        _steamWeb = steamWeb;
     }
 
     /// <summary>
@@ -54,7 +59,18 @@ public sealed class SteamSyncService : ISteamSync
     {
         var stopwatch = Stopwatch.StartNew();
 
-        var candidates = _steam.Scan();
+        var local = _steam.Scan();
+        var owned = await OwnedCandidatesAsync(local, ct);
+
+        // Union, never a reconciliation. Neither source is authoritative for the
+        // SET: localconfig.vdf only records games that have been PLAYED, so it
+        // cannot see the never-launched library at all; and GetOwnedGames only
+        // knows licences, so it cannot see the demos, free weekends and delisted
+        // apps the user has genuinely played. On this machine that is 330 games
+        // the local files miss and 105 the web API misses. Nothing is dropped
+        // for being absent from one side.
+        var candidates = local.Concat(owned).ToList();
+
         if (candidates.Count == 0)
         {
             _logger.LogInformation("Steam sync found no candidates; nothing to resolve.");
@@ -65,13 +81,63 @@ public sealed class SteamSyncService : ISteamSync
         stopwatch.Stop();
 
         _logger.LogInformation(
-            "Steam sync: {Candidates} candidates in {Elapsed:n1}s — {Created} new, {Matched} matched, "
-            + "{PlayRecords} play records, {Snapshots} snapshots, {Promoted} names promoted.",
-            candidates.Count, stopwatch.Elapsed.TotalSeconds, result.CreatedReleases,
-            result.MatchedExisting, result.PlayRecordsWritten, result.SnapshotsWritten,
-            result.NamesPromoted);
+            "Steam sync: {Candidates} candidates ({Local} local, {Owned} owned) in {Elapsed:n1}s — "
+            + "{Created} new, {Matched} matched, {PlayRecords} play records, {Snapshots} snapshots, "
+            + "{Promoted} names promoted.",
+            candidates.Count, local.Count, owned.Count, stopwatch.Elapsed.TotalSeconds,
+            result.CreatedReleases, result.MatchedExisting, result.PlayRecordsWritten,
+            result.SnapshotsWritten, result.NamesPromoted);
 
         return new SteamSyncReport(candidates.Count, result, stopwatch.Elapsed);
+    }
+
+    /// <summary>
+    /// The owned-library half of the union (§4.2). Needs a user-supplied Web API
+    /// key and the account's SteamID64, which is derived from the steam3 folder
+    /// name the local scan already enumerated — so this runs only when the local
+    /// scan found an account and the key is configured.
+    ///
+    /// <para>Total: an unconfigured key, an undisclosed profile or a dead
+    /// network yields no candidates and leaves the local scan untouched. §5.1
+    /// forbids enrichment blocking a user-facing path, and this one is on the
+    /// startup path.</para>
+    /// </summary>
+    private async Task<IReadOnlyList<CandidateOwnership>> OwnedCandidatesAsync(
+        IReadOnlyList<CandidateOwnership> local, CancellationToken ct)
+    {
+        if (_steamWeb is null || !await _steamWeb.IsConfiguredAsync(ct))
+        {
+            return [];
+        }
+
+        var accounts = local
+            .Select(c => c.AccountRef)
+            .Where(a => !string.IsNullOrWhiteSpace(a))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        var owned = new List<CandidateOwnership>();
+        foreach (var account in accounts)
+        {
+            if (!SteamId.TryParse(account!, out var steamId))
+            {
+                continue;
+            }
+
+            try
+            {
+                owned.AddRange(await _steamWeb.GetOwnershipCandidatesAsync(steamId, ct: ct));
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                // One account's profile being private or the endpoint being down
+                // must not cost the local scan, which needs no network at all.
+                _logger.LogWarning(
+                    ex, "Owned-library lookup failed for one account; continuing with local files.");
+            }
+        }
+
+        return owned;
     }
 }
 

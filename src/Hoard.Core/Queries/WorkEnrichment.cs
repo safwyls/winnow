@@ -35,6 +35,12 @@ namespace Hoard.Core.Queries;
 /// The primary publisher, already reduced to one deterministic name by the
 /// caller. Feeds the matcher's publisher signal (§5.3, migration 0005).
 /// </param>
+/// <param name="SteamAppType">
+/// Valve's <c>common.type</c> for the appid, verbatim (migration 0006). Feeds
+/// <see cref="DemoConsolidation"/>'s first gate. Null is "the source did not
+/// say", which for this column is the common case: several appids are
+/// unreadable without a Steam Web API key.
+/// </param>
 public sealed record WorkEnrichment(
     long WorkId,
     string? Name = null,
@@ -42,7 +48,8 @@ public sealed record WorkEnrichment(
     int? FirstReleaseYear = null,
     string? Summary = null,
     string? CoverUrl = null,
-    string? Publisher = null)
+    string? Publisher = null,
+    string? SteamAppType = null)
 {
     /// <summary>
     /// True when there is nothing to write. Enrichment skips these outright
@@ -55,5 +62,6 @@ public sealed record WorkEnrichment(
         && FirstReleaseYear is null
         && string.IsNullOrWhiteSpace(Summary)
         && string.IsNullOrWhiteSpace(CoverUrl)
-        && string.IsNullOrWhiteSpace(Publisher);
+        && string.IsNullOrWhiteSpace(Publisher)
+        && string.IsNullOrWhiteSpace(SteamAppType);
 }

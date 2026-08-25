@@ -65,6 +65,22 @@ public sealed record EnrichmentTarget
     /// <summary>Whether <c>works.publisher</c> is already set (migration 0005).</summary>
     public bool HasPublisher { get; init; }
 
+    /// <summary>Whether <c>works.steam_app_type</c> is already set (migration 0006).</summary>
+    public bool HasSteamAppType { get; init; }
+
+    /// <summary>
+    /// The stored title — <c>releases.name</c>, falling back to the work name,
+    /// the same COALESCE the bucket query makes.
+    ///
+    /// <para>Carried so the pass can decide whether an appid is worth asking
+    /// steamcmd.net about for its <c>common.type</c>, WITHOUT a second query.
+    /// The type only changes an outcome for entries
+    /// <see cref="DemoConsolidation"/> is going to reason about, and asking for
+    /// the other few hundred would spend a volunteer service's bandwidth to
+    /// learn <c>Game</c> six hundred times.</para>
+    /// </summary>
+    public string Title { get; init; } = string.Empty;
+
     /// <summary>
     /// True when only metadata is outstanding — the backfill case for a library
     /// named by an earlier build. Reported so a run can say how much of its work

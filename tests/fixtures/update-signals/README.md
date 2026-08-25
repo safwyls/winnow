@@ -11,6 +11,8 @@ public announcement and depot-metadata responses containing no account data. See
 | `getnewsforapp-nomatches-790.json` | `ISteamNews/GetNewsForApp/v2/` | appid 790 — has a feed, nothing tagged `patchnotes` |
 | `steamcmd-info-413150.json` | `api.steamcmd.net/v1/info/{appid}` | Stardew Valley |
 | `steamcmd-info-missing.json` | `api.steamcmd.net/v1/info/{appid}` | appid 999999999 — an app that does not exist |
+| `steamcmd-info-demo-4028270.json` | `api.steamcmd.net/v1/info/{appid}` | Everwind Demo — the `common` block: `name`, `type: "Demo"`, `parent: "2253100"` (captured 2026-08-24) |
+| `steamcmd-info-restricted-3065170.json` | `api.steamcmd.net/v1/info/{appid}` | Monster Hunter Wilds Beta test — `_missing_token`, no `common` at all (captured 2026-08-24) |
 
 Two response shapes are **not** files here because they have no body worth
 pinning, and both are asserted directly in `Updates/SteamNewsClientTests.cs`:
@@ -41,3 +43,21 @@ The two most load-bearing facts in these files:
 - `steamcmd-info-413150.json` carries five branches — `compatibility`,
   `legacy_1.5.6`, `legacy_1.6.8`, `previous_version` and `public`. Only `public`
   is what a user is running.
+- `steamcmd-info-restricted-3065170.json` is also **HTTP 200 with
+  `"status": "success"`**, and its inner object is **not empty** — it carries
+  `_change_number`, `appid`, `_missing_token: true` and `public_only: "1"` and
+  no `common` or `depots` block at all. That is a third shape, distinct from
+  both success and the empty missing-app object: the app exists, and an
+  anonymous caller is not allowed to be told about it. Five appids of the
+  author's library answer this way (8510, 854040, 1883690, 3065170, 3562740);
+  `store.steampowered.com/api/appdetails` returns `success: false` for the same
+  set. A separate five (229100, 236600, 451070, 813000, 1253950) answer with the
+  EMPTY object of `steamcmd-info-missing.json` instead — Steam has no such app.
+  Both are "no data" and neither is a parse failure, but only the empty one is a
+  permanent negative, so the client stores the refusal verbatim and the empty
+  object as a null payload, keeping the two distinguishable on disk.
+- `steamcmd-info-demo-4028270.json` proves the `common` block carries `name`
+  **and** `type` **and** `parent` — the fields the enrichment name chain and
+  `DemoConsolidation` read. Note `type` casing is not stable across appids:
+  this one says `Demo`, Bastion (107100) says lower-case `game` and Monster
+  Hunter Wilds (2246340) says `Game`.

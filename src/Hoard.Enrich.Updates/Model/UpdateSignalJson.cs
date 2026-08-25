@@ -194,6 +194,121 @@ internal static class UpdateSignalJson
         }
     }
 
+    /// <summary>
+    /// True when <c>data.&lt;appid&gt;</c> exists and carries at least one
+    /// property — i.e. the service said something about this appid, whether or
+    /// not either projection could read it.
+    ///
+    /// <para>This is what separates the two "no data" bodies, and the
+    /// distinction is worth a method. <c>{"data":{"999999999":{}}}</c> is a
+    /// <b>genuine miss</b>: Steam has no such app and never will, so nothing is
+    /// worth keeping. <c>{"_missing_token": true, "public_only": "1"}</c> is a
+    /// <b>refusal</b>: the app exists and the mirror is not allowed to describe
+    /// it anonymously. Storing the refusal verbatim keeps the evidence on disk —
+    /// a later reader can tell "unknown app" from "needs a Steam Web API key"
+    /// without another request.</para>
+    /// </summary>
+    internal static bool HasAppPayload(string appId, string body)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(body);
+            return document.RootElement.TryGetProperty("data", out var data)
+                   && data.ValueKind == JsonValueKind.Object
+                   && data.TryGetProperty(appId, out var app)
+                   && app.ValueKind == JsonValueKind.Object
+                   && app.EnumerateObject().MoveNext();
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// The <c>common</c> block from a steamcmd.net <c>/v1/info/{appid}</c> body:
+    /// Steam's own name, type and parent appid.
+    ///
+    /// <para>Total, like every projection here. A body whose <c>data.&lt;appid&gt;</c>
+    /// carries no <c>common</c> object is <b>no data</b>, not a parse failure —
+    /// that is the shape restricted appids answer with
+    /// (<c>"_missing_token": true, "public_only": "1"</c>), and reading it as a
+    /// broken contract would mark a service that is working perfectly as
+    /// down.</para>
+    /// </summary>
+    /// <param name="present">
+    /// True when the response carried a non-empty object for this appid —
+    /// whether or not that object had a <c>common</c> block. False means the
+    /// service answered about some other appid, or about none, and the answer is
+    /// worthless.
+    /// </param>
+    internal static SteamAppInfo? TryReadCommon(string appId, string body, out bool present)
+    {
+        present = false;
+
+        try
+        {
+            using var document = JsonDocument.Parse(body);
+            var root = document.RootElement;
+
+            if (!root.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Object)
+            {
+                return null;
+            }
+
+            if (!data.TryGetProperty(appId, out var app) || app.ValueKind != JsonValueKind.Object)
+            {
+                return null;
+            }
+
+            if (!app.EnumerateObject().MoveNext())
+            {
+                // The verified missing-app shape: key present, object empty.
+                present = true;
+                return null;
+            }
+
+            present = true;
+
+            if (!app.TryGetProperty("common", out var common) || common.ValueKind != JsonValueKind.Object)
+            {
+                // The restricted shape. The service answered; it is simply not
+                // allowed to tell an anonymous caller what this appid is.
+                return null;
+            }
+
+            var name = ReadString(common, "name");
+            var type = ReadString(common, "type");
+
+            // `parent` arrives as a stringified integer, like every other number
+            // this host sends.
+            var parent = common.TryGetProperty("parent", out var parentElement)
+                ? ReadInt64(parentElement)
+                : null;
+
+            if (string.IsNullOrWhiteSpace(name)
+                && string.IsNullOrWhiteSpace(type)
+                && parent is null)
+            {
+                // A `common` block with nothing in it that this reader wants is
+                // indistinguishable, to every caller, from no block at all.
+                return null;
+            }
+
+            return new SteamAppInfo(
+                AppId: appId,
+                Name: string.IsNullOrWhiteSpace(name) ? null : name.Trim(),
+                Type: string.IsNullOrWhiteSpace(type) ? null : type.Trim(),
+                ParentAppId: parent is { } p && p > 0
+                    ? p.ToString(CultureInfo.InvariantCulture)
+                    : null);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
     private static string? ReadString(JsonElement parent, string name)
         => parent.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String
             ? value.GetString()

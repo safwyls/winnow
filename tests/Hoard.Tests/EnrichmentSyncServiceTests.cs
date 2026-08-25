@@ -6,6 +6,8 @@ using Hoard.Enrich.Igdb;
 using Hoard.Enrich.Igdb.Model;
 using Hoard.Enrich.Steam;
 using Hoard.Enrich.Steam.Model;
+using Hoard.Enrich.Updates;
+using Hoard.Enrich.Updates.Model;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
@@ -497,6 +499,243 @@ public sealed class EnrichmentSyncServiceTests
         Assert.Equal("Brøderbund", right.Publisher);
     }
 
+    // ── The third name source: api.steamcmd.net ──────────────────────────────
+
+    /// <summary>
+    /// The 18-appid case. IGDB has no entry for 4028270 and
+    /// <c>IStoreBrowseService/GetItems</c> returns nothing, so this work sat as
+    /// "App 4028270" through every earlier run. steamcmd.net names it — and
+    /// classifies it in the same response.
+    /// </summary>
+    [Fact]
+    public async Task Steamcmd_names_an_app_igdb_and_the_store_both_missed()
+    {
+        using var fixture = new EnrichmentFixture();
+        var seeded = await fixture.AddProvisionalAsync("4028270");
+
+        fixture.Igdb.Configured = true;
+        fixture.SteamCmd.Add("4028270", "Everwind Demo", "Demo", parent: "2253100");
+
+        var report = await fixture.Service.EnrichAsync();
+
+        Assert.Equal(1, report.Promoted);
+        Assert.Equal(1, report.FromSteamCmd);
+        Assert.Equal(0, report.FromIgdb);
+
+        var work = await fixture.WorkAsync(seeded.WorkId);
+        Assert.Equal("Everwind Demo", work.Name);
+        Assert.Equal("Demo", work.SteamAppType);
+        Assert.Equal("Everwind Demo", await fixture.ReleaseNameAsync(seeded.ReleaseId));
+        Assert.False(work.NameIsProvisional);
+    }
+
+    /// <summary>
+    /// Ordering, all three sources at once. §4.4 keeps IGDB the backbone and the
+    /// no-SLA volunteer mirror last, so it is only ever asked about what the
+    /// other two could not answer.
+    /// </summary>
+    [Fact]
+    public async Task Steamcmd_is_last_and_only_sees_what_igdb_and_the_store_missed()
+    {
+        using var fixture = new EnrichmentFixture();
+        await fixture.AddProvisionalAsync("620");
+        await fixture.AddProvisionalAsync("570");
+        await fixture.AddProvisionalAsync("4028270");
+
+        fixture.Igdb.Configured = true;
+        fixture.Igdb.Names["620"] = "Portal 2";
+        fixture.Steam.Names["570"] = "Dota 2";
+        fixture.SteamCmd.Add("620", "Portal 2 (steamcmd)", "Game");
+        fixture.SteamCmd.Add("570", "Dota 2 (steamcmd)", "Game");
+        fixture.SteamCmd.Add("4028270", "Everwind Demo", "Demo");
+
+        var report = await fixture.Service.EnrichAsync();
+
+        Assert.Equal(3, report.Promoted);
+        Assert.Equal(1, report.FromIgdb);
+        Assert.Equal(1, report.FromSteamCmd);
+
+        // The two appids the earlier sources answered for were never requested.
+        Assert.Equal(["4028270"], fixture.SteamCmd.Asked);
+    }
+
+    /// <summary>
+    /// The volunteer service is not asked to re-name a library it already named.
+    /// Without this, 616 works would cost 616 requests on every launch — the
+    /// exact failure the Steam-store fallback already guards against, and the
+    /// stakes are higher here because the host has no SLA.
+    /// </summary>
+    [Fact]
+    public async Task Steamcmd_is_not_asked_about_a_work_that_only_needs_metadata()
+    {
+        using var fixture = new EnrichmentFixture();
+        await fixture.AddNamedAsync("620", "Portal 2");
+
+        fixture.Igdb.Configured = false;
+        fixture.SteamCmd.Add("620", "Portal 2", "Game");
+
+        await fixture.Service.EnrichAsync();
+
+        // Not requested. It IS offered the free cache read — a body some other
+        // pass already paid for costs nothing — but no call is made.
+        Assert.Empty(fixture.SteamCmd.Asked);
+        Assert.Equal(["620"], fixture.SteamCmd.Peeked);
+    }
+
+    /// <summary>
+    /// …and a body the update poller already fetched is harvested for free, so
+    /// a library that polls for update signals gradually learns its own types
+    /// without a single extra request.
+    /// </summary>
+    [Fact]
+    public async Task A_type_already_in_the_cache_is_read_at_no_cost()
+    {
+        using var fixture = new EnrichmentFixture();
+        var seeded = await fixture.AddNamedAsync("2246340", "Monster Hunter Wilds");
+
+        fixture.SteamCmd.Add("2246340", "Monster Hunter Wilds", "Game");
+        fixture.SteamCmd.Cached.Add("2246340");
+
+        await fixture.Service.EnrichAsync();
+
+        Assert.Empty(fixture.SteamCmd.Asked);
+        Assert.Equal("Game", (await fixture.WorkAsync(seeded.WorkId)).SteamAppType);
+    }
+
+    /// <summary>
+    /// The one class of already-named work that IS worth a request: a title that
+    /// reads like a handout, where Valve's type decides whether a tile gets
+    /// hidden. Narrow by construction — the query only returns these while the
+    /// type is still unknown.
+    /// </summary>
+    [Fact]
+    public async Task A_variant_titled_work_is_asked_about_so_its_type_can_be_stored()
+    {
+        using var fixture = new EnrichmentFixture();
+        var demo = await fixture.AddNamedAsync("107110", "Bastion Demo");
+        await fixture.AddNamedAsync("107100", "Bastion");
+
+        fixture.SteamCmd.Add("107110", "Bastion - Demo", "Demo", parent: "107100");
+        fixture.SteamCmd.Add("107100", "Bastion", "game");
+
+        await fixture.Service.EnrichAsync();
+
+        // Only the handout-shaped title cost a request.
+        Assert.Equal(["107110"], fixture.SteamCmd.Asked);
+
+        var work = await fixture.WorkAsync(demo.WorkId);
+        Assert.Equal("Demo", work.SteamAppType);
+
+        // The name is NOT touched: this work already had a real title, and
+        // "Bastion - Demo" must not overwrite "Bastion Demo".
+        Assert.Equal("Bastion Demo", work.Name);
+    }
+
+    /// <summary>
+    /// A second run asks nothing. The name promotion drops the work out of the
+    /// provisional set and the stored type drops it out of the variant-title
+    /// predicate, so the volunteer service sees one request per appid, ever.
+    /// </summary>
+    [Fact]
+    public async Task A_second_run_asks_steamcmd_nothing()
+    {
+        using var fixture = new EnrichmentFixture();
+        await fixture.AddProvisionalAsync("4028270");
+        fixture.SteamCmd.Add("4028270", "Everwind Demo", "Demo");
+
+        await fixture.Service.EnrichAsync();
+        fixture.SteamCmd.Asked.Clear();
+        await fixture.Service.EnrichAsync();
+
+        Assert.Empty(fixture.SteamCmd.Asked);
+    }
+
+    /// <summary>
+    /// The restricted appids — 8510, 813000, 1883690, 236600 — answer HTTP 200
+    /// with no <c>common</c> block, and no anonymous request will ever get more.
+    /// That is a degraded run, not a failed one: the name stays provisional, the
+    /// type stays NULL (never a guess), and nothing throws.
+    /// </summary>
+    [Fact]
+    public async Task An_unreadable_appid_leaves_the_name_provisional_and_the_type_null()
+    {
+        using var fixture = new EnrichmentFixture();
+        var seeded = await fixture.AddProvisionalAsync("8510");
+
+        // The fake answers NoData for anything it was not given.
+        var report = await fixture.Service.EnrichAsync();
+
+        Assert.Equal(0, report.Promoted);
+
+        var work = await fixture.WorkAsync(seeded.WorkId);
+        Assert.Equal("App 8510", work.Name);
+        Assert.True(work.NameIsProvisional);
+        Assert.Null(work.SteamAppType);
+    }
+
+    /// <summary>
+    /// A dead volunteer service must not take the pass down with it. §5.1:
+    /// enrichment never blocks, and it is the LAST source precisely so its
+    /// failure costs nothing the first two already delivered.
+    /// </summary>
+    [Fact]
+    public async Task A_throwing_steamcmd_does_not_fail_the_run()
+    {
+        using var fixture = new EnrichmentFixture();
+        var portal = await fixture.AddProvisionalAsync("620");
+        var everwind = await fixture.AddProvisionalAsync("4028270");
+
+        fixture.Steam.Names["620"] = "Portal 2";
+        fixture.SteamCmd.Throw = new HttpRequestException("steamcmd.net is down");
+
+        var report = await fixture.Service.EnrichAsync();
+
+        Assert.Equal(1, report.Promoted);
+        Assert.Equal(0, report.FromSteamCmd);
+        Assert.Equal("Portal 2", await fixture.WorkNameAsync(portal.WorkId));
+        Assert.True(await fixture.IsProvisionalAsync(everwind.WorkId));
+    }
+
+    /// <summary>
+    /// A name from the mirror is still a name, and the one-way promotion rule
+    /// applies to it exactly as it does to the other two sources.
+    /// </summary>
+    [Fact]
+    public async Task Steamcmd_never_overwrites_a_real_title()
+    {
+        using var fixture = new EnrichmentFixture();
+        var seeded = await fixture.AddNamedAsync("4028270", "Everwind Demo (renamed by hand)");
+
+        fixture.SteamCmd.Add("4028270", "Everwind Demo", "Demo");
+
+        await fixture.Service.EnrichAsync();
+
+        Assert.Equal(
+            "Everwind Demo (renamed by hand)", (await fixture.WorkAsync(seeded.WorkId)).Name);
+    }
+
+    /// <summary>
+    /// A blank name is "I do not know", not a title — the same rule the other
+    /// two sources are held to. The type from the same response is still stored:
+    /// the response answered one question and not the other.
+    /// </summary>
+    [Fact]
+    public async Task A_blank_name_from_steamcmd_is_not_a_promotion()
+    {
+        using var fixture = new EnrichmentFixture();
+        var seeded = await fixture.AddProvisionalAsync("4028270");
+
+        fixture.SteamCmd.Add("4028270", "   ", "Demo");
+
+        var report = await fixture.Service.EnrichAsync();
+
+        Assert.Equal(0, report.Promoted);
+
+        var work = await fixture.WorkAsync(seeded.WorkId);
+        Assert.True(work.NameIsProvisional);
+        Assert.Equal("Demo", work.SteamAppType);
+    }
+
     // ── Fixture ──────────────────────────────────────────────────────────────
 
     private static IgdbGame Game(long id, string name, IReadOnlyList<string> publishers)
@@ -514,7 +753,7 @@ public sealed class EnrichmentSyncServiceTests
             Releases = new ReleaseRepository(_db.Factory);
 
             Service = new EnrichmentSyncService(
-                Works, Releases, Igdb, Steam, _db.Factory,
+                Works, Releases, Igdb, Steam, SteamCmd, _db.Factory,
                 NullLogger<EnrichmentSyncService>.Instance);
         }
 
@@ -525,6 +764,8 @@ public sealed class EnrichmentSyncServiceTests
         public FakeIgdbClient Igdb { get; } = new();
 
         public FakeSteamStoreClient Steam { get; } = new();
+
+        public FakeBuildInfoClient SteamCmd { get; } = new();
 
         public EnrichmentSyncService Service { get; }
 
@@ -669,5 +910,70 @@ public sealed class EnrichmentSyncServiceTests
         public Task<SteamTagVocabulary> GetTagListAsync(
             TimeSpan? cacheTtl = null, CancellationToken ct = default)
             => Task.FromResult(SteamTagVocabulary.Empty);
+    }
+
+    /// <summary>
+    /// Stands in for api.steamcmd.net — the third and last name source.
+    /// <see cref="Asked"/> records the appids a REQUEST would have been made
+    /// for; a <c>cachedOnly</c> read is recorded separately, because "we spent a
+    /// call at the volunteer service" and "we looked at what was already on
+    /// disk" are the two things these tests most need to tell apart.
+    /// </summary>
+    private sealed class FakeBuildInfoClient : IBuildInfoClient
+    {
+        /// <summary>Appids the fake will answer about, whether asked live or from cache.</summary>
+        public Dictionary<string, SteamAppInfo> Infos { get; } = new(StringComparer.Ordinal);
+
+        /// <summary>Appids whose body is "already cached", so a cachedOnly read finds them.</summary>
+        public HashSet<string> Cached { get; } = new(StringComparer.Ordinal);
+
+        /// <summary>Appids a live request was made for.</summary>
+        public List<string> Asked { get; } = [];
+
+        /// <summary>Appids read cache-only, at no cost.</summary>
+        public List<string> Peeked { get; } = [];
+
+        /// <summary>Thrown from every call, the way a dead host would.</summary>
+        public Exception? Throw { get; set; }
+
+        public void Add(string appId, string? name, string? type, string? parent = null)
+            => Infos[appId] = new SteamAppInfo(appId, name, type, parent);
+
+        public Task<BuildInfoFetch> GetPublicBranchAsync(
+            string appId, TimeSpan? cacheTtl = null, CancellationToken ct = default)
+            => Task.FromResult(BuildInfoFetch.Unavailable);
+
+        public Task<AppInfoFetch> GetAppInfoAsync(
+            string appId,
+            TimeSpan? cacheTtl = null,
+            bool cachedOnly = false,
+            CancellationToken ct = default)
+        {
+            if (cachedOnly)
+            {
+                Peeked.Add(appId);
+
+                if (!Cached.Contains(appId))
+                {
+                    return Task.FromResult(AppInfoFetch.Unavailable);
+                }
+            }
+            else
+            {
+                Asked.Add(appId);
+            }
+
+            if (Throw is not null)
+            {
+                throw Throw;
+            }
+
+            return Task.FromResult(Infos.TryGetValue(appId, out var info)
+                ? AppInfoFetch.Ok(info)
+
+                // The restricted shape: the service answered and was not allowed
+                // to say. Not a failure, and not a name.
+                : AppInfoFetch.NoData);
+        }
     }
 }

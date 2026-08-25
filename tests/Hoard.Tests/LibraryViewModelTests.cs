@@ -300,7 +300,7 @@ public sealed class LibraryViewModelTests
         Assert.Equal("Empyrion", library.Details.Title);
         Assert.Equal("STEAM", library.Details.StoreBadge);
         Assert.Equal("37h", library.Details.PlaytimeText);
-        Assert.True(library.Details.HasLastPlayedDate);
+        Assert.True(library.Details.HasGap);
 
         library.CloseDetailsCommand.Execute(null);
 
@@ -370,17 +370,21 @@ public sealed class LibraryViewModelTests
 
         var details = library.Details!;
         Assert.True(details.HasUpdates);
-        Assert.True(details.HasBody);
-        Assert.Equal("3 updates since you played", details.UpdatesHeading);
         Assert.Equal(
             ["v1.19.2 Patch", "Build 24678461", "Old news"],
             details.Updates.Select(u => u.Headline));
 
+        // Two landed after the 2017 session; the 2024 one did too. All three
+        // are after it, so all three are marks and the section says so.
+        Assert.Equal("SINCE YOU PLAYED", details.UpdatesLabel);
+        Assert.Equal("3 updates landed while you were away.", details.GapCaption);
+        Assert.Equal(3, details.RailMarks.Count);
+
         // A build push has no reader-facing page, and a non-http scheme is not
         // something to hand to the shell.
-        Assert.True(details.Updates[0].HasUrl);
-        Assert.False(details.Updates[1].HasUrl);
-        Assert.False(details.Updates[2].HasUrl);
+        Assert.True(details.Updates[0].HasLink);
+        Assert.False(details.Updates[1].HasLink);
+        Assert.False(details.Updates[2].HasLink);
     }
 
     [Fact]
@@ -394,7 +398,95 @@ public sealed class LibraryViewModelTests
         await library.LoadCommand.ExecuteAsync(null);
         await library.OpenDetailsCommand.ExecuteAsync(library.VisibleTiles[0]);
 
-        Assert.Equal("1 update since you played", library.Details!.UpdatesHeading);
+        Assert.Equal("1 update landed while you were away.", library.Details!.GapCaption);
+    }
+
+    /// <summary>
+    /// The library is what tells each update row where the last session was, so
+    /// the "since you played" claim is only made when it is true. Before this
+    /// the panel listed every event a release had ever had under that heading.
+    /// </summary>
+    [Fact]
+    public async Task An_update_older_than_the_last_session_is_history_not_a_missed_one()
+    {
+        using var fixture = new LibraryFixture();
+        var releaseId = await fixture.SeedAsync("Recent", minutes: 600, lastPlayed: Now.AddDays(-2));
+        await fixture.AddUpdateAsync(releaseId, UpdateEventKinds.Announcement,
+            new DateTime(2023, 12, 12, 16, 38, 21, DateTimeKind.Utc),
+            title: "December 12, 2023 Update",
+            url: "https://store.steampowered.com/news/app/80/view/1");
+
+        var library = fixture.CreateViewModel();
+        await library.LoadCommand.ExecuteAsync(null);
+        await library.OpenDetailsCommand.ExecuteAsync(library.VisibleTiles[0]);
+
+        var details = library.Details!;
+        Assert.Equal("UPDATE HISTORY", details.UpdatesLabel);
+        Assert.Equal("No updates recorded in that stretch.", details.GapCaption);
+        Assert.Empty(details.RailMarks);
+        Assert.Single(details.Updates);
+        Assert.True(details.Updates[0].HasLink);
+    }
+
+    /// <summary>
+    /// The Steam affordances come from the appid the load pass already read out
+    /// of external_ids — the panel does not go back to the database for it, and
+    /// it does not build a URL from anything else.
+    /// </summary>
+    [Fact]
+    public async Task Opening_details_carries_the_steam_appid_through_to_real_links()
+    {
+        using var fixture = new LibraryFixture();
+        await fixture.SeedAsync("Empyrion", minutes: 2_220, lastPlayed: Now.AddYears(-2));
+
+        var library = fixture.CreateViewModel();
+        await library.LoadCommand.ExecuteAsync(null);
+        await library.OpenDetailsCommand.ExecuteAsync(library.VisibleTiles[0]);
+
+        var details = library.Details!;
+        var appId = details.SteamAppId;
+
+        Assert.NotNull(appId);
+        Assert.Equal($"steam://install/{appId}", details.PrimaryAction!.Uri);
+        Assert.Equal($"https://store.steampowered.com/app/{appId}/", details.Links[0].Uri);
+        Assert.Equal($"https://store.steampowered.com/news/app/{appId}", details.Links[1].Uri);
+    }
+
+    /// <summary>
+    /// §1's longitudinal series, read on open from the ownership's own history
+    /// and stated as a sentence rather than drawn as a chart through one point.
+    /// </summary>
+    [Fact]
+    public async Task The_panel_reports_the_playtime_history_hoard_has_recorded()
+    {
+        using var fixture = new LibraryFixture();
+        var releaseId = await fixture.SeedAsync("Witchspire", minutes: 243, lastPlayed: Now.AddDays(-1));
+        await fixture.AddSnapshotAsync(releaseId, 176, Now.AddDays(-3));
+        await fixture.AddSnapshotAsync(releaseId, 243, Now.AddDays(-1));
+
+        var library = fixture.CreateViewModel();
+        await library.LoadCommand.ExecuteAsync(null);
+        await library.OpenDetailsCommand.ExecuteAsync(library.VisibleTiles[0]);
+
+        Assert.True(library.Details!.HasRecordLine);
+        Assert.EndsWith("— up 1h 7m.", library.Details.RecordLine, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Without a snapshot repository the panel simply says nothing about the
+    /// record — it never invents a history it has not read.
+    /// </summary>
+    [Fact]
+    public async Task No_snapshot_source_means_no_record_line()
+    {
+        using var fixture = new LibraryFixture();
+        await fixture.SeedAsync("Solo", minutes: 600, lastPlayed: Now.AddYears(-2));
+
+        var library = fixture.CreateViewModel(withSnapshots: false);
+        await library.LoadCommand.ExecuteAsync(null);
+        await library.OpenDetailsCommand.ExecuteAsync(library.VisibleTiles[0]);
+
+        Assert.False(library.Details!.HasRecordLine);
     }
 
     /// <summary>
@@ -417,13 +509,19 @@ public sealed class LibraryViewModelTests
         Assert.False(details.HasPublisher);
         Assert.False(details.HasSummary);
         Assert.False(details.HasUpdates);
-        Assert.False(details.HasBody);
+        Assert.False(details.HasIdentityLine);
         Assert.Null(details.Summary);
         Assert.Null(details.Publisher);
 
+        // Nothing is a hole: the one band with no fact behind it says what is
+        // going to fill it (§7).
+        Assert.True(details.ShowEmptyBody);
+        Assert.NotEmpty(details.EmptyBodyText);
+
         // Zero playtime and no date is the one case that really is "never".
         Assert.Equal("Never played", details.LastPlayedText);
-        Assert.False(details.HasLastPlayedDate);
+        Assert.False(details.HasGap);
+        Assert.Equal("You've never opened this.", details.NoGapText);
         Assert.Equal("—", details.PlaytimeText);
         Assert.Equal("—", details.IdleText);
         Assert.Equal("Never played", details.BucketLabel);
@@ -448,7 +546,7 @@ public sealed class LibraryViewModelTests
         Assert.True(details.HasReleaseYear);
         Assert.Equal("2020", details.ReleaseYearText);
         Assert.True(details.HasSummary);
-        Assert.True(details.HasBody);
+        Assert.False(details.ShowEmptyBody);
         Assert.Equal("Installed", details.InstallText);
         Assert.True(details.HasInstallPath);
         Assert.Equal(@"D:\SteamLibrary\steamapps\common\Factorio", details.InstallPath);
@@ -474,7 +572,8 @@ public sealed class LibraryViewModelTests
         await library.OpenDetailsCommand.ExecuteAsync(library.VisibleTiles[0]);
 
         Assert.Equal("Not recorded", library.Details!.LastPlayedText);
-        Assert.False(library.Details.HasLastPlayedDate);
+        Assert.False(library.Details.HasGap);
+        Assert.Equal("Steam has no date for your last session.", library.Details.NoGapText);
         Assert.Equal("7m", library.Details.PlaytimeText);
     }
 
@@ -886,6 +985,7 @@ public sealed class LibraryViewModelTests
             Plays = new PlayRecordRepository(_db.Factory);
             Updates = new UpdateEventRepository(_db.Factory);
             Queries = new LibraryQueryRepository(_db.Factory);
+            Snapshots = new PlaytimeSnapshotRepository(_db.Factory);
         }
 
         public IWorkRepository Works { get; }
@@ -900,9 +1000,15 @@ public sealed class LibraryViewModelTests
 
         public ILibraryQueryRepository Queries { get; }
 
+        public IPlaytimeSnapshotRepository Snapshots { get; }
+
         /// <summary>No cover cache: the library must compose on procedural art alone.</summary>
-        public LibraryViewModel CreateViewModel(DormancyRamp? ramp = null)
-            => new(Queries, Ownerships, Releases, Works, Updates, covers: null, ramp: ramp);
+        public LibraryViewModel CreateViewModel(DormancyRamp? ramp = null, bool withSnapshots = true)
+            => new(
+                Queries, Ownerships, Releases, Works, Updates,
+                covers: null,
+                ramp: ramp,
+                snapshots: withSnapshots ? Snapshots : null);
 
         public MergeQueueViewModel CreateMergeQueue()
             => new(new MergeCandidateRepository(_db.Factory), Releases, Works);
@@ -962,6 +1068,18 @@ public sealed class LibraryViewModelTests
             });
 
             return releaseId;
+        }
+
+        /// <summary>Adds one reading to the ownership's longitudinal series.</summary>
+        public async Task AddSnapshotAsync(long releaseId, long minutes, DateTime observedAt)
+        {
+            var ownership = (await Ownerships.GetByReleaseAsync(releaseId)).Single();
+            await Snapshots.InsertAsync(new PlaytimeSnapshot
+            {
+                OwnershipId = ownership.Id,
+                PlaytimeMinutes = minutes,
+                ObservedAt = observedAt,
+            });
         }
 
         public Task AddUpdateAsync(

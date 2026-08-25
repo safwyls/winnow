@@ -175,6 +175,25 @@ public sealed class UpdateSignalOptions
     /// </summary>
     public TimeSpan BuildInfoCacheTtl { get; set; } = TimeSpan.FromDays(14);
 
+    /// <summary>
+    /// How long a fetched steamcmd.net body stays authoritative for the
+    /// <c>common</c> projection — Steam's name and type for the appid.
+    ///
+    /// <para>Longer than <see cref="BuildInfoCacheTtl"/>, over the very same
+    /// cached body, because the two projections age at completely different
+    /// rates: <c>timeupdated</c> moves whenever a developer pushes a depot,
+    /// while a game's name and its <c>Game</c>/<c>Demo</c> classification are
+    /// effectively immutable. Thirty days matches the IGDB enrichment TTL, so a
+    /// library that has been named once costs nothing to re-name.</para>
+    ///
+    /// <para>Not infinite, because names do change — early-access titles get
+    /// renamed at launch — and because a body cached as a <i>miss</i> ages under
+    /// this same clock: the appids that answer <c>_missing_token</c> today may
+    /// become readable, and one request a month per unnamed appid is the price
+    /// of finding out.</para>
+    /// </summary>
+    public TimeSpan AppInfoCacheTtl { get; set; } = TimeSpan.FromDays(30);
+
     // ── Rate limits and retry ───────────────────────────────────────────────
 
     /// <summary>

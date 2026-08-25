@@ -9,6 +9,7 @@ using Hoard.Data;
 using Hoard.Data.Repositories;
 using Hoard.Enrich.Igdb;
 using Hoard.Enrich.Steam;
+using Hoard.Enrich.SteamWeb;
 using Hoard.Enrich.Updates;
 using Hoard.Ingest.Steam;
 using Hoard.Resolve;
@@ -249,6 +250,12 @@ public static class Program
         // neither may block a user-facing path (§5.1, pitfall 3).
         services.AddIgdbEnrichment();
         services.AddSteamStoreEnrichment();
+
+        // §4.2. A second INGEST source, not a name fallback: localconfig.vdf
+        // only records games that have been played, so the never-launched
+        // library — 330 games on this machine — is invisible without it. Needs a
+        // user-supplied key; unconfigured is a clean no-op.
+        services.AddSteamWebApi();
         services.AddSingleton<EnrichmentSyncService>();
 
         // M2 (§4.5): the two update signals behind "Patched since". Both

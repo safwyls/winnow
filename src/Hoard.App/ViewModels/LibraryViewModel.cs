@@ -36,6 +36,13 @@ public partial class LibraryViewModel : ObservableObject
     private readonly IUpdateEventRepository _updateEvents;
 
     /// <summary>
+    /// §1's longitudinal playtime series, read only when a detail panel opens.
+    /// Optional so the view model still composes in tests and for any host that
+    /// has not registered it; the detail view then simply states no record line.
+    /// </summary>
+    private readonly IPlaytimeSnapshotRepository? _snapshots;
+
+    /// <summary>
     /// Cover art. Optional so the view still composes (on procedural art) when
     /// the host has not called <c>AddCoverCache</c> — DI fills the default.
     /// </summary>
@@ -51,7 +58,8 @@ public partial class LibraryViewModel : ObservableObject
         IWorkRepository works,
         IUpdateEventRepository updateEvents,
         ICoverCache? covers = null,
-        DormancyRamp? ramp = null)
+        DormancyRamp? ramp = null,
+        IPlaytimeSnapshotRepository? snapshots = null)
     {
         _libraryQueries = libraryQueries;
         _ownerships = ownerships;
@@ -59,6 +67,7 @@ public partial class LibraryViewModel : ObservableObject
         _works = works;
         _updateEvents = updateEvents;
         _covers = covers;
+        _snapshots = snapshots;
 
         Ramp = ramp ?? new DormancyRamp();
 
@@ -113,6 +122,15 @@ public partial class LibraryViewModel : ObservableObject
     /// it is <see cref="DisplaySettingsViewModel"/>.
     /// </summary>
     public DormancyRamp Ramp { get; }
+
+    /// <summary>
+    /// Whether tools, dedicated servers, soundtracks and videos appear in the
+    /// library. Read by <see cref="LoadAsync"/> rather than filtering afterwards,
+    /// because the rail's counts are computed from the rows the query returns —
+    /// filtering anywhere else would let the counts and the grid disagree.
+    /// Written by <see cref="DisplaySettingsViewModel"/>, which reloads on change.
+    /// </summary>
+    public bool ShowNonGameEntries { get; set; }
 
     /// <summary>The command bar's sort menu, and the labels the list headers share.</summary>
     public IReadOnlyList<SortOptionViewModel> SortOptions { get; }
@@ -217,7 +235,8 @@ public partial class LibraryViewModel : ObservableObject
     [RelayCommand]
     private async Task LoadAsync()
     {
-        var bucketRows = await _libraryQueries.GetOwnershipBucketsAsync(BucketThresholds.Default);
+        var bucketRows = await _libraryQueries.GetOwnershipBucketsAsync(
+            BucketThresholds.Default with { ShowNonGameEntries = ShowNonGameEntries });
         var ownerships = await _ownerships.GetAllAsync();
         var works = await _works.GetAllAsync();
 
@@ -225,6 +244,13 @@ public partial class LibraryViewModel : ObservableObject
         // is fetched under. Small library, per-work fetch is fine.
         var workByRelease = new Dictionary<long, Work>();
         var coverKeyByRelease = new Dictionary<long, CoverKey>();
+
+        // The same appid the cover key is built from, kept as itself: it is what
+        // the detail view's steam:// and store.steampowered.com targets are made
+        // of, and re-querying external_ids per opened panel would be a second
+        // trip for a string this loop already has in hand.
+        var steamAppIdByRelease = new Dictionary<long, string>();
+
         foreach (var work in works)
         {
             foreach (var release in await _releases.GetByWorkAsync(work.Id))
@@ -239,6 +265,7 @@ public partial class LibraryViewModel : ObservableObject
                 if (steam is not null)
                 {
                     coverKeyByRelease[release.Id] = CoverKey.Steam(steam.ProviderId);
+                    steamAppIdByRelease[release.Id] = steam.ProviderId;
                 }
             }
         }
@@ -270,7 +297,8 @@ public partial class LibraryViewModel : ObservableObject
                 covers: _covers,
                 work: work,
                 ownership: ownership,
-                ramp: Ramp));
+                ramp: Ramp,
+                steamAppId: steamAppIdByRelease.GetValueOrDefault(row.ReleaseId)));
         }
 
         _allTiles = tiles;
@@ -348,9 +376,11 @@ public partial class LibraryViewModel : ObservableObject
                 : bucket;
 
     /// <summary>
-    /// Opens the detail modal for a tile. The update events are the only thing
-    /// it has to go to the database for — everything else was already joined at
-    /// load — so the modal appears immediately and the update list fills in.
+    /// Opens the detail modal for a tile. Two reads, both keyed on rows this
+    /// view model already holds: the release's update events, and the
+    /// ownership's playtime history. Everything else was joined at load, so the
+    /// modal appears with its identity and its gap already correct and only the
+    /// two lists fill in.
     /// </summary>
     [RelayCommand]
     private async Task OpenDetailsAsync(GameTileViewModel? tile)
@@ -366,18 +396,25 @@ public partial class LibraryViewModel : ObservableObject
         var events = await _updateEvents.GetByReleaseAsync(target.ReleaseId);
 
         // Newest first: the update the user missed most recently is the one
-        // they are trying to catch up on (§5.2).
+        // they are trying to catch up on (§5.2). Each row is told the last-
+        // played date so it can say whether it is one the user actually missed
+        // — the distinction the Flare dot marks and the rail plots.
         var updates = events
             .OrderByDescending(e => e.OccurredAt)
             .ThenByDescending(e => e.Id)
-            .Select(UpdateEventViewModel.Create)
+            .Select(e => UpdateEventViewModel.Create(e, target.LastPlayedUtc))
             .ToList();
+
+        IReadOnlyList<PlaytimeSnapshot> history = _snapshots is null
+            ? []
+            : await _snapshots.GetByOwnershipAsync(target.OwnershipId);
 
         Details = new GameDetailsViewModel(
             target,
             BucketLabelFor(target.Bucket),
             updates,
-            publisher: target.Publisher,
+            DateTime.UtcNow,
+            snapshots: history,
             covers: _covers);
     }
 

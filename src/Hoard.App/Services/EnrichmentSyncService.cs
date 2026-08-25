@@ -5,6 +5,8 @@ using Hoard.Core.Repositories;
 using Hoard.Enrich.Igdb;
 using Hoard.Enrich.Igdb.Model;
 using Hoard.Enrich.Steam;
+using Hoard.Enrich.Updates;
+using Hoard.Enrich.Updates.Model;
 using Microsoft.Extensions.Logging;
 
 namespace Hoard.App.Services;
@@ -15,7 +17,7 @@ namespace Hoard.App.Services;
 /// <c>first_release_year</c>, <c>summary</c>, <c>cover_url</c> and (migration
 /// 0005) <c>publisher</c>.
 ///
-/// <para><b>Two sources, deliberately ordered.</b> IGDB is the designed
+/// <para><b>Three sources, deliberately ordered.</b> IGDB is the designed
 /// metadata backbone (§4.4) and wins any disagreement — it carries the
 /// canonical title plus the year, summary, cover and publisher. Steam's keyless
 /// store endpoint fills whatever IGDB does not answer for, and covers the case
@@ -23,6 +25,30 @@ namespace Hoard.App.Services;
 /// stuck showing appids because of a missing API key. The Steam endpoint is
 /// asked about <b>titles only</b>: it is undocumented, it is strictly a
 /// fallback, and it has nothing to say about the columns the matcher needs.</para>
+///
+/// <para><b>Third, and last: api.steamcmd.net.</b> The unofficial PICS mirror
+/// this project already polls for build signals carries <c>common.name</c>
+/// beside the <c>depots</c> block, and it names appids the first two refuse.
+/// Measured on the author's library: of 18 works still showing <c>App
+/// &lt;appid&gt;</c> after IGDB and <c>IStoreBrowseService/GetItems</c>, it
+/// names <b>11</b> — including 4028270 "Everwind Demo", 2614110 "Enshrouded
+/// Demo" and 202480 "Skyrim Creation Kit". The remaining seven answer with no
+/// <c>common</c> block at all and cannot be named without a Steam Web API key.
+/// It is LAST because of what it is: unofficial,
+/// unaffiliated with Valve, volunteer-run and explicitly without an SLA (§4.4
+/// keeps IGDB the backbone; <c>docs/spikes/update-signals.md</c> §1 records the
+/// terms). It is asked one appid at a time, only about works that still have no
+/// name, and its answers are cached for
+/// <see cref="UpdateSignalOptions.AppInfoCacheTtl"/> in the same
+/// <c>metadata_cache</c> row the build poller uses — so a name and a build
+/// signal for one appid cost one request between them, not two.</para>
+///
+/// <para>The same response also carries <c>common.type</c>, Valve's own
+/// classification (<c>Game</c>, <c>Demo</c>, <c>Tool</c>), which migration 0006
+/// stores and <see cref="DemoConsolidation"/> reads as its first gate. That is
+/// why a handful of already-named works reach step 4 as well: an entry whose
+/// title looks like a handout is worth one request to learn what Steam says it
+/// actually is.</para>
 ///
 /// <para><b>Two IGDB calls, not one.</b> <c>external_games</c> is the
 /// high-precision Steam-appid join (§4.4) and its expanded <c>game.*</c> fields
@@ -49,6 +75,7 @@ public sealed class EnrichmentSyncService
     private readonly IReleaseRepository _releases;
     private readonly IIgdbClient _igdb;
     private readonly ISteamStoreClient _steamStore;
+    private readonly IBuildInfoClient _steamCmd;
     private readonly IUnitOfWorkFactory _unitOfWork;
     private readonly ILogger<EnrichmentSyncService> _logger;
 
@@ -57,6 +84,7 @@ public sealed class EnrichmentSyncService
         IReleaseRepository releases,
         IIgdbClient igdb,
         ISteamStoreClient steamStore,
+        IBuildInfoClient steamCmd,
         IUnitOfWorkFactory unitOfWork,
         ILogger<EnrichmentSyncService> logger)
     {
@@ -64,6 +92,7 @@ public sealed class EnrichmentSyncService
         _releases = releases;
         _igdb = igdb;
         _steamStore = steamStore;
+        _steamCmd = steamCmd;
         _unitOfWork = unitOfWork;
         _logger = logger;
     }
@@ -95,7 +124,13 @@ public sealed class EnrichmentSyncService
     ///   <item><b>No fallback flood.</b> The Steam store is asked only about
     ///     works that still need a <i>name</i>. Without that split, a
     ///     credential-free machine would hit an undocumented endpoint 616 times
-    ///     on every launch to re-learn titles it already has.</item>
+    ///     on every launch to re-learn titles it already has. steamcmd.net is
+    ///     held to a stricter version of the same rule — see
+    ///     <c>ReadSteamCmdAsync</c> — because it is a volunteer service.
+    ///     The handful of appids it can never answer for (the
+    ///     <c>_missing_token</c> set) stay in the target list forever, and it is
+    ///     the client's own cached miss, not this query, that keeps them off the
+    ///     wire: one request per appid per <c>AppInfoCacheTtl</c>.</item>
     /// </list>
     /// </summary>
     public async Task<EnrichmentReport> EnrichAsync(CancellationToken ct = default)
@@ -198,7 +233,12 @@ public sealed class EnrichmentSyncService
             }
         }
 
-        // 4. Write. Work and release move together, in ONE transaction each:
+        // 4. steamcmd.net, last. See the class remarks for why it is last and
+        //    what it is worth.
+        var fromSteamCmd = 0;
+        var steamCmd = await ReadSteamCmdAsync(targets, titles, ct);
+
+        // 5. Write. Work and release move together, in ONE transaction each:
         //    clearing name_is_provisional is what removes the work from the
         //    name half of this query, so a crash between the two writes would
         //    strand a work named "Portal 2" beside a release still named
@@ -209,7 +249,7 @@ public sealed class EnrichmentSyncService
         {
             ct.ThrowIfCancellationRequested();
 
-            var patch = BuildPatch(target, titles, matches, games);
+            var patch = BuildPatch(target, titles, matches, games, steamCmd.Types);
             if (patch.IsEmpty)
             {
                 continue;
@@ -234,6 +274,10 @@ public sealed class EnrichmentSyncService
                 {
                     fromIgdb++;
                 }
+                else if (steamCmd.Named.Contains(target.ProviderId))
+                {
+                    fromSteamCmd++;
+                }
                 else
                 {
                     fromSteam++;
@@ -246,13 +290,105 @@ public sealed class EnrichmentSyncService
         stopwatch.Stop();
         _logger.LogInformation(
             "Enrichment: {Promoted} of {Outstanding} names promoted "
-            + "({Igdb} from IGDB, {Steam} from the Steam store); "
+            + "({Igdb} from IGDB, {Steam} from the Steam store, {SteamCmd} from steamcmd.net); "
+            + "{Types} app types read; "
             + "{Enriched} of {Targets} works had metadata filled in, in {Elapsed:n1}s.",
-            promoted, outstandingNames, fromIgdb, fromSteam, enriched, targets.Count,
-            stopwatch.Elapsed.TotalSeconds);
+            promoted, outstandingNames, fromIgdb, fromSteam, fromSteamCmd, steamCmd.Types.Count,
+            enriched, targets.Count, stopwatch.Elapsed.TotalSeconds);
 
-        return new EnrichmentReport(outstandingNames, promoted, fromIgdb, stopwatch.Elapsed, enriched);
+        return new EnrichmentReport(
+            outstandingNames, promoted, fromIgdb, stopwatch.Elapsed, enriched, fromSteamCmd);
     }
+
+    /// <summary>
+    /// Step 4: what api.steamcmd.net can say about the appids the first two
+    /// sources left unfinished. Adds any name it supplies to
+    /// <paramref name="titles"/> and returns Valve's <c>common.type</c> for
+    /// every appid it answered about.
+    ///
+    /// <para><b>Two disjoint reasons to ask, and both are narrow.</b> A work
+    /// still carrying a placeholder is asked outright — that is the name
+    /// fallback, and it is bounded by how many appids IGDB and the store both
+    /// missed (18 on the author's 616-game library). A work that already has a
+    /// name is asked only when its title reads like a handout
+    /// (<see cref="DemoConsolidation.IsVariantTitle"/>) and no type is stored,
+    /// because that is the only shape whose type can change what the library
+    /// shows. Everything else is offered the cache and nothing more: if the
+    /// update poller already fetched that appid the type is free, and if it did
+    /// not, no request is made.</para>
+    ///
+    /// <para><b>Never throws.</b> Every outcome other than a name is a
+    /// no-op — a dead volunteer service degrades to "the work keeps its
+    /// placeholder and is asked again next launch", exactly as an IGDB failure
+    /// does, and never to an exception that would take the write phase down with
+    /// it (§5.1: enrichment must never block a user-facing path).</para>
+    /// </summary>
+    private async Task<SteamCmdResult> ReadSteamCmdAsync(
+        IReadOnlyList<EnrichmentTarget> targets,
+        Dictionary<string, string> titles,
+        CancellationToken ct)
+    {
+        var types = new Dictionary<string, string>(StringComparer.Ordinal);
+        var named = new HashSet<string>(StringComparer.Ordinal);
+        var asked = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var target in targets)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            if (!asked.Add(target.ProviderId))
+            {
+                continue;
+            }
+
+            var needsName = target.NameIsProvisional && !titles.ContainsKey(target.ProviderId);
+            var needsType = !target.HasSteamAppType
+                            && !target.NameIsProvisional
+                            && DemoConsolidation.IsVariantTitle(target.Title);
+
+            // Everything else gets the free read: answered if some other pass
+            // already paid for this appid's body, skipped otherwise.
+            var cachedOnly = !needsName && !needsType;
+
+            AppInfoFetch fetch;
+            try
+            {
+                fetch = await _steamCmd.GetAppInfoAsync(
+                    target.ProviderId, cachedOnly: cachedOnly, ct: ct);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                // The client soft-fails internally, so reaching here means
+                // something unforeseen. It still must not abort the pass.
+                _logger.LogWarning(
+                    ex, "steamcmd.net lookup for appid {AppId} failed; continuing.", target.ProviderId);
+                continue;
+            }
+
+            if (fetch.Outcome != AppInfoOutcome.Ok || fetch.Info is null)
+            {
+                continue;
+            }
+
+            if (!string.IsNullOrWhiteSpace(fetch.Info.Type))
+            {
+                types[target.ProviderId] = fetch.Info.Type;
+            }
+
+            // Third in line: only offered for appids the first two sources left
+            // without a title, and only while the work is still provisional.
+            if (needsName && !string.IsNullOrWhiteSpace(fetch.Info.Name))
+            {
+                titles[target.ProviderId] = fetch.Info.Name;
+                named.Add(target.ProviderId);
+            }
+        }
+
+        return new SteamCmdResult(types, named);
+    }
+
+    private readonly record struct SteamCmdResult(
+        IReadOnlyDictionary<string, string> Types, IReadOnlySet<string> Named);
 
     /// <summary>
     /// What this run is entitled to write for one work: everything a source
@@ -273,7 +409,8 @@ public sealed class EnrichmentSyncService
         EnrichmentTarget target,
         IReadOnlyDictionary<string, string> titles,
         IReadOnlyDictionary<string, IgdbSteamMatch> matches,
-        IReadOnlyDictionary<long, IgdbGame> games)
+        IReadOnlyDictionary<long, IgdbGame> games,
+        IReadOnlyDictionary<string, string> appTypes)
     {
         var match = matches.GetValueOrDefault(target.ProviderId);
         var game = match is not null ? games.GetValueOrDefault(match.IgdbId) : null;
@@ -293,7 +430,8 @@ public sealed class EnrichmentSyncService
                 : match?.FirstReleaseYear ?? game?.FirstReleaseYear,
             Summary: target.HasSummary ? null : Prefer(match?.Summary, game?.Summary),
             CoverUrl: target.HasCoverUrl ? null : Prefer(match?.CoverUrl, game?.CoverUrl),
-            Publisher: target.HasPublisher ? null : PrimaryPublisher(game));
+            Publisher: target.HasPublisher ? null : PrimaryPublisher(game),
+            SteamAppType: target.HasSteamAppType ? null : appTypes.GetValueOrDefault(target.ProviderId));
     }
 
     private static string? Prefer(string? first, string? second)
@@ -352,9 +490,17 @@ public sealed class EnrichmentSyncService
 /// <paramref name="Promoted"/> on any library whose titles were already real,
 /// which after the first run is every library.
 /// </param>
+/// <param name="FromSteamCmd">
+/// How many promotions came from api.steamcmd.net, the third and last source.
+/// Reported separately from <paramref name="FromIgdb"/> because it is the one
+/// name source with no SLA: a number that starts climbing while the other two
+/// flatline is the signal that the library has come to depend on a volunteer
+/// service.
+/// </param>
 public sealed record EnrichmentReport(
     int Outstanding,
     int Promoted,
     int FromIgdb,
     TimeSpan Elapsed,
-    int MetadataFilled = 0);
+    int MetadataFilled = 0,
+    int FromSteamCmd = 0);

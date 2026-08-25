@@ -22,6 +22,19 @@ public static class UpdateFixtures
     /// <summary>Spacewar. One of the appids verified to answer 403: no news feed.</summary>
     public const string NoFeedAppId = "480";
 
+    /// <summary>
+    /// Everwind Demo. Named by steamcmd.net and by nothing else: IGDB has no
+    /// entry and <c>IStoreBrowseService/GetItems</c> returns nothing, so this
+    /// appid showed as <c>App 4028270</c> in the author's library.
+    /// </summary>
+    public const string DemoAppId = "4028270";
+
+    /// <summary>
+    /// Monster Hunter Wilds Beta test. Exists, and answers <c>_missing_token</c>
+    /// with no <c>common</c> block — the restricted shape.
+    /// </summary>
+    public const string RestrictedAppId = "3065170";
+
     private static readonly string FixtureRoot =
         Path.Combine(AppContext.BaseDirectory, "fixtures", "update-signals");
 
@@ -43,6 +56,46 @@ public static class UpdateFixtures
     /// </summary>
     public static string BuildInfoMissingResponse()
         => File.ReadAllText(Path.Combine(FixtureRoot, "steamcmd-info-missing.json"));
+
+    /// <summary>
+    /// The captured response for Everwind Demo: a full <c>common</c> block with
+    /// <c>name</c>, <c>type: "Demo"</c> and <c>parent: "2253100"</c>.
+    /// </summary>
+    public static string DemoAppInfoResponse()
+        => File.ReadAllText(Path.Combine(FixtureRoot, "steamcmd-info-demo-4028270.json"));
+
+    /// <summary>
+    /// The captured restricted response: HTTP 200, a NON-empty inner object
+    /// carrying <c>"_missing_token": true</c> and <c>"public_only": "1"</c>, and
+    /// no <c>common</c> or <c>depots</c> block at all.
+    /// </summary>
+    public static string RestrictedAppInfoResponse()
+        => File.ReadAllText(Path.Combine(FixtureRoot, "steamcmd-info-restricted-3065170.json"));
+
+    /// <summary>
+    /// A steamcmd.net body carrying only a <c>common</c> block — the shape an
+    /// app with no public branch answers with, and the one that proves the name
+    /// survives even when the build projection finds nothing.
+    /// </summary>
+    public static string AppInfoOnly(string appId, string name, string type, string? parent = null)
+    {
+        var parentField = parent is null ? string.Empty : ",\"parent\":\"" + parent + "\"";
+
+        return $$$"""
+            {"data":{"{{{appId}}}":{
+              "_change_number":38253266,
+              "appid":"{{{appId}}}",
+              "common":{"name":{{{JsonSerializer.Serialize(name)}}},"type":{{{JsonSerializer.Serialize(type)}}}{{{parentField}}}}
+            }},"status":"success"}
+            """;
+    }
+
+    /// <summary>The verified restricted body: HTTP 200, non-empty object, no <c>common</c>.</summary>
+    public static string Restricted(string appId)
+        => $$$"""
+            {"data": {"{{{appId}}}": {"_change_number": 38298585, "_missing_token": true,
+              "appid": "{{{appId}}}", "public_only": "1"}}, "status": "success"}
+            """;
 
     /// <summary>A `GetNewsForApp` body carrying one patch note at a chosen instant.</summary>
     public static string News(

@@ -26,7 +26,17 @@ public partial class MainWindowViewModel : ObservableObject
         // Built from the library's own ramp rather than resolved separately:
         // two DormancyRamp instances would be a toggle wired to nothing the
         // tiles read, which fails silently and looks like a broken feature.
-        Display = new DisplaySettingsViewModel(library.Ramp, settings);
+        Display = new DisplaySettingsViewModel(
+            library.Ramp,
+            settings,
+            reloadLibrary: async () =>
+            {
+                // The toggle owns the flag; the library owns the query. Setting
+                // it here rather than having the library read the store keeps one
+                // reader of the preference and no chance of the two drifting.
+                library.ShowNonGameEntries = Display!.ShowNonGameEntries;
+                await library.LoadCommand.ExecuteAsync(null);
+            });
     }
 
     public LibraryViewModel Library { get; }

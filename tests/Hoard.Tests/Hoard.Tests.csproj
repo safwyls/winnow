@@ -24,6 +24,7 @@
     <ProjectReference Include="..\..\src\Hoard.Data\Hoard.Data.csproj" />
     <ProjectReference Include="..\..\src\Hoard.Enrich.Igdb\Hoard.Enrich.Igdb.csproj" />
     <ProjectReference Include="..\..\src\Hoard.Enrich.Steam\Hoard.Enrich.Steam.csproj" />
+    <ProjectReference Include="..\..\src\Hoard.Enrich.SteamWeb\Hoard.Enrich.SteamWeb.csproj" />
     <ProjectReference Include="..\..\src\Hoard.Enrich.Updates\Hoard.Enrich.Updates.csproj" />
     <ProjectReference Include="..\..\src\Hoard.Ingest.Steam\Hoard.Ingest.Steam.csproj" />
     <ProjectReference Include="..\..\src\Hoard.Resolve\Hoard.Resolve.csproj" />
@@ -36,6 +37,8 @@
     <Content Include="..\fixtures\steam-store\**" LinkBase="fixtures\steam-store" CopyToOutputDirectory="PreserveNewest" />
     <!-- Verbatim update-signal responses (tests/fixtures/update-signals/README.md) — the contract test pins these. -->
     <Content Include="..\fixtures\update-signals\**" LinkBase="fixtures\update-signals" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Sanitized GetOwnedGames capture (tests/fixtures/steam-web/README.md) — the contract test pins this. -->
+    <Content Include="..\fixtures\steam-web\**" LinkBase="fixtures\steam-web" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

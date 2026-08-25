@@ -219,6 +219,53 @@ public class MigrationTests
             "SELECT publisher FROM works WHERE id = @workId;", new { workId }));
     }
 
+    /// <summary>
+    /// 0006 adds Valve's own <c>common.type</c> for the Steam appid, which
+    /// <c>DemoConsolidation</c> reads as its first gate. Applied on top of the
+    /// 0005 shape with rows already on disk.
+    /// </summary>
+    [Fact]
+    public void Migration_0006_adds_steam_app_type_on_top_of_the_0005_schema()
+    {
+        using var db = new TempDatabase();
+
+        using (var conn = db.Factory.Open())
+        {
+            conn.Execute("ALTER TABLE works DROP COLUMN steam_app_type;");
+            conn.Execute("DELETE FROM SchemaVersions WHERE ScriptName LIKE '%0006%';");
+
+            conn.Execute("INSERT INTO works (name, publisher) VALUES ('Riven', 'Brøderbund');");
+        }
+
+        db.Initializer.Initialize();
+
+        using var after = db.Factory.Open();
+
+        Assert.Contains(
+            "steam_app_type",
+            after.Query<string>("SELECT name FROM pragma_table_info('works');"));
+
+        // NULL is "not known", never "not a demo" — several appids are
+        // unreadable without a Steam Web API key. The pre-existing row keeps
+        // both its publisher and its unknown type.
+        Assert.Null(after.ExecuteScalar<string?>(
+            "SELECT steam_app_type FROM works WHERE name = 'Riven';"));
+        Assert.Equal("Brøderbund", after.ExecuteScalar<string>(
+            "SELECT publisher FROM works WHERE name = 'Riven';"));
+
+        // No CHECK constraint: the vocabulary is Valve's, undocumented, and can
+        // gain a value at any time. A constraint would turn a new Steam app type
+        // into a failed enrichment write.
+        foreach (var type in new[] { "Game", "game", "Demo", "Tool", "Config", "SomethingNew" })
+        {
+            after.Execute(
+                "INSERT INTO works (name, steam_app_type) VALUES (@type, @type);", new { type });
+        }
+
+        Assert.Equal(6, after.ExecuteScalar<long>(
+            "SELECT COUNT(*) FROM works WHERE steam_app_type IS NOT NULL;"));
+    }
+
     [Fact]
     public void Every_connection_has_wal_and_foreign_keys_enabled()
     {

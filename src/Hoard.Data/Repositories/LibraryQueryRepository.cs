@@ -15,6 +15,12 @@ namespace Hoard.Data.Repositories;
 /// without the view knowing anything about demos. Nothing is written and
 /// nothing is deleted — removing the base game makes the demo reappear on the
 /// very next read.</para>
+///
+/// <para>The non-game filter (<see cref="NonGameEntries"/>) is derived here too,
+/// and last: with <see cref="BucketThresholds.ShowNonGameEntries"/> off, the
+/// tools, soundtracks and videos Valve typed as such never reach the caller. It
+/// runs on the same rows the buckets and the counts are read from, which is the
+/// whole point — the rail cannot report a total the grid does not show.</para>
 /// </summary>
 public sealed class LibraryQueryRepository : ILibraryQueryRepository
 {
@@ -108,6 +114,10 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
                    COALESCE(NULLIF(TRIM(r.name), ''), w.name)  AS Title,
                    w.name_is_provisional               AS NameIsProvisional,
                    w.first_release_year                AS FirstReleaseYear,
+                   -- Valve's own classification of the appid (migration 0006),
+                   -- verbatim. NULL is "nobody has read it", which is common:
+                   -- some appids are unreadable without a Web API key.
+                   w.steam_app_type                    AS SteamAppType,
                    CASE
                        -- NEVER OPENED: no evidence of play at all — no minutes
                        -- AND no last-played date. This is the one row §5.2's
@@ -169,7 +179,7 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
             thresholds.UpdateCorrelationWindowDays,
         }, transaction: lease.Transaction, cancellationToken: ct));
 
-        return Consolidate(rows.AsList());
+        return Consolidate(rows.AsList(), thresholds.ShowNonGameEntries);
     }
 
     /// <summary>
@@ -183,7 +193,20 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
     /// whole reversibility guarantee, and it costs one pass over a few hundred
     /// rows.</para>
     /// </summary>
-    private static IReadOnlyList<OwnershipBucket> Consolidate(List<BucketRow> rows)
+    /// <remarks>
+    /// The non-game filter is applied after all of that, and only when the
+    /// caller asked for it. <b>The order is load-bearing.</b> Consolidation is
+    /// fed every owned row regardless of the setting, so the demo/base map it
+    /// returns is identical whether non-game entries are shown or hidden — the
+    /// filter can move a tool off the screen but can never change which demo is
+    /// folded into which game. (The one corner: a hidden non-game row that had
+    /// absorbed a variant takes that variant's suppression with it. That needs
+    /// an owned entry Valve typed <c>Tool</c> whose title is exactly an owned
+    /// demo's base title, which the measured library contains nothing like, and
+    /// un-hiding is one toggle away.)
+    /// </remarks>
+    private static IReadOnlyList<OwnershipBucket> Consolidate(
+        List<BucketRow> rows, bool showNonGameEntries)
     {
         // One entry per RELEASE — a release owned on two stores is one game,
         // and normalising its title twice would only produce the same answer.
@@ -196,6 +219,7 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
                 Title = row.Title ?? string.Empty,
                 NameIsProvisional = row.NameIsProvisional,
                 FirstReleaseYear = row.FirstReleaseYear,
+                SteamAppType = row.SteamAppType,
             });
         }
 
@@ -216,6 +240,20 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
                 // Suppressed from the LIBRARY VIEW only. The ownership, its
                 // play records, its snapshots and its sessions are untouched
                 // and still reachable through every other repository.
+                continue;
+            }
+
+            if (!showNonGameEntries && NonGameEntries.IsNonGame(row.SteamAppType))
+            {
+                // A tool, soundtrack, video or piece of hardware, and the user
+                // has not asked to see them. Hidden from the LIBRARY VIEW only,
+                // exactly like a consolidated demo: nothing is written and
+                // nothing is deleted, so the next read with the setting on
+                // returns it untouched.
+                //
+                // A NULL or unrecognised type never reaches here (see
+                // NonGameEntries.IsNonGame): most of the library has no stored
+                // type at all, and "not known" is not "not a game".
                 continue;
             }
 
@@ -251,5 +289,6 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
         public string? Title { get; init; }
         public bool NameIsProvisional { get; init; }
         public int? FirstReleaseYear { get; init; }
+        public string? SteamAppType { get; init; }
     }
 }

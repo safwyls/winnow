@@ -16,6 +16,7 @@ public sealed class WorkRepository : IWorkRepository
         summary            AS Summary,
         cover_url          AS CoverUrl,
         publisher          AS Publisher,
+        steam_app_type     AS SteamAppType,
         name_is_provisional AS NameIsProvisional
         """;
 
@@ -27,8 +28,8 @@ public sealed class WorkRepository : IWorkRepository
     {
         using var lease = _factory.Lease();
         return await lease.Connection.ExecuteScalarAsync<long>(new CommandDefinition("""
-            INSERT INTO works (igdb_id, name, sort_name, first_release_year, summary, cover_url, publisher, name_is_provisional)
-            VALUES (@IgdbId, @Name, @SortName, @FirstReleaseYear, @Summary, @CoverUrl, @Publisher, @NameIsProvisional)
+            INSERT INTO works (igdb_id, name, sort_name, first_release_year, summary, cover_url, publisher, steam_app_type, name_is_provisional)
+            VALUES (@IgdbId, @Name, @SortName, @FirstReleaseYear, @Summary, @CoverUrl, @Publisher, @SteamAppType, @NameIsProvisional)
             RETURNING id;
             """, work, transaction: lease.Transaction, cancellationToken: ct));
     }
@@ -108,7 +109,9 @@ public sealed class WorkRepository : IWorkRepository
                    (w.first_release_year IS NOT NULL) AS HasFirstReleaseYear,
                    (w.summary            IS NOT NULL) AS HasSummary,
                    (w.cover_url          IS NOT NULL) AS HasCoverUrl,
-                   (w.publisher          IS NOT NULL) AS HasPublisher
+                   (w.publisher          IS NOT NULL) AS HasPublisher,
+                   (w.steam_app_type     IS NOT NULL) AS HasSteamAppType,
+                   COALESCE(NULLIF(TRIM(r.name), ''), w.name) AS Title
             FROM works w
             JOIN releases     r ON r.work_id = w.id
             JOIN external_ids e ON e.release_id = r.id AND e.provider = @provider
@@ -118,6 +121,24 @@ public sealed class WorkRepository : IWorkRepository
                OR w.summary            IS NULL
                OR w.cover_url          IS NULL
                OR w.publisher          IS NULL
+               -- migration 0006. NOT "every untyped work": that would return the
+               -- whole library forever and invite 616 requests to a volunteer
+               -- service to learn `Game` six hundred times. Valve's type only
+               -- ever changes an outcome for a row DemoConsolidation reasons
+               -- about, so the predicate narrows to rows whose title already
+               -- looks like a handout. This LIKE is a cheap PREFILTER only —
+               -- it over-selects ("Demonologist", "The Turing Test") and the
+               -- caller applies DemoConsolidation.IsVariantTitle, the real
+               -- tokenised gate, to what it returns. SQLite cannot run the
+               -- normaliser, and a second opinion about titles written in SQL
+               -- is exactly what §5.3 says must not exist.
+               OR (w.steam_app_type IS NULL
+                   AND (LOWER(COALESCE(NULLIF(TRIM(r.name), ''), w.name)) LIKE '%demo%'
+                     OR LOWER(COALESCE(NULLIF(TRIM(r.name), ''), w.name)) LIKE '%beta%'
+                     OR LOWER(COALESCE(NULLIF(TRIM(r.name), ''), w.name)) LIKE '%test%'
+                     OR LOWER(COALESCE(NULLIF(TRIM(r.name), ''), w.name)) LIKE '%alpha%'
+                     OR LOWER(COALESCE(NULLIF(TRIM(r.name), ''), w.name)) LIKE '%trial%'
+                     OR LOWER(COALESCE(NULLIF(TRIM(r.name), ''), w.name)) LIKE '%weekend%'))
             ORDER BY w.id;
             """, new { provider }, transaction: lease.Transaction, cancellationToken: ct));
         return rows.AsList();
@@ -176,7 +197,12 @@ public sealed class WorkRepository : IWorkRepository
                 first_release_year = COALESCE(@FirstReleaseYear, first_release_year),
                 summary            = COALESCE(@Summary,          summary),
                 cover_url          = COALESCE(@CoverUrl,         cover_url),
-                publisher          = COALESCE(@Publisher,        publisher)
+                publisher          = COALESCE(@Publisher,        publisher),
+
+                -- Migration 0006. Same one-way rule: Valve saying nothing about
+                -- an appid (the `_missing_token` shape) must not erase a type an
+                -- earlier, luckier fetch already recorded.
+                steam_app_type     = COALESCE(@SteamAppType,     steam_app_type)
             WHERE id = @WorkId;
             """,
             new
@@ -189,6 +215,7 @@ public sealed class WorkRepository : IWorkRepository
                 Summary = Trimmed(enrichment.Summary),
                 CoverUrl = Trimmed(enrichment.CoverUrl),
                 Publisher = Trimmed(enrichment.Publisher),
+                SteamAppType = Trimmed(enrichment.SteamAppType),
             },
             transaction: lease.Transaction,
             cancellationToken: ct));

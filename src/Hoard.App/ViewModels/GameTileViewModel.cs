@@ -51,9 +51,11 @@ public partial class GameTileViewModel : ObservableObject
         ICoverCache? covers = null,
         Work? work = null,
         Ownership? ownership = null,
-        DormancyRamp? ramp = null)
+        DormancyRamp? ramp = null,
+        string? steamAppId = null)
     {
         CoverKey = coverKey;
+        SteamAppId = GameLink.IsSteamAppId(steamAppId) ? steamAppId : null;
         _covers = covers;
         _ramp = ramp ?? DefaultRamp;
         _nowUtc = nowUtc;
@@ -72,6 +74,7 @@ public partial class GameTileViewModel : ObservableObject
         // database. Nothing here invents a stand-in — the detail view simply
         // does not render a row it has no fact for.
         ReleaseYear = work?.FirstReleaseYear;
+        NameIsProvisional = work?.NameIsProvisional ?? false;
         Summary = string.IsNullOrWhiteSpace(work?.Summary) ? null : work!.Summary;
         Publisher = string.IsNullOrWhiteSpace(work?.Publisher) ? null : work!.Publisher;
         Installed = ownership?.Installed ?? false;
@@ -145,6 +148,22 @@ public partial class GameTileViewModel : ObservableObject
 
     /// <summary>Install directory when installed and known; null otherwise.</summary>
     public string? InstallPath { get; }
+
+    /// <summary>
+    /// The Steam appid this release is known by, or null. Validated as digits at
+    /// construction (external_ids.provider_id is TEXT), because it is what the
+    /// detail view's <c>steam://</c> and store URLs are built from and a URL is
+    /// not a place to interpolate an unchecked string.
+    /// </summary>
+    public string? SteamAppId { get; }
+
+    /// <summary>
+    /// True when the title is a machine-minted stand-in ("App 8510") rather than
+    /// a real name — Steam's local files knew the appid and nothing else. The
+    /// detail view says so out loud; a placeholder that looks like a title is
+    /// how a user concludes the whole panel is wrong.
+    /// </summary>
+    public bool NameIsProvisional { get; }
 
     /// <summary>
     /// Resting vivid-layer opacity from the §5.1 ramp: α = (S − 0.22) / 0.78 —

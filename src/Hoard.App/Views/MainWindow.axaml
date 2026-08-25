@@ -89,6 +89,39 @@
             <Setter Property="IsVisible" Value="False"/>
         </Style>
 
+        <!-- ══ The scrollbar the resize border was eating ═══════════════════
+             The client area is extended over the decorations (§9), so Windows
+             still hit-tests the outer ~8px of the window as HTRIGHT / HTBOTTOM
+             / HTBOTTOMRIGHT and answers those pixels with a resize cursor
+             BEFORE the client area ever sees the pointer. A 12px scrollbar
+             flush to the edge therefore left 2–4 usable pixels: the user could
+             see the thumb, and could not reach it.
+
+             The fix is an inset, not a wider control. Widening the thumb would
+             have changed nothing — the border wins at the OS level, above
+             Avalonia's hit testing entirely — and hooking WM_NCHITTEST to
+             answer HTCLIENT along that strip would have bought the scrollbar
+             back by taking away edge-resize down the whole right side of the
+             window, which is a worse trade than 10px of ground.
+
+             So every scrollbar at the window edge steps 10px in (§9's
+             ScrollBarEdgeInset: the 8px Windows resize frame plus slack). The
+             resting 4px hairline the design asks for is untouched — this moves
+             where the control sits, not what it looks like — and Fluent's own
+             swell-to-12-on-hover now actually fires, because the pointer can
+             reach the track to trigger it.
+
+             Global rather than per-view: a ScrollBar inside a ListBox lives two
+             templates deep, which no single selector can reach. Interior
+             scrollbars — the rail's, the detail modal's — opt back out with
+             ScrollViewer.inner below. -->
+        <Style Selector="ScrollBar:vertical">
+            <Setter Property="Margin" Value="{StaticResource ScrollBarEdgeInset}"/>
+        </Style>
+        <Style Selector="ScrollViewer.inner /template/ ScrollBar">
+            <Setter Property="Margin" Value="0"/>
+        </Style>
+
         <!-- ══ Rail bucket (§6) ══════════════════════════════════════════════
              Hover and selection both fill SurfaceRaised; selection adds the
              2px Volt left edge. Zero-count rows dim to 40% — never hide, so
@@ -479,7 +512,9 @@
                 Background="{StaticResource Surface}"
                 BorderBrush="{StaticResource Line}"
                 BorderThickness="0,0,1,0">
-            <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+            <!-- Interior: the rail's own right edge is a divider, not the
+                 window's, so this scrollbar keeps its flush position. -->
+            <ScrollViewer Classes="inner" HorizontalScrollBarVisibility="Disabled">
                 <StackPanel Margin="0,20">
 
                     <!-- ── All games ─────────────────────────────────────────
@@ -794,6 +829,20 @@
                                                TextWrapping="Wrap"
                                                Foreground="{StaticResource TextDim}"
                                                Text="Covers fade the longer a game sits unplayed. Off shows every cover at full colour — the unread dots and the rail counts carry the same signal."/>
+
+                                    <Border Height="1" Margin="0,4"
+                                            Background="{StaticResource Line}"/>
+
+                                    <CheckBox Name="NonGameToggle"
+                                              Classes="pref"
+                                              Content="Show non-game entries"
+                                              IsChecked="{Binding Display.ShowNonGameEntries, Mode=TwoWay}"/>
+                                    <TextBlock Classes="body" FontSize="12"
+                                               Margin="26,0,0,0"
+                                               LineHeight="17"
+                                               TextWrapping="Wrap"
+                                               Foreground="{StaticResource TextDim}"
+                                               Text="Steam also carries tools, dedicated servers and soundtracks. They're hidden by default. Anything Steam hasn't told us the type of stays visible either way."/>
                                 </StackPanel>
                             </Flyout>
                         </Button.Flyout>
@@ -817,8 +866,13 @@
                          same number, from the same expression, every pass. That
                          is the whole reason it exists instead of ItemsRepeater
                          + UniformGridLayout — see CoverWall's remarks. -->
+                    <!-- 24 on the right, not 20: Fluent's scrollbar overlays the
+                         content rather than reserving a column, so the gutter has
+                         to clear the bar AND the §9.1 resize inset (12 + 10).
+                         At 20 the bar clipped two pixels off the last tile and
+                         off the list's idle column. -->
                     <views:CoverWall Name="TileWall"
-                                     Margin="20"
+                                     Margin="20,20,24,20"
                                      Spacing="16"
                                      CellAspect="1.5"
                                      MinCellWidth="{Binding Library.TileWidth}"
@@ -844,7 +898,7 @@
                             Background="{StaticResource Surface}"
                             BorderBrush="{StaticResource Line}"
                             BorderThickness="0,0,0,1">
-                        <Grid ColumnDefinitions="2,18,*,84,104,92,20">
+                        <Grid ColumnDefinitions="2,18,*,84,104,92,24">
                             <Button Grid.Column="2" Classes="colhead"
                                     Command="{Binding Library.SortByTitleCommand}">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
@@ -907,7 +961,7 @@
                                 <Border BorderBrush="{StaticResource Line}"
                                         BorderThickness="0,0,0,1"
                                         Height="44">
-                                    <Grid ColumnDefinitions="2,18,*,84,104,92,20">
+                                    <Grid ColumnDefinitions="2,18,*,84,104,92,24">
                                         <!-- 2px Volt selection edge (§6), bound to
                                              the row's own state for the same
                                              name-scope reason as the rail. -->

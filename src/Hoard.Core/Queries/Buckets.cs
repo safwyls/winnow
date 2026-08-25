@@ -83,18 +83,74 @@ public static class LibraryBuckets
 /// unrelated announcement. Tunable, like every other threshold here: both raw
 /// signals are stored, so retuning never re-fetches (§4.5).</para>
 /// </param>
+/// <param name="ShowNonGameEntries">
+/// Whether the library view includes the entries Valve typed as something other
+/// than a game — tools, applications, soundtracks, videos, hardware
+/// (<see cref="NonGameEntries"/>).
+///
+/// <para><b>An option rather than a threshold</b>, and the only one here. It
+/// rides on this record because this record is already the bucket query's
+/// parameter object, and because the filter has to be applied inside that query
+/// for the same reason the buckets are: the rail's counts and the grid's tiles
+/// are both computed from the rows it returns, so filtering anywhere else would
+/// let the two disagree.</para>
+///
+/// <para><b>Default false — hidden.</b> Steam carries non-game items, but this
+/// application is about games; a user who wants their dedicated servers back
+/// says so. Nothing is destroyed by the default: the filter drops rows from one
+/// read, so flipping this changes the very next result with no re-sync, no
+/// write and no delete.</para>
+///
+/// <para>Persisted by the UI under <see cref="ShowNonGameEntriesSettingKey"/>;
+/// see <see cref="ParseShowNonGameEntries"/> for the one authoritative reading
+/// of the stored text.</para>
+/// </param>
 public sealed record BucketThresholds(
     long BouncedFloorMinutes,
     long RetiredFloorMinutes,
     int StaleWindowMonths,
-    int UpdateCorrelationWindowDays = 7)
+    int UpdateCorrelationWindowDays = 7,
+    bool ShowNonGameEntries = false)
 {
+    /// <summary>
+    /// The <c>settings</c> key the "show non-game entries" preference persists
+    /// under, following the <c>module.thing</c> namespacing
+    /// <see cref="Core.Repositories.ISettingsRepository"/> requires and the
+    /// <c>display.dim_dormant_covers</c> toggle established.
+    ///
+    /// <para><c>library.</c> rather than <c>display.</c> because this changes
+    /// what the library CONTAINS — the counts move with it — where the dimming
+    /// toggle only changes how the same set of tiles is painted.</para>
+    /// </summary>
+    public const string ShowNonGameEntriesSettingKey = "library.show_non_game_entries";
+
     /// <summary>Conservative defaults; per-genre configuration comes later (§6.1).</summary>
     public static BucketThresholds Default { get; } = new(
         BouncedFloorMinutes: 120,
         RetiredFloorMinutes: 6_000,
         StaleWindowMonths: 6,
-        UpdateCorrelationWindowDays: 7);
+        UpdateCorrelationWindowDays: 7,
+        ShowNonGameEntries: false);
+
+    /// <summary>
+    /// Reads the stored preference text. Anything that is not the literal
+    /// <c>true</c> (case- and whitespace-insensitive) means hidden, which is
+    /// both the default and the safe reading of a value that no longer parses.
+    ///
+    /// <para>Lives here so the default exists in exactly one place: the store
+    /// itself returns whatever was written and takes no position on bad text
+    /// (<see cref="Core.Repositories.ISettingsRepository"/>), so this takes
+    /// one.</para>
+    /// </summary>
+    public static bool ParseShowNonGameEntries(string? stored)
+        => bool.TryParse(stored?.Trim(), out var show) && show;
+
+    /// <summary>
+    /// The text to write back under <see cref="ShowNonGameEntriesSettingKey"/>,
+    /// paired with <see cref="ParseShowNonGameEntries"/> so a round trip is
+    /// guaranteed to survive.
+    /// </summary>
+    public static string FormatShowNonGameEntries(bool show) => show ? "true" : "false";
 }
 
 /// <summary>One row of the derived-bucket query: the bucket for a single ownership.</summary>

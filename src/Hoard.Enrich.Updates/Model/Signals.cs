@@ -146,3 +146,75 @@ public sealed record BuildInfoFetch(BuildInfoOutcome Outcome, BuildBranch? Branc
 
     public static BuildInfoFetch Unavailable { get; } = new(BuildInfoOutcome.Unavailable, null);
 }
+
+/// <summary>
+/// The <c>common</c> block of a steamcmd.net <c>/v1/info/{appid}</c> response —
+/// Steam's own name and classification for an appid, riding along in the body
+/// this module already fetches for its build signal.
+/// </summary>
+/// <param name="AppId">The appid asked about.</param>
+/// <param name="Name">
+/// <c>common.name</c>: Steam's title for the appid. The third and last name
+/// source in the enrichment chain, behind IGDB (§4.4's backbone) and the Steam
+/// store — it names appids both of them refuse, verified live: 4028270
+/// "Everwind Demo", 2614110 "Enshrouded Demo", 202480 "Skyrim Creation Kit".
+/// </param>
+/// <param name="Type">
+/// <c>common.type</c>: Valve's classification, verbatim including its casing,
+/// which is NOT stable — Bastion answers <c>game</c>, Monster Hunter Wilds
+/// answers <c>Game</c>. Every comparison must be case-insensitive.
+/// </param>
+/// <param name="ParentAppId">
+/// <c>common.parent</c>: the appid this one is a demo/tool OF, when Steam
+/// publishes one (107110 Bastion Demo → 107100). Read and carried but not yet
+/// consumed — binding on it would be a hard external-id join, which is a
+/// stronger rule than the title match consolidation uses today and a change to
+/// §5.3's matching contract rather than to this client.
+/// </param>
+public sealed record SteamAppInfo(
+    string AppId,
+    string? Name,
+    string? Type,
+    string? ParentAppId);
+
+/// <summary>How a <c>common</c> read ended. Mirrors <see cref="BuildInfoOutcome"/>.</summary>
+public enum AppInfoOutcome
+{
+    /// <summary>A <c>common</c> block was returned. <see cref="AppInfoFetch.Info"/> is set.</summary>
+    Ok,
+
+    /// <summary>
+    /// The service answered and carried no <c>common</c> block for this appid.
+    ///
+    /// <para>Two verified shapes reach here and both are answers, not failures.
+    /// The first is the missing-app body — <c>{"data":{"999999999":{}}}</c> at
+    /// HTTP 200. The second is the <b>restricted</b> one: HTTP 200 with
+    /// <c>"_missing_token": true, "public_only": "1"</c> and no <c>common</c> at
+    /// all, which 8510, 854040, 1883690, 3065170 and 3562740 all answer
+    /// on the author's library. Those appids need a Steam Web API key; nothing
+    /// this module can do differently will name them, so re-asking daily would
+    /// spend a volunteer service's bandwidth to relearn the same nothing.</para>
+    /// </summary>
+    NoData,
+
+    /// <summary>
+    /// The service did not answer — offline, 5xx, an unparseable body. Nothing
+    /// is learned and nothing is cached, so the appid is asked again next pass.
+    /// </summary>
+    Unavailable,
+}
+
+/// <summary>The result of one <c>common</c> read.</summary>
+/// <param name="ServedFromCache">True when the answer came from <c>metadata_cache</c>, with no request.</param>
+public sealed record AppInfoFetch(AppInfoOutcome Outcome, SteamAppInfo? Info, bool ServedFromCache = false)
+{
+    public static AppInfoFetch Ok(SteamAppInfo info) => new(AppInfoOutcome.Ok, info);
+
+    public static AppInfoFetch OkCached(SteamAppInfo info) => new(AppInfoOutcome.Ok, info, true);
+
+    public static AppInfoFetch NoData { get; } = new(AppInfoOutcome.NoData, null);
+
+    public static AppInfoFetch NoDataCached { get; } = new(AppInfoOutcome.NoData, null, true);
+
+    public static AppInfoFetch Unavailable { get; } = new(AppInfoOutcome.Unavailable, null);
+}

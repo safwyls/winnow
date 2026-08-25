@@ -97,6 +97,16 @@
          look like a selection.
     -->
     <x:Double x:Key="ScrollBarSize">12</x:Double>
+
+    <!-- The strip along the window edge that the OS resize border owns.
+         With the client area extended over the decorations (§9) Windows still
+         hit-tests the outer few pixels as HTRIGHT/HTBOTTOM before the client
+         area ever sees the pointer — so a scrollbar flush to the edge is a
+         control you cannot click. Nothing interactive may live inside this
+         inset; scrollbars at the window edge carry it as a margin.
+         10 = the 8px Windows resize frame (SM_CXFRAME + SM_CXPADDEDBORDER) with
+         2px of slack, measured against this window rather than assumed. -->
+    <Thickness x:Key="ScrollBarEdgeInset">0,0,10,10</Thickness>
     <!-- Fluent binds this to Rectangle.StrokeThickness, which is a double —
          a Thickness here type-casts at runtime, not at build. -->
     <x:Double x:Key="ScrollBarTrackBorderThemeThickness">0</x:Double>
@@ -204,14 +214,23 @@
             Application.Styles at startup, so selectors behave as authored. -->
     <Styles x:Key="TextStyles">
 
-        <Style Selector="TextBlock.display-l">
+        <!-- ── Why `:is(TextBlock)` and not `TextBlock` ─────────────────────
+             An Avalonia type selector matches the EXACT type, so a bare
+             `TextBlock.body` silently skips SelectableTextBlock — which derives
+             from TextBlock and is what the detail view uses so titles, summaries
+             and install paths can be selected and copied. The result was not a
+             build error but unstyled text: system font, wrong size, wrong ink.
+             `:is()` matches the subtree, so one style covers both, and a
+             selectable line is indistinguishable from a static one. -->
+
+        <Style Selector=":is(TextBlock).display-l">
             <Setter Property="FontFamily" Value="{StaticResource DisplayFont}"/>
             <Setter Property="FontWeight" Value="Bold"/>
             <Setter Property="FontSize" Value="{StaticResource DisplayLSize}"/>
             <Setter Property="Foreground" Value="{StaticResource Text}"/>
         </Style>
 
-        <Style Selector="TextBlock.display-s">
+        <Style Selector=":is(TextBlock).display-s">
             <Setter Property="FontFamily" Value="{StaticResource DisplayFont}"/>
             <Setter Property="FontWeight" Value="Bold"/>
             <Setter Property="FontSize" Value="{StaticResource DisplaySSize}"/>
@@ -219,20 +238,20 @@
             <Setter Property="Foreground" Value="{StaticResource Text}"/>
         </Style>
 
-        <Style Selector="TextBlock.body-l">
+        <Style Selector=":is(TextBlock).body-l">
             <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
             <Setter Property="FontWeight" Value="Medium"/>
             <Setter Property="FontSize" Value="{StaticResource BodyLSize}"/>
             <Setter Property="Foreground" Value="{StaticResource Text}"/>
         </Style>
 
-        <Style Selector="TextBlock.body">
+        <Style Selector=":is(TextBlock).body">
             <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
             <Setter Property="FontSize" Value="{StaticResource BodySize}"/>
             <Setter Property="Foreground" Value="{StaticResource Text}"/>
         </Style>
 
-        <Style Selector="TextBlock.label">
+        <Style Selector=":is(TextBlock).label">
             <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="FontSize" Value="{StaticResource LabelSize}"/>
@@ -241,18 +260,26 @@
         </Style>
 
         <!-- Every number in the app. tnum is mandatory in list view. -->
-        <Style Selector="TextBlock.data">
+        <Style Selector=":is(TextBlock).data">
             <Setter Property="FontFamily" Value="{StaticResource DataFont}"/>
             <Setter Property="FontSize" Value="{StaticResource DataSize}"/>
             <Setter Property="FontFeatures" Value="tnum"/>
             <Setter Property="Foreground" Value="{StaticResource Text}"/>
         </Style>
 
-        <Style Selector="TextBlock.data-s">
+        <Style Selector=":is(TextBlock).data-s">
             <Setter Property="FontFamily" Value="{StaticResource DataFont}"/>
             <Setter Property="FontSize" Value="{StaticResource DataSSize}"/>
             <Setter Property="FontFeatures" Value="tnum"/>
             <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
+        </Style>
+
+        <!-- Selection ink for copyable text. Volt at 30%: the selection colour
+             the search box already uses, so "this text is picked" looks the same
+             wherever the user does it. -->
+        <Style Selector="SelectableTextBlock">
+            <Setter Property="SelectionBrush" Value="#4D4DE8C2"/>
+            <Setter Property="SelectionForegroundBrush" Value="{StaticResource Text}"/>
         </Style>
 
         <!-- ══ Focus — accessibility floor, not optional ══════════════════ -->
