@@ -1,0 +1,12 @@
+[
+  {
+    "accountId": "00000000000000000000000000000001",
+    "artifactId": "Bluebird",
+    "totalTime": 9000
+  },
+  {
+    "accountId": "00000000000000000000000000000001",
+    "artifactId": "Jasper",
+    "totalTime": 0
+  }
+]

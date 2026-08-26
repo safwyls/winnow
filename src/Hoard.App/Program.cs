@@ -12,6 +12,7 @@ using Hoard.Enrich.Steam;
 using Hoard.Enrich.SteamWeb;
 using Hoard.Enrich.Updates;
 using Hoard.Ingest.Epic;
+using Hoard.Ingest.Epic.Web;
 using Hoard.Ingest.Gog;
 using Hoard.Ingest.Steam;
 using Hoard.Resolve;
@@ -59,6 +60,19 @@ public static class Program
             // their tables" is a trap waiting for the first person who sets
             // RunOnStartup.
             host.Services.GetRequiredService<DatabaseInitializer>().Initialize();
+
+            // The one-time interactive Epic sign-in. Deliberately BEFORE
+            // host.Start() and before Avalonia: it is a terminal flow that ends
+            // in an exit code, not a UI mode, and starting the scheduler or the
+            // window underneath it would be noise. Needs the database only
+            // because the encrypted session is stored in the settings table,
+            // which is why it sits after Initialize().
+            if (args.Contains(Services.EpicLoginConsole.Argument))
+            {
+                Environment.ExitCode = Services.EpicLoginConsole
+                    .RunAsync(host.Services, Shutdown.Token).GetAwaiter().GetResult();
+                return;
+            }
 
             host.Start();
 
@@ -274,6 +288,17 @@ public static class Program
         // library — 330 games on this machine — is invisible without it. Needs a
         // user-supplied key; unconfigured is a clean no-op.
         services.AddSteamWebApi();
+
+        // The same idea for Epic, and the same clean no-op when unconfigured.
+        // catcache.bin already gives the owned library locally, so this is NOT
+        // how Epic ownership is discovered — it is the only route to two facts
+        // Epic writes nowhere on disk: when a title was acquired, and per-game
+        // playtime. It needs a user-supplied OAuth client pair AND a one-time
+        // interactive sign-in, so the overwhelmingly common state is "registered
+        // and idle". See docs/spikes/epic-oauth.md, including the risks the user
+        // is accepting by turning it on.
+        services.AddEpicWebApi();
+
         services.AddSingleton<EnrichmentSyncService>();
         services.AddSingleton<FacetSyncService>();
 

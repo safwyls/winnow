@@ -43,6 +43,10 @@
     <Content Include="..\fixtures\steam-web\**" LinkBase="fixtures\steam-web" CopyToOutputDirectory="PreserveNewest" />
     <!-- Sanitized real Epic launcher files (tests/fixtures/epic/README.md) — the reader tests parse these. -->
     <Content Include="..\fixtures\epic\**" LinkBase="fixtures\epic" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Canned Epic OAuth / library API responses (tests/fixtures/epic-oauth/README.md). Two of
+         these are verbatim live captures; the rest follow shapes verified from source and from
+         the live GraphQL schema. No test in this project opens a socket. -->
+    <Content Include="..\fixtures\epic-oauth\**" LinkBase="fixtures\epic-oauth" CopyToOutputDirectory="PreserveNewest" />
     <!-- Sanitized real GOG Galaxy files (tests/fixtures/gog/README.md) — the reader tests parse these. -->
     <Content Include="..\fixtures\gog\**" LinkBase="fixtures\gog" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>

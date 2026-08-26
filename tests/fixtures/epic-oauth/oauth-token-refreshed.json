@@ -1,0 +1,13 @@
+{
+  "access_token": "FAKE_ACCESS_TOKEN_1111111111111111",
+  "expires_in": 28800,
+  "expires_at": "2026-08-27T12:00:00.000Z",
+  "token_type": "bearer",
+  "refresh_token": "FAKE_REFRESH_TOKEN_111111111111111",
+  "refresh_expires": 1987200,
+  "refresh_expires_at": "2026-09-19T04:00:00.000Z",
+  "account_id": "00000000000000000000000000000001",
+  "client_id": "00000000000000000000000000000002",
+  "displayName": "SanitizedTester",
+  "app": "launcher"
+}

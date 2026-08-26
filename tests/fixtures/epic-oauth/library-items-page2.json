@@ -1,0 +1,15 @@
+{
+  "records": [
+    {
+      "namespace": "d5241c76f178492ea1540fce45616757",
+      "catalogItemId": "b1000000000000000000000000000002",
+      "appName": "Skylark",
+      "productId": "celeste",
+      "sandboxName": "Celeste",
+      "sandboxType": "PUBLIC",
+      "recordType": "ENTITLEMENT",
+      "acquisitionDate": "2022-07-19T00:00:00.000Z"
+    }
+  ],
+  "responseMetadata": {}
+}

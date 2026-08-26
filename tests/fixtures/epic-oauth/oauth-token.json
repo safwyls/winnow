@@ -1,0 +1,18 @@
+{
+  "access_token": "FAKE_ACCESS_TOKEN_0000000000000000",
+  "expires_in": 28800,
+  "expires_at": "2026-08-27T04:00:00.000Z",
+  "token_type": "bearer",
+  "refresh_token": "FAKE_REFRESH_TOKEN_000000000000000",
+  "refresh_expires": 1987200,
+  "refresh_expires_at": "2026-09-18T20:00:00.000Z",
+  "account_id": "00000000000000000000000000000001",
+  "client_id": "00000000000000000000000000000002",
+  "internal_client": true,
+  "client_service": "launcher",
+  "displayName": "SanitizedTester",
+  "app": "launcher",
+  "in_app_id": "00000000000000000000000000000001",
+  "product_id": "prod-test",
+  "application_id": "fake"
+}

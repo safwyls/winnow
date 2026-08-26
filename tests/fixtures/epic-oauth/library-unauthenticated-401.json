@@ -1,0 +1,8 @@
+{
+  "errorCode" : "errors.com.epicgames.common.authentication.authentication_failed",
+  "errorMessage" : "Authentication failed for /api/public/items",
+  "messageVars" : [ "/api/public/items" ],
+  "numericErrorCode" : 1032,
+  "originatingService" : "library-service",
+  "intent" : "prod"
+}

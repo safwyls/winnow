@@ -1,0 +1,27 @@
+{
+  "records": [
+    {
+      "namespace": "41f47fd0d3e248bc938a5815d6d64daa",
+      "catalogItemId": "7a70b499513441c792b541d53505e0b2",
+      "appName": "Bluebird",
+      "productId": "fez",
+      "sandboxName": "Fez",
+      "sandboxType": "PUBLIC",
+      "recordType": "ENTITLEMENT",
+      "acquisitionDate": "2019-11-19T17:02:42.064Z"
+    },
+    {
+      "namespace": "ecebf45065bc4993abfe0e84c40ff18e",
+      "catalogItemId": "6dc445f656de4e029834b2d32b6a2f77",
+      "appName": "Jasper",
+      "productId": "watch-dogs",
+      "sandboxName": "WatchDogs",
+      "sandboxType": "PUBLIC",
+      "recordType": "ENTITLEMENT",
+      "acquisitionDate": "2021-03-04T09:11:02.000Z"
+    }
+  ],
+  "responseMetadata": {
+    "nextCursor": "FAKECURSORPAGE2"
+  }
+}

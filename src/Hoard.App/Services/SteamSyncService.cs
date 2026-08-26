@@ -2,6 +2,7 @@ using System.Diagnostics;
 using Hoard.Core.Ingest;
 using Hoard.Enrich.SteamWeb;
 using Hoard.Ingest.Epic;
+using Hoard.Ingest.Epic.Web;
 using Hoard.Ingest.Gog;
 using Hoard.Ingest.Steam;
 using Hoard.Resolve;
@@ -39,6 +40,7 @@ public sealed class SteamSyncService : ISteamSync
     private readonly GogLibrarySource _gog;
     private readonly ExternalIdResolver _resolver;
     private readonly ISteamWebApiClient? _steamWeb;
+    private readonly IEpicAccountClient? _epicApi;
     private readonly ILogger<SteamSyncService> _logger;
 
     public SteamSyncService(
@@ -47,7 +49,8 @@ public sealed class SteamSyncService : ISteamSync
         GogLibrarySource gog,
         ExternalIdResolver resolver,
         ILogger<SteamSyncService> logger,
-        ISteamWebApiClient? steamWeb = null)
+        ISteamWebApiClient? steamWeb = null,
+        IEpicAccountClient? epicApi = null)
     {
         _steam = steam;
         _epic = epic;
@@ -55,6 +58,7 @@ public sealed class SteamSyncService : ISteamSync
         _resolver = resolver;
         _logger = logger;
         _steamWeb = steamWeb;
+        _epicApi = epicApi;
     }
 
     /// <summary>
@@ -100,7 +104,22 @@ public sealed class SteamSyncService : ISteamSync
         var epic = _epic.Scan();
         var gog = _gog.Scan();
 
-        var candidates = local.Concat(owned).Concat(epic).Concat(gog).ToList();
+        // The same union rule again, one store along. Epic's local files and
+        // Epic's library API overlap on catalog item id and each sees what the
+        // other cannot: the files know install state, install paths and the
+        // titles delivered through another launcher, and they know them with no
+        // network at all; the API knows the true entitlement list, when each
+        // title was acquired, and — uniquely — playtime, which Epic writes
+        // nowhere on disk.
+        //
+        // Order is presentation, not precedence, exactly as above. The API
+        // candidates carry Installed: null because the library service cannot see
+        // the local disk, so they cannot clear an install flag the manifests just
+        // set no matter which side is resolved first. CandidateOwnershipMerge
+        // collapses the overlap, in the resolver, where it belongs.
+        var epicOwned = await EpicApiCandidatesAsync(ct);
+
+        var candidates = local.Concat(owned).Concat(epic).Concat(epicOwned).Concat(gog).ToList();
 
         if (candidates.Count == 0)
         {
@@ -113,9 +132,10 @@ public sealed class SteamSyncService : ISteamSync
 
         _logger.LogInformation(
             "Library sync: {Candidates} candidates ({Local} steam local, {Owned} steam owned, "
-            + "{Epic} epic, {Gog} gog) in {Elapsed:n1}s — {Created} new, {Matched} matched, "
-            + "{PlayRecords} play records, {Snapshots} snapshots, {Promoted} names promoted.",
-            candidates.Count, local.Count, owned.Count, epic.Count, gog.Count,
+            + "{Epic} epic local, {EpicOwned} epic api, {Gog} gog) in {Elapsed:n1}s — {Created} new, "
+            + "{Matched} matched, {PlayRecords} play records, {Snapshots} snapshots, "
+            + "{Promoted} names promoted.",
+            candidates.Count, local.Count, owned.Count, epic.Count, epicOwned.Count, gog.Count,
             stopwatch.Elapsed.TotalSeconds,
             result.CreatedReleases, result.MatchedExisting, result.PlayRecordsWritten,
             result.SnapshotsWritten, result.NamesPromoted);
@@ -170,6 +190,47 @@ public sealed class SteamSyncService : ISteamSync
         }
 
         return owned;
+    }
+
+    /// <summary>
+    /// The authenticated Epic half of the union. Needs a user-supplied OAuth
+    /// client pair and a one-time interactive sign-in, so it runs only when both
+    /// are present.
+    ///
+    /// <para><b>Every way this can fail yields no candidates and leaves the local
+    /// Epic scan untouched.</b> Not configured, configured but never signed in, a
+    /// refresh token that lapsed while the app was closed, Epic unreachable, a
+    /// 429 the retries could not outlast — all of them return an empty list. That
+    /// is the fallback, and it is deliberately expressed as "this source
+    /// contributed nothing this pass" rather than as an error: §5.1 forbids
+    /// enrichment blocking a user-facing path, and this one is on the startup
+    /// path.</para>
+    ///
+    /// <para>Note that <c>_epic.Scan()</c> above has already run and its
+    /// candidates are already in the union by the time this is called. Nothing
+    /// here can subtract from them.</para>
+    /// </summary>
+    private async Task<IReadOnlyList<CandidateOwnership>> EpicApiCandidatesAsync(CancellationToken ct)
+    {
+        if (_epicApi is null || !await _epicApi.IsConfiguredAsync(ct) || !await _epicApi.IsSignedInAsync(ct))
+        {
+            return [];
+        }
+
+        try
+        {
+            return await _epicApi.GetOwnershipCandidatesAsync(ct: ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // The client is written not to throw, so reaching here means a bug
+            // rather than a network condition. It is still caught: a defect in an
+            // opt-in enrichment source must not cost the user the local scan that
+            // needs no network at all.
+            _logger.LogWarning(
+                ex, "Epic library lookup failed unexpectedly; continuing with the local Epic files.");
+            return [];
+        }
     }
 }
 

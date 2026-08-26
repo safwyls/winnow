@@ -762,6 +762,13 @@ Work. Nothing here relaxes the ban on fuzzy auto-merge.
 
 ## 21. Epic OAuth — what it costs, from source and docs
 
+> **SUPERSEDED by `docs/spikes/epic-oauth.md` (2026-08-26).** That spike probed the live
+> endpoints rather than reading source alone, and corrects this section on three points:
+> the token lifetimes below (8 h / ~23 days) are **unverified** and must not be hardcoded;
+> the playtime endpoint's lack of a last-played date is now **confirmed by schema** rather
+> than inferred; and this section **missed `acquisitionDate`**, which the API exposes and
+> which nothing on disk records.
+
 **No Epic OAuth flow was executed during this spike.** Everything in this section is read
 from the source of `legendary-gl/legendary` (the only real implementation — Heroic shells
 out to its binary, Rare imports it as a library), from the community endpoint documentation
@@ -843,6 +850,13 @@ unrotated credentials is de facto tolerance. The realistic Epic failure mode is
 Epic's login page breaks the flow periodically.
 
 ## 22. Verdict: do not build it
+
+> **This verdict was revisited in `docs/spikes/epic-oauth.md` (2026-08-26) and reversed** —
+> not because the reasoning below was wrong, but because the module was subsequently built
+> as an **opt-in** source adding two facts this section did not account for (acquisition
+> dates and playtime) without displacing `catcache.bin` as the ownership source. The core
+> point below stands and is restated there: the owned library is already on disk, and this
+> is not how Epic ownership is discovered. See section 9 of the new spike.
 
 The user pre-approved this work. I recommend **not** doing it, because the spike removed
 the reason for it.
