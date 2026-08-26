@@ -6,9 +6,16 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Hoard.Resolve;
 
-/// <summary>Counts of what one <see cref="ExternalIdResolver.ResolveAsync"/> pass did.</summary>
-/// <param name="MatchedExisting">Candidates that hit an existing release by external id.</param>
-/// <param name="CreatedReleases">Candidates that minted a new Work + Release.</param>
+/// <summary>
+/// Counts of what one <see cref="ExternalIdResolver.ResolveAsync"/> pass did.
+///
+/// <para>Counted in OBSERVATIONS, not in candidates: a pass first collapses the
+/// candidates addressing one ownership into one observation
+/// (<see cref="CandidateOwnershipMerge"/>), so an appid both Steam sources
+/// reported contributes 1 here rather than 2.</para>
+/// </summary>
+/// <param name="MatchedExisting">Observations that hit an existing release by external id.</param>
+/// <param name="CreatedReleases">Observations that minted a new Work + Release.</param>
 /// <param name="PlayRecordsWritten">Play observations appended (unchanged playtime writes none).</param>
 /// <param name="SnapshotsWritten">Playtime snapshots appended.</param>
 /// <param name="NamesPromoted">
@@ -35,6 +42,18 @@ public sealed record ResolveResult(
 /// <para>Idempotent by change detection, not by observation time: a re-sync
 /// with unchanged playtime writes no new play_records or playtime_snapshots
 /// even though ObservedAt differs.</para>
+///
+/// <para><b>One pass, one observation per ownership.</b> Change detection asks
+/// whether a candidate differs from the newest STORED record, which is only a
+/// meaningful question if the candidates within a pass are a time series. Two
+/// sources describing the same appid are not: they are two views of one instant.
+/// So the pass opens by collapsing them through
+/// <see cref="CandidateOwnershipMerge"/>. Doing it here rather than in the
+/// caller is what makes the invariant hold for every caller — this is the only
+/// component that knows candidates map many-to-one onto ownerships, because
+/// performing that mapping is its job. Left un-collapsed, two sources that
+/// disagree by a single minute each "changed" relative to the other and appended
+/// a row apiece on every sync, forever.</para>
 ///
 /// <para><b>Provisional names.</b> A candidate may arrive with a null
 /// <see cref="CandidateOwnership.Title"/> — a Steam appid known only from
@@ -87,6 +106,10 @@ public sealed class ExternalIdResolver
         IReadOnlyCollection<CandidateOwnership> candidates,
         CancellationToken ct = default)
     {
+        // Two views of one ownership become one observation before anything is
+        // compared against the database. See the type docs.
+        var observations = CandidateOwnershipMerge.Coalesce(candidates);
+
         var matched = 0;
         var created = 0;
         var playRecordsWritten = 0;
@@ -98,7 +121,7 @@ public sealed class ExternalIdResolver
         // rolls the entire pass back, leaving no half-built entity behind.
         using var scope = _unitOfWork.Begin();
 
-        foreach (var candidate in candidates)
+        foreach (var candidate in observations)
         {
             ct.ThrowIfCancellationRequested();
 
@@ -153,9 +176,11 @@ public sealed class ExternalIdResolver
         scope.Commit();
 
         _logger.LogInformation(
-            "Resolved {Count} candidates: {Matched} matched, {Created} created, "
+            "Resolved {Count} candidates ({Observations} after merging duplicate sources): "
+            + "{Matched} matched, {Created} created, "
             + "{PlayRecords} play records, {Snapshots} snapshots, {Promoted} names promoted",
-            candidates.Count, matched, created, playRecordsWritten, snapshotsWritten, namesPromoted);
+            candidates.Count, observations.Count, matched, created,
+            playRecordsWritten, snapshotsWritten, namesPromoted);
 
         return new ResolveResult(matched, created, playRecordsWritten, snapshotsWritten, namesPromoted);
     }

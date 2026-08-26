@@ -30,7 +30,11 @@ namespace Hoard.Enrich.SteamWeb.Model;
 /// it is zero, so absent and zero are indistinguishable and both arrive as 0.
 /// </param>
 /// <param name="LastPlayedUtc">
-/// <c>rtime_last_played</c> as UTC, or null when the field was absent or zero.
+/// <c>rtime_last_played</c> as UTC, or null when the field was absent or held
+/// one of Steam's placeholders — <c>0</c>, or the <c>86400</c> (1970-01-02) the
+/// local files write for a game last played before Steam tracked timestamps.
+/// The rule is <see cref="Hoard.Core.Domain.SteamTime"/>, shared with the §4.1
+/// readers so both sources call the same value unknown.
 /// §4.2: returned <b>only when the API key belongs to the queried account</b> —
 /// with a third party's key this is always null, which is why §4.1 makes local
 /// files the primary playtime source.

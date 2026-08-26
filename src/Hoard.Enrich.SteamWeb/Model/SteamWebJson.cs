@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
+using Hoard.Core.Domain;
 
 namespace Hoard.Enrich.SteamWeb.Model;
 
@@ -15,9 +16,6 @@ namespace Hoard.Enrich.SteamWeb.Model;
 /// </summary>
 public static class SteamWebJson
 {
-    /// <summary>Unix epoch, for <c>rtime_last_played</c>.</summary>
-    private static readonly DateTime Epoch = new(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-
     /// <summary>
     /// The games in an owned-games response, or <b>null when the body was not an
     /// answer</b> — unparseable, the wrong shape, or the bare
@@ -112,8 +110,14 @@ public static class SteamWebJson
                 ? hash
                 : null;
 
+        // rtime_last_played carries the same placeholders the local files do —
+        // 0 on a never-launched game, 86400 on one last played before Steam
+        // tracked timestamps. SteamTime is the single rule both readers apply,
+        // so both answer null here. Converting 86400 into a literal 1970-01-02
+        // made this source disagree with the local scan about the same game, and
+        // the two then appended a fresh play_record apiece on every sync.
         var lastPlayed = element.TryGetProperty("rtime_last_played", out var rtime)
-            ? TryReadInt64(rtime)
+            ? SteamTime.FromEpochSeconds(TryReadInt64(rtime))
             : null;
 
         return new SteamOwnedGame(
@@ -121,7 +125,7 @@ public static class SteamWebJson
             Title: name,
             PlaytimeForeverMinutes: ReadMinutes(element, "playtime_forever"),
             PlaytimeTwoWeeksMinutes: ReadMinutes(element, "playtime_2weeks"),
-            LastPlayedUtc: lastPlayed is > 0 ? Epoch.AddSeconds(lastPlayed.Value) : null,
+            LastPlayedUtc: lastPlayed,
             IconHash: icon);
     }
 

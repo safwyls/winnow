@@ -577,6 +577,64 @@ public class SteamWebApiClientTests
         Assert.True(game.NeverPlayed);
     }
 
+    /// <summary>
+    /// The 86400 placeholder — 1970-01-02, "played before Steam tracked
+    /// timestamps" — arrives on BOTH transports, and for a long time only the
+    /// §4.1 local reader knew it. This reader turned it into a literal
+    /// 1970-01-02 and wrote it down, so the same game arrived from the two
+    /// sources as two different observations and each appended its own
+    /// play_records row on every sync, forever. Ricochet, Counter-Strike:
+    /// Condition Zero and Counter-Strike: Source did exactly that 45 times on
+    /// the author's library.
+    ///
+    /// <para>The playtime beside it is real and must survive: the minutes are
+    /// the whole reason those rows are worth keeping.</para>
+    /// </summary>
+    [Fact]
+    public async Task The_86400_placeholder_is_unknown_here_too_and_never_becomes_a_1970_date()
+    {
+        using var host = new SteamWebTestHost(SteamWebTestHost.Always(SteamWebFixtures.OwnedGames(
+            new Fixture(60, "Ricochet", PlaytimeForever: 3, RtimeLastPlayed: 86400))));
+
+        var game = Assert.Single((await host.Client.GetOwnedGamesAsync(Account)).Games);
+
+        Assert.Null(game.LastPlayedUtc);
+        Assert.Equal(3, game.PlaytimeForeverMinutes);
+
+        // Minutes without a date is not "never played" — it is "played, date
+        // unknown", which is what the local reader has always said about it.
+        Assert.False(game.NeverPlayed);
+
+        // And the candidate this projects into carries the same null, so the
+        // resolver sees one fact rather than two.
+        var candidate = Assert.Single(await host.Client.GetOwnershipCandidatesAsync(Account));
+        Assert.Null(candidate.LastPlayedAt);
+        Assert.Equal(3, candidate.PlaytimeMinutes);
+    }
+
+    /// <summary>
+    /// The floor is a floor, not an equality test against 86400: any timestamp
+    /// before Steam could plausibly have recorded one is a placeholder.
+    /// </summary>
+    [Fact]
+    public async Task Any_pre_1980_timestamp_is_treated_as_unknown()
+    {
+        using var host = new SteamWebTestHost(SteamWebTestHost.Always(SteamWebFixtures.OwnedGames(
+            new Fixture(70, "Half-Life", PlaytimeForever: 12, RtimeLastPlayed: 315_532_799),
+            new Fixture(80, "Counter-Strike", PlaytimeForever: 12, RtimeLastPlayed: 315_532_800))));
+
+        var games = (await host.Client.GetOwnedGamesAsync(Account)).Games;
+
+        Assert.Null(games.Single(g => g.AppId == "70").LastPlayedUtc);
+
+        // One second later is 1980-01-01T00:00:00Z, which is above the floor and
+        // therefore a date — absurd for Steam, but the floor's job is to reject
+        // placeholders, not to referee plausibility.
+        Assert.Equal(
+            new DateTime(1980, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+            games.Single(g => g.AppId == "80").LastPlayedUtc);
+    }
+
     [Fact]
     public async Task Candidates_carry_the_provider_the_account_and_the_provenance()
     {

@@ -32,14 +32,16 @@ public interface IOwnershipRepository
     /// <i>both</i> install columns, <c>false</c> included, because a game the
     /// user uninstalled must stop showing as installed; a null writes neither.
     /// The path is never carried independently of the flag.</para>
+    ///
+    /// <para><b><see cref="UpsertAsync"/> is the only install-state writer, on
+    /// purpose.</b> There used to be a second one — an <c>UpdateInstallStateAsync</c>
+    /// taking a plain <c>bool</c> — with no callers anywhere. A two-valued
+    /// setter cannot express "this source could not tell", so wiring it up would
+    /// have reinstated exactly the bug the three-valued rule above exists to
+    /// prevent. It was removed rather than left lying around; add install-state
+    /// writes here, where the rule is.</para>
     /// </summary>
     Task<long> UpsertAsync(OwnershipUpsert ownership, CancellationToken ct = default);
-
-    /// <summary>
-    /// Updates the install-state fields (install_path, installed) observed by
-    /// an ingest sync. Other columns are left untouched.
-    /// </summary>
-    Task UpdateInstallStateAsync(long id, string? installPath, bool installed, CancellationToken ct = default);
 
     Task<IReadOnlyList<Ownership>> GetAllAsync(CancellationToken ct = default);
 }

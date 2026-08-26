@@ -592,6 +592,138 @@ public sealed class ExternalIdResolverTests : IDisposable
         Assert.Empty(await _snapshots.GetByOwnershipAsync(ownership.Id));
     }
 
+    // ── One pass, one observation per ownership ──────────────────────────────
+
+    /// <summary>
+    /// The alternating-row bug at resolver level. Steam's own two playtime
+    /// figures for Portal differ by a minute (279 via GetOwnedGames, 280 via
+    /// localconfig.vdf). Un-merged, each candidate "changed" relative to the
+    /// other, so both appended a play record — and every later pass appended two
+    /// more. One pass now sees one observation.
+    /// </summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Two_sources_a_minute_apart_write_one_play_record_not_a_pair(bool webFirst)
+    {
+        var played = Utc(2018, 5, 25, 3, 7, 27);
+        var local = Candidate("400", "Portal", 280, played, Utc(2026, 8, 25, 16, 1, 0));
+        var web = WebCandidate("400", "Portal", 279, played, Utc(2026, 8, 25, 2, 25, 0));
+
+        var result = await _resolver.ResolveAsync(webFirst ? [web, local] : [local, web]);
+
+        Assert.Equal(1, result.PlayRecordsWritten);
+        Assert.Equal(1, result.SnapshotsWritten);
+
+        var release = await _releases.FindByExternalIdAsync("steam", "400");
+        Assert.NotNull(release);
+        var ownership = Assert.Single(await _ownerships.GetByReleaseAsync(release.Id));
+
+        var record = Assert.Single(await _playRecords.GetByOwnershipAsync(ownership.Id));
+        Assert.Equal(280, record.PlaytimeMinutes);
+        Assert.Equal(played, record.LastPlayedAt);
+        Assert.Equal("steam_local", record.Source);
+    }
+
+    /// <summary>
+    /// <b>The property that was missing.</b> Two passes over sources that have
+    /// not changed must write nothing the second time — whatever the sources
+    /// disagree about among themselves. Before the merge this wrote two rows per
+    /// pass forever, at the snapshot scheduler's 15-minute cadence.
+    /// </summary>
+    [Fact]
+    public async Task A_second_pass_over_unchanged_disagreeing_sources_writes_nothing()
+    {
+        var played = Utc(2018, 5, 25, 3, 7, 27);
+
+        CandidateOwnership[] Pass(DateTime observedAt) =>
+        [
+            Candidate("400", "Portal", 280, played, observedAt),
+            WebCandidate("400", "Portal", 279, played, observedAt.AddHours(-14)),
+        ];
+
+        await _resolver.ResolveAsync(Pass(Utc(2026, 8, 25, 16, 1, 0)));
+
+        // A later wall clock, the same facts: idempotent by change detection,
+        // not by observation time.
+        var second = await _resolver.ResolveAsync(Pass(Utc(2026, 8, 25, 16, 16, 0)));
+        var third = await _resolver.ResolveAsync(Pass(Utc(2026, 8, 25, 16, 31, 0)));
+
+        Assert.Equal(0, second.PlayRecordsWritten);
+        Assert.Equal(0, second.SnapshotsWritten);
+        Assert.Equal(0, third.PlayRecordsWritten);
+        Assert.Equal(0, third.SnapshotsWritten);
+
+        var release = await _releases.FindByExternalIdAsync("steam", "400");
+        Assert.NotNull(release);
+        var ownership = Assert.Single(await _ownerships.GetByReleaseAsync(release.Id));
+        Assert.Single(await _playRecords.GetByOwnershipAsync(ownership.Id));
+        Assert.Single(await _snapshots.GetByOwnershipAsync(ownership.Id));
+    }
+
+    /// <summary>
+    /// The other half of the live failure: the 86400 placeholder. Once both
+    /// readers call it unknown, the pair agrees on null and settles — and the
+    /// detail view can never show 2 January 1970 as a last-played date.
+    /// </summary>
+    [Fact]
+    public async Task An_unknown_last_played_settles_on_one_row_with_no_date()
+    {
+        CandidateOwnership[] Pass(DateTime observedAt) =>
+        [
+            TitlelessCandidate("60", 3, null, observedAt),
+            WebCandidate("60", "Ricochet", 3, null, observedAt),
+        ];
+
+        await _resolver.ResolveAsync(Pass(Utc(2026, 8, 25, 16, 1, 0)));
+        var second = await _resolver.ResolveAsync(Pass(Utc(2026, 8, 25, 16, 16, 0)));
+
+        Assert.Equal(0, second.PlayRecordsWritten);
+
+        var release = await _releases.FindByExternalIdAsync("steam", "60");
+        Assert.NotNull(release);
+        var ownership = Assert.Single(await _ownerships.GetByReleaseAsync(release.Id));
+
+        var record = Assert.Single(await _playRecords.GetByOwnershipAsync(ownership.Id));
+        Assert.Null(record.LastPlayedAt);
+
+        // The minutes are real and stay real — that is why the correcting
+        // migration nulls the column instead of deleting the row.
+        Assert.Equal(3, record.PlaytimeMinutes);
+    }
+
+    /// <summary>
+    /// Merging simultaneous views must not flatten a genuine time series: a real
+    /// session between two passes is still a change and still appends.
+    /// </summary>
+    [Fact]
+    public async Task A_real_session_still_appends_after_the_sources_have_been_merged()
+    {
+        await _resolver.ResolveAsync(
+        [
+            Candidate("400", "Portal", 280, Utc(2018, 5, 25), Utc(2026, 8, 25, 16, 1, 0)),
+            WebCandidate("400", "Portal", 279, Utc(2018, 5, 25), Utc(2026, 8, 25, 2, 25, 0)),
+        ]);
+
+        var result = await _resolver.ResolveAsync(
+        [
+            Candidate("400", "Portal", 331, Utc(2026, 8, 25, 15, 30, 0), Utc(2026, 8, 25, 16, 16, 0)),
+            WebCandidate("400", "Portal", 279, Utc(2018, 5, 25), Utc(2026, 8, 25, 2, 25, 0)),
+        ]);
+
+        Assert.Equal(1, result.PlayRecordsWritten);
+        Assert.Equal(1, result.SnapshotsWritten);
+
+        var release = await _releases.FindByExternalIdAsync("steam", "400");
+        Assert.NotNull(release);
+        var ownership = Assert.Single(await _ownerships.GetByReleaseAsync(release.Id));
+
+        var history = await _playRecords.GetByOwnershipAsync(ownership.Id);
+        Assert.Equal(2, history.Count);
+        Assert.Equal(280, history[0].PlaytimeMinutes);
+        Assert.Equal(331, history[1].PlaytimeMinutes);
+    }
+
     /// <summary>
     /// Fails the external-id write for one appid, simulating a process death
     /// after the work and release rows are already in.

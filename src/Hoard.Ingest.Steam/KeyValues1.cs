@@ -1,4 +1,5 @@
 using System.Globalization;
+using Hoard.Core.Domain;
 using Microsoft.Extensions.Logging;
 using ValveKeyValue;
 
@@ -78,23 +79,12 @@ internal static class KeyValues1
             ? value
             : null;
 
-    /// <summary>Reads an epoch-seconds value as UTC, mapping sentinels to null.</summary>
+    /// <summary>
+    /// Reads an epoch-seconds value as UTC, mapping Steam's placeholders to
+    /// null via the shared <see cref="SteamTime"/> rule — the same one the Web
+    /// API reader applies to <c>rtime_last_played</c>, so the two sources agree
+    /// on what "unknown" looks like instead of one of them inventing 1970.
+    /// </summary>
     internal static DateTime? GetEpochUtc(KVObject parent, string name)
         => SteamTime.FromEpochSeconds(GetLong(parent, name));
-}
-
-/// <summary>Epoch conversions with Steam's sentinel handling.</summary>
-internal static class SteamTime
-{
-    /// <summary>
-    /// 1980-01-01T00:00:00Z. Steam writes `LastPlayed "86400"` (1970-01-02)
-    /// for games last played before it tracked timestamps, and `"0"` for
-    /// never-launched installs; anything below this floor means "unknown".
-    /// </summary>
-    internal const long MinValidEpochSeconds = 315_532_800;
-
-    internal static DateTime? FromEpochSeconds(long? seconds)
-        => seconds is { } s && s >= MinValidEpochSeconds
-            ? DateTimeOffset.FromUnixTimeSeconds(s).UtcDateTime
-            : null;
 }

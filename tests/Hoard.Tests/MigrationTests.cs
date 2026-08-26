@@ -266,6 +266,114 @@ public class MigrationTests
             "SELECT COUNT(*) FROM works WHERE steam_app_type IS NOT NULL;"));
     }
 
+    /// <summary>
+    /// 0008 corrects the rows the two readers' disagreement already wrote: a
+    /// last-played of 1970-01-02, produced by the Web API reader mapping Steam's
+    /// 86400 placeholder to a literal date while the local reader called the
+    /// same value unknown. 45 such rows were on the author's live database.
+    ///
+    /// <para>The date is wrong; the minutes beside it are not. The migration
+    /// nulls the column and leaves the row — deleting it would throw away a true
+    /// measurement to correct a false one.</para>
+    /// </summary>
+    [Fact]
+    public void Migration_0008_nulls_placeholder_last_played_dates_and_keeps_the_playtime()
+    {
+        using var db = new TempDatabase();
+
+        long ownershipId;
+        using (var conn = db.Factory.Open())
+        {
+            // Rewind: forget 0008 ran, then write the rows pre-0008 code produced.
+            conn.Execute("DELETE FROM SchemaVersions WHERE ScriptName LIKE '%0008%';");
+
+            var workId = conn.ExecuteScalar<long>(
+                "INSERT INTO works (name) VALUES ('Ricochet') RETURNING id;");
+            var releaseId = conn.ExecuteScalar<long>(
+                "INSERT INTO releases (work_id, name) VALUES (@workId, 'Ricochet') RETURNING id;",
+                new { workId });
+            ownershipId = conn.ExecuteScalar<long>(
+                "INSERT INTO ownerships (release_id, store) VALUES (@releaseId, 'steam') RETURNING id;",
+                new { releaseId });
+
+            conn.Execute("""
+                INSERT INTO play_records (ownership_id, playtime_minutes, last_played_at, source, observed_at)
+                VALUES
+                    -- The bogus pair: 86400 seconds rendered as a date.
+                    (@ownershipId, 3, '1970-01-02 00:00:00', 'steam_web_api', '2026-08-25 02:25:07'),
+                    -- Same row, written with a 'T' separator: the fix is on the
+                    -- instant, not on the spelling.
+                    (@ownershipId, 3, '1970-01-02T00:00:00', 'steam_web_api', '2026-08-25 02:25:08'),
+                    -- The local reader's answer for the same observation.
+                    (@ownershipId, 3, NULL, 'steam_local', '2026-08-25 02:25:09'),
+                    -- A real date, which must not be touched.
+                    (@ownershipId, 280, '2018-05-25 03:07:27', 'steam_local', '2026-08-25 02:25:10');
+                """, new { ownershipId });
+        }
+
+        db.Initializer.Initialize();
+
+        using var after = db.Factory.Open();
+
+        // Nothing was deleted: four rows in, four rows out.
+        Assert.Equal(4, after.ExecuteScalar<long>(
+            "SELECT COUNT(*) FROM play_records WHERE ownership_id = @ownershipId;", new { ownershipId }));
+
+        // No placeholder date survives, in either spelling.
+        Assert.Equal(0, after.ExecuteScalar<long>("""
+            SELECT COUNT(*) FROM play_records
+            WHERE last_played_at IS NOT NULL
+            AND   CAST(strftime('%s', last_played_at) AS INTEGER) < 315532800;
+            """));
+
+        // And the minutes those rows carried are all still there.
+        Assert.Equal(3, after.ExecuteScalar<long>("""
+            SELECT COUNT(*) FROM play_records
+            WHERE ownership_id = @ownershipId AND playtime_minutes = 3;
+            """, new { ownershipId }));
+
+        // The real date is untouched.
+        Assert.Equal("2018-05-25 03:07:27", after.ExecuteScalar<string>("""
+            SELECT last_played_at FROM play_records
+            WHERE ownership_id = @ownershipId AND playtime_minutes = 280;
+            """, new { ownershipId }));
+    }
+
+    /// <summary>
+    /// A second run of 0008 over a corrected database changes nothing — the
+    /// journal makes it a no-op, and the statement itself is idempotent anyway.
+    /// </summary>
+    [Fact]
+    public void Migration_0008_is_a_no_op_on_a_database_with_no_placeholder_dates()
+    {
+        using var db = new TempDatabase();
+
+        using (var conn = db.Factory.Open())
+        {
+            conn.Execute("DELETE FROM SchemaVersions WHERE ScriptName LIKE '%0008%';");
+
+            var workId = conn.ExecuteScalar<long>(
+                "INSERT INTO works (name) VALUES ('Portal') RETURNING id;");
+            var releaseId = conn.ExecuteScalar<long>(
+                "INSERT INTO releases (work_id, name) VALUES (@workId, 'Portal') RETURNING id;",
+                new { workId });
+            var ownershipId = conn.ExecuteScalar<long>(
+                "INSERT INTO ownerships (release_id, store) VALUES (@releaseId, 'steam') RETURNING id;",
+                new { releaseId });
+
+            conn.Execute("""
+                INSERT INTO play_records (ownership_id, playtime_minutes, last_played_at, source, observed_at)
+                VALUES (@ownershipId, 280, '2018-05-25 03:07:27', 'steam_local', '2026-08-25 02:25:10');
+                """, new { ownershipId });
+        }
+
+        db.Initializer.Initialize();
+
+        using var after = db.Factory.Open();
+        Assert.Equal("2018-05-25 03:07:27", after.ExecuteScalar<string>(
+            "SELECT last_played_at FROM play_records;"));
+    }
+
     [Fact]
     public void Every_connection_has_wal_and_foreign_keys_enabled()
     {

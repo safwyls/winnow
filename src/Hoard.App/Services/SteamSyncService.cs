@@ -78,6 +78,12 @@ public sealed class SteamSyncService : ISteamSync
         // because of how this line was written, reported Installed: false for
         // games they had never looked for on disk and cleared the entire
         // library's install state on every sync.
+        //
+        // The overlap between the two sources is handed over as-is: the resolver
+        // collapses the appids both of them saw into one observation apiece
+        // (CandidateOwnershipMerge) before it compares anything against the
+        // database. That belongs there, not here — this type only sequences the
+        // two halves and must not start deciding what the data means (§5.1).
         var candidates = local.Concat(owned).ToList();
 
         if (candidates.Count == 0)
