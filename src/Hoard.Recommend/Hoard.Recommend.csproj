@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Hoard.Recommend</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Hoard.Core ONLY (§5.1). The engine reads through repository interfaces
+         and returns scored results; it must never grow a reference to Data,
+         Ingest, Enrich or the App — the composition root hands it
+         implementations, later, deliberately. -->
+    <ProjectReference Include="..\Hoard.Core\Hoard.Core.csproj" />
+  </ItemGroup>
+
+</Project>
