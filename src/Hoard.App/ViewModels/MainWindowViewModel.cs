@@ -1,5 +1,8 @@
+using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Hoard.App.ViewModels.Filters;
+using Hoard.App.ViewModels.Lists;
 using Hoard.Core.Repositories;
 
 namespace Hoard.App.ViewModels;
@@ -22,6 +25,13 @@ public partial class MainWindowViewModel : ObservableObject
     {
         Library = library;
         MergeQueue = mergeQueue;
+
+        // The panel is a column in the library's own layout, so it has to
+        // disappear when the library does. Two sources, one answer, computed
+        // here rather than composed in XAML — Avalonia has no boolean AND in a
+        // binding, and a converter for one expression is more machinery than
+        // the property it would replace.
+        Library.Filters.PropertyChanged += OnFiltersChanged;
 
         // Built from the library's own ramp rather than resolved separately:
         // two DormancyRamp instances would be a toggle wired to nothing the
@@ -47,10 +57,34 @@ public partial class MainWindowViewModel : ObservableObject
     public DisplaySettingsViewModel Display { get; }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsLibraryVisible))]
+    [NotifyPropertyChangedFor(nameof(IsLibraryVisible), nameof(IsFilterPanelVisible))]
     public partial bool IsMergeQueueVisible { get; set; }
 
     public bool IsLibraryVisible => !IsMergeQueueVisible;
+
+    /// <summary>The filter panel is part of the library screen, not of the window.</summary>
+    public bool IsFilterPanelVisible => IsLibraryVisible && Library.Filters.IsOpen;
+
+    /// <summary>
+    /// Rail list row. Like a bucket, it brings the library back — the rail never
+    /// leaves the user on a screen their click did not describe — and it toggles,
+    /// so clicking the open list closes it and returns the whole library.
+    /// </summary>
+    [RelayCommand]
+    private void SelectList(GameListViewModel? list)
+    {
+        IsMergeQueueVisible = false;
+        Library.OpenListCommand.Execute(
+            ReferenceEquals(Library.Lists.Open, list) ? null : list);
+    }
+
+    private void OnFiltersChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(FilterPanelViewModel.IsOpen))
+        {
+            OnPropertyChanged(nameof(IsFilterPanelVisible));
+        }
+    }
 
     /// <summary>
     /// Rail bucket click. Selecting a bucket is a statement about the library,

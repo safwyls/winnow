@@ -95,10 +95,18 @@ public static class Apicalypse
     /// abstraction for the Release layer and tells us not to reinvent it; that
     /// is a later milestone, not this one, and nothing here should grow an
     /// ad-hoc edition guess in the meantime.</para>
+    ///
+    /// <para><c>game_modes</c> and <c>player_perspectives</c> are the library
+    /// filter's descriptors (migration 0007). They cost NOTHING to ask for: an
+    /// Apicalypse <c>fields</c> clause is one request whatever it lists, so these
+    /// ride along on the same call that was already fetching name, year and
+    /// publisher. They were left out originally for the reason 0005 records —
+    /// nothing consumed them and §6 had no column — and are added now that
+    /// something does.</para>
     /// </summary>
     public static string Games(IEnumerable<long> igdbIds, int limit, int offset)
         => $"""
-            fields name,summary,first_release_date,cover.image_id,cover.url,genres.name,themes.name,involved_companies.publisher,involved_companies.company.name;
+            fields name,summary,first_release_date,cover.image_id,cover.url,genres.name,themes.name,game_modes.name,player_perspectives.name,involved_companies.publisher,involved_companies.company.name;
             where id = {NumberList(igdbIds)};
             limit {Clamp(limit).ToString(CultureInfo.InvariantCulture)};
             offset {offset.ToString(CultureInfo.InvariantCulture)};

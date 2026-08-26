@@ -41,6 +41,47 @@ internal static class StoreFixtures
     internal static string TagListResponse() => File.ReadAllText(PathOf("gettaglist-v1.json"));
 
     /// <summary>
+    /// The real <c>IStoreBrowseService/GetStoreCategories</c> response, byte for
+    /// byte — the vocabulary the category ids in <c>getitems-v1.json</c> resolve
+    /// through.
+    /// </summary>
+    internal static string StoreCategoriesResponse() => File.ReadAllText(PathOf("getstorecategories-v1.json"));
+
+    /// <summary>
+    /// One captured store item's raw JSON — the exact bytes
+    /// <see cref="Hoard.Enrich.Steam.SteamStoreClient"/> writes into
+    /// <c>metadata_cache</c> for that appid, and therefore the exact bytes a
+    /// cache-only read parses back.
+    /// </summary>
+    internal static string CapturedItemJson(string appId)
+    {
+        var id = long.Parse(appId, CultureInfo.InvariantCulture);
+        using var document = JsonDocument.Parse(GetItemsResponse());
+        return document.RootElement.GetProperty("response").GetProperty("store_items")
+            .EnumerateArray()
+            .Single(item => item.GetProperty("id").GetInt64() == id)
+            .GetRawText();
+    }
+
+    /// <summary>Steam Achievements. A feature category (<c>type: 2</c>).</summary>
+    internal const int AchievementsCategoryId = 22;
+
+    /// <summary>Full controller support. A controller category (<c>type: 3</c>).</summary>
+    internal const int FullControllerCategoryId = 28;
+
+    /// <summary>Single-player. A player category (<c>type: 1</c>), and Elden Ring's first.</summary>
+    internal const int SinglePlayerCategoryId = 2;
+
+    /// <summary>
+    /// Two of Valve's duplicate display names: 55 (wired) and 56 (Bluetooth) are
+    /// both "DualShock Controller Support". Anything keyed on the NAME collapses
+    /// them, which is what migration 0007 does on purpose.
+    /// </summary>
+    internal const int Ps4ControllerCategoryId = 55;
+
+    internal const int Ps4ControllerBluetoothCategoryId = 56;
+
+    /// <summary>
     /// A <c>GetItems</c> response for whatever <paramref name="request"/> asked
     /// for, shaped like the captured one: <c>id</c> mirrors the request,
     /// <c>tags</c> carry descending weights, and an appid in

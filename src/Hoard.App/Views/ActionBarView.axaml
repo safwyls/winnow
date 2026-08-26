@@ -1,0 +1,422 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Hoard.App.ViewModels"
+             xmlns:filters="using:Hoard.App.ViewModels.Filters"
+             xmlns:lists="using:Hoard.App.ViewModels.Lists"
+             x:Class="Hoard.App.Views.ActionBarView"
+             x:DataType="vm:LibraryViewModel">
+
+    <!--
+        The strip between the command bar and the art. Two modes, never both.
+
+        · THE CUT BAR. What you are looking at, stated once: the rules as
+          dismissable chips, and "926 → 41". This is the seam where the rail and
+          the filter panel become one filter — the rail's bucket is the first
+          chip, the panel's options are the rest, and dropping any of them goes
+          back to the control that set it. It exists because a library that has
+          been cut down and does not admit it is the most expensive confusion
+          this screen can produce: the panel can be closed and the rail scrolled
+          past, and then 41 of 926 games look like the whole hoard.
+
+          The arrow is the only one in the application. It is here because this
+          is the only place a number becomes another number.
+
+        · THE PROMPT. Naming a live list, picking a list to add to, confirming a
+          delete. Deliberately a strip and not a flyout: Avalonia's global
+          FocusAdorner cannot render inside a popup (a popup is its own root and
+          has no adorner layer), so every control in a menu here would need its
+          ring hand-drawn — the same reason design-system §10.7 gives for the
+          detail panel having no flyout either. In the window's own tree, §8's
+          focus ring and a linear Tab order both come free, and the question
+          sits directly above the thing it is about.
+    -->
+
+    <UserControl.Styles>
+
+        <!-- ══ Chip ════════════════════════════════════════════════════════
+             Volt-edged, never Flare. A chip is a selection, which is what Volt
+             is for (§2); Flare marks unread updates and nothing else, and a
+             row of pink chips would be the fastest way to make the badge stop
+             meaning anything. -->
+        <Style Selector="Border.chip">
+            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
+            <Setter Property="BorderBrush" Value="#664DE8C2"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
+            <Setter Property="Padding" Value="9,3,5,3"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
+        <!-- ══ Strip button ════════════════════════════════════════════════
+             The ring is a brush swap on a border whose thickness never changes
+             (§10.7): thickening a border on focus reflows the row, and buttons
+             that shuffle sideways as you tab are worse than no ring. Set on
+             PART_ContentPresenter, because Fluent's own state styles write that
+             presenter directly and a TemplateBinding loses to them on hover. -->
+        <Style Selector="Button.strip">
+            <Setter Property="Padding" Value="10,4"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
+        </Style>
+        <Style Selector="Button.strip /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
+        </Style>
+        <Style Selector="Button.strip:pointerover">
+            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+        </Style>
+        <Style Selector="Button.strip:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
+        </Style>
+        <Style Selector="Button.strip:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+        </Style>
+        <Style Selector="Button.strip:disabled">
+            <Setter Property="Opacity" Value="0.4"/>
+            <Setter Property="Cursor" Value="Arrow"/>
+        </Style>
+
+        <!-- The one armed button on the strip: what you came here to do. -->
+        <Style Selector="Button.strip.primary">
+            <Setter Property="Foreground" Value="{StaticResource VoltInk}"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+        <Style Selector="Button.strip.primary /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource Volt}"/>
+        </Style>
+        <Style Selector="Button.strip.primary:pointerover">
+            <Setter Property="Foreground" Value="{StaticResource VoltInk}"/>
+        </Style>
+        <Style Selector="Button.strip.primary:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource VoltHover}"/>
+        </Style>
+        <!-- On a Volt fill the ring cannot be Volt, so it is the button's own
+             ink — which reads as the control being armed rather than as a new
+             colour arriving (§10.7). -->
+        <Style Selector="Button.strip.primary:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="BorderBrush" Value="{StaticResource VoltInk}"/>
+        </Style>
+
+        <!-- Destructive. Danger, and nowhere else in this strip. -->
+        <Style Selector="Button.strip.danger">
+            <Setter Property="Foreground" Value="#FFF2EF"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+        <Style Selector="Button.strip.danger /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource Danger}"/>
+        </Style>
+        <Style Selector="Button.strip.danger:pointerover">
+            <Setter Property="Foreground" Value="#FFF2EF"/>
+        </Style>
+        <Style Selector="Button.strip.danger:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#EF645E"/>
+        </Style>
+        <Style Selector="Button.strip.danger:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="BorderBrush" Value="#FFF2EF"/>
+        </Style>
+
+        <!-- A list to add to, offered as a target rather than as a menu row. -->
+        <Style Selector="Button.listchip">
+            <Setter Property="Padding" Value="10,4"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Button.listchip /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
+        </Style>
+        <Style Selector="Button.listchip:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+        </Style>
+        <Style Selector="Button.listchip:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+        </Style>
+
+        <!-- The chip's own dismiss. 18px is the smallest square that is still a
+             target; the glyph inside it is 7. -->
+        <Style Selector="Button.chipx">
+            <Setter Property="Width" Value="18"/>
+            <Setter Property="Height" Value="18"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="CornerRadius" Value="9"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Button.chipx /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="2"/>
+            <Setter Property="CornerRadius" Value="9"/>
+        </Style>
+        <Style Selector="Button.chipx:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#3D4DE8C2"/>
+        </Style>
+        <Style Selector="Button.chipx:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+        </Style>
+        <Style Selector="Button.chipx Path">
+            <Setter Property="Stroke" Value="{StaticResource TextDim}"/>
+            <Setter Property="StrokeThickness" Value="1.4"/>
+            <Setter Property="StrokeLineCap" Value="Round"/>
+        </Style>
+        <Style Selector="Button.chipx:pointerover Path">
+            <Setter Property="Stroke" Value="{StaticResource Text}"/>
+        </Style>
+
+        <!-- The prompt's field. Wider and warmer than the panel's find fields:
+             this one is where a name is written, not where a list is sieved. -->
+        <Style Selector="TextBox.prompt">
+            <Setter Property="Height" Value="28"/>
+            <Setter Property="MinHeight" Value="28"/>
+            <Setter Property="Width" Value="230"/>
+            <Setter Property="Padding" Value="9,0"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
+            <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
+            <Setter Property="FontSize" Value="{StaticResource BodySize}"/>
+            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+            <Setter Property="SelectionBrush" Value="#4D4DE8C2"/>
+            <Setter Property="CaretBrush" Value="{StaticResource Volt}"/>
+        </Style>
+        <Style Selector="TextBox.prompt /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="{StaticResource Surface}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+        <Style Selector="TextBox.prompt:pointerover /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="{StaticResource Surface}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+        </Style>
+        <Style Selector="TextBox.prompt:focus /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="{StaticResource Surface}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+        </Style>
+        <Style Selector="TextBox.prompt /template/ TextBlock#PART_Watermark">
+            <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
+        </Style>
+
+    </UserControl.Styles>
+
+    <Border MinHeight="42"
+            Background="{StaticResource Ground}"
+            BorderBrush="{StaticResource Line}"
+            BorderThickness="0,0,0,1"
+            IsVisible="{Binding ShowActionBar}">
+        <Panel Margin="20,7">
+
+            <!-- ══ Cut bar ═════════════════════════════════════════════════ -->
+            <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding ShowCutBar}">
+
+                <ItemsControl Grid.Column="0"
+                              Margin="0,0,16,0"
+                              VerticalAlignment="Center"
+                              ItemsSource="{Binding CutChips}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <!-- Wrapping rather than clipping or scrolling: more
+                                 rules make a taller bar, which is honest and
+                                 costs the grid a few pixels it can spare. -->
+                            <WrapPanel Orientation="Horizontal"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="filters:FilterChipViewModel">
+                            <Border Classes="chip" Margin="0,2,8,2"
+                                    ToolTip.Tip="{Binding Description}">
+                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                    <TextBlock Classes="body" FontSize="12"
+                                               Text="{Binding Label}"
+                                               VerticalAlignment="Center"/>
+                                    <Button Classes="chipx"
+                                            Command="{Binding RemoveCommand}"
+                                            ToolTip.Tip="Drop this filter">
+                                        <Path Data="M 0.5,0.5 L 6.5,6.5 M 6.5,0.5 L 0.5,6.5"/>
+                                    </Button>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal"
+                            Spacing="6" VerticalAlignment="Center">
+
+                    <!-- The library, and what is left of it. -->
+                    <StackPanel Orientation="Horizontal" Spacing="6"
+                                Margin="0,0,6,0" VerticalAlignment="Center"
+                                ToolTip.Tip="Titles in your library, and titles in this cut">
+                        <TextBlock Classes="data"
+                                   Foreground="{StaticResource TextDim}"
+                                   Text="{Binding TotalCountText}"
+                                   VerticalAlignment="Center"/>
+                        <TextBlock Classes="data"
+                                   Foreground="#5A8286"
+                                   Text="&#x2192;"
+                                   VerticalAlignment="Center"/>
+                        <TextBlock Classes="data"
+                                   FontWeight="Medium"
+                                   Foreground="{StaticResource Volt}"
+                                   Text="{Binding VisibleCountText}"
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
+
+                    <Border Width="1" Height="18" Margin="2,0"
+                            Background="{StaticResource Line}"
+                            VerticalAlignment="Center"/>
+
+                    <!-- Membership actions: a hand-built list with rows picked. -->
+                    <Button Classes="strip"
+                            Content="Move up"
+                            IsVisible="{Binding ShowListMemberActions}"
+                            Command="{Binding MoveUpInListCommand}"
+                            ToolTip.Tip="Alt+Up"/>
+                    <Button Classes="strip"
+                            Content="Move down"
+                            IsVisible="{Binding ShowListMemberActions}"
+                            Command="{Binding MoveDownInListCommand}"
+                            ToolTip.Tip="Alt+Down"/>
+                    <Button Classes="strip"
+                            Content="Remove from list"
+                            IsVisible="{Binding ShowListMemberActions}"
+                            Command="{Binding RemoveFromOpenListCommand}"/>
+
+                    <!-- A live list whose rules have been edited. Both answers
+                         by name; neither happens by accident. -->
+                    <Button Classes="strip primary"
+                            Content="Update list"
+                            IsVisible="{Binding IsLiveListEdited}"
+                            Command="{Binding UpdateLiveListCommand}"/>
+                    <Button Classes="strip"
+                            Content="Revert"
+                            IsVisible="{Binding IsLiveListEdited}"
+                            Command="{Binding RevertLiveListCommand}"/>
+
+                    <!-- List metadata: a list is open and nothing is picked. -->
+                    <Button Classes="strip"
+                            Content="Rename"
+                            IsVisible="{Binding ShowListMetaActions}"
+                            Command="{Binding BeginRenameListCommand}"/>
+                    <Button Classes="strip"
+                            Content="Delete list"
+                            IsVisible="{Binding ShowListMetaActions}"
+                            Command="{Binding BeginDeleteListCommand}"/>
+
+                    <!-- §7's exact words, on the bar that already describes
+                         what would be saved. -->
+                    <Button Classes="strip primary"
+                            Content="Save as live list"
+                            IsVisible="{Binding ShowSaveLiveList}"
+                            Command="{Binding BeginSaveLiveListCommand}"/>
+
+                    <Button Classes="strip"
+                            Content="Clear filters"
+                            IsVisible="{Binding Filters.HasSelection}"
+                            Command="{Binding Filters.ClearCommand}"/>
+                </StackPanel>
+            </Grid>
+
+            <!-- ══ Prompt ══════════════════════════════════════════════════
+                 Visibility is on this panel, which still sees the library; the
+                 grid inside re-roots onto the prompt. One element cannot do
+                 both — a DataContext set on an element applies to every binding
+                 on it, IsVisible included. -->
+            <Panel IsVisible="{Binding IsPromptOpen}">
+            <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto"
+                  DataContext="{Binding Prompt}"
+                  x:DataType="lists:ActionPromptViewModel">
+
+                <TextBlock Grid.Column="0"
+                           Classes="body-l"
+                           FontSize="13"
+                           Margin="0,0,12,0"
+                           Text="{Binding Question}"
+                           VerticalAlignment="Center"/>
+
+                <!-- Existing lists first, then the field that makes a new one:
+                     the common answer is one you already have. -->
+                <ItemsControl Grid.Column="1"
+                              Margin="0,0,10,0"
+                              VerticalAlignment="Center"
+                              IsVisible="{Binding HasChoices}"
+                              ItemsSource="{Binding Choices}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel Orientation="Horizontal"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="lists:GameListViewModel">
+                            <Button Classes="listchip" Margin="0,2,7,2"
+                                    Command="{Binding $parent[ItemsControl].((lists:ActionPromptViewModel)DataContext).ChooseCommand}"
+                                    CommandParameter="{Binding}">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Classes="body" FontSize="12"
+                                               Text="{Binding Name}"
+                                               VerticalAlignment="Center"/>
+                                    <TextBlock Classes="data-s"
+                                               Text="{Binding CountText}"
+                                               VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <TextBox Grid.Column="2"
+                         Name="PromptInput"
+                         Classes="prompt"
+                         Margin="0,0,8,0"
+                         IsVisible="{Binding HasInput}"
+                         Watermark="{Binding InputWatermark}"
+                         Text="{Binding Text, Mode=TwoWay}"
+                         KeyDown="OnPromptKeyDown"/>
+
+                <TextBlock Grid.Column="3"
+                           Classes="body"
+                           FontSize="12"
+                           Margin="6,0,12,0"
+                           Foreground="{StaticResource TextDim}"
+                           TextTrimming="CharacterEllipsis"
+                           IsVisible="{Binding HasNote}"
+                           Text="{Binding Note}"
+                           VerticalAlignment="Center"/>
+
+                <StackPanel Grid.Column="4" Orientation="Horizontal"
+                            Spacing="6" VerticalAlignment="Center">
+                    <Button Classes="strip primary"
+                            Content="{Binding ConfirmLabel}"
+                            Command="{Binding ConfirmCommand}"
+                            IsVisible="{Binding !IsDestructive}"/>
+                    <Button Classes="strip danger"
+                            Content="{Binding ConfirmLabel}"
+                            Command="{Binding ConfirmCommand}"
+                            IsVisible="{Binding IsDestructive}"/>
+                    <Button Classes="strip"
+                            Content="Cancel"
+                            Command="{Binding CancelCommand}"/>
+                </StackPanel>
+            </Grid>
+            </Panel>
+
+        </Panel>
+    </Border>
+
+</UserControl>

@@ -99,6 +99,14 @@ public static class Program
                         // titles rather than the "App 620" placeholders it
                         // skips. Unconditional: a pass that promoted nothing can
                         // still be the first sweep this library has ever had.
+                        // Genres, themes, game modes, store tags and Steam
+                        // categories, for the filter panel. After enrichment
+                        // because it reads the caches enrichment warms — on a
+                        // warm library this is a pure database pass and touches
+                        // the network not at all.
+                        var facets = await services.GetRequiredService<FacetSyncService>()
+                            .SyncAsync(Shutdown.Token);
+
                         await services.GetRequiredService<LibrarySoftMatchSweep>()
                             .SweepAsync(Shutdown.Token);
 
@@ -120,6 +128,7 @@ public static class Program
                         // showing the gaps until the next launch.
                         if (report.Promoted > 0
                             || report.MetadataFilled > 0
+                            || facets.RowsWritten > 0
                             || poll.AnnouncementsRecorded > 0
                             || poll.BuildPushesRecorded > 0)
                         {
@@ -202,6 +211,7 @@ public static class Program
         services.AddSingleton<IGameListRepository, GameListRepository>();
         services.AddSingleton<IMergeCandidateRepository, MergeCandidateRepository>();
         services.AddSingleton<ILibraryQueryRepository, LibraryQueryRepository>();
+        services.AddSingleton<IFacetRepository, FacetRepository>();
         services.AddSingleton<IResolveStateRepository, ResolveStateRepository>();
         services.AddSingleton<ISettingsRepository, SettingsRepository>();
 
@@ -257,6 +267,7 @@ public static class Program
         // user-supplied key; unconfigured is a clean no-op.
         services.AddSteamWebApi();
         services.AddSingleton<EnrichmentSyncService>();
+        services.AddSingleton<FacetSyncService>();
 
         // M2 (§4.5): the two update signals behind "Patched since". Both
         // endpoints are keyless, so there is no unconfigured state to handle.

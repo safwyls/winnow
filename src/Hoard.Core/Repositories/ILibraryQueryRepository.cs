@@ -24,4 +24,23 @@ public interface ILibraryQueryRepository
     /// </summary>
     Task<IReadOnlyList<OwnershipBucket>> GetOwnershipBucketsAsync(
         BucketThresholds thresholds, CancellationToken ct = default);
+
+    /// <summary>
+    /// Every release with the two external ids the facet backfill looks its
+    /// descriptors up by: the work's IGDB id and the release's Steam appid.
+    ///
+    /// <para><b>Every release, not a "needs work" subset.</b> There is no
+    /// watermark and no "already has facets" filter, for the reason
+    /// <c>EnrichmentSyncService</c> records about its own targets: a watermark
+    /// permanently suppresses rows a source only learns about later, and Steam
+    /// tags in particular change under a game that has not itself changed. What
+    /// keeps a re-run cheap is the cache (nothing is re-fetched) and the
+    /// repository's read-before-write (nothing is re-stored), not a narrower
+    /// query.</para>
+    ///
+    /// <para>Both ids are nullable and usually at least one is present. A release
+    /// with neither contributes no facets and is left entirely alone — it has NOT
+    /// left the library, it simply has nothing to be described by.</para>
+    /// </summary>
+    Task<IReadOnlyList<FacetTarget>> GetFacetTargetsAsync(CancellationToken ct = default);
 }

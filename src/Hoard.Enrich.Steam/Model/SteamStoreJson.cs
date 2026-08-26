@@ -80,6 +80,13 @@ internal static class SteamStoreJson
         => JsonSerializer.Serialize(new { language = options.Language }, Options);
 
     /// <summary>
+    /// The <c>input_json</c> value for the store-category vocabulary. Same shape
+    /// as the tag list: a language and nothing else.
+    /// </summary>
+    internal static string BuildStoreCategoriesQuery(SteamStoreOptions options)
+        => JsonSerializer.Serialize(new { language = options.Language }, Options);
+
+    /// <summary>
     /// Splits a <c>GetItems</c> body into <c>id</c> → the raw JSON of that store
     /// item, so each app can be cached and re-parsed independently of the batch
     /// it arrived in.
@@ -158,7 +165,10 @@ internal static class SteamStoreJson
                 return null;
             }
 
-            return new SteamStoreItem(appId, name.GetString()!, ReadTags(item));
+            return new SteamStoreItem(appId, name.GetString()!, ReadTags(item))
+            {
+                Categories = ReadCategories(item),
+            };
         }
         catch (JsonException)
         {
@@ -206,6 +216,131 @@ internal static class SteamStoreJson
             .ThenBy(t => t.Position)
             .Select((t, index) => new SteamStoreTag(t.TagId, index + 1))
             .ToArray();
+    }
+
+    /// <summary>
+    /// Reads the <c>categories</c> block — Valve's own answer to "how is this
+    /// played, what does it support, what can you play it with".
+    ///
+    /// <para>No <c>data_request</c> flag turns this on: it arrives with the query
+    /// <see cref="BuildGetItemsQuery"/> has always sent, which means every store
+    /// body already in <c>metadata_cache</c> carries it and re-reading them costs
+    /// nothing. Verified live 2026-08-25.</para>
+    ///
+    /// <para>An app with no block at all is normal, not an error — free tools and
+    /// delisted apps commonly have none, and an app with only
+    /// <c>supported_player_categoryids</c> is the single commonest shape in the
+    /// author's library.</para>
+    /// </summary>
+    private static SteamStoreCategories ReadCategories(JsonElement item)
+    {
+        if (!item.TryGetProperty("categories", out var categories)
+            || categories.ValueKind != JsonValueKind.Object)
+        {
+            return SteamStoreCategories.None;
+        }
+
+        var players = ReadCategoryIds(categories, "supported_player_categoryids");
+        var features = ReadCategoryIds(categories, "feature_categoryids");
+        var controllers = ReadCategoryIds(categories, "controller_categoryids");
+
+        return players.Count == 0 && features.Count == 0 && controllers.Count == 0
+            ? SteamStoreCategories.None
+            : new SteamStoreCategories(players, features, controllers);
+    }
+
+    private static IReadOnlyList<int> ReadCategoryIds(JsonElement categories, string property)
+    {
+        if (!categories.TryGetProperty(property, out var array)
+            || array.ValueKind != JsonValueKind.Array)
+        {
+            return [];
+        }
+
+        var ids = new List<int>(array.GetArrayLength());
+        foreach (var element in array.EnumerateArray())
+        {
+            // Category ids are small, but they are read through the same
+            // string-or-number path as everything else here: Steam mixes the two
+            // encodings within one object and has no obligation to be consistent
+            // about which fields it mixes.
+            if (TryReadInt64(element) is { } id and >= int.MinValue and <= int.MaxValue)
+            {
+                ids.Add((int)id);
+            }
+        }
+
+        return ids;
+    }
+
+    /// <summary>
+    /// Reads a <c>GetStoreCategories</c> body into the categoryid → name map.
+    ///
+    /// <para>Falls back to <c>internal_name</c> when <c>display_name</c> is an
+    /// unresolved localization token. Three categories answer with one today
+    /// (<c>#category_playable_at_your_own_pace</c> and friends) and rendering a
+    /// checkbox labelled with a hash and an underscore string would be worse than
+    /// rendering Valve's internal wording, which reads fine.</para>
+    /// </summary>
+    /// <returns>Null when the envelope is not the shape this client understands.</returns>
+    internal static SteamStoreCategoryVocabulary? TryReadStoreCategories(string body)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(body);
+            if (document.RootElement.ValueKind != JsonValueKind.Object
+                || !document.RootElement.TryGetProperty("response", out var response)
+                || response.ValueKind != JsonValueKind.Object
+                || !response.TryGetProperty("categories", out var categories)
+                || categories.ValueKind != JsonValueKind.Array)
+            {
+                return null;
+            }
+
+            var names = new Dictionary<int, string>();
+            foreach (var category in categories.EnumerateArray())
+            {
+                if (category.ValueKind != JsonValueKind.Object
+                    || !category.TryGetProperty("categoryid", out var id)
+                    || TryReadInt64(id) is not { } categoryId
+                    || categoryId is < int.MinValue or > int.MaxValue)
+                {
+                    continue;
+                }
+
+                if (DisplayName(category) is { Length: > 0 } name)
+                {
+                    names[(int)categoryId] = name;
+                }
+            }
+
+            // A vocabulary with no words is a shape change wearing a 200, not a
+            // real answer — the same reading TryReadTagList takes, for the same
+            // reason: refusing it keeps an empty map out of the cache.
+            return names.Count == 0 ? null : new SteamStoreCategoryVocabulary(names);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    private static string? DisplayName(JsonElement category)
+    {
+        var display = category.TryGetProperty("display_name", out var d) && d.ValueKind == JsonValueKind.String
+            ? d.GetString()
+            : null;
+
+        if (!string.IsNullOrWhiteSpace(display) && !display.StartsWith('#'))
+        {
+            return display;
+        }
+
+        var internalName = category.TryGetProperty("internal_name", out var i) && i.ValueKind == JsonValueKind.String
+            ? i.GetString()
+            : null;
+
+        return string.IsNullOrWhiteSpace(internalName) ? display : internalName;
     }
 
     /// <summary>

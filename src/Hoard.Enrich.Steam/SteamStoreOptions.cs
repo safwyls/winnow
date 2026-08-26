@@ -57,6 +57,15 @@ public sealed class SteamStoreOptions
     public TimeSpan TagListCacheTtl { get; set; } = TimeSpan.FromDays(30);
 
     /// <summary>
+    /// How long the store-category vocabulary stays authoritative. 72 categories
+    /// arrive in one 16 KB keyless request and Valve adds one every year or two
+    /// (the accessibility block, ids 64-82, is the most recent), so 30 days costs
+    /// one request a month — the same bargain as the tag list, for the same
+    /// reason.
+    /// </summary>
+    public TimeSpan StoreCategoryCacheTtl { get; set; } = TimeSpan.FromDays(30);
+
+    /// <summary>
     /// Ceiling on outbound requests to api.steampowered.com, enforced by a shared
     /// token-bucket limiter on the HttpClient pipeline (never by sleeping at a
     /// call site).

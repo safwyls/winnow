@@ -31,6 +31,14 @@ public enum LibrarySort
 
     /// <summary>Title, descending.</summary>
     NameDescending,
+
+    /// <summary>
+    /// The order the user dragged the rows into. Only reachable while a manual
+    /// list is open, and the order that list opens in — a hand-built list whose
+    /// stored positions are invisible has no reason to store them, and "move up"
+    /// under an alphabetical sort is a control that appears to do nothing.
+    /// </summary>
+    ListOrder,
 }
 
 /// <summary>

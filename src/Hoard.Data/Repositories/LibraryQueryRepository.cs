@@ -182,6 +182,36 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
         return Consolidate(rows.AsList(), thresholds.ShowNonGameEntries);
     }
 
+    public async Task<IReadOnlyList<FacetTarget>> GetFacetTargetsAsync(CancellationToken ct = default)
+    {
+        // One row per release, carrying the id each descriptor source is keyed
+        // by. The Steam appid is a correlated subquery rather than a join
+        // because external_ids can in principle hold more than one row per
+        // release (gog, epic, igdb alongside steam) and a join would multiply
+        // the result; LIMIT 1 keeps this at exactly one row per release.
+        //
+        // No filter on "already has facets": see the interface's own note on why
+        // the backfill re-reads everything and lets the cache and the
+        // read-before-write keep it cheap.
+        const string sql = """
+            SELECT r.work_id  AS WorkId,
+                   r.id       AS ReleaseId,
+                   w.igdb_id  AS IgdbId,
+                   (SELECT e.provider_id
+                    FROM external_ids e
+                    WHERE e.release_id = r.id AND e.provider = 'steam'
+                    LIMIT 1) AS SteamAppId
+            FROM releases r
+            JOIN works w ON w.id = r.work_id
+            ORDER BY r.id;
+            """;
+
+        using var lease = _factory.Lease();
+        var rows = await lease.Connection.QueryAsync<FacetTarget>(new CommandDefinition(
+            sql, transaction: lease.Transaction, cancellationToken: ct));
+        return rows.AsList();
+    }
+
     /// <summary>
     /// Drops the demo rows the library already holds the full game for, and
     /// tells each surviving base row how many it absorbed.

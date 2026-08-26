@@ -184,6 +184,27 @@ public partial class MainWindow : Window
         {
             _library.ShowListViewCommand.Execute(null);
         }
+
+        // --open-filters and --open-first-list land the window on the two
+        // screens the filter and list work has to be reviewed on, without
+        // driving the rail by injected clicks. Same convention and same reason
+        // as --open-queue: SetForegroundWindow is not reliable enough here to
+        // trust a synthetic click, and a screenshot of the wrong screen is worse
+        // than no screenshot.
+        if (_library is not null && Environment.GetCommandLineArgs().Contains("--open-filters"))
+        {
+            _library.Filters.IsOpen = true;
+        }
+
+        if (_library is not null && Environment.GetCommandLineArgs().Contains("--open-first-list"))
+        {
+            _library.OpenListCommand.Execute(_library.Lists.Lists.FirstOrDefault());
+        }
+
+        if (_library is not null && Environment.GetCommandLineArgs().Contains("--open-live-list"))
+        {
+            _library.OpenListCommand.Execute(_library.Lists.LiveLists.FirstOrDefault());
+        }
 #endif
     }
 
@@ -193,6 +214,17 @@ public partial class MainWindow : Window
 
         if (e.Handled)
         {
+            return;
+        }
+
+        // The cut bar's prompt is the shallowest layer that can still swallow
+        // Escape: it is asking a question, and backing out of a question must
+        // work from wherever the caret happens to be. It sits ABOVE the detail
+        // modal in this chain only because the two are never up together.
+        if (_library?.Prompt is { } prompt && e.Key == Key.Escape)
+        {
+            prompt.CancelCommand.Execute(null);
+            e.Handled = true;
             return;
         }
 
@@ -220,15 +252,33 @@ public partial class MainWindow : Window
             return;
         }
 
-        // While the caret is in the search box, arrows and "/" belong to it.
-        if (SearchBox.IsFocused)
+        // ── While the caret is in a field, the keyboard belongs to the field ──
+        // This used to test SearchBox alone, which was correct while it was the
+        // only text box on the screen. It no longer is: the filter panel has a
+        // find field per long group and two year fields, and every one of them
+        // would otherwise have its letters eaten as shortcuts — typing "f" into
+        // "Find a tag" would close the panel the user was typing into.
+        //
+        // Escape still means "give me the library back", so it is answered even
+        // from inside a field; the search box additionally clears itself first,
+        // because that is the field whose content IS a filter.
+        if (FocusedTextBox() is { } focused)
         {
-            if (e.Key == Key.Escape)
+            if (e.Key != Key.Escape)
             {
-                SearchBox.Text = string.Empty;
-                e.Handled = true;
+                return;
             }
 
+            if (ReferenceEquals(focused, SearchBox) && SearchBox.Text is { Length: > 0 })
+            {
+                SearchBox.Text = string.Empty;
+            }
+            else
+            {
+                UnwindCut();
+            }
+
+            e.Handled = true;
             return;
         }
 
@@ -241,6 +291,37 @@ public partial class MainWindow : Window
             case Key.Oem2 or Key.Divide:
                 SearchBox.Focus();
                 SearchBox.SelectAll();
+                e.Handled = true;
+                break;
+
+            // The filter panel opens and closes on the same key, like the rail
+            // rows it sits beside. F rather than Ctrl+F, which every application
+            // on the machine has already spent on find-in-page — and "/" is
+            // already the search box here.
+            case Key.F:
+                _library.Filters.ToggleCommand.Execute(null);
+                e.Handled = true;
+                break;
+
+            // Escape unwinds the cut one layer at a time, outermost first: the
+            // panel, then the filters in it, then the list, then the bucket.
+            // One key, and every press visibly does something.
+            case Key.Escape:
+                UnwindCut();
+                e.Handled = true;
+                break;
+
+            // Reordering a hand-built list. Alt+arrows rather than drag and
+            // drop: the rows are virtualized, a drag across four hundred of them
+            // is a scroll fight, and §8 asks for the whole interface to be
+            // reachable without a pointer regardless.
+            case Key.Up when e.KeyModifiers.HasFlag(KeyModifiers.Alt):
+                _ = _library.MoveInListAsync(-1);
+                e.Handled = true;
+                break;
+
+            case Key.Down when e.KeyModifiers.HasFlag(KeyModifiers.Alt):
+                _ = _library.MoveInListAsync(1);
                 e.Handled = true;
                 break;
 
@@ -349,6 +430,48 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>
+    /// Escape's one job on the library screen: give the user back the library,
+    /// one visible step per press. The order is outside-in — the panel is
+    /// chrome, the filters inside it are rules, the list and the bucket are
+    /// where you are standing — so no press is ever a no-op while anything is
+    /// still cutting the grid.
+    /// </summary>
+    /// <summary>The text box holding focus, or null. Nothing else may claim a letter key.</summary>
+    private TextBox? FocusedTextBox()
+        => TopLevel.GetTopLevel(this)?.FocusManager?.GetFocusedElement() as TextBox;
+
+    private void UnwindCut()
+    {
+        if (_library is null)
+        {
+            return;
+        }
+
+        if (_library.Filters.IsOpen)
+        {
+            _library.Filters.IsOpen = false;
+            return;
+        }
+
+        if (_library.Filters.HasSelection)
+        {
+            _library.Filters.ClearCommand.Execute(null);
+            return;
+        }
+
+        if (_library.Lists.Open is not null)
+        {
+            _library.CloseListCommand.Execute(null);
+            return;
+        }
+
+        if (_library.SelectedBucket is not null)
+        {
+            _shell?.SelectBucketCommand.Execute(null);
+        }
+    }
+
     private void OnTilePressed(object? sender, PointerPressedEventArgs e)
     {
         if (sender is not Control { DataContext: GameTileViewModel tile })
@@ -356,6 +479,8 @@ public partial class MainWindow : Window
             return;
         }
 
+        // The picked set follows from the selection, in the view model, so a
+        // pointer press and an arrow key produce the same state (§8).
         _library?.SelectTile(tile);
 
         if (e.ClickCount >= 2)
@@ -431,6 +556,13 @@ public partial class MainWindow : Window
         if (_library is not null && sender is ListBox list)
         {
             _library.SelectedCount = list.SelectedItems?.Count ?? 0;
+
+            // The whole picked set, not just the anchor: "Add to list" and
+            // "Remove from list" both act on every marked row, and the view
+            // model has no other way to see them.
+            _library.SelectedTiles = list.SelectedItems is null
+                ? []
+                : [.. list.SelectedItems.OfType<GameTileViewModel>()];
         }
     }
 

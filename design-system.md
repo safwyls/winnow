@@ -545,3 +545,242 @@ hiding behind one.
 order and ignores `TabIndex` on a non-focusable container — measured, not assumed. The right
 column is therefore declared first and placed second by `Grid.Column`, so the keyboard reaches
 `Play` before it reaches an appid.
+
+---
+
+## 11. The filter panel
+
+Steam's library filter is the reference and not the template. Its shape is six
+columns of unlabelled checkboxes plus two free-text fields, and most of what it
+asks about — friends, languages, Deck compatibility — is data Hoard does not
+have. Copying the shape and greying half of it out would have been worse than
+designing for what this product actually knows.
+
+**Two things the reference gets right, kept.** A count beside every option, so a
+filter that leads nowhere says so before it is clicked. And one surface you scan
+rather than a menu you drill into.
+
+### 11.1 The panel is the rail's second column
+
+`Filters` opens a **264px column between the rail and the grid**, on the rail's
+own `Surface` with a `Line` rule between them. It is not a drawer over the art
+and not a popover.
+
+**The rail is not duplicated, it is part of the filter.** The rail already owns
+the bucket axis; the panel owns every other one; neither offers the other's. Two
+controls writing one axis is how a panel starts disagreeing with the screen
+behind it. The two meet in the cut bar (§11.3), where the bucket is the first
+chip and can be dropped like any other rule.
+
+The grid narrows rather than being covered. That costs a column of tiles and buys
+a panel you can leave open while you scan — which is the only way the counts pay
+for themselves, because their whole value is watching them move.
+
+**Nothing here is a popup**, so §8's focus ring works normally. The facet
+checkbox still draws its own ring in its control template, for the reason §10.7
+records: one focus treatment across the app beats two.
+
+### 11.2 Counts are residual, and each group lifts its own
+
+The number beside an option is **what you would get if you ticked it** — computed
+with every *other* group's selections applied, this group's own selections
+lifted, and the rail's bucket, any open list and the search box all in force.
+
+Lifting the group's own selections is the part that is easy to get wrong and
+fatal when it is. Options inside a group are an OR, so ticking one genre must not
+drop every other genre to zero — a panel that does that is a dead end after a
+single click.
+
+An option whose residual count is **0 renders its zero and stops being a click
+target and a tab stop**, at the 40% opacity §6 already gives a zero-count bucket.
+An option that is *ticked* stays live whatever its count says: the way out of an
+empty result has to be the control that caused it.
+
+**Order freezes on the first counts.** A long group leads with its commonest
+options and then holds that order for the session. Re-sorting on every recount is
+the obvious reading of "commonest first" and it is wrong — every tick anywhere on
+the panel moves every count, so the rows would rearrange under the pointer
+between one click and the next.
+
+Counts are taken **per tile, not per release**: a release owned on two stores is
+two rows in the library and must be two in the count, which is why the panel
+tallies its own sets rather than calling `FacetSnapshot.CountsFor`, whose
+`Distinct()` collapses exactly that pair.
+
+### 11.3 The cut bar
+
+One strip under the command bar, present only when the grid has stopped showing
+the whole library:
+
+```
+[ Bounced off × ] [ Co-op × ]        926 → 136   Save as live list   Clear filters
+```
+
+**`926 → 136` is the signature of this screen.** It is the only arrow in the
+interface, because this is the only place a number becomes another number. Plex
+Mono, tabular; the total in `TextDim`, the result in `Volt`.
+
+The bar exists because *a library that has been cut down and does not say so is
+the most expensive confusion this screen can produce* — the panel can be closed
+and the rail scrolled past, and then 136 of 926 games look like the whole hoard.
+Each chip carries its own dismissal, so undoing one rule never means hunting for
+the control that set it.
+
+**Chips are `Volt`-edged, never `Flare`.** A chip is a selection, which is what
+Volt is for. There is deliberately **no "has updates" group** anywhere in the
+panel: that set is exactly the rail's `Patched since` bucket, and a second door
+onto it would need a second marker — and the only marker for unread is Flare.
+
+The bar carries at most four actions at once, and membership actions and list
+metadata are mutually exclusive: with rows selected you are editing what is *in*
+the list, with nothing selected you are editing the list itself.
+
+### 11.4 What is drawn, and the rule that decides
+
+`genre` · `theme` · `game mode` · `store tag` · `features` · `controller` ·
+`store` · `on disk` · `release year`.
+
+**Every group here is a group a live list can store.** That is the rule.
+`FacetKinds` also holds player perspective, which `LibraryFilter` has no field
+for — so it is not drawn, because a rule that vanishes the moment you save it is
+worse than a rule you never had. `FeatureIds` and `ControllerIds` were *added* to
+the filter record rather than the groups dropped, which is the same rule pointing
+the other way.
+
+Two absences are load-bearing:
+
+- **A dimension with no data draws nothing.** Four columns of greyed checkboxes
+  is the wall this panel is not. When none of the metadata-backed groups are
+  present the panel says so in a sentence instead.
+- **A dimension whose one option is true of every title draws nothing.**
+  "STORE · Steam 926" on a Steam-only library is a fact restated as a control
+  that cannot change anything. It reappears by itself the day a second store
+  lands.
+
+**Release year is two Plex Mono fields, not a slider and not a histogram.** A
+year is four characters the user already knows; a range set by dragging is a
+range they cannot state exactly. A drawn year distribution was considered and
+cut: it would be a second visual language competing with the art two columns
+away (§1), and §5 spends this app's one chart budget on the cover wall itself.
+The watermarks are the real bounds of the library, so an empty field still says
+what there is. A release with no year does not match a bounded range — an absent
+fact is not evidence.
+
+---
+
+## 12. Lists and live lists
+
+**A list is one the user fills by hand. A live list is one that holds a rule and
+finds its own members.** Never "smart", never "dynamic collection" — §7 names
+things by what the user controls, and what they control is whether the thing
+keeps up with them. The action on the cut bar is **`Save as live list`**.
+
+### 12.1 Two rail sections, and no second dot
+
+```
+── LISTS ─────────────
+   Couch co-op night   4
+   Finish these first  5
+── LIVE LISTS ────────
+   Co-op I bounced off 136
+   Unplayed adventures 342
+```
+
+The kinds are told apart **by heading, not by a coloured mark**. A pip beside a
+count was the obvious move and the wrong one: the rail already has exactly one
+dot, the `Flare` pip on `Patched since`, and a dot's meaning survives precisely
+as long as there is only one of them (§5.2). A heading says it in words, scales
+to any number of lists, and is legible to a reader who cannot resolve a 7px mark
+at all (§8).
+
+Rows take the bucket treatment — hover fill, 2px `Volt` selection edge — with one
+difference: **the name is body type, not Display S caps.** Bucket names are the
+application's own vocabulary and are shouted; a list name is the user's own
+sentence and is not.
+
+Both kinds recount on every library load. A manual list drops a count when one of
+its games is consolidated away or filtered out as a non-game entry; a live list's
+number moving on its own *is* the feature.
+
+`LISTS` is the heading that always exists, because it is where a first list
+lands; `LIVE LISTS` appears only once there is one. Empty: *"No lists yet. Select
+titles and choose Add to list, or filter the library and save the result as a
+live list."*
+
+### 12.2 A list composes, a live list restores
+
+**A manual list is one more AND term** over the library, not a separate screen —
+so the rail, the panel and the search box all still work inside it. "The ones in
+Couch co-op night I haven't installed" is a question the user can ask without
+leaving the list.
+
+**A live list adds no term at all.** Opening one pours its saved rules back into
+the rail and the panel, so the user is looking at the filter that defines it and
+can edit it in place. That difference *is* the two kinds, made visible by the
+controls rather than explained in a tooltip.
+
+Editing an open live list turns the cut bar into `Update list` / `Revert` — both
+answers by name, because neither is obviously right and neither should happen by
+accident.
+
+A manual list opens in **`List order`**, a sort row that exists only while one is
+open, and leaving the list puts the previous order back. A hand-built list whose
+stored positions are invisible has no reason to store them, and "move up" under
+an alphabetical sort is a control that appears to do nothing. `Move up` and
+`Move down` go dead at the ends of the list rather than staying lit and doing
+nothing.
+
+### 12.3 The action bar, and why there are no flyouts
+
+Naming a live list, picking a list to add to, renaming one and confirming a
+delete all happen in **the same strip**, replacing the cut bar while they are up.
+
+This is not a stylistic preference. Avalonia's global `FocusAdorner` does not
+render inside a popup — a popup is its own root and has no adorner layer — so
+every control in a menu here would need its ring hand-drawn, which is the reason
+§10.7 gives for the detail panel having no flyout either. In the window's own
+tree, §8's focus ring and a linear tab order both come free, and the question
+sits directly above the thing it is about.
+
+`Enter` confirms, `Escape` cancels, and focus follows the prompt into its field.
+The save prompt opens with the rules read out as a suggested name ("Bounced off ·
+RPG"), because a rail full of "Live list 3" is a rail nobody reads.
+
+**`Add to list` is one control for both views.** The grid selects one tile, the
+list view selects many, and the button reads whichever is in force — naming the
+number once there is more than one. The picked set is derived from the selection
+in the view model rather than in the pointer handler, so arrowing across the wall
+arms it exactly as clicking does (§8).
+
+Deleting asks first, and the question says what survives: *"Delete "Couch co-op
+night"? The titles stay in your library."* It is the only destructive act in the
+application, and `Danger` appears on its confirm button and nowhere else on the
+strip.
+
+### 12.4 `Escape` unwinds the cut, one layer per press
+
+Outermost first: the panel closes, then the filters in it clear, then the open
+list closes, then the bucket clears. One key, and no press is ever a no-op while
+anything is still cutting the grid.
+
+**Every letter key yields to a focused text field.** The keyboard shortcuts used
+to test `SearchBox` alone, which was correct while it was the only text box on
+screen. It no longer is — the panel has a find field per long group and two year
+fields — and typing "f" into "Find a tag" would otherwise close the panel being
+typed into.
+
+### 12.5 Motion, and the command bar that had to give way
+
+Nothing here animates except the 120ms fill cross-fade the rail rows already had,
+and every `Transitions` value is set **through a style, never as a local value on
+an element**. A local `Transitions` outranks any style selector trying to remove
+it, which would make §8's reduced-motion rule unenforceable on exactly the
+controls that had been given the most care. The panel itself does not slide: a
+column that animates costs the grid a reflow per frame, and it buys nothing.
+
+The command bar's search box became a **star-sized column among Auto ones**, and
+the window's default width went from 1180 to 1280. A Grid satisfies its Auto
+columns before its star one, so the search box is now the only thing that gives
+way when the panel takes 264px out of the row. At a fixed 360 it was the Filters
+button that got pushed off the right edge — the one control that must never be
+unreachable, because it is the way back.

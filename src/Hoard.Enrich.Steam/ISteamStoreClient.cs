@@ -48,4 +48,22 @@ public interface ISteamStoreClient
     /// empty one.</para>
     /// </summary>
     Task<SteamTagVocabulary> GetTagListAsync(TimeSpan? cacheTtl = null, CancellationToken ct = default);
+
+    /// <summary>
+    /// Steam's categoryid → name vocabulary (72 entries when verified live on
+    /// 2026-08-25), in one keyless request, cached for
+    /// <see cref="SteamStoreOptions.StoreCategoryCacheTtl"/>.
+    ///
+    /// <para>The companion to the category ids
+    /// <see cref="SteamStoreItem.Categories"/> already carries — and those ids
+    /// need no flag to obtain, so between them this endpoint and the store items
+    /// already in the cache supply the whole "Features" and "Hardware support"
+    /// side of a filter panel for one request a month.</para>
+    ///
+    /// <para>Undocumented like its neighbours, so total like its neighbours:
+    /// returns <see cref="SteamStoreCategoryVocabulary.Empty"/> rather than
+    /// throwing, and prefers a stale cached snapshot over an empty one.</para>
+    /// </summary>
+    Task<SteamStoreCategoryVocabulary> GetStoreCategoriesAsync(
+        TimeSpan? cacheTtl = null, CancellationToken ct = default);
 }

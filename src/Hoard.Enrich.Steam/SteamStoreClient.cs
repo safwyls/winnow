@@ -43,6 +43,14 @@ public sealed class SteamStoreClient : ISteamStoreClient
     /// <summary>Verified live 2026-08-23: keyless, whole vocabulary in one request.</summary>
     private const string GetTagListPath = "IStoreService/GetTagList/v1/";
 
+    /// <summary>
+    /// Verified live 2026-08-25: keyless, 200, 16246 bytes, 72 categories in one
+    /// request. Probed alongside two plausible sibling names —
+    /// <c>GetStoreCategoryList</c> and <c>GetCategories</c> — which both 404, so
+    /// this one is not a guess that happened to work.
+    /// </summary>
+    private const string GetStoreCategoriesPath = "IStoreBrowseService/GetStoreCategories/v1/";
+
     private readonly HttpClient _http;
     private readonly IStoreMetadataCache _cache;
     private readonly SteamStoreOptions _options;
@@ -74,6 +82,9 @@ public sealed class SteamStoreClient : ISteamStoreClient
 
     /// <summary>Cache key for the tag vocabulary in one language.</summary>
     public static string TagListCacheKey(string language) => "taglist:" + language;
+
+    /// <summary>Cache key for the store-category vocabulary in one language.</summary>
+    public static string StoreCategoriesCacheKey(string language) => "categories:" + language;
 
     public async Task<IReadOnlyDictionary<string, SteamStoreItem>> GetItemsAsync(
         IEnumerable<string> appIds, TimeSpan? cacheTtl = null, CancellationToken ct = default)
@@ -245,6 +256,48 @@ public sealed class SteamStoreClient : ISteamStoreClient
             // A stale vocabulary is strictly better than none: tag names do not
             // change meaning, and the alternative is unresolvable tag ids.
             return stale ?? SteamTagVocabulary.Empty;
+        }
+
+        await _cache.SetAsync(CacheProvider, key, body, _clock.GetUtcNow().UtcDateTime, ct);
+        return fresh;
+    }
+
+    public async Task<SteamStoreCategoryVocabulary> GetStoreCategoriesAsync(
+        TimeSpan? cacheTtl = null, CancellationToken ct = default)
+    {
+        // Deliberately the same shape as GetTagListAsync, statement for
+        // statement: same cache-then-fetch order, same "a stale vocabulary beats
+        // no vocabulary" fallback, same refusal to cache an unrecognised body.
+        // Two vocabularies that behave differently under failure would be two
+        // sets of edge cases to remember.
+        var key = StoreCategoriesCacheKey(_options.Language);
+        var entry = await _cache.GetAsync(CacheProvider, key, ct);
+        var stale = entry?.PayloadJson is { } payload
+            ? SteamStoreJson.TryReadStoreCategories(payload)
+            : null;
+
+        if (entry is { } e
+            && e.FetchedAt >= Cutoff(cacheTtl ?? _options.StoreCategoryCacheTtl)
+            && stale is not null)
+        {
+            return stale;
+        }
+
+        var body = await GetAsync(
+            GetStoreCategoriesPath, SteamStoreJson.BuildStoreCategoriesQuery(_options), ct);
+        var fresh = body is null ? null : SteamStoreJson.TryReadStoreCategories(body);
+        if (fresh is null)
+        {
+            if (body is not null)
+            {
+                _log.LogWarning(
+                    "Steam GetStoreCategories returned an unrecognised envelope; the endpoint is "
+                    + "undocumented — check the contract test.");
+            }
+
+            // Category names do not change meaning, so an old snapshot is
+            // strictly better than unresolvable ids.
+            return stale ?? SteamStoreCategoryVocabulary.Empty;
         }
 
         await _cache.SetAsync(CacheProvider, key, body, _clock.GetUtcNow().UtcDateTime, ct);

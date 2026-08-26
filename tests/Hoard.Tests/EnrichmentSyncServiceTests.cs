@@ -910,6 +910,10 @@ public sealed class EnrichmentSyncServiceTests
         public Task<SteamTagVocabulary> GetTagListAsync(
             TimeSpan? cacheTtl = null, CancellationToken ct = default)
             => Task.FromResult(SteamTagVocabulary.Empty);
+
+        public Task<SteamStoreCategoryVocabulary> GetStoreCategoriesAsync(
+            TimeSpan? cacheTtl = null, CancellationToken ct = default)
+            => Task.FromResult(SteamStoreCategoryVocabulary.Empty);
     }
 
     /// <summary>

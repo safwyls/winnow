@@ -314,19 +314,47 @@ public sealed class IgdbClient : IIgdbClient
         };
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-        using var response = await _http.SendAsync(request, ct);
-        if (!response.IsSuccessStatusCode)
+        try
         {
-            // Enrichment failing is a degraded run, never a crashed one.
-            _log.LogWarning(
-                "IGDB /{Endpoint} returned {StatusCode}; skipping this batch.",
-                endpoint, (int)response.StatusCode);
+            using var response = await _http.SendAsync(request, ct);
+            if (!response.IsSuccessStatusCode)
+            {
+                // Enrichment failing is a degraded run, never a crashed one.
+                _log.LogWarning(
+                    "IGDB /{Endpoint} returned {StatusCode}; skipping this batch.",
+                    endpoint, (int)response.StatusCode);
+                return new PageResult<T>(false, []);
+            }
+
+            await using var stream = await response.Content.ReadAsStreamAsync(ct);
+            var items = await JsonSerializer.DeserializeAsync<List<T>>(stream, IgdbJson.Options, ct);
+            return new PageResult<T>(true, items ?? []);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            // The caller asked to stop. Not an enrichment failure, and it must
+            // not be swallowed into a silent empty page.
+            throw;
+        }
+        catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException or IOException or JsonException)
+        {
+            // Offline, DNS failure, TLS failure, a timeout the retry policy
+            // already exhausted, or a body that is not the JSON this endpoint
+            // has always returned. A NON-200 was already a degraded batch rather
+            // than an exception (above); a dead socket was not, and the
+            // difference was doing real damage.
+            //
+            // GetGamesAsync serves cached rows first and fetches only the
+            // remainder, so an exception escaping from here discarded every
+            // CACHED row in the same call. On a library with 865 games on disk
+            // and one id nobody has ever looked up, a dropped connection turned
+            // "864 hits and one miss" into "nothing at all" — enrichment
+            // breaking a caller instead of degrading, which §5.1 forbids
+            // outright. The Steam store client has always read it this way
+            // (SteamStoreClient.GetAsync); this brings IGDB in line.
+            _log.LogWarning(ex, "IGDB /{Endpoint} request failed; skipping this batch.", endpoint);
             return new PageResult<T>(false, []);
         }
-
-        await using var stream = await response.Content.ReadAsStreamAsync(ct);
-        var items = await JsonSerializer.DeserializeAsync<List<T>>(stream, IgdbJson.Options, ct);
-        return new PageResult<T>(true, items ?? []);
     }
 
     /// <summary>Rows read so far, and whether every request behind them succeeded.</summary>

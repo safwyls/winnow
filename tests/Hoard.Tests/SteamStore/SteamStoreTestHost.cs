@@ -35,6 +35,8 @@ public sealed class SteamStoreTestHost : IDisposable
 
     public const string GetTagList = "IStoreService/GetTagList";
 
+    public const string GetStoreCategories = "IStoreBrowseService/GetStoreCategories";
+
     private readonly ServiceProvider _services;
 
     public SteamStoreTestHost(
@@ -91,6 +93,8 @@ public sealed class SteamStoreTestHost : IDisposable
                 HttpStatusCode.OK, StoreFixtures.GetItemsFor(request, nonStoreAppIds)),
             GetTagList => FakeStoreHandler.Json(
                 HttpStatusCode.OK, StoreFixtures.TagListFor([StoreFixtures.EldenRingAppId])),
+            GetStoreCategories => FakeStoreHandler.Json(
+                HttpStatusCode.OK, StoreFixtures.StoreCategoriesResponse()),
             _ => FakeStoreHandler.Json(HttpStatusCode.NotFound, "{}"),
         };
 
@@ -100,6 +104,8 @@ public sealed class SteamStoreTestHost : IDisposable
         {
             GetItems => FakeStoreHandler.Json(HttpStatusCode.OK, StoreFixtures.GetItemsResponse()),
             GetTagList => FakeStoreHandler.Json(HttpStatusCode.OK, StoreFixtures.TagListResponse()),
+            GetStoreCategories => FakeStoreHandler.Json(
+                HttpStatusCode.OK, StoreFixtures.StoreCategoriesResponse()),
             _ => FakeStoreHandler.Json(HttpStatusCode.NotFound, "{}"),
         };
 

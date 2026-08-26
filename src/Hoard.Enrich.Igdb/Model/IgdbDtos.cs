@@ -95,6 +95,10 @@ internal sealed class IgdbGameDto
 
     public IReadOnlyList<IgdbNamedDto>? Themes { get; init; }
 
+    public IReadOnlyList<IgdbNamedDto>? GameModes { get; init; }
+
+    public IReadOnlyList<IgdbNamedDto>? PlayerPerspectives { get; init; }
+
     public IReadOnlyList<IgdbInvolvedCompanyDto>? InvolvedCompanies { get; init; }
 
     internal IgdbGame ToDomain() => new(
@@ -109,7 +113,14 @@ internal sealed class IgdbGameDto
             .Where(c => c.Publisher && !string.IsNullOrWhiteSpace(c.Company?.Name))
             .Select(c => c.Company!.Name!)
             .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToArray() ?? IgdbGame.NoStrings);
+            .ToArray() ?? IgdbGame.NoStrings)
+    {
+        // `this.` is not decoration: inside an object initializer the bare name
+        // would still resolve to the DTO's property, but reading it back six
+        // months from now should not require knowing that.
+        GameModes = Names(this.GameModes),
+        PlayerPerspectives = Names(this.PlayerPerspectives),
+    };
 
     private static IReadOnlyList<string> Names(IReadOnlyList<IgdbNamedDto>? items)
         => items?

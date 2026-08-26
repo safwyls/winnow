@@ -143,6 +143,28 @@ public partial class GameTileViewModel : ObservableObject
     /// <summary>works.publisher (migration 0005), or null until enrichment lands it.</summary>
     public string? Publisher { get; }
 
+    /// <summary>
+    /// Genre, theme, store-tag and game-mode ids split by kind, for the filter
+    /// panel to count and cut on. Set at load rather than taken in the
+    /// constructor because the facet snapshot is one read for the whole library,
+    /// not one per tile — and because it is legitimately
+    /// <see cref="Filters.TileFacets.None"/> until the backfill has been
+    /// through, which the panel handles by not drawing those groups at all.
+    /// </summary>
+    public Filters.TileFacets Facets { get; set; } = Filters.TileFacets.None;
+
+    /// <summary>
+    /// This tile as <see cref="Hoard.Core.Queries.LibraryFilter"/> sees it.
+    ///
+    /// <para>Built once at load so the filter panel, the grid and every saved
+    /// live list ask the same question of the same projection. Two
+    /// implementations of "does this row match" is the failure mode the core
+    /// filter's remarks name, and it is the one that produces plausible wrong
+    /// answers rather than visible breakage.</para>
+    /// </summary>
+    public Hoard.Core.Queries.FilterableRow Row { get; set; }
+        = new(0, 0, string.Empty, string.Empty, string.Empty, false, false, null, [], []);
+
     /// <summary>Whether the store's local files say this is on disk right now.</summary>
     public bool Installed { get; }
 

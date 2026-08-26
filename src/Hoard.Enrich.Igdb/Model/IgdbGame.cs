@@ -24,6 +24,35 @@ public sealed record IgdbGame(
     IReadOnlyList<string> Publishers)
 {
     public static readonly IReadOnlyList<string> NoStrings = Array.Empty<string>();
+
+    /// <summary>
+    /// IGDB <c>game_modes</c> names — "Single player", "Co-operative",
+    /// "Massively Multiplayer Online (MMO)". Folded onto Hoard's own vocabulary
+    /// by <c>GameModes.FromIgdbName</c>, because Steam answers the same question
+    /// with category ids and the filter has to ask it once.
+    ///
+    /// <para><b>An init property rather than a positional parameter, on
+    /// purpose.</b> This record IS the cached payload shape — the IGDB cache
+    /// stores the projection, not the raw response — so every one of the 865
+    /// entries already on the author's disk predates this field. An absent
+    /// property keeps its initializer, so those entries still deserialize and
+    /// still carry their genres; a new positional parameter would have made them
+    /// unreadable and silently thrown away metadata a machine without Twitch
+    /// credentials could never fetch again.</para>
+    ///
+    /// <para>Consequently this is empty on every already-cached game until its
+    /// entry expires and is re-fetched. That is the correct trade: Steam's player
+    /// categories already answer the same question for the same games, from a
+    /// cache that is also already on disk.</para>
+    /// </summary>
+    public IReadOnlyList<string> GameModes { get; init; } = NoStrings;
+
+    /// <summary>
+    /// IGDB <c>player_perspectives</c> names — "First person", "Bird view /
+    /// Isometric". Same free ride on the same request, and the same
+    /// backwards-compatibility rule as <see cref="GameModes"/>.
+    /// </summary>
+    public IReadOnlyList<string> PlayerPerspectives { get; init; } = NoStrings;
 }
 
 /// <summary>

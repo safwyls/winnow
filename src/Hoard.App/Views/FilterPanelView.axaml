@@ -1,0 +1,358 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:filters="using:Hoard.App.ViewModels.Filters"
+             x:Class="Hoard.App.Views.FilterPanelView"
+             x:DataType="filters:FilterPanelViewModel"
+             Width="264">
+
+    <!--
+        The filter panel (design-system §4, §6).
+
+        It is a COLUMN BESIDE THE RAIL, not a drawer over the grid and not a
+        menu you drill into. Three consequences, all deliberate:
+
+        · It shares the rail's Surface and is separated from it by a Line rule,
+          so the rail's buckets and these groups read as one filtering surface
+          with an internal divider — which is what they are. The rail carries
+          the bucket axis; this carries every other one; neither repeats the
+          other, and they meet in the cut bar above the grid.
+
+        · It never overlaps the art. The grid narrows instead, which costs a
+          column of tiles and buys a panel you can leave open while you scan —
+          the counts beside each option only pay for themselves if you can watch
+          them move.
+
+        · Nothing here is a popup, so §8's focus ring works normally. (The ring
+          is still drawn in the checkbox template rather than left to the global
+          FocusAdorner: an adorner cannot reach into a popup, this panel's
+          controls are cloned by the same style the display-preferences checkbox
+          uses, and one focus treatment beats two.)
+
+        There is no "has updates" group. That set is exactly the rail's
+        "Patched since" bucket, and §5.2 gives the unread signal one home.
+    -->
+
+    <UserControl.Styles>
+
+        <!-- ══ Facet row ═══════════════════════════════════════════════════
+             A real CheckBox — it toggles on Space, reports state to automation
+             — templated rather than restyled, for the same reason the display
+             preference is: Fluent's own reads a dozen resource keys across six
+             states, and overriding all of them is more surface than drawing a
+             14px box and a tick. -->
+        <Style Selector="CheckBox.facet">
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="MinHeight" Value="0"/>
+            <Setter Property="Height" Value="24"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Panel Background="Transparent">
+                        <!-- §8's 2px Volt ring, drawn at row scale. A ring
+                             around a 14px box on a 24px row reads as a dot;
+                             around the row it reads as "you are here". Brush
+                             opacity rather than thickness, so nothing reflows
+                             as focus moves down the list. -->
+                        <Border Name="Ring"
+                                Margin="-4,0"
+                                CornerRadius="{StaticResource RadiusControl}"
+                                BorderBrush="{StaticResource Volt}"
+                                BorderThickness="2"
+                                Opacity="0"
+                                IsHitTestVisible="False"/>
+                        <Border Name="Row"
+                                Margin="-4,0"
+                                Padding="4,0"
+                                CornerRadius="{StaticResource RadiusControl}"
+                                Background="Transparent">
+                            <Grid ColumnDefinitions="14,9,*">
+                                <Panel Grid.Column="0" VerticalAlignment="Center">
+                                    <Border Name="Box" Width="14" Height="14"
+                                            CornerRadius="3"
+                                            Background="{StaticResource Ground}"
+                                            BorderBrush="{StaticResource Line}"
+                                            BorderThickness="1"/>
+                                    <Path Name="Tick"
+                                          Data="M 0,3 L 2.6,5.6 L 7.4,0.8"
+                                          Stroke="{StaticResource VoltInk}"
+                                          StrokeThickness="1.8"
+                                          StrokeLineCap="Round"
+                                          StrokeJoin="Round"
+                                          Width="8" Height="7"
+                                          Opacity="0"
+                                          HorizontalAlignment="Center"
+                                          VerticalAlignment="Center"/>
+                                </Panel>
+                                <ContentPresenter Grid.Column="2"
+                                                  Content="{TemplateBinding Content}"
+                                                  VerticalAlignment="Center"/>
+                            </Grid>
+                        </Border>
+                    </Panel>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        <Style Selector="CheckBox.facet:focus-visible /template/ Border#Ring">
+            <Setter Property="Opacity" Value="1"/>
+        </Style>
+        <Style Selector="CheckBox.facet:pointerover /template/ Border#Row">
+            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
+        </Style>
+        <Style Selector="CheckBox.facet:pointerover /template/ Border#Box">
+            <Setter Property="BorderBrush" Value="{StaticResource TextDim}"/>
+        </Style>
+        <Style Selector="CheckBox.facet:checked /template/ Border#Box">
+            <Setter Property="Background" Value="{StaticResource Volt}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+        </Style>
+        <Style Selector="CheckBox.facet:checked /template/ Path#Tick">
+            <Setter Property="Opacity" Value="1"/>
+        </Style>
+        <!-- An option that would empty the grid says so and stops being a
+             target. 40% is the rail's own treatment of a zero-count bucket
+             (§6) — the panel and the rail dim an empty row the same way. -->
+        <Style Selector="CheckBox.facet:disabled">
+            <Setter Property="Opacity" Value="0.4"/>
+            <Setter Property="Cursor" Value="Arrow"/>
+        </Style>
+
+        <!-- Find-a-tag field. Narrower and quieter than the command bar's
+             search: it filters the options, not the library, and must never be
+             mistaken for the box that does. -->
+        <Style Selector="TextBox.find">
+            <Setter Property="Height" Value="26"/>
+            <Setter Property="MinHeight" Value="26"/>
+            <Setter Property="Padding" Value="8,0"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
+            <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+            <Setter Property="SelectionBrush" Value="#4D4DE8C2"/>
+            <Setter Property="CaretBrush" Value="{StaticResource Volt}"/>
+        </Style>
+        <Style Selector="TextBox.find /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="{StaticResource Ground}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+        <Style Selector="TextBox.find:pointerover /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="{StaticResource Ground}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+        </Style>
+        <Style Selector="TextBox.find:focus /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="{StaticResource Ground}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+        </Style>
+        <Style Selector="TextBox.find /template/ TextBlock#PART_Watermark">
+            <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
+        </Style>
+
+        <!-- Year fields. Four characters of Plex Mono, because a year is a
+             number and every number in this application is (§3). -->
+        <Style Selector="TextBox.year">
+            <Setter Property="Height" Value="26"/>
+            <Setter Property="MinHeight" Value="26"/>
+            <Setter Property="Width" Value="66"/>
+            <Setter Property="MaxLength" Value="4"/>
+            <Setter Property="Padding" Value="8,0"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
+            <Setter Property="FontFamily" Value="{StaticResource DataFont}"/>
+            <Setter Property="FontSize" Value="{StaticResource DataSize}"/>
+            <Setter Property="FontFeatures" Value="tnum"/>
+            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+            <Setter Property="SelectionBrush" Value="#4D4DE8C2"/>
+            <Setter Property="CaretBrush" Value="{StaticResource Volt}"/>
+        </Style>
+        <Style Selector="TextBox.year /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="{StaticResource Ground}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+        <Style Selector="TextBox.year:pointerover /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="{StaticResource Ground}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+        </Style>
+        <Style Selector="TextBox.year:focus /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="{StaticResource Ground}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+        </Style>
+        <Style Selector="TextBox.year /template/ TextBlock#PART_Watermark">
+            <Setter Property="Foreground" Value="#5A8286"/>
+        </Style>
+
+        <!-- "Show all 214" / "Clear" / the close cross: quiet text buttons. -->
+        <Style Selector="Button.linky">
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+        </Style>
+        <Style Selector="Button.linky /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.linky:pointerover TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+        </Style>
+
+    </UserControl.Styles>
+
+    <Border Background="{StaticResource Surface}"
+            BorderBrush="{StaticResource Line}"
+            BorderThickness="0,0,1,0">
+        <Grid RowDefinitions="Auto,*">
+
+            <!-- ── Header ────────────────────────────────────────────────────
+                 The rail states a total on a row you can click; this states how
+                 many rules are in force on a control that takes them all off
+                 again. Both are counts of the same library from opposite ends. -->
+            <Border Grid.Row="0"
+                    Padding="16,18,14,12"
+                    BorderBrush="{StaticResource Line}"
+                    BorderThickness="0,0,0,1">
+                <!-- A section label and nothing else, like the rail's REVIEW and
+                     LISTS above it. It carried a count badge and a Clear button
+                     until both were seen on screen: the badge is the same number
+                     the Filters button in the command bar shows 250px away, and
+                     Clear is the same act as the cut bar's "Clear filters" one
+                     row down. Two controls for one action is how a user learns
+                     that one of them must do something subtly different. The
+                     survivors are the ones that also work with this panel shut,
+                     which is the state it spends most of its life in. -->
+                <TextBlock Classes="label"
+                           FontSize="10"
+                           LetterSpacing="1.4"
+                           Text="FILTERS"
+                           VerticalAlignment="Center"/>
+            </Border>
+
+            <ScrollViewer Grid.Row="1"
+                          Classes="inner"
+                          HorizontalScrollBarVisibility="Disabled"
+                          VerticalScrollBarVisibility="Auto">
+                <StackPanel Margin="16,14,14,24" Spacing="20">
+
+                    <!-- ── Facet groups ────────────────────────────────────── -->
+                    <ItemsControl ItemsSource="{Binding VisibleGroups}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Spacing="20"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="filters:FilterGroupViewModel">
+                                <StackPanel Spacing="7">
+                                    <TextBlock Classes="label"
+                                               FontSize="10"
+                                               LetterSpacing="1.2"
+                                               Text="{Binding Header}"/>
+
+                                    <TextBox Classes="find"
+                                             Margin="0,1,0,2"
+                                             IsVisible="{Binding IsFindable}"
+                                             Watermark="{Binding FindWatermark}"
+                                             Text="{Binding FindText, Mode=TwoWay}"/>
+
+                                    <ItemsControl ItemsSource="{Binding Options}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate DataType="filters:FilterOptionViewModel">
+                                                <CheckBox Classes="facet"
+                                                          IsChecked="{Binding IsChecked, Mode=TwoWay}"
+                                                          IsEnabled="{Binding IsAvailable}"
+                                                          ToolTip.Tip="{Binding Label}">
+                                                    <Grid ColumnDefinitions="*,8,Auto">
+                                                        <TextBlock Grid.Column="0"
+                                                                   Classes="body"
+                                                                   FontSize="12"
+                                                                   Text="{Binding Label}"
+                                                                   TextTrimming="CharacterEllipsis"
+                                                                   VerticalAlignment="Center"/>
+                                                        <!-- The count column: Plex Mono,
+                                                             tabular, right-aligned, so the
+                                                             numbers line up as a column and
+                                                             a group can be read down its
+                                                             right edge alone. -->
+                                                        <TextBlock Grid.Column="2"
+                                                                   Classes="data-s"
+                                                                   Text="{Binding CountText}"
+                                                                   TextAlignment="Right"
+                                                                   VerticalAlignment="Center"/>
+                                                    </Grid>
+                                                </CheckBox>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+
+                                    <Button Classes="linky"
+                                            Margin="23,2,0,0"
+                                            Command="{Binding ToggleShowAllCommand}"
+                                            IsVisible="{Binding CanExpand}">
+                                        <TextBlock Classes="body" FontSize="11"
+                                                   Foreground="{StaticResource Azure}"
+                                                   Text="{Binding ShowAllText}"/>
+                                    </Button>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <!-- ── Release year ─────────────────────────────────────
+                         Two fields rather than a slider or a histogram. A year
+                         is four characters the user already knows; a range set
+                         by dragging is a range they cannot state exactly, and a
+                         drawn distribution here would be a second visual
+                         language competing with the art two columns away (§1).
+                         The watermarks are the real bounds of this library, so
+                         the empty state still says what there is. -->
+                    <StackPanel Spacing="8" IsVisible="{Binding HasYearData}">
+                        <TextBlock Classes="label"
+                                   FontSize="10"
+                                   LetterSpacing="1.2"
+                                   Text="RELEASE YEAR"/>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBox Classes="year"
+                                     Watermark="{Binding EarliestYearText}"
+                                     Text="{Binding YearFromText, Mode=TwoWay}"
+                                     ToolTip.Tip="From this year"/>
+                            <TextBlock Classes="data"
+                                       Foreground="{StaticResource TextDim}"
+                                       Text="—"
+                                       VerticalAlignment="Center"/>
+                            <TextBox Classes="year"
+                                     Watermark="{Binding LatestYearText}"
+                                     Text="{Binding YearToText, Mode=TwoWay}"
+                                     ToolTip.Tip="Up to this year"/>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- Enrichment fills genre, theme, tag and mode in over
+                         hours (§7), so an early library legitimately has only
+                         store, on-disk and release year. Saying so beats a panel
+                         that looks finished when it is still filling up — and it
+                         is keyed on the descriptor groups rather than on all of
+                         them, because store and on-disk come free with an
+                         ownership row and prove nothing about metadata. -->
+                    <Border Padding="0,4,0,0"
+                            BorderBrush="{StaticResource Line}"
+                            BorderThickness="0,1,0,0"
+                            IsVisible="{Binding !HasDescriptorGroups}">
+                        <TextBlock Classes="body"
+                                   FontSize="12"
+                                   Margin="0,12,0,0"
+                                   LineHeight="17"
+                                   TextWrapping="Wrap"
+                                   Foreground="{StaticResource TextDim}"
+                                   Text="Genres, themes and store tags aren't here yet. They arrive as Hoard reads through the metadata it has already fetched — there is nothing to start."/>
+                    </Border>
+
+                </StackPanel>
+            </ScrollViewer>
+
+        </Grid>
+    </Border>
+
+</UserControl>

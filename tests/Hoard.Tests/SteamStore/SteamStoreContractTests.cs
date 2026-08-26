@@ -234,6 +234,167 @@ public class SteamStoreContractTests
         Assert.Equal(Enumerable.Range(1, 20), eldenRing.Select(t => t.Rank));
     }
 
+    // -- GetItems categories, and their vocabulary ---------------------------
+
+    /// <summary>
+    /// The finding that unlocked the filter panel's "Features" and "Hardware
+    /// support" columns: <c>categories</c> arrives with the <c>data_request</c>
+    /// this client has ALWAYS sent. No new flag, no second request, no key - and
+    /// therefore every store body already sitting in <c>metadata_cache</c>
+    /// carries it, so materialising these facets costs a local re-parse rather
+    /// than a backfill.
+    ///
+    /// <para>This test asserts that against the fixture captured on 2026-08-23,
+    /// two days BEFORE anything read the field. That is the proof: the bytes
+    /// predate the feature.</para>
+    /// </summary>
+    [Fact]
+    public void GetItems_carries_categories_with_no_extra_data_request_flag()
+    {
+        var item = Item(StoreFixtures.EldenRingAppId);
+
+        Assert.True(item.TryGetProperty("categories", out var categories));
+        Assert.Equal(JsonValueKind.Object, categories.ValueKind);
+
+        var players = categories.GetProperty("supported_player_categoryids")
+            .EnumerateArray().Select(e => e.GetInt32()).ToArray();
+        Assert.Contains(StoreFixtures.SinglePlayerCategoryId, players);
+
+        Assert.Contains(
+            StoreFixtures.AchievementsCategoryId,
+            categories.GetProperty("feature_categoryids").EnumerateArray().Select(e => e.GetInt32()));
+
+        Assert.Contains(
+            StoreFixtures.FullControllerCategoryId,
+            categories.GetProperty("controller_categoryids").EnumerateArray().Select(e => e.GetInt32()));
+    }
+
+    /// <summary>
+    /// The block is partial on one app and absent on another, and both are
+    /// ordinary: Dota 2 carries no <c>controller_categoryids</c> at all, and
+    /// appid 760 — which is not a store item — carries no <c>categories</c> key
+    /// whatsoever. The parser reads a missing list as empty rather than as an
+    /// error, so neither shape reaches a caller as a failure.
+    /// </summary>
+    [Fact]
+    public void GetItems_categories_are_partial_or_absent_and_that_is_normal()
+    {
+        var dota = Item(StoreFixtures.DotaAppId).GetProperty("categories");
+        Assert.True(dota.TryGetProperty("supported_player_categoryids", out _));
+        Assert.False(dota.TryGetProperty("controller_categoryids", out _));
+
+        Assert.False(Item(StoreFixtures.NonStoreAppId).TryGetProperty("categories", out _));
+    }
+
+    [Fact]
+    public void GetStoreCategories_wraps_a_categories_array_of_id_type_and_names()
+    {
+        using var document = JsonDocument.Parse(StoreFixtures.StoreCategoriesResponse());
+
+        Assert.True(document.RootElement.TryGetProperty("response", out var response));
+        Assert.True(response.TryGetProperty("categories", out var categories));
+        Assert.Equal(JsonValueKind.Array, categories.ValueKind);
+        Assert.Equal(72, categories.GetArrayLength());
+
+        var singlePlayer = categories.EnumerateArray()
+            .Single(c => c.GetProperty("categoryid").GetInt32() == StoreFixtures.SinglePlayerCategoryId);
+
+        // type 1 = player, 2 = feature, 3 = controller. The split the client keeps.
+        Assert.Equal(1, singlePlayer.GetProperty("type").GetInt32());
+        Assert.Equal("Single-player", singlePlayer.GetProperty("display_name").GetString());
+        Assert.Equal("Single-player", singlePlayer.GetProperty("internal_name").GetString());
+    }
+
+    /// <summary>
+    /// Valve ships duplicate display names - 55 and 56 are both "DualShock
+    /// Controller Support" - which is exactly why migration 0007 keys facets on
+    /// the NAME: one checkbox instead of two identical ones with different
+    /// counts.
+    /// </summary>
+    [Fact]
+    public void GetStoreCategories_contains_duplicate_display_names()
+    {
+        var names = CategoryNames();
+
+        Assert.Equal(
+            names[StoreFixtures.Ps4ControllerCategoryId],
+            names[StoreFixtures.Ps4ControllerBluetoothCategoryId]);
+    }
+
+    /// <summary>
+    /// Three categories answer with an unresolved localization token
+    /// (<c>#category_playable_at_your_own_pace</c>). The client falls back to
+    /// <c>internal_name</c>, because a checkbox labelled with a hash string is
+    /// worse than one labelled with Valve's internal wording.
+    /// </summary>
+    [Fact]
+    public void GetStoreCategories_ships_some_unlocalized_display_names()
+    {
+        var unlocalized = CategoryNames().Values.Where(n => n.StartsWith('#')).ToArray();
+
+        Assert.NotEmpty(unlocalized);
+    }
+
+    [Fact]
+    public async Task Client_reads_the_category_vocabulary_out_of_the_captured_response()
+    {
+        using var host = new SteamStoreTestHost(SteamStoreTestHost.CapturedResponder());
+
+        var vocabulary = await host.Client.GetStoreCategoriesAsync();
+
+        Assert.Equal(72, vocabulary.Names.Count);
+        Assert.Equal("Single-player", vocabulary.NameFor(StoreFixtures.SinglePlayerCategoryId));
+        Assert.Equal("Steam Achievements", vocabulary.NameFor(StoreFixtures.AchievementsCategoryId));
+        Assert.Equal("Full controller support", vocabulary.NameFor(StoreFixtures.FullControllerCategoryId));
+        Assert.Null(vocabulary.NameFor(-1));
+
+        // The unlocalized ones come back as internal_name, never as a token.
+        Assert.All(vocabulary.Names.Values, n => Assert.False(n.StartsWith('#')));
+        Assert.Equal("Playable at Your Own Pace", vocabulary.NameFor(80));
+    }
+
+    [Fact]
+    public async Task Client_reads_categories_off_the_captured_store_items()
+    {
+        using var host = new SteamStoreTestHost(SteamStoreTestHost.CapturedResponder());
+
+        var items = await host.Client.GetItemsAsync([
+            StoreFixtures.EldenRingAppId,
+            StoreFixtures.DotaAppId,
+        ]);
+
+        var eldenRing = items[StoreFixtures.EldenRingAppId].Categories;
+        Assert.Contains(StoreFixtures.SinglePlayerCategoryId, eldenRing.PlayerCategoryIds);
+        Assert.Contains(StoreFixtures.AchievementsCategoryId, eldenRing.FeatureCategoryIds);
+        Assert.Contains(StoreFixtures.FullControllerCategoryId, eldenRing.ControllerCategoryIds);
+
+        // Dota's response has no controller block at all; empty, not an error.
+        Assert.Empty(items[StoreFixtures.DotaAppId].Categories.ControllerCategoryIds);
+        Assert.NotEmpty(items[StoreFixtures.DotaAppId].Categories.PlayerCategoryIds);
+    }
+
+    /// <summary>
+    /// Keyless, like its two neighbours, and asked for with the same one-field
+    /// <c>input_json</c>.
+    /// </summary>
+    [Fact]
+    public async Task Client_asks_for_the_category_vocabulary_without_a_key()
+    {
+        using var host = new SteamStoreTestHost(SteamStoreTestHost.CapturedResponder());
+
+        await host.Client.GetStoreCategoriesAsync();
+
+        var request = Assert.Single(host.Handler.Requests);
+        Assert.EndsWith(
+            "/IStoreBrowseService/GetStoreCategories/v1/",
+            request.Uri.AbsolutePath,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("key=", request.Uri.Query, StringComparison.OrdinalIgnoreCase);
+
+        using var query = JsonDocument.Parse(request.InputJson);
+        Assert.Equal("english", query.RootElement.GetProperty("language").GetString());
+    }
+
     [Fact]
     public async Task Client_reads_the_vocabulary_out_of_the_captured_response()
     {
@@ -341,6 +502,16 @@ public class SteamStoreContractTests
         return Items().Single(i => i.GetProperty("id").GetInt64() == id);
     }
 
+    private static IReadOnlyDictionary<int, string> CategoryNames()
+    {
+        using var document = JsonDocument.Parse(StoreFixtures.StoreCategoriesResponse());
+        return document.RootElement.GetProperty("response").GetProperty("categories")
+            .EnumerateArray()
+            .ToDictionary(
+                c => c.GetProperty("categoryid").GetInt32(),
+                c => c.GetProperty("display_name").GetString()!);
+    }
+
     private static IReadOnlyDictionary<long, string> TagNames()
     {
         using var document = JsonDocument.Parse(StoreFixtures.TagListResponse());
@@ -416,6 +587,38 @@ public class ShapeChangeTests
 
         Assert.Equal("ELDEN RING", items[StoreFixtures.EldenRingAppId].Name);
         Assert.Empty(items[StoreFixtures.EldenRingAppId].Tags);
+    }
+
+    [Fact]
+    public async Task Renamed_category_vocabulary_degrades_to_empty()
+    {
+        var mutated = StoreFixtures.StoreCategoriesResponse()
+            .Replace("\"categories\"", "\"category_list\"", StringComparison.Ordinal);
+        using var host = new SteamStoreTestHost(
+            (_, _) => FakeStoreHandler.Json(HttpStatusCode.OK, mutated));
+
+        Assert.Empty((await host.Client.GetStoreCategoriesAsync()).Names);
+    }
+
+    /// <summary>
+    /// The categories block disappearing from a store item is a PARTIAL change:
+    /// the name and the tags still arrive, so naming and tagging keep working and
+    /// only the features column goes quiet. Same reason the three are read
+    /// independently.
+    /// </summary>
+    [Fact]
+    public async Task Renamed_categories_key_still_yields_the_name_and_tags()
+    {
+        var mutated = StoreFixtures.GetItemsResponse()
+            .Replace("\"categories\":", "\"category_block\":", StringComparison.Ordinal);
+        using var host = new SteamStoreTestHost(
+            (_, _) => FakeStoreHandler.Json(HttpStatusCode.OK, mutated));
+
+        var item = (await host.Client.GetItemsAsync([StoreFixtures.EldenRingAppId]))[StoreFixtures.EldenRingAppId];
+
+        Assert.Equal("ELDEN RING", item.Name);
+        Assert.Equal(20, item.Tags.Count);
+        Assert.True(item.Categories.IsEmpty);
     }
 
     [Fact]
