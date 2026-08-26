@@ -7,7 +7,7 @@
         x:DataType="vm:MainWindowViewModel"
         Title="Hoard"
         Width="1280" Height="820"
-        MinWidth="880" MinHeight="560"
+        MinWidth="1200" MinHeight="640"
         Background="{StaticResource Ground}"
         ExtendClientAreaToDecorationsHint="True"
         ExtendClientAreaChromeHints="NoChrome"
@@ -28,6 +28,15 @@
         states, Aero Snap, and the maximised overhang — and lives in
         MainWindow.axaml.cs.
     -->
+
+    <!-- MinWidth is measured, not guessed. With the filter panel open
+         the content column is the window less the 220 rail and the 276
+         panel, and the command bar needs about 700 of it: the search box
+         at its 120 minimum, the four left controls, the gap, then sort
+         and Filters. Captured at three widths — at 1120 the sort menu
+         overlaps Display, at 1200 it clears. Below that the bar does not
+         degrade gracefully, it collides, so a floor is the honest fix
+         rather than letting the window reach a size it cannot draw. -->
 
     <Window.Styles>
 
