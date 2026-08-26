@@ -837,12 +837,28 @@
                        must never be unreachable because it is the way back, sits in
                        the Auto group on the right beside the sort it pairs with. -->
                   <Grid ColumnDefinitions="*,Auto" Margin="20,0" VerticalAlignment="Center">
-                    <Grid Grid.Column="0" ColumnDefinitions="*,Auto" Margin="0,0,12,0">
+                    <!-- Three columns, and the third is the point. A capped star
+                         for the search box, Auto for the controls, then a star
+                         spacer that takes everything left over. Without the
+                         spacer the slack lands in the search column, which both
+                         centres the box inside it and pushes layout/density/
+                         display across the bar — the cluster ends up in the
+                         middle rather than on the left. The cap is on the COLUMN
+                         rather than the box because a stretched child with a
+                         MaxWidth centres in its column; a capped column just
+                         stops growing. Search is also the only flexible thing on
+                         the bar, so at 1280 with the filter panel open it is
+                         what gives way, instead of the Filters button losing its
+                         label. -->
+                    <Grid Grid.Column="0" Margin="0,0,12,0">
+                      <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" MinWidth="120" MaxWidth="260"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                      </Grid.ColumnDefinitions>
                     <TextBox Name="SearchBox"
                              Grid.Column="0"
                              Classes="search"
-                             MinWidth="130"
-                             MaxWidth="360"
                              HorizontalAlignment="Stretch"
                              Text="{Binding Library.SearchText, Mode=TwoWay}"
                              Watermark="{Binding Library.SearchPlaceholder}"/>
