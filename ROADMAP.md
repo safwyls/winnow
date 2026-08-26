@@ -76,7 +76,8 @@ Numbering continues from §8. M0–M2 and M4 are shipped.
 |---|---|---|---|
 | M4.5 | Epic OAuth ownership source + local fallback | Entitlements resolve when authed; unauthed degrades silently to local files with no loss of install state | **in flight** |
 | M7 | Recommendation core (`Hoard.Recommend`) | Standalone scoring module, explainable output, sensible ranking on a cold library; not yet wired to UI | **in flight** |
-| M3 | Launch + session detection | Launching from Hoard records a session with real start/end on both detection paths; journal prompt opt-in | next |
+| M3a | Session detection (§5.2 mechanism A) | Process watching records sessions with true start/end; poll for discovery only, events for exit | **shipped** |
+| M3b | Launch + journal prompt | Launching from Hoard records a session; journal prompt opt-in (§9 pitfall 7); `hoard-wrap` offered per-game, never globally | next |
 | M8 | The Feed | Recommender surfaced as the app's primary view; every card states its reason in one sentence | after M3+M7 |
 | M5 | GDPR export importer | Historical playtime backfills; feed measurably improves on a cold library | after M8 |
 | M6 | Export (JSON + CSV) | Round-trips through the importer without loss | after M5 |
@@ -129,6 +130,12 @@ Tracked so none of it silently becomes permanent:
   ids rather than fuzzy title, which is exactly what §5.3 wants.
 - **`SteamSyncService` is misnamed** — it ingests three stores. Rename to
   `LibrarySyncService` behind an `ILocalLibrarySource` in `Hoard.Core.Ingest`.
+- **Session detection is Windows-only in practice.** `GameExecutableIndexBuilder` matches
+  `*.exe`, so off Windows the index is empty and nothing is ever recorded — it warns once
+  rather than failing silently. Widening the glob is NOT the fix: under Proton the resolved
+  executable is the wine loader inside the runtime directory, not a path under the game's
+  install root, so the install-prefix join cannot work there at all. Attribution would need
+  `STEAM_COMPAT_DATA_PATH` from `/proc/<pid>/environ` — a different design.
 - **IGDB cache has no `payload_version`.** Adding a field to the cached shape silently yields
   empty results for 30 days rather than refetching. A latent trap, not yet a bug.
 
