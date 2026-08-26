@@ -15,6 +15,7 @@ using Hoard.Ingest.Epic;
 using Hoard.Ingest.Epic.Web;
 using Hoard.Ingest.Gog;
 using Hoard.Ingest.Steam;
+using Hoard.Monitor;
 using Hoard.Resolve;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -47,6 +48,7 @@ public static class Program
         // against a fixed or seeded library.
         var writesSuppressed = args.Contains("--no-sync") || args.Contains("--seed-sample");
         builder.Services.Configure<SnapshotSchedulerOptions>(o => o.Enabled = !writesSuppressed);
+        builder.Services.Configure<SessionWatcherOptions>(o => o.Enabled = !writesSuppressed);
 
         using var host = builder.Build();
         AppHost = host;
@@ -254,6 +256,13 @@ public static class Program
         services.AddSingleton<ISteamSync>(sp => sp.GetRequiredService<SteamSyncService>());
         services.AddSingleton(TimeProvider.System);
         services.AddHostedService<SnapshotSchedulerService>();
+
+        // M3 (§5.2 mechanism A): the process watcher — the first writer the
+        // `sessions` table has ever had. Polls for game starts, takes an OS
+        // exit callback for the ends, records one row per sitting. Nothing here
+        // is on a user-facing path, and a machine with no games installed
+        // resolves an empty executable index and opens no handles.
+        services.AddSessionWatching();
 
         // §5.3 step 2. Without this the soft matcher exists, is tested, and
         // never runs — merge_candidates stays empty and the queue's empty state

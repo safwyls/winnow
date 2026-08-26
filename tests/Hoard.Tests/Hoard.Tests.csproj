@@ -29,6 +29,7 @@
     <ProjectReference Include="..\..\src\Hoard.Ingest.Epic\Hoard.Ingest.Epic.csproj" />
     <ProjectReference Include="..\..\src\Hoard.Ingest.Gog\Hoard.Ingest.Gog.csproj" />
     <ProjectReference Include="..\..\src\Hoard.Ingest.Steam\Hoard.Ingest.Steam.csproj" />
+    <ProjectReference Include="..\..\src\Hoard.Monitor\Hoard.Monitor.csproj" />
     <ProjectReference Include="..\..\src\Hoard.Resolve\Hoard.Resolve.csproj" />
   </ItemGroup>
 

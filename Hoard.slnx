@@ -12,6 +12,7 @@
     <Project Path="src/Hoard.Ingest.Epic/Hoard.Ingest.Epic.csproj" />
     <Project Path="src/Hoard.Ingest.Gog/Hoard.Ingest.Gog.csproj" />
     <Project Path="src/Hoard.Ingest.Steam/Hoard.Ingest.Steam.csproj" />
+    <Project Path="src/Hoard.Monitor/Hoard.Monitor.csproj" />
     <Project Path="src/Hoard.Recommend/Hoard.Recommend.csproj" />
     <Project Path="src/Hoard.Resolve/Hoard.Resolve.csproj" />
   </Folder>
