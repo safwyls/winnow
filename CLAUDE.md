@@ -4,6 +4,9 @@ Local-first desktop app that surfaces forgotten games in large Steam/Epic/GOG li
 ("your library has unread mail"). No server, no accounts.
 
 ## Authority documents — read before changing anything they govern
+- `ROADMAP.md` — current scope, phase order and identity. Supersedes the design doc's §8
+  milestones and amends its §1 non-goals; read it BEFORE the design doc so you know which
+  parts of §1 still bind.
 - `game-library-design.md` — the build spec. §4 hard constraints and §5.1 module
   boundaries are non-negotiable; §9 lists the known failure modes.
 - `design-system.md` + `tokens.axaml` — visual spec. Flare (#FF5C8A) marks ONLY unread

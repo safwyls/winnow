@@ -47,7 +47,9 @@ retained by anyone.
 - PlayStation and Xbox integration (see §4.6)
 - Any hosted service, user accounts, or multi-user features
 - Co-op / friend library matching (requires a server; phase 2)
-- Recommendation engine (phase 2)
+- ~~Recommendation engine (phase 2)~~ — **SUPERSEDED. See `ROADMAP.md` §3.** Promoted to a
+  core differentiator, still with no server and no accounts: inference is local, over the
+  user's own database.
 - 3D "games on a shelf" browsing view (cut; see §11)
 - Mobile
 
@@ -529,6 +531,11 @@ a differentiator worth claiming explicitly.
 ---
 
 ## 8. Milestones
+
+> **Sequencing here is superseded by `ROADMAP.md` (v2).** M0-M2 and M4 shipped as
+> described below; everything after that was re-ordered when the product scope widened to
+> launcher + recommendation feed. The exit criteria below remain accurate — only the order
+> and the phase list changed. §4's hard constraints are untouched.
 
 | # | Deliverable | Exit criteria |
 |---|---|---|
