@@ -66,6 +66,7 @@ Two consequences fall out immediately, and both are lucky:
 | Recommendation engine (phase 2) | **Promoted to core** | It is the differentiator. Phase-2 placement assumed it needed a server; it does not — all inference is local over the user's own database. |
 | Any hosted service, user accounts, multi-user | **Unchanged** | Still no server, still no Hoard account, still no telemetry. **Hoard has no accounts; Hoard links yours.** Epic/Steam OAuth authenticates you to *their* service and stores the token locally under DPAPI. That is third-party linking, not account creation, and the distinction is load-bearing. |
 | 3D "games on a shelf" view (cut, §11) | **Still cut** | Full-screen gamepad mode (M10) is a 10-foot UI, not the 3D shelf. Avalonia handles it natively; §11's framework reasoning does not apply and is not reopened. |
+| Shipping storefront client credentials | **Decided 2026-08-26: ship them built-in** | A sign-in button cannot ask the user for credentials, and there is no version where they supply their own: Epic issues no client that can read a personal library (an EOS portal app is rejected with `invalid_client`), and GOG has no public dev portal for this. So the only alternatives were "embed the launcher credentials" or "the feature does not exist". Heroic, Legendary and the Playnite plugins all embed them. Hoard is the party distributing them and that is a real cost; the realistic failure mode is Epic or GOG rotating a client and sign-in breaking until updated, not bans. The published Epic pair was verified live on 2026-08-26 rather than trusted. |
 | PSN / Xbox (§4.6) | **Unchanged — still excluded** | See the note under M4.5. Epic OAuth is not a precedent for these. |
 
 ## 4. Phases
@@ -77,12 +78,26 @@ Numbering continues from §8. M0–M2 and M4 are shipped.
 | M4.5 | Epic OAuth ownership source + local fallback | Entitlements resolve when authed; unauthed degrades silently to local files with no loss of install state | **in flight** |
 | M7 | Recommendation core (`Hoard.Recommend`) | Standalone scoring module, explainable output, sensible ranking on a cold library; not yet wired to UI | **in flight** |
 | M3a | Session detection (§5.2 mechanism A) | Process watching records sessions with true start/end; poll for discovery only, events for exit | **shipped** |
+| M4.6 | Store sign-in UI (Epic + GOG) | Sign-in buttons in the app run an embedded-browser OAuth flow that captures the code automatically; console flow survives as a documented fallback | next |
 | M3b | Launch + journal prompt | Launching from Hoard records a session; journal prompt opt-in (§9 pitfall 7); `hoard-wrap` offered per-game, never globally | next |
 | M8 | The Feed | Recommender surfaced as the app's primary view; every card states its reason in one sentence | after M3+M7 |
 | M5 | GDPR export importer | Historical playtime backfills; feed measurably improves on a cold library | after M8 |
 | M6 | Export (JSON + CSV) | Round-trips through the importer without loss | after M5 |
 | M9 | Install / uninstall management | Install and uninstall delegate to the owning store client and reflect state back | after M6 |
 | M10 | Full-screen mode + gamepad navigation | Whole app navigable on a controller at 10 feet | last |
+
+### Why M4.6 jumped the queue
+
+The console sign-in shipped in M4.5 is fragile in a way that is structural, not a bug: the
+authorization code is single-use and expires in minutes, so every misstep between issuing it
+and spending it — an environment variable that did not propagate, a prompt that hung, a
+terminal that swallowed input — burns the code and needs a fresh one. Each of those cost a
+real debugging round. An embedded browser reads the code the instant the provider issues it,
+which removes the window entirely rather than making it easier to hit.
+
+GOG rides along because it is the same machinery and the gain is larger: GOG ingest reads
+local files only and found **14 games**, so an authenticated library is not a refinement
+there, it is most of the library.
 
 ### Why that order
 
