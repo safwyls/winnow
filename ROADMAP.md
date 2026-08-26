@@ -75,8 +75,8 @@ Numbering continues from §8. M0–M2 and M4 are shipped.
 
 | # | Deliverable | Exit criteria | State |
 |---|---|---|---|
-| M4.5 | Epic OAuth ownership source + local fallback | Entitlements resolve when authed; unauthed degrades silently to local files with no loss of install state | **in flight** |
-| M7 | Recommendation core (`Hoard.Recommend`) | Standalone scoring module, explainable output, sensible ranking on a cold library; not yet wired to UI | **in flight** |
+| M4.5 | Epic OAuth ownership source + local fallback | Entitlements resolve when authed; unauthed degrades silently to local files with no loss of install state | **shipped** (sign-in unverified end to end) |
+| M7 | Recommendation core (`Hoard.Recommend`) | Standalone scoring module, explainable output, sensible ranking on a cold library; not yet wired to UI | **shipped** (unwired by design) |
 | M3a | Session detection (§5.2 mechanism A) | Process watching records sessions with true start/end; poll for discovery only, events for exit | **shipped** |
 | M4.6 | Store sign-in UI (Epic) | A sign-in button in the app runs an embedded-browser OAuth flow that captures the code automatically; console flow survives as a documented fallback | next |
 | — | GOG sign-in | **Held, on evidence.** Nothing to gain today; see below | not scheduled |
