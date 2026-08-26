@@ -242,6 +242,23 @@ public static class EpicLoginConsole
         Console.Error.WriteLine("    $env:Epic__ClientSecret = \"<client secret>\"");
         Console.Error.WriteLine("    dotnet run --project src/Hoard.App -- --epic-login");
         Console.Error.WriteLine();
+
+        // The failure this paragraph exists for: setx or the System Properties
+        // dialog writes the User scope, but a shell reads that scope once, when
+        // it starts. Set the variables in an already-open terminal and every
+        // child it launches -- this process included -- still sees nothing, so
+        // the credentials look correct everywhere the user thinks to check and
+        // this message keeps printing. It costs a genuinely confusing round of
+        // debugging, so it is called out here rather than left to be deduced.
+        Console.Error.WriteLine("Already set them and still seeing this? A terminal reads user-scope");
+        Console.Error.WriteLine("variables only when it starts, so one that was open beforehand cannot");
+        Console.Error.WriteLine("see them. Open a new terminal, or pull them into this one:");
+        Console.Error.WriteLine();
+        Console.Error.WriteLine("    $env:Epic__ClientId = "
+            + "[Environment]::GetEnvironmentVariable('Epic__ClientId','User')");
+        Console.Error.WriteLine("    $env:Epic__ClientSecret = "
+            + "[Environment]::GetEnvironmentVariable('Epic__ClientSecret','User')");
+        Console.Error.WriteLine();
         Console.Error.WriteLine("Or put them in a git-ignored appsettings.local.json beside the executable:");
         Console.Error.WriteLine();
         Console.Error.WriteLine("    { \"Epic\": { \"ClientId\": \"...\", \"ClientSecret\": \"...\" } }");
