@@ -17,6 +17,7 @@ using Hoard.Ingest.Gog;
 using Hoard.Ingest.Steam;
 using Hoard.Monitor;
 using Hoard.Resolve;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -41,6 +42,25 @@ public static class Program
     public static void Main(string[] args)
     {
         var builder = Host.CreateApplicationBuilder(args);
+
+        // Credentials that must not go in the repo, for people who would rather
+        // not fight environment variables.
+        //
+        // CreateApplicationBuilder loads appsettings.json and
+        // appsettings.{Environment}.json and stops there, so this file -- which
+        // EpicLoginConsole has been telling users to create -- was read by
+        // nothing at all until this line existed.
+        //
+        // Anchored to BaseDirectory rather than the content root so that "beside
+        // the executable" is literally true. The content root is the CURRENT
+        // directory, so a config keyed to it would load or not load depending on
+        // where the user happened to be standing when they typed dotnet run --
+        // which is the same class of invisible, environment-dependent failure
+        // this file exists to get away from.
+        builder.Configuration.AddJsonFile(
+            Path.Combine(AppContext.BaseDirectory, "appsettings.local.json"),
+            optional: true,
+            reloadOnChange: false);
         ConfigureServices(builder.Services);
 
         // Both flags mean "leave this database alone", so the scheduler has to

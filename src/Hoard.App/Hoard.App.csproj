@@ -13,6 +13,13 @@
     <AvaloniaResource Include="Assets\**" />
   </ItemGroup>
 
+  <!-- Git-ignored local credentials, copied next to the executable so
+       Program.cs can load it from AppContext.BaseDirectory. Conditional: the
+       file is absent in every clean checkout and its absence is normal. -->
+  <ItemGroup Condition="Exists('appsettings.local.json')">
+    <None Include="appsettings.local.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="11.3.20" />
     <!-- No Avalonia.Controls.ItemsRepeater. Its UniformGridLayout charges every
