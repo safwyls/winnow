@@ -41,10 +41,53 @@ public static class EpicLoginConsole
     public const string Argument = "--epic-login";
 
     /// <summary>
+    /// Optional companion argument carrying the authorization code, as
+    /// <c>--epic-login --code &lt;code&gt;</c>.
+    ///
+    /// <para>Exists because the interactive prompts cannot be relied on. This is
+    /// a <c>WinExe</c> — a GUI-subsystem binary — so it owns no console of its
+    /// own, and whether <see cref="Console.ReadLine"/> ever returns depends on
+    /// how the host terminal wired up the child's handles. When that goes wrong
+    /// it does not fail, it HANGS, with a prompt that may not even have been
+    /// rendered; the user sees a browser open and then nothing, and has no way to
+    /// tell a stuck process from one that is working. Passing the code as an
+    /// argument removes console input from the flow entirely, which is why the
+    /// instructions print this route before the prompt that might swallow
+    /// them.</para>
+    /// </summary>
+    public const string CodeArgument = "--code";
+
+    /// <summary>
+    /// Pulls the authorization code out of the command line, accepting both
+    /// <c>--code &lt;value&gt;</c> and <c>--code=&lt;value&gt;</c>. Null when absent.
+    /// </summary>
+    public static string? CodeFrom(IReadOnlyList<string> args)
+    {
+        ArgumentNullException.ThrowIfNull(args);
+
+        for (var i = 0; i < args.Count; i++)
+        {
+            if (string.Equals(args[i], CodeArgument, StringComparison.Ordinal))
+            {
+                return i + 1 < args.Count && !args[i + 1].StartsWith('-') ? args[i + 1] : null;
+            }
+
+            if (args[i].StartsWith(CodeArgument + "=", StringComparison.Ordinal))
+            {
+                var value = args[i][(CodeArgument.Length + 1)..];
+                return string.IsNullOrWhiteSpace(value) ? null : value;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// Runs the flow. Returns a process exit code: 0 on success, 1 on anything
     /// the user needs to act on.
     /// </summary>
-    public static async Task<int> RunAsync(IServiceProvider services, CancellationToken ct = default)
+    public static async Task<int> RunAsync(
+        IServiceProvider services, string? presetCode = null, CancellationToken ct = default)
     {
         AttachConsoleIfNeeded();
 
@@ -92,22 +135,34 @@ public static class EpicLoginConsole
         // lines above. Opening it the instant the command runs would put the
         // browser in front of the user before they had read why they should think
         // about it. One Enter makes the consent explicit and costs nothing.
-        Console.Write("3. Press Enter to open that URL in your browser, or paste the code directly: ");
-        var typed = Console.ReadLine();
+        // Printed BEFORE the prompt, deliberately. If console input is broken the
+        // prompt below never returns and never renders, so an escape hatch
+        // described after it would be invisible exactly when it is needed.
+        Console.WriteLine("   If the prompt below does not respond, press Ctrl+C, open the URL");
+        Console.WriteLine("   above yourself, and run this instead — it needs no keyboard input:");
+        Console.WriteLine();
+        Console.WriteLine("       dotnet run --project src/Hoard.App -- --epic-login --code <code>");
+        Console.WriteLine();
 
         string? code;
-        if (string.IsNullOrWhiteSpace(typed))
+        if (!string.IsNullOrWhiteSpace(presetCode))
+        {
+            // Non-interactive: the code came in on the command line, so nothing
+            // here reads the console or opens a browser.
+            code = presetCode;
+        }
+        else if (string.IsNullOrWhiteSpace(ReadLineOrNull(
+            "3. Press Enter to open that URL in your browser, or paste the code directly: ")))
         {
             TryOpenBrowser(url);
             Console.WriteLine();
-            Console.Write("4. Paste the authorizationCode here and press Enter: ");
-            code = Console.ReadLine();
+            code = ReadLineOrNull("4. Paste the authorizationCode here and press Enter: ");
         }
         else
         {
             // The user already had a code in hand — from a previous run, or from
             // opening the URL themselves — and pasted it at the first prompt.
-            code = typed;
+            code = _lastLine;
         }
 
         if (string.IsNullOrWhiteSpace(code))
@@ -323,6 +378,26 @@ public static class EpicLoginConsole
     /// is simply nowhere to print, and the caller has already decided this is the
     /// console path.</para>
     /// </summary>
+    /// <summary>Last line <see cref="ReadLineOrNull"/> returned.</summary>
+    private static string? _lastLine;
+
+    /// <summary>
+    /// Writes a prompt and reads one line, flushing first.
+    ///
+    /// <para>The flush is the point. <see cref="Console.Write(string)"/> leaves a
+    /// prompt with no trailing newline sitting in the buffer, and a
+    /// GUI-subsystem process whose stdout is a pipe rather than a console does
+    /// not necessarily push it out before blocking on input — so the user waits
+    /// at an invisible prompt for a process that looks hung.</para>
+    /// </summary>
+    private static string? ReadLineOrNull(string prompt)
+    {
+        Console.Write(prompt);
+        Console.Out.Flush();
+        _lastLine = Console.ReadLine();
+        return _lastLine;
+    }
+
     private static void AttachConsoleIfNeeded()
     {
         if (!OperatingSystem.IsWindows() || Console.IsInputRedirected || Console.IsOutputRedirected)

@@ -92,7 +92,11 @@ public static class Program
             if (args.Contains(Services.EpicLoginConsole.Argument))
             {
                 Environment.ExitCode = Services.EpicLoginConsole
-                    .RunAsync(host.Services, Shutdown.Token).GetAwaiter().GetResult();
+                    .RunAsync(
+                        host.Services,
+                        Services.EpicLoginConsole.CodeFrom(args),
+                        Shutdown.Token)
+                    .GetAwaiter().GetResult();
                 return;
             }
 
