@@ -61,6 +61,15 @@ public partial class LibraryViewModel : ObservableObject
     private FacetSnapshot _facets = FacetSnapshot.Empty;
     private bool _loaded;
 
+    /// <summary>
+    /// Depth of <see cref="Batched"/>. Entering and leaving a list writes the
+    /// rail, the search box and every group in the panel in one act; each of
+    /// those writes would otherwise rebuild the whole grid against a rule set
+    /// that is half torn down and briefly describes a library the user never
+    /// asked for.
+    /// </summary>
+    private int _suspended;
+
     public LibraryViewModel(
         ILibraryQueryRepository libraryQueries,
         IOwnershipRepository ownerships,
@@ -474,6 +483,12 @@ public partial class LibraryViewModel : ObservableObject
 
         await Lists.LoadAsync();
 
+        // A reload replaces every list row object and re-finds the open one by
+        // id, so the rail's marks have to be re-derived from the new objects —
+        // otherwise a live list that survives a reload keeps the Volt edge on a
+        // bucket that is no longer where you are.
+        MarkRailSelection();
+
         _loaded = true;
         ApplyFilter();
     }
@@ -523,14 +538,29 @@ public partial class LibraryViewModel : ObservableObject
     /// escape hatch, kept because it costs nothing now that there is a visible
     /// one, and because a selected row that ignores its own click reads as
     /// broken.
+    ///
+    /// <para><b>It also leaves whatever list you were in, and takes that list's
+    /// rules with it</b> (<see cref="LeaveListContext"/>). A bucket and a list
+    /// are both answers to "what am I looking at", and clicking one is a
+    /// statement that you have stopped looking at the other.</para>
     /// </summary>
     [RelayCommand]
-    private void SelectBucket(BucketViewModel? bucket)
-        => SelectedBucket = bucket is null
-            || bucket.Key == AllGamesKey
-            || ReferenceEquals(SelectedBucket, bucket)
-                ? null
-                : bucket;
+    private void SelectBucket(BucketViewModel? bucket) => Batched(() =>
+    {
+        // The click-the-row-you-are-on escape hatch does NOT apply inside a live
+        // list: there the lit bucket is the LIST's rule and not the user's own
+        // click, so clicking it means "give me that bucket and nothing else",
+        // not "give me it a second time, which means clear it".
+        var toggling = Lists.Open is not { IsLive: true }
+            && bucket is not null
+            && ReferenceEquals(SelectedBucket, bucket);
+
+        LeaveListContext();
+
+        SelectedBucket = bucket is null || bucket.Key == AllGamesKey || toggling
+            ? null
+            : bucket;
+    });
 
     /// <summary>
     /// Opens the detail modal for a tile. Two reads, both keyed on rows this
@@ -590,17 +620,22 @@ public partial class LibraryViewModel : ObservableObject
     /// live one pours its saved rules back into the rail and the panel, so the
     /// user is looking at the filter that defines it and can edit it in place.
     /// Either way the search box is cleared, because a list is a fresh question.
+    ///
+    /// <para><b>It leaves the list you were in first.</b> A list is a PLACE, and
+    /// you are only ever in one — so opening list B cannot leave list A's rules
+    /// lying in the panel underneath it.</para>
     /// </summary>
     [RelayCommand]
-    private void OpenList(GameListViewModel? list)
+    private void OpenList(GameListViewModel? list) => Batched(() =>
     {
+        Prompt = null;
+        LeaveListContext();
+
         if (list is null)
         {
-            CloseList();
             return;
         }
 
-        Prompt = null;
         Lists.Select(list);
 
         if (list.IsLive)
@@ -612,11 +647,10 @@ public partial class LibraryViewModel : ObservableObject
         {
             SearchText = string.Empty;
             EnterListOrder();
-            ApplyFilter();
         }
-    }
+    });
 
-    /// <summary>Leaves the list without touching it. The filter panel keeps whatever is in it.</summary>
+    /// <summary>Leaves the open list. A live list's rules leave with it.</summary>
     [RelayCommand]
     private void CloseList()
     {
@@ -625,9 +659,60 @@ public partial class LibraryViewModel : ObservableObject
             return;
         }
 
+        Batched(LeaveListContext);
+    }
+
+    /// <summary>
+    /// Steps out of the open list, whichever kind it is.
+    ///
+    /// <para><b>This is the whole of the live-list fix.</b> §12.2 has a live list
+    /// add no AND term of its own: opening one pours its rules into the rail and
+    /// the panel so they are editable in place, which is what makes the two kinds
+    /// of list visibly different. What was missing was the other half of that
+    /// bargain. The poured-in rules were indistinguishable from rules the user
+    /// had set, so clicking "All games" cleared the bucket and left the list's
+    /// genre, mode and tag terms silently applied — and the user believed they
+    /// were looking at their whole library when they were looking at a live list
+    /// with extra filters on top. That is the most expensive confusion this
+    /// screen can produce (§11.3), arriving by the one door the cut bar could
+    /// not watch.</para>
+    ///
+    /// <para>So: <b>a list is a place, and its rules are the place's, not
+    /// yours.</b> Entering one is entering a context; leaving takes the context's
+    /// contribution with it. That is the same contract a manual list already
+    /// honours — its membership term goes when you leave — stated once for both
+    /// kinds. A manual list contributes only membership, so leaving it still
+    /// leaves the rail, the panel and the search box exactly as the user set
+    /// them; §12.2's "the ones in Couch co-op night I haven't installed" is
+    /// untouched.</para>
+    ///
+    /// <para>The panel is deliberately left OPEN on the way out of a live list.
+    /// Closing it would hide the very thing that proves the rules went, and the
+    /// user did not open it — entering the list did.</para>
+    /// </summary>
+    private void LeaveListContext()
+    {
+        if (Lists.Open is not { } open)
+        {
+            return;
+        }
+
+        var wasLive = open.IsLive;
+
         Lists.Select(null);
         LeaveListOrder();
-        ApplyFilter();
+
+        if (!wasLive)
+        {
+            return;
+        }
+
+        // Everything ApplySavedFilter poured in, poured back out. Batched, so
+        // the grid is rebuilt once against the state the caller lands on rather
+        // than three times against a half-torn-down rule set.
+        SelectedBucket = null;
+        SearchText = string.Empty;
+        Filters.Clear();
     }
 
     /// <summary>
@@ -740,7 +825,7 @@ public partial class LibraryViewModel : ObservableObject
     {
         if (Lists.Open is { IsLive: true } live)
         {
-            ApplySavedFilter(live.Filter);
+            Batched(() => ApplySavedFilter(live.Filter));
         }
     }
 
@@ -998,16 +1083,71 @@ public partial class LibraryViewModel : ObservableObject
 
     partial void OnSelectedBucketChanged(BucketViewModel? value)
     {
+        _ = value;
+        MarkRailSelection();
+        ApplyFilter();
+    }
+
+    /// <summary>
+    /// Which rail row is lit, and how.
+    ///
+    /// <para><b>Exactly one row ever carries the Volt edge, and it always means
+    /// the same thing: this is where you are.</b> No bucket IS the "All games"
+    /// state — including the one the app launches in, so the rail is never
+    /// showing a library nothing in it claims.</para>
+    ///
+    /// <para>With a list open, the place you are is the list, so its row takes
+    /// the Volt edge and a bucket in force takes <see cref="BucketViewModel.IsRule"/>
+    /// instead — the same fill, a TextDim edge. Before this, both rows drew the
+    /// Volt edge at once: a live list carrying <c>Bounced off</c> lit "Bounced
+    /// off" AND the list, and clicking "All games" then lit a THIRD row while
+    /// leaving the list's genres applied. Three rows claiming to be where you
+    /// are is how a user ends up certain they are looking at their whole
+    /// library.</para>
+    /// </summary>
+    private void MarkRailSelection()
+    {
+        var inList = Lists.IsListOpen;
+
         foreach (var bucket in Buckets)
         {
-            bucket.IsSelected = ReferenceEquals(bucket, value);
+            var current = ReferenceEquals(bucket, SelectedBucket);
+            bucket.IsSelected = current && !inList;
+            bucket.IsRule = current && inList;
         }
 
-        // No bucket filter IS the "All games" state — including the one the app
-        // launches in, so the rail is never showing a library nothing in it
-        // claims. Exactly one row in the rail carries the Volt edge, always.
-        AllGames.IsSelected = value is null;
+        AllGames.IsSelected = SelectedBucket is null && !inList;
+    }
 
+    /// <summary>
+    /// The rules the open live list is contributing, exactly as they were saved
+    /// — or null whenever the filter surface belongs to the user. Everything
+    /// that needs to tell a list's rule from the user's own reads this and
+    /// nothing else, so there is one answer to that question in the view model.
+    /// </summary>
+    private LibraryFilter? ContextFilter
+        => Lists.Open is { IsLive: true } live ? live.Filter : null;
+
+    /// <summary>
+    /// Runs a group of writes as one change to the cut. Entering or leaving a
+    /// list touches the rail, the search box and every group in the panel; each
+    /// of those raises its own recompute, and without this the grid is rebuilt
+    /// once per write against a rule set nobody asked for and the counts in the
+    /// panel flicker through states that never existed.
+    /// </summary>
+    private void Batched(Action write)
+    {
+        _suspended++;
+        try
+        {
+            write();
+        }
+        finally
+        {
+            _suspended--;
+        }
+
+        MarkRailSelection();
         ApplyFilter();
     }
 
@@ -1039,7 +1179,7 @@ public partial class LibraryViewModel : ObservableObject
     /// </summary>
     private void ApplyFilter()
     {
-        if (!_loaded)
+        if (!_loaded || _suspended > 0)
         {
             return;
         }
@@ -1144,23 +1284,41 @@ public partial class LibraryViewModel : ObservableObject
     private void RefreshCutBar(int visibleCount)
     {
         var chips = new List<FilterChipViewModel>();
+        var context = ContextFilter;
 
-        // The rail's bucket leads, because it is the pile you are standing in
-        // and because this is the only place the rail and the panel are stated
-        // as one filter. Dropping it here clears the rail.
-        if (SelectedBucket is { } bucket)
-        {
-            chips.Add(new FilterChipViewModel(
-                bucket.Name, "BUCKET", () => SelectBucketCommand.Execute(null)));
-        }
-
+        // The open list leads the bar, ahead of the rules, because it is not a
+        // rule — it is the place the rules belong to, and "which live list am I
+        // in" is the question this strip was failing to answer. Its chip shows
+        // its kind rather than hiding it in a tooltip, and dropping it leaves
+        // the list, taking the list's rules with it.
         if (Lists.Open is { } list)
         {
             chips.Add(new FilterChipViewModel(
-                list.Name, list.KindLabel, () => CloseListCommand.Execute(null)));
+                list.Name,
+                list.KindLabel,
+                () => CloseListCommand.Execute(null),
+                FilterChipOrigin.Context));
         }
 
-        chips.AddRange(Filters.BuildChips());
+        // Then the rail's bucket, because it is the pile you are standing in and
+        // because this is the only place the rail and the panel are stated as
+        // one filter — which is the whole of that claim now that the panel is no
+        // longer physically joined to the rail (§11.1). Dropping it clears the
+        // rail.
+        if (SelectedBucket is { } bucket)
+        {
+            chips.Add(new FilterChipViewModel(
+                bucket.Name,
+                "BUCKET",
+                () => SelectBucketCommand.Execute(null),
+                context is null
+                    ? FilterChipOrigin.User
+                    : context.Buckets.Contains(bucket.Key)
+                        ? FilterChipOrigin.List
+                        : FilterChipOrigin.Unsaved));
+        }
+
+        chips.AddRange(Filters.BuildChips(context));
 
         CutChips = chips;
         CutText = $"{TotalCount:N0} \u2192 {visibleCount:N0}";

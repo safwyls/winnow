@@ -311,8 +311,20 @@ public partial class FilterPanelViewModel : ObservableObject
         ActiveCount = _specs.Sum(s => s.Group.Checked.Count()) + (HasYearRange ? 1 : 0);
     }
 
-    /// <summary>Every rule in force, as dismissable chips for the cut bar.</summary>
-    public IEnumerable<FilterChipViewModel> BuildChips()
+    /// <summary>
+    /// Every rule in force, as dismissable chips for the cut bar.
+    ///
+    /// <para><paramref name="context"/> is the open live list's rules AS SAVED,
+    /// or null when the panel's contents are the user's own. It exists because
+    /// §12.2's "opening a live list pours its rules back into the panel" makes
+    /// the list's rules and the user's rules physically identical in these
+    /// controls — so the only place the difference can still be stated is here,
+    /// on the strip whose whole job is to say what is cutting the grid. A rule
+    /// the context supplied is a <see cref="FilterChipOrigin.List"/> chip; one
+    /// the user added on top of it is
+    /// <see cref="FilterChipOrigin.Unsaved"/>.</para>
+    /// </summary>
+    public IEnumerable<FilterChipViewModel> BuildChips(LibraryFilter? context = null)
     {
         foreach (var spec in _specs)
         {
@@ -322,15 +334,58 @@ public partial class FilterPanelViewModel : ObservableObject
                 yield return new FilterChipViewModel(
                     captured.Label,
                     spec.Group.Header,
-                    () => captured.IsChecked = false);
+                    () => captured.IsChecked = false,
+                    Origin(context, InContext(spec.Group.Key, captured.Key, context)));
             }
         }
 
         if (HasYearRange)
         {
-            yield return new FilterChipViewModel(YearRangeText, "RELEASE YEAR", ClearYears);
+            var saved = context is not null
+                && context.YearFrom == YearFrom
+                && context.YearTo == YearTo;
+
+            yield return new FilterChipViewModel(
+                YearRangeText, "RELEASE YEAR", ClearYears, Origin(context, saved));
         }
     }
+
+    private static FilterChipOrigin Origin(LibraryFilter? context, bool fromContext) => context switch
+    {
+        null => FilterChipOrigin.User,
+        _ when fromContext => FilterChipOrigin.List,
+        _ => FilterChipOrigin.Unsaved,
+    };
+
+    /// <summary>
+    /// Whether one ticked option is part of the rules the open live list was
+    /// saved with. Keyed on the option's own key, which is what the group holds
+    /// and what <see cref="Apply"/> poured in, so the two answers cannot drift.
+    /// </summary>
+    private static bool InContext(string groupKey, string optionKey, LibraryFilter? context)
+    {
+        if (context is null)
+        {
+            return false;
+        }
+
+        return groupKey switch
+        {
+            GenreKey => HasId(context.GenreIds, optionKey),
+            ThemeKey => HasId(context.ThemeIds, optionKey),
+            TagKey => HasId(context.TagIds, optionKey),
+            FeatureKey => HasId(context.FeatureIds, optionKey),
+            ControllerKey => HasId(context.ControllerIds, optionKey),
+            ModeKey => context.GameModes.Contains(optionKey, StringComparer.Ordinal),
+            StoreKey => context.Stores.Contains(optionKey, StringComparer.OrdinalIgnoreCase),
+            InstalledKey => context.Installed == string.Equals(optionKey, OnDisk, StringComparison.Ordinal),
+            _ => false,
+        };
+    }
+
+    private static bool HasId(IReadOnlyList<long> ids, string optionKey)
+        => long.TryParse(optionKey, NumberStyles.Integer, CultureInfo.InvariantCulture, out var id)
+            && ids.Contains(id);
 
     /// <summary>Pours a saved live list's rules in, then asks for exactly one recompute.</summary>
     public void Apply(LibraryFilter filter)

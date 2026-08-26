@@ -9,14 +9,23 @@
     <!--
         The strip between the command bar and the art. Two modes, never both.
 
-        · THE CUT BAR. What you are looking at, stated once: the rules as
-          dismissable chips, and "926 → 41". This is the seam where the rail and
-          the filter panel become one filter — the rail's bucket is the first
-          chip, the panel's options are the rest, and dropping any of them goes
-          back to the control that set it. It exists because a library that has
-          been cut down and does not admit it is the most expensive confusion
-          this screen can produce: the panel can be closed and the rail scrolled
-          past, and then 41 of 926 games look like the whole hoard.
+        · THE CUT BAR. What you are looking at, stated once: the place you are
+          in, then the rules, then "926 → 41". This is the seam where the rail
+          and the filter panel become one filter — and since the panel moved to
+          the right of the grid it is the ONLY thing making that claim, because
+          the two no longer touch (§11.1). The open list leads, the rail's
+          bucket follows it, the panel's options are the rest, and dropping any
+          of them goes back to the control that set it.
+
+          It exists because a library that has been cut down and does not admit
+          it is the most expensive confusion this screen can produce: the panel
+          can be closed and the rail scrolled past, and then 41 of 926 games
+          look like the whole hoard.
+
+          Each chip also says WHO SET IT — see the provenance styles below.
+          Without that, a live list's poured-in rules are indistinguishable from
+          the user's own, which is exactly how someone ends up certain they are
+          browsing their whole library while a live list is still cutting it.
 
           The arrow is the only one in the application. It is here because this
           is the only place a number becomes another number.
@@ -45,6 +54,42 @@
             <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
             <Setter Property="Padding" Value="9,3,5,3"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
+        <!-- ══ Chip provenance (§12.2) ═════════════════════════════════════
+             Opening a live list pours its rules into the rail and the panel, so
+             that a user can edit them where they made them. The price is that
+             the list's rules and the user's own become physically identical in
+             those controls — and this strip is the only place left that can say
+             which is which.
+
+             The distinction is drawn in the grammar the palette already has,
+             not in a new colour. VOLT MEANS YOU CHOSE THIS. A rule the open
+             live list contributed was not chosen by the user at all, so it
+             loses the Volt edge and takes the neutral one every other piece of
+             chrome wears — and its label drops to TextDim, which on
+             SurfaceRaised measures 5.04:1 and clears §8's floor.
+
+             That leaves exactly one Volt-edged chip family, meaning what it
+             always meant, and a reader who cannot separate the two edges still
+             gets the whole distinction from the tooltip (§8: the mark is never
+             the only carrier). -->
+        <Style Selector="Border.chip.fromlist">
+            <Setter Property="Background" Value="{StaticResource Surface}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+        </Style>
+        <Style Selector="Border.chip.fromlist TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
+        </Style>
+
+        <!-- The open list itself. Not a rule but the place the rules belong to,
+             so it leads the bar, wears the same neutral edge, and states its
+             KIND on the chip — "which live list am I in" being the question the
+             whole strip was failing to answer. -->
+        <Style Selector="Border.chip.context">
+            <Setter Property="Background" Value="{StaticResource Surface}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="Padding" Value="8,3,5,3"/>
         </Style>
 
         <!-- ══ Strip button ════════════════════════════════════════════════
@@ -240,14 +285,28 @@
                     <ItemsControl.ItemTemplate>
                         <DataTemplate DataType="filters:FilterChipViewModel">
                             <Border Classes="chip" Margin="0,2,8,2"
+                                    Classes.fromlist="{Binding IsListRule}"
+                                    Classes.context="{Binding IsContext}"
                                     ToolTip.Tip="{Binding Description}">
                                 <StackPanel Orientation="Horizontal" Spacing="4">
+                                    <!-- LIST / LIVE LIST, on the context chip
+                                         only. The rail says where you are with
+                                         a Volt edge; this says it in words, and
+                                         a word survives being scrolled past. -->
+                                    <TextBlock Classes="label"
+                                               FontSize="9"
+                                               LetterSpacing="1.2"
+                                               Margin="0,0,3,0"
+                                               Foreground="#5A8286"
+                                               Text="{Binding Dimension}"
+                                               IsVisible="{Binding IsContext}"
+                                               VerticalAlignment="Center"/>
                                     <TextBlock Classes="body" FontSize="12"
                                                Text="{Binding Label}"
                                                VerticalAlignment="Center"/>
                                     <Button Classes="chipx"
                                             Command="{Binding RemoveCommand}"
-                                            ToolTip.Tip="Drop this filter">
+                                            ToolTip.Tip="{Binding RemoveTip}">
                                         <Path Data="M 0.5,0.5 L 6.5,6.5 M 6.5,0.5 L 0.5,6.5"/>
                                     </Button>
                                 </StackPanel>

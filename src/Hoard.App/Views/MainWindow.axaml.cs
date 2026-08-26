@@ -205,6 +205,49 @@ public partial class MainWindow : Window
         {
             _library.OpenListCommand.Execute(_library.Lists.LiveLists.FirstOrDefault());
         }
+
+        // --check=<group>:<label> ticks one facet option through the same
+        // property the checkbox writes, so a screenshot can show a rule the
+        // USER set sitting beside one an open live list contributed — which is
+        // the only way to review whether the two are told apart on screen.
+        foreach (var arg in Environment.GetCommandLineArgs()
+            .Where(a => a.StartsWith("--check=", StringComparison.Ordinal)))
+        {
+            var spec = arg["--check=".Length..].Split(':', 2);
+            if (spec.Length != 2 || _library is null)
+            {
+                continue;
+            }
+
+            var option = _library.Filters.Groups
+                .FirstOrDefault(g => g.Key == spec[0])?
+                .AllOptions.FirstOrDefault(o => o.Label == spec[1]);
+
+            if (option is not null)
+            {
+                option.IsChecked = true;
+            }
+        }
+
+        // --filters-scroll=N puts the panel's own scroll at N px, because
+        // FEATURES and CONTROLLER sit below the fold on an 820px window and a
+        // screenshot cannot show them working otherwise. Posted at Background
+        // priority: the panel has to have been measured before its extent
+        // exists, and setting Offset on a ScrollViewer with a zero extent is
+        // silently a no-op.
+        if (Environment.GetCommandLineArgs()
+                .FirstOrDefault(a => a.StartsWith("--filters-scroll=", StringComparison.Ordinal))
+            is { } scrollArg
+            && double.TryParse(
+                scrollArg["--filters-scroll=".Length..],
+                System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out var offset))
+        {
+            Avalonia.Threading.Dispatcher.UIThread.Post(
+                () => FilterPanel.ScrollTo(offset),
+                Avalonia.Threading.DispatcherPriority.Background);
+        }
 #endif
     }
 
@@ -433,9 +476,10 @@ public partial class MainWindow : Window
     /// <summary>
     /// Escape's one job on the library screen: give the user back the library,
     /// one visible step per press. The order is outside-in — the panel is
-    /// chrome, the filters inside it are rules, the list and the bucket are
-    /// where you are standing — so no press is ever a no-op while anything is
-    /// still cutting the grid.
+    /// chrome, an unsaved edit to a live list is the newest thing on top of it,
+    /// the filters are rules, and the list and the bucket are where you are
+    /// standing — so no press is ever a no-op while anything is still cutting
+    /// the grid.
     /// </summary>
     /// <summary>The text box holding focus, or null. Nothing else may claim a letter key.</summary>
     private TextBox? FocusedTextBox()
@@ -454,7 +498,21 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (_library.Filters.HasSelection)
+        // Inside a live list, an unsaved edit is the outermost thing the user
+        // added, so it unwinds first — and it unwinds by NAME, to the rules the
+        // list was saved with, rather than by clearing the panel. Clearing the
+        // panel there would not be a step back out: it would be a fourth,
+        // emptier version of the list, still labelled as the list.
+        if (_library.IsLiveListEdited)
+        {
+            _library.RevertLiveListCommand.Execute(null);
+            return;
+        }
+
+        // A manual list's panel rules are the user's own (§12.2), so they clear
+        // before the list does. A LIVE list's are the list's, and leaving takes
+        // them — so this layer is skipped and the next one does both at once.
+        if (_library.Filters.HasSelection && _library.Lists.Open is not { IsLive: true })
         {
             _library.Filters.ClearCommand.Execute(null);
             return;

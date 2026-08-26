@@ -30,9 +30,27 @@ public partial class BucketViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(RowOpacity), nameof(CountText))]
     public partial int Count { get; set; }
 
-    /// <summary>Rail selection: SurfaceRaised fill plus a 2px Volt left edge (§6).</summary>
+    /// <summary>
+    /// Rail selection: SurfaceRaised fill plus a 2px Volt left edge (§6).
+    ///
+    /// <para><b>The Volt edge means "this is where you are", and exactly one row
+    /// in the rail ever carries it.</b> With a list open, that row is the list —
+    /// so a bucket in force while a list is open is <see cref="IsRule"/>, not
+    /// this. Two Volt edges at once is precisely what let a live list's poured-in
+    /// rules read as rules the user had set by hand.</para>
+    /// </summary>
     [ObservableProperty]
     public partial bool IsSelected { get; set; }
+
+    /// <summary>
+    /// The bucket is cutting the grid, but it is not where you are: the open
+    /// list is. Same SurfaceRaised fill as a selection, and a TextDim edge
+    /// instead of a Volt one — chrome rather than choice, the same distinction
+    /// the cut bar draws between a rule the list contributed and one the user
+    /// added (see <see cref="Filters.FilterChipOrigin"/>).
+    /// </summary>
+    [ObservableProperty]
+    public partial bool IsRule { get; set; }
 
     /// <summary>The count as the rail renders it — Plex Mono, tabular, grouped.</summary>
     public string CountText => Count.ToString("N0");

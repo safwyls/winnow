@@ -295,6 +295,281 @@ public sealed class ListsViewModelTests
         Assert.Equal(2, reloaded.Lists.LiveLists.Single().Count);
     }
 
+    // ── Leaving a live list ─────────────────────────────────────────────────
+    //
+    // A live list adds no AND term of its own: opening one POURS its rules into
+    // the rail and the panel (§12.2), which is what makes the two kinds of list
+    // visibly different and what makes a live list editable in place.
+    //
+    // The bug these tests exist for is the other half of that bargain. The
+    // poured-in rules were indistinguishable from rules the user had set by
+    // hand, so clicking "All games" cleared the bucket and left the list's
+    // genre, mode and tag terms silently applied — and the user believed they
+    // were looking at their whole library while a live list was still cutting
+    // it. A list is a PLACE. Leaving takes what the place contributed.
+
+    [Fact]
+    public async Task Leaving_a_live_list_by_all_games_takes_its_rules_with_it()
+    {
+        using var fixture = new ListFixture();
+        await fixture.SeedAsync("Disco Elysium", genres: ["RPG"]);
+        await fixture.SeedAsync("Hades", genres: ["Action"]);
+        await fixture.SeedAsync("Tunic", genres: ["Adventure"]);
+
+        var library = await fixture.LoadAsync();
+        fixture.Check(library, FilterPanelViewModel.GenreKey, "RPG");
+        var live = await library.Lists.CreateLiveListAsync("Every RPG", library.Filters.ToFilter());
+
+        // Enter it from a clean library, the way the rail does.
+        library.SelectBucketCommand.Execute(library.AllGames);
+        library.OpenListCommand.Execute(live);
+        Assert.Equal(["Disco Elysium"], fixture.Titles(library));
+        Assert.False(library.Filters.ToFilter().IsEmpty);
+
+        library.SelectBucketCommand.Execute(library.AllGames);
+
+        // Every rule the list contributed is gone, and the grid says so.
+        Assert.Null(library.Lists.Open);
+        Assert.True(library.Filters.ToFilter().IsEmpty);
+        Assert.Equal(0, library.Filters.ActiveCount);
+        Assert.Null(library.SelectedBucket);
+        Assert.Equal(string.Empty, library.SearchText);
+        Assert.Empty(library.CutChips);
+        Assert.False(library.IsCut);
+        Assert.Equal(3, library.VisibleTiles.Count);
+
+        // And the rail agrees: "All games" is where you are, and nothing else is.
+        Assert.True(library.AllGames.IsSelected);
+        Assert.DoesNotContain(library.Buckets, b => b.IsSelected || b.IsRule);
+        Assert.DoesNotContain(library.Lists.All, l => l.IsSelected);
+    }
+
+    [Fact]
+    public async Task Leaving_a_live_list_by_a_bucket_leaves_only_that_bucket()
+    {
+        using var fixture = new ListFixture();
+        await fixture.SeedAsync("Disco Elysium", minutes: 300, genres: ["RPG"]);
+        await fixture.SeedAsync("Pillars of Eternity", minutes: 0, genres: ["RPG"]);
+        await fixture.SeedAsync("Hades", minutes: 300, genres: ["Action"]);
+
+        var library = await fixture.LoadAsync();
+        fixture.Check(library, FilterPanelViewModel.GenreKey, "RPG");
+        library.SearchText = "eternity";
+
+        // Saved through the cut bar, so the rule set is the one the screen was
+        // describing — the typed word included (§11.3).
+        library.BeginSaveLiveListCommand.Execute(null);
+        library.Prompt!.Text = "Unstarted RPGs";
+        await library.Prompt.ConfirmCommand.ExecuteAsync(null);
+
+        Assert.Same(library.Lists.LiveLists.Single(), library.Lists.Open);
+        Assert.Equal(["Pillars of Eternity"], fixture.Titles(library));
+
+        var bounced = library.Buckets.Single(b => b.Key == LibraryBuckets.Bounced);
+        library.SelectBucketCommand.Execute(bounced);
+
+        // The bucket the user just clicked, and nothing else — not the genre,
+        // not the word the list had in its search box.
+        Assert.Null(library.Lists.Open);
+        Assert.Same(bounced, library.SelectedBucket);
+        Assert.True(library.Filters.ToFilter().IsEmpty);
+        Assert.Equal(string.Empty, library.SearchText);
+        Assert.Equal(["Bounced off"], library.CutChips.Select(c => c.Label));
+        Assert.Equal(["Disco Elysium", "Hades"], fixture.Titles(library).Order());
+
+        // One Volt edge in the rail, on the row the user clicked.
+        Assert.True(bounced.IsSelected);
+        Assert.False(bounced.IsRule);
+        Assert.False(library.AllGames.IsSelected);
+    }
+
+    [Fact]
+    public async Task Opening_a_second_live_list_does_not_inherit_the_first_ones_rules()
+    {
+        using var fixture = new ListFixture();
+        await fixture.SeedAsync("Disco Elysium", genres: ["RPG"]);
+        await fixture.SeedAsync("Hades", genres: ["Action"]);
+
+        var library = await fixture.LoadAsync();
+
+        fixture.Check(library, FilterPanelViewModel.GenreKey, "RPG");
+        var rpgs = await library.Lists.CreateLiveListAsync("RPGs", library.Filters.ToFilter());
+        library.Filters.ClearCommand.Execute(null);
+
+        fixture.Check(library, FilterPanelViewModel.GenreKey, "Action");
+        var action = await library.Lists.CreateLiveListAsync("Action", library.Filters.ToFilter());
+        library.Filters.ClearCommand.Execute(null);
+
+        library.OpenListCommand.Execute(rpgs);
+        Assert.Equal(["Disco Elysium"], fixture.Titles(library));
+
+        library.OpenListCommand.Execute(action);
+
+        // Not the intersection of the two — the second list, on its own.
+        Assert.Same(action, library.Lists.Open);
+        Assert.Equal(["Hades"], fixture.Titles(library));
+        Assert.Equal(action!.Filter, library.Filters.ToFilter());
+        Assert.False(library.IsLiveListEdited);
+        Assert.Single(library.Lists.All, l => l.IsSelected);
+    }
+
+    /// <summary>
+    /// The rail row toggles, which is how the user found the bug: clicking the
+    /// live list you are already in reads as "turn this off", and it has to
+    /// actually turn it off.
+    /// </summary>
+    [Fact]
+    public async Task Clicking_the_open_live_list_again_leaves_it_and_its_rules()
+    {
+        using var fixture = new ListFixture();
+        await fixture.SeedAsync("Disco Elysium", genres: ["RPG"]);
+        await fixture.SeedAsync("Hades", genres: ["Action"]);
+
+        var library = await fixture.LoadAsync();
+        fixture.Check(library, FilterPanelViewModel.GenreKey, "RPG");
+        var live = await library.Lists.CreateLiveListAsync("RPGs", library.Filters.ToFilter());
+        library.Filters.ClearCommand.Execute(null);
+
+        var shell = new MainWindowViewModel(library, fixture.CreateMergeQueue());
+        shell.SelectListCommand.Execute(live);
+        Assert.Same(live, library.Lists.Open);
+
+        shell.SelectListCommand.Execute(live);
+
+        Assert.Null(library.Lists.Open);
+        Assert.True(library.Filters.ToFilter().IsEmpty);
+        Assert.Equal(2, library.VisibleTiles.Count);
+    }
+
+    /// <summary>
+    /// The rules stay editable while you are standing in the list — that is
+    /// §12.2's whole point — and the cut bar says, rule by rule, which of them
+    /// the list brought and which the user has added on top.
+    /// </summary>
+    [Fact]
+    public async Task Inside_a_live_list_the_bar_says_which_rules_are_the_lists()
+    {
+        using var fixture = new ListFixture();
+        await fixture.SeedAsync("Disco Elysium", minutes: 300, genres: ["RPG"]);
+        await fixture.SeedAsync("Hades", minutes: 300, genres: ["Action"]);
+
+        var library = await fixture.LoadAsync();
+        fixture.Check(library, FilterPanelViewModel.GenreKey, "RPG");
+        var live = await library.Lists.CreateLiveListAsync("RPGs", library.Filters.ToFilter());
+        library.Filters.ClearCommand.Execute(null);
+
+        library.OpenListCommand.Execute(live);
+
+        // The place leads the bar and names its kind; the rule it brought is
+        // marked as the list's, not as a selection the user made.
+        var context = library.CutChips[0];
+        Assert.Equal(FilterChipOrigin.Context, context.Origin);
+        Assert.Equal("RPGs", context.Label);
+        Assert.Equal("LIVE LIST", context.Dimension);
+        Assert.Equal("Leave this list", context.RemoveTip);
+
+        var brought = library.CutChips.Single(c => c.Label == "RPG");
+        Assert.Equal(FilterChipOrigin.List, brought.Origin);
+        Assert.False(brought.IsUserRule);
+        Assert.Equal("GENRE: RPG — from this live list", brought.Description);
+
+        // Now the user adds one of their own, in place, and it reads as theirs.
+        library.SelectBucketCommand.Execute(
+            library.Buckets.Single(b => b.Key == LibraryBuckets.Bounced));
+        Assert.Null(library.Lists.Open);
+
+        library.OpenListCommand.Execute(live);
+        fixture.Check(library, FilterPanelViewModel.GenreKey, "Action");
+
+        var added = library.CutChips.Single(c => c.Label == "Action");
+        Assert.Equal(FilterChipOrigin.Unsaved, added.Origin);
+        Assert.True(added.IsUserRule);
+        Assert.Equal("GENRE: Action — yours, not saved to this list", added.Description);
+        Assert.True(library.IsLiveListEdited);
+
+        // And it is still an edit, not a fork: Update writes it to the list.
+        await library.UpdateLiveListCommand.ExecuteAsync(null);
+        Assert.False(library.IsLiveListEdited);
+        Assert.All(
+            library.CutChips.Where(c => !c.IsContext),
+            c => Assert.Equal(FilterChipOrigin.List, c.Origin));
+    }
+
+    /// <summary>
+    /// While a list is open, the rail's Volt edge is on the list. A bucket in
+    /// force is drawn as a rule instead — the same fill, no Volt — because two
+    /// rows claiming to be where you are is what let the poured-in rules read
+    /// as the user's own.
+    /// </summary>
+    [Fact]
+    public async Task Inside_a_live_list_the_rail_marks_the_list_and_not_the_bucket()
+    {
+        using var fixture = new ListFixture();
+        await fixture.SeedAsync("Disco Elysium", minutes: 300, genres: ["RPG"]);
+
+        var library = await fixture.LoadAsync();
+        library.SelectBucketCommand.Execute(
+            library.Buckets.Single(b => b.Key == LibraryBuckets.Bounced));
+        var live = await library.Lists.CreateLiveListAsync("Bounced RPGs", library.Filters.ToFilter() with
+        {
+            Buckets = [LibraryBuckets.Bounced],
+        });
+
+        library.SelectBucketCommand.Execute(library.AllGames);
+        library.OpenListCommand.Execute(live);
+
+        var bounced = library.Buckets.Single(b => b.Key == LibraryBuckets.Bounced);
+        Assert.Same(bounced, library.SelectedBucket);
+        Assert.False(bounced.IsSelected);
+        Assert.True(bounced.IsRule);
+        Assert.False(library.AllGames.IsSelected);
+        Assert.Single(library.Lists.All, l => l.IsSelected);
+
+        // Exactly one Volt edge across the whole rail, and it is the list's.
+        Assert.Equal(
+            1,
+            library.Buckets.Count(b => b.IsSelected)
+                + (library.AllGames.IsSelected ? 1 : 0)
+                + library.Lists.All.Count(l => l.IsSelected));
+    }
+
+    /// <summary>
+    /// The manual case is unchanged and must stay so: a hand-built list is one
+    /// more AND term, so the rail, the panel and the search box all still work
+    /// inside it — and because none of those rules came from the list, leaving
+    /// it takes none of them.
+    /// </summary>
+    [Fact]
+    public async Task Leaving_a_manual_list_keeps_the_rules_the_user_set_inside_it()
+    {
+        using var fixture = new ListFixture();
+        var disco = await fixture.SeedAsync("Disco Elysium", genres: ["RPG"]);
+        var hades = await fixture.SeedAsync("Hades", genres: ["Action"]);
+        await fixture.SeedAsync("Pillars of Eternity", genres: ["RPG"]);
+
+        var library = await fixture.LoadAsync();
+        var list = await library.Lists.CreateListAsync("Friday night", [disco, hades]);
+        library.OpenListCommand.Execute(list);
+
+        fixture.Check(library, FilterPanelViewModel.GenreKey, "RPG");
+        Assert.Equal(["Disco Elysium"], fixture.Titles(library));
+
+        // The list chip is the context; the genre is the user's own.
+        Assert.Equal(FilterChipOrigin.Context, library.CutChips[0].Origin);
+        Assert.Equal("LIST", library.CutChips[0].Dimension);
+        Assert.Equal(FilterChipOrigin.User, library.CutChips.Single(c => c.Label == "RPG").Origin);
+
+        library.SelectBucketCommand.Execute(library.AllGames);
+
+        // Out of the list, still filtered by the rule the user set inside it.
+        Assert.Null(library.Lists.Open);
+        Assert.Equal([FilterPanelViewModel.GenreKey], ActiveGroups(library));
+        Assert.Equal(["Disco Elysium", "Pillars of Eternity"], fixture.Titles(library).Order());
+    }
+
+    private static IEnumerable<string> ActiveGroups(LibraryViewModel library)
+        => library.Filters.Groups.Where(g => g.Checked.Any()).Select(g => g.Key);
+
     // ── Rename and delete ───────────────────────────────────────────────────
 
     [Fact]
@@ -427,6 +702,10 @@ public sealed class ListsViewModelTests
             await library.LoadCommand.ExecuteAsync(null);
             return library;
         }
+
+        /// <summary>The shell owns the rail's list command, which is the one that toggles.</summary>
+        public MergeQueueViewModel CreateMergeQueue()
+            => new(new MergeCandidateRepository(_db.Factory), Releases, Works);
 
         public IEnumerable<string> Titles(LibraryViewModel library)
             => library.VisibleTiles.Select(t => t.Title);

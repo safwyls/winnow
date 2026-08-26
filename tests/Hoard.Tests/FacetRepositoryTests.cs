@@ -173,6 +173,41 @@ public class FacetRepositoryTests : IDisposable
     }
 
     /// <summary>
+    /// The same guarantee for a RANKED kind, which is the case the SQL
+    /// <c>UNION</c> cannot make on its own.
+    ///
+    /// <para>The union dedupes whole ROWS, so it collapses a cross-layer facet
+    /// only when both branches agree on rank. Game modes do agree — NULL on both
+    /// sides — which is why the sibling test above passes without any help. A
+    /// ranked kind does not: <c>(release, facet, 1)</c> and
+    /// <c>(release, facet, NULL)</c> are distinct rows, the union keeps both, and
+    /// the panel counts one release twice.</para>
+    ///
+    /// <para>Nothing writes a tag at the work layer today, so this never fired.
+    /// It is one feature away from firing: <c>docs/spikes/steam-store-tags.md</c>
+    /// recommends falling back to IGDB keywords when <c>GetItems</c> yields
+    /// nothing for an appid, and a keyword is a fact about the Work. The failure
+    /// would be a silently inflated checkbox count — self-consistent and wrong —
+    /// so the invariant is pinned here rather than left to the writer's
+    /// discipline.</para>
+    /// </summary>
+    [Fact]
+    public async Task A_ranked_facet_written_at_both_layers_is_counted_once()
+    {
+        var (work, release) = await SeedAsync("Hades");
+
+        // Rank 1 at the release layer, rankless at the work layer — the two rows
+        // the UNION cannot collapse.
+        await _facets.SetReleaseFacetsAsync(release, [new FacetAssignment(FacetKinds.Tag, "Roguelike", 1)]);
+        await _facets.SetWorkFacetsAsync(work, [new FacetAssignment(FacetKinds.Tag, "Roguelike")]);
+
+        var snapshot = await _facets.GetSnapshotAsync();
+
+        Assert.Single(snapshot.ByRelease[release].FacetIds);
+        Assert.Equal(1, Assert.Single(snapshot.CountsFor([release])).ReleaseCount);
+    }
+
+    /// <summary>
     /// The closed vocabulary stays closed. An assignment built from the display
     /// name rather than the slug lands on nothing — "Co-op" folds to
     /// <c>co_op</c>, which is not this vocabulary's key — and it must be dropped

@@ -155,6 +155,13 @@
         <Style Selector="Button.bucket.selected /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
         </Style>
+        <!-- A bucket in force while a LIST is open. Same fill, because it is
+             cutting the grid; no Volt edge, because the Volt edge means "this is
+             where you are" and where you are is the list. See
+             LibraryViewModel.MarkRailSelection. -->
+        <Style Selector="Button.bucket.rule /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
+        </Style>
 
         <!-- ══ Rail list row ═══════════════════════════════════════════════
              Same fill, hover and 2px Volt selection edge as a bucket, because a
@@ -531,11 +538,24 @@
             </Grid>
         </Border>
 
-    <!-- 220 rail · the filter panel when it is open · everything else. The
-         panel is a COLUMN, not an overlay: it shares the rail's Surface and is
-         separated from it by a Line rule, so the two read as one filtering
-         surface with an internal divider — which is what they are. -->
-    <Grid Grid.Row="1" ColumnDefinitions="220,Auto,*">
+    <!-- 220 rail · the library · the filter panel when it is open. The panel is
+         a COLUMN, not an overlay, and it is on the RIGHT: the Filters toggle
+         and Clear filters both live in the command bar's right cluster, and a
+         panel on the far left put every control a full window away from the
+         thing it operates.
+
+         What that costs is the adjacency the panel used to have with the rail —
+         they were one Surface with an internal rule, and the claim "the rail
+         owns the bucket axis, the panel owns every other one" was made by them
+         touching. That claim now gets made where it was always strongest: the
+         cut bar, where the bucket is the first chip and drops like any other
+         rule. See §11.1.
+
+         The element order below is reading order — rail, library, panel — so
+         §8's Tab walk goes left to right across the window and never doubles
+         back. The panel's Grid.Column says where it sits; its position in this
+         file says when it is reached. -->
+    <Grid Grid.Row="1" ColumnDefinitions="220,*,Auto">
 
         <!-- ══ RAIL (220px) ════════════════════════════════════════════════ -->
         <Border Grid.Column="0"
@@ -604,6 +624,7 @@
                             <DataTemplate DataType="vm:BucketViewModel">
                                 <Button Classes="bucket"
                                         Classes.selected="{Binding IsSelected}"
+                                        Classes.rule="{Binding IsRule}"
                                         Opacity="{Binding RowOpacity}"
                                         Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).SelectBucketCommand}"
                                         CommandParameter="{Binding}">
@@ -618,6 +639,12 @@
                                         <Border Grid.Column="0"
                                                 Background="{StaticResource Volt}"
                                                 IsVisible="{Binding IsSelected}"/>
+                                        <!-- The same edge in chrome grey: this
+                                             bucket is a rule the open list
+                                             carries, not the row you are on. -->
+                                        <Border Grid.Column="0"
+                                                Background="{StaticResource TextDim}"
+                                                IsVisible="{Binding IsRule}"/>
                                         <!-- Flare pip: unread-carrying bucket ONLY. -->
                                         <Border Grid.Column="2"
                                                 Width="7" Height="7" CornerRadius="4"
@@ -790,17 +817,12 @@
             </ScrollViewer>
         </Border>
 
-        <!-- ══ FILTER PANEL ════════════════════════════════════════════════ -->
-        <views:FilterPanelView Grid.Column="1"
-                               DataContext="{Binding Library.Filters}"
-                               IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsFilterPanelVisible}"/>
-
         <!-- ══ MAIN ════════════════════════════════════════════════════════
              Two screens share the pane: the library, and the merge confirm
              queue the rail's REVIEW row opens. The command bar (search,
              density) belongs to the library, so the queue replaces the whole
              pane rather than sitting under controls that do not apply to it. -->
-        <Panel Grid.Column="2">
+        <Panel Grid.Column="1">
 
         <Grid RowDefinitions="48,Auto,*" IsVisible="{Binding IsLibraryVisible}">
 
@@ -812,7 +834,7 @@
                      and inside the controls, star for the SEARCH BOX and Auto
                      for everything else. A Grid satisfies its Auto columns
                      before its star ones, so the box is the only thing that
-                     gives way when the filter panel takes 264px out of the row.
+                     gives way when the filter panel takes 276px out of the row.
                      It used to be a fixed 360, which meant the panel's own
                      toggle was the control pushed off the right edge — the one
                      button that must never be unreachable, because it is the way
@@ -1228,6 +1250,15 @@
                               IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsMergeQueueVisible}"/>
 
         </Panel>
+
+        <!-- ══ FILTER PANEL ════════════════════════════════════════════════
+             Last in the file and last in the Tab walk, because it is the
+             rightmost thing on screen. Its own edges are described in
+             FilterPanelView. -->
+        <views:FilterPanelView Grid.Column="2"
+                               Name="FilterPanel"
+                               DataContext="{Binding Library.Filters}"
+                               IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsFilterPanelVisible}"/>
 
         <!-- ── Game detail modal (§5.3's other half) ─────────────────────────
              Spans the rail as well as the pane: it is a modal, so nothing

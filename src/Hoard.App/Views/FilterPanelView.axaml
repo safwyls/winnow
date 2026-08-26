@@ -3,19 +3,40 @@
              xmlns:filters="using:Hoard.App.ViewModels.Filters"
              x:Class="Hoard.App.Views.FilterPanelView"
              x:DataType="filters:FilterPanelViewModel"
-             Width="264">
+             Width="276">
 
     <!--
-        The filter panel (design-system §4, §6).
+        The filter panel (design-system §4, §6, §11).
 
-        It is a COLUMN BESIDE THE RAIL, not a drawer over the grid and not a
-        menu you drill into. Three consequences, all deliberate:
+        It is the RIGHT-HAND COLUMN, not a drawer over the grid and not a menu
+        you drill into. It moved here from beside the rail because both of its
+        controls — the Filters toggle and Clear filters — live in the command
+        bar's right cluster, and a panel on the far left put every control a
+        full window away from the surface it operates.
 
-        · It shares the rail's Surface and is separated from it by a Line rule,
-          so the rail's buckets and these groups read as one filtering surface
-          with an internal divider — which is what they are. The rail carries
-          the bucket axis; this carries every other one; neither repeats the
-          other, and they meet in the cut bar above the grid.
+        · ITS LEFT EDGE IS THE WINDOW'S OTHER CHROME BOUNDARY. Beside the rail
+          this edge was an internal divider inside one continuous filtering
+          surface. Here it is the seam between the art and the chrome — the
+          same seam the rail's right edge is, mirrored — so it takes the same
+          treatment: 1px Line, Surface behind it, nothing softer. The window
+          now reads as one lit field of covers with a chrome column either
+          side, and the panel is a PEER of the rail rather than a second column
+          of it. What that costs is the adjacency that used to make the claim
+          "the rail owns the bucket axis, this owns every other one"; that
+          claim is now made by the cut bar, where the bucket is the first chip
+          and drops like any other rule (§11.1).
+
+        · ITS RIGHT EDGE IS THE WINDOW'S, so §9.1 applies to it and did not
+          before. The scrollbar here is no longer an interior one: flush to
+          this edge it would sit inside the 8px band Windows hit-tests as
+          HTRIGHT before the client area sees the pointer, which is precisely
+          the "visible and unreachable" scroll position §9.1 exists to prevent.
+          So it drops ScrollViewer.inner and takes the global
+          ScrollBarEdgeInset like every other scrollbar at the window edge, and
+          the content's right margin is widened to clear the swelled track.
+          The column went 264 → 276 to pay for exactly that: the option rows
+          keep the 234px they were drawn at, rather than losing eleven of them
+          to a gutter that did not exist on the left.
 
         · It never overlaps the art. The grid narrows instead, which costs a
           column of tiles and buys a panel you can leave open while you scan —
@@ -203,15 +224,20 @@
 
     <Border Background="{StaticResource Surface}"
             BorderBrush="{StaticResource Line}"
-            BorderThickness="0,0,1,0">
-        <Grid RowDefinitions="Auto,*">
+            BorderThickness="1,0,0,0">
+        <Grid RowDefinitions="48,*">
 
             <!-- ── Header ────────────────────────────────────────────────────
                  The rail states a total on a row you can click; this states how
                  many rules are in force on a control that takes them all off
-                 again. Both are counts of the same library from opposite ends. -->
+                 again. Both are counts of the same library from opposite ends.
+
+                 48px, which is the command bar's height: the panel sits beside
+                 that bar now, so its rule continues the bar's own rule straight
+                 across the window instead of stopping 6px short of it. On the
+                 left there was nothing to line up with. -->
             <Border Grid.Row="0"
-                    Padding="16,18,14,12"
+                    Padding="16,0,14,0"
                     BorderBrush="{StaticResource Line}"
                     BorderThickness="0,0,0,1">
                 <!-- A section label and nothing else, like the rail's REVIEW and
@@ -230,11 +256,15 @@
                            VerticalAlignment="Center"/>
             </Border>
 
+            <!-- No ScrollViewer.inner: this panel's right edge IS the window's
+                 now, so its scrollbar takes the §9.1 inset like every other one
+                 at the edge. The content clears the track at 24 (12 for the
+                 swelled bar, 10 for the inset, rounded up) rather than 14. -->
             <ScrollViewer Grid.Row="1"
-                          Classes="inner"
+                          Name="PanelScroll"
                           HorizontalScrollBarVisibility="Disabled"
                           VerticalScrollBarVisibility="Auto">
-                <StackPanel Margin="16,14,14,24" Spacing="20">
+                <StackPanel Margin="16,14,24,24" Spacing="20">
 
                     <!-- ── Facet groups ────────────────────────────────────── -->
                     <ItemsControl ItemsSource="{Binding VisibleGroups}">

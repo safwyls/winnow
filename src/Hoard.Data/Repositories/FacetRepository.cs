@@ -83,7 +83,7 @@ public sealed class FacetRepository : IFacetRepository
             ORDER BY ReleaseId, Rank IS NULL, Rank, FacetId;
             """, transaction: lease.Transaction, cancellationToken: ct))).AsList();
 
-        var byRelease = new Dictionary<long, (List<long> Ids, List<string> Modes)>();
+        var byRelease = new Dictionary<long, (List<long> Ids, List<string> Modes, HashSet<long> Seen)>();
         var gameModeSlugs = facets
             .Where(f => f.Kind == FacetKinds.GameMode)
             .ToDictionary(f => f.Id, f => f.Slug);
@@ -92,8 +92,31 @@ public sealed class FacetRepository : IFacetRepository
         {
             if (!byRelease.TryGetValue(row.ReleaseId, out var entry))
             {
-                entry = ([], []);
+                entry = ([], [], []);
                 byRelease[row.ReleaseId] = entry;
+            }
+
+            // ONE entry per facet id, whatever the two layers each said about
+            // rank. The SQL UNION above dedupes whole ROWS, so it only collapses
+            // a cross-layer facet when both branches agree on Rank — which they
+            // do for the one kind written at both layers today (game modes,
+            // NULL on both sides), and which is why this never fired.
+            //
+            // It stops being true the moment a RANKED kind is written at the
+            // work layer: (release, facet, 1) and (release, facet, NULL) are
+            // distinct rows, the UNION keeps both, and CountsFor increments
+            // twice for one release — a filter checkbox reading "Roguelike 41"
+            // beside 40 tiles. That is not hypothetical; the tag spike's own
+            // recommended fallback is to write IGDB keywords when GetItems
+            // yields nothing, and keywords are facts about the WORK.
+            //
+            // Deduping here rather than in the SQL keeps the rank that the
+            // ORDER BY already chose: rank-ascending-NULLs-last means the first
+            // sighting of a facet is its best-placed one, so the Steam ordering
+            // survives and the work layer's rankless copy is the one dropped.
+            if (!entry.Seen.Add(row.FacetId))
+            {
+                continue;
             }
 
             entry.Ids.Add(row.FacetId);

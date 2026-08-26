@@ -372,6 +372,12 @@ scrollbar at the window edge carries it as a margin; interior ones — the rail'
 modal's — opt out with `ScrollViewer.inner`, because their edge is a divider of ours rather
 than the window's.
 
+**The filter panel changed sides of this rule when it moved right (§11.1).** Beside the rail it
+was interior and opted out; against the window's right edge it is not, and its resting thumb
+would have sat entirely inside the band. It now takes the inset like any other edge scrollbar,
+and its content margin widened to clear the swelled track. The rule is about which edge a
+control is on, never about which control it is.
+
 Two alternatives were weighed and rejected. **Widening the thumb** changes nothing: the border
 wins above Avalonia's hit testing entirely, so a wider control is a wider unreachable control.
 **Hooking `WM_NCHITTEST` to answer `HTCLIENT` along the scrollbar's height** would buy the
@@ -560,17 +566,51 @@ designing for what this product actually knows.
 filter that leads nowhere says so before it is clicked. And one surface you scan
 rather than a menu you drill into.
 
-### 11.1 The panel is the rail's second column
+### 11.1 The panel is the right-hand column
 
-`Filters` opens a **264px column between the rail and the grid**, on the rail's
-own `Surface` with a `Line` rule between them. It is not a drawer over the art
-and not a popover.
+`Filters` opens a **276px column to the right of the grid**, on the rail's own
+`Surface`. It is not a drawer over the art and not a popover.
 
-**The rail is not duplicated, it is part of the filter.** The rail already owns
-the bucket axis; the panel owns every other one; neither offers the other's. Two
-controls writing one axis is how a panel starts disagreeing with the screen
-behind it. The two meet in the cut bar (§11.3), where the bucket is the first
-chip and can be dropped like any other rule.
+**It is on the right because its controls are.** `Filters` and `Clear filters`
+both sit in the command bar's right cluster, and while the panel was on the far
+left every control was a full window away from the surface it operated. On the
+right the toggle sits directly above the column it opens, `Clear filters` and
+the `926 → 136` line land against its edge, and the eye that follows a cut ends
+up beside the counts that made it.
+
+**Its left edge is the window's other chrome boundary.** Beside the rail this
+edge was an internal divider inside one continuous filtering surface. Here it is
+the seam between the art and the chrome — the same seam the rail's right edge
+is, mirrored — so it takes the same treatment: 1px `Line`, `Surface` behind it,
+nothing softer. The window reads as one lit field of covers with a chrome column
+on each side, and **the panel is a peer of the rail rather than a second column
+of it.**
+
+**Its header is 48px, the command bar's height**, so the rule under `FILTERS`
+continues the rule under the command bar straight across the window. On the left
+there was nothing to line up with; here there is, and not taking it would leave
+a 6px step in a line that crosses the whole screen.
+
+**The rail is still not duplicated, and it is still part of the filter.** The
+rail owns the bucket axis; the panel owns every other one; neither offers the
+other's. Two controls writing one axis is how a panel starts disagreeing with the
+screen behind it. What changed is *where that claim is made*: adjacency used to
+make it, and the two no longer touch, so **the cut bar (§11.3) now carries it
+alone** — the bucket is a chip there beside the panel's own, and drops like any
+other rule. That was always the stronger statement of it; it is now the only one.
+
+**Its right edge is the window's, so §9.1 applies to it and did not before.** Its
+scrollbar is no longer an interior one: flush to that edge it would sit inside
+the 8px band Windows hit-tests as `HTRIGHT` before the client area sees the
+pointer — exactly the visible-and-unreachable scroll position §9.1 exists to
+prevent. It takes `ScrollBarEdgeInset` like every other scrollbar at the window
+edge, and the column went 264 → 276 to pay for the gutter that buys, so the
+option rows keep the 234px they were drawn at.
+
+**Tab order follows the window in reading order** — rail, command bar, grid,
+panel — which means the panel is last in the file as well as last on screen. A
+`Grid.Column` says where a control sits; its position in the markup says when it
+is reached, and §8's keyboard walk reads the second one.
 
 The grid narrows rather than being covered. That costs a column of tiles and buys
 a panel you can leave open while you scan — which is the only way the counts pay
@@ -613,7 +653,8 @@ One strip under the command bar, present only when the grid has stopped showing
 the whole library:
 
 ```
-[ Bounced off × ] [ Co-op × ]        926 → 136   Save as live list   Clear filters
+[ LIVE LIST Co-op, controller-ready × ] [ Shooter × ] [ Horror × ]
+                                     926 → 2   Update list   Revert   Clear filters
 ```
 
 **`926 → 136` is the signature of this screen.** It is the only arrow in the
@@ -630,6 +671,29 @@ the control that set it.
 Volt is for. There is deliberately **no "has updates" group** anywhere in the
 panel: that set is exactly the rail's `Patched since` bucket, and a second door
 onto it would need a second marker — and the only marker for unread is Flare.
+
+**Every chip says who set it, and the grammar is the palette's own: `Volt` means
+you chose this.** A rule an open live list contributed was not chosen by the user
+at all (§12.2), so it drops the Volt edge and takes the neutral `Line` one every
+other piece of chrome wears, with its label at `TextDim` — 5.04:1 on
+`SurfaceRaised`, which clears §8's floor. There are therefore three families and
+only two edges:
+
+| On the bar | Edge | Means |
+|---|---|---|
+| The open list, leading | `Line`, kind label shown (`LIVE LIST`) | The place you are in. Its × leaves |
+| A rule the list brought | `Line`, `TextDim` label | The list set this, not you |
+| A rule you set | `Volt`, `Text` label | You set this — inside a list it is an unsaved edit |
+
+The distinction is never carried by the edge alone: each chip's tooltip says it
+in words (§8), which is the same rule the dormancy ramp lives under.
+
+**The open list leads the bar, ahead of the bucket.** It is not a rule but the
+place the rules belong to — and "which live list am I in" is the question the
+strip previously could not answer, because a live list's name appeared nowhere
+except a rail row that could be scrolled past. The kind label is on the chip
+rather than only in a tooltip for the same reason §12.1 puts it in a heading
+rather than a dot: a word survives being read badly.
 
 The bar carries at most four actions at once, and membership actions and list
 metadata are mutually exclusive: with rows selected you are editing what is *in*
@@ -723,6 +787,53 @@ Editing an open live list turns the cut bar into `Update list` / `Revert` — bo
 answers by name, because neither is obviously right and neither should happen by
 accident.
 
+#### A list is a place, and leaving takes what the place contributed
+
+Pouring the rules in is only half a bargain, and the other half was missing.
+Once poured in they were indistinguishable from rules the user had set by hand,
+so clicking `All games` cleared the bucket and left the live list's genre, mode
+and tag terms silently applied. The user believed they were looking at their whole
+library and were looking at a live list with extra filters on top — §11.3's most
+expensive confusion, arriving through the one door the cut bar was not watching.
+
+**So a list is a context, not a switch.** You are in exactly one at a time, and
+selecting `All games`, a bucket, or another list *leaves* the one you were in and
+takes its contribution with it. A live list contributes the rail's bucket, the
+panel's groups and the search box, and all three go. A manual list contributes
+only membership, so leaving it takes only that — which is why §12.2's composing
+behaviour is untouched: rules the user set inside a manual list are the user's,
+and they stay.
+
+Three consequences worth stating, because each is a thing that could reasonably
+have gone the other way:
+
+- **The panel stays open on the way out.** Closing it would hide the very thing
+  that proves the rules left, and the user did not open it — entering the list
+  did.
+- **Clicking the bucket you are on does not clear it while a live list is open.**
+  That escape hatch answers "you clicked this twice", and inside a live list the
+  lit bucket was clicked once, by the list. There, clicking it means "give me
+  that bucket and nothing else."
+- **`Update list` still works exactly as before.** The rules stay in the controls
+  and stay editable; they simply do not outlive the context. Provenance is what
+  makes that legible rather than magical — the cut bar's three chip families
+  (§11.3) say, rule by rule, which of them the list brought and which the user
+  added on top.
+
+**The rail carries the same distinction.** The `Volt` edge means *this is where
+you are*, and exactly one row ever has it. With a list open that row is the list,
+so a bucket in force takes the selection fill with a `TextDim` edge instead of a
+Volt one: a rule that is cutting the grid, not a second claim to be where you
+are. Previously both drew Volt at once, and clicking `All games` lit a third —
+three rows asserting the same thing is how someone ends up certain they are
+looking at everything.
+
+One place this model does *not* reach: the panel's own ticks. A checked box is
+`Volt` whoever ticked it, because a tick means "in force" and a second tick
+treatment would be a third thing to learn on the surface that can least afford
+one. The bar carries provenance; the panel carries state. If that ever proves too
+far apart, the fix is a marker on the option row, not a second colour of tick.
+
 A manual list opens in **`List order`**, a sort row that exists only while one is
 open, and leaving the list puts the previous order back. A hand-built list whose
 stored positions are invisible has no reason to store them, and "move up" under
@@ -759,9 +870,17 @@ strip.
 
 ### 12.4 `Escape` unwinds the cut, one layer per press
 
-Outermost first: the panel closes, then the filters in it clear, then the open
-list closes, then the bucket clears. One key, and no press is ever a no-op while
-anything is still cutting the grid.
+Outermost first: the panel closes; then an unsaved edit to an open live list
+reverts; then the filters clear — *unless* a live list is open, in which case
+they belong to the list and this layer is skipped; then the open list closes,
+taking its own rules with it (§12.2); then the bucket clears. One key, and no
+press is ever a no-op while anything is still cutting the grid.
+
+The two live-list layers are why the ladder is not simply "clear everything".
+Clearing the panel inside a live list is not a step back out — it is a fourth,
+emptier version of the list, still labelled as the list. Reverting is a step out
+of an edit, and leaving is a step out of the place; both are named acts the cut
+bar already offers, and `Escape` reaches them in the order they were entered.
 
 **Every letter key yields to a focused text field.** The keyboard shortcuts used
 to test `SearchBox` alone, which was correct while it was the only text box on
@@ -781,6 +900,6 @@ column that animates costs the grid a reflow per frame, and it buys nothing.
 The command bar's search box became a **star-sized column among Auto ones**, and
 the window's default width went from 1180 to 1280. A Grid satisfies its Auto
 columns before its star one, so the search box is now the only thing that gives
-way when the panel takes 264px out of the row. At a fixed 360 it was the Filters
+way when the panel takes 276px out of the row. At a fixed 360 it was the Filters
 button that got pushed off the right edge — the one control that must never be
 unreachable, because it is the way back.
