@@ -78,7 +78,8 @@ Numbering continues from §8. M0–M2 and M4 are shipped.
 | M4.5 | Epic OAuth ownership source + local fallback | Entitlements resolve when authed; unauthed degrades silently to local files with no loss of install state | **in flight** |
 | M7 | Recommendation core (`Hoard.Recommend`) | Standalone scoring module, explainable output, sensible ranking on a cold library; not yet wired to UI | **in flight** |
 | M3a | Session detection (§5.2 mechanism A) | Process watching records sessions with true start/end; poll for discovery only, events for exit | **shipped** |
-| M4.6 | Store sign-in UI (Epic + GOG) | Sign-in buttons in the app run an embedded-browser OAuth flow that captures the code automatically; console flow survives as a documented fallback | next |
+| M4.6 | Store sign-in UI (Epic) | A sign-in button in the app runs an embedded-browser OAuth flow that captures the code automatically; console flow survives as a documented fallback | next |
+| — | GOG sign-in | **Held, on evidence.** Nothing to gain today; see below | not scheduled |
 | M3b | Launch + journal prompt | Launching from Hoard records a session; journal prompt opt-in (§9 pitfall 7); `hoard-wrap` offered per-game, never globally | next |
 | M8 | The Feed | Recommender surfaced as the app's primary view; every card states its reason in one sentence | after M3+M7 |
 | M5 | GDPR export importer | Historical playtime backfills; feed measurably improves on a cold library | after M8 |
@@ -95,9 +96,22 @@ terminal that swallowed input — burns the code and needs a fresh one. Each of 
 real debugging round. An embedded browser reads the code the instant the provider issues it,
 which removes the window entirely rather than making it easier to hit.
 
-GOG rides along because it is the same machinery and the gain is larger: GOG ingest reads
-local files only and found **14 games**, so an authenticated library is not a refinement
-there, it is most of the library.
+**GOG is held, and the reason corrects an error made when this section was first written.**
+"GOG ingest found only 14 games" was recorded here as a shortfall. It is not one. Galaxy's
+database holds **45 owned GOG releases, of which 31 are DLC** — verified directly against
+`LibraryReleases` joined to `ReleaseProperties`, the same join `GalaxyLibraryReader` uses.
+`GogLibrarySource` drops DLC by design, so 45 − 31 = the 14 base games it reports. The local
+reader is reading the entire library correctly, and the missing-games premise was invented
+rather than measured.
+
+The authenticated GOG endpoint then carries **no playtime, no last-played, no title and no
+DLC flag** — all four of which the local reader already has. So a GOG sign-in button would
+add a login, a stored credential and an embedded browser in exchange for nothing.
+
+One thing could reopen it: `GET gameplay.gog.com/.../sessions` exists and accepts GET
+(PUT/DELETE answer 405), but no known client reads it and its payload is unverified. If it
+carries session history, that is longitudinal data worth having and this gets rescheduled.
+Until someone looks, it stays held.
 
 ### Why that order
 
