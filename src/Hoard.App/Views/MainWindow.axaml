@@ -830,21 +830,14 @@
             <Border Grid.Row="0"
                     BorderBrush="{StaticResource Line}"
                     BorderThickness="0,0,0,1">
-                <!-- Star column for the controls, Auto for the preferences —
-                     and inside the controls, star for the SEARCH BOX and Auto
-                     for everything else. A Grid satisfies its Auto columns
-                     before its star ones, so the box is the only thing that
-                     gives way when the filter panel takes 276px out of the row.
-                     It used to be a fixed 360, which meant the panel's own
-                     toggle was the control pushed off the right edge — the one
-                     button that must never be unreachable, because it is the way
-                     back. -->
-                <Grid ColumnDefinitions="*,Auto"
-                      Margin="20,0" VerticalAlignment="Center">
-                  <Grid Grid.Column="0"
-                        ColumnDefinitions="*,Auto,Auto,Auto"
-                        Margin="0,0,12,0">
-
+                  <!-- Search takes the slack; everything else is Auto. A Grid
+                       satisfies its Auto columns before its star one, so the box is
+                       the only thing that gives way when the filter panel takes 276px
+                       out of the row — and the Filters toggle, the one control that
+                       must never be unreachable because it is the way back, sits in
+                       the Auto group on the right beside the sort it pairs with. -->
+                  <Grid ColumnDefinitions="*,Auto" Margin="20,0" VerticalAlignment="Center">
+                    <Grid Grid.Column="0" ColumnDefinitions="*,Auto" Margin="0,0,12,0">
                     <TextBox Name="SearchBox"
                              Grid.Column="0"
                              Classes="search"
@@ -855,7 +848,14 @@
                              Watermark="{Binding Library.SearchPlaceholder}"/>
 
                     <!-- Grid / list segmented toggle. -->
-                    <Border Grid.Column="1" Margin="10,0,0,0"
+
+                      <!-- search · layout · density · display. One stack rather than
+                           a column each: none of them competes for width, and the
+                           transient selection controls can join the end without
+                           moving the fixed ones. -->
+                      <StackPanel Grid.Column="1" Orientation="Horizontal"
+                                  Spacing="10" Margin="10,0,0,0" VerticalAlignment="Center">
+                    <Border
                             BorderBrush="{StaticResource Line}" BorderThickness="1"
                             CornerRadius="{StaticResource RadiusControl}"
                             Background="{StaticResource Surface}"
@@ -886,110 +886,6 @@
                         </StackPanel>
                     </Border>
 
-                    <!-- Sort. The button face is the order in force; the menu
-                         is the same state the list-view column headers write. -->
-                    <Button Name="SortButton" Grid.Column="2" Margin="10,0,0,0"
-                            Classes="ctl" ToolTip.Tip="Sort order">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <TextBlock Classes="body" FontSize="12"
-                                       Foreground="{StaticResource TextDim}"
-                                       Text="{Binding Library.SortLabel}"/>
-                            <Path Data="M 0,0 L 8,0 L 4,5 Z"
-                                  Fill="{StaticResource TextDim}"
-                                  VerticalAlignment="Center"/>
-                        </StackPanel>
-                        <Button.Flyout>
-                            <Flyout Placement="BottomEdgeAlignedLeft"
-                                    FlyoutPresenterClasses="sortmenu">
-                                <ItemsControl ItemsSource="{Binding Library.SortOptions}"
-                                              MinWidth="176">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate DataType="vm:SortOptionViewModel">
-                                            <Button Classes="sortitem" Click="OnSortItemClick">
-                                                <Grid ColumnDefinitions="14,*">
-                                                    <!-- Volt marks the active order —
-                                                         selection, which is exactly
-                                                         what Volt is for (§2). -->
-                                                    <Border Grid.Column="0"
-                                                            Width="6" Height="6" CornerRadius="3"
-                                                            HorizontalAlignment="Left"
-                                                            VerticalAlignment="Center"
-                                                            Background="{StaticResource Volt}"
-                                                            IsVisible="{Binding IsSelected}"/>
-                                                    <TextBlock Grid.Column="1" Classes="body"
-                                                               Text="{Binding Label}"
-                                                               VerticalAlignment="Center"/>
-                                                </Grid>
-                                            </Button>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </Flyout>
-                        </Button.Flyout>
-                    </Button>
-
-                    <!-- ── Filters ──────────────────────────────────────────
-                         The panel opens BESIDE THE RAIL rather than over the
-                         grid: the counts next to each option are only worth
-                         having if you can watch them move as you tick things,
-                         which means the panel and the result have to be on
-                         screen together. The badge is how many rules are in
-                         force, so a closed panel is never a silent one. -->
-                    <Button Name="FiltersButton" Grid.Column="3" Margin="10,0,0,0"
-                            Classes="ctl"
-                            Classes.on="{Binding Library.Filters.IsOpen}"
-                            Command="{Binding Library.Filters.ToggleCommand}"
-                            ToolTip.Tip="Filter by genre, tag, store and more">
-                        <StackPanel Orientation="Horizontal" Spacing="7">
-                            <!-- A funnel, drawn rather than lettered: it is the
-                                 one control here that has a universally read
-                                 glyph, and the row is already three words wide. -->
-                            <Path Data="M 0,0 L 11,0 L 6.7,5 L 6.7,10 L 4.3,8.4 L 4.3,5 Z"
-                                  Fill="{StaticResource TextDim}"
-                                  VerticalAlignment="Center"/>
-                            <TextBlock Classes="body" FontSize="12"
-                                       Foreground="{StaticResource TextDim}"
-                                       Text="Filters"/>
-                            <Border Padding="5,0"
-                                    MinWidth="17"
-                                    Height="16"
-                                    CornerRadius="8"
-                                    Background="{StaticResource Volt}"
-                                    VerticalAlignment="Center"
-                                    IsVisible="{Binding Library.Filters.HasSelection}">
-                                <TextBlock Classes="data-s"
-                                           Foreground="{StaticResource VoltInk}"
-                                           TextAlignment="Center"
-                                           VerticalAlignment="Center"
-                                           Text="{Binding Library.Filters.ActiveCountText}"/>
-                            </Border>
-                        </StackPanel>
-                    </Button>
-
-                  </Grid>
-
-                  <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
-                    <!-- Multi-select readout: §6 asks the list for multi-select,
-                         so the count says what is picked. -->
-                    <TextBlock Classes="data" FontSize="11"
-                               Foreground="{StaticResource Volt}"
-                               VerticalAlignment="Center"
-                               IsVisible="{Binding Library.HasMultiSelection}"
-                               Text="{Binding Library.SelectedCountText}"/>
-
-                    <!-- §6's "bulk list assignment", and the grid's route in
-                         too: one control, reading whichever selection is in
-                         force — one tile in the grid, any number of rows in the
-                         list. It names the number once there is more than one,
-                         so the button and the thing it will do never disagree. -->
-                    <Button Classes="ctl"
-                            IsVisible="{Binding Library.HasSelection}"
-                            Command="{Binding Library.BeginAddToListCommand}"
-                            ToolTip.Tip="Put the selected titles in a list">
-                        <TextBlock Classes="body" FontSize="12"
-                                   Foreground="{StaticResource Volt}"
-                                   Text="{Binding Library.AddToListLabel}"/>
-                    </Button>
                     <TextBlock Classes="label" FontSize="10" Text="DENSITY"
                                VerticalAlignment="Center"/>
                     <Slider Name="DensitySlider"
@@ -1059,8 +955,117 @@
                             </Flyout>
                         </Button.Flyout>
                     </Button>
-                  </StackPanel>
-                </Grid>
+
+                    <!-- Multi-select readout: §6 asks the list for multi-select,
+                         so the count says what is picked. -->
+                    <TextBlock Classes="data" FontSize="11"
+                               Foreground="{StaticResource Volt}"
+                               VerticalAlignment="Center"
+                               IsVisible="{Binding Library.HasMultiSelection}"
+                               Text="{Binding Library.SelectedCountText}"/>
+
+                    <!-- §6's "bulk list assignment", and the grid's route in
+                         too: one control, reading whichever selection is in
+                         force — one tile in the grid, any number of rows in the
+                         list. It names the number once there is more than one,
+                         so the button and the thing it will do never disagree. -->
+                    <Button Classes="ctl"
+                            IsVisible="{Binding Library.HasSelection}"
+                            Command="{Binding Library.BeginAddToListCommand}"
+                            ToolTip.Tip="Put the selected titles in a list">
+                        <TextBlock Classes="body" FontSize="12"
+                                   Foreground="{StaticResource Volt}"
+                                   Text="{Binding Library.AddToListLabel}"/>
+                    </Button>
+                      </StackPanel>
+                    </Grid>
+
+                    <!-- sort · filters. Filters is last because it is the rightmost
+                         thing on the bar and the panel it opens is now the rightmost
+                         thing in the window. -->
+                    <StackPanel Grid.Column="1" Orientation="Horizontal"
+                                Spacing="10" VerticalAlignment="Center">
+                    <!-- Sort. The button face is the order in force; the menu
+                         is the same state the list-view column headers write. -->
+                    <Button Name="SortButton"
+                            Classes="ctl" ToolTip.Tip="Sort order">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Classes="body" FontSize="12"
+                                       Foreground="{StaticResource TextDim}"
+                                       Text="{Binding Library.SortLabel}"/>
+                            <Path Data="M 0,0 L 8,0 L 4,5 Z"
+                                  Fill="{StaticResource TextDim}"
+                                  VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <Button.Flyout>
+                            <Flyout Placement="BottomEdgeAlignedLeft"
+                                    FlyoutPresenterClasses="sortmenu">
+                                <ItemsControl ItemsSource="{Binding Library.SortOptions}"
+                                              MinWidth="176">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="vm:SortOptionViewModel">
+                                            <Button Classes="sortitem" Click="OnSortItemClick">
+                                                <Grid ColumnDefinitions="14,*">
+                                                    <!-- Volt marks the active order —
+                                                         selection, which is exactly
+                                                         what Volt is for (§2). -->
+                                                    <Border Grid.Column="0"
+                                                            Width="6" Height="6" CornerRadius="3"
+                                                            HorizontalAlignment="Left"
+                                                            VerticalAlignment="Center"
+                                                            Background="{StaticResource Volt}"
+                                                            IsVisible="{Binding IsSelected}"/>
+                                                    <TextBlock Grid.Column="1" Classes="body"
+                                                               Text="{Binding Label}"
+                                                               VerticalAlignment="Center"/>
+                                                </Grid>
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </Flyout>
+                        </Button.Flyout>
+                    </Button>
+
+                    <!-- ── Filters ──────────────────────────────────────────
+                         The panel opens BESIDE THE RAIL rather than over the
+                         grid: the counts next to each option are only worth
+                         having if you can watch them move as you tick things,
+                         which means the panel and the result have to be on
+                         screen together. The badge is how many rules are in
+                         force, so a closed panel is never a silent one. -->
+                    <Button Name="FiltersButton"
+                            Classes="ctl"
+                            Classes.on="{Binding Library.Filters.IsOpen}"
+                            Command="{Binding Library.Filters.ToggleCommand}"
+                            ToolTip.Tip="Filter by genre, tag, store and more">
+                        <StackPanel Orientation="Horizontal" Spacing="7">
+                            <!-- A funnel, drawn rather than lettered: it is the
+                                 one control here that has a universally read
+                                 glyph, and the row is already three words wide. -->
+                            <Path Data="M 0,0 L 11,0 L 6.7,5 L 6.7,10 L 4.3,8.4 L 4.3,5 Z"
+                                  Fill="{StaticResource TextDim}"
+                                  VerticalAlignment="Center"/>
+                            <TextBlock Classes="body" FontSize="12"
+                                       Foreground="{StaticResource TextDim}"
+                                       Text="Filters"/>
+                            <Border Padding="5,0"
+                                    MinWidth="17"
+                                    Height="16"
+                                    CornerRadius="8"
+                                    Background="{StaticResource Volt}"
+                                    VerticalAlignment="Center"
+                                    IsVisible="{Binding Library.Filters.HasSelection}">
+                                <TextBlock Classes="data-s"
+                                           Foreground="{StaticResource VoltInk}"
+                                           TextAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           Text="{Binding Library.Filters.ActiveCountText}"/>
+                            </Border>
+                        </StackPanel>
+                    </Button>
+                    </StackPanel>
+                  </Grid>
             </Border>
 
             <!-- ── Cut bar / prompt ─────────────────────────────────────
