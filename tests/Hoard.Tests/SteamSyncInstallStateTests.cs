@@ -107,6 +107,8 @@ public sealed class SteamSyncInstallStateTests : IDisposable
 
         _sync = new SteamSyncService(
             new SteamLibrarySource(steamRoot: _steamRoot),
+            SilentStores.Epic(),
+            SilentStores.Gog(),
             new ExternalIdResolver(
                 new WorkRepository(_db.Factory),
                 _releases,

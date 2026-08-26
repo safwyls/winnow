@@ -1,6 +1,8 @@
 using System.Diagnostics;
 using Hoard.Core.Ingest;
 using Hoard.Enrich.SteamWeb;
+using Hoard.Ingest.Epic;
+using Hoard.Ingest.Gog;
 using Hoard.Ingest.Steam;
 using Hoard.Resolve;
 using Microsoft.Extensions.Logging;
@@ -33,17 +35,23 @@ public interface ISteamSync
 public sealed class SteamSyncService : ISteamSync
 {
     private readonly SteamLibrarySource _steam;
+    private readonly EpicLibrarySource _epic;
+    private readonly GogLibrarySource _gog;
     private readonly ExternalIdResolver _resolver;
     private readonly ISteamWebApiClient? _steamWeb;
     private readonly ILogger<SteamSyncService> _logger;
 
     public SteamSyncService(
         SteamLibrarySource steam,
+        EpicLibrarySource epic,
+        GogLibrarySource gog,
         ExternalIdResolver resolver,
         ILogger<SteamSyncService> logger,
         ISteamWebApiClient? steamWeb = null)
     {
         _steam = steam;
+        _epic = epic;
+        _gog = gog;
         _resolver = resolver;
         _logger = logger;
         _steamWeb = steamWeb;
@@ -84,7 +92,15 @@ public sealed class SteamSyncService : ISteamSync
         // (CandidateOwnershipMerge) before it compares anything against the
         // database. That belongs there, not here — this type only sequences the
         // two halves and must not start deciding what the data means (§5.1).
-        var candidates = local.Concat(owned).ToList();
+        // M4. The three stores occupy disjoint (Provider, ProviderId) key
+        // spaces, so CandidateOwnershipMerge never merges across them — a game
+        // owned on both Steam and Epic stays two ownerships of (eventually) one
+        // work, which is what §5.3's four layers are for. Both scans are
+        // filesystem-only and answer empty when that launcher is absent.
+        var epic = _epic.Scan();
+        var gog = _gog.Scan();
+
+        var candidates = local.Concat(owned).Concat(epic).Concat(gog).ToList();
 
         if (candidates.Count == 0)
         {
@@ -96,10 +112,11 @@ public sealed class SteamSyncService : ISteamSync
         stopwatch.Stop();
 
         _logger.LogInformation(
-            "Steam sync: {Candidates} candidates ({Local} local, {Owned} owned) in {Elapsed:n1}s — "
-            + "{Created} new, {Matched} matched, {PlayRecords} play records, {Snapshots} snapshots, "
-            + "{Promoted} names promoted.",
-            candidates.Count, local.Count, owned.Count, stopwatch.Elapsed.TotalSeconds,
+            "Library sync: {Candidates} candidates ({Local} steam local, {Owned} steam owned, "
+            + "{Epic} epic, {Gog} gog) in {Elapsed:n1}s — {Created} new, {Matched} matched, "
+            + "{PlayRecords} play records, {Snapshots} snapshots, {Promoted} names promoted.",
+            candidates.Count, local.Count, owned.Count, epic.Count, gog.Count,
+            stopwatch.Elapsed.TotalSeconds,
             result.CreatedReleases, result.MatchedExisting, result.PlayRecordsWritten,
             result.SnapshotsWritten, result.NamesPromoted);
 

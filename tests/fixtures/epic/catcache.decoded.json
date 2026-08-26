@@ -1,0 +1,467 @@
+[
+  {
+    "id": "7a70b499513441c792b541d53505e0b2",
+    "namespace": "41f47fd0d3e248bc938a5815d6d64daa",
+    "entitlementName": "7a70b499513441c792b541d53505e0b2",
+    "eulaIds": [
+      "egstore"
+    ],
+    "title": "Fez",
+    "description": "Fez",
+    "longDescription": "",
+    "technicalDetails": "",
+    "developer": "Polytron Corporation, Inc",
+    "lastModifiedDate": "2019-11-19T17:02:42.064Z",
+    "keyImages": [
+      {
+        "type": "DieselGameBox",
+        "url": "https://cdn1.epicgames.com/41f47fd0d3e248bc938a5815d6d64daa/item/EGS_POLYTRON_FEZ_N1_NEWSFEED_PRIMARY-2560x1440-cf0e2f3af51039940999d57737e8c13c.jpg",
+        "width": 2560,
+        "height": 1440,
+        "size": 349220,
+        "uploadedDate": "2019-08-14T13:27:19.695Z",
+        "md5": "cf0e2f3af51039940999d57737e8c13c"
+      }
+    ],
+    "categories": [
+      {
+        "name": "",
+        "path": "public"
+      },
+      {
+        "name": "",
+        "path": "games"
+      },
+      {
+        "name": "",
+        "path": "applications"
+      }
+    ],
+    "releaseInfo": [
+      {
+        "appId": "Bluebird",
+        "compatibleApps": [],
+        "platform": [
+          "Windows",
+          "Mac",
+          "Win32"
+        ],
+        "dateAdded": "2019-08-09T00:00:00.000Z"
+      }
+    ],
+    "customAttributes": {
+      "CanRunOffline": {
+        "type": "STRING",
+        "value": "true"
+      },
+      "PresenceId": {
+        "type": "STRING",
+        "value": "41f47fd0d3e248bc938a5815d6d64daa"
+      },
+      "CloudSaveFolder_MAC": {
+        "type": "STRING",
+        "value": "{UserLibrary}/Application Support/FEZ/"
+      },
+      "MonitorPresence": {
+        "type": "STRING",
+        "value": "true"
+      },
+      "CloudSaveFolder": {
+        "type": "STRING",
+        "value": "{appdata}/../roaming/FEZ/"
+      },
+      "UseAccessControl": {
+        "type": "STRING",
+        "value": "false"
+      },
+      "RequirementsJson": {
+        "type": "STRING",
+        "value": "{}"
+      },
+      "CanSkipKoreanIdVerification": {
+        "type": "STRING",
+        "value": "true"
+      },
+      "MaxSizeMB": {
+        "type": "STRING",
+        "value": "1000"
+      },
+      "FolderName": {
+        "type": "STRING",
+        "value": "Fez"
+      }
+    },
+    "dlcItemList": [],
+    "mainGameItem": {
+      "namespace": "",
+      "id": ""
+    }
+  },
+  {
+    "id": "0854f1cf60fd48d4a29178b211d2f133",
+    "namespace": "catnip",
+    "entitlementName": "0854f1cf60fd48d4a29178b211d2f133",
+    "eulaIds": [
+      "egstore"
+    ],
+    "title": "Borderlands 3 Bounty of Blood",
+    "description": "Borderlands 3 Bounty of Blood",
+    "longDescription": "",
+    "technicalDetails": "",
+    "developer": "2K Games, Inc.",
+    "lastModifiedDate": "2023-01-19T21:12:26.553Z",
+    "keyImages": [
+      {
+        "type": "DieselGameBox",
+        "url": "https://cdn1.epicgames.com/catnip/item/2KGMKT_BL3_BOUNTY_OF_BLOOD_EPIC_2560x1440-2560x1440-7e8718f8820f2ab9ee9f1f94258054e3.jpg",
+        "width": 2560,
+        "height": 1440,
+        "size": 1586269,
+        "uploadedDate": "2020-06-25T14:08:06.726Z",
+        "md5": "7e8718f8820f2ab9ee9f1f94258054e3"
+      }
+    ],
+    "categories": [
+      {
+        "name": "",
+        "path": "application"
+      },
+      {
+        "name": "",
+        "path": "games"
+      },
+      {
+        "name": "",
+        "path": "applications"
+      }
+    ],
+    "releaseInfo": [
+      {
+        "appId": "CatnipDLC3",
+        "compatibleApps": [],
+        "platform": [
+          "Windows"
+        ],
+        "dateAdded": "2019-12-06T00:00:00.000Z"
+      }
+    ],
+    "customAttributes": {
+      "OwnershipToken": {
+        "type": "STRING",
+        "value": "true"
+      },
+      "FolderName": {
+        "type": "STRING",
+        "value": "BountyOfBlood"
+      }
+    },
+    "dlcItemList": [],
+    "mainGameItem": {
+      "namespace": "catnip",
+      "id": "5cf86732e2744fec98a1c8a077d9f3a8"
+    }
+  },
+  {
+    "id": "cd4cceaa96da49bb81aeedfb110f49c5",
+    "namespace": "catnip",
+    "entitlementName": "cd4cceaa96da49bb81aeedfb110f49c5",
+    "eulaIds": [
+      "egstore"
+    ],
+    "title": "Gold Weapon Skins Pack Audience",
+    "description": "Gold Weapon Skins Pack Audience",
+    "longDescription": "",
+    "technicalDetails": "",
+    "developer": "2K Games, Inc.",
+    "lastModifiedDate": "2023-01-19T21:12:26.630Z",
+    "keyImages": [
+      {
+        "type": "ESRB",
+        "url": "https://cdn1.epicgames.com/catnip/item/ESRB_M_Borderlands3-842x485-275d74057f4825477e1f7f17f8cf0abc.jpg",
+        "width": 842,
+        "height": 485,
+        "size": 134137,
+        "uploadedDate": "2020-01-07T22:47:56.130Z",
+        "md5": "275d74057f4825477e1f7f17f8cf0abc"
+      }
+    ],
+    "categories": [
+      {
+        "name": "",
+        "path": "audience"
+      },
+      {
+        "name": "",
+        "path": "public"
+      }
+    ],
+    "releaseInfo": [],
+    "customAttributes": {},
+    "dlcItemList": [],
+    "mainGameItem": {
+      "namespace": "catnip",
+      "id": "5cf86732e2744fec98a1c8a077d9f3a8"
+    }
+  },
+  {
+    "id": "6dc445f656de4e029834b2d32b6a2f77",
+    "namespace": "ecebf45065bc4993abfe0e84c40ff18e",
+    "entitlementName": "6dc445f656de4e029834b2d32b6a2f77",
+    "eulaIds": [
+      "egstore"
+    ],
+    "title": "Watch Dogs",
+    "description": "Watch Dogs",
+    "longDescription": "",
+    "technicalDetails": "",
+    "developer": "Ubisoft Entertainment",
+    "lastModifiedDate": "2024-04-30T20:34:15.847Z",
+    "keyImages": [
+      {
+        "type": "DieselGameBox",
+        "url": "https://cdn1.epicgames.com/ecebf45065bc4993abfe0e84c40ff18e/item/WDOG_STD_Store_Landscape_2580x1450-2580x1450-3fd07dcc02e65aca288d794c177c7512.jpg",
+        "width": 2580,
+        "height": 1450,
+        "size": 485271,
+        "uploadedDate": "2020-03-18T22:18:36.583Z",
+        "md5": "3fd07dcc02e65aca288d794c177c7512"
+      }
+    ],
+    "categories": [
+      {
+        "name": "",
+        "path": "public"
+      },
+      {
+        "name": "",
+        "path": "games"
+      },
+      {
+        "name": "",
+        "path": "applications"
+      }
+    ],
+    "releaseInfo": [
+      {
+        "appId": "Jasper",
+        "compatibleApps": [],
+        "platform": [
+          "Windows"
+        ]
+      }
+    ],
+    "customAttributes": {
+      "CanRunOffline": {
+        "type": "STRING",
+        "value": "true"
+      },
+      "NeverUpdate": {
+        "type": "STRING",
+        "value": "true"
+      },
+      "RegistryPath": {
+        "type": "STRING",
+        "value": "SOFTWARE\\WOW6432Node\\Ubisoft\\Launcher\\Installs\\274"
+      },
+      "UseAccessControl": {
+        "type": "STRING",
+        "value": "true"
+      },
+      "RequirementsJson": {
+        "type": "STRING",
+        "value": "[]"
+      },
+      "CanSkipKoreanIdVerification": {
+        "type": "STRING",
+        "value": "true"
+      },
+      "partnerLinkId": {
+        "type": "STRING",
+        "value": "afdd0a52d9e745ff8f79258a3cca003a"
+      },
+      "partnerLinkType": {
+        "type": "STRING",
+        "value": "ubisoft"
+      },
+      "FolderName": {
+        "type": "STRING",
+        "value": "WatchDogs"
+      },
+      "ThirdPartyManagedProvider": {
+        "type": "STRING",
+        "value": "UbisoftConnect"
+      },
+      "RegistryKey": {
+        "type": "STRING",
+        "value": "InstallDir"
+      },
+      "GameID": {
+        "type": "STRING",
+        "value": "274"
+      }
+    },
+    "dlcItemList": [],
+    "mainGameItem": {
+      "namespace": "",
+      "id": ""
+    }
+  },
+  {
+    "id": "7888a49fe08b4d5583b5646bf9fecc7a",
+    "namespace": "poodle",
+    "entitlementName": "7888a49fe08b4d5583b5646bf9fecc7a",
+    "eulaIds": [
+      "twin2"
+    ],
+    "title": "Twinmotion 2026.3 Preview",
+    "description": "Twinmotion 2026.3 Preview",
+    "longDescription": "",
+    "technicalDetails": "",
+    "developer": "Epic Games",
+    "lastModifiedDate": "2025-12-02T08:36:48.315Z",
+    "keyImages": [
+      {
+        "type": "DieselGameBoxTall",
+        "url": "https://cdn1.epicgames.com/item/poodle/EGS_Portait_1200x1600-e74d49fb75322fc13685a30b2b05d23d",
+        "width": 1200,
+        "height": 1600,
+        "size": 2743651,
+        "uploadedDate": "2025-10-01T07:20:05.268Z",
+        "md5": "e74d49fb75322fc13685a30b2b05d23d"
+      }
+    ],
+    "categories": [
+      {
+        "name": "",
+        "path": "software"
+      },
+      {
+        "name": "",
+        "path": "applications"
+      }
+    ],
+    "releaseInfo": [
+      {
+        "appId": "7e96dff777c141b1a950af9efcf727b2",
+        "compatibleApps": [],
+        "platform": [
+          "Windows",
+          "Mac"
+        ]
+      }
+    ],
+    "customAttributes": {
+      "CanRunOffline": {
+        "type": "STRING",
+        "value": "true"
+      },
+      "PresenceID": {
+        "type": "STRING",
+        "value": "Twinmotion"
+      },
+      "MonitorPresence": {
+        "type": "STRING",
+        "value": "false"
+      },
+      "egs.library.display_version": {
+        "type": "STRING",
+        "value": "2026.3"
+      },
+      "notarizedandsigned": {
+        "type": "STRING",
+        "value": "true"
+      },
+      "com.epicgames.app.developerName": {
+        "type": "STRING",
+        "value": "Epic Games"
+      },
+      "CanSkipKoreanIdVerification": {
+        "type": "STRING",
+        "value": "true"
+      },
+      "FolderName": {
+        "type": "STRING",
+        "value": "Twinmotion2026.3"
+      },
+      "SupportedPlatforms": {
+        "type": "STRING",
+        "value": "Windows, Mac"
+      }
+    },
+    "dlcItemList": [],
+    "mainGameItem": {
+      "namespace": "",
+      "id": ""
+    }
+  },
+  {
+    "id": "8f33cce63b3f4a46aca59ff8c85ff1cd",
+    "namespace": "fn",
+    "entitlementName": "8f33cce63b3f4a46aca59ff8c85ff1cd",
+    "eulaIds": [
+      "epicgames_tos"
+    ],
+    "title": "LEGO? Fortnite: Odyssey",
+    "description": "LEGO? Fortnite: Odyssey",
+    "longDescription": "",
+    "technicalDetails": "",
+    "developer": "Epic Games",
+    "lastModifiedDate": "2026-06-19T15:47:46.836Z",
+    "keyImages": [
+      {
+        "type": "DieselGameBox",
+        "url": "https://cdn1.epicgames.com/item/fn/FNJN_33-10_StormKing_EGS_Launcher_KeyArt_Blade_2560x1440_2560x1440-2032d630894747068dec414b1538205c",
+        "width": 2560,
+        "height": 1440,
+        "size": 896414,
+        "uploadedDate": "2026-06-19T15:47:26.915Z",
+        "md5": "5765937c30aebb962ae81a6431f819f5"
+      }
+    ],
+    "categories": [
+      {
+        "name": "",
+        "path": "addons/launchable"
+      },
+      {
+        "name": "",
+        "path": "addons"
+      },
+      {
+        "name": "",
+        "path": "games"
+      },
+      {
+        "name": "",
+        "path": "games/experience"
+      },
+      {
+        "name": "",
+        "path": "applications"
+      }
+    ],
+    "releaseInfo": [
+      {
+        "appId": "d8f7763e07d74c209d760a679f9ed6ac",
+        "compatibleApps": [],
+        "platform": [
+          "Windows",
+          "iOS",
+          "Android"
+        ],
+        "dateAdded": "2023-12-06T23:13:00.000Z"
+      }
+    ],
+    "customAttributes": {
+      "AdditionalCommandLine": {
+        "type": "STRING",
+        "value": "-epicapp=Fortnite -IslandOverride=playlist_juno"
+      }
+    },
+    "dlcItemList": [],
+    "mainGameItem": {
+      "namespace": "fn",
+      "id": "4fe75bbc5a674f4f9b356b5c90567da5"
+    }
+  }
+]

@@ -9,6 +9,8 @@
     <Project Path="src/Hoard.Enrich.Steam/Hoard.Enrich.Steam.csproj" />
     <Project Path="src/Hoard.Enrich.SteamWeb/Hoard.Enrich.SteamWeb.csproj" />
     <Project Path="src/Hoard.Enrich.Updates/Hoard.Enrich.Updates.csproj" />
+    <Project Path="src/Hoard.Ingest.Epic/Hoard.Ingest.Epic.csproj" />
+    <Project Path="src/Hoard.Ingest.Gog/Hoard.Ingest.Gog.csproj" />
     <Project Path="src/Hoard.Ingest.Steam/Hoard.Ingest.Steam.csproj" />
     <Project Path="src/Hoard.Resolve/Hoard.Resolve.csproj" />
   </Folder>

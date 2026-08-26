@@ -11,6 +11,8 @@ using Hoard.Enrich.Igdb;
 using Hoard.Enrich.Steam;
 using Hoard.Enrich.SteamWeb;
 using Hoard.Enrich.Updates;
+using Hoard.Ingest.Epic;
+using Hoard.Ingest.Gog;
 using Hoard.Ingest.Steam;
 using Hoard.Resolve;
 using Microsoft.Extensions.DependencyInjection;
@@ -222,6 +224,12 @@ public static class Program
         services.AddSingleton<LocalConfigReader>();
         services.AddSingleton<SteamAccountEnumerator>();
         services.AddSingleton<SteamLibrarySource>();
+
+        // M4: the other two stores. Both are filesystem-only and answer
+        // empty on a machine without that launcher, so neither adds a
+        // failure mode to startup.
+        services.AddEpicIngest();
+        services.AddGogIngest();
         services.AddSingleton<ExternalIdResolver>();
         services.AddSingleton<SteamSyncService>();
 

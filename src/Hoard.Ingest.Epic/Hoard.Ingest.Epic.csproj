@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Hoard.Ingest.Epic</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      No JSON package: Epic's local files are plain JSON and System.Text.Json is
+      in the shared framework. Every reader here walks a JsonDocument by hand
+      rather than binding to a POCO, because Epic's shapes are full of traps a
+      binder would hide — `OwnershipToken` is the *string* "false", `InstallSize`
+      is a number, and `MainGame*` are present-but-empty rather than absent
+      (docs/spikes/epic-gog-local-files.md sections 2, 4, 9).
+    -->
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.11" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Hoard.Core\Hoard.Core.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -26,6 +26,8 @@
     <ProjectReference Include="..\..\src\Hoard.Enrich.Steam\Hoard.Enrich.Steam.csproj" />
     <ProjectReference Include="..\..\src\Hoard.Enrich.SteamWeb\Hoard.Enrich.SteamWeb.csproj" />
     <ProjectReference Include="..\..\src\Hoard.Enrich.Updates\Hoard.Enrich.Updates.csproj" />
+    <ProjectReference Include="..\..\src\Hoard.Ingest.Epic\Hoard.Ingest.Epic.csproj" />
+    <ProjectReference Include="..\..\src\Hoard.Ingest.Gog\Hoard.Ingest.Gog.csproj" />
     <ProjectReference Include="..\..\src\Hoard.Ingest.Steam\Hoard.Ingest.Steam.csproj" />
     <ProjectReference Include="..\..\src\Hoard.Resolve\Hoard.Resolve.csproj" />
   </ItemGroup>
@@ -39,6 +41,10 @@
     <Content Include="..\fixtures\update-signals\**" LinkBase="fixtures\update-signals" CopyToOutputDirectory="PreserveNewest" />
     <!-- Sanitized GetOwnedGames capture (tests/fixtures/steam-web/README.md) — the contract test pins this. -->
     <Content Include="..\fixtures\steam-web\**" LinkBase="fixtures\steam-web" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Sanitized real Epic launcher files (tests/fixtures/epic/README.md) — the reader tests parse these. -->
+    <Content Include="..\fixtures\epic\**" LinkBase="fixtures\epic" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Sanitized real GOG Galaxy files (tests/fixtures/gog/README.md) — the reader tests parse these. -->
+    <Content Include="..\fixtures\gog\**" LinkBase="fixtures\gog" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

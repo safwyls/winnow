@@ -1,0 +1,24 @@
+{
+    "buildId": "59534219748634025",
+    "clientId": "11111111111111111",
+    "gameId": "1971477531",
+    "language": "English",
+    "languages": [
+        "en-US"
+    ],
+    "name": "GWINT: Wiedźmińska Gra Karciana",
+    "playTasks": [
+        {
+            "category": "game",
+            "isPrimary": true,
+            "languages": [
+                "en-US"
+            ],
+            "name": "GWINT: Wiedźmińska Gra Karciana",
+            "path": "Gwent.exe",
+            "type": "FileTask"
+        }
+    ],
+    "rootGameId": "1971477531",
+    "version": 1
+}

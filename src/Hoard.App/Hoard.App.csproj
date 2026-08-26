@@ -36,6 +36,8 @@
     <ProjectReference Include="..\Hoard.Enrich.Steam\Hoard.Enrich.Steam.csproj" />
     <ProjectReference Include="..\Hoard.Enrich.SteamWeb\Hoard.Enrich.SteamWeb.csproj" />
     <ProjectReference Include="..\Hoard.Enrich.Updates\Hoard.Enrich.Updates.csproj" />
+    <ProjectReference Include="..\Hoard.Ingest.Epic\Hoard.Ingest.Epic.csproj" />
+    <ProjectReference Include="..\Hoard.Ingest.Gog\Hoard.Ingest.Gog.csproj" />
     <ProjectReference Include="..\Hoard.Ingest.Steam\Hoard.Ingest.Steam.csproj" />
     <ProjectReference Include="..\Hoard.Resolve\Hoard.Resolve.csproj" />
   </ItemGroup>
