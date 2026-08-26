@@ -248,15 +248,19 @@ public sealed class ExternalIdResolver
         // when the winning account changes between syncs — but it IS refreshed
         // on every pass, so it always names the account whose minutes and
         // last-played the newest play record carries.
-        => _ownerships.UpsertAsync(new Ownership
-        {
-            ReleaseId = releaseId,
-            Store = candidate.Provider,
-            AccountRef = candidate.AccountRef,
-            AcquiredAt = candidate.AcquiredAt,
-            InstallPath = candidate.InstallPath,
-            Installed = candidate.Installed,
-        }, ct);
+        //
+        // Installed passes through as the three-valued answer the source gave.
+        // The resolver deliberately does not decide it: flattening null to false
+        // here, or ranking sources by name, would put "which source ran last"
+        // back in charge of what the library says is on disk. The write rule
+        // lives in the upsert, where "no opinion" can leave the columns alone.
+        => _ownerships.UpsertAsync(new OwnershipUpsert(
+            ReleaseId: releaseId,
+            Store: candidate.Provider,
+            AccountRef: candidate.AccountRef,
+            AcquiredAt: candidate.AcquiredAt,
+            InstallPath: candidate.InstallPath,
+            Installed: candidate.Installed), ct);
 
     private async Task<bool> AppendPlayRecordIfChangedAsync(
         long ownershipId, long minutes, CandidateOwnership candidate, CancellationToken ct)

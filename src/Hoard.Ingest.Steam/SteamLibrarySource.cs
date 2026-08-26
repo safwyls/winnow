@@ -25,6 +25,15 @@ namespace Hoard.Ingest.Steam;
 /// enrichment. The uninstalled-but-played pile is the whole point: on a real
 /// install it outnumbers the installed games by an order of magnitude.</para>
 ///
+/// <para><b>This source always answers on install state</b> — every candidate
+/// carries a non-null <see cref="CandidateOwnership.Installed"/>, because
+/// reading the appmanifests IS how install state is known (§4.1). A manifest
+/// means installed (its <c>StateFlags</c> decides fully vs. partially); no
+/// manifest in any library root means not installed, and that <c>false</c> is
+/// an observation, not a shrug. It is what makes an uninstall visible.
+/// Sources that cannot see the disk emit null instead — see
+/// <see cref="CandidateOwnership.Installed"/>.</para>
+///
 /// <para><b>Multi-account playtime strategy:</b> installed apps come from the
 /// machine-wide appmanifests, but playtime is per-account. When more than one
 /// <c>userdata/&lt;steam3id&gt;</c> account has playtime for the same appid,
@@ -83,15 +92,31 @@ public sealed class SteamLibrarySource
     private readonly SteamAccountEnumerator _accountEnumerator;
     private readonly ILogger<SteamLibrarySource> _logger;
     private readonly TimeProvider _timeProvider;
+    private readonly string? _steamRoot;
 
+    /// <param name="libraryFoldersReader">Reader for <c>libraryfolders.vdf</c>.</param>
+    /// <param name="appManifestReader">Reader for <c>appmanifest_*.acf</c>.</param>
+    /// <param name="localConfigReader">Reader for a user's <c>localconfig.vdf</c>.</param>
+    /// <param name="accountEnumerator">Enumerator over <c>userdata/&lt;steam3id&gt;</c>.</param>
+    /// <param name="logger">Optional logger.</param>
+    /// <param name="timeProvider">Clock stamping <see cref="CandidateOwnership.ObservedAt"/>.</param>
+    /// <param name="steamRoot">
+    /// Fixed install root for the argument-less <see cref="Scan()"/>. Null — the
+    /// default — means locate it per <see cref="SteamPaths.FindSteamRoot"/>.
+    /// Set it to point at a Steam install this machine's registry does not name,
+    /// and in tests to drive a caller (the sync service) over a fixture root
+    /// instead of whatever Steam the test machine happens to have.
+    /// </param>
     public SteamLibrarySource(
         LibraryFoldersReader? libraryFoldersReader = null,
         AppManifestReader? appManifestReader = null,
         LocalConfigReader? localConfigReader = null,
         SteamAccountEnumerator? accountEnumerator = null,
         ILogger<SteamLibrarySource>? logger = null,
-        TimeProvider? timeProvider = null)
+        TimeProvider? timeProvider = null,
+        string? steamRoot = null)
     {
+        _steamRoot = steamRoot;
         _libraryFoldersReader = libraryFoldersReader ?? new LibraryFoldersReader();
         _appManifestReader = appManifestReader ?? new AppManifestReader();
         _localConfigReader = localConfigReader ?? new LocalConfigReader();
@@ -101,15 +126,18 @@ public sealed class SteamLibrarySource
     }
 
     /// <summary>
-    /// Scans the Steam install (auto-located via <see cref="SteamPaths"/> when
-    /// <paramref name="steamRoot"/> is null) and returns one candidate per
+    /// Scans the Steam install and returns one candidate per
     /// appid in the union of installed appmanifests across all library folders
     /// and played apps across every account's localconfig.vdf. Never throws for
     /// a missing install.
     /// </summary>
+    /// <param name="steamRoot">
+    /// Install root to scan. Null falls back to the root this instance was
+    /// constructed with, then to <see cref="SteamPaths.FindSteamRoot"/>.
+    /// </param>
     public IReadOnlyList<CandidateOwnership> Scan(string? steamRoot = null)
     {
-        steamRoot ??= SteamPaths.FindSteamRoot();
+        steamRoot ??= _steamRoot ?? SteamPaths.FindSteamRoot();
         if (steamRoot is null || !Directory.Exists(steamRoot))
         {
             _logger.LogInformation("No Steam installation found; Steam ingest yields nothing");
@@ -180,6 +208,7 @@ public sealed class SteamLibrarySource
                     Title: manifest.Name,
                     AccountRef: manifestOnlyDate ? null : accountRef,
                     InstallPath: installPath,
+                    // Never null from this source: the manifest is the answer.
                     Installed: manifest.IsFullyInstalled,
                     PlaytimeMinutes: winner?.PlaytimeMinutes,
                     LastPlayedAt: lastPlayedAt,
@@ -199,6 +228,9 @@ public sealed class SteamLibrarySource
                     Title: null,
                     AccountRef: accountRef,
                     InstallPath: null,
+                    // A real observation, not a shrug: this scan read every
+                    // library root and found no manifest, so the game is gone
+                    // from disk and the stored flag must clear.
                     Installed: false,
                     PlaytimeMinutes: winner?.PlaytimeMinutes,
                     LastPlayedAt: winner?.LastPlayedUtc,

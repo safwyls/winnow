@@ -219,15 +219,13 @@ public class RepositoryRoundTripTests : IDisposable
 
         // SeedOwnershipAsync already inserted (releaseId, 'steam') with no
         // account, path or acquisition date.
-        var id = await ownerships.UpsertAsync(new Ownership
-        {
-            ReleaseId = releaseId,
-            Store = "steam",
-            AccountRef = "12345678",
-            AcquiredAt = Utc(2016, 10, 28),
-            InstallPath = @"C:\Steam\steamapps\common\Prey",
-            Installed = true,
-        });
+        var id = await ownerships.UpsertAsync(new OwnershipUpsert(
+            ReleaseId: releaseId,
+            Store: "steam",
+            AccountRef: "12345678",
+            AcquiredAt: Utc(2016, 10, 28),
+            InstallPath: @"C:\Steam\steamapps\common\Prey",
+            Installed: true));
 
         var updated = await ownerships.GetAsync(id);
         Assert.NotNull(updated);
@@ -237,14 +235,13 @@ public class RepositoryRoundTripTests : IDisposable
 
         // A later scan that names no account must not erase the one on file,
         // but must still track install state.
-        await ownerships.UpsertAsync(new Ownership
-        {
-            ReleaseId = releaseId,
-            Store = "steam",
-            AccountRef = null,
-            InstallPath = null,
-            Installed = false,
-        });
+        await ownerships.UpsertAsync(new OwnershipUpsert(
+            ReleaseId: releaseId,
+            Store: "steam",
+            AccountRef: null,
+            AcquiredAt: null,
+            InstallPath: null,
+            Installed: false));
 
         var kept = await ownerships.GetAsync(id);
         Assert.NotNull(kept);
@@ -253,6 +250,88 @@ public class RepositoryRoundTripTests : IDisposable
         Assert.False(kept.Installed);
         Assert.Null(kept.InstallPath);
         Assert.Single(await ownerships.GetByReleaseAsync(releaseId));
+    }
+
+    /// <summary>
+    /// The rule the "Installed" filter depends on: a source with no opinion on
+    /// install state (Installed: null — §4.2's Web API) leaves BOTH install
+    /// columns exactly as the source that could see the disk left them. This is
+    /// the bug that emptied the filter on a real library: 946 ownerships, 0
+    /// installed, because the web candidates wrote false over every appmanifest
+    /// answer on every sync.
+    /// </summary>
+    [Fact]
+    public async Task Upsert_with_no_install_opinion_keeps_the_stored_install_state()
+    {
+        var (_, releaseId, ownershipId) = await SeedOwnershipAsync();
+        var ownerships = new OwnershipRepository(_db.Factory);
+
+        await ownerships.UpsertAsync(new OwnershipUpsert(
+            releaseId, "steam", "12345678", null,
+            InstallPath: @"C:\Steam\steamapps\common\Prey", Installed: true));
+
+        // The source that cannot see the disk: null install state, null path,
+        // and a title's worth of other facts it does know.
+        await ownerships.UpsertAsync(new OwnershipUpsert(
+            releaseId, "steam", "12345678", AcquiredAt: Utc(2016, 10, 28),
+            InstallPath: null, Installed: null));
+
+        var kept = await ownerships.GetAsync(ownershipId);
+        Assert.NotNull(kept);
+        Assert.True(kept.Installed);
+        Assert.Equal(@"C:\Steam\steamapps\common\Prey", kept.InstallPath);
+        // …while the columns that source DOES know still refresh.
+        Assert.Equal(Utc(2016, 10, 28), kept.AcquiredAt);
+    }
+
+    /// <summary>
+    /// The other half, and the reason the rule is not simply COALESCE:
+    /// uninstalling is a real event. A source that looked and found nothing
+    /// clears the flag AND the path together — "installed = 0 pointing at a
+    /// directory that no longer exists" is worse than either honest answer.
+    /// </summary>
+    [Fact]
+    public async Task Upsert_with_a_false_install_opinion_clears_both_columns()
+    {
+        var (_, releaseId, ownershipId) = await SeedOwnershipAsync();
+        var ownerships = new OwnershipRepository(_db.Factory);
+
+        await ownerships.UpsertAsync(new OwnershipUpsert(
+            releaseId, "steam", "12345678", null,
+            InstallPath: @"C:\Steam\steamapps\common\Prey", Installed: true));
+
+        await ownerships.UpsertAsync(new OwnershipUpsert(
+            releaseId, "steam", "12345678", null,
+            InstallPath: null, Installed: false));
+
+        var cleared = await ownerships.GetAsync(ownershipId);
+        Assert.NotNull(cleared);
+        Assert.False(cleared.Installed);
+        Assert.Null(cleared.InstallPath);
+    }
+
+    /// <summary>
+    /// A first sighting from a source with no opinion still has to produce a
+    /// row, and the NOT NULL column needs some value: "not known to be
+    /// installed" is the safe one, with no path invented to go with it.
+    /// </summary>
+    [Fact]
+    public async Task Insert_by_upsert_with_no_install_opinion_stores_not_installed_and_no_path()
+    {
+        var works = new WorkRepository(_db.Factory);
+        var releases = new ReleaseRepository(_db.Factory);
+        var ownerships = new OwnershipRepository(_db.Factory);
+
+        var workId = await works.InsertAsync(new Work { Name = "Owned but unseen" });
+        var releaseId = await releases.InsertAsync(new Release { WorkId = workId, Name = "Owned but unseen" });
+
+        var id = await ownerships.UpsertAsync(new OwnershipUpsert(
+            releaseId, "steam", "12345678", null, InstallPath: null, Installed: null));
+
+        var row = await ownerships.GetAsync(id);
+        Assert.NotNull(row);
+        Assert.False(row.Installed);
+        Assert.Null(row.InstallPath);
     }
 
     [Fact]

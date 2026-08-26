@@ -69,6 +69,15 @@ public sealed class SteamSyncService : ISteamSync
         // apps the user has genuinely played. On this machine that is 330 games
         // the local files miss and 105 the web API misses. Nothing is dropped
         // for being absent from one side.
+        //
+        // Order is presentation, not precedence. Every field a source cannot
+        // speak to arrives null, and the write rules resolve conflicts on who
+        // knows — so resolving web-then-local and local-then-web reach the same
+        // rows. That property is asserted in the tests, because when it did not
+        // hold the failure was silent: the web candidates, resolved second only
+        // because of how this line was written, reported Installed: false for
+        // games they had never looked for on disk and cleared the entire
+        // library's install state on every sync.
         var candidates = local.Concat(owned).ToList();
 
         if (candidates.Count == 0)

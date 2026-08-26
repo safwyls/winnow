@@ -56,13 +56,17 @@ public sealed record SteamOwnedGame(
     /// <summary>
     /// Projects onto the §5.1 ingest contract.
     ///
-    /// <para><b>Read the field notes before merging this with a local
-    /// candidate.</b> <c>Installed</c> is false and <c>InstallPath</c> null
-    /// because the Web API knows nothing about either — that is "this source
-    /// does not report an install", not "not installed", and the local scan must
-    /// win on both. §4.1 likewise makes the local figure authoritative for
-    /// playtime; the Web API's can lag behind a session Steam has not yet
-    /// synced.</para>
+    /// <para><b><c>Installed</c> is null, and that is the whole point.</b>
+    /// <c>GetOwnedGames</c> reports licences; it cannot see the local disk, so it
+    /// has no opinion on install state or install path. Null is how the ingest
+    /// contract says "this source does not know" — see
+    /// <see cref="CandidateOwnership.Installed"/> — and it leaves whatever the
+    /// local scan (§4.1) recorded untouched. Emitting <c>false</c> here instead
+    /// is the bug that emptied the "Installed" filter: these candidates are
+    /// resolved after the local ones, so every sync cleared the install flags the
+    /// appmanifests had just set. Never let this source clear a local answer.
+    /// §4.1 likewise makes the local figure authoritative for playtime; the Web
+    /// API's can lag behind a session Steam has not yet synced.</para>
     ///
     /// <para><c>AcquiredAt</c> stays null: <c>GetOwnedGames</c> does not expose a
     /// purchase or licence date in any form.</para>
@@ -78,7 +82,7 @@ public sealed record SteamOwnedGame(
             Title: Title,
             AccountRef: accountRef,
             InstallPath: null,
-            Installed: false,
+            Installed: null, // "cannot know", never "not installed".
             PlaytimeMinutes: PlaytimeForeverMinutes,
             LastPlayedAt: LastPlayedUtc,
             AcquiredAt: null,

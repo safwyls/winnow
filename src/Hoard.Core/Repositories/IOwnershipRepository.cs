@@ -22,8 +22,18 @@ public interface IOwnershipRepository
     /// accompanying play record came from, so minutes, last-played and
     /// attribution never disagree. A candidate that names no account leaves the
     /// stored attribution alone rather than erasing it.</para>
+    ///
+    /// <para><b>Every column here refreshes only on a real answer.</b>
+    /// <see cref="OwnershipUpsert.AccountRef"/> and
+    /// <see cref="OwnershipUpsert.AcquiredAt"/> are COALESCEd — null means "this
+    /// pass could not tell", and an emptier answer never replaces a better one.
+    /// <see cref="OwnershipUpsert.Installed"/> is three-valued for the same
+    /// reason, but its rule is not COALESCE: a non-null answer writes
+    /// <i>both</i> install columns, <c>false</c> included, because a game the
+    /// user uninstalled must stop showing as installed; a null writes neither.
+    /// The path is never carried independently of the flag.</para>
     /// </summary>
-    Task<long> UpsertAsync(Ownership ownership, CancellationToken ct = default);
+    Task<long> UpsertAsync(OwnershipUpsert ownership, CancellationToken ct = default);
 
     /// <summary>
     /// Updates the install-state fields (install_path, installed) observed by

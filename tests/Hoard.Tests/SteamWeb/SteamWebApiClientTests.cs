@@ -594,8 +594,11 @@ public class SteamWebApiClientTests
             // same account as its locally-scanned twin.
             Assert.Equal("12345678", c.AccountRef);
 
-            // The Web API knows nothing about install state or install path.
-            Assert.False(c.Installed);
+            // The Web API knows nothing about install state or install path, and
+            // says so with null rather than false. False would be a claim — one
+            // that used to wipe the local scan's answer off every ownership row
+            // on the next sync, emptying the "Installed" filter.
+            Assert.Null(c.Installed);
             Assert.Null(c.InstallPath);
 
             // GetOwnedGames exposes no purchase or licence date in any form.

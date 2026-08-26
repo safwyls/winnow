@@ -61,6 +61,30 @@ public sealed class ExternalIdResolverTests : IDisposable
             ObservedAt: observedAt);
 
     /// <summary>
+    /// A candidate from a source that cannot see the local disk — shaped like
+    /// <c>SteamOwnedGame.ToCandidate</c>: it knows the licence, the title and
+    /// the playtime, and has no opinion at all about install state.
+    /// </summary>
+    private static CandidateOwnership WebCandidate(
+        string appId,
+        string title,
+        long playtimeMinutes,
+        DateTime? lastPlayedAt,
+        DateTime observedAt)
+        => new(
+            Provider: ExternalIdProviders.Steam,
+            ProviderId: appId,
+            Title: title,
+            AccountRef: "12345678",
+            InstallPath: null,
+            Installed: null,
+            PlaytimeMinutes: playtimeMinutes,
+            LastPlayedAt: lastPlayedAt,
+            AcquiredAt: null,
+            Source: "steam_web_api",
+            ObservedAt: observedAt);
+
+    /// <summary>
     /// A played-but-uninstalled Steam appid: localconfig knows the minutes,
     /// nothing on disk knows the title.
     /// </summary>
@@ -195,6 +219,65 @@ public sealed class ExternalIdResolverTests : IDisposable
         await _resolver.ResolveAsync([uninstalled]);
 
         var release = await _releases.FindByExternalIdAsync("steam", "1244090");
+        Assert.NotNull(release);
+        var ownership = Assert.Single(await _ownerships.GetByReleaseAsync(release.Id));
+        Assert.False(ownership.Installed);
+        Assert.Null(ownership.InstallPath);
+    }
+
+    /// <summary>
+    /// A source that cannot see the disk (Installed: null — §4.2's
+    /// GetOwnedGames) must never clear what the local scan established, no
+    /// matter which order the union puts them in. Resolving both orders is the
+    /// point of the theory: the live bug was invisible precisely because the web
+    /// candidates happened to be resolved second.
+    /// </summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task An_opinionless_candidate_never_clears_install_state_in_either_union_order(bool webFirst)
+    {
+        var observed = Utc(2026, 8, 23, 12, 0, 0);
+        var local = Candidate("1203620", "Elden Ring", 817, Utc(2026, 8, 15, 9, 3, 12), observed);
+        var web = WebCandidate("1203620", "Elden Ring", 817, Utc(2026, 8, 15, 9, 3, 12), observed);
+
+        await _resolver.ResolveAsync(webFirst ? [web, local] : [local, web]);
+
+        var release = await _releases.FindByExternalIdAsync("steam", "1203620");
+        Assert.NotNull(release);
+        var ownership = Assert.Single(await _ownerships.GetByReleaseAsync(release.Id));
+
+        Assert.True(ownership.Installed);
+        Assert.Equal(@"C:\Steam\steamapps\common\Elden Ring", ownership.InstallPath);
+
+        // Both orders reach the same row, not merely a true flag: one ownership,
+        // the local account attribution, and the playtime both sources agree on.
+        Assert.Equal("12345678", ownership.AccountRef);
+        var playRecord = await _playRecords.GetLatestAsync(ownership.Id);
+        Assert.NotNull(playRecord);
+        Assert.Equal(817, playRecord.PlaytimeMinutes);
+    }
+
+    /// <summary>
+    /// The converse, which COALESCE alone would have broken: an opinionless
+    /// candidate in the same batch must not stop a genuine uninstall from
+    /// showing. Either order, the game leaves the "Installed" filter.
+    /// </summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task An_uninstall_still_shows_through_an_opinionless_candidate(bool webFirst)
+    {
+        await _resolver.ResolveAsync(
+            [Candidate("1203620", "Elden Ring", 817, Utc(2026, 8, 15, 9, 3, 12), Utc(2026, 8, 23, 12, 0, 0))]);
+
+        var observed = Utc(2026, 8, 30, 12, 0, 0);
+        var uninstalled = TitlelessCandidate("1203620", 817, Utc(2026, 8, 15, 9, 3, 12), observed);
+        var web = WebCandidate("1203620", "Elden Ring", 817, Utc(2026, 8, 15, 9, 3, 12), observed);
+
+        await _resolver.ResolveAsync(webFirst ? [web, uninstalled] : [uninstalled, web]);
+
+        var release = await _releases.FindByExternalIdAsync("steam", "1203620");
         Assert.NotNull(release);
         var ownership = Assert.Single(await _ownerships.GetByReleaseAsync(release.Id));
         Assert.False(ownership.Installed);
