@@ -9,6 +9,7 @@
         Width="1280" Height="820"
         MinWidth="1200" MinHeight="640"
         Background="{StaticResource Ground}"
+        TransparencyBackgroundFallback="{StaticResource Ground}"
         ExtendClientAreaToDecorationsHint="True"
         ExtendClientAreaChromeHints="NoChrome"
         ExtendClientAreaTitleBarHeightHint="-1">
@@ -320,6 +321,57 @@
             <Setter Property="Background" Value="#4D0F1C1E"/>
         </Style>
 
+        <!-- ══ The selection's context menu ════════════════════════════════
+             Same presenter treatment as the sort menu, because it is the same
+             object: a small dark card of choices on SurfaceRaised with a Line
+             edge. ContextMenu paints its own template from its own Background
+             and BorderBrush rather than through a presenter, so these are set on
+             the control; a Style in this window outranks Fluent's ControlTheme
+             for the same properties.
+
+             §12.3 records why this app has no flyouts: a popup is its own visual
+             root, has no adorner layer, and §8's global 2px Volt ring therefore
+             does not render inside one. So this menu draws its own, and it costs
+             one selector: Avalonia raises MenuItem's `:selected` for the pointer
+             AND for the keyboard walk (Shift+F10 or the Menu key opens the menu,
+             arrows move through it), so one highlight covers both routes — one
+             step of fill above the menu's own ground plus the 2px Volt edge that
+             every picked row in this window wears. Drawn, not adorned (§10.7),
+             and the
+             edge is a border on a Border whose thickness never changes, so the
+             item does not reflow as it lights up. -->
+        <Style Selector="ContextMenu.actions">
+            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
+            <Setter Property="Padding" Value="4"/>
+            <Setter Property="MinWidth" Value="0"/>
+        </Style>
+        <Style Selector="ContextMenu.actions MenuItem">
+            <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
+            <Setter Property="FontSize" Value="{StaticResource BodySize}"/>
+            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+            <Setter Property="Padding" Value="10,7"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="ContextMenu.actions MenuItem /template/ Border#PART_LayoutRoot">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="{StaticResource SelectionEdge}"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
+        </Style>
+        <Style Selector="ContextMenu.actions MenuItem:selected /template/ Border#PART_LayoutRoot">
+            <!-- One step above the menu's own SurfaceRaised ground — the same
+                 #254042 the caption buttons press to. SurfaceRaised on
+                 SurfaceRaised would have been no step at all. -->
+            <Setter Property="Background" Value="#254042"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+        </Style>
+        <Style Selector="ContextMenu.actions MenuItem:selected /template/ ContentPresenter#PART_HeaderPresenter">
+            <Setter Property="TextElement.Foreground" Value="{StaticResource Text}"/>
+        </Style>
+
         <!-- ══ Display preferences popover (§8) ════════════════════════════
              Same presenter treatment as the sort menu, with room for a line of
              prose. The checkbox is templated rather than restyled: Fluent's own
@@ -563,8 +615,19 @@
          The element order below is reading order — rail, library, panel — so
          §8's Tab walk goes left to right across the window and never doubles
          back. The panel's Grid.Column says where it sits; its position in this
-         file says when it is reached. -->
-    <Grid Grid.Row="1" ColumnDefinitions="220,*,Auto">
+         file says when it is reached.
+
+         Background is set HERE and not left to the Window, and that is the one
+         line the Mica change turned load-bearing. When the window gets Mica its
+         own Background goes Transparent so the desktop can reach the caption
+         strip; every pixel below the caption is then painted by this Grid
+         instead. It is the boundary tokens.axaml's WellMica note measures:
+         translucency in the 36px lip, an opaque field for everything that
+         carries reading matter or cover art. Nothing under a tile is
+         translucent, so §5.4's two-layer dormancy cross-fade composites over
+         exactly the ground it always did. -->
+    <Grid Grid.Row="1" ColumnDefinitions="220,*,Auto"
+          Background="{StaticResource Ground}">
 
         <!-- ══ RAIL (220px) ════════════════════════════════════════════════ -->
         <Border Grid.Column="0"
@@ -1046,26 +1109,16 @@
                     </Button>
 
                     <!-- Multi-select readout: §6 asks the list for multi-select,
-                         so the count says what is picked. -->
+                         so the count says what is picked. It stays after the
+                         Add-to-list BUTTON left the bar (see the library pane's
+                         context menu): the count is the only thing on screen
+                         that says a selection exists at all once the control
+                         acting on it has moved onto the selection itself. -->
                     <TextBlock Classes="data" FontSize="11"
                                Foreground="{StaticResource Volt}"
                                VerticalAlignment="Center"
                                IsVisible="{Binding Library.HasMultiSelection}"
                                Text="{Binding Library.SelectedCountText}"/>
-
-                    <!-- §6's "bulk list assignment", and the grid's route in
-                         too: one control, reading whichever selection is in
-                         force — one tile in the grid, any number of rows in the
-                         list. It names the number once there is more than one,
-                         so the button and the thing it will do never disagree. -->
-                    <Button Classes="ctl"
-                            IsVisible="{Binding Library.HasSelection}"
-                            Command="{Binding Library.BeginAddToListCommand}"
-                            ToolTip.Tip="Put the selected titles in a list">
-                        <TextBlock Classes="body" FontSize="12"
-                                   Foreground="{StaticResource Volt}"
-                                   Text="{Binding Library.AddToListLabel}"/>
-                    </Button>
                       </StackPanel>
                     </Grid>
 
@@ -1164,6 +1217,53 @@
 
             <!-- ── Content ──────────────────────────────────────────────── -->
             <Panel Grid.Row="2">
+
+                <!-- ── The selection's own menu (§6, §12.3) ──────────────────
+                     §6 asks the list view for "sortable columns, multi-select,
+                     bulk list assignment", and Add to list used to be a command
+                     bar button. The grid grew a card back that carries it per
+                     tile, which retires the button for the GRID — but the list
+                     view has no flip, and it is the only view that can hold
+                     twenty rows at once. Deleting the button alone would have
+                     deleted bulk assignment.
+
+                     So the control moved onto the selection rather than away
+                     from it. ONE menu for both views, attached here rather than
+                     to the ListBox and the wall separately, because §12.3's rule
+                     is that Add to list is one control reading whichever
+                     selection is in force — two menus would be two of it.
+                     ContextRequested bubbles, so a right-click on a row or on a
+                     tile reaches this panel either way.
+
+                     Both views arm it before it opens, and neither needed a
+                     change to do so. Avalonia's SelectingItemsControl treats a
+                     right press as "select unless already selected", so
+                     right-clicking one of twenty marked rows keeps all twenty
+                     (measured against Avalonia 11.3.20's UpdateSelection, not
+                     assumed); and OnTilePressed already routes a non-left press
+                     to SelectTile without flipping the card. The label and the
+                     picked set are still derived in the view model (§12.3), so
+                     the keyboard route arms it identically.
+
+                     It opens only when something is picked — the same condition
+                     the button carried as IsVisible — which is what
+                     OnLibraryContextMenuOpening enforces. A menu whose only item
+                     is greyed out is a worse answer than no menu.
+
+                     §12.3 says there are no flyouts in this app because a popup
+                     has no adorner layer and §8's global focus ring does not
+                     render inside one. That rule is not broken here, it is paid:
+                     the ring is DRAWN rather than adorned (§10.7) — see the
+                     ContextMenu.actions styles at the top of this file, where
+                     :selected carries the pointer highlight and the keyboard one
+                     at once. -->
+                <Panel.ContextMenu>
+                    <ContextMenu Classes="actions"
+                                 Opening="OnLibraryContextMenuOpening">
+                        <MenuItem Header="{Binding Library.AddToListLabel}"
+                                  Command="{Binding Library.BeginAddToListCommand}"/>
+                    </ContextMenu>
+                </Panel.ContextMenu>
 
                 <!-- Cover wall. -->
                 <ScrollViewer Name="GridScroll"

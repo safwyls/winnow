@@ -94,6 +94,55 @@
     <x:Double x:Key="TitleBarHeight">36</x:Double>
     <x:Double x:Key="WindowButtonWidth">46</x:Double>
 
+    <!-- ══ Mica, and where it is allowed to reach ═════════════════════════
+         The caption strip's fill when the window actually got Mica — Well at
+         85%, so 15% of the strip is the desktop. It is the ONLY translucent
+         surface in the application, and the boundary is measured rather than
+         tasteful.
+
+         Avalonia's dark Mica is not "the wallpaper". It luminosity-blends the
+         blurred wallpaper under #202020 at 0.8 and then colour-blends #202020
+         over the result, so what reaches the window is a heavily darkened,
+         heavily desaturated reading of the wallpaper. Measured on the running
+         window, this caption composited to #061112 — 0.41x Ground's luminance,
+         with TextDim on it at 7.3:1.
+
+         But the reason the line falls WHERE IT DOES needs no assumption about
+         how Windows composes Mica at all, because the same two sums answer it
+         against a pure-WHITE backdrop, which is the absolute ceiling any
+         backdrop can reach:
+
+           · Well at 85%           → TextDim 5.0:1. Level with the 5.04:1 that
+                                     §8 measures for TextDim on SurfaceRaised
+                                     and accepts, so the caption cannot fall
+                                     below a floor the app already lives at.
+           · SurfaceRaised at 85%  → TextDim 3.1:1 on a SELECTED rail row.
+           · SurfaceRaised at 94%  → 4.2:1, still under WCAG AA, and by then
+                                     the translucency is invisible anyway.
+
+         §8's line about TextDim is "do not dim further", and the rail's
+         selected row is already sitting on it with no headroom. There is no
+         alpha at which the rail is both visibly Mica and above that floor. So
+         the rail, the command bar, the cover wall, the list and the filter
+         panel stay OPAQUE, and the caption — a wordmark and three glyphs, no
+         reading matter — is where the desktop is let in.
+
+         Two consequences worth recording because they were checked rather than
+         assumed:
+
+           · §9's rule that the caption is the window's UNLIT LIP survives every
+             backdrop up to about mid-grey; only a backdrop lighter than ~135
+             would lift the strip above Ground, and Windows' dark Mica tints
+             hard toward #202020 by design.
+           · §5.4's two-layer dormancy cross-fade composites over Ground exactly
+             as it did before, because nothing under a tile changed. Verified by
+             diffing the window with Mica against the same window without it:
+             every differing pixel fell inside y 0..35.
+
+         Consumed by MainWindow.axaml.cs, which applies it only after
+         ActualTransparencyLevel reports Mica. -->
+    <SolidColorBrush x:Key="WellMica">#D9050D0E</SolidColorBrush>
+
     <!-- ══ Dormancy ramp ══════════════════════════════════════════════════
          Consumed by the cover renderer. Clamped floor is deliberate: a cover
          you cannot identify is a cover you cannot choose. Colour-agnostic —

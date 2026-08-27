@@ -862,6 +862,27 @@ public sealed class WebView2AuthPrompt : IInteractiveAuthPrompt
     /// window's content, so a hand-drawn caption would be replaced along with
     /// it and leave a browser nobody can drag or close. Recorded as a gap rather
     /// than worked around.</para>
+    ///
+    /// <para><b>This window is deliberately OPAQUE, and stays opaque when
+    /// <c>MainWindow</c> takes Mica.</b> <c>TransparencyLevelHint</c> is a plain
+    /// Avalonia property, so this project could set it without gaining a single
+    /// reference — which is exactly why the decision is written down here rather
+    /// than left to whoever reads the two windows side by side and assumes one
+    /// was forgotten. Three reasons, and the first two are specific to this
+    /// window:</para>
+    ///
+    /// <para>The content is replaced by a hosted native HWND the moment consent
+    /// is given, and a hosted HWND paints over the composition surface — so a
+    /// Mica consent phase would become an opaque browser phase, a window that
+    /// changes material halfway through one flow. And this is the screen where
+    /// the WORDS are the product: a provider's own warning, quoted verbatim, in
+    /// 12/18 sage on a paragraph measure. <c>tokens.axaml</c>'s <c>WellMica</c>
+    /// note records that translucency costs a <c>TextDim</c> paragraph its
+    /// contrast floor against a light backdrop, and a consent notice whose
+    /// legibility depends on the reader's wallpaper is not a consent notice.
+    /// Third, the compensating treatment would have to live in
+    /// <c>controls.axaml</c>, which this project cannot name (§5.1) — so the
+    /// honest options here were opaque or half-painted.</para>
     /// </summary>
     private static Window BuildConsentWindow(AuthPromptRequest request, TaskCompletionSource<bool> consent)
     {

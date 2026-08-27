@@ -3,6 +3,8 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Media;
+using Avalonia.Reactive;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Hoard.App.ViewModels;
@@ -35,6 +37,8 @@ public partial class MainWindow : Window
         // on a turned card's back face do. See OnTilePressed.
         TileWall.AddHandler(PointerPressedEvent, OnTilePressed, RoutingStrategies.Tunnel);
 
+        RequestBackdrop();
+
         // WindowState can be written before the caption's controls exist, so
         // the state handler stays inert until the tree is up.
         _chromeReady = true;
@@ -45,6 +49,85 @@ public partial class MainWindow : Window
     // The client area is extended over the decorations, so everything Windows
     // used to do for the caption is done here. Each of these is load-bearing:
     // drop one and the window reads as broken rather than as styled.
+
+    /// <summary>
+    /// Asks Windows for Mica, and paints the caption according to what it
+    /// actually got rather than to what was asked for.
+    ///
+    /// <para><b>The markup declares the opaque window and this method upgrades
+    /// it</b>, never the other way round. The XAML is the state that is correct
+    /// on every host — opaque <c>Ground</c>, opaque <c>Well</c> — so a machine
+    /// where none of this works needs nothing to go right in order to look
+    /// deliberate. The upgrade happens in the constructor, before the window is
+    /// shown, so there is no opaque first frame to flash.</para>
+    ///
+    /// <para><b>The hint is a list and the list is short.</b>
+    /// <c>[Mica, None]</c>: Mica because it samples the desktop WALLPAPER, which
+    /// is one image that does not move, heavily darkened before it arrives — so
+    /// the contrast sums in <c>tokens.axaml</c>'s <c>WellMica</c> note have
+    /// something to be run against. Nothing else, and <c>AcrylicBlur</c> in
+    /// particular, because acrylic samples whatever window happens to be behind
+    /// this one: no bound, no measurement, and a caption whose legibility
+    /// changes when the user alt-tabs. A design system that picks its inks
+    /// against measured grounds cannot spend them on an unmeasurable one.</para>
+    ///
+    /// <para><b>The fallback the platform reports is not always the fallback
+    /// that was asked for, which is exactly why this reads
+    /// <see cref="TopLevel.ActualTransparencyLevel"/> instead of assuming.</b>
+    /// Avalonia's Win32 backend walks the hint list, skips levels the machine
+    /// cannot do, and if it exhausts the list falls back to its own default —
+    /// which under the WinUI composition path is <c>Transparent</c>, not the
+    /// <c>None</c> that was requested. A Windows 10 host therefore lands on a
+    /// genuinely see-through window, and <c>TransparencyBackgroundFallback</c>
+    /// does not fire because that only covers <c>None</c>. So the test here is
+    /// positive — Mica or opaque — and never "not None".</para>
+    ///
+    /// <para>Subscribed as well as read once: Avalonia re-applies the Mica brush
+    /// when the OS theme variant changes, and a remote-desktop session or a
+    /// composition failure can take it away while the window is open.</para>
+    /// </summary>
+    private void RequestBackdrop()
+    {
+        TransparencyLevelHint =
+        [
+            WindowTransparencyLevel.Mica,
+            WindowTransparencyLevel.None,
+        ];
+
+        ApplyBackdrop();
+        this.GetObservable(ActualTransparencyLevelProperty)
+            .Subscribe(new AnonymousObserver<WindowTransparencyLevel>(_ => ApplyBackdrop()));
+    }
+
+    /// <summary>
+    /// Paints the two surfaces the backdrop decision reaches, and nothing else.
+    ///
+    /// <para>With Mica the window's own background goes transparent so the
+    /// desktop can reach the caption, and the body grid — which paints
+    /// <c>Ground</c> itself — keeps every reading surface and every cover
+    /// opaque. Without it, both go back to the tokens they are declared with.
+    /// There is deliberately no third state: half a Mica window is the failure
+    /// this is written to avoid.</para>
+    /// </summary>
+    private void ApplyBackdrop()
+    {
+        var mica = ActualTransparencyLevel == WindowTransparencyLevel.Mica;
+
+        Background = mica ? Brushes.Transparent : Token("Ground", Brushes.Black);
+        TitleBar.Background = mica
+            ? Token("WellMica", Brushes.Black)
+            : Token("Well", Brushes.Black);
+    }
+
+    /// <summary>
+    /// A brush out of <c>tokens.axaml</c> by key. The fallback is never expected
+    /// and never silently pretty: a missing token should look wrong here rather
+    /// than resolve to something plausible and hide the mistake.
+    /// </summary>
+    private IBrush Token(string key, IBrush fallback)
+        => this.TryFindResource(key, ActualThemeVariant, out var found) && found is IBrush brush
+            ? brush
+            : fallback;
 
     /// <summary>
     /// Drag moves the window; a double press maximises or restores it.
@@ -718,6 +801,29 @@ public partial class MainWindow : Window
                 : [.. list.SelectedItems.OfType<GameTileViewModel>()];
         }
     }
+
+    /// <summary>
+    /// The selection's context menu opens only when there is a selection —
+    /// exactly the condition the retired command-bar button carried as
+    /// <c>IsVisible</c>, moved here because a menu is not a control that can
+    /// simply not be drawn.
+    ///
+    /// <para>The menu is attached to the whole library pane so that one menu
+    /// serves both views (§12.3: Add to list is ONE control reading whichever
+    /// selection is in force). The cost of that reach is that a right-click on
+    /// the pane's empty ground, the empty-state sentence or the space under the
+    /// last row also asks for it, and none of those is a selection. Cancelling
+    /// is the honest answer: a menu whose only item is greyed out tells the user
+    /// less than no menu at all, and it would appear in places nothing is
+    /// selectable.</para>
+    ///
+    /// <para>Selection has already been updated by the time this runs — both
+    /// views take the right press on <c>PointerPressed</c> and
+    /// <c>ContextRequested</c> follows it — so <c>HasSelection</c> here is the
+    /// state the menu is about to act on, not the previous one.</para>
+    /// </summary>
+    private void OnLibraryContextMenuOpening(object? sender, CancelEventArgs e)
+        => e.Cancel = _library is not { HasSelection: true };
 
     private void OnListDoubleTapped(object? sender, TappedEventArgs e)
     {

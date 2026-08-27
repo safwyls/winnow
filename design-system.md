@@ -942,3 +942,38 @@ provisional choice is visible rather than quietly becoming the standard.
    `PART_ContentPresenter` at fixed thickness. §10.7 was followed here (VoltInk on the
    Volt-filled primary). **The two sections should be reconciled** — right now which one is
    authoritative depends on which you read first.
+
+7. **There is no rule for translucency, and Mica needed one.** Every ink in §2 was chosen
+   against a *known* ground, and §8's measurements — `TextDim` 5.88:1 on `Surface`, 5.04:1
+   on `SurfaceRaised`, "do not dim further" — presuppose that ground is opaque. A Mica
+   window replaces it with the user's wallpaper, which the system cannot see.
+
+   **What was done in the meantime: translucency is confined to the caption strip, and
+   nothing else in the application is translucent.** `WellMica` (`Well` at 85%) is the
+   window's only non-opaque surface. The decision is not taste; it comes out of the same
+   sums §8 is made of, run against a pure-**white** backdrop — the ceiling any wallpaper can
+   reach, so the answer holds without assuming anything about how Windows composes Mica:
+
+   | Surface at 85% over white | `TextDim` | Verdict |
+   |---|---|---|
+   | `Well` — the caption | **5.0:1** | Level with the 5.04:1 §8 already accepts |
+   | `SurfaceRaised` — a selected rail row | **3.1:1** | Under the floor, badly |
+   | `SurfaceRaised` at 94% | **4.2:1** | Still under AA, and by then invisible anyway |
+
+   The rail's selected row is already sitting on §8's floor with no headroom, so **there is
+   no alpha at which a reading surface is both visibly Mica and legible.** The caption
+   carries a wordmark and three glyphs and no reading matter, which is why it is the one
+   surface that can pay. §1 says the same thing from the other side: a cover wall floating
+   on a wallpaper is a busier grid, and the covers need their ground.
+
+   Two facts worth keeping when this becomes a rule. **§9's "unlit lip" survives** — the
+   caption stays at or below `Ground`'s luminance for any backdrop up to about mid-grey, and
+   measured on a real desktop it sat at 0.41×. And **§5.4's dormancy cross-fade is
+   untouched**, verified by diffing the window with Mica against the same window without it:
+   every differing pixel fell inside the top 36px.
+
+   What the system still owes: a named role for "chrome that may be translucent" as opposed
+   to "surface that carries reading matter", so the next window does not re-derive this;
+   and a statement of whether the accents (`Volt`, `Amber`, and `Flare` above all) may ever
+   sit on a translucent surface. Today none of them do, and that is an accident of where the
+   line fell rather than a rule.
