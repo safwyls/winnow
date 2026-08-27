@@ -346,6 +346,30 @@ caption and its three buttons are ordinary controls in the window's own tree.
 > the corner straight back. `CaptionFill` *is* `ChromeSurface`, at every position on the
 > slider.
 
+> **Amended again (§15), and this time the amendment above survives rather than being
+> reversed.** Under the **floating layout** the caption does *not* take the rail's ink. It
+> takes `Well`, and so do the command bar, the cut bar and every gap between panes.
+>
+> The rule the previous amendment bought was *one continuous chrome field, with no seam in
+> the first inch of the window*. It bought it by making the caption and the rail the same
+> material, because they **met at a corner** and two tones meeting at a corner is a seam.
+> Floating dissolves that corner: the caption and the rail no longer touch. What is
+> continuous now is **the ground** — the caption, the command bar, the cut bar and the gaps
+> are one unbroken field, and the three content panes lie on it. The block is still there.
+> It turned out to be the ground rather than the panes.
+>
+> **And §9's older claim, the one the last amendment said was the real one, is served harder
+> than before.** That claim was never "the caption must be the darkest thing"; it was *"the
+> caption must not be the **brightest** thing, and the art must be the first thing on screen
+> with light in it."* `Surface` satisfied it by being a chrome tone no cover art comes near.
+> `Well` satisfies it by being the darkest tone in the window — below the field the covers
+> hang in, not merely below the covers. The lip is more unlit under this layout, not less.
+>
+> **The two layouts therefore assert two different things, and both are tested.**
+> `ThemeContrastTests.The_caption_is_the_rail` still holds for flush;
+> `FloatingLayoutTests.The_caption_is_the_ground` holds for floating, and asserts the same
+> property about seams pointed at whichever surface is carrying continuity.
+
 `Well` survives, one step below `Ground`, on the two surfaces where a tone under the art
 field is still the point: the scrollbar track and the detail modal's scrim.
 
@@ -1457,3 +1481,191 @@ cannot be written. A theme change works by writing `Color` on the brush objects 
 views already resolved — `StaticResource` looks up once and never again — so a folded
 brush is a token the theme system silently cannot reach. Measured, not assumed: the
 first build had thirty-five of them, and the symptom was a window that half repainted.
+
+
+---
+
+## 15. The floating layout
+
+**A second arrangement, behind a setting, default off.** The panes may meet edge to edge as
+they always have, or the **content** regions may detach into rounded cards with a uniform gap
+around each, on a window ground that runs unbroken behind the caption, the command bar and
+every gap. VS Code shipped this in Aug 2026; JetBrains ships the same thing and its users call
+the result *islands*.
+
+**It is structure, and the two settings it sits beside are not.** §14's theme is *material* and
+its slider is *quantity*. This is neither: it applies in every theme at every position on the
+slider including `SOLID`, and it changes no colour that either of those two was measured
+against. That is why it is a peer of THEME on the Appearance screen rather than a third
+qualifier hanging off the slider — see §15.5.
+
+### 15.1 What floats, and what stays flush
+
+**The line is content against chrome, not big against small.** The reference draws it in
+exactly one place and this follows it: the title bar spans the full width and does not float,
+neither does the activity strip nor the status bar, and what detaches is the sidebar, the
+editor and the secondary panel. Mapped onto this window:
+
+| Region | Floating | Why |
+|---|---|---|
+| **Caption** | Flush, full width | Chrome. It is a lip, not a pane (§9) |
+| **Command bar** | Flush | Actions. Search, layout, density, display, sort and Filters operate the pane below them; they are not *of* it |
+| **Cut bar** | Flush | Actions, on the same rule |
+| **Rail** | **Card** | Content — the bucket, list and settings axis |
+| **Cover wall / list view / empty state** | **Card** | Content |
+| **Merge queue · Stores · Appearance** | **Card** | Content; they replace the library pane and take its island |
+| **Filter panel** | **Card** | Content, and a peer of the rail (§11.1) |
+| **Detail modal** | Full bleed | A modal covers everything, gaps included |
+
+The command bar was the one judgement call, and it is settled: **flush.** Giving it a card
+would have made the controls a fourth region competing with the pane they operate, and it
+would have broken the ground's continuity across the top of the window — which is the whole
+of what makes the panes read as floating.
+
+### 15.2 The fifth ground
+
+The palette has four neutral steps and the flush layout already spends three of them: `Ground`
+for the art field, `Surface` for the chrome columns, `SurfaceRaised` for elevation. The gap
+between two panes needs a tone of its own, and there is exactly one left.
+
+**`ShellGround` is inked `Well`** under this layout — the tone §9 already keeps for *"where a
+tone under the art field is still the point"*, joining the scrollbar track and the modal scrim
+in a third use that is the same use. The caption, the command bar and the cut bar take the
+same ink at the same alpha, so at `SOLID` the four are one painted field with no boundary
+anywhere in them. That is not a shortage answered by the only remaining option; the deepest
+tone is the *right* one for the space behind everything, and it is what makes a gap read as a
+recess rather than as a missing pane.
+
+The order that follows is one direction and holds in every theme:
+
+```
+Well  <  Ground  <  Surface
+gap      the art    the chrome
+         field      panes
+```
+
+**§5.1's polarity is untouched.** The wall island is `WallGround` exactly as before, and the
+capsules sit on exactly the field they were calibrated against. What is new is that the field
+now has something *below* it, which is a fact about the gaps and about nothing else.
+
+### 15.3 Geometry: 8 and 8, and why each
+
+**The gap is 8px.** It is §4's own spacing step, it is the smallest step on that scale that
+reads as a gap rather than as a badly-drawn rule at 100% scaling, and — the part that decides
+it — **it is exactly the width of the resize band §9.1 measures.** One number solves two
+problems: a pane inset by it is a pane none of whose controls the OS can eat.
+
+**One pane owns each gap.** Half the gutter from each of the two neighbours was tried first
+and is wrong for a reason that shows up in exactly one state: the filter panel is not always
+open, so a library pane carrying half a gutter on its right came out with **four** pixels
+between it and the window edge whenever the panel was closed — measured on the glass, not
+reasoned about. So the rail gives up its right margin, the library pane owns both of its own
+gutters, and the filter panel gives up its left one. Every gap is 8 in every state, and no gap
+is the sum of two margins that can go out of step.
+
+**The radius is 8px**, above the tile's 6 and the control's 4. Radius reads as a proportion of
+the corner it turns: 6px on a 750px-tall column is a chamfer, not a round. The three radii
+still rank by the size of the object they round, which is the rule §4 was already stating with
+two of them.
+
+**The rail's column becomes `Auto` with the pane carrying its own 220.** Taking the margins
+out of a fixed 220 column would have taken them out of the rail's content — 220 of chrome
+becoming 204 of it — so every label in the rail would move when the layout changed. The column
+widens; the rail does not narrow.
+
+### 15.4 §9.1 is retired here, not kept
+
+`ScrollBarEdgeInset` steps every window-edge scrollbar 10px in, because Windows answers the
+outer 8px with `HTRIGHT` before the client area sees the pointer. **§9.1 states that rule about
+which edge a control is on, never about which control it is** — and floating moves every one of
+these scrollbars off the window's edge and onto a pane's. Eight pixels of gap plus the pane's
+own border is already outside the band, so the inset would be a second, visible 10px gutter
+inside an 8px-inset card: a scrollbar touching nothing. It is dropped under this layout and
+kept under the other, which is the rule doing what it says rather than an exception to it.
+
+### 15.5 Where the setting lives
+
+Its own `LAYOUT` section on the Appearance screen, **under THEME and above TRANSPARENCY.**
+
+The two controls under TRANSPARENCY are *qualifiers*: they are meaningless at `SOLID`, which is
+why they are not drawn there at all. Layout is not a qualifier of anything, so a fourth row
+inside that card would have said it depended on a quantity it does not depend on. Structure is
+also what you read first — you see how a window is put together before you notice what it is
+made of.
+
+**It is drawn the way THEME is drawn and not the way the qualifiers are**, on this screen's own
+established rule: a qualifier is a *consequence* and the honest way to show a consequence is to
+say it in a sentence; a layout is a *shape*, with no colour and no number in it, so the
+miniature is not an illustration of the setting — it is the setting at 1/8 scale. Two cards,
+one template, and exactly the four values the layout changes bound out of the view model: the
+ground, the margin, the radius, and where `Line` falls.
+
+**One place a layout card deliberately differs from a theme card.** A theme card draws its own
+fixed palette, because four of them side by side ask *which room*. A layout card is repainted
+from whichever theme is up, because two of them ask *what would this arrangement look like in
+the room I am already in* — and a card frozen in the default palette would answer a question
+nobody asked.
+
+Persisted under `appearance.layout` (`flush` / `floating`; unset reads as flush). The debug
+capture flag is `--layout=flush|floating`, session-only and sealed against writing like every
+other one (§14.3's seal).
+
+### 15.6 What it costs, measured
+
+**Nothing §14 measured moved.** The AA ceiling is computed off a selected rail row, the
+polarity floor off the wall against a dormant capsule, and the dormancy ramp off `TileGround`;
+the layout touches none of the three. It moves four tokens — `ShellGround`, `CaptionFill`,
+`ChromeGround` and `ChromeFieldOnGround` — and `FloatingLayoutTests` asserts every other token
+is bit-for-bit identical between the two layouts, at every position on the slider, with the
+wall in and out.
+
+**The chrome strips gain contrast rather than losing it.** The caption and the command bar are
+repainted from `Well` instead of `Surface` and `Ground`, and `Well` is the darkest tone in the
+palette — so over the brightest backdrop a wallpaper can be, every ink on those strips lands on
+a deeper ground than it did. Asserted at every position, per theme: the layout cannot be the
+thing that takes a label under §8's floor.
+
+**§14.7's forced field identity survives, and it was re-derived rather than assumed.** The
+worry is real — the command bar now sits on the window ground, so the stack looks like it lost
+a layer. It did not: the command bar was **never inside a pane** in either layout. It is painted
+directly on the shell, which contributes nothing at any position past `SOLID`, so
+`(1 − barAlpha)·(1 − fieldAlpha) = 1 − wallAlpha` has the same two terms it always had and a
+field still admits exactly the cover wall's share of the desktop. What *did* change is the ink:
+the bar went `Ground → Well`, so the field steps down with it, `Surface → Ground`. A field is
+one step **cut into** its bar, and leaving it at `Surface` would have made it a two-step jump
+that reads as raised.
+
+**The panes never composite twice, and that is the whole construction.** A painted ground behind
+translucent panes would stack: a rail at §14.3's measured `0.30` over a shell at `0.30` lands at
+`0.51`, and every figure the Appearance screen prints would describe a window that is not on
+screen. `ShellGround` is a **step, not a ramp** — opaque at zero, nothing at all past it — which
+§14.2 recorded as a tidiness and this layout turns load-bearing.
+
+### 15.7 The honest costs
+
+Three, and none of them is fatal:
+
+**At `SOLID` the ground is one field; past it, it is a field with brighter slots cut in it.** A
+gap carries no wordmark, no label and no art, so it takes no fill of ours and admits the *whole*
+desktop, where the caption beside it admits the chrome's 70%-at-most. Over a bright wallpaper
+the gaps are therefore the brightest thing in the window and the caption is not. That is the
+effect working — it is what makes the panes read as genuinely detached rather than as painted
+with a seam — but it does mean the continuity claim is exactly true at zero and approximate
+above it. The Appearance screen says so in its own line rather than leaving it to be noticed.
+
+**The gap tone does almost no work under the library pane.** Measured, `Well`-against-`Ground`
+comes out at 1.13:1 in Hoard and 1.02–1.06:1 in the other three, so what makes the wall island
+float is its **1px `Line` border**, not the gap. Against the rail the gap does read on its own
+(1.28:1 in Hoard, 1.29:1 in Box art) because `Surface` is two steps up. Fixing it would mean
+lifting `Ground`, which is the tone §5.1's polarity is calibrated against — so it is not fixed,
+it is stated. **Tungsten is the weakest of the four**: it has the second-faintest gap tone and,
+by design, the faintest `Line` in the set (1.58:1 against the gap), so its library pane floats
+less than any other. Nightshift and Box art draw loud lines and come off best.
+
+**§11.1's rule across the window is now a join rather than a continuation.** Beside the rail,
+the filter panel's 48px header rule *continued* the rule under the command bar straight across
+the screen. Floating breaks continuations by construction — that is what a gap is. It lands
+better than expected: the filter panel takes the **rail's** top margin rather than the wall's,
+which puts its header rule and the library pane’s top edge on the same scanline (y=92, measured on the running window), so the line still
+crosses the window, now as three collinear segments rather than one. It is a weaker statement
+of the same thing, and it is a real cost of the layout rather than a free win.

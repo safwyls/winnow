@@ -62,6 +62,11 @@ public partial class AppearanceViewModel : ObservableObject
                 "The field the covers hang in opens up too, at half the amount, and so does everything that shares its place - settings, the review queue, the list view. The covers themselves stay solid, so the desktop shows in the gutters between them."),
         ];
 
+        Layouts =
+        [
+            .. HoardLayouts.All.Select(l => new LayoutChoiceViewModel(l)),
+        ];
+
         _service.Applied += (_, _) => Refresh();
         Refresh();
     }
@@ -83,6 +88,30 @@ public partial class AppearanceViewModel : ObservableObject
     /// <summary>How far the transparency reaches: the chrome, or the chrome and
     /// the cover wall's field.</summary>
     public IReadOnlyList<AppearanceOptionViewModel> Reach { get; }
+
+    /// <summary>
+    /// How the window is put together (§15): panes meeting edge to edge, or
+    /// content panes floating as rounded cards on the window's ground.
+    ///
+    /// <para><b>Its own section, above TRANSPARENCY and below THEME, and not a
+    /// third qualifier on the slider.</b> The two qualifiers that already hang
+    /// off the slider are qualifiers because they are meaningless without it —
+    /// at SOLID there is no material to choose and no reach to set. Layout is not
+    /// like that: it applies in every theme at every position, including SOLID,
+    /// so hanging it off a quantity it does not depend on would be a lie about
+    /// what it is. It goes above transparency because structure is read before
+    /// material — you see how a window is put together before you notice what it
+    /// is made of.</para>
+    ///
+    /// <para><b>And it is drawn the way THEME is drawn, not the way the
+    /// qualifiers are.</b> The qualifiers are consequences and the honest way to
+    /// show a consequence is to say it, which is why they are a name and a
+    /// sentence. A layout is a SHAPE — it is the one thing on this screen that a
+    /// picture states better than a paragraph — so it takes the theme cards'
+    /// miniature, which this screen already established, at the size the two of
+    /// them need rather than the four.</para>
+    /// </summary>
+    public IReadOnlyList<LayoutChoiceViewModel> Layouts { get; }
 
     public string Title => "Appearance";
 
@@ -234,6 +263,24 @@ public partial class AppearanceViewModel : ObservableObject
     /// <summary>Whether the cover wall's field is included.</summary>
     public bool WallTranslucent => _service.WallTranslucent;
 
+    /// <summary>Whether the content panes float (§15).</summary>
+    public bool IsFloating => _service.IsFloating;
+
+    /// <summary>
+    /// What the gaps between the panes admit, said only when there are gaps and
+    /// only when something can come through them.
+    ///
+    /// <para>It is a separate sentence rather than a clause on
+    /// <see cref="TransparencyStatus"/> because it is the one surface in the
+    /// window that does NOT take the chrome's alpha: a gap carries no wordmark,
+    /// no label and no art, so it opens the whole way, and a screen that reports
+    /// every other surface's share owes this one its own line.</para>
+    /// </summary>
+    public bool ShowGapNote => IsFloating && !IsSolid;
+
+    public string GapNote =>
+        "The gaps between the panes take no fill of ours at all, so they admit the whole desktop rather than the chrome's share of it. That is what makes the panes read as floating rather than as drawn with a seam - and at SOLID it is the window's own ground in them, one step below the field the covers hang in.";
+
     /// <summary>How much of the chrome is desktop at this position, as a whole
     /// percent. The number the slider is really setting.</summary>
     public string ChromeAdmits => Admits(HoardTheme.MinChromeAlpha);
@@ -259,6 +306,15 @@ public partial class AppearanceViewModel : ObservableObject
         if (choice?.Value is HoardBackdrop backdrop)
         {
             _service.SelectBackdrop(backdrop);
+        }
+    }
+
+    [RelayCommand]
+    private void SelectLayout(LayoutChoiceViewModel? choice)
+    {
+        if (choice is not null)
+        {
+            _service.SetLayout(choice.Layout);
         }
     }
 
@@ -304,6 +360,18 @@ public partial class AppearanceViewModel : ObservableObject
             choice.IsSelected = choice.Value is bool w && w == _service.WallTranslucent;
         }
 
+        // The miniatures are repainted rather than rebuilt, for the reason the
+        // theme cards are not: a theme card draws its OWN palette and never
+        // changes, while a layout card draws whichever theme is up — the
+        // question it asks is "what would this arrangement look like in the room
+        // you are in", and a card still showing the previous room would answer a
+        // question nobody asked.
+        foreach (var choice in Layouts)
+        {
+            choice.IsSelected = choice.Layout == _service.Layout;
+            choice.Repaint(_service.Theme);
+        }
+
         OnPropertyChanged(nameof(Transparency));
         OnPropertyChanged(nameof(TransparencyReading));
         OnPropertyChanged(nameof(IsSolid));
@@ -326,6 +394,9 @@ public partial class AppearanceViewModel : ObservableObject
         OnPropertyChanged(nameof(WallTranslucent));
         OnPropertyChanged(nameof(ChromeAdmits));
         OnPropertyChanged(nameof(WallAdmits));
+
+        OnPropertyChanged(nameof(IsFloating));
+        OnPropertyChanged(nameof(ShowGapNote));
     }
 }
 
@@ -429,4 +500,150 @@ public partial class ThemeChoiceViewModel(HoardTheme theme) : ObservableObject
 
     [ObservableProperty]
     public partial bool IsSelected { get; set; }
+}
+
+/// <summary>
+/// One layout on the picker, drawn as a miniature of the window.
+///
+/// <para><b>The same device the theme cards use, and for a sharper reason.</b> A
+/// theme card draws a miniature because a chip row says what the hues are and
+/// nothing about what they do. A layout card draws one because a layout is
+/// <i>only</i> shape — there is no colour in it at all — and the miniature is
+/// the whole of what the setting produces, at 1/8 scale, rather than an
+/// illustration of it.</para>
+///
+/// <para><b>Its palette is the theme that is up, not a fixed one.</b> This is
+/// the one place the two card kinds deliberately differ. Four theme cards side
+/// by side answer "which room"; two layout cards answer "what would this
+/// arrangement look like in the room I am already in", and a card frozen in the
+/// default palette would answer a question nobody asked. So the brushes are
+/// rebuilt on every <see cref="ThemeService.Applied"/> — see
+/// <see cref="Repaint"/>.</para>
+///
+/// <para><b>Three values are the entire difference between the two cards</b>, and
+/// that is the point of drawing them from one template: the ground the panes lie
+/// on, the margin around each pane, and its corner radius. Everything else — the
+/// rail, the wall of capsules, the seam, the one Flare dot — is identical,
+/// because everything else about the window is.</para>
+/// </summary>
+public partial class LayoutChoiceViewModel : ObservableObject
+{
+    /// <summary>The gap in the miniature, at the miniature's scale. The real one
+    /// is 8px on a ~800px window; this is 3px on a 96px card, which is the same
+    /// proportion to within a rounding.</summary>
+    private const double MiniGap = 3;
+
+    /// <summary>And the radius, on the same scale as the gap.</summary>
+    private const double MiniRadius = 3;
+
+    public LayoutChoiceViewModel(HoardLayout layout)
+    {
+        Layout = layout;
+        Name = HoardLayouts.Name(layout);
+        Reason = HoardLayouts.Reason(layout);
+
+        var floating = layout == HoardLayout.Floating;
+
+        // One pane owns each gap, which is what the real shell does: the rail
+        // gives up its right margin and the wall carries both of its own. Halves
+        // from each neighbour were tried first and produced a four-pixel gutter
+        // in the one state where the second pane is missing (§15.3), and a
+        // miniature that did not match the window would be worse than no
+        // miniature.
+        RailMargin = floating ? new Thickness(MiniGap, MiniGap, 0, MiniGap) : default;
+        WallMargin = floating ? new Thickness(MiniGap) : default;
+        PaneRadius = floating ? new CornerRadius(MiniRadius) : default;
+
+        // The seam between rail and wall is a drawn rule flush and a gap
+        // floating, so the two cards carry the theme's Line in two different
+        // places: down the rail's right edge on one, and all the way round both
+        // panes on the other. Drawing both would say the floating layout keeps a
+        // divider it does not have.
+        RailEdge = floating ? new Thickness(1) : new Thickness(0, 0, 1, 0);
+        WallEdge = floating ? new Thickness(1) : default;
+
+        Repaint(HoardThemes.Default);
+    }
+
+    public HoardLayout Layout { get; }
+
+    public string Name { get; }
+
+    public string Reason { get; }
+
+    /// <summary>Around the rail in the miniature: nothing, or the gap on the
+    /// three edges it owns.</summary>
+    public Thickness RailMargin { get; }
+
+    /// <summary>And around the wall, mirrored.</summary>
+    public Thickness WallMargin { get; }
+
+    public CornerRadius PaneRadius { get; }
+
+    /// <summary>The rail's own edge: the chrome/art seam flush (§11.1), a card
+    /// border floating.</summary>
+    public Thickness RailEdge { get; }
+
+    /// <summary>The wall's. Nothing flush — the rail's seam is the only rule
+    /// between them — and a card border floating.</summary>
+    public Thickness WallEdge { get; }
+
+    /// <summary>The field the panes lie on: the theme's <c>Ground</c> where the
+    /// panes meet edge to edge and it is never seen, and its <c>Well</c> where
+    /// the gaps expose it.</summary>
+    [ObservableProperty]
+    public partial IBrush GroundFill { get; set; } = Brushes.Transparent;
+
+    /// <summary>The caption strip, which is the rail's ink flush and the
+    /// ground's floating — §9, and §15's amendment of it.</summary>
+    [ObservableProperty]
+    public partial IBrush CaptionFill { get; set; } = Brushes.Transparent;
+
+    /// <summary>The command bar: chrome above the art flush, an action strip on
+    /// the window ground floating.</summary>
+    [ObservableProperty]
+    public partial IBrush BarFill { get; set; } = Brushes.Transparent;
+
+    /// <summary>The rail and the filter panel — the same in both layouts, which
+    /// is half of what the pair of cards is showing.</summary>
+    [ObservableProperty]
+    public partial IBrush RailFill { get; set; } = Brushes.Transparent;
+
+    /// <summary>The field the covers hang in. Unchanged by the layout, and
+    /// unchanged by it on purpose: §5.1's polarity is measured against this tone
+    /// and nothing here is allowed to move it.</summary>
+    [ObservableProperty]
+    public partial IBrush WallFill { get; set; } = Brushes.Transparent;
+
+    [ObservableProperty]
+    public partial IBrush LineFill { get; set; } = Brushes.Transparent;
+
+    [ObservableProperty]
+    public partial IBrush FlareFill { get; set; } = Brushes.Transparent;
+
+    [ObservableProperty]
+    public partial bool IsSelected { get; set; }
+
+    /// <summary>
+    /// Rebuilds the miniature out of whichever theme is up.
+    ///
+    /// <para>New brush objects rather than the application's own tokens: these
+    /// have to show what the layout does to the caption and the ground
+    /// <i>specifically</i>, which are exactly the two tokens the live dictionary
+    /// has already resolved to the layout that is currently on. A card drawn from
+    /// the live tokens would show both cards wearing the setting in force, which
+    /// is the one thing a picker may not do.</para>
+    /// </summary>
+    public void Repaint(HoardTheme theme)
+    {
+        var floating = Layout == HoardLayout.Floating;
+
+        GroundFill = new ImmutableSolidColorBrush(floating ? theme.Well : theme.Ground);
+        CaptionFill = new ImmutableSolidColorBrush(floating ? theme.Well : theme.Surface);
+        BarFill = new ImmutableSolidColorBrush(floating ? theme.Well : theme.Ground);
+        RailFill = new ImmutableSolidColorBrush(theme.Surface);
+        WallFill = new ImmutableSolidColorBrush(theme.Ground);
+        LineFill = new ImmutableSolidColorBrush(theme.Line);
+        FlareFill = new ImmutableSolidColorBrush(theme.Flare);
+    }
 }

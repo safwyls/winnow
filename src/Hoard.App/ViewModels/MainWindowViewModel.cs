@@ -38,6 +38,13 @@ public partial class MainWindowViewModel : ObservableObject
         Stores = stores;
         Appearance = appearance;
 
+        // The one piece of appearance state the SHELL has to read rather than
+        // the palette: the floating layout moves margins, corner radii and
+        // borders, which are structure and not colour, so a repainted brush
+        // cannot deliver them. One style class on the window carries all of it
+        // (§15), and this is what drives it.
+        appearance.Service.Applied += (_, _) => OnPropertyChanged(nameof(IsFloatingLayout));
+
         // The panel is a column in the library's own layout, so it has to
         // disappear when the library does. Two sources, one answer, computed
         // here rather than composed in XAML — Avalonia has no boolean AND in a
@@ -97,6 +104,14 @@ public partial class MainWindowViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsLibraryVisible), nameof(IsFilterPanelVisible))]
     public partial bool IsAppearanceVisible { get; set; }
+
+    /// <summary>
+    /// Whether the content panes float as rounded cards on the window's ground
+    /// (§15). Read by one style class on the window; everything downstream of it
+    /// is a style selector rather than a binding, so the flush layout costs
+    /// nothing at runtime and nothing in the markup it did not already cost.
+    /// </summary>
+    public bool IsFloatingLayout => Appearance.Service.IsFloating;
 
     public bool IsLibraryVisible => !IsMergeQueueVisible && !IsStoresVisible && !IsAppearanceVisible;
 

@@ -388,6 +388,17 @@
     <x:Double x:Key="BadgeSize">10</x:Double>
     <CornerRadius x:Key="RadiusTile">6</CornerRadius>
     <CornerRadius x:Key="RadiusControl">4</CornerRadius>
+    <!-- The floating layout's pane corner (§15). ABOVE the tile's 6 and the
+         control's 4, so the three radii rank by the size of the object they
+         round: radius reads as a proportion of the corner it turns, and 6px on a
+         750px-tall column is a chamfer rather than a round. -->
+    <CornerRadius x:Key="RadiusPane">8</CornerRadius>
+    <!-- The gap between one pane and the next, and between a pane and the window
+         edge. §4's own spacing step, and exactly the width of the resize band
+         §9.1 measures — so a pane inset by it has no control the OS can eat. Its
+         HALF is what an interior edge takes, so a pane-to-pane gap and a
+         pane-to-window gap come out the same. -->
+    <x:Double x:Key="PaneGap">8</x:Double>
     <Thickness x:Key="SelectionEdge">2,0,0,0</Thickness>
 
     <!-- ══ Text styles ════════════════════════════════════════════════════ -->

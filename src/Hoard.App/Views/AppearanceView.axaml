@@ -369,6 +369,203 @@
                 </ItemsControl>
 
                 <!-- ══ TRANSPARENCY ═══════════════════════════════════════ -->
+                <!-- ══ LAYOUT (§15) ═══════════════════════
+                     Its own section, and it sits HERE - under THEME, above
+                     TRANSPARENCY - for a reason that is about what the three
+                     settings are rather than about how many rows fit.
+
+                     The two controls under TRANSPARENCY are QUALIFIERS: they are
+                     meaningless while the slider is at SOLID, which is why they
+                     are not drawn there at all. Layout is not a qualifier of
+                     anything. It applies in every theme at every position on the
+                     slider including zero, so bolting it on as a fourth row
+                     inside that card would have said it depended on a quantity
+                     it does not depend on. It is a peer of THEME: the theme says
+                     what the room is made of, this says how the room is put
+                     together, and structure is what you read first.
+
+                     It is drawn the way THEME is drawn and not the way the
+                     qualifiers are, on the screen's own established rule: a
+                     qualifier is a CONSEQUENCE and the honest way to show one is
+                     to say it in a sentence, but a layout is a SHAPE and there is
+                     nothing else in it - no colour, no number - so the miniature
+                     is not an illustration of the setting, it IS the setting at
+                     1/8 scale. Two cards rather than four, so they take the same
+                     UniformGrid at the same width and the row above and the row
+                     here line up down the screen. -->
+                <TextBlock Classes="label" FontSize="10" LetterSpacing="1.4"
+                           Margin="0,10,0,0" Text="LAYOUT"/>
+
+                <ItemsControl ItemsSource="{Binding Layouts}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <UniformGrid Columns="2"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="vm:LayoutChoiceViewModel">
+                            <Button Classes="themecard"
+                                    Classes.picked="{Binding IsSelected}"
+                                    Margin="0,0,12,12"
+                                    Command="{Binding $parent[ItemsControl].((vm:AppearanceViewModel)DataContext).SelectLayoutCommand}"
+                                    CommandParameter="{Binding}"
+                                    ToolTip.Tip="{Binding Reason}">
+                                <StackPanel Spacing="0">
+
+                                    <!-- ══ The window, at 1/8 ══════════════
+                                         The same drawing on both cards, from one
+                                         template, with exactly the values the
+                                         layout changes bound out of the view
+                                         model: the ground the panes lie on, the
+                                         margin round each, its corner radius, and
+                                         where the theme's Line falls. Everything
+                                         else is identical because everything else
+                                         about the window is - which is the claim
+                                         the pair of cards is making.
+
+                                         Painted from whichever theme is UP, not
+                                         from a fixed palette. That is the one
+                                         place this card deliberately differs from
+                                         a theme card: four theme cards ask "which
+                                         room", two layout cards ask "what would
+                                         this arrangement look like in the room I
+                                         am in". -->
+                                    <Border Classes="mini" CornerRadius="4,4,0,0"
+                                            Background="{Binding GroundFill}">
+                                        <Grid RowDefinitions="12,*">
+
+                                            <!-- The caption. Full width and
+                                                 flush in BOTH layouts - the
+                                                 reference's own line, and the
+                                                 half of §9 that floating does not
+                                                 touch. What changes is its ink:
+                                                 the rail's when the chrome is one
+                                                 bracket, the ground's when the
+                                                 ground is the continuous
+                                                 thing. -->
+                                            <Border Grid.Row="0" Background="{Binding CaptionFill}"/>
+
+                                            <Grid Grid.Row="1" ColumnDefinitions="46,*">
+
+                                                <!-- Rail. Same fill in both, so
+                                                     the eye reads the geometry
+                                                     rather than a recolour. -->
+                                                <Border Grid.Column="0"
+                                                        Background="{Binding RailFill}"
+                                                        Margin="{Binding RailMargin}"
+                                                        CornerRadius="{Binding PaneRadius}"
+                                                        BorderBrush="{Binding LineFill}"
+                                                        BorderThickness="{Binding RailEdge}"
+                                                        ClipToBounds="True">
+                                                    <StackPanel Margin="0,6" Spacing="6">
+                                                        <Grid ColumnDefinitions="2,5,5,3,*,6" Height="8">
+                                                            <Ellipse Grid.Column="2" Width="4" Height="4"
+                                                                     Fill="{Binding FlareFill}"
+                                                                     VerticalAlignment="Center"/>
+                                                            <Border Grid.Column="4" Height="4" CornerRadius="2"
+                                                                    Background="{StaticResource TextDim}" Opacity="0.7"/>
+                                                        </Grid>
+                                                        <Grid ColumnDefinitions="2,5,*,6" Height="8">
+                                                            <Border Grid.Column="2" Height="4" CornerRadius="2"
+                                                                    Background="{StaticResource TextDim}" Opacity="0.5"/>
+                                                        </Grid>
+                                                        <Grid ColumnDefinitions="2,5,*,6" Height="8">
+                                                            <Border Grid.Column="2" Height="4" CornerRadius="2"
+                                                                    Background="{StaticResource TextDim}" Opacity="0.3"/>
+                                                        </Grid>
+                                                    </StackPanel>
+                                                </Border>
+
+                                                <Grid Grid.Column="1" RowDefinitions="10,*">
+
+                                                    <!-- The command bar, and the
+                                                         one thing this pair of
+                                                         cards exists to show
+                                                         besides the gaps: it is
+                                                         chrome above the art in
+                                                         one layout and an action
+                                                         strip on the window's own
+                                                         ground in the other. On
+                                                         the floating card it is
+                                                         the same fill as the
+                                                         caption above it and the
+                                                         gaps beside it, so it
+                                                         disappears into them -
+                                                         which is exactly what it
+                                                         does in the window. -->
+                                                    <Border Grid.Row="0" Background="{Binding BarFill}"/>
+
+                                                    <!-- The wall. Its FILL never
+                                                         moves between the two
+                                                         cards, and that is not an
+                                                         omission: §5.1's polarity
+                                                         is measured against this
+                                                         tone and the layout is not
+                                                         allowed to touch it. -->
+                                                    <Border Grid.Row="1"
+                                                            Background="{Binding WallFill}"
+                                                            Margin="{Binding WallMargin}"
+                                                            CornerRadius="{Binding PaneRadius}"
+                                                            BorderBrush="{Binding LineFill}"
+                                                            BorderThickness="{Binding WallEdge}"
+                                                            Padding="7,7,0,0"
+                                                            ClipToBounds="True">
+                                                        <StackPanel Orientation="Horizontal" Spacing="5"
+                                                                    VerticalAlignment="Top">
+                                                            <Panel Width="38" Height="57">
+                                                                <Border CornerRadius="2"
+                                                                        Background="{x:Static vm:ThemeChoiceViewModel.Art1}"/>
+                                                                <!-- The one Flare in the
+                                                                     picture, in the corner a
+                                                                     real tile carries it. -->
+                                                                <Ellipse Width="5" Height="5"
+                                                                         Fill="{Binding FlareFill}"
+                                                                         HorizontalAlignment="Right"
+                                                                         VerticalAlignment="Top"
+                                                                         Margin="0,3,3,0"/>
+                                                            </Panel>
+                                                            <Border Width="38" Height="57" CornerRadius="2"
+                                                                    Background="{x:Static vm:ThemeChoiceViewModel.Art2}"/>
+                                                            <Border Width="38" Height="57" CornerRadius="2"
+                                                                    Background="{x:Static vm:ThemeChoiceViewModel.ArtDormant1}"/>
+                                                            <Border Width="38" Height="57" CornerRadius="2"
+                                                                    Background="{x:Static vm:ThemeChoiceViewModel.Art3}"/>
+                                                            <Border Width="38" Height="57" CornerRadius="2"
+                                                                    Background="{x:Static vm:ThemeChoiceViewModel.Art4}"/>
+                                                            <Border Width="38" Height="57" CornerRadius="2"
+                                                                    Background="{x:Static vm:ThemeChoiceViewModel.ArtDormant2}"/>
+                                                        </StackPanel>
+                                                    </Border>
+                                                </Grid>
+                                            </Grid>
+                                        </Grid>
+                                    </Border>
+
+                                    <StackPanel Margin="16,12,16,14" Spacing="6">
+                                        <Grid ColumnDefinitions="*,Auto">
+                                            <TextBlock Grid.Column="0"
+                                                       Classes="display-l" FontSize="17"
+                                                       Text="{Binding Name}"
+                                                       VerticalAlignment="Center"/>
+                                            <Border Grid.Column="1"
+                                                    IsVisible="{Binding IsSelected}"
+                                                    Background="{StaticResource Volt}"
+                                                    CornerRadius="9" Padding="8,2"
+                                                    VerticalAlignment="Center">
+                                                <TextBlock Classes="label" FontSize="9" LetterSpacing="1"
+                                                           Foreground="{StaticResource VoltInk}"
+                                                           Text="IN USE"/>
+                                            </Border>
+                                        </Grid>
+                                        <TextBlock Classes="para"
+                                                   Text="{Binding Reason}"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
                 <TextBlock Classes="label" FontSize="10" LetterSpacing="1.4"
                            Margin="0,10,0,0" Text="TRANSPARENCY"/>
 
@@ -621,6 +818,28 @@
                              falls. Neither nags — the second number turns Amber
                              (§2: attention, not error) and says which line it
                              crossed. -->
+                        <!-- The floating layout's fifth surface, reported here
+                             because it is the one thing in the window that does
+                             NOT take a share of the slider. A gap carries no
+                             wordmark, no label and no art, so it opens the whole
+                             way while every surface above reports a fraction -
+                             and a screen that prints the chrome's share and the
+                             wall's owes this one its own line rather than letting
+                             someone infer it. Only drawn when there are gaps and
+                             something can come through them. -->
+                        <StackPanel Spacing="6" IsVisible="{Binding ShowGapNote}">
+                            <Border Height="1" Background="{StaticResource Line}" Margin="0,2"/>
+                            <TextBlock Classes="label" FontSize="9" LetterSpacing="1.2"
+                                       Text="THE GAPS BETWEEN THE PANES"/>
+                            <Grid ColumnDefinitions="Auto,10,*">
+                                <TextBlock Grid.Column="0" Classes="data"
+                                           VerticalAlignment="Top"
+                                           Text="100%"/>
+                                <TextBlock Grid.Column="2" Classes="para"
+                                           Text="{Binding GapNote}"/>
+                            </Grid>
+                        </StackPanel>
+
                         <StackPanel Spacing="6" Margin="0,4,0,0">
                             <TextBlock Classes="label" FontSize="9" LetterSpacing="1.2"
                                        Text="LABELS ON THE CHROME"/>

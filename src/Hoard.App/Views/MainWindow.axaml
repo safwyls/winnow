@@ -8,8 +8,9 @@
         Title="Hoard"
         Width="1280" Height="820"
         MinWidth="1200" MinHeight="640"
-        Background="{StaticResource Ground}"
-        TransparencyBackgroundFallback="{StaticResource Ground}"
+        Classes.floating="{Binding IsFloatingLayout}"
+        Background="{StaticResource ShellGround}"
+        TransparencyBackgroundFallback="{StaticResource ShellGround}"
         ExtendClientAreaToDecorationsHint="True"
         ExtendClientAreaChromeHints="NoChrome"
         ExtendClientAreaTitleBarHeightHint="-1">
@@ -571,6 +572,167 @@
             <Setter Property="Background" Value="{StaticResource Text}"/>
         </Style>
 
+
+        <!-- ══ The panes, flush ═══════════════════════════
+             Which edges the layout draws, for the arrangement that has always
+             shipped: the rail's right edge and the filter panel's left one are
+             the two chrome/art seams (§11.1), the command bar and the cut bar
+             rule off the pane below them, and the library pane draws nothing of
+             its own because those four already enclose it.
+
+             In a STYLE and not on the element, and that is the whole reason this
+             block exists. A local value outranks a style setter in Avalonia, so
+             a BorderThickness written inline wins over the floating override
+             silently — measured, not guessed: the first build of this layout
+             came out with no card edges at all and the markup gave no hint why.
+             The same trap the rail's selection edge fell into in M0. -->
+        <Style Selector="Border.railpane">
+            <Setter Property="BorderThickness" Value="0,0,1,0"/>
+        </Style>
+        <Style Selector="Border.filterpane">
+            <Setter Property="BorderThickness" Value="1,0,0,0"/>
+        </Style>
+        <Style Selector="Border.cmdbar">
+            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+        </Style>
+        <Style Selector="Border.cutbar">
+            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+        </Style>
+        <Style Selector="Border.wallpane">
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector="Border.screenpane">
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+
+        <!-- ══ THE FLOATING LAYOUT (§15) ═════════════════════
+             Everything the layout does that a repainted brush cannot: margins,
+             corner radii and which edges carry a rule. Four tokens change colour
+             (ShellGround, CaptionFill, ChromeGround, ChromeFieldOnGround — see
+             HoardTheme.Tokens); everything else the setting does is here.
+
+             LAST IN THE FILE ON PURPOSE. Avalonia resolves setters of equal
+             specificity in document order, and every one of these overrides a
+             value the flush markup sets a few hundred lines up. Declared earlier
+             they would silently lose, which is the failure mode this codebase
+             keeps meeting: build green, feature absent.
+
+             WHAT FLOATS AND WHAT DOES NOT, and the rule that decides. The
+             reference draws the line between CONTENT and CHROME, not between
+             big and small: VS Code floats the sidebar, the editor and the
+             secondary panel, and leaves the title bar, the activity strip and
+             the status bar flush on the window ground. JetBrains ships the same
+             split and its users call the result islands. So here: the rail, the
+             library pane and the filter panel are content and become cards; the
+             caption, the command bar and the cut bar are chrome and actions and
+             stay on the ground with the gaps.
+
+             THE GAP IS 8 AND THE RADIUS IS 8, and neither is copied from the
+             reference. 8 is §4's own spacing step (4 · 8 · 12 · 16), it is the
+             smallest step on that scale that reads as a gap rather than as a
+             mis-drawn rule at 100% scaling, and it is exactly the width of the
+             resize band §9.1 measures — so a pane inset by it is a pane no
+             control of which can be eaten by the OS, which is the same number
+             solving two problems. The radius is 8 rather than the tile's 6
+             because radius is read as a proportion of the corner it turns: 6px
+             on a 750px column is a chamfer, and the panes are the largest
+             objects in the window. It stays ABOVE the tile's 6 and the
+             control's 4, so the three radii still rank by the size of the thing
+             they round.
+
+             ONE PANE OWNS EACH GAP, rather than two panes contributing half of
+             it each. Half-and-half was tried first and it is wrong for a reason
+             that only shows up in one state: the filter panel is not always
+             there, so a library pane carrying half a gutter on its right came out
+             with FOUR pixels between it and the window edge whenever the panel
+             was closed - measured on the glass, not reasoned about. So the rail
+             gives up its right margin, the library pane owns both of its own
+             gutters, and the filter panel gives up its left one. Every gap is 8
+             in every state, and no gap is the sum of two margins that can go out
+             of step.
+        -->
+
+        <!-- The rail. Its right edge was the chrome/art seam (§11.1); floating,
+             the gap is that seam and the rule becomes a card border on all four
+             sides. ClipToBounds because a selected row's fill runs the full width
+             of the pane and would square the corners off from the inside. -->
+        <Style Selector="Window.floating Border.railpane">
+            <Setter Property="Margin" Value="8,8,0,8"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusPane}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="ClipToBounds" Value="True"/>
+        </Style>
+
+        <!-- The library pane. Flush it has no border at all — the rail's seam and
+             the command bar's rule are what enclose it — so floating is the only
+             layout in which it draws its own. -->
+        <Style Selector="Window.floating Border.wallpane">
+            <Setter Property="Margin" Value="8,8,8,8"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusPane}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="ClipToBounds" Value="True"/>
+        </Style>
+
+        <!-- The merge queue, Stores and Appearance, which replace the library
+             pane entirely. They take the RAIL's top margin rather than the wall's
+             8-below-the-command-bar, because with them up there is no command bar:
+             their card runs from under the caption to the bottom, level with the
+             rail beside it. -->
+        <Style Selector="Window.floating Border.screenpane">
+            <Setter Property="Margin" Value="8,8,8,8"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusPane}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="ClipToBounds" Value="True"/>
+        </Style>
+
+        <!-- The filter panel, mirroring the rail exactly (§11.1: it is a peer of
+             the rail, not a second column of it). Its top is the rail's top and
+             not the wall's, which is what makes the mirror hold. -->
+        <Style Selector="Window.floating Border.filterpane">
+            <Setter Property="Margin" Value="0,8,8,8"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusPane}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="ClipToBounds" Value="True"/>
+        </Style>
+
+        <!-- The command bar and the cut bar. Their FILL needs nothing here —
+             ChromeGround is already the ground's own ink under this layout, so
+             they disappear into the caption above them and the gaps beside them,
+             which is the whole point of leaving them flush. What has to go is the
+             1px rule along their bottom: it divided them from a pane that was
+             directly underneath, and there is 8px of window ground under them
+             now. A rule above a gap is a rule against nothing.
+
+             The 8px side margin puts their 20px inner gutter over the library
+             pane's own, so the search box and the first tile share a left edge to
+             within the pane's 1px border. -->
+        <Style Selector="Window.floating Border.cmdbar">
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Margin" Value="8,0"/>
+        </Style>
+        <Style Selector="Window.floating Border.cutbar">
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Margin" Value="8,0"/>
+        </Style>
+
+        <!-- §9.1, and the one rule this layout retires rather than keeps.
+             ScrollBarEdgeInset steps every window-edge scrollbar 10px in, because
+             Windows answers the outer 8px with HTRIGHT before the client area
+             sees the pointer and a thumb inside that band is visible and
+             unreachable. §9.1 states the rule about WHICH EDGE a control is on,
+             never about which control it is — and floating moves every one of
+             these scrollbars off the window's edge and onto a pane's. Eight
+             pixels of gap plus the pane's own border is already outside the band,
+             so the inset would now be a second, visible 10px gutter inside an
+             8px-inset card: a scrollbar that does not touch anything. It goes.
+
+             Set here rather than by removing the global rule, because the global
+             rule is still correct for the flush layout and for any window that
+             ever puts a control at its own edge again. -->
+        <Style Selector="Window.floating ScrollBar:vertical">
+            <Setter Property="Margin" Value="0"/>
+        </Style>
+
     </Window.Styles>
 
     <!-- OffScreenMargin is the maximised overhang: Windows sizes a maximised
@@ -670,14 +832,26 @@
          carries reading matter or cover art. Nothing under a tile is
          translucent, so §5.4's two-layer dormancy cross-fade composites over
          exactly the ground it always did. -->
-    <Grid Grid.Row="1" ColumnDefinitions="220,*,Auto"
+    <!-- Auto rather than a literal 220, and the rail carries the width itself.
+         Flush, the two are the same number. Floating, the rail's 8px margins have
+         to come from somewhere, and taking them out of a fixed column would take
+         them out of the rail's own content - 220 of chrome becoming 204 of it, so
+         every label in the rail would move when the layout changed. An Auto column
+         sized by a 220-wide child plus its margins keeps the rail exactly 220 in
+         both, and it is the COLUMN that widens. -->
+    <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto"
           Background="{StaticResource ShellGround}">
 
         <!-- ══ RAIL (220px) ════════════════════════════════════════════════ -->
+        <!-- No BorderThickness here: it is a style, because the floating layout
+             has to change it and a LOCAL VALUE OUTRANKS A STYLE SETTER. Written
+             inline it wins silently and the pane comes out with no card edge -
+             which is exactly what happened the first time. -->
         <Border Grid.Column="0"
+                Classes="railpane"
+                Width="{StaticResource RailWidth}"
                 Background="{StaticResource ChromeSurface}"
-                BorderBrush="{StaticResource Line}"
-                BorderThickness="0,0,1,0">
+                BorderBrush="{StaticResource Line}">
             <!-- Interior: the rail's own right edge is a divider, not the
                  window's, so this scrollbar keeps its flush position. -->
             <ScrollViewer Classes="inner" HorizontalScrollBarVisibility="Disabled">
@@ -1022,9 +1196,9 @@
 
             <!-- ── Command bar ──────────────────────────────────────────── -->
             <Border Grid.Row="0"
+                    Classes="cmdbar"
                     Background="{StaticResource ChromeGround}"
-                    BorderBrush="{StaticResource Line}"
-                    BorderThickness="0,0,0,1">
+                    BorderBrush="{StaticResource Line}">
                   <!-- Search takes the slack; everything else is Auto. A Grid
                        satisfies its Auto columns before its star one, so the box is
                        the only thing that gives way when the filter panel takes 276px
@@ -1291,7 +1465,11 @@
                  TOGETHER, so each tile paints TileGround under its art stack
                  and the ramp composites over exactly the ground it was
                  calibrated against. See tokens.axaml's grounds note. -->
-            <Panel Grid.Row="2" Background="{StaticResource WallGround}">
+            <Border Grid.Row="2"
+                    Classes="wallpane"
+                    Background="{StaticResource WallGround}"
+                    BorderBrush="{StaticResource Line}">
+            <Panel>
 
                 <!-- ── The selection's own menu (§6, §12.3) ──────────────────
                      §6 asks the list view for "sortable columns, multi-select,
@@ -1534,12 +1712,16 @@
                 </Border>
 
             </Panel>
+            </Border>
         </Grid>
 
         <!-- ── Merge confirm queue (§5.3 step 3 / §6) ────────────────────── -->
-        <views:MergeQueueView Name="MergeQueue"
-                              DataContext="{Binding MergeQueue}"
-                              IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsMergeQueueVisible}"/>
+        <Border Classes="screenpane"
+                BorderBrush="{StaticResource Line}"
+                IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsMergeQueueVisible}">
+            <views:MergeQueueView Name="MergeQueue"
+                                  DataContext="{Binding MergeQueue}"/>
+        </Border>
 
         <!-- The Stores panel. A third occupant of the same pane, on the same
              terms as the queue: it replaces the library entirely rather than
@@ -1550,17 +1732,23 @@
              the library screen — so its scrollbar takes §9.1's edge inset from
              the window's own ScrollBar:vertical style rather than opting out
              with ScrollViewer.inner. -->
-        <views:StoresView Name="StoresPanel"
-                          DataContext="{Binding Stores}"
-                          IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsStoresVisible}"/>
+        <Border Classes="screenpane"
+                BorderBrush="{StaticResource Line}"
+                IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsStoresVisible}">
+            <views:StoresView Name="StoresPanel"
+                              DataContext="{Binding Stores}"/>
+        </Border>
 
         <!-- Appearance, on the same terms again. It is the second row under
              SETTINGS, which is what that heading was renamed for: a section
              that names a category rather than restating its one row (§13 gap 3)
              only earns the name once there is a second one. -->
-        <views:AppearanceView Name="AppearancePanel"
-                              DataContext="{Binding Appearance}"
-                              IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsAppearanceVisible}"/>
+        <Border Classes="screenpane"
+                BorderBrush="{StaticResource Line}"
+                IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsAppearanceVisible}">
+            <views:AppearanceView Name="AppearancePanel"
+                                  DataContext="{Binding Appearance}"/>
+        </Border>
 
         </Panel>
 

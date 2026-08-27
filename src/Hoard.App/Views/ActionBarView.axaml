@@ -263,10 +263,15 @@
 
     </UserControl.Styles>
 
-    <Border MinHeight="42"
+    <!-- The cut bar is ACTIONS, so the floating layout leaves it on the window
+         ground with the caption and the command bar rather than giving it a card
+         (§15). Its fill needs no override for that - ChromeGround IS the ground's
+         ink under that layout - but its bottom rule does go, because there is a
+         gap under it now and a rule above a gap is a rule against nothing. -->
+    <Border Classes="cutbar"
+            MinHeight="42"
             Background="{StaticResource ChromeGround}"
             BorderBrush="{StaticResource Line}"
-            BorderThickness="0,0,0,1"
             IsVisible="{Binding ShowActionBar}">
         <Panel Margin="20,7">
 

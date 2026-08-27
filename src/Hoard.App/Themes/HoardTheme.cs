@@ -294,10 +294,14 @@ public sealed record HoardTheme
     /// theme by hand, because they are all "this role at N%" and a theme that
     /// had to restate seventeen of them would drift on the eighteenth.</para>
     /// </summary>
-    public Dictionary<string, Color> Tokens(double transparency, bool wallTranslucent = false)
+    public Dictionary<string, Color> Tokens(
+        double transparency,
+        bool wallTranslucent = false,
+        HoardLayout layout = HoardLayouts.Default)
     {
         var t = Math.Clamp(transparency, 0, 1);
         var alpha = 1 - (t * (1 - MinChromeAlpha));
+        var floating = layout == HoardLayout.Floating;
 
         // The wall's own alpha, on the same linear walk and at half the reach.
         // Zero on the slider is opaque here too, so the wall setting cannot
@@ -330,6 +334,24 @@ public sealed record HoardTheme
 
         var railInk = Mix(Surface, TranslucentSurface, ink);
         var barInk = Mix(Ground, TranslucentChromeGround, ink);
+
+        // ── The floating layout's fifth ground ──────────────────────────────
+        // The window's own field: what shows in every gap between panes, and
+        // what the caption, the command bar and the cut bar are painted with, so
+        // that the four are ONE surface with the panes lying on it. It is Well —
+        // one step below Ground, the tone §9 already keeps for "under the art
+        // field" — because the palette has exactly four neutral steps and the
+        // three the flush layout already spends (Ground for the art field,
+        // Surface for the chrome columns, SurfaceRaised for elevation) leave the
+        // gap nowhere else to go. That is not a shortage: the deepest tone is
+        // the right one for the space BEHIND everything, and it is what makes a
+        // gap read as a recess rather than as a missing pane.
+        //
+        // Its walked partner is TranslucentChromeGround, which is already within
+        // two or three units of Well in every theme — the command bar's own
+        // translucent ink was always converging on this tone, and the floating
+        // layout just names it. No theme needs a new field for it.
+        var wellInk = Mix(Well, TranslucentChromeGround, ink);
 
         var textDim = Mix(TextDim, TranslucentTextDim, ink);
         var textFaint = Mix(TextFaint, TranslucentTextFaint, ink);
@@ -392,7 +414,31 @@ public sealed record HoardTheme
             // be translucent without the window painting an opaque field behind
             // it first, and why it is a step rather than a ramp: two stacked
             // alphas would multiply and the slider could never reach its end.
-            ["ShellGround"] = t > 0 ? A(Ground, 0) : Ground,
+            //
+            // FLOATING (§15): it stops being a safety ground and becomes the
+            // only thing in the window with a shape. Every gap between panes is
+            // this token, so it is inked Well — see wellInk above — and the
+            // caption and the command bar take the SAME ink at the SAME alpha,
+            // which is §9's "same alpha, not merely the same colour" argument
+            // transplanted from the caption/rail pair to the caption/gap pair.
+            //
+            // The step-not-ramp rule is what makes the gaps work rather than a
+            // detail to preserve: at zero this paints an opaque field and the
+            // panes sit on it, and past zero it paints NOTHING, so a gap admits
+            // the desktop with no alpha of ours in front of it at all. That is
+            // also the only arrangement in which a pane does not composite
+            // twice — the pane's measured 0.30 over a 0.30 shell would land at
+            // 0.51 and every figure §14.3 reports would be wrong.
+            //
+            // The cost is stated rather than hidden: past SOLID the gaps are
+            // MORE open than the caption above them, because the caption carries
+            // a wordmark and three glyphs and takes the chrome's measured alpha,
+            // and a gap carries nothing and may open all the way. So the ground
+            // is one continuous field at SOLID and a field with brighter slots
+            // cut in it past that.
+            ["ShellGround"] = t > 0
+                ? A(floating ? Well : Ground, 0)
+                : floating ? Well : Ground,
 
             // ── WallGround: the field the covers hang in ───────────────────
             // It used to be opaque at every setting, on a §1 argument: the art
@@ -462,9 +508,32 @@ public sealed record HoardTheme
             // Same ink AND same alpha as the rail, not merely the same colour: a
             // second alpha over the same backdrop would land on a second tone
             // and put the corner back.
-            ["CaptionFill"] = chromeSurface,
+            //
+            // FLOATING (§15) MOVES IT AGAIN, and the amendment above survives
+            // rather than being reversed. Two rounds ago the caption took the
+            // rail's ink so the chrome would be ONE CONTINUOUS BRACKET instead of
+            // two tones meeting at a corner. Floating dissolves that corner: the
+            // caption and the rail no longer touch, so there is no seam for two
+            // tones to meet at. What is continuous now is the GROUND — the
+            // caption, the command bar, the cut bar and every gap are one
+            // unbroken field of Well, and the rail, the wall and the filter panel
+            // float on it. The block the amendment bought is still there; it
+            // turned out to be the ground rather than the panes.
+            //
+            // And §9's older rule — the one the amendment said was the real one,
+            // "the caption must not be the BRIGHTEST thing, and the art must be
+            // the first thing on screen with light in it" — is served harder than
+            // before, not softer. Surface was a chrome tone level with the rail.
+            // Well is the darkest tone in the window, under the art field itself.
+            ["CaptionFill"] = floating ? A(wellInk, alpha) : chromeSurface,
             ["ChromeSurface"] = chromeSurface,
-            ["ChromeGround"] = chromeGround,
+
+            // The command bar and the cut bar. Flush, they are chrome above the
+            // art and take Ground. Floating, they are ACTIONS SITTING ON THE
+            // WINDOW GROUND — that is the line the reference draws and the line
+            // this follows — so they take the ground's own ink and paint nothing
+            // that the caption above them and the gaps beside them do not.
+            ["ChromeGround"] = floating ? A(wellInk, alpha) : chromeGround,
             ["ChromeRaised"] = chromeRaised,
 
             // Half a step: a HOVERED row where ChromeRaised is a SELECTED one.
@@ -485,7 +554,27 @@ public sealed record HoardTheme
             // does, and both take the field alpha, so a field admits half of
             // what its container admits. See MinFieldAlpha for why that is the
             // only number available.
-            ["ChromeFieldOnGround"] = A(railInk, fieldAlpha),
+            //
+            // FLOATING re-derives the first of them rather than inheriting it,
+            // because the surface it is a field ON changed. The search box's
+            // container went from the Ground-inked command bar to the Well-inked
+            // window ground, so the field steps one place down the neutral family
+            // with it — Surface over Ground becomes Ground over Well — and the
+            // step, which is what a field IS here, is the same size it always
+            // was. Leaving it at Surface would have made it a two-step jump: a
+            // field that pops out of the ground instead of being cut into it.
+            //
+            // THE ALPHA IDENTITY IS UNTOUCHED, and it is worth saying why rather
+            // than assuming it. MinFieldAlpha is forced by
+            // (1 − containerAlpha)·(1 − fieldAlpha) = 1 − MinWallAlpha, and the
+            // container in that sum is the bar the field sits on. The command bar
+            // was NEVER inside a pane — flush or floating, it is painted directly
+            // on the shell, which contributes nothing at any position past SOLID
+            // (see ShellGround). So the stack has the same two layers it always
+            // had, at the same two alphas, and a field still admits exactly the
+            // cover wall's share of the desktop. ThemeContrastTests asserts the
+            // identity in BOTH layouts rather than taking that on trust.
+            ["ChromeFieldOnGround"] = A(floating ? barInk : railInk, fieldAlpha),
             ["ChromeFieldOnSurface"] = A(barInk, fieldAlpha),
 
             // Under the art stack inside a tile, so a cover that has decoded one

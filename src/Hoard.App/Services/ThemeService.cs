@@ -75,6 +75,12 @@ public sealed class ThemeService
     /// Unset reads as false — the previous default, and a real preference.</summary>
     public const string WallSettingKey = "appearance.wall";
 
+    /// <summary>How the window is put together: <c>flush</c> or
+    /// <c>floating</c>. Unset reads as flush (<see cref="HoardLayouts.Default"/>),
+    /// which is what the app has always looked like and what every contrast
+    /// figure in §14 was measured against.</summary>
+    public const string LayoutSettingKey = "appearance.layout";
+
     /// <summary>
     /// What a stored <c>true</c> becomes.
     ///
@@ -97,6 +103,7 @@ public sealed class ThemeService
     private HoardBackdrop _backdrop = HoardBackdrops.Default;
     private HoardBackdrop _activeBackdrop = HoardBackdrop.None;
     private bool _wallTranslucent;
+    private HoardLayout _layout = HoardLayouts.Default;
     private bool _loading;
     private bool _sessionOverride;
 
@@ -147,6 +154,20 @@ public sealed class ThemeService
     /// along with the chrome. The tiles never do, at any setting.</summary>
     public bool WallTranslucent => _wallTranslucent;
 
+    /// <summary>
+    /// Whether the content panes float as rounded cards on the window's ground,
+    /// or meet edge to edge.
+    ///
+    /// <para>Independent of everything else here on purpose: it is STRUCTURE
+    /// where the theme is material and the slider is quantity, so it applies in
+    /// every theme at every position and is not a qualifier of either.</para>
+    /// </summary>
+    public HoardLayout Layout => _layout;
+
+    /// <summary>Convenience for the shell, which needs the answer as a bool to
+    /// drive one style class.</summary>
+    public bool IsFloating => _layout == HoardLayout.Floating;
+
     /// <summary>The amount the tokens are painted for: the request, or zero when
     /// the machine cannot composite.</summary>
     public double ActiveTransparency
@@ -178,6 +199,7 @@ public sealed class ThemeService
         var storedTransparency = await _settings.GetAsync(TransparencySettingKey, ct);
         var storedBackdrop = await _settings.GetAsync(BackdropSettingKey, ct);
         var storedWall = await _settings.GetAsync(WallSettingKey, ct);
+        var storedLayout = await _settings.GetAsync(LayoutSettingKey, ct);
 
         _loading = true;
         try
@@ -190,6 +212,12 @@ public sealed class ThemeService
             // the conservative one: a wall that opens up unasked is a surprise,
             // a wall that stays solid is what the app has always looked like.
             _wallTranslucent = bool.TryParse(storedWall, out var wall) && wall;
+
+            // Same rule as every other appearance key: anything unparseable
+            // leaves the default standing rather than throwing, because the
+            // store returns exactly what was written and takes no position on
+            // bad text.
+            _layout = HoardLayouts.ById(storedLayout);
         }
         finally
         {
@@ -245,7 +273,8 @@ public sealed class ThemeService
         HoardTheme theme,
         int transparency,
         HoardBackdrop? backdrop = null,
-        bool? wallTranslucent = null)
+        bool? wallTranslucent = null,
+        HoardLayout? layout = null)
     {
         _loading = true;
         try
@@ -254,6 +283,7 @@ public sealed class ThemeService
             _transparency = Math.Clamp(transparency, 0, 100);
             _backdrop = backdrop ?? _backdrop;
             _wallTranslucent = wallTranslucent ?? _wallTranslucent;
+            _layout = layout ?? _layout;
         }
         finally
         {
@@ -338,6 +368,23 @@ public sealed class ThemeService
     }
 
     /// <summary>
+    /// Whether the content panes float. Repaints, because the layout moves four
+    /// tokens — the shell's ground, the caption, the command bar and the search
+    /// field's fill — and the shell reads the flag to place its margins.
+    /// </summary>
+    public void SetLayout(HoardLayout layout)
+    {
+        if (_layout == layout)
+        {
+            return;
+        }
+
+        _layout = layout;
+        Apply();
+        Save(LayoutSettingKey, HoardLayouts.Id(layout));
+    }
+
+    /// <summary>
     /// The window's report of what the platform actually composed. Repaints when
     /// the answer changes, because it can change while the window is open — the
     /// OS theme variant flipping, or a remote session taking composition away.
@@ -375,7 +422,7 @@ public sealed class ThemeService
         var app = Avalonia.Application.Current;
         if (app is not null)
         {
-            ApplyTo(app.Resources, _theme, ActiveTransparency, ActiveWallTranslucency);
+            ApplyTo(app.Resources, _theme, ActiveTransparency, ActiveWallTranslucency, _layout);
         }
 
         Applied?.Invoke(this, EventArgs.Empty);
@@ -394,9 +441,10 @@ public sealed class ThemeService
         IResourceDictionary resources,
         HoardTheme theme,
         double transparency,
-        bool wallTranslucent = false)
+        bool wallTranslucent = false,
+        HoardLayout layout = HoardLayouts.Default)
     {
-        var tokens = theme.Tokens(transparency, wallTranslucent);
+        var tokens = theme.Tokens(transparency, wallTranslucent, layout);
 
         foreach (var (key, colour) in tokens)
         {

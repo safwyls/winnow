@@ -59,9 +59,9 @@ public partial class App : Application
     /// preference behind in somebody's real library to get a picture.</para>
     ///
     /// <para><c>--transparent</c> is kept as the old spelling and means the far
-    /// end of the slider. <c>--backdrop=acrylic|mica</c> and
-    /// <c>--wall=on|off</c> cover the other two decisions, on the same terms:
-    /// session only, no write.</para>
+    /// end of the slider. <c>--backdrop=acrylic|mica</c>,
+    /// <c>--wall=on|off</c> and <c>--layout=flush|floating</c> cover the other
+    /// three decisions, on the same terms: session only, no write.</para>
     /// </summary>
     private static void ApplyStartupTheme(ThemeService theme)
     {
@@ -71,10 +71,11 @@ public partial class App : Application
         var amount = args.FirstOrDefault(a => a.StartsWith("--transparency=", StringComparison.Ordinal));
         var material = args.FirstOrDefault(a => a.StartsWith("--backdrop=", StringComparison.Ordinal));
         var wall = args.FirstOrDefault(a => a.StartsWith("--wall=", StringComparison.Ordinal));
+        var arrangement = args.FirstOrDefault(a => a.StartsWith("--layout=", StringComparison.Ordinal));
         var transparent = args.Contains("--transparent");
 
         if (requested is not null || amount is not null || transparent
-            || material is not null || wall is not null)
+            || material is not null || wall is not null || arrangement is not null)
         {
             var percent = transparent ? 100 : 0;
             if (amount is not null
@@ -99,11 +100,16 @@ public partial class App : Application
                 ? null
                 : wall["--wall=".Length..] is "on" or "true" or "1";
 
+            Themes.HoardLayout? layout = arrangement is null
+                ? null
+                : Themes.HoardLayouts.ById(arrangement["--layout=".Length..]);
+
             theme.OverrideForSession(
                 Themes.HoardThemes.ById(requested?["--theme=".Length..]),
                 percent,
                 backdrop,
-                wallTranslucent);
+                wallTranslucent,
+                layout);
             return;
         }
 #endif

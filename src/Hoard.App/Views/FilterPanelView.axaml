@@ -243,9 +243,12 @@
 
     </UserControl.Styles>
 
-    <Border Background="{StaticResource ChromeSurface}"
-            BorderBrush="{StaticResource Line}"
-            BorderThickness="1,0,0,0">
+    <!-- Classes rather than a Name so the shell's floating-layout styles can
+         reach it: a style selector crosses a UserControl boundary on a class and
+         a Name is the thing this codebase has already been bitten by. -->
+    <Border Classes="filterpane"
+            Background="{StaticResource ChromeSurface}"
+            BorderBrush="{StaticResource Line}">
         <Grid RowDefinitions="48,*">
 
             <!-- ── Header ────────────────────────────────────────────────────
