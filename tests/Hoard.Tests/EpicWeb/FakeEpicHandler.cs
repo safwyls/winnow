@@ -23,7 +23,50 @@ public sealed record RecordedEpicRequest(
         Uri.AbsolutePath.Contains("/oauth/token", StringComparison.Ordinal) ? EpicEndpoint.Token
         : Uri.AbsolutePath.Contains("/playtime/", StringComparison.Ordinal) ? EpicEndpoint.Playtime
         : Uri.AbsolutePath.Contains("/library/api/public/items", StringComparison.Ordinal) ? EpicEndpoint.LibraryItems
+        : Uri.AbsolutePath.Contains("/catalog/api/shared/namespace/", StringComparison.Ordinal)
+            ? EpicEndpoint.CatalogItems
         : EpicEndpoint.Other;
+
+    /// <summary>
+    /// The namespace segment of a catalog bulk-items request, or null. The route
+    /// is keyed by namespace, so a responder that serves per-namespace fixtures
+    /// switches on this.
+    /// </summary>
+    public string? CatalogNamespace
+    {
+        get
+        {
+            const string marker = "/catalog/api/shared/namespace/";
+            var index = Uri.AbsolutePath.IndexOf(marker, StringComparison.Ordinal);
+            if (index < 0)
+            {
+                return null;
+            }
+
+            var rest = Uri.AbsolutePath[(index + marker.Length)..];
+            var slash = rest.IndexOf('/', StringComparison.Ordinal);
+            return Uri.UnescapeDataString(slash < 0 ? rest : rest[..slash]);
+        }
+    }
+
+    /// <summary>Every <c>id=</c> the request carried, decoded, in order.</summary>
+    public IReadOnlyList<string> CatalogIds
+    {
+        get
+        {
+            var ids = new List<string>();
+            foreach (var pair in Uri.Query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries))
+            {
+                var equals = pair.IndexOf('=');
+                if (equals > 0 && Uri.UnescapeDataString(pair[..equals]) == "id")
+                {
+                    ids.Add(Uri.UnescapeDataString(pair[(equals + 1)..]));
+                }
+            }
+
+            return ids;
+        }
+    }
 
     /// <summary>
     /// The form-encoded body as a dictionary. Parsed by hand so an assertion sees
@@ -78,6 +121,7 @@ public enum EpicEndpoint
     Token,
     LibraryItems,
     Playtime,
+    CatalogItems,
 }
 
 /// <summary>

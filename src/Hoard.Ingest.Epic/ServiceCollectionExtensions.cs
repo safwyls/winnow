@@ -45,12 +45,21 @@ public static class ServiceCollectionExtensions
         // enrichment module because reading Epic's files is this module's job
         // (§5.1) — Enrich consumes the Hoard.Core contract and never learns
         // where catcache.bin lives.
+        //
+        // IEpicAccountClient is resolved OPTIONALLY, and the order of the two
+        // Add* calls in the composition root does not matter: the factory runs
+        // when the alias source is first resolved, long after the container is
+        // built. A host that never called AddEpicWebApi gets null and the local
+        // files are the whole story; one that did gets the extra aliases for
+        // entitlements catcache.bin has never held, which is the difference
+        // between an API-only title having a route to IGDB and having none.
         services.TryAddSingleton(sp => new EpicArtifactAliasSource(
             sp.GetRequiredService<EpicCatalogReader>(),
             sp.GetRequiredService<EpicManifestReader>(),
             sp.GetRequiredService<EpicThirdPartyAppReader>(),
             sp.GetService<Microsoft.Extensions.Logging.ILogger<EpicArtifactAliasSource>>(),
-            dataRoot));
+            dataRoot,
+            sp.GetService<Web.IEpicAccountClient>()));
 
         // Enumerable, not a single binding: every store that needs an alias map
         // registers its own, and the consumer asks all of them. A TryAdd on the

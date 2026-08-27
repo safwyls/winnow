@@ -69,6 +69,18 @@ public sealed record EnrichmentTarget
     public bool HasSteamAppType { get; init; }
 
     /// <summary>
+    /// Whether <c>works.epic_categories</c> is already set (migration 0009).
+    ///
+    /// <para>Carried for the same reason <see cref="HasSteamAppType"/> is: so the
+    /// pass can decide whether an Epic catalog item is worth one request to
+    /// Epic's catalog service without a second query. Once set it is never asked
+    /// again — the classification of a catalog item does not change, and asking
+    /// would spend an authenticated request to relearn <c>public,games,applications</c>
+    /// on every launch.</para>
+    /// </summary>
+    public bool HasEpicCategories { get; init; }
+
+    /// <summary>
     /// The stored title — <c>releases.name</c>, falling back to the work name,
     /// the same COALESCE the bucket query makes.
     ///

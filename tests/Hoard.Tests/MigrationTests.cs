@@ -267,6 +267,66 @@ public class MigrationTests
     }
 
     /// <summary>
+    /// 0009 adds Epic's own <c>categories[].path</c> list for the catalog item,
+    /// which the library view's non-game filter reads through the same
+    /// <c>EpicGameFilter</c> the local Epic scan uses. Applied on top of a schema
+    /// that already has rows.
+    /// </summary>
+    [Fact]
+    public void Migration_0009_adds_epic_categories_and_leaves_existing_rows_unknown()
+    {
+        using var db = new TempDatabase();
+
+        using (var conn = db.Factory.Open())
+        {
+            conn.Execute("ALTER TABLE works DROP COLUMN epic_categories;");
+            conn.Execute("DELETE FROM SchemaVersions WHERE ScriptName LIKE '%0009%';");
+
+            conn.Execute(
+                "INSERT INTO works (name, steam_app_type) VALUES ('Riven', 'Game');");
+        }
+
+        db.Initializer.Initialize();
+
+        using var after = db.Factory.Open();
+
+        Assert.Contains(
+            "epic_categories",
+            after.Query<string>("SELECT name FROM pragma_table_info('works');"));
+
+        // NULL is "nobody has read it", never "not a game". Every Epic work
+        // named from catcache.bin before this column existed is in exactly this
+        // state, and hiding those would empty the store from the library view.
+        Assert.Null(after.ExecuteScalar<string?>(
+            "SELECT epic_categories FROM works WHERE name = 'Riven';"));
+
+        // 0006 is undisturbed — the two columns are siblings, not replacements.
+        Assert.Equal("Game", after.ExecuteScalar<string>(
+            "SELECT steam_app_type FROM works WHERE name = 'Riven';"));
+
+        // No CHECK constraint: Epic's vocabulary is undocumented and still
+        // growing (`freegames` and `games/experience` appear on the author's
+        // account and in neither earlier survey). A constraint would turn a new
+        // Epic category into a failed enrichment write.
+        foreach (var categories in new[]
+                 {
+                     "public,games,applications",
+                     "engines,engines/ue4",
+                     "assets,assets/showcasedemos",
+                     "hidden",
+                     "somethingEpicHasNotInventedYet",
+                 })
+        {
+            after.Execute(
+                "INSERT INTO works (name, epic_categories) VALUES (@categories, @categories);",
+                new { categories });
+        }
+
+        Assert.Equal(5, after.ExecuteScalar<long>(
+            "SELECT COUNT(*) FROM works WHERE epic_categories IS NOT NULL;"));
+    }
+
+    /// <summary>
     /// 0008 corrects the rows the two readers' disagreement already wrote: a
     /// last-played of 1970-01-02, produced by the Web API reader mapping Steam's
     /// 86400 placeholder to a literal date while the local reader called the

@@ -118,6 +118,11 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
                    -- verbatim. NULL is "nobody has read it", which is common:
                    -- some appids are unreadable without a Web API key.
                    w.steam_app_type                    AS SteamAppType,
+                   -- Epic's own categories[].path list (migration 0009),
+                   -- comma-joined and verbatim. Same contract as the column
+                   -- above: NULL is "nobody has read it", which is the state of
+                   -- every Epic work named from catcache.bin.
+                   w.epic_categories                   AS EpicCategories,
                    CASE
                        -- NEVER OPENED: no evidence of play at all — no minutes
                        -- AND no last-played date. This is the one row §5.2's
@@ -273,17 +278,29 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
                 continue;
             }
 
-            if (!showNonGameEntries && NonGameEntries.IsNonGame(row.SteamAppType))
+            if (!showNonGameEntries && NonGameEntries.IsNonGame(row.SteamAppType, row.EpicCategories))
             {
-                // A tool, soundtrack, video or piece of hardware, and the user
-                // has not asked to see them. Hidden from the LIBRARY VIEW only,
-                // exactly like a consolidated demo: nothing is written and
+                // A tool, soundtrack, video or piece of hardware on Steam; an
+                // Unreal Engine build, a marketplace asset pack or a cosmetic
+                // entitlement on Epic. Either way something the user genuinely
+                // owns and has not asked to see. Hidden from the LIBRARY VIEW
+                // only, exactly like a consolidated demo: nothing is written and
                 // nothing is deleted, so the next read with the setting on
-                // returns it untouched.
+                // returns it untouched — including its playtime, which for two
+                // of the Epic rows in the author's library is not zero.
                 //
-                // A NULL or unrecognised type never reaches here (see
-                // NonGameEntries.IsNonGame): most of the library has no stored
-                // type at all, and "not known" is not "not a game".
+                // ONE notion of "not a game", two sources of evidence: Valve
+                // publishes a type string per appid and Epic a category list per
+                // catalog item, neither expressible in the other's vocabulary,
+                // and NonGameEntries.IsNonGame(steam, epic) is the single place
+                // that reads both. The Epic half defers to
+                // EpicGameFilter — the same predicate the local Epic scan
+                // applies before a candidate is ever emitted — so the two halves
+                // of Epic ingest cannot drift apart.
+                //
+                // A NULL or unrecognised value never reaches here on either
+                // side: most of the library has no stored classification at all,
+                // and "not known" is not "not a game".
                 continue;
             }
 
@@ -320,5 +337,6 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
         public bool NameIsProvisional { get; init; }
         public int? FirstReleaseYear { get; init; }
         public string? SteamAppType { get; init; }
+        public string? EpicCategories { get; init; }
     }
 }

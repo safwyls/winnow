@@ -169,6 +169,158 @@ internal static class EpicWebJson
         }
     }
 
+    /// <summary>
+    /// One <c>catalog/api/shared/namespace/{ns}/bulk/items</c> response, or null
+    /// when the body is not that shape.
+    ///
+    /// <para><b>The response is an OBJECT keyed by catalog item id</b>, not an
+    /// array — verified live 2026-08-26 against the author's account. Ids the
+    /// service does not recognise are simply absent from it, which is a real
+    /// answer ("Epic has no such catalog item") and is why the caller can cache a
+    /// miss. That is a different thing from the request failing, and only this
+    /// method's <c>null</c> means the latter.</para>
+    ///
+    /// <para>An empty object is therefore returned as an empty dictionary, not as
+    /// null: Epic answered, and answered that it knows none of the ids asked
+    /// about.</para>
+    /// </summary>
+    public static IReadOnlyDictionary<string, EpicCatalogItemInfo>? TryReadCatalogItems(string? body)
+    {
+        if (string.IsNullOrWhiteSpace(body))
+        {
+            return null;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(body);
+            var root = document.RootElement;
+            if (root.ValueKind != JsonValueKind.Object)
+            {
+                return null;
+            }
+
+            var parsed = new Dictionary<string, EpicCatalogItemInfo>(StringComparer.OrdinalIgnoreCase);
+            foreach (var property in root.EnumerateObject())
+            {
+                if (property.Value.ValueKind != JsonValueKind.Object)
+                {
+                    // An error envelope ({"errorCode": …}) has string values at
+                    // the top level, so this is also what stops one being read
+                    // as a catalog of zero items.
+                    continue;
+                }
+
+                if (TryReadCatalogItem(property.Name, property.Value) is { } item)
+                {
+                    parsed[item.CatalogItemId] = item;
+                }
+            }
+
+            return parsed;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// One entry of the bulk response. Returns null only when the entry has no
+    /// usable id at all; everything else it cannot read arrives as null or empty,
+    /// because a title Epic did not send and a title this reader failed to parse
+    /// must be indistinguishable to the caller — both mean "leave the stored
+    /// value alone".
+    /// </summary>
+    public static EpicCatalogItemInfo? TryReadCatalogItem(string? key, JsonElement entry)
+    {
+        if (entry.ValueKind != JsonValueKind.Object)
+        {
+            return null;
+        }
+
+        // The service echoes `id` inside the entry; the object key is the same
+        // value. Prefer the body's own copy and fall back to the key.
+        var catalogItemId = ReadString(entry, "id") ?? (string.IsNullOrWhiteSpace(key) ? null : key.Trim());
+        if (catalogItemId is null)
+        {
+            return null;
+        }
+
+        var categories = new List<string>();
+        if (entry.TryGetProperty("categories", out var categoryArray)
+            && categoryArray.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var category in categoryArray.EnumerateArray())
+            {
+                if (category.ValueKind == JsonValueKind.Object && ReadString(category, "path") is { } path)
+                {
+                    categories.Add(path);
+                }
+            }
+        }
+
+        // releaseInfo[0].appId, defensively: the spike measured exactly one
+        // element on every one of 73 games and warns against assuming that holds.
+        string? appName = null;
+        if (entry.TryGetProperty("releaseInfo", out var releases)
+            && releases.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var release in releases.EnumerateArray())
+            {
+                if (release.ValueKind == JsonValueKind.Object && ReadString(release, "appId") is { } appId)
+                {
+                    appName = appId;
+                    break;
+                }
+            }
+        }
+
+        return new EpicCatalogItemInfo(
+            catalogItemId,
+            ReadString(entry, "namespace"),
+            ReadString(entry, "title"),
+            categories,
+            appName,
+            ReadMainGameCatalogItemId(entry));
+    }
+
+    /// <summary>
+    /// The parent catalog item id, from either spelling.
+    ///
+    /// <para>The live response carries <b>both</b> <c>mainGameItem</c> (an
+    /// object) and <c>mainGameItemList</c> (an array), and which of them is
+    /// present varies per entry — asset packs have only the list, and it is
+    /// empty; the Borderlands 3 and ARK add-ons have both. Reading only one
+    /// spelling would silently classify half the DLC in a library as base games.
+    /// The empty-string case matters too: <c>catcache.bin</c> writes
+    /// <c>{"namespace":"","id":""}</c> on a base game rather than omitting the
+    /// object, so blank is filtered here and not left to the caller.</para>
+    /// </summary>
+    private static string? ReadMainGameCatalogItemId(JsonElement entry)
+    {
+        if (entry.TryGetProperty("mainGameItem", out var mainGame)
+            && mainGame.ValueKind == JsonValueKind.Object
+            && ReadString(mainGame, "id") is { } id)
+        {
+            return id;
+        }
+
+        if (entry.TryGetProperty("mainGameItemList", out var list)
+            && list.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var element in list.EnumerateArray())
+            {
+                if (element.ValueKind == JsonValueKind.Object && ReadString(element, "id") is { } listed)
+                {
+                    return listed;
+                }
+            }
+        }
+
+        return null;
+    }
+
     private static string? ReadString(JsonElement element, string name)
         => element.TryGetProperty(name, out var value)
             && value.ValueKind == JsonValueKind.String

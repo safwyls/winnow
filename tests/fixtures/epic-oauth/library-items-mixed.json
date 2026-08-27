@@ -1,0 +1,57 @@
+{
+  "records": [
+    {
+      "namespace": "41f47fd0d3e248bc938a5815d6d64daa",
+      "catalogItemId": "7a70b499513441c792b541d53505e0b2",
+      "appName": "Bluebird",
+      "productId": "fez",
+      "sandboxName": "Fez",
+      "sandboxType": "PUBLIC",
+      "recordType": "ENTITLEMENT",
+      "acquisitionDate": "2019-11-19T17:02:42.064Z"
+    },
+    {
+      "namespace": "41f47fd0d3e248bc938a5815d6d64daa",
+      "catalogItemId": "c3000000000000000000000000000004",
+      "appName": "BluebirdChapter",
+      "recordType": "ENTITLEMENT",
+      "acquisitionDate": "2020-01-02T00:00:00.000Z"
+    },
+    {
+      "namespace": "a0000000000000000000000000000009",
+      "catalogItemId": "d4000000000000000000000000000005",
+      "appName": "UE_4.0",
+      "recordType": "ENTITLEMENT",
+      "acquisitionDate": "2015-03-19T00:00:00.000Z"
+    },
+    {
+      "namespace": "a0000000000000000000000000000009",
+      "catalogItemId": "e5000000000000000000000000000006",
+      "appName": "InfinityBladeEffects",
+      "recordType": "ENTITLEMENT",
+      "acquisitionDate": "2024-10-01T21:23:30.119Z"
+    },
+    {
+      "namespace": "a0000000000000000000000000000009",
+      "catalogItemId": "f6000000000000000000000000000007",
+      "appName": "HiddenContent",
+      "recordType": "ENTITLEMENT",
+      "acquisitionDate": "2024-10-01T21:23:30.119Z"
+    },
+    {
+      "namespace": "a0000000000000000000000000000009",
+      "catalogItemId": "a7000000000000000000000000000008",
+      "appName": "UncategorisedThing",
+      "recordType": "ENTITLEMENT",
+      "acquisitionDate": "2024-10-01T21:23:30.119Z"
+    },
+    {
+      "namespace": "a0000000000000000000000000000009",
+      "catalogItemId": "b8000000000000000000000000000009",
+      "appName": "NotInCatalog",
+      "recordType": "ENTITLEMENT",
+      "acquisitionDate": "2024-10-01T21:23:30.119Z"
+    }
+  ],
+  "responseMetadata": {}
+}

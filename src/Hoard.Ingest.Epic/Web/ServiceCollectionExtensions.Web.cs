@@ -64,6 +64,7 @@ public static class EpicWebServiceCollectionExtensions
         services.TryAddSingleton(options);
         services.TryAddSingleton(TimeProvider.System);
         services.TryAddSingleton<IEpicLibraryCache, InMemoryEpicLibraryCache>();
+        services.TryAddSingleton<IEpicCatalogCache, InMemoryEpicCatalogCache>();
 
         // DPAPI on Windows, and an implementation that REFUSES rather than
         // degrades anywhere else. There is deliberately no plaintext fallback:
@@ -136,6 +137,24 @@ public static class EpicWebServiceCollectionExtensions
         services.AddHttpClient<IEpicAccountClient, EpicAccountClient>(client =>
             {
                 client.BaseAddress = options.LibraryBaseAddress;
+                client.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", options.UserAgent);
+            })
+            .RemoveAllLoggers()
+            .AddLogger<RedactingEpicHttpClientLogger>()
+            .AddHttpMessageHandler<EpicAuthenticationHandler>()
+            .AddHttpMessageHandler<EpicResilienceHandler>()
+            .AddHttpMessageHandler<EpicRateLimitingHandler>();
+
+        // The catalog service: a different host from the library service, so a
+        // different client — but the SAME three handlers in the same order, and
+        // the same shared EpicRateLimiter singleton, so catalog and library
+        // requests spend one budget between them rather than two independent
+        // ones. That is the point of the limiter being a singleton: Epic
+        // publishes no rate limit, so the conservative ceiling has to apply to
+        // Hoard's total Epic traffic, not per endpoint.
+        services.AddHttpClient<IEpicCatalogClient, EpicCatalogClient>(client =>
+            {
+                client.BaseAddress = options.CatalogBaseAddress;
                 client.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", options.UserAgent);
             })
             .RemoveAllLoggers()

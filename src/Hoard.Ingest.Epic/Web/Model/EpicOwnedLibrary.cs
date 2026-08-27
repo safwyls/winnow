@@ -51,12 +51,21 @@ public enum EpicPlaytimeUnit
 /// </param>
 /// <param name="Namespace">Epic sandbox/namespace id, or null. Carried for cross-store identity work.</param>
 /// <param name="Title">
-/// Title, when the response carried one. <b>Usually null</b>: the library items
-/// endpoint returns identifiers, not display metadata, and Hoard deliberately
-/// does not make the extra <c>catalog/bulk/items</c> call to fetch names —
-/// <c>catcache.bin</c> already has the title for every owned game, locally and
-/// for free. A null here is the ingest contract's "this source has no title",
-/// which leaves the local reader's name untouched.
+/// Title, when the response carried one. <b>Always null in practice</b> —
+/// verified over 144 records on a real account, not one of which carried a name:
+/// the library items endpoint returns identifiers, not display metadata. A null
+/// here is the ingest contract's "this source has no title", which leaves the
+/// local reader's name untouched.
+///
+/// <para><b>This is not the same as "Hoard cannot name an API-only title".</b>
+/// The names come from <see cref="IEpicCatalogClient"/>, which is asked from
+/// ENRICHMENT rather than from here — deliberately, and the split is the point.
+/// Making that call during the ownership fetch would spend an authenticated
+/// request per namespace on every sync to relearn names <c>catcache.bin</c>
+/// already supplies for most of the library; making it from enrichment means it
+/// is only asked about works that have no name, once each, cached for 30 days.
+/// The layering also keeps the "local reader is authoritative" rule structural:
+/// this candidate cannot carry a title, so it cannot overwrite one.</para>
 /// </param>
 /// <param name="AcquiredAt">
 /// <c>acquisitionDate</c> as UTC, or null. <b>This is the one field the API can

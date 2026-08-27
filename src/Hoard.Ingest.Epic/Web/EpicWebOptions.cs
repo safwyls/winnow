@@ -25,6 +25,64 @@ public sealed class EpicWebOptions
         = new("https://library-service.live.use1a.on.epicgames.com/");
 
     /// <summary>
+    /// Catalog service root — the only endpoint that can name an owned
+    /// entitlement and say what kind of thing it is. Trailing slash required.
+    ///
+    /// <para><b>Verified live 2026-08-26</b> against a real session:
+    /// <c>/catalog/api/shared/namespace/{ns}/bulk/items?id=…</c> answers 200 with
+    /// an object keyed by catalog item id carrying <c>title</c>,
+    /// <c>categories[].path</c> and <c>releaseInfo[].appId</c>. Unauthenticated
+    /// it answers 401 while a bogus sibling under the same prefix answers 404, so
+    /// the route is real and merely gated.</para>
+    ///
+    /// <para>The numbered mirror <c>catalog-public-service-prod06</c> — which
+    /// Legendary hardcodes — answers identically and is not used: an unnumbered
+    /// alias is one fewer thing to be wrong when Epic retires a shard.</para>
+    /// </summary>
+    public Uri CatalogBaseAddress { get; set; }
+        = new("https://catalog-public-service-prod.ol.epicgames.com/");
+
+    /// <summary>
+    /// How long a catalog answer stays authoritative.
+    ///
+    /// <para>Thirty days, and far longer than the library's six hours on purpose:
+    /// this answers "what kind of thing is this catalog item, and what is it
+    /// called", which is a property of the product rather than of the account.
+    /// It matches the IGDB metadata TTL for the same reason. A cached MISS is
+    /// held just as long — an id Epic does not recognise will not start being
+    /// recognised inside a month, and re-asking would spend an authenticated
+    /// request per launch to be told the same nothing.</para>
+    /// </summary>
+    public TimeSpan CatalogCacheTtl { get; set; } = TimeSpan.FromDays(30);
+
+    /// <summary>
+    /// How many catalog item ids to put in one bulk request.
+    ///
+    /// <para>Twenty, measured rather than guessed: the author's 99 owned catalog
+    /// items spread across 66 namespaces, with the largest namespace holding 49,
+    /// so the batch size only ever matters for the handful of namespaces that
+    /// carry a real games catalogue. Bigger batches would build a query string
+    /// long enough to risk a URI limit for no gain, since the request count is
+    /// dominated by the namespace count, not the batch size.</para>
+    /// </summary>
+    public int CatalogBatchSize { get; set; } = 20;
+
+    /// <summary>
+    /// <c>country</c> sent to the catalog service. What the launcher sends.
+    /// </summary>
+    public string CatalogCountry { get; set; } = "US";
+
+    /// <summary>
+    /// <c>locale</c> sent to the catalog service.
+    ///
+    /// <para>Fixed rather than taken from the machine, deliberately: a library
+    /// that renames its own tiles when someone changes their Windows region is
+    /// worse than one that is consistently English, and §5.3's matcher scores
+    /// against an English IGDB corpus.</para>
+    /// </summary>
+    public string CatalogLocale { get; set; } = "en";
+
+    /// <summary>
     /// The page the user signs in on to obtain an authorization code. Presented
     /// to the user; never fetched by Hoard.
     ///

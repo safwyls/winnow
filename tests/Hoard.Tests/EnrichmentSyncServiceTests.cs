@@ -1,6 +1,7 @@
 using Hoard.App.Services;
 using Hoard.Core.Domain;
 using Hoard.Core.Ingest;
+using Hoard.Core.Queries;
 using Hoard.Core.Repositories;
 using Hoard.Data.Repositories;
 using Hoard.Enrich.GamesDb;
@@ -11,6 +12,8 @@ using Hoard.Enrich.Steam;
 using Hoard.Enrich.Steam.Model;
 using Hoard.Enrich.Updates;
 using Hoard.Enrich.Updates.Model;
+using Hoard.Ingest.Epic.Web;
+using Hoard.Ingest.Epic.Web.Model;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
@@ -1289,6 +1292,225 @@ public sealed class EnrichmentSyncServiceTests
 
     private sealed record Seeded(long WorkId, long ReleaseId);
 
+    // ── Epic: naming and classifying what the library endpoint returns bare ──
+
+    /// <summary>
+    /// The symptom, end to end: a tile titled
+    /// <c>App 16a66a9f5630407d923429470bd5c967</c> becomes a tile titled
+    /// <c>LEGO® Fortnite: Odyssey</c>.
+    /// </summary>
+    [Fact]
+    public async Task An_Epic_work_with_no_local_title_is_named_from_the_catalog_service()
+    {
+        using var fixture = new EnrichmentFixture();
+        var work = await fixture.AddAsync(
+            ExternalIdProviders.Epic,
+            "8f33cce63b3f4a46aca59ff8c85ff1cd",
+            new Work { Name = "App 8f33cce63b3f4a46aca59ff8c85ff1cd", NameIsProvisional = true });
+
+        fixture.EpicCatalog.AddGame("8f33cce63b3f4a46aca59ff8c85ff1cd", "LEGO® Fortnite: Odyssey");
+
+        var report = await fixture.Service.EnrichAsync();
+
+        Assert.Equal(1, report.Promoted);
+        Assert.Equal("LEGO® Fortnite: Odyssey", await fixture.WorkNameAsync(work.WorkId));
+
+        // And credited to the source that actually answered. This used to fall
+        // through to the Steam store's counter, which reported "29 from the
+        // Steam store" on the author's first real run for an endpoint that was
+        // never asked about a single Epic id.
+        Assert.Equal(0, report.FromIgdb);
+
+        // The release moves with the work, or the title is only half promoted.
+        Assert.Equal("LEGO® Fortnite: Odyssey", await fixture.ReleaseNameAsync(work.ReleaseId));
+        Assert.False(await fixture.IsProvisionalAsync(work.WorkId));
+    }
+
+    [Fact]
+    public async Task The_categories_are_stored_so_the_non_game_filter_can_read_them()
+    {
+        using var fixture = new EnrichmentFixture();
+        var engine = await fixture.AddAsync(
+            ExternalIdProviders.Epic,
+            "3ddb1bad6e004b99a7192c1a29f2318a",
+            new Work { Name = "App 3ddb1bad6e004b99a7192c1a29f2318a", NameIsProvisional = true });
+
+        fixture.EpicCatalog.AddEngine("3ddb1bad6e004b99a7192c1a29f2318a", "Unreal Engine");
+
+        await fixture.Service.EnrichAsync();
+
+        var stored = await fixture.WorkAsync(engine.WorkId);
+
+        // Named — the user owns this and has 320 minutes in it — and classified,
+        // so the grid hides it while the toggle brings it back.
+        Assert.Equal("Unreal Engine", stored.Name);
+        Assert.Equal("engines,engines/ue4", stored.EpicCategories);
+        Assert.True(NonGameEntries.IsNonGameEpicCategories(stored.EpicCategories));
+    }
+
+    /// <summary>
+    /// The rule this codebase has already been bitten by twice, at the layer
+    /// that would do the damage: a title that came from <c>catcache.bin</c> is
+    /// never replaced, and an unanswered catalog never blanks a classification.
+    /// </summary>
+    [Fact]
+    public async Task A_real_local_title_is_never_replaced_by_the_catalog_service()
+    {
+        using var fixture = new EnrichmentFixture();
+        var work = await fixture.AddAsync(
+            ExternalIdProviders.Epic,
+            "7a70b499513441c792b541d53505e0b2",
+            new Work { Name = "Fez" });
+
+        // Epic's own catalog spells some titles differently. The local reader is
+        // authoritative for what it knows, so this must not land.
+        fixture.EpicCatalog.AddGame("7a70b499513441c792b541d53505e0b2", "FEZ (Epic Edition)");
+
+        await fixture.Service.EnrichAsync();
+
+        Assert.Equal("Fez", await fixture.WorkNameAsync(work.WorkId));
+
+        // The classification, which the local reader had no column for, IS
+        // written — filling an empty column is not overwriting a full one.
+        Assert.Equal("public,games,applications", (await fixture.WorkAsync(work.WorkId)).EpicCategories);
+    }
+
+    [Fact]
+    public async Task A_catalog_that_cannot_answer_leaves_the_row_exactly_as_it_was()
+    {
+        using var fixture = new EnrichmentFixture();
+        var work = await fixture.AddAsync(
+            ExternalIdProviders.Epic,
+            "d2cc1433b55a4ba7b0a76e9485efa1d6",
+            new Work { Name = "App d2cc1433b55a4ba7b0a76e9485efa1d6", NameIsProvisional = true });
+
+        // Nothing recorded for this id: unreachable, unrecognised and not signed
+        // in are all the same absence, deliberately.
+        await fixture.Service.EnrichAsync();
+
+        var stored = await fixture.WorkAsync(work.WorkId);
+        Assert.Equal("App d2cc1433b55a4ba7b0a76e9485efa1d6", stored.Name);
+        Assert.True(stored.NameIsProvisional);
+        Assert.Null(stored.EpicCategories);
+    }
+
+    [Fact]
+    public async Task An_already_classified_work_is_never_asked_again()
+    {
+        using var fixture = new EnrichmentFixture();
+        await fixture.AddAsync(
+            ExternalIdProviders.Epic,
+            "7a70b499513441c792b541d53505e0b2",
+            new Work { Name = "Fez", EpicCategories = "public,games,applications" });
+
+        await fixture.Service.EnrichAsync();
+
+        // What a catalog item is called and what kind of thing it is do not
+        // change. Asking again would spend an authenticated request per Epic
+        // work per launch to relearn the same string.
+        Assert.Empty(fixture.EpicCatalog.Asked);
+    }
+
+    [Fact]
+    public async Task A_Steam_work_is_never_asked_about_and_never_takes_an_Epic_classification()
+    {
+        using var fixture = new EnrichmentFixture();
+        var steam = await fixture.AddProvisionalAsync("620");
+
+        // A catalog answer keyed by the same string. The provider guard is what
+        // stops a Steam appid inheriting it.
+        fixture.EpicCatalog.AddEngine("620", "Not Portal 2");
+
+        await fixture.Service.EnrichAsync();
+
+        Assert.Empty(fixture.EpicCatalog.Asked);
+        var stored = await fixture.WorkAsync(steam.WorkId);
+        Assert.Null(stored.EpicCategories);
+        Assert.Equal("App 620", stored.Name);
+    }
+
+    [Fact]
+    public async Task An_entry_the_catalog_classified_but_could_not_name_keeps_its_placeholder()
+    {
+        using var fixture = new EnrichmentFixture();
+        var work = await fixture.AddAsync(
+            ExternalIdProviders.Epic,
+            "0b41f0192f7f4f2691684581aedc0778",
+            new Work { Name = "App 0b41f0192f7f4f2691684581aedc0778", NameIsProvisional = true });
+
+        fixture.EpicCatalog.AddUntitled("0b41f0192f7f4f2691684581aedc0778", "hidden");
+
+        await fixture.Service.EnrichAsync();
+
+        var stored = await fixture.WorkAsync(work.WorkId);
+        Assert.True(stored.NameIsProvisional);
+
+        // Half an answer is still an answer for the half it covers: hidden from
+        // the grid, and still asked about next run for a name.
+        Assert.Equal("hidden", stored.EpicCategories);
+    }
+
+    [Fact]
+    public async Task An_entry_with_no_categories_is_named_and_left_unclassified()
+    {
+        using var fixture = new EnrichmentFixture();
+        var work = await fixture.AddAsync(
+            ExternalIdProviders.Epic,
+            "cd9e44a9d1b14b8d84923bb985bc1636",
+            new Work { Name = "App cd9e44a9d1b14b8d84923bb985bc1636", NameIsProvisional = true });
+
+        fixture.EpicCatalog.AddUncategorised("cd9e44a9d1b14b8d84923bb985bc1636", "Something Epic Sells");
+
+        await fixture.Service.EnrichAsync();
+
+        var stored = await fixture.WorkAsync(work.WorkId);
+        Assert.Equal("Something Epic Sells", stored.Name);
+
+        // NULL, not an empty string: "not known" must stay distinguishable, and
+        // an empty string would satisfy "column is filled" forever.
+        Assert.Null(stored.EpicCategories);
+    }
+
+    [Fact]
+    public async Task A_catalog_client_that_throws_does_not_abort_the_pass()
+    {
+        using var fixture = new EnrichmentFixture();
+        var epic = await fixture.AddAsync(
+            ExternalIdProviders.Epic,
+            "7a70b499513441c792b541d53505e0b2",
+            new Work { Name = "App 7a70b499513441c792b541d53505e0b2", NameIsProvisional = true });
+        var steam = await fixture.AddProvisionalAsync("620");
+
+        fixture.EpicCatalog.Throw = new InvalidOperationException("something unforeseen");
+        fixture.Steam.Names["620"] = "Portal 2";
+
+        var report = await fixture.Service.EnrichAsync();
+
+        Assert.Equal(1, report.Promoted);
+        Assert.Equal("Portal 2", await fixture.WorkNameAsync(steam.WorkId));
+        Assert.True(await fixture.IsProvisionalAsync(epic.WorkId));
+    }
+
+    [Fact]
+    public async Task A_host_with_no_Epic_module_enriches_exactly_as_before()
+    {
+        // The module is opt-in and most installs will never register it. Its
+        // absence must be a no-op, not a null reference.
+        using var fixture = new EnrichmentFixture(epicCatalog: false);
+        var steam = await fixture.AddProvisionalAsync("620");
+        await fixture.AddAsync(
+            ExternalIdProviders.Epic,
+            "7a70b499513441c792b541d53505e0b2",
+            new Work { Name = "App 7a70b499513441c792b541d53505e0b2", NameIsProvisional = true });
+
+        fixture.Steam.Names["620"] = "Portal 2";
+
+        var report = await fixture.Service.EnrichAsync();
+
+        Assert.Equal(1, report.Promoted);
+        Assert.Equal("Portal 2", await fixture.WorkNameAsync(steam.WorkId));
+    }
+
     private sealed class EnrichmentFixture : IDisposable
     {
         private readonly TempDatabase _db = new();
@@ -1299,7 +1521,14 @@ public sealed class EnrichmentSyncServiceTests
         /// tests shrink it so a bounded run is a handful of works rather than a
         /// wall-clock wait.
         /// </param>
-        public EnrichmentFixture(int sliceSize = EnrichmentSyncService.DefaultSliceSize)
+        /// <param name="sliceSize">See above.</param>
+        /// <param name="epicCatalog">
+        /// Whether the opt-in Epic catalog client is registered at all. False
+        /// models the overwhelmingly common install: no Epic API module, no
+        /// session, and every Epic work named by the launcher's own files.
+        /// </param>
+        public EnrichmentFixture(
+            int sliceSize = EnrichmentSyncService.DefaultSliceSize, bool epicCatalog = true)
         {
             Works = new WorkRepository(_db.Factory);
             Releases = new ReleaseRepository(_db.Factory);
@@ -1312,7 +1541,8 @@ public sealed class EnrichmentSyncServiceTests
 
             Service = new EnrichmentSyncService(
                 Works, Releases, Igdb, Steam, SteamCmd, Planner, _db.Factory,
-                NullLogger<EnrichmentSyncService>.Instance)
+                NullLogger<EnrichmentSyncService>.Instance,
+                epicCatalog ? EpicCatalog : null)
             {
                 SliceSize = sliceSize,
             };
@@ -1338,6 +1568,9 @@ public sealed class EnrichmentSyncServiceTests
         public FakeSteamStoreClient Steam { get; } = new();
 
         public FakeBuildInfoClient SteamCmd { get; } = new();
+
+        /// <summary>Epic's catalog service — the only source of an Epic title and its categories.</summary>
+        public FakeEpicCatalogClient EpicCatalog { get; } = new();
 
         public EnrichmentSyncService Service { get; }
 
@@ -1402,6 +1635,63 @@ public sealed class EnrichmentSyncServiceTests
         }
 
         public void Dispose() => _db.Dispose();
+    }
+
+    /// <summary>
+    /// Stands in for Epic's catalog service. Answers only for ids a test put in
+    /// <see cref="Items"/>; everything else is absent, which is the contract's
+    /// "learned nothing about this item".
+    /// </summary>
+    private sealed class FakeEpicCatalogClient : IEpicCatalogClient
+    {
+        public Dictionary<string, EpicCatalogItemInfo> Items { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>Every id the pass actually asked about, in order.</summary>
+        public List<string> Asked { get; } = [];
+
+        /// <summary>Thrown from the lookup, the way an unforeseen client bug would.</summary>
+        public Exception? Throw { get; set; }
+
+        /// <summary>Records a game the way the live service returns one.</summary>
+        public void AddGame(string catalogItemId, string title, string appName = "Codename")
+            => Items[catalogItemId] = new EpicCatalogItemInfo(
+                catalogItemId, "ns", title, ["public", "games", "applications"], appName, null);
+
+        /// <summary>Records an Unreal Engine build — owned, and not a game.</summary>
+        public void AddEngine(string catalogItemId, string title, string appName = "UE_4.0")
+            => Items[catalogItemId] = new EpicCatalogItemInfo(
+                catalogItemId, "ns", title, ["engines", "engines/ue4"], appName, null);
+
+        /// <summary>Records an entry the service classified but could not name.</summary>
+        public void AddUntitled(string catalogItemId, params string[] categories)
+            => Items[catalogItemId] = new EpicCatalogItemInfo(
+                catalogItemId, "ns", null, categories, null, null);
+
+        /// <summary>Records an entry with a name and no categories to judge it by.</summary>
+        public void AddUncategorised(string catalogItemId, string title)
+            => Items[catalogItemId] = new EpicCatalogItemInfo(catalogItemId, "ns", title, [], null, null);
+
+        public Task<IReadOnlyDictionary<string, EpicCatalogItemInfo>> GetItemsAsync(
+            IReadOnlyCollection<string> catalogItemIds, CancellationToken ct = default)
+        {
+            Asked.AddRange(catalogItemIds);
+
+            if (Throw is not null)
+            {
+                throw Throw;
+            }
+
+            var answers = new Dictionary<string, EpicCatalogItemInfo>(StringComparer.OrdinalIgnoreCase);
+            foreach (var id in catalogItemIds)
+            {
+                if (Items.TryGetValue(id, out var item))
+                {
+                    answers[id] = item;
+                }
+            }
+
+            return Task.FromResult<IReadOnlyDictionary<string, EpicCatalogItemInfo>>(answers);
+        }
     }
 
     /// <summary>

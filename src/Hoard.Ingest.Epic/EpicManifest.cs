@@ -1,3 +1,5 @@
+using Hoard.Core.Queries;
+
 namespace Hoard.Ingest.Epic;
 
 /// <summary>

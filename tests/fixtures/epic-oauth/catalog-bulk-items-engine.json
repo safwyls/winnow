@@ -1,0 +1,72 @@
+{
+  "d4000000000000000000000000000005": {
+    "id": "d4000000000000000000000000000005",
+    "title": "Unreal Engine",
+    "description": "Unreal Engine",
+    "keyImages": [],
+    "categories": [
+      { "path": "engines" },
+      { "path": "engines/ue4" }
+    ],
+    "namespace": "a0000000000000000000000000000009",
+    "status": "ACTIVE",
+    "entitlementType": "EXECUTABLE",
+    "itemType": "DURABLE",
+    "releaseInfo": [
+      {
+        "appId": "UE_4.0",
+        "platform": ["Windows"]
+      }
+    ],
+    "developer": "Epic Games",
+    "endOfSupport": false,
+    "mainGameItemList": [],
+    "unsearchable": false
+  },
+  "e5000000000000000000000000000006": {
+    "id": "e5000000000000000000000000000006",
+    "title": "Infinity Blade: Effects",
+    "keyImages": [],
+    "categories": [
+      { "path": "assets" },
+      { "path": "assets/showcasedemos" }
+    ],
+    "namespace": "a0000000000000000000000000000009",
+    "entitlementType": "AUDIENCE",
+    "itemType": "DURABLE",
+    "releaseInfo": [
+      {
+        "appId": "InfinityBladeEffects",
+        "compatibleApps": ["UE_4.9", "UE_5.4"],
+        "platform": ["Windows"]
+      }
+    ],
+    "developer": "Epic Games",
+    "mainGameItemList": []
+  },
+  "f6000000000000000000000000000007": {
+    "id": "f6000000000000000000000000000007",
+    "categories": [
+      { "path": "hidden" }
+    ],
+    "namespace": "a0000000000000000000000000000009",
+    "releaseInfo": [
+      {
+        "appId": "HiddenContent"
+      }
+    ],
+    "mainGameItemList": []
+  },
+  "a7000000000000000000000000000008": {
+    "id": "a7000000000000000000000000000008",
+    "title": "Uncategorised Thing",
+    "categories": [],
+    "namespace": "a0000000000000000000000000000009",
+    "releaseInfo": [
+      {
+        "appId": "UncategorisedThing"
+      }
+    ],
+    "mainGameItemList": []
+  }
+}

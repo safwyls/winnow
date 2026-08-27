@@ -41,6 +41,19 @@ namespace Hoard.Core.Queries;
 /// say", which for this column is the common case: several appids are
 /// unreadable without a Steam Web API key.
 /// </param>
+/// <param name="EpicCategories">
+/// Epic's <c>categories[].path</c> list for the catalog item, comma-joined and
+/// verbatim (migration 0009). Feeds the library view's non-game filter through
+/// <see cref="EpicGameFilter"/> — the same rule the local Epic scan applies
+/// before a candidate is ever emitted.
+///
+/// <para>Null is "the source did not say", and for this column that is the
+/// common case: it is only ever non-null for an Epic work, on an install where
+/// the user has signed in to Epic, once the catalog service has answered. A null
+/// leaves the stored value exactly as it was — a work classified on an earlier
+/// run must not be un-classified by a later run that could not reach the
+/// service.</para>
+/// </param>
 public sealed record WorkEnrichment(
     long WorkId,
     string? Name = null,
@@ -49,7 +62,8 @@ public sealed record WorkEnrichment(
     string? Summary = null,
     string? CoverUrl = null,
     string? Publisher = null,
-    string? SteamAppType = null)
+    string? SteamAppType = null,
+    string? EpicCategories = null)
 {
     /// <summary>
     /// True when there is nothing to write. Enrichment skips these outright
@@ -63,5 +77,6 @@ public sealed record WorkEnrichment(
         && string.IsNullOrWhiteSpace(Summary)
         && string.IsNullOrWhiteSpace(CoverUrl)
         && string.IsNullOrWhiteSpace(Publisher)
-        && string.IsNullOrWhiteSpace(SteamAppType);
+        && string.IsNullOrWhiteSpace(SteamAppType)
+        && string.IsNullOrWhiteSpace(EpicCategories);
 }

@@ -353,6 +353,14 @@ public static class Program
         // interactive sign-in, so the overwhelmingly common state is "registered
         // and idle". See docs/spikes/epic-oauth.md, including the risks the user
         // is accepting by turning it on.
+        //
+        // Registered BEFORE AddEpicWebApi, whose registrations are all TryAdd:
+        // the Epic module ships an in-memory catalog cache and declares the seam
+        // because it does not reference Hoard.Data, and this is the host filling
+        // it in so catalog answers land in metadata_cache beside IGDB's and
+        // steamcmd's. See SqliteEpicCatalogCache for why this one is worth
+        // persisting when the library cache is not.
+        services.AddSingleton<Hoard.Ingest.Epic.Web.IEpicCatalogCache, SqliteEpicCatalogCache>();
         services.AddEpicWebApi();
 
         // M4.6 — the interactive sign-in, registration ONLY. Order here IS the

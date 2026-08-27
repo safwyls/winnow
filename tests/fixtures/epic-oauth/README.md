@@ -18,6 +18,8 @@ account id or session has ever been in this directory, and none may be added.
 | `oauth-invalid-refresh.json` | Epic's documented error-code vocabulary. The `errorCode`/`error` pair mirrors the verbatim `oauth-invalid-client.json` |
 | `library-items-page1.json`, `library-items-page2.json` | Record fields and the `responseMetadata.nextCursor` pagination from Legendary's `egs.py` library-items walk. Ids are the same sanitized ones as `tests/fixtures/epic/` so a merge test can join the API half against the local half |
 | `playtime-all.json` | Shape from the live GraphQL schema that fronts this REST route: `Playtime { accountId: String!, artifactId: String!, totalTime: Int! }`. Both REST routes were confirmed to exist on 2026-08-26 by routing discrimination (401 on the real path, 404 on a bogus sibling) |
+| `catalog-bulk-items-games.json`, `catalog-bulk-items-engine.json` | **Shape verified against a live authenticated call, 2026-08-26.** `GET catalog-public-service-prod.ol.epicgames.com/catalog/api/shared/namespace/{ns}/bulk/items?id=…` over the author's own session, which answered for all 99 distinct catalog item ids the account owns. Field names, nesting and both `mainGameItem` spellings are the service's; the ids, namespaces, titles and codenames here are the sanitized fixture ones |
+| `library-items-mixed.json` | The same library-items shape as the two paged fixtures, in one page, carrying the API-only entitlements the local files never hold |
 
 ## What these fixtures deliberately encode
 
@@ -29,6 +31,26 @@ account id or session has ever been in this directory, and none may be added.
   `firstPlayed`, `updatedAt` and `lastModified` were each individually confirmed absent from
   the GraphQL `Playtime` type. Do not add one to these fixtures "for completeness" — it would
   make a test pass against a field that does not exist.
+
+## The catalog fixtures — what each entry is there to prove
+
+The bug they pin: `/library/api/public/items` returns entitlements with **no title and no
+categories**, so the API half of Epic ingest could neither name what it owned nor tell a game
+from an Unreal Engine build. `library-items-mixed.json` is a library in exactly that state,
+and the two `catalog-bulk-items-*.json` files are what the catalog service says about it.
+
+| Catalog item id | What it models |
+|---|---|
+| `7a70b499…` (Fez) | A game. `public,games,applications`, empty `mainGameItemList` |
+| `c30000…0004` | **A DLC that looks exactly like a base game by category** (`application,games,applications`) and is only marked by a non-empty `mainGameItem`. It carries BOTH spellings of the parent field, because the live response does. It is deliberately NOT hidden — the real instance of this shape on the author's account is LEGO Fortnite: Odyssey, with 408 minutes played |
+| `d40000…0005` | An Unreal Engine build: `engines,engines/ue4`. Owned, used, and not a game |
+| `e50000…0006` | A marketplace asset pack: `assets,assets/showcasedemos` |
+| `f60000…0007` | **Categories, no `title`.** Classifiable but unnameable — the row keeps its placeholder and is still hidden |
+| `a70000…0008` | **`title`, empty `categories`.** Nameable but unclassifiable — must store NULL, never an empty string, or "not known" stops being distinguishable |
+| `b80000…0009` | Owned and **absent from the catalog answer**. A definite miss, which is an answer worth caching — as distinct from a request that failed, which is not |
+
+Do not "complete" the entries that are missing a title or categories. Their incompleteness is
+the fixture.
 
 See `docs/spikes/epic-oauth.md` for the full findings and what remains unverified.
 

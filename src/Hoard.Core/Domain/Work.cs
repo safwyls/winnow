@@ -47,4 +47,21 @@ public sealed record Work
     /// gate in <see cref="Queries.DemoConsolidation"/> stays the fallback.</para>
     /// </summary>
     public string? SteamAppType { get; init; }
+
+    /// <summary>
+    /// Epic's own <c>categories[].path</c> list for the catalog item, comma-joined
+    /// in the storefront's order, or null when nothing has read it (migration
+    /// 0009) — e.g. <c>public,games,applications</c> for a game and
+    /// <c>engines,engines/ue4</c> for an Unreal Engine build.
+    ///
+    /// <para>The Epic sibling of <see cref="SteamAppType"/>, and read through the
+    /// same one rule both Epic callers share,
+    /// <see cref="Queries.EpicGameFilter"/>. Stored verbatim so a future reader
+    /// can tell a category this build never saw from one it normalised away.</para>
+    ///
+    /// <para>Null means "not known", never "not a game" — every Epic work named
+    /// from <c>catcache.bin</c> before this column existed carries null, and an
+    /// unknown row is always visible.</para>
+    /// </summary>
+    public string? EpicCategories { get; init; }
 }

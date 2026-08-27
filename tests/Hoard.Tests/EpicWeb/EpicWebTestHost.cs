@@ -30,6 +30,46 @@ public static class EpicFixturesWeb
 
     public static string Playtime() => Read("playtime-all.json");
 
+    /// <summary>
+    /// A single-page library mixing the games the local fixtures also carry with
+    /// the API-ONLY entitlements <c>catcache.bin</c> never holds — an engine
+    /// build, an asset pack, an untitled <c>hidden</c> content entitlement, an
+    /// uncategorised item, and one the catalog service does not recognise at all.
+    /// That mix is the whole bug: the library endpoint returns every one of them
+    /// with no title and no categories.
+    /// </summary>
+    public static string LibraryMixed() => Read("library-items-mixed.json");
+
+    /// <summary>Bulk catalog answer for the games namespace: Fez and a DLC that looks like a base game.</summary>
+    public static string CatalogGames() => Read("catalog-bulk-items-games.json");
+
+    /// <summary>Bulk catalog answer for the engine/assets namespace: everything that must not reach the grid.</summary>
+    public static string CatalogEngine() => Read("catalog-bulk-items-engine.json");
+
+    /// <summary>Namespace of the games in the fixtures.</summary>
+    public const string GamesNamespace = "41f47fd0d3e248bc938a5815d6d64daa";
+
+    /// <summary>Namespace of the engine builds and asset packs in the fixtures.</summary>
+    public const string EngineNamespace = "a0000000000000000000000000000009";
+
+    /// <summary>A DLC that carries <c>games</c> + <c>applications</c> and so looks exactly like a base game.</summary>
+    public const string DlcCatalogItemId = "c3000000000000000000000000000004";
+
+    /// <summary>An Unreal Engine build: <c>engines</c>, <c>engines/ue4</c>. Owned, and not a game.</summary>
+    public const string EngineCatalogItemId = "d4000000000000000000000000000005";
+
+    /// <summary>A marketplace asset pack: <c>assets</c>, <c>assets/showcasedemos</c>.</summary>
+    public const string AssetPackCatalogItemId = "e5000000000000000000000000000006";
+
+    /// <summary>Classifiable but unnameable: categories present, <c>title</c> absent.</summary>
+    public const string UntitledCatalogItemId = "f6000000000000000000000000000007";
+
+    /// <summary>Nameable but unclassifiable: <c>title</c> present, <c>categories</c> empty.</summary>
+    public const string UncategorisedCatalogItemId = "a7000000000000000000000000000008";
+
+    /// <summary>Owned, and absent from the catalog service's answer — the definite miss.</summary>
+    public const string UnknownToCatalogCatalogItemId = "b8000000000000000000000000000009";
+
     public static string Unauthenticated() => Read("library-unauthenticated-401.json");
 
     /// <summary>
@@ -85,7 +125,8 @@ public sealed class EpicWebTestHost : IDisposable
         ISettingsRepository? settings = null,
         DateTimeOffset? now = null,
         bool builtInCredentials = false,
-        IEnumerable<IInteractiveAuthPrompt>? prompts = null)
+        IEnumerable<IInteractiveAuthPrompt>? prompts = null,
+        IEpicCatalogCache? catalogCache = null)
     {
         Handler = new FakeEpicHandler(responder);
         Clock = new SteamWebTestClock(now ?? new DateTimeOffset(2026, 8, 26, 20, 0, 0, TimeSpan.Zero));
@@ -120,6 +161,14 @@ public sealed class EpicWebTestHost : IDisposable
         services.AddSingleton(Settings);
         services.AddSingleton(TokenStore);
 
+        // Registered before AddEpicWebApi so its TryAdd defers to it. A test
+        // that wants to inspect what was cached — including that a transport
+        // failure cached NOTHING — supplies its own.
+        if (catalogCache is not null)
+        {
+            services.AddSingleton(catalogCache);
+        }
+
         services.AddEpicWebApi(options =>
         {
             // Keep the backoff schedule and the rate limiter out of the way; the
@@ -135,6 +184,8 @@ public sealed class EpicWebTestHost : IDisposable
         services.AddHttpClient<IEpicAccountClient, EpicAccountClient>()
             .ConfigurePrimaryHttpMessageHandler(() => Handler);
         services.AddHttpClient(EpicTokenProvider.HttpClientName)
+            .ConfigurePrimaryHttpMessageHandler(() => Handler);
+        services.AddHttpClient<IEpicCatalogClient, EpicCatalogClient>()
             .ConfigurePrimaryHttpMessageHandler(() => Handler);
 
         foreach (var prompt in prompts ?? [])
@@ -179,6 +230,8 @@ public sealed class EpicWebTestHost : IDisposable
 
     public IEpicTokenProvider Tokens => _services.GetRequiredService<IEpicTokenProvider>();
 
+    public IEpicCatalogClient Catalog => _services.GetRequiredService<IEpicCatalogClient>();
+
     public EpicInteractiveSignIn SignIn => _services.GetRequiredService<EpicInteractiveSignIn>();
 
     public T Resolve<T>()
@@ -203,6 +256,30 @@ public sealed class EpicWebTestHost : IDisposable
                     ? EpicFixturesWeb.LibraryPage1()
                     : EpicFixturesWeb.LibraryPage2()),
             EpicEndpoint.Playtime => FakeEpicHandler.Json(HttpStatusCode.OK, EpicFixturesWeb.Playtime()),
+            _ => FakeEpicHandler.Json(HttpStatusCode.NotFound, "{}"),
+        };
+
+    /// <summary>
+    /// The happy path for the catalog client: the mixed single-page library, and
+    /// the per-namespace bulk answers. Everything an API-only entitlement needs
+    /// to be named and classified.
+    /// </summary>
+    public static Func<RecordedEpicRequest, int, HttpResponseMessage> HealthyCatalog()
+        => (request, _) => request.Endpoint switch
+        {
+            EpicEndpoint.Token => FakeEpicHandler.Json(
+                HttpStatusCode.OK,
+                request.GrantType == "refresh_token"
+                    ? EpicFixturesWeb.RefreshedToken()
+                    : EpicFixturesWeb.Token()),
+            EpicEndpoint.LibraryItems => FakeEpicHandler.Json(
+                HttpStatusCode.OK, EpicFixturesWeb.LibraryMixed()),
+            EpicEndpoint.Playtime => FakeEpicHandler.Json(HttpStatusCode.OK, EpicFixturesWeb.Playtime()),
+            EpicEndpoint.CatalogItems => FakeEpicHandler.Json(
+                HttpStatusCode.OK,
+                request.CatalogNamespace == EpicFixturesWeb.GamesNamespace
+                    ? EpicFixturesWeb.CatalogGames()
+                    : EpicFixturesWeb.CatalogEngine()),
             _ => FakeEpicHandler.Json(HttpStatusCode.NotFound, "{}"),
         };
 

@@ -7,6 +7,8 @@ using Hoard.Enrich.Igdb.Model;
 using Hoard.Enrich.Steam;
 using Hoard.Enrich.Updates;
 using Hoard.Enrich.Updates.Model;
+using Hoard.Ingest.Epic.Web;
+using Hoard.Ingest.Epic.Web.Model;
 using Microsoft.Extensions.Logging;
 
 namespace Hoard.App.Services;
@@ -102,10 +104,26 @@ public sealed class EnrichmentSyncService
     private readonly IIgdbClient _igdb;
     private readonly ISteamStoreClient _steamStore;
     private readonly IBuildInfoClient _steamCmd;
+    private readonly IEpicCatalogClient? _epicCatalog;
     private readonly EnrichmentLookupPlanner _lookups;
     private readonly IUnitOfWorkFactory _unitOfWork;
     private readonly ILogger<EnrichmentSyncService> _logger;
 
+    /// <param name="works">Work repository.</param>
+    /// <param name="releases">Release repository — names move with the work.</param>
+    /// <param name="igdb">The metadata backbone (§4.4).</param>
+    /// <param name="steamStore">Keyless Steam store fallback, titles only.</param>
+    /// <param name="steamCmd">The PICS mirror: last-resort Steam names, and Valve's app type.</param>
+    /// <param name="lookups">Works out how each store reaches IGDB.</param>
+    /// <param name="unitOfWork">Transaction scope factory.</param>
+    /// <param name="logger">Logger.</param>
+    /// <param name="epicCatalog">
+    /// Epic's catalog service, or null on a host that did not register the
+    /// opt-in Epic API module. Optional in exactly the way
+    /// <see cref="IEpicCatalogClient"/> describes: an install with no Epic
+    /// session, or none at all, simply has no step 3b, and every Epic work keeps
+    /// whatever name and classification its local files gave it.
+    /// </param>
     public EnrichmentSyncService(
         IWorkRepository works,
         IReleaseRepository releases,
@@ -114,7 +132,8 @@ public sealed class EnrichmentSyncService
         IBuildInfoClient steamCmd,
         EnrichmentLookupPlanner lookups,
         IUnitOfWorkFactory unitOfWork,
-        ILogger<EnrichmentSyncService> logger)
+        ILogger<EnrichmentSyncService> logger,
+        IEpicCatalogClient? epicCatalog = null)
     {
         _works = works;
         _releases = releases;
@@ -124,6 +143,7 @@ public sealed class EnrichmentSyncService
         _lookups = lookups;
         _unitOfWork = unitOfWork;
         _logger = logger;
+        _epicCatalog = epicCatalog;
     }
 
     /// <summary>
@@ -235,12 +255,15 @@ public sealed class EnrichmentSyncService
         stopwatch.Stop();
         _logger.LogInformation(
             "Enrichment COMPLETE: {Promoted} of {Outstanding} names promoted "
-            + "({Igdb} from IGDB, {Steam} from the Steam store, {SteamCmd} from steamcmd.net); "
-            + "{Types} app types read; "
+            + "({Igdb} from IGDB, {Steam} from the Steam store, {SteamCmd} from steamcmd.net, "
+            + "{EpicCatalog} from Epic's catalog service); "
+            + "{Types} Steam app types read, {EpicTypes} Epic catalog items classified; "
             + "{Enriched} of {Targets} works had metadata filled in, in {Elapsed:n1}s. "
             + "Written per store: {Writes}. Routes: {Routes}.",
             run.Promoted, outstandingNames, run.FromIgdb, run.FromSteam, run.FromSteamCmd,
-            run.TypesRead, run.EnrichedWorks.Count, targets.Count, stopwatch.Elapsed.TotalSeconds,
+            run.FromEpicCatalog,
+            run.TypesRead, run.EpicClassified, run.EnrichedWorks.Count, targets.Count,
+            stopwatch.Elapsed.TotalSeconds,
             Describe(run.WrittenByProvider),
             run.Routes.Count == 0
                 ? "none"
@@ -405,6 +428,13 @@ public sealed class EnrichmentSyncService
             }
         }
 
+        // 3b. Epic's catalog service, for the same two jobs the Steam steps do
+        //     — a name for a work that has none, and the storefront's own
+        //     classification — but for Epic ids, which neither Steam endpoint can
+        //     be asked about.
+        var epic = await ReadEpicCatalogAsync(slice, titles, ct);
+        run.EpicClassified += epic.Count;
+
         // 4. steamcmd.net, last. See the class remarks for why it is last and
         //    what it is worth.
         var steamCmd = await ReadSteamCmdAsync(slice, titles, ct);
@@ -428,7 +458,7 @@ public sealed class EnrichmentSyncService
                 run.AttemptedByProvider.GetValueOrDefault(target.Provider) + 1;
 
             var key = KeyOf(target);
-            var patch = BuildPatch(target, key, titles, matches, games, steamCmd.Types);
+            var patch = BuildPatch(target, key, titles, matches, games, steamCmd.Types, epic);
             if (patch.IsEmpty)
             {
                 continue;
@@ -456,6 +486,18 @@ public sealed class EnrichmentSyncService
                 else if (steamCmd.Named.Contains(target.ProviderId))
                 {
                     run.FromSteamCmd++;
+                }
+                else if (epic.ContainsKey(target.ProviderId))
+                {
+                    // Epic's catalog service. Attributed explicitly rather than
+                    // falling through to the Steam store, which is what the
+                    // final `else` used to do — and did, for all 29 Epic names
+                    // on the author's first real run, reporting them as "29 from
+                    // the Steam store" for an endpoint that was never asked
+                    // about a single one of them. A run's own account of where
+                    // its titles came from is the thing that tells you a source
+                    // has stopped working, so it has to be true.
+                    run.FromEpicCatalog++;
                 }
                 else
                 {
@@ -498,7 +540,24 @@ public sealed class EnrichmentSyncService
 
         public int FromSteamCmd { get; set; }
 
+        /// <summary>
+        /// Names that came from Epic's catalog service — the only source that
+        /// can name an Epic catalog item id. Counted separately because neither
+        /// Steam endpoint can be asked about one, so a promotion credited to
+        /// them would be a claim about a request that never happened.
+        /// </summary>
+        public int FromEpicCatalog { get; set; }
+
         public int TypesRead { get; set; }
+
+        /// <summary>
+        /// Epic catalog items this run learned a classification for. Counted
+        /// separately from <see cref="TypesRead"/> because the two come from
+        /// different storefronts with incompatible vocabularies, and a run that
+        /// classifies Steam apps while classifying no Epic ones is the shape of
+        /// an Epic session that has quietly lapsed.
+        /// </summary>
+        public int EpicClassified { get; set; }
 
         public bool IgdbUnconfiguredLogged { get; set; }
 
@@ -627,6 +686,100 @@ public sealed class EnrichmentSyncService
         IReadOnlyDictionary<string, string> Types, IReadOnlySet<string> Named);
 
     /// <summary>
+    /// Step 3b: what Epic's catalog service can say about the Epic catalog item
+    /// ids in this slice. Adds any title it supplies to <paramref name="titles"/>
+    /// and returns the full answer per catalog item id, so the writer can also
+    /// store the categories.
+    ///
+    /// <para><b>The gap this closes, measured on the author's library.</b> The
+    /// authenticated library endpoint returns entitlements carrying
+    /// <c>namespace</c>, <c>catalogItemId</c>, <c>appName</c> and
+    /// <c>acquisitionDate</c> — no title, no categories. So 29 of 99 Epic
+    /// ownership rows had no name from any source and rendered as
+    /// <c>App 16a66a9f5630407d923429470bd5c967</c>, and the local Epic scan's
+    /// game filter had nothing to judge them by. Asked of the catalog service
+    /// those 29 resolve to three games (one with 408 minutes played), three
+    /// Unreal Engine builds (one with 320 minutes played), eighteen engine sample
+    /// packs, two <c>hidden</c> Fortnite content entitlements and a store DLC.
+    /// None of them is deleted: the games are named and stay, and the rest are
+    /// named and hidden behind the existing "show non-game entries" toggle.</para>
+    ///
+    /// <para><b>Asked once per work, ever.</b> The gate is
+    /// <see cref="EnrichmentTarget.HasEpicCategories"/>: what a catalog item is
+    /// called and what kind of thing it is do not change, so a work that has been
+    /// classified is never asked again, and the client's own 30-day cache —
+    /// including its cached misses — keeps the rest off the wire between runs.
+    /// Epic works already named by <c>catcache.bin</c> are asked once and then
+    /// never again, which is the whole cost of classifying the store.</para>
+    ///
+    /// <para><b>Never throws, and never writes.</b> No Epic module registered, no
+    /// session, an unreachable service, a 429 the retries could not outlast: all
+    /// return an empty map, which reaches <see cref="BuildPatch"/> as no fields
+    /// at all and leaves every stored title and classification exactly as it was.
+    /// That is the point: a source that cannot answer must leave the row
+    /// alone.</para>
+    /// </summary>
+    private async Task<IReadOnlyDictionary<string, EpicCatalogItemInfo>> ReadEpicCatalogAsync(
+        IReadOnlyList<EnrichmentTarget> targets,
+        Dictionary<TargetKey, string> titles,
+        CancellationToken ct)
+    {
+        if (_epicCatalog is null)
+        {
+            return EmptyEpicCatalog;
+        }
+
+        var wanted = targets
+            .Where(static t => t.Provider == ExternalIdProviders.Epic
+                               && (t.NameIsProvisional || !t.HasEpicCategories))
+            .Select(static t => t.ProviderId)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        if (wanted.Length == 0)
+        {
+            return EmptyEpicCatalog;
+        }
+
+        IReadOnlyDictionary<string, EpicCatalogItemInfo> answers;
+        try
+        {
+            answers = await _epicCatalog.GetItemsAsync(wanted, ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // The client soft-fails internally, so reaching here means something
+            // unforeseen. It still must not abort the pass (§5.1).
+            _logger.LogWarning(ex, "Epic catalog lookup failed; continuing without it.");
+            return EmptyEpicCatalog;
+        }
+
+        foreach (var target in targets)
+        {
+            if (target.Provider != ExternalIdProviders.Epic
+                || !target.NameIsProvisional
+                || !answers.TryGetValue(target.ProviderId, out var item)
+                || string.IsNullOrWhiteSpace(item.Title))
+            {
+                continue;
+            }
+
+            // Only offered, never forced. BuildPatch still refuses to hand a
+            // title to a work whose name is real, and the repository refuses
+            // again — so an Epic title that came from catcache.bin cannot be
+            // replaced by this, which is the "never overwrite a good local title"
+            // rule holding at all three layers.
+            titles.TryAdd(KeyOf(target), item.Title!);
+        }
+
+        return answers;
+    }
+
+    /// <summary>Shared empty result, so the no-Epic path allocates nothing.</summary>
+    private static readonly IReadOnlyDictionary<string, EpicCatalogItemInfo> EmptyEpicCatalog =
+        new Dictionary<string, EpicCatalogItemInfo>(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
     /// What this run is entitled to write for one work: everything a source
     /// supplied that the database does not already hold.
     ///
@@ -647,7 +800,8 @@ public sealed class EnrichmentSyncService
         IReadOnlyDictionary<TargetKey, string> titles,
         IReadOnlyDictionary<TargetKey, IgdbExternalMatch> matches,
         IReadOnlyDictionary<long, IgdbGame> games,
-        IReadOnlyDictionary<string, string> appTypes)
+        IReadOnlyDictionary<string, string> appTypes,
+        IReadOnlyDictionary<string, EpicCatalogItemInfo> epicCatalog)
     {
         var match = matches.GetValueOrDefault(key);
         var game = match is not null ? games.GetValueOrDefault(match.IgdbId) : null;
@@ -675,7 +829,21 @@ public sealed class EnrichmentSyncService
             // inherit whatever Valve says about an unrelated app.
             SteamAppType: target.HasSteamAppType || key.Provider != ExternalIdProviders.Steam
                 ? null
-                : appTypes.GetValueOrDefault(target.ProviderId));
+                : appTypes.GetValueOrDefault(target.ProviderId),
+
+            // Epic's own classification, and guarded the same way and for the
+            // same reason: `epicCatalog` is keyed by catalog item id, and while a
+            // Steam appid could not plausibly collide with a 32-hex catalog id,
+            // the guard is what makes the intent local rather than a fact about
+            // today's id shapes.
+            //
+            // CategoriesValue is null when Epic sent no categories, so an entry
+            // that answered with a title and nothing else fills the name and
+            // leaves the classification unknown — which is correct, and which the
+            // repository's COALESCE would enforce regardless.
+            EpicCategories: target.HasEpicCategories || key.Provider != ExternalIdProviders.Epic
+                ? null
+                : epicCatalog.GetValueOrDefault(target.ProviderId)?.CategoriesValue);
     }
 
     private static string? Prefer(string? first, string? second)

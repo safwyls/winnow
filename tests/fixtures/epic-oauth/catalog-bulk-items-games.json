@@ -1,0 +1,65 @@
+{
+  "7a70b499513441c792b541d53505e0b2": {
+    "id": "7a70b499513441c792b541d53505e0b2",
+    "title": "Fez",
+    "description": "Fez",
+    "keyImages": [
+      {
+        "type": "DieselGameBoxTall",
+        "url": "https://cdn1.epicgames.example/fez-tall.png",
+        "width": 1200,
+        "height": 1600
+      }
+    ],
+    "categories": [
+      { "path": "public" },
+      { "path": "games" },
+      { "path": "applications" }
+    ],
+    "namespace": "41f47fd0d3e248bc938a5815d6d64daa",
+    "status": "ACTIVE",
+    "creationDate": "2019-08-09T00:00:00.000Z",
+    "lastModifiedDate": "2019-11-19T17:02:42.064Z",
+    "entitlementName": "7a70b499513441c792b541d53505e0b2",
+    "entitlementType": "EXECUTABLE",
+    "itemType": "DURABLE",
+    "releaseInfo": [
+      {
+        "id": "fbbf78da8ec140ac8af7c5a05d4892f2",
+        "appId": "Bluebird",
+        "platform": ["Windows", "Mac", "Win32"],
+        "dateAdded": "2019-08-09T00:00:00.000Z"
+      }
+    ],
+    "developer": "Polytron Corporation, Inc",
+    "endOfSupport": false,
+    "mainGameItemList": [],
+    "unsearchable": false
+  },
+  "c3000000000000000000000000000004": {
+    "id": "c3000000000000000000000000000004",
+    "title": "Fez Bonus Chapter",
+    "categories": [
+      { "path": "application" },
+      { "path": "games" },
+      { "path": "applications" }
+    ],
+    "namespace": "41f47fd0d3e248bc938a5815d6d64daa",
+    "releaseInfo": [
+      {
+        "appId": "BluebirdChapter",
+        "platform": ["Windows"]
+      }
+    ],
+    "mainGameItem": {
+      "namespace": "41f47fd0d3e248bc938a5815d6d64daa",
+      "id": "7a70b499513441c792b541d53505e0b2"
+    },
+    "mainGameItemList": [
+      {
+        "namespace": "41f47fd0d3e248bc938a5815d6d64daa",
+        "id": "7a70b499513441c792b541d53505e0b2"
+      }
+    ]
+  }
+}

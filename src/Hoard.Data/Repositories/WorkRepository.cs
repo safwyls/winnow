@@ -17,6 +17,7 @@ public sealed class WorkRepository : IWorkRepository
         cover_url          AS CoverUrl,
         publisher          AS Publisher,
         steam_app_type     AS SteamAppType,
+        epic_categories    AS EpicCategories,
         name_is_provisional AS NameIsProvisional
         """;
 
@@ -28,8 +29,8 @@ public sealed class WorkRepository : IWorkRepository
     {
         using var lease = _factory.Lease();
         return await lease.Connection.ExecuteScalarAsync<long>(new CommandDefinition("""
-            INSERT INTO works (igdb_id, name, sort_name, first_release_year, summary, cover_url, publisher, steam_app_type, name_is_provisional)
-            VALUES (@IgdbId, @Name, @SortName, @FirstReleaseYear, @Summary, @CoverUrl, @Publisher, @SteamAppType, @NameIsProvisional)
+            INSERT INTO works (igdb_id, name, sort_name, first_release_year, summary, cover_url, publisher, steam_app_type, epic_categories, name_is_provisional)
+            VALUES (@IgdbId, @Name, @SortName, @FirstReleaseYear, @Summary, @CoverUrl, @Publisher, @SteamAppType, @EpicCategories, @NameIsProvisional)
             RETURNING id;
             """, work, transaction: lease.Transaction, cancellationToken: ct));
     }
@@ -173,6 +174,7 @@ public sealed class WorkRepository : IWorkRepository
                    (w.cover_url          IS NOT NULL) AS HasCoverUrl,
                    (w.publisher          IS NOT NULL) AS HasPublisher,
                    (w.steam_app_type     IS NOT NULL) AS HasSteamAppType,
+                   (w.epic_categories    IS NOT NULL) AS HasEpicCategories,
                    COALESCE(NULLIF(TRIM(r.name), ''), w.name) AS Title,
 
                    -- How empty is this work? The five columns the metadata
@@ -218,7 +220,7 @@ public sealed class WorkRepository : IWorkRepository
             )
             SELECT WorkId, ReleaseId, Provider, ProviderId, NameIsProvisional,
                    HasIgdbId, HasFirstReleaseYear, HasSummary, HasCoverUrl,
-                   HasPublisher, HasSteamAppType, Title
+                   HasPublisher, HasSteamAppType, HasEpicCategories, Title
             FROM (
                 SELECT candidate.*,
 
@@ -314,7 +316,14 @@ public sealed class WorkRepository : IWorkRepository
                 -- Migration 0006. Same one-way rule: Valve saying nothing about
                 -- an appid (the `_missing_token` shape) must not erase a type an
                 -- earlier, luckier fetch already recorded.
-                steam_app_type     = COALESCE(@SteamAppType,     steam_app_type)
+                steam_app_type     = COALESCE(@SteamAppType,     steam_app_type),
+
+                -- Migration 0009, and the same one-way rule again. Epic's
+                -- catalog service being unreachable, or the user not having
+                -- signed in, must not un-classify a work an earlier run
+                -- classified — that is precisely how a source's SILENCE gets
+                -- recorded as an answer.
+                epic_categories    = COALESCE(@EpicCategories,   epic_categories)
             WHERE id = @WorkId;
             """,
             new
@@ -328,6 +337,7 @@ public sealed class WorkRepository : IWorkRepository
                 CoverUrl = Trimmed(enrichment.CoverUrl),
                 Publisher = Trimmed(enrichment.Publisher),
                 SteamAppType = Trimmed(enrichment.SteamAppType),
+                EpicCategories = Trimmed(enrichment.EpicCategories),
             },
             transaction: lease.Transaction,
             cancellationToken: ct));
