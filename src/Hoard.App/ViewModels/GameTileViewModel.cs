@@ -52,10 +52,15 @@ public partial class GameTileViewModel : ObservableObject
         Work? work = null,
         Ownership? ownership = null,
         DormancyRamp? ramp = null,
-        string? steamAppId = null)
+        string? steamAppId = null,
+        string? gogProductId = null,
+        EpicLaunchKey? epicLaunchKey = null,
+        string? bucketLabel = null)
     {
         CoverKey = coverKey;
         SteamAppId = GameLink.IsSteamAppId(steamAppId) ? steamAppId : null;
+        GogProductId = StoreActions.IsGogProductId(gogProductId) ? gogProductId : null;
+        EpicLaunchKey = epicLaunchKey;
         _covers = covers;
         _ramp = ramp ?? DefaultRamp;
         _nowUtc = nowUtc;
@@ -65,6 +70,10 @@ public partial class GameTileViewModel : ObservableObject
         Store = store;
         StoreBadge = store.ToUpperInvariant();
         Bucket = bucket;
+        // The §7 name, not the query's key. The back of the card is the only
+        // place in the grid that says which pile a game is in, and it has to say
+        // it in the rail's own words rather than in "stale_but_patched".
+        BucketLabel = string.IsNullOrWhiteSpace(bucketLabel) ? bucket : bucketLabel;
         PlaytimeMinutes = playtimeMinutes;
         LastPlayedUtc = lastPlayedUtc;
         HasUnread = hasUnread;
@@ -77,8 +86,20 @@ public partial class GameTileViewModel : ObservableObject
         NameIsProvisional = work?.NameIsProvisional ?? false;
         Summary = string.IsNullOrWhiteSpace(work?.Summary) ? null : work!.Summary;
         Publisher = string.IsNullOrWhiteSpace(work?.Publisher) ? null : work!.Publisher;
-        Installed = ownership?.Installed ?? false;
+        // Three-valued on purpose. A stored Ownership always has a definite
+        // answer, so `installed` is a plain bool once a row exists — but no row
+        // is not the same statement as "not on disk", it is "nothing looked",
+        // and folding the two is the mistake that once cleared this library's
+        // whole install state. The button that reads this refuses to be named
+        // rather than guess (StoreActions.PrimaryFor).
+        Installed = ownership is null ? null : ownership.Installed;
         InstallPath = string.IsNullOrWhiteSpace(ownership?.InstallPath) ? null : ownership!.InstallPath;
+
+        // The one filled affordance, decided once, here, so the tile's back face
+        // and the detail panel can never disagree about whether this game is
+        // reached by Play, by Install or by neither (§10.3).
+        PrimaryAction = StoreActions.PrimaryFor(
+            Store, Installed, SteamAppId, GogProductId, EpicLaunchKey);
 
         PlaytimeText = BuildPlaytimeText(playtimeMinutes);
         IdleText = BuildIdleText(lastPlayedUtc, nowUtc);
@@ -137,6 +158,11 @@ public partial class GameTileViewModel : ObservableObject
     /// <summary>works.first_release_year, or null until enrichment lands it.</summary>
     public int? ReleaseYear { get; }
 
+    public bool HasReleaseYear => ReleaseYear is > 0;
+
+    /// <summary>Plex Mono, tabular, no thousands separator — it is a year, not a count.</summary>
+    public string ReleaseYearText => ReleaseYear is > 0 ? ReleaseYear.Value.ToString("D4") : string.Empty;
+
     /// <summary>works.summary, or null. Never a placeholder sentence.</summary>
     public string? Summary { get; }
 
@@ -165,8 +191,18 @@ public partial class GameTileViewModel : ObservableObject
     public Hoard.Core.Queries.FilterableRow Row { get; set; }
         = new(0, 0, string.Empty, string.Empty, string.Empty, false, false, null, [], []);
 
-    /// <summary>Whether the store's local files say this is on disk right now.</summary>
-    public bool Installed { get; }
+    /// <summary>The §7 bucket name this tile falls in ("Never played"), for the back face.</summary>
+    public string BucketLabel { get; }
+
+    /// <summary>
+    /// Whether the store's local files say this is on disk right now — and
+    /// <c>null</c> when no source has looked, which is a third answer rather
+    /// than a quieter "no". See the constructor.
+    /// </summary>
+    public bool? Installed { get; }
+
+    /// <summary>True only when a source looked and found it on disk.</summary>
+    public bool IsOnDisk => Installed == true;
 
     /// <summary>Install directory when installed and known; null otherwise.</summary>
     public string? InstallPath { get; }
@@ -178,6 +214,38 @@ public partial class GameTileViewModel : ObservableObject
     /// not a place to interpolate an unchecked string.
     /// </summary>
     public string? SteamAppId { get; }
+
+    /// <summary>
+    /// The GOG product id this release is known by, or null. Validated as digits
+    /// at construction for the same reason the appid is: it is interpolated into
+    /// a <c>goggalaxy://</c> target, and external_ids.provider_id is TEXT.
+    /// </summary>
+    public string? GogProductId { get; }
+
+    /// <summary>
+    /// Epic's <c>namespace : catalogItemId : artifactId</c>, or null when we do
+    /// not hold all three. <c>external_ids</c> stores only the middle one, so
+    /// the other two come from the catalog rows the app itself cached; a title
+    /// the cache has not reached yet simply has no Epic launch target, which
+    /// renders as no button rather than as a broken one.
+    /// </summary>
+    public EpicLaunchKey? EpicLaunchKey { get; }
+
+    /// <summary>
+    /// <c>Play</c> when it is on disk, <c>Install</c> when it is not, and null
+    /// when this app cannot honestly name either — no id for the store, no
+    /// verified install route for the store, or no answer at all about the
+    /// install state. Never an inert button (§10.3).
+    /// </summary>
+    public GameLink? PrimaryAction { get; }
+
+    public bool HasPrimaryAction => PrimaryAction is not null;
+
+    /// <summary>The button's face: "Play" or "Install", named for what it does.</summary>
+    public string PrimaryActionLabel => PrimaryAction?.Label ?? string.Empty;
+
+    /// <summary>Tooltip for the primary action — which launcher it hands to.</summary>
+    public string PrimaryActionHint => PrimaryAction?.Tooltip ?? string.Empty;
 
     /// <summary>
     /// True when the title is a machine-minted stand-in ("App 8510") rather than
@@ -286,6 +354,55 @@ public partial class GameTileViewModel : ObservableObject
 
     [ObservableProperty]
     public partial bool IsSelected { get; set; }
+
+    /// <summary>
+    /// The card is turned over: the art is face-down and the back's facts and
+    /// actions are showing.
+    ///
+    /// <para><b>This lives on the view model and nowhere else, and that is not a
+    /// style preference.</b> <see cref="Views.CoverWall"/> virtualizes: a
+    /// container scrolled out of the viewport is recycled and comes back bound
+    /// to a different game. State kept on the container therefore does not
+    /// travel with the game it was about — it stays with the container and gets
+    /// handed to whatever lands in it next, which is precisely the bug that
+    /// retired <c>ItemsRepeater</c> here. A tile view model outlives every
+    /// container it is ever shown in, so a flag on it is the only place the flip
+    /// can be correct.</para>
+    ///
+    /// <para><b>Flips therefore survive scrolling, deliberately, and exactly one
+    /// card is ever turned over.</b> Persisting is what falls out of putting the
+    /// state on the model, and it is also right: a card you turned over and
+    /// scrolled past should be as you left it when you come back, the way a card
+    /// on a table is. What would be wrong is a WALL of turned cards — §1 says
+    /// the art is the interface, and a grid of backs is a grid with no art in
+    /// it — so the library turns the previous one face-up as it turns the next
+    /// one over (see <c>LibraryViewModel.FlipTile</c>). One card at a time also
+    /// matches what the back face is for: the flip is the single-game route, and
+    /// the command bar stays the bulk route (§12.3).</para>
+    /// </summary>
+    [ObservableProperty]
+    public partial bool IsFlipped { get; set; }
+
+    /// <summary>
+    /// "Add to list" for this one game, wired to the library's own command by
+    /// the library (§5.1: the view model raises a command, it does not reach
+    /// into a repository). Null in a bare view-model test, which renders the
+    /// button disabled rather than crashing.
+    ///
+    /// <para>It is the same command the command bar's button runs, deliberately.
+    /// The flip is the single-game route into it; the command bar is the route
+    /// for the many rows list view can select at once (§6, §12.3), and per-card
+    /// flipping would make "add twenty games to a list" twenty flips.</para>
+    /// </summary>
+    public System.Windows.Input.ICommand? AddToListCommand { get; set; }
+
+    /// <summary>
+    /// The detail modal for this game. The back face carries it because the flip
+    /// took the gesture the grid used to open it with, and §10 calls that modal
+    /// the answer to §5.3's four-fact cap — a surface that must not become
+    /// unreachable.
+    /// </summary>
+    public System.Windows.Input.ICommand? OpenDetailsCommand { get; set; }
 
     /// <summary>
     /// Hover restores full saturation (140ms transition lives in the view). With

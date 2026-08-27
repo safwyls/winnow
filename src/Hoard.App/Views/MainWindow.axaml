@@ -717,26 +717,38 @@
                         </Grid>
                     </Button>
 
-                    <!-- ── SOURCES ───────────────────────────────────────
-                         The Stores panel (M4.6). Placed here, between REVIEW
-                         and LISTS, because the rail has two kinds of row and
-                         this is the first kind: REVIEW and SOURCES are SCREENS,
-                         while the buckets, the lists and the live lists are all
-                         CUTS of the library. Keeping the two screen rows
-                         adjacent means the boundary between "go somewhere else"
-                         and "show me less of this" is one rule on the rail
-                         rather than a thing you learn by clicking.
+                    <!-- ── SETTINGS ──────────────────────────────────────
+                         The app's own preferences, of which STORES (M4.6) is
+                         the first row. Placed here, between REVIEW and LISTS,
+                         because the rail has two kinds of row and this is the
+                         first kind: REVIEW and SETTINGS are SCREENS, while the
+                         buckets, the lists and the live lists are all CUTS of
+                         the library. Keeping the two screen rows adjacent means
+                         the boundary between "go somewhere else" and "show me
+                         less of this" is one rule on the rail rather than a
+                         thing you learn by clicking.
 
                          It also has to sit above LISTS rather than below it,
                          for a mechanical reason: the list sections grow as the
                          user makes lists, so anything under them moves down the
-                         rail over the life of the install. A fixed row belongs
-                         above the section that grows.
+                         rail over the life of the install. A fixed section
+                         belongs above the section that grows — and this one is
+                         itself expected to grow, downward, as preferences that
+                         are too big for the display-preferences popover land
+                         here beside STORES.
 
-                         No count. The row would only ever say "3", which never
-                         moves — and a permanent constant beside a permanent row
-                         is exactly the noise the REVIEW row's count is hidden to
-                         avoid. -->
+                         SETTINGS rather than SOURCES resolves design-system.md
+                         §13 gap 3, which recorded SOURCES/STORES as "mildly
+                         redundant" — a one-row section whose heading restated
+                         its row. A heading that names a CATEGORY the row is one
+                         of stops being a restatement the moment there is a
+                         second row, and reads as an ordinary section heading
+                         even while there is only one.
+
+                         No count on the rows here. A settings row would only
+                         ever say a constant, and a permanent constant beside a
+                         permanent row is exactly the noise the REVIEW row's
+                         count is hidden to avoid. -->
                     <Border Margin="16,22,16,8"
                             Padding="0,14,0,0"
                             BorderBrush="{StaticResource Line}"
@@ -744,7 +756,7 @@
                         <TextBlock Classes="label"
                                    FontSize="10"
                                    LetterSpacing="1.4"
-                                   Text="SOURCES"/>
+                                   Text="SETTINGS"/>
                     </Border>
                     <Button Classes="bucket"
                             Classes.selected="{Binding IsStoresVisible}"
@@ -879,7 +891,7 @@
 
         <!-- ══ MAIN ════════════════════════════════════════════════════════
              Three screens share the pane: the library, the merge confirm queue
-             the rail's REVIEW row opens, and the Stores panel its SOURCES row
+             the rail's REVIEW row opens, and the Stores panel its SETTINGS › STORES row
              opens. The command bar (search, density) belongs to the library, so
              the other two replace the whole pane rather than sitting under
              controls that do not apply to them. -->
@@ -1176,9 +1188,15 @@
                                      CellAspect="1.5"
                                      MinCellWidth="{Binding Library.TileWidth}"
                                      ItemsSource="{Binding Library.VisibleTiles}">
+                        <!-- No PointerPressed here any more. The wall's press
+                             handler is registered from code-behind on the TUNNEL
+                             route, because it has to see a press BEFORE the
+                             buttons on a turned card's back face do — see
+                             MainWindow.OnTilePressed. XAML event attributes are
+                             bubble-only, so this could not be expressed here. -->
                         <views:CoverWall.ItemTemplate>
                             <DataTemplate DataType="vm:GameTileViewModel">
-                                <views:GameTileView PointerPressed="OnTilePressed"/>
+                                <views:GameTileView/>
                             </DataTemplate>
                         </views:CoverWall.ItemTemplate>
                     </views:CoverWall>

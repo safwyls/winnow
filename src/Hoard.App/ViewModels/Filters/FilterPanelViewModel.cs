@@ -88,8 +88,16 @@ public partial class FilterPanelViewModel : ObservableObject
             t => Ids(t.Facets.ControllerIds));
         Add(new FilterGroupViewModel(StoreKey, "STORE", Changed),
             t => [t.Store]);
+        // GameTileViewModel.Installed is three-valued — null means no source
+        // looked — but this group is a two-way cut, and the question it asks is
+        // "which of these do I know are on disk". An unknown is not one of them,
+        // so it lands with the known "no"s. That is the same reading
+        // FilterableRow takes, deliberately: the panel and a saved live list have
+        // to agree, and the one place the third state is answered by name is the
+        // Play/Install button, which declines to be named at all rather than
+        // guess (StoreActions.PrimaryFor).
         Add(new FilterGroupViewModel(InstalledKey, "ON DISK", Changed),
-            t => [t.Installed ? OnDisk : NotOnDisk]);
+            t => [t.IsOnDisk ? OnDisk : NotOnDisk]);
 
         Groups = [.. _specs.Select(s => s.Group)];
     }

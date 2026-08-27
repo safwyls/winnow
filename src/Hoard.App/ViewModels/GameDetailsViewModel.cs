@@ -123,8 +123,19 @@ public partial class GameDetailsViewModel : ObservableObject
     /// <summary>The §7 bucket name this game currently falls in ("Never played").</summary>
     public string BucketLabel { get; }
 
-    /// <summary>Install state as a fact, not a verdict.</summary>
-    public string InstallText => Tile.Installed ? "Installed" : "Not installed";
+    /// <summary>
+    /// Install state as a fact, not a verdict — and only when there is one.
+    ///
+    /// <para><see cref="GameTileViewModel.Installed"/> is three-valued: null
+    /// means no source looked, which is neither "Installed" nor "Not installed".
+    /// The chip is absent in that case rather than guessing, on §10.5's rule
+    /// that a null fact renders as no row at all — a placeholder that turns into
+    /// real data later is a lie with a timer on it.</para>
+    /// </summary>
+    public string InstallText => Tile.Installed == true ? "Installed" : "Not installed";
+
+    /// <summary>False when nothing has looked at this game's install state.</summary>
+    public bool HasInstallState => Tile.Installed is not null;
 
     public string? InstallPath => Tile.InstallPath;
 
@@ -222,13 +233,20 @@ public partial class GameDetailsViewModel : ObservableObject
     // ── Band 4: get me in ───────────────────────────────────────────────────
 
     /// <summary>
-    /// The one filled affordance: <c>steam://run/&lt;appid&gt;</c> when the game
-    /// is on disk, <c>steam://install/&lt;appid&gt;</c> when it is not.
+    /// The one filled affordance — <c>Play</c> when the game is on disk,
+    /// <c>Install</c> when it is not, through whichever launcher owns it.
     ///
     /// <para>Named for what it does, so it cannot lie: a button reading "Play"
     /// on an uninstalled 60GB game promises something the next sixty minutes
-    /// will not deliver. Null when we hold no appid, in which case the row
-    /// simply has no primary action — never an inert button.</para>
+    /// will not deliver. Null when this app cannot name one honestly — no id for
+    /// the store, no verified install route for the store, or no answer at all
+    /// about the install state — in which case the panel simply has no primary
+    /// action, never an inert button.</para>
+    ///
+    /// <para>It is <see cref="GameTileViewModel.PrimaryAction"/> itself, not a
+    /// second computation of the same thing. The back of the cover tile offers
+    /// the same button, and two implementations of "which one is this" is how
+    /// one surface ends up saying Play while the other says Install.</para>
     /// </summary>
     public GameLink? PrimaryAction { get; }
 
@@ -245,7 +263,7 @@ public partial class GameDetailsViewModel : ObservableObject
     /// <c>file:</c> URI — <see cref="GameLink"/> refuses that scheme on purpose,
     /// and this is the one local target the design actually wants.
     /// </summary>
-    public string? OpenableFolder => Tile.Installed ? Tile.InstallPath : null;
+    public string? OpenableFolder => Tile.IsOnDisk ? Tile.InstallPath : null;
 
     public bool HasOpenableFolder => OpenableFolder is not null;
 
@@ -395,37 +413,18 @@ public partial class GameDetailsViewModel : ObservableObject
     }
 
     /// <summary>
-    /// The outbound affordances, all of them derived from the Steam appid and
-    /// none of them invented. No appid — a GOG or Epic row once those land, or a
-    /// release whose external id never resolved — means no links, not dead ones.
+    /// The outbound affordances, all of them derived from an id this database
+    /// holds and none of them invented.
+    ///
+    /// <para><b>This used to return early without a Steam appid</b>, which meant
+    /// every Epic and GOG row in the library — 113 of them on the author's
+    /// machine — had no primary action and no links whatsoever, on a panel whose
+    /// third band is called "get me in". Both halves now come from
+    /// <see cref="StoreActions"/>, which knows one thing per store and says so
+    /// with the evidence attached; a store it cannot reach still returns
+    /// nothing, but it returns nothing per store rather than for everything that
+    /// is not Steam.</para>
     /// </summary>
     private static (GameLink? Primary, IReadOnlyList<GameLink> Links) BuildLinks(GameTileViewModel tile)
-    {
-        if (tile.SteamAppId is not { } appId)
-        {
-            return (null, []);
-        }
-
-        var primary = tile.Installed
-            ? GameLink.Create("Play", $"steam://run/{appId}", "Launch through Steam")
-            : GameLink.Create("Install", $"steam://install/{appId}", "Start the download in Steam");
-
-        var links = new List<GameLink>(2);
-        Add(links, GameLink.Create(
-            "Store page",
-            $"https://store.steampowered.com/app/{appId}/"));
-        Add(links, GameLink.Create(
-            "All patch notes",
-            $"https://store.steampowered.com/news/app/{appId}"));
-
-        return (primary, links);
-
-        static void Add(List<GameLink> into, GameLink? link)
-        {
-            if (link is not null)
-            {
-                into.Add(link);
-            }
-        }
-    }
+        => (tile.PrimaryAction, StoreActions.LinksFor(tile.Store, tile.SteamAppId, tile.GogProductId));
 }

@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.VisualTree;
 using Hoard.App.ViewModels;
 
@@ -102,5 +103,43 @@ public partial class GameTileView : UserControl
         {
             tile.IsPointerOver = value;
         }
+    }
+
+    /// <summary>
+    /// Play / Install from the back of the card.
+    ///
+    /// <para>The target arrives here already validated: it is a
+    /// <see cref="GameLink"/> built by <see cref="StoreActions"/>, and a string
+    /// that failed <see cref="GameLink.Create"/> is a null link, which the
+    /// button binds <c>IsVisible</c> to. So an unopenable target is a button
+    /// that was never rendered rather than one that fails when pressed — the
+    /// same contract the detail modal's handlers work under, for the same
+    /// reason, and this method deliberately builds nothing.</para>
+    ///
+    /// <para>The URI goes to the OS's own handler through <c>TopLevel.Launcher</c>;
+    /// the app never shells out to steam.exe, the Epic launcher or GalaxyClient
+    /// by name.</para>
+    /// </summary>
+    private async void OnPrimaryActionPressed(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not GameTileViewModel { PrimaryAction: { } action })
+        {
+            return;
+        }
+
+        if (TopLevel.GetTopLevel(this)?.Launcher is not { } launcher)
+        {
+            return;
+        }
+
+        // Re-parse rather than trust the string that reached us: the only way to
+        // build a GameLink is through its factory, but the launcher call is the
+        // boundary and a boundary checks.
+        if (!Uri.TryCreate(action.Uri, UriKind.Absolute, out var uri))
+        {
+            return;
+        }
+
+        await launcher.LaunchUriAsync(uri);
     }
 }

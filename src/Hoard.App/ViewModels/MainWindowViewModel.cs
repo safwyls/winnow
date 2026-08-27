@@ -78,7 +78,7 @@ public partial class MainWindowViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(IsLibraryVisible), nameof(IsFilterPanelVisible))]
     public partial bool IsMergeQueueVisible { get; set; }
 
-    /// <summary>The Stores panel, opened from the rail's SOURCES row.</summary>
+    /// <summary>The Stores panel, opened from the rail's SETTINGS › STORES row.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsLibraryVisible), nameof(IsFilterPanelVisible))]
     public partial bool IsStoresVisible { get; set; }
@@ -134,7 +134,7 @@ public partial class MainWindowViewModel : ObservableObject
     }
 
     /// <summary>
-    /// The rail's SOURCES row. Toggles like the queue's, so the same click that
+    /// The rail's STORES row, under SETTINGS. Toggles like the queue's, so the same click that
     /// opened the panel closes it and gives the library back.
     ///
     /// <para><b>Async because opening is when the panel reads its state.</b>

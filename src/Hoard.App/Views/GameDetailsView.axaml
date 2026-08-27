@@ -287,8 +287,14 @@
                                            Foreground="{StaticResource TextDim}"
                                            Text="{Binding BucketLabel}"/>
                             </Border>
+                            <!-- Install state is three-valued and only two of
+                                 the three are sayable: null means no source
+                                 looked, and §10.5's rule is that a fact nothing
+                                 can fill is absent rather than bound and
+                                 hidden — never "Unknown". -->
                             <Border Background="{StaticResource SurfaceRaised}"
-                                    CornerRadius="3" Padding="7,3" VerticalAlignment="Center">
+                                    CornerRadius="3" Padding="7,3" VerticalAlignment="Center"
+                                    IsVisible="{Binding HasInstallState}">
                                 <TextBlock Classes="body" FontSize="11"
                                            Foreground="{StaticResource TextDim}"
                                            Text="{Binding InstallText}"/>

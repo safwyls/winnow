@@ -408,6 +408,11 @@ public static class Program
         // endpoints are keyless, so there is no unconfigured state to handle.
         services.AddUpdateSignals();
 
+        // Epic's composite launch key, read back out of the catalog answers
+        // SqliteEpicCatalogCache wrote. See IEpicLaunchKeys for why the UI is
+        // allowed to read it and where it should eventually live instead.
+        services.AddSingleton<IEpicLaunchKeys, SqliteEpicLaunchKeys>();
+
         services.AddSingleton<LibraryViewModel>();
 
         // MainWindowViewModel takes MergeQueueViewModel as a required

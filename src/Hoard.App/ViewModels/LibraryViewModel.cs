@@ -58,6 +58,14 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts
     /// </summary>
     private readonly IFacetRepository? _facetRepository;
 
+    /// <summary>
+    /// Epic's composite launch keys, recovered from the catalog answers this app
+    /// cached (see <see cref="Services.IEpicLaunchKeys"/>). Optional: with
+    /// nothing registered every Epic tile simply has no launch target, which
+    /// renders as no Play button rather than a broken one.
+    /// </summary>
+    private readonly Services.IEpicLaunchKeys? _epicLaunchKeys;
+
     private IReadOnlyList<GameTileViewModel> _allTiles = [];
     private FacetSnapshot _facets = FacetSnapshot.Empty;
     private bool _loaded;
@@ -81,7 +89,8 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts
         DormancyRamp? ramp = null,
         IPlaytimeSnapshotRepository? snapshots = null,
         IFacetRepository? facets = null,
-        IGameListRepository? lists = null)
+        IGameListRepository? lists = null,
+        Services.IEpicLaunchKeys? epicLaunchKeys = null)
     {
         _libraryQueries = libraryQueries;
         _ownerships = ownerships;
@@ -91,6 +100,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts
         _covers = covers;
         _snapshots = snapshots;
         _facetRepository = facets;
+        _epicLaunchKeys = epicLaunchKeys;
 
         Filters = new FilterPanelViewModel(ApplyFilter);
         Lists = new ListsViewModel(lists);
@@ -382,6 +392,22 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts
         // trip for a string this loop already has in hand.
         var steamAppIdByRelease = new Dictionary<long, string>();
 
+        // The other two stores' ids, for the same reason and out of the same
+        // loop. Until this landed, BuildLinks returned early without a Steam
+        // appid, so every Epic and GOG tile in the library had no primary action
+        // and no links at all — 113 rows on the author's machine.
+        var gogProductIdByRelease = new Dictionary<long, string>();
+        var epicCatalogIdByRelease = new Dictionary<long, string>();
+
+        // catalogItemId → namespace:catalogItemId:artifactId. One read for the
+        // whole library, and legitimately empty: it is recovered from the
+        // catalog answers the app has cached so far (§7 — enrichment runs behind
+        // a library the user is already browsing), and a title it has not
+        // reached yet simply gets no Epic launch target.
+        var epicLaunchKeys = _epicLaunchKeys is null
+            ? new Dictionary<string, EpicLaunchKey>()
+            : (IReadOnlyDictionary<string, EpicLaunchKey>)await _epicLaunchKeys.GetAllAsync();
+
         foreach (var work in works)
         {
             foreach (var release in await _releases.GetByWorkAsync(work.Id))
@@ -393,6 +419,17 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts
                 // art can fill the gaps without this view model changing.
                 var externalIds = await _releases.GetExternalIdsAsync(release.Id);
                 var steam = externalIds.FirstOrDefault(x => x.Provider == ExternalIdProviders.Steam);
+
+                if (externalIds.FirstOrDefault(x => x.Provider == ExternalIdProviders.Gog) is { } gog)
+                {
+                    gogProductIdByRelease[release.Id] = gog.ProviderId;
+                }
+
+                if (externalIds.FirstOrDefault(x => x.Provider == ExternalIdProviders.Epic) is { } epic)
+                {
+                    epicCatalogIdByRelease[release.Id] = epic.ProviderId;
+                }
+
                 if (steam is not null)
                 {
                     coverKeyByRelease[release.Id] = CoverKey.Steam(steam.ProviderId);
@@ -417,6 +454,12 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts
 
         var ownershipById = ownerships.ToDictionary(o => o.Id);
         var now = DateTime.UtcNow;
+
+        EpicLaunchKey? EpicKeyFor(long releaseId)
+            => epicCatalogIdByRelease.TryGetValue(releaseId, out var catalogItemId)
+                && epicLaunchKeys.TryGetValue(catalogItemId, out var key)
+                    ? key
+                    : null;
 
         var tiles = new List<GameTileViewModel>(bucketRows.Count);
         foreach (var row in bucketRows)
@@ -443,7 +486,22 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts
                 work: work,
                 ownership: ownership,
                 ramp: Ramp,
-                steamAppId: steamAppIdByRelease.GetValueOrDefault(row.ReleaseId));
+                steamAppId: steamAppIdByRelease.GetValueOrDefault(row.ReleaseId),
+                gogProductId: gogProductIdByRelease.GetValueOrDefault(row.ReleaseId),
+                epicLaunchKey: EpicKeyFor(row.ReleaseId),
+                // The §7 name, so the back of the card says "Never played" and
+                // not "never_played". Resolved here because the rail owns that
+                // vocabulary and the tile should not hold a second copy of it.
+                bucketLabel: BucketLabelFor(row.Bucket));
+
+            // The two commands the back face raises. Wired rather than reached
+            // for: §5.1 keeps a tile a projection of the database, so it holds
+            // the command the library already publishes instead of a route to a
+            // repository. "Add to list" is the SAME command the command bar
+            // runs — the flip is the single-game door onto it, the bar is the
+            // bulk one (§12.3), and two implementations would be two behaviours.
+            tile.AddToListCommand = BeginAddToListCommand;
+            tile.OpenDetailsCommand = OpenDetailsCommand;
 
             // What the game IS, for the filter panel to cut on. Read from the
             // one snapshot rather than passed through the constructor: it is a
@@ -465,7 +523,14 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts
                 Bucket: row.Bucket,
                 Store: tile.Store,
                 Title: tile.Title,
-                Installed: tile.Installed,
+                // The filter row's install flag is two-valued because the "on
+                // disk" facet is a two-way cut: an unknown state is not KNOWN to
+                // be on disk, so it falls on the same side of that question as a
+                // known "no". This is not the conflation the tile refuses to
+                // make — the tile refuses to NAME a button it cannot back, while
+                // this is a filter answering "which of these do I know are on
+                // disk", where the honest answer for an unknown is "not these".
+                Installed: tile.IsOnDisk,
                 HasUnread: tile.HasUnread,
                 FirstReleaseYear: tile.ReleaseYear,
                 FacetIds: facets.FacetIds,
@@ -511,8 +576,13 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts
     [RelayCommand]
     private void ShowGridView() => IsGridView = true;
 
+    /// <summary>The flip is the grid's gesture; list view has the command bar (§12.3).</summary>
     [RelayCommand]
-    private void ShowListView() => IsGridView = false;
+    private void ShowListView()
+    {
+        ClearFlip();
+        IsGridView = false;
+    }
 
     /// <summary>Command-bar sort menu.</summary>
     [RelayCommand]
@@ -594,6 +664,11 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts
         }
 
         SelectTile(target);
+
+        // The modal is the richer version of the back face, so the card goes
+        // face-up on the way in: coming back from Escape to a turned card would
+        // be the wall remembering a step the user has already taken.
+        ClearFlip();
 
         var events = await _updateEvents.GetByReleaseAsync(target.ReleaseId);
 
@@ -1036,6 +1111,69 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts
         SelectedTile = tile;
     }
 
+    // ══ The card flip ═══════════════════════════════════════════════════════
+    // One click turns a cover over. The back carries a few facts and the actions
+    // for that one game — the primary action, Add to list, and the route on to
+    // the detail modal, whose gesture the flip took.
+    //
+    // The state lives on the tile view model (see GameTileViewModel.IsFlipped
+    // for why that is forced rather than chosen), and this is the rule that
+    // keeps it from becoming a wall of face-down cards: EXACTLY ONE tile is
+    // turned over at a time. §1 says the art is the interface, so a grid showing
+    // its backs is a grid with nothing in it.
+
+    /// <summary>
+    /// The one tile currently showing its back, or null. Not an
+    /// <c>ObservableProperty</c>: nothing binds to it, and the flag the view
+    /// reads is the one on each tile.
+    /// </summary>
+    private GameTileViewModel? _flipped;
+
+    /// <summary>The turned-over tile, for the keyboard and for tests.</summary>
+    public GameTileViewModel? FlippedTile => _flipped;
+
+    /// <summary>
+    /// Turn a card over — or back, when it is the one already turned.
+    ///
+    /// <para>Flipping also selects, because turning a card over IS picking it,
+    /// and because "Add to list" reads the selection (§12.3): a back face whose
+    /// button acted on some other tile would be the worst kind of working
+    /// button.</para>
+    /// </summary>
+    [RelayCommand]
+    public void FlipTile(GameTileViewModel? tile)
+    {
+        if (tile is null)
+        {
+            ClearFlip();
+            return;
+        }
+
+        SelectTile(tile);
+
+        if (ReferenceEquals(_flipped, tile))
+        {
+            ClearFlip();
+            return;
+        }
+
+        ClearFlip();
+        tile.IsFlipped = true;
+        _flipped = tile;
+    }
+
+    /// <summary>Turn every card face-up. Safe to call when none is turned.</summary>
+    public void ClearFlip()
+    {
+        if (_flipped is null)
+        {
+            return;
+        }
+
+        _flipped.IsFlipped = false;
+        _flipped = null;
+    }
+
     /// <summary>
     /// Keyboard navigation: moves selection by <paramref name="delta"/> visible
     /// tiles (±1 = left/right or list row, ±columns = up/down in the grid).
@@ -1077,6 +1215,15 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts
         if (newValue is not null)
         {
             newValue.IsSelected = true;
+        }
+
+        // Selection and the flip move together: exactly one card is ever turned
+        // over, and it is always the selected one. Arrowing off a turned card
+        // therefore turns it back, which is also what makes the keyboard route
+        // out of the back face a key the user already knows.
+        if (!ReferenceEquals(_flipped, newValue))
+        {
+            ClearFlip();
         }
 
         // The grid selects exactly one tile, and it selects it by arrow key as
@@ -1223,6 +1370,11 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts
         {
             return;
         }
+
+        // The wall is about to be rebuilt under whatever was turned over. A card
+        // that stays face-down through a search or a bucket change is a card the
+        // user did not leave there — and it may not even be in the new set.
+        ClearFlip();
 
         IEnumerable<GameTileViewModel> query = _allTiles;
         if (SelectedBucket is { } bucket)

@@ -11,7 +11,7 @@ namespace Hoard.App.ViewModels;
 /// no button at all rather than as a dead or dangerous one. That is the whole
 /// reason this is a factory over a private constructor.</para>
 ///
-/// <para>Three schemes are allowed and no others:</para>
+/// <para>Five schemes are allowed and no others:</para>
 /// <list type="bullet">
 ///   <item><c>https</c> and <c>http</c> — store pages, patch notes, anything the
 ///     data supplied.</item>
@@ -19,7 +19,16 @@ namespace Hoard.App.ViewModels;
 ///     <c>Play</c> a real launch rather than a button that opens a web page
 ///     about launching. <c>steam://run/&lt;appid&gt;</c> starts the game;
 ///     <c>steam://install/&lt;appid&gt;</c> starts the download.</item>
+///   <item><c>com.epicgames.launcher</c> — the Epic Games Launcher's handler.</item>
+///   <item><c>goggalaxy</c> — GOG Galaxy's handler.</item>
 /// </list>
+///
+/// <para><b>The two launcher schemes were added by measurement, not by
+/// reading.</b> Both are registered on the author's machine with a
+/// <c>URL Protocol</c> value under <c>HKCR</c>, and the exact path grammar each
+/// one accepts is recorded in <see cref="StoreActions"/> beside the evidence for
+/// it. §10 of the design doc is explicit that a widely-circulated answer is not
+/// an answer here; a URI this class admits is one somebody watched work.</para>
 ///
 /// <para>Everything else is refused, including the ones that look harmless:
 /// <c>file:</c> (the shell would open arbitrary local paths from stored data),
@@ -37,8 +46,20 @@ public sealed record GameLink
         Hint = hint;
     }
 
-    /// <summary>Steam's browser protocol. Documented, and the one non-web scheme we open.</summary>
+    /// <summary>Steam's browser protocol.</summary>
     public const string SteamScheme = "steam";
+
+    /// <summary>
+    /// The Epic Games Launcher's protocol. Dots are legal in a URI scheme
+    /// (RFC 3986 <c>scheme = ALPHA *( ALPHA / DIGIT / "+" / "-" / "." )</c>) and
+    /// <see cref="System.Uri"/> parses this one without complaint — measured,
+    /// because a scheme with two dots in it is exactly the shape a parser is
+    /// most likely to quietly reject.
+    /// </summary>
+    public const string EpicScheme = "com.epicgames.launcher";
+
+    /// <summary>GOG Galaxy's protocol.</summary>
+    public const string GogScheme = "goggalaxy";
 
     /// <summary>What the button says. §7: name the action, not the mechanism.</summary>
     public string Label { get; }
@@ -54,6 +75,15 @@ public sealed record GameLink
 
     /// <summary>True when this opens Steam rather than a browser.</summary>
     public bool IsSteamProtocol => Uri.StartsWith(SteamScheme + "://", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// True when this hands the target to a store's own launcher rather than to
+    /// a browser — Steam, the Epic Games Launcher or GOG Galaxy.
+    /// </summary>
+    public bool IsLauncherProtocol
+        => IsSteamProtocol
+        || Uri.StartsWith(EpicScheme + "://", StringComparison.OrdinalIgnoreCase)
+        || Uri.StartsWith(GogScheme + "://", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// The only constructor. Returns null — never a placeholder — when the
@@ -83,7 +113,9 @@ public sealed record GameLink
 
         var allowed = parsed.Scheme == System.Uri.UriSchemeHttps
             || parsed.Scheme == System.Uri.UriSchemeHttp
-            || parsed.Scheme == SteamScheme;
+            || parsed.Scheme == SteamScheme
+            || parsed.Scheme == EpicScheme
+            || parsed.Scheme == GogScheme;
 
         if (!allowed)
         {
@@ -93,6 +125,21 @@ public sealed record GameLink
         // Round-trip through Uri rather than passing the caller's string
         // through: whatever the launcher gets is then something the framework
         // itself parsed and re-emitted.
+        //
+        // Two things about that round trip are load-bearing for the launcher
+        // schemes, and both were measured rather than assumed:
+        //
+        //   * Uri.ToString() LOWERCASES the authority. GOG puts its command name
+        //     there (goggalaxy://launchGame/...), so what leaves here is always
+        //     goggalaxy://launchgame/... — and Galaxy's dispatcher is
+        //     case-insensitive, confirmed by firing the lowercased form of a
+        //     command at a running client and reading its own log say
+        //     "Handling protocol command". See StoreActions.
+        //   * Percent escapes in the PATH survive it. Epic's composite key is
+        //     namespace%3AcatalogItemId%3AartifactId, and a round trip that
+        //     decoded %3A back to ':' would split the path into segments the
+        //     launcher does not recognise. It does not: the escapes come out
+        //     byte-identical.
         return new GameLink(label, parsed.ToString(), hint);
     }
 
