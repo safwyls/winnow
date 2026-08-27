@@ -59,7 +59,9 @@ public partial class App : Application
     /// preference behind in somebody's real library to get a picture.</para>
     ///
     /// <para><c>--transparent</c> is kept as the old spelling and means the far
-    /// end of the slider.</para>
+    /// end of the slider. <c>--backdrop=acrylic|mica</c> and
+    /// <c>--wall=on|off</c> cover the other two decisions, on the same terms:
+    /// session only, no write.</para>
     /// </summary>
     private static void ApplyStartupTheme(ThemeService theme)
     {
@@ -67,9 +69,12 @@ public partial class App : Application
         var args = Environment.GetCommandLineArgs();
         var requested = args.FirstOrDefault(a => a.StartsWith("--theme=", StringComparison.Ordinal));
         var amount = args.FirstOrDefault(a => a.StartsWith("--transparency=", StringComparison.Ordinal));
+        var material = args.FirstOrDefault(a => a.StartsWith("--backdrop=", StringComparison.Ordinal));
+        var wall = args.FirstOrDefault(a => a.StartsWith("--wall=", StringComparison.Ordinal));
         var transparent = args.Contains("--transparent");
 
-        if (requested is not null || amount is not null || transparent)
+        if (requested is not null || amount is not null || transparent
+            || material is not null || wall is not null)
         {
             var percent = transparent ? 100 : 0;
             if (amount is not null
@@ -82,9 +87,23 @@ public partial class App : Application
                 percent = parsed;
             }
 
+            // Absent means "don't touch it". An overridden session never reads
+            // the settings table, so what stays is the built-in default —
+            // acrylic, and a solid wall — which is the state a capture that did
+            // not ask about either one should be looking at.
+            Themes.HoardBackdrop? backdrop = material is null
+                ? null
+                : Themes.HoardBackdrops.ById(material["--backdrop=".Length..]);
+
+            bool? wallTranslucent = wall is null
+                ? null
+                : wall["--wall=".Length..] is "on" or "true" or "1";
+
             theme.OverrideForSession(
                 Themes.HoardThemes.ById(requested?["--theme=".Length..]),
-                percent);
+                percent,
+                backdrop,
+                wallTranslucent);
             return;
         }
 #endif

@@ -1,4 +1,4 @@
-<!--
+﻿<!--
     Design tokens — Game Library Manager
     Merge into App.axaml:
 
@@ -150,7 +150,7 @@
     <x:Double x:Key="TitleBarHeight">36</x:Double>
     <x:Double x:Key="WindowButtonWidth">46</x:Double>
 
-    <!-- ══ The four grounds ═══════════════════════════════════════════════
+    <!-- ══ The five grounds ═══════════════════════════════════════════════
          Which surface may admit the desktop, and which may not. This replaces
          the caption-only Mica rule and resolves design-system.md §13 gap 7.
 
@@ -172,12 +172,27 @@
                          and why it is a step rather than a ramp: two stacked
                          alphas multiply, and the slider could never reach its
                          own end.
-           WallGround    the cover wall, the merge queue, the settings panes.
-                         OPAQUE AT EVERY SETTING. §1 says the art is the interface,
-                         and a wallpaper behind six hundred capsules is a second
-                         image competing with all of them; §5.4's two-layer
-                         dormancy cross-fade also needs the ground under a tile
-                         to be the ground it was calibrated against.
+           WallGround    the field the covers hang in. OPAQUE UNLESS ASKED FOR,
+                         and opaque at slider zero either way. It used to be
+                         opaque at every setting on a §1 argument - the art is
+                         the interface, and a wallpaper behind six hundred
+                         capsules is a second image competing with all of them -
+                         and that argument was overruled by the person looking
+                         at the result: a solid slab bolted to translucent
+                         chrome reads as two windows. The half of the reasoning
+                         that was construction rather than taste still binds,
+                         and it is answered by TileGround below rather than
+                         here. When asked for, the field admits HALF the desktop
+                         the chrome does (MinWallAlpha 0.65 against the chrome's
+                         0.30) - see HoardTheme for the two measurements behind
+                         the ratio.
+           PaneGround    the merge queue, the Stores and Appearance panes, and
+                         the library's LIST view. OPAQUE AT EVERY SETTING. The
+                         wall may open up because nothing reads on it: every
+                         tile is opaque, so the field only shows in the gutters.
+                         These are text sitting directly on the field, and §14.3's
+                         own arithmetic says an ink chosen for an opaque ground
+                         cannot have alpha subtracted from it.
            ChromeGround  the command bar and the cut bar.
            ChromeRaised  a rail or panel row's hover and selection fill. Opaque,
                          it is the ordinary Surface -> SurfaceRaised step.
@@ -206,7 +221,9 @@
          the alpha on our own surfaces over that backdrop. The Appearance screen
          sets it with a slider, 0 (fully opaque, the default) to 100, and every
          token below walks continuously between its opaque value and the theme's
-         translucent ink as it travels. HoardTheme.Tokens(double) is the walk.
+         translucent ink as it travels. HoardTheme.Tokens(amount,
+         wallTranslucent) is the walk; the second argument is how far it
+         reaches (see the WallGround note above).
 
          Every value here is written at runtime by ThemeService. What is
          declared is the OPAQUE state on the default theme, because that is the
@@ -216,6 +233,7 @@
     <SolidColorBrush x:Key="CaptionFill" Color="#16282A"/>
     <SolidColorBrush x:Key="ChromeSurface" Color="#16282A"/>
     <SolidColorBrush x:Key="WallGround" Color="#0F1C1E"/>
+    <SolidColorBrush x:Key="PaneGround" Color="#0F1C1E"/>
     <SolidColorBrush x:Key="ChromeGround" Color="#0F1C1E"/>
     <SolidColorBrush x:Key="ChromeRaised" Color="#1D3437"/>
     <SolidColorBrush x:Key="TileGround" Color="#0F1C1E"/>

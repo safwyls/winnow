@@ -301,30 +301,159 @@ public class ThemeContrastTests
     }
 
     /// <summary>
-    /// The wall keeps its ground at every setting, and the tile keeps its own
-    /// under the dormancy cross-fade. §5.4 composites two bitmap layers by
-    /// opacity; between the first decoding and the second, a dimmed tile is a
-    /// partly transparent tile, and on a translucent window that means the
-    /// desktop showing through the ramp's floor.
+    /// The tile keeps its own ground under the dormancy cross-fade, whatever the
+    /// field behind it is doing. §5.4 composites two bitmap layers by opacity;
+    /// between the first decoding and the second, a dimmed tile is a partly
+    /// transparent tile, and over a translucent field that means the desktop
+    /// showing through the ramp's floor.
+    ///
+    /// <para>This was belt-and-braces while the wall was opaque at every
+    /// setting. Now that the field can open up it is the ONLY thing holding, so
+    /// it is asserted in both reach states rather than in the default one.</para>
     /// </summary>
     [Theory]
     [MemberData(nameof(ThemeIds))]
-    public void The_wall_and_the_tile_stay_opaque(string id)
+    public void The_tile_stays_opaque_whatever_the_field_does(string id)
     {
         var theme = HoardThemes.ById(id);
 
+        foreach (var wallTranslucent in new[] { false, true })
+        {
+            foreach (var transparency in Range())
+            {
+                var t = theme.Tokens(transparency, wallTranslucent);
+
+                Assert.Equal(255, t["TileGround"].A);
+                Assert.Equal(theme.Ground, t["TileGround"]);
+
+                // The panes that carry reading matter — the merge queue, the
+                // settings screens, the library's list view. §14.3's arithmetic
+                // says an ink chosen for an opaque ground cannot have alpha
+                // subtracted from it, and these are text sitting on the field.
+                Assert.Equal(255, t["PaneGround"].A);
+                Assert.Equal(theme.Ground, t["PaneGround"]);
+
+                // Popovers: a flyout is its own popup root and never receives
+                // the window's backdrop, so a translucent fill there would
+                // sample the application instead of the desktop.
+                Assert.Equal(255, t["SurfaceRaised"].A);
+            }
+        }
+    }
+
+    /// <summary>
+    /// The wall's field is opaque unless it was asked for, opaque at slider zero
+    /// either way, and never more open than the chrome it sits beside.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(ThemeIds))]
+    public void The_field_opens_only_when_asked_and_never_past_the_chrome(string id)
+    {
+        var theme = HoardThemes.ById(id);
+
+        byte previous = 255;
         foreach (var transparency in Range())
         {
-            var t = theme.Tokens(transparency);
-            Assert.Equal(255, t["WallGround"].A);
-            Assert.Equal(255, t["TileGround"].A);
+            // Not asked for: exactly what it has always been, at every position.
+            var solid = theme.Tokens(transparency)["WallGround"];
+            Assert.Equal(255, solid.A);
+            Assert.Equal(theme.Ground, solid);
 
-            // Popovers: a flyout is its own popup root and never receives the
-            // window's backdrop, so a translucent fill there would sample the
-            // application instead of the desktop.
-            Assert.Equal(255, t["SurfaceRaised"].A);
+            var open = theme.Tokens(transparency, wallTranslucent: true);
+            var wall = open["WallGround"];
 
-            Assert.Equal(theme.Ground, t["WallGround"]);
+            // Zero is opaque in both reach states, so the reach setting cannot
+            // produce a see-through window on its own.
+            if (transparency <= 0)
+            {
+                Assert.Equal(255, wall.A);
+            }
+
+            // A field more open than the rail beside it would invert §14.2's
+            // recess — the art hangs BELOW the chrome, in every theme.
+            Assert.True(
+                wall.A >= open["ChromeSurface"].A,
+                $"{id}: the field is more open than the chrome at {transparency:P0}");
+
+            Assert.True(wall.A <= previous, $"{id}: the field's alpha rose at {transparency:P0}");
+            previous = wall.A;
+
+            // The colour is the theme's own ground throughout; only the alpha
+            // moves. The field has no ink ramp of its own — nothing reads on it.
+            Assert.Equal(theme.Ground.R, wall.R);
+            Assert.Equal(theme.Ground.G, wall.G);
+            Assert.Equal(theme.Ground.B, wall.B);
+        }
+
+        // And the far end is exactly half the chrome's reach, which is the
+        // relation the Appearance screen prints.
+        var far = theme.Tokens(1, wallTranslucent: true);
+        Assert.Equal(
+            Math.Round(255 * HoardTheme.MinWallAlpha),
+            (double)far["WallGround"].A);
+        Assert.Equal(
+            1 - HoardTheme.MinChromeAlpha,
+            (1 - HoardTheme.MinWallAlpha) * 2,
+            precision: 6);
+    }
+
+    /// <summary>
+    /// The open field never fails before the labels do.
+    ///
+    /// <para>§5.1's ramp is dark capsules on a dark field, and it only reads that
+    /// way while the field stays darker than the capsules. Over a white
+    /// wallpaper the field climbs and at some position it passes the dormancy
+    /// floor of a middling dark cover; past there a dimmed tile reads as a hole
+    /// punched in a lit field rather than as faded art, and the ramp is the
+    /// product.</para>
+    ///
+    /// <para>The wall does not have to hold across the whole slider — the range
+    /// past the AA mark is already a place the user is told the labels stop
+    /// clearing 4.5:1. What it must not do is fail FIRST, because then the
+    /// translucent field would be quietly costing something the screen does not
+    /// report. That is what fixes <c>MinWallAlpha</c>, and it is why the
+    /// constant is 0.65 rather than something picked by eye.</para>
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(ThemeIds))]
+    public void The_open_field_stays_under_the_art_at_least_as_far_as_the_labels_hold(string id)
+    {
+        var theme = HoardThemes.ById(id);
+
+        // §5.1's floor — saturation 0.22, hue -6°, brightness 0.68 — applied to
+        // an ordinary dark blue cover. Re-stated here rather than read off
+        // Colorimetry, for this file's usual reason.
+        var dormant = Color.FromRgb(0x2C, 0x32, 0x37);
+
+        var aa = 0;
+        while (aa < 100
+            && WorstChromeContrast(theme, (aa + 1) / 100.0, White) >= 4.5)
+        {
+            aa++;
+        }
+
+        var polarity = 0;
+        while (polarity < 100
+            && Luminance(Over(
+                theme.Tokens((polarity + 1) / 100.0, wallTranslucent: true)["WallGround"],
+                White)) <= Luminance(dormant))
+        {
+            polarity++;
+        }
+
+        Assert.True(
+            polarity >= aa,
+            $"{id}: the field inverts the ramp at {polarity}%, before the labels drop under AA at {aa}%");
+
+        // And over a dark desktop the question never arises: the composite is
+        // darker than Ground, so opening the field deepens it.
+        foreach (var transparency in Range())
+        {
+            var field = Over(
+                theme.Tokens(transparency, wallTranslucent: true)["WallGround"], DarkDesktop);
+            Assert.True(
+                Luminance(field) <= Luminance(dormant),
+                $"{id}: the field passed a dormant cover over a dark desktop at {transparency:P0}");
         }
     }
 
@@ -418,15 +547,115 @@ public class ThemeContrastTests
 
         service.OverrideForSession(HoardThemes.Tungsten, 60);
 
-        // Everything a user could do on the Appearance screen.
+        // Everything a user could do on the Appearance screen — all four
+        // decisions, not just the two the flags existed for when it was written.
         service.SelectTheme(HoardThemes.BoxArt);
         service.SetTransparency(12);
         service.SetTransparency(0);
+        service.SelectBackdrop(HoardBackdrop.Mica);
+        service.SetWallTranslucent(true);
+        service.SetWallTranslucent(false);
         await service.PendingSave;
 
         Assert.Empty(settings.Writes);
         Assert.Same(HoardThemes.BoxArt, service.Theme);
         Assert.Equal(0, service.Transparency);
+        Assert.Equal(HoardBackdrop.Mica, service.Backdrop);
+        Assert.False(service.WallTranslucent);
+    }
+
+    /// <summary>
+    /// Asking for a material and getting the other one is a THIRD answer, and
+    /// the screen has to be able to tell it from a refusal.
+    ///
+    /// <para>Falling through to the other backdrop is right — a machine that
+    /// cannot do Mica is better off with acrylic than with a solid window — but
+    /// a substitution nobody is told about is how a user concludes the choice
+    /// does nothing at all.</para>
+    /// </summary>
+    [Fact]
+    public void A_substituted_backdrop_is_not_the_same_answer_as_a_refused_one()
+    {
+        var service = new ThemeService();
+        service.SetTransparency(40);
+        service.SelectBackdrop(HoardBackdrop.Mica);
+
+        // Refused outright.
+        service.SetActiveBackdrop(HoardBackdrop.None);
+        Assert.False(service.BackdropAvailable);
+        Assert.False(service.BackdropSubstituted);
+        Assert.Equal(0, service.ActiveTransparency);
+        Assert.False(service.ActiveWallTranslucency);
+
+        // Composited, but not the material that was asked for.
+        service.SetActiveBackdrop(HoardBackdrop.Acrylic);
+        Assert.True(service.BackdropAvailable);
+        Assert.True(service.BackdropSubstituted);
+        Assert.Equal(HoardBackdrop.Mica, service.Backdrop);
+        Assert.Equal(0.40, service.ActiveTransparency, precision: 6);
+
+        // And honoured.
+        service.SetActiveBackdrop(HoardBackdrop.Mica);
+        Assert.True(service.BackdropAvailable);
+        Assert.False(service.BackdropSubstituted);
+    }
+
+    /// <summary>
+    /// Changing the material clears what the last one got, so the screen can
+    /// never report the old answer as the new one's.
+    /// </summary>
+    [Fact]
+    public void Picking_a_new_material_forgets_the_old_ones_answer()
+    {
+        var service = new ThemeService();
+        service.SetTransparency(40);
+        service.SetActiveBackdrop(HoardBackdrop.Acrylic);
+        Assert.True(service.BackdropAvailable);
+
+        service.SelectBackdrop(HoardBackdrop.Mica);
+
+        Assert.Equal(HoardBackdrop.None, service.ActiveBackdrop);
+        Assert.False(service.BackdropAvailable);
+        Assert.False(service.BackdropSubstituted);
+    }
+
+    /// <summary>
+    /// The wall's field is painted translucent only when there is a desktop
+    /// reaching the window for it to show. A see-through field over a window
+    /// with nothing behind it is the failure the opaque token set exists to
+    /// catch, and it is the same failure for the wall as for the rail.
+    /// </summary>
+    [Fact]
+    public void The_field_opens_only_when_the_desktop_is_actually_arriving()
+    {
+        var service = new ThemeService();
+        service.SetWallTranslucent(true);
+
+        // Asked for, but the slider is at zero.
+        Assert.False(service.ActiveWallTranslucency);
+
+        service.SetTransparency(50);
+        Assert.False(service.ActiveWallTranslucency);
+
+        service.SetActiveBackdrop(HoardBackdrop.Acrylic);
+        Assert.True(service.ActiveWallTranslucency);
+
+        service.SetActiveBackdrop(HoardBackdrop.None);
+        Assert.False(service.ActiveWallTranslucency);
+    }
+
+    [Fact]
+    public void An_unknown_stored_backdrop_reads_as_unset()
+    {
+        // Same reasoning as the theme id: a preference written by a later
+        // version must not stop the app. "none" lands here too — it is a report
+        // about what the platform did, never something a user picked.
+        Assert.Equal(HoardBackdrop.Acrylic, HoardBackdrops.ById("acrylic"));
+        Assert.Equal(HoardBackdrop.Mica, HoardBackdrops.ById("mica"));
+        Assert.Equal(HoardBackdrops.Default, HoardBackdrops.ById("none"));
+        Assert.Equal(HoardBackdrops.Default, HoardBackdrops.ById("blur-behind-2029"));
+        Assert.Equal(HoardBackdrops.Default, HoardBackdrops.ById(null));
+        Assert.Equal(HoardBackdrop.Acrylic, HoardBackdrops.Default);
     }
 
     private sealed class RecordingSettings : Hoard.Core.Repositories.ISettingsRepository
@@ -467,6 +696,23 @@ public class ThemeContrastTests
     // ── The sums ────────────────────────────────────────────────────────────
     // WCAG 2.x relative luminance and contrast ratio, and an sRGB source-over
     // composite — which is what the GPU does, so it is what the window shows.
+
+    /// <summary>
+    /// The worst the metadata ink does anywhere on the chrome at one slider
+    /// position: the rail, a selected row on it, and the command bar. The
+    /// selected row is usually the one that binds — the rail with a veil over
+    /// it, so the lightest reading surface in the window.
+    /// </summary>
+    private static double WorstChromeContrast(HoardTheme theme, double transparency, Color backdrop)
+    {
+        var t = theme.Tokens(transparency);
+        var rail = Over(t["ChromeSurface"], backdrop);
+        var row = Over(t["ChromeRaised"], rail);
+        var bar = Over(t["ChromeGround"], backdrop);
+        var ink = t["TextDim"];
+
+        return Math.Min(Contrast(ink, rail), Math.Min(Contrast(ink, row), Contrast(ink, bar)));
+    }
 
     private static Color Over(Color ink, Color backdrop)
     {

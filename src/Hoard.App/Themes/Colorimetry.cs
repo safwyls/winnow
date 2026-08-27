@@ -42,6 +42,22 @@ public static class Colorimetry
     public const double AaThreshold = 4.5;
 
     /// <summary>
+    /// A dormant capsule, for judging the field it hangs on.
+    ///
+    /// <para>The §5.1 floor — saturation 0.22, hue −6°, brightness 0.68 — applied
+    /// to an ordinary dark-blue cover (<c>#2B4C74</c>, the same stimulus the
+    /// Appearance screen's theme miniatures use). Written down rather than
+    /// recomputed because it is a fixed reference and not a live value:
+    /// <c>PlaceholderArt.Floor</c> is the arithmetic, this is one answer from it.</para>
+    ///
+    /// <para>It is deliberately not the DARKEST capsule a library can hold. No
+    /// field stays below a near-black cover, and asking it to would rule out
+    /// every setting including the ones that look right. This is a middling dark
+    /// one, which is what the wall is mostly made of.</para>
+    /// </summary>
+    public static readonly Color DormantCapsule = Color.FromRgb(0x2C, 0x32, 0x37);
+
+    /// <summary>
     /// <paramref name="ink"/> composited over <paramref name="backdrop"/>,
     /// honouring the ink's own alpha.
     /// </summary>
@@ -111,6 +127,54 @@ public static class Colorimetry
         for (var percent = 0; percent <= 100; percent++)
         {
             if (ChromeMetadataContrast(theme, percent / 100.0, White) < AaThreshold)
+            {
+                return last;
+            }
+
+            last = percent;
+        }
+
+        return 100;
+    }
+
+    /// <summary>
+    /// The cover wall's field as it actually composites: the theme's ground at
+    /// the wall's own alpha, over <paramref name="backdrop"/>.
+    /// </summary>
+    public static Color WallField(
+        HoardTheme theme, double transparency, bool wallTranslucent, Color backdrop)
+        => Over(theme.Tokens(transparency, wallTranslucent)["WallGround"], backdrop);
+
+    /// <summary>
+    /// Whether the field is still darker than the art hung on it — the one
+    /// question the wall's translucency has to answer.
+    ///
+    /// <para>§5.1's ramp is dark capsules on a dark field. The moment the field
+    /// rises past a dormant capsule the encoding inverts: dimmed art starts
+    /// reading as a hole rather than as something faded, and the ramp is the
+    /// product.</para>
+    /// </summary>
+    public static bool WallKeepsItsPolarity(
+        HoardTheme theme, double transparency, bool wallTranslucent, Color backdrop)
+        => Luminance(WallField(theme, transparency, wallTranslucent, backdrop))
+            <= Luminance(DormantCapsule);
+
+    /// <summary>
+    /// The last whole percent at which the translucent field still sits below a
+    /// dormant capsule against a white wallpaper.
+    ///
+    /// <para>Walked rather than solved, for the same reason
+    /// <see cref="AaCeiling"/> is: it costs nothing and it cannot drift from the
+    /// arithmetic it is describing. The number that matters is not this one on
+    /// its own but its relation to <see cref="AaCeiling"/> — the wall must not
+    /// be the thing that fails first. See <c>HoardTheme.MinWallAlpha</c>.</para>
+    /// </summary>
+    public static int WallPolarityCeiling(HoardTheme theme)
+    {
+        var last = 0;
+        for (var percent = 0; percent <= 100; percent++)
+        {
+            if (!WallKeepsItsPolarity(theme, percent / 100.0, true, White))
             {
                 return last;
             }

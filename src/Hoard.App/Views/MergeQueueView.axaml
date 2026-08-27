@@ -157,7 +157,7 @@
 
     </UserControl.Styles>
 
-    <Grid RowDefinitions="Auto,*" Background="{StaticResource WallGround}">
+    <Grid RowDefinitions="Auto,*" Background="{StaticResource PaneGround}">
 
         <!-- ══ Header ═══════════════════════════════════════════════════════
              The screen title is the question the screen asks. -->

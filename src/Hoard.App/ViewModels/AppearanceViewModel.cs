@@ -43,6 +43,25 @@ public partial class AppearanceViewModel : ObservableObject
     {
         _service = service;
         Themes = [.. HoardThemes.All.Select(t => new ThemeChoiceViewModel(t))];
+
+        Backdrops =
+        [
+            .. HoardBackdrops.All.Select(b => new AppearanceOptionViewModel(
+                b, HoardBackdrops.Name(b), HoardBackdrops.Reason(b))),
+        ];
+
+        Reach =
+        [
+            new AppearanceOptionViewModel(
+                false,
+                "Chrome only",
+                "The rail, the title bar, the filter panel and the command bar. The cover wall stays solid, which is how Hoard has looked until now."),
+            new AppearanceOptionViewModel(
+                true,
+                "Chrome and the wall",
+                "The field the covers hang in opens up too, at half the amount. The covers themselves stay solid, so the desktop shows in the gutters between them."),
+        ];
+
         _service.Applied += (_, _) => Refresh();
         Refresh();
     }
@@ -56,10 +75,19 @@ public partial class AppearanceViewModel : ObservableObject
 
     public IReadOnlyList<ThemeChoiceViewModel> Themes { get; }
 
+    /// <summary>Acrylic or Mica: which material Windows composes behind the
+    /// window. Only shown once the slider has left zero — with nothing coming
+    /// through, there is nothing for it to be a material of.</summary>
+    public IReadOnlyList<AppearanceOptionViewModel> Backdrops { get; }
+
+    /// <summary>How far the transparency reaches: the chrome, or the chrome and
+    /// the cover wall's field.</summary>
+    public IReadOnlyList<AppearanceOptionViewModel> Reach { get; }
+
     public string Title => "Appearance";
 
     public string IntroMessage =>
-        "How the window looks. Both settings apply everywhere and survive a restart.";
+        "How the window looks. Everything here applies everywhere and survives a restart.";
 
     // ══ The transparency slider ═════════════════════════════════════════════
     // Mica is a binary window hint, but nothing anyone can SEE is: the perceived
@@ -156,7 +184,65 @@ public partial class AppearanceViewModel : ObservableObject
 
     public string TransparencyStatus => TransparencyUnavailable
         ? "This machine is not compositing the desktop behind the window, so Hoard is drawing solid. The setting stays where you left it and takes effect where it can."
-        : "The rail, the title bar, the filter panel and the command bar admit the desktop. The cover wall never does, at any setting - the art needs its own ground.";
+        : WallTranslucent
+            ? "The rail, the title bar, the filter panel, the command bar and the cover wall's field all admit the desktop. The covers themselves never do, at any setting - the dormancy ramp is two layers that are only opaque together, and it needs its own ground under it."
+            : "The rail, the title bar, the filter panel and the command bar admit the desktop. The cover wall stays solid.";
+
+    // ══ Material, and reach ═════════════════════════════════════════════════
+    // The screen holds four decisions now, and four rows would be a wall of
+    // controls. So the transparency card is ONE quantity with two qualifiers
+    // hanging off it — how much, what it is made of, how far it goes — and the
+    // two qualifiers are not drawn at all while the quantity is zero, because at
+    // zero neither of them does anything at all.
+
+    /// <summary>Whether the material and reach blocks are drawn. They are
+    /// meaningless at SOLID, and hiding them keeps the common case to one
+    /// slider.</summary>
+    public bool ShowComposition => !IsSolid;
+
+    /// <summary>What the user asked Windows for.</summary>
+    public HoardBackdrop Backdrop => _service.Backdrop;
+
+    /// <summary>True when Mica is the request — a positive test, and the reason
+    /// the measured note below it is drawn.</summary>
+    public bool MicaPicked => _service.Backdrop == HoardBackdrop.Mica;
+
+    /// <summary>The measured composite behind our chrome under Mica on this
+    /// machine, whatever the wallpaper under the window happens to be. Rendered
+    /// in Plex Mono like every other number on this screen (§3).</summary>
+    public string MicaComposite => "#201F1E";
+
+    public string MicaCompositeNote =>
+        "is what the backdrop resolves to under Mica here, whichever wallpaper is behind the window. That is the material tinting toward its own base, not a fault - but it is why Mica reads as a tone and not as a view.";
+
+    /// <summary>
+    /// True when the machine composited a DIFFERENT material from the one that
+    /// was asked for.
+    ///
+    /// <para>Falling through is right — a machine that refuses Mica is better off
+    /// with acrylic than with a solid window — and doing it silently is not.
+    /// Someone who picked Mica and got acrylic would otherwise conclude the
+    /// choice does nothing, which is the same complaint the slider was rebuilt
+    /// to answer.</para>
+    /// </summary>
+    public bool BackdropSubstituted => _service.BackdropSubstituted;
+
+    public string BackdropSubstitutedNote => _service.Backdrop == HoardBackdrop.Mica
+        ? "Mica was refused here - it needs Windows 11 - so the window is running acrylic instead. The preference stays where you left it and comes back on a machine that can do it."
+        : "Acrylic was refused here, so the window is running Mica instead. It will read as a tone rather than as a view of the desktop.";
+
+    /// <summary>Whether the cover wall's field is included.</summary>
+    public bool WallTranslucent => _service.WallTranslucent;
+
+    /// <summary>How much of the chrome is desktop at this position, as a whole
+    /// percent. The number the slider is really setting.</summary>
+    public string ChromeAdmits => Admits(HoardTheme.MinChromeAlpha);
+
+    /// <summary>And the wall's, which is exactly half of it.</summary>
+    public string WallAdmits => Admits(HoardTheme.MinWallAlpha);
+
+    public string WallAdmitsNote =>
+        "of the wall is - half. Measured over a real wallpaper, the wall at the chrome's own amount comes out level with the rail and lighter than a dormant cover, which turns dimmed art into a hole and the recess the covers hang in into a flat pane. At half it stays under both.";
 
     [RelayCommand]
     private void SelectTheme(ThemeChoiceViewModel? choice)
@@ -165,6 +251,33 @@ public partial class AppearanceViewModel : ObservableObject
         {
             _service.SelectTheme(choice.Theme);
         }
+    }
+
+    [RelayCommand]
+    private void SelectBackdrop(AppearanceOptionViewModel? choice)
+    {
+        if (choice?.Value is HoardBackdrop backdrop)
+        {
+            _service.SelectBackdrop(backdrop);
+        }
+    }
+
+    [RelayCommand]
+    private void SelectReach(AppearanceOptionViewModel? choice)
+    {
+        if (choice?.Value is bool translucent)
+        {
+            _service.SetWallTranslucent(translucent);
+        }
+    }
+
+    /// <summary>How much desktop a surface with this floor lets through at the
+    /// position the slider is holding, as a whole percent.</summary>
+    private string Admits(double floorAlpha)
+    {
+        var t = _service.Transparency / 100.0;
+        var alpha = 1 - (t * (1 - floorAlpha));
+        return Math.Round((1 - alpha) * 100).ToString("0", CultureInfo.InvariantCulture) + "%";
     }
 
     private string Ratio(Color backdrop)
@@ -181,6 +294,16 @@ public partial class AppearanceViewModel : ObservableObject
             choice.IsSelected = ReferenceEquals(choice.Theme, _service.Theme);
         }
 
+        foreach (var choice in Backdrops)
+        {
+            choice.IsSelected = choice.Value is HoardBackdrop b && b == _service.Backdrop;
+        }
+
+        foreach (var choice in Reach)
+        {
+            choice.IsSelected = choice.Value is bool w && w == _service.WallTranslucent;
+        }
+
         OnPropertyChanged(nameof(Transparency));
         OnPropertyChanged(nameof(TransparencyReading));
         OnPropertyChanged(nameof(IsSolid));
@@ -194,7 +317,45 @@ public partial class AppearanceViewModel : ObservableObject
         OnPropertyChanged(nameof(ContrastNote));
         OnPropertyChanged(nameof(TransparencyUnavailable));
         OnPropertyChanged(nameof(TransparencyStatus));
+
+        OnPropertyChanged(nameof(ShowComposition));
+        OnPropertyChanged(nameof(Backdrop));
+        OnPropertyChanged(nameof(MicaPicked));
+        OnPropertyChanged(nameof(BackdropSubstituted));
+        OnPropertyChanged(nameof(BackdropSubstitutedNote));
+        OnPropertyChanged(nameof(WallTranslucent));
+        OnPropertyChanged(nameof(ChromeAdmits));
+        OnPropertyChanged(nameof(WallAdmits));
     }
+}
+
+/// <summary>
+/// One text-only choice on the Appearance screen — a backdrop material, or how
+/// far the transparency reaches.
+///
+/// <para><b>Not a theme card, and deliberately not built like one.</b> A theme
+/// is a picture and the card draws it; these two are not pictures, they are
+/// consequences, and the honest way to show a consequence is to say it. So each
+/// one is a name and a sentence, in the same Button grammar the theme cards use
+/// (one Tab stop, fires on Space, a Volt edge at a thickness that never changes)
+/// at a smaller size.</para>
+///
+/// <para><see cref="Value"/> is the payload the command reads back —
+/// a <see cref="Hoard.App.Themes.HoardBackdrop"/> for the material, a
+/// <c>bool</c> for the reach. One class for both because the card is identical
+/// and two would be two copies of the same markup.</para>
+/// </summary>
+public partial class AppearanceOptionViewModel(object value, string name, string reason)
+    : ObservableObject
+{
+    public object Value { get; } = value;
+
+    public string Name { get; } = name;
+
+    public string Reason { get; } = reason;
+
+    [ObservableProperty]
+    public partial bool IsSelected { get; set; }
 }
 
 /// <summary>

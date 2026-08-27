@@ -1231,12 +1231,19 @@
             <views:ActionBarView Grid.Row="1" DataContext="{Binding Library}"/>
 
             <!-- ── Content ────────────────────────────────────────────────
-                 The cover wall keeps an opaque ground in both transparency
-                 states. §1 says the art is the interface, and a wallpaper
-                 behind six hundred capsules is a second image competing with
-                 all of them; §5.4's two-layer dormancy cross-fade also needs
-                 the ground under a tile to be the ground it was calibrated
-                 against. See tokens.axaml's four-grounds note. -->
+                 The cover wall's FIELD may admit the desktop, when the user
+                 asks for it on the Appearance screen; its TILES may not, at any
+                 setting. Covers therefore sit solid on an open field and the
+                 desktop shows in the gutters between them, which is one
+                 continuous window rather than a solid slab bolted to
+                 translucent chrome.
+
+                 The half of the old always-opaque rule that was construction
+                 rather than taste is unchanged and lives in the tile: §5.4's
+                 dormancy cross-fade is two layers that are only opaque
+                 TOGETHER, so each tile paints TileGround under its art stack
+                 and the ramp composites over exactly the ground it was
+                 calibrated against. See tokens.axaml's grounds note. -->
             <Panel Grid.Row="2" Background="{StaticResource WallGround}">
 
                 <!-- ── The selection's own menu (§6, §12.3) ──────────────────
@@ -1327,8 +1334,15 @@
                      The power-user view: same data, no art dependency, so it
                      stays readable before a single cover has downloaded.
                      Virtualized (ListBox's VirtualizingStackPanel) because 616
-                     rows is the normal case, not the stress case. -->
-                <Grid RowDefinitions="30,*" IsVisible="{Binding Library.ShowList}">
+                     rows is the normal case, not the stress case.
+
+                     PaneGround, not the wall's: this view is text sitting
+                     directly on the field, and the field is allowed to open up
+                     only because the grid's tiles are opaque and nothing reads
+                     on it. A row of titles and playtimes over a wallpaper is
+                     the §14.3 arithmetic all over again. -->
+                <Grid RowDefinitions="30,*" IsVisible="{Binding Library.ShowList}"
+                      Background="{StaticResource PaneGround}">
 
                     <!-- Column headers. Clicking one writes the shared sort
                          state; clicking the active one flips its direction. -->
@@ -1449,8 +1463,14 @@
                     </ListBox>
                 </Grid>
 
-                <!-- Empty states are directions, not moods (§7). -->
-                <Border IsVisible="{Binding Library.ShowEmpty}" Padding="32">
+                <!-- Empty states are directions, not moods (§7).
+
+                     Opaque, on the same rule as the list: with no covers on it
+                     the field is not a field between tiles any more, it is the
+                     ground under one sentence — and a sentence is reading
+                     matter. -->
+                <Border IsVisible="{Binding Library.ShowEmpty}" Padding="32"
+                        Background="{StaticResource PaneGround}">
                     <TextBlock Classes="body-l"
                                MaxWidth="440"
                                TextWrapping="Wrap"

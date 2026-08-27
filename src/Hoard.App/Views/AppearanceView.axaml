@@ -57,6 +57,47 @@
             <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
         </Style>
 
+        <!-- ══ A text-only choice ═════════════════════════════════════════
+             The backdrop material and how far the transparency reaches. Same
+             Button grammar as a theme card — one Tab stop, fires on Space, a
+             Volt edge whose thickness never changes — at a smaller size and
+             with no picture, because neither of these two is a picture. A
+             theme is something you can be shown; a material and a reach are
+             CONSEQUENCES, and the honest way to show a consequence is to say
+             it. Hence a name and one sentence.
+
+             Recessed rather than raised: Ground inside a Surface card, so the
+             pair read as two wells cut into the panel rather than as two more
+             cards stacked on it. Four stacked cards is the wall of controls
+             this screen is trying not to become. -->
+        <Style Selector="Button.optioncard">
+            <Setter Property="Padding" Value="14,12"/>
+            <Setter Property="Background" Value="{StaticResource Ground}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="BorderThickness" Value="2"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="VerticalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="VerticalContentAlignment" Value="Top"/>
+        </Style>
+        <Style Selector="Button.optioncard /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource Ground}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+        </Style>
+        <Style Selector="Button.optioncard:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource Ground}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource TextDim}"/>
+        </Style>
+        <Style Selector="Button.optioncard.picked /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource Ground}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+        </Style>
+        <Style Selector="Button.optioncard:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+        </Style>
+
         <!-- The miniature. Fixed geometry so four of them line up exactly:
              a 2:3 wall of capsules is the app's own atom (§4) and the mock
              reads wrong the moment the proportions drift. -->
@@ -137,7 +178,7 @@
 
     </UserControl.Styles>
 
-    <Grid RowDefinitions="Auto,*" Background="{StaticResource WallGround}">
+    <Grid RowDefinitions="Auto,*" Background="{StaticResource PaneGround}">
 
         <!-- ══ Header ═══════════════════════════════════════════════════════ -->
         <Border Grid.Row="0"
@@ -398,6 +439,166 @@
                                 </Grid>
                             </StackPanel>
                         </Border>
+
+                        <!-- ══ What it is made of, and how far it reaches ════
+                             The screen holds four decisions now, and four rows
+                             stacked would be a wall of controls. So this card is
+                             ONE quantity with two qualifiers hanging off it —
+                             how much, what it is made of, how far it goes — and
+                             the qualifiers are not drawn at all while the
+                             quantity is zero, because at SOLID neither of them
+                             does anything. The common case stays one slider.
+
+                             Both blocks are recessed wells rather than raised
+                             cards, so the eye reads them as parts of the
+                             transparency setting rather than as two more
+                             settings beside it. -->
+                        <StackPanel IsVisible="{Binding ShowComposition}" Spacing="12">
+
+                            <Border Height="1" Background="{StaticResource Line}" Margin="0,2"/>
+
+                            <TextBlock Classes="label" FontSize="9" LetterSpacing="1.2"
+                                       Text="WHAT WINDOWS PUTS BEHIND THE WINDOW"/>
+
+                            <ItemsControl ItemsSource="{Binding Backdrops}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <UniformGrid Columns="2"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="vm:AppearanceOptionViewModel">
+                                        <Button Classes="optioncard"
+                                                Classes.picked="{Binding IsSelected}"
+                                                Margin="0,0,10,0"
+                                                Command="{Binding $parent[ItemsControl].((vm:AppearanceViewModel)DataContext).SelectBackdropCommand}"
+                                                CommandParameter="{Binding}"
+                                                ToolTip.Tip="{Binding Reason}">
+                                            <StackPanel Spacing="5">
+                                                <Grid ColumnDefinitions="*,Auto">
+                                                    <TextBlock Grid.Column="0" Classes="body-l"
+                                                               Text="{Binding Name}"
+                                                               VerticalAlignment="Center"/>
+                                                    <!-- Says which one is on in a
+                                                         word as well as in an edge
+                                                         (§8). -->
+                                                    <Border Grid.Column="1"
+                                                            IsVisible="{Binding IsSelected}"
+                                                            Background="{StaticResource Volt}"
+                                                            CornerRadius="9" Padding="8,2"
+                                                            VerticalAlignment="Center">
+                                                        <TextBlock Classes="label" FontSize="9"
+                                                                   LetterSpacing="1"
+                                                                   Foreground="{StaticResource VoltInk}"
+                                                                   Text="IN USE"/>
+                                                    </Border>
+                                                </Grid>
+                                                <TextBlock Classes="para" Text="{Binding Reason}"/>
+                                            </StackPanel>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <!-- The measurement, stated where the choice is made
+                                 rather than left for someone to discover. Plex
+                                 Mono because it is a number (§3). -->
+                            <Grid ColumnDefinitions="Auto,10,*" IsVisible="{Binding MicaPicked}">
+                                <TextBlock Grid.Column="0" Classes="data"
+                                           VerticalAlignment="Top"
+                                           Text="{Binding MicaComposite}"/>
+                                <TextBlock Grid.Column="2" Classes="para"
+                                           Text="{Binding MicaCompositeNote}"/>
+                            </Grid>
+
+                            <!-- Asked for one, got the other. Falling through is
+                                 right; doing it silently is how someone concludes
+                                 the choice does nothing. Amber, because §2 gives
+                                 Amber attention and this is not an error — the
+                                 user has not done anything wrong by sitting on a
+                                 machine that will not compose Mica. -->
+                            <Border IsVisible="{Binding BackdropSubstituted}"
+                                    Background="{StaticResource Ground}"
+                                    BorderBrush="{StaticResource Amber}"
+                                    BorderThickness="1"
+                                    CornerRadius="{StaticResource RadiusControl}"
+                                    Padding="14,12">
+                                <TextBlock Classes="body" FontSize="12" LineHeight="18"
+                                           TextWrapping="Wrap"
+                                           Text="{Binding BackdropSubstitutedNote}"/>
+                            </Border>
+
+                            <Border Height="1" Background="{StaticResource Line}" Margin="0,2"/>
+
+                            <TextBlock Classes="label" FontSize="9" LetterSpacing="1.2"
+                                       Text="HOW FAR IT REACHES"/>
+
+                            <ItemsControl ItemsSource="{Binding Reach}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <UniformGrid Columns="2"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="vm:AppearanceOptionViewModel">
+                                        <Button Classes="optioncard"
+                                                Classes.picked="{Binding IsSelected}"
+                                                Margin="0,0,10,0"
+                                                Command="{Binding $parent[ItemsControl].((vm:AppearanceViewModel)DataContext).SelectReachCommand}"
+                                                CommandParameter="{Binding}"
+                                                ToolTip.Tip="{Binding Reason}">
+                                            <StackPanel Spacing="5">
+                                                <Grid ColumnDefinitions="*,Auto">
+                                                    <TextBlock Grid.Column="0" Classes="body-l"
+                                                               Text="{Binding Name}"
+                                                               VerticalAlignment="Center"/>
+                                                    <Border Grid.Column="1"
+                                                            IsVisible="{Binding IsSelected}"
+                                                            Background="{StaticResource Volt}"
+                                                            CornerRadius="9" Padding="8,2"
+                                                            VerticalAlignment="Center">
+                                                        <TextBlock Classes="label" FontSize="9"
+                                                                   LetterSpacing="1"
+                                                                   Foreground="{StaticResource VoltInk}"
+                                                                   Text="IN USE"/>
+                                                    </Border>
+                                                </Grid>
+                                                <TextBlock Classes="para" Text="{Binding Reason}"/>
+                                            </StackPanel>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <!-- The relation, printed rather than asserted. Two
+                                 surfaces, one slider, and the wall takes half —
+                                 so the ratio is visible at whatever position the
+                                 user is holding instead of being a claim in a
+                                 sentence. Only drawn when the wall is in, because
+                                 otherwise the second number is zero and a zero
+                                 beside a percentage reads as a fault. -->
+                            <StackPanel Spacing="6" IsVisible="{Binding WallTranslucent}">
+                                <Grid ColumnDefinitions="Auto,10,*">
+                                    <TextBlock Grid.Column="0" Classes="data"
+                                               Text="{Binding ChromeAdmits}"/>
+                                    <TextBlock Grid.Column="2" Classes="body" FontSize="12"
+                                               Foreground="{StaticResource TextDim}"
+                                               VerticalAlignment="Center"
+                                               Text="of the chrome is desktop"/>
+                                </Grid>
+                                <Grid ColumnDefinitions="Auto,10,*">
+                                    <TextBlock Grid.Column="0" Classes="data"
+                                               VerticalAlignment="Top"
+                                               Text="{Binding WallAdmits}"/>
+                                    <TextBlock Grid.Column="2" Classes="para"
+                                               Text="{Binding WallAdmitsNote}"/>
+                                </Grid>
+                                <TextBlock Classes="para"
+                                           Text="Settings, the review queue and the list view stay solid at every setting. They are text sitting on the field; the wall can open up because nothing reads on it."/>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <Border Height="1" Background="{StaticResource Line}" Margin="0,2"/>
 
                         <!-- ══ What it costs, live ═══════════════════════════
                              §8's floor is a claim about the running window, so

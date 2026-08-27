@@ -7,8 +7,15 @@ using Hoard.Core.Repositories;
 namespace Hoard.App.Services;
 
 /// <summary>
-/// Owns which theme is up and how much desktop the window admits, applies both
-/// to the live resource dictionary, and remembers them.
+/// Owns the four appearance decisions — which theme is up, how much desktop the
+/// window admits, what Windows composes behind it, and how far that reaches —
+/// applies them to the live resource dictionary, and remembers them.
+///
+/// <para>The last three are one setting with two qualifiers rather than three
+/// settings: the quantity is the slider, and the material and the reach only
+/// mean anything once it has left zero. <see cref="ActiveWallTranslucency"/> is
+/// the AND of all of it, which is why the wall cannot open up on a machine that
+/// is not compositing.</para>
 ///
 /// <para><b>How a theme change reaches the window.</b> Every view in this app
 /// names its tokens with <c>StaticResource</c>, which resolves once when the
@@ -32,13 +39,21 @@ namespace Hoard.App.Services;
 /// <para><b>Requested is not active.</b> Transparency is a preference; whether
 /// the machine can honour it is a fact. Windows 10, a remote-desktop session and
 /// a composition failure all end with <see cref="TopLevel.ActualTransparencyLevel"/>
-/// reporting something other than Mica — and Avalonia's Win32 backend falls back
-/// to <c>Transparent</c> rather than the <c>None</c> that was asked for, so the
-/// test has to be positive. The window reports what it actually got through
-/// <see cref="SetBackdropAvailable"/>, and the OPAQUE token set is applied
+/// reporting none of the levels that count — and Avalonia's Win32 backend falls
+/// back to <c>Transparent</c> rather than the <c>None</c> that was asked for, so
+/// the test has to be positive. The window reports what it actually got through
+/// <see cref="SetActiveBackdrop"/>, and the OPAQUE token set is applied
 /// whenever the answer is no. A translucent rail over a window with nothing
 /// behind it is the failure this exists to avoid: the preference is remembered,
 /// so it comes back by itself on a machine that can do it.</para>
+///
+/// <para><b>And "not what you asked for" is a third answer, not the second
+/// one.</b> Mica needs Windows 11; acrylic works further back. Asking for one
+/// and getting the other is better than getting nothing, so the window still
+/// falls through — but it lands in <see cref="ActiveBackdrop"/> as the material
+/// that is actually on screen, and the Appearance screen says so. Substituting
+/// is fine; substituting silently is how a user concludes the toggle does
+/// nothing.</para>
 /// </summary>
 public sealed class ThemeService
 {
@@ -51,6 +66,14 @@ public sealed class ThemeService
     /// Migrated in place rather than orphaned — see <see cref="ParseTransparency"/>.
     /// </summary>
     public const string TransparencySettingKey = "appearance.transparency";
+
+    /// <summary>Which material the user asked Windows for: <c>acrylic</c> or
+    /// <c>mica</c>. Unset reads as acrylic (<see cref="HoardBackdrops.Default"/>).</summary>
+    public const string BackdropSettingKey = "appearance.backdrop";
+
+    /// <summary>Whether the cover wall's field opens up along with the chrome.
+    /// Unset reads as false — the previous default, and a real preference.</summary>
+    public const string WallSettingKey = "appearance.wall";
 
     /// <summary>
     /// What a stored <c>true</c> becomes.
@@ -71,7 +94,9 @@ public sealed class ThemeService
     private readonly ISettingsRepository? _settings;
     private HoardTheme _theme = HoardThemes.Default;
     private int _transparency;
-    private bool _backdropAvailable;
+    private HoardBackdrop _backdrop = HoardBackdrops.Default;
+    private HoardBackdrop _activeBackdrop = HoardBackdrop.None;
+    private bool _wallTranslucent;
     private bool _loading;
     private bool _sessionOverride;
 
@@ -93,13 +118,44 @@ public sealed class ThemeService
     /// backdrop hint turns on.</summary>
     public bool TransparencyRequested => _transparency > 0;
 
-    /// <summary>What the window actually got. False until a window says otherwise.</summary>
-    public bool BackdropAvailable => _backdropAvailable;
+    /// <summary>Which material the user picked. What they GOT is
+    /// <see cref="ActiveBackdrop"/>, and the two can differ.</summary>
+    public HoardBackdrop Backdrop => _backdrop;
+
+    /// <summary>What the platform actually composed, as reported by the window.
+    /// <see cref="HoardBackdrop.None"/> until a window says otherwise.</summary>
+    public HoardBackdrop ActiveBackdrop => _activeBackdrop;
+
+    /// <summary>
+    /// Whether the desktop is reaching the window at all.
+    ///
+    /// <para>Written against the two values that mean yes rather than against
+    /// "not <see cref="HoardBackdrop.None"/>", so that a value added later has
+    /// to be admitted deliberately. The platform-side test that produces
+    /// <see cref="_activeBackdrop"/> is positive for the same reason.</para>
+    /// </summary>
+    public bool BackdropAvailable
+        => _activeBackdrop is HoardBackdrop.Acrylic or HoardBackdrop.Mica;
+
+    /// <summary>True once the machine composited something OTHER than what was
+    /// asked for — the case the Appearance screen has to name rather than
+    /// swallow.</summary>
+    public bool BackdropSubstituted
+        => BackdropAvailable && _activeBackdrop != _backdrop;
+
+    /// <summary>Whether the user asked for the cover wall's field to open up
+    /// along with the chrome. The tiles never do, at any setting.</summary>
+    public bool WallTranslucent => _wallTranslucent;
 
     /// <summary>The amount the tokens are painted for: the request, or zero when
     /// the machine cannot composite.</summary>
     public double ActiveTransparency
-        => TransparencyRequested && _backdropAvailable ? _transparency / 100.0 : 0;
+        => TransparencyRequested && BackdropAvailable ? _transparency / 100.0 : 0;
+
+    /// <summary>Whether the wall's field is actually painted translucent right
+    /// now: asked for, and the desktop is reaching the window to be seen.</summary>
+    public bool ActiveWallTranslucency
+        => _wallTranslucent && ActiveTransparency > 0;
 
     /// <summary>The in-flight write, so a caller — or a test — can wait for the
     /// preference to reach disk. Nothing in the UI waits on it.</summary>
@@ -120,12 +176,20 @@ public sealed class ThemeService
 
         var storedTheme = await _settings.GetAsync(ThemeSettingKey, ct);
         var storedTransparency = await _settings.GetAsync(TransparencySettingKey, ct);
+        var storedBackdrop = await _settings.GetAsync(BackdropSettingKey, ct);
+        var storedWall = await _settings.GetAsync(WallSettingKey, ct);
 
         _loading = true;
         try
         {
             _theme = HoardThemes.ById(storedTheme);
             _transparency = ParseTransparency(storedTransparency);
+            _backdrop = HoardBackdrops.ById(storedBackdrop);
+
+            // Unparseable reads as false, which is the previous behaviour and
+            // the conservative one: a wall that opens up unasked is a surprise,
+            // a wall that stays solid is what the app has always looked like.
+            _wallTranslucent = bool.TryParse(storedWall, out var wall) && wall;
         }
         finally
         {
@@ -177,13 +241,19 @@ public sealed class ThemeService
     /// session that was told what to look like is not one whose looks are worth
     /// saving, so nothing it does gets written.</para>
     /// </summary>
-    public void OverrideForSession(HoardTheme theme, int transparency)
+    public void OverrideForSession(
+        HoardTheme theme,
+        int transparency,
+        HoardBackdrop? backdrop = null,
+        bool? wallTranslucent = null)
     {
         _loading = true;
         try
         {
             _theme = theme;
             _transparency = Math.Clamp(transparency, 0, 100);
+            _backdrop = backdrop ?? _backdrop;
+            _wallTranslucent = wallTranslucent ?? _wallTranslucent;
         }
         finally
         {
@@ -228,18 +298,62 @@ public sealed class ThemeService
     }
 
     /// <summary>
-    /// The window's report of what the platform actually gave it. Repaints when
-    /// the answer changes, because it can change while the window is open — the
-    /// OS theme variant flipping, or a remote session taking composition away.
+    /// Which material the user wants Windows to compose. Changing it re-requests
+    /// the backdrop, which is the window's job — hence <see cref="Applied"/>
+    /// rather than a call from here.
     /// </summary>
-    public void SetBackdropAvailable(bool available)
+    public void SelectBackdrop(HoardBackdrop backdrop)
     {
-        if (_backdropAvailable == available)
+        if (_backdrop == backdrop || backdrop is HoardBackdrop.None)
         {
             return;
         }
 
-        _backdropAvailable = available;
+        _backdrop = backdrop;
+
+        // The answer for the NEW material is not known until the window has
+        // asked. Clearing it first means the screen never reports the old
+        // material's result as the new one's — a wrong "available" is exactly
+        // the silent substitution this is here to prevent.
+        _activeBackdrop = HoardBackdrop.None;
+
+        Apply();
+        Save(BackdropSettingKey, HoardBackdrops.Id(backdrop));
+    }
+
+    /// <summary>
+    /// Whether the cover wall's field admits the desktop along with the chrome.
+    /// The tiles are unaffected at every setting — see <c>TileGround</c>.
+    /// </summary>
+    public void SetWallTranslucent(bool translucent)
+    {
+        if (_wallTranslucent == translucent)
+        {
+            return;
+        }
+
+        _wallTranslucent = translucent;
+        Apply();
+        Save(WallSettingKey, translucent ? "true" : "false");
+    }
+
+    /// <summary>
+    /// The window's report of what the platform actually composed. Repaints when
+    /// the answer changes, because it can change while the window is open — the
+    /// OS theme variant flipping, or a remote session taking composition away.
+    ///
+    /// <para>A VALUE and not a bool, because "we got nothing" and "we got the
+    /// other one" need different words on screen and a bool cannot tell them
+    /// apart.</para>
+    /// </summary>
+    public void SetActiveBackdrop(HoardBackdrop active)
+    {
+        if (_activeBackdrop == active)
+        {
+            return;
+        }
+
+        _activeBackdrop = active;
         Apply();
     }
 
@@ -261,7 +375,7 @@ public sealed class ThemeService
         var app = Avalonia.Application.Current;
         if (app is not null)
         {
-            ApplyTo(app.Resources, _theme, ActiveTransparency);
+            ApplyTo(app.Resources, _theme, ActiveTransparency, ActiveWallTranslucency);
         }
 
         Applied?.Invoke(this, EventArgs.Empty);
@@ -276,9 +390,13 @@ public sealed class ThemeService
     /// so nothing would read it, and the missing token would look handled.
     /// <c>tokens.axaml</c> is the list of what exists.</para>
     /// </summary>
-    public static void ApplyTo(IResourceDictionary resources, HoardTheme theme, double transparency)
+    public static void ApplyTo(
+        IResourceDictionary resources,
+        HoardTheme theme,
+        double transparency,
+        bool wallTranslucent = false)
     {
-        var tokens = theme.Tokens(transparency);
+        var tokens = theme.Tokens(transparency, wallTranslucent);
 
         foreach (var (key, colour) in tokens)
         {

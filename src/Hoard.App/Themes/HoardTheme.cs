@@ -62,6 +62,66 @@ public sealed record HoardTheme
     public const double MinChromeAlpha = 0.30;
 
     /// <summary>
+    /// The alpha the COVER WALL's field reaches at the far end of the slider,
+    /// when the user has asked for the wall to open up at all.
+    ///
+    /// <para><b>The wall admits exactly half the desktop the chrome does</b> —
+    /// <c>1 − 0.65 = 0.35</c> against the chrome's <c>1 − 0.30 = 0.70</c> — and
+    /// it is a derived relation rather than a taste, on two counts.</para>
+    ///
+    /// <para><b>The constraint is POLARITY, and it is not the chrome's.</b>
+    /// §5.1's ramp encodes dormancy as dark capsules on a dark field, and it
+    /// only reads that way while the field stays DARKER than the capsules hung
+    /// on it. Over a white wallpaper — the ceiling any backdrop can reach — the
+    /// field climbs, and at some position it passes the dormancy floor of an
+    /// ordinary dark cover. Past that point a dormant tile stops reading as
+    /// dimmed art and starts reading as a hole punched in a lit field, which
+    /// inverts the one encoding the product is built on.</para>
+    ///
+    /// <para><b>So the wall's floor is set by where that inversion lands
+    /// relative to the AA mark the chrome already carries.</b> A field the user
+    /// cannot read labels over is a place they are already told not to go
+    /// (§14.3), so the wall does not need to hold past there — it needs to not
+    /// fail FIRST. Walked per theme, against white, with the dormancy floor of a
+    /// mid-dark cover (sat 0.22, bright 0.68) as the target:</para>
+    ///
+    /// <list type="table">
+    ///   <item><term>Chrome's AA ceiling</term><description>27 / 30 / 30 / 26</description></item>
+    ///   <item><term>Wall's inversion, at 0.62</term><description>27 / 42 / 35 / 40 — the loosest floor that clears all four</description></item>
+    ///   <item><term>Wall's inversion, at 0.65</term><description>29 / 46 / 38 / 44 — chosen</description></item>
+    ///   <item><term>Wall's inversion, at 0.60</term><description>25 / 40 / 33 / 38 — Hoard fails two points EARLY</description></item>
+    /// </list>
+    ///
+    /// <para>0.65 is taken rather than the marginal 0.62 because it is exactly
+    /// HALF the chrome's reach — <c>1 − 0.65 = 0.35</c> against
+    /// <c>1 − 0.30 = 0.70</c> — which is a relation that can be stated on the
+    /// settings screen and checked, where "0.62" is a number nobody can hold.
+    /// It buys 2 to 16 points of margin past the AA mark on top.</para>
+    ///
+    /// <para><b>And it is not only a white-wallpaper argument — it was measured
+    /// on the running window over a real desktop.</b> At slider 45 the acrylic
+    /// composite behind the wall back-solves to <c>#8E6251</c> under the rock and
+    /// <c>#9B827D</c> under the sky. At half reach the field lands at luminance
+    /// 0.020–0.024, under the dormant capsule's 0.031 and under the rail beside
+    /// it at 0.036. At the CHROME's own reach the same field would land at
+    /// 0.033–0.045 — above the dormant capsule, and level with or above the rail.
+    /// So full reach loses both invariants at once on an ordinary photograph:
+    /// the ramp inverts, and the art field stops being the recess §14.2 says the
+    /// covers hang in.</para>
+    ///
+    /// <para><b>Over the measured dark desktop the question does not arise.</b>
+    /// The composite is darker than <c>Ground</c>, so opening the field
+    /// DEEPENS it and the polarity gets better, not worse — the same asymmetry
+    /// §14.3 records for the chrome's inks.</para>
+    ///
+    /// <para>It is a ratio and not a second slider on purpose: two percentages
+    /// on one screen that mean different things is a worse screen than one
+    /// quantity with a stated relation, and the Appearance screen prints both
+    /// numbers so the relation is visible rather than asserted.</para>
+    /// </summary>
+    public const double MinWallAlpha = 0.65;
+
+    /// <summary>
     /// How much of the slider the ink compensation is spent over.
     ///
     /// <para><b>The inks have to move faster than the alpha, and this is the
@@ -186,10 +246,15 @@ public sealed record HoardTheme
     /// theme by hand, because they are all "this role at N%" and a theme that
     /// had to restate seventeen of them would drift on the eighteenth.</para>
     /// </summary>
-    public Dictionary<string, Color> Tokens(double transparency)
+    public Dictionary<string, Color> Tokens(double transparency, bool wallTranslucent = false)
     {
         var t = Math.Clamp(transparency, 0, 1);
         var alpha = 1 - (t * (1 - MinChromeAlpha));
+
+        // The wall's own alpha, on the same linear walk and at half the reach.
+        // Zero on the slider is opaque here too, so the wall setting cannot
+        // produce a translucent window on its own.
+        var wallAlpha = wallTranslucent ? 1 - (t * (1 - MinWallAlpha)) : 1;
 
         // The inks walk toward their translucent selves as the alpha comes off,
         // so slider zero is bit-for-bit the opaque palette and there is no step
@@ -263,14 +328,36 @@ public sealed record HoardTheme
             // alphas would multiply and the slider could never reach its end.
             ["ShellGround"] = t > 0 ? A(Ground, 0) : Ground,
 
-            // WallGround is the cover wall, the merge queue, the Stores and
-            // Appearance panes. OPAQUE AT EVERY SLIDER POSITION, deliberately:
-            // §1 says the art is the interface, and a wallpaper behind six
-            // hundred capsules is a second image competing with all of them. It
-            // also keeps §5.4's two-layer dormancy cross-fade compositing over
-            // exactly the ground it always did, so the ramp's floor is unchanged
-            // by construction rather than by measurement.
-            ["WallGround"] = Ground,
+            // ── WallGround: the field the covers hang in ───────────────────
+            // It used to be opaque at every setting, on a §1 argument: the art
+            // is the interface, and a wallpaper behind six hundred capsules is a
+            // second image competing with all of them. THAT ARGUMENT WAS
+            // OVERRULED by the person looking at the result — a solid slab
+            // bolted to translucent chrome reads as two windows, and the
+            // aesthetic call is theirs.
+            //
+            // The half of the old reasoning that was NOT aesthetics still binds,
+            // and it binds somewhere else: §5.4's dormancy ramp is a two-layer
+            // opacity cross-fade whose layers are only opaque TOGETHER, so a
+            // tile mid-decode over a translucent field would show the desktop
+            // through the ramp's floor. That is a bug, not a preference. It is
+            // answered by TileGround below rather than by keeping this opaque —
+            // the FIELD may open up, the TILES may not.
+            //
+            // So: opaque unless asked for, opaque at slider zero either way, and
+            // at half the chrome's reach when asked for. See MinWallAlpha.
+            ["WallGround"] = wallAlpha >= 1 ? Ground : A(Ground, wallAlpha),
+
+            // The panes that share the wall's position but not its job: the
+            // merge queue, Stores, Appearance, and the library's LIST view.
+            // OPAQUE AT EVERY SETTING, and this is the line §13 gap 7 asked for
+            // drawn one level further in — chrome that may be translucent
+            // against surface that carries reading matter. The wall can open up
+            // because nothing reads on it: every tile is opaque, so the field is
+            // only ever visible in the gutters. These panes are text sitting
+            // directly on the field, and §14.3's own arithmetic says an ink
+            // chosen for an opaque ground cannot have alpha subtracted from it.
+            ["PaneGround"] = Ground,
 
             // ── The caption takes the rail's colour, in every theme ─────────
             // It used to be Well, one step BELOW Ground — §9's "unlit lip". That
@@ -296,6 +383,13 @@ public sealed record HoardTheme
             // Under the art stack inside a tile, so a cover that has decoded one
             // of its two dormancy layers and not the other cannot show the
             // window through the gap between them.
+            //
+            // NEVER derived from wallAlpha, and now it is load-bearing rather
+            // than belt-and-braces: with the field allowed to open up, this is
+            // the ONE thing standing between the ramp's floor and the desktop.
+            // A tile paints it under both dormancy layers, so the cross-fade
+            // composites over exactly the ground it was calibrated against no
+            // matter what the field is doing. Construction, not measurement.
             ["TileGround"] = Ground,
 
             // ── Derived: a role at N% ──────────────────────────────────────

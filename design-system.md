@@ -1079,7 +1079,7 @@ pair in the set, told apart by lightness and by where each appears. Box art has 
 saturated colour to spend, so `Volt` and `Azure` sit 29° apart and are separated by lightness
 instead: `Volt` is a near-white at 17:1 against the art field, `Azure` a mid steel.
 
-### 14.2 The four grounds
+### 14.2 The five grounds
 
 Which surface may admit the desktop is a **token**, not a rule somebody has to
 remember. §13 gap 7 asked for "a named role for chrome that may be translucent as
@@ -1088,7 +1088,8 @@ opposed to surface that carries reading matter"; these are it.
 | Token | What it backs | Translucent? |
 |---|---|---|
 | `ShellGround` | The client area below the caption | Paints **nothing** once the slider leaves zero — the columns over it paint their own |
-| `WallGround` | Cover wall, merge queue, Stores, Appearance | **Never, at any setting.** §1: a wallpaper behind six hundred capsules is a second image competing with all of them |
+| `WallGround` | The field the covers hang in | **Only when asked for**, and then at half the chrome's reach — see §14.6 |
+| `PaneGround` | Merge queue, Stores, Appearance, and the library's **list** view | **Never, at any setting.** These are text sitting directly on the field |
 | `TileGround` | Under the art stack inside one tile | **Never** — see §14.4 |
 | `ChromeSurface` | Rail, filter panel | Yes |
 | `ChromeGround` | Command bar, cut bar | Yes |
@@ -1230,8 +1231,106 @@ way.
 *together*. Between the first bitmap decoding and the second, a dimmed tile is a partly
 transparent tile — and on a translucent window that means the desktop showing through
 the ramp's floor. Each tile therefore paints `TileGround` under its art stack, opaque in
-every theme and both states, so the ramp composites over exactly the ground it was
+every theme and every setting, so the ramp composites over exactly the ground it was
 calibrated against. That is a fact of construction, not a measurement that could drift.
+
+**This was belt-and-braces while the wall was opaque. Since §14.6 it is the only thing
+holding**, so the tests assert it in both reach states rather than in the default one.
+Verified on the glass as well: at the far end of the slider with the wall open and dimming
+on, 187,192 pixels in the wall region differ from the same capture with the wall solid, and
+**every one of them is the field or within 2px of a tile's antialiased edge**. Not one pixel
+inside a tile changed.
+
+### 14.6 Which material, and how far it reaches
+
+The slider says **how much**. Two smaller decisions say **what of** and **how far**, and both
+sit on the same Appearance card as qualifiers of the one quantity — not as two more rows.
+Neither is drawn at all while the slider is at `SOLID`, because at `SOLID` neither does
+anything, which keeps the common case to one control.
+
+#### Acrylic or Mica, said in the UI and measured on the screen
+
+§14.3 changed the hint order to `[AcrylicBlur, Mica, None]` and the reasoning was right, but it
+settled a **default**, not an only option. Reading as a tone rather than as a view is a
+legitimate thing to prefer — it is quieter, and it is what the rest of Windows 11 does — and
+someone who wants it should not have to give up transparency to get it. So the head of the hint
+list is the user's choice: acrylic asks `[AcrylicBlur, Mica, None]`, Mica asks
+`[Mica, AcrylicBlur, None]`. **Acrylic stays the default**, for §14.3's reason: it is the one the
+slider can be seen through.
+
+**Mica is described by what it does, not sold as a lesser acrylic.** Back-solved from the pixel
+on screen, at 45% over the same wallpaper in the same window position:
+
+| Backdrop the window actually received | Under the lit rock | Under the sky |
+|---|---|---|
+| **Acrylic** | `#CC6E3A` | `#636573` |
+| **Mica** | `#2D1C17` | `#201F24` |
+
+Mica lands within a couple of units of the same near-black in both places, which is §14.3's
+`#201F1E` measured again on a second wallpaper region. Acrylic carries the wallpaper and changes
+across the window. That table *is* the argument for offering both, and a condensed form of it is
+on the Appearance screen beside the choice.
+
+**A substitution is a third answer, not the second one.** Mica needs Windows 11; acrylic works
+further back. Asking for one and getting the other is better than getting nothing, so the window
+still falls through — but the material that came back is reported **by name** and the screen says
+so in an `Amber` field. Falling through is right; doing it silently is how a user concludes the
+choice does nothing. The platform test stays positive per level (`== Mica`, `== AcrylicBlur`,
+`== Blur`), never "not `None`", and everything else lands on `None` by default.
+
+#### The pane may be translucent; the tiles may not
+
+§14.2 used to keep `WallGround` opaque at every setting, on a §1 argument: a wallpaper behind six
+hundred capsules is a second image competing with all of them. **That half was aesthetics and it
+was overruled** by the person looking at the result — a solid slab bolted to translucent chrome
+reads as two windows, which is the opposite of what the transparency was for.
+
+**The other half was construction and it still binds** — it just binds somewhere else. §14.4's
+cross-fade is answered by `TileGround`, not by keeping the field opaque. So the line is: **the
+field may open up, the tiles may not.** Covers sit solid on an open field and the desktop shows in
+the gutters between them. And because nothing reads on the field — every tile is opaque — the
+field is the one surface in the pane that *can* open. The list view, the merge queue, Stores and
+Appearance are text sitting directly on it, so they take `PaneGround` and stay solid at every
+setting.
+
+**The wall admits exactly half the desktop the chrome does.** `MinWallAlpha` is `0.65` against the
+chrome's `0.30`. It is derived, not chosen by eye, and the constraint is not contrast — it is
+**polarity**. §5.1's ramp is dark capsules on a dark field and only reads that way while the field
+stays *darker* than the capsules on it. Over white the field climbs and eventually passes the
+dormancy floor of an ordinary dark cover, after which a dimmed tile reads as a hole punched in a
+lit field. The wall does not have to hold across the whole slider — past the AA mark the user has
+already been told the labels stop clearing 4.5:1 — it has to not fail **first**:
+
+| Per theme (Hoard / Nightshift / Tungsten / Box art) | | 
+|---|---|
+| Chrome's AA ceiling | 27 / 30 / 30 / 26 |
+| Field inverts the ramp, at `0.60` | 25 / 40 / 33 / 38 — **Hoard fails two points early** |
+| Field inverts the ramp, at `0.62` | 27 / 42 / 35 / 40 — the loosest floor that clears all four |
+| Field inverts the ramp, at `0.65` | **29 / 46 / 38 / 44** — chosen |
+
+`0.65` is taken over the marginal `0.62` because it is exactly half the chrome's reach, which is a
+relation that can be printed on the settings screen and checked — and it buys 2 to 16 points of
+margin on top.
+
+**Measured on the running window, this is not only a white-wallpaper argument.** At 45% over a
+real photograph the acrylic composite behind the wall back-solves to `#8E6251` under the rock and
+`#9B827D` under the sky. At half reach the field lands at luminance **0.020–0.024** — under the
+dormant capsule's **0.031** and under the rail beside it at **0.036**. At the chrome's own reach
+the same field would land at **0.033–0.045**: above the dormant capsule, and level with or above
+the rail. Full reach loses *both* invariants at once on an ordinary desktop — the ramp inverts,
+and the art field stops being the recess §14.2 says the covers hang in.
+
+Over the measured dark desktop the question never arises: the composite is darker than `Ground`,
+so opening the field deepens it. `ThemeContrastTests` asserts that at every position.
+
+**The Appearance screen prints both numbers** — how much of the chrome is desktop, and how much of
+the wall — in Plex Mono `tnum`, so the halving is visible rather than asserted. It is a ratio and
+not a second slider on purpose: two percentages on one screen that mean different things is a
+worse screen than one quantity with a stated relation.
+
+Both preferences persist beside theme and transparency, under `appearance.backdrop`
+(`acrylic` / `mica`, unset reads as acrylic) and `appearance.wall` (unset reads as *off*, which is
+the previous behaviour and a real taste).
 
 ### 14.5 Every themeable brush is declared as an attribute
 

@@ -8,6 +8,7 @@ using Avalonia.Reactive;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Hoard.App.Services;
+using Hoard.App.Themes;
 using Hoard.App.ViewModels;
 
 namespace Hoard.App.Views;
@@ -64,10 +65,18 @@ public partial class MainWindow : Window
     /// look deliberate. The upgrade happens before the window is shown, so there
     /// is no opaque first frame to flash.</para>
     ///
-    /// <para><b>The hint is a list, and the order changed once the alpha got low
-    /// enough to see.</b> It reads <c>[AcrylicBlur, Mica, None]</c>.</para>
+    /// <para><b>The hint is a list, and the head of it is now the user's
+    /// choice.</b> Acrylic asks <c>[AcrylicBlur, Mica, None]</c>; Mica asks
+    /// <c>[Mica, AcrylicBlur, None]</c>. Acrylic is the default, for the reason
+    /// set out below, and the second entry is a real fallback rather than a
+    /// formality — a machine that refuses one is better off with the other than
+    /// with nothing. What it may not be is SILENT: whichever material comes
+    /// back is handed to <see cref="ThemeService.SetActiveBackdrop"/> by name,
+    /// and the Appearance screen says so when it is not the one that was
+    /// asked for.</para>
     ///
-    /// <para>It used to lead with Mica, and the reason was good: Mica samples the
+    /// <para>The list used to lead with Mica unconditionally, and the reason was
+    /// good: Mica samples the
     /// desktop WALLPAPER, one image that does not move, so the contrast sums the
     /// translucent inks are built on had something bounded to run against.
     /// AcrylicBlur was refused because it samples whatever is behind the window —
@@ -93,8 +102,12 @@ public partial class MainWindow : Window
     /// objection was to shipping a number nobody could check. The number is on
     /// screen now.</para>
     ///
-    /// <para>Mica stays second, because a machine that refuses acrylic is better
-    /// off with a tinted backdrop than with none; <c>None</c> is the floor.</para>
+    /// <para><b>That is an argument for the DEFAULT, not for the only option.</b>
+    /// Reading as a tone rather than as a view is a legitimate thing to want —
+    /// it is quieter and it is what the rest of Windows 11 does — and someone
+    /// who wants it should not have to be talked out of transparency to get it.
+    /// So Mica is offered by name, described by what it actually does, and never
+    /// arrives by accident.</para>
     ///
     /// <para><b>The fallback the platform reports is not always the fallback
     /// that was asked for, which is exactly why this reads
@@ -113,20 +126,27 @@ public partial class MainWindow : Window
     /// <para>Subscribed as well as read once: Avalonia re-applies the backdrop
     /// when the OS theme variant changes, and a remote-desktop session or a
     /// composition failure can take it away while the window is open. Whichever
-    /// way it moves, <see cref="ThemeService.SetBackdropAvailable"/> hears about
+    /// way it moves, <see cref="ThemeService.SetActiveBackdrop"/> hears about
     /// it and the opaque token set goes back on — a translucent rail over a
     /// window with nothing behind it is the failure this exists to avoid.</para>
     /// </summary>
     private void RequestBackdrop()
     {
-        TransparencyLevelHint = _theme?.TransparencyRequested == true
-            ?
-            [
-                WindowTransparencyLevel.AcrylicBlur,
-                WindowTransparencyLevel.Mica,
-                WindowTransparencyLevel.None,
-            ]
-            : [WindowTransparencyLevel.None];
+        TransparencyLevelHint = _theme?.TransparencyRequested != true
+            ? [WindowTransparencyLevel.None]
+            : _theme.Backdrop == HoardBackdrop.Mica
+                ?
+                [
+                    WindowTransparencyLevel.Mica,
+                    WindowTransparencyLevel.AcrylicBlur,
+                    WindowTransparencyLevel.None,
+                ]
+                :
+                [
+                    WindowTransparencyLevel.AcrylicBlur,
+                    WindowTransparencyLevel.Mica,
+                    WindowTransparencyLevel.None,
+                ];
 
         ApplyBackdrop();
 
@@ -151,21 +171,31 @@ public partial class MainWindow : Window
     /// with. There is deliberately no third state: half a translucent window is
     /// the failure this is written to avoid.</para>
     ///
-    /// <para><b>The test is positive and lists what counts, never "not None".</b>
+    /// <para><b>The test is positive and names each level, never "not None".</b>
     /// Avalonia's Win32 backend can land on <c>Transparent</c> when it exhausts
     /// the hint list, which is a genuinely see-through window with nothing behind
-    /// it — the exact state the opaque token set exists to catch.</para>
+    /// it — the exact state the opaque token set exists to catch. Every arm below
+    /// is an equality against a level that means something is being composited;
+    /// everything else falls to <see cref="HoardBackdrop.None"/> by default,
+    /// including levels this build has never heard of.</para>
+    ///
+    /// <para><c>Blur</c> maps to acrylic rather than to its own value because it
+    /// is what it is: a blur-behind. It is the older Win32 spelling of the same
+    /// picture, so a machine that lands on it has honoured an acrylic request
+    /// rather than substituted for it.</para>
     /// </summary>
     private void ApplyBackdrop()
     {
-        var backdrop =
-            ActualTransparencyLevel == WindowTransparencyLevel.AcrylicBlur
-            || ActualTransparencyLevel == WindowTransparencyLevel.Blur
-            || ActualTransparencyLevel == WindowTransparencyLevel.Mica;
+        var active =
+            ActualTransparencyLevel == WindowTransparencyLevel.Mica ? HoardBackdrop.Mica
+            : ActualTransparencyLevel == WindowTransparencyLevel.AcrylicBlur ? HoardBackdrop.Acrylic
+            : ActualTransparencyLevel == WindowTransparencyLevel.Blur ? HoardBackdrop.Acrylic
+            : HoardBackdrop.None;
 
-        _theme?.SetBackdropAvailable(backdrop);
+        _theme?.SetActiveBackdrop(active);
 
-        Background = backdrop && _theme?.TransparencyRequested == true
+        Background = active is HoardBackdrop.Acrylic or HoardBackdrop.Mica
+            && _theme?.TransparencyRequested == true
             ? Brushes.Transparent
             : Token("ShellGround", Brushes.Black);
     }
