@@ -43,6 +43,11 @@ interactive login has two viable shapes and neither is credential-free:
 - **Manual copy-paste** (what Legendary falls back to, and what Hoard implements). The user
   signs in on Epic's own page, in their own browser, and pastes back one code.
 
+> **AMENDED 2026-08-26 (M4.6): this rejection was reversed.** The embedded webview
+> ships. The reasoning, and the half of the objection that survives, are recorded in
+> "AMENDED 2026-08-26: the embedded webview is no longer rejected" at the end of this
+> section — read that before relying on anything in this bullet.
+
 So there *is* a manual step. What makes it weaker than PSN's is not its absence but three
 properties, each verified:
 
@@ -374,6 +379,18 @@ default, and requires a deliberate act to enable.
 The one unavoidable cost is that reading a storefront library requires Epic's own launcher
 client. Hoard's response:
 
+> **REVERSED 2026-08-26 (M4.6). This section describes what the module did before the sign-in
+> button existed, and is kept because the reasoning is still worth reading — it just lost.**
+> Hoard now ships Epic's launcher pair built in, as the LAST credential source, so anything
+> the user supplies still wins. What broke the argument below is that a sign-in *button*
+> cannot ask for an OAuth client secret, and there is no pair the user could supply instead:
+> Epic Account Services will register anyone an application, but its consent scopes cannot
+> read entitlements, so `library:public:items` exists only on the launcher client. The choice
+> was never "Hoard's credentials or the user's" — it was "these credentials, or the feature
+> does not exist". Hoard is now the party distributing them, which is a real transfer of
+> responsibility and is recorded as such in `BuiltInEpicCredentialSource` and `ROADMAP.md` §3.
+> The values were verified live returning HTTP 200 on 2026-08-26 rather than trusted.
+
 **Hoard does not ship Epic's client credentials, and this repository does not contain them.**
 The pair is user-supplied and stored locally, exactly like the Steam Web API key and the IGDB
 pair — the charter rule is "user-supplied, stored locally, never logged, never committed", and
@@ -405,11 +422,23 @@ guarantee for a stronger one.
 
 ## 11. The verification step
 
-One command, from the repo root:
+Since M4.6 there are two, and neither needs credentials any more (§10's amendment).
+
+**The embedded browser** — this is the one to run:
 
 ```powershell
-$env:Epic__ClientId     = "<client id>"
-$env:Epic__ClientSecret = "<client secret>"
+dotnet run --project src/Hoard.App -- --epic-signin
+```
+
+A window opens showing what Hoard is about to hold; accepting it loads Epic's own sign-in
+page inside that window, and the code is captured the instant Epic issues it. On success it
+prints **which of the three capture routes actually fired**, which is the one thing
+`embedded-auth.md` §9 could not settle without a real account.
+
+**The console peer**, for a headless machine, a missing WebView2 runtime, or the day Epic
+breaks the embedded page:
+
+```powershell
 dotnet run --project src/Hoard.App -- --epic-login
 ```
 
@@ -427,10 +456,17 @@ Compare that last table against the launcher's own "You've Played". If Hoard's c
 off, flip `EpicWebOptions.PlaytimeUnit` to `Minutes`. That is the whole of section 7's open
 question, settled by looking.
 
-Credentials can equally go in a git-ignored `appsettings.local.json`, or the app's settings
-table under `epic.oauth.client_id` / `epic.oauth.client_secret`.
+A user-supplied pair still overrides the built-in one, via a git-ignored
+`appsettings.local.json`, the `Epic__ClientId` / `Epic__ClientSecret` environment variables,
+or the app's settings table under `epic.oauth.client_id` / `epic.oauth.client_secret`. That
+is also the workaround the day Epic rotates the built-in pair.
 
-**Nothing in that flow asks for, sees, or stores an Epic password.**
+**Neither flow asks for, reads, or stores an Epic password.** The console flow sends the user
+to their own browser. The embedded flow hosts Epic's page in a Chromium surface — the user
+types into Epic's form, which posts to Epic over TLS, and Hoard reads only the code Epic hands
+back. That is a weaker statement than the console flow's and it is made deliberately: the
+password is typed into a window Hoard opened, and §1's amendment says so rather than claiming
+the two postures are identical.
 
 ---
 

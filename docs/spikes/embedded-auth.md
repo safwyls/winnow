@@ -114,6 +114,21 @@ So it is cosmetic, and `MSBuildWarningsAsMessages=MSB3277` silences it cleanly.
 strongest argument for putting the browser host in its own small Windows-only project rather
 than in `Hoard.App` directly — see §7.
 
+> **CORRECTED 2026-08-26, during M4.6.** This is wrong, and it is wrong in a way that would
+> have broken §7's quarantine. NuGet's TFM compatibility check is one-directional: a `net10.0`
+> project **cannot reference** a `net10.0-windows` project (NU1201). So a Windows-targeted
+> leaf project forces `Hoard.App` to follow it, which is exactly what §7 exists to prevent —
+> the two recommendations are mutually exclusive.
+>
+> The TFM is not needed. `Hoard.Auth.WebView` targets plain `net10.0`, references
+> `Microsoft.Web.WebView2` unconditionally, and guards every entry point with
+> `OperatingSystem.IsWindows()` — the same shape `Hoard.Ingest.Epic` already uses for DPAPI.
+> Verified on this machine rather than reasoned about: it builds, copies `Core.dll` and all
+> three RIDs of `WebView2Loader.dll` to output, and
+> `CoreWebView2Environment.GetAvailableBrowserVersionString()` returns **151.0.4129.107** at
+> runtime from a non-Windows TFM. `MSB3277` appears and, as §2(b) says, does not break the
+> build.
+
 ### Dependency cost, measured
 
 | | Value |
@@ -517,7 +532,9 @@ Three points this buys:
 - **The Windows-only TFM is quarantined** in one leaf project, so `Hoard.App` need not become
   `net10.0-windows` and the non-Windows story stays a missing implementation rather than a
   broken build. This is the main argument for a separate project over putting it in
-  `Hoard.App`.
+  `Hoard.App`. *(As built, the leaf project targets plain `net10.0` with runtime platform
+  guards — see §2(c)'s correction. The quarantine still holds and is in fact stronger: the
+  WebView2 dependency lives in one project, and no project in the tree is Windows-targeted.)*
 - **Epic's existing `Web/Auth/` is the template for GOG**, if GOG is ever built:
   `IEpicSecretProtector` / `DpapiEpicSecretProtector`, and `SettingsEpicTokenStore`'s
   discipline of one versioned key (`epic.oauth.session.v1`), encrypted before it reaches the

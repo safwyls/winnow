@@ -37,6 +37,52 @@ public sealed class EpicWebOptions
         = "https://www.epicgames.com/id/api/redirect?clientId={0}&responseType=code";
 
     /// <summary>
+    /// The conventional OAuth authorize endpoint, as an alternative starting page
+    /// for the embedded-browser sign-in. <c>{0}</c> is the client id, <c>{1}</c>
+    /// the URL-encoded redirect.
+    ///
+    /// <para><b>Not the default, and that is a statement about evidence rather
+    /// than about preference.</b> The spike confirmed that this URL reaches a
+    /// normal login page with the registered redirect, and confirmed that a
+    /// navigation to <see cref="LauncherRedirectUrl"/> is fully observable even
+    /// though nothing listens there. What it could NOT confirm — because it never
+    /// signed in — is that Epic's authenticated flow actually 302s to that
+    /// redirect carrying <c>?code=</c>. That is Epic's single open question
+    /// (<c>docs/spikes/embedded-auth.md</c> §9, UNVERIFIED item 1), so this stays
+    /// a hypothesis behind a switch instead of becoming the default on
+    /// faith.</para>
+    /// </summary>
+    public string AuthorizeUrlFormat { get; set; }
+        = "https://www.epicgames.com/id/authorize?client_id={0}&response_type=code&scope=basic_profile"
+        + "&redirect_uri={1}";
+
+    /// <summary>
+    /// Whether the embedded browser starts on <see cref="AuthorizeUrlFormat"/>
+    /// instead of <see cref="AuthorizationCodeUrlFormat"/>.
+    ///
+    /// <para>False by default — see <see cref="AuthorizeUrlFormat"/>. Flipping it
+    /// is how the unverified redirect route gets tested against a real sign-in
+    /// without a code change. Redirect interception is armed either way, since it
+    /// costs nothing and the redirect page names the same target.</para>
+    /// </summary>
+    public bool UseAuthorizeEndpointForSignIn { get; set; }
+
+    /// <summary>
+    /// The only redirect target Epic's launcher client accepts, and therefore the
+    /// URL the embedded browser watches for.
+    ///
+    /// <para>Verified live 2026-08-26 that the allowlist is EXACT: loopback,
+    /// other ports and <c>http</c> instead of <c>https</c> are all rejected with
+    /// <c>client_redirect_domain_mismatch</c>. This is also why RFC 8252 loopback
+    /// is not an option for Epic — it is unavailable, not merely worse.</para>
+    ///
+    /// <para>Nothing listens on this address and nothing needs to. A navigation
+    /// is observable before the connection is attempted, so no HTTPS listener and
+    /// no certificate are involved.</para>
+    /// </summary>
+    public Uri LauncherRedirectUrl { get; set; } = new("https://localhost/launcher/authorized");
+
+    /// <summary>
     /// How long a fetched Epic library stays authoritative before a resync will
     /// refetch it.
     ///

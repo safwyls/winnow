@@ -32,6 +32,30 @@ public enum EpicSignInFailure
 
     /// <summary>Epic answered with something this client could not parse.</summary>
     UnexpectedResponse,
+
+    /// <summary>
+    /// The user backed out of the interactive sign-in: closed the browser
+    /// window, declined the consent step, or entered nothing. Deliberate, so the
+    /// caller must not retry it, escalate to another prompt, or word it as a
+    /// fault.
+    /// </summary>
+    Cancelled,
+
+    /// <summary>
+    /// No interactive prompt could run here. Nothing is wrong with the
+    /// credentials or the network: this is a headless host, or one with no
+    /// WebView2 runtime and no attached console. The remedy is the documented
+    /// console flow (<c>--epic-login</c>), not a retry.
+    /// </summary>
+    NoInteractivePrompt,
+
+    /// <summary>
+    /// A prompt ran but produced no code — Epic changed its sign-in page, or the
+    /// flow ended somewhere this client did not recognise. This is the failure
+    /// mode <c>docs/spikes/epic-oauth.md</c> §12.3 names as the realistic one,
+    /// and the remedy is the console flow while it is fixed.
+    /// </summary>
+    NoCodeCaptured,
 }
 
 /// <summary>The outcome of one sign-in attempt. Never an exception.</summary>
@@ -92,6 +116,24 @@ public interface IEpicTokenProvider
     /// stored, and never placed in a URI.</para>
     /// </summary>
     Task<EpicSignInResult> SignInWithAuthorizationCodeAsync(string authorizationCode, CancellationToken ct = default);
+
+    /// <summary>
+    /// Exchanges a launcher <i>exchange</i> code for a session, and stores it
+    /// encrypted.
+    ///
+    /// <para><b>A second grant, not a second spelling of the first.</b> Epic's
+    /// sign-in page hands an <c>exchange_code</c> — never an authorization code —
+    /// to a host that implements the launcher's <c>window.ue</c> JavaScript
+    /// bridge, and that value is only redeemable as
+    /// <c>grant_type=exchange_code</c>. Both grants are on the launcher client's
+    /// allowlist (<c>docs/spikes/epic-oauth.md</c> §2), so this costs one form
+    /// field rather than a second client.</para>
+    ///
+    /// <para>The embedded-browser prompt is what produces these, and it says
+    /// which kind it captured; nothing infers the grant from the string's
+    /// shape.</para>
+    /// </summary>
+    Task<EpicSignInResult> SignInWithExchangeCodeAsync(string exchangeCode, CancellationToken ct = default);
 
     /// <summary>
     /// A usable access token, refreshing first if the current one is spent, or

@@ -1,6 +1,4 @@
-using System.Diagnostics;
 using System.Globalization;
-using System.Runtime.InteropServices;
 using Hoard.Ingest.Epic.Web;
 using Hoard.Ingest.Epic.Web.Auth;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,15 +9,20 @@ namespace Hoard.App.Services;
 /// The one-time interactive Epic sign-in, run from a terminal:
 /// <c>dotnet run --project src/Hoard.App -- --epic-login</c>.
 ///
-/// <para><b>Why this exists as a console step rather than a settings screen.</b>
-/// The OAuth flow needs the user to authenticate to Epic and hand back a short
-/// single-use code, and there is no way to do that inside Hoard without either
-/// an embedded browser — Avalonia has none, so it would mean hosting WebView2 on
-/// Windows and something else everywhere else — or asking for the user's Epic
-/// password, which Hoard must never do and never does. So the user signs in to
-/// Epic in their own browser, on Epic's own page, and pastes back one code that
-/// is spent immediately. Hoard never sees a password, and the code it does see is
-/// never logged, never written to disk, and dead within minutes.</para>
+/// <para><b>What this is now, since M4.6.</b> The embedded-browser sign-in
+/// (<c>--epic-signin</c>, and eventually a button) captures the code the instant
+/// Epic issues it, and it is the better flow. This one did NOT become a legacy
+/// path: it is the peer that runs where a browser window cannot — a headless
+/// machine, a Windows install with no WebView2 runtime, and the day Epic breaks
+/// the embedded page, which <c>docs/spikes/epic-oauth.md</c> §12.3 names as the
+/// realistic failure mode. Both go through the same
+/// <c>IInteractiveAuthPrompt</c> seam, so the fallback is exercised by the same
+/// code path rather than kept alive by good intentions.</para>
+///
+/// <para>Here the user signs in to Epic in their own browser, on Epic's own page,
+/// and pastes back one code that is spent immediately. Hoard never sees a
+/// password, and the code it does see is never logged, never written to disk, and
+/// dead within minutes.</para>
 ///
 /// <para><b>It doubles as the verification step</b>, which is the other reason it
 /// prints rather than silently succeeding. Two things about the Epic API could
@@ -89,7 +92,7 @@ public static class EpicLoginConsole
     public static async Task<int> RunAsync(
         IServiceProvider services, string? presetCode = null, CancellationToken ct = default)
     {
-        AttachConsoleIfNeeded();
+        ConsoleAuthPrompt.AttachConsoleIfNeeded();
 
         var client = services.GetService<IEpicAccountClient>();
         if (client is null)
@@ -104,79 +107,37 @@ public static class EpicLoginConsole
             return 1;
         }
 
-        var url = await client.AuthorizationCodeUrl(ct);
-        if (url is null)
-        {
-            WriteCredentialInstructions();
-            return 1;
-        }
-
-        Console.WriteLine();
-        Console.WriteLine("Epic sign-in");
-        Console.WriteLine("============");
-        Console.WriteLine();
-        Console.WriteLine("1. Open this URL, signing in to Epic if you are not already:");
-        Console.WriteLine();
-        Console.WriteLine("   " + url);
-        Console.WriteLine();
-        Console.WriteLine("2. The page returns a small block of JSON. Copy the value of");
-        Console.WriteLine("   \"authorizationCode\" - the 32-character string, without quotes.");
-        Console.WriteLine();
-        Console.WriteLine("   Epic prints a warning on that page telling you not to share the code with a");
-        Console.WriteLine("   third-party service. Hoard is a third-party service. What the code does is");
-        Console.WriteLine("   explained in docs/spikes/epic-oauth.md; read it before continuing if you have");
-        Console.WriteLine("   not. The code is single-use, expires within minutes, and is exchanged for a");
-        Console.WriteLine("   session that is stored encrypted on this machine and never leaves it.");
-        Console.WriteLine();
-
-        // Deliberately gated on a keystroke rather than opened immediately. The
-        // page this navigates to issues a credential Epic describes as full
-        // access to the user's account, and the warning explaining that is three
-        // lines above. Opening it the instant the command runs would put the
-        // browser in front of the user before they had read why they should think
-        // about it. One Enter makes the consent explicit and costs nothing.
-        // Printed BEFORE the prompt, deliberately. If console input is broken the
-        // prompt below never returns and never renders, so an escape hatch
-        // described after it would be invisible exactly when it is needed.
-        Console.WriteLine("   If the prompt below does not respond, press Ctrl+C, open the URL");
-        Console.WriteLine("   above yourself, and run this instead — it needs no keyboard input:");
-        Console.WriteLine();
-        Console.WriteLine("       dotnet run --project src/Hoard.App -- --epic-login --code <code>");
-        Console.WriteLine();
-
-        string? code;
+        EpicSignInResult result;
         if (!string.IsNullOrWhiteSpace(presetCode))
         {
             // Non-interactive: the code came in on the command line, so nothing
-            // here reads the console or opens a browser.
-            code = presetCode;
-        }
-        else if (string.IsNullOrWhiteSpace(ReadLineOrNull(
-            "3. Press Enter to open that URL in your browser, or paste the code directly: ")))
-        {
-            TryOpenBrowser(url);
-            Console.WriteLine();
-            code = ReadLineOrNull("4. Paste the authorizationCode here and press Enter: ");
+            // here reads the console or opens a browser. This is the escape
+            // hatch for a terminal whose child-process handles are wired in a way
+            // that makes Console.ReadLine hang, which is a real failure that
+            // costs a burned code every time it happens.
+            result = await client.SignInAsync(presetCode, ct);
         }
         else
         {
-            // The user already had a code in hand — from a previous run, or from
-            // opening the URL themselves — and pasted it at the first prompt.
-            code = _lastLine;
+            // Through the same seam the embedded browser uses. The prompt chain
+            // resolves to the console implementation here without anything
+            // selecting it explicitly: WebView2AuthPrompt reports itself
+            // unavailable when no Avalonia application is running, and none is —
+            // this path deliberately runs before Avalonia starts.
+            var signIn = services.GetService<EpicSignInService>();
+            if (signIn is null)
+            {
+                Console.Error.WriteLine("Epic sign-in is not registered in this build.");
+                return 1;
+            }
+
+            result = await signIn.SignInAsync(ct);
         }
 
-        if (string.IsNullOrWhiteSpace(code))
-        {
-            Console.Error.WriteLine();
-            Console.Error.WriteLine("No code entered. Nothing was changed.");
-            return 1;
-        }
-
-        var result = await client.SignInAsync(code, ct);
         if (!result.Succeeded)
         {
             Console.Error.WriteLine();
-            Console.Error.WriteLine(Explain(result.Failure));
+            Console.Error.WriteLine(EpicSignInService.Explain(result.Failure));
             return 1;
         }
 
@@ -196,8 +157,13 @@ public static class EpicLoginConsole
     /// <summary>
     /// Fetches the library once and prints what it found — the actual
     /// verification.
+    ///
+    /// <para>Internal because <c>--epic-signin</c> ends on the same report: the
+    /// playtime unit is still unverified (<c>docs/spikes/epic-oauth.md</c> §7)
+    /// and whichever sign-in route the user took, this is the table that settles
+    /// it.</para>
     /// </summary>
-    private static async Task ReportLibraryAsync(
+    internal static async Task ReportLibraryAsync(
         IEpicAccountClient client, IServiceProvider services, CancellationToken ct)
     {
         Console.WriteLine();
@@ -280,16 +246,25 @@ public static class EpicLoginConsole
     private static string Truncate(string value, int length)
         => value.Length <= length ? value : value[..(length - 1)] + "~";
 
+    /// <summary>
+    /// The "nothing to sign in with" message.
+    ///
+    /// <para><b>Nearly unreachable, and kept for the day it is not.</b> Hoard now
+    /// ships a built-in launcher client pair as the LAST credential source
+    /// (<c>BuiltInEpicCredentialSource</c>), so every install is configured by
+    /// default. This prints only if that pair has been removed or emptied — which
+    /// is exactly what a maintainer would do the day Epic rotates it, and on that
+    /// day the message needs to say what to supply.</para>
+    /// </summary>
     private static void WriteCredentialInstructions()
     {
         Console.Error.WriteLine();
-        Console.Error.WriteLine("No Epic OAuth client credentials are configured, so there is nothing to sign in with.");
+        Console.Error.WriteLine("No Epic OAuth client credentials are available, so there is nothing to sign in with.");
         Console.Error.WriteLine();
-        Console.Error.WriteLine("Hoard does not ship Epic's client credentials. Reading a storefront library needs a");
-        Console.Error.WriteLine("client Epic only issues to its own launcher, and baking that into this repository");
-        Console.Error.WriteLine("would put a credential Hoard has no right to into every checkout. Supplying it is");
-        Console.Error.WriteLine("your decision, not Hoard's default. docs/spikes/epic-oauth.md sets out what that");
-        Console.Error.WriteLine("choice involves.");
+        Console.Error.WriteLine("Hoard normally ships a built-in pair, so seeing this means it has been removed or");
+        Console.Error.WriteLine("Epic has rotated it. A user-supplied pair takes precedence over the built-in one,");
+        Console.Error.WriteLine("so setting your own is also the workaround. docs/spikes/epic-oauth.md explains what");
+        Console.Error.WriteLine("these credentials are and what using them involves.");
         Console.Error.WriteLine();
         Console.Error.WriteLine("Set them for one run:");
         Console.Error.WriteLine();
@@ -318,106 +293,4 @@ public static class EpicLoginConsole
         Console.Error.WriteLine();
         Console.Error.WriteLine("    { \"Epic\": { \"ClientId\": \"...\", \"ClientSecret\": \"...\" } }");
     }
-
-    private static string Explain(EpicSignInFailure failure) => failure switch
-    {
-        EpicSignInFailure.InvalidAuthorizationCode =>
-            "Epic rejected the code. Authorization codes are single-use and expire within minutes, so the "
-            + "usual cause is that it was already spent or is stale. Reload the URL for a fresh one and "
-            + "try again.",
-        EpicSignInFailure.InvalidClientCredentials =>
-            "Epic rejected the client credentials themselves, not the code. Check the client id and secret.",
-        EpicSignInFailure.Unreachable =>
-            "Could not reach Epic. Nothing was changed; try again.",
-        EpicSignInFailure.NotConfigured =>
-            "No client credentials are configured.",
-        _ =>
-            "Epic answered with something this client did not understand. Nothing was changed.",
-    };
-
-    /// <summary>
-    /// Opens the user's default browser at the sign-in URL. Best effort — the URL
-    /// is printed above regardless, so a headless or locked-down machine loses
-    /// nothing.
-    /// </summary>
-    private static void TryOpenBrowser(string url)
-    {
-        try
-        {
-            using var process = Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
-        }
-        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException
-            or PlatformNotSupportedException or System.IO.FileNotFoundException)
-        {
-            // No browser, no shell association, or a sandbox. The printed URL is
-            // the fallback and it is always printed first.
-        }
-    }
-
-    /// <summary>
-    /// Attaches this process to the terminal that launched it.
-    ///
-    /// <para><b>Necessary because <c>Hoard.App</c> is a <c>WinExe</c></b>, which
-    /// tells Windows not to allocate a console. Without this, every
-    /// <c>Console.WriteLine</c> below goes nowhere and <c>Console.ReadLine</c>
-    /// returns null immediately — the flow would appear to do nothing at all.
-    /// <c>ATTACH_PARENT_PROCESS</c> borrows the console of whatever launched it,
-    /// which is the terminal the user typed <c>dotnet run</c> into.</para>
-    ///
-    /// <para><b>Skipped when the standard streams are already redirected</b>, and
-    /// that guard is not theoretical. Attaching rebinds <see cref="Console"/> to
-    /// the real console handles, which for a piped invocation
-    /// (<c>… --epic-login &lt;&lt;&lt; "code" | tee log</c>) means output stops
-    /// reaching the pipe and <c>Console.ReadLine</c> stops reading it — the flow
-    /// hangs forever waiting on a console nobody is typing into. Measured, not
-    /// guessed. When a caller has redirected the streams they have supplied
-    /// somewhere to read and write, so the attach is unnecessary as well as
-    /// harmful.</para>
-    ///
-    /// <para>Failure is otherwise ignored: launched with no parent console there
-    /// is simply nowhere to print, and the caller has already decided this is the
-    /// console path.</para>
-    /// </summary>
-    /// <summary>Last line <see cref="ReadLineOrNull"/> returned.</summary>
-    private static string? _lastLine;
-
-    /// <summary>
-    /// Writes a prompt and reads one line, flushing first.
-    ///
-    /// <para>The flush is the point. <see cref="Console.Write(string)"/> leaves a
-    /// prompt with no trailing newline sitting in the buffer, and a
-    /// GUI-subsystem process whose stdout is a pipe rather than a console does
-    /// not necessarily push it out before blocking on input — so the user waits
-    /// at an invisible prompt for a process that looks hung.</para>
-    /// </summary>
-    private static string? ReadLineOrNull(string prompt)
-    {
-        Console.Write(prompt);
-        Console.Out.Flush();
-        _lastLine = Console.ReadLine();
-        return _lastLine;
-    }
-
-    private static void AttachConsoleIfNeeded()
-    {
-        if (!OperatingSystem.IsWindows() || Console.IsInputRedirected || Console.IsOutputRedirected)
-        {
-            return;
-        }
-
-        try
-        {
-            AttachConsole(AttachParentProcess);
-        }
-        catch (EntryPointNotFoundException)
-        {
-            // Not a Windows build that has it. Nothing to do.
-        }
-    }
-
-    private const int AttachParentProcess = -1;
-
-    [DllImport("kernel32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool AttachConsole(int processId);
 }

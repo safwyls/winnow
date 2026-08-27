@@ -363,7 +363,12 @@ public sealed class EpicRegistrationTests
 
         var client = provider.GetRequiredService<IEpicAccountClient>();
 
-        Assert.False(await client.IsConfiguredAsync());
+        // Configured, with nothing configured. The built-in launcher pair is the
+        // last credential source, so a host with no settings table and no
+        // configuration still has credentials — what it does NOT have is
+        // anywhere to persist the session, which is the next assertion and the
+        // one this test is actually about.
+        Assert.True(await client.IsConfiguredAsync());
         Assert.Null(provider.GetService<ISettingsRepository>());
         Assert.False(provider.GetRequiredService<IEpicTokenStore>().CanPersist);
     }

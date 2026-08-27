@@ -89,14 +89,28 @@ public static class EpicWebServiceCollectionExtensions
 
         // Order is the resolution order: settings table first (the product
         // path), then IConfiguration (Epic__ClientId / Epic__ClientSecret and an
-        // optional appsettings.local.json) for development.
+        // optional appsettings.local.json) for development, then the built-in
+        // launcher pair LAST so that anything the user supplies wins. See
+        // BuiltInEpicCredentialSource for why Hoard ships one at all — the
+        // decision reversed on 2026-08-26 and the reasoning is recorded there
+        // rather than here.
         services.TryAddEnumerable(
             ServiceDescriptor.Singleton<IEpicCredentialSource, DefaultSettingsTableEpicCredentialSource>());
         services.TryAddEnumerable(
             ServiceDescriptor.Singleton<IEpicCredentialSource, DefaultConfigurationEpicCredentialSource>());
+        services.TryAddEnumerable(
+            ServiceDescriptor.Singleton<IEpicCredentialSource, BuiltInEpicCredentialSource>());
         services.TryAddSingleton<IEpicCredentialProvider, ChainedEpicCredentialProvider>();
 
         services.TryAddSingleton<IEpicTokenProvider, EpicTokenProvider>();
+
+        // The interactive sign-in. It resolves IInteractiveAuthPrompt from
+        // Hoard.Core, and this project registers NONE — the implementations are
+        // a browser host and a console, both App-layer concerns, so the host
+        // registers them and this module stays free of any UI dependency (§5.1).
+        // A host that registers no prompt at all gets a clean
+        // NoInteractivePrompt rather than a startup failure.
+        services.TryAddSingleton<EpicInteractiveSignIn>();
 
         // AddLogger<T> resolves T from the container rather than activating it,
         // so the replacement logger has to be registered before the clients are.

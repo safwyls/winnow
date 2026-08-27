@@ -1,4 +1,5 @@
 using System.Net;
+using Hoard.Core.Auth;
 using Hoard.Core.Repositories;
 using Hoard.Ingest.Epic.Web;
 using Hoard.Ingest.Epic.Web.Auth;
@@ -73,7 +74,9 @@ public sealed class EpicWebTestHost : IDisposable
         Action<EpicWebOptions>? configure = null,
         IEpicTokenStore? tokenStore = null,
         ISettingsRepository? settings = null,
-        DateTimeOffset? now = null)
+        DateTimeOffset? now = null,
+        bool builtInCredentials = false,
+        IEnumerable<IInteractiveAuthPrompt>? prompts = null)
     {
         Handler = new FakeEpicHandler(responder);
         Clock = new SteamWebTestClock(now ?? new DateTimeOffset(2026, 8, 26, 20, 0, 0, TimeSpan.Zero));
@@ -125,6 +128,31 @@ public sealed class EpicWebTestHost : IDisposable
         services.AddHttpClient(EpicTokenProvider.HttpClientName)
             .ConfigurePrimaryHttpMessageHandler(() => Handler);
 
+        foreach (var prompt in prompts ?? [])
+        {
+            // Registration order IS the fallback order, so the tests that assert
+            // on fall-through hand them over in the order they want tried.
+            services.AddSingleton(prompt);
+        }
+
+        if (!builtInCredentials)
+        {
+            // Off unless a test asks for it. Hoard ships Epic's launcher pair as
+            // the LAST credential source, which means every real install is
+            // configured — so leaving it on here would silently turn every
+            // "unconfigured" test into a "configured with the built-in pair"
+            // test, and the no-op-when-unconfigured contract would stop being
+            // asserted anywhere. The tests that care about the built-in source
+            // turn it on and say so.
+            foreach (var descriptor in services
+                .Where(d => d.ServiceType == typeof(IEpicCredentialSource)
+                    && d.ImplementationType == typeof(BuiltInEpicCredentialSource))
+                .ToList())
+            {
+                services.Remove(descriptor);
+            }
+        }
+
         _services = services.BuildServiceProvider();
     }
 
@@ -141,6 +169,8 @@ public sealed class EpicWebTestHost : IDisposable
     public IEpicAccountClient Client => _services.GetRequiredService<IEpicAccountClient>();
 
     public IEpicTokenProvider Tokens => _services.GetRequiredService<IEpicTokenProvider>();
+
+    public EpicInteractiveSignIn SignIn => _services.GetRequiredService<EpicInteractiveSignIn>();
 
     public T Resolve<T>()
         where T : notnull

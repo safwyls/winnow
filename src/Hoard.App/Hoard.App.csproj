@@ -7,6 +7,20 @@
     <AssemblyName>Hoard</AssemblyName>
     <RootNamespace>Hoard.App</RootNamespace>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+
+    <!-- MANDATORY for the embedded-browser sign-in, and Hoard had none before
+         M4.6. Avalonia's NativeControlHost throws "Application manifest with
+         supported OS list might be required" on the first layout pass without
+         one, before any WebView2 code runs. See app.manifest. -->
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+
+    <!-- Emitted transitively by the WebView2 package via Hoard.Auth.WebView (its
+         targets reference the unused WPF wrapper, which drags WindowsBase
+         5.0.0.0). Cosmetic: MSB3277 is an MSBuild warning, not a C# one, so
+         TreatWarningsAsErrors does not promote it — verified by building both
+         ways rather than assumed. Silenced so a real warning is not lost in the
+         noise. -->
+    <MSBuildWarningsAsMessages>MSB3277</MSBuildWarningsAsMessages>
   </PropertyGroup>
 
   <ItemGroup>
@@ -35,6 +49,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The embedded browser. A leaf project so the WebView2 dependency, and
+         the Windows-only code that drives it, live in exactly one place; the
+         Ingest projects reach it only through Hoard.Core's IInteractiveAuthPrompt
+         and never reference Avalonia or WebView2 themselves (§5.1). -->
+    <ProjectReference Include="..\Hoard.Auth.WebView\Hoard.Auth.WebView.csproj" />
     <ProjectReference Include="..\Hoard.Core\Hoard.Core.csproj" />
     <ProjectReference Include="..\Hoard.Covers\Hoard.Covers.csproj" />
     <ProjectReference Include="..\Hoard.Covers.Igdb\Hoard.Covers.Igdb.csproj" />

@@ -2,6 +2,8 @@ using Avalonia;
 using Avalonia.Threading;
 using Hoard.App.Services;
 using Hoard.App.ViewModels;
+using Hoard.Auth.WebView;
+using Hoard.Core.Auth;
 using Hoard.Core.Repositories;
 using Hoard.Covers;
 using Hoard.Covers.Igdb;
@@ -97,6 +99,19 @@ public static class Program
                         Services.EpicLoginConsole.CodeFrom(args),
                         Shutdown.Token)
                     .GetAwaiter().GetResult();
+                return;
+            }
+
+            // M4.6, and the minimal trigger for the embedded-browser sign-in.
+            // Unlike --epic-login this NEEDS Avalonia, because the browser lives
+            // in a window — so EpicSignInLauncher starts the window system by
+            // hand rather than starting the app, and never opens the main window,
+            // the sync, the scheduler or the session watcher. Same placement
+            // reasoning as above: a terminal flow that ends in an exit code.
+            if (args.Contains(Services.EpicSignInLauncher.Argument))
+            {
+                Environment.ExitCode = Services.EpicSignInLauncher
+                    .Run(host.Services, BuildAvaloniaApp, Shutdown.Token);
                 return;
             }
 
@@ -331,6 +346,28 @@ public static class Program
         // and idle". See docs/spikes/epic-oauth.md, including the risks the user
         // is accepting by turning it on.
         services.AddEpicWebApi();
+
+        // M4.6 — the interactive sign-in, registration ONLY. Order here IS the
+        // fallback order: prompts are consulted in registration order, so the
+        // embedded browser goes first and the console is the peer that runs
+        // where a window cannot (headless, no WebView2 runtime, or Epic having
+        // broken the embedded page). Neither is a fallback in the sense of being
+        // second-class — see ConsoleAuthPrompt.
+        //
+        // The Chromium profile lives beside the database rather than beside the
+        // executable, because WebView2's default is the executable's own folder
+        // and that is read-only for an installed app.
+        services.AddWebViewAuthPrompt(Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "Hoard",
+            "WebView2"));
+        services.AddSingleton<IInteractiveAuthPrompt, ConsoleAuthPrompt>();
+
+        // The seam a "Sign in to Epic" command binds to. A view model must not
+        // resolve EpicInteractiveSignIn or IEpicTokenProvider directly — that
+        // would put Ingest in the view model's constructor and delete the §5.1
+        // boundary.
+        services.AddSingleton<EpicSignInService>();
 
         services.AddSingleton<EnrichmentSyncService>();
         services.AddSingleton<FacetSyncService>();

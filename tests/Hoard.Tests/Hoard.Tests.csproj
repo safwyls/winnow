@@ -3,6 +3,12 @@
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <IsPackable>false</IsPackable>
+
+    <!-- Arrives transitively from Hoard.App -> Hoard.Auth.WebView -> the WebView2
+         package, whose targets reference the unused WPF wrapper. Cosmetic: an
+         MSBuild warning, not a C# one, so TreatWarningsAsErrors never promoted
+         it. Silenced so a real warning stays visible. -->
+    <MSBuildWarningsAsMessages>MSB3277</MSBuildWarningsAsMessages>
   </PropertyGroup>
 
   <ItemGroup>

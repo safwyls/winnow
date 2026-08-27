@@ -106,10 +106,33 @@ public sealed class EpicTokenProvider : IEpicTokenProvider
             && token.IsRefreshUsable(_clock.GetUtcNow(), _options.TokenRefreshSkew);
     }
 
-    public async Task<EpicSignInResult> SignInWithAuthorizationCodeAsync(
+    public Task<EpicSignInResult> SignInWithAuthorizationCodeAsync(
         string authorizationCode, CancellationToken ct = default)
+        => SignInWithGrantAsync("authorization_code", "code", authorizationCode, ct);
+
+    public Task<EpicSignInResult> SignInWithExchangeCodeAsync(
+        string exchangeCode, CancellationToken ct = default)
+        => SignInWithGrantAsync("exchange_code", "exchange_code", exchangeCode, ct);
+
+    /// <summary>
+    /// The one code-for-session exchange, shared by both interactive grants.
+    ///
+    /// <para><b>Why two grants at all.</b> The manual flow yields an
+    /// <c>authorization_code</c> from Epic's redirect page; the embedded browser
+    /// yields an <c>exchange_code</c>, because Epic's sign-in page pushes that
+    /// value out through the launcher's <c>window.ue</c> bridge rather than
+    /// rendering a code anywhere. They differ only in <c>grant_type</c> and in
+    /// the name of the field carrying the value — everything after the response
+    /// arrives is identical, so it lives here once rather than twice.</para>
+    /// </summary>
+    /// <param name="grantType">Epic's <c>grant_type</c> value.</param>
+    /// <param name="codeField">Form field the code goes in for that grant.</param>
+    /// <param name="code">The code. Never logged, never stored, never in a URI.</param>
+    /// <param name="ct">Cancellation.</param>
+    private async Task<EpicSignInResult> SignInWithGrantAsync(
+        string grantType, string codeField, string code, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(authorizationCode))
+        if (string.IsNullOrWhiteSpace(code))
         {
             return EpicSignInResult.Failed(EpicSignInFailure.InvalidAuthorizationCode);
         }
@@ -122,15 +145,15 @@ public sealed class EpicTokenProvider : IEpicTokenProvider
         await _gate.WaitAsync(ct);
         try
         {
-            // The code is trimmed because it arrives by copy-paste and a
+            // The code is trimmed because it can arrive by copy-paste and a
             // trailing newline is the single most common way this fails. It is
             // not logged, not stored, and not echoed back in any result.
             var outcome = await RequestTokenAsync(
                 credentials,
                 new Dictionary<string, string>(StringComparer.Ordinal)
                 {
-                    ["grant_type"] = "authorization_code",
-                    ["code"] = authorizationCode.Trim(),
+                    ["grant_type"] = grantType,
+                    [codeField] = code.Trim(),
                     ["token_type"] = "eg1",
                 },
                 ct);
