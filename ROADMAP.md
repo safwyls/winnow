@@ -153,7 +153,15 @@ Tracked so none of it silently becomes permanent:
 - **Merge execution is not built.** The queue proposes and stores confirmations; nothing
   applies them. 23 cross-store pairs are pending on the user's library right now. The
   `ON DELETE CASCADE` hazard on collapsing two releases is documented and unresolved.
-- **Cross-store dedup via `gamesdb.gog.com`** — spiked and verified (`steam/224760` and
+- **Cross-store dedup via `gamesdb.gog.com`** — **built for METADATA, not for dedup.**
+  `Hoard.Enrich.GamesDb` now routes Epic titles to a Steam appid so they can be enriched
+  (62 of 67). It deliberately writes no `external_ids` and no merge candidates: that table is
+  keyed `(provider, provider_id)` globally, so putting a Steam appid on an Epic release would
+  collide with the Steam release that already owns it. gamesdb also resolves *games*, not
+  editions, so an Epic "Gold Edition" can land on the base game's record — right for the Work
+  columns enrichment writes, wrong for a Release, and therefore never a merge. The original
+  note follows.
+- *(original)* — spiked and verified (`steam/224760` and
   `epic/Bluebird` resolve to the same `game_id`; 67/67 Epic titles resolved, 62 carrying
   Steam ids). Not built. This would collapse most of the merge queue automatically via hard
   ids rather than fuzzy title, which is exactly what §5.3 wants.
