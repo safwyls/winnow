@@ -58,6 +58,51 @@ weaker version of the second, and does not trip the third.** That is a materiall
 risk profile from PSN, and it is a real difference rather than a rhetorical one — but it is
 not the clean "only the first" the premise assumed.
 
+### AMENDED 2026-08-26: the embedded webview is no longer rejected
+
+The "Rejected" verdict above was reversed by the user after
+`docs/spikes/embedded-auth.md`. Recorded here rather than left to contradict that document,
+because a reader arriving at this section would otherwise act on a decision that no longer
+holds.
+
+**What changed, and it is only half of the objection.** The verdict rested on two claims and
+the spike falsified the first one:
+
+- *"The cost is large."* Measured: WebView2 hosts inside Avalonia 11.3.20 for **1.26 MB** of
+  DLLs against CEF's 123 MB, on a runtime Windows 11 preinstalls. Roughly forty lines. Not
+  large.
+- Separately, the alternative got worse rather than better. **Loopback is impossible for
+  Epic** — `redirectUrl` is validated against an exact allowlist, and same-host-different-port
+  and same-path-different-scheme are both refused — so there is no third option where the
+  user signs in on Epic's own page *and* the code is captured automatically. Playnite and
+  Heroic both embed a browser for this reason.
+- And the manual flow's fragility stopped being theoretical. The code is single-use and dies
+  within minutes, so every misstep between issuing and spending it burns it. In practice that
+  cost several rounds of debugging on one machine, for a step that has to work first time on
+  someone else's.
+
+**What did NOT change: the posture objection stands, and point 3 above is now weaker.** That
+list claims *"Hoard never sees the password — the user authenticates to Epic, on Epic's own
+domain."* Under an embedded webview the domain is still Epic's, but the **host process is
+Hoard's**, and a host process can read what is typed into the page it renders. Hoard does not
+do that. The point is that the user's protection changes from *structural* to *promised*,
+and no amount of care on our side converts it back.
+
+That is a real cost, accepted deliberately rather than argued away:
+
+- The manual flow stays a **peer**, not a legacy path — `IInteractiveAuthPrompt` has a console
+  implementation beside the WebView2 one, so a user who declines to type their password into
+  Hoard keeps a first-class route.
+- Nothing is injected into, read from, or logged around the credential fields. The capture
+  hooks are the ones Epic's own page offers (`window.ue`) or its redirect.
+- The consent moment survives the change. The console flow showed Epic's warning before
+  opening a browser; an embedded flow makes the code invisible and removes the moment the
+  user could reconsider, so the warning has to be stated before the browser opens instead of
+  being allowed to disappear with the copy-paste step.
+
+§10's principle is unchanged and now carries more weight, not less: the decision to
+impersonate Epic's launcher belongs to the person doing it.
+
 ### The reason §4.6 does not cover, and it is the biggest one
 
 **There is no third-party registration path that reaches the storefront library.** Epic
