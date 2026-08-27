@@ -903,3 +903,42 @@ columns before its star one, so the search box is now the only thing that gives
 way when the panel takes 276px out of the row. At a fixed 360 it was the Filters
 button that got pushed off the right edge — the one control that must never be
 unreachable, because it is the way back.
+
+---
+
+## 13. Open gaps, found building the Stores panel (2026-08-26)
+
+The Stores panel (§M4.6) is the app's first prose-heavy, state-heavy surface, and it hit six
+places where this document had no answer. Recorded so the next person resolves them once
+rather than re-deciding them per screen. Each names what was done in the meantime, so the
+provisional choice is visible rather than quietly becoming the standard.
+
+1. **Indeterminate progress has no rule.** §8's reduced-motion guidance names only the hover
+   saturation ramp, and there is no reduced-motion setting to hang a spinner off. A spinner
+   was deliberately NOT invented; sign-in shows a Volt-edged status field saying where to
+   look, plus Cancel. **If an animated indicator ever ships, §8 needs the rule first.**
+
+2. **No colour role for "optional, and deliberately not connected."** §2 assigns Volt, Amber,
+   Azure and Danger, all of which mean something is right, degraded, informational or
+   dangerous. A connection nobody has made is none of those, and must not read as an error.
+   Used a `Line`/`TextDim` pill; it wants to be a named component in §6.
+
+3. **§6 has no single-row rail section that opens a screen.** REVIEW/`SAME GAME?` works
+   because the row states a question. SOURCES/STORES is mildly redundant and could not be
+   resolved inside the existing pattern.
+
+4. **§7's copy table has no rows for connection state or credential consent.** All of this
+   panel's copy was written from the two auth spikes' posture reasoning rather than from
+   here. "Not signed in" vs "Disconnected", "Session expired" vs "Error", and "there is
+   nothing to sign into" vs a greyed-out button are all decisions the table should own —
+   this screen is almost entirely copy.
+
+5. **No reading-measure rule.** §3 tops out at Body 13/18 and §4 sets no maximum measure,
+   because until now nothing had a paragraph in it. Used 12/18 capped at 720px. That belongs
+   to the system, not to one file.
+
+6. **§8 and §10.7 disagree about focus.** §8 states the global 2px Volt adorner as the floor;
+   §10.7 records that it measurably underdelivers and prescribes a brush swap on
+   `PART_ContentPresenter` at fixed thickness. §10.7 was followed here (VoltInk on the
+   Volt-filled primary). **The two sections should be reconciled** — right now which one is
+   authoritative depends on which you read first.
