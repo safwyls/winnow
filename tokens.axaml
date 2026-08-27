@@ -206,13 +206,20 @@
                          the chrome does (MinWallAlpha 0.65 against the chrome's
                          0.30) - see HoardTheme for the two measurements behind
                          the ratio.
-           PaneGround    the merge queue, the Stores and Appearance panes, and
-                         the library's LIST view. OPAQUE AT EVERY SETTING. The
-                         wall may open up because nothing reads on it: every
-                         tile is opaque, so the field only shows in the gutters.
-                         These are text sitting directly on the field, and §14.3's
-                         own arithmetic says an ink chosen for an opaque ground
-                         cannot have alpha subtracted from it.
+           PaneGround    the merge queue, the Stores and Appearance panes, the
+                         library's LIST view and the empty state. THE WALL'S OWN
+                         RAMP, and the wall's own setting. It used to be opaque
+                         at every setting on the grounds that these are text
+                         sitting directly on the field - true - and that §14.3
+                         therefore rules them out. The principle was right and
+                         the number was the wrong one: §14.3's measurement is
+                         against the CHROME's reach, and the wall admits 0.35 of
+                         the desktop against the chrome's 0.70. Walked per theme
+                         against white, TextDim clears AA to 59/71/65/73 percent
+                         of the slider on the open field, against the chrome's
+                         own 27/31/30/26 - so a pane is not the surface that
+                         fails first, it fails at more than twice the reach of
+                         the one the app already carries labels on.
            ChromeGround  the command bar and the cut bar.
            ChromeRaised  a rail or panel row's hover and selection fill. Opaque,
                          it is the ordinary Surface -> SurfaceRaised step: an ink
@@ -225,6 +232,25 @@
                          strength that starts as the theme's own opaque step and
                          grows to 10%. Elevation stays relative, which is what §6
                          says it is.
+           ChromeFieldOnGround / ChromeFieldOnSurface
+                         an INPUT's fill - the search box and the action bar's
+                         prompt on the command bar, the filter panel's find and
+                         year fields in the panel. A field is one step from its
+                         container in the neutral family, in the direction the
+                         opaque palette already took: the bar is Ground so a
+                         field on it is Surface, the panel is Surface so a field
+                         in it is Ground. Both take the WALKED ink.
+
+                         A field is a CHILD of its container, so the two alphas
+                         stack, and that fixes its own alpha outright rather
+                         than leaving it to taste: asking that a field admit
+                         what the art field admits gives
+                         (1 - 0.30) * (1 - MinFieldAlpha) = 1 - 0.65, so
+                         MinFieldAlpha is 0.50 and a field admits HALF of
+                         whatever the surface around it admits. TextDim in the
+                         search box then clears AA to 71-76% of the slider and
+                         the typed Text to 100%, against the chrome's 26-31%:
+                         the field is the last thing to fail, not the first.
            TileGround    under the art stack inside a tile, so a cover that has
                          decoded one of its two dormancy layers and not the
                          other cannot show the window through the gap.
@@ -251,6 +277,10 @@
     <SolidColorBrush x:Key="PaneGround" Color="#0F1C1E"/>
     <SolidColorBrush x:Key="ChromeGround" Color="#0F1C1E"/>
     <SolidColorBrush x:Key="ChromeRaised" Color="#1D3437"/>
+    <!-- Half a step: a hovered row where ChromeRaised is a selected one. -->
+    <SolidColorBrush x:Key="ChromeRaisedHalf" Color="#801D3437"/>
+    <SolidColorBrush x:Key="ChromeFieldOnGround" Color="#16282A"/>
+    <SolidColorBrush x:Key="ChromeFieldOnSurface" Color="#0F1C1E"/>
     <SolidColorBrush x:Key="TileGround" Color="#0F1C1E"/>
 
     <!-- ══ Dormancy ramp ══════════════════════════════════════════════════

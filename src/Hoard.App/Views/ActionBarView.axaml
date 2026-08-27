@@ -1,4 +1,4 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+﻿<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Hoard.App.ViewModels"
              xmlns:filters="using:Hoard.App.ViewModels.Filters"
@@ -241,17 +241,20 @@
             <Setter Property="SelectionBrush" Value="{StaticResource VoltSelection}"/>
             <Setter Property="CaretBrush" Value="{StaticResource Volt}"/>
         </Style>
+        <!-- ChromeFieldOnGround: the same field fill the command bar's search
+             box takes, because this bar is the same ChromeGround and a field on
+             it should not be the one solid thing in a translucent strip. -->
         <Style Selector="TextBox.prompt /template/ Border#PART_BorderElement">
-            <Setter Property="Background" Value="{StaticResource Surface}"/>
+            <Setter Property="Background" Value="{StaticResource ChromeFieldOnGround}"/>
             <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
             <Setter Property="BorderThickness" Value="1"/>
         </Style>
         <Style Selector="TextBox.prompt:pointerover /template/ Border#PART_BorderElement">
-            <Setter Property="Background" Value="{StaticResource Surface}"/>
+            <Setter Property="Background" Value="{StaticResource ChromeFieldOnGround}"/>
             <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
         </Style>
         <Style Selector="TextBox.prompt:focus /template/ Border#PART_BorderElement">
-            <Setter Property="Background" Value="{StaticResource Surface}"/>
+            <Setter Property="Background" Value="{StaticResource ChromeFieldOnGround}"/>
             <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
         </Style>
         <Style Selector="TextBox.prompt /template/ TextBlock#PART_Watermark">

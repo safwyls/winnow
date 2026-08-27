@@ -1,4 +1,4 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+﻿<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:filters="using:Hoard.App.ViewModels.Filters"
              x:Class="Hoard.App.Views.FilterPanelView"
@@ -89,9 +89,13 @@
                                 Background="Transparent">
                             <Grid ColumnDefinitions="14,9,*">
                                 <Panel Grid.Column="0" VerticalAlignment="Center">
+                                    <!-- A 14px field, on the same terms as the
+                                         find and year boxes: it is an input in
+                                         the panel, not a popover, so it takes
+                                         the panel's own field fill. -->
                                     <Border Name="Box" Width="14" Height="14"
                                             CornerRadius="3"
-                                            Background="{StaticResource Ground}"
+                                            Background="{StaticResource ChromeFieldOnSurface}"
                                             BorderBrush="{StaticResource Line}"
                                             BorderThickness="1"/>
                                     <Path Name="Tick"
@@ -153,17 +157,26 @@
             <Setter Property="SelectionBrush" Value="{StaticResource VoltSelection}"/>
             <Setter Property="CaretBrush" Value="{StaticResource Volt}"/>
         </Style>
+        <!-- ChromeFieldOnSurface, not Ground: the panel behind it opens up
+             with the rest of the chrome, and a solid well cut into a translucent
+             column reads as a hole rather than as a field. It is the command
+             bar's ink, walked, at half the panel's reach - one step below the
+             panel exactly as it always was, and bit-for-bit Ground at SOLID.
+             See MinFieldAlpha. -->
         <Style Selector="TextBox.find /template/ Border#PART_BorderElement">
-            <Setter Property="Background" Value="{StaticResource Ground}"/>
+            <Setter Property="Background" Value="{StaticResource ChromeFieldOnSurface}"/>
             <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
             <Setter Property="BorderThickness" Value="1"/>
         </Style>
         <Style Selector="TextBox.find:pointerover /template/ Border#PART_BorderElement">
-            <Setter Property="Background" Value="{StaticResource Ground}"/>
+            <Setter Property="Background" Value="{StaticResource ChromeFieldOnSurface}"/>
             <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
         </Style>
+        <!-- §10.7: a brush swap, never a thickness change - these fields sit in
+             a scrolling column of option rows and a 1px reflow would shift every
+             count under them. -->
         <Style Selector="TextBox.find:focus /template/ Border#PART_BorderElement">
-            <Setter Property="Background" Value="{StaticResource Ground}"/>
+            <Setter Property="Background" Value="{StaticResource ChromeFieldOnSurface}"/>
             <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
         </Style>
         <Style Selector="TextBox.find /template/ TextBlock#PART_Watermark">
@@ -188,20 +201,28 @@
             <Setter Property="CaretBrush" Value="{StaticResource Volt}"/>
         </Style>
         <Style Selector="TextBox.year /template/ Border#PART_BorderElement">
-            <Setter Property="Background" Value="{StaticResource Ground}"/>
+            <Setter Property="Background" Value="{StaticResource ChromeFieldOnSurface}"/>
             <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
             <Setter Property="BorderThickness" Value="1"/>
         </Style>
         <Style Selector="TextBox.year:pointerover /template/ Border#PART_BorderElement">
-            <Setter Property="Background" Value="{StaticResource Ground}"/>
+            <Setter Property="Background" Value="{StaticResource ChromeFieldOnSurface}"/>
             <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
         </Style>
         <Style Selector="TextBox.year:focus /template/ Border#PART_BorderElement">
-            <Setter Property="Background" Value="{StaticResource Ground}"/>
+            <Setter Property="Background" Value="{StaticResource ChromeFieldOnSurface}"/>
             <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
         </Style>
+        <!-- TextDim, not TextFaint. This was the one placeholder in the app that
+             read in the faint ink, and measuring it to decide whether the field
+             could open up turned up something older than this change: TextFaint
+             on the opaque Ground measures 4.13 / 3.69 / 3.58 / 4.12 across the
+             four themes - UNDER AA at SOLID, before any transparency exists.
+             §2 gives TextFaint watermarks and disabled arrows, and a year hint
+             the user is expected to read is neither. In TextDim it starts at
+             6.69-7.66 and holds AA to 71-76% of the slider on the open field. -->
         <Style Selector="TextBox.year /template/ TextBlock#PART_Watermark">
-            <Setter Property="Foreground" Value="{StaticResource TextFaint}"/>
+            <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
         </Style>
 
         <!-- "Show all 214" / "Clear" / the close cross: quiet text buttons. -->

@@ -1,4 +1,4 @@
-# Hoard — Design System
+﻿# Hoard — Design System
 
 **Applies to:** Avalonia 11+ desktop client, dark-only for v1
 **Companion files:** `tokens.axaml` (drop-in ResourceDictionary), `mock-library.html` (visual target)
@@ -1089,12 +1089,15 @@ opposed to surface that carries reading matter"; these are it.
 |---|---|---|
 | `ShellGround` | The client area below the caption | Paints **nothing** once the slider leaves zero — the columns over it paint their own |
 | `WallGround` | The field the covers hang in | **Only when asked for**, and then at half the chrome's reach — see §14.6 |
-| `PaneGround` | Merge queue, Stores, Appearance, and the library's **list** view | **Never, at any setting.** These are text sitting directly on the field |
+| `PaneGround` | Merge queue, Stores, Appearance, the library's **list** view, the empty state | **Exactly `WallGround`** — same ramp, same setting. See §14.7 for why this changed |
 | `TileGround` | Under the art stack inside one tile | **Never** — see §14.4 |
-| `ChromeSurface` | Rail, filter panel | Yes |
+| `ChromeSurface` | Rail, filter panel, the list view's column-header strip | Yes |
 | `ChromeGround` | Command bar, cut bar | Yes |
 | `CaptionFill` | The 36px title lip | Yes — and it *is* `ChromeSurface`, same ink and same alpha (§9) |
-| `ChromeRaised` | Hover / selection fill inside the rail and the panel | Becomes a veil — see below |
+| `ChromeRaised` | Hover / selection fill inside the rail, the panel and the list | Becomes a veil — see below |
+| `ChromeRaisedHalf` | A *hovered* row where `ChromeRaised` is a selected one | The same veil at half strength |
+| `ChromeFieldOnGround` | An input on the command bar or cut bar — search, the action bar's prompt | Yes, at **half its container's reach** — see §14.7 |
+| `ChromeFieldOnSurface` | An input in the filter panel — find, year, the option checkboxes | Yes, on the same terms |
 
 `ShellGround` is a **step, not a ramp**: two stacked alphas multiply, so a shell that faded
 in proportion would stop the slider ever reaching its own end.
@@ -1288,10 +1291,11 @@ reads as two windows, which is the opposite of what the transparency was for.
 **The other half was construction and it still binds** — it just binds somewhere else. §14.4's
 cross-fade is answered by `TileGround`, not by keeping the field opaque. So the line is: **the
 field may open up, the tiles may not.** Covers sit solid on an open field and the desktop shows in
-the gutters between them. And because nothing reads on the field — every tile is opaque — the
-field is the one surface in the pane that *can* open. The list view, the merge queue, Stores and
-Appearance are text sitting directly on it, so they take `PaneGround` and stay solid at every
-setting.
+the gutters between them.
+
+The clause that used to follow — *"the list view, the merge queue, Stores and Appearance are text
+sitting directly on it, so they take `PaneGround` and stay solid at every setting"* — **is
+withdrawn, and §14.7 records the measurement that withdrew it.**
 
 **The wall admits exactly half the desktop the chrome does.** `MinWallAlpha` is `0.65` against the
 chrome's `0.30`. It is derived, not chosen by eye, and the constraint is not contrast — it is
@@ -1331,6 +1335,118 @@ worse screen than one quantity with a stated relation.
 Both preferences persist beside theme and transparency, under `appearance.backdrop`
 (`acrylic` / `mica`, unset reads as acrylic) and `appearance.wall` (unset reads as *off*, which is
 the previous behaviour and a real taste).
+
+### 14.7 The panes take the field's ramp, and the fields take half of theirs
+
+**The verdict that opened this: half a translucent window is worse than none of it.** With the
+chrome and the art field open and every other surface solid, the window read as two applications
+bolted together — the same complaint §14.6 already accepted about the wall, arriving one level
+further in. The panes and the input fields were the surfaces still bolted shut.
+
+#### `PaneGround` was measured against the wrong number
+
+The rule it replaced was: *these are text sitting directly on the field, and §14.3's arithmetic
+says an ink chosen for an opaque ground cannot have alpha subtracted from it.* **The principle is
+right and the figure it was checked against was the chrome's.** The wall admits `1 − 0.65 = 0.35`
+of the desktop where the chrome admits `1 − 0.30 = 0.70` — *less than half* — and the rail already
+carries reading matter at the chrome's own reach, all the way to the AA mark the Appearance screen
+draws. Text on the **wall's** field was therefore never the case that was measured.
+
+Walked per theme against white, which is the ceiling any wallpaper can reach:
+
+| Last whole percent still clearing 4.5:1 | Hoard | Nightshift | Tungsten | Box art |
+|---|---|---|---|---|
+| **Chrome**, `TextDim` on its worst surface *(what ships)* | 27 | 31 | 30 | 26 |
+| **Pane**, `TextDim` on the open field | **59** | **71** | **65** | **73** |
+| **Pane**, a *selected* list row (`ChromeRaised` over the field) | 43 | 54 | 50 | 55 |
+| **Pane**, `Text` — a header, the empty state | 100 | 100 | 100 | 100 |
+| **Input field**, `TextDim` — the placeholder | **71** | **75** | **73** | **71** |
+| **Input field**, `Text` — what you are typing | 100 | 100 | 100 | 100 |
+
+Every opened surface fails **later** than the chrome does, most of them by more than double. The
+bar is the one `MinWallAlpha` is already held to — *not the surface that fails first* — and nothing
+here comes near failing it. Over a dark desktop the question does not arise at all: the composite
+is darker than `Ground`, so opening a pane *deepens* the ground its labels sit on, and
+`ThemeContrastTests` asserts that at every position.
+
+So `PaneGround` **is** `WallGround` — the same alpha, the same ink, and the same *setting*. It
+answers `appearance.wall` rather than opening on its own, because a translucent Appearance screen
+beside a solid grid is the original complaint in mirror image.
+
+**Three surfaces did not move, and two of them were never in question.** `TileGround` stays opaque
+because §14.4 is construction rather than measurement — it is the only thing standing between the
+dormancy ramp's floor and the desktop, and a pixel diff on the running window confirmed it. The
+popovers stay opaque because a flyout is its own popup root, never receives the window's backdrop,
+and would sample the *application* — a different answer at every position on screen. And **polarity
+does not reach the panes**: the merge queue is the only one that shows cover art, it shows it inside
+an opaque `Border.card`, and it applies no dormancy ramp, because the question there is identity and
+not recency.
+
+**The list view was a fourth ground hiding inside the third.** Its outer grid declared `PaneGround`
+and its `ListBox` painted opaque `Surface` straight over it, so the token was dead paint and the one
+pane in the window wearing a *chrome* tone in the art's position — which §14.2's recess rule is
+exactly about. The rows take `PaneGround` now and the column-header strip takes `ChromeSurface`, so
+the list has the same structure the grid does: a chrome bar above, the field below. Both are their
+opaque tokens at `SOLID`, so nothing moves there; the rows land one step darker than before, and
+every ink on them gains — `TextDim` goes 5.88:1 to 6.69:1 on the default theme from the step alone.
+
+Its row fills had to change with it. `SurfaceRaised` is an *ink*, and an ink over a field that can
+open composites **downwards** over a bright wallpaper — the selected row would come out below the
+row beside it, §14.2's inversion in the one place inside a pane it could still happen. They take
+`ChromeRaised` and a new `ChromeRaisedHalf`, which *are* `SurfaceRaised` and its half at slider
+zero. Walked, the elevation never once inverts, in any theme, at any position.
+
+#### An input field is a target, so its number is stricter — and it is forced
+
+A field is a **child** of the bar or panel it sits in, so the two alphas **stack**: what the desktop
+finally contributes to a field is `(1 − containerAlpha) · (1 − fieldAlpha)`. That turns the field's
+own alpha from a taste into an equation, once you ask the obvious thing — that a field admit what
+the art field admits, so the window has *one* translucency and not three:
+
+```
+(1 − MinChromeAlpha) · (1 − MinFieldAlpha) = 1 − MinWallAlpha
+         0.70         ·        0.50        =        0.35
+```
+
+**`MinFieldAlpha` is `0.50`, and it is not written down anywhere as `0.50`** — it is derived from
+the other two, and `ThemeContrastTests` asserts the identity rather than the constant, so retuning
+either end of the slider cannot leave a stale number behind. Said in one sentence on the Appearance
+screen: **a field admits half of what the surface around it admits**, which is the cover wall's own
+share of the desktop exactly.
+
+**And it holds across the slider rather than only at its end, because this factor rides the INK
+ramp.** The bar's share of the desktop is already linear in the slider position; the moment the
+field's factor stops moving, the product of the two is linear at exactly the wall's rate. On the
+alpha's own linear ramp the product would be *quadratic*, and a field would sit at half the wall's
+openness through the middle of the track — which is the part anybody actually uses. So the field's
+alpha finishes in the first quarter, on `InkRampSpan`, for a sharper version of §14.3's reason: a
+compensation arriving in proportion is always behind. Slider zero is still bit-for-bit opaque, and
+nothing jumps leaving it.
+
+**The fill is the chrome's other ink, not a fourth colour.** A field on the command bar takes the
+rail's ink; a field in the filter panel takes the command bar's. That is one step from its container
+in the neutral family, in the direction the opaque palette already took — so slider zero is
+bit-for-bit unchanged — and both are the **walked** inks, so a field darkens as the chrome does and
+its text is paid for by §14.3's two ramps rather than by a third one.
+
+**A field is found by its border, and lit by its ring.** Over a dark desktop the fill and the bar
+converge — 1.05:1 at the far end — but they did that before this change too, at 1.14:1, because a
+chrome tone one step from another chrome tone over the same backdrop was never what drew a field.
+`Line` draws it and `Volt` says it has the caret. **Focus stays §10.7's brush swap on a border whose
+thickness never changes** (§13 gap 6 records that §8 and §10.7 disagree; §10.7 is what the rest of
+the app follows): thickening it would reflow the whole command bar every time the caret landed. The
+ring clears AA on the field to **89 / 94 / 91 / 100** per cent of the slider against white, and past
+a few percent it reads *better* on the field than on the bare bar — the field is the darker of the
+two, which is the same property that lets it open at all.
+
+#### One thing this found that predates it
+
+Checking the placeholder — the dimmest ink any field carries — turned up a failure older than any
+of this. **The year field's watermark was `TextFaint`, which measures 4.13 / 3.69 / 3.58 / 4.12 on
+the *opaque* ground: under AA at `SOLID`, before transparency exists.** §2 gives `TextFaint`
+watermarks and disabled arrows; a year hint the user is expected to read is neither. It is `TextDim`
+now — 6.69–7.66 opaque, and AA to 71–76% of the slider on the open field — which is where every
+other placeholder in the app already was.
 
 ### 14.5 Every themeable brush is declared as an attribute
 

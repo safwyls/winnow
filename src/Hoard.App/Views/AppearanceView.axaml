@@ -593,8 +593,18 @@
                                     <TextBlock Grid.Column="2" Classes="para"
                                                Text="{Binding WallAdmitsNote}"/>
                                 </Grid>
+                                <!-- This used to read "Settings, the review
+                                     queue and the list view stay solid at every
+                                     setting", which was true of the build that
+                                     shipped it and is not true now. Those panes
+                                     are on the field's own ramp — measured, the
+                                     labels on them hold their contrast more than
+                                     twice as far up the slider as the labels on
+                                     the rail do — and an Appearance screen that
+                                     described a different build of the app would
+                                     be worse than one that said nothing. -->
                                 <TextBlock Classes="para"
-                                           Text="Settings, the review queue and the list view stay solid at every setting. They are text sitting on the field; the wall can open up because nothing reads on it."/>
+                                           Text="Settings, the review queue and the list view open up with the wall — the same half, the same setting. Input fields take half of what the surface around them takes, which lands them on the wall's share too."/>
                             </StackPanel>
                         </StackPanel>
 

@@ -1,4 +1,4 @@
-using Avalonia.Media;
+﻿using Avalonia.Media;
 
 namespace Hoard.App.Themes;
 
@@ -120,6 +120,54 @@ public sealed record HoardTheme
     /// numbers so the relation is visible rather than asserted.</para>
     /// </summary>
     public const double MinWallAlpha = 0.65;
+
+    /// <summary>
+    /// The alpha an INPUT FIELD reaches at the far end of the slider, measured
+    /// against the surface it is drawn on rather than against the desktop.
+    ///
+    /// <para><b>It is forced, not chosen.</b> A field is a child of the bar or
+    /// the panel it sits in, so the two alphas STACK: what the desktop finally
+    /// contributes to a field is
+    /// <c>(1 − containerAlpha) · (1 − fieldAlpha)</c>. Asking that a field admit
+    /// exactly what the art field admits — which is the whole point, so the
+    /// window has one translucency and not three — fixes the number outright:</para>
+    ///
+    /// <code>
+    ///   (1 − MinChromeAlpha) · (1 − MinFieldAlpha) = 1 − MinWallAlpha
+    ///            0.70        ·        0.50         =      0.35
+    /// </code>
+    ///
+    /// <para>So a field admits <b>half of whatever the surface around it
+    /// admits</b>, which lands it on the cover wall's own share of the desktop
+    /// to the last decimal. Two statements of one quantity, which is the same
+    /// discipline <see cref="MinWallAlpha"/> is held to.</para>
+    ///
+    /// <para><b>And it holds across the slider rather than only at its end,
+    /// because this factor finishes early.</b> The bar's share is already linear
+    /// in the slider position; once the field's factor stops moving, the product
+    /// of the two is linear at exactly the wall's rate. Walking it linearly
+    /// instead would make the product QUADRATIC, and a field would sit at half
+    /// the wall's openness through the middle of the track — the part anybody
+    /// actually uses. See the ramp in <see cref="Tokens"/>.</para>
+    ///
+    /// <para><b>The fill is the chrome's OTHER ink, not a fourth colour.</b> A
+    /// field on the command bar takes the rail's ink; a field in the filter
+    /// panel takes the command bar's. Each is one step from its container in the
+    /// neutral family, which is exactly what the opaque palette already did —
+    /// so slider zero is bit-for-bit unchanged — and both inks are the WALKED
+    /// ones, so the field darkens as the chrome does and its text is paid for
+    /// the same way (§14.3's two ramps).</para>
+    ///
+    /// <para><b>Why a field may open at all, when §14.3 says an ink chosen for an
+    /// opaque ground cannot have alpha subtracted from it.</b> Because the field
+    /// is not carrying the chrome's reach — it is carrying half of it, over a
+    /// surface that has already spent the other half. Measured against white,
+    /// <c>TextDim</c> in the search box clears AA to 71–76% of the slider, and
+    /// the typed <c>Text</c> to 100%, against the chrome's own 26–31%. The field
+    /// is never the thing that fails first; it is the LAST thing that fails.</para>
+    /// </summary>
+    public const double MinFieldAlpha =
+        1 - ((1 - MinWallAlpha) / (1 - MinChromeAlpha));
 
     /// <summary>
     /// How much of the slider the ink compensation is spent over.
@@ -256,6 +304,24 @@ public sealed record HoardTheme
         // produce a translucent window on its own.
         var wallAlpha = wallTranslucent ? 1 - (t * (1 - MinWallAlpha)) : 1;
 
+        // An input field's alpha, against the surface it is drawn ON rather than
+        // against the desktop. It follows the SLIDER and not the wall setting,
+        // because a field is chrome: it sits on a bar that is already open, and
+        // the mismatch it was fixing is visible whatever the wall is doing.
+        //
+        // ON THE INK'S RAMP, NOT THE ALPHA'S, and for a sharper reason than the
+        // inks have. What reaches the eye through a field is
+        // (1 − barAlpha) · (1 − fieldAlpha), and the bar's half of that is
+        // already linear in t. So the moment this factor STOPS moving, the
+        // product becomes linear in t at exactly the wall's rate — a field
+        // admits what the art field admits at EVERY position past the first
+        // quarter, not merely at the end of the track. On the alpha's own linear
+        // ramp the product would be quadratic and a field would sit at half the
+        // wall's openness through the middle of the slider, which is the part
+        // anybody actually uses. Same span as the inks (InkRampSpan), so slider
+        // zero is still bit-for-bit opaque and nothing jumps leaving it.
+        var fieldAlpha = 1 - (Math.Min(1, t / InkRampSpan) * (1 - MinFieldAlpha));
+
         // The inks walk toward their translucent selves as the alpha comes off,
         // so slider zero is bit-for-bit the opaque palette and there is no step
         // at the moment the window turns transparent — but they walk FASTER than
@@ -349,15 +415,36 @@ public sealed record HoardTheme
             ["WallGround"] = wallAlpha >= 1 ? Ground : A(Ground, wallAlpha),
 
             // The panes that share the wall's position but not its job: the
-            // merge queue, Stores, Appearance, and the library's LIST view.
-            // OPAQUE AT EVERY SETTING, and this is the line §13 gap 7 asked for
-            // drawn one level further in — chrome that may be translucent
-            // against surface that carries reading matter. The wall can open up
-            // because nothing reads on it: every tile is opaque, so the field is
-            // only ever visible in the gutters. These panes are text sitting
-            // directly on the field, and §14.3's own arithmetic says an ink
-            // chosen for an opaque ground cannot have alpha subtracted from it.
-            ["PaneGround"] = Ground,
+            // merge queue, Stores, Appearance, the library's LIST view and the
+            // empty state.
+            //
+            // THIS USED TO BE OPAQUE AT EVERY SETTING, and the argument for that
+            // was wrong — not in its principle but in its arithmetic. §14.3 says
+            // an ink chosen for an opaque ground cannot have alpha subtracted
+            // from it, which is true, and the conclusion drawn from it was that
+            // text may not sit on any translucent field. But the number that
+            // conclusion was measured against was the CHROME's reach, and these
+            // panes do not live on the chrome. The wall admits 0.35 of the
+            // desktop against the chrome's 0.70 — LESS THAN HALF — and the rail
+            // already carries labels at the chrome's own reach.
+            //
+            // Walked per theme against white, TextDim clears AA to 59 / 71 / 65
+            // / 73 percent of the slider on the open field, against the chrome's
+            // own 27 / 31 / 30 / 26. A pane header's Text clears it at 100. The
+            // pane is not the thing that fails first — it fails somewhere over
+            // twice as far up the track as the surface the app already ships
+            // reading matter on, which is the same "must not fail first" test
+            // MinWallAlpha is held to.
+            //
+            // So it is the wall's own ramp, and it follows the wall's SETTING
+            // too: a translucent Appearance screen beside a solid grid is the
+            // same "two windows" complaint in mirror image, and one setting that
+            // means one thing is the point.
+            //
+            // What did NOT move: TileGround, which is construction rather than
+            // measurement (§14.4), and the popovers, which never receive the
+            // window's backdrop at all.
+            ["PaneGround"] = wallAlpha >= 1 ? Ground : A(Ground, wallAlpha),
 
             // ── The caption takes the rail's colour, in every theme ─────────
             // It used to be Well, one step BELOW Ground — §9's "unlit lip". That
@@ -379,6 +466,27 @@ public sealed record HoardTheme
             ["ChromeSurface"] = chromeSurface,
             ["ChromeGround"] = chromeGround,
             ["ChromeRaised"] = chromeRaised,
+
+            // Half a step: a HOVERED row where ChromeRaised is a SELECTED one.
+            // Opaque it is SurfaceRaised at 50% — the token the list view has
+            // always used — and translucent it is the same veil at half
+            // strength, because the two operations do not interpolate (see
+            // ChromeRaised).
+            ["ChromeRaisedHalf"] = t <= 0
+                ? A(SurfaceRaised, 0.50)
+                : A(Text, (OpaqueVeilStrength + ((FullRaisedVeil - OpaqueVeilStrength) * t)) * 0.5),
+
+            // ── The two input fields ───────────────────────────────────────
+            // A field is one step from its container in the neutral family, and
+            // the step is the direction it already went when everything was
+            // opaque: the command bar is Ground so a field on it is Surface; the
+            // filter panel is Surface so a field in it is Ground. Both take the
+            // WALKED ink, so a field darkens exactly as the chrome around it
+            // does, and both take the field alpha, so a field admits half of
+            // what its container admits. See MinFieldAlpha for why that is the
+            // only number available.
+            ["ChromeFieldOnGround"] = A(railInk, fieldAlpha),
+            ["ChromeFieldOnSurface"] = A(barInk, fieldAlpha),
 
             // Under the art stack inside a tile, so a cover that has decoded one
             // of its two dormancy layers and not the other cannot show the

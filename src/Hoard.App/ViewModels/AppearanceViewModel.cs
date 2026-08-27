@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using Avalonia;
 using Avalonia.Media;
 using Avalonia.Media.Immutable;
@@ -55,11 +55,11 @@ public partial class AppearanceViewModel : ObservableObject
             new AppearanceOptionViewModel(
                 false,
                 "Chrome only",
-                "The rail, the title bar, the filter panel and the command bar. The cover wall stays solid, which is how Hoard has looked until now."),
+                "The rail, the title bar, the filter panel and the command bar. The cover wall, the settings screens and the list view all stay solid, which is how Hoard has looked until now."),
             new AppearanceOptionViewModel(
                 true,
                 "Chrome and the wall",
-                "The field the covers hang in opens up too, at half the amount. The covers themselves stay solid, so the desktop shows in the gutters between them."),
+                "The field the covers hang in opens up too, at half the amount, and so does everything that shares its place - settings, the review queue, the list view. The covers themselves stay solid, so the desktop shows in the gutters between them."),
         ];
 
         _service.Applied += (_, _) => Refresh();
@@ -185,8 +185,8 @@ public partial class AppearanceViewModel : ObservableObject
     public string TransparencyStatus => TransparencyUnavailable
         ? "This machine is not compositing the desktop behind the window, so Hoard is drawing solid. The setting stays where you left it and takes effect where it can."
         : WallTranslucent
-            ? "The rail, the title bar, the filter panel, the command bar and the cover wall's field all admit the desktop. The covers themselves never do, at any setting - the dormancy ramp is two layers that are only opaque together, and it needs its own ground under it."
-            : "The rail, the title bar, the filter panel and the command bar admit the desktop. The cover wall stays solid.";
+            ? "The rail, the title bar, the filter panel, the command bar, the input fields and the cover wall's field all admit the desktop, and so do the panes that share the field's place. The covers themselves never do, at any setting - the dormancy ramp is two layers that are only opaque together, and it needs its own ground under it."
+            : "The rail, the title bar, the filter panel, the command bar and the input fields admit the desktop. The cover wall stays solid, and so do the panes that share its place.";
 
     // ══ Material, and reach ═════════════════════════════════════════════════
     // The screen holds four decisions now, and four rows would be a wall of
