@@ -64,15 +64,37 @@ public partial class MainWindow : Window
     /// look deliberate. The upgrade happens before the window is shown, so there
     /// is no opaque first frame to flash.</para>
     ///
-    /// <para><b>The hint is a list and the list is short.</b>
-    /// <c>[Mica, None]</c>: Mica because it samples the desktop WALLPAPER, which
-    /// is one image that does not move, heavily darkened before it arrives — so
-    /// the contrast sums the theme's translucent ink set is built on have
-    /// something to be run against. Nothing else, and <c>AcrylicBlur</c> in
-    /// particular, because acrylic samples whatever window happens to be behind
-    /// this one: no bound, no measurement, and a rail whose legibility changes
-    /// when the user alt-tabs. A design system that picks its inks against
-    /// measured grounds cannot spend them on an unmeasurable one.</para>
+    /// <para><b>The hint is a list, and the order changed once the alpha got low
+    /// enough to see.</b> It reads <c>[AcrylicBlur, Mica, None]</c>.</para>
+    ///
+    /// <para>It used to lead with Mica, and the reason was good: Mica samples the
+    /// desktop WALLPAPER, one image that does not move, so the contrast sums the
+    /// translucent inks are built on had something bounded to run against.
+    /// AcrylicBlur was refused because it samples whatever is behind the window —
+    /// no bound, no measurement, and a rail whose legibility changes when the
+    /// user alt-tabs.</para>
+    ///
+    /// <para><b>What that reasoning did not know is that dark Mica cannot produce
+    /// translucency at any alpha.</b> Windows composes it by tinting toward its
+    /// own near-black base so hard that the wallpaper contributes almost nothing:
+    /// measured on this machine, the composite behind our chrome back-solves to
+    /// <c>#201F1E</c> whether the wallpaper under the window is orange rock or
+    /// blue sky. At 30% alpha — the far end of the slider, the most desktop the
+    /// application offers — the rail lands on a neutral dark grey and the desktop
+    /// is not visible in it. The limit was the MATERIAL, not the alpha, which is
+    /// why turning the alpha down did not fix the complaint that transparency
+    /// "doesn't come across as transparency at all".</para>
+    ///
+    /// <para><b>And the objection to acrylic is now answered structurally rather
+    /// than by picking a tame backdrop.</b> WHITE bounds every backdrop there is,
+    /// wallpaper or window; the palette is measured against it across the whole
+    /// slider (<c>ThemeContrastTests</c>), and the Appearance screen reports the
+    /// worst case live and marks the point where it crosses AA. The real
+    /// objection was to shipping a number nobody could check. The number is on
+    /// screen now.</para>
+    ///
+    /// <para>Mica stays second, because a machine that refuses acrylic is better
+    /// off with a tinted backdrop than with none; <c>None</c> is the floor.</para>
     ///
     /// <para><b>The fallback the platform reports is not always the fallback
     /// that was asked for, which is exactly why this reads
@@ -82,8 +104,8 @@ public partial class MainWindow : Window
     /// which under the WinUI composition path is <c>Transparent</c>, not the
     /// <c>None</c> that was requested. A Windows 10 host therefore lands on a
     /// genuinely see-through window, and <c>TransparencyBackgroundFallback</c>
-    /// does not fire because that only covers <c>None</c>. So the test here is
-    /// positive — Mica or opaque — and never "not None". With transparency off
+    /// does not fire because that only covers <c>None</c>. So the test here names
+    /// the levels that count — acrylic, blur or Mica — and never "not None". With transparency off
     /// the window's own <c>Background</c> is an opaque brush either way, so a
     /// host that reports <c>Transparent</c> against our wishes still paints a
     /// solid window.</para>
@@ -100,6 +122,7 @@ public partial class MainWindow : Window
         TransparencyLevelHint = _theme?.TransparencyRequested == true
             ?
             [
+                WindowTransparencyLevel.AcrylicBlur,
                 WindowTransparencyLevel.Mica,
                 WindowTransparencyLevel.None,
             ]
@@ -121,20 +144,28 @@ public partial class MainWindow : Window
     /// Paints the one surface the backdrop decision reaches directly — the
     /// window's own background — and tells the theme service what happened.
     ///
-    /// <para>With Mica the window goes transparent so the desktop can reach the
-    /// chrome; the rail, the filter panel, the command bar and the caption paint
-    /// their own translucent fills over it, and the cover wall paints an opaque
-    /// one. Without it, everything goes back to the tokens it is declared with.
-    /// There is deliberately no third state: half a translucent window is the
-    /// failure this is written to avoid.</para>
+    /// <para>With a backdrop the window goes transparent so the desktop can reach
+    /// the chrome; the rail, the filter panel, the command bar and the caption
+    /// paint their own translucent fills over it, and the cover wall paints an
+    /// opaque one. Without it, everything goes back to the tokens it is declared
+    /// with. There is deliberately no third state: half a translucent window is
+    /// the failure this is written to avoid.</para>
+    ///
+    /// <para><b>The test is positive and lists what counts, never "not None".</b>
+    /// Avalonia's Win32 backend can land on <c>Transparent</c> when it exhausts
+    /// the hint list, which is a genuinely see-through window with nothing behind
+    /// it — the exact state the opaque token set exists to catch.</para>
     /// </summary>
     private void ApplyBackdrop()
     {
-        var mica = ActualTransparencyLevel == WindowTransparencyLevel.Mica;
+        var backdrop =
+            ActualTransparencyLevel == WindowTransparencyLevel.AcrylicBlur
+            || ActualTransparencyLevel == WindowTransparencyLevel.Blur
+            || ActualTransparencyLevel == WindowTransparencyLevel.Mica;
 
-        _theme?.SetBackdropAvailable(mica);
+        _theme?.SetBackdropAvailable(backdrop);
 
-        Background = mica && _theme?.TransparencyRequested == true
+        Background = backdrop && _theme?.TransparencyRequested == true
             ? Brushes.Transparent
             : Token("ShellGround", Brushes.Black);
     }

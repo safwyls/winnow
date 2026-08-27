@@ -23,6 +23,16 @@ namespace Hoard.App.Themes;
 /// themes are built to as well — and <c>Flare</c> stays the one hue the room
 /// cannot produce, which is what an unread marker has to be.</para>
 ///
+/// <para><b>Themes differ on four axes, and hue is the weakest of them.</b> The
+/// first set shipped varied mostly in hue and value, and read as four settings
+/// of one theme rather than as four themes. What actually separates a room is
+/// its TEMPERATURE, its CHROMA STRATEGY (how much colour the chrome is allowed
+/// at all), its VALUE STRUCTURE (where the contrast lives — whether surfaces
+/// step apart or sit flat and let edges do the work) and its MATERIAL (whether
+/// the chrome reads as ink, glass, felt or board). <see cref="HoardThemes"/>
+/// records which axis each theme takes, and the test of the set is that a
+/// thumbnail of the rail alone identifies the theme.</para>
+///
 /// <para><b>Why the fields are colours and not brushes.</b> Every view in the
 /// app reaches its tokens with <c>StaticResource</c>, which resolves once at
 /// parse time and never looks again, so swapping the dictionary would repaint
@@ -35,6 +45,42 @@ namespace Hoard.App.Themes;
 /// </summary>
 public sealed record HoardTheme
 {
+    /// <summary>
+    /// The alpha the chrome reaches at the far end of the transparency slider.
+    ///
+    /// <para>Shared by every theme rather than set per theme, because the slider
+    /// is a statement about how much desktop the user wants and that should not
+    /// mean a different thing after they change theme.</para>
+    ///
+    /// <para><b>It is this low on purpose.</b> The previous transparency mode ran
+    /// at 86–91% and the verdict on it was that it "doesn't come across as
+    /// transparency at all" — correctly, because Windows composes dark Mica by
+    /// darkening the wallpaper hard before it ever reaches the window, so 14% of
+    /// an already-dark backdrop is nothing anyone can see. At 0.30 the desktop
+    /// supplies 70% of the chrome and is unmistakable.</para>
+    /// </summary>
+    public const double MinChromeAlpha = 0.30;
+
+    /// <summary>
+    /// How much of the slider the ink compensation is spent over.
+    ///
+    /// <para><b>The inks have to move faster than the alpha, and this is the
+    /// whole reason why.</b> Alpha coming off lightens a dark surface over any
+    /// backdrop brighter than it, immediately; the darker ink and the brighter
+    /// metadata ink that pay for it were arriving in proportion, so the first
+    /// few percent of travel cost contrast that the compensation had not yet
+    /// delivered. Front-loading it — both inks fully converted by the first
+    /// quarter of the track, alpha continuing to fall for the other three —
+    /// moves the point where the worst case drops under AA from 18% to 27% on
+    /// the default theme, and from single digits on the selected row to that same
+    /// 27%. Measured; anything shorter than a quarter buys nothing more.</para>
+    /// </summary>
+    private const double InkRampSpan = 0.25;
+
+    /// <summary>The strength of the hover/selection veil at full transparency.
+    /// See the <c>ChromeRaised</c> note in <see cref="Tokens"/>.</summary>
+    private const double FullRaisedVeil = 0.10;
+
     /// <summary>Stable id. Persisted; never localised, never renamed.</summary>
     public required string Id { get; init; }
 
@@ -49,7 +95,10 @@ public sealed record HoardTheme
     public required string Reason { get; init; }
 
     // ── The neutral family: one ink, stepped ────────────────────────────────
+    /// <summary>The scrollbar track and the detail modal's scrim. NOT the
+    /// caption any more — see the <c>CaptionFill</c> note in <see cref="Tokens"/>.</summary>
     public required Color Well { get; init; }
+
     public required Color Ground { get; init; }
     public required Color Surface { get; init; }
     public required Color SurfaceRaised { get; init; }
@@ -82,59 +131,104 @@ public sealed record HoardTheme
     public required Color DangerPress { get; init; }
     public required Color DangerInk { get; init; }
 
-    // ── Transparency mode ───────────────────────────────────────────────────
+    // ── Transparency ────────────────────────────────────────────────────────
     // NOT the opaque tokens with alpha subtracted. That is the thing that
-    // measured 3.1:1 and was refused (§13 gap 7). A translucent surface takes
-    // its own, DARKER ink, so the composite over the brightest backdrop a
-    // desktop can reach lands no lighter than the opaque theme's SurfaceRaised —
-    // and the dim ink brightens to pay for what is left. Measured in
+    // measured 3.1:1 and was refused (§13 gap 7). As the chrome opens up it
+    // takes a DARKER ink, and the dim ink brightens to pay for what is left, so
+    // the whole range is a walk from the opaque token to these — continuous, and
+    // exactly the opaque values at slider zero. Measured across the range in
     // ThemeContrastTests against three backdrops: white (the ceiling any
     // wallpaper can produce), the Mica composite measured on a real desktop, and
     // black.
 
-    /// <summary>Alpha for the rail, the filter panel and the command bar.</summary>
-    public required double ChromeAlpha { get; init; }
-
-    /// <summary>Alpha for the caption strip. Higher than <see cref="ChromeAlpha"/>
-    /// on the darker themes, because §9's "unlit lip" is a rule about the caption
-    /// staying at or below Ground and a near-black Ground has less to give.</summary>
-    public required double CaptionAlpha { get; init; }
-
-    public required Color TranslucentWell { get; init; }
+    /// <summary>The rail and caption's ink at the far end of the slider.</summary>
     public required Color TranslucentSurface { get; init; }
 
-    /// <summary>The command bar and cut bar's ground — a step above the rail's,
-    /// the way <c>Ground</c> is a step above <c>Surface</c> when opaque.</summary>
+    /// <summary>The command bar and cut bar's ink at the far end of the slider.
+    /// Below the rail's, the way <c>Ground</c> is below <c>Surface</c> when
+    /// opaque — the two surfaces keep their order the whole way across.</summary>
     public required Color TranslucentChromeGround { get; init; }
 
     public required Color TranslucentTextDim { get; init; }
     public required Color TranslucentTextFaint { get; init; }
 
     /// <summary>
-    /// Every token this theme writes, as a flat key → colour map, for the
-    /// transparency state given.
+    /// The veil of <see cref="Text"/> that, laid over <see cref="Surface"/>,
+    /// reproduces this theme's own <see cref="SurfaceRaised"/> — the mean of the
+    /// three channel ratios.
+    ///
+    /// <para>Derived rather than written down, because it is not a taste
+    /// decision: it is the answer to "how strong is this theme's elevation step,
+    /// expressed as a veil", and a theme whose steps were retuned would otherwise
+    /// leave a stale number behind. It is the strength the hover veil starts at,
+    /// so the moment the slider leaves zero the selected row does not move.</para>
+    /// </summary>
+    private double OpaqueVeilStrength
+    {
+        get
+        {
+            var r = Ratio(SurfaceRaised.R, Surface.R, Text.R);
+            var g = Ratio(SurfaceRaised.G, Surface.G, Text.G);
+            var b = Ratio(SurfaceRaised.B, Surface.B, Text.B);
+            return Math.Clamp((r + g + b) / 3, 0.02, FullRaisedVeil);
+
+            static double Ratio(byte raised, byte surface, byte text)
+                => text == surface ? 0 : (raised - surface) / (double)(text - surface);
+        }
+    }
+
+    /// <summary>
+    /// Every token this theme writes, as a flat key → colour map, at the
+    /// transparency given — <c>0</c> fully opaque, <c>1</c> the most desktop the
+    /// slider offers.
     ///
     /// <para>The derived alphas are computed here rather than written into each
     /// theme by hand, because they are all "this role at N%" and a theme that
     /// had to restate seventeen of them would drift on the eighteenth.</para>
     /// </summary>
-    public Dictionary<string, Color> Tokens(bool translucent)
+    public Dictionary<string, Color> Tokens(double transparency)
     {
-        var chromeGround = translucent ? A(TranslucentChromeGround, ChromeAlpha) : Ground;
-        var chromeSurface = translucent ? A(TranslucentSurface, ChromeAlpha) : Surface;
-        var caption = translucent ? A(TranslucentWell, CaptionAlpha) : Well;
+        var t = Math.Clamp(transparency, 0, 1);
+        var alpha = 1 - (t * (1 - MinChromeAlpha));
 
-        var textDim = translucent ? TranslucentTextDim : TextDim;
-        var textFaint = translucent ? TranslucentTextFaint : TextFaint;
+        // The inks walk toward their translucent selves as the alpha comes off,
+        // so slider zero is bit-for-bit the opaque palette and there is no step
+        // at the moment the window turns transparent — but they walk FASTER than
+        // the alpha does, and finish in the first quarter. See InkRampSpan.
+        var ink = Math.Min(1, t / InkRampSpan);
 
-        // The rail's hover and selection fill. Opaque, this is the ordinary
-        // Surface → SurfaceRaised step. Translucent, a darker ink over an
-        // already-translucent rail composites DOWNWARDS — the "raised" row would
-        // come out darker than the row beside it — so the step becomes a veil of
-        // the theme's own Text at 10%, which lifts whatever is under it by
-        // 1.8x–5.8x on every backdrop measured. Elevation stays relative, which
-        // is what §6 says it is.
-        var chromeRaised = translucent ? A(Text, 0.10) : SurfaceRaised;
+        var railInk = Mix(Surface, TranslucentSurface, ink);
+        var barInk = Mix(Ground, TranslucentChromeGround, ink);
+
+        var textDim = Mix(TextDim, TranslucentTextDim, ink);
+        var textFaint = Mix(TextFaint, TranslucentTextFaint, ink);
+
+        var chromeSurface = A(railInk, alpha);
+        var chromeGround = A(barInk, alpha);
+
+        // The rail's hover and selection fill, and the one token whose walk is a
+        // switch rather than a slide — for a reason worth stating, because the
+        // slide was tried first and was wrong.
+        //
+        // Opaque, this is the ordinary Surface → SurfaceRaised step: an ink that
+        // REPLACES what is under it. Translucent, it has to be a VEIL, because a
+        // darker ink over an already-translucent rail composites downwards and
+        // the "raised" row comes out darker than the row beside it. Those are two
+        // different operations, and interpolating between them in ARGB walks
+        // through "mid grey at high alpha" — which is neither, and which crushed
+        // the metadata ink on a selected row to 4.2:1 six percent into the track.
+        //
+        // Only one veil is backdrop-independent: solving a·(V − rail) = λ·(Text −
+        // rail) for every rail gives V = Text and a = λ. So the veil IS Text, and
+        // the only free parameter is its strength. It starts at exactly the
+        // strength that reproduces this theme's own Surface → SurfaceRaised step
+        // over an opaque rail, which is what makes leaving zero invisible rather
+        // than a jump, and grows to 10% as the rail opens up and the step has
+        // more to lift. §6's "elevation is the Surface → SurfaceRaised step"
+        // holds as a RELATIVE claim, which is what it always was.
+        var chromeRaised = t <= 0
+            ? SurfaceRaised
+            : A(Text, OpaqueVeilStrength + ((FullRaisedVeil - OpaqueVeilStrength) * t));
 
         return new Dictionary<string, Color>
         {
@@ -161,27 +255,40 @@ public sealed record HoardTheme
             ["DangerInk"] = DangerInk,
 
             // ── The grounds, and where the line between them falls ──────────
-            // ShellGround backs the whole client area below the caption. In
-            // transparency mode it is nothing at all, because the columns over
-            // it paint their own — that is what lets the rail be translucent
-            // without the window painting an opaque field behind it first.
-            ["ShellGround"] = translucent ? A(Ground, 0) : Ground,
+            // ShellGround backs the whole client area below the caption. The
+            // moment any transparency is asked for it is nothing at all, because
+            // the columns over it paint their own — that is what lets the rail
+            // be translucent without the window painting an opaque field behind
+            // it first, and why it is a step rather than a ramp: two stacked
+            // alphas would multiply and the slider could never reach its end.
+            ["ShellGround"] = t > 0 ? A(Ground, 0) : Ground,
 
             // WallGround is the cover wall, the merge queue, the Stores and
-            // Appearance panes. OPAQUE IN BOTH MODES, deliberately: §1 says the
-            // art is the interface, and a wallpaper behind six hundred capsules
-            // is a second image competing with all of them. It also keeps
-            // §5.4's two-layer dormancy cross-fade compositing over exactly the
-            // ground it always did, so the ramp's floor is unchanged by
-            // construction rather than by measurement.
+            // Appearance panes. OPAQUE AT EVERY SLIDER POSITION, deliberately:
+            // §1 says the art is the interface, and a wallpaper behind six
+            // hundred capsules is a second image competing with all of them. It
+            // also keeps §5.4's two-layer dormancy cross-fade compositing over
+            // exactly the ground it always did, so the ramp's floor is unchanged
+            // by construction rather than by measurement.
             ["WallGround"] = Ground,
 
-            // The four tokens transparency mode actually moves. Everything else
-            // in this map is identical in both states, which is the point: a
-            // surface that carries reading matter is named apart from chrome
-            // that may be translucent, so the boundary is a token rather than a
-            // rule somebody has to remember. §13 gap 7 asked for exactly that.
-            ["CaptionFill"] = caption,
+            // ── The caption takes the rail's colour, in every theme ─────────
+            // It used to be Well, one step BELOW Ground — §9's "unlit lip". That
+            // rule bought the right thing (no bright platform strip above the
+            // art) by the wrong means: it made the chrome two tones meeting at a
+            // corner, a dark lip across the top and a lighter column down the
+            // side. Painting both in Surface makes the chrome one continuous
+            // bracket around a recessed field of art, which is the same claim
+            // stated in one material instead of three tones — and the lip is
+            // still unlit, because Surface is a chrome tone that no cover art
+            // comes near. Well survives on the scrollbar track and the modal
+            // scrim, which are the two places a tone below Ground is still the
+            // point. design-system.md §9 carries the amendment.
+            //
+            // Same ink AND same alpha as the rail, not merely the same colour: a
+            // second alpha over the same backdrop would land on a second tone
+            // and put the corner back.
+            ["CaptionFill"] = chromeSurface,
             ["ChromeSurface"] = chromeSurface,
             ["ChromeGround"] = chromeGround,
             ["ChromeRaised"] = chromeRaised,
@@ -246,7 +353,7 @@ public sealed record HoardTheme
 
     private static Color Mix(Color a, Color b, double t) => Color.FromArgb(
         255,
-        (byte)Math.Round(a.R + (b.R - a.R) * t),
-        (byte)Math.Round(a.G + (b.G - a.G) * t),
-        (byte)Math.Round(a.B + (b.B - a.B) * t));
+        (byte)Math.Round(a.R + ((b.R - a.R) * t)),
+        (byte)Math.Round(a.G + ((b.G - a.G) * t)),
+        (byte)Math.Round(a.B + ((b.B - a.B) * t)));
 }

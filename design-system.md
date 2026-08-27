@@ -37,7 +37,7 @@ stage and stays out of the way.
 
 | Token | Hex | Role |
 |---|---|---|
-| `Well` | `#050D0E` | Title bar, scrollbar track — the unlit lip, one step below Ground |
+| `Well` | `#050D0E` | Scrollbar track, modal scrim — one step below Ground. *No longer the title bar (§9).* |
 | `Ground` | `#0F1C1E` | Window background — deep green-teal ink, never black |
 | `Surface` | `#16282A` | Rail, panels, list rows |
 | `SurfaceRaised` | `#1D3437` | Hover, selection, popovers |
@@ -319,12 +319,35 @@ The app draws its own title bar. Avalonia's `ExtendClientAreaToDecorationsHint` 
 `ExtendClientAreaChromeHints="NoChrome"` puts the client area over the decorations; the
 caption and its three buttons are ordinary controls in the window's own tree.
 
-**`Well` is one step *darker* than `Ground`, not lighter.** Every desktop platform puts a
-lighter caption strip above a darker body, which means the brightest band in the window sits
-directly above the art. Inverting it makes the first inch of the window an unlit lip and the
-cover wall the first thing on screen with any light in it — which is §1's thesis applied to
-the one surface the OS used to own. The same tone backs the scrollbar track and the detail
-modal's scrim.
+**The caption takes the rail's colour — `Surface`, the same ink and the same alpha.**
+
+> **Amended (§14).** This section used to read: *"`Well` is one step darker than `Ground`,
+> not lighter. Every desktop platform puts a lighter caption strip above a darker body,
+> which means the brightest band in the window sits directly above the art. Inverting it
+> makes the first inch of the window an unlit lip."* The objection it answers is real and
+> still stands. The means were wrong.
+>
+> A `Well` caption above a `Surface` rail is **two chrome tones meeting at a corner**: a
+> dark lip across the top, a lighter column down the left, and a visible seam where they
+> join — three tones in the first inch of a window whose thesis is that the art is the only
+> thing worth looking at. Painting both in `Surface` makes the chrome **one continuous
+> bracket** and the cover wall a field recessed inside it. That is the same claim stated in
+> one material instead of three tones, and it is the stronger statement of it: the window is
+> now a frame with art in it rather than a stack of bands.
+>
+> **The lip is still unlit in the sense that mattered.** The rule was never "the caption must
+> be the darkest thing" — it was "the caption must not be the *brightest* thing, and the art
+> must be the first thing on screen with light in it." `Surface` is a chrome tone that no
+> cover art comes near, and the wall it sits above is darker than it in every theme.
+> `ThemeContrastTests.The_caption_is_the_rail` asserts both halves.
+>
+> **Same alpha, not merely the same colour.** With transparency up, two matching inks at two
+> different alphas composite over the same backdrop to two different tones — which would put
+> the corner straight back. `CaptionFill` *is* `ChromeSurface`, at every position on the
+> slider.
+
+`Well` survives, one step below `Ground`, on the two surfaces where a tone under the art
+field is still the point: the scrollbar track and the detail modal's scrim.
 
 The mark at the left is two 2:3 capsules, one behind the other: the app's own atom, and what
 a hoard of them looks like. Nothing else lives in the caption — no menu, no search, no
@@ -984,8 +1007,8 @@ provisional choice is visible rather than quietly becoming the standard.
 ## 14. Themes, and the translucency rule (resolves §13 gap 7)
 
 **Dark-only is still true; one-palette is not.** Four themes ship, the default is
-unchanged, and a user-toggleable transparency mode sits beside them. Both settings
-live on the rail's `SETTINGS › APPEARANCE` screen and persist in `settings`.
+unchanged, and a transparency **slider** sits beside them. Both settings live on the rail's
+`SETTINGS › APPEARANCE` screen and persist in `settings`.
 
 ### 14.1 What a theme may change, and what it may not
 
@@ -1005,18 +1028,56 @@ makes selection the chrome intensified rather than a decoration on top of it, an
 reasoning is not specific to teal. And every theme's `Flare` is the one hue that
 room cannot produce.
 
+### 14.1.1 Hue is the weakest axis, and the first set spent everything on it
+
+The four themes that shipped first — Hoard, Cold storage, Nightshift, Phosphor — differed
+in **hue and value and nothing else**, and read as four settings of one theme rather than
+as four themes. Nightshift was Hoard with the lights off; Cold storage was Hoard lifted and
+cooled. Two were withdrawn.
+
+A room is separated by four things, and hue is the least of them:
+
+| Axis | What it decides | Where it lands |
+|---|---|---|
+| **Temperature** | Which end of the wheel is ground and which is signal | Hoard and Nightshift cool · **Tungsten warm** · Box art neutral |
+| **Chroma strategy** | How much colour the chrome is allowed at all | Hoard committed · Nightshift almost none · **Box art none, and the art is the only colour in the window** |
+| **Value structure** | Where the contrast lives — stepped surfaces, or flat ones with the edges doing the work | Hoard 1.8x art→chrome · **Nightshift 1.4x, flat** · Tungsten 1.8x with the faintest edges · **Box art 4.8x, stark** |
+| **Material** | What the chrome reads as | inked board · black glass · felt · mount card |
+
+**The test of the set is that a thumbnail of the rail alone identifies the theme, with no
+label.** If two are distinguishable only by hue, one of them is not earning its slot.
+
 **No light theme, deliberately.** §9 inverts the platform's caption order so the first
 inch of the window is an unlit lip, §5.3's tile scrim fades to `Ground`, and §5.1's
 dormancy floor was calibrated against dark capsules on a dark field. A light theme is
 not this table with the steps reversed; it is a second pass over all three, and half
 of one would break the ramp that is the product's whole encoding.
 
-| Theme | Why it exists |
+| Theme | What it is, in one sentence |
 |---|---|
-| **Hoard** *(default)* | The house look. Green-teal room, mint `Volt`, hot-pink `Flare`. The one tuned against six hundred real capsules. |
-| **Cold storage** | For a bright room. The whole neutral family lifts about two steps and cools to blue-steel, so daylight reflections stop competing with the grid. Costs contrast between chrome and art — which is the trade someone in a sunlit room wants. |
-| **Nightshift** | For a dark room. The family drops to near-black with most of its chroma drained, so the chrome gives off no light and the covers are the only lit thing. §1 taken literally. |
-| **Phosphor** | The arcade register — the dark glass of a green monitor. The one theme whose chrome has a voice, and the one that pushes warm capsules *warmer* instead of cooling them. |
+| **Hoard** *(default)* | An inked green-teal stage, stepped evenly, dark enough that the cover art is the only lit thing in the window. The one tuned against six hundred real capsules. |
+| **Nightshift** | Black glass: the surfaces stop stepping apart and every boundary becomes a drawn line, so the window is one dark pane with the layout scribed on it. |
+| **Tungsten** | A warm room lit by one lamp — the only theme that is not cool. Edges nearly disappear and warm cover art settles into the field instead of standing off it. |
+| **Box art** | A neutral mount with a 4.8x drop into a near-black art field. The chrome gives up colour entirely, so the covers — and the unread dot — are the only hues on screen. |
+
+**Nightshift kept its name and changed its argument.** As shipped it was a value change and
+nothing else. What makes it a room of its own is not how dark it is but **where the contrast
+lives**: `Line` runs at 2.46:1 against the rail, the brightest edge in the set and nearly
+twice Hoard's, while the art field, the rail and the caption sit within 1.4x of each other.
+Tungsten is the same idea inverted — the faintest edges in the set, 1.38:1 — and the two are
+unmistakable side by side.
+
+**Box art is §1 taken to the end of its argument.** `Volt` is cold white light rather than a
+colour, because a neutral room at full voltage is not a hue; `Amber` is a sand and `Azure` a
+steel. Only the two colours that mean *stop* and *unread* keep their saturation, which makes
+it the one theme where §2's rule is literally visible: `Flare` is not merely the hue the room
+cannot produce, it is the only hue in the window that did not come out of a cover.
+
+**Two costs, stated rather than hidden.** Tungsten spends the warm end of the wheel on the
+ground, so `Volt` (brass, 43°) and `Amber` (ember, 16°) sit 27° apart — closer than any other
+pair in the set, told apart by lightness and by where each appears. Box art has no second
+saturated colour to spend, so `Volt` and `Azure` sit 29° apart and are separated by lightness
+instead: `Volt` is a near-white at 17:1 against the art field, `Azure` a mid steel.
 
 ### 14.2 The four grounds
 
@@ -1026,64 +1087,142 @@ opposed to surface that carries reading matter"; these are it.
 
 | Token | What it backs | Translucent? |
 |---|---|---|
-| `ShellGround` | The client area below the caption | Paints **nothing** in transparency mode — the columns over it paint their own |
-| `WallGround` | Cover wall, merge queue, Stores, Appearance | **Never.** §1: a wallpaper behind six hundred capsules is a second image competing with all of them |
+| `ShellGround` | The client area below the caption | Paints **nothing** once the slider leaves zero — the columns over it paint their own |
+| `WallGround` | Cover wall, merge queue, Stores, Appearance | **Never, at any setting.** §1: a wallpaper behind six hundred capsules is a second image competing with all of them |
 | `TileGround` | Under the art stack inside one tile | **Never** — see §14.4 |
 | `ChromeSurface` | Rail, filter panel | Yes |
 | `ChromeGround` | Command bar, cut bar | Yes |
-| `CaptionFill` | The 36px title lip | Yes |
+| `CaptionFill` | The 36px title lip | Yes — and it *is* `ChromeSurface`, same ink and same alpha (§9) |
 | `ChromeRaised` | Hover / selection fill inside the rail and the panel | Becomes a veil — see below |
+
+`ShellGround` is a **step, not a ramp**: two stacked alphas multiply, so a shell that faded
+in proportion would stop the slider ever reaching its own end.
 
 **Popovers keep an opaque fill.** A flyout is its own popup root and never receives the
 window's backdrop, so a translucent fill there would sample the *application* rather
 than the desktop and give a different answer at every position on screen.
 
-**`ChromeRaised` is a veil, not an ink.** Opaque, a raised row is the ordinary
-`Surface → SurfaceRaised` step. Translucent, a *darker* ink over an already-translucent
-rail composites downwards, and the selected row comes out darker than the row beside
-it — elevation inverted. So the step becomes a 10% veil of the theme's own `Text`,
-which lifts whatever is under it by 1.8×–5.8× on every backdrop measured. §6's
-"elevation is the `Surface → SurfaceRaised` step" holds as a *relative* claim, which is
-what it always was.
+**`ChromeRaised` is a veil, not an ink — and it is the one token that switches rather
+than slides.** Opaque, a raised row is the ordinary `Surface → SurfaceRaised` step: an
+ink that *replaces* what is under it. Translucent, a *darker* ink over an
+already-translucent rail composites downwards and the selected row comes out darker than
+the row beside it — elevation inverted. Those are two different operations, and
+interpolating between them in ARGB walks through *mid grey at high alpha*, which is
+neither: it crushed the metadata ink on a selected row to 4.2:1 six percent into the
+track.
 
-### 14.3 Transparency has its own inks
+Only one veil is backdrop-independent. Solving `a·(V − rail) = λ·(Text − rail)` for every
+possible `rail` gives `V = Text` and `a = λ`, so **the veil is `Text` and the only free
+parameter is its strength.** It starts at exactly the strength that reproduces the theme's
+own `Surface → SurfaceRaised` step over an opaque rail — derived per theme, so leaving
+zero moves nothing — and grows to 10% as the rail opens up and there is more under it to
+lift. §6's "elevation is the `Surface → SurfaceRaised` step" holds as a *relative* claim,
+which is what it always was.
+
+### 14.3 Transparency is a quantity, and it has its own inks
 
 **The previous measurement was right and the conclusion was wrong.** `TextDim` on
 `SurfaceRaised` at 85% over white is 3.1:1, and §13 gap 7 read that as "no reading
 surface can be translucent". What it actually proves is narrower: *an ink chosen for an
 opaque ground cannot have alpha subtracted from it.*
 
-So transparency mode carries its own token set. Each translucent surface takes a
-**darker** ink than its opaque twin, at 86–91% alpha, and `TextDim` **brightens** to
-pay for what is left. The result clears the opaque numbers rather than falling under
-them, against a pure-white backdrop — the ceiling any wallpaper can reach, so the
-answer needs no assumption about how Windows composes Mica.
+**And the control was wrong too.** The backdrop is a binary window hint, but nothing anyone
+can *see* is: the perceived translucency is entirely the alpha on our own surfaces over that
+backdrop, so it is continuous and ours to set. The checkbox that preceded this ran the chrome
+at 86–91% and the verdict on it was that it "doesn't come across as transparency at all" —
+correctly, at 14% of anything.
 
-| Default theme, `TextDim` on | Solid | Translucent, worst case (white) | Translucent, measured Mica |
+#### The material was the limit, not the alpha
+
+Turning the alpha down was necessary and was not sufficient, and finding out why took a
+measurement rather than an argument.
+
+**Dark Mica cannot produce translucency at any alpha.** Windows composes it by tinting
+toward its own near-black base so hard that the wallpaper contributes almost nothing:
+back-solved from the composite behind our chrome on a real machine, the backdrop is
+`#201F1E` **whether the wallpaper under the window is orange rock or blue sky**. At 30%
+alpha — the far end of the slider — the rail lands on a neutral dark grey and reads as
+*the chrome went grey*, not as the desktop showing through.
+
+**So the hint order changed to `[AcrylicBlur, Mica, None]`.** Acrylic is a blur-behind at a
+high radius, and at the same 30% the desktop is unmistakably present in the rail and the
+caption.
+
+That reverses a decision this document used to record, so here is the reversal in full. Mica
+was chosen because it samples only the wallpaper — one image, bounded, measurable — and
+acrylic was refused because it samples whatever is behind the window: *"no bound, no
+measurement, and a rail whose legibility changes when the user alt-tabs."* The premise was
+right and the conclusion was one generation out of date, for two reasons:
+
+- **The tame backdrop was not a legible backdrop.** A material that is bounded because it is
+  nearly opaque does not buy translucency; it buys a number.
+- **The bound does not have to come from the material.** WHITE bounds *every* backdrop there
+  is, wallpaper or window. The palette is measured against it across the whole slider, and
+  the Appearance screen reports the worst case live and marks where it crosses AA. The real
+  objection was to shipping a figure nobody could check — and the figure is on screen now.
+
+Mica stays second in the list: a machine that refuses acrylic is better off with a tinted
+backdrop than with none. `None` is the floor.
+
+So: **a slider, 0 to 100, stored as a whole percent under the same `appearance.transparency`
+key the checkbox used.** A stored `true` migrates to 25; a stored `false` to 0.
+
+**Zero is a real position, not an off state dressed as one.** It is the default, it is
+bit-for-bit the opaque palette with nothing carrying alpha, and it is the answer for anyone
+who wants §8's floor with no argument — which is why the label under that end of the track
+is a word (`SOLID`) and not an absence.
+
+**The far end admits 70% desktop.** `MinChromeAlpha` is `0.30`.
+
+#### The two ramps, and why they are not the same ramp
+
+Each translucent surface walks from its opaque token toward a **darker** ink, and `TextDim`
+**brightens** to pay for what is left. The alpha and the inks travel on *different* curves,
+and that is load-bearing rather than fussy:
+
+- **Alpha falls linearly** across the whole track: `1 → 0.30`.
+- **The inks finish in the first quarter** (`InkRampSpan = 0.25`) and then hold.
+
+Alpha coming off lightens a dark surface over any brighter backdrop *immediately*, while a
+compensation arriving in proportion is always behind it. Front-loading the inks moves the
+point where the worst case drops under AA from **18% to 27%** on the default theme, and from
+single digits on a selected rail row to that same 27%.
+
+#### What it measures, and where the floor ends
+
+| Default theme, `TextDim` on the worst chrome surface | Solid | At the AA mark (27%) | At the far end (100%) |
 |---|---|---|---|
-| Rail | 5.88:1 | **6.54:1** | 9.41:1 |
-| Command bar | 6.69:1 | **5.88:1** | 8.79:1 |
-| Selected rail row | 5.04:1 | **4.92:1** | 7.41:1 |
-| Caption | 5.0:1 | **7.71:1** | 9.96:1 |
+| Against **white** — the ceiling any backdrop can reach | 5.04:1 | **4.54:1** | 1.01:1 |
+| Against a **dark desktop** (`#201F1E`, measured) | 5.04:1 | 8.17:1 | 6.73:1 |
 
-The other three themes land higher on every row, because each starts from a lighter
-ink or a higher alpha: at the white ceiling the rail reads 7.03:1 (Cold storage),
-8.04:1 (Nightshift) and 7.26:1 (Phosphor).
+Those are the brackets, and a real desktop sits between them. Measured on the running window
+at the far end, over a wallpaper of lit orange rock against a blue sky, the rail's labels ran
+**3.2:1 to 6.5:1** depending on what was behind that stretch of rail — which is what the two
+numbers are for, and why neither is presented as *the* answer.
 
-**What it costs, stated rather than buried.** Two rows go backwards at the ceiling and
-both stay over AA: the selected rail row 5.04:1 → 4.92:1, and the command bar
-6.69:1 → 5.88:1. `Flare` on the rail drops 4.91:1 → 4.14:1
-in that same worst case. It is a 10px dot with a `Ground`-coloured ring and a rail count
-and a tooltip behind it (§5.2, §8), not text, and it stays the loudest thing in the
-column. And §9's unlit lip is a *relative* rule: over the measured Mica composite the
-caption sits at 0.35× `Ground`, but a backdrop brighter than about mid-grey lifts it
-above the body. The wall stays opaque, so that is the whole of the visible cost.
+The worst chrome surface is a **selected rail row** — the rail with a veil over it, so the
+lightest reading surface in the window and the first to lose its ink. §8 already singles it
+out for the same reason on the opaque palette.
 
-**Requested is not active.** Windows 10, a remote session and a compositor that refuses
-all end with `ActualTransparencyLevel` reporting something other than `Mica` — and
-Avalonia's Win32 backend falls back to `Transparent`, not the `None` that was asked for,
-so the test must be positive. When the answer is no, the **opaque** token set is applied
-and the settings screen says so in words. The preference is remembered either way.
+**Over a dark desktop the number never gets worse.** A dark backdrop is *darker* than our own
+rail, so admitting more of it deepens the ground the labels sit on; `ThemeContrastTests`
+asserts that at every position on the slider, for every theme. Against white it falls, and the
+AA ceiling lands at 27% (Hoard), 30% (Nightshift), 30% (Tungsten), 26% (Box art).
+
+**The range past the mark is a choice the user is allowed to make.** Being protected from it
+is not a service, and being ambushed by it is not either — so the Appearance screen draws the
+mark on the track and reports **both** numbers live, in Plex Mono `tnum`, with the worst-case
+figure turning `Amber` and naming the line it crossed once it does. `Amber` and not `Danger`:
+§2 gives `Amber` attention and `Danger` the one destructive act, and a setting chosen with the
+number in front of you is neither an error nor something to be undone for you.
+
+**Requested is not active.** Windows 10, a remote session and a compositor that refuses all
+end with `ActualTransparencyLevel` reporting none of the levels that count — and Avalonia's
+Win32 backend falls back to `Transparent`, not the `None` that was asked for, which is a
+genuinely see-through window with nothing behind it. So the test names the levels that count
+(acrylic, blur, Mica) rather than testing "not `None`". When the answer is no, transparency is
+treated as zero and the settings screen says so in words. The preference is remembered either
+way.
 
 ### 14.4 The dormancy ramp over a translucent window
 

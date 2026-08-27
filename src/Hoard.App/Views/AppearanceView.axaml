@@ -5,16 +5,18 @@
              x:DataType="vm:AppearanceViewModel">
 
     <!--
-        SETTINGS › APPEARANCE. Two decisions: which theme, and whether the
-        window admits the desktop.
+        SETTINGS › APPEARANCE. Two decisions: which theme, and how much of
+        the desktop the window admits.
 
         The theme cards are the screen. Each one draws the window at 1/8 scale
-        out of its own palette — caption lip, rail with one lit row, a wall of
-        capsules, one unread dot — rather than a strip of colour chips. A chip
-        row says what the hues are; the miniature says what they DO, which is
-        the only claim this palette system makes. Four of them side by side also
-        state the invariant without a sentence: the Flare dot changes colour and
-        never changes job, and there is exactly one of it per theme.
+        out of its own palette — the caption and rail as one chrome bracket, one
+        lit row, the seam, a wall of capsules, one unread dot — rather than a
+        strip of colour chips. A chip row says what the hues are; the miniature
+        says what they DO, and since these four themes differ by value structure
+        and material rather than by hue, a chip row would say almost nothing at
+        all. Four of them side by side also state the invariant without a
+        sentence: the Flare dot changes colour and never changes job, and there
+        is exactly one of it per theme.
 
         Nothing here animates. §12.5's rule is that motion lives in a style so
         §8's reduced-motion setting can take it away, and a settings screen that
@@ -64,69 +66,65 @@
             <Setter Property="ClipToBounds" Value="True"/>
         </Style>
 
-        <!-- ══ The transparency checkbox ══════════════════════════════════
-             Templated rather than restyled, for the reason MainWindow's own
-             pref checkbox records: Fluent reads a dozen resource keys for its
-             box, stroke and glyph across six states, and overriding all of them
-             to land on this palette is more surface than drawing 18px and a
-             tick. It stays a real CheckBox, so Space toggles it and automation
-             sees it. -->
-        <Style Selector="CheckBox.appearance">
-            <Setter Property="Padding" Value="0"/>
+        <!-- ══ The transparency slider ════════════════════════════════════
+             The command bar's DENSITY slider is the reference and this one keeps
+             its grammar — neutral track, neutral thumb, the travelled side in
+             TextDim and the rest in Line — because a slider that meant something
+             different on the settings screen would be a second convention to
+             learn. It is drawn a step larger, and that is the only difference:
+             density is a knob you nudge while scanning, this is a setting you
+             sit and tune. The thumb stays NEUTRAL rather than Volt (§2: Volt is
+             selection, and a value in force is not a selection).
+        -->
+        <Style Selector="Slider.opacity">
             <Setter Property="MinHeight" Value="0"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Template">
-                <ControlTemplate>
-                    <Grid ColumnDefinitions="18,12,*" Background="Transparent">
-                        <Border Grid.Column="0" Name="Ring"
-                                Width="24" Height="24" Margin="-3,0,0,0"
-                                CornerRadius="6"
-                                BorderBrush="{StaticResource Volt}"
-                                BorderThickness="2"
-                                IsHitTestVisible="False"
-                                HorizontalAlignment="Left"
-                                VerticalAlignment="Center"/>
-                        <Panel Grid.Column="0" VerticalAlignment="Center">
-                            <Border Name="Box" Width="18" Height="18"
-                                    CornerRadius="4"
-                                    Background="{StaticResource Ground}"
-                                    BorderBrush="{StaticResource Line}"
-                                    BorderThickness="1"/>
-                            <Path Name="Tick"
-                                  Data="M 0,3.8 L 3.2,7 L 9,1"
-                                  Stroke="{StaticResource VoltInk}"
-                                  StrokeThickness="2"
-                                  StrokeLineCap="Round"
-                                  StrokeJoin="Round"
-                                  Width="10" Height="8"
-                                  HorizontalAlignment="Center"
-                                  VerticalAlignment="Center"/>
-                        </Panel>
-                        <ContentPresenter Grid.Column="2"
-                                          Content="{TemplateBinding Content}"
-                                          VerticalAlignment="Center"/>
-                    </Grid>
-                </ControlTemplate>
-            </Setter>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
         </Style>
-        <Style Selector="CheckBox.appearance /template/ Path#Tick">
-            <Setter Property="Opacity" Value="0"/>
+        <Style Selector="Slider.opacity /template/ Track#PART_Track RepeatButton#PART_DecreaseButton /template/ Border">
+            <Setter Property="Background" Value="{StaticResource TextDim}"/>
+            <Setter Property="Height" Value="4"/>
+            <Setter Property="CornerRadius" Value="2"/>
         </Style>
-        <Style Selector="CheckBox.appearance /template/ Border#Ring">
-            <Setter Property="Opacity" Value="0"/>
+        <Style Selector="Slider.opacity /template/ Track#PART_Track RepeatButton#PART_IncreaseButton /template/ Border">
+            <Setter Property="Background" Value="{StaticResource Line}"/>
+            <Setter Property="Height" Value="4"/>
+            <Setter Property="CornerRadius" Value="2"/>
         </Style>
-        <Style Selector="CheckBox.appearance:focus-visible /template/ Border#Ring">
-            <Setter Property="Opacity" Value="1"/>
+        <Style Selector="Slider.opacity /template/ Thumb">
+            <Setter Property="Background" Value="{StaticResource TextDim}"/>
+            <Setter Property="Width" Value="16"/>
+            <Setter Property="Height" Value="16"/>
         </Style>
-        <Style Selector="CheckBox.appearance:pointerover /template/ Border#Box">
-            <Setter Property="BorderBrush" Value="{StaticResource TextDim}"/>
+        <Style Selector="Slider.opacity:pointerover /template/ Thumb">
+            <Setter Property="Background" Value="{StaticResource Text}"/>
         </Style>
-        <Style Selector="CheckBox.appearance:checked /template/ Border#Box">
-            <Setter Property="Background" Value="{StaticResource Volt}"/>
+
+        <!-- §8's focus ring, drawn by the frame rather than adorned on the
+             thumb. The global FocusAdorner puts a rounded box round the whole
+             control, which on a 340px track is a box and not an indicator; and
+             a Thumb's own template ignores BorderBrush, so a ring set there
+             renders nothing. `:focus-within` on the frame is the one place that
+             both shows up and does not move anything: the border thickness
+             never changes, only its brush (§10.7). -->
+        <Style Selector="Border.sliderframe">
+            <Setter Property="BorderThickness" Value="2"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="6,4"/>
+            <Setter Property="Margin" Value="-8,0,0,0"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+        </Style>
+        <Style Selector="Border.sliderframe:focus-within">
             <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
         </Style>
-        <Style Selector="CheckBox.appearance:checked /template/ Path#Tick">
-            <Setter Property="Opacity" Value="1"/>
+
+        <!-- The worst-case ratio, once it is under AA. Amber and not Danger:
+             §2 gives Amber "attention" and Danger the one destructive act, and
+             a setting the user chose with the number in front of them is
+             neither an error nor something to be undone for them. -->
+        <Style Selector="TextBlock.ratio.under">
+            <Setter Property="Foreground" Value="{StaticResource Amber}"/>
         </Style>
 
         <Style Selector="Border.card">
@@ -183,25 +181,43 @@
                                 <StackPanel Spacing="0">
 
                                     <!-- ══ The window, at 1/8 ══════════════
-                                         Caption lip over rail over wall. Every
-                                         piece is one of this theme's own
-                                         brushes, so the card keeps showing its
-                                         palette while the app is wearing
-                                         another. -->
+                                         Caption and rail as ONE continuous
+                                         chrome bracket (§9), with the art
+                                         recessed inside it. Every piece is one
+                                         of this theme's own brushes, so the card
+                                         keeps showing its palette while the app
+                                         is wearing another.
+
+                                         The two things that separate these four
+                                         themes are both visible here and neither
+                                         is a hue: how far the wall drops below
+                                         the chrome, and how loud the seam
+                                         between them is. -->
                                     <Border Classes="mini" CornerRadius="4,4,0,0"
                                             Background="{Binding Ground}">
                                         <Grid RowDefinitions="12,*">
 
-                                            <!-- The unlit lip (§9): darker than
-                                                 Ground, never lighter. -->
-                                            <Border Grid.Row="0" Background="{Binding Well}"/>
+                                            <!-- The caption takes the rail's
+                                                 colour, so the chrome reads as
+                                                 one block down the side and
+                                                 across the top rather than two
+                                                 tones meeting at a corner. -->
+                                            <Border Grid.Row="0" Background="{Binding Surface}"/>
 
                                             <Grid Grid.Row="1" ColumnDefinitions="46,*">
 
                                                 <!-- Rail: four rows, one lit,
                                                      and the lit one carries the
-                                                     2px Volt edge. -->
-                                                <Border Grid.Column="0" Background="{Binding Surface}">
+                                                     2px Volt edge. Its right
+                                                     edge is the chrome/art seam
+                                                     (§11.1), drawn at the
+                                                     theme's own Line — which is
+                                                     Nightshift's whole structure
+                                                     and Tungsten's quietest
+                                                     detail. -->
+                                                <Border Grid.Column="0" Background="{Binding Surface}"
+                                                        BorderBrush="{Binding Line}"
+                                                        BorderThickness="0,0,1,0">
                                                     <StackPanel Margin="0,6" Spacing="6">
                                                         <Border Background="{Binding SurfaceRaised}" Height="12">
                                                             <Grid ColumnDefinitions="2,5,*,6">
@@ -233,21 +249,31 @@
                                                 </Border>
 
                                                 <!-- The wall. 2:3 capsules, the
-                                                     app's own atom (§4), and two
-                                                     of them dimmed — §5.1's ramp
-                                                     said in seven rectangles:
-                                                     bright tiles are alive,
-                                                     ghosted ones are what you
-                                                     forgot you owned. The row
-                                                     runs off the right edge
-                                                     because a wall does. -->
+                                                     app's own atom (§4), and the
+                                                     SAME seven on all four cards
+                                                     — real cover art does not
+                                                     change when the room does, so
+                                                     four miniatures that differ
+                                                     only in their chrome are this
+                                                     palette system's whole claim
+                                                     made visually.
+
+                                                     Two of them carry §5.1's
+                                                     dormancy floor: bright tiles
+                                                     are alive, ghosted ones are
+                                                     what you forgot you owned.
+                                                     The row runs off the right
+                                                     edge because a wall does. -->
                                                 <Border Grid.Column="1" Background="{Binding Ground}"
                                                         Padding="8,9,0,0" ClipToBounds="True">
                                                     <StackPanel Orientation="Horizontal" Spacing="6"
                                                                 VerticalAlignment="Top">
                                                         <Panel Width="46" Height="69">
-                                                            <Border CornerRadius="3" Background="{Binding SurfaceRaised}"/>
-                                                            <!-- The one Flare in the picture. -->
+                                                            <Border CornerRadius="3"
+                                                                    Background="{x:Static vm:ThemeChoiceViewModel.Art1}"/>
+                                                            <!-- The one Flare in the picture, and the
+                                                                 one thing on the card that IS the
+                                                                 theme's own colour. -->
                                                             <Ellipse Width="6" Height="6"
                                                                      Fill="{Binding Flare}"
                                                                      HorizontalAlignment="Right"
@@ -255,17 +281,17 @@
                                                                      Margin="0,3,3,0"/>
                                                         </Panel>
                                                         <Border Width="46" Height="69" CornerRadius="3"
-                                                                Background="{Binding Line}"/>
+                                                                Background="{x:Static vm:ThemeChoiceViewModel.Art2}"/>
                                                         <Border Width="46" Height="69" CornerRadius="3"
-                                                                Background="{Binding Azure}" Opacity="0.5"/>
+                                                                Background="{x:Static vm:ThemeChoiceViewModel.ArtDormant1}"/>
                                                         <Border Width="46" Height="69" CornerRadius="3"
-                                                                Background="{Binding SurfaceRaised}"/>
+                                                                Background="{x:Static vm:ThemeChoiceViewModel.Art3}"/>
                                                         <Border Width="46" Height="69" CornerRadius="3"
-                                                                Background="{Binding Amber}" Opacity="0.45"/>
+                                                                Background="{x:Static vm:ThemeChoiceViewModel.Art4}"/>
                                                         <Border Width="46" Height="69" CornerRadius="3"
-                                                                Background="{Binding Line}" Opacity="0.8"/>
+                                                                Background="{x:Static vm:ThemeChoiceViewModel.ArtDormant2}"/>
                                                         <Border Width="46" Height="69" CornerRadius="3"
-                                                                Background="{Binding SurfaceRaised}" Opacity="0.75"/>
+                                                                Background="{x:Static vm:ThemeChoiceViewModel.Art5}"/>
                                                     </StackPanel>
                                                 </Border>
                                             </Grid>
@@ -307,18 +333,119 @@
 
                 <Border Classes="card" MaxWidth="720" HorizontalAlignment="Left">
                     <StackPanel Spacing="12">
-                        <CheckBox Name="TransparencyToggle"
-                                  Classes="appearance"
-                                  IsChecked="{Binding Transparency, Mode=TwoWay}">
-                            <TextBlock Classes="body-l" Text="Let the desktop through"/>
-                        </CheckBox>
 
-                        <TextBlock Classes="para"
-                                   Margin="30,0,0,0"
-                                   Text="{Binding TransparencyStatus}"/>
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Grid.Column="0" Classes="body-l"
+                                       Text="Let the desktop through"
+                                       VerticalAlignment="Center"/>
+                            <!-- Every number in Plex Mono, tabular (§3), so the
+                                 reading does not jitter sideways as it is
+                                 dragged past 9 → 10 → 100. -->
+                            <TextBlock Grid.Column="1" Classes="data"
+                                       Text="{Binding TransparencyReading}"
+                                       VerticalAlignment="Center"/>
+                        </Grid>
 
-                        <!-- The honest case. A toggle that is on and doing
-                             nothing is worse than a toggle that is off, so the
+                        <Border Classes="sliderframe">
+                            <StackPanel Width="{Binding SliderWidth}" Spacing="0">
+
+                                <!-- ══ The AA mark ═══════════════════════════
+                                     Where the worst case — a wall of white
+                                     behind the window — takes the rail's labels
+                                     under 4.5:1. It is a mark and not a stop:
+                                     the range past it is a choice the user is
+                                     allowed to make, and the readout below says
+                                     what it costs in numbers rather than in
+                                     adjectives. Its position is per theme,
+                                     because the answer is.
+
+                                     Both pieces take the same margin off the
+                                     view model, computed from the track's own
+                                     geometry, so the tick sits exactly over the
+                                     value it names. -->
+                                <Panel Height="14" HorizontalAlignment="Stretch">
+                                    <TextBlock Classes="data-s"
+                                               Text="AA"
+                                               Padding="4,0,0,0"
+                                               Foreground="{StaticResource TextFaint}"
+                                               HorizontalAlignment="Left"
+                                               VerticalAlignment="Top"
+                                               Margin="{Binding AaMarkMargin}"/>
+                                </Panel>
+                                <Panel Height="6" HorizontalAlignment="Stretch">
+                                    <Border Width="1" Height="6"
+                                            Background="{StaticResource TextFaint}"
+                                            HorizontalAlignment="Left"
+                                            VerticalAlignment="Bottom"
+                                            Margin="{Binding AaMarkMargin}"/>
+                                </Panel>
+
+                                <Slider Name="TransparencySlider"
+                                        Classes="opacity"
+                                        Minimum="0" Maximum="100"
+                                        SmallChange="1" LargeChange="10"
+                                        Value="{Binding Transparency, Mode=TwoWay}"
+                                        ToolTip.Tip="How much of the desktop the rail, title bar, filter panel and command bar let through"/>
+
+                                <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,2,0,0">
+                                    <!-- Zero is a position, so it is named. -->
+                                    <TextBlock Grid.Column="0" Classes="label" FontSize="9"
+                                               Foreground="{StaticResource TextFaint}"
+                                               Text="SOLID"/>
+                                    <TextBlock Grid.Column="2" Classes="label" FontSize="9"
+                                               Foreground="{StaticResource TextFaint}"
+                                               Text="MOST DESKTOP"/>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- ══ What it costs, live ═══════════════════════════
+                             §8's floor is a claim about the running window, so
+                             the screen measures the window rather than quoting a
+                             number somebody took once. Two backdrops, because
+                             one of them would be a lie in either direction: the
+                             Mica composite is what the user's desktop actually
+                             does and it only ever improves, and white is the
+                             brightest a wallpaper can be and is the one that
+                             falls. Neither nags — the second number turns Amber
+                             (§2: attention, not error) and says which line it
+                             crossed. -->
+                        <StackPanel Spacing="6" Margin="0,4,0,0">
+                            <TextBlock Classes="label" FontSize="9" LetterSpacing="1.2"
+                                       Text="LABELS ON THE CHROME"/>
+
+                            <Grid ColumnDefinitions="Auto,10,*" IsVisible="{Binding !IsSolid}">
+                                <TextBlock Grid.Column="0" Classes="data"
+                                           Text="{Binding ContrastOnDarkWallpaper}"/>
+                                <TextBlock Grid.Column="2" Classes="body" FontSize="12"
+                                           Foreground="{StaticResource TextDim}"
+                                           VerticalAlignment="Center"
+                                           Text="{Binding DarkWallpaperNote}"/>
+                            </Grid>
+                            <Grid ColumnDefinitions="Auto,10,*" IsVisible="{Binding !IsSolid}">
+                                <TextBlock Grid.Column="0" Classes="data ratio"
+                                           Classes.under="{Binding UnderAa}"
+                                           Text="{Binding ContrastOnWhiteWallpaper}"/>
+                                <TextBlock Grid.Column="2" Classes="body" FontSize="12"
+                                           Foreground="{StaticResource TextDim}"
+                                           VerticalAlignment="Center"
+                                           Text="{Binding WhiteWallpaperNote}"/>
+                            </Grid>
+
+                            <Grid ColumnDefinitions="Auto,10,*" IsVisible="{Binding IsSolid}">
+                                <TextBlock Grid.Column="0" Classes="data"
+                                           Text="{Binding ContrastOnWhiteWallpaper}"/>
+                                <TextBlock Grid.Column="2" Classes="body" FontSize="12"
+                                           Foreground="{StaticResource TextDim}"
+                                           VerticalAlignment="Center"
+                                           Text="on the chrome, solid"/>
+                            </Grid>
+
+                            <TextBlock Classes="para" Text="{Binding ContrastNote}"/>
+                        </StackPanel>
+
+                        <!-- The honest case. A setting that is up and doing
+                             nothing is worse than a setting at zero, so the
                              screen says which one this is. Amber because §2
                              gives Amber "attention", and this is not an error:
                              the user has not done anything wrong by sitting on
@@ -328,8 +455,7 @@
                                 BorderBrush="{StaticResource Amber}"
                                 BorderThickness="1"
                                 CornerRadius="{StaticResource RadiusControl}"
-                                Padding="14,12"
-                                Margin="30,0,0,0">
+                                Padding="14,12">
                             <TextBlock Classes="body" FontSize="12" LineHeight="18"
                                        TextWrapping="Wrap"
                                        Text="Not available here. Windows 10, a remote session and some virtual display drivers all refuse the backdrop."/>
@@ -338,7 +464,7 @@
                         <Border Height="1" Background="{StaticResource Line}" Margin="0,2"/>
 
                         <TextBlock Classes="para"
-                                   Text="It has its own inks rather than the solid ones turned down, so labels read at 6.5:1 against the brightest wallpaper Windows can hand the window - better than the 5.9:1 they get on a solid rail. What it costs is the unread dot, at 4.1:1 in that same worst case instead of 4.9:1."/>
+                                   Text="{Binding TransparencyStatus}"/>
                     </StackPanel>
                 </Border>
 

@@ -6,17 +6,18 @@ using Xunit;
 namespace Hoard.Tests;
 
 /// <summary>
-/// design-system.md §8's accessibility floor, held for every theme in both
-/// transparency states — and §2's rule that Flare has exactly one job.
+/// design-system.md §8's accessibility floor, held for every theme across the
+/// whole transparency range — and §2's rule that Flare has exactly one job.
 ///
 /// <para><b>Why this exists as a test and not as a note in a design file.</b>
 /// §13 gap 7 recorded a translucent surface measuring 3.1:1 and concluded that
 /// translucency could not reach a reading surface. The measurement was right;
 /// what it actually proved was narrower — that an ink chosen for an opaque
-/// ground cannot have alpha subtracted from it. Transparency mode therefore has
-/// its own token set, and a claim like that is only worth making if something
-/// re-checks it every build. A theme added later, or an alpha nudged by eye
-/// until it "looked about right", fails here rather than in somebody's rail.</para>
+/// ground cannot have alpha subtracted from it. The chrome therefore takes a
+/// darker ink and a brighter dim ink as it opens up, and a claim like that is
+/// only worth making if something re-checks it every build. A theme added later,
+/// or an alpha nudged by eye until it "looked about right", fails here rather
+/// than in somebody's rail.</para>
 ///
 /// <para><b>Three backdrops, and the first one is the argument.</b> WHITE is the
 /// ceiling: no wallpaper, and no compositor, can hand the window anything
@@ -26,6 +27,11 @@ namespace Hoard.Tests;
 /// happens. BLACK is the other end. Light ink on a translucent dark surface gets
 /// WORSE as the backdrop brightens, so white is the case that binds and the
 /// other two are there to prove the range was walked rather than assumed.</para>
+///
+/// <para><b>The sums are re-implemented here on purpose.</b>
+/// <c>Hoard.App.Themes.Colorimetry</c> carries the same arithmetic so the
+/// Appearance screen can report a live number; a test that called it would prove
+/// only that the code agrees with itself.</para>
 /// </summary>
 public class ThemeContrastTests
 {
@@ -35,16 +41,23 @@ public class ThemeContrastTests
     private static readonly Color Black = Color.FromRgb(0, 0, 0);
 
     /// <summary>
-    /// The backdrop Avalonia's dark Mica actually delivered, back-solved from
-    /// the composite tokens.axaml recorded on a real desktop: <c>Well</c> at 85%
-    /// came out <c>#061112</c>, so the backdrop behind it was this. Windows tints
-    /// dark Mica hard toward #202020 by design, which is why the real case sits
-    /// so far below the white ceiling.
+    /// A dark desktop — back-solved from the composite Windows actually put
+    /// behind our chrome, measured on a real machine. The other end of the
+    /// bracket the Appearance screen reports, and the case most people are in.
     /// </summary>
-    private static readonly Color Mica = Backsolve(
-        composite: Color.FromRgb(0x06, 0x11, 0x12),
-        ink: Color.FromRgb(0x05, 0x0D, 0x0E),
-        alpha: 0.85);
+    private static readonly Color DarkDesktop = Backsolve(
+        composite: Color.FromRgb(0x0F, 0x16, 0x17),
+        ink: Color.FromRgb(0x07, 0x12, 0x14),
+        alpha: 0.685);
+
+    /// <summary>Every whole percent the slider can be dragged to, as a fraction.</summary>
+    private static IEnumerable<double> Range()
+    {
+        for (var percent = 0; percent <= 100; percent++)
+        {
+            yield return percent / 100.0;
+        }
+    }
 
     public static TheoryData<string> ThemeIds()
     {
@@ -62,7 +75,7 @@ public class ThemeContrastTests
     public void Opaque_palette_clears_the_section_8_floor(string id)
     {
         var theme = HoardThemes.ById(id);
-        var t = theme.Tokens(translucent: false);
+        var t = theme.Tokens(transparency: 0);
 
         // §8: "TextDim on Surface measures 5.88:1, and on SurfaceRaised — which
         // is what a selected list row puts under the store and idle columns —
@@ -83,92 +96,171 @@ public class ThemeContrastTests
     }
 
     /// <summary>
-    /// §9: the caption is the window's UNLIT LIP — at or below Ground, never
-    /// above it. Every platform puts a lighter strip above a darker body, and
-    /// inverting that is what makes the cover wall the first thing on screen
-    /// with any light in it.
+    /// §9 as amended: the caption takes the RAIL's colour, so the chrome is one
+    /// continuous bracket rather than two tones meeting at a corner — and the
+    /// art field is the recess inside it.
+    ///
+    /// <para>Same ink AND same alpha, checked at every slider position, because
+    /// matching colours at differing alphas composite to two different tones over
+    /// the same backdrop and put the corner straight back.</para>
+    ///
+    /// <para>The lip is still unlit in the sense that survives: the caption is a
+    /// chrome tone, not a platform-bright strip, and the wall it sits above is
+    /// darker than it is in every theme.</para>
     /// </summary>
     [Theory]
     [MemberData(nameof(ThemeIds))]
-    public void Caption_is_darker_than_ground(string id)
+    public void The_caption_is_the_rail(string id)
     {
         var theme = HoardThemes.ById(id);
-        var t = theme.Tokens(translucent: false);
 
+        foreach (var transparency in Range())
+        {
+            var t = theme.Tokens(transparency);
+            Assert.Equal(t["ChromeSurface"], t["CaptionFill"]);
+        }
+
+        var opaque = theme.Tokens(transparency: 0);
+        Assert.Equal(theme.Surface, opaque["CaptionFill"]);
         Assert.True(
-            Luminance(t["Well"]) < Luminance(t["Ground"]),
-            $"{id}: caption is not below Ground");
-        Assert.True(
-            Luminance(t["Ground"]) < Luminance(t["Surface"]),
-            $"{id}: Surface is not above Ground");
-        Assert.True(
-            Luminance(t["Surface"]) < Luminance(t["SurfaceRaised"]),
-            $"{id}: SurfaceRaised is not above Surface");
-        Assert.True(
-            Luminance(t["SurfaceRaised"]) < Luminance(t["SurfaceHigh"]),
-            $"{id}: SurfaceHigh is not above SurfaceRaised");
+            Luminance(opaque["WallGround"]) < Luminance(opaque["CaptionFill"]),
+            $"{id}: the wall is not below the chrome");
     }
 
     /// <summary>
-    /// The claim the transparency mode is sold on: it lands ABOVE the opaque
-    /// numbers on reading matter, even against the brightest backdrop a desktop
-    /// can produce, because it has its own inks rather than the opaque ones with
-    /// alpha taken off.
+    /// The neutral family steps in one direction and keeps stepping. Well is
+    /// still the bottom of it — it backs the scrollbar track and the modal scrim,
+    /// which are the two places a tone below Ground is still the point.
     /// </summary>
     [Theory]
     [MemberData(nameof(ThemeIds))]
-    public void Translucent_chrome_clears_AA_against_every_backdrop(string id)
+    public void The_neutral_family_steps_one_way(string id)
     {
         var theme = HoardThemes.ById(id);
-        var t = theme.Tokens(translucent: true);
+        var t = theme.Tokens(transparency: 0);
 
-        foreach (var backdrop in new[] { White, Mica, Black })
+        Assert.True(Luminance(t["Well"]) < Luminance(t["Ground"]), $"{id}: Well is not below Ground");
+        Assert.True(Luminance(t["Ground"]) < Luminance(t["Surface"]), $"{id}: Surface is not above Ground");
+        Assert.True(Luminance(t["Surface"]) < Luminance(t["SurfaceRaised"]), $"{id}: SurfaceRaised is not above Surface");
+        Assert.True(Luminance(t["SurfaceRaised"]) < Luminance(t["SurfaceHigh"]), $"{id}: SurfaceHigh is not above SurfaceRaised");
+    }
+
+    /// <summary>
+    /// Slider zero is not "transparency, off" — it is the opaque palette, exactly,
+    /// with nothing carrying alpha. That is what makes zero a real position and
+    /// the accessibility answer rather than a degenerate case of a feature.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(ThemeIds))]
+    public void Zero_is_the_opaque_palette_exactly(string id)
+    {
+        var theme = HoardThemes.ById(id);
+        var t = theme.Tokens(transparency: 0);
+
+        Assert.Equal(theme.Surface, t["ChromeSurface"]);
+        Assert.Equal(theme.Ground, t["ChromeGround"]);
+        Assert.Equal(theme.Ground, t["ShellGround"]);
+        Assert.Equal(theme.SurfaceRaised, t["ChromeRaised"]);
+        Assert.Equal(theme.TextDim, t["TextDim"]);
+        Assert.Equal(theme.TextFaint, t["TextFaint"]);
+
+        foreach (var key in new[] { "ChromeSurface", "ChromeGround", "ChromeRaised", "CaptionFill", "ShellGround" })
         {
-            var rail = Over(t["ChromeSurface"], backdrop);
-            var bar = Over(t["ChromeGround"], backdrop);
-            var caption = Over(t["CaptionFill"], backdrop);
-
-            // A selected or hovered rail row: the 10% Text veil over the rail.
-            var row = Over(t["ChromeRaised"], rail);
-
-            Assert.True(Contrast(t["TextDim"], rail) >= 4.5, $"{id} TextDim/rail on {backdrop}");
-            Assert.True(Contrast(t["TextDim"], row) >= 4.5, $"{id} TextDim/selected row on {backdrop}");
-            Assert.True(Contrast(t["TextDim"], bar) >= 4.5, $"{id} TextDim/command bar on {backdrop}");
-            Assert.True(Contrast(t["TextDim"], caption) >= 4.5, $"{id} TextDim/caption on {backdrop}");
-            Assert.True(Contrast(t["Text"], rail) >= 7.0, $"{id} Text/rail on {backdrop}");
-            Assert.True(Contrast(t["Text"], row) >= 7.0, $"{id} Text/selected row on {backdrop}");
-            Assert.True(Contrast(t["Volt"], rail) >= 4.5, $"{id} Volt/rail on {backdrop}");
-
-            // Elevation stays elevation. A darker ink over an already
-            // translucent rail composites DOWNWARDS, which would make a selected
-            // row darker than its neighbours; the veil is what stops that.
-            Assert.True(
-                Luminance(row) > Luminance(rail),
-                $"{id}: selected rail row is not above the rail on {backdrop}");
+            Assert.Equal(255, t[key].A);
         }
     }
 
     /// <summary>
-    /// Transparency mode is a trade, and this is the size of it: the dim ink
-    /// comes out AHEAD of where it sits on a solid rail, against the worst
-    /// backdrop there is. Asserted rather than described, because the whole
-    /// reason the previous attempt shipped a 36px strip was a number nobody had
-    /// re-run after the inks changed.
+    /// Elevation stays elevation, at every position on the slider and against
+    /// every backdrop. A darker ink over an already-translucent rail composites
+    /// DOWNWARDS, which would make a selected row darker than its neighbours; the
+    /// veil is what stops that, and the walk between the two has to stop it at
+    /// every intermediate value as well.
     /// </summary>
     [Theory]
     [MemberData(nameof(ThemeIds))]
-    public void Translucent_metadata_ink_beats_its_opaque_self(string id)
+    public void A_selected_row_is_never_below_the_rail(string id)
     {
         var theme = HoardThemes.ById(id);
-        var opaque = theme.Tokens(translucent: false);
-        var clear = theme.Tokens(translucent: true);
 
-        var solidRail = Contrast(opaque["TextDim"], opaque["Surface"]);
-        var worstRail = Contrast(clear["TextDim"], Over(clear["ChromeSurface"], White));
+        foreach (var transparency in Range())
+        {
+            var t = theme.Tokens(transparency);
+            foreach (var backdrop in new[] { White, DarkDesktop, Black })
+            {
+                var rail = Over(t["ChromeSurface"], backdrop);
+                var row = Over(t["ChromeRaised"], rail);
+                Assert.True(
+                    Luminance(row) > Luminance(rail),
+                    $"{id}: selected row is not above the rail at {transparency:P0} on {backdrop}");
+            }
+        }
+    }
 
-        Assert.True(
-            worstRail >= solidRail,
-            $"{id}: translucent rail {worstRail:0.00}:1 is below the solid rail's {solidRail:0.00}:1");
+    /// <summary>
+    /// The range the accessibility floor covers, and the fact that it is a real
+    /// range rather than a token one.
+    ///
+    /// <para><b>This is the honest shape of the trade.</b> The slider deliberately
+    /// travels past the point where the WORST case — a wall of white behind the
+    /// window — takes the rail's metadata ink under AA, because the user asked to
+    /// be able to choose that and being protected from it is not a service. What
+    /// the system owes is that the safe part of the range is not a sliver and that
+    /// the Appearance screen can say exactly where it ends: so every theme must
+    /// clear AA at 15% or better, and every theme's own ceiling is drawn on the
+    /// track and reported live.</para>
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(ThemeIds))]
+    public void The_worst_case_floor_covers_a_real_part_of_the_range(string id)
+    {
+        var theme = HoardThemes.ById(id);
+        var ceiling = Colorimetry.AaCeiling(theme);
+
+        Assert.True(ceiling >= 20, $"{id}: AA survives only to {ceiling}%");
+        Assert.True(ceiling < 100, $"{id}: the white ceiling never bites, so the mark is a lie");
+
+        for (var percent = 0; percent <= ceiling; percent++)
+        {
+            var t = theme.Tokens(percent / 100.0);
+            var rail = Over(t["ChromeSurface"], White);
+            var row = Over(t["ChromeRaised"], rail);
+            var bar = Over(t["ChromeGround"], White);
+
+            Assert.True(Contrast(t["TextDim"], rail) >= 4.5, $"{id} TextDim/rail at {percent}% on white");
+            Assert.True(Contrast(t["TextDim"], row) >= 4.5, $"{id} TextDim/selected row at {percent}% on white");
+            Assert.True(Contrast(t["TextDim"], bar) >= 4.5, $"{id} TextDim/command bar at {percent}% on white");
+        }
+    }
+
+    /// <summary>
+    /// What actually happens on a machine, as opposed to the ceiling: over the
+    /// Mica composite measured on a real desktop the metadata ink comes out AHEAD
+    /// of where it sits on a solid rail, everywhere on the slider.
+    ///
+    /// <para>Windows composes dark Mica by darkening the wallpaper hard, so the
+    /// backdrop is DARKER than our own rail and admitting more of it deepens the
+    /// ground the labels sit on. Asserted rather than described, because it is the
+    /// claim the Appearance screen's first number makes.</para>
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(ThemeIds))]
+    public void On_a_real_desktop_the_metadata_ink_beats_its_opaque_self(string id)
+    {
+        var theme = HoardThemes.ById(id);
+        var solidRail = Contrast(
+            theme.Tokens(0)["TextDim"],
+            theme.Tokens(0)["Surface"]);
+
+        foreach (var transparency in Range())
+        {
+            var t = theme.Tokens(transparency);
+            var measured = Contrast(t["TextDim"], Over(t["ChromeSurface"], DarkDesktop));
+
+            Assert.True(
+                measured >= solidRail - 0.01,
+                $"{id}: at {transparency:P0} the rail over a dark desktop reads {measured:0.00}:1, below the solid rail's {solidRail:0.00}:1");
+        }
     }
 
     /// <summary>
@@ -209,7 +301,7 @@ public class ThemeContrastTests
     }
 
     /// <summary>
-    /// The wall keeps its ground in both states, and the tile keeps its own
+    /// The wall keeps its ground at every setting, and the tile keeps its own
     /// under the dormancy cross-fade. §5.4 composites two bitmap layers by
     /// opacity; between the first decoding and the second, a dimmed tile is a
     /// partly transparent tile, and on a translucent window that means the
@@ -221,35 +313,52 @@ public class ThemeContrastTests
     {
         var theme = HoardThemes.ById(id);
 
-        foreach (var translucent in new[] { false, true })
+        foreach (var transparency in Range())
         {
-            var t = theme.Tokens(translucent);
+            var t = theme.Tokens(transparency);
             Assert.Equal(255, t["WallGround"].A);
             Assert.Equal(255, t["TileGround"].A);
+
+            // Popovers: a flyout is its own popup root and never receives the
+            // window's backdrop, so a translucent fill there would sample the
+            // application instead of the desktop.
             Assert.Equal(255, t["SurfaceRaised"].A);
+
             Assert.Equal(theme.Ground, t["WallGround"]);
         }
     }
 
     /// <summary>
-    /// Transparency has to be visible to be worth having. The previous attempt's
-    /// failure was not that it was illegible — it was that a 36px strip at 85%
-    /// is not something anyone can see.
+    /// Transparency has to be visible to be worth having, and the previous
+    /// attempt's failure was exactly that it was not: 86% alpha over a backdrop
+    /// Windows has already darkened hard is nothing anyone can see. So the far end
+    /// of the slider admits most of the desktop, and the near end admits none.
     /// </summary>
     [Theory]
     [MemberData(nameof(ThemeIds))]
-    public void Transparency_is_actually_transparent(string id)
+    public void The_far_end_is_actually_transparent(string id)
     {
         var theme = HoardThemes.ById(id);
-        var t = theme.Tokens(translucent: true);
+        var t = theme.Tokens(transparency: 1);
 
         foreach (var key in new[] { "ChromeSurface", "ChromeGround", "CaptionFill" })
         {
-            Assert.True(t[key].A < 250, $"{id}: {key} is effectively opaque");
-            Assert.True(t[key].A >= 200, $"{id}: {key} lets too much through to read on");
+            // The desktop supplies at least 60% of the chrome. The boolean this
+            // replaced supplied 14%.
+            Assert.True(t[key].A <= 102, $"{id}: {key} at the far end is still {t[key].A}/255");
         }
 
         Assert.Equal(0, t["ShellGround"].A);
+
+        // And the alpha only ever comes off — no position on the track is denser
+        // than the one before it.
+        byte previous = 255;
+        foreach (var transparency in Range())
+        {
+            var alpha = theme.Tokens(transparency)["ChromeSurface"].A;
+            Assert.True(alpha <= previous, $"{id}: alpha rose at {transparency:P0}");
+            previous = alpha;
+        }
     }
 
     /// <summary>
@@ -269,21 +378,90 @@ public class ThemeContrastTests
         };
         var surface = (SolidColorBrush)resources["Surface"]!;
 
-        ThemeService.ApplyTo(resources, HoardThemes.Phosphor, translucent: false);
+        ThemeService.ApplyTo(resources, HoardThemes.BoxArt, transparency: 0);
 
         Assert.Same(surface, resources["Surface"]);
-        Assert.Equal(HoardThemes.Phosphor.Surface, surface.Color);
-        Assert.Equal(HoardThemes.Phosphor.Flare, ((SolidColorBrush)resources["Flare"]!).Color);
+        Assert.Equal(HoardThemes.BoxArt.Surface, surface.Color);
+        Assert.Equal(HoardThemes.BoxArt.Flare, ((SolidColorBrush)resources["Flare"]!).Color);
         Assert.False(resources.ContainsKey("Volt"), "a key the dictionary lacks was added");
     }
 
     [Fact]
     public void An_unknown_stored_theme_reads_as_unset()
     {
-        // A preference file written by a later version must not stop the app.
+        // A preference file written by a later version must not stop the app —
+        // and neither must one written by an earlier one that named a theme
+        // which has since been retired.
         Assert.Same(HoardThemes.Default, HoardThemes.ById("a-theme-from-the-future"));
+        Assert.Same(HoardThemes.Default, HoardThemes.ById("cold-storage"));
+        Assert.Same(HoardThemes.Default, HoardThemes.ById("phosphor"));
         Assert.Same(HoardThemes.Default, HoardThemes.ById(null));
         Assert.Same(HoardThemes.Hoard, HoardThemes.Default);
+    }
+
+    /// <summary>
+    /// A session that was told what to look like never writes what it looks like.
+    ///
+    /// <para>The debug capture flags exist so every theme and every slider
+    /// position can be reviewed in a screenshot without leaving a preference
+    /// behind in somebody's real library. Suppressing the write only while the
+    /// override was being applied was not enough: a capture run drove the
+    /// Appearance screen, posted input reached the slider, and the row the run
+    /// had promised not to touch was rewritten. The seal is for the whole
+    /// session now, and this is the test that says so.</para>
+    /// </summary>
+    [Fact]
+    public async Task An_overridden_session_never_writes_a_preference()
+    {
+        var settings = new RecordingSettings();
+        var service = new ThemeService(settings);
+
+        service.OverrideForSession(HoardThemes.Tungsten, 60);
+
+        // Everything a user could do on the Appearance screen.
+        service.SelectTheme(HoardThemes.BoxArt);
+        service.SetTransparency(12);
+        service.SetTransparency(0);
+        await service.PendingSave;
+
+        Assert.Empty(settings.Writes);
+        Assert.Same(HoardThemes.BoxArt, service.Theme);
+        Assert.Equal(0, service.Transparency);
+    }
+
+    private sealed class RecordingSettings : Hoard.Core.Repositories.ISettingsRepository
+    {
+        public List<(string Key, string Value)> Writes { get; } = [];
+
+        public Task<string?> GetAsync(string key, CancellationToken ct = default)
+            => Task.FromResult<string?>(null);
+
+        public Task SetAsync(string key, string value, CancellationToken ct = default)
+        {
+            Writes.Add((key, value));
+            return Task.CompletedTask;
+        }
+    }
+
+    /// <summary>
+    /// The setting the checkbox wrote is answered, not orphaned. Somebody who
+    /// turned transparency on does not get silently returned to solid because the
+    /// control that set it was replaced by a better one.
+    /// </summary>
+    [Theory]
+    [InlineData("0", 0)]
+    [InlineData("55", 55)]
+    [InlineData("100", 100)]
+    [InlineData("240", 100)]
+    [InlineData("-5", 0)]
+    [InlineData("true", ThemeService.MigratedTransparency)]
+    [InlineData("True", ThemeService.MigratedTransparency)]
+    [InlineData("false", 0)]
+    [InlineData("", 0)]
+    [InlineData(null, 0)]
+    public void The_old_boolean_preference_migrates(string? stored, int expected)
+    {
+        Assert.Equal(expected, ThemeService.ParseTransparency(stored));
     }
 
     // ── The sums ────────────────────────────────────────────────────────────
@@ -294,15 +472,15 @@ public class ThemeContrastTests
     {
         var a = ink.A / 255.0;
         return Color.FromRgb(
-            (byte)Math.Round(ink.R * a + backdrop.R * (1 - a)),
-            (byte)Math.Round(ink.G * a + backdrop.G * (1 - a)),
-            (byte)Math.Round(ink.B * a + backdrop.B * (1 - a)));
+            (byte)Math.Round((ink.R * a) + (backdrop.R * (1 - a))),
+            (byte)Math.Round((ink.G * a) + (backdrop.G * (1 - a))),
+            (byte)Math.Round((ink.B * a) + (backdrop.B * (1 - a))));
     }
 
     private static Color Backsolve(Color composite, Color ink, double alpha) => Color.FromRgb(
-        (byte)Math.Clamp(Math.Round((composite.R - alpha * ink.R) / (1 - alpha)), 0, 255),
-        (byte)Math.Clamp(Math.Round((composite.G - alpha * ink.G) / (1 - alpha)), 0, 255),
-        (byte)Math.Clamp(Math.Round((composite.B - alpha * ink.B) / (1 - alpha)), 0, 255));
+        (byte)Math.Clamp(Math.Round((composite.R - (alpha * ink.R)) / (1 - alpha)), 0, 255),
+        (byte)Math.Clamp(Math.Round((composite.G - (alpha * ink.G)) / (1 - alpha)), 0, 255),
+        (byte)Math.Clamp(Math.Round((composite.B - (alpha * ink.B)) / (1 - alpha)), 0, 255));
 
     private static double Channel(byte c)
     {

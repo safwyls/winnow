@@ -47,10 +47,10 @@
         consent window opens, with the class-name seam untouched and Hoard.App
         still unreferenced.
 
-        Transparency deliberately does not follow it. Only four tokens carry
-        alpha (CaptionFill, ChromeSurface, ChromeGround, ChromeRaised) and this
-        window names none of them: it is Ground, Well, Surface, Line, Amber and
-        the text inks, every one opaque in both states. That is the right
+        Transparency deliberately does not follow it. Only four tokens ever
+        carry alpha (CaptionFill, ChromeSurface, ChromeGround, ChromeRaised) and
+        this window names none of them: it is Ground, Well, Surface, Line, Amber
+        and the text inks, every one opaque at every position on the slider. That is the right
         answer rather than a limitation — a consent window is a decision
         surface with a provider warning on it, and it is also its own top-level
         with no backdrop of its own, so a translucent fill there would sample

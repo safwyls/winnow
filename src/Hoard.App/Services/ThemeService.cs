@@ -1,3 +1,4 @@
+using System.Globalization;
 using Avalonia.Controls;
 using Avalonia.Media;
 using Hoard.App.Themes;
@@ -6,8 +7,8 @@ using Hoard.Core.Repositories;
 namespace Hoard.App.Services;
 
 /// <summary>
-/// Owns which theme is up and whether the window admits the desktop, applies
-/// both to the live resource dictionary, and remembers them.
+/// Owns which theme is up and how much desktop the window admits, applies both
+/// to the live resource dictionary, and remembers them.
 ///
 /// <para><b>How a theme change reaches the window.</b> Every view in this app
 /// names its tokens with <c>StaticResource</c>, which resolves once when the
@@ -20,6 +21,13 @@ namespace Hoard.App.Services;
 /// same path a colour animation takes. No binding is re-evaluated, no control is
 /// rebuilt, and no view has to be rewritten to <c>DynamicResource</c> for a
 /// feature that arrived after it.</para>
+///
+/// <para><b>Transparency is a quantity, not a switch.</b> Mica itself is a
+/// binary window hint, but nothing the user can see is: the perceived
+/// translucency is entirely the alpha on our own surfaces over that backdrop, so
+/// it is continuous and ours to set. It is stored as a whole percent, 0 meaning
+/// fully opaque — which stays a real position, is the default, and is the answer
+/// for anyone who wants the accessibility floor with no argument.</para>
 ///
 /// <para><b>Requested is not active.</b> Transparency is a preference; whether
 /// the machine can honour it is a fact. Windows 10, a remote-desktop session and
@@ -38,13 +46,34 @@ public sealed class ThemeService
     /// namespaced (see <see cref="ISettingsRepository"/>).</summary>
     public const string ThemeSettingKey = "appearance.theme";
 
+    /// <summary>
+    /// The same key the boolean toggle used, now holding a whole percent.
+    /// Migrated in place rather than orphaned — see <see cref="ParseTransparency"/>.
+    /// </summary>
     public const string TransparencySettingKey = "appearance.transparency";
+
+    /// <summary>
+    /// What a stored <c>true</c> becomes.
+    ///
+    /// <para><b>Not the 14% the boolean actually painted.</b> That setting's whole
+    /// problem was that it was imperceptible, so converting someone to the number
+    /// that produced it would convert them to the complaint.</para>
+    ///
+    /// <para><b>And not the far end either.</b> A migration may not carry anyone
+    /// across a floor they did not choose to cross: 25 is inside every theme's AA
+    /// ceiling — the lowest of the four is 26 — so the window they get
+    /// back is unmistakably translucent AND still clears §8 against the brightest
+    /// backdrop a wallpaper can produce. The slider is right there for anyone who
+    /// wants more, with the number in front of them.</para>
+    /// </summary>
+    public const int MigratedTransparency = 25;
 
     private readonly ISettingsRepository? _settings;
     private HoardTheme _theme = HoardThemes.Default;
-    private bool _transparencyRequested;
+    private int _transparency;
     private bool _backdropAvailable;
     private bool _loading;
+    private bool _sessionOverride;
 
     public ThemeService(ISettingsRepository? settings = null)
     {
@@ -57,14 +86,20 @@ public sealed class ThemeService
 
     public HoardTheme Theme => _theme;
 
-    /// <summary>What the user asked for.</summary>
-    public bool TransparencyRequested => _transparencyRequested;
+    /// <summary>What the user asked for, as a whole percent. 0 is fully opaque.</summary>
+    public int Transparency => _transparency;
+
+    /// <summary>Whether any desktop was asked for at all — the thing the window's
+    /// backdrop hint turns on.</summary>
+    public bool TransparencyRequested => _transparency > 0;
 
     /// <summary>What the window actually got. False until a window says otherwise.</summary>
     public bool BackdropAvailable => _backdropAvailable;
 
-    /// <summary>The state the tokens are painted for: both of the above.</summary>
-    public bool TransparencyActive => _transparencyRequested && _backdropAvailable;
+    /// <summary>The amount the tokens are painted for: the request, or zero when
+    /// the machine cannot composite.</summary>
+    public double ActiveTransparency
+        => TransparencyRequested && _backdropAvailable ? _transparency / 100.0 : 0;
 
     /// <summary>The in-flight write, so a caller — or a test — can wait for the
     /// preference to reach disk. Nothing in the UI waits on it.</summary>
@@ -90,7 +125,7 @@ public sealed class ThemeService
         try
         {
             _theme = HoardThemes.ById(storedTheme);
-            _transparencyRequested = bool.TryParse(storedTransparency, out var on) && on;
+            _transparency = ParseTransparency(storedTransparency);
         }
         finally
         {
@@ -98,25 +133,62 @@ public sealed class ThemeService
         }
 
         Apply();
+
+        // Rewrite the migrated value so the boolean is converted once rather
+        // than re-derived on every launch. Only when it actually changed shape.
+        if (storedTransparency is not null
+            && !int.TryParse(storedTransparency, NumberStyles.Integer, CultureInfo.InvariantCulture, out _))
+        {
+            Save(TransparencySettingKey, Format(_transparency));
+        }
     }
 
     /// <summary>
-    /// Overrides both preferences for this process without writing either.
-    /// Debug capture flags use it, which is why it is the only way to change the
-    /// state without touching the database — an agent taking a screenshot must
-    /// not leave a preference behind in the user's real library.
+    /// The stored value, in either shape it can have.
+    ///
+    /// <para>A whole percent is what this setting holds now. A <c>true</c> or
+    /// <c>false</c> is what the toggle that preceded it wrote, and both are
+    /// answered rather than discarded — a preference someone set does not get to
+    /// silently evaporate because the control that set it was replaced. Anything
+    /// else reads as unset, which is opaque.</para>
     /// </summary>
-    public void OverrideForSession(HoardTheme theme, bool transparency)
+    public static int ParseTransparency(string? stored)
+    {
+        if (int.TryParse(stored, NumberStyles.Integer, CultureInfo.InvariantCulture, out var percent))
+        {
+            return Math.Clamp(percent, 0, 100);
+        }
+
+        return bool.TryParse(stored, out var on) && on ? MigratedTransparency : 0;
+    }
+
+    /// <summary>
+    /// Overrides both preferences for this process and SEALS THE SERVICE AGAINST
+    /// WRITING for the rest of it. Debug capture flags use it: an agent taking a
+    /// screenshot must not leave a preference behind in the user's real library.
+    ///
+    /// <para><b>The seal is the part that was missing, and it was missing in the
+    /// way that costs you a real user's settings row.</b> Suppressing the write
+    /// only for the duration of the override was enough as long as nothing
+    /// afterwards changed the state — and then a capture run drove the Appearance
+    /// screen, something in the posted input reached the slider, and the
+    /// preference the run had promised not to touch was rewritten in the live
+    /// database. A promise that holds until the first click is not a promise. A
+    /// session that was told what to look like is not one whose looks are worth
+    /// saving, so nothing it does gets written.</para>
+    /// </summary>
+    public void OverrideForSession(HoardTheme theme, int transparency)
     {
         _loading = true;
         try
         {
             _theme = theme;
-            _transparencyRequested = transparency;
+            _transparency = Math.Clamp(transparency, 0, 100);
         }
         finally
         {
             _loading = false;
+            _sessionOverride = true;
         }
 
         Apply();
@@ -134,16 +206,25 @@ public sealed class ThemeService
         Save(ThemeSettingKey, theme.Id);
     }
 
-    public void SetTransparency(bool on)
+    /// <summary>
+    /// Sets how much desktop the chrome admits, as a whole percent.
+    ///
+    /// <para>Rounded on the way in rather than stored as a double, because the
+    /// slider is dragged and a preference row rewritten on every pixel of travel
+    /// is a write per frame. One value per percent is finer than anyone can
+    /// resolve and coarse enough to be a setting.</para>
+    /// </summary>
+    public void SetTransparency(int percent)
     {
-        if (_transparencyRequested == on)
+        var clamped = Math.Clamp(percent, 0, 100);
+        if (_transparency == clamped)
         {
             return;
         }
 
-        _transparencyRequested = on;
+        _transparency = clamped;
         Apply();
-        Save(TransparencySettingKey, on ? "true" : "false");
+        Save(TransparencySettingKey, Format(clamped));
     }
 
     /// <summary>
@@ -162,9 +243,12 @@ public sealed class ThemeService
         Apply();
     }
 
+    private static string Format(int percent)
+        => percent.ToString(CultureInfo.InvariantCulture);
+
     private void Save(string key, string value)
     {
-        if (_loading || _settings is null)
+        if (_loading || _sessionOverride || _settings is null)
         {
             return;
         }
@@ -177,7 +261,7 @@ public sealed class ThemeService
         var app = Avalonia.Application.Current;
         if (app is not null)
         {
-            ApplyTo(app.Resources, _theme, TransparencyActive);
+            ApplyTo(app.Resources, _theme, ActiveTransparency);
         }
 
         Applied?.Invoke(this, EventArgs.Empty);
@@ -192,9 +276,11 @@ public sealed class ThemeService
     /// so nothing would read it, and the missing token would look handled.
     /// <c>tokens.axaml</c> is the list of what exists.</para>
     /// </summary>
-    public static void ApplyTo(IResourceDictionary resources, HoardTheme theme, bool translucent)
+    public static void ApplyTo(IResourceDictionary resources, HoardTheme theme, double transparency)
     {
-        foreach (var (key, colour) in theme.Tokens(translucent))
+        var tokens = theme.Tokens(transparency);
+
+        foreach (var (key, colour) in tokens)
         {
             if (resources.TryGetResource(key, null, out var existing)
                 && existing is SolidColorBrush brush)
@@ -216,8 +302,6 @@ public sealed class ThemeService
                 gradient.GradientStops[i].Color = bottom;
             }
         }
-
-        var tokens = theme.Tokens(translucent);
 
         // Fluent's scrollbar template reads this one as a Color rather than a
         // brush, and reads it with DynamicResource — so it is the one token that
