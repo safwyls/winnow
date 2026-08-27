@@ -78,6 +78,19 @@ namespace Hoard.App.Services;
 /// Steps 3 and 4 below stay Steam-only, because a Steam appid is the only thing
 /// either endpoint can be asked about.</para>
 ///
+/// <para><b>Sliced, because this pass is routinely killed half-finished.</b>
+/// Nothing bounds a run except the window closing, and the run is rate-limited
+/// at both ends — IGDB and gamesdb at 4 req/s each. So "cancelled partway" is
+/// the normal case on a cold library, not the exceptional one, and the shape of
+/// the pass decides what survives it. It used to run all four source steps over
+/// the whole library before opening its first transaction, which meant a run cut
+/// short during step 0 kept <b>nothing</b>. It now plans, asks and writes
+/// <see cref="DefaultSliceSize"/> targets at a time, so a run that dies keeps
+/// every slice it finished. That, together with the interleaved order
+/// <see cref="IWorkRepository.GetEnrichmentTargetsAsync"/> returns rows in, is
+/// what stops the newest store from being starved by every short run — see that
+/// method for the measurements.</para>
+///
 /// <para>§5.1: this composes ingest-adjacent sources and the repositories, and
 /// the UI never calls it — Program sequences it, the view models read the
 /// database afterwards.</para>
@@ -112,6 +125,28 @@ public sealed class EnrichmentSyncService
         _unitOfWork = unitOfWork;
         _logger = logger;
     }
+
+    /// <summary>
+    /// How many targets one pass of plan-ask-write covers before committing and
+    /// starting the next.
+    ///
+    /// <para>40 is chosen against the shape of a real run rather than a round
+    /// number. The query interleaves the stores, so the first slice of 40 on the
+    /// author's library holds every one of GOG's 14 outstanding rows beside a
+    /// dozen each of Epic and Steam — the smallest store is finished before the
+    /// second slice begins, which is exactly the property that failed. Smaller
+    /// slices would commit sooner but multiply the per-slice IGDB round trips;
+    /// much larger ones drift back towards the all-or-nothing pass this
+    /// replaced.</para>
+    /// </summary>
+    public const int DefaultSliceSize = 40;
+
+    /// <summary>
+    /// Overridable so a test can bound a run without waiting on wall-clock time.
+    /// <c>init</c> rather than a constructor parameter so DI keeps resolving the
+    /// single public constructor unchanged.
+    /// </summary>
+    public int SliceSize { get; init; } = DefaultSliceSize;
 
     /// <summary>
     /// Names every work still carrying a placeholder, and back-fills the
@@ -162,12 +197,100 @@ public sealed class EnrichmentSyncService
             return new EnrichmentReport(0, 0, 0, stopwatch.Elapsed);
         }
 
+        var run = new RunState(targets);
+        var sliceSize = Math.Max(1, SliceSize);
+
+        try
+        {
+            foreach (var slice in targets.Chunk(sliceSize))
+            {
+                ct.ThrowIfCancellationRequested();
+                await EnrichSliceAsync(slice, run, ct);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // The one outcome that used to be invisible. Everything committed so
+            // far stands — each write is its own transaction — but the run did
+            // NOT finish, and saying so is the whole point: a pass that dies
+            // halfway used to log nothing at all and was indistinguishable from
+            // one that had nothing left to do, which is precisely why a store
+            // sat at zero for months without anyone noticing.
+            stopwatch.Stop();
+            _logger.LogWarning(
+                "Enrichment CUT SHORT by shutdown after {Elapsed:n1}s. "
+                + "{Attempted} of {Targets} targets attempted, {Remaining} never reached; "
+                + "{Enriched} works had metadata written, {Promoted} names promoted. "
+                + "Attempted per store: {Attempts}. Written per store: {Writes}. "
+                + "The next run re-reads the same query and resumes where this one stopped — "
+                + "and because that query interleaves the stores, the untouched rows are "
+                + "spread across all of them rather than being one store's entire library.",
+                stopwatch.Elapsed.TotalSeconds,
+                run.Attempted, targets.Count, targets.Count - run.Attempted,
+                run.EnrichedWorks.Count, run.Promoted,
+                Describe(run.AttemptedByProvider), Describe(run.WrittenByProvider));
+            throw;
+        }
+
+        stopwatch.Stop();
+        _logger.LogInformation(
+            "Enrichment COMPLETE: {Promoted} of {Outstanding} names promoted "
+            + "({Igdb} from IGDB, {Steam} from the Steam store, {SteamCmd} from steamcmd.net); "
+            + "{Types} app types read; "
+            + "{Enriched} of {Targets} works had metadata filled in, in {Elapsed:n1}s. "
+            + "Written per store: {Writes}. Routes: {Routes}.",
+            run.Promoted, outstandingNames, run.FromIgdb, run.FromSteam, run.FromSteamCmd,
+            run.TypesRead, run.EnrichedWorks.Count, targets.Count, stopwatch.Elapsed.TotalSeconds,
+            Describe(run.WrittenByProvider),
+            run.Routes.Count == 0
+                ? "none"
+                : string.Join(", ", run.Routes.OrderBy(r => r.Key, StringComparer.Ordinal)
+                    .Select(r => $"{r.Key} {r.Value}")));
+
+        return new EnrichmentReport(
+            outstandingNames, run.Promoted, run.FromIgdb, stopwatch.Elapsed,
+            run.EnrichedWorks.Count, run.FromSteamCmd);
+    }
+
+    /// <summary>
+    /// One slice: plan, ask, write. The whole pass used to be this method's body
+    /// run once over every target, and that shape is what made a truncated run
+    /// worthless rather than merely partial.
+    ///
+    /// <para><b>Why slicing, and not just a better ORDER BY.</b> The four source
+    /// steps ran to completion for the entire library BEFORE the write step
+    /// opened its first transaction. Step 0 alone costs one rate-limited gamesdb
+    /// request per Epic work — 99 of them at 4 req/s on the author's library —
+    /// so a window closed twenty seconds in was cancelled inside step 0 and
+    /// committed <b>nothing at all</b>, whatever order the rows arrived in. The
+    /// evidence was in the cache: 89 gamesdb rows written for Epic beside zero
+    /// IGDB rows of any kind for that run, which is what "died before it ever
+    /// got to ask IGDB" looks like from the outside. Reordering the query fixes
+    /// which rows a short run works on; slicing is what makes a short run keep
+    /// what it did.</para>
+    ///
+    /// <para><b>What a slice costs.</b> The two IGDB calls are per slice rather
+    /// than per run, so a 231-target backlog at
+    /// <see cref="DefaultSliceSize"/> spends roughly 18 requests where it used
+    /// to spend 3 — about four extra seconds against the 4 req/s limiter, once,
+    /// on a cold cache. Both calls read <c>metadata_cache</c> first and both
+    /// batch far above the slice size, so the extra requests are the price of
+    /// durability rather than a per-launch tax. That trade is only worth making
+    /// in this direction: the alternative spends nothing and keeps nothing.</para>
+    /// </summary>
+    private async Task EnrichSliceAsync(
+        IReadOnlyList<EnrichmentTarget> slice, RunState run, CancellationToken ct)
+    {
         // 0. How does each store reach IGDB? Steam and GOG answer directly on
         //    their own external_game_source; Epic has no id IGDB indexes and
         //    reaches source 1 through GOG's cross-store graph instead. A target
         //    the planner has no route for is simply absent from the plan, and
         //    absent means "ask nothing, write nothing" — never "IGDB said no".
-        var plan = await _lookups.PlanAsync(targets, ct);
+        var plan = await _lookups.PlanAsync(slice, ct);
+        foreach (var (route, count) in plan.RouteCounts)
+        {
+            run.Routes[route] = run.Routes.GetValueOrDefault(route) + count;
+        }
 
         // 1. IGDB first — the backbone, and the only source that carries the
         //    year/summary/cover/publisher the works columns and the soft matcher
@@ -211,8 +334,7 @@ public sealed class EnrichmentSyncService
                 //    §5.3's four soft-match signals — the one that has never
                 //    once fired because nothing ever fetched or stored it.
                 //    Batched and cached exactly like step 1, so this is roughly
-                //    two more requests for a 616-game library and zero
-                //    thereafter.
+                //    one more request per slice and zero once warm.
                 var igdbIds = matches.Values
                     .Select(m => m.IgdbId)
                     .Where(id => id > 0)
@@ -233,14 +355,16 @@ public sealed class EnrichmentSyncService
                     ex, "IGDB lookup failed; continuing with the Steam store fallback.");
             }
         }
-        else
+        else if (!run.IgdbUnconfiguredLogged)
         {
+            // Once per run, not once per slice: the same sentence six times over
+            // is how a real warning stops being read.
+            run.IgdbUnconfiguredLogged = true;
             _logger.LogInformation(
                 "IGDB is not configured; falling back to the Steam store for titles. "
                 + "Set Igdb__ClientId / Igdb__ClientSecret to enable the metadata backbone.");
         }
 
-        var fromIgdb = 0;
         var titles = new Dictionary<TargetKey, string>();
         foreach (var (key, match) in matches)
         {
@@ -262,7 +386,7 @@ public sealed class EnrichmentSyncService
         //    like an appid and come back with a confident wrong title. Epic and
         //    GOG names come from their own local files at ingest and need no
         //    fallback here.
-        var unnamed = targets
+        var unnamed = slice
             .Where(t => t.Provider == ExternalIdProviders.Steam
                         && t.NameIsProvisional
                         && !titles.ContainsKey(KeyOf(t)))
@@ -270,7 +394,6 @@ public sealed class EnrichmentSyncService
             .Distinct(StringComparer.Ordinal)
             .ToArray();
 
-        var fromSteam = 0;
         if (unnamed.Length > 0)
         {
             foreach (var (appId, item) in await _steamStore.GetItemsAsync(unnamed, ct: ct))
@@ -284,19 +407,25 @@ public sealed class EnrichmentSyncService
 
         // 4. steamcmd.net, last. See the class remarks for why it is last and
         //    what it is worth.
-        var fromSteamCmd = 0;
-        var steamCmd = await ReadSteamCmdAsync(targets, titles, ct);
+        var steamCmd = await ReadSteamCmdAsync(slice, titles, ct);
+        run.TypesRead += steamCmd.Types.Count;
 
         // 5. Write. Work and release move together, in ONE transaction each:
         //    clearing name_is_provisional is what removes the work from the
         //    name half of this query, so a crash between the two writes would
         //    strand a work named "Portal 2" beside a release still named
         //    "App 620" that no future run would ever revisit.
-        var promoted = 0;
-        var enrichedWorks = new HashSet<long>();
-        foreach (var target in targets)
+        foreach (var target in slice)
         {
             ct.ThrowIfCancellationRequested();
+
+            // Counted here rather than at the top of the slice: "attempted"
+            // must mean this row got as far as a write decision, or the
+            // truncation line would claim credit for a slice cancelled while it
+            // was still on the network.
+            run.Attempted++;
+            run.AttemptedByProvider[target.Provider] =
+                run.AttemptedByProvider.GetValueOrDefault(target.Provider) + 1;
 
             var key = KeyOf(target);
             var patch = BuildPatch(target, key, titles, matches, games, steamCmd.Types);
@@ -319,18 +448,18 @@ public sealed class EnrichmentSyncService
 
             if (namePromoted)
             {
-                promoted++;
+                run.Promoted++;
                 if (matches.ContainsKey(key))
                 {
-                    fromIgdb++;
+                    run.FromIgdb++;
                 }
                 else if (steamCmd.Named.Contains(target.ProviderId))
                 {
-                    fromSteamCmd++;
+                    run.FromSteamCmd++;
                 }
                 else
                 {
-                    fromSteam++;
+                    run.FromSteam++;
                 }
             }
 
@@ -338,26 +467,62 @@ public sealed class EnrichmentSyncService
             // providers yields two rows, and the second one's patch is a no-op
             // the writer's COALESCE guards absorb. Counting rows would report
             // more works enriched than the library contains.
-            enrichedWorks.Add(target.WorkId);
+            if (run.EnrichedWorks.Add(target.WorkId))
+            {
+                run.WrittenByProvider[target.Provider] =
+                    run.WrittenByProvider.GetValueOrDefault(target.Provider) + 1;
+            }
         }
-
-        stopwatch.Stop();
-        _logger.LogInformation(
-            "Enrichment: {Promoted} of {Outstanding} names promoted "
-            + "({Igdb} from IGDB, {Steam} from the Steam store, {SteamCmd} from steamcmd.net); "
-            + "{Types} app types read; "
-            + "{Enriched} of {Targets} works had metadata filled in, in {Elapsed:n1}s. "
-            + "Routes: {Routes}.",
-            promoted, outstandingNames, fromIgdb, fromSteam, fromSteamCmd, steamCmd.Types.Count,
-            enrichedWorks.Count, targets.Count, stopwatch.Elapsed.TotalSeconds,
-            plan.RouteCounts.Count == 0
-                ? "none"
-                : string.Join(", ", plan.RouteCounts.OrderBy(r => r.Key, StringComparer.Ordinal)
-                    .Select(r => $"{r.Key} {r.Value}")));
-
-        return new EnrichmentReport(
-            outstandingNames, promoted, fromIgdb, stopwatch.Elapsed, enrichedWorks.Count, fromSteamCmd);
     }
+
+    /// <summary>
+    /// Everything one run accumulates across its slices. A mutable bag rather
+    /// than a returned record because the truncation path needs these numbers
+    /// too, and a cancelled slice must not take the totals of the slices before
+    /// it with it.
+    /// </summary>
+    private sealed class RunState
+    {
+        public RunState(IReadOnlyList<EnrichmentTarget> targets) => Targets = targets;
+
+        public IReadOnlyList<EnrichmentTarget> Targets { get; }
+
+        /// <summary>Targets that reached a write decision. The honest measure of how far a run got.</summary>
+        public int Attempted { get; set; }
+
+        public int Promoted { get; set; }
+
+        public int FromIgdb { get; set; }
+
+        public int FromSteam { get; set; }
+
+        public int FromSteamCmd { get; set; }
+
+        public int TypesRead { get; set; }
+
+        public bool IgdbUnconfiguredLogged { get; set; }
+
+        public HashSet<long> EnrichedWorks { get; } = [];
+
+        public Dictionary<string, int> Routes { get; } = new(StringComparer.Ordinal);
+
+        /// <summary>
+        /// Per-store attempt and write counts, so the truncation line can say
+        /// WHICH stores a short run served. A run that reports "steam 40" and
+        /// nothing else is the starvation bug happening again, and that is a
+        /// sentence somebody can read in a log rather than a shortfall only
+        /// visible by counting rows in the database months later.
+        /// </summary>
+        public Dictionary<string, int> AttemptedByProvider { get; } = new(StringComparer.Ordinal);
+
+        public Dictionary<string, int> WrittenByProvider { get; } = new(StringComparer.Ordinal);
+    }
+
+    private static string Describe(IReadOnlyDictionary<string, int> counts)
+        => counts.Count == 0
+            ? "none"
+            : string.Join(", ", counts.OrderBy(c => c.Key, StringComparer.Ordinal)
+                .Select(c => $"{c.Key} {c.Value}"));
 
     private static TargetKey KeyOf(EnrichmentTarget target)
         => new(target.Provider, target.ProviderId);
@@ -576,6 +741,17 @@ public sealed class EnrichmentSyncService
 /// flatline is the signal that the library has come to depend on a volunteer
 /// service.
 /// </param>
+/// <remarks>
+/// <para><b>There is deliberately no "was this run truncated?" flag here.</b> A
+/// pass the window closing cut short does not return at all — it rethrows the
+/// <see cref="OperationCanceledException"/>, which is how its one caller already
+/// tells the two apart, so a <c>Completed</c> property could only ever be
+/// <c>true</c>. What was missing was never a field: it was that the truncated
+/// path logged <i>nothing</i>, so a run that died a third of the way through and
+/// a run with nothing left to do looked identical in the log. Both paths now
+/// write a line, and they say different words —
+/// <c>EnrichmentSyncService.EnrichAsync</c>.</para>
+/// </remarks>
 public sealed record EnrichmentReport(
     int Outstanding,
     int Promoted,

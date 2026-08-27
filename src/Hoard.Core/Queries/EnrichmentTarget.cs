@@ -87,4 +87,30 @@ public sealed record EnrichmentTarget
     /// was catching up rather than naming.
     /// </summary>
     public bool IsMetadataOnly => !NameIsProvisional;
+
+    /// <summary>
+    /// How many of the five metadata columns this work is still missing. 5 is
+    /// "nothing at all" — a tile showing placeholder art and no year.
+    ///
+    /// <para><b>This is the query's primary sort key, recomputed here.</b>
+    /// <see cref="Repositories.IWorkRepository.GetEnrichmentTargetsAsync"/>
+    /// orders emptiest-first so that a run cut short by the window closing spends
+    /// its time on the works a user can see are unfinished, rather than
+    /// perfecting rows that already have four fields out of five. The C# copy
+    /// exists so the caller can log and reason about the same tiering without a
+    /// second round trip, and because a test can assert on it without asserting
+    /// on an ORDER BY string. The two definitions must stay in step — if a
+    /// sixth column joins the pass, it joins both.</para>
+    ///
+    /// <para><c>steam_app_type</c> is excluded from the count on purpose. It is
+    /// a demo-detection detail with no visible effect on the library, and
+    /// counting it would rank a fully illustrated game beside one still showing
+    /// an appid.</para>
+    /// </summary>
+    public int MissingColumns
+        => (HasIgdbId ? 0 : 1)
+         + (HasFirstReleaseYear ? 0 : 1)
+         + (HasSummary ? 0 : 1)
+         + (HasCoverUrl ? 0 : 1)
+         + (HasPublisher ? 0 : 1);
 }

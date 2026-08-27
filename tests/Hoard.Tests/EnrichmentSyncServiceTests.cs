@@ -1049,10 +1049,243 @@ public sealed class EnrichmentSyncServiceTests
         Assert.Equal(2012, epicWork.FirstReleaseYear);
     }
 
+    // ── Starvation: what a run that does not finish leaves behind ────────────
+
+    /// <summary>
+    /// <b>The bug this file exists to keep out.</b> Enrichment used to take its
+    /// targets in <c>ORDER BY w.id</c>, and work ids are insertion order — so on
+    /// a library ingested one store per milestone, the id ranges partition by
+    /// store and the store added last sits behind every row of every store added
+    /// before it. Nothing caps a run but the window closing, and the run is
+    /// rate-limited, so every short run walked the same prefix and stopped in
+    /// the same place. Measured on the author's library: <b>GOG 0 of 14
+    /// enriched, Epic 18 of 99</b>, with the 18 sitting at the very start of
+    /// Epic's id range and the GOG lookup never having executed once.
+    ///
+    /// <para><b>This test is deliberately not an assertion about the ORDER BY
+    /// clause.</b> A test that pins the SQL text passes for a query that still
+    /// starves somebody — it only pins today's spelling. This runs a real pass
+    /// against a real database, cuts it off after the first slice the way a
+    /// closing window does, and asks the only question the user was actually
+    /// asking: did the store with the highest ids get anything at all?</para>
+    ///
+    /// <para>GOG holds the highest work ids here precisely because that is the
+    /// arrangement the old ordering punished.</para>
+    /// </summary>
+    [Fact]
+    public async Task A_run_cut_short_still_reaches_the_provider_holding_the_highest_ids()
+    {
+        // Slice of 6, so cancelling on the second slice boundary leaves exactly
+        // one committed slice to inspect — a genuinely bounded pass, not a run
+        // that quietly finished everything before the token was signalled.
+        using var fixture = new EnrichmentFixture(sliceSize: 6);
+
+        // Insertion order is the point: steam first and in bulk, then epic, then
+        // gog last and smallest. This is the author's library in miniature.
+        var steam = new List<long>();
+        for (var i = 0; i < 12; i++)
+        {
+            var appId = (600 + i).ToString();
+            steam.Add((await fixture.AddNamedAsync(appId, "Steam Game " + i)).WorkId);
+            fixture.Igdb.Matches[appId] = Match(appId, 1000 + i, "Steam Game " + i);
+        }
+
+        var epic = new List<long>();
+        for (var i = 0; i < 3; i++)
+        {
+            var catalogId = "epic-cat-" + i;
+            var appName = "EpicName" + i;
+            var bridgedAppId = (700 + i).ToString();
+
+            epic.Add((await fixture.AddAsync(
+                ExternalIdProviders.Epic, catalogId, new Work { Name = "Epic Game " + i })).WorkId);
+
+            fixture.Aliases.Epic[catalogId] = appName;
+            fixture.Identity.Add("epic", appName, "game-" + i, ("steam", bridgedAppId));
+            fixture.Igdb.Matches[bridgedAppId] = Match(bridgedAppId, 2000 + i, "Epic Game " + i);
+        }
+
+        var gog = new List<long>();
+        for (var i = 0; i < 3; i++)
+        {
+            var productId = "120765" + i;
+            gog.Add((await fixture.AddAsync(
+                ExternalIdProviders.Gog, productId, new Work { Name = "GOG Game " + i })).WorkId);
+
+            // Source 5 — GOG's own external_game_source, the lookup that on the
+            // real library had never run at all.
+            fixture.Igdb.External[(5, productId)] = Match(productId, 3000 + i, "GOG Game " + i);
+        }
+
+        fixture.Igdb.Configured = true;
+
+        // Cancel as the SECOND slice begins. IsConfiguredAsync is asked once per
+        // slice, so this ends the run with slice one committed and nothing of
+        // slice two written — the shape of a window closed mid-pass.
+        using var cts = new CancellationTokenSource();
+        fixture.Igdb.OnConfigurationCheck = slice =>
+        {
+            if (slice >= 2)
+            {
+                cts.Cancel();
+            }
+        };
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => fixture.Service.EnrichAsync(cts.Token));
+
+        // The property, stated three ways because all three failed in the field.
+        var steamServed = await fixture.CountWithCoverAsync(steam);
+        var epicServed = await fixture.CountWithCoverAsync(epic);
+        var gogServed = await fixture.CountWithCoverAsync(gog);
+
+        Assert.True(gogServed > 0, $"GOG was starved again: 0 of {gog.Count} enriched.");
+        Assert.True(epicServed > 0, $"Epic was starved again: 0 of {epic.Count} enriched.");
+        Assert.True(steamServed > 0, "Steam should still be served; this is round-robin, not a reversal.");
+
+        // And it really was cut short — otherwise the assertions above would be
+        // pinning nothing but "a completed run enriches everything".
+        Assert.True(
+            steamServed + epicServed + gogServed < steam.Count + epic.Count + gog.Count,
+            "The run finished; this test asserts nothing unless the pass was genuinely bounded.");
+    }
+
+    /// <summary>
+    /// The other half of the ordering rule: within a store, a work with nothing
+    /// at all outranks a work missing one field. A user staring at placeholder
+    /// art cares about the empty tile; the row that only wants a publisher can
+    /// wait for the next launch.
+    ///
+    /// <para>Both works here are Steam, so the round-robin cannot be what
+    /// separates them — only emptiness can.</para>
+    /// </summary>
+    [Fact]
+    public async Task A_work_with_nothing_is_served_before_one_missing_a_single_field()
+    {
+        using var fixture = new EnrichmentFixture(sliceSize: 1);
+
+        // Inserted FIRST, and missing only its publisher. Under the old
+        // insertion-order sweep this row went first and consumed the one slice.
+        var nearlyDone = await fixture.AddAsync("600", new Work
+        {
+            Name = "Nearly Done",
+            IgdbId = 4242,
+            FirstReleaseYear = 2011,
+            Summary = "Has almost everything.",
+            CoverUrl = "https://img/have.jpg",
+        });
+
+        // Inserted SECOND, and has nothing at all.
+        var empty = await fixture.AddNamedAsync("601", "Empty");
+
+        fixture.Igdb.Configured = true;
+        fixture.Igdb.Matches["600"] = Match("600", 4242, "Nearly Done");
+        fixture.Igdb.Matches["601"] = Match("601", 5151, "Empty");
+
+        // BOTH have a publisher waiting. Without this the near-complete row
+        // would have had nothing to write either way, and the test would pass
+        // for the wrong reason — the run would have skipped it on an empty
+        // patch rather than on priority.
+        fixture.Igdb.Games[4242] = Game(4242, "Nearly Done", ["Late Publisher"]);
+        fixture.Igdb.Games[5151] = Game(5151, "Empty", ["Publisher"]);
+
+        using var cts = new CancellationTokenSource();
+        fixture.Igdb.OnConfigurationCheck = slice =>
+        {
+            if (slice >= 2)
+            {
+                cts.Cancel();
+            }
+        };
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => fixture.Service.EnrichAsync(cts.Token));
+
+        Assert.Equal("https://img/co5151.jpg", (await fixture.WorkAsync(empty.WorkId)).CoverUrl);
+        Assert.Null((await fixture.WorkAsync(nearlyDone.WorkId)).Publisher);
+    }
+
+    /// <summary>
+    /// Ordering is only half the fix. The pass used to run every source step
+    /// over the whole library before opening its first transaction, so a run
+    /// cancelled during step 0 — the per-Epic-work gamesdb hop, one rate-limited
+    /// request each — committed nothing whatsoever, in whatever order the rows
+    /// had arrived. This pins that a slice which finished its sources has
+    /// already been written by the time the next one starts.
+    /// </summary>
+    [Fact]
+    public async Task Work_completed_before_the_cancellation_is_already_committed()
+    {
+        using var fixture = new EnrichmentFixture(sliceSize: 2);
+
+        var first = await fixture.AddNamedAsync("600", "First");
+        var second = await fixture.AddNamedAsync("601", "Second");
+        var third = await fixture.AddNamedAsync("602", "Third");
+        var fourth = await fixture.AddNamedAsync("603", "Fourth");
+
+        fixture.Igdb.Configured = true;
+        foreach (var (appId, igdbId) in new[] { ("600", 1L), ("601", 2L), ("602", 3L), ("603", 4L) })
+        {
+            fixture.Igdb.Matches[appId] = Match(appId, igdbId, "Game " + appId);
+        }
+
+        using var cts = new CancellationTokenSource();
+        fixture.Igdb.OnConfigurationCheck = slice =>
+        {
+            if (slice >= 2)
+            {
+                cts.Cancel();
+            }
+        };
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => fixture.Service.EnrichAsync(cts.Token));
+
+        Assert.Equal(1, (await fixture.WorkAsync(first.WorkId)).IgdbId);
+        Assert.Equal(2, (await fixture.WorkAsync(second.WorkId)).IgdbId);
+        Assert.Null((await fixture.WorkAsync(third.WorkId)).IgdbId);
+        Assert.Null((await fixture.WorkAsync(fourth.WorkId)).IgdbId);
+    }
+
+    /// <summary>
+    /// Slicing must not change what a run that is allowed to finish produces.
+    /// A pass split into six commits and a pass done in one have to agree, or
+    /// the durability fix has quietly become a correctness bug.
+    /// </summary>
+    [Fact]
+    public async Task Slicing_does_not_change_the_result_of_a_run_that_finishes()
+    {
+        using var fixture = new EnrichmentFixture(sliceSize: 2);
+
+        var works = new List<long>();
+        for (var i = 0; i < 11; i++)
+        {
+            var appId = (600 + i).ToString();
+            works.Add((await fixture.AddNamedAsync(appId, "Game " + i)).WorkId);
+            fixture.Igdb.Matches[appId] = Match(appId, 1000 + i, "Game " + i);
+            fixture.Igdb.Games[1000 + i] = Game(1000 + i, "Game " + i, ["Publisher " + i]);
+        }
+
+        fixture.Igdb.Configured = true;
+
+        var report = await fixture.Service.EnrichAsync();
+
+        Assert.Equal(works.Count, report.MetadataFilled);
+        Assert.Equal(works.Count, await fixture.CountWithCoverAsync(works));
+    }
+
     // ── Fixture ──────────────────────────────────────────────────────────────
 
     private static IgdbGame Game(long id, string name, IReadOnlyList<string> publishers)
         => new(id, name, null, null, null, IgdbGame.NoStrings, IgdbGame.NoStrings, publishers);
+
+    /// <summary>
+    /// A full <c>external_games</c> answer — everything the five metadata
+    /// columns want, so a work this matched is unambiguously "enriched" and one
+    /// the run never reached is unambiguously not.
+    /// </summary>
+    private static IgdbExternalMatch Match(string uid, long igdbId, string name)
+        => new(uid, igdbId, name, $"https://img/co{igdbId}.jpg", 2012, "A summary.");
 
     private sealed record Seeded(long WorkId, long ReleaseId);
 
@@ -1060,7 +1293,13 @@ public sealed class EnrichmentSyncServiceTests
     {
         private readonly TempDatabase _db = new();
 
-        public EnrichmentFixture()
+        /// <param name="sliceSize">
+        /// How many targets the pass commits at a time. Left at the production
+        /// default for every test that is not about truncation; the starvation
+        /// tests shrink it so a bounded run is a handful of works rather than a
+        /// wall-clock wait.
+        /// </param>
+        public EnrichmentFixture(int sliceSize = EnrichmentSyncService.DefaultSliceSize)
         {
             Works = new WorkRepository(_db.Factory);
             Releases = new ReleaseRepository(_db.Factory);
@@ -1073,7 +1312,10 @@ public sealed class EnrichmentSyncServiceTests
 
             Service = new EnrichmentSyncService(
                 Works, Releases, Igdb, Steam, SteamCmd, Planner, _db.Factory,
-                NullLogger<EnrichmentSyncService>.Instance);
+                NullLogger<EnrichmentSyncService>.Instance)
+            {
+                SliceSize = sliceSize,
+            };
         }
 
         /// <summary>The source-id table. Defaults are the live IGDB values: Steam 1, GOG 5, Epic 26.</summary>
@@ -1119,6 +1361,26 @@ public sealed class EnrichmentSyncServiceTests
             var work = await Works.GetAsync(workId);
             Assert.NotNull(work);
             return work;
+        }
+
+        /// <summary>
+        /// How many of these works came out of the run with cover art. The
+        /// cover is the right probe for starvation: it is the field the user
+        /// literally sees missing, and unlike <c>igdb_id</c> it is written even
+        /// for the losing half of a cross-store duplicate.
+        /// </summary>
+        public async Task<int> CountWithCoverAsync(IEnumerable<long> workIds)
+        {
+            var served = 0;
+            foreach (var workId in workIds)
+            {
+                if ((await Works.GetAsync(workId))?.CoverUrl is not null)
+                {
+                    served++;
+                }
+            }
+
+            return served;
         }
 
         public Task<Seeded> AddAsync(string appId, Work work)
@@ -1167,8 +1429,23 @@ public sealed class EnrichmentSyncServiceTests
 
         public List<long> GameIdsAsked { get; } = [];
 
+        /// <summary>
+        /// Called with the running count at the start of every
+        /// <see cref="IsConfiguredAsync"/>, which the pass asks exactly once per
+        /// slice. That makes it the one hook a test can use to end a run on a
+        /// known slice boundary, rather than by counting lookups (whose number
+        /// per slice depends on how many external_game_sources the slice
+        /// happened to span) or by racing a wall clock.
+        /// </summary>
+        public Action<int>? OnConfigurationCheck { get; set; }
+
+        private int _configurationChecks;
+
         public ValueTask<bool> IsConfiguredAsync(CancellationToken ct = default)
-            => ValueTask.FromResult(Configured);
+        {
+            OnConfigurationCheck?.Invoke(++_configurationChecks);
+            return ValueTask.FromResult(Configured);
+        }
 
         public Task<IReadOnlyDictionary<string, IgdbExternalMatch>> ResolveBySteamAppIdsAsync(
             IEnumerable<string> appIds, TimeSpan? cacheTtl = null, CancellationToken ct = default)

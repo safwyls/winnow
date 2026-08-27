@@ -95,6 +95,56 @@ public sealed class WorkRepository : IWorkRepository
     /// projection is six flags over a few hundred rows, and the answer is the
     /// empty set once the backlog drains.</para>
     ///
+    /// <para><b>The row order is load-bearing, and getting it wrong starved a
+    /// whole store.</b> This used to end <c>ORDER BY w.id, e.provider</c>. Work
+    /// ids are insertion order and the stores were ingested in milestone order,
+    /// so the id ranges partition cleanly by store — on the author's library
+    /// steam 1-946, epic 947-1059, gog 1014-1027. The caller is rate-limited
+    /// (IGDB and gamesdb both at 4 req/s) and, having no per-run cap, stops only
+    /// when the window closes. So every run began at Steam's stragglers, walked
+    /// up by id, and died wherever the user happened to quit. Measured
+    /// consequence: <b>GOG 0 of 14 enriched, Epic 18 of 99</b>, and the 18 that
+    /// made it sat at the very start of Epic's id range. The cache proved the
+    /// mechanism rather than merely suggesting it — 89 gamesdb rows for Epic
+    /// beside <i>zero</i> IGDB <c>external:5</c> rows, so the GOG lookup had
+    /// never once executed. This is structural rather than unlucky: ordering by
+    /// insertion id makes the most recently added store permanently last, so it
+    /// is starved by every short run forever, and each new store inherits the
+    /// same fate on the day it lands.</para>
+    ///
+    /// <para><b>Two properties replace it, in this precedence.</b></para>
+    /// <list type="number">
+    ///   <item><b>Emptiest first.</b> <c>MissingColumns</c> counts the five
+    ///     metadata columns that are NULL and the sort takes the highest first.
+    ///     A user staring at a wall of placeholder art cares about the works
+    ///     with nothing at all; the one that already has four fields and needs a
+    ///     publisher can wait for the next run. A truncated pass therefore does
+    ///     the most visible good it can with the time it got.</item>
+    ///   <item><b>Round-robin across providers, within each tier.</b>
+    ///     <c>ROW_NUMBER() OVER (PARTITION BY provider, MissingColumns)</c>
+    ///     numbers each store's rows 1, 2, 3... independently, and sorting on
+    ///     that rank ahead of anything store-specific interleaves them: every
+    ///     store's first row, then every store's second, and so on. No store can
+    ///     be systematically last, which is the property that actually failed.
+    ///     14 GOG rows are served inside the first ~42 rows of the sweep instead
+    ///     of behind 946 of someone else's, and a store added tomorrow is
+    ///     interleaved from its first sweep rather than appended after the
+    ///     incumbents.</item>
+    /// </list>
+    ///
+    /// <para><b>Deliberately still a query, with no new column.</b> §6.1's rule
+    /// is that derived things are queries rather than stored values, and
+    /// priority here is derived entirely from columns already present. A
+    /// <c>last_enriched_at</c> watermark would have re-introduced the exact
+    /// failure the caller's cache remarks warn about — permanently suppressing
+    /// works a source only learns about later — and would have needed a
+    /// migration to express what <c>ROW_NUMBER()</c> expresses for free.</para>
+    ///
+    /// <para><b>Ordering alone is not the whole fix.</b> The caller must also
+    /// process in bounded slices, because a cancellation arriving before its
+    /// write phase discards everything regardless of the order the rows came
+    /// back in. See <c>EnrichmentSyncService.EnrichAsync</c>.</para>
+    ///
     /// <para><b>Every store provider, not one.</b> The <c>provider</c> parameter
     /// this method used to take was answered <c>steam</c> by its only caller,
     /// which is why the author's 67 Epic and 14 GOG releases had zero metadata
@@ -111,6 +161,7 @@ public sealed class WorkRepository : IWorkRepository
         var providers = ExternalIdProviders.Stores;
         using var lease = _factory.Lease();
         var rows = await lease.Connection.QueryAsync<EnrichmentTarget>(new CommandDefinition("""
+            WITH candidate AS (
             SELECT w.id  AS WorkId,
                    r.id  AS ReleaseId,
                    e.provider    AS Provider,
@@ -122,7 +173,21 @@ public sealed class WorkRepository : IWorkRepository
                    (w.cover_url          IS NOT NULL) AS HasCoverUrl,
                    (w.publisher          IS NOT NULL) AS HasPublisher,
                    (w.steam_app_type     IS NOT NULL) AS HasSteamAppType,
-                   COALESCE(NULLIF(TRIM(r.name), ''), w.name) AS Title
+                   COALESCE(NULLIF(TRIM(r.name), ''), w.name) AS Title,
+
+                   -- How empty is this work? The five columns the metadata
+                   -- sources fill, counted as NULLs, so 5 means "nothing at
+                   -- all". steam_app_type is deliberately not among them: it is
+                   -- a demo-detection detail nobody looking at the library can
+                   -- see, and letting it into the priority would rank a fully
+                   -- illustrated game beside one still showing a placeholder.
+                   -- EnrichmentTarget.MissingColumns recomputes this from the
+                   -- flags above; the two must stay in step.
+                   ((w.igdb_id            IS NULL)
+                  + (w.first_release_year IS NULL)
+                  + (w.summary            IS NULL)
+                  + (w.cover_url          IS NULL)
+                  + (w.publisher          IS NULL)) AS MissingColumns
             FROM works w
             JOIN releases     r ON r.work_id = w.id
             JOIN external_ids e ON e.release_id = r.id AND e.provider IN @providers
@@ -150,7 +215,43 @@ public sealed class WorkRepository : IWorkRepository
                      OR LOWER(COALESCE(NULLIF(TRIM(r.name), ''), w.name)) LIKE '%alpha%'
                      OR LOWER(COALESCE(NULLIF(TRIM(r.name), ''), w.name)) LIKE '%trial%'
                      OR LOWER(COALESCE(NULLIF(TRIM(r.name), ''), w.name)) LIKE '%weekend%'))
-            ORDER BY w.id, e.provider;
+            )
+            SELECT WorkId, ReleaseId, Provider, ProviderId, NameIsProvisional,
+                   HasIgdbId, HasFirstReleaseYear, HasSummary, HasCoverUrl,
+                   HasPublisher, HasSteamAppType, Title
+            FROM (
+                SELECT candidate.*,
+
+                       -- Each store numbered independently, 1, 2, 3..., within
+                       -- its own emptiness tier. Sorting on this rank BEFORE
+                       -- anything store-specific is what interleaves the stores;
+                       -- ordering by provider first would only rename the
+                       -- starvation. Partitioning by MissingColumns as well as
+                       -- Provider restarts every store at rank 1 in each tier,
+                       -- so a store with a long tail of tier-5 rows does not
+                       -- push its tier-4 rows behind another store's.
+                       ROW_NUMBER() OVER (
+                           PARTITION BY Provider, MissingColumns
+                           ORDER BY WorkId) AS ProviderRank
+                FROM candidate
+            )
+            -- WorkId and Provider are tie-breakers only, present so the order is
+            -- total and a run is reproducible. They must stay last: promoting
+            -- either above ProviderRank is how the original bug is written.
+            --
+            -- WorkId before Provider, and that ordering is load-bearing rather
+            -- than arbitrary. A rank-1 tie is at most one row per store, so this
+            -- decides nothing about fairness — but it does decide which row of a
+            -- cross-store DUPLICATE reaches the writer first, and works.igdb_id
+            -- is UNIQUE: the first arrival claims the canonical id and the
+            -- second is refused (metadata still written, identity left to the
+            -- merge queue and a human, §5.3). Sorting on Provider here would
+            -- hand that claim to whichever store sorts first alphabetically,
+            -- flipping every existing duplicate in the library from its Steam
+            -- row to its Epic one for no reason anybody chose. Lowest work id
+            -- wins is what the old ORDER BY did, it is stable across runs, and
+            -- it is none of this change's business to alter.
+            ORDER BY MissingColumns DESC, ProviderRank, WorkId, Provider;
             """, new { providers }, transaction: lease.Transaction, cancellationToken: ct));
         return rows.AsList();
     }
