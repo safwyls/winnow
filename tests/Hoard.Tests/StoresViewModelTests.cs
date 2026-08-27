@@ -586,3 +586,15 @@ internal static class DetachedStores
 {
     public static StoresViewModel Create() => new(new FakeStoreConnections());
 }
+
+/// <summary>
+/// An Appearance screen for tests that need one only because
+/// <see cref="MainWindowViewModel"/> requires it. No settings store, so nothing
+/// is read and nothing is written; the theme service still resolves its palette
+/// and reports the default, which is the state every such test wants.
+/// </summary>
+internal static class DetachedAppearance
+{
+    public static Hoard.App.ViewModels.AppearanceViewModel Create()
+        => new(new Hoard.App.Services.ThemeService());
+}

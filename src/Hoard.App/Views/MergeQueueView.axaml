@@ -30,7 +30,7 @@
                 <Border Width="200" Height="300"
                         CornerRadius="{StaticResource RadiusTile}"
                         ClipToBounds="True"
-                        BorderThickness="1" BorderBrush="#992B4A4C">
+                        BorderThickness="1" BorderBrush="{StaticResource LineSoft}">
                     <Panel>
                         <!-- Placeholder (§7): title in Bricolage on a Surface
                              field. Never a spinner, never a hole. -->
@@ -157,7 +157,7 @@
 
     </UserControl.Styles>
 
-    <Grid RowDefinitions="Auto,*" Background="{StaticResource Ground}">
+    <Grid RowDefinitions="Auto,*" Background="{StaticResource WallGround}">
 
         <!-- ══ Header ═══════════════════════════════════════════════════════
              The screen title is the question the screen asks. -->

@@ -23,3 +23,11 @@ Thumbs.db
 ## Secrets — API keys are user-supplied, never committed
 appsettings.local.json
 *.secrets.json
+
+# Appearance review captures. The three compare--*.png sheets ARE committed:
+# they carry the measured contrast result and are the record of why the
+# transparency line falls where it does. The per-theme grids beside them are
+# review artifacts, superseded by the next design change, and 19MB of PNG that
+# git would keep forever.
+docs/screenshots/appearance/*.png
+!docs/screenshots/appearance/compare--*.png

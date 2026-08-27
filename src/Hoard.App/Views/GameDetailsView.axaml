@@ -170,7 +170,7 @@
              others; older rows keep the column's width with a hairline tick so
              the two lists stay aligned. -->
         <Style Selector="Border.updaterow:pointerover">
-            <Setter Property="Background" Value="#141D3437"/>
+            <Setter Property="Background" Value="{StaticResource SurfaceRaisedFaint}"/>
         </Style>
 
     </UserControl.Styles>
@@ -180,7 +180,7 @@
         <!-- Scrim. Clicking it dismisses — §8's Escape is the keyboard half of
              the same promise: nothing here traps the user. Well at 84%, the
              same unlit tone as the title bar (§9). -->
-        <Border Name="Scrim" Background="#D6050D0E" PointerPressed="OnScrimPressed"/>
+        <Border Name="Scrim" Background="{StaticResource ModalScrim}" PointerPressed="OnScrimPressed"/>
 
         <!-- Tab cycles inside the card. A modal that leaks focus into the
              library behind it is a modal in appearance only (§8). -->
@@ -472,7 +472,7 @@
                                                         HorizontalAlignment="Left"
                                                         VerticalAlignment="Center"
                                                         Background="{StaticResource Flare}"
-                                                        BoxShadow="0 0 8 0 #B3FF4D93"
+                                                        BoxShadow="{DynamicResource PipGlow}"
                                                         IsVisible="{Binding IsSinceYouPlayed}"
                                                         ToolTip.Tip="Landed after your last session"/>
                                                 <SelectableTextBlock Grid.Column="1" Classes="body copyable"
@@ -524,7 +524,7 @@
                     <Border Height="300"
                             CornerRadius="{StaticResource RadiusTile}"
                             ClipToBounds="True"
-                            BorderThickness="1" BorderBrush="#992B4A4C">
+                            BorderThickness="1" BorderBrush="{StaticResource LineSoft}">
                         <Panel>
                             <!-- Placeholder is the fallback, never a hole (§7). -->
                             <Border Background="{Binding PlaceholderBrush}"

@@ -401,6 +401,12 @@ public static class Program
             sp => sp.GetRequiredService<LibraryViewModel>());
         services.AddSingleton<StoresViewModel>();
 
+        // Appearance. The service is a singleton because it owns the ONE live
+        // resource dictionary; a second instance would be a second opinion
+        // about what colour the window is.
+        services.AddSingleton<ThemeService>();
+        services.AddSingleton<AppearanceViewModel>();
+
         services.AddSingleton<EnrichmentSyncService>();
         services.AddSingleton<FacetSyncService>();
 

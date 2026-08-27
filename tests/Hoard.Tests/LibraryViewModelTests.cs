@@ -703,7 +703,7 @@ public sealed class LibraryViewModelTests
         var library = fixture.CreateViewModel();
         await library.LoadCommand.ExecuteAsync(null);
 
-        var shell = new MainWindowViewModel(library, fixture.CreateMergeQueue(), DetachedStores.Create())
+        var shell = new MainWindowViewModel(library, fixture.CreateMergeQueue(), DetachedStores.Create(), DetachedAppearance.Create())
         {
             IsMergeQueueVisible = true,
         };

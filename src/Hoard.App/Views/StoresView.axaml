@@ -126,7 +126,7 @@
 
     </UserControl.Styles>
 
-    <Grid RowDefinitions="Auto,*" Background="{StaticResource Ground}">
+    <Grid RowDefinitions="Auto,*" Background="{StaticResource WallGround}">
 
         <!-- ══ Header ═══════════════════════════════════════════════════════ -->
         <Border Grid.Row="0"

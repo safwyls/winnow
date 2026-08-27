@@ -943,7 +943,7 @@ provisional choice is visible rather than quietly becoming the standard.
    Volt-filled primary). **The two sections should be reconciled** — right now which one is
    authoritative depends on which you read first.
 
-7. **There is no rule for translucency, and Mica needed one.** Every ink in §2 was chosen
+7. **RESOLVED in §14. There is no rule for translucency, and Mica needed one.** Every ink in §2 was chosen
    against a *known* ground, and §8's measurements — `TextDim` 5.88:1 on `Surface`, 5.04:1
    on `SurfaceRaised`, "do not dim further" — presuppose that ground is opaque. A Mica
    window replaces it with the user's wallpaper, which the system cannot see.
@@ -977,3 +977,129 @@ provisional choice is visible rather than quietly becoming the standard.
    and a statement of whether the accents (`Volt`, `Amber`, and `Flare` above all) may ever
    sit on a translucent surface. Today none of them do, and that is an accident of where the
    line fell rather than a rule.
+
+
+---
+
+## 14. Themes, and the translucency rule (resolves §13 gap 7)
+
+**Dark-only is still true; one-palette is not.** Four themes ship, the default is
+unchanged, and a user-toggleable transparency mode sits beside them. Both settings
+live on the rail's `SETTINGS › APPEARANCE` screen and persist in `settings`.
+
+### 14.1 What a theme may change, and what it may not
+
+**The role is the invariant; the colour is not.** §2 assigns every hue a job, and a
+theme may change which colour plays a job. It may never change what a job means, and
+it may never spend one job's colour on a second one.
+
+**`Flare` is the load-bearing case.** It marks unread updates and the bucket that
+counts them, in every theme, and no theme's `Volt`, `Amber`, `Azure` or `Danger` may
+equal it. `ThemeContrastTests` asserts that per theme, along with a minimum hue
+separation from `Danger` (24°, the gap §2 already accepts for the default pair) and
+from `Volt` (60°).
+
+**Two rules of construction carry across the table.** Every theme's `Volt` is its own
+room at full voltage — §2's argument for a hued neutral rather than grey was that it
+makes selection the chrome intensified rather than a decoration on top of it, and that
+reasoning is not specific to teal. And every theme's `Flare` is the one hue that
+room cannot produce.
+
+**No light theme, deliberately.** §9 inverts the platform's caption order so the first
+inch of the window is an unlit lip, §5.3's tile scrim fades to `Ground`, and §5.1's
+dormancy floor was calibrated against dark capsules on a dark field. A light theme is
+not this table with the steps reversed; it is a second pass over all three, and half
+of one would break the ramp that is the product's whole encoding.
+
+| Theme | Why it exists |
+|---|---|
+| **Hoard** *(default)* | The house look. Green-teal room, mint `Volt`, hot-pink `Flare`. The one tuned against six hundred real capsules. |
+| **Cold storage** | For a bright room. The whole neutral family lifts about two steps and cools to blue-steel, so daylight reflections stop competing with the grid. Costs contrast between chrome and art — which is the trade someone in a sunlit room wants. |
+| **Nightshift** | For a dark room. The family drops to near-black with most of its chroma drained, so the chrome gives off no light and the covers are the only lit thing. §1 taken literally. |
+| **Phosphor** | The arcade register — the dark glass of a green monitor. The one theme whose chrome has a voice, and the one that pushes warm capsules *warmer* instead of cooling them. |
+
+### 14.2 The four grounds
+
+Which surface may admit the desktop is a **token**, not a rule somebody has to
+remember. §13 gap 7 asked for "a named role for chrome that may be translucent as
+opposed to surface that carries reading matter"; these are it.
+
+| Token | What it backs | Translucent? |
+|---|---|---|
+| `ShellGround` | The client area below the caption | Paints **nothing** in transparency mode — the columns over it paint their own |
+| `WallGround` | Cover wall, merge queue, Stores, Appearance | **Never.** §1: a wallpaper behind six hundred capsules is a second image competing with all of them |
+| `TileGround` | Under the art stack inside one tile | **Never** — see §14.4 |
+| `ChromeSurface` | Rail, filter panel | Yes |
+| `ChromeGround` | Command bar, cut bar | Yes |
+| `CaptionFill` | The 36px title lip | Yes |
+| `ChromeRaised` | Hover / selection fill inside the rail and the panel | Becomes a veil — see below |
+
+**Popovers keep an opaque fill.** A flyout is its own popup root and never receives the
+window's backdrop, so a translucent fill there would sample the *application* rather
+than the desktop and give a different answer at every position on screen.
+
+**`ChromeRaised` is a veil, not an ink.** Opaque, a raised row is the ordinary
+`Surface → SurfaceRaised` step. Translucent, a *darker* ink over an already-translucent
+rail composites downwards, and the selected row comes out darker than the row beside
+it — elevation inverted. So the step becomes a 10% veil of the theme's own `Text`,
+which lifts whatever is under it by 1.8×–5.8× on every backdrop measured. §6's
+"elevation is the `Surface → SurfaceRaised` step" holds as a *relative* claim, which is
+what it always was.
+
+### 14.3 Transparency has its own inks
+
+**The previous measurement was right and the conclusion was wrong.** `TextDim` on
+`SurfaceRaised` at 85% over white is 3.1:1, and §13 gap 7 read that as "no reading
+surface can be translucent". What it actually proves is narrower: *an ink chosen for an
+opaque ground cannot have alpha subtracted from it.*
+
+So transparency mode carries its own token set. Each translucent surface takes a
+**darker** ink than its opaque twin, at 86–91% alpha, and `TextDim` **brightens** to
+pay for what is left. The result clears the opaque numbers rather than falling under
+them, against a pure-white backdrop — the ceiling any wallpaper can reach, so the
+answer needs no assumption about how Windows composes Mica.
+
+| Default theme, `TextDim` on | Solid | Translucent, worst case (white) | Translucent, measured Mica |
+|---|---|---|---|
+| Rail | 5.88:1 | **6.54:1** | 9.41:1 |
+| Command bar | 6.69:1 | **5.88:1** | 8.79:1 |
+| Selected rail row | 5.04:1 | **4.92:1** | 7.41:1 |
+| Caption | 5.0:1 | **7.71:1** | 9.96:1 |
+
+The other three themes land higher on every row, because each starts from a lighter
+ink or a higher alpha: at the white ceiling the rail reads 7.03:1 (Cold storage),
+8.04:1 (Nightshift) and 7.26:1 (Phosphor).
+
+**What it costs, stated rather than buried.** Two rows go backwards at the ceiling and
+both stay over AA: the selected rail row 5.04:1 → 4.92:1, and the command bar
+6.69:1 → 5.88:1. `Flare` on the rail drops 4.91:1 → 4.14:1
+in that same worst case. It is a 10px dot with a `Ground`-coloured ring and a rail count
+and a tooltip behind it (§5.2, §8), not text, and it stays the loudest thing in the
+column. And §9's unlit lip is a *relative* rule: over the measured Mica composite the
+caption sits at 0.35× `Ground`, but a backdrop brighter than about mid-grey lifts it
+above the body. The wall stays opaque, so that is the whole of the visible cost.
+
+**Requested is not active.** Windows 10, a remote session and a compositor that refuses
+all end with `ActualTransparencyLevel` reporting something other than `Mica` — and
+Avalonia's Win32 backend falls back to `Transparent`, not the `None` that was asked for,
+so the test must be positive. When the answer is no, the **opaque** token set is applied
+and the settings screen says so in words. The preference is remembered either way.
+
+### 14.4 The dormancy ramp over a translucent window
+
+§5.4's ramp is a two-layer opacity cross-fade, and the two layers are only opaque
+*together*. Between the first bitmap decoding and the second, a dimmed tile is a partly
+transparent tile — and on a translucent window that means the desktop showing through
+the ramp's floor. Each tile therefore paints `TileGround` under its art stack, opaque in
+every theme and both states, so the ramp composites over exactly the ground it was
+calibrated against. That is a fact of construction, not a measurement that could drift.
+
+### 14.5 Every themeable brush is declared as an attribute
+
+`<SolidColorBrush x:Key="X">#16282A</SolidColorBrush>` and
+`<SolidColorBrush x:Key="X" Color="#16282A"/>` look identical and are not: Avalonia's
+XAML compiler constant-folds the first into an `ImmutableSolidColorBrush`, whose colour
+cannot be written. A theme change works by writing `Color` on the brush objects the
+views already resolved — `StaticResource` looks up once and never again — so a folded
+brush is a token the theme system silently cannot reach. Measured, not assumed: the
+first build had thirty-five of them, and the symptom was a window that half repainted.

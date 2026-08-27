@@ -251,8 +251,20 @@
                  badge all belong to the cover. -->
             <Border Name="Face"
                     CornerRadius="{StaticResource RadiusTile}" ClipToBounds="True"
-                    BorderThickness="1" BorderBrush="#992B4A4C">
+                    BorderThickness="1" BorderBrush="{StaticResource LineSoft}">
                 <Panel>
+
+                    <!-- The card's own ground, under everything else on the
+                         face. §5.4's dormancy ramp is a two-layer cross-fade —
+                         the floor variant under the vivid one, whose opacity
+                         carries the ramp — and the two are only opaque together
+                         if BOTH have decoded. Between the first bitmap arriving
+                         and the second, a dimmed tile is a partly transparent
+                         tile, and whatever the window is standing on shows
+                         through it. Opaque in every theme and both transparency
+                         states, so the ramp composites over exactly the ground
+                         it was calibrated against. -->
+                    <Border Background="{StaticResource TileGround}"/>
 
                     <!-- Placeholder layers (§7): the title in Bricolage on a
                          Surface field, visible until real art lands and
@@ -493,7 +505,7 @@
                     Width="14" Height="14" CornerRadius="7"
                     Background="{StaticResource Flare}"
                     BorderBrush="{StaticResource Ground}" BorderThickness="2"
-                    BoxShadow="0 0 10 0 #D9FF4D93"
+                    BoxShadow="{DynamicResource BadgeGlow}"
                     HorizontalAlignment="Right" VerticalAlignment="Top"
                     Margin="0,8,8,0"
                     IsVisible="{Binding HasUnread}"/>

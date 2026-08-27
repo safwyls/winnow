@@ -18,6 +18,15 @@
         somewhere to drift.
     Change tokens THERE. Edit this file only to keep the design record honest.
 
+    ⚠ THESE VALUES ARE THE DEFAULT THEME, AND THEY ARE THE STARTING STATE.
+    src/Hoard.App/Themes/HoardThemes.cs holds four palettes and ThemeService
+    writes the chosen one onto these brushes at runtime — so what is declared
+    here is "Hoard, transparency off", which is the state that is correct on
+    every host. The other three themes are not variants of this table: each
+    carries its own neutral family, ink temperature and value curve. What they
+    share is the grammar — Volt is the room at full voltage, and Flare is the
+    one hue the room cannot produce, spent on unread updates and nothing else.
+
     Merge into App.axaml:
 
         <Application.Resources>
@@ -44,6 +53,24 @@
          Flare is the rarest colour in the app. It marks ONLY unread updates.
          The moment it becomes a generic accent, the badge stops meaning
          anything and the product loses its point.
+    -->
+    <!-- ⚠ EVERY THEMEABLE BRUSH IS DECLARED Color="#RRGGBB" AS AN ATTRIBUTE,
+         never as element content. The two forms look identical and are not:
+         Avalonia's XAML compiler constant-folds
+
+             <SolidColorBrush x:Key="X">#16282A</SolidColorBrush>
+
+         into an ImmutableSolidColorBrush, whose Color cannot be written. The
+         attribute form
+
+             <SolidColorBrush x:Key="X" Color="#16282A"/>
+
+         stays a real SolidColorBrush. ThemeService changes themes by writing
+         Color on the brush objects the views already resolved (StaticResource
+         looks up once and never again), so a folded brush is a token the theme
+         system silently cannot reach — the window half repaints and the
+         leftovers look like a rendering fault rather than a bug. Measured, not
+         assumed: the first build of the theme system had thirty-five of them.
     -->
     <Color x:Key="WellColor">#050D0E</Color>
     <Color x:Key="GroundColor">#0F1C1E</Color>
@@ -74,9 +101,45 @@
     <SolidColorBrush x:Key="Danger"        Color="{StaticResource DangerColor}"/>
 
     <!-- Text and states for controls filled with Volt (Play, "Same game"). -->
-    <SolidColorBrush x:Key="VoltInk">#0C2A24</SolidColorBrush>
-    <SolidColorBrush x:Key="VoltHover">#6FEDCE</SolidColorBrush>
-    <SolidColorBrush x:Key="VoltPress">#3BD1AC</SolidColorBrush>
+    <SolidColorBrush x:Key="VoltInk" Color="#0C2A24"/>
+    <SolidColorBrush x:Key="VoltHover" Color="#6FEDCE"/>
+    <SolidColorBrush x:Key="VoltPress" Color="#3BD1AC"/>
+
+    <!-- ══ The rest of the family, named ══════════════════════════════════
+         These were literal hexes scattered through six views until the theme
+         system needed to reach them. A colour written inline is a colour no
+         theme can change, and the failure is silent: the window half repaints
+         and the leftovers look like a rendering fault. Every one of them is
+         "some role at N%" or "one step past a step", so they are DERIVED from
+         the palette in HoardTheme.Tokens rather than restated per theme. -->
+
+    <!-- One step above SurfaceRaised: a selected menu item, a pressed caption
+         button. SurfaceRaised on SurfaceRaised is no step at all. -->
+    <SolidColorBrush x:Key="SurfaceHigh" Color="#254042"/>
+    <!-- The quietest ink that is still ink: watermarks, disabled arrows. -->
+    <SolidColorBrush x:Key="TextFaint" Color="#5A8286"/>
+
+    <SolidColorBrush x:Key="DangerHover" Color="#EF645E"/>
+    <SolidColorBrush x:Key="DangerPress" Color="#B33A35"/>
+    <SolidColorBrush x:Key="DangerInk" Color="#FFF2EF"/>
+
+    <!-- Volt at 30 / 24 / 40 %: text selection, a soft selection wash, a
+         half-lit edge. Never a new colour, always the same one turned down. -->
+    <SolidColorBrush x:Key="VoltSelection" Color="#4D4DE8C2"/>
+    <SolidColorBrush x:Key="VoltSelectionSoft" Color="#3D4DE8C2"/>
+    <SolidColorBrush x:Key="VoltEdgeSoft" Color="#664DE8C2"/>
+
+    <!-- Flare at 70 / 85 %. Still only ever on an unread marker (§5.2). -->
+    <SolidColorBrush x:Key="FlareSoft" Color="#B3FF4D93"/>
+    <SolidColorBrush x:Key="FlareGlow" Color="#D9FF4D93"/>
+
+    <SolidColorBrush x:Key="LineSoft" Color="#992B4A4C"/>
+    <SolidColorBrush x:Key="SurfaceRaisedHalf" Color="#801D3437"/>
+    <SolidColorBrush x:Key="SurfaceRaisedGhost" Color="#1F1D3437"/>
+    <SolidColorBrush x:Key="SurfaceRaisedFaint" Color="#141D3437"/>
+    <SolidColorBrush x:Key="GroundVeil" Color="#4D0F1C1E"/>
+    <!-- The detail modal's scrim (§9): the same unlit tone as the caption. -->
+    <SolidColorBrush x:Key="ModalScrim" Color="#D6050D0E"/>
 
     <!-- Hover overlay scrim on cover tiles -->
     <LinearGradientBrush x:Key="TileScrim" StartPoint="0%,40%" EndPoint="0%,100%">
@@ -94,54 +157,63 @@
     <x:Double x:Key="TitleBarHeight">36</x:Double>
     <x:Double x:Key="WindowButtonWidth">46</x:Double>
 
-    <!-- ══ Mica, and where it is allowed to reach ═════════════════════════
-         The caption strip's fill when the window actually got Mica — Well at
-         85%, so 15% of the strip is the desktop. It is the ONLY translucent
-         surface in the application, and the boundary is measured rather than
-         tasteful.
+    <!-- ══ The four grounds ═══════════════════════════════════════════════
+         Which surface may admit the desktop, and which may not. This replaces
+         the caption-only Mica rule and resolves design-system.md §13 gap 7.
 
-         Avalonia's dark Mica is not "the wallpaper". It luminosity-blends the
-         blurred wallpaper under #202020 at 0.8 and then colour-blends #202020
-         over the result, so what reaches the window is a heavily darkened,
-         heavily desaturated reading of the wallpaper. Measured on the running
-         window, this caption composited to #061112 — 0.41x Ground's luminance,
-         with TextDim on it at 7.3:1.
+         The old rule was reached by a correct measurement and a wrong
+         conclusion. TextDim on SurfaceRaised at 85% over white is 3.1:1, under
+         AA — so translucency was confined to the 36px caption, where it is
+         effectively invisible. What that sum actually proves is narrower than
+         it looked: it proves you cannot take an ink CHOSEN FOR AN OPAQUE GROUND
+         and subtract alpha from it. Transparency mode therefore has its own
+         token set — darker surface inks, a brighter dim ink — and lands ABOVE
+         the opaque numbers rather than under them, even against a pure-white
+         backdrop. HoardTheme carries the values; ThemeContrastTests carries the
+         proof.
 
-         But the reason the line falls WHERE IT DOES needs no assumption about
-         how Windows composes Mica at all, because the same two sums answer it
-         against a pure-WHITE backdrop, which is the absolute ceiling any
-         backdrop can reach:
+           ShellGround   the whole client area below the caption. Opaque Ground
+                         normally; NOTHING at all in transparency mode, because
+                         the columns over it paint their own — which is what
+                         lets the rail be see-through without the window
+                         painting an opaque field behind it first.
+           WallGround    the cover wall, the merge queue, the settings panes.
+                         OPAQUE IN BOTH MODES. §1 says the art is the interface,
+                         and a wallpaper behind six hundred capsules is a second
+                         image competing with all of them; §5.4's two-layer
+                         dormancy cross-fade also needs the ground under a tile
+                         to be the ground it was calibrated against.
+           ChromeGround  the command bar and the cut bar.
+           ChromeRaised  a rail or panel row's hover and selection fill. Opaque,
+                         it is the ordinary Surface -> SurfaceRaised step.
+                         Translucent, a DARKER ink over an already-translucent
+                         rail composites downwards and the raised row comes out
+                         darker than its neighbour — so the step becomes a 10%
+                         veil of the theme's own Text, which lifts whatever is
+                         under it on every backdrop. Elevation stays relative,
+                         which is what §6 says it is.
+           TileGround    under the art stack inside a tile, so a cover that has
+                         decoded one of its two dormancy layers and not the
+                         other cannot show the window through the gap.
 
-           · Well at 85%           → TextDim 5.0:1. Level with the 5.04:1 that
-                                     §8 measures for TextDim on SurfaceRaised
-                                     and accepts, so the caption cannot fall
-                                     below a floor the app already lives at.
-           · SurfaceRaised at 85%  → TextDim 3.1:1 on a SELECTED rail row.
-           · SurfaceRaised at 94%  → 4.2:1, still under WCAG AA, and by then
-                                     the translucency is invisible anyway.
+         Surface and Well themselves carry the alpha in transparency mode, so
+         the rail, the filter panel and the caption need no separate keys.
+         Popovers do NOT: a flyout is its own popup root and never receives the
+         window's backdrop, so a translucent fill there would sample the
+         application rather than the desktop and give a different answer at
+         every position. They keep SurfaceRaised, opaque, in both modes.
 
-         §8's line about TextDim is "do not dim further", and the rail's
-         selected row is already sitting on it with no headroom. There is no
-         alpha at which the rail is both visibly Mica and above that floor. So
-         the rail, the command bar, the cover wall, the list and the filter
-         panel stay OPAQUE, and the caption — a wordmark and three glyphs, no
-         reading matter — is where the desktop is let in.
-
-         Two consequences worth recording because they were checked rather than
-         assumed:
-
-           · §9's rule that the caption is the window's UNLIT LIP survives every
-             backdrop up to about mid-grey; only a backdrop lighter than ~135
-             would lift the strip above Ground, and Windows' dark Mica tints
-             hard toward #202020 by design.
-           · §5.4's two-layer dormancy cross-fade composites over Ground exactly
-             as it did before, because nothing under a tile changed. Verified by
-             diffing the window with Mica against the same window without it:
-             every differing pixel fell inside y 0..35.
-
-         Consumed by MainWindow.axaml.cs, which applies it only after
-         ActualTransparencyLevel reports Mica. -->
-    <SolidColorBrush x:Key="WellMica">#D9050D0E</SolidColorBrush>
+         Every value here is written at runtime by ThemeService. What is
+         declared is the OPAQUE state on the default theme, because that is the
+         state that is correct on every host — a machine where none of this
+         works needs nothing to go right in order to look deliberate. -->
+    <SolidColorBrush x:Key="ShellGround" Color="#0F1C1E"/>
+    <SolidColorBrush x:Key="CaptionFill" Color="#050D0E"/>
+    <SolidColorBrush x:Key="ChromeSurface" Color="#16282A"/>
+    <SolidColorBrush x:Key="WallGround" Color="#0F1C1E"/>
+    <SolidColorBrush x:Key="ChromeGround" Color="#0F1C1E"/>
+    <SolidColorBrush x:Key="ChromeRaised" Color="#1D3437"/>
+    <SolidColorBrush x:Key="TileGround" Color="#0F1C1E"/>
 
     <!-- ══ Dormancy ramp ══════════════════════════════════════════════════
          Consumed by the cover renderer. Clamped floor is deliberate: a cover

@@ -7,6 +7,7 @@ using Avalonia.Media;
 using Avalonia.Reactive;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using Hoard.App.Services;
 using Hoard.App.ViewModels;
 
 namespace Hoard.App.Views;
@@ -23,6 +24,8 @@ public partial class MainWindow : Window
 {
     private LibraryViewModel? _library;
     private MainWindowViewModel? _shell;
+    private ThemeService? _theme;
+    private bool _backdropSubscribed;
     private bool _chromeReady;
     private DateTime _lastTitleBarPress = DateTime.MinValue;
     private PixelPoint _lastTitleBarPoint;
@@ -51,25 +54,25 @@ public partial class MainWindow : Window
     // drop one and the window reads as broken rather than as styled.
 
     /// <summary>
-    /// Asks Windows for Mica, and paints the caption according to what it
-    /// actually got rather than to what was asked for.
+    /// Asks Windows for the backdrop the user's preference needs, and reports
+    /// back what it actually got.
     ///
     /// <para><b>The markup declares the opaque window and this method upgrades
     /// it</b>, never the other way round. The XAML is the state that is correct
-    /// on every host — opaque <c>Ground</c>, opaque <c>Well</c> — so a machine
-    /// where none of this works needs nothing to go right in order to look
-    /// deliberate. The upgrade happens in the constructor, before the window is
-    /// shown, so there is no opaque first frame to flash.</para>
+    /// on every host — opaque <c>ShellGround</c>, opaque <c>CaptionFill</c> — so
+    /// a machine where none of this works needs nothing to go right in order to
+    /// look deliberate. The upgrade happens before the window is shown, so there
+    /// is no opaque first frame to flash.</para>
     ///
     /// <para><b>The hint is a list and the list is short.</b>
     /// <c>[Mica, None]</c>: Mica because it samples the desktop WALLPAPER, which
     /// is one image that does not move, heavily darkened before it arrives — so
-    /// the contrast sums in <c>tokens.axaml</c>'s <c>WellMica</c> note have
+    /// the contrast sums the theme's translucent ink set is built on have
     /// something to be run against. Nothing else, and <c>AcrylicBlur</c> in
     /// particular, because acrylic samples whatever window happens to be behind
-    /// this one: no bound, no measurement, and a caption whose legibility
-    /// changes when the user alt-tabs. A design system that picks its inks
-    /// against measured grounds cannot spend them on an unmeasurable one.</para>
+    /// this one: no bound, no measurement, and a rail whose legibility changes
+    /// when the user alt-tabs. A design system that picks its inks against
+    /// measured grounds cannot spend them on an unmeasurable one.</para>
     ///
     /// <para><b>The fallback the platform reports is not always the fallback
     /// that was asked for, which is exactly why this reads
@@ -80,43 +83,88 @@ public partial class MainWindow : Window
     /// <c>None</c> that was requested. A Windows 10 host therefore lands on a
     /// genuinely see-through window, and <c>TransparencyBackgroundFallback</c>
     /// does not fire because that only covers <c>None</c>. So the test here is
-    /// positive — Mica or opaque — and never "not None".</para>
+    /// positive — Mica or opaque — and never "not None". With transparency off
+    /// the window's own <c>Background</c> is an opaque brush either way, so a
+    /// host that reports <c>Transparent</c> against our wishes still paints a
+    /// solid window.</para>
     ///
-    /// <para>Subscribed as well as read once: Avalonia re-applies the Mica brush
+    /// <para>Subscribed as well as read once: Avalonia re-applies the backdrop
     /// when the OS theme variant changes, and a remote-desktop session or a
-    /// composition failure can take it away while the window is open.</para>
+    /// composition failure can take it away while the window is open. Whichever
+    /// way it moves, <see cref="ThemeService.SetBackdropAvailable"/> hears about
+    /// it and the opaque token set goes back on — a translucent rail over a
+    /// window with nothing behind it is the failure this exists to avoid.</para>
     /// </summary>
     private void RequestBackdrop()
     {
-        TransparencyLevelHint =
-        [
-            WindowTransparencyLevel.Mica,
-            WindowTransparencyLevel.None,
-        ];
+        TransparencyLevelHint = _theme?.TransparencyRequested == true
+            ?
+            [
+                WindowTransparencyLevel.Mica,
+                WindowTransparencyLevel.None,
+            ]
+            : [WindowTransparencyLevel.None];
 
         ApplyBackdrop();
+
+        if (_backdropSubscribed)
+        {
+            return;
+        }
+
+        _backdropSubscribed = true;
         this.GetObservable(ActualTransparencyLevelProperty)
             .Subscribe(new AnonymousObserver<WindowTransparencyLevel>(_ => ApplyBackdrop()));
     }
 
     /// <summary>
-    /// Paints the two surfaces the backdrop decision reaches, and nothing else.
+    /// Paints the one surface the backdrop decision reaches directly — the
+    /// window's own background — and tells the theme service what happened.
     ///
-    /// <para>With Mica the window's own background goes transparent so the
-    /// desktop can reach the caption, and the body grid — which paints
-    /// <c>Ground</c> itself — keeps every reading surface and every cover
-    /// opaque. Without it, both go back to the tokens they are declared with.
-    /// There is deliberately no third state: half a Mica window is the failure
-    /// this is written to avoid.</para>
+    /// <para>With Mica the window goes transparent so the desktop can reach the
+    /// chrome; the rail, the filter panel, the command bar and the caption paint
+    /// their own translucent fills over it, and the cover wall paints an opaque
+    /// one. Without it, everything goes back to the tokens it is declared with.
+    /// There is deliberately no third state: half a translucent window is the
+    /// failure this is written to avoid.</para>
     /// </summary>
     private void ApplyBackdrop()
     {
         var mica = ActualTransparencyLevel == WindowTransparencyLevel.Mica;
 
-        Background = mica ? Brushes.Transparent : Token("Ground", Brushes.Black);
-        TitleBar.Background = mica
-            ? Token("WellMica", Brushes.Black)
-            : Token("Well", Brushes.Black);
+        _theme?.SetBackdropAvailable(mica);
+
+        Background = mica && _theme?.TransparencyRequested == true
+            ? Brushes.Transparent
+            : Token("ShellGround", Brushes.Black);
+    }
+
+    /// <summary>
+    /// The theme service repainted the resource dictionary. Two things follow.
+    ///
+    /// <para>The backdrop may need re-requesting, because turning transparency
+    /// on is the only thing that makes Mica worth asking for.</para>
+    ///
+    /// <para>And the tree gets an explicit invalidation pass. Mutating a brush's
+    /// colour raises <c>IAffectsRender.Invalidated</c>, which reaches every
+    /// property registered with <c>AffectsRender</c> — but a control that cached
+    /// a measured text layout, or one whose brush is only read inside a control
+    /// template, can miss it. One walk per theme change costs nothing and means
+    /// a half-repainted window cannot happen.</para>
+    /// </summary>
+    private void OnThemeApplied(object? sender, EventArgs e)
+    {
+        RequestBackdrop();
+        InvalidateTree(this);
+    }
+
+    private static void InvalidateTree(Visual visual)
+    {
+        visual.InvalidateVisual();
+        foreach (var child in visual.GetVisualChildren())
+        {
+            InvalidateTree(child);
+        }
     }
 
     /// <summary>
@@ -224,8 +272,23 @@ public partial class MainWindow : Window
             _library.PropertyChanged -= OnLibraryPropertyChanged;
         }
 
+        if (_theme is not null)
+        {
+            _theme.Applied -= OnThemeApplied;
+        }
+
         _shell = DataContext as MainWindowViewModel;
         _library = _shell?.Library;
+
+        // The theme service reaches the window through the shell rather than
+        // through the container, so the window keeps one source of state and a
+        // test that builds a MainWindowViewModel by hand gets a working one.
+        _theme = _shell?.Appearance.Service;
+        if (_theme is not null)
+        {
+            _theme.Applied += OnThemeApplied;
+            RequestBackdrop();
+        }
 
         if (_library is not null)
         {
@@ -275,6 +338,23 @@ public partial class MainWindow : Window
         if (_shell is not null && Environment.GetCommandLineArgs().Contains("--open-stores"))
         {
             await _shell.ToggleStoresCommand.ExecuteAsync(null);
+        }
+
+        // §5.1's ramp has to be reviewable in a screenshot on a machine whose
+        // owner has turned dimming off. Written onto the RAMP rather than
+        // through the Display view model, because that view model's setter is
+        // also the thing that persists the preference — and a capture must
+        // never leave a setting behind in somebody's real library.
+        if (_library is not null && Environment.GetCommandLineArgs().Contains("--dim-covers"))
+        {
+            _library.Ramp.DimsDormantCovers = true;
+        }
+
+        // Same convention: the Appearance screen has to be reviewable without
+        // driving the rail.
+        if (_shell is not null && Environment.GetCommandLineArgs().Contains("--open-appearance"))
+        {
+            _shell.ToggleAppearanceCommand.Execute(null);
         }
 
         if (_library is not null && Environment.GetCommandLineArgs().Contains("--open-list"))

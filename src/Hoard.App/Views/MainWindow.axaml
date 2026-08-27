@@ -69,7 +69,7 @@
             <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
         </Style>
         <Style Selector="Button.wincontrol:pressed /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="#254042"/>
+            <Setter Property="Background" Value="{StaticResource SurfaceHigh}"/>
         </Style>
         <Style Selector="Button.wincontrol Path">
             <Setter Property="Stroke" Value="{StaticResource TextDim}"/>
@@ -83,10 +83,10 @@
             <Setter Property="Background" Value="{StaticResource Danger}"/>
         </Style>
         <Style Selector="Button.wincontrol.close:pressed /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="#B33A35"/>
+            <Setter Property="Background" Value="{StaticResource DangerPress}"/>
         </Style>
         <Style Selector="Button.wincontrol.close:pointerover Path">
-            <Setter Property="Stroke" Value="#FFF2EF"/>
+            <Setter Property="Stroke" Value="{StaticResource DangerInk}"/>
         </Style>
 
         <!-- Fluent's scrollbar keeps its rest/expanded behaviour and its
@@ -157,20 +157,20 @@
             </Setter>
         </Style>
         <Style Selector="Button.bucket:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
+            <Setter Property="Background" Value="{StaticResource ChromeRaised}"/>
         </Style>
         <Style Selector="Button.bucket:pressed /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
+            <Setter Property="Background" Value="{StaticResource ChromeRaised}"/>
         </Style>
         <Style Selector="Button.bucket.selected /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
+            <Setter Property="Background" Value="{StaticResource ChromeRaised}"/>
         </Style>
         <!-- A bucket in force while a LIST is open. Same fill, because it is
              cutting the grid; no Volt edge, because the Volt edge means "this is
              where you are" and where you are is the list. See
              LibraryViewModel.MarkRailSelection. -->
         <Style Selector="Button.bucket.rule /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
+            <Setter Property="Background" Value="{StaticResource ChromeRaised}"/>
         </Style>
 
         <!-- ══ Rail list row ═══════════════════════════════════════════════
@@ -200,10 +200,10 @@
             </Setter>
         </Style>
         <Style Selector="Button.listrow:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
+            <Setter Property="Background" Value="{StaticResource ChromeRaised}"/>
         </Style>
         <Style Selector="Button.listrow.selected /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
+            <Setter Property="Background" Value="{StaticResource ChromeRaised}"/>
         </Style>
 
         <!-- ══ Command bar ═════════════════════════════════════════════════ -->
@@ -219,7 +219,7 @@
             <Setter Property="Foreground" Value="{StaticResource Text}"/>
             <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
             <Setter Property="FontSize" Value="{StaticResource BodySize}"/>
-            <Setter Property="SelectionBrush" Value="#4D4DE8C2"/>
+            <Setter Property="SelectionBrush" Value="{StaticResource VoltSelection}"/>
             <Setter Property="CaretBrush" Value="{StaticResource Volt}"/>
         </Style>
         <Style Selector="TextBox.search /template/ Border#PART_BorderElement">
@@ -253,7 +253,7 @@
             <Setter Property="Background" Value="Transparent"/>
         </Style>
         <Style Selector="Button.seg:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="#1F1D3437"/>
+            <Setter Property="Background" Value="{StaticResource SurfaceRaisedGhost}"/>
         </Style>
         <Style Selector="Button.seg.on /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
@@ -277,12 +277,12 @@
             <Setter Property="Background" Value="Transparent"/>
         </Style>
         <Style Selector="Button.ctl:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
+            <Setter Property="Background" Value="{StaticResource ChromeRaised}"/>
         </Style>
         <!-- A toggle in a row of menus: the open panel keeps its button lit, so
              the control and the column it opened are legibly one thing. -->
         <Style Selector="Button.ctl.on /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
+            <Setter Property="Background" Value="{StaticResource ChromeRaised}"/>
         </Style>
         <Style Selector="Button.ctl.on TextBlock">
             <Setter Property="Foreground" Value="{StaticResource Text}"/>
@@ -318,7 +318,7 @@
             <Setter Property="Background" Value="Transparent"/>
         </Style>
         <Style Selector="Button.sortitem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="#4D0F1C1E"/>
+            <Setter Property="Background" Value="{StaticResource GroundVeil}"/>
         </Style>
 
         <!-- ══ The selection's context menu ════════════════════════════════
@@ -365,7 +365,7 @@
             <!-- One step above the menu's own SurfaceRaised ground — the same
                  #254042 the caption buttons press to. SurfaceRaised on
                  SurfaceRaised would have been no step at all. -->
-            <Setter Property="Background" Value="#254042"/>
+            <Setter Property="Background" Value="{StaticResource SurfaceHigh}"/>
             <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
         </Style>
         <Style Selector="ContextMenu.actions MenuItem:selected /template/ ContentPresenter#PART_HeaderPresenter">
@@ -495,7 +495,7 @@
             <Setter Property="CornerRadius" Value="0"/>
         </Style>
         <Style Selector="ListBox.rows ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="#801D3437"/>
+            <Setter Property="Background" Value="{StaticResource SurfaceRaisedHalf}"/>
         </Style>
         <Style Selector="ListBox.rows ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
@@ -544,7 +544,7 @@
              Button marks the pointer press handled. -->
         <Border Grid.Row="0"
                 Name="TitleBar"
-                Background="{StaticResource Well}"
+                Background="{StaticResource CaptionFill}"
                 PointerPressed="OnTitleBarPressed">
             <Grid ColumnDefinitions="Auto,*,Auto">
 
@@ -627,11 +627,11 @@
          translucent, so §5.4's two-layer dormancy cross-fade composites over
          exactly the ground it always did. -->
     <Grid Grid.Row="1" ColumnDefinitions="220,*,Auto"
-          Background="{StaticResource Ground}">
+          Background="{StaticResource ShellGround}">
 
         <!-- ══ RAIL (220px) ════════════════════════════════════════════════ -->
         <Border Grid.Column="0"
-                Background="{StaticResource Surface}"
+                Background="{StaticResource ChromeSurface}"
                 BorderBrush="{StaticResource Line}"
                 BorderThickness="0,0,1,0">
             <!-- Interior: the rail's own right edge is a divider, not the
@@ -722,7 +722,7 @@
                                                 Width="7" Height="7" CornerRadius="4"
                                                 Margin="0,0,8,0"
                                                 Background="{StaticResource Flare}"
-                                                BoxShadow="0 0 8 0 #B3FF4D93"
+                                                BoxShadow="{DynamicResource PipGlow}"
                                                 VerticalAlignment="Center"
                                                 IsVisible="{Binding ShowsFlarePip}"/>
                                         <TextBlock Grid.Column="3"
@@ -839,6 +839,20 @@
                             <TextBlock Grid.Column="2"
                                        Classes="display-s"
                                        Text="STORES"
+                                       VerticalAlignment="Center"/>
+                        </Grid>
+                    </Button>
+                    <Button Classes="bucket"
+                            Classes.selected="{Binding IsAppearanceVisible}"
+                            Command="{Binding ToggleAppearanceCommand}"
+                            ToolTip.Tip="Theme, and whether the window lets the desktop through">
+                        <Grid ColumnDefinitions="2,16,*,16">
+                            <Border Grid.Column="0"
+                                    Background="{StaticResource Volt}"
+                                    IsVisible="{Binding IsAppearanceVisible}"/>
+                            <TextBlock Grid.Column="2"
+                                       Classes="display-s"
+                                       Text="APPEARANCE"
                                        VerticalAlignment="Center"/>
                         </Grid>
                     </Button>
@@ -964,6 +978,7 @@
 
             <!-- ── Command bar ──────────────────────────────────────────── -->
             <Border Grid.Row="0"
+                    Background="{StaticResource ChromeGround}"
                     BorderBrush="{StaticResource Line}"
                     BorderThickness="0,0,0,1">
                   <!-- Search takes the slack; everything else is Auto. A Grid
@@ -1215,8 +1230,14 @@
                  the whole library. -->
             <views:ActionBarView Grid.Row="1" DataContext="{Binding Library}"/>
 
-            <!-- ── Content ──────────────────────────────────────────────── -->
-            <Panel Grid.Row="2">
+            <!-- ── Content ────────────────────────────────────────────────
+                 The cover wall keeps an opaque ground in both transparency
+                 states. §1 says the art is the interface, and a wallpaper
+                 behind six hundred capsules is a second image competing with
+                 all of them; §5.4's two-layer dormancy cross-fade also needs
+                 the ground under a tile to be the ground it was calibrated
+                 against. See tokens.axaml's four-grounds note. -->
+            <Panel Grid.Row="2" Background="{StaticResource WallGround}">
 
                 <!-- ── The selection's own menu (§6, §12.3) ──────────────────
                      §6 asks the list view for "sortable columns, multi-select,
@@ -1394,7 +1415,7 @@
                                                 VerticalAlignment="Center"
                                                 Margin="6,0,0,0"
                                                 Background="{StaticResource Flare}"
-                                                BoxShadow="0 0 8 0 #B3FF4D93"
+                                                BoxShadow="{DynamicResource PipGlow}"
                                                 IsVisible="{Binding HasUnread}"
                                                 ToolTip.Tip="Patched since you played"/>
                                         <TextBlock Grid.Column="2"
@@ -1461,6 +1482,14 @@
         <views:StoresView Name="StoresPanel"
                           DataContext="{Binding Stores}"
                           IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsStoresVisible}"/>
+
+        <!-- Appearance, on the same terms again. It is the second row under
+             SETTINGS, which is what that heading was renamed for: a section
+             that names a category rather than restating its one row (§13 gap 3)
+             only earns the name once there is a second one. -->
+        <views:AppearanceView Name="AppearancePanel"
+                              DataContext="{Binding Appearance}"
+                              IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsAppearanceVisible}"/>
 
         </Panel>
 

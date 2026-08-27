@@ -30,11 +30,13 @@ public partial class MainWindowViewModel : ObservableObject
         LibraryViewModel library,
         MergeQueueViewModel mergeQueue,
         StoresViewModel stores,
+        AppearanceViewModel appearance,
         ISettingsRepository? settings = null)
     {
         Library = library;
         MergeQueue = mergeQueue;
         Stores = stores;
+        Appearance = appearance;
 
         // The panel is a column in the library's own layout, so it has to
         // disappear when the library does. Two sources, one answer, computed
@@ -74,6 +76,14 @@ public partial class MainWindowViewModel : ObservableObject
     /// <summary>The command bar's Display popover — §8's dimming preference.</summary>
     public DisplaySettingsViewModel Display { get; }
 
+    /// <summary>
+    /// The rail's SETTINGS › APPEARANCE row. Required rather than optional for
+    /// the reason <see cref="Stores"/> is: a rail row that opens an empty pane
+    /// is the failure mode this codebase keeps hitting — build green, tests
+    /// green, feature absent.
+    /// </summary>
+    public AppearanceViewModel Appearance { get; }
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsLibraryVisible), nameof(IsFilterPanelVisible))]
     public partial bool IsMergeQueueVisible { get; set; }
@@ -83,7 +93,12 @@ public partial class MainWindowViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(IsLibraryVisible), nameof(IsFilterPanelVisible))]
     public partial bool IsStoresVisible { get; set; }
 
-    public bool IsLibraryVisible => !IsMergeQueueVisible && !IsStoresVisible;
+    /// <summary>The Appearance screen, opened from the rail's SETTINGS › APPEARANCE row.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsLibraryVisible), nameof(IsFilterPanelVisible))]
+    public partial bool IsAppearanceVisible { get; set; }
+
+    public bool IsLibraryVisible => !IsMergeQueueVisible && !IsStoresVisible && !IsAppearanceVisible;
 
     /// <summary>The filter panel is part of the library screen, not of the window.</summary>
     public bool IsFilterPanelVisible => IsLibraryVisible && Library.Filters.IsOpen;
@@ -129,8 +144,22 @@ public partial class MainWindowViewModel : ObservableObject
     private void ToggleMergeQueue()
     {
         var open = !IsMergeQueueVisible;
-        IsStoresVisible = false;
+        ShowLibraryPane();
         IsMergeQueueVisible = open;
+    }
+
+    /// <summary>
+    /// The rail's APPEARANCE row, under SETTINGS. Toggles like the others, so
+    /// the same click that opened the screen closes it and gives the library
+    /// back. Nothing is read on the way in: the theme service already holds
+    /// both preferences, and the screen is a view of them.
+    /// </summary>
+    [RelayCommand]
+    private void ToggleAppearance()
+    {
+        var open = !IsAppearanceVisible;
+        ShowLibraryPane();
+        IsAppearanceVisible = open;
     }
 
     /// <summary>
@@ -149,7 +178,7 @@ public partial class MainWindowViewModel : ObservableObject
     private async Task ToggleStoresAsync()
     {
         var open = !IsStoresVisible;
-        IsMergeQueueVisible = false;
+        ShowLibraryPane();
         IsStoresVisible = open;
 
         if (open)
@@ -166,5 +195,6 @@ public partial class MainWindowViewModel : ObservableObject
     {
         IsMergeQueueVisible = false;
         IsStoresVisible = false;
+        IsAppearanceVisible = false;
     }
 }

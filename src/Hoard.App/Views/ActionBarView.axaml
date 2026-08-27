@@ -49,7 +49,7 @@
              meaning anything. -->
         <Style Selector="Border.chip">
             <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
-            <Setter Property="BorderBrush" Value="#664DE8C2"/>
+            <Setter Property="BorderBrush" Value="{StaticResource VoltEdgeSoft}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
             <Setter Property="Padding" Value="9,3,5,3"/>
@@ -152,20 +152,20 @@
 
         <!-- Destructive. Danger, and nowhere else in this strip. -->
         <Style Selector="Button.strip.danger">
-            <Setter Property="Foreground" Value="#FFF2EF"/>
+            <Setter Property="Foreground" Value="{StaticResource DangerInk}"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
         </Style>
         <Style Selector="Button.strip.danger /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="{StaticResource Danger}"/>
         </Style>
         <Style Selector="Button.strip.danger:pointerover">
-            <Setter Property="Foreground" Value="#FFF2EF"/>
+            <Setter Property="Foreground" Value="{StaticResource DangerInk}"/>
         </Style>
         <Style Selector="Button.strip.danger:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="#EF645E"/>
+            <Setter Property="Background" Value="{StaticResource DangerHover}"/>
         </Style>
         <Style Selector="Button.strip.danger:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="BorderBrush" Value="#FFF2EF"/>
+            <Setter Property="BorderBrush" Value="{StaticResource DangerInk}"/>
         </Style>
 
         <!-- A list to add to, offered as a target rather than as a menu row. -->
@@ -211,7 +211,7 @@
             <Setter Property="CornerRadius" Value="9"/>
         </Style>
         <Style Selector="Button.chipx:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="#3D4DE8C2"/>
+            <Setter Property="Background" Value="{StaticResource VoltSelectionSoft}"/>
         </Style>
         <Style Selector="Button.chipx:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
@@ -238,7 +238,7 @@
             <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
             <Setter Property="FontSize" Value="{StaticResource BodySize}"/>
             <Setter Property="Foreground" Value="{StaticResource Text}"/>
-            <Setter Property="SelectionBrush" Value="#4D4DE8C2"/>
+            <Setter Property="SelectionBrush" Value="{StaticResource VoltSelection}"/>
             <Setter Property="CaretBrush" Value="{StaticResource Volt}"/>
         </Style>
         <Style Selector="TextBox.prompt /template/ Border#PART_BorderElement">
@@ -261,7 +261,7 @@
     </UserControl.Styles>
 
     <Border MinHeight="42"
-            Background="{StaticResource Ground}"
+            Background="{StaticResource ChromeGround}"
             BorderBrush="{StaticResource Line}"
             BorderThickness="0,0,0,1"
             IsVisible="{Binding ShowActionBar}">
@@ -297,7 +297,7 @@
                                                FontSize="9"
                                                LetterSpacing="1.2"
                                                Margin="0,0,3,0"
-                                               Foreground="#5A8286"
+                                               Foreground="{StaticResource TextFaint}"
                                                Text="{Binding Dimension}"
                                                IsVisible="{Binding IsContext}"
                                                VerticalAlignment="Center"/>
@@ -327,7 +327,7 @@
                                    Text="{Binding TotalCountText}"
                                    VerticalAlignment="Center"/>
                         <TextBlock Classes="data"
-                                   Foreground="#5A8286"
+                                   Foreground="{StaticResource TextFaint}"
                                    Text="&#x2192;"
                                    VerticalAlignment="Center"/>
                         <TextBlock Classes="data"

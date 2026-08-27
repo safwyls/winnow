@@ -118,7 +118,7 @@
             <Setter Property="Opacity" Value="1"/>
         </Style>
         <Style Selector="CheckBox.facet:pointerover /template/ Border#Row">
-            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
+            <Setter Property="Background" Value="{StaticResource ChromeRaised}"/>
         </Style>
         <Style Selector="CheckBox.facet:pointerover /template/ Border#Box">
             <Setter Property="BorderBrush" Value="{StaticResource TextDim}"/>
@@ -150,7 +150,7 @@
             <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
             <Setter Property="FontSize" Value="12"/>
             <Setter Property="Foreground" Value="{StaticResource Text}"/>
-            <Setter Property="SelectionBrush" Value="#4D4DE8C2"/>
+            <Setter Property="SelectionBrush" Value="{StaticResource VoltSelection}"/>
             <Setter Property="CaretBrush" Value="{StaticResource Volt}"/>
         </Style>
         <Style Selector="TextBox.find /template/ Border#PART_BorderElement">
@@ -184,7 +184,7 @@
             <Setter Property="FontSize" Value="{StaticResource DataSize}"/>
             <Setter Property="FontFeatures" Value="tnum"/>
             <Setter Property="Foreground" Value="{StaticResource Text}"/>
-            <Setter Property="SelectionBrush" Value="#4D4DE8C2"/>
+            <Setter Property="SelectionBrush" Value="{StaticResource VoltSelection}"/>
             <Setter Property="CaretBrush" Value="{StaticResource Volt}"/>
         </Style>
         <Style Selector="TextBox.year /template/ Border#PART_BorderElement">
@@ -201,7 +201,7 @@
             <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
         </Style>
         <Style Selector="TextBox.year /template/ TextBlock#PART_Watermark">
-            <Setter Property="Foreground" Value="#5A8286"/>
+            <Setter Property="Foreground" Value="{StaticResource TextFaint}"/>
         </Style>
 
         <!-- "Show all 214" / "Clear" / the close cross: quiet text buttons. -->
@@ -222,7 +222,7 @@
 
     </UserControl.Styles>
 
-    <Border Background="{StaticResource Surface}"
+    <Border Background="{StaticResource ChromeSurface}"
             BorderBrush="{StaticResource Line}"
             BorderThickness="1,0,0,0">
         <Grid RowDefinitions="48,*">

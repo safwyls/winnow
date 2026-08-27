@@ -1,0 +1,348 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Hoard.App.ViewModels"
+             x:Class="Hoard.App.Views.AppearanceView"
+             x:DataType="vm:AppearanceViewModel">
+
+    <!--
+        SETTINGS › APPEARANCE. Two decisions: which theme, and whether the
+        window admits the desktop.
+
+        The theme cards are the screen. Each one draws the window at 1/8 scale
+        out of its own palette — caption lip, rail with one lit row, a wall of
+        capsules, one unread dot — rather than a strip of colour chips. A chip
+        row says what the hues are; the miniature says what they DO, which is
+        the only claim this palette system makes. Four of them side by side also
+        state the invariant without a sentence: the Flare dot changes colour and
+        never changes job, and there is exactly one of it per theme.
+
+        Nothing here animates. §12.5's rule is that motion lives in a style so
+        §8's reduced-motion setting can take it away, and a settings screen that
+        cross-fades while you compare four palettes is a settings screen you
+        cannot compare four palettes on.
+    -->
+
+    <UserControl.Styles>
+
+        <!-- ══ A theme card ═══════════════════════════════════════════════
+             A real Button, so it is one Tab stop, fires on Space, and reports
+             itself to automation as the control it is. Selection is a Volt edge
+             at a thickness that never changes (§10.7) — a card that thickens on
+             pick would reflow the row of four beside it. -->
+        <Style Selector="Button.themecard">
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Background" Value="{StaticResource Surface}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="BorderThickness" Value="2"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusTile}"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+        </Style>
+        <Style Selector="Button.themecard /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource Surface}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+        </Style>
+        <Style Selector="Button.themecard:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource TextDim}"/>
+        </Style>
+        <Style Selector="Button.themecard.picked /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+        </Style>
+        <Style Selector="Button.themecard:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+        </Style>
+
+        <!-- The miniature. Fixed geometry so four of them line up exactly:
+             a 2:3 wall of capsules is the app's own atom (§4) and the mock
+             reads wrong the moment the proportions drift. -->
+        <Style Selector="Border.mini">
+            <Setter Property="Height" Value="96"/>
+            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="ClipToBounds" Value="True"/>
+        </Style>
+
+        <!-- ══ The transparency checkbox ══════════════════════════════════
+             Templated rather than restyled, for the reason MainWindow's own
+             pref checkbox records: Fluent reads a dozen resource keys for its
+             box, stroke and glyph across six states, and overriding all of them
+             to land on this palette is more surface than drawing 18px and a
+             tick. It stays a real CheckBox, so Space toggles it and automation
+             sees it. -->
+        <Style Selector="CheckBox.appearance">
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="MinHeight" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Grid ColumnDefinitions="18,12,*" Background="Transparent">
+                        <Border Grid.Column="0" Name="Ring"
+                                Width="24" Height="24" Margin="-3,0,0,0"
+                                CornerRadius="6"
+                                BorderBrush="{StaticResource Volt}"
+                                BorderThickness="2"
+                                IsHitTestVisible="False"
+                                HorizontalAlignment="Left"
+                                VerticalAlignment="Center"/>
+                        <Panel Grid.Column="0" VerticalAlignment="Center">
+                            <Border Name="Box" Width="18" Height="18"
+                                    CornerRadius="4"
+                                    Background="{StaticResource Ground}"
+                                    BorderBrush="{StaticResource Line}"
+                                    BorderThickness="1"/>
+                            <Path Name="Tick"
+                                  Data="M 0,3.8 L 3.2,7 L 9,1"
+                                  Stroke="{StaticResource VoltInk}"
+                                  StrokeThickness="2"
+                                  StrokeLineCap="Round"
+                                  StrokeJoin="Round"
+                                  Width="10" Height="8"
+                                  HorizontalAlignment="Center"
+                                  VerticalAlignment="Center"/>
+                        </Panel>
+                        <ContentPresenter Grid.Column="2"
+                                          Content="{TemplateBinding Content}"
+                                          VerticalAlignment="Center"/>
+                    </Grid>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        <Style Selector="CheckBox.appearance /template/ Path#Tick">
+            <Setter Property="Opacity" Value="0"/>
+        </Style>
+        <Style Selector="CheckBox.appearance /template/ Border#Ring">
+            <Setter Property="Opacity" Value="0"/>
+        </Style>
+        <Style Selector="CheckBox.appearance:focus-visible /template/ Border#Ring">
+            <Setter Property="Opacity" Value="1"/>
+        </Style>
+        <Style Selector="CheckBox.appearance:pointerover /template/ Border#Box">
+            <Setter Property="BorderBrush" Value="{StaticResource TextDim}"/>
+        </Style>
+        <Style Selector="CheckBox.appearance:checked /template/ Border#Box">
+            <Setter Property="Background" Value="{StaticResource Volt}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+        </Style>
+        <Style Selector="CheckBox.appearance:checked /template/ Path#Tick">
+            <Setter Property="Opacity" Value="1"/>
+        </Style>
+
+        <Style Selector="Border.card">
+            <Setter Property="Background" Value="{StaticResource Surface}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
+            <Setter Property="Padding" Value="20"/>
+        </Style>
+
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto,*" Background="{StaticResource WallGround}">
+
+        <!-- ══ Header ═══════════════════════════════════════════════════════ -->
+        <Border Grid.Row="0"
+                Padding="24,20,24,18"
+                BorderBrush="{StaticResource Line}"
+                BorderThickness="0,0,0,1">
+            <StackPanel Spacing="7">
+                <TextBlock Classes="display-l" Text="{Binding Title}"/>
+                <TextBlock Classes="body"
+                           MaxWidth="640"
+                           HorizontalAlignment="Left"
+                           TextWrapping="Wrap"
+                           LineHeight="19"
+                           Foreground="{StaticResource TextDim}"
+                           Text="{Binding IntroMessage}"/>
+            </StackPanel>
+        </Border>
+
+        <ScrollViewer Grid.Row="1"
+                      HorizontalScrollBarVisibility="Disabled"
+                      VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="24,16,24,28" MaxWidth="920"
+                        HorizontalAlignment="Left" Spacing="14">
+
+                <TextBlock Classes="label" FontSize="10" LetterSpacing="1.4" Text="THEME"/>
+
+                <ItemsControl ItemsSource="{Binding Themes}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <UniformGrid Columns="2"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="vm:ThemeChoiceViewModel">
+                            <Button Classes="themecard"
+                                    Classes.picked="{Binding IsSelected}"
+                                    Margin="0,0,12,12"
+                                    Command="{Binding $parent[ItemsControl].((vm:AppearanceViewModel)DataContext).SelectThemeCommand}"
+                                    CommandParameter="{Binding}"
+                                    ToolTip.Tip="{Binding Reason}">
+                                <StackPanel Spacing="0">
+
+                                    <!-- ══ The window, at 1/8 ══════════════
+                                         Caption lip over rail over wall. Every
+                                         piece is one of this theme's own
+                                         brushes, so the card keeps showing its
+                                         palette while the app is wearing
+                                         another. -->
+                                    <Border Classes="mini" CornerRadius="4,4,0,0"
+                                            Background="{Binding Ground}">
+                                        <Grid RowDefinitions="12,*">
+
+                                            <!-- The unlit lip (§9): darker than
+                                                 Ground, never lighter. -->
+                                            <Border Grid.Row="0" Background="{Binding Well}"/>
+
+                                            <Grid Grid.Row="1" ColumnDefinitions="46,*">
+
+                                                <!-- Rail: four rows, one lit,
+                                                     and the lit one carries the
+                                                     2px Volt edge. -->
+                                                <Border Grid.Column="0" Background="{Binding Surface}">
+                                                    <StackPanel Margin="0,6" Spacing="6">
+                                                        <Border Background="{Binding SurfaceRaised}" Height="12">
+                                                            <Grid ColumnDefinitions="2,5,*,6">
+                                                                <Border Grid.Column="0" Background="{Binding Volt}"/>
+                                                                <Border Grid.Column="2" Height="4" CornerRadius="2"
+                                                                        Background="{Binding Text}"/>
+                                                            </Grid>
+                                                        </Border>
+                                                        <!-- The one rail row with a
+                                                             pip beside its count:
+                                                             Patched since, which is
+                                                             what Flare counts (6). -->
+                                                        <Grid ColumnDefinitions="2,5,5,3,*,6" Height="8">
+                                                            <Ellipse Grid.Column="2" Width="4" Height="4"
+                                                                     Fill="{Binding Flare}"
+                                                                     VerticalAlignment="Center"/>
+                                                            <Border Grid.Column="4" Height="4" CornerRadius="2"
+                                                                    Background="{Binding TextDim}" Opacity="0.7"/>
+                                                        </Grid>
+                                                        <Grid ColumnDefinitions="2,5,*,6" Height="8">
+                                                            <Border Grid.Column="2" Height="4" CornerRadius="2"
+                                                                    Background="{Binding TextDim}" Opacity="0.5"/>
+                                                        </Grid>
+                                                        <Grid ColumnDefinitions="2,5,*,6" Height="8">
+                                                            <Border Grid.Column="2" Height="4" CornerRadius="2"
+                                                                    Background="{Binding TextDim}" Opacity="0.3"/>
+                                                        </Grid>
+                                                    </StackPanel>
+                                                </Border>
+
+                                                <!-- The wall. 2:3 capsules, the
+                                                     app's own atom (§4), and two
+                                                     of them dimmed — §5.1's ramp
+                                                     said in seven rectangles:
+                                                     bright tiles are alive,
+                                                     ghosted ones are what you
+                                                     forgot you owned. The row
+                                                     runs off the right edge
+                                                     because a wall does. -->
+                                                <Border Grid.Column="1" Background="{Binding Ground}"
+                                                        Padding="8,9,0,0" ClipToBounds="True">
+                                                    <StackPanel Orientation="Horizontal" Spacing="6"
+                                                                VerticalAlignment="Top">
+                                                        <Panel Width="46" Height="69">
+                                                            <Border CornerRadius="3" Background="{Binding SurfaceRaised}"/>
+                                                            <!-- The one Flare in the picture. -->
+                                                            <Ellipse Width="6" Height="6"
+                                                                     Fill="{Binding Flare}"
+                                                                     HorizontalAlignment="Right"
+                                                                     VerticalAlignment="Top"
+                                                                     Margin="0,3,3,0"/>
+                                                        </Panel>
+                                                        <Border Width="46" Height="69" CornerRadius="3"
+                                                                Background="{Binding Line}"/>
+                                                        <Border Width="46" Height="69" CornerRadius="3"
+                                                                Background="{Binding Azure}" Opacity="0.5"/>
+                                                        <Border Width="46" Height="69" CornerRadius="3"
+                                                                Background="{Binding SurfaceRaised}"/>
+                                                        <Border Width="46" Height="69" CornerRadius="3"
+                                                                Background="{Binding Amber}" Opacity="0.45"/>
+                                                        <Border Width="46" Height="69" CornerRadius="3"
+                                                                Background="{Binding Line}" Opacity="0.8"/>
+                                                        <Border Width="46" Height="69" CornerRadius="3"
+                                                                Background="{Binding SurfaceRaised}" Opacity="0.75"/>
+                                                    </StackPanel>
+                                                </Border>
+                                            </Grid>
+                                        </Grid>
+                                    </Border>
+
+                                    <StackPanel Margin="16,12,16,14" Spacing="6">
+                                        <Grid ColumnDefinitions="*,Auto">
+                                            <TextBlock Grid.Column="0"
+                                                       Classes="display-l" FontSize="17"
+                                                       Text="{Binding Name}"
+                                                       VerticalAlignment="Center"/>
+                                            <!-- Says which one you are on in a
+                                                 word as well as in an edge (§8):
+                                                 the Volt border is never the
+                                                 only thing carrying it. -->
+                                            <Border Grid.Column="1"
+                                                    IsVisible="{Binding IsSelected}"
+                                                    Background="{StaticResource Volt}"
+                                                    CornerRadius="9" Padding="8,2"
+                                                    VerticalAlignment="Center">
+                                                <TextBlock Classes="label" FontSize="9" LetterSpacing="1"
+                                                           Foreground="{StaticResource VoltInk}"
+                                                           Text="IN USE"/>
+                                            </Border>
+                                        </Grid>
+                                        <TextBlock Classes="para"
+                                                   Text="{Binding Reason}"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- ══ TRANSPARENCY ═══════════════════════════════════════ -->
+                <TextBlock Classes="label" FontSize="10" LetterSpacing="1.4"
+                           Margin="0,10,0,0" Text="TRANSPARENCY"/>
+
+                <Border Classes="card" MaxWidth="720" HorizontalAlignment="Left">
+                    <StackPanel Spacing="12">
+                        <CheckBox Name="TransparencyToggle"
+                                  Classes="appearance"
+                                  IsChecked="{Binding Transparency, Mode=TwoWay}">
+                            <TextBlock Classes="body-l" Text="Let the desktop through"/>
+                        </CheckBox>
+
+                        <TextBlock Classes="para"
+                                   Margin="30,0,0,0"
+                                   Text="{Binding TransparencyStatus}"/>
+
+                        <!-- The honest case. A toggle that is on and doing
+                             nothing is worse than a toggle that is off, so the
+                             screen says which one this is. Amber because §2
+                             gives Amber "attention", and this is not an error:
+                             the user has not done anything wrong by sitting on
+                             a machine that will not composite. -->
+                        <Border IsVisible="{Binding TransparencyUnavailable}"
+                                Background="{StaticResource Ground}"
+                                BorderBrush="{StaticResource Amber}"
+                                BorderThickness="1"
+                                CornerRadius="{StaticResource RadiusControl}"
+                                Padding="14,12"
+                                Margin="30,0,0,0">
+                            <TextBlock Classes="body" FontSize="12" LineHeight="18"
+                                       TextWrapping="Wrap"
+                                       Text="Not available here. Windows 10, a remote session and some virtual display drivers all refuse the backdrop."/>
+                        </Border>
+
+                        <Border Height="1" Background="{StaticResource Line}" Margin="0,2"/>
+
+                        <TextBlock Classes="para"
+                                   Text="It has its own inks rather than the solid ones turned down, so labels read at 6.5:1 against the brightest wallpaper Windows can hand the window - better than the 5.9:1 they get on a solid rail. What it costs is the unread dot, at 4.1:1 in that same worst case instead of 4.9:1."/>
+                    </StackPanel>
+                </Border>
+
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>
