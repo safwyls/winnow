@@ -1,4 +1,4 @@
-using Avalonia.Media;
+﻿using Avalonia.Media;
 
 namespace Hoard.App.Themes;
 
@@ -95,22 +95,33 @@ public static class Colorimetry
 
     /// <summary>
     /// The worst the metadata ink does anywhere on the chrome at a given slider
-    /// position: the rail, a hovered or selected row on it, and the command bar.
+    /// position: the rail, and a hovered or selected row on it.
     ///
     /// <para>The SELECTED ROW is the one that binds, and it is not obvious — it
     /// is the rail with a veil of <c>Text</c> over it, so it is the lightest
     /// reading surface in the window and the first to lose its ink. §8 already
     /// singles it out for the same reason on the opaque palette.</para>
+    ///
+    /// <para><b>The command bar used to be a third term here and no longer is,
+    /// because it is no longer chrome.</b> Its search box, its labels and its
+    /// sort menu sit inside the library pane now (§15.1, revised), so they are
+    /// measured where §14.7 measures every other pane ink — against a ground that
+    /// admits <c>1 − MinWallAlpha</c> rather than the chrome's reach, and that
+    /// fails at 59–73% of the slider against the chrome's 26–31%. It was never
+    /// the binding term while it was here: <c>Ground</c> is darker than
+    /// <c>Surface</c> at the same alpha, so a light ink on the bar always read
+    /// better than the same ink on the rail. Dropping it moves no theme's
+    /// ceiling — 27 / 31 / 30 / 26 before and after — which is asserted rather
+    /// than claimed.</para>
     /// </summary>
     public static double ChromeMetadataContrast(HoardTheme theme, double transparency, Color backdrop)
     {
         var tokens = theme.Tokens(transparency);
         var rail = Over(tokens["ChromeSurface"], backdrop);
         var row = Over(tokens["ChromeRaised"], rail);
-        var bar = Over(tokens["ChromeGround"], backdrop);
         var ink = tokens["TextDim"];
 
-        return Math.Min(Contrast(ink, rail), Math.Min(Contrast(ink, row), Contrast(ink, bar)));
+        return Math.Min(Contrast(ink, rail), Contrast(ink, row));
     }
 
     /// <summary>

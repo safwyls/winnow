@@ -242,8 +242,12 @@
             <Setter Property="CaretBrush" Value="{StaticResource Volt}"/>
         </Style>
         <!-- ChromeFieldOnGround: the same field fill the command bar's search
-             box takes, because this bar is the same ChromeGround and a field on
-             it should not be the one solid thing in a translucent strip. -->
+             box takes, because both bars are inside the library pane and a field
+             on either of them is a field on the pane's ground. Past the ink ramp
+             it paints nothing at all - the pane already admits exactly what the
+             art field admits, and there is no second translucency available above
+             it (HoardTheme.MinPaneFieldAlpha). Line draws the field; Volt says it
+             has the caret. -->
         <Style Selector="TextBox.prompt /template/ Border#PART_BorderElement">
             <Setter Property="Background" Value="{StaticResource ChromeFieldOnGround}"/>
             <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
@@ -263,14 +267,21 @@
 
     </UserControl.Styles>
 
-    <!-- The cut bar is ACTIONS, so the floating layout leaves it on the window
-         ground with the caption and the command bar rather than giving it a card
-         (§15). Its fill needs no override for that - ChromeGround IS the ground's
-         ink under that layout - but its bottom rule does go, because there is a
-         gap under it now and a rule above a gap is a rule against nothing. -->
+    <!-- INSIDE THE LIBRARY PANE, under the command bar and above the art, in
+         both layouts (§15.1, revised). It describes the library's current cut, so
+         it belongs to the library's pane and not to the window: the command bar
+         holds the controls, this states what they did, and the wall below is the
+         result - cause, claim, consequence, read downwards. It also puts
+         "926 -> 41" against the tiles it is counting.
+
+         NO FILL OF ITS OWN. The pane paints its ground once and this sits on it;
+         a second coat of the same ink at a second alpha would composite twice.
+         The 1px rule stays in both layouts, because in both layouts there is art
+         directly underneath it - which was not true while this bar floated on the
+         window ground with an 8px gap under it. -->
     <Border Classes="cutbar"
             MinHeight="42"
-            Background="{StaticResource ChromeGround}"
+            Background="Transparent"
             BorderBrush="{StaticResource Line}"
             IsVisible="{Binding ShowActionBar}">
         <Panel Margin="20,7">

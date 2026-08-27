@@ -122,25 +122,42 @@ public sealed record HoardTheme
     public const double MinWallAlpha = 0.65;
 
     /// <summary>
-    /// The alpha an INPUT FIELD reaches at the far end of the slider, measured
-    /// against the surface it is drawn on rather than against the desktop.
+    /// The alpha an INPUT FIELD IN THE FILTER PANEL reaches at the far end of
+    /// the slider, measured against the surface it is drawn on rather than
+    /// against the desktop.
     ///
-    /// <para><b>It is forced, not chosen.</b> A field is a child of the bar or
-    /// the panel it sits in, so the two alphas STACK: what the desktop finally
+    /// <para><b>It is forced, not chosen.</b> A field is a child of the surface
+    /// it sits in, so the two alphas STACK: what the desktop finally
     /// contributes to a field is
     /// <c>(1 − containerAlpha) · (1 − fieldAlpha)</c>. Asking that a field admit
     /// exactly what the art field admits — which is the whole point, so the
     /// window has one translucency and not three — fixes the number outright:</para>
     ///
     /// <code>
+    ///   fieldAlpha = 1 − (1 − MinWallAlpha) / (1 − containerAlpha)
+    /// </code>
+    ///
+    /// <para>The filter panel is chrome, so its container term is
+    /// <see cref="MinChromeAlpha"/> and the answer is exactly a half:</para>
+    ///
+    /// <code>
     ///   (1 − MinChromeAlpha) · (1 − MinFieldAlpha) = 1 − MinWallAlpha
     ///            0.70        ·        0.50         =      0.35
     /// </code>
     ///
-    /// <para>So a field admits <b>half of whatever the surface around it
-    /// admits</b>, which lands it on the cover wall's own share of the desktop
-    /// to the last decimal. Two statements of one quantity, which is the same
-    /// discipline <see cref="MinWallAlpha"/> is held to.</para>
+    /// <para>So a field in the panel admits <b>half of whatever the surface
+    /// around it admits</b>, which lands it on the cover wall's own share of the
+    /// desktop to the last decimal. Two statements of one quantity, which is the
+    /// same discipline <see cref="MinWallAlpha"/> is held to.</para>
+    ///
+    /// <para><b>The command bar's field is the SAME identity with a different
+    /// container, and the answer it gives is different.</b> The search box and
+    /// the cut bar's prompt now sit inside the library pane rather than on a
+    /// chrome strip of their own (§15.1, revised), so their container term is
+    /// the PANE's — which is already <see cref="MinWallAlpha"/>. See
+    /// <see cref="MinPaneFieldAlpha"/>: the same formula, and it comes out at
+    /// zero, because there is no room above the wall's share for a second
+    /// translucency. This is why the two fields no longer share a number.</para>
     ///
     /// <para><b>And it holds across the slider rather than only at its end,
     /// because this factor finishes early.</b> The bar's share is already linear
@@ -168,6 +185,50 @@ public sealed record HoardTheme
     /// </summary>
     public const double MinFieldAlpha =
         1 - ((1 - MinWallAlpha) / (1 - MinChromeAlpha));
+
+    /// <summary>
+    /// The alpha an input field INSIDE THE LIBRARY PANE reaches at the far end
+    /// of the slider — the command bar's search box and the cut bar's prompt.
+    ///
+    /// <para><b>Same identity as <see cref="MinFieldAlpha"/>, different
+    /// container, and it is written as the division rather than as its answer so
+    /// that the derivation stays visible.</b> The command bar and the cut bar
+    /// moved inside the library pane, so a field on either of them is a child of
+    /// the PANE, and the pane's ground already admits exactly
+    /// <c>1 − MinWallAlpha</c>:</para>
+    ///
+    /// <code>
+    ///   (1 − MinWallAlpha) · (1 − MinPaneFieldAlpha) = 1 − MinWallAlpha
+    ///          0.35        ·            1.00            =      0.35
+    /// </code>
+    ///
+    /// <para><b>Zero, and it has to be zero.</b> The old two-term form put a
+    /// chrome strip between the desktop and the field, and the field's job was to
+    /// spend the half of the reach the strip had not. There is no such half here:
+    /// the surface the field sits on is already AT the window's declared
+    /// translucency, so anything the field paints on top of it makes the field
+    /// LESS open than the wall — a bolted-shut patch in an open pane, which is
+    /// §14.7's own verdict arriving one level further in. The only fill that
+    /// leaves the identity intact is no fill.</para>
+    ///
+    /// <para><b>What that costs is less than it sounds.</b> §14.7 already records
+    /// that a field is found by its border and lit by its ring, and that the fill
+    /// and the surface around it converge to 1.05:1 at the far end — the fill was
+    /// nearly cosmetic there already. Slider zero is untouched: the ramp starts at
+    /// fully opaque, so the step a field cuts into the pane is exactly the step it
+    /// always was at <c>SOLID</c>, and it fades out over <see cref="InkRampSpan"/>
+    /// like every other compensation on this slider.</para>
+    ///
+    /// <para><b>And it follows the WALL's setting, not the slider's.</b> The old
+    /// field followed the slider because it sat on a bar that was already open
+    /// whatever the wall was doing. This one does not: with the art field solid
+    /// the pane under it is solid, the identity is vacuous — nothing is admitted
+    /// for the field to match — and a field that faded anyway would lose its step
+    /// for no gain at all. So it is opaque exactly when the pane is opaque, which
+    /// is the same condition <c>WallGround</c> and <c>PaneGround</c> answer.</para>
+    /// </summary>
+    public const double MinPaneFieldAlpha =
+        1 - ((1 - MinWallAlpha) / (1 - MinWallAlpha));
 
     /// <summary>
     /// How much of the slider the ink compensation is spent over.
@@ -326,6 +387,18 @@ public sealed record HoardTheme
         // zero is still bit-for-bit opaque and nothing jumps leaving it.
         var fieldAlpha = 1 - (Math.Min(1, t / InkRampSpan) * (1 - MinFieldAlpha));
 
+        // The other field, and it is a different number now that the command bar
+        // and the cut bar sit INSIDE the library pane rather than on a chrome
+        // strip of their own. Same identity, different container: the pane is
+        // already at the wall's share, so MinPaneFieldAlpha solves to zero and a
+        // field in the pane paints nothing at the far end. It follows the WALL's
+        // setting rather than the slider's, because with the pane solid there is
+        // nothing being admitted for the field to match and fading it would only
+        // cost it the step it cuts. See MinPaneFieldAlpha.
+        var paneFieldAlpha = wallTranslucent
+            ? 1 - (Math.Min(1, t / InkRampSpan) * (1 - MinPaneFieldAlpha))
+            : 1;
+
         // The inks walk toward their translucent selves as the alpha comes off,
         // so slider zero is bit-for-bit the opaque palette and there is no step
         // at the moment the window turns transparent — but they walk FASTER than
@@ -333,7 +406,12 @@ public sealed record HoardTheme
         var ink = Math.Min(1, t / InkRampSpan);
 
         var railInk = Mix(Surface, TranslucentSurface, ink);
-        var barInk = Mix(Ground, TranslucentChromeGround, ink);
+
+        // The art field's own walked ink. It used to be the command bar's, which
+        // is what TranslucentChromeGround is still named for; the bar moved into
+        // the pane and the ink stayed exactly where it was, now carrying the
+        // filter panel's field and nothing else.
+        var groundInk = Mix(Ground, TranslucentChromeGround, ink);
 
         // ── The floating layout's fifth ground ──────────────────────────────
         // The window's own field: what shows in every gap between panes, and
@@ -357,7 +435,6 @@ public sealed record HoardTheme
         var textFaint = Mix(TextFaint, TranslucentTextFaint, ink);
 
         var chromeSurface = A(railInk, alpha);
-        var chromeGround = A(barInk, alpha);
 
         // The rail's hover and selection fill, and the one token whose walk is a
         // switch rather than a slide — for a reason worth stating, because the
@@ -515,10 +592,18 @@ public sealed record HoardTheme
             // two tones meeting at a corner. Floating dissolves that corner: the
             // caption and the rail no longer touch, so there is no seam for two
             // tones to meet at. What is continuous now is the GROUND — the
-            // caption, the command bar, the cut bar and every gap are one
-            // unbroken field of Well, and the rail, the wall and the filter panel
-            // float on it. The block the amendment bought is still there; it
-            // turned out to be the ground rather than the panes.
+            // caption and every gap are one unbroken field of Well, and the rail,
+            // the library pane and the filter panel float on it. The block the
+            // amendment bought is still there; it turned out to be the ground
+            // rather than the panes.
+            //
+            // AND THE CAPTION IS NOW THE ONLY STRIP ON THAT FIELD. The command
+            // bar and the cut bar used to take this same ink at this same alpha,
+            // which is what made the first inch of the window a tall block of
+            // chrome — caption and controls flush together, undifferentiated. The
+            // controls are the library's header and have moved inside its pane,
+            // so the caption is a lip again, which is all §9 ever asked it to
+            // be.
             //
             // And §9's older rule — the one the amendment said was the real one,
             // "the caption must not be the BRIGHTEST thing, and the art must be
@@ -528,12 +613,18 @@ public sealed record HoardTheme
             ["CaptionFill"] = floating ? A(wellInk, alpha) : chromeSurface,
             ["ChromeSurface"] = chromeSurface,
 
-            // The command bar and the cut bar. Flush, they are chrome above the
-            // art and take Ground. Floating, they are ACTIONS SITTING ON THE
-            // WINDOW GROUND — that is the line the reference draws and the line
-            // this follows — so they take the ground's own ink and paint nothing
-            // that the caption above them and the gaps beside them do not.
-            ["ChromeGround"] = floating ? A(wellInk, alpha) : chromeGround,
+            // ChromeGround IS GONE, and its absence is the change rather than a
+            // tidy-up. It was the command bar's and the cut bar's own fill, a
+            // chrome tone under a chrome strip; both strips are now inside the
+            // library pane (§15.1, revised), so they have no fill of their own —
+            // the pane paints its ground once and they sit on it. A token here
+            // would be a second coat of the same ink at a second alpha over the
+            // first, which is exactly the double composite ShellGround is a step
+            // and not a ramp to avoid.
+            //
+            // Anything that used to measure "the bar" measures PaneGround now,
+            // which is what the bar sits on and is a truer statement of the same
+            // question.
             ["ChromeRaised"] = chromeRaised,
 
             // Half a step: a HOVERED row where ChromeRaised is a SELECTED one.
@@ -545,37 +636,47 @@ public sealed record HoardTheme
                 ? A(SurfaceRaised, 0.50)
                 : A(Text, (OpaqueVeilStrength + ((FullRaisedVeil - OpaqueVeilStrength) * t)) * 0.5),
 
-            // ── The two input fields ───────────────────────────────────────
-            // A field is one step from its container in the neutral family, and
-            // the step is the direction it already went when everything was
-            // opaque: the command bar is Ground so a field on it is Surface; the
-            // filter panel is Surface so a field in it is Ground. Both take the
-            // WALKED ink, so a field darkens exactly as the chrome around it
-            // does, and both take the field alpha, so a field admits half of
-            // what its container admits. See MinFieldAlpha for why that is the
-            // only number available.
+            // ── The two input fields, which no longer share a number ───────
+            // A field is one step from its container in the neutral family, in
+            // the direction the opaque palette already took: the pane is Ground
+            // so a field on it is Surface; the filter panel is Surface so a field
+            // in it is Ground.
             //
-            // FLOATING re-derives the first of them rather than inheriting it,
-            // because the surface it is a field ON changed. The search box's
-            // container went from the Ground-inked command bar to the Well-inked
-            // window ground, so the field steps one place down the neutral family
-            // with it — Surface over Ground becomes Ground over Well — and the
-            // step, which is what a field IS here, is the same size it always
-            // was. Leaving it at Surface would have made it a two-step jump: a
-            // field that pops out of the ground instead of being cut into it.
+            // ONE OF THEM WALKS AND THE OTHER DOES NOT, which is the second thing
+            // the move re-derived rather than carried over. §14.3's ink ramp is a
+            // CHROME compensation: the chrome opens to 0.70 and pays for it with
+            // a darker ink, so a field on the chrome has to walk with it or the
+            // step between them changes size across the slider. PaneGround does
+            // not walk at all — it is the theme's own Ground at an alpha, at every
+            // position — because the wall opens to half that reach and never
+            // needed the compensation. So the field cut into it is the theme's own
+            // Surface at an alpha, and the step it makes is the opaque palette's
+            // step, unchanged the whole way across.
             //
-            // THE ALPHA IDENTITY IS UNTOUCHED, and it is worth saying why rather
-            // than assuming it. MinFieldAlpha is forced by
+            // THE INK IS NOW LAYOUT-INDEPENDENT, and that is a consequence of the
+            // move rather than a simplification applied to it. Floating used to
+            // step the search box down to Ground because its container had gone
+            // to Well; its container is the library pane in both layouts now, and
+            // a pane is Ground in both, so the field is Surface in both. The
+            // special case did not need deleting — it stopped existing.
+            //
+            // THE ALPHA IDENTITY RE-DERIVES, AND IT LOSES A TERM RATHER THAN
+            // KEEPING ONE. The identity is
             // (1 − containerAlpha)·(1 − fieldAlpha) = 1 − MinWallAlpha, and the
-            // container in that sum is the bar the field sits on. The command bar
-            // was NEVER inside a pane — flush or floating, it is painted directly
-            // on the shell, which contributes nothing at any position past SOLID
-            // (see ShellGround). So the stack has the same two layers it always
-            // had, at the same two alphas, and a field still admits exactly the
-            // cover wall's share of the desktop. ThemeContrastTests asserts the
-            // identity in BOTH layouts rather than taking that on trust.
-            ["ChromeFieldOnGround"] = A(floating ? barInk : railInk, fieldAlpha),
-            ["ChromeFieldOnSurface"] = A(barInk, fieldAlpha),
+            // container is whatever the field is painted on. For the panel that
+            // is still the chrome, so MinFieldAlpha is still one half. For the
+            // search box the container used to be a chrome strip painted straight
+            // on the shell — two layers, 0.70 × 0.50 — and it is now the library
+            // pane, which is ALREADY at 1 − MinWallAlpha. There is no half left
+            // for the field to spend: MinPaneFieldAlpha solves to zero, and a
+            // field in the pane is drawn by its Line border and lit by its Volt
+            // ring, with its fill spent entirely on the step it cuts at SOLID.
+            //
+            // The two-term form did not survive the move, which is the thing
+            // worth writing down: it was never a fact about fields, it was a fact
+            // about what was underneath them.
+            ["ChromeFieldOnGround"] = A(Surface, paneFieldAlpha),
+            ["ChromeFieldOnSurface"] = A(groundInk, fieldAlpha),
 
             // Under the art stack inside a tile, so a cover that has decoded one
             // of its two dormancy layers and not the other cannot show the

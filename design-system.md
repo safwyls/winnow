@@ -348,15 +348,24 @@ caption and its three buttons are ordinary controls in the window's own tree.
 
 > **Amended again (§15), and this time the amendment above survives rather than being
 > reversed.** Under the **floating layout** the caption does *not* take the rail's ink. It
-> takes `Well`, and so do the command bar, the cut bar and every gap between panes.
+> takes `Well`, and so does every gap between panes. *(As first written this sentence also
+> named the command bar and the cut bar; §15.8 moved both inside the library pane, and the
+> caption is now the only strip on that ground — which is the section's own "it is a lip, not a
+> toolbar" arriving from the other direction.)*
 >
 > The rule the previous amendment bought was *one continuous chrome field, with no seam in
 > the first inch of the window*. It bought it by making the caption and the rail the same
 > material, because they **met at a corner** and two tones meeting at a corner is a seam.
 > Floating dissolves that corner: the caption and the rail no longer touch. What is
-> continuous now is **the ground** — the caption, the command bar, the cut bar and the gaps
-> are one unbroken field, and the three content panes lie on it. The block is still there.
-> It turned out to be the ground rather than the panes.
+> continuous now is **the ground** — the caption and the gaps are one unbroken field, and the
+> three content panes lie on it. The block is still there. It turned out to be the ground
+> rather than the panes.
+>
+> **And the first inch is a caption again rather than a block of chrome (§15.8).** With the
+> command bar taking this same ink at this same alpha directly underneath it, the two read as
+> one tall undifferentiated strip — the seam was gone and so was the lip. Those controls
+> operate the library, so they moved inside its pane, and what is left above the panes is 36px
+> of caption.
 >
 > **And §9's older claim, the one the last amendment said was the real one, is served harder
 > than before.** That claim was never "the caption must be the darkest thing"; it was *"the
@@ -637,6 +646,12 @@ of it.**
 continues the rule under the command bar straight across the window. On the left
 there was nothing to line up with; here there is, and not taking it would leave
 a 6px step in a line that crosses the whole screen.
+
+> **True in both layouts again (§15.8).** While the command bar floated on the window ground,
+> the floating layout could only offer the panel's header rule and the library card's *top
+> edge* on one scanline — §15.7's third honest cost. With the bar inside the library pane the
+> two rules are the same kind of object at the same height, y=92 measured on the running
+> window, under two 48px headers.
 
 **The rail is still not duplicated, and it is still part of the filter.** The
 rail owns the bucket axis; the panel owns every other one; neither offers the
@@ -1116,11 +1131,11 @@ opposed to surface that carries reading matter"; these are it.
 | `PaneGround` | Merge queue, Stores, Appearance, the library's **list** view, the empty state | **Exactly `WallGround`** — same ramp, same setting. See §14.7 for why this changed |
 | `TileGround` | Under the art stack inside one tile | **Never** — see §14.4 |
 | `ChromeSurface` | Rail, filter panel, the list view's column-header strip | Yes |
-| `ChromeGround` | Command bar, cut bar | Yes |
+| ~~`ChromeGround`~~ | ~~Command bar, cut bar~~ — **retired (§15.8)**; both bars are inside the library pane and paint no fill | — |
 | `CaptionFill` | The 36px title lip | Yes — and it *is* `ChromeSurface`, same ink and same alpha (§9) |
 | `ChromeRaised` | Hover / selection fill inside the rail, the panel and the list | Becomes a veil — see below |
 | `ChromeRaisedHalf` | A *hovered* row where `ChromeRaised` is a selected one | The same veil at half strength |
-| `ChromeFieldOnGround` | An input on the command bar or cut bar — search, the action bar's prompt | Yes, at **half its container's reach** — see §14.7 |
+| `ChromeFieldOnGround` | An input on the command bar or cut bar — search, the action bar's prompt. Its container is the **library pane** (§15.8) | Yes, at **the pane's own reach exactly** — see §14.7 |
 | `ChromeFieldOnSurface` | An input in the filter panel — find, year, the option checkboxes | Yes, on the same terms |
 
 `ShellGround` is a **step, not a ramp**: two stacked alphas multiply, so a shell that faded
@@ -1438,6 +1453,39 @@ either end of the slider cannot leave a stale number behind. Said in one sentenc
 screen: **a field admits half of what the surface around it admits**, which is the cover wall's own
 share of the desktop exactly.
 
+> **Amended (§15.8): this holds for the filter panel's fields, and the command bar's field now
+> answers the same equation with a different container.** Writing the identity generally,
+>
+> ```
+> fieldAlpha = 1 − (1 − MinWallAlpha) / (1 − containerAlpha)
+> ```
+>
+> the panel is chrome, its container term is `MinChromeAlpha`, and the answer is the half above.
+> The search box and the cut bar's prompt moved **inside the library pane**, so their container is
+> `PaneGround` — which is `1 − MinWallAlpha` already. There is no half left for a field to spend:
+> **`MinPaneFieldAlpha` solves to zero**, and past the ink ramp that field paints no fill at all.
+>
+> **The two-term form did not survive the move, and that is the lesson rather than the cost.** It
+> was never a fact about fields; it was a fact about what was underneath them, and what was
+> underneath them changed. The rule is the identity; the constant is whatever the identity gives
+> once you say honestly which surface the field is drawn on.
+>
+> What it costs is small and already recorded below: *a field is found by its border, and lit by
+> its ring* — the fill and the surface around it converge to 1.05:1 at the far end anyway. `SOLID`
+> is untouched, so the step a field cuts into the pane is exactly the step it always was, and it
+> fades out on `InkRampSpan` like every other compensation here.
+>
+> **And it follows the wall's setting rather than the slider's.** The old field followed the slider
+> because it sat on a bar that was open whatever the wall was doing. This one does not: with the art
+> field solid the pane under it is solid, the identity is vacuous — nothing is being admitted for the
+> field to match — and a field that faded anyway would lose its step for no gain.
+>
+> **One more thing was carried over and should not have been: the ink.** The chrome's inks *walk*
+> (§14.3) because the chrome opens to 0.70 and pays for it; `PaneGround` does not walk at all — it is
+> the theme's own `Ground` at an alpha, at every position. A field cut into an un-walked ground must
+> be un-walked too, or the step between them changes size across the slider. Caught by
+> `ThemeContrastTests`, not by reading.
+
 **And it holds across the slider rather than only at its end, because this factor rides the INK
 ramp.** The bar's share of the desktop is already linear in the slider position; the moment the
 field's factor stops moving, the product of the two is linear at exactly the wall's rate. On the
@@ -1509,18 +1557,23 @@ editor and the secondary panel. Mapped onto this window:
 | Region | Floating | Why |
 |---|---|---|
 | **Caption** | Flush, full width | Chrome. It is a lip, not a pane (§9) |
-| **Command bar** | Flush | Actions. Search, layout, density, display, sort and Filters operate the pane below them; they are not *of* it |
-| **Cut bar** | Flush | Actions, on the same rule |
+| **Command bar** | ~~Flush~~ → **inside the library card** | **Revised, §15.8.** They operate the library and nothing else, so they are its header |
+| **Cut bar** | ~~Flush~~ → **inside the library card** | Revised on the same rule |
 | **Rail** | **Card** | Content — the bucket, list and settings axis |
 | **Cover wall / list view / empty state** | **Card** | Content |
 | **Merge queue · Stores · Appearance** | **Card** | Content; they replace the library pane and take its island |
 | **Filter panel** | **Card** | Content, and a peer of the rail (§11.1) |
 | **Detail modal** | Full bleed | A modal covers everything, gaps included |
 
-The command bar was the one judgement call, and it is settled: **flush.** Giving it a card
-would have made the controls a fourth region competing with the pane they operate, and it
-would have broken the ground's continuity across the top of the window — which is the whole
-of what makes the panes read as floating.
+The command bar was the one judgement call, and it was settled the wrong way. **See §15.8.** The
+reasoning below is kept because half of it survived: giving the bar *a card of its own* would indeed
+have made the controls a fourth region competing with the pane they operate, and it would indeed
+have broken the ground's continuity. What it missed is that those were not the only two options.
+
+> **The original text.** *"The command bar was the one judgement call, and it is settled: flush.
+> Giving it a card would have made the controls a fourth region competing with the pane they
+> operate, and it would have broken the ground's continuity across the top of the window — which is
+> the whole of what makes the panes read as floating."*
 
 ### 15.2 The fifth ground
 
@@ -1614,26 +1667,30 @@ other one (§14.3's seal).
 
 **Nothing §14 measured moved.** The AA ceiling is computed off a selected rail row, the
 polarity floor off the wall against a dormant capsule, and the dormancy ramp off `TileGround`;
-the layout touches none of the three. It moves four tokens — `ShellGround`, `CaptionFill`,
-`ChromeGround` and `ChromeFieldOnGround` — and `FloatingLayoutTests` asserts every other token
-is bit-for-bit identical between the two layouts, at every position on the slider, with the
-wall in and out.
+the layout touches none of the three. It moves ~~four tokens — `ShellGround`, `CaptionFill`,
+`ChromeGround` and `ChromeFieldOnGround`~~ **two tokens, `ShellGround` and `CaptionFill`
+(§15.8)** — and `FloatingLayoutTests` asserts every other token is bit-for-bit identical between
+the two layouts, at every position on the slider, with the wall in and out.
 
-**The chrome strips gain contrast rather than losing it.** The caption and the command bar are
-repainted from `Well` instead of `Surface` and `Ground`, and `Well` is the darkest tone in the
-palette — so over the brightest backdrop a wallpaper can be, every ink on those strips lands on
-a deeper ground than it did. Asserted at every position, per theme: the layout cannot be the
-thing that takes a label under §8's floor.
+**The chrome strip gains contrast rather than losing it.** The caption is repainted from `Well`
+instead of `Surface`, and `Well` is the darkest tone in the palette — so over the brightest
+backdrop a wallpaper can be, every ink on it lands on a deeper ground than it did. Asserted at
+every position, per theme: the layout cannot be the thing that takes a label under §8's floor.
+It is the only strip left to check; the command bar's labels are on the library pane in both
+layouts, so the layout does not reach them.
 
-**§14.7's forced field identity survives, and it was re-derived rather than assumed.** The
-worry is real — the command bar now sits on the window ground, so the stack looks like it lost
-a layer. It did not: the command bar was **never inside a pane** in either layout. It is painted
-directly on the shell, which contributes nothing at any position past `SOLID`, so
-`(1 − barAlpha)·(1 − fieldAlpha) = 1 − wallAlpha` has the same two terms it always had and a
-field still admits exactly the cover wall's share of the desktop. What *did* change is the ink:
-the bar went `Ground → Well`, so the field steps down with it, `Surface → Ground`. A field is
-one step **cut into** its bar, and leaving it at `Surface` would have made it a two-step jump
-that reads as raised.
+~~**§14.7's forced field identity survives, and it was re-derived rather than assumed.**~~
+**Superseded by §15.8, and the supersession is the point.** The re-derivation done here was
+correct *for a command bar sitting on the window ground* — "the command bar was **never inside a
+pane** in either layout", so the sum kept its two terms and the ink stepped `Surface → Ground`
+with the bar. The bar is inside a pane now, in both layouts, so the premise is gone: the sum
+loses a term and the ink stops depending on the layout at all.
+
+**The token count went four to two.** This layout used to move `ShellGround`, `CaptionFill`,
+`ChromeGround` and `ChromeFieldOnGround`. `ChromeGround` no longer exists and
+`ChromeFieldOnGround` no longer varies with the layout, so what floating changes is the ground
+the panes lie on and the caption — and `FloatingLayoutTests` asserts every other token is
+bit-for-bit identical between the two.
 
 **The panes never composite twice, and that is the whole construction.** A painted ground behind
 translucent panes would stack: a rail at §14.3's measured `0.30` over a shell at `0.30` lands at
@@ -1669,3 +1726,68 @@ better than expected: the filter panel takes the **rail's** top margin rather th
 which puts its header rule and the library pane’s top edge on the same scanline (y=92, measured on the running window), so the line still
 crosses the window, now as three collinear segments rather than one. It is a weaker statement
 of the same thing, and it is a real cost of the layout rather than a free win.
+
+> **Mostly repaid by §15.8, and measured the same way.** The scanline is still y=92, but what
+> lies on it in the middle column changed: it was the library card's *top edge*, and it is now
+> the **command bar's own rule inside the card** — the same kind of object as the panel's header
+> rule, at the same height, under a header of the same 48px. The three panes' top edges have all
+> moved up to y=44 together. So the line crossing the window is once again a header rule meeting
+> a header rule, rather than a header rule meeting a pane edge, and §11.1's claim is a
+> continuation again in everything except the 8px the gaps take out of it.
+
+### 15.8 The command bar belongs to the library, not to the window
+
+**Looked at, and revised.** §15.1 put the command bar and the cut bar flush on the window ground
+with the caption, on a content/chrome line borrowed from the reference. On screen that produced
+**a tall undifferentiated block of chrome in the first inch of the window** — a caption strip and a
+control strip in one ink, flush together, above three panes that all started somewhere else. The
+line was drawn in the right place for the reference and the wrong place for this window.
+
+**Those controls are not window chrome.** Search, layout, density, display, sort and `Filters` all
+act on the library and on nothing else. They are the library pane's **header**, so they are inside
+its card — in *both* layouts, because which pane a control belongs to is a fact about what the
+control does and not about whether the panes are inset.
+
+**What it buys, in the order it matters.**
+
+- **One top edge.** The rail, the library and the filter panel now all begin on the same scanline
+  immediately under the caption. That was the stated goal and it is the visible result.
+- **The caption is a lip again**, which is all §9 ever asked it to be. It is the only strip left on
+  the window ground, so §15.2's continuity claim is made by the caption and the gaps alone.
+- **A visibility rule became a fact of composition.** The merge queue, Stores and Appearance
+  replaced the library *specifically* so they would not sit under a command bar whose search and
+  sort mean nothing to them — a claim four `IsVisible` bindings had to keep agreeing on. The bar is
+  inside the library's own `Border` now, so no arrangement of those four panes can put a settings
+  screen under the library's controls. There is no parallel rule left to keep in step.
+- **The layout stopped needing to say anything about the bars.** Floating used to repaint them,
+  margin them 8px in to line their gutter up with the pane below, and strip their bottom rule
+  because there was a gap under them rather than a pane. All three overrides are gone. A setting
+  that no longer has to compensate for a control's position is the strongest available evidence
+  that the position was wrong.
+
+**The cut bar goes with it, under the command bar and above the art.** It describes the library's
+current cut, so it belongs to the library's pane; and inside the pane the order reads downwards as
+cause, claim, consequence — the controls, then what they did, then the result. `926 → 41` also lands
+against the tiles it is counting rather than a strip further away from them. Both bars keep their
+1px rule in both layouts, because in both layouts there is art directly under them.
+
+**Applied to the flush layout as well, and not for symmetry.** Flush already painted the command bar
+in the art field's own ink with a rule under it, so at `SOLID` the move costs **zero pixels** — it
+ratifies what that layout was already asserting. What changes is the alpha, and that is a
+correction: the bar used to take the *chrome's* reach while the wall it sat on took the wall's, so
+with the art field solid and the slider up you got a see-through strip glued to the top of a solid
+field — §14.7's "half a translucent window" arriving one level in. It opens with the pane it belongs
+to now, or stays solid with it.
+
+**`Filters` still toggles a sibling island from inside the library pane.** Slightly odd, and left
+alone: it is where the control has always been, moving it is a larger change than this one, and the
+panel's own edge is directly under the toggle either way. Worth revisiting only if the rail ever
+grows a second thing that opens a column.
+
+**What the ink cost.** The bar was painted from the chrome's ink because it was chrome; on the pane
+it is on the art field's ramp, which every ink on it **gains** from — §14.7 measures a pane's
+`TextDim` failing at 59–73% of the slider against the chrome's own 26–31%. `ChromeGround` is
+retired: the pane paints its ground once and the bars sit on it, because a second coat of the same
+ink at a second alpha is the double composite `ShellGround` is a step and not a ramp to avoid. The
+field on those bars is re-derived in §14.7's amendment. Nothing the Appearance screen reports moved:
+the AA ceiling is 27 / 31 / 30 / 26 before and after.

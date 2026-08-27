@@ -55,11 +55,11 @@ public partial class AppearanceViewModel : ObservableObject
             new AppearanceOptionViewModel(
                 false,
                 "Chrome only",
-                "The rail, the title bar, the filter panel and the command bar. The cover wall, the settings screens and the list view all stay solid, which is how Hoard has looked until now."),
+                "The rail, the title bar and the filter panel. The library pane stays solid - its command bar and cut bar with it, since they are part of it - and so do the settings screens and the list view. How Hoard has looked until now."),
             new AppearanceOptionViewModel(
                 true,
                 "Chrome and the wall",
-                "The field the covers hang in opens up too, at half the amount, and so does everything that shares its place - settings, the review queue, the list view. The covers themselves stay solid, so the desktop shows in the gutters between them."),
+                "The library pane opens up too, at half the amount - its field of art, its command bar and its cut bar together - and so does everything that shares its place: settings, the review queue, the list view. The covers themselves stay solid, so the desktop shows in the gutters between them."),
         ];
 
         Layouts =
@@ -214,8 +214,8 @@ public partial class AppearanceViewModel : ObservableObject
     public string TransparencyStatus => TransparencyUnavailable
         ? "This machine is not compositing the desktop behind the window, so Hoard is drawing solid. The setting stays where you left it and takes effect where it can."
         : WallTranslucent
-            ? "The rail, the title bar, the filter panel, the command bar, the input fields and the cover wall's field all admit the desktop, and so do the panes that share the field's place. The covers themselves never do, at any setting - the dormancy ramp is two layers that are only opaque together, and it needs its own ground under it."
-            : "The rail, the title bar, the filter panel, the command bar and the input fields admit the desktop. The cover wall stays solid, and so do the panes that share its place.";
+            ? "The rail, the title bar, the filter panel and their fields all admit the desktop, and so does the library pane - its field of art, its two bars and the search box on them - along with the panes that share its place. The covers themselves never do, at any setting - the dormancy ramp is two layers that are only opaque together, and it needs its own ground under it."
+            : "The rail, the title bar, the filter panel and the fields in it admit the desktop. The library pane stays solid, and so do its command bar, its cut bar, its search box and the panes that share its place.";
 
     // ══ Material, and reach ═════════════════════════════════════════════════
     // The screen holds four decisions now, and four rows would be a wall of
@@ -599,11 +599,6 @@ public partial class LayoutChoiceViewModel : ObservableObject
     [ObservableProperty]
     public partial IBrush CaptionFill { get; set; } = Brushes.Transparent;
 
-    /// <summary>The command bar: chrome above the art flush, an action strip on
-    /// the window ground floating.</summary>
-    [ObservableProperty]
-    public partial IBrush BarFill { get; set; } = Brushes.Transparent;
-
     /// <summary>The rail and the filter panel — the same in both layouts, which
     /// is half of what the pair of cards is showing.</summary>
     [ObservableProperty]
@@ -640,7 +635,6 @@ public partial class LayoutChoiceViewModel : ObservableObject
 
         GroundFill = new ImmutableSolidColorBrush(floating ? theme.Well : theme.Ground);
         CaptionFill = new ImmutableSolidColorBrush(floating ? theme.Well : theme.Surface);
-        BarFill = new ImmutableSolidColorBrush(floating ? theme.Well : theme.Ground);
         RailFill = new ImmutableSolidColorBrush(theme.Surface);
         WallFill = new ImmutableSolidColorBrush(theme.Ground);
         LineFill = new ImmutableSolidColorBrush(theme.Line);

@@ -577,8 +577,15 @@
              Which edges the layout draws, for the arrangement that has always
              shipped: the rail's right edge and the filter panel's left one are
              the two chrome/art seams (§11.1), the command bar and the cut bar
-             rule off the pane below them, and the library pane draws nothing of
+             rule off the art below them, and the library pane draws nothing of
              its own because those four already enclose it.
+
+             THE TWO BAR RULES ARE NOT LAYOUT-DEPENDENT ANY MORE. They used to
+             be dropped under the floating layout, because a bar sitting on the
+             window ground had 8px of gap underneath it and a rule above a gap is
+             a rule against nothing. The bars are inside the library pane in both
+             layouts now, so in both layouts there is art directly under them and
+             the rule is what divides the two. One value, no override below.
 
              In a STYLE and not on the element, and that is the whole reason this
              block exists. A local value outranks a style setter in Avalonia, so
@@ -607,9 +614,16 @@
 
         <!-- ══ THE FLOATING LAYOUT (§15) ═════════════════════
              Everything the layout does that a repainted brush cannot: margins,
-             corner radii and which edges carry a rule. Four tokens change colour
-             (ShellGround, CaptionFill, ChromeGround, ChromeFieldOnGround — see
-             HoardTheme.Tokens); everything else the setting does is here.
+             corner radii and which edges carry a rule. TWO tokens change colour
+             (ShellGround and CaptionFill — see HoardTheme.Tokens); everything
+             else the setting does is here.
+
+             It used to be four. ChromeGround was the command bar's and the cut
+             bar's own fill and is retired, and ChromeFieldOnGround stopped
+             depending on the layout, because a field steps from its container
+             and the container is the library pane in both now. Both are
+             consequences of the bars moving inside that pane (§15.8) rather than
+             simplifications applied on top of it.
 
              LAST IN THE FILE ON PURPOSE. Avalonia resolves setters of equal
              specificity in document order, and every one of these overrides a
@@ -663,9 +677,15 @@
             <Setter Property="ClipToBounds" Value="True"/>
         </Style>
 
-        <!-- The library pane. Flush it has no border at all — the rail's seam and
-             the command bar's rule are what enclose it — so floating is the only
-             layout in which it draws its own. -->
+        <!-- The library island — its header, its cut bar and its field of art.
+             Flush it has no border at all, because the rail's seam, the filter
+             panel's seam and the window's own edges already enclose it; floating
+             is the only layout in which it draws its own.
+
+             Its top margin is the RAIL's now rather than 8-below-a-command-bar,
+             which is the point of the whole revision: the command bar is inside
+             this Border, so the rail, this pane and the filter panel all begin on
+             the same scanline immediately under the caption. -->
         <Style Selector="Window.floating Border.wallpane">
             <Setter Property="Margin" Value="8,8,8,8"/>
             <Setter Property="CornerRadius" Value="{StaticResource RadiusPane}"/>
@@ -674,10 +694,11 @@
         </Style>
 
         <!-- The merge queue, Stores and Appearance, which replace the library
-             pane entirely. They take the RAIL's top margin rather than the wall's
-             8-below-the-command-bar, because with them up there is no command bar:
-             their card runs from under the caption to the bottom, level with the
-             rail beside it. -->
+             pane entirely. Identical to the library pane's own margin, and that
+             is now true by composition rather than by two style blocks that
+             happen to agree: all four occupants of this column are one Border
+             each, running from under the caption to the bottom, level with the
+             rail beside them. -->
         <Style Selector="Window.floating Border.screenpane">
             <Setter Property="Margin" Value="8,8,8,8"/>
             <Setter Property="CornerRadius" Value="{StaticResource RadiusPane}"/>
@@ -695,25 +716,19 @@
             <Setter Property="ClipToBounds" Value="True"/>
         </Style>
 
-        <!-- The command bar and the cut bar. Their FILL needs nothing here —
-             ChromeGround is already the ground's own ink under this layout, so
-             they disappear into the caption above them and the gaps beside them,
-             which is the whole point of leaving them flush. What has to go is the
-             1px rule along their bottom: it divided them from a pane that was
-             directly underneath, and there is 8px of window ground under them
-             now. A rule above a gap is a rule against nothing.
+        <!-- THE COMMAND BAR AND THE CUT BAR HAVE NO OVERRIDE HERE ANY MORE, and
+             the deletion is the change rather than a consequence of it. They used
+             to be chrome on the window ground: painted from the caption's ink,
+             margined 8px in to line their gutter up with the pane below, and
+             stripped of their bottom rule because there was a gap under them
+             rather than a pane. All three of those existed to make a strip on the
+             ground look like it belonged to the island it was floating above.
 
-             The 8px side margin puts their 20px inner gutter over the library
-             pane's own, so the search box and the first tile share a left edge to
-             within the pane's 1px border. -->
-        <Style Selector="Window.floating Border.cmdbar">
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Margin" Value="8,0"/>
-        </Style>
-        <Style Selector="Window.floating Border.cutbar">
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Margin" Value="8,0"/>
-        </Style>
+             They are inside the island now, so there is nothing left to
+             reconcile: no fill, the pane's own 20px gutter, and a rule with art
+             directly under it. The layout stopped needing to say anything about
+             them, which is the strongest evidence available that they were in the
+             wrong place. -->
 
         <!-- §9.1, and the one rule this layout retires rather than keeps.
              ScrollBarEdgeInset steps every window-edge scrollbar 10px in, because
@@ -1185,19 +1200,47 @@
         </Border>
 
         <!-- ══ MAIN ════════════════════════════════════════════════════════
-             Three screens share the pane: the library, the merge confirm queue
-             the rail's REVIEW row opens, and the Stores panel its SETTINGS › STORES row
-             opens. The command bar (search, density) belongs to the library, so
-             the other two replace the whole pane rather than sitting under
-             controls that do not apply to them. -->
+             FOUR PEERS, one visible at a time: the library, the merge confirm
+             queue the rail's REVIEW row opens, and the Stores and Appearance
+             screens its SETTINGS rows open. Every one of them is a single Border
+             with a single IsVisible, and they all start at the same top edge.
+
+             THE COMMAND BAR IS INSIDE THE LIBRARY'S BORDER, and that is the
+             whole of this arrangement. Search, layout, density, display, sort
+             and Filters all act on the library; they are that pane's header, not
+             the window's, and they were reading as window chrome because they
+             sat flush under the caption in a strip of the caption's own ink.
+
+             It also retires a rule. The queue, Stores and Appearance replaced
+             the library "rather than sitting under a command bar whose search
+             and sort mean nothing to them" — a claim four IsVisible bindings
+             had to keep agreeing on. With the bar inside the pane it is a fact
+             of composition: there is no arrangement of these four Borders in
+             which a settings screen can appear under the library's controls,
+             because the controls are part of the library. -->
         <Panel Grid.Column="1">
 
-        <Grid RowDefinitions="48,Auto,*" IsVisible="{Binding IsLibraryVisible}">
+        <!-- ══ THE LIBRARY ISLAND ═════════════════════════════════════════
+             Its own header, its own cut bar, its own field of art. The Border
+             paints the island's ground ONCE and the two bars inside it paint
+             nothing, which is not tidiness: PaneGround carries alpha, and a
+             strip repainting the same ink at a second alpha over the first is
+             the double composite that ShellGround is a step and not a ramp to
+             avoid. -->
+        <Border Classes="wallpane"
+                Background="{StaticResource WallGround}"
+                BorderBrush="{StaticResource Line}"
+                IsVisible="{Binding IsLibraryVisible}">
+        <Grid RowDefinitions="48,Auto,*">
 
-            <!-- ── Command bar ──────────────────────────────────────────── -->
+            <!-- ── Command bar ──────────────────────────────────────────────
+                 No fill of its own — see the island's note above. What separates
+                 it from the art below is its 1px Line rule, which is exactly
+                 what separated it flush, where it was already painted in the art
+                 field's own ink. At SOLID this move costs zero pixels. -->
             <Border Grid.Row="0"
                     Classes="cmdbar"
-                    Background="{StaticResource ChromeGround}"
+                    Background="Transparent"
                     BorderBrush="{StaticResource Line}">
                   <!-- Search takes the slack; everything else is Auto. A Grid
                        satisfies its Auto columns before its star one, so the box is
@@ -1448,7 +1491,16 @@
 
             <!-- ── Cut bar / prompt ─────────────────────────────────────
                  Auto-height so it takes no room at all when the grid is showing
-                 the whole library. -->
+                 the whole library.
+
+                 UNDER the command bar and above the art, which is where §11.3
+                 has always put it and is more clearly right inside the pane than
+                 it was outside: the command bar holds the controls, the cut bar
+                 states what those controls did, and the wall is the result. Read
+                 downwards that is cause, claim, consequence — and "926 → 41"
+                 lands against the tiles it is counting rather than a strip
+                 further away from them. Above the command bar it would have been
+                 a caption for a header. -->
             <views:ActionBarView Grid.Row="1" DataContext="{Binding Library}"/>
 
             <!-- ── Content ────────────────────────────────────────────────
@@ -1465,11 +1517,7 @@
                  TOGETHER, so each tile paints TileGround under its art stack
                  and the ramp composites over exactly the ground it was
                  calibrated against. See tokens.axaml's grounds note. -->
-            <Border Grid.Row="2"
-                    Classes="wallpane"
-                    Background="{StaticResource WallGround}"
-                    BorderBrush="{StaticResource Line}">
-            <Panel>
+            <Panel Grid.Row="2">
 
                 <!-- ── The selection's own menu (§6, §12.3) ──────────────────
                      §6 asks the list view for "sortable columns, multi-select,
@@ -1712,8 +1760,8 @@
                 </Border>
 
             </Panel>
-            </Border>
         </Grid>
+        </Border>
 
         <!-- ── Merge confirm queue (§5.3 step 3 / §6) ────────────────────── -->
         <Border Classes="screenpane"

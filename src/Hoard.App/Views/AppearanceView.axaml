@@ -1,4 +1,4 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+﻿<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Hoard.App.ViewModels"
              x:Class="Hoard.App.Views.AppearanceView"
@@ -476,40 +476,52 @@
                                                     </StackPanel>
                                                 </Border>
 
-                                                <Grid Grid.Column="1" RowDefinitions="10,*">
+                                                <!-- The library island, and the
+                                                     command bar INSIDE it. The
+                                                     bar used to be a sibling
+                                                     above this card - chrome
+                                                     above the art in one layout,
+                                                     an action strip on the
+                                                     window's own ground in the
+                                                     other - and it is the pane's
+                                                     header in both now, so the
+                                                     card starts at the caption
+                                                     and the rail beside it starts
+                                                     level with it.
+                                                
+                                                     That levelling is what the
+                                                     pair of cards is showing
+                                                     besides the gaps, and it is
+                                                     the same in both: what still
+                                                     differs is the gap, the
+                                                     radius and where Line falls.
+                                                
+                                                     Its FILL never moves between
+                                                     the two cards, and that is
+                                                     not an omission: §5.1's
+                                                     polarity is measured against
+                                                     this tone and the layout is
+                                                     not allowed to touch it. -->
+                                                <Border Grid.Column="1"
+                                                        Background="{Binding WallFill}"
+                                                        Margin="{Binding WallMargin}"
+                                                        CornerRadius="{Binding PaneRadius}"
+                                                        BorderBrush="{Binding LineFill}"
+                                                        BorderThickness="{Binding WallEdge}"
+                                                        ClipToBounds="True">
+                                                    <Grid RowDefinitions="10,*">
 
-                                                    <!-- The command bar, and the
-                                                         one thing this pair of
-                                                         cards exists to show
-                                                         besides the gaps: it is
-                                                         chrome above the art in
-                                                         one layout and an action
-                                                         strip on the window's own
-                                                         ground in the other. On
-                                                         the floating card it is
-                                                         the same fill as the
-                                                         caption above it and the
-                                                         gaps beside it, so it
-                                                         disappears into them -
-                                                         which is exactly what it
-                                                         does in the window. -->
-                                                    <Border Grid.Row="0" Background="{Binding BarFill}"/>
+                                                        <!-- The command bar: no
+                                                             fill of its own, and
+                                                             found by the rule
+                                                             under it, exactly as
+                                                             in the window. -->
+                                                        <Border Grid.Row="0"
+                                                                BorderBrush="{Binding LineFill}"
+                                                                BorderThickness="0,0,0,1"/>
 
-                                                    <!-- The wall. Its FILL never
-                                                         moves between the two
-                                                         cards, and that is not an
-                                                         omission: §5.1's polarity
-                                                         is measured against this
-                                                         tone and the layout is not
-                                                         allowed to touch it. -->
                                                     <Border Grid.Row="1"
-                                                            Background="{Binding WallFill}"
-                                                            Margin="{Binding WallMargin}"
-                                                            CornerRadius="{Binding PaneRadius}"
-                                                            BorderBrush="{Binding LineFill}"
-                                                            BorderThickness="{Binding WallEdge}"
-                                                            Padding="7,7,0,0"
-                                                            ClipToBounds="True">
+                                                            Padding="7,7,0,0">
                                                         <StackPanel Orientation="Horizontal" Spacing="5"
                                                                     VerticalAlignment="Top">
                                                             <Panel Width="38" Height="57">
@@ -536,7 +548,8 @@
                                                                     Background="{x:Static vm:ThemeChoiceViewModel.ArtDormant2}"/>
                                                         </StackPanel>
                                                     </Border>
-                                                </Grid>
+                                                    </Grid>
+                                                </Border>
                                             </Grid>
                                         </Grid>
                                     </Border>
@@ -801,7 +814,7 @@
                                      described a different build of the app would
                                      be worse than one that said nothing. -->
                                 <TextBlock Classes="para"
-                                           Text="Settings, the review queue and the list view open up with the wall — the same half, the same setting. Input fields take half of what the surface around them takes, which lands them on the wall's share too."/>
+                                           Text="Settings, the review queue and the list view open up with the wall — the same half, the same setting. An input field lands on that same share either way: in the filter panel it takes half of the chrome around it, and in the library pane there is no half left to take, so it stops painting a fill and the pane shows through it."/>
                             </StackPanel>
                         </StackPanel>
 

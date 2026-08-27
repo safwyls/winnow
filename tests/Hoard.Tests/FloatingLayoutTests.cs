@@ -1,4 +1,4 @@
-using Avalonia.Media;
+﻿using Avalonia.Media;
 using Hoard.App.Services;
 using Hoard.App.Themes;
 using Xunit;
@@ -11,15 +11,20 @@ namespace Hoard.Tests;
 /// than looked at once in a screenshot.
 ///
 /// <para>Four claims carry the layout, and each of them is a test below. The
-/// ground is CONTINUOUS — the caption, the command bar, the cut bar and every
-/// gap are one ink at one alpha, which is what makes the panes read as lying on
-/// a field rather than as three tones meeting. It is the DEEPEST tone in the
-/// window, so a gap is a recess and never a lit slot. It never composites
-/// TWICE, which is the only reason §14.3's measured chrome alphas survive a
-/// layout that puts a painted ground behind translucent panes. And it moves
-/// NOTHING that was measured — the rail, the wall, the tiles and the panes are
-/// bit-for-bit what the flush layout produces, so the Appearance screen's AA
-/// ceiling is still the truth under both.</para>
+/// ground is CONTINUOUS — the caption and every gap are one ink at one alpha,
+/// which is what makes the panes read as lying on a field rather than as three
+/// tones meeting. It is the DEEPEST tone in the window, so a gap is a recess and
+/// never a lit slot. It never composites TWICE, which is the only reason §14.3's
+/// measured chrome alphas survive a layout that puts a painted ground behind
+/// translucent panes. And it moves NOTHING that was measured — the rail, the
+/// wall, the tiles and the panes are bit-for-bit what the flush layout produces,
+/// so the Appearance screen's AA ceiling is still the truth under both.</para>
+///
+/// <para><b>The command bar and the cut bar used to be a fifth thing on that
+/// ground and are not any more.</b> They are inside the library pane in both
+/// layouts (§15.1, revised), which is why this file no longer asserts anything
+/// about them: the layout does not reach them, and the two tests that used to
+/// prove it does now prove it does not.</para>
 /// </summary>
 public class FloatingLayoutTests
 {
@@ -50,11 +55,18 @@ public class FloatingLayoutTests
     /// <para>§9's amendment made the caption take the rail's ink so the chrome
     /// would be one continuous bracket instead of two tones meeting at a corner.
     /// Floating dissolves the corner — the caption and the rail no longer touch —
-    /// and moves the continuity onto the GROUND: the caption, the command bar,
-    /// the cut bar and the gaps are one field, and the panes lie on it. So the
-    /// test that used to say "the caption is the rail" says "the caption is the
-    /// ground" here, and it is the same claim about seams pointed at the surface
-    /// that now carries it.</para>
+    /// and moves the continuity onto the GROUND: the caption and the gaps are one
+    /// field, and the panes lie on it. So the test that used to say "the caption
+    /// is the rail" says "the caption is the ground" here, and it is the same
+    /// claim about seams pointed at the surface that now carries it.</para>
+    ///
+    /// <para><b>The caption is the ONLY strip on that field now.</b> The command
+    /// bar and the cut bar took this same ink at this same alpha, and caption
+    /// plus command bar flush together read as one tall undifferentiated block of
+    /// chrome in the first inch of the window — which is what sent those controls
+    /// inside the library pane. The claim the ink makes is unchanged and there is
+    /// simply less of it: a lip, which is all §9 ever asked the caption to
+    /// be.</para>
     /// </summary>
     [Theory]
     [MemberData(nameof(ThemeIds))]
@@ -64,22 +76,33 @@ public class FloatingLayoutTests
 
         var solid = theme.Tokens(transparency: 0, layout: HoardLayout.Floating);
 
-        // At SOLID the four are literally one painted field: same ink, same
-        // alpha, no seam anywhere in the first inch of the window.
+        // At SOLID the caption and the ground are literally one painted field:
+        // same ink, same alpha, no seam anywhere in the first inch of the window.
         Assert.Equal(theme.Well, solid["CaptionFill"]);
-        Assert.Equal(theme.Well, solid["ChromeGround"]);
         Assert.Equal(theme.Well, solid["ShellGround"]);
-        Assert.Equal(solid["CaptionFill"], solid["ChromeGround"]);
+        Assert.Equal(solid["CaptionFill"], solid["ShellGround"]);
 
-        // Past SOLID the caption and the bars stay level with each other. The
-        // GAPS do not, and that is stated in §15 rather than asserted away here:
-        // a gap carries nothing and opens the whole way, which is exactly the
-        // effect the layout is for.
+        // Past SOLID the caption keeps the ground's INK and the chrome's alpha —
+        // it carries a wordmark and three glyphs, so it pays for them. The GAPS
+        // open all the way, and that is stated in §15 rather than asserted away
+        // here: a gap carries nothing, which is exactly the effect the layout is
+        // for.
         foreach (var transparency in Range())
         {
             var t = theme.Tokens(transparency, layout: HoardLayout.Floating);
-            Assert.Equal(t["CaptionFill"], t["ChromeGround"]);
+            var caption = t["CaptionFill"];
+            var chrome = t["ChromeSurface"];
+
+            Assert.Equal(chrome.A, caption.A);
+            Assert.True(
+                Luminance(caption) <= Luminance(chrome),
+                $"{id}: the caption rose above the chrome at {transparency:P0}");
         }
+
+        // And nothing else is on that field. The library pane's own bars carry no
+        // fill at all in either layout, so there is no second strip for the
+        // caption's ink to have to match.
+        Assert.False(solid.ContainsKey("ChromeGround"));
     }
 
     /// <summary>
@@ -142,15 +165,20 @@ public class FloatingLayoutTests
     /// <para>This is what makes the setting cheap: the AA ceiling is computed off
     /// a selected rail row, the polarity floor off the wall against a dormant
     /// capsule, and the dormancy ramp off <c>TileGround</c> — and the layout
-    /// moves none of the three. It moves the ground the panes lie on, the
-    /// caption, the bars and one field fill, and nothing else at all.</para>
+    /// moves none of the three. It moves the ground the panes lie on and the
+    /// caption, and nothing else at all.</para>
     /// </summary>
     [Theory]
     [MemberData(nameof(ThemeIds))]
-    public void The_layout_moves_only_the_ground_the_caption_and_the_bars(string id)
+    public void The_layout_moves_only_the_ground_and_the_caption(string id)
     {
         var theme = HoardThemes.ById(id);
-        var moved = new[] { "ShellGround", "CaptionFill", "ChromeGround", "ChromeFieldOnGround" };
+
+        // TWO tokens, down from four. The command bar's fill is gone entirely and
+        // its field's ink stopped being layout-dependent, because a field steps
+        // from its container and the container is the library pane in both
+        // layouts now. The special case was not deleted — it stopped existing.
+        var moved = new[] { "ShellGround", "CaptionFill" };
 
         foreach (var transparency in Range())
         {
@@ -198,80 +226,84 @@ public class FloatingLayoutTests
     }
 
     /// <summary>
-    /// §14.7's forced identity, re-derived in the layout that changed what a
-    /// field sits on.
+    /// §14.7's forced identity, re-derived where a field actually sits — and the
+    /// answer is that the layout has nothing to do with it.
     ///
-    /// <para>A field admits half of what the surface around it admits, which lands
-    /// it on the cover wall's own share of the desktop:
-    /// <c>(1 − barAlpha)·(1 − fieldAlpha) = 1 − wallAlpha</c>. The worry the
-    /// layout raises is that the command bar moved onto the window ground and the
-    /// stack lost a layer — and the answer is that the command bar was never
-    /// inside a pane in either layout. It is painted directly on the shell, which
-    /// contributes nothing past SOLID, so the sum has the same two terms it always
-    /// had. Asserted rather than reasoned, in both layouts, past the ink ramp
-    /// where the factor has settled.</para>
+    /// <para>The identity is
+    /// <c>(1 − containerAlpha)·(1 − fieldAlpha) = 1 − wallAlpha</c>, and the
+    /// container is whatever surface the field is painted on. When the command
+    /// bar was a strip on the window ground that container was the bar, the sum
+    /// had two terms, and the previous version of this test asserted them in both
+    /// layouts. The bar is inside the library pane now, so the container is the
+    /// PANE — which is already at the wall's share — and the field's own term
+    /// solves to 1. Same identity, one fewer layer, and it comes out
+    /// layout-independent because a pane is <c>Ground</c> in both.</para>
     /// </summary>
     [Theory]
     [MemberData(nameof(ThemeIds))]
-    public void A_field_still_admits_the_walls_share_when_the_bar_is_the_ground(string id)
+    public void A_field_admits_the_walls_share_in_either_layout(string id)
     {
         var theme = HoardThemes.ById(id);
 
         foreach (var layout in HoardLayouts.All)
         {
-            var t = theme.Tokens(transparency: 1, layout: layout);
+            var t = theme.Tokens(transparency: 1, wallTranslucent: true, layout);
 
-            var throughBar = (1 - (t["ChromeGround"].A / 255.0))
+            var throughPaneField = (1 - (t["PaneGround"].A / 255.0))
                 * (1 - (t["ChromeFieldOnGround"].A / 255.0));
 
             // Absolute tolerance, not decimal places: both alphas are bytes, so
             // the product carries two quantisations and a rounding boundary is
-            // not a failure. The same 0.006 ThemeContrastTests holds the flush
-            // identity to.
+            // not a failure. The same 0.006 ThemeContrastTests holds the identity
+            // to.
             Assert.True(
-                Math.Abs((1 - HoardTheme.MinWallAlpha) - throughBar) <= 0.006,
-                $"{id}: a field on the {layout} bar admits {throughBar:P1}, the wall {1 - HoardTheme.MinWallAlpha:P1}");
+                Math.Abs((1 - HoardTheme.MinWallAlpha) - throughPaneField) <= 0.006,
+                $"{id}: the search box admits {throughPaneField:P1} under {layout}, the wall {1 - HoardTheme.MinWallAlpha:P1}");
         }
     }
 
     /// <summary>
-    /// A field is a step from its container, and the step keeps its size when the
-    /// container moves down the family.
+    /// A field is a step CUT INTO the surface it sits on, and the layout does not
+    /// move that surface any more.
     ///
-    /// <para>Flush, the command bar is Ground and the search box is Surface — one
-    /// step up. Floating, the bar is Well, so the box is Ground: one step up
-    /// again, rather than the two-step jump that leaving it at Surface would have
-    /// produced. A field is CUT INTO its bar, not raised out of it.</para>
+    /// <para>Floating used to step the search box down to <c>Ground</c>, because
+    /// its container had gone from the <c>Ground</c>-inked command bar to the
+    /// <c>Well</c>-inked window ground and a two-step jump would have read as
+    /// raised rather than cut. Its container is the library pane in both layouts
+    /// now, and a pane is <c>Ground</c> in both, so the field is <c>Surface</c> in
+    /// both — one step up, and the same one.</para>
     /// </summary>
     [Theory]
     [MemberData(nameof(ThemeIds))]
-    public void A_field_is_one_step_above_the_bar_it_sits_on(string id)
+    public void A_field_is_one_step_above_the_pane_in_either_layout(string id)
     {
         var theme = HoardThemes.ById(id);
 
-        var flush = theme.Tokens(transparency: 0, layout: HoardLayout.Flush);
-        Assert.Equal(theme.Ground, flush["ChromeGround"]);
-        Assert.Equal(theme.Surface, flush["ChromeFieldOnGround"]);
+        foreach (var layout in HoardLayouts.All)
+        {
+            var t = theme.Tokens(transparency: 0, layout: layout);
 
-        var floating = theme.Tokens(transparency: 0, layout: HoardLayout.Floating);
-        Assert.Equal(theme.Well, floating["ChromeGround"]);
-        Assert.Equal(theme.Ground, floating["ChromeFieldOnGround"]);
+            Assert.Equal(theme.Ground, t["PaneGround"]);
+            Assert.Equal(theme.Surface, t["ChromeFieldOnGround"]);
 
-        // And in both, up rather than down: an elevation step that inverted would
-        // be a field that reads as a shadow.
-        Assert.True(Luminance(flush["ChromeFieldOnGround"]) > Luminance(flush["ChromeGround"]));
-        Assert.True(Luminance(floating["ChromeFieldOnGround"]) > Luminance(floating["ChromeGround"]));
+            // Up rather than down: an elevation step that inverted would be a
+            // field that reads as a shadow.
+            Assert.True(
+                Luminance(t["ChromeFieldOnGround"]) > Luminance(t["PaneGround"]),
+                $"{id}: the field sank below the pane under {layout}");
+        }
     }
 
     /// <summary>
     /// The chrome strips get BRIGHTER ink relief, never dimmer, from the layout.
     ///
-    /// <para>The caption and the command bar carry the wordmark, the caption
-    /// glyphs and the command bar's labels, and floating repaints both from Well
-    /// instead of Surface and Ground. Well is the darkest tone in the palette, so
-    /// over the brightest backdrop a wallpaper can be, every ink on those strips
-    /// lands on a deeper ground than it did — the layout cannot be the thing that
-    /// takes a label under §8's floor.</para>
+    /// <para>The caption carries the wordmark and the caption glyphs, and
+    /// floating repaints it from Well instead of Surface. Well is the darkest tone
+    /// in the palette, so over the brightest backdrop a wallpaper can be, every
+    /// ink on that strip lands on a deeper ground than it did — the layout cannot
+    /// be the thing that takes a label under §8's floor. It is the only strip left
+    /// to check: the command bar's labels are on the library pane in both
+    /// layouts, so the layout does not reach them at all.</para>
     /// </summary>
     [Theory]
     [MemberData(nameof(ThemeIds))]
@@ -284,7 +316,7 @@ public class FloatingLayoutTests
             var flush = theme.Tokens(transparency, layout: HoardLayout.Flush);
             var floating = theme.Tokens(transparency, layout: HoardLayout.Floating);
 
-            foreach (var key in new[] { "CaptionFill", "ChromeGround" })
+            foreach (var key in new[] { "CaptionFill" })
             {
                 var ink = flush["TextDim"];
                 var before = Contrast(ink, Over(flush[key], White));

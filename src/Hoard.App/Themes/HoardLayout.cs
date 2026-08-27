@@ -1,4 +1,4 @@
-namespace Hoard.App.Themes;
+﻿namespace Hoard.App.Themes;
 
 /// <summary>
 /// How the window is put together: one continuous surface divided by rules, or
@@ -20,11 +20,20 @@ namespace Hoard.App.Themes;
 /// the secondary panel — and the window's own background shows through the gaps
 /// between them, which is the whole of what makes them read as floating.</para>
 ///
-/// <para><b>Which of Hoard's regions are content.</b> The rail, the cover wall
-/// (or the list view, or whichever pane has replaced it) and the filter panel.
-/// The caption, the command bar and the cut bar are chrome and actions, so they
-/// stay flush on the ground with the gaps — see the notes in
-/// <see cref="HoardTheme.Tokens"/> for what that does to the palette.</para>
+/// <para><b>Which of Hoard's regions are content.</b> The rail, the library pane
+/// (the cover wall, the list view, or whichever screen has replaced it) and the
+/// filter panel. Only the caption stays flush on the ground with the gaps — see
+/// the notes in <see cref="HoardTheme.Tokens"/> for what that does to the
+/// palette.</para>
+///
+/// <para><b>The command bar and the cut bar are not a fourth region.</b> They
+/// were, and it did not work: flush under the caption and painted from the
+/// caption's own ink, they made the first inch of the window one tall
+/// undifferentiated block of chrome — and they are not window chrome. Search,
+/// layout, density, display and sort all act on the library. They are its
+/// header, so they are inside its pane, in BOTH layouts. Which pane a control
+/// belongs to is a fact about what the control does, and that is not a function
+/// of whether the panes are inset.</para>
 /// </summary>
 public enum HoardLayout
 {
@@ -34,8 +43,8 @@ public enum HoardLayout
     Flush,
 
     /// <summary>Content panes are rounded cards with a uniform gap around them,
-    /// on a window ground that runs unbroken behind the caption, the command bar
-    /// and every gap.</summary>
+    /// on a window ground that runs unbroken behind the caption and every
+    /// gap.</summary>
     Floating,
 }
 
@@ -85,7 +94,7 @@ public static class HoardLayouts
     public static string Reason(HoardLayout layout) => layout switch
     {
         HoardLayout.Floating =>
-            "The rail, the library and the filter panel become rounded cards with a gap around each. The window's own ground runs behind all of them - across the title bar, under the command bar and through every gap - and with transparency up it is the desktop that shows in the gaps.",
+            "The rail, the library and the filter panel become rounded cards with a gap around each, all three starting under the title bar. The window's own ground runs behind them and through every gap, and with transparency up it is the desktop that shows there.",
         _ =>
             "The rail, the library and the filter panel meet edge to edge, divided by a 1px rule. How Hoard has looked until now, and what every contrast figure on this screen was measured against.",
     };

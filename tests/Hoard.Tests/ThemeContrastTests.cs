@@ -158,13 +158,13 @@ public class ThemeContrastTests
         var t = theme.Tokens(transparency: 0);
 
         Assert.Equal(theme.Surface, t["ChromeSurface"]);
-        Assert.Equal(theme.Ground, t["ChromeGround"]);
+        Assert.Equal(theme.Ground, t["PaneGround"]);
         Assert.Equal(theme.Ground, t["ShellGround"]);
         Assert.Equal(theme.SurfaceRaised, t["ChromeRaised"]);
         Assert.Equal(theme.TextDim, t["TextDim"]);
         Assert.Equal(theme.TextFaint, t["TextFaint"]);
 
-        foreach (var key in new[] { "ChromeSurface", "ChromeGround", "ChromeRaised", "CaptionFill", "ShellGround" })
+        foreach (var key in new[] { "ChromeSurface", "PaneGround", "ChromeRaised", "CaptionFill", "ShellGround" })
         {
             Assert.Equal(255, t[key].A);
         }
@@ -225,7 +225,15 @@ public class ThemeContrastTests
             var t = theme.Tokens(percent / 100.0);
             var rail = Over(t["ChromeSurface"], White);
             var row = Over(t["ChromeRaised"], rail);
-            var bar = Over(t["ChromeGround"], White);
+
+            // The command bar is inside the library pane now, so it is measured
+            // where every other pane ink is: on the pane's own ground, with the
+            // reach setting in, which is the only state in which the question
+            // arises. It is not what sets the ceiling - S14.7 puts the pane at
+            // 59-73% against the chrome's 26-31% - but the ceiling is the range
+            // the app promises is safe, so every reading surface inside it has
+            // to hold, the bar's DENSITY label included.
+            var bar = Field(theme, percent / 100.0, White);
 
             Assert.True(Contrast(t["TextDim"], rail) >= 4.5, $"{id} TextDim/rail at {percent}% on white");
             Assert.True(Contrast(t["TextDim"], row) >= 4.5, $"{id} TextDim/selected row at {percent}% on white");
@@ -463,12 +471,24 @@ public class ThemeContrastTests
         var theme = HoardThemes.ById(id);
         var t = theme.Tokens(transparency: 1);
 
-        foreach (var key in new[] { "ChromeSurface", "ChromeGround", "CaptionFill" })
+        foreach (var key in new[] { "ChromeSurface", "CaptionFill" })
         {
             // The desktop supplies at least 60% of the chrome. The boolean this
             // replaced supplied 14%.
             Assert.True(t[key].A <= 102, $"{id}: {key} at the far end is still {t[key].A}/255");
         }
+
+        // The command bar is NOT on that list any more, and its absence is the
+        // change rather than an omission. It is inside the library pane (S15.1,
+        // revised), so it opens exactly as far as the pane does and no further:
+        // opaque while the art field is solid, at the wall's half reach when it
+        // is not. A bar that kept the chrome's alpha inside a solid island would
+        // be S14.7's "half a translucent window" arriving one level in - a
+        // see-through strip glued to the top of a solid card.
+        Assert.Equal(255, t["PaneGround"].A);
+        Assert.Equal(
+            theme.Tokens(transparency: 1, wallTranslucent: true)["WallGround"],
+            theme.Tokens(transparency: 1, wallTranslucent: true)["PaneGround"]);
 
         Assert.Equal(0, t["ShellGround"].A);
 
@@ -782,16 +802,26 @@ public class ThemeContrastTests
     }
 
     /// <summary>
-    /// An input field admits half of what the surface around it admits — and
-    /// that number is forced rather than chosen.
+    /// A field admits exactly what the art field admits — and the alpha that
+    /// buys that is forced by where the field IS, rather than chosen.
     ///
-    /// <para>A field is a CHILD of its bar or its panel, so the two alphas
+    /// <para>A field is a CHILD of the surface it is drawn on, so the two alphas
     /// stack: the desktop's share of a field is
     /// <c>(1 − containerAlpha) · (1 − fieldAlpha)</c>. Requiring a field to admit
-    /// what the art field admits — so the window has one translucency rather
-    /// than three — solves for <c>MinFieldAlpha</c> outright, and this asserts
-    /// the identity rather than the constant, so retuning either end of the
-    /// slider cannot leave a stale number behind.</para>
+    /// what the art field admits — so the window has one translucency rather than
+    /// three — solves for the field's own alpha outright, and this asserts the
+    /// IDENTITY rather than either constant.</para>
+    ///
+    /// <para><b>The two fields no longer get the same answer, and that is the
+    /// identity working rather than an inconsistency.</b> The filter panel is
+    /// chrome, so its container admits 0.70 and <c>MinFieldAlpha</c> is a half.
+    /// The search box and the cut bar's prompt are inside the LIBRARY PANE now
+    /// (§15.1, revised), and a pane already admits <c>1 − MinWallAlpha</c>
+    /// exactly — there is no half left for a field to spend, so
+    /// <c>MinPaneFieldAlpha</c> solves to zero and that field paints nothing past
+    /// the ink ramp. The two-term form the old version of this test asserted was
+    /// never a fact about fields; it was a fact about what was underneath them,
+    /// and what was underneath them moved.</para>
     /// </summary>
     [Theory]
     [MemberData(nameof(ThemeIds))]
@@ -799,56 +829,80 @@ public class ThemeContrastTests
     {
         var theme = HoardThemes.ById(id);
 
+        // One formula, two containers. Written as the product rather than as its
+        // answer, so retuning either end of the slider cannot leave a stale
+        // number behind in either field.
         Assert.Equal(
             1 - HoardTheme.MinWallAlpha,
             (1 - HoardTheme.MinChromeAlpha) * (1 - HoardTheme.MinFieldAlpha),
             precision: 9);
+        Assert.Equal(
+            1 - HoardTheme.MinWallAlpha,
+            (1 - HoardTheme.MinWallAlpha) * (1 - HoardTheme.MinPaneFieldAlpha),
+            precision: 9);
 
         byte previousOnGround = 255;
+        byte previousOnSurface = 255;
         foreach (var transparency in Range())
         {
-            var t = theme.Tokens(transparency);
+            var t = theme.Tokens(transparency, wallTranslucent: true);
             var onGround = t["ChromeFieldOnGround"];
             var onSurface = t["ChromeFieldOnSurface"];
 
-            // Same alpha, both of them, and it never rises.
-            Assert.Equal(onGround.A, onSurface.A);
-            Assert.True(onGround.A <= previousOnGround, $"{id}: a field's alpha rose at {transparency:P0}");
+            // Neither alpha ever rises. They are no longer the same number — the
+            // two fields sit on two different surfaces — so they are walked
+            // separately.
+            Assert.True(onGround.A <= previousOnGround, $"{id}: a pane field's alpha rose at {transparency:P0}");
+            Assert.True(onSurface.A <= previousOnSurface, $"{id}: a panel field's alpha rose at {transparency:P0}");
             previousOnGround = onGround.A;
+            previousOnSurface = onSurface.A;
 
             // Never more open than the surface around it, and never more open
-            // than the art field — a field is a step in the chrome, not a hole
-            // through it. Asked of what the desktop actually contributes THROUGH
-            // the field rather than of the field's own alpha, because a field is
-            // a child of its container and the two alphas multiply: below the
-            // first quarter the field's own alpha falls faster than the bar's
-            // and the product is still smaller than either.
+            // than the art field — a field is a step CUT INTO a surface, not a
+            // hole through it. Asked of what the desktop actually contributes
+            // THROUGH the field rather than of the field's own alpha, because a
+            // field is a child of its container and the two alphas multiply.
             // Alphas are stored as bytes, so every share here is quantised to
             // 1/255 and the product of two of them carries both errors.
             const double Rounding = 0.005;
-            var wallShare = 1 - (theme.Tokens(transparency, wallTranslucent: true)["WallGround"].A / 255.0);
-            var barShare = 1 - (t["ChromeGround"].A / 255.0);
-            var fieldShare = barShare * (1 - (onGround.A / 255.0));
+            var wallShare = 1 - (t["WallGround"].A / 255.0);
+            var paneShare = 1 - (t["PaneGround"].A / 255.0);
+            var panelShare = 1 - (t["ChromeSurface"].A / 255.0);
+            var paneFieldShare = paneShare * (1 - (onGround.A / 255.0));
+            var panelFieldShare = panelShare * (1 - (onSurface.A / 255.0));
 
             Assert.True(
-                fieldShare <= barShare + Rounding,
-                $"{id}: the field admits more than the bar at {transparency:P0}");
+                paneFieldShare <= paneShare + Rounding,
+                $"{id}: the search box admits more than the pane at {transparency:P0}");
             Assert.True(
-                fieldShare <= wallShare + Rounding,
-                $"{id}: the field admits more than the art field at {transparency:P0}");
+                panelFieldShare <= panelShare + Rounding,
+                $"{id}: a panel field admits more than the panel at {transparency:P0}");
+            Assert.True(
+                paneFieldShare <= wallShare + Rounding,
+                $"{id}: the search box admits more than the art field at {transparency:P0}");
+            Assert.True(
+                panelFieldShare <= wallShare + Rounding,
+                $"{id}: a panel field admits more than the art field at {transparency:P0}");
 
-            // The ink is the chrome's OTHER walked ink, not a fourth colour —
-            // so a field is one step from its container the whole way across,
-            // exactly as it was when everything was opaque.
+            // The ink is one step from the container in the neutral family, and
+            // ONLY THE PANEL'S FIELD WALKS. §14.3's ink ramp is a chrome
+            // compensation — the chrome opens to 0.70 and pays for it with a
+            // darker ink — so a field on the chrome walks with it or the step
+            // between them changes size across the slider. PaneGround does not
+            // walk at all: it is the theme's own Ground at an alpha, at every
+            // position. So the field cut into it is the theme's own Surface at an
+            // alpha, and the step it makes is the opaque palette's step the whole
+            // way across.
             Assert.Equal(
-                (t["ChromeSurface"].R, t["ChromeSurface"].G, t["ChromeSurface"].B),
+                (theme.Surface.R, theme.Surface.G, theme.Surface.B),
                 (onGround.R, onGround.G, onGround.B));
             Assert.Equal(
-                (t["ChromeGround"].R, t["ChromeGround"].G, t["ChromeGround"].B),
-                (onSurface.R, onSurface.G, onSurface.B));
+                (theme.Ground.R, theme.Ground.G, theme.Ground.B),
+                (t["PaneGround"].R, t["PaneGround"].G, t["PaneGround"].B));
         }
 
-        // Slider zero is bit-for-bit the opaque palette, here as everywhere.
+        // Slider zero is bit-for-bit the opaque palette, here as everywhere: the
+        // step a field cuts is untouched by any of this at SOLID.
         var solid = theme.Tokens(transparency: 0);
         Assert.Equal(theme.Surface, solid["ChromeFieldOnGround"]);
         Assert.Equal(theme.Ground, solid["ChromeFieldOnSurface"]);
@@ -856,7 +910,9 @@ public class ThemeContrastTests
         // And the point of it: what the desktop contributes THROUGH a field is
         // the wall's own share, at every position past the first quarter — not
         // merely at the end of the track. That is what the early ramp buys, and
-        // it is the whole claim the Appearance screen makes about fields.
+        // it is the whole claim the Appearance screen makes about fields. Both
+        // fields land on that one number by two different routes, which is the
+        // strongest form of the claim available.
         foreach (var transparency in Range())
         {
             if (transparency < 0.25)
@@ -864,22 +920,41 @@ public class ThemeContrastTests
                 continue;
             }
 
-            var t = theme.Tokens(transparency);
-            var throughBar = (1 - (t["ChromeGround"].A / 255.0))
+            var t = theme.Tokens(transparency, wallTranslucent: true);
+            var throughPaneField = (1 - (t["PaneGround"].A / 255.0))
                 * (1 - (t["ChromeFieldOnGround"].A / 255.0));
-            var throughPanel = (1 - (t["ChromeSurface"].A / 255.0))
+            var throughPanelField = (1 - (t["ChromeSurface"].A / 255.0))
                 * (1 - (t["ChromeFieldOnSurface"].A / 255.0));
-            var wall = 1 - (theme.Tokens(transparency, wallTranslucent: true)["WallGround"].A / 255.0);
+            var wall = 1 - (t["WallGround"].A / 255.0);
 
-            // Absolute tolerance rather than decimal places: every alpha here
-            // is a byte, so a product of two of them carries both quantisations
-            // and a rounding boundary is not a failure.
+            // Absolute tolerance rather than decimal places: every alpha here is
+            // a byte, so a product of two of them carries both quantisations and
+            // a rounding boundary is not a failure.
             Assert.True(
-                Math.Abs(wall - throughBar) <= 0.006,
-                $"{id}: a bar field admits {throughBar:P1}, the wall {wall:P1}, at {transparency:P0}");
+                Math.Abs(wall - throughPaneField) <= 0.006,
+                $"{id}: the search box admits {throughPaneField:P1}, the wall {wall:P1}, at {transparency:P0}");
             Assert.True(
-                Math.Abs(wall - throughPanel) <= 0.006,
-                $"{id}: a panel field admits {throughPanel:P1}, the wall {wall:P1}, at {transparency:P0}");
+                Math.Abs(wall - throughPanelField) <= 0.006,
+                $"{id}: a panel field admits {throughPanelField:P1}, the wall {wall:P1}, at {transparency:P0}");
+        }
+
+        // With the art field SOLID the pane under the search box is solid, the
+        // identity is vacuous — nothing is admitted for the field to match — and
+        // the field stays opaque rather than fading out for no gain at all. That
+        // is the one thing separating it from the panel's fields, which sit on
+        // chrome and follow the slider whatever the wall is doing.
+        foreach (var transparency in Range())
+        {
+            var t = theme.Tokens(transparency);
+            Assert.Equal(255, t["ChromeFieldOnGround"].A);
+            Assert.Equal(theme.Surface, t["ChromeFieldOnGround"]);
+
+            if (transparency >= 0.25)
+            {
+                Assert.True(
+                    t["ChromeFieldOnSurface"].A < 255,
+                    $"{id}: a panel field stopped following the slider at {transparency:P0}");
+            }
         }
     }
 
@@ -914,7 +989,9 @@ public class ThemeContrastTests
             Color Fill(double t)
             {
                 var tok = theme.Tokens(t);
-                var container = Over(tok[onBar ? "ChromeGround" : "ChromeSurface"], White);
+                var container = onBar
+                    ? Field(theme, t, White)
+                    : Over(tok["ChromeSurface"], White);
                 return Over(tok[onBar ? "ChromeFieldOnGround" : "ChromeFieldOnSurface"], container);
             }
 
@@ -978,10 +1055,15 @@ public class ThemeContrastTests
         var t = theme.Tokens(transparency);
         var rail = Over(t["ChromeSurface"], backdrop);
         var row = Over(t["ChromeRaised"], rail);
-        var bar = Over(t["ChromeGround"], backdrop);
         var ink = t["TextDim"];
 
-        return Math.Min(Contrast(ink, rail), Math.Min(Contrast(ink, row), Contrast(ink, bar)));
+        // The command bar was a third term here until it moved into the library
+        // pane. It never bound - Ground is darker than Surface at the same
+        // alpha, so a light ink always read better on the bar than on the rail -
+        // and it is not chrome any more, so measuring it here would be measuring
+        // a pane against the chrome's bar. Colorimetry.ChromeMetadataContrast
+        // dropped it for the same reason, and no theme's ceiling moved.
+        return Math.Min(Contrast(ink, rail), Contrast(ink, row));
     }
 
     private static Color Over(Color ink, Color backdrop)
