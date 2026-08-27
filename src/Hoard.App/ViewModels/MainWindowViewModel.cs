@@ -8,8 +8,16 @@ using Hoard.Core.Repositories;
 namespace Hoard.App.ViewModels;
 
 /// <summary>
-/// Window shell: hosts the library view and the merge confirm queue, and owns
-/// which of the two the rail is currently pointing at.
+/// Window shell: hosts the library view, the merge confirm queue and the Stores
+/// panel, and owns which of the three the rail is currently pointing at.
+///
+/// <para><b>Exactly one screen is up at a time and the rail is the only thing
+/// that switches them.</b> The two non-library screens are mutually exclusive
+/// booleans rather than an enum only because each has a rail row bound directly
+/// to its own flag; every path that shows one clears the other, and every path
+/// back to the library clears both. The rule that keeps this honest is
+/// §12.2's: the rail never leaves the user on a screen their click did not
+/// describe.</para>
 /// </summary>
 public partial class MainWindowViewModel : ObservableObject
 {
@@ -21,10 +29,12 @@ public partial class MainWindowViewModel : ObservableObject
     public MainWindowViewModel(
         LibraryViewModel library,
         MergeQueueViewModel mergeQueue,
+        StoresViewModel stores,
         ISettingsRepository? settings = null)
     {
         Library = library;
         MergeQueue = mergeQueue;
+        Stores = stores;
 
         // The panel is a column in the library's own layout, so it has to
         // disappear when the library does. Two sources, one answer, computed
@@ -53,6 +63,14 @@ public partial class MainWindowViewModel : ObservableObject
 
     public MergeQueueViewModel MergeQueue { get; }
 
+    /// <summary>
+    /// M4.6. Required rather than optional, deliberately: an unregistered Stores
+    /// panel would be a rail row that opens an empty pane, which is the failure
+    /// mode this codebase keeps hitting — build green, tests green, feature
+    /// absent. Missing here, it throws at startup where somebody sees it.
+    /// </summary>
+    public StoresViewModel Stores { get; }
+
     /// <summary>The command bar's Display popover — §8's dimming preference.</summary>
     public DisplaySettingsViewModel Display { get; }
 
@@ -60,7 +78,12 @@ public partial class MainWindowViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(IsLibraryVisible), nameof(IsFilterPanelVisible))]
     public partial bool IsMergeQueueVisible { get; set; }
 
-    public bool IsLibraryVisible => !IsMergeQueueVisible;
+    /// <summary>The Stores panel, opened from the rail's SOURCES row.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsLibraryVisible), nameof(IsFilterPanelVisible))]
+    public partial bool IsStoresVisible { get; set; }
+
+    public bool IsLibraryVisible => !IsMergeQueueVisible && !IsStoresVisible;
 
     /// <summary>The filter panel is part of the library screen, not of the window.</summary>
     public bool IsFilterPanelVisible => IsLibraryVisible && Library.Filters.IsOpen;
@@ -73,7 +96,7 @@ public partial class MainWindowViewModel : ObservableObject
     [RelayCommand]
     private void SelectList(GameListViewModel? list)
     {
-        IsMergeQueueVisible = false;
+        ShowLibraryPane();
         Library.OpenListCommand.Execute(
             ReferenceEquals(Library.Lists.Open, list) ? null : list);
     }
@@ -94,14 +117,54 @@ public partial class MainWindowViewModel : ObservableObject
     [RelayCommand]
     private void SelectBucket(BucketViewModel? bucket)
     {
-        IsMergeQueueVisible = false;
+        ShowLibraryPane();
         Library.SelectBucketCommand.Execute(bucket);
     }
 
     [RelayCommand]
-    private void ShowLibrary() => IsMergeQueueVisible = false;
+    private void ShowLibrary() => ShowLibraryPane();
 
     /// <summary>The rail row toggles, so the same click that opened the queue closes it.</summary>
     [RelayCommand]
-    private void ToggleMergeQueue() => IsMergeQueueVisible = !IsMergeQueueVisible;
+    private void ToggleMergeQueue()
+    {
+        var open = !IsMergeQueueVisible;
+        IsStoresVisible = false;
+        IsMergeQueueVisible = open;
+    }
+
+    /// <summary>
+    /// The rail's SOURCES row. Toggles like the queue's, so the same click that
+    /// opened the panel closes it and gives the library back.
+    ///
+    /// <para><b>Async because opening is when the panel reads its state.</b>
+    /// Whether Steam has a key and whether the Epic session is still live are
+    /// both things that can change while the app is running — a sign-in
+    /// completes, a refresh token lapses — and neither raises an event this
+    /// shell could listen for. Reading on open costs one settings row and one
+    /// DPAPI unprotect, and it means the panel is never showing a state the user
+    /// left behind. Nothing here touches the network (§5.1).</para>
+    /// </summary>
+    [RelayCommand]
+    private async Task ToggleStoresAsync()
+    {
+        var open = !IsStoresVisible;
+        IsMergeQueueVisible = false;
+        IsStoresVisible = open;
+
+        if (open)
+        {
+            await Stores.RefreshCommand.ExecuteAsync(null);
+        }
+    }
+
+    /// <summary>
+    /// Back to the library, from wherever. One method so a screen added later
+    /// cannot be left up by a path that only remembered to clear the other one.
+    /// </summary>
+    private void ShowLibraryPane()
+    {
+        IsMergeQueueVisible = false;
+        IsStoresVisible = false;
+    }
 }

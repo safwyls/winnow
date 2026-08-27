@@ -717,6 +717,57 @@
                         </Grid>
                     </Button>
 
+                    <!-- ── SOURCES ───────────────────────────────────────
+                         The Stores panel (M4.6). Placed here, between REVIEW
+                         and LISTS, because the rail has two kinds of row and
+                         this is the first kind: REVIEW and SOURCES are SCREENS,
+                         while the buckets, the lists and the live lists are all
+                         CUTS of the library. Keeping the two screen rows
+                         adjacent means the boundary between "go somewhere else"
+                         and "show me less of this" is one rule on the rail
+                         rather than a thing you learn by clicking.
+
+                         It also has to sit above LISTS rather than below it,
+                         for a mechanical reason: the list sections grow as the
+                         user makes lists, so anything under them moves down the
+                         rail over the life of the install. A fixed row belongs
+                         above the section that grows.
+
+                         No count. The row would only ever say "3", which never
+                         moves — and a permanent constant beside a permanent row
+                         is exactly the noise the REVIEW row's count is hidden to
+                         avoid. -->
+                    <Border Margin="16,22,16,8"
+                            Padding="0,14,0,0"
+                            BorderBrush="{StaticResource Line}"
+                            BorderThickness="0,1,0,0">
+                        <TextBlock Classes="label"
+                                   FontSize="10"
+                                   LetterSpacing="1.4"
+                                   Text="SOURCES"/>
+                    </Border>
+                    <Button Classes="bucket"
+                            Classes.selected="{Binding IsStoresVisible}"
+                            Command="{Binding ToggleStoresCommand}"
+                            ToolTip.Tip="What Hoard reads your library from, and what each source can't know">
+                        <Grid ColumnDefinitions="2,16,*,16">
+                            <!-- The 2px Volt selection edge, bound to this row's
+                                 own state. Not in a DataTemplate, so a style
+                                 selector could have reached it — it is written
+                                 inline anyway to match the REVIEW row it sits
+                                 under, since two rail rows drawing the same edge
+                                 two different ways is how one of them quietly
+                                 stops drawing it. -->
+                            <Border Grid.Column="0"
+                                    Background="{StaticResource Volt}"
+                                    IsVisible="{Binding IsStoresVisible}"/>
+                            <TextBlock Grid.Column="2"
+                                       Classes="display-s"
+                                       Text="STORES"
+                                       VerticalAlignment="Center"/>
+                        </Grid>
+                    </Button>
+
                     <!-- ══ LISTS / LIVE LISTS ═══════════════════════════════
                          Two sections, and the heading is the whole of how the
                          two kinds are told apart. A list holds the games you put
@@ -827,10 +878,11 @@
         </Border>
 
         <!-- ══ MAIN ════════════════════════════════════════════════════════
-             Two screens share the pane: the library, and the merge confirm
-             queue the rail's REVIEW row opens. The command bar (search,
-             density) belongs to the library, so the queue replaces the whole
-             pane rather than sitting under controls that do not apply to it. -->
+             Three screens share the pane: the library, the merge confirm queue
+             the rail's REVIEW row opens, and the Stores panel its SOURCES row
+             opens. The command bar (search, density) belongs to the library, so
+             the other two replace the whole pane rather than sitting under
+             controls that do not apply to them. -->
         <Panel Grid.Column="1">
 
         <Grid RowDefinitions="48,Auto,*" IsVisible="{Binding IsLibraryVisible}">
@@ -1278,6 +1330,19 @@
         <views:MergeQueueView Name="MergeQueue"
                               DataContext="{Binding MergeQueue}"
                               IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsMergeQueueVisible}"/>
+
+        <!-- The Stores panel. A third occupant of the same pane, on the same
+             terms as the queue: it replaces the library entirely rather than
+             sitting under a command bar whose search, density and sort controls
+             mean nothing here.
+
+             Its right edge is the window's — the filter panel only exists on
+             the library screen — so its scrollbar takes §9.1's edge inset from
+             the window's own ScrollBar:vertical style rather than opting out
+             with ScrollViewer.inner. -->
+        <views:StoresView Name="StoresPanel"
+                          DataContext="{Binding Stores}"
+                          IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsStoresVisible}"/>
 
         </Panel>
 

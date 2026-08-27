@@ -430,7 +430,7 @@ public sealed class ListsViewModelTests
         var live = await library.Lists.CreateLiveListAsync("RPGs", library.Filters.ToFilter());
         library.Filters.ClearCommand.Execute(null);
 
-        var shell = new MainWindowViewModel(library, fixture.CreateMergeQueue());
+        var shell = new MainWindowViewModel(library, fixture.CreateMergeQueue(), DetachedStores.Create());
         shell.SelectListCommand.Execute(live);
         Assert.Same(live, library.Lists.Open);
 

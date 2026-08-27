@@ -180,6 +180,16 @@ public partial class MainWindow : Window
             _shell.IsMergeQueueVisible = true;
         }
 
+        // Same convention and same reason as --open-queue: the Stores panel has
+        // to be reviewable in a screenshot, and driving the rail by an injected
+        // click is not reliable enough to trust (SetForegroundWindow fails
+        // silently). Goes through the command rather than the flag so the panel
+        // reads its state on the way in, exactly as a real click would.
+        if (_shell is not null && Environment.GetCommandLineArgs().Contains("--open-stores"))
+        {
+            await _shell.ToggleStoresCommand.ExecuteAsync(null);
+        }
+
         if (_library is not null && Environment.GetCommandLineArgs().Contains("--open-list"))
         {
             _library.ShowListViewCommand.Execute(null);
@@ -287,6 +297,22 @@ public partial class MainWindow : Window
         if (_shell is { IsMergeQueueVisible: true })
         {
             OnMergeQueueKeyDown(e);
+            return;
+        }
+
+        // The Stores panel answers Escape the same way the queue does — give the
+        // library back — and answers nothing else. It has no selection to walk
+        // and no one-key answers, so every other key is left alone rather than
+        // swallowed; a letter typed here belongs to whatever has focus, which on
+        // that screen is a selectable command line.
+        if (_shell is { IsStoresVisible: true })
+        {
+            if (e.Key == Key.Escape)
+            {
+                _shell.ShowLibraryCommand.Execute(null);
+                e.Handled = true;
+            }
+
             return;
         }
 

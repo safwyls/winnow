@@ -369,6 +369,22 @@ public static class Program
         // boundary.
         services.AddSingleton<EpicSignInService>();
 
+        // M4.6's UI half. StoreConnections is the App-layer seam the Stores
+        // panel binds to: it is the only type that sees both the view model and
+        // the ingest/enrichment clients behind it, which is what keeps §5.1's
+        // boundary from being deleted by a status getter rather than by a call.
+        // Every one of its dependencies is optional, so a host that skipped
+        // AddSteamWebApi or AddEpicWebApi gets a panel that says so.
+        services.AddSingleton<IStoreConnections, StoreConnections>();
+
+        // The panel's per-store title counts come from the library view model,
+        // which implements IStoreTitleCounts. Registered as the SAME instance —
+        // a second LibraryViewModel would be a second load of the whole library
+        // and its counts would be a different (empty) one.
+        services.AddSingleton<IStoreTitleCounts>(
+            sp => sp.GetRequiredService<LibraryViewModel>());
+        services.AddSingleton<StoresViewModel>();
+
         services.AddSingleton<EnrichmentSyncService>();
         services.AddSingleton<FacetSyncService>();
 

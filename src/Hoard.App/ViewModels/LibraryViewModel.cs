@@ -19,7 +19,7 @@ namespace Hoard.App.ViewModels;
 /// sorting are in-memory: the whole library is a few hundred kilobytes of
 /// projection and re-querying SQLite per keystroke would buy nothing.
 /// </summary>
-public partial class LibraryViewModel : ObservableObject
+public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts
 {
     /// <summary>Rail stub for the unrunnable bucket — no data source in M0, always zero.</summary>
     public const string WontRunKey = "wont_run";
@@ -1149,6 +1149,31 @@ public partial class LibraryViewModel : ObservableObject
 
         MarkRailSelection();
         ApplyFilter();
+    }
+
+    /// <summary>
+    /// <inheritdoc cref="IStoreTitleCounts.TitlesByStore"/>
+    ///
+    /// <para>Computed on demand rather than cached: the Stores panel asks once
+    /// per opening, and a cached copy would be one more thing that has to be
+    /// invalidated when the library reloads behind the enrichment pass — which
+    /// is exactly the class of bug where the build is green and the number on
+    /// screen is last week's.</para>
+    ///
+    /// <para>Counted over <c>_allTiles</c>, never over
+    /// <see cref="VisibleTiles"/>: the panel is answering "where did your
+    /// library come from", and the answer must not move because a bucket is
+    /// selected or a search box has three letters in it.</para>
+    /// </summary>
+    public IReadOnlyDictionary<string, int> TitlesByStore()
+    {
+        var counts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        foreach (var tile in _allTiles)
+        {
+            counts[tile.Store] = counts.GetValueOrDefault(tile.Store) + 1;
+        }
+
+        return counts;
     }
 
     /// <summary>
