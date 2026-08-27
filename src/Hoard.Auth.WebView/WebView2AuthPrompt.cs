@@ -23,27 +23,61 @@ namespace Hoard.Auth.WebView;
 /// code and needs a fresh one. Reading it the instant the provider issues it
 /// removes the window rather than making it easier to hit.</para>
 ///
-/// <para><b>Three capture routes, all armed at once.</b> Their evidential
-/// standing differs and the difference is deliberately preserved here:</para>
+/// <para><b>The shape of the flow, and the mistake it was built out of.</b> The
+/// first version started on Epic's <c>id/api/redirect</c> endpoint, on the
+/// reasoning that it is the page that prints a code and that the alternative
+/// route was unverified. It never worked for a single user, because that
+/// endpoint is an API that answers <i>for a browser that already has a
+/// session</i> — and an embedded browser opens an isolated profile with no
+/// cookies at all. Every first-time sign-in landed on
+/// <c>{"authorizationCode":null,"exchangeCode":null,…}</c> and no login form was
+/// ever rendered. The caution was right; the framing was wrong, because only one
+/// of the two candidate URLs can BEGIN an unauthenticated flow. So:</para>
 /// <list type="number">
+///   <item><description><b>Start somewhere that renders a login form</b> —
+///   confirmed to be <c>/id/authorize</c> with the registered redirect.</description></item>
+///   <item><description><b>Notice that authentication finished</b>, by any of
+///   several independent signals.</description></item>
+///   <item><description><b>Then go and ASK for the code</b> at the harvest URL,
+///   which now has a session to answer about.</description></item>
+/// </list>
+/// <para>Step 3 is what makes the whole thing independent of whether the
+/// provider volunteers anything. The other routes all wait for the provider to
+/// DO something; this one stops hoping and asks.</para>
+///
+/// <para><b>Four capture routes, all armed at once.</b> Their evidential
+/// standing differs and the difference is deliberately preserved:</para>
+/// <list type="bullet">
+///   <item><description><b>Session harvest — the backbone.</b> A same-origin
+///   <c>fetch</c> of the harvest URL from inside the page, repeated while the
+///   browser sits on the provider's origin. Non-destructive: it never navigates
+///   the user's page, so it can run while they are still typing a password, and
+///   it returns nothing but "no session" until there is one.</description></item>
 ///   <item><description><b>The launcher JS bridge — CONFIRMED live.</b> Epic's
-///   sign-in page reads <c>window.ue</c> 21 times of its own accord (measured,
+///   sign-in page reads <c>window.ue</c> 21 times of its own accord (measured
 ///   2026-08-26, identically with and without a spoofed launcher user-agent),
 ///   and the injected bridge was driven end to end. Yields an
 ///   <see cref="AuthCodeKind.ExchangeCode"/>. That the page CALLS it after a
 ///   successful sign-in is the part no unauthenticated probe could
 ///   settle.</description></item>
-///   <item><description><b>Redirect interception — mechanism CONFIRMED,
-///   premise UNVERIFIED.</b> <c>NavigationStarting</c> delivers the full URL
-///   including the query before any connection is attempted, so an unroutable
-///   https redirect needs no listener and no certificate — that half is proven.
-///   That the authenticated flow actually 302s there carrying <c>?code=</c> is a
-///   hypothesis. It is armed because arming it is free, not because it is known
-///   to fire.</description></item>
+///   <item><description><b>Redirect interception — mechanism CONFIRMED, premise
+///   UNVERIFIED.</b> <c>NavigationStarting</c> delivers the full URL including
+///   the query before any connection is attempted, so an unroutable https
+///   redirect needs no listener and no certificate — that half is proven. That
+///   the authenticated flow actually 302s there carrying <c>?code=</c> is a
+///   hypothesis. It is armed because arming it is free; nothing depends on
+///   it.</description></item>
 ///   <item><description><b>DOM read — CONFIRMED.</b> The JSON body renders into
 ///   a <c>&lt;pre&gt;</c> even at <c>application/json</c>, and
-///   <c>ExecuteScriptAsync</c> reads it.</description></item>
+///   <c>ExecuteScriptAsync</c> reads it. This is what reads the harvest page when
+///   the flow navigates to it rather than fetching it.</description></item>
 /// </list>
+///
+/// <para><b>All four together rather than in sequence</b>, for a reason that
+/// survives the redesign: each route needs a whole interactive sign-in to test,
+/// and codes are single-use, so trying them one at a time would make the user
+/// sign in repeatedly and burn a code on every miss. The result records which
+/// one fired.</para>
 ///
 /// <para><b>The user-agent is deliberately NOT spoofed.</b> Legendary sends a
 /// launcher string and the obvious move is to copy it, but the spike measured
@@ -51,16 +85,54 @@ namespace Hoard.Auth.WebView;
 /// so it is cargo cult until something authenticated says otherwise. It also
 /// makes the browser more fingerprintable to Epic's bot detection, not less.
 /// (<c>EpicWebOptions.UserAgent</c> still sends a launcher string on the API
-/// client; that is a separate, older decision about the launcher services and is
-/// left alone.)</para>
+/// client; that is a separate, older decision and is left alone.)</para>
 ///
 /// <para><b>Nothing here throws.</b> Runtime missing, window closed, page
-/// changed, network gone, browser process dead — every one is an
+/// changed, network gone, nobody signed in — every one is an
 /// <see cref="AuthCodeResult"/> with a reason, and every one leaves the existing
 /// local ingest exactly as it was.</para>
 /// </summary>
 public sealed class WebView2AuthPrompt : IInteractiveAuthPrompt
 {
+    /// <summary>
+    /// How often the in-page harvester asks the provider whether a session
+    /// exists yet.
+    ///
+    /// <para>An unauthenticated answer mints NOTHING — the endpoint returns null
+    /// code fields — and the harvester stops permanently on the first populated
+    /// one, so exactly one code is ever issued however long the user takes.</para>
+    ///
+    /// <para><b>Five seconds rather than one, and bounded, because this polls
+    /// Epic's own origin while the user is signing in to it.</b> Epic throttles
+    /// (<c>errors.com.epicgames.common.throttled</c> is real; the thresholds are
+    /// unpublished) and the one thing that must not happen is Hoard's own
+    /// polling getting the sign-in it is watching throttled. Twelve requests a
+    /// minute, ceasing at <see cref="MaxHarvestAttempts"/>, against a flow that
+    /// also fires one immediately on every navigation.</para>
+    /// </summary>
+    private static readonly TimeSpan HarvestInterval = TimeSpan.FromSeconds(5);
+
+    /// <summary>
+    /// How many times one document's harvester will ask before giving up.
+    ///
+    /// <para>150 × 5s ≈ 12 minutes, comfortably longer than
+    /// <see cref="AuthPromptRequest.Timeout"/>'s default. A ceiling rather than a
+    /// schedule: it exists so a page left open in a background window cannot poll
+    /// a provider forever.</para>
+    /// </summary>
+    private const int MaxHarvestAttempts = 150;
+
+    /// <summary>
+    /// How many times the flow will navigate to the harvest URL, or back to the
+    /// login page, before giving up.
+    ///
+    /// <para>A loop guard, not an expectation. Without it, a provider that
+    /// answers "no session" from both URLs — which is precisely what a cold
+    /// profile pointed at an API endpoint does — would bounce between them
+    /// forever with a window open in front of the user.</para>
+    /// </summary>
+    private const int MaxDeliberateNavigations = 2;
+
     /// <summary>
     /// The launcher bridge, injected before any of the page's own script runs.
     ///
@@ -68,6 +140,10 @@ public sealed class WebView2AuthPrompt : IInteractiveAuthPrompt
     /// reference implementation of this mechanism. Epic's page probes for
     /// <c>window.ue.signinprompt</c> and, believing it is inside the launcher,
     /// hands the exchange code out through it.</para>
+    ///
+    /// <para><c>registersignincompletecallback</c> is reported too, and not as
+    /// noise: the page calling it is the page saying sign-in finished, which is
+    /// one of the signals that triggers the harvest step.</para>
     ///
     /// <para>Defensive in two ways that matter. It never throws into the page —
     /// a bridge that raises inside Epic's own handler could take the sign-in down
@@ -77,12 +153,12 @@ public sealed class WebView2AuthPrompt : IInteractiveAuthPrompt
     private const string BridgeScript = """
         (function () {
             function post(kind, value) {
-                try { window.chrome.webview.postMessage({ kind: kind, code: value }); } catch (e) { }
+                try { window.chrome.webview.postMessage({ kind: kind, value: value }); } catch (e) { }
             }
             window.ue = {
                 signinprompt: {
                     requestexchangecodesignin: function (code) { post('exchange', code); },
-                    registersignincompletecallback: function () { post('ready', null); }
+                    registersignincompletecallback: function () { post('signed-in', null); }
                 },
                 common: {
                     launchexternalurl: function (url) { post('external', url); }
@@ -107,6 +183,54 @@ public sealed class WebView2AuthPrompt : IInteractiveAuthPrompt
                 if (document.contentType !== 'application/json') { return null; }
                 return document.body ? document.body.innerText : null;
             } catch (e) { return null; }
+        })();
+        """;
+
+    /// <summary>
+    /// The in-page harvester: asks the provider for a code on a timer, from the
+    /// provider's own origin, without ever navigating away.
+    ///
+    /// <para><b>Same-origin <c>fetch</c> is what makes this safe to run during
+    /// sign-in.</b> Navigating to the harvest URL to look would rip the login
+    /// form out from under a user mid-password; a fetch is invisible to them.
+    /// Cookies ride along because the request is same-origin, which is the whole
+    /// mechanism: the moment the session cookie exists, the same request that has
+    /// been answering "null" starts answering with a code.</para>
+    ///
+    /// <para>Guarded to one instance per document, and it stops itself on the
+    /// first populated answer so that exactly one code is ever minted. Failures
+    /// are swallowed — a CSP that blocks the fetch, an HTML challenge, an offline
+    /// moment — because the deliberate navigation is the belt for all of
+    /// them.</para>
+    /// </summary>
+    private const string HarvesterScriptTemplate = """
+        (function () {
+            if (window.__hoardHarvesting) { return; }
+            window.__hoardHarvesting = true;
+            var url = %URL%;
+            var remaining = %ATTEMPTS%;
+            var timer = null;
+            function ask() {
+                if (window.__hoardHarvested || remaining <= 0) {
+                    if (timer) { clearInterval(timer); }
+                    return;
+                }
+                remaining--;
+                try {
+                    fetch(url, { credentials: 'include', cache: 'no-store' })
+                        .then(function (r) { return r.text(); })
+                        .then(function (body) {
+                            if (window.__hoardHarvested) { return; }
+                            window.chrome.webview.postMessage({ kind: 'harvest', value: body });
+                        })
+                        .catch(function () { });
+                } catch (e) { }
+            }
+            // Immediately, then on a slow timer. The immediate call is what makes
+            // a completed sign-in visible on the very next navigation rather than
+            // up to one interval later.
+            ask();
+            timer = setInterval(ask, %INTERVAL%);
         })();
         """;
 
@@ -190,11 +314,43 @@ public sealed class WebView2AuthPrompt : IInteractiveAuthPrompt
         return completion.Task;
     }
 
+    /// <summary>
+    /// One run's mutable state. UI-thread only, so no synchronisation: every
+    /// WebView2 event and every navigation happens on the dispatcher.
+    /// </summary>
+    private sealed class RunState
+    {
+        public RunState(AuthPromptRequest request) => Request = request;
+
+        public AuthPromptRequest Request { get; }
+
+        public TaskCompletionSource<AuthCodeResult> Captured { get; }
+            = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        /// <summary>Deliberate navigations to the harvest URL, capped as a loop guard.</summary>
+        public int HarvestNavigations { get; set; }
+
+        /// <summary>Times the flow has sent the user back to the login page after an empty harvest.</summary>
+        public int ReturnsToLogin { get; set; }
+
+        /// <summary>
+        /// Whether the provider has answered "no session" at least once. Kept so
+        /// the final message can say which of the two very different things went
+        /// wrong: nobody signed in, or the capture broke.
+        /// </summary>
+        public bool SawNoSession { get; set; }
+
+        public bool Done => Captured.Task.IsCompleted;
+
+        public void Capture(AuthCodeKind kind, string code, string via)
+            => Captured.TrySetResult(AuthCodeResult.Captured(kind, code, via));
+    }
+
     private async Task<AuthCodeResult> RunOnUiThreadAsync(AuthPromptRequest request, CancellationToken ct)
     {
         var consent = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var captured = new TaskCompletionSource<AuthCodeResult>(TaskCreationOptions.RunContinuationsAsynchronously);
         var closed = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var state = new RunState(request);
 
         var host = new WebView2Host(Path.Combine(_profileRoot, Sanitize(request.ProfileKey)));
         var window = BuildConsentWindow(request, consent);
@@ -223,11 +379,11 @@ public sealed class WebView2AuthPrompt : IInteractiveAuthPrompt
 
             // The browser REPLACES the consent panel rather than being revealed
             // underneath it. A hosted HWND paints over Avalonia content
-            // regardless of z-order — the classic airspace problem — so a
-            // browser sharing a Panel with the notice would sit on top of the
-            // thing the user has to read. Swapping the content sidesteps it
-            // entirely, and has the useful side effect that the browser is not
-            // even created until consent is given.
+            // regardless of z-order — the classic airspace problem — so a browser
+            // sharing a Panel with the notice would sit on top of the thing the
+            // user has to read. Swapping the content sidesteps it entirely, and
+            // has the useful side effect that the browser is not even created
+            // until consent is given.
             window.Content = host;
 
             CoreWebView2Controller controller;
@@ -245,23 +401,32 @@ public sealed class WebView2AuthPrompt : IInteractiveAuthPrompt
                 return AuthCodeResult.Failed("the embedded browser could not start (" + ex.GetType().Name + ")");
             }
 
-            await ArmCaptureAsync(controller.CoreWebView2, request, captured);
+            await ArmCaptureAsync(controller.CoreWebView2, state);
 
             controller.CoreWebView2.Navigate(request.StartUrl.ToString());
 
             var finished = await Task.WhenAny(
-                captured.Task,
+                state.Captured.Task,
                 closed.Task,
                 Task.Delay(request.Timeout, ct));
 
-            if (finished == captured.Task)
+            if (finished == state.Captured.Task)
             {
-                return await captured.Task;
+                return await state.Captured.Task;
             }
 
-            return finished == closed.Task
-                ? AuthCodeResult.Cancelled("the sign-in window was closed")
-                : AuthCodeResult.Cancelled("the sign-in was not completed in time");
+            if (finished == closed.Task)
+            {
+                // Closing after the provider said "no session" is a different
+                // story from closing at random, and the user should be told the
+                // one that is true.
+                return state.SawNoSession
+                    ? AuthCodeResult.NoSession(
+                        "the sign-in window was closed before an account was signed in")
+                    : AuthCodeResult.Cancelled("the sign-in window was closed");
+            }
+
+            return AuthCodeResult.Cancelled("the sign-in was not completed in time");
         }
         finally
         {
@@ -271,30 +436,19 @@ public sealed class WebView2AuthPrompt : IInteractiveAuthPrompt
         }
     }
 
-    /// <summary>
-    /// Wires all three capture routes onto one browser session.
-    ///
-    /// <para>Together rather than in sequence: each route needs a whole
-    /// interactive sign-in to test, and codes are single-use, so trying them one
-    /// at a time would make the user sign in up to three times and burn a code on
-    /// each miss. Armed together, whichever route the provider actually exercises
-    /// fires first and the rest never do — and the result records which one it
-    /// was, which is how the spike's open question finally gets an answer.</para>
-    /// </summary>
-    private async Task ArmCaptureAsync(
-        CoreWebView2 browser, AuthPromptRequest request, TaskCompletionSource<AuthCodeResult> captured)
+    /// <summary>Wires every capture route onto one browser session.</summary>
+    private async Task ArmCaptureAsync(CoreWebView2 browser, RunState state)
     {
+        var request = state.Request;
+
+        if (request.Strategies.HasFlag(AuthCaptureStrategies.LauncherJsBridge)
+            || request.Strategies.HasFlag(AuthCaptureStrategies.SessionHarvest))
+        {
+            browser.WebMessageReceived += (sender, e) => OnWebMessage((CoreWebView2)sender!, state, e);
+        }
+
         if (request.Strategies.HasFlag(AuthCaptureStrategies.LauncherJsBridge))
         {
-            browser.WebMessageReceived += (_, e) =>
-            {
-                if (TryReadBridgeMessage(e) is { } code)
-                {
-                    captured.TrySetResult(
-                        AuthCodeResult.Captured(AuthCodeKind.ExchangeCode, code, "launcher JS bridge"));
-                }
-            };
-
             // Before any of the page's own script runs, on every document
             // including iframes. Registering it after navigation would lose the
             // race against a page that probes for the bridge during load — and
@@ -319,51 +473,27 @@ public sealed class WebView2AuthPrompt : IInteractiveAuthPrompt
 
                 if (ReadQueryParameter(uri, request.RedirectCodeParameter) is { } code)
                 {
-                    captured.TrySetResult(
-                        AuthCodeResult.Captured(AuthCodeKind.AuthorizationCode, code, "redirect interception"));
-                }
-                else
-                {
-                    // Worth a line: it means the redirect half of the hypothesis
-                    // is right and only the parameter name is wrong, which is a
-                    // much smaller thing to fix than it looks from a silent
-                    // failure. The URI is NOT logged — it is the object that
-                    // would carry a code.
-                    _log.LogWarning(
-                        "Reached the {Provider} redirect target with no '{Parameter}' parameter on it.",
-                        request.ProviderName, request.RedirectCodeParameter);
-                }
-            };
-        }
-
-        if (request.Strategies.HasFlag(AuthCaptureStrategies.JsonBodyScrape) && request.JsonCodeFields.Count > 0)
-        {
-            browser.NavigationCompleted += async (sender, e) =>
-            {
-                if (!e.IsSuccess || captured.Task.IsCompleted)
-                {
+                    state.Capture(AuthCodeKind.AuthorizationCode, code, "redirect interception");
                     return;
                 }
 
-                try
-                {
-                    var raw = await ((CoreWebView2)sender!).ExecuteScriptAsync(ReadJsonBodyScript);
-                    if (TryReadJsonCode(raw, request.JsonCodeFields) is { } found)
-                    {
-                        captured.TrySetResult(
-                            AuthCodeResult.Captured(found.Kind, found.Code, "JSON body"));
-                    }
-                }
-                catch (Exception ex) when (ex is InvalidOperationException or ObjectDisposedException
-                    or System.Runtime.InteropServices.COMException)
-                {
-                    // The browser went away mid-script, or the navigation was
-                    // superseded. Another route may still fire; either way this
-                    // is an event handler and must not throw.
-                    _log.LogDebug("Could not read the page body ({ExceptionType}).", ex.GetType().Name);
-                }
+                // Worth a line: it means the redirect half of the hypothesis is
+                // right and only the parameter name is wrong, which is a much
+                // smaller thing to fix than it looks from a silent failure. The
+                // URI is NOT logged — it is the object that would carry a code.
+                _log.LogWarning(
+                    "Reached the {Provider} redirect target with no '{Parameter}' parameter on it.",
+                    request.ProviderName, request.RedirectCodeParameter);
+
+                // The session almost certainly exists at this point, so ask for
+                // the code directly rather than treating a nameless redirect as
+                // the end of the road.
+                TryHarvestByNavigation(browser, state, "the redirect fired without a code");
             };
         }
+
+        browser.NavigationCompleted += async (sender, e) =>
+            await OnNavigationCompletedAsync((CoreWebView2)sender!, state, e);
 
         // Popups. Several of Epic's alternative sign-in options (Google, Steam,
         // Xbox) open one, and a WebView2 with no handler simply drops it — the
@@ -375,6 +505,299 @@ public sealed class WebView2AuthPrompt : IInteractiveAuthPrompt
             e.Handled = true;
             ((CoreWebView2)sender!).Navigate(e.Uri);
         };
+    }
+
+    /// <summary>Handles one message from the injected bridge or harvester.</summary>
+    private void OnWebMessage(CoreWebView2 browser, RunState state, CoreWebView2WebMessageReceivedEventArgs e)
+    {
+        if (state.Done || TryReadMessage(e) is not var (kind, value))
+        {
+            return;
+        }
+
+        switch (kind)
+        {
+            case "exchange" when !string.IsNullOrWhiteSpace(value):
+                state.Capture(AuthCodeKind.ExchangeCode, value!, "launcher JS bridge");
+                return;
+
+            case "signed-in":
+                // The page told the launcher that sign-in completed. That is a
+                // direct statement rather than an inference from a URL, so it is
+                // the best trigger the flow has for going to collect the code.
+                TryHarvestByNavigation(browser, state, "the page reported sign-in complete");
+                return;
+
+            case "harvest":
+                ApplyBodyReading(
+                    browser,
+                    state,
+                    AuthCodeBody.Read(value, state.Request.JsonCodeFields),
+                    via: "session harvest",
+                    navigateOnNoSession: false);
+                return;
+
+            default:
+                // 'external' (the page asking for a URL to be opened outside) and
+                // anything a page invents. A page that thinks it is talking to a
+                // launcher can post whatever it likes; none of it is a code.
+                return;
+        }
+    }
+
+    private async Task OnNavigationCompletedAsync(
+        CoreWebView2 browser, RunState state, CoreWebView2NavigationCompletedEventArgs e)
+    {
+        if (state.Done || !e.IsSuccess)
+        {
+            return;
+        }
+
+        try
+        {
+            if (state.Request.Strategies.HasFlag(AuthCaptureStrategies.JsonBodyScrape)
+                && state.Request.JsonCodeFields.Count > 0)
+            {
+                var body = UnwrapScriptResult(await browser.ExecuteScriptAsync(ReadJsonBodyScript));
+                var reading = AuthCodeBody.Read(body, state.Request.JsonCodeFields);
+
+                if (reading.Outcome != AuthCodeBodyOutcome.NotACodeBody)
+                {
+                    // This navigation landed ON the provider's code endpoint, so
+                    // its answer is the authoritative one for this moment —
+                    // including "nobody is signed in", which sends the user to a
+                    // login form rather than ending the flow.
+                    ApplyBodyReading(browser, state, reading, via: "JSON body", navigateOnNoSession: true);
+                    return;
+                }
+            }
+
+            if (!Uri.TryCreate(browser.Source, UriKind.Absolute, out var current))
+            {
+                return;
+            }
+
+            if (state.Request.Strategies.HasFlag(AuthCaptureStrategies.SessionHarvest)
+                && state.Request.HarvestUrl is { } harvest)
+            {
+                if (IsSameOrigin(current, harvest))
+                {
+                    // Same origin, so the fetch carries the provider's cookies.
+                    // Injected on every document; the script no-ops if it is
+                    // already running in this one.
+                    await browser.ExecuteScriptAsync(BuildHarvesterScript(harvest));
+                }
+
+                if (HasLeftTheSignInJourney(current, state.Request))
+                {
+                    TryHarvestByNavigation(browser, state, "the browser left the sign-in pages");
+                }
+            }
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or ObjectDisposedException
+            or System.Runtime.InteropServices.COMException)
+        {
+            // The browser went away mid-script, or the navigation was superseded.
+            // Another route may still fire; either way this is an event handler
+            // and must not throw.
+            _log.LogDebug("Could not inspect the page ({ExceptionType}).", ex.GetType().Name);
+        }
+    }
+
+    /// <summary>
+    /// Acts on one reading of a code-bearing body.
+    ///
+    /// <para><b>"No session" is handled as its own thing here</b>, which is the
+    /// point of the redesign. A body with every code field null is not a failed
+    /// capture — it is the provider saying nobody has signed in — and answering
+    /// it by falling through to "no code captured" is what made the original
+    /// flow report a symptom instead of a cause. When the flow navigated to the
+    /// code endpoint to get this answer, the remedy is to put a login page back
+    /// in front of the user; when it merely polled in the background, the remedy
+    /// is to keep waiting, because the user is probably still typing.</para>
+    /// </summary>
+    private void ApplyBodyReading(
+        CoreWebView2 browser, RunState state, AuthCodeBodyReading reading, string via, bool navigateOnNoSession)
+    {
+        switch (reading.Outcome)
+        {
+            case AuthCodeBodyOutcome.CodeFound when reading.Code is { Length: > 0 } code:
+                // Stops the in-page harvester so no second code is ever minted.
+                _ = browser.ExecuteScriptAsync("window.__hoardHarvested = true;");
+                state.Capture(reading.Kind, code, via);
+                return;
+
+            case AuthCodeBodyOutcome.NoSession:
+                state.SawNoSession = true;
+
+                if (!navigateOnNoSession)
+                {
+                    // A background poll. Silent by design: this is the ordinary
+                    // answer for every second the user spends on the login form,
+                    // and logging it would produce a line every three seconds.
+                    return;
+                }
+
+                if (state.ReturnsToLogin >= MaxDeliberateNavigations)
+                {
+                    _log.LogWarning(
+                        "{Provider} reports no signed-in account after {Attempts} attempts, so no code can "
+                        + "be issued. Nothing was changed.",
+                        state.Request.ProviderName, state.ReturnsToLogin);
+
+                    state.Captured.TrySetResult(AuthCodeResult.NoSession(
+                        "the provider reports no signed-in account, so it will not issue a code"));
+                    return;
+                }
+
+                state.ReturnsToLogin++;
+                _log.LogInformation(
+                    "{Provider} has no signed-in account yet; returning to the sign-in page.",
+                    state.Request.ProviderName);
+                browser.Navigate(state.Request.StartUrl.ToString());
+                return;
+
+            default:
+                return;
+        }
+    }
+
+    /// <summary>
+    /// Navigates to the harvest URL to ask for a code, at most
+    /// <see cref="MaxDeliberateNavigations"/> times.
+    ///
+    /// <para>The belt for the in-page harvester, which can be defeated by a
+    /// content-security policy, an HTML challenge, or a page that never finishes
+    /// loading. Deliberately capped and deliberately triggered only on a real
+    /// authentication signal: navigating speculatively would take the login form
+    /// away from a user who is still using it.</para>
+    /// </summary>
+    private void TryHarvestByNavigation(CoreWebView2 browser, RunState state, string because)
+    {
+        if (state.Done
+            || state.Request.HarvestUrl is not { } harvest
+            || !state.Request.Strategies.HasFlag(AuthCaptureStrategies.SessionHarvest)
+            || state.HarvestNavigations >= MaxDeliberateNavigations)
+        {
+            return;
+        }
+
+        state.HarvestNavigations++;
+
+        // Information, not Debug. This is the step the whole redesign turns on
+        // and it happens at most twice, so a user running the sign-in should be
+        // able to see it happen without changing a log level.
+        _log.LogInformation(
+            "Asking {Provider} for a code because {Reason}.", state.Request.ProviderName, because);
+        browser.Navigate(harvest.ToString());
+    }
+
+    /// <summary>
+    /// Whether the browser has left the provider's sign-in journey.
+    ///
+    /// <para>Provider-neutral and deliberately conservative: same host as the
+    /// start URL, and a first path segment that differs from the start URL's. For
+    /// Epic that means everything under <c>/id/</c> — the login form, MFA, the
+    /// social-provider hand-offs, the authorize endpoint — counts as still
+    /// signing in, and landing on <c>/account/…</c> or the store front counts as
+    /// finished. Guessing wrong in the cautious direction costs nothing, because
+    /// the in-page harvester is running the whole time anyway.</para>
+    /// </summary>
+    private static bool HasLeftTheSignInJourney(Uri current, AuthPromptRequest request)
+        => string.Equals(current.Host, request.StartUrl.Host, StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(
+                FirstSegment(current), FirstSegment(request.StartUrl), StringComparison.OrdinalIgnoreCase);
+
+    private static string FirstSegment(Uri uri)
+    {
+        var path = uri.AbsolutePath.Trim('/');
+        var slash = path.IndexOf('/', StringComparison.Ordinal);
+        return slash < 0 ? path : path[..slash];
+    }
+
+    private static bool IsSameOrigin(Uri a, Uri b)
+        => string.Equals(a.Scheme, b.Scheme, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(a.Host, b.Host, StringComparison.OrdinalIgnoreCase)
+            && a.Port == b.Port;
+
+    /// <summary>
+    /// Builds the harvester with its URL and interval substituted in as JSON
+    /// literals — which is also the escaping, since a JSON string literal is a
+    /// JavaScript string literal.
+    /// </summary>
+    private static string BuildHarvesterScript(Uri harvestUrl)
+        => HarvesterScriptTemplate
+            .Replace("%URL%", JsonSerializer.Serialize(harvestUrl.ToString()), StringComparison.Ordinal)
+            .Replace(
+                "%INTERVAL%",
+                ((int)HarvestInterval.TotalMilliseconds).ToString(System.Globalization.CultureInfo.InvariantCulture),
+                StringComparison.Ordinal)
+            .Replace(
+                "%ATTEMPTS%",
+                MaxHarvestAttempts.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                StringComparison.Ordinal);
+
+    /// <summary>
+    /// Pulls <c>kind</c> and <c>value</c> out of a message posted by the injected
+    /// scripts, or null when it is not one of ours.
+    ///
+    /// <para>A page that believes it is talking to a launcher can post anything
+    /// it likes to the host, so nothing is trusted by shape: a message without a
+    /// recognised <c>kind</c> is discarded rather than being scanned for
+    /// something code-looking.</para>
+    /// </summary>
+    private static (string Kind, string? Value)? TryReadMessage(CoreWebView2WebMessageReceivedEventArgs e)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(e.WebMessageAsJson);
+            var root = document.RootElement;
+
+            if (root.ValueKind != JsonValueKind.Object
+                || !root.TryGetProperty("kind", out var kind)
+                || kind.ValueKind != JsonValueKind.String
+                || kind.GetString() is not { Length: > 0 } name)
+            {
+                return null;
+            }
+
+            var value = root.TryGetProperty("value", out var raw) && raw.ValueKind == JsonValueKind.String
+                ? raw.GetString()
+                : null;
+
+            return (name, value);
+        }
+        catch (Exception ex) when (ex is JsonException or ArgumentException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Unwraps an <c>ExecuteScriptAsync</c> result, which is JSON-encoded.
+    ///
+    /// <para>A script that returns a JSON document therefore returns a JSON
+    /// STRING containing that document, and reading it takes two passes. This is
+    /// the outer one; <see cref="AuthCodeBody.Read"/> does the inner one.</para>
+    /// </summary>
+    private static string? UnwrapScriptResult(string? result)
+    {
+        if (string.IsNullOrWhiteSpace(result))
+        {
+            return null;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(result);
+            return document.RootElement.ValueKind == JsonValueKind.String
+                ? document.RootElement.GetString()
+                : null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 
     /// <summary>
@@ -427,104 +850,6 @@ public sealed class WebView2AuthPrompt : IInteractiveAuthPrompt
     }
 
     /// <summary>
-    /// Pulls an exchange code out of a bridge message, or null.
-    ///
-    /// <para>Only <c>kind: "exchange"</c> carries one. <c>ready</c> is the page
-    /// announcing the bridge is wired and <c>external</c> is it asking for a URL
-    /// to be opened outside — both are noise here, and treating any message with
-    /// a string in it as a code would spend a URL on a token endpoint.</para>
-    /// </summary>
-    private static string? TryReadBridgeMessage(CoreWebView2WebMessageReceivedEventArgs e)
-    {
-        try
-        {
-            using var document = JsonDocument.Parse(e.WebMessageAsJson);
-            var root = document.RootElement;
-            if (root.ValueKind != JsonValueKind.Object)
-            {
-                return null;
-            }
-
-            if (!root.TryGetProperty("kind", out var kind)
-                || kind.ValueKind != JsonValueKind.String
-                || !string.Equals(kind.GetString(), "exchange", StringComparison.Ordinal))
-            {
-                return null;
-            }
-
-            return root.TryGetProperty("code", out var code)
-                && code.ValueKind == JsonValueKind.String
-                && !string.IsNullOrWhiteSpace(code.GetString())
-                    ? code.GetString()
-                    : null;
-        }
-        catch (Exception ex) when (ex is JsonException or ArgumentException)
-        {
-            // A page can post anything it likes to a host it thinks is the
-            // launcher. Unparseable is not an error condition.
-            return null;
-        }
-    }
-
-    /// <summary>
-    /// Reads a code out of the JSON the page rendered, or null.
-    ///
-    /// <para>Doubly encoded, and it has to be: <c>ExecuteScriptAsync</c> returns
-    /// its result as JSON, so a script that returns a JSON document returns a
-    /// JSON STRING containing that document. Parsing once yields the text;
-    /// parsing that text yields the object.</para>
-    /// </summary>
-    private static (AuthCodeKind Kind, string Code)? TryReadJsonCode(
-        string? executeScriptResult, IReadOnlyList<AuthJsonCodeField> fields)
-    {
-        if (string.IsNullOrWhiteSpace(executeScriptResult))
-        {
-            return null;
-        }
-
-        try
-        {
-            using var outer = JsonDocument.Parse(executeScriptResult);
-            if (outer.RootElement.ValueKind != JsonValueKind.String)
-            {
-                return null;
-            }
-
-            var body = outer.RootElement.GetString();
-            if (string.IsNullOrWhiteSpace(body))
-            {
-                return null;
-            }
-
-            using var inner = JsonDocument.Parse(body);
-            if (inner.RootElement.ValueKind != JsonValueKind.Object)
-            {
-                return null;
-            }
-
-            foreach (var field in fields)
-            {
-                // Null is the ordinary unauthenticated value for both of Epic's
-                // code fields, so "present" is not "populated" and only a
-                // non-empty string counts.
-                if (inner.RootElement.TryGetProperty(field.FieldName, out var value)
-                    && value.ValueKind == JsonValueKind.String
-                    && value.GetString() is { Length: > 0 } code
-                    && !string.IsNullOrWhiteSpace(code))
-                {
-                    return (field.Kind, code);
-                }
-            }
-
-            return null;
-        }
-        catch (JsonException)
-        {
-            return null;
-        }
-    }
-
-    /// <summary>
     /// Whether a navigation is heading for the registered redirect. Scheme, host
     /// and path only — the query is the payload and must not take part in the
     /// match.
@@ -539,8 +864,8 @@ public sealed class WebView2AuthPrompt : IInteractiveAuthPrompt
 
     /// <summary>
     /// One decoded query parameter, or null. Hand-parsed rather than through a
-    /// helper so nothing constructs an intermediate collection that a debugger,
-    /// a log sink or a crash dump would show the code in.
+    /// helper so nothing constructs an intermediate collection that a debugger, a
+    /// log sink or a crash dump would show the code in.
     /// </summary>
     private static string? ReadQueryParameter(Uri uri, string name)
     {

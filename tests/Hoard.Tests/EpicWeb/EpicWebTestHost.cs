@@ -32,6 +32,15 @@ public static class EpicFixturesWeb
 
     public static string Unauthenticated() => Read("library-unauthenticated-401.json");
 
+    /// <summary>
+    /// Verbatim: what <c>id/api/redirect</c> returns to a browser with no Epic
+    /// session. Every code field present and null.
+    /// </summary>
+    public static string RedirectNoSession() => Read("redirect-no-session.json");
+
+    /// <summary>The same shape with a (fabricated) authorization code in it.</summary>
+    public static string RedirectWithCode() => Read("redirect-with-code.json");
+
     /// <summary>Catalog item id of Fez — shared with <c>tests/fixtures/epic/</c> so the halves join.</summary>
     public const string FezCatalogItemId = "7a70b499513441c792b541d53505e0b2";
 

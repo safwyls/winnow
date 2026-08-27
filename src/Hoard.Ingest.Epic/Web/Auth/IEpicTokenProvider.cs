@@ -56,6 +56,20 @@ public enum EpicSignInFailure
     /// and the remedy is the console flow while it is fixed.
     /// </summary>
     NoCodeCaptured,
+
+    /// <summary>
+    /// Epic's code endpoint answered, and answered that no account is signed in —
+    /// every code field present and null.
+    ///
+    /// <para><b>Separate from <see cref="NoCodeCaptured"/> because the remedies
+    /// are opposite.</b> That one means the capture broke and the manual flow is
+    /// the way round it; this means the sign-in never completed, which the user
+    /// can simply do. The first real run of the embedded flow reported the former
+    /// while the latter was true, because the flow started on an endpoint that
+    /// only answers for an already-authenticated browser — and the symptom hid
+    /// the cause completely.</para>
+    /// </summary>
+    NoAuthenticatedSession,
 }
 
 /// <summary>The outcome of one sign-in attempt. Never an exception.</summary>

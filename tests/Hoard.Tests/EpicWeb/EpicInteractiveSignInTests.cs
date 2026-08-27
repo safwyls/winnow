@@ -240,10 +240,8 @@ public class EpicInteractiveSignInTests
         // The consent moment, moved rather than dropped. Epic's own warning is
         // quoted verbatim, and Hoard names itself as the third party it warns
         // about.
-        Assert.Contains(
-            "It allows full\n     access to your Epic account.",
-            request.ConsentNotice,
-            StringComparison.Ordinal);
+        Assert.Contains("Do not share this code with any 3rd party service.", request.ConsentNotice, StringComparison.Ordinal);
+        Assert.Contains("access to your Epic account.", request.ConsentNotice, StringComparison.Ordinal);
         Assert.Contains("Hoard is a 3rd party service", request.ConsentNotice, StringComparison.Ordinal);
 
         // The single redirect Epic's launcher client accepts. Verified live that
@@ -251,34 +249,95 @@ public class EpicInteractiveSignInTests
         // is why RFC 8252 is unavailable for Epic rather than merely worse.
         Assert.Equal(new Uri("https://localhost/launcher/authorized"), request.RedirectUrl);
 
-        // All three capture routes armed at once, so one sign-in tests all of
-        // them instead of three sign-ins burning three codes.
+        // Every capture route armed at once, so one sign-in exercises all of them
+        // instead of several sign-ins burning several codes.
         Assert.Equal(AuthCaptureStrategies.All, request.Strategies);
-
-        // Default start page is the JSON redirect endpoint, not /id/authorize:
-        // the redirect route is a hypothesis, not a confirmed behaviour.
-        Assert.Contains("/id/api/redirect", request.StartUrl.AbsoluteUri, StringComparison.Ordinal);
+        Assert.True(request.Strategies.HasFlag(AuthCaptureStrategies.SessionHarvest));
     }
 
     [Fact]
-    public async Task The_authorize_endpoint_is_opt_in_and_carries_the_redirect()
+    public async Task The_default_start_url_can_render_a_login_form()
     {
-        // The unverified route, behind a switch so it can be tested against a
-        // real sign-in without a code change.
+        // THE regression this file exists for. The first build started on
+        // id/api/redirect, which is an API that answers only for a browser that
+        // already holds Epic's cookies — so an embedded browser's fresh profile
+        // got {"authorizationCode":null,…} and no user ever saw a password box.
+        // The start URL must be one that can begin an UNAUTHENTICATED flow.
         var prompt = Captures("browser", AuthCodeKind.AuthorizationCode, "CODE");
-        using var host = new EpicWebTestHost(
-            EpicWebTestHost.Healthy(),
-            configure: o => o.UseAuthorizeEndpointForSignIn = true,
-            prompts: [prompt]);
+        using var host = new EpicWebTestHost(EpicWebTestHost.Healthy(), prompts: [prompt]);
 
         await host.SignIn.SignInAsync();
 
-        var start = prompt.LastRequest!.StartUrl.AbsoluteUri;
+        var request = prompt.LastRequest!;
+        var start = request.StartUrl.AbsoluteUri;
+
         Assert.Contains("/id/authorize", start, StringComparison.Ordinal);
+        Assert.DoesNotContain("/id/api/redirect", start, StringComparison.Ordinal);
+
+        // With the registered redirect on it — the authorize endpoint rejects
+        // anything else with client_redirect_domain_mismatch.
         Assert.Contains(
             Uri.EscapeDataString("https://localhost/launcher/authorized"),
             start,
             StringComparison.Ordinal);
+
+        // And the code endpoint is carried as the HARVEST url, which is what the
+        // flow navigates to (or fetches) once a session exists.
+        Assert.NotNull(request.HarvestUrl);
+        Assert.Contains("/id/api/redirect", request.HarvestUrl!.AbsoluteUri, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Starting_on_the_code_endpoint_is_opt_out_and_still_carries_a_harvest_url()
+    {
+        // Only useful for a browser profile that is already signed in. Kept
+        // because it is a legitimate shortcut, defaulted off because it cannot
+        // start a cold sign-in.
+        var prompt = Captures("browser", AuthCodeKind.AuthorizationCode, "CODE");
+        using var host = new EpicWebTestHost(
+            EpicWebTestHost.Healthy(),
+            configure: o => o.UseAuthorizeEndpointForSignIn = false,
+            prompts: [prompt]);
+
+        await host.SignIn.SignInAsync();
+
+        var request = prompt.LastRequest!;
+        Assert.Contains("/id/api/redirect", request.StartUrl.AbsoluteUri, StringComparison.Ordinal);
+        Assert.Equal(request.StartUrl, request.HarvestUrl);
+    }
+
+    [Fact]
+    public async Task No_signed_in_account_is_reported_as_itself_not_as_a_broken_capture()
+    {
+        // The two have opposite remedies — "complete the sign-in" versus "the
+        // page changed, use the manual flow" — so they must not collapse into
+        // one failure.
+        var browser = new ScriptedPrompt(
+            "browser", available: true, _ => AuthCodeResult.NoSession("nobody signed in"));
+
+        using var host = new EpicWebTestHost(EpicWebTestHost.Healthy(), prompts: [browser]);
+
+        var result = await host.SignIn.SignInAsync();
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(EpicSignInFailure.NoAuthenticatedSession, result.Failure);
+        Assert.Empty(host.Handler.Requests);
+    }
+
+    [Fact]
+    public async Task No_signed_in_account_still_falls_through_to_the_console_peer()
+    {
+        // Unlike a cancel. The console flow sends the user to their OWN browser,
+        // where they are very likely already signed in — so it can succeed
+        // precisely where the embedded one found no session.
+        var browser = new ScriptedPrompt(
+            "browser", available: true, _ => AuthCodeResult.NoSession("nobody signed in"));
+        var console = Captures("console", AuthCodeKind.AuthorizationCode, "PASTED-CODE");
+
+        using var host = new EpicWebTestHost(EpicWebTestHost.Healthy(), prompts: [browser, console]);
+
+        Assert.True((await host.SignIn.SignInAsync()).Succeeded);
+        Assert.Equal(1, console.Calls);
     }
 
     [Fact]

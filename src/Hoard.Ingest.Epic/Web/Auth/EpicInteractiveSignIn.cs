@@ -116,6 +116,7 @@ public sealed class EpicInteractiveSignIn
         var request = BuildRequest(credentials.ClientId);
 
         var attempted = false;
+        var lastFailure = EpicSignInFailure.NoCodeCaptured;
         foreach (var prompt in _prompts)
         {
             if (!await prompt.IsAvailableAsync(ct))
@@ -165,6 +166,21 @@ public sealed class EpicInteractiveSignIn
                         ? await _tokens.SignInWithExchangeCodeAsync(captured.Code!, ct)
                         : await _tokens.SignInWithAuthorizationCodeAsync(captured.Code!, ct);
 
+                case AuthPromptOutcome.NoSession:
+                    // The provider answered, and answered that nobody is signed
+                    // in. Distinct from a broken capture and worded as such —
+                    // reporting this as "no code captured" is what made the first
+                    // real run look like a bug in Hoard rather than a sign-in
+                    // that never happened. Falls through like a failure, because
+                    // the console peer can still get a code from a browser the
+                    // user is already signed into.
+                    _log.LogWarning(
+                        "The {Prompt} prompt finished with no signed-in Epic account ({Detail}); "
+                        + "trying the next.",
+                        prompt.Name, captured.Detail ?? "no reason given");
+                    lastFailure = EpicSignInFailure.NoAuthenticatedSession;
+                    continue;
+
                 case AuthPromptOutcome.Cancelled:
                     // Deliberate. Do NOT fall through to the next prompt: the
                     // user closed a window, and answering that by opening a
@@ -195,48 +211,64 @@ public sealed class EpicInteractiveSignIn
             return EpicSignInResult.Failed(EpicSignInFailure.NoInteractivePrompt);
         }
 
-        return EpicSignInResult.Failed(EpicSignInFailure.NoCodeCaptured);
+        return EpicSignInResult.Failed(lastFailure);
     }
 
     /// <summary>
     /// The one request every prompt is handed.
     ///
-    /// <para><b>All three capture routes are armed at once, and that is not
+    /// <para><b>Two URLs with different jobs, and conflating them is what broke
+    /// the first build of this flow.</b> <c>StartUrl</c> has to render a login
+    /// form for a browser with no cookies, because that is the state of every
+    /// embedded profile on a first run; <c>HarvestUrl</c> is an API that issues a
+    /// code for a browser that already has a session. Starting on the harvest URL
+    /// produced <c>{"authorizationCode":null,"exchangeCode":null,…}</c> for every
+    /// user and no login page at all.</para>
+    ///
+    /// <para><b>All capture routes are armed at once, and that is not
     /// laziness.</b> The obvious reading of "try the bridge, then the redirect,
-    /// then the DOM" is three sequential attempts — but each attempt is a whole
+    /// then the DOM" is sequential attempts — but each attempt is a whole
     /// interactive sign-in, and an authorization code is single-use and dies in
-    /// minutes, so serialising them would make the user sign in up to three times
-    /// and would burn a code on every miss. Armed together in one browser
-    /// session they cost nothing extra: whichever mechanism Epic actually
-    /// exercises fires first and the others never do. The result records which
-    /// one it was, so a real sign-in settles the question the spike could
-    /// not.</para>
+    /// minutes, so serialising them would make the user sign in repeatedly and
+    /// burn a code on every miss. Armed together in one browser session they cost
+    /// nothing extra: whichever mechanism Epic actually exercises fires first and
+    /// the others never do. The result records which one it was, so a real
+    /// sign-in settles the question the spike could not.</para>
     /// </summary>
     private AuthPromptRequest BuildRequest(string clientId)
     {
         var redirect = _options.LauncherRedirectUrl;
 
+        // The page that issues a code, given a session. Never the starting point.
+        var harvest = new Uri(string.Format(
+            CultureInfo.InvariantCulture, _options.AuthorizationCodeUrlFormat, clientId));
+
         var start = _options.UseAuthorizeEndpointForSignIn
-            ? string.Format(
+            ? new Uri(string.Format(
                 CultureInfo.InvariantCulture,
                 _options.AuthorizeUrlFormat,
                 Uri.EscapeDataString(clientId),
-                Uri.EscapeDataString(redirect.ToString()))
-            : string.Format(CultureInfo.InvariantCulture, _options.AuthorizationCodeUrlFormat, clientId);
+                Uri.EscapeDataString(redirect.ToString())))
+            : harvest;
 
         return new AuthPromptRequest
         {
             ProviderName = "Epic Games",
-            StartUrl = new Uri(start),
+            StartUrl = start,
+            HarvestUrl = harvest,
             RedirectUrl = redirect,
             ConsentNotice = ConsentNotice,
             Strategies = AuthCaptureStrategies.All,
 
             // Priority order, and the order matters: an exchange code arrives
-            // through the bridge as a push, while these are read off a page that
+            // through the bridge as a push, while these are read off a body that
             // may carry either. `authorizationCode` first because that is the
-            // field Epic populates on this endpoint for a signed-in session; the
-            // spike saw both present and null while unauthenticated.
+            // field Epic populates on this endpoint for a signed-in session.
+            //
+            // Their PRESENCE is also how "nobody is signed in" is told apart from
+            // "the page changed": Epic returns both fields, both null, for a
+            // browser with no session — a real answer, not a failed capture. See
+            // AuthCodeBody.
             JsonCodeFields =
             [
                 new AuthJsonCodeField("authorizationCode", AuthCodeKind.AuthorizationCode),

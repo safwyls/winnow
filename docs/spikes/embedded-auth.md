@@ -208,6 +208,14 @@ the field that carries the code after sign-in.
 **So the copy-paste step is removable.** That answers the brief's question directly and
 affirmatively.
 
+> **CAUTION added 2026-08-26, after M4.6's first real run.** Everything above is correct and
+> everything above is a trap if read as "so start the browser here". `authorizationCode` is
+> null in this probe **because the endpoint answers only for a browser that already has an Epic
+> session**, and it never renders a login form for one that does not — it is an API, not a
+> page. Starting an embedded browser here means a fresh, cookie-less profile lands on a body of
+> nulls and the user never sees a password box. The sign-in has to START at `/id/authorize`
+> (§3.3) and come here afterwards. See §9 item 0.
+
 ### 3.2 But there is a better mechanism, and it is still live. CONFIRMED, and this is the finding.
 
 Legendary does **not** scrape that JSON in its webview path. `legendary/utils/webview_login.py`
@@ -604,11 +612,32 @@ got smoother.
 
 ### UNVERIFIED (needs one real sign-in; do not build on these as facts)
 
+> **STATUS AFTER M4.6's FIRST REAL RUN (2026-08-26).** One thing on this list was settled, one
+> thing NOT on this list turned out to be the actual blocker, and the two open items below are
+> still open — but nothing depends on them any more. Read the new item 0 first.
+
+0. **SETTLED, and it was never on this list: `id/api/redirect` cannot BEGIN a sign-in.**
+   §3.1 established that the endpoint renders its JSON into a readable DOM, and the first
+   build of the embedded flow therefore started there. It fails for every user. The endpoint
+   is an API that issues a code *for a browser that already holds Epic's cookies*, and an
+   embedded browser opens an isolated profile with none — so a cold run gets
+   `{"authorizationCode":null,"exchangeCode":null,"sid":null}` and **no login form is ever
+   rendered**. §3.1's probe saw exactly this and read it as "null because the session is
+   unauthenticated", which was correct and was not followed to its consequence: the flow has
+   to start at `/id/authorize` (§3.3, confirmed to reach a real login page) and only visit
+   `id/api/redirect` *afterwards*, to collect the code. Recorded here because it is the sort
+   of thing a CONFIRMED finding can hide — the mechanism worked exactly as described, and the
+   sequence around it was wrong.
 1. **That Epic's authenticated flow 302s to `https://localhost/launcher/authorized?code=…`.**
-   The interception half is proven; the redirect half is not. Epic's single open question.
+   The interception half is proven; the redirect half is not. **Still unverified — but no
+   longer load-bearing.** The shipped flow asks `id/api/redirect` for the code once a session
+   exists rather than waiting for Epic to volunteer one, so this went from the thing the
+   feature rests on to a shortcut that either fires or does not. If it fires, the sign-in
+   reports `redirect interception` and this item is closed.
 2. **That Epic's page calls `requestexchangecodesignin` after a successful sign-in.** It is
    proven to *probe* for the bridge and the bridge is proven callable; the post-auth call was
-   never observed.
+   never observed. **Still unverified, and also no longer load-bearing**, for the same reason.
+   If it fires, the sign-in reports `launcher JS bridge`.
 3. **Whether the spoofed launcher user-agent matters after authentication.** It demonstrably
    does not before.
 4. **Whether a loopback `redirect_uri` survives GOG's post-authentication redirect.** The one

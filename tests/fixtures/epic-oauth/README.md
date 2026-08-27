@@ -31,3 +31,21 @@ account id or session has ever been in this directory, and none may be added.
   make a test pass against a field that does not exist.
 
 See `docs/spikes/epic-oauth.md` for the full findings and what remains unverified.
+
+## `redirect-no-session.json` — verbatim, and the reason M4.6 was rebuilt
+
+What `https://www.epicgames.com/id/api/redirect?clientId=…&responseType=code` actually returns
+to a browser with no Epic cookies. Captured verbatim from a real run of the embedded sign-in
+on 2026-08-26, and identical to the unauthenticated probe recorded in `epic-oauth.md` §2.
+
+**Every code field is present and null.** That is the endpoint answering "there is no
+authenticated session here" — not a failed capture, and not a changed page. The first build of
+the embedded flow started on this URL, so every first-time user landed here, saw no login form,
+and got reported "no code captured", which describes the symptom and hides the cause entirely.
+`AuthCodeBody` exists to tell the two apart and this file is what pins the distinction.
+
+## `redirect-with-code.json` — the same shape, populated
+
+The signed-in answer. The `authorizationCode` value is fabricated (32 hex characters, the right
+shape); no real code has ever been in this repository, and one would be dead within minutes
+anyway.

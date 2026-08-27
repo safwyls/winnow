@@ -52,6 +52,20 @@ public enum AuthPromptOutcome
     /// caller falls through to the next prompt.
     /// </summary>
     Failed = 3,
+
+    /// <summary>
+    /// The provider's code endpoint answered, and answered that there is no
+    /// authenticated session — every code field present and null.
+    ///
+    /// <para><b>Named separately from <see cref="Failed"/> because the remedy is
+    /// the opposite one.</b> "Failed" says the capture broke and the manual flow
+    /// is the way round it; this says nobody signed in, which is a thing the user
+    /// can simply do. The embedded prompt handles it internally by sending the
+    /// user to a login page and asking again, so seeing it come back out means
+    /// even that did not work — but it must still be reported as what it is
+    /// rather than flattened into a generic miss.</para>
+    /// </summary>
+    NoSession = 4,
 }
 
 /// <summary>
@@ -84,8 +98,22 @@ public enum AuthCaptureStrategies
     /// </summary>
     JsonBodyScrape = 4,
 
-    /// <summary>All three.</summary>
-    All = LauncherJsBridge | RedirectInterception | JsonBodyScrape,
+    /// <summary>
+    /// Once the browser is on the provider's own origin, ask
+    /// <see cref="AuthPromptRequest.HarvestUrl"/> for the code directly instead
+    /// of waiting for the provider to volunteer it.
+    ///
+    /// <para><b>This is what makes the flow independent of the provider's
+    /// post-sign-in behaviour.</b> The other three routes all wait for the
+    /// provider to DO something — call a bridge, follow a redirect, render a
+    /// page. Each of those is plausible and none of them is guaranteed. This one
+    /// stops hoping and goes and asks, which is the difference between a flow
+    /// that works and a flow that works if a hypothesis holds.</para>
+    /// </summary>
+    SessionHarvest = 8,
+
+    /// <summary>All four.</summary>
+    All = LauncherJsBridge | RedirectInterception | JsonBodyScrape | SessionHarvest,
 }
 
 /// <summary>
@@ -111,7 +139,13 @@ public sealed record AuthPromptRequest
     /// <summary>The storefront being signed into, for window titles and log lines. Never a secret.</summary>
     public required string ProviderName { get; init; }
 
-    /// <summary>The page the sign-in starts on.</summary>
+    /// <summary>
+    /// The page the sign-in starts on. <b>Must render a login form for an
+    /// unauthenticated browser</b> — see <see cref="HarvestUrl"/> for the trap
+    /// this requirement exists because of. An embedded browser opens an isolated
+    /// profile with no cookies, so "unauthenticated" is the state of every
+    /// first-time run.
+    /// </summary>
     public required Uri StartUrl { get; init; }
 
     /// <summary>
@@ -143,6 +177,22 @@ public sealed record AuthPromptRequest
 
     /// <summary>Query parameter on <see cref="RedirectUrl"/> that carries the code.</summary>
     public string RedirectCodeParameter { get; init; } = "code";
+
+    /// <summary>
+    /// A URL on the provider's own origin that returns the code as JSON <i>for a
+    /// browser that already has a session</i>, used by
+    /// <see cref="AuthCaptureStrategies.SessionHarvest"/>.
+    ///
+    /// <para><b>This is NOT a starting page, and the distinction is the whole
+    /// lesson of this flow's first real run.</b> An endpoint that answers with a
+    /// code for an authenticated browser answers a cold one with every code field
+    /// null — it never renders a login form, because it is an API, not a page.
+    /// Starting there means every first-time sign-in lands on a JSON body full of
+    /// nulls and no user ever sees a password box. <see cref="StartUrl"/> has to
+    /// be somewhere that renders a login form; this is where the code is
+    /// collected from afterwards.</para>
+    /// </summary>
+    public Uri? HarvestUrl { get; init; }
 
     /// <summary>
     /// JSON fields to look for when the flow ends on a rendered JSON body, in
@@ -220,6 +270,14 @@ public sealed record AuthCodeResult
     /// <summary>The prompt ran and produced nothing. The caller tries the next one.</summary>
     public static AuthCodeResult Failed(string? detail = null)
         => new(AuthPromptOutcome.Failed, default, null, null, detail);
+
+    /// <summary>
+    /// The provider answered that there is no authenticated session. Distinct
+    /// from <see cref="Failed"/>: the capture worked, there was just nobody
+    /// signed in.
+    /// </summary>
+    public static AuthCodeResult NoSession(string? detail = null)
+        => new(AuthPromptOutcome.NoSession, default, null, null, detail);
 
     /// <summary>
     /// Redacted. The compiler-generated record <c>ToString</c> would print

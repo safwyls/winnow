@@ -32,25 +32,39 @@ public sealed class EpicWebOptions
     /// the code it prints is what
     /// <see cref="Auth.IEpicTokenProvider.SignInWithAuthorizationCodeAsync"/>
     /// consumes.</para>
+    ///
+    /// <para><b>This is a harvest URL, not a starting page, and the difference is
+    /// not cosmetic.</b> It is an API that answers for a browser that already
+    /// holds Epic's cookies: a cold browser gets every code field null and never
+    /// sees a login form. The manual flow works because the user opens it in
+    /// their OWN browser, where they are already signed in. The embedded flow
+    /// starts at <see cref="AuthorizeUrlFormat"/> and only comes here once a
+    /// session exists.</para>
     /// </summary>
     public string AuthorizationCodeUrlFormat { get; set; }
         = "https://www.epicgames.com/id/api/redirect?clientId={0}&responseType=code";
 
     /// <summary>
-    /// The conventional OAuth authorize endpoint, as an alternative starting page
-    /// for the embedded-browser sign-in. <c>{0}</c> is the client id, <c>{1}</c>
-    /// the URL-encoded redirect.
+    /// The conventional OAuth authorize endpoint — the page the embedded browser
+    /// starts on. <c>{0}</c> is the client id, <c>{1}</c> the URL-encoded
+    /// redirect.
     ///
-    /// <para><b>Not the default, and that is a statement about evidence rather
-    /// than about preference.</b> The spike confirmed that this URL reaches a
-    /// normal login page with the registered redirect, and confirmed that a
-    /// navigation to <see cref="LauncherRedirectUrl"/> is fully observable even
-    /// though nothing listens there. What it could NOT confirm — because it never
-    /// signed in — is that Epic's authenticated flow actually 302s to that
-    /// redirect carrying <c>?code=</c>. That is Epic's single open question
-    /// (<c>docs/spikes/embedded-auth.md</c> §9, UNVERIFIED item 1), so this stays
-    /// a hypothesis behind a switch instead of becoming the default on
-    /// faith.</para>
+    /// <para><b>CONFIRMED: this reaches a real login form.</b> The spike drove
+    /// <c>/id/authorize</c> with the registered redirect through a real browser
+    /// and landed on <c>"Sign in to Your Epic Games account"</c> with the email
+    /// field present. That is the property that matters here and it is the reason
+    /// this is the start URL rather than
+    /// <see cref="AuthorizationCodeUrlFormat"/>.</para>
+    ///
+    /// <para><b>Still UNVERIFIED, and still recorded as such:</b> that Epic's
+    /// authenticated flow 302s to <see cref="LauncherRedirectUrl"/> carrying
+    /// <c>?code=</c>. Interception of such a redirect is confirmed; the redirect
+    /// firing is not. <b>Nothing depends on it any more</b> — the flow collects
+    /// the code from <see cref="AuthorizationCodeUrlFormat"/> once a session
+    /// exists, rather than waiting for Epic to volunteer one — so this went from
+    /// a load-bearing hypothesis to a shortcut that either fires or does not. If
+    /// it fires, the sign-in reports "redirect interception" and the question is
+    /// finally settled.</para>
     /// </summary>
     public string AuthorizeUrlFormat { get; set; }
         = "https://www.epicgames.com/id/authorize?client_id={0}&response_type=code&scope=basic_profile"
@@ -58,14 +72,24 @@ public sealed class EpicWebOptions
 
     /// <summary>
     /// Whether the embedded browser starts on <see cref="AuthorizeUrlFormat"/>
-    /// instead of <see cref="AuthorizationCodeUrlFormat"/>.
+    /// rather than <see cref="AuthorizationCodeUrlFormat"/>.
     ///
-    /// <para>False by default — see <see cref="AuthorizeUrlFormat"/>. Flipping it
-    /// is how the unverified redirect route gets tested against a real sign-in
-    /// without a code change. Redirect interception is armed either way, since it
-    /// costs nothing and the redirect page names the same target.</para>
+    /// <para><b>True, and it has to be. This defaulted to false once and the flow
+    /// could not work for anybody.</b> <c>id/api/redirect</c> is an API endpoint
+    /// that issues a code for a browser that ALREADY holds Epic's cookies; an
+    /// embedded browser opens an isolated profile with none, so it answered every
+    /// first-time user with <c>{"authorizationCode":null,"exchangeCode":null,…}</c>
+    /// and never rendered a login form. The original default was chosen to avoid
+    /// promoting an unverified hypothesis, which was the right instinct applied
+    /// to a false choice: only one of the two URLs can BEGIN an unauthenticated
+    /// flow, and it is this one.</para>
+    ///
+    /// <para>Setting it false starts on the redirect endpoint instead, which is
+    /// only useful for a browser profile that is already signed in — the flow
+    /// detects the null-code answer, names it, and sends the user to the login
+    /// page anyway rather than failing obscurely.</para>
     /// </summary>
-    public bool UseAuthorizeEndpointForSignIn { get; set; }
+    public bool UseAuthorizeEndpointForSignIn { get; set; } = true;
 
     /// <summary>
     /// The only redirect target Epic's launcher client accepts, and therefore the

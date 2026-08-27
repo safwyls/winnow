@@ -124,6 +124,9 @@ public sealed class EpicSignInService
         EpicSignInFailure.NoInteractivePrompt =>
             "This machine cannot show a sign-in window — there is no WebView2 runtime and no console. "
             + "Run 'dotnet run --project src/Hoard.App -- --epic-login' from a terminal instead.",
+        EpicSignInFailure.NoAuthenticatedSession =>
+            "The sign-in window closed without an Epic account being signed in, so Epic would not issue a "
+            + "code. Nothing was changed — try again and complete the sign-in on Epic's page.",
         EpicSignInFailure.NoCodeCaptured =>
             "Epic's sign-in page finished without handing back a code. This usually means Epic changed "
             + "the page; the manual flow ('--epic-login') still works. Epic ownership is unchanged.",
