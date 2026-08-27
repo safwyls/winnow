@@ -98,6 +98,9 @@ public sealed class ThemeService
     public const int MigratedTransparency = 25;
 
     private readonly ISettingsRepository? _settings;
+    private readonly UserThemeStore? _userThemes;
+    private IReadOnlyList<HoardTheme> _catalogue = HoardThemes.All;
+    private IReadOnlyList<ThemeDiagnostic> _diagnostics = [];
     private HoardTheme _theme = HoardThemes.Default;
     private int _transparency;
     private HoardBackdrop _backdrop = HoardBackdrops.Default;
@@ -107,16 +110,50 @@ public sealed class ThemeService
     private bool _loading;
     private bool _sessionOverride;
 
-    public ThemeService(ISettingsRepository? settings = null)
+    public ThemeService(ISettingsRepository? settings = null, UserThemeStore? userThemes = null)
     {
         _settings = settings;
+        _userThemes = userThemes;
     }
 
     /// <summary>Raised after the resource dictionary has been rewritten, so the
     /// window can repaint its backdrop and force a redraw.</summary>
     public event EventHandler? Applied;
 
+    /// <summary>
+    /// Raised when the SET of themes changed rather than which one is up: the
+    /// folder was re-read, a file appeared, a file stopped parsing.
+    ///
+    /// <para>Separate from <see cref="Applied"/> because the two ask different
+    /// things of a listener. <c>Applied</c> means repaint what you have;
+    /// this means the list you drew is out of date. The Appearance screen
+    /// rebuilds its cards on this one and repaints them on the other, and
+    /// conflating them would rebuild four theme cards on every drag of the
+    /// transparency slider.</para>
+    /// </summary>
+    public event EventHandler? CatalogueChanged;
+
     public HoardTheme Theme => _theme;
+
+    /// <summary>
+    /// Every theme that can be picked: the four built-ins, then whatever parsed
+    /// out of the user's themes folder, in file-name order.
+    ///
+    /// <para>Built-ins lead and always do. They are the set §14.1.1 argues for
+    /// and the one the default belongs to, and a picker whose first card moved
+    /// depending on what is in a folder would be a picker nobody could learn the
+    /// shape of.</para>
+    /// </summary>
+    public IReadOnlyList<HoardTheme> Catalogue => _catalogue;
+
+    /// <summary>What was wrong with the folder and the files in it, as of the
+    /// last read. Empty is the normal case and the screen says nothing when it
+    /// is.</summary>
+    public IReadOnlyList<ThemeDiagnostic> Diagnostics => _diagnostics;
+
+    /// <summary>Where the user's themes live, or <c>null</c> when the host did
+    /// not register a store — which is what a view-model test gets.</summary>
+    public string? UserThemeDirectory => _userThemes?.Directory;
 
     /// <summary>What the user asked for, as a whole percent. 0 is fully opaque.</summary>
     public int Transparency => _transparency;
@@ -189,6 +226,12 @@ public sealed class ThemeService
     /// </summary>
     public async Task LoadAsync(CancellationToken ct = default)
     {
+        // The folder is read BEFORE the stored id is resolved, or a user theme
+        // could never be the one that comes back on launch: the id would resolve
+        // against the built-ins alone, fall through to the default, and the
+        // user's preference would look like it had not been saved.
+        ReadUserThemes();
+
         if (_settings is null)
         {
             Apply();
@@ -204,20 +247,40 @@ public sealed class ThemeService
         _loading = true;
         try
         {
-            _theme = HoardThemes.ById(storedTheme);
-            _transparency = ParseTransparency(storedTransparency);
-            _backdrop = HoardBackdrops.ById(storedBackdrop);
+            _theme = ById(storedTheme);
+
+            // ── A theme's own defaults, and where they lose ─────────────────
+            // A STORED value always wins, at every one of these four. That is
+            // what makes a theme's defaults an opening position rather than a
+            // setting it keeps taking back: it gets to say what it wants the
+            // first time it is picked (see SelectTheme), and after that the
+            // user's own answer is the one on disk and the one that comes back.
+            // The four built-ins declare nothing here, so every one of these
+            // falls through to exactly the expression it had before.
+            var wants = _theme.Defaults;
+
+            _transparency = storedTransparency is not null
+                ? ParseTransparency(storedTransparency)
+                : wants?.Transparency ?? 0;
+
+            _backdrop = storedBackdrop is not null
+                ? HoardBackdrops.ById(storedBackdrop)
+                : wants?.Backdrop ?? HoardBackdrops.Default;
 
             // Unparseable reads as false, which is the previous behaviour and
             // the conservative one: a wall that opens up unasked is a surprise,
             // a wall that stays solid is what the app has always looked like.
-            _wallTranslucent = bool.TryParse(storedWall, out var wall) && wall;
+            _wallTranslucent = storedWall is not null
+                ? bool.TryParse(storedWall, out var wall) && wall
+                : wants?.WallTranslucent ?? false;
 
             // Same rule as every other appearance key: anything unparseable
             // leaves the default standing rather than throwing, because the
             // store returns exactly what was written and takes no position on
             // bad text.
-            _layout = HoardLayouts.ById(storedLayout);
+            _layout = storedLayout is not null
+                ? HoardLayouts.ById(storedLayout)
+                : wants?.Layout ?? HoardLayouts.Default;
         }
         finally
         {
@@ -302,8 +365,160 @@ public sealed class ThemeService
         }
 
         _theme = theme;
+
+        // ── The theme's opening position, applied once, here ────────────────
+        // Deliberately at SELECTION rather than at load: a theme built against a
+        // 40% acrylic field and then first seen solid is not that theme, and the
+        // moment a person picks it is the only moment they are asking to be
+        // shown what it looks like. From here on the slider beside it is theirs
+        // — every one of these writes a settings row, so the next launch reads
+        // back what they left rather than what the theme asked for.
+        //
+        // Null on all four built-ins, so this is a no-op for them and the
+        // shipped set behaves exactly as it always did.
+        ApplyOpeningPosition(theme.Defaults);
+
         Apply();
         Save(ThemeSettingKey, theme.Id);
+    }
+
+    /// <summary>
+    /// The theme stored under <paramref name="id"/>, or the default — resolved
+    /// against the user's folder as well as the built-ins.
+    ///
+    /// <para>Same rule as <c>HoardThemes.ById</c> and for one more reason: an id
+    /// this build cannot find is now also what a deleted theme file looks like,
+    /// and a settings row naming a file the user threw away must not stop the
+    /// app any more than a preference written by a later version does.</para>
+    /// </summary>
+    public HoardTheme ById(string? id)
+        => _catalogue.FirstOrDefault(t => string.Equals(t.Id, id, StringComparison.Ordinal))
+            ?? HoardThemes.Default;
+
+    /// <summary>
+    /// Re-reads the themes folder and repaints if the theme that is up came out
+    /// of it.
+    ///
+    /// <para><b>The active theme is re-resolved BY ID, not kept.</b> A reload
+    /// produces new <see cref="HoardTheme"/> instances, so holding the old
+    /// object would leave the window wearing the palette from before the save —
+    /// which is the entire thing hot reload exists to avoid. A file that stopped
+    /// parsing, or was deleted, resolves to the default and the diagnostics say
+    /// why.</para>
+    /// </summary>
+    public void ReloadUserThemes()
+    {
+        var wasUp = _theme.Id;
+        ReadUserThemes();
+
+        var resolved = ById(wasUp);
+        var changed = !ReferenceEquals(resolved, _theme);
+        _theme = resolved;
+
+        CatalogueChanged?.Invoke(this, EventArgs.Empty);
+
+        if (changed)
+        {
+            Apply();
+        }
+    }
+
+    /// <summary>
+    /// Writes a theme into the user's folder as a starting template, and picks
+    /// the folder up again so it appears in the picker immediately.
+    ///
+    /// <para>Here rather than on the view model reaching into the store, because
+    /// §5.1's boundary is that the UI raises commands and reads state: a view
+    /// model that held a <see cref="UserThemeStore"/> would be a view model that
+    /// does file IO, and the next thing it would do is read one.</para>
+    /// </summary>
+    /// <returns>The file name written, or a sentence saying why not.</returns>
+    public (string? FileName, string? Problem) ExportTheme(HoardTheme theme)
+    {
+        if (_userThemes is null)
+        {
+            return (null, "There is no themes folder on this machine.");
+        }
+
+        var (file, problem) = _userThemes.Export(theme);
+        if (file is not null)
+        {
+            ReloadUserThemes();
+        }
+
+        return (file, problem?.Message);
+    }
+
+    /// <summary>Starts hot reload. Separate from the constructor so a test, and
+    /// the capture harness, can use the store without a file watcher running.</summary>
+    public void WatchUserThemes()
+    {
+        if (_userThemes is null)
+        {
+            return;
+        }
+
+        _userThemes.Changed += (_, _) =>
+            Avalonia.Threading.Dispatcher.UIThread.Post(ReloadUserThemes);
+        _userThemes.Watch();
+    }
+
+    private void ReadUserThemes()
+    {
+        if (_userThemes is null)
+        {
+            return;
+        }
+
+        var seeding = _userThemes.EnsureSeeded();
+        var (themes, diagnostics) = _userThemes.Load();
+
+        _catalogue = themes.Count == 0 ? HoardThemes.All : [.. HoardThemes.All, .. themes];
+        _diagnostics = [.. seeding, .. diagnostics];
+    }
+
+    /// <summary>
+    /// Sets the three qualifiers and the layout to what a theme asked for,
+    /// writing each one it actually moves.
+    ///
+    /// <para>Written straight onto the fields rather than through the four
+    /// setters, so the window repaints once at the end of
+    /// <see cref="SelectTheme"/> instead of four times on the way there.</para>
+    /// </summary>
+    private void ApplyOpeningPosition(ThemeAppearanceDefaults? wants)
+    {
+        if (wants is null || wants.IsEmpty)
+        {
+            return;
+        }
+
+        if (wants.Transparency is { } percent && percent != _transparency)
+        {
+            _transparency = Math.Clamp(percent, 0, 100);
+            Save(TransparencySettingKey, Format(_transparency));
+        }
+
+        if (wants.Backdrop is { } backdrop && backdrop != _backdrop && backdrop is not HoardBackdrop.None)
+        {
+            _backdrop = backdrop;
+
+            // What the platform will give us for the NEW material is not known
+            // until the window has asked — same reasoning as SelectBackdrop.
+            _activeBackdrop = HoardBackdrop.None;
+            Save(BackdropSettingKey, HoardBackdrops.Id(backdrop));
+        }
+
+        if (wants.WallTranslucent is { } wall && wall != _wallTranslucent)
+        {
+            _wallTranslucent = wall;
+            Save(WallSettingKey, wall ? "true" : "false");
+        }
+
+        if (wants.Layout is { } layout && layout != _layout)
+        {
+            _layout = layout;
+            Save(LayoutSettingKey, HoardLayouts.Id(layout));
+        }
     }
 
     /// <summary>
@@ -407,6 +622,16 @@ public sealed class ThemeService
     private static string Format(int percent)
         => percent.ToString(CultureInfo.InvariantCulture);
 
+    /// <summary>
+    /// Writes one preference, behind whatever write is already in flight.
+    ///
+    /// <para><b>Chained rather than replaced, and that became load-bearing when
+    /// a theme got to bring its own opening position.</b> Every caller before
+    /// this wrote exactly one key per user action, so overwriting
+    /// <see cref="PendingSave"/> was harmless. Picking a theme now writes up to
+    /// five in a row, and a caller — or a test — that waited on the last one
+    /// would be waiting on a task that says nothing about the other four.</para>
+    /// </summary>
     private void Save(string key, string value)
     {
         if (_loading || _sessionOverride || _settings is null)
@@ -414,7 +639,22 @@ public sealed class ThemeService
             return;
         }
 
-        PendingSave = _settings.SetAsync(key, value);
+        PendingSave = Chain(PendingSave, _settings, key, value);
+
+        static async Task Chain(Task previous, ISettingsRepository settings, string key, string value)
+        {
+            try
+            {
+                await previous;
+            }
+            catch (Exception)
+            {
+                // The earlier write's failure is that write's business. Losing
+                // one preference row must not stop the next one being tried.
+            }
+
+            await settings.SetAsync(key, value);
+        }
     }
 
     private void Apply()

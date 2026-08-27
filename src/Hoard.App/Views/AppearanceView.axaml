@@ -168,6 +168,32 @@
             <Setter Property="Foreground" Value="{StaticResource Amber}"/>
         </Style>
 
+        <!-- ══ One line of the themes folder's report ══════════════════════
+             A file that did not load takes AMBER, not Danger, on this screen's
+             own established rule: §2 keeps Danger for the one destructive act
+             and gives Amber "attention", and a theme file with a typo in it is
+             neither an error the app made nor something to be undone for anyone.
+             It is the same call the "not available here" note above already
+             makes.
+
+             A warning - a theme that loaded and is worth a second look - takes
+             the ordinary metadata ink and the ordinary edge, because it is not
+             asking for anything. The two are told apart by the words in the
+             verdict as well as by the edge (§8: never hue alone). -->
+        <Style Selector="Border.problem">
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="BorderThickness" Value="2,0,0,0"/>
+        </Style>
+        <Style Selector="Border.problem.failed">
+            <Setter Property="BorderBrush" Value="{StaticResource Amber}"/>
+        </Style>
+        <Style Selector="Border.problem TextBlock.verdict">
+            <Setter Property="Foreground" Value="{StaticResource TextFaint}"/>
+        </Style>
+        <Style Selector="Border.problem.failed TextBlock.verdict">
+            <Setter Property="Foreground" Value="{StaticResource Amber}"/>
+        </Style>
+
         <Style Selector="Border.card">
             <Setter Property="Background" Value="{StaticResource Surface}"/>
             <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
@@ -198,6 +224,7 @@
         </Border>
 
         <ScrollViewer Grid.Row="1"
+                      Name="ScreenScroll"
                       HorizontalScrollBarVisibility="Disabled"
                       VerticalScrollBarVisibility="Auto">
             <StackPanel Margin="24,16,24,28" MaxWidth="920"
@@ -361,12 +388,200 @@
                                         </Grid>
                                         <TextBlock Classes="para"
                                                    Text="{Binding Reason}"/>
+
+                                        <!-- ══ A user theme says two more things ══
+                                             Which FILE it came from, so an author
+                                             with four of these knows which one to
+                                             edit; and what it MEASURES, which is
+                                             the thing no other theming system
+                                             hands you.
+
+                                             ThemeContrastTests walks all four
+                                             built-ins across the whole slider on
+                                             every build. A theme that arrives in a
+                                             folder at runtime can never be unit
+                                             tested, so it gets the same walk when
+                                             it loads and the answer is printed
+                                             where the theme is picked. A palette
+                                             an author likes and a palette that can
+                                             carry this window's transparency are
+                                             two different things, and this line is
+                                             the only place that difference shows
+                                             before they have dragged the slider
+                                             and squinted at the rail.
+
+                                             The built-ins do not draw it: the AA
+                                             mark on the track below already
+                                             carries the same number for whichever
+                                             theme is up, and a second copy is a
+                                             second place for it to drift. -->
+                                        <StackPanel IsVisible="{Binding IsUserTheme}"
+                                                    Spacing="4" Margin="0,3,0,0">
+                                            <TextBlock Classes="data-s"
+                                                       Foreground="{StaticResource TextFaint}"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       Text="{Binding SourceFile}"/>
+                                            <TextBlock Classes="para"
+                                                       Foreground="{StaticResource TextDim}"
+                                                       Text="{Binding ContrastHeadline}"/>
+                                        </StackPanel>
                                     </StackPanel>
                                 </StackPanel>
                             </Button>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
+
+                <!-- ══ YOUR THEMES ════════════════════════════════════════
+                     A folder of JSON files. It sits directly under the picker
+                     because that is where its output lands - the cards above
+                     already include whatever parsed - rather than at the bottom
+                     of the screen as an appendix.
+
+                     Three things and no more: where the folder is, what the
+                     theme that is up measures, and what is wrong with the files
+                     in it. There is deliberately no colour picker here. §14's
+                     whole argument is that a room is a value structure and a
+                     material rather than a set of hues, which is exactly what a
+                     row of swatches cannot express - and the file can be kept,
+                     diffed and copied to another machine, which a dialog
+                     cannot. -->
+                <TextBlock Classes="label" FontSize="10" LetterSpacing="1.4"
+                           Margin="0,10,0,0" Text="YOUR THEMES"/>
+
+                <Border Classes="card" MaxWidth="720" HorizontalAlignment="Left"
+                        IsVisible="{Binding HasThemeFolder}">
+                    <StackPanel Spacing="12">
+
+                        <!-- The path, selectable and in Plex Mono. A folder
+                             nobody can find is a feature nobody has, and the
+                             first thing an author needs is somewhere to put a
+                             file. -->
+                        <SelectableTextBlock Classes="data-s"
+                                             TextWrapping="Wrap"
+                                             Foreground="{StaticResource TextDim}"
+                                             Text="{Binding ThemeFolder}"/>
+
+                        <TextBlock Classes="para" Text="{Binding UserThemeSummary}"/>
+
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <!-- The actual authoring workflow. What it writes is
+                                 the theme's eight seeds and the PROPORTIONS it
+                                 is built to - the edge as a contrast ratio, the
+                                 elevation as a step - rather than twenty-four
+                                 hexes, so the first edit an author makes can be
+                                 to the theme's argument instead of to its
+                                 output. -->
+                            <Button Classes="act primary"
+                                    Command="{Binding ExportThemeCommand}"
+                                    Content="Export this theme as a template"/>
+                            <Button Classes="act quiet"
+                                    Command="{Binding ReloadThemesCommand}"
+                                    Content="Re-read the folder"/>
+                        </StackPanel>
+
+                        <TextBlock Classes="para"
+                                   IsVisible="{Binding HasThemeActionStatus}"
+                                   Foreground="{StaticResource Volt}"
+                                   Text="{Binding ThemeActionStatus}"/>
+
+                        <!-- ══ What this theme measures ═══════════════════
+                             Drawn only for a user theme, for the reason the
+                             card's own line is: the built-ins carry these
+                             numbers in §14's tables and on the track below. -->
+                        <StackPanel Spacing="10" IsVisible="{Binding ShowThemeReport}">
+                            <Border Height="1" Background="{StaticResource Line}" Margin="0,2"/>
+
+                            <TextBlock Classes="label" FontSize="10" LetterSpacing="1.4"
+                                       Text="WHAT THIS THEME MEASURES"/>
+
+                            <Grid ColumnDefinitions="Auto,10,*">
+                                <TextBlock Grid.Column="0" Classes="data"
+                                           VerticalAlignment="Top"
+                                           Text="{Binding ReportAaCeiling}"/>
+                                <TextBlock Grid.Column="2" Classes="para"
+                                           Text="{Binding ReportAaNote}"/>
+                            </Grid>
+
+                            <Grid ColumnDefinitions="Auto,10,*">
+                                <TextBlock Grid.Column="0" Classes="data"
+                                           VerticalAlignment="Top"
+                                           Text="{Binding ReportWallCeiling}"/>
+                                <TextBlock Grid.Column="2" Classes="para"
+                                           Text="{Binding ReportWallNote}"/>
+                            </Grid>
+
+                            <Grid ColumnDefinitions="Auto,10,*">
+                                <TextBlock Grid.Column="0" Classes="data"
+                                           VerticalAlignment="Top"
+                                           Text="{Binding ReportMetadata}"/>
+                                <TextBlock Grid.Column="2" Classes="para"
+                                           Text="{Binding ReportMetadataNote}"/>
+                            </Grid>
+
+                            <Grid ColumnDefinitions="Auto,10,*">
+                                <TextBlock Grid.Column="0" Classes="data"
+                                           VerticalAlignment="Top"
+                                           Text="{Binding ReportEdge}"/>
+                                <TextBlock Grid.Column="2" Classes="para"
+                                           Text="{Binding ReportEdgeNote}"/>
+                            </Grid>
+
+                            <Grid ColumnDefinitions="Auto,10,*">
+                                <TextBlock Grid.Column="0" Classes="data"
+                                           VerticalAlignment="Top"
+                                           Text="{Binding ReportField}"/>
+                                <TextBlock Grid.Column="2" Classes="para"
+                                           Text="{Binding ReportFieldNote}"/>
+                            </Grid>
+                        </StackPanel>
+
+                        <!-- ══ What is wrong, and where ═══════════════════
+                             The heart of the validation, and the reason it is
+                             printed rather than logged. A theme that silently
+                             did not load leaves an author with no way to tell a
+                             typo from a taste they disagree with - so a file
+                             that fails is skipped, the app keeps the theme it
+                             had, and the reason appears here naming the file,
+                             the field and what was expected.
+
+                             Errors first, and each line says in words whether
+                             the file loaded as well as in colour (§8: a state is
+                             never carried by hue alone). -->
+                        <StackPanel Spacing="10" IsVisible="{Binding HasProblems}">
+                            <Border Height="1" Background="{StaticResource Line}" Margin="0,2"/>
+
+                            <TextBlock Classes="label" FontSize="10" LetterSpacing="1.4"
+                                       Text="{Binding ProblemsHeading}"/>
+
+                            <ItemsControl ItemsSource="{Binding Problems}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:ThemeProblemViewModel">
+                                        <Border Classes="problem"
+                                                Classes.failed="{Binding IsError}"
+                                                Background="{StaticResource Ground}"
+                                                CornerRadius="{StaticResource RadiusControl}"
+                                                Padding="14,11" Margin="0,0,0,8">
+                                            <StackPanel Spacing="5">
+                                                <Grid ColumnDefinitions="*,Auto">
+                                                    <TextBlock Grid.Column="0"
+                                                               Classes="data-s"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               Text="{Binding Where}"/>
+                                                    <TextBlock Grid.Column="1"
+                                                               Classes="label verdict" FontSize="9" LetterSpacing="1"
+                                                               VerticalAlignment="Center"
+                                                               Text="{Binding Verdict}"/>
+                                                </Grid>
+                                                <TextBlock Classes="para" Text="{Binding Message}"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
 
                 <!-- ══ TRANSPARENCY ═══════════════════════════════════════ -->
                 <!-- ══ LAYOUT (§15) ═══════════════════════

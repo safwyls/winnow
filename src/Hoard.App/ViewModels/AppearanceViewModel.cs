@@ -1,4 +1,5 @@
-﻿using System.Globalization;
+﻿using System.Collections.ObjectModel;
+using System.Globalization;
 using Avalonia;
 using Avalonia.Media;
 using Avalonia.Media.Immutable;
@@ -42,7 +43,8 @@ public partial class AppearanceViewModel : ObservableObject
     public AppearanceViewModel(ThemeService service)
     {
         _service = service;
-        Themes = [.. HoardThemes.All.Select(t => new ThemeChoiceViewModel(t))];
+        Themes = [];
+        RebuildThemes();
 
         Backdrops =
         [
@@ -68,6 +70,16 @@ public partial class AppearanceViewModel : ObservableObject
         ];
 
         _service.Applied += (_, _) => Refresh();
+
+        // The SET of themes changing is a different event from which one is up:
+        // this one rebuilds cards, the other repaints them. See
+        // ThemeService.CatalogueChanged.
+        _service.CatalogueChanged += (_, _) =>
+        {
+            RebuildThemes();
+            Refresh();
+        };
+
         Refresh();
     }
 
@@ -78,7 +90,16 @@ public partial class AppearanceViewModel : ObservableObject
     /// </summary>
     public ThemeService Service => _service;
 
-    public IReadOnlyList<ThemeChoiceViewModel> Themes { get; }
+    /// <summary>
+    /// The picker's cards: the four built-ins, then whatever parsed out of the
+    /// user's themes folder.
+    ///
+    /// <para>Observable and REBUILT rather than mutated, because a reload
+    /// produces new <see cref="HoardTheme"/> instances — a card holding the
+    /// previous one would keep drawing the palette from before the author's
+    /// last save, which is precisely what hot reload exists to prevent.</para>
+    /// </summary>
+    public ObservableCollection<ThemeChoiceViewModel> Themes { get; }
 
     /// <summary>Acrylic or Mica: which material Windows composes behind the
     /// window. Only shown once the slider has left zero — with nothing coming
@@ -291,6 +312,179 @@ public partial class AppearanceViewModel : ObservableObject
     public string WallAdmitsNote =>
         "of the wall is - half. Measured over a real wallpaper, the wall at the chrome's own amount comes out level with the rail and lighter than a dormant cover, which turns dimmed art into a hole and the recess the covers hang in into a flat pane. At half it stays under both.";
 
+    // ══ YOUR THEMES ═════════════════════════════════════════════════════════
+    // A folder of JSON files at %LOCALAPPDATA%\Hoard\themes. The block below is
+    // three things and no more: where the folder is, what is wrong with what is
+    // in it, and what the theme that is up measures.
+    //
+    // Deliberately NOT a theme editor. §14's argument is that a room is a value
+    // structure and a material rather than a set of hues, which is exactly the
+    // thing a row of colour pickers cannot express — the file can, and the file
+    // is also the thing a person can keep, diff and copy to another machine.
+
+    /// <summary>Where the theme files live. Printed rather than hidden behind a
+    /// button, and selectable, because the first thing an author needs is the
+    /// path.</summary>
+    public string ThemeFolder => _service.UserThemeDirectory ?? string.Empty;
+
+    public bool HasThemeFolder => !string.IsNullOrEmpty(ThemeFolder);
+
+    /// <summary>How many parsed. Named as a count of THEMES rather than of
+    /// files, because a file that failed is not a theme and the diagnostics
+    /// below say so separately.</summary>
+    public int UserThemeCount => _service.Catalogue.Count(t => t.IsUserTheme);
+
+    public string UserThemeSummary => UserThemeCount switch
+    {
+        0 => "No theme files loaded yet. Export one of the four above as a starting point, or drop a .json file in - it appears here as soon as it is saved, without restarting.",
+        1 => "One theme file loaded. It appears above beside the built-ins, and reloads as soon as you save it.",
+        _ => $"{UserThemeCount.ToString(CultureInfo.InvariantCulture)} theme files loaded. They appear above beside the built-ins, and reload as soon as you save them.",
+    };
+
+    /// <summary>
+    /// What is wrong with the folder, worst first.
+    ///
+    /// <para><b>Printed rather than swallowed, and that is the whole design of
+    /// the validation.</b> A theme that silently did not load leaves an author
+    /// with no way to tell a typo from a taste they disagree with — so a file
+    /// that fails is skipped, the app keeps the theme it had, and the reason
+    /// appears here naming the file, the field and what was expected.</para>
+    /// </summary>
+    public IReadOnlyList<ThemeProblemViewModel> Problems { get; private set; } = [];
+
+    public bool HasProblems => Problems.Count > 0;
+
+    public string ProblemsHeading
+    {
+        get
+        {
+            // Distinct FILES, not diagnostics. One file can produce four errors
+            // — a bad colour, a missing seed, an override in the wrong block —
+            // and a heading that counted those would tell an author with one
+            // broken file that they have four.
+            var errors = Problems
+                .Where(p => p.IsError)
+                .Select(p => p.File)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Count();
+
+            return errors switch
+            {
+                0 => "WORTH A LOOK",
+                1 => "1 FILE DID NOT LOAD",
+                _ => $"{errors.ToString(CultureInfo.InvariantCulture)} FILES DID NOT LOAD",
+            };
+        }
+    }
+
+    /// <summary>What the last export or reload did. Empty until one happens —
+    /// a status line that is always there says nothing.</summary>
+    [ObservableProperty]
+    public partial string ThemeActionStatus { get; set; } = string.Empty;
+
+    public bool HasThemeActionStatus => !string.IsNullOrEmpty(ThemeActionStatus);
+
+    // ── The contrast report ─────────────────────────────────────────────────
+    // Drawn for a USER theme only. The built-ins carry the same numbers on the
+    // slider's own AA mark and in §14's tables, and repeating them on a card
+    // would be a third place for one of them to drift.
+
+    public bool ShowThemeReport => _service.Theme.IsUserTheme;
+
+    private ThemeReport Report => ThemeAudit.Report(_service.Theme);
+
+    /// <summary>The headline: how far the slider can go before the chrome's
+    /// worst reading surface drops under AA against a white wallpaper. The one
+    /// number that tells an author whether the palette they picked can carry the
+    /// feature the palette exists to enable.</summary>
+    public string ReportAaCeiling => Percent(Report.AaCeiling);
+
+    public string ReportAaNote =>
+        "of the slider before the chrome's worst reading surface drops under 4.5:1 on a white wallpaper. The mark on the track below is the same number.";
+
+    /// <summary>And where the cover wall's field stops being darker than a
+    /// dormant capsule. Wants to be past the AA mark: §14.6's rule is that the
+    /// wall must not be the thing that fails first.</summary>
+    public string ReportWallCeiling => Percent(Report.WallCeiling);
+
+    public string ReportWallNote => Report.WallCeiling >= Report.AaCeiling
+        ? "before the art field rises past a dormant cover and the dormancy ramp inverts. Past the chrome's mark, which is the rule: the wall must not be the thing that fails first."
+        : "before the art field rises past a dormant cover and the dormancy ramp inverts. That is BEFORE the chrome's mark, so on this theme the wall fails first - the ramp reads as holes punched in a lit field while the labels are still legible.";
+
+    public string ReportMetadata => Ratio(Report.MetadataOnChrome);
+
+    public string ReportMetadataNote =>
+        "for the metadata ink on the chrome surface that does worst, solid. §8 puts the floor at 4.5:1.";
+
+    public string ReportEdge => Ratio(Report.Edge);
+
+    public string ReportEdgeNote =>
+        "for the theme's Line against its chrome - what its boundaries are drawn with. The built-ins run 1.38 (felt, no hard edges) to 2.46 (glass with the layout scribed on it).";
+
+    /// <summary>Written as a multiple rather than as a ratio-to-one, because
+    /// it is §14.1.1's own measure and that is how §14.1.1 writes it.</summary>
+    public string ReportField =>
+        Report.FieldToChrome.ToString("0.0", CultureInfo.InvariantCulture) + "x";
+
+    public string ReportFieldNote =>
+        "from the art field up to the chrome. 1.4x is a flat window with the layout drawn on it; 4.8x hangs the covers in a mount.";
+
+    /// <summary>
+    /// Writes the theme that is up into the folder as a starting template.
+    ///
+    /// <para>The actual authoring workflow, which is why it is a button and not
+    /// a paragraph telling someone to write JSON. What it produces is the
+    /// theme's eight seeds and the PROPORTIONS it is built to — the edge as a
+    /// contrast ratio, the elevation as a step — rather than twenty-four hexes,
+    /// so the first edit an author makes can be to the theme's argument rather
+    /// than to its output.</para>
+    /// </summary>
+    [RelayCommand]
+    private void ExportTheme()
+    {
+        var (file, problem) = _service.ExportTheme(_service.Theme);
+        ThemeActionStatus = file is not null
+            ? $"Wrote {file}. Change its id and its name, then edit - it is already in the list above."
+            : problem ?? "There is no themes folder on this machine.";
+
+        OnPropertyChanged(nameof(HasThemeActionStatus));
+    }
+
+    /// <summary>Re-reads the folder by hand. The watcher does this on save, so
+    /// this is for the case the watcher could not be started — a network path,
+    /// a folder created after launch — rather than the normal path.</summary>
+    [RelayCommand]
+    private void ReloadThemes()
+    {
+        _service.ReloadUserThemes();
+        ThemeActionStatus = UserThemeCount == 1
+            ? "Re-read the folder: 1 theme."
+            : $"Re-read the folder: {UserThemeCount.ToString(CultureInfo.InvariantCulture)} themes.";
+        OnPropertyChanged(nameof(HasThemeActionStatus));
+    }
+
+    private void RebuildThemes()
+    {
+        Themes.Clear();
+        foreach (var theme in _service.Catalogue)
+        {
+            Themes.Add(new ThemeChoiceViewModel(theme));
+        }
+
+        Problems =
+        [
+            .. _service.Diagnostics
+                .OrderByDescending(d => d.IsError)
+                .Select(d => new ThemeProblemViewModel(d)),
+        ];
+    }
+
+    private static string Percent(int value)
+        => value.ToString(CultureInfo.InvariantCulture) + "%";
+
+    private static string Ratio(double value)
+        => value.ToString("0.00", CultureInfo.InvariantCulture) + ":1";
+
     [RelayCommand]
     private void SelectTheme(ThemeChoiceViewModel? choice)
     {
@@ -397,6 +591,22 @@ public partial class AppearanceViewModel : ObservableObject
 
         OnPropertyChanged(nameof(IsFloating));
         OnPropertyChanged(nameof(ShowGapNote));
+
+        OnPropertyChanged(nameof(ThemeFolder));
+        OnPropertyChanged(nameof(HasThemeFolder));
+        OnPropertyChanged(nameof(UserThemeCount));
+        OnPropertyChanged(nameof(UserThemeSummary));
+        OnPropertyChanged(nameof(Problems));
+        OnPropertyChanged(nameof(HasProblems));
+        OnPropertyChanged(nameof(ProblemsHeading));
+
+        OnPropertyChanged(nameof(ShowThemeReport));
+        OnPropertyChanged(nameof(ReportAaCeiling));
+        OnPropertyChanged(nameof(ReportWallCeiling));
+        OnPropertyChanged(nameof(ReportWallNote));
+        OnPropertyChanged(nameof(ReportMetadata));
+        OnPropertyChanged(nameof(ReportEdge));
+        OnPropertyChanged(nameof(ReportField));
     }
 }
 
@@ -455,6 +665,29 @@ public partial class ThemeChoiceViewModel(HoardTheme theme) : ObservableObject
     public string Name { get; } = theme.Name;
 
     public string Reason { get; } = theme.Reason;
+
+    /// <summary>True for a theme that came out of the themes folder. The card
+    /// draws two extra lines for one: the file it came from, and what it
+    /// measures.</summary>
+    public bool IsUserTheme { get; } = theme.IsUserTheme;
+
+    public string SourceFile { get; } = theme.SourceFile ?? string.Empty;
+
+    /// <summary>
+    /// The one measurement that goes on a card: how far the transparency slider
+    /// can travel before this theme's chrome stops clearing AA.
+    ///
+    /// <para><b>Drawn for user themes only, and it is the most useful thing on
+    /// the screen.</b> The built-ins are walked across the whole slider by
+    /// <c>ThemeContrastTests</c> every build; a theme that arrives in a folder
+    /// at runtime can never be, so it gets the same walk at load time and the
+    /// answer is printed where it was picked. A palette an author likes and a
+    /// palette that can carry this application's transparency are two different
+    /// things, and this is the only place that difference is visible before
+    /// they have dragged the slider and squinted.</para>
+    /// </summary>
+    public string ContrastHeadline { get; } =
+        theme.IsUserTheme ? ThemeAudit.Report(theme).Headline : string.Empty;
 
     // The miniature's palette. Brushes rather than colours so the markup can
     // bind them straight to a Background, and NEW brushes rather than the app's
@@ -640,4 +873,34 @@ public partial class LayoutChoiceViewModel : ObservableObject
         LineFill = new ImmutableSolidColorBrush(theme.Line);
         FlareFill = new ImmutableSolidColorBrush(theme.Flare);
     }
+}
+
+/// <summary>
+/// One line of the themes folder's report: what is wrong, where, and whether
+/// the theme still loaded.
+///
+/// <para>A view model rather than the record itself so the markup can bind a
+/// brush to <see cref="IsError"/> without a converter — Danger for a file that
+/// did not load, the metadata ink for a warning about one that did.</para>
+/// </summary>
+public sealed class ThemeProblemViewModel(ThemeDiagnostic diagnostic)
+{
+    public bool IsError { get; } = diagnostic.IsError;
+
+    /// <summary>The file and the field, as one label: <c>midnight.json ›
+    /// seeds.flare</c>. Bricolage, so it reads as a heading for the sentence
+    /// under it rather than as more prose.</summary>
+    /// <summary>Which file, on its own — the heading counts files, and one file
+    /// can raise four diagnostics.</summary>
+    public string File { get; } = diagnostic.File;
+
+    public string Where { get; } = string.IsNullOrEmpty(diagnostic.Field)
+        ? diagnostic.File
+        : $"{diagnostic.File} › {diagnostic.Field}";
+
+    public string Message { get; } = diagnostic.Message;
+
+    /// <summary>What it cost. Said in two words rather than by colour alone,
+    /// because §8 does not let a state be carried by hue on its own.</summary>
+    public string Verdict { get; } = diagnostic.IsError ? "DID NOT LOAD" : "LOADED ANYWAY";
 }

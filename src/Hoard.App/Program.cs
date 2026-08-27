@@ -404,6 +404,12 @@ public static class Program
         // Appearance. The service is a singleton because it owns the ONE live
         // resource dictionary; a second instance would be a second opinion
         // about what colour the window is.
+        //
+        // The theme store is the folder of user-supplied JSON themes at
+        // %LOCALAPPDATA%\Hoard\themes. Constructed rather than activated because
+        // its one constructor parameter is a directory override that only tests
+        // and the capture harness pass.
+        services.AddSingleton(_ => new UserThemeStore());
         services.AddSingleton<ThemeService>();
         services.AddSingleton<AppearanceViewModel>();
 

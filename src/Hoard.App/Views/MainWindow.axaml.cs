@@ -486,6 +486,26 @@ public partial class MainWindow : Window
                 () => FilterPanel.ScrollTo(offset),
                 Avalonia.Threading.DispatcherPriority.Background);
         }
+
+        // --appearance-scroll=N, the same device for the same reason one level
+        // over: YOUR THEMES sits under a row of theme cards, so the folder, the
+        // contrast report and the validation output are all below the fold on
+        // an 820px window and cannot be captured without a scroll. Background
+        // priority for the same reason too — the screen has to have been
+        // measured before its extent exists.
+        if (Environment.GetCommandLineArgs()
+                .FirstOrDefault(a => a.StartsWith("--appearance-scroll=", StringComparison.Ordinal))
+            is { } appearanceScroll
+            && double.TryParse(
+                appearanceScroll["--appearance-scroll=".Length..],
+                System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out var appearanceOffset))
+        {
+            Avalonia.Threading.Dispatcher.UIThread.Post(
+                () => AppearancePanel.ScrollTo(appearanceOffset),
+                Avalonia.Threading.DispatcherPriority.Background);
+        }
 #endif
     }
 

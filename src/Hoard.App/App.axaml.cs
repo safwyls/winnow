@@ -104,8 +104,16 @@ public partial class App : Application
                 ? null
                 : Themes.HoardLayouts.ById(arrangement["--layout=".Length..]);
 
+            // The folder is read even on an overridden session, because
+            // --theme= has to be able to name a USER theme: every screenshot of
+            // one is taken this way, and resolving the id against the built-ins
+            // alone would silently hand back the default. Reading it writes no
+            // preference — the seal OverrideForSession applies is about the
+            // settings table, and the themes folder is not it.
+            theme.ReloadUserThemes();
+
             theme.OverrideForSession(
-                Themes.HoardThemes.ById(requested?["--theme=".Length..]),
+                theme.ById(requested?["--theme=".Length..]),
                 percent,
                 backdrop,
                 wallTranslucent,
@@ -115,5 +123,11 @@ public partial class App : Application
 #endif
 
         theme.LoadAsync().GetAwaiter().GetResult();
+
+        // Hot reload, started only on a real session. An author editing a
+        // palette in a text editor gets the window repainted on save; a capture
+        // run has been told what to look like and must not have it change under
+        // the screenshot.
+        theme.WatchUserThemes();
     }
 }

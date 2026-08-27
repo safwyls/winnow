@@ -321,6 +321,36 @@ public sealed record HoardTheme
     public required Color TranslucentTextDim { get; init; }
     public required Color TranslucentTextFaint { get; init; }
 
+    // ── Provenance, for themes that came out of a file ──────────────────────
+    // Both null on the four built-ins, so nothing about them changes: the
+    // record is still twenty-four colours and three strings, and every existing
+    // construction site still compiles unchanged because neither is `required`.
+
+    /// <summary>
+    /// What this theme asks the rest of the Appearance screen to be set to when
+    /// it is picked. <c>null</c> on every built-in, which is what keeps the
+    /// shipped four behaving exactly as they did before the JSON engine
+    /// existed. See <see cref="ThemeAppearanceDefaults"/>.
+    /// </summary>
+    public ThemeAppearanceDefaults? Defaults { get; init; }
+
+    /// <summary>
+    /// The file this theme was read out of, as a bare file name — <c>null</c>
+    /// for the built-ins.
+    ///
+    /// <para>A NAME and not a path, deliberately. The Appearance screen prints
+    /// the folder once and then prints this beside each theme, so what differs
+    /// is what is shown; and nothing in the app ever dereferences it, which is
+    /// the other half of "a theme file is data" — see <c>ThemeJson</c>.</para>
+    /// </summary>
+    public string? SourceFile { get; init; }
+
+    /// <summary>True for anything that came out of the themes folder. Drives
+    /// exactly two things on the settings screen: the file name under the card,
+    /// and the contrast line the built-ins do not need because the slider's own
+    /// AA mark already carries it.</summary>
+    public bool IsUserTheme => SourceFile is not null;
+
     /// <summary>
     /// The veil of <see cref="Text"/> that, laid over <see cref="Surface"/>,
     /// reproduces this theme's own <see cref="SurfaceRaised"/> — the mean of the
