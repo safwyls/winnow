@@ -1,0 +1,262 @@
+{
+  "id": "52562549998818646",
+  "game_id": "51152861476431582",
+  "platform_id": "epic",
+  "external_id": "Bluebird",
+  "type": "game",
+  "title": {
+    "*": "Fez",
+    "en-US": "Fez"
+  },
+  "summary": {
+    "*": "Gomez is a 2D creature living in a 2D world. Or is he? When the existence of a m..."
+  },
+  "game": {
+    "id": "51152861476431582",
+    "title": {
+      "*": "Fez",
+      "en-US": "Fez"
+    },
+    "releases": [
+      {
+        "id": "51152861454839265",
+        "platform_id": "steam",
+        "external_id": "224760",
+        "release_per_platform_id": "steam_224760",
+        "availability": 0
+      },
+      {
+        "id": "51428760931413058",
+        "platform_id": "gog",
+        "external_id": "1207659211",
+        "release_per_platform_id": "gog_1207659211",
+        "availability": 0
+      },
+      {
+        "id": "52092834383188713",
+        "platform_id": "psn",
+        "external_id": "CUSA00382_00",
+        "release_per_platform_id": "psn_CUSA00382_00",
+        "availability": 0
+      },
+      {
+        "id": "52098158072371734",
+        "platform_id": "psn",
+        "external_id": "CUSA00383_00",
+        "release_per_platform_id": "psn_CUSA00383_00",
+        "availability": 0
+      },
+      {
+        "id": "52448257415617077",
+        "platform_id": "humble",
+        "external_id": "fez",
+        "release_per_platform_id": "humble_fez",
+        "availability": 0
+      },
+      {
+        "id": "52448257459371691",
+        "platform_id": "humble",
+        "external_id": "fez_bundle",
+        "release_per_platform_id": "humble_fez_bundle",
+        "availability": 0
+      },
+      {
+        "id": "52562549998818646",
+        "platform_id": "epic",
+        "external_id": "Bluebird",
+        "release_per_platform_id": "epic_Bluebird",
+        "availability": 0
+      },
+      {
+        "id": "52614038735328078",
+        "platform_id": "test",
+        "external_id": "Bluebird",
+        "release_per_platform_id": "test_Bluebird",
+        "availability": 0
+      },
+      {
+        "id": "52626236732996436",
+        "platform_id": "xboxone",
+        "external_id": "2102696389",
+        "release_per_platform_id": "xboxone_2102696389",
+        "availability": 0
+      },
+      {
+        "id": "52686772928755831",
+        "platform_id": "humble",
+        "external_id": "fezsteam",
+        "release_per_platform_id": "humble_fezsteam",
+        "availability": 0
+      },
+      {
+        "id": "52825856278049077",
+        "platform_id": "xboxone",
+        "external_id": "1989972959",
+        "release_per_platform_id": "xboxone_1989972959",
+        "availability": 0
+      },
+      {
+        "id": "52832434379295880",
+        "platform_id": "humble",
+        "external_id": "hib9_fez_steam",
+        "release_per_platform_id": "humble_hib9_fez_steam",
+        "availability": 0
+      },
+      {
+        "id": "52833862507363504",
+        "platform_id": "psvita",
+        "external_id": "CUSA00383_00",
+        "release_per_platform_id": "psvita_CUSA00383_00",
+        "availability": 0
+      },
+      {
+        "id": "52863433528240814",
+        "platform_id": "humble",
+        "external_id": "storefront_fez_steam",
+        "release_per_platform_id": "humble_storefront_fez_steam",
+        "availability": 0
+      },
+      {
+        "id": "52953494219933181",
+        "platform_id": "winstore",
+        "external_id": "9p75c19szfnz",
+        "release_per_platform_id": "winstore_9p75c19szfnz",
+        "availability": 0
+      },
+      {
+        "id": "52956990005651831",
+        "platform_id": "test",
+        "external_id": "CUSA00382_00",
+        "release_per_platform_id": "test_CUSA00382_00",
+        "availability": 0
+      },
+      {
+        "id": "52956990105379327",
+        "platform_id": "test",
+        "external_id": "EP4427-NPEB01893_00-FEZKEY0000000000",
+        "release_per_platform_id": "test_EP4427-NPEB01893_00-FEZKEY0000000000",
+        "availability": 0
+      },
+      {
+        "id": "52961398777446672",
+        "platform_id": "test",
+        "external_id": "CUSA00383_00",
+        "release_per_platform_id": "test_CUSA00383_00",
+        "availability": 0
+      },
+      {
+        "id": "52961412177809250",
+        "platform_id": "test",
+        "external_id": "UP4427-NPUB31448_00-FEZKEY0000000000",
+        "release_per_platform_id": "test_UP4427-NPUB31448_00-FEZKEY0000000000",
+        "availability": 0
+      },
+      {
+        "id": "53067948227309927",
+        "platform_id": "psn",
+        "external_id": "EP4427-NPEB01893_00-FEZKEY0000000000",
+        "release_per_platform_id": "psn_EP4427-NPEB01893_00-FEZKEY0000000000",
+        "availability": 0
+      },
+      {
+        "id": "53104263715618787",
+        "platform_id": "epic",
+        "external_id": "41f47fd0d3e248bc938a5815d6d64daa",
+        "release_per_platform_id": "epic_41f47fd0d3e248bc938a5815d6d64daa",
+        "availability": 0
+      },
+      {
+        "id": "53284701598740722",
+        "platform_id": "vision",
+        "external_id": "NPUB31448",
+        "release_per_platform_id": "vision_NPUB31448",
+        "availability": 0
+      },
+      {
+        "id": "53432868398168068",
+        "platform_id": "itch",
+        "external_id": "97781",
+        "release_per_platform_id": "itch_97781",
+        "availability": 0
+      },
+      {
+        "id": "53776177399878252",
+        "platform_id": "test",
+        "external_id": "224760",
+        "release_per_platform_id": "test_224760",
+        "availability": 0
+      },
+      {
+        "id": "53992078685546637",
+        "platform_id": "test",
+        "external_id": "/fez-free-download/",
+        "release_per_platform_id": "test_/fez-free-download/",
+        "availability": 0
+      },
+      {
+        "id": "54024460224942858",
+        "platform_id": "test",
+        "external_id": "fez",
+        "release_per_platform_id": "test_fez",
+        "availability": 0
+      },
+      {
+        "id": "54027326276667972",
+        "platform_id": "playfire",
+        "external_id": "fez",
+        "release_per_platform_id": "playfire_fez",
+        "availability": 0
+      },
+      {
+        "id": "56245418780207726",
+        "platform_id": "nswitch",
+        "external_id": "01008D900B984000",
+        "release_per_platform_id": "nswitch_01008D900B984000",
+        "availability": 0
+      },
+      {
+        "id": "59497945624047673",
+        "platform_id": "steam",
+        "external_id": "steam_224760",
+        "release_per_platform_id": "steam_steam_224760",
+        "availability": 0
+      },
+      {
+        "id": "59517608001028512",
+        "platform_id": "test",
+        "external_id": "11643b626bb669cc89dc627cf1923e91f0be0552",
+        "release_per_platform_id": "test_11643b626bb669cc89dc627cf1923e91f0be0552",
+        "availability": 0
+      },
+      {
+        "id": "59747049563763578",
+        "platform_id": "test",
+        "external_id": "mc_fez",
+        "release_per_platform_id": "test_mc_fez",
+        "availability": 0
+      },
+      {
+        "id": "59790956987548153",
+        "platform_id": "psn",
+        "external_id": "PCSE00404_00",
+        "release_per_platform_id": "psn_PCSE00404_00",
+        "availability": 0
+      },
+      {
+        "id": "59790956995026159",
+        "platform_id": "psn",
+        "external_id": "CUSA00799_00",
+        "release_per_platform_id": "psn_CUSA00799_00",
+        "availability": 0
+      },
+      {
+        "id": "51152861476431582",
+        "platform_id": "generic",
+        "external_id": "51152861476431582",
+        "release_per_platform_id": "generic_51152861476431582",
+        "availability": 1
+      }
+    ],
+    "slug": "fez"
+  }
+}

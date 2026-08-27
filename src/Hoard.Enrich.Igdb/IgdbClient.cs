@@ -60,8 +60,30 @@ public sealed class IgdbClient : IIgdbClient
         }
     }
 
-    /// <summary>Cache key for a Steam appid lookup.</summary>
+    /// <summary>
+    /// Cache key for a Steam appid lookup.
+    ///
+    /// <para><b>Kept in its original, un-namespaced shape on purpose.</b> The
+    /// obvious tidy-up when the resolver was generalised past Steam was to move
+    /// every source onto <see cref="ExternalCacheKey"/> — and it would have
+    /// invalidated all 865 cached Steam rows on the author's machine, spending
+    /// the 4 req/s budget to re-learn what was already on disk and leaving the
+    /// library unnamed for the duration on any machine that had since lost its
+    /// credentials. Source 1 keeps this key forever; every other source gets the
+    /// namespaced one.</para>
+    /// </summary>
     public static string SteamAppCacheKey(string appId) => "steam-app:" + appId;
+
+    /// <summary>
+    /// Cache key for a lookup under any other <c>external_game_source</c>.
+    ///
+    /// <para>The source id is in the key because uids are only unique
+    /// <i>within</i> a source: <c>"1"</c> is Fallout on GOG (source 5) and a
+    /// perfectly plausible Steam appid, and a cached miss under one source read
+    /// back as an answer for another is a silent wrong title.</para>
+    /// </summary>
+    public static string ExternalCacheKey(int sourceId, string uid)
+        => "external:" + sourceId.ToString(CultureInfo.InvariantCulture) + ":" + uid;
 
     /// <summary>Cache key for a full game record.</summary>
     public static string GameCacheKey(long igdbId) => "game:" + igdbId.ToString(CultureInfo.InvariantCulture);
@@ -69,48 +91,86 @@ public sealed class IgdbClient : IIgdbClient
     public async ValueTask<bool> IsConfiguredAsync(CancellationToken ct = default)
         => await _credentials.GetAsync(ct) is not null;
 
-    public async Task<IReadOnlyDictionary<string, IgdbSteamMatch>> ResolveBySteamAppIdsAsync(
+    public Task<IReadOnlyDictionary<string, IgdbExternalMatch>> ResolveBySteamAppIdsAsync(
         IEnumerable<string> appIds, TimeSpan? cacheTtl = null, CancellationToken ct = default)
+        => ResolveExternalAsync(
+            _options.SteamExternalGameSourceId, appIds, SteamAppCacheKey, "Steam appid", cacheTtl, ct);
+
+    public Task<IReadOnlyDictionary<string, IgdbExternalMatch>> ResolveByExternalIdsAsync(
+        int externalGameSourceId,
+        IEnumerable<string> uids,
+        TimeSpan? cacheTtl = null,
+        CancellationToken ct = default)
+        => externalGameSourceId == _options.SteamExternalGameSourceId
+            // Same source, same answers, and the same 865 cache rows already on
+            // disk. Routing it through the Steam key rather than minting a
+            // parallel `external:1:` namespace is what keeps a caller that says
+            // "source 1" and a caller that says "Steam" from paying twice for
+            // one appid.
+            ? ResolveBySteamAppIdsAsync(uids, cacheTtl, ct)
+            : ResolveExternalAsync(
+                externalGameSourceId,
+                uids,
+                uid => ExternalCacheKey(externalGameSourceId, uid),
+                "external id (source " + externalGameSourceId.ToString(CultureInfo.InvariantCulture) + ")",
+                cacheTtl,
+                ct);
+
+    /// <summary>
+    /// One <c>external_games</c> sweep: cache first, batch the remainder, cache
+    /// every answer including the misses.
+    ///
+    /// <para><paramref name="cacheKey"/> is a parameter rather than derived from
+    /// <paramref name="sourceId"/> so Steam can keep the un-namespaced key its
+    /// existing rows were written under — see
+    /// <see cref="SteamAppCacheKey"/>.</para>
+    /// </summary>
+    private async Task<IReadOnlyDictionary<string, IgdbExternalMatch>> ResolveExternalAsync(
+        int sourceId,
+        IEnumerable<string> uids,
+        Func<string, string> cacheKey,
+        string what,
+        TimeSpan? cacheTtl,
+        CancellationToken ct)
     {
-        var wanted = appIds
+        var wanted = uids
             .Where(id => !string.IsNullOrWhiteSpace(id))
             .Select(id => id.Trim())
             .Where(Apicalypse.IsSafeStringValue)
             .Distinct(StringComparer.Ordinal)
             .ToArray();
 
-        var results = new Dictionary<string, IgdbSteamMatch>(StringComparer.Ordinal);
+        var results = new Dictionary<string, IgdbExternalMatch>(StringComparer.Ordinal);
         if (wanted.Length == 0)
         {
             return results;
         }
 
         var pending = new List<string>(wanted.Length);
-        var cached = await _cache.GetManyAsync(
-            CacheProvider, wanted.Select(SteamAppCacheKey), ct);
+        var cached = await _cache.GetManyAsync(CacheProvider, wanted.Select(cacheKey), ct);
         var cutoff = Cutoff(cacheTtl);
 
-        foreach (var appId in wanted)
+        foreach (var uid in wanted)
         {
-            if (cached.TryGetValue(SteamAppCacheKey(appId), out var entry) && entry.FetchedAt >= cutoff)
+            if (cached.TryGetValue(cacheKey(uid), out var entry) && entry.FetchedAt >= cutoff)
             {
                 // A null payload is a cached miss: IGDB has no record for this
-                // appid. Re-asking every run would spend the rate limit
-                // learning the same nothing.
-                if (Deserialize<SteamMatchCacheEntry>(entry.PayloadJson) is { } hit)
+                // id under this source. Re-asking every run would spend the rate
+                // limit learning the same nothing.
+                if (Deserialize<ExternalMatchCacheEntry>(entry.PayloadJson) is { } hit)
                 {
-                    results[appId] = hit.ToDomain(appId);
+                    results[uid] = hit.ToDomain(uid);
                 }
 
                 continue;
             }
 
-            pending.Add(appId);
+            pending.Add(uid);
         }
 
         if (pending.Count == 0)
         {
-            _log.LogDebug("Resolved {Count} Steam appids entirely from cache.", wanted.Length);
+            _log.LogDebug("Resolved {Count} {What}s entirely from cache.", wanted.Length, what);
             return results;
         }
 
@@ -119,8 +179,8 @@ public sealed class IgdbClient : IIgdbClient
             // Not an error: serve the cache and move on (§5.1 — enrichment
             // never blocks or breaks a path).
             _log.LogDebug(
-                "IGDB not configured; {Cached} of {Total} appids served from cache, {Pending} left unresolved.",
-                results.Count, wanted.Length, pending.Count);
+                "IGDB not configured; {Cached} of {Total} {What}s served from cache, {Pending} left unresolved.",
+                results.Count, wanted.Length, what, pending.Count);
             return results;
         }
 
@@ -129,8 +189,7 @@ public sealed class IgdbClient : IIgdbClient
         {
             var page = await FetchAllAsync<IgdbExternalGameDto>(
                 "external_games",
-                (limit, offset) => Apicalypse.SteamExternalGames(
-                    batch, _options.SteamExternalGameSourceId, limit, offset),
+                (limit, offset) => Apicalypse.ExternalGames(batch, sourceId, limit, offset),
                 ct);
 
             if (!page.Succeeded)
@@ -141,7 +200,7 @@ public sealed class IgdbClient : IIgdbClient
                 continue;
             }
 
-            var found = new Dictionary<string, IgdbSteamMatch>(StringComparer.Ordinal);
+            var found = new Dictionary<string, IgdbExternalMatch>(StringComparer.Ordinal);
             foreach (var row in page.Items)
             {
                 if (row.Uid is not { Length: > 0 } uid || row.Game is not { Id: > 0 } game)
@@ -149,7 +208,7 @@ public sealed class IgdbClient : IIgdbClient
                     continue;
                 }
 
-                found[uid] = new IgdbSteamMatch(
+                found[uid] = new IgdbExternalMatch(
                     uid,
                     game.Id,
                     game.Name,
@@ -158,20 +217,20 @@ public sealed class IgdbClient : IIgdbClient
                     game.Summary);
             }
 
-            foreach (var appId in batch)
+            foreach (var uid in batch)
             {
-                // Every requested appid gets a cache row, matched or not. The
-                // null payload is the record of a miss.
-                var match = found.GetValueOrDefault(appId);
+                // Every requested id gets a cache row, matched or not. The null
+                // payload is the record of a miss.
+                var match = found.GetValueOrDefault(uid);
                 if (match is not null)
                 {
-                    results[appId] = match;
+                    results[uid] = match;
                 }
 
                 await _cache.SetAsync(
                     CacheProvider,
-                    SteamAppCacheKey(appId),
-                    match is null ? null : Serialize(SteamMatchCacheEntry.From(match)),
+                    cacheKey(uid),
+                    match is null ? null : Serialize(ExternalMatchCacheEntry.From(match)),
                     fetchedAt,
                     ct);
             }
@@ -367,16 +426,18 @@ public sealed class IgdbClient : IIgdbClient
         => string.IsNullOrWhiteSpace(json) ? null : JsonSerializer.Deserialize<T>(json, IgdbJson.Options);
 
     /// <summary>
-    /// Cached shape of a Steam match. The appid is the cache key, so it is not
-    /// duplicated inside the payload.
+    /// Cached shape of an <c>external_games</c> match. The store id is the cache
+    /// key, so it is not duplicated inside the payload — which is also why the
+    /// stored JSON is unchanged by the rename from the Steam-only shape and
+    /// every existing cache row still deserializes.
     /// </summary>
-    private sealed record SteamMatchCacheEntry(
+    private sealed record ExternalMatchCacheEntry(
         long IgdbId, string? Name, string? CoverUrl, int? FirstReleaseYear, string? Summary)
     {
-        internal static SteamMatchCacheEntry From(IgdbSteamMatch match)
+        internal static ExternalMatchCacheEntry From(IgdbExternalMatch match)
             => new(match.IgdbId, match.Name, match.CoverUrl, match.FirstReleaseYear, match.Summary);
 
-        internal IgdbSteamMatch ToDomain(string appId)
-            => new(appId, IgdbId, Name, CoverUrl, FirstReleaseYear, Summary);
+        internal IgdbExternalMatch ToDomain(string uid)
+            => new(uid, IgdbId, Name, CoverUrl, FirstReleaseYear, Summary);
     }
 }

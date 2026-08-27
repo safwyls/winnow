@@ -289,16 +289,138 @@ public class IgdbCoverSourceTests
     }
 
     [Fact]
-    public async Task Non_steam_keys_are_not_this_sources_business()
+    public async Task A_key_shape_nobody_mints_is_not_this_sources_business()
     {
         using var dir = new TempCoverDirectory();
         var cdn = new FakeCoverCdn();
         var igdb = new FakeIgdbClient();
         var source = Source(igdb, cdn, dir.Options());
 
-        var key = new CoverKey(CoverProviders.Igdb, "1234");
+        var key = new CoverKey("some-other-store", "1234");
         Assert.False(source.CanHandle(key));
         Assert.Null(await source.TryFetchAsync(key));
         Assert.Equal(0, igdb.BatchCount);
+        Assert.Equal(0, cdn.RequestCount);
     }
+
+    // ── Keys that name the artwork, not the game ─────────────────────────────
+
+    /// <summary>
+    /// <b>This used to assert the opposite, and the opposite was the bug.</b>
+    /// An IGDB-provider key was "not this source's business" because every
+    /// cover key in the app was a Steam appid — which meant a release with no
+    /// Steam id, i.e. every Epic and GOG title in the library, had no key at
+    /// all and rendered a placeholder no matter what metadata had been fetched
+    /// for it. The key now carries IGDB's <c>image_id</c>, taken from the
+    /// <c>cover_url</c> enrichment already stored, and this source serves it.
+    /// </summary>
+    [Fact]
+    public async Task An_igdb_image_id_key_is_fetched_straight_from_the_cdn()
+    {
+        using var dir = new TempCoverDirectory();
+        var cdn = new FakeCoverCdn();
+        var igdb = new FakeIgdbClient();
+        cdn.AddIgdbCover("co6m51", TestArt.Capsule(528, 704));
+
+        var source = Source(igdb, cdn, dir.Options());
+        var key = CoverKey.Igdb("co6m51");
+
+        Assert.True(source.CanHandle(key));
+        Assert.NotNull(await source.TryFetchAsync(key));
+
+        // No external_games lookup: the key IS the asset, so re-deriving it
+        // would spend a request to learn an id already in hand.
+        Assert.Equal(0, igdb.BatchCount);
+        Assert.Equal("/igdb/image/upload/t_cover_big_2x/co6m51.jpg", cdn.Requests[^1]);
+    }
+
+    /// <summary>
+    /// And it works with no credentials at all. images.igdb.com is
+    /// unauthenticated, so a machine whose Twitch credentials were revoked keeps
+    /// the art it has already learned about — which is most of what makes this
+    /// route worth having for the stores that cannot reach IGDB directly.
+    /// </summary>
+    [Fact]
+    public async Task An_igdb_image_id_key_does_not_need_credentials()
+    {
+        using var dir = new TempCoverDirectory();
+        var cdn = new FakeCoverCdn();
+        var igdb = new FakeIgdbClient { Configured = false };
+        cdn.AddIgdbCover("co1r76", TestArt.Capsule(528, 704));
+
+        var source = Source(igdb, cdn, dir.Options());
+
+        Assert.NotNull(await source.TryFetchAsync(CoverKey.Igdb("co1r76")));
+        Assert.Equal(0, igdb.BatchCount);
+    }
+
+    /// <summary>
+    /// A 404 from the image CDN is still "no art", not a transport failure — the
+    /// same distinction the appid path draws, so the pipeline's 30-day negative
+    /// marker means the same thing on both.
+    /// </summary>
+    [Fact]
+    public async Task An_unknown_image_id_declines_rather_than_throwing()
+    {
+        using var dir = new TempCoverDirectory();
+        var cdn = new FakeCoverCdn();
+        var igdb = new FakeIgdbClient();
+        var source = Source(igdb, cdn, dir.Options());
+
+        Assert.Null(await source.TryFetchAsync(CoverKey.Igdb("conotreal")));
+    }
+
+    /// <summary>
+    /// The whole point, at pipeline level: a key with no Steam appid behind it
+    /// still resolves. Steam's capsule source declines it on shape without a
+    /// request, and IGDB answers.
+    /// </summary>
+    [Fact]
+    public async Task The_pipeline_resolves_a_key_that_has_no_steam_appid_behind_it()
+    {
+        using var dir = new TempCoverDirectory();
+        var options = dir.Options();
+        var cdn = new FakeCoverCdn();
+        var igdb = new FakeIgdbClient();
+        cdn.AddIgdbCover("co6m51", TestArt.Capsule(528, 704));
+
+        using var pipeline = dir.Pipeline(
+            options,
+            new SteamCapsuleSource(cdn, options, NullLogger<SteamCapsuleSource>.Instance),
+            Source(igdb, cdn, options));
+
+        using var art = await pipeline.GetAsync(CoverKey.Igdb("co6m51"), 320);
+
+        Assert.NotNull(art);
+
+        // One request in total: Steam never guessed at an appid it does not have.
+        Assert.Equal(1, cdn.RequestCount);
+        Assert.Equal("/igdb/image/upload/t_cover_big_2x/co6m51.jpg", cdn.Requests[0]);
+    }
+
+    // ── cover_url → key ──────────────────────────────────────────────────────
+
+    [Theory]
+    [InlineData("https://images.igdb.com/igdb/image/upload/t_cover_big/co1r76.jpg", "co1r76")]
+    [InlineData("https://images.igdb.com/igdb/image/upload/t_thumb/co6m51.png", "co6m51")]
+    [InlineData("//images.igdb.com/igdb/image/upload/t_cover_big_2x/co2abc.jpg", "co2abc")]
+    // A cache-busting query string does not change which asset is named.
+    [InlineData("https://images.igdb.com/igdb/image/upload/t_cover_big/co1r76.jpg?v=2", "co1r76")]
+    public void An_igdb_cover_url_yields_its_image_id(string url, string expected)
+        => Assert.Equal(expected, IgdbImageUrl.ImageId(url));
+
+    /// <summary>
+    /// Strict on purpose. A guessed id becomes a 404, a 404 becomes a 30-day
+    /// negative marker, and the user gets a month of placeholder art for a game
+    /// whose cover we were holding all along — so a URL shape we do not
+    /// recognise yields no key rather than a plausible one.
+    /// </summary>
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("https://cdn.example.com/some/other/art.jpg")]
+    [InlineData("https://images.igdb.com/igdb/image/upload/t_cover_big/co 1r76.jpg")]
+    public void A_url_that_is_not_an_igdb_image_yields_no_id(string? url)
+        => Assert.Null(IgdbImageUrl.ImageId(url));
 }

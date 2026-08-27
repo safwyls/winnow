@@ -75,14 +75,26 @@ public sealed class IgdbCoverSource : ICoverSource
     public int LookupBatchCount => _lookup.BatchCount;
 
     /// <summary>
-    /// Steam appids only. IGDB is reached <em>through</em> the Steam appid — the
-    /// <c>external_games</c> hard join — so a key already carrying an IGDB id is
-    /// not something this source has a lookup for.
+    /// Two key shapes, reached two different ways.
+    ///
+    /// <para><b>A Steam appid</b> is resolved through the <c>external_games</c>
+    /// hard join to find the cover, which needs credentials and a request.</para>
+    ///
+    /// <para><b>An IGDB image id</b> is the cover — no lookup, no credentials,
+    /// no API call, just a CDN fetch. This is the shape a release with no Steam
+    /// appid arrives as, built from the <c>cover_url</c> the enrichment pass
+    /// already stored, and it is what puts art on Epic and GOG tiles. It also
+    /// means those tiles keep working on a machine whose IGDB credentials have
+    /// been revoked, because the id was stored the first time and images.igdb.com
+    /// is unauthenticated.</para>
     /// </summary>
     public bool CanHandle(CoverKey key)
-        => key.Provider == CoverProviders.Steam
-           && key.Id.Length > 0
-           && key.Id.All(char.IsAsciiDigit);
+        => (key.Provider == CoverProviders.Steam
+            && key.Id.Length > 0
+            && key.Id.All(char.IsAsciiDigit))
+           || (key.Provider == CoverProviders.Igdb
+               && key.Id.Length > 0
+               && key.Id.All(char.IsAsciiLetterOrDigit));
 
     /// <summary>
     /// Resolves <paramref name="appIds"/> to IGDB covers ahead of demand, in
@@ -100,15 +112,29 @@ public sealed class IgdbCoverSource : ICoverSource
             return null;
         }
 
-        if (!await IsConfiguredAsync(ct).ConfigureAwait(false))
+        string? url;
+        if (key.Provider == CoverProviders.Igdb)
         {
-            return null;
+            // The key IS the asset. No credential check and no lookup: a work
+            // that already has a cover_url has been past IGDB once, and asking
+            // again to re-learn an id we are holding would put Epic and GOG
+            // tiles behind a credential the CDN does not want.
+            url = IgdbImageUrl.ForImageId(key.Id, _options.ImageSizeToken);
+        }
+        else
+        {
+            if (!await IsConfiguredAsync(ct).ConfigureAwait(false))
+            {
+                return null;
+            }
+
+            await EnsurePrewarmedAsync().ConfigureAwait(false);
+
+            var coverUrl = await _lookup.GetCoverUrlAsync(key.Id, ct).ConfigureAwait(false);
+            url = IgdbImageUrl.WithSize(coverUrl, _options.ImageSizeToken);
         }
 
-        await EnsurePrewarmedAsync().ConfigureAwait(false);
-
-        var coverUrl = await _lookup.GetCoverUrlAsync(key.Id, ct).ConfigureAwait(false);
-        if (IgdbImageUrl.WithSize(coverUrl, _options.ImageSizeToken) is not { Length: > 0 } url)
+        if (url is not { Length: > 0 })
         {
             _log.LogDebug("No IGDB cover for {Key}", key);
             return null;

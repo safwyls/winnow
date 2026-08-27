@@ -65,6 +65,19 @@ namespace Hoard.App.Services;
 /// itself. Persisting the metadata IGDB already returns is therefore a precision
 /// change, not a cosmetic one.</para>
 ///
+/// <para><b>Every store, not just Steam.</b> This pass spent its life asking
+/// the repository for <c>steam</c> targets and asking IGDB with Steam's
+/// <c>external_game_source</c>. The consequence was measurable and total: on the
+/// author's library, 67 Epic works and 14 GOG works had zero <c>igdb_id</c>,
+/// zero covers, zero years and zero summaries between them, while 946 Steam
+/// works had ~865 of each. Exactly zero rather than a small number is the
+/// signature of a population no query ever selected. The target query now
+/// returns every store provider and
+/// <see cref="EnrichmentLookupPlanner"/> works out how each one reaches IGDB —
+/// GOG directly on source 5, Epic through GOG's cross-store identity graph.
+/// Steps 3 and 4 below stay Steam-only, because a Steam appid is the only thing
+/// either endpoint can be asked about.</para>
+///
 /// <para>§5.1: this composes ingest-adjacent sources and the repositories, and
 /// the UI never calls it — Program sequences it, the view models read the
 /// database afterwards.</para>
@@ -76,6 +89,7 @@ public sealed class EnrichmentSyncService
     private readonly IIgdbClient _igdb;
     private readonly ISteamStoreClient _steamStore;
     private readonly IBuildInfoClient _steamCmd;
+    private readonly EnrichmentLookupPlanner _lookups;
     private readonly IUnitOfWorkFactory _unitOfWork;
     private readonly ILogger<EnrichmentSyncService> _logger;
 
@@ -85,6 +99,7 @@ public sealed class EnrichmentSyncService
         IIgdbClient igdb,
         ISteamStoreClient steamStore,
         IBuildInfoClient steamCmd,
+        EnrichmentLookupPlanner lookups,
         IUnitOfWorkFactory unitOfWork,
         ILogger<EnrichmentSyncService> logger)
     {
@@ -93,6 +108,7 @@ public sealed class EnrichmentSyncService
         _igdb = igdb;
         _steamStore = steamStore;
         _steamCmd = steamCmd;
+        _lookups = lookups;
         _unitOfWork = unitOfWork;
         _logger = logger;
     }
@@ -137,7 +153,7 @@ public sealed class EnrichmentSyncService
     {
         var stopwatch = Stopwatch.StartNew();
 
-        var targets = await _works.GetEnrichmentTargetsAsync(ExternalIdProviders.Steam, ct);
+        var targets = await _works.GetEnrichmentTargetsAsync(ct);
         var outstandingNames = targets.Count(t => t.NameIsProvisional);
         if (targets.Count == 0)
         {
@@ -146,12 +162,17 @@ public sealed class EnrichmentSyncService
             return new EnrichmentReport(0, 0, 0, stopwatch.Elapsed);
         }
 
-        var appIds = targets.Select(t => t.ProviderId).Distinct(StringComparer.Ordinal).ToArray();
+        // 0. How does each store reach IGDB? Steam and GOG answer directly on
+        //    their own external_game_source; Epic has no id IGDB indexes and
+        //    reaches source 1 through GOG's cross-store graph instead. A target
+        //    the planner has no route for is simply absent from the plan, and
+        //    absent means "ask nothing, write nothing" — never "IGDB said no".
+        var plan = await _lookups.PlanAsync(targets, ct);
 
         // 1. IGDB first — the backbone, and the only source that carries the
         //    year/summary/cover/publisher the works columns and the soft matcher
         //    both want.
-        var matches = new Dictionary<string, IgdbSteamMatch>(StringComparer.Ordinal);
+        var matches = new Dictionary<TargetKey, IgdbExternalMatch>();
         var games = new Dictionary<long, IgdbGame>();
         if (await _igdb.IsConfiguredAsync(ct))
         {
@@ -162,9 +183,26 @@ public sealed class EnrichmentSyncService
             // of step 3 is that it needs nothing from IGDB.
             try
             {
-                foreach (var (appId, match) in await _igdb.ResolveBySteamAppIdsAsync(appIds, ct: ct))
+                // One batched call per external_game_source. Grouping matters:
+                // a uid is only unique within its source ("1" is Fallout on GOG
+                // and a plausible Steam appid), so the batches must not be
+                // merged and the answers must be read back through the same
+                // lookup that asked.
+                foreach (var group in plan.Lookups.GroupBy(pair => pair.Value.SourceId))
                 {
-                    matches[appId] = match;
+                    var uids = group
+                        .Select(pair => pair.Value.Uid)
+                        .Distinct(StringComparer.Ordinal)
+                        .ToArray();
+
+                    var resolved = await _igdb.ResolveByExternalIdsAsync(group.Key, uids, ct: ct);
+                    foreach (var (key, lookup) in group)
+                    {
+                        if (resolved.TryGetValue(lookup.Uid, out var match))
+                        {
+                            matches[key] = match;
+                        }
+                    }
                 }
 
                 // 2. Second batched call for the publisher. external_games
@@ -203,20 +241,31 @@ public sealed class EnrichmentSyncService
         }
 
         var fromIgdb = 0;
-        var titles = new Dictionary<string, string>(StringComparer.Ordinal);
-        foreach (var (appId, match) in matches)
+        var titles = new Dictionary<TargetKey, string>();
+        foreach (var (key, match) in matches)
         {
             if (!string.IsNullOrWhiteSpace(match.Name))
             {
-                titles[appId] = match.Name;
+                titles[key] = match.Name;
             }
         }
 
         // 3. Steam store for the remaining NAMES only. Undocumented endpoint,
         //    soft-fails, and carries nothing the metadata columns want — so a
         //    work that has a title and only needs a year never reaches it.
+        //
+        //    STEAM TARGETS ONLY, and that is not a leftover from the days when
+        //    this pass thought the library was all Steam: IStoreBrowseService
+        //    takes appids. Handing it an Epic catalog item id or a GOG product
+        //    id asks Valve about an appid that is either nonexistent or, worse,
+        //    a real and unrelated game — a numeric GOG id would look exactly
+        //    like an appid and come back with a confident wrong title. Epic and
+        //    GOG names come from their own local files at ingest and need no
+        //    fallback here.
         var unnamed = targets
-            .Where(t => t.NameIsProvisional && !titles.ContainsKey(t.ProviderId))
+            .Where(t => t.Provider == ExternalIdProviders.Steam
+                        && t.NameIsProvisional
+                        && !titles.ContainsKey(KeyOf(t)))
             .Select(t => t.ProviderId)
             .Distinct(StringComparer.Ordinal)
             .ToArray();
@@ -228,7 +277,7 @@ public sealed class EnrichmentSyncService
             {
                 if (!string.IsNullOrWhiteSpace(item.Name))
                 {
-                    titles[appId] = item.Name;
+                    titles[new TargetKey(ExternalIdProviders.Steam, appId)] = item.Name;
                 }
             }
         }
@@ -244,12 +293,13 @@ public sealed class EnrichmentSyncService
         //    strand a work named "Portal 2" beside a release still named
         //    "App 620" that no future run would ever revisit.
         var promoted = 0;
-        var enriched = 0;
+        var enrichedWorks = new HashSet<long>();
         foreach (var target in targets)
         {
             ct.ThrowIfCancellationRequested();
 
-            var patch = BuildPatch(target, titles, matches, games, steamCmd.Types);
+            var key = KeyOf(target);
+            var patch = BuildPatch(target, key, titles, matches, games, steamCmd.Types);
             if (patch.IsEmpty)
             {
                 continue;
@@ -270,7 +320,7 @@ public sealed class EnrichmentSyncService
             if (namePromoted)
             {
                 promoted++;
-                if (matches.ContainsKey(target.ProviderId))
+                if (matches.ContainsKey(key))
                 {
                     fromIgdb++;
                 }
@@ -284,7 +334,11 @@ public sealed class EnrichmentSyncService
                 }
             }
 
-            enriched++;
+            // Counted per WORK, not per target row: a work reachable under two
+            // providers yields two rows, and the second one's patch is a no-op
+            // the writer's COALESCE guards absorb. Counting rows would report
+            // more works enriched than the library contains.
+            enrichedWorks.Add(target.WorkId);
         }
 
         stopwatch.Stop();
@@ -292,13 +346,21 @@ public sealed class EnrichmentSyncService
             "Enrichment: {Promoted} of {Outstanding} names promoted "
             + "({Igdb} from IGDB, {Steam} from the Steam store, {SteamCmd} from steamcmd.net); "
             + "{Types} app types read; "
-            + "{Enriched} of {Targets} works had metadata filled in, in {Elapsed:n1}s.",
+            + "{Enriched} of {Targets} works had metadata filled in, in {Elapsed:n1}s. "
+            + "Routes: {Routes}.",
             promoted, outstandingNames, fromIgdb, fromSteam, fromSteamCmd, steamCmd.Types.Count,
-            enriched, targets.Count, stopwatch.Elapsed.TotalSeconds);
+            enrichedWorks.Count, targets.Count, stopwatch.Elapsed.TotalSeconds,
+            plan.RouteCounts.Count == 0
+                ? "none"
+                : string.Join(", ", plan.RouteCounts.OrderBy(r => r.Key, StringComparer.Ordinal)
+                    .Select(r => $"{r.Key} {r.Value}")));
 
         return new EnrichmentReport(
-            outstandingNames, promoted, fromIgdb, stopwatch.Elapsed, enriched, fromSteamCmd);
+            outstandingNames, promoted, fromIgdb, stopwatch.Elapsed, enrichedWorks.Count, fromSteamCmd);
     }
+
+    private static TargetKey KeyOf(EnrichmentTarget target)
+        => new(target.Provider, target.ProviderId);
 
     /// <summary>
     /// Step 4: what api.steamcmd.net can say about the appids the first two
@@ -325,7 +387,7 @@ public sealed class EnrichmentSyncService
     /// </summary>
     private async Task<SteamCmdResult> ReadSteamCmdAsync(
         IReadOnlyList<EnrichmentTarget> targets,
-        Dictionary<string, string> titles,
+        Dictionary<TargetKey, string> titles,
         CancellationToken ct)
     {
         var types = new Dictionary<string, string>(StringComparer.Ordinal);
@@ -336,12 +398,21 @@ public sealed class EnrichmentSyncService
         {
             ct.ThrowIfCancellationRequested();
 
+            // Steam only, and for the same reason step 3 is: this endpoint is a
+            // PICS mirror keyed on appids. A GOG product id is numeric and would
+            // be accepted as an appid, answering about a completely different
+            // game — the one failure mode worse than answering about none.
+            if (target.Provider != ExternalIdProviders.Steam)
+            {
+                continue;
+            }
+
             if (!asked.Add(target.ProviderId))
             {
                 continue;
             }
 
-            var needsName = target.NameIsProvisional && !titles.ContainsKey(target.ProviderId);
+            var needsName = target.NameIsProvisional && !titles.ContainsKey(KeyOf(target));
             var needsType = !target.HasSteamAppType
                             && !target.NameIsProvisional
                             && DemoConsolidation.IsVariantTitle(target.Title);
@@ -379,7 +450,7 @@ public sealed class EnrichmentSyncService
             // without a title, and only while the work is still provisional.
             if (needsName && !string.IsNullOrWhiteSpace(fetch.Info.Name))
             {
-                titles[target.ProviderId] = fetch.Info.Name;
+                titles[KeyOf(target)] = fetch.Info.Name;
                 named.Add(target.ProviderId);
             }
         }
@@ -407,19 +478,20 @@ public sealed class EnrichmentSyncService
     /// </summary>
     private static WorkEnrichment BuildPatch(
         EnrichmentTarget target,
-        IReadOnlyDictionary<string, string> titles,
-        IReadOnlyDictionary<string, IgdbSteamMatch> matches,
+        TargetKey key,
+        IReadOnlyDictionary<TargetKey, string> titles,
+        IReadOnlyDictionary<TargetKey, IgdbExternalMatch> matches,
         IReadOnlyDictionary<long, IgdbGame> games,
         IReadOnlyDictionary<string, string> appTypes)
     {
-        var match = matches.GetValueOrDefault(target.ProviderId);
+        var match = matches.GetValueOrDefault(key);
         var game = match is not null ? games.GetValueOrDefault(match.IgdbId) : null;
 
         // A title is only ever offered to a work still holding a placeholder.
         // A real title — from an earlier run, from the store, or edited by the
         // user — is never overwritten, which is the failure that would rename a
         // library back to appids.
-        var name = target.NameIsProvisional ? titles.GetValueOrDefault(target.ProviderId) : null;
+        var name = target.NameIsProvisional ? titles.GetValueOrDefault(key) : null;
 
         return new WorkEnrichment(
             target.WorkId,
@@ -431,7 +503,14 @@ public sealed class EnrichmentSyncService
             Summary: target.HasSummary ? null : Prefer(match?.Summary, game?.Summary),
             CoverUrl: target.HasCoverUrl ? null : Prefer(match?.CoverUrl, game?.CoverUrl),
             Publisher: target.HasPublisher ? null : PrimaryPublisher(game),
-            SteamAppType: target.HasSteamAppType ? null : appTypes.GetValueOrDefault(target.ProviderId));
+
+            // Steam's own classification, so only ever read for a Steam target.
+            // `appTypes` is keyed by appid, and a GOG product id like "1" is a
+            // perfectly good appid string — without this guard a GOG work would
+            // inherit whatever Valve says about an unrelated app.
+            SteamAppType: target.HasSteamAppType || key.Provider != ExternalIdProviders.Steam
+                ? null
+                : appTypes.GetValueOrDefault(target.ProviderId));
     }
 
     private static string? Prefer(string? first, string? second)

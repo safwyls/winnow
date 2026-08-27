@@ -8,6 +8,7 @@ using Hoard.Core.Domain;
 using Hoard.Core.Queries;
 using Hoard.Core.Repositories;
 using Hoard.Covers;
+using Hoard.Covers.Igdb;
 
 namespace Hoard.App.ViewModels;
 
@@ -396,6 +397,20 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts
                 {
                     coverKeyByRelease[release.Id] = CoverKey.Steam(steam.ProviderId);
                     steamAppIdByRelease[release.Id] = steam.ProviderId;
+                }
+                else if (IgdbImageUrl.ImageId(work.CoverUrl) is { Length: > 0 } imageId)
+                {
+                    // No Steam appid, so no Steam capsule and no external_games
+                    // lookup — which is why every Epic and GOG tile rendered a
+                    // placeholder even after enrichment learned their covers.
+                    // The stored cover_url names IGDB's asset outright, so the
+                    // key is the artwork id and the fetch is a plain CDN GET.
+                    //
+                    // This is the ONLY path that works for the cross-store
+                    // duplicates: works.igdb_id is UNIQUE, so of an Epic title
+                    // and its Steam twin only one row may hold the id, while
+                    // both hold the same cover_url.
+                    coverKeyByRelease[release.Id] = CoverKey.Igdb(imageId);
                 }
             }
         }

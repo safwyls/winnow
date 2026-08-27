@@ -28,6 +28,7 @@
     <ProjectReference Include="..\..\src\Hoard.App\Hoard.App.csproj" />
     <ProjectReference Include="..\..\src\Hoard.Core\Hoard.Core.csproj" />
     <ProjectReference Include="..\..\src\Hoard.Data\Hoard.Data.csproj" />
+    <ProjectReference Include="..\..\src\Hoard.Enrich.GamesDb\Hoard.Enrich.GamesDb.csproj" />
     <ProjectReference Include="..\..\src\Hoard.Enrich.Igdb\Hoard.Enrich.Igdb.csproj" />
     <ProjectReference Include="..\..\src\Hoard.Enrich.Steam\Hoard.Enrich.Steam.csproj" />
     <ProjectReference Include="..\..\src\Hoard.Enrich.SteamWeb\Hoard.Enrich.SteamWeb.csproj" />
@@ -56,6 +57,10 @@
     <Content Include="..\fixtures\epic-oauth\**" LinkBase="fixtures\epic-oauth" CopyToOutputDirectory="PreserveNewest" />
     <!-- Sanitized real GOG Galaxy files (tests/fixtures/gog/README.md) — the reader tests parse these. -->
     <Content Include="..\fixtures\gog\**" LinkBase="fixtures\gog" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Verbatim gamesdb.gog.com response (tests/fixtures/gamesdb/README.md) — the contract test pins
+         this. Nothing personal in it: the endpoint is unauthenticated and account-independent, so
+         there is no account id or entitlement to sanitize. -->
+    <Content Include="..\fixtures\gamesdb\**" LinkBase="fixtures\gamesdb" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

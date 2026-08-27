@@ -43,9 +43,27 @@ public interface IWorkRepository
     /// shrinks to nothing as the backlog drains and a warm library costs one
     /// scan that yields no rows. Nothing here touches the network: what stops a
     /// re-fetch is the caller's metadata cache, not this query.</para>
+    ///
+    /// <para><b>Every store, and no provider parameter — that parameter was the
+    /// bug.</b> This used to take one provider and the only caller passed
+    /// <c>steam</c>, so the 67 Epic and 14 GOG releases in the author's library
+    /// were never in the result set and measured exactly zero <c>igdb_id</c>,
+    /// zero covers, zero years and zero summaries. Exactly zero rather than a
+    /// low number is the tell: it is what a query that never asks looks like,
+    /// and it is distinguishable from "IGDB had nothing" only by counting.
+    /// Rows come back for every provider in
+    /// <see cref="Domain.ExternalIdProviders.Stores"/>, each carrying its own
+    /// <see cref="Queries.EnrichmentTarget.Provider"/>, and it is the caller's
+    /// job to know how to look each one up — not this query's job to be told
+    /// which single store to care about.</para>
+    ///
+    /// <para>A work reachable under two providers (a merged cross-store pair)
+    /// yields one row per external id. That is deliberate: each is a distinct
+    /// lookup route, and the writer is idempotent, so the second row costs a
+    /// no-op patch rather than a wrong one.</para>
     /// </summary>
     Task<IReadOnlyList<Queries.EnrichmentTarget>> GetEnrichmentTargetsAsync(
-        string provider, CancellationToken ct = default);
+        CancellationToken ct = default);
 
     /// <summary>
     /// Applies enrichment metadata to one work under the one-way promotion

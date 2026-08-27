@@ -41,6 +41,25 @@ public static class ServiceCollectionExtensions
         services.TryAddSingleton<EpicThirdPartyAppReader>();
         services.TryAddSingleton<IEpicThirdPartyInstallProbe, WindowsEpicThirdPartyInstallProbe>();
 
+        // The catalogItemId → AppName map. Registered here rather than in the
+        // enrichment module because reading Epic's files is this module's job
+        // (§5.1) — Enrich consumes the Hoard.Core contract and never learns
+        // where catcache.bin lives.
+        services.TryAddSingleton(sp => new EpicArtifactAliasSource(
+            sp.GetRequiredService<EpicCatalogReader>(),
+            sp.GetRequiredService<EpicManifestReader>(),
+            sp.GetRequiredService<EpicThirdPartyAppReader>(),
+            sp.GetService<Microsoft.Extensions.Logging.ILogger<EpicArtifactAliasSource>>(),
+            dataRoot));
+
+        // Enumerable, not a single binding: every store that needs an alias map
+        // registers its own, and the consumer asks all of them. A TryAdd on the
+        // interface would let whichever ingest module happened to register first
+        // silently exclude the others.
+        services.TryAddEnumerable(
+            ServiceDescriptor.Singleton<Core.Ingest.IStoreArtifactAliasSource, EpicArtifactAliasSource>(
+                sp => sp.GetRequiredService<EpicArtifactAliasSource>()));
+
         services.TryAddSingleton(sp => new EpicLibrarySource(
             sp.GetRequiredService<EpicManifestReader>(),
             sp.GetRequiredService<EpicCatalogReader>(),

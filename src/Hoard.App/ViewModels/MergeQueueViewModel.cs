@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.Input;
 using Hoard.Core.Domain;
 using Hoard.Core.Repositories;
 using Hoard.Covers;
+using Hoard.Covers.Igdb;
 
 namespace Hoard.App.ViewModels;
 
@@ -332,13 +333,19 @@ public partial class MergeQueueViewModel : ObservableObject
             titles[releaseId] = work?.Name ?? release.Name;
 
             var externalIds = await _releases.GetExternalIdsAsync(releaseId, ct);
-            foreach (var externalId in externalIds)
+            var steam = externalIds.FirstOrDefault(x => x.Provider == ExternalIdProviders.Steam);
+            if (steam is not null)
             {
-                if (externalId.Provider == ExternalIdProviders.Steam)
-                {
-                    coverKeys[releaseId] = CoverKey.Steam(externalId.ProviderId);
-                    break;
-                }
+                coverKeys[releaseId] = CoverKey.Steam(steam.ProviderId);
+            }
+            else if (IgdbImageUrl.ImageId(work?.CoverUrl) is { Length: > 0 } imageId)
+            {
+                // Same fallback the library grid makes, and it matters more
+                // here: half of every cross-store pair in this queue is the
+                // side WITHOUT a Steam appid, so without this the merge UI
+                // showed one cover and one placeholder for two rows that are
+                // the same game.
+                coverKeys[releaseId] = CoverKey.Igdb(imageId);
             }
         }
 

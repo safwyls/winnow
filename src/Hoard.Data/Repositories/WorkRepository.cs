@@ -94,10 +94,21 @@ public sealed class WorkRepository : IWorkRepository
     /// <para>No index serves an OR across five columns, and none is wanted: the
     /// projection is six flags over a few hundred rows, and the answer is the
     /// empty set once the backlog drains.</para>
+    ///
+    /// <para><b>Every store provider, not one.</b> The <c>provider</c> parameter
+    /// this method used to take was answered <c>steam</c> by its only caller,
+    /// which is why the author's 67 Epic and 14 GOG releases had zero metadata
+    /// of any kind — they were never in a result set. <c>ExternalIdProviders.Stores</c>
+    /// is expanded by Dapper into the <c>IN</c> list, so adding a store to that
+    /// constant is all it takes for this sweep to see it. <c>igdb</c> is excluded
+    /// by not being in that list: it is Hoard's own canonical id, not a
+    /// storefront's, and using it as a lookup key would be asking IGDB to
+    /// resolve an id IGDB gave us.</para>
     /// </summary>
     public async Task<IReadOnlyList<EnrichmentTarget>> GetEnrichmentTargetsAsync(
-        string provider, CancellationToken ct = default)
+        CancellationToken ct = default)
     {
+        var providers = ExternalIdProviders.Stores;
         using var lease = _factory.Lease();
         var rows = await lease.Connection.QueryAsync<EnrichmentTarget>(new CommandDefinition("""
             SELECT w.id  AS WorkId,
@@ -114,7 +125,7 @@ public sealed class WorkRepository : IWorkRepository
                    COALESCE(NULLIF(TRIM(r.name), ''), w.name) AS Title
             FROM works w
             JOIN releases     r ON r.work_id = w.id
-            JOIN external_ids e ON e.release_id = r.id AND e.provider = @provider
+            JOIN external_ids e ON e.release_id = r.id AND e.provider IN @providers
             WHERE w.name_is_provisional = 1
                OR w.igdb_id            IS NULL
                OR w.first_release_year IS NULL
@@ -139,8 +150,8 @@ public sealed class WorkRepository : IWorkRepository
                      OR LOWER(COALESCE(NULLIF(TRIM(r.name), ''), w.name)) LIKE '%alpha%'
                      OR LOWER(COALESCE(NULLIF(TRIM(r.name), ''), w.name)) LIKE '%trial%'
                      OR LOWER(COALESCE(NULLIF(TRIM(r.name), ''), w.name)) LIKE '%weekend%'))
-            ORDER BY w.id;
-            """, new { provider }, transaction: lease.Transaction, cancellationToken: ct));
+            ORDER BY w.id, e.provider;
+            """, new { providers }, transaction: lease.Transaction, cancellationToken: ct));
         return rows.AsList();
     }
 

@@ -68,4 +68,54 @@ public sealed class IgdbOptions
     /// does not need a code change.
     /// </summary>
     public int SteamExternalGameSourceId { get; set; } = 1;
+
+    /// <summary>
+    /// IGDB's <c>external_game_source</c> id for GOG.
+    ///
+    /// <para><b>This one is a genuine hard join and it works today.</b> IGDB's
+    /// source-5 <c>uid</c> is the bare GOG product id as a string — byte-identical
+    /// to what Galaxy's <c>gog_&lt;id&gt;</c> releaseKey carries and to what
+    /// Hoard stores in <c>external_ids.provider_id</c>, with no transformation.
+    /// Re-verified live against the author's library: 13 of 14 owned GOG base
+    /// games matched in a single request. The one miss is
+    /// <c>1441199941</c>, "The Witcher 3 REDkit" — a modding toolkit IGDB does
+    /// not carry as a game, which is the right answer rather than a failure.</para>
+    /// </summary>
+    public int GogExternalGameSourceId { get; set; } = 5;
+
+    /// <summary>
+    /// IGDB's <c>external_game_source</c> id for the Epic Games Store.
+    ///
+    /// <para><b>Present for completeness and all but useless — read this before
+    /// building on it.</b> §4.4 claims <c>external_games</c> maps the "Epic
+    /// catalog id"; it does not. IGDB's source-26 uids are Epic <i>store offer</i>
+    /// ids (32-hex) and CMS <i>page</i> ids (dashed UUID), and the launcher
+    /// writes neither to disk — it writes <c>CatalogItemId</c>, which is a third
+    /// id space. Measured twice, once during the spike and once again while
+    /// fixing this: <b>0 of the author's 67 owned Epic catalog item ids match any
+    /// of IGDB's 10,145 source-26 rows</b>, and titles like ABZU have no
+    /// source-26 row at all, so no id mapping could rescue it. Epic reaches IGDB
+    /// through the cross-store hop instead — see
+    /// <c>Hoard.Enrich.GamesDb</c>. This id stays configured so the attempt is
+    /// one line if IGDB's Epic coverage ever changes shape, not because it
+    /// currently resolves anything.</para>
+    /// </summary>
+    public int EpicExternalGameSourceId { get; set; } = 26;
+
+    /// <summary>
+    /// The <c>external_game_source</c> id to query for one
+    /// <c>ExternalIdProviders</c> value, or null when that provider's ids are
+    /// not something IGDB indexes.
+    ///
+    /// <para>Null is a real answer and callers must treat it as "do not ask",
+    /// never as "ask with zero" — a wrong source id returns an empty page, and
+    /// an empty page from a source that was asked wrongly is indistinguishable
+    /// from a game IGDB has never heard of once it reaches the cache.</para>
+    /// </summary>
+    public int? ExternalGameSourceIdFor(string provider) => provider switch
+    {
+        Core.Domain.ExternalIdProviders.Steam => SteamExternalGameSourceId,
+        Core.Domain.ExternalIdProviders.Gog => GogExternalGameSourceId,
+        _ => null,
+    };
 }

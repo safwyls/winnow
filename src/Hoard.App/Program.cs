@@ -1,4 +1,4 @@
-using Avalonia;
+﻿using Avalonia;
 using Avalonia.Threading;
 using Hoard.App.Services;
 using Hoard.App.ViewModels;
@@ -9,6 +9,7 @@ using Hoard.Covers;
 using Hoard.Covers.Igdb;
 using Hoard.Data;
 using Hoard.Data.Repositories;
+using Hoard.Enrich.GamesDb;
 using Hoard.Enrich.Igdb;
 using Hoard.Enrich.Steam;
 using Hoard.Enrich.SteamWeb;
@@ -330,6 +331,13 @@ public static class Program
         // neither may block a user-facing path (§5.1, pitfall 3).
         services.AddIgdbEnrichment();
         services.AddSteamStoreEnrichment();
+
+        // The cross-store identity graph (ROADMAP §6). Keyless and unauthenticated,
+        // and the ONLY route an Epic title has to IGDB: IGDB indexes Epic store
+        // offer ids, the launcher writes catalog item ids, and the two never
+        // match. Everything it answers is cached for 90 days.
+        services.AddGamesDbIdentityGraph();
+        services.AddSingleton<EnrichmentLookupPlanner>();
 
         // §4.2. A second INGEST source, not a name fallback: localconfig.vdf
         // only records games that have been played, so the never-launched

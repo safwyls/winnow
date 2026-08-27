@@ -56,14 +56,25 @@ public sealed record IgdbGame(
 }
 
 /// <summary>
-/// The result of the <c>external_games</c> hard join: one Steam appid bound to
-/// one IGDB game, with the display fields the same request already returned.
+/// The result of the <c>external_games</c> hard join: one store id bound to one
+/// IGDB game, with the display fields the same request already returned.
 ///
 /// <para>§5.3 treats this as a hard join — it is an identifier match published
 /// by IGDB itself, not a name similarity, so Resolve may auto-merge on it.</para>
+///
+/// <para><b>Was <c>IgdbSteamMatch</c>, with a <c>SteamAppId</c>.</b> The name
+/// was accurate and that was the problem: the type described a query that could
+/// only ever be asked about Steam, and it sat at the end of a chain — one
+/// provider in the repository query, one source id in the Apicalypse builder —
+/// that left every Epic and GOG row in the library with no metadata at all. The
+/// <c>uid</c> here is whatever id the <c>external_game_source</c> it was fetched
+/// under indexes: a Steam appid under source 1, a GOG product id under source 5.
+/// Which source produced it is the caller's context, not a field, because a
+/// match is only ever handed back to the batch that asked for it.</para>
 /// </summary>
-public sealed record IgdbSteamMatch(
-    string SteamAppId,
+/// <param name="Uid">The store id IGDB published this row against.</param>
+public sealed record IgdbExternalMatch(
+    string Uid,
     long IgdbId,
     string? Name,
     string? CoverUrl,

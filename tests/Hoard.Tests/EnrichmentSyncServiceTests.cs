@@ -1,7 +1,10 @@
 using Hoard.App.Services;
 using Hoard.Core.Domain;
+using Hoard.Core.Ingest;
 using Hoard.Core.Repositories;
 using Hoard.Data.Repositories;
+using Hoard.Enrich.GamesDb;
+using Hoard.Enrich.GamesDb.Model;
 using Hoard.Enrich.Igdb;
 using Hoard.Enrich.Igdb.Model;
 using Hoard.Enrich.Steam;
@@ -238,7 +241,7 @@ public sealed class EnrichmentSyncServiceTests
         var seeded = await fixture.AddProvisionalAsync("620");
 
         fixture.Igdb.Configured = true;
-        fixture.Igdb.Matches["620"] = new IgdbSteamMatch(
+        fixture.Igdb.Matches["620"] = new IgdbExternalMatch(
             "620", 7346, "Portal 2", "https://images.igdb.com/cover.jpg", 2011, "Still alive.");
         fixture.Igdb.Games[7346] = Game(7346, "Portal 2", publishers: ["Valve"]);
 
@@ -269,7 +272,7 @@ public sealed class EnrichmentSyncServiceTests
         var seeded = await fixture.AddProvisionalAsync("620");
 
         fixture.Igdb.Configured = true;
-        fixture.Igdb.Matches["620"] = new IgdbSteamMatch("620", 7346, "Portal 2", null, 2011, null);
+        fixture.Igdb.Matches["620"] = new IgdbExternalMatch("620", 7346, "Portal 2", null, 2011, null);
         fixture.Igdb.Games[7346] = Game(7346, "Portal 2", publishers: ["Valve"]);
 
         await fixture.Service.EnrichAsync();
@@ -292,8 +295,8 @@ public sealed class EnrichmentSyncServiceTests
         var second = await fixture.AddProvisionalAsync("621");
 
         fixture.Igdb.Configured = true;
-        fixture.Igdb.Matches["620"] = new IgdbSteamMatch("620", 7346, "Skyrim", null, 2011, null);
-        fixture.Igdb.Matches["621"] = new IgdbSteamMatch("621", 7347, "Skyrim", null, 2011, null);
+        fixture.Igdb.Matches["620"] = new IgdbExternalMatch("620", 7346, "Skyrim", null, 2011, null);
+        fixture.Igdb.Matches["621"] = new IgdbExternalMatch("621", 7347, "Skyrim", null, 2011, null);
         fixture.Igdb.Games[7346] = Game(7346, "Skyrim", publishers: ["ZeniMax Media", "Bethesda Softworks"]);
         fixture.Igdb.Games[7347] = Game(7347, "Skyrim", publishers: ["Bethesda Softworks", "ZeniMax Media"]);
 
@@ -323,7 +326,7 @@ public sealed class EnrichmentSyncServiceTests
 
         // IGDB knows this appid but has no date, no summary and no cover for it.
         fixture.Igdb.Configured = true;
-        fixture.Igdb.Matches["620"] = new IgdbSteamMatch("620", 7346, "Portal 2", null, null, null);
+        fixture.Igdb.Matches["620"] = new IgdbExternalMatch("620", 7346, "Portal 2", null, null, null);
         fixture.Igdb.Games[7346] = Game(7346, "Portal 2", publishers: ["Valve"]);
 
         await fixture.Service.EnrichAsync();
@@ -346,7 +349,7 @@ public sealed class EnrichmentSyncServiceTests
         var seeded = await fixture.AddProvisionalAsync("620");
 
         fixture.Igdb.Configured = true;
-        fixture.Igdb.Matches["620"] = new IgdbSteamMatch("620", 7346, "Portal 2", "   ", 2011, "  ");
+        fixture.Igdb.Matches["620"] = new IgdbExternalMatch("620", 7346, "Portal 2", "   ", 2011, "  ");
         fixture.Igdb.Games[7346] = Game(7346, "Portal 2", publishers: ["   "]);
 
         await fixture.Service.EnrichAsync();
@@ -372,7 +375,7 @@ public sealed class EnrichmentSyncServiceTests
         var seeded = await fixture.AddNamedAsync("620", "Portal 2");
 
         fixture.Igdb.Configured = true;
-        fixture.Igdb.Matches["620"] = new IgdbSteamMatch(
+        fixture.Igdb.Matches["620"] = new IgdbExternalMatch(
             "620", 7346, "Portal 2 (IGDB spelling)", "https://images.igdb.com/cover.jpg", 2011, "Still alive.");
         fixture.Igdb.Games[7346] = Game(7346, "Portal 2", publishers: ["Valve"]);
 
@@ -431,7 +434,7 @@ public sealed class EnrichmentSyncServiceTests
         await fixture.AddProvisionalAsync("620");
 
         fixture.Igdb.Configured = true;
-        fixture.Igdb.Matches["620"] = new IgdbSteamMatch(
+        fixture.Igdb.Matches["620"] = new IgdbExternalMatch(
             "620", 7346, "Portal 2", "https://images.igdb.com/cover.jpg", 2011, "Still alive.");
         fixture.Igdb.Games[7346] = Game(7346, "Portal 2", publishers: ["Valve"]);
 
@@ -480,8 +483,8 @@ public sealed class EnrichmentSyncServiceTests
         var second = await fixture.AddProvisionalAsync("63501");
 
         fixture.Igdb.Configured = true;
-        fixture.Igdb.Matches["63500"] = new IgdbSteamMatch("63500", 4123, "Riven", null, 1997, "Myst II.");
-        fixture.Igdb.Matches["63501"] = new IgdbSteamMatch("63501", 4123, "Riven", null, 1997, "Myst II.");
+        fixture.Igdb.Matches["63500"] = new IgdbExternalMatch("63500", 4123, "Riven", null, 1997, "Myst II.");
+        fixture.Igdb.Matches["63501"] = new IgdbExternalMatch("63501", 4123, "Riven", null, 1997, "Myst II.");
         fixture.Igdb.Games[4123] = Game(4123, "Riven", publishers: ["Brøderbund"]);
 
         await fixture.Service.EnrichAsync();
@@ -736,6 +739,316 @@ public sealed class EnrichmentSyncServiceTests
         Assert.Equal("Demo", work.SteamAppType);
     }
 
+    // -- Every store, not just Steam ------------------------------------------
+
+    /// <summary>
+    /// The bug, stated as a test. Enrichment asked the repository for
+    /// <c>steam</c> targets and asked IGDB with Steam's source id, both
+    /// hardcoded, so a GOG or Epic release was never in a result set at all --
+    /// measured on the author's real library as 67 Epic and 14 GOG works with
+    /// zero igdb_id, zero covers, zero years and zero summaries between them.
+    /// </summary>
+    [Fact]
+    public async Task A_gog_release_is_asked_about_at_all()
+    {
+        using var fixture = new EnrichmentFixture();
+        await fixture.AddAsync(
+            ExternalIdProviders.Gog, "1207658695", new Work { Name = "Beneath a Steel Sky" });
+
+        fixture.Igdb.Configured = true;
+
+        await fixture.Service.EnrichAsync();
+
+        // Source 5, with the bare GOG product id. IGDB stores it verbatim, so
+        // there is nothing to transform -- the id we hold IS the id it indexes.
+        Assert.Contains((5, "1207658695"), fixture.Igdb.AskedExternal);
+    }
+
+    /// <summary>
+    /// The GOG route end to end: source 5 answers and the metadata columns the
+    /// tile and 5.3's soft matcher both read are filled.
+    /// </summary>
+    [Fact]
+    public async Task A_gog_release_gets_its_metadata_from_source_5()
+    {
+        using var fixture = new EnrichmentFixture();
+        var seeded = await fixture.AddAsync(
+            ExternalIdProviders.Gog, "1207658695", new Work { Name = "Beneath a Steel Sky" });
+
+        fixture.Igdb.Configured = true;
+        fixture.Igdb.External[(5, "1207658695")] = new IgdbExternalMatch(
+            "1207658695", 612, "Beneath a Steel Sky", "https://img/co1.jpg", 1994, "Cyberpunk point-and-click.");
+        fixture.Igdb.Games[612] = Game(612, "Beneath a Steel Sky", ["Revolution Software"]);
+
+        await fixture.Service.EnrichAsync();
+
+        var work = await fixture.WorkAsync(seeded.WorkId);
+        Assert.Equal(612, work.IgdbId);
+        Assert.Equal(1994, work.FirstReleaseYear);
+        Assert.Equal("https://img/co1.jpg", work.CoverUrl);
+        Assert.Equal("Revolution Software", work.Publisher);
+        Assert.NotNull(work.Summary);
+    }
+
+    /// <summary>
+    /// The Epic route: catalog item id to AppName (from the launcher's own
+    /// files) to gamesdb to a Steam appid to IGDB source 1. Every hop an exact
+    /// identifier; no title is normalised anywhere, which is what keeps this
+    /// inside 5.3 layer 1 rather than in the fuzzy matcher.
+    /// </summary>
+    [Fact]
+    public async Task An_epic_release_is_bridged_to_a_steam_appid_and_enriched()
+    {
+        using var fixture = new EnrichmentFixture();
+        var seeded = await fixture.AddAsync(
+            ExternalIdProviders.Epic, "7a70b499513441c792b541d53505e0b2", new Work { Name = "Fez" });
+
+        fixture.Aliases.Epic["7a70b499513441c792b541d53505e0b2"] = "Bluebird";
+        fixture.Identity.Add("epic", "Bluebird", "51152861476431582", ("steam", "224760"));
+
+        fixture.Igdb.Configured = true;
+        fixture.Igdb.Matches["224760"] = new IgdbExternalMatch(
+            "224760", 1991, "Fez", "https://img/cofez.jpg", 2012, "A 2D creature in a 3D world.");
+
+        await fixture.Service.EnrichAsync();
+
+        Assert.Equal(("epic", "Bluebird"), fixture.Identity.Asked.Single());
+
+        var work = await fixture.WorkAsync(seeded.WorkId);
+        Assert.Equal(1991, work.IgdbId);
+        Assert.Equal(2012, work.FirstReleaseYear);
+        Assert.Equal("https://img/cofez.jpg", work.CoverUrl);
+    }
+
+    /// <summary>
+    /// gamesdb is crowd-shaped and carries junk -- Fez lists both
+    /// <c>steam/224760</c> and <c>steam/steam_224760</c>. Taking the graph's
+    /// first answer would send a malformed id to IGDB, miss, and leave the title
+    /// blank for no visible reason.
+    /// </summary>
+    [Fact]
+    public async Task A_malformed_id_in_the_graph_is_skipped_for_the_well_formed_one()
+    {
+        using var fixture = new EnrichmentFixture();
+        await fixture.AddAsync(ExternalIdProviders.Epic, "cat-1", new Work { Name = "Fez" });
+
+        fixture.Aliases.Epic["cat-1"] = "Bluebird";
+        fixture.Identity.Add(
+            "epic", "Bluebird", "51152861476431582", ("steam", "steam_224760"), ("steam", "224760"));
+
+        fixture.Igdb.Configured = true;
+
+        await fixture.Service.EnrichAsync();
+
+        Assert.Contains("224760", fixture.Igdb.Asked);
+        Assert.DoesNotContain("steam_224760", fixture.Igdb.Asked);
+    }
+
+    /// <summary>
+    /// An Epic title with no cross-store twin -- Fortnite, Genshin Impact and
+    /// Dauntless on the author's library. The route ends, and the row is left
+    /// exactly as it was found.
+    /// </summary>
+    [Fact]
+    public async Task An_epic_exclusive_with_no_twin_is_left_untouched()
+    {
+        using var fixture = new EnrichmentFixture();
+        var seeded = await fixture.AddAsync(ExternalIdProviders.Epic, "cat-2", new Work { Name = "Fortnite" });
+
+        fixture.Aliases.Epic["cat-2"] = "Fortnite";
+        fixture.Identity.Add("epic", "Fortnite", "51152861476431999");
+        fixture.Igdb.Configured = true;
+
+        await fixture.Service.EnrichAsync();
+
+        var work = await fixture.WorkAsync(seeded.WorkId);
+        Assert.Equal("Fortnite", work.Name);
+        Assert.Null(work.IgdbId);
+        Assert.Null(work.CoverUrl);
+        Assert.Null(work.Summary);
+    }
+
+    /// <summary>
+    /// <b>The rule this codebase has already paid for twice.</b> No Epic
+    /// launcher on this machine means no alias map, which says nothing whatever
+    /// about the library -- and must not be written down as though it did.
+    /// </summary>
+    [Fact]
+    public async Task No_alias_source_leaves_epic_rows_exactly_as_they_were()
+    {
+        using var fixture = new EnrichmentFixture();
+        var seeded = await fixture.AddAsync(
+            ExternalIdProviders.Epic,
+            "cat-3",
+            new Work
+            {
+                Name = "ABZU",
+                FirstReleaseYear = 2016,
+                CoverUrl = "https://img/existing.jpg",
+                Summary = "Already known.",
+            });
+
+        // Aliases empty: the launcher is not installed.
+        fixture.Igdb.Configured = true;
+
+        await fixture.Service.EnrichAsync();
+
+        Assert.Empty(fixture.Identity.Asked);
+
+        var work = await fixture.WorkAsync(seeded.WorkId);
+        Assert.Equal("ABZU", work.Name);
+        Assert.Equal(2016, work.FirstReleaseYear);
+        Assert.Equal("https://img/existing.jpg", work.CoverUrl);
+        Assert.Equal("Already known.", work.Summary);
+    }
+
+    /// <summary>
+    /// Same rule one hop further out: the alias exists, gamesdb is unreachable,
+    /// and silence is still not an answer.
+    /// </summary>
+    [Fact]
+    public async Task An_unreachable_identity_graph_writes_nothing()
+    {
+        using var fixture = new EnrichmentFixture();
+        var seeded = await fixture.AddAsync(
+            ExternalIdProviders.Epic,
+            "cat-4",
+            new Work { Name = "ABZU", CoverUrl = "https://img/existing.jpg" });
+
+        fixture.Aliases.Epic["cat-4"] = "Buccaneer";
+        fixture.Identity.Throw = new HttpRequestException("gamesdb is down");
+        fixture.Igdb.Configured = true;
+
+        var report = await fixture.Service.EnrichAsync();
+
+        Assert.Equal(0, report.Promoted);
+        Assert.Equal("https://img/existing.jpg", (await fixture.WorkAsync(seeded.WorkId)).CoverUrl);
+    }
+
+    /// <summary>
+    /// An alias source that throws -- an unreadable %PROGRAMDATA%, a launcher
+    /// mid-upgrade -- degrades the run, it does not fail it (5.1).
+    /// </summary>
+    [Fact]
+    public async Task An_alias_source_that_throws_does_not_break_the_pass()
+    {
+        using var fixture = new EnrichmentFixture();
+        var steam = await fixture.AddProvisionalAsync("620");
+        await fixture.AddAsync(ExternalIdProviders.Epic, "cat-5", new Work { Name = "ABZU" });
+
+        fixture.Aliases.Throw = new UnauthorizedAccessException("ProgramData");
+        fixture.Igdb.Configured = true;
+        fixture.Igdb.Names["620"] = "Portal 2";
+
+        await fixture.Service.EnrichAsync();
+
+        // The Steam half of the library finished normally.
+        Assert.Equal("Portal 2", await fixture.WorkNameAsync(steam.WorkId));
+    }
+
+    /// <summary>
+    /// The two keyless Steam endpoints take APPIDS. A GOG product id is numeric
+    /// and would be accepted as one, answering confidently about an unrelated
+    /// game -- the failure mode worse than answering about none.
+    /// </summary>
+    [Fact]
+    public async Task Steam_only_endpoints_are_never_asked_about_a_gog_id()
+    {
+        using var fixture = new EnrichmentFixture();
+        await fixture.AddAsync(
+            ExternalIdProviders.Gog, "1", new Work { Name = "App 1", NameIsProvisional = true });
+
+        fixture.Igdb.Configured = false;
+        fixture.Steam.Names["1"] = "Half-Life 2: Lost Coast";
+        fixture.SteamCmd.Add("1", "Something Else Entirely", "Game");
+
+        var report = await fixture.Service.EnrichAsync();
+
+        Assert.Empty(fixture.Steam.Asked);
+        Assert.Empty(fixture.SteamCmd.Asked);
+        Assert.Equal(0, report.Promoted);
+    }
+
+    /// <summary>
+    /// Valve's <c>common.type</c> is Steam's own classification, keyed by appid.
+    /// A GOG work must not inherit it just because its product id happens to
+    /// look like one.
+    /// </summary>
+    [Fact]
+    public async Task A_gog_work_never_inherits_a_steam_app_type()
+    {
+        using var fixture = new EnrichmentFixture();
+        var steam = await fixture.AddNamedAsync("2000", "Portal 2 Demo");
+        var gog = await fixture.AddAsync(
+            ExternalIdProviders.Gog, "2000", new Work { Name = "Beta Colony" });
+
+        fixture.SteamCmd.Add("2000", "Portal 2 Demo", "Demo");
+        fixture.Igdb.Configured = false;
+
+        await fixture.Service.EnrichAsync();
+
+        Assert.Equal("Demo", (await fixture.WorkAsync(steam.WorkId)).SteamAppType);
+        Assert.Null((await fixture.WorkAsync(gog.WorkId)).SteamAppType);
+    }
+
+    /// <summary>
+    /// Epic ids are never sent to IGDB's source 26. Measured twice -- once in
+    /// the spike, once while fixing this -- at 0 matches out of 67 owned titles,
+    /// because IGDB indexes Epic store <i>offer</i> ids and the launcher writes
+    /// <i>catalog item</i> ids. Asking anyway would spend the rate limit to
+    /// cache 67 misses for a month.
+    /// </summary>
+    [Fact]
+    public async Task An_epic_catalog_item_id_is_never_sent_to_igdb_directly()
+    {
+        using var fixture = new EnrichmentFixture();
+        await fixture.AddAsync(ExternalIdProviders.Epic, "1e4e7275844844", new Work { Name = "ABZU" });
+
+        fixture.Aliases.Epic["1e4e7275844844"] = "Buccaneer";
+        fixture.Identity.Add("epic", "Buccaneer", "51152861476431777");
+        fixture.Igdb.Configured = true;
+
+        await fixture.Service.EnrichAsync();
+
+        Assert.DoesNotContain(fixture.Igdb.AskedExternal, a => a.Uid == "1e4e7275844844");
+        Assert.DoesNotContain(fixture.Igdb.AskedExternal, a => a.Source == 26);
+    }
+
+    /// <summary>
+    /// Two rows for one game -- the cross-store duplicate the merge queue is
+    /// full of. <c>works.igdb_id</c> is UNIQUE, so only one of them may hold it;
+    /// the other must still get its year, summary and cover, or the Epic half of
+    /// every pair stays blank forever.
+    /// </summary>
+    [Fact]
+    public async Task A_duplicate_that_cannot_claim_the_igdb_id_still_gets_its_metadata()
+    {
+        using var fixture = new EnrichmentFixture();
+        var steam = await fixture.AddNamedAsync("224760", "Fez");
+        var epic = await fixture.AddAsync(ExternalIdProviders.Epic, "cat-6", new Work { Name = "Fez" });
+
+        fixture.Aliases.Epic["cat-6"] = "Bluebird";
+        fixture.Identity.Add("epic", "Bluebird", "51152861476431582", ("steam", "224760"));
+
+        fixture.Igdb.Configured = true;
+        fixture.Igdb.Matches["224760"] = new IgdbExternalMatch(
+            "224760", 1991, "Fez", "https://img/cofez.jpg", 2012, "A 2D creature in a 3D world.");
+
+        await fixture.Service.EnrichAsync();
+
+        var steamWork = await fixture.WorkAsync(steam.WorkId);
+        var epicWork = await fixture.WorkAsync(epic.WorkId);
+
+        Assert.Equal(1991, steamWork.IgdbId);
+
+        // Identity refused -- re-pointing it is a merge, and merges need a human
+        // (5.3). Metadata written all the same: this is what puts art on the
+        // Epic tile of a pair whose Steam side already claimed the id.
+        Assert.Null(epicWork.IgdbId);
+        Assert.Equal("https://img/cofez.jpg", epicWork.CoverUrl);
+        Assert.Equal(2012, epicWork.FirstReleaseYear);
+    }
+
     // ── Fixture ──────────────────────────────────────────────────────────────
 
     private static IgdbGame Game(long id, string name, IReadOnlyList<string> publishers)
@@ -752,10 +1065,27 @@ public sealed class EnrichmentSyncServiceTests
             Works = new WorkRepository(_db.Factory);
             Releases = new ReleaseRepository(_db.Factory);
 
+            Planner = new EnrichmentLookupPlanner(
+                IgdbOptions,
+                [Aliases],
+                Identity,
+                NullLogger<EnrichmentLookupPlanner>.Instance);
+
             Service = new EnrichmentSyncService(
-                Works, Releases, Igdb, Steam, SteamCmd, _db.Factory,
+                Works, Releases, Igdb, Steam, SteamCmd, Planner, _db.Factory,
                 NullLogger<EnrichmentSyncService>.Instance);
         }
+
+        /// <summary>The source-id table. Defaults are the live IGDB values: Steam 1, GOG 5, Epic 26.</summary>
+        public IgdbOptions IgdbOptions { get; } = new();
+
+        /// <summary>Epic's catalogItemId → AppName map, as the launcher's local files would supply it.</summary>
+        public FakeAliasSource Aliases { get; } = new();
+
+        /// <summary>gamesdb's cross-store graph.</summary>
+        public FakeIdentityGraph Identity { get; } = new();
+
+        public EnrichmentLookupPlanner Planner { get; }
 
         public IWorkRepository Works { get; }
 
@@ -791,7 +1121,10 @@ public sealed class EnrichmentSyncServiceTests
             return work;
         }
 
-        public async Task<Seeded> AddAsync(string appId, Work work)
+        public Task<Seeded> AddAsync(string appId, Work work)
+            => AddAsync(ExternalIdProviders.Steam, appId, work);
+
+        public async Task<Seeded> AddAsync(string provider, string providerId, Work work)
         {
             var name = work.Name;
             var workId = await Works.InsertAsync(work);
@@ -799,8 +1132,8 @@ public sealed class EnrichmentSyncServiceTests
             await Releases.AddExternalIdAsync(new ExternalId
             {
                 ReleaseId = releaseId,
-                Provider = ExternalIdProviders.Steam,
-                ProviderId = appId,
+                Provider = provider,
+                ProviderId = providerId,
             });
 
             return new Seeded(workId, releaseId);
@@ -825,7 +1158,7 @@ public sealed class EnrichmentSyncServiceTests
         public Dictionary<string, string> Names { get; } = new(StringComparer.Ordinal);
 
         /// <summary>Full <c>external_games</c> answers, when a test cares about the metadata.</summary>
-        public Dictionary<string, IgdbSteamMatch> Matches { get; } = new(StringComparer.Ordinal);
+        public Dictionary<string, IgdbExternalMatch> Matches { get; } = new(StringComparer.Ordinal);
 
         /// <summary>The second call: <c>/games</c>, the only source of the publisher.</summary>
         public Dictionary<long, IgdbGame> Games { get; } = [];
@@ -837,7 +1170,7 @@ public sealed class EnrichmentSyncServiceTests
         public ValueTask<bool> IsConfiguredAsync(CancellationToken ct = default)
             => ValueTask.FromResult(Configured);
 
-        public Task<IReadOnlyDictionary<string, IgdbSteamMatch>> ResolveBySteamAppIdsAsync(
+        public Task<IReadOnlyDictionary<string, IgdbExternalMatch>> ResolveBySteamAppIdsAsync(
             IEnumerable<string> appIds, TimeSpan? cacheTtl = null, CancellationToken ct = default)
         {
             var requested = appIds.ToArray();
@@ -848,7 +1181,7 @@ public sealed class EnrichmentSyncServiceTests
                 throw Throw;
             }
 
-            var matched = new Dictionary<string, IgdbSteamMatch>(StringComparer.Ordinal);
+            var matched = new Dictionary<string, IgdbExternalMatch>(StringComparer.Ordinal);
             foreach (var appId in requested)
             {
                 if (Matches.TryGetValue(appId, out var match))
@@ -857,11 +1190,57 @@ public sealed class EnrichmentSyncServiceTests
                 }
                 else if (Names.TryGetValue(appId, out var name))
                 {
-                    matched[appId] = new IgdbSteamMatch(appId, 1, name, null, null, null);
+                    matched[appId] = new IgdbExternalMatch(appId, 1, name, null, null, null);
                 }
             }
 
-            return Task.FromResult<IReadOnlyDictionary<string, IgdbSteamMatch>>(matched);
+            return Task.FromResult<IReadOnlyDictionary<string, IgdbExternalMatch>>(matched);
+        }
+
+        /// <summary>
+        /// Answers keyed by (external_game_source, uid) — GOG's source 5 and
+        /// anything else that is not Steam. Kept apart from <see cref="Matches"/>
+        /// on purpose: a uid is only unique within its source, and a fake that
+        /// merged them would make a test pass that a real cache-key collision
+        /// would fail.
+        /// </summary>
+        public Dictionary<(int Source, string Uid), IgdbExternalMatch> External { get; } = [];
+
+        /// <summary>Every (source, uid) pair asked for, in order.</summary>
+        public List<(int Source, string Uid)> AskedExternal { get; } = [];
+
+        public Task<IReadOnlyDictionary<string, IgdbExternalMatch>> ResolveByExternalIdsAsync(
+            int externalGameSourceId,
+            IEnumerable<string> uids,
+            TimeSpan? cacheTtl = null,
+            CancellationToken ct = default)
+        {
+            var requested = uids.ToArray();
+            foreach (var uid in requested)
+            {
+                AskedExternal.Add((externalGameSourceId, uid));
+            }
+
+            if (externalGameSourceId == 1)
+            {
+                return ResolveBySteamAppIdsAsync(requested, cacheTtl, ct);
+            }
+
+            if (Throw is not null)
+            {
+                throw Throw;
+            }
+
+            var matched = new Dictionary<string, IgdbExternalMatch>(StringComparer.Ordinal);
+            foreach (var uid in requested)
+            {
+                if (External.TryGetValue((externalGameSourceId, uid), out var match))
+                {
+                    matched[uid] = match;
+                }
+            }
+
+            return Task.FromResult<IReadOnlyDictionary<string, IgdbExternalMatch>>(matched);
         }
 
         public Task<IReadOnlyList<IgdbGame>> GetGamesAsync(
@@ -978,6 +1357,71 @@ public sealed class EnrichmentSyncServiceTests
                 // The restricted shape: the service answered and was not allowed
                 // to say. Not a failure, and not a name.
                 : AppInfoFetch.NoData);
+        }
+    }
+
+    /// <summary>
+    /// Epic's <c>catalogItemId → AppName</c> map, as the launcher's local files
+    /// would supply it. Empty is the normal state of a machine with no Epic
+    /// launcher, and these tests pin that it means "cannot say" rather than
+    /// "these titles have no alias".
+    /// </summary>
+    private sealed class FakeAliasSource : IStoreArtifactAliasSource
+    {
+        public Dictionary<string, string> Epic { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>Thrown from every call, the way an unreadable ProgramData would.</summary>
+        public Exception? Throw { get; set; }
+
+        public ValueTask<IReadOnlyDictionary<string, string>> GetAliasesAsync(
+            string provider, CancellationToken ct = default)
+        {
+            if (Throw is not null)
+            {
+                throw Throw;
+            }
+
+            return ValueTask.FromResult<IReadOnlyDictionary<string, string>>(
+                provider == ExternalIdProviders.Epic
+                    ? Epic
+                    : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase));
+        }
+    }
+
+    /// <summary>
+    /// gamesdb's cross-store graph. Answers only about pairs a test taught it,
+    /// and distinguishes the two outcomes that matter: null (no release under
+    /// that id, or the service could not be reached) from a game with no
+    /// release on the platform being asked for.
+    /// </summary>
+    private sealed class FakeIdentityGraph : IGameIdentityGraph
+    {
+        private readonly Dictionary<(string Platform, string Id), GamesDbGame> _games = [];
+
+        /// <summary>Every lookup made, in order.</summary>
+        public List<(string Platform, string Id)> Asked { get; } = [];
+
+        /// <summary>Thrown from every call, the way an unhandled transport failure would.</summary>
+        public Exception? Throw { get; set; }
+
+        public void Add(string platform, string externalId, string gameId, params (string, string)[] releases)
+            => _games[(platform, externalId)] = new GamesDbGame(
+                platform,
+                externalId,
+                gameId,
+                releases.Select(r => new GamesDbRelease(r.Item1, r.Item2)).ToArray());
+
+        public Task<GamesDbGame?> ResolveAsync(
+            string platform, string externalId, CancellationToken ct = default)
+        {
+            Asked.Add((platform, externalId));
+
+            if (Throw is not null)
+            {
+                throw Throw;
+            }
+
+            return Task.FromResult(_games.GetValueOrDefault((platform, externalId)));
         }
     }
 }

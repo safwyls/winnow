@@ -23,10 +23,12 @@ public static class Apicalypse
     /// <summary>
     /// Rejects values that would break out of a quoted Apicalypse string.
     ///
-    /// <para>Steam appids are numeric, so in practice nothing is ever rejected —
-    /// but these ids arrive from parsed VDF files on disk, and a query language
-    /// assembled by string concatenation gets a validator on principle rather
-    /// than on evidence.</para>
+    /// <para>Every id that reaches here is numeric today — Steam appids and GOG
+    /// product ids both — so in practice nothing is ever rejected. But these ids
+    /// arrive from parsed VDF files, a base64 blob and an SQLite database
+    /// written by three different launchers, and a query language assembled by
+    /// string concatenation gets a validator on principle rather than on
+    /// evidence.</para>
     /// </summary>
     public static bool IsSafeStringValue(string value)
         => !string.IsNullOrWhiteSpace(value)
@@ -62,7 +64,7 @@ public static class Apicalypse
         => "(" + string.Join(",", values.Select(v => v.ToString(CultureInfo.InvariantCulture))) + ")";
 
     /// <summary>
-    /// The <c>external_games</c> query: the high-precision Steam appid → IGDB id
+    /// The <c>external_games</c> query: the high-precision store id → IGDB id
     /// join described in §4.4 as "the backbone of entity resolution".
     ///
     /// <para>Filters on <c>external_game_source</c>. The older
@@ -70,14 +72,24 @@ public static class Apicalypse
     /// Steam but is marked deprecated in the current IGDB docs, so the new field
     /// is the one queried.</para>
     ///
+    /// <para><b><paramref name="sourceId"/> is a parameter, not the constant 1.</b>
+    /// IGDB enumerates Steam as 1, GOG as 5 and the Epic Games Store as 26
+    /// (<c>GET /v4/external_game_sources</c>, re-verified live against the
+    /// project's credentials). This query was hardcoded to Steam's id and the
+    /// call site was hardcoded to Steam's provider, so a GOG product id — which
+    /// IGDB stores verbatim under source 5, byte-identical to the
+    /// <c>gog_&lt;id&gt;</c> releaseKey suffix — was never once asked about.
+    /// See <c>docs/spikes/epic-gog-local-files.md</c> section 19 for the
+    /// per-source coverage measurements.</para>
+    ///
     /// <para>Expands <c>game.*</c> selectively so one request yields the id
     /// <i>and</i> the display fields Resolve needs, instead of a second round
     /// trip against <c>/games</c>.</para>
     /// </summary>
-    public static string SteamExternalGames(IEnumerable<string> appIds, int steamSourceId, int limit, int offset)
+    public static string ExternalGames(IEnumerable<string> uids, int sourceId, int limit, int offset)
         => $"""
             fields uid,game,game.name,game.summary,game.first_release_date,game.cover.image_id,game.cover.url;
-            where external_game_source = {steamSourceId.ToString(CultureInfo.InvariantCulture)} & uid = {StringList(appIds)};
+            where external_game_source = {sourceId.ToString(CultureInfo.InvariantCulture)} & uid = {StringList(uids)};
             limit {Clamp(limit).ToString(CultureInfo.InvariantCulture)};
             offset {offset.ToString(CultureInfo.InvariantCulture)};
             """;
