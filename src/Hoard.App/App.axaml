@@ -5,6 +5,11 @@
 
     <Application.Styles>
         <FluentTheme />
+        <!-- Shared components: the composites drawn by more than one screen.
+             Every reference inside it is DynamicResource, because this include
+             is parsed before Application.Resources below is populated — see the
+             file's own header. -->
+        <StyleInclude Source="avares://Hoard/Themes/controls.axaml"/>
     </Application.Styles>
 
     <Application.Resources>

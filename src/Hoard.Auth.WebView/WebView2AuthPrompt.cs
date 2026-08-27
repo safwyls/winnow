@@ -1,8 +1,8 @@
 using System.Text.Json;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Layout;
-using Avalonia.Media;
 using Avalonia.Threading;
 using Hoard.Core.Auth;
 using Microsoft.Extensions.Logging;
@@ -384,6 +384,14 @@ public sealed class WebView2AuthPrompt : IInteractiveAuthPrompt
             // user has to read. Swapping the content sidesteps it entirely, and
             // has the useful side effect that the browser is not even created
             // until consent is given.
+            //
+            // The window was sized to the NOTICE, which is a fraction of the
+            // browser's height; it is grown here, on the same line's worth of
+            // work as the swap, so that the consent screen is never drawn into
+            // a window sized for something else. Presentation only — nothing
+            // below this point changes, and the browser is still created by the
+            // very next statement.
+            PrepareForBrowser(window);
             window.Content = host;
 
             CoreWebView2Controller controller;
@@ -801,52 +809,300 @@ public sealed class WebView2AuthPrompt : IInteractiveAuthPrompt
     }
 
     /// <summary>
+    /// The reading measure for the notice, and the window width that follows
+    /// from it.
+    ///
+    /// <para>720 is <c>design-system.md</c> §13 gap 5's provisional answer — the
+    /// system has no reading-measure rule, the Stores panel needed one first and
+    /// settled on 12/18 capped at 720px, and that gap exists precisely so the
+    /// next prose surface does not invent a competing number. This is the next
+    /// prose surface.</para>
+    /// </summary>
+    private const double NoticeMeasure = 720;
+
+    /// <summary>Measure plus §4's 32px gutter on each side.</summary>
+    private const double ConsentWidth = NoticeMeasure + 64;
+
+    /// <summary>
+    /// A ceiling, not a size. The notice fits well inside it, and past it the
+    /// prose scrolls under a docked action strip rather than pushing the buttons
+    /// off a short screen.
+    /// </summary>
+    private const double ConsentMaxHeight = 760;
+
+    private const double BrowserWidth = 1024;
+    private const double BrowserHeight = 820;
+
+    /// <summary>
     /// The window, showing the notice and nothing else until the user accepts.
     ///
-    /// <para>Deliberately plain — no design tokens, no theme, no styling. This is
-    /// the auth machinery; where a sign-in is offered and what it looks like is a
-    /// UI decision made elsewhere.</para>
+    /// <para><b>Appearance comes entirely from class names.</b> This project
+    /// references Avalonia and <c>Hoard.Core</c> and nothing else — no theme, no
+    /// <c>tokens.axaml</c>, no <c>Hoard.App</c> — because that quarantine is what
+    /// keeps WebView2 and its Windows-only code in one leaf project (§5.1).
+    /// Wiring the token dictionary in here would drag the application's theme
+    /// into the auth machinery and point the dependency the wrong way. So the
+    /// window is built out of structure and CLASS NAMES, and whichever
+    /// application is running supplies the paint: the classes used here —
+    /// <c>consent</c>, <c>consent-quote</c>, <c>consent-actions</c>,
+    /// <c>display-l</c>, <c>para</c>, <c>lead</c>, <c>act primary</c>,
+    /// <c>act quiet</c> — are defined in <c>Hoard.App/Themes/controls.axaml</c>
+    /// and <c>tokens.axaml</c>. A host that does not merge those styles gets the
+    /// theme's own defaults, which is legible; nothing here half-paints.</para>
+    ///
+    /// <para><b>Nothing is set as a local value that a style is meant to
+    /// own.</b> A local value outranks a style setter in Avalonia, so a "safe
+    /// fallback" colour written on the control here would silently win over the
+    /// application's own and there would be no way to tell from the running
+    /// window. Layout — margins, spacing, alignment — is the tree's business and
+    /// is set here; ink, type and edges are not.</para>
+    ///
+    /// <para><b>The window keeps the system title bar</b>, unlike
+    /// <c>MainWindow</c>, which draws its own (§9). The browser REPLACES this
+    /// window's content, so a hand-drawn caption would be replaced along with
+    /// it and leave a browser nobody can drag or close. Recorded as a gap rather
+    /// than worked around.</para>
     /// </summary>
     private static Window BuildConsentWindow(AuthPromptRequest request, TaskCompletionSource<bool> consent)
     {
-        var notice = new TextBlock
+        var prose = new StackPanel
         {
-            Text = request.ConsentNotice,
-            TextWrapping = TextWrapping.Wrap,
-
-            // Monospace because the notice quotes the provider's own warning as
-            // an indented block and proportional text mangles the indentation.
-            FontFamily = new FontFamily("Consolas, Menlo, monospace"),
-            Margin = new Thickness(0, 0, 0, 16),
+            Margin = new Thickness(32, 26, 32, 26),
+            MaxWidth = NoticeMeasure,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Spacing = 14,
         };
 
-        var accept = new Button { Content = "Continue to " + request.ProviderName, IsDefault = true };
+        prose.Children.Add(new TextBlock
+        {
+            // The window title, said again where there is room to read it. Not
+            // new copy: §7's rule is that this screen's words were written from
+            // the spike's posture reasoning, and inventing a headline here would
+            // be writing consent copy in the auth machinery.
+            Text = "Sign in to " + request.ProviderName,
+            Classes = { "display-l" },
+            Margin = new Thickness(0, 0, 0, 4),
+        });
+
+        foreach (var element in RenderNotice(request.ConsentNotice))
+        {
+            prose.Children.Add(element);
+        }
+
+        var accept = new Button
+        {
+            Content = "Continue to " + request.ProviderName,
+            Classes = { "act", "primary" },
+            IsDefault = true,
+        };
         accept.Click += (_, _) => consent.TrySetResult(true);
 
-        var cancel = new Button { Content = "Cancel", IsCancel = true };
+        var cancel = new Button
+        {
+            Content = "Cancel",
+            Classes = { "act", "quiet" },
+            IsCancel = true,
+        };
         cancel.Click += (_, _) => consent.TrySetResult(false);
 
         var buttons = new StackPanel
         {
             Orientation = Orientation.Horizontal,
-            Spacing = 8,
+            Spacing = 12,
             HorizontalAlignment = HorizontalAlignment.Right,
         };
+
+        // Cancel is declared first and so is reached first by Tab — Avalonia
+        // walks declaration order (§10.7). Deliberate on a consent screen, and
+        // it is also the order this window already had, so no keyboard
+        // behaviour changes: Enter still fires the default button and Escape
+        // still fires the cancel one.
         buttons.Children.Add(cancel);
         buttons.Children.Add(accept);
 
-        var panel = new StackPanel { Margin = new Thickness(24), Spacing = 0 };
-        panel.Children.Add(notice);
-        panel.Children.Add(buttons);
+        var actions = new Border
+        {
+            Classes = { "consent-actions" },
+            Child = buttons,
+        };
+        DockPanel.SetDock(actions, Dock.Bottom);
+
+        var scroll = new ScrollViewer
+        {
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            Content = prose,
+        };
+
+        // No ScrollBarEdgeInset here, and the reason is §9.1's own: that rule is
+        // about the 8px band Windows hit-tests as HTRIGHT *because the client
+        // area was extended over the decorations*. This window keeps its normal
+        // frame, so the resize border is outside the client area entirely and
+        // the scrollbar is reachable flush to the edge.
+        var root = new DockPanel { Classes = { "consent" }, LastChildFill = true };
+        root.Children.Add(actions);
+        root.Children.Add(scroll);
 
         return new Window
         {
             Title = "Sign in to " + request.ProviderName,
-            Width = 1024,
-            Height = 820,
+            Classes = { "consent" },
+
+            // Sized to the notice, not to the browser that comes later. The
+            // window was 1024x820 for the browser's benefit from the first
+            // frame, which left the consent text hugging the top of a large
+            // empty window — a shape that reads as a debug dialog on the one
+            // screen that must not. PrepareForBrowser grows it at the swap.
+            Width = ConsentWidth,
+            SizeToContent = SizeToContent.Height,
+            MaxHeight = ConsentMaxHeight,
+            CanResize = false,
+
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            Content = new ScrollViewer { Content = panel },
+            Content = root,
         };
+    }
+
+    /// <summary>
+    /// Turns the notice into blocks, without touching a word of it.
+    ///
+    /// <para><b>The provider's own warning is the most important text on this
+    /// screen and is drawn as its own block.</b> The notice carries it as an
+    /// indented quotation, which is how it reads in a terminal; indentation in
+    /// proportional type is not emphasis, it is a ragged left edge. So an
+    /// indented block becomes an inset, Amber-edged field at Body L while the
+    /// paragraphs around it stay at the 12/18 measure. Same words, in the order
+    /// they were written.</para>
+    ///
+    /// <para><b>Hard line breaks inside a block are joined, blank lines are
+    /// kept.</b> The notice is wrapped at about 76 columns for a console; run
+    /// through a 720px proportional measure those breaks would land mid-sentence
+    /// at arbitrary places. Joining the lines of one paragraph with a space and
+    /// letting the layout wrap it changes the line endings and nothing else — no
+    /// word is added, removed, reordered or softened, which is the whole
+    /// constraint on this screen (<c>docs/spikes/epic-oauth.md</c> §1: the
+    /// user's protection here is a promise rather than a structure, and the
+    /// screen has to keep saying so).</para>
+    ///
+    /// <para><b>The two paragraphs touching the quotation take full ink</b>
+    /// (<c>lead</c>) rather than the sage the rest of the prose wears: the one
+    /// before it says whose warning it is, the one after it says that Hoard is
+    /// the third party the warning is about. Those two sentences are the
+    /// disclosure, and a screen that made them quieter while making the window
+    /// prettier would have made it less honest.</para>
+    ///
+    /// <para>Provider-neutral: it keys off the notice's shape, not off Epic.</para>
+    /// </summary>
+    private static IEnumerable<Control> RenderNotice(string notice)
+    {
+        var blocks = ReadNoticeBlocks(notice);
+
+        for (var i = 0; i < blocks.Count; i++)
+        {
+            if (blocks[i].IsQuotation)
+            {
+                yield return new Border
+                {
+                    Classes = { "consent-quote" },
+                    Margin = new Thickness(0, 2, 0, 4),
+                    Child = new TextBlock
+                    {
+                        Text = blocks[i].Text,
+                        Classes = { "consent-quote" },
+                    },
+                };
+                continue;
+            }
+
+            var framesQuotation =
+                (i > 0 && blocks[i - 1].IsQuotation)
+                || (i + 1 < blocks.Count && blocks[i + 1].IsQuotation);
+
+            var paragraph = new TextBlock { Text = blocks[i].Text, Classes = { "para" } };
+            if (framesQuotation)
+            {
+                paragraph.Classes.Add("lead");
+            }
+
+            yield return paragraph;
+        }
+    }
+
+    /// <summary>One block of the notice: a paragraph, or an indented quotation.</summary>
+    private readonly record struct NoticeBlock(string Text, bool IsQuotation);
+
+    /// <summary>
+    /// Splits a notice on blank lines and reflows each block onto one line.
+    ///
+    /// <para>A block every one of whose lines is indented is a quotation. That is
+    /// the only structure the notice has and the only structure read out of it —
+    /// nothing here parses meaning, matches a provider, or rewrites text.</para>
+    /// </summary>
+    private static IReadOnlyList<NoticeBlock> ReadNoticeBlocks(string notice)
+    {
+        var blocks = new List<NoticeBlock>();
+
+        foreach (var block in notice.Replace("\r\n", "\n", StringComparison.Ordinal)
+                     .Split("\n\n", StringSplitOptions.None))
+        {
+            var lines = block.Split('\n')
+                .Where(line => line.Trim().Length > 0)
+                .ToArray();
+
+            if (lines.Length == 0)
+            {
+                continue;
+            }
+
+            var quotation = lines.All(line => line.StartsWith("  ", StringComparison.Ordinal));
+            blocks.Add(new NoticeBlock(string.Join(" ", lines.Select(line => line.Trim())), quotation));
+        }
+
+        return blocks;
+    }
+
+    /// <summary>
+    /// Grows the window from notice-sized to browser-sized, at the moment the
+    /// browser replaces the content and not before.
+    ///
+    /// <para>Presentation only: it changes no gating and creates nothing. The
+    /// browser is still constructed by the caller's next line, which is still
+    /// the first line that runs after consent.</para>
+    ///
+    /// <para>It keeps the window's centre rather than its top-left, so a window
+    /// that was centred on the user's screen is still centred after it grows by
+    /// 240x260, and clamps into the working area so growing near an edge cannot
+    /// push the browser off it.</para>
+    /// </summary>
+    private static void PrepareForBrowser(Window window)
+    {
+        var screen = window.Screens?.ScreenFromTopLevel(window);
+        var scaling = screen?.Scaling ?? window.RenderScaling;
+
+        var centreX = window.Position.X + (int)Math.Round(window.ClientSize.Width * scaling / 2);
+        var centreY = window.Position.Y + (int)Math.Round(window.ClientSize.Height * scaling / 2);
+
+        // MaxHeight first: it is 760 for the notice, and setting Height under it
+        // would clamp the browser to a short window.
+        window.MaxHeight = double.PositiveInfinity;
+        window.SizeToContent = SizeToContent.Manual;
+        window.CanResize = true;
+        window.Width = BrowserWidth;
+        window.Height = BrowserHeight;
+
+        var width = (int)Math.Round(BrowserWidth * scaling);
+        var height = (int)Math.Round(BrowserHeight * scaling);
+        var x = centreX - (width / 2);
+        var y = centreY - (height / 2);
+
+        if (screen is { } target)
+        {
+            var area = target.WorkingArea;
+            x = Math.Clamp(x, area.X, Math.Max(area.X, area.X + area.Width - width));
+            y = Math.Clamp(y, area.Y, Math.Max(area.Y, area.Y + area.Height - height));
+        }
+
+        window.Position = new PixelPoint(x, y);
     }
 
     /// <summary>

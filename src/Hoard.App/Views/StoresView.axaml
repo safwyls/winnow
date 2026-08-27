@@ -71,83 +71,19 @@
             <Setter Property="Foreground" Value="{StaticResource Amber}"/>
         </Style>
 
-        <!-- Paragraph body. 12/18 rather than the 13/18 default: three cards of
-             prose is a lot of type for a screen whose neighbour is a wall of
-             cover art, and TextDim keeps it as part of the room. -->
-        <Style Selector="TextBlock.para">
-            <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
-            <Setter Property="FontSize" Value="12"/>
-            <Setter Property="LineHeight" Value="18"/>
-            <Setter Property="TextWrapping" Value="Wrap"/>
-            <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
-        </Style>
-        <!-- The one paragraph per card that is a finding rather than context. -->
-        <Style Selector="TextBlock.para.lead">
-            <Setter Property="Foreground" Value="{StaticResource Text}"/>
-        </Style>
+        <!-- ══ Prose and actions live in Themes/controls.axaml now ═════════
+             `TextBlock.para` / `.para.lead` (§13 gap 5's 12/18 measure) and the
+             `Button.act` primary/quiet pair were written here and were copied
+             out the moment a second surface needed them: the Epic consent
+             window, which Hoard.Auth.WebView builds. That project references
+             Avalonia and Hoard.Core and nothing else, so it can only name a
+             class and let the running application paint it — which works only
+             if the definition is app-level. Moved rather than duplicated, so
+             the two screens cannot drift apart.
 
-        <!-- ══ Actions ══════════════════════════════════════════════════════
-             The focus ring is a BRUSH SWAP on PART_ContentPresenter, never a
-             thickness change (§10.7). Thickening a border on focus reflows the
-             row it sits in, and a button that shuffles sideways as you tab onto
-             it is worse than no ring at all. It is set on the presenter rather
-             than on the Button because Fluent's own state styles write that
-             presenter directly and a TemplateBinding loses to them on hover. -->
-        <Style Selector="Button.act">
-            <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="FontSize" Value="13"/>
-            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
-            <Setter Property="Padding" Value="16,8"/>
-            <Setter Property="BorderThickness" Value="2"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="HorizontalContentAlignment" Value="Center"/>
-        </Style>
-
-        <!-- Primary: the app's one primary-action treatment, the same fill the
-             Play button and "Same game" wear. -->
-        <Style Selector="Button.act.primary">
-            <Setter Property="Background" Value="{StaticResource Volt}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
-            <Setter Property="Foreground" Value="{StaticResource VoltInk}"/>
-        </Style>
-        <Style Selector="Button.act.primary:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="{StaticResource VoltHover}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource VoltHover}"/>
-            <Setter Property="Foreground" Value="{StaticResource VoltInk}"/>
-        </Style>
-        <Style Selector="Button.act.primary:pressed /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="{StaticResource VoltPress}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource VoltPress}"/>
-            <Setter Property="Foreground" Value="{StaticResource VoltInk}"/>
-        </Style>
-        <!-- On a Volt fill the ring cannot be Volt, so it is VoltInk — the
-             button's own text colour, which reads as the control being armed
-             rather than as a new colour arriving (§10.7). -->
-        <Style Selector="Button.act.primary:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="BorderBrush" Value="{StaticResource VoltInk}"/>
-        </Style>
-
-        <!-- Quiet: sign out, cancel, try again. Not a cancel and not
-             destructive — the other half of a choice, reading quieter only
-             because it is the one fewer people want. -->
-        <Style Selector="Button.act.quiet">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
-            <Setter Property="Foreground" Value="{StaticResource Text}"/>
-        </Style>
-        <Style Selector="Button.act.quiet:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource TextDim}"/>
-            <Setter Property="Foreground" Value="{StaticResource Text}"/>
-        </Style>
-        <Style Selector="Button.act.quiet:pressed /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
-            <Setter Property="Foreground" Value="{StaticResource Text}"/>
-        </Style>
-        <Style Selector="Button.act.quiet:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
-        </Style>
+             Unchanged apart from StaticResource becoming DynamicResource, which
+             an Application.Styles include needs for load-ordering reasons the
+             file's own header sets out. -->
 
         <!-- ══ Inset fields ═════════════════════════════════════════════════
              A note the card is making about itself: an unfilled state, a
