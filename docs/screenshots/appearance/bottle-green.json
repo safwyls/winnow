@@ -1,0 +1,64 @@
+// Bottle green - a worked example of the JSON theme format.
+//
+// Written to prove the format is AUTHORABLE rather than merely parseable: this
+// theme was made by picking eight colours and four numbers, and everything else
+// in it - the whole neutral ramp, both metadata inks, the Volt and Danger
+// families, and the four translucent inks §14.3 needs - is derived.
+//
+// It takes the axes §14.1.1 says separate a room, and takes them somewhere the
+// four built-ins do not go:
+//
+//   Temperature      cool, but GREEN rather than teal or blue - hue 150°,
+//                    where Winnow sits at 186° and Nightshift at 219°.
+//   Chroma strategy  committed, like Winnow's, and further: the neutral runs at
+//                    0.50 saturation the whole way up the ramp.
+//   Value structure  a 3.0x jump from the art field to the chrome, between
+//                    Winnow's 1.8x and Box art's 4.8x, with a firm 1.75:1 edge.
+//   Material         lacquer. Deep, saturated, and lit from one side.
+//
+// Volt is the room at full voltage, which for a bottle-green room is the light
+// coming THROUGH the bottle: a chartreuse at hue 80°. Flare is the hue this
+// room cannot produce and keeps its one job.
+//
+// Not a light theme, and not close to one - see the dark-field warning the
+// engine prints if you take `ground` up past a dormant cover.
+
+{
+  "schemaVersion": 1,
+
+  "id": "bottle-green",
+  "name": "Bottle green",
+  "reason": "A lacquered green room, lit from one side. The chrome jumps three times clear of the art field, so the covers sit in a well rather than on a wall.",
+
+  // ── The eight that ARE the theme ────────────────────────────────────────
+  "seeds": {
+    "ground":  "#0A140E",
+    "surface": "#17291D",
+    "text":    "#F1F0E6",
+    "flare":   "#FF4D93",
+    "volt":    "#B4F24B",
+    "amber":   "#FFA83D",
+    "azure":   "#6FB8E8",
+    "danger":  "#E04B45"
+  },
+
+  // ── The proportions. Everything omitted takes the house value ───────────
+  "structure": {
+    "edge": 1.75,
+    "wellDepth": 0.5,
+    "dimValue": 0.7,
+    "dimChroma": 0.38
+  },
+
+  // ── What this theme asks for when you pick it ───────────────────────────
+  // A look, not a lock: the slider still moves, and what you leave it on is
+  // what comes back next launch.
+  "defaults": {
+    "transparency": 40,
+    "backdrop": "acrylic",
+    "reach": "chrome-and-wall",
+    "layout": "floating"
+  }
+
+  // No "overrides" block at all. Sixteen colours, none of them written down.
+}
