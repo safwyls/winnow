@@ -1,15 +1,20 @@
 namespace Hoard.App.ViewModels;
 
 /// <summary>
-/// One rail: a reason with games attached.
+/// One section: a reason with games attached.
 ///
-/// <para><b>A short shelf is a normal shelf.</b> The engine omits a shelf with
-/// nothing to say rather than rendering it blank, so every rail that reaches
-/// this class has real members — six of them on the author's real library for
-/// "Installed and waiting", which has to read as a complete answer and not as a
-/// half-loaded one. That is why the count is stated: a rail showing three cards
-/// and saying <c>6</c> is a rail you know to scroll, and a rail showing six and
-/// saying <c>6</c> is finished.</para>
+/// <para><b>A short section is a normal section.</b> The engine omits a shelf
+/// with nothing to say rather than rendering it blank, so every one that
+/// reaches this class has real members — six of them on the author's real
+/// library for "Installed and waiting", which has to read as a complete answer
+/// and not as a half-loaded one.</para>
+///
+/// <para><b>The count still earns its place, and it says something different
+/// now.</b> While the sections were horizontal rails it told you how much was
+/// hidden off the right edge. They are wrapping grids, so nothing is hidden and
+/// the count is the section agreeing with what you can already see — which is
+/// what makes six cards under a <c>6</c> read as finished rather than as
+/// half-loaded, and what would catch a card the view had to drop.</para>
 ///
 /// <para><b>No shelf is styled differently from any other, and the patched
 /// shelf least of all.</b> It is the app's headline story and therefore the most
@@ -39,6 +44,6 @@ public sealed class FeedShelfViewModel
 
     public IReadOnlyList<FeedCardViewModel> Cards { get; }
 
-    /// <summary>How many games are on the rail. Plex Mono, tabular, like every number.</summary>
+    /// <summary>How many games are in the section. Plex Mono, tabular, like every number.</summary>
     public string CountText => Cards.Count.ToString("N0");
 }

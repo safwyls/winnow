@@ -1486,8 +1486,9 @@
 
              Its right edge is the window's (the filter panel only exists on the
              library screen), so its scrollbar takes §9.1's edge inset from the
-             window's own ScrollBar:vertical style. The per-shelf rails opt back
-             out — theirs is an interior divider. -->
+             window's own ScrollBar:vertical style. It is the screen's only
+             scroller now that the sections are grids rather than rails, and it
+             is vertical: nothing on the Feed scrolls sideways. -->
         <Border Classes="screenpane"
                 BorderBrush="{StaticResource Line}"
                 IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsFeedVisible}">

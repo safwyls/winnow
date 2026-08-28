@@ -36,8 +36,13 @@ namespace Hoard.App.Views;
 /// </summary>
 public partial class FeedCardView : UserControl
 {
-    /// <summary>The cover's declared width — the art column in the XAML above.</summary>
-    private const double CoverWidth = 120;
+    /// <summary>
+    /// The cover's declared width — the art column in the XAML above, and
+    /// TileMinWidth exactly. It came down from 120 when the rails became
+    /// wrapping grids: the card's width is the column's now, and the art must
+    /// not be what sets its height on a screen whose payload is the sentence.
+    /// </summary>
+    private const double CoverWidth = 108;
 
     private GameTileViewModel? _tile;
 

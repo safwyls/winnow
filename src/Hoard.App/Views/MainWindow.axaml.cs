@@ -596,9 +596,9 @@ public partial class MainWindow : Window
 
         // The Feed answers the arrow keys and nothing else. Its cards are real
         // buttons, so Tab, Enter and Space are already the framework's — what
-        // the window supplies is the SHAPE (left/right along a rail, up/down
-        // across shelves, §8's keyboard floor on a surface the wall's walk knows
-        // nothing about).
+        // the window supplies is the SHAPE (left/right along the reading order,
+        // up/down by one row of whatever the width fits, §8's keyboard floor on
+        // a surface the wall's walk knows nothing about).
         //
         // The early return is the load-bearing half: without it every arrow key
         // pressed on the feed would ALSO walk the library's selection behind it,
@@ -607,6 +607,20 @@ public partial class MainWindow : Window
         // that walk had landed on.
         if (_shell is { IsFeedVisible: true })
         {
+#if DEBUG
+            // The wall's probe, pointed at the Feed, and it needs a flag of its
+            // own: --grid-probe is in the list above that forces the LIBRARY up,
+            // because the wall cannot be probed from a screen it is not on. The
+            // Feed has the opposite requirement, which is the whole reason the
+            // two flags are two flags.
+            if (e.Key == Key.F9 && Environment.GetCommandLineArgs().Contains("--feed-probe"))
+            {
+                FeedPanel.DumpDiagnostics();
+                e.Handled = true;
+                return;
+            }
+#endif
+
             if (FeedPanel.HandleNavigationKey(e))
             {
                 e.Handled = true;

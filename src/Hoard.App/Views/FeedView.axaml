@@ -7,52 +7,84 @@
 
     <!--
         ══ The Feed (M8) ════════════════════════════════════════════════════
-        The screen the app opens on, and the point of the product: five shelves
-        over one scoring pass, each shelf stating its own reason and each card
+        The screen the app opens on, and the point of the product: five sections
+        over one scoring pass, each section stating its own reason and each card
         stating its own.
 
-        WHY RAILS AND NOT A WALL. The library already IS the wall, one rail
-        click away, and it is the right shape for six hundred covers you are
-        scanning. This surface is the opposite errand: five short arguments, in
-        order, each of which has to be READ rather than scanned. So the shelves
-        stack vertically and the games run horizontally inside them — the shape
-        that puts a heading, a pitch and a row of reasons on one scanline
-        (§6a: "a shelf is a REASON with items attached").
+        ══ THE RAILS ARE GONE, AND THEY WERE WRONG ══════════════════════════
+        This screen used to run each section as a horizontal rail. The argument
+        for that was "a heading, a pitch and a row of reasons on one scanline",
+        and it does not survive contact with a desktop. A rail is a television
+        convention: it assumes a remote control and a viewer who cannot see the
+        pointer. Here the wheel does the wrong thing by default, the shelf never
+        says how much it holds, and everything past the right edge is
+        functionally invisible — the old note in this file boasted that a rail
+        shows "how much is off to the right", which is an admission that the
+        content was hidden. A recommendation nobody scrolls to was not made.
+
+        So every section is a GRID BOUND TO THE WINDOW. Cards wrap to as many
+        per row as the width fits, the page scrolls vertically, and nothing on
+        this screen scrolls horizontally anywhere. A section of ten is two or
+        three rows, all of them visible. Views/FeedGrid.cs carries the geometry.
+
+        ══ AND THE SECTIONS ARE NOW ISLANDS, WHICH IS NOT DECORATION ════════
+        Stacking sideways-scrolling rails delineated them by the act of
+        scrolling: you knew where one shelf ended because the other one did not
+        move with it. Stacked grids of similar-looking cards have no such
+        boundary, and a heading with a wider margin over it is not one either —
+        someone scrolling past would have to read the nearest heading to know
+        which claim the card under their pointer belongs to.
+
+        So a section is bounded on all four sides: a 1px Line box at RadiusPane,
+        with its own header divided from its cards by a rule that crosses it.
+        That is the LIBRARY PANE'S OWN SHAPE at section scale — an island whose
+        first band is a header and whose field is below the rule (§15.1, §11.1)
+        — so the screen borrows a structure the window already teaches rather
+        than inventing a second one. It costs no ink and no fill: the box is an
+        outline, the ground inside it is the pane's own, and the transparency
+        slider reaches the desktop between the cards exactly as before.
+
+        The hierarchy is stated in the two line weights. The ENCLOSURE takes
+        Line and the CARDS take LineSoft, so the structure outranks its contents
+        rather than tying with them.
 
         WHY THERE IS NO VIRTUALIZATION HERE, and it is measured rather than
-        assumed. The engine caps a shelf at ten items and omits empty shelves,
-        so the ceiling is fifty cards — against the six hundred that made
-        CoverWall necessary. CoverWall is also the wrong tool twice over: it is
-        vertical, and it is uniform, and these cards are neither (a rail's height
-        is set by its longest reason). Fifty cards of two images each is the same
-        order as one screenful of the wall, which the app already realizes on
-        every scroll. If a shelf cap ever moves past ~40, measure again.
+        assumed. The engine caps a section at ten items and omits empty ones, so
+        the ceiling is fifty cards — against the six hundred that made CoverWall
+        necessary. CoverWall is also the wrong tool twice over: it is uniform,
+        and these cards are not (a row's height is set by its longest reason).
 
-        WHAT THE PATCHED SHELF DOES NOT GET. It is the app's headline story and
-        therefore the most tempting place in the interface to spend Flare — on
-        its heading, on its cards' edges, on its count. It gets none of it. Every
-        shelf is drawn identically and the patched one leads by being first,
+        WHAT THE PATCHED SECTION DOES NOT GET. It is the app's headline story
+        and therefore the most tempting place in the interface to spend Flare —
+        on its heading, on its box, on its count. It gets none of it. Every
+        section is drawn identically and the patched one leads by being first,
         which is the engine's claim order. Flare's one appearance on this screen
         is the unread dot on a cover, which is what it has always meant (§2).
     -->
 
     <UserControl.Styles>
 
-        <!-- The shelf heading. Bricolage, because a shelf title is the app's own
-             voice making a claim — but not display-l, which is the screen's own
-             name and has to outrank it. -->
+        <!-- ══ A section ════════════════════════════════════════════════════
+             The enclosure, and the reason someone scrolling past always knows
+             which claim they are inside. Outline only — a fill would either be
+             a second opaque plate the size of the pane (the transparency
+             slider's top end pays for that) or, as a translucent veil of
+             SurfaceRaised over a translucent ground, the inverted elevation
+             §14.2 spells out. Line and a radius say it for nothing. -->
+        <Style Selector="Border.section">
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusPane}"/>
+        </Style>
+
+        <!-- The section heading. Bricolage, because a section title is the
+             app's own voice making a claim — but not display-l, which is the
+             screen's own name and has to outrank it. -->
         <Style Selector="TextBlock.shelf">
             <Setter Property="FontFamily" Value="{StaticResource DisplayFont}"/>
             <Setter Property="FontWeight" Value="Bold"/>
             <Setter Property="FontSize" Value="17"/>
             <Setter Property="Foreground" Value="{StaticResource Text}"/>
-        </Style>
-
-        <!-- The rail's own scrollbar is a divider of ours, not the window's, so
-             it keeps its flush position rather than taking §9.1's edge inset —
-             the same opt-out the rail and the detail modal take. -->
-        <Style Selector="ScrollViewer.rail /template/ ScrollBar">
-            <Setter Property="Margin" Value="0"/>
         </Style>
 
     </UserControl.Styles>
@@ -61,11 +93,14 @@
 
         <!-- ══ Header ═══════════════════════════════════════════════════════
              Same construction as the Stores screen's: the name, one line of
-             what this is, and a rule under it. The count is a NUMBER, so it
-             sets in Plex Mono with tabular figures like every number in the
-             app — and it is only stated once there is one to state, because "0
-             games scored" while the pass is out would be a lie the screen tells
-             for half a second. -->
+             what this is, and a rule under it. The rule is FULL BLEED where a
+             section's is inset inside a box, which is the whole of how the
+             screen's own header is told apart from the five under it.
+
+             The count is a NUMBER, so it sets in Plex Mono with tabular figures
+             like every number in the app — and it is only stated once there is
+             one to state, because "0 games scored" while the pass is out would
+             be a lie the screen tells for half a second. -->
         <Border Grid.Row="0"
                 Padding="24,20,24,18"
                 BorderBrush="{StaticResource Line}"
@@ -123,64 +158,84 @@
             </StackPanel>
         </Border>
 
-        <!-- ══ The shelves ══════════════════════════════════════════════════ -->
+        <!-- ══ The sections ═════════════════════════════════════════════════
+             The ONE scroller on this screen, and it is vertical. Its right edge
+             is the window's, so its scrollbar takes §9.1's edge inset from the
+             window's own ScrollBar:vertical style; there is no longer any
+             interior scroller to opt back out of it. -->
         <ScrollViewer Grid.Row="1"
                       Name="Page"
                       IsVisible="{Binding ShowShelves}"
                       HorizontalScrollBarVisibility="Disabled"
                       VerticalScrollBarVisibility="Auto">
-            <ItemsControl ItemsSource="{Binding Shelves}" Margin="0,0,0,28">
+            <ItemsControl ItemsSource="{Binding Shelves}" Margin="24,24,24,32">
+
+                <!-- 24 between islands, against the 14 gutter inside one: a
+                     step on §4's scale rather than a nudge, so the spacing is
+                     pulling the same direction the boxes are. Anything closer
+                     to the gutter and the two gaps read as the same gap, which
+                     is the spacing arguing with the delineation. -->
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Spacing="24"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:FeedShelfViewModel">
-                        <StackPanel Margin="0,22,0,0">
+                        <Border Classes="section">
+                            <StackPanel>
 
-                            <StackPanel Margin="24,0,24,12" Spacing="3">
-                                <StackPanel Orientation="Horizontal" Spacing="10">
-                                    <TextBlock Classes="shelf" Text="{Binding Title}"/>
+                                <!-- The section's header band. -->
+                                <StackPanel Margin="18,15,18,14" Spacing="3">
+                                    <StackPanel Orientation="Horizontal" Spacing="10">
+                                        <TextBlock Classes="shelf" Text="{Binding Title}"/>
 
-                                    <!-- How many are on the rail, beside the
-                                         name rather than out at the pane's far
-                                         edge: a count belongs to the thing it
-                                         counts, and a number a thousand pixels
-                                         away from its noun is an orphan.
+                                        <!-- How many are in the section, beside
+                                             the name rather than out at the
+                                             box's far edge: a count belongs to
+                                             the thing it counts.
 
-                                         This is what makes a SHORT shelf read as
-                                         finished rather than as half-loaded —
-                                         six cards saying 6 is an answer, three
-                                         cards saying 10 is an invitation to
-                                         scroll. -->
-                                    <TextBlock Classes="data-s"
-                                               VerticalAlignment="Center"
-                                               Text="{Binding CountText}"/>
-                                </StackPanel>
-                                    <!-- The shelf's own pitch, in the engine's
+                                             It says something different now
+                                             that the whole section is visible.
+                                             On a rail it told you how much was
+                                             hidden; here it is the section
+                                             agreeing with what you can already
+                                             count, which is what makes a short
+                                             section read as finished rather
+                                             than as half-loaded. -->
+                                        <TextBlock Classes="data-s"
+                                                   VerticalAlignment="Center"
+                                                   Text="{Binding CountText}"/>
+                                    </StackPanel>
+
+                                    <!-- The section's own pitch, in the engine's
                                          words. It is the sentence the cards
                                          under it are all instances of. -->
-                                <TextBlock Classes="body"
-                                           MaxWidth="720"
-                                           HorizontalAlignment="Left"
-                                           TextWrapping="Wrap"
-                                           LineHeight="19"
-                                           Foreground="{StaticResource TextDim}"
-                                           Text="{Binding Blurb}"/>
-                            </StackPanel>
+                                    <TextBlock Classes="body"
+                                               MaxWidth="720"
+                                               HorizontalAlignment="Left"
+                                               TextWrapping="Wrap"
+                                               LineHeight="19"
+                                               Foreground="{StaticResource TextDim}"
+                                               Text="{Binding Blurb}"/>
+                                </StackPanel>
 
-                            <ScrollViewer Classes="rail"
-                                          HorizontalScrollBarVisibility="Auto"
-                                          VerticalScrollBarVisibility="Disabled">
-                                <ItemsControl Name="RailItems"
-                                              ItemsSource="{Binding Cards}"
-                                              Margin="24,0,24,4">
+                                <!-- The rule that crosses the box, exactly as
+                                     the command bar's crosses the library pane.
+                                     Above it the section says what it is;
+                                     below it are the games. -->
+                                <Border Height="1" Background="{StaticResource Line}"/>
+
+                                <ItemsControl ItemsSource="{Binding Cards}" Margin="16">
                                     <ItemsControl.ItemsPanel>
                                         <ItemsPanelTemplate>
-                                            <!-- Horizontal, so every card in one
-                                                 rail is arranged to the tallest
-                                                 card's height and the action row
-                                                 lands on one line across the
-                                                 shelf. A rail whose longest
-                                                 reason is 256 characters is
-                                                 simply a taller rail. -->
-                                            <StackPanel Orientation="Horizontal" Spacing="14"/>
+                                            <!-- Window-bound: the column count
+                                                 falls out of the width, the row
+                                                 divides it evenly, and no card
+                                                 is charged for a gutter it does
+                                                 not have a neighbour on. -->
+                                            <views:FeedGrid MinItemWidth="420" Gutter="14"/>
                                         </ItemsPanelTemplate>
                                     </ItemsControl.ItemsPanel>
                                     <ItemsControl.ItemTemplate>
@@ -189,9 +244,9 @@
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
-                            </ScrollViewer>
 
-                        </StackPanel>
+                            </StackPanel>
+                        </Border>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>

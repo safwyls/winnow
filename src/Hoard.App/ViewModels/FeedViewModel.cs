@@ -61,7 +61,7 @@ public partial class FeedViewModel : ObservableObject
         }
     }
 
-    /// <summary>Rails in presentation order — the engine's claim order, strongest story first.</summary>
+    /// <summary>Sections in presentation order — the engine's claim order, strongest story first.</summary>
     public System.Collections.ObjectModel.ObservableCollection<FeedShelfViewModel> Shelves { get; } = [];
 
     /// <summary>The screen's own name. Directive rather than clever: it says what the screen is for.</summary>

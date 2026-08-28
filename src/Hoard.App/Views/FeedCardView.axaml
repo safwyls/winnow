@@ -11,12 +11,31 @@
 
         THE CARD IS SIZED TO THE SENTENCE AND NOT THE OTHER WAY ROUND. Measured
         on the real library (46 items across five shelves): the reasons run 78
-        to 256 characters, median 115, 90th percentile 155. At 13/18 over the
-        182px text column that is six lines at the 90th percentile, which is
-        what sets the card's 180px cover and its ~212px height — the geometry
-        is downstream of the prose. A card that trimmed the reason to fit would
-        be a cover in a grid, which is the storefront feed this app exists to
-        beat.
+        to 256 characters, median 115, 90th percentile 155. A card that trimmed
+        the reason to fit would be a cover in a grid, which is the storefront
+        feed this app exists to beat.
+
+        ══ WHAT THE GRID CHANGED, AND IT IS THE MEASURE ═════════════════════
+        This card was 344px wide with a 120x180 cover, and both numbers were
+        the rail's. A fixed width is what a horizontally scrolling row needs;
+        with the sections now wrapping grids (FeedView.axaml) the card takes
+        whatever width its column got, and FeedGrid holds a floor of 420 so the
+        column it is given is always at least that.
+
+        The shape did NOT change — cover left, sentence right is still correct,
+        because the sentence is the payload and putting it beside the art is
+        what keeps it the payload. The PROPORTIONS did. At 344 the text column
+        was 182px, which is about twenty-seven characters: a newspaper column,
+        well under the readable band, and six lines deep at the 90th
+        percentile. At the 443px a card gets at the 1200px minimum width, the
+        same column is 291px and about forty-four characters — four lines for
+        the same sentence, and a shorter card for it.
+
+        So the cover shrinks with it, 120x180 -> 108x162. That is TileMinWidth
+        exactly: the smallest a capsule is ever drawn on the wall, and still
+        large enough to recognise. It is what stops the art, rather than the
+        prose, from setting the card's height — which on a surface whose whole
+        job is the reason would be the geometry arguing with the point.
 
         WHY THIS CARD DOES NOT FLIP. The library's tiles turn over because a
         cover has nowhere to put four facts. This face is already showing the
@@ -52,7 +71,7 @@
              whatever the window is standing on. -->
         <Style Selector="Button.feedcard">
             <Setter Property="Background" Value="{StaticResource Surface}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource LineSoft}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="CornerRadius" Value="{StaticResource RadiusTile}"/>
             <!-- Zero, with the inset moved onto the content below: the focus
@@ -69,7 +88,7 @@
              one — what lifts under the pointer here is the ART, by waking up. -->
         <Style Selector="Button.feedcard /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="{StaticResource Surface}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource LineSoft}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="CornerRadius" Value="{StaticResource RadiusTile}"/>
             <Setter Property="Transitions">
@@ -97,7 +116,7 @@
              does not repaint it underneath this: two focus indicators on one
              control is how the weaker one ends up being the one people learn. -->
         <Style Selector="Button.feedcard:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource LineSoft}"/>
             <Setter Property="BorderThickness" Value="1"/>
         </Style>
         <Style Selector="Border#FocusRing">
@@ -141,7 +160,6 @@
 
     <Button Name="Card"
             Classes="feedcard"
-            Width="344"
             Command="{Binding Tile.OpenDetailsCommand}"
             CommandParameter="{Binding Tile}">
         <!-- No tooltip on the card, and that is a correction made at the glass
@@ -152,7 +170,7 @@
              SurfaceRaised, and the art already wakes up; that is three signals
              that it is a target, none of which is in the way. -->
         <Panel>
-        <Grid Margin="14" ColumnDefinitions="120,14,*">
+        <Grid Margin="14" ColumnDefinitions="108,14,*">
 
             <!-- ══ The art ══════════════════════════════════════════════════
                  The same two-layer cross-fade the wall uses (the floor variant
@@ -165,7 +183,7 @@
                  position and a badge can never differ between the two screens. -->
             <Panel Grid.Column="0"
                    Name="Art"
-                   Width="120" Height="180"
+                   Width="108" Height="162"
                    VerticalAlignment="Top"
                    Classes.snap="{Binding Tile.SnapDormancy}">
 
