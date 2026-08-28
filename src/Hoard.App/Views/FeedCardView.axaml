@@ -156,10 +156,95 @@
             <Setter Property="MinWidth" Value="0"/>
         </Style>
 
+        <!-- ══ The two feedback controls ═══════════════════════════════════
+             "Not interested" and "Not now", and everything about this style is
+             about WEIGHT. The reason sentence is the card's payload; these are
+             the reply to it, and a reply that competes with what it is replying
+             to has taken the screen over.
+
+             So: no fill, no border, TextDim, 11px, beside a Volt-filled Play at
+             12px with a solid ground under it. Three axes of difference in the
+             same line, and the eye sorts them in one pass.
+
+             THEY ARE ALWAYS VISIBLE, and that is a decision rather than a
+             default. Revealing them on hover would have bought a quieter resting
+             card and cost them to everyone navigating by keyboard and everyone
+             on a touch screen — a hover-only control is one that some people
+             simply do not have. What hover and focus buy instead is CONTRAST:
+             the pair lifts from TextDim to Text when the pointer or the keyboard
+             is on the card. At rest TextDim on Surface measures 5.88:1, well
+             over §8's floor, so quiet here never means unreadable.
+
+             They cost the sentence NO HEIGHT: they sit in the action line the
+             card already had, whose height is set by the Play button beside
+             them. The reason above is untouched, un-trimmed and un-tooltipped,
+             exactly as it was.
+
+             BorderThickness is a constant 2 with the resting brush transparent,
+             so §8's focus ring is a brush swap and never a reflow (§10.7) — a
+             control that shifts sideways as you tab onto it is worse than no
+             ring. -->
+        <Style Selector="Button.cardaside">
+            <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Padding" Value="8,5"/>
+            <Setter Property="MinWidth" Value="0"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
+            <Setter Property="BorderThickness" Value="2"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Button.cardaside /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+        </Style>
+        <!-- The card is hovered or the keyboard is inside it: the pair comes up
+             to full ink. This is the only thing hover buys them — never their
+             existence. -->
+        <Style Selector="Button.feedcard:pointerover Button.cardaside /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+        </Style>
+        <Style Selector="Button.feedcard:focus-within Button.cardaside /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+        </Style>
+        <!-- Its own hover is a raised field rather than a colour: a dismiss
+             control is not an alarm, and Flare is the badge's alone (§2). -->
+        <Style Selector="Button.cardaside:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource SurfaceHigh}"/>
+            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+        </Style>
+        <Style Selector="Button.cardaside:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource SurfaceHigh}"/>
+            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+        </Style>
+        <Style Selector="Button.cardaside:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+        </Style>
+
+        <!-- A card the user has answered. Only the ART dims — the title and the
+             sentence stay at full ink, because "the reason stays fully visible
+             on the front" does not stop being true the moment somebody replies
+             to it, and a dimmed paragraph is a paragraph somebody has to squint
+             at to remember what they just did. The art is the one element on the
+             card that is not reading matter, so it is the one that can carry
+             "this is out of the way now" for nothing.
+
+             The state is said in words as well, on the receipt line — §8's
+             decorative-redundancy rule, the same one the dormancy ramp lives
+             under. -->
+        <Style Selector="Button.feedcard.setaside Panel#Art">
+            <Setter Property="Opacity" Value="0.42"/>
+        </Style>
+
     </UserControl.Styles>
 
     <Button Name="Card"
             Classes="feedcard"
+            Classes.setaside="{Binding IsSetAside}"
             Command="{Binding Tile.OpenDetailsCommand}"
             CommandParameter="{Binding Tile}">
         <!-- No tooltip on the card, and that is a correction made at the glass
@@ -254,38 +339,143 @@
             <!-- ══ The name, the sentence, the way in ═══════════════════════ -->
             <DockPanel Grid.Column="2" LastChildFill="True">
 
-                <!-- Actions sit at the bottom of the card whatever the sentence
-                     does above them, so a rail of cards has one action line
-                     rather than a ragged one. -->
-                <Grid DockPanel.Dock="Bottom" ColumnDefinitions="Auto,*,Auto" Margin="0,10,0,0">
+                <!-- ══ The action line ═════════════════════════
+                     Actions sit at the bottom of the card whatever the sentence
+                     does above them, so a row of cards has one action line
+                     rather than a ragged one.
 
-                    <!-- Play when it is on disk, Install when it is not, and
-                         NOTHING when the app cannot honestly name either — no id
-                         for the store, no verified install route, or no answer
-                         at all about the install state (§10.3: never an inert
-                         button). The same command the wall's tiles raise, so a
-                         launch from here is attributed exactly like any other. -->
-                    <Button Grid.Column="0"
-                            Classes="act primary cardact"
-                            Content="{Binding Tile.PrimaryActionLabel}"
-                            ToolTip.Tip="{Binding Tile.PrimaryActionHint}"
-                            IsVisible="{Binding Tile.HasPrimaryAction}"
-                            Command="{Binding Tile.PrimaryActionCommand}"
-                            CommandParameter="{Binding Tile}"/>
+                     ══ AND IT IS WHERE THE FEEDBACK CONTROLS GO ════════════
+                     "Not interested" and "not now" had one hard requirement:
+                     they must not compete with the reason, crowd it, or push it
+                     below the fold. Putting them HERE is the whole answer, and
+                     it is a geometry answer rather than a styling one — this
+                     line already exists and its height is already set by the
+                     Play button, so two more controls on it cost the sentence
+                     exactly nothing. Anywhere else on the card — a row of their
+                     own, a strip under the reason, a corner over the art — would
+                     have been paid for in the one currency this screen has none
+                     of.
 
-                    <!-- The one fact the sentence never states. A name, so it
-                         wears the outlined badge the tile's overlay uses rather
-                         than a colour. -->
-                    <Border Grid.Column="2"
-                            BorderBrush="{StaticResource Line}"
-                            BorderThickness="1" CornerRadius="3" Padding="5,1"
-                            VerticalAlignment="Center">
-                        <TextBlock Text="{Binding Tile.StoreBadge}"
-                                   FontFamily="{StaticResource BodyFont}"
-                                   FontSize="9" LetterSpacing="0.54"
-                                   Foreground="{StaticResource TextDim}"/>
-                    </Border>
-                </Grid>
+                     They sit a Play button away from Play and three weights
+                     below it (no fill, no border, TextDim, 11px against a
+                     Volt-filled 12px), so the primary action still reads first
+                     in the line. See the styles above for why they are always
+                     visible rather than revealed on hover.
+
+                     ══ AND THE UNDO IS THIS SAME LINE ═══════════════════
+                     Acting swaps the row for a one-line receipt with Undo in it.
+                     The card does not vanish, does not shrink and does not move
+                     the ones beside it: the row's height is unchanged, so
+                     nothing in the grid reflows under a user who has just
+                     clicked. The undo therefore appears within a few pixels of
+                     the control that was pressed, which is the only place a
+                     misclick can be caught without hunting — and it stays until
+                     the feed is next computed rather than counting down. -->
+                <Panel DockPanel.Dock="Bottom" Margin="0,10,0,0">
+
+                    <!-- The unanswered state. -->
+                    <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto"
+                          IsVisible="{Binding ShowActions}">
+
+                        <!-- Play when it is on disk, Install when it is not, and
+                             NOTHING when the app cannot honestly name either — no
+                             id for the store, no verified install route, or no
+                             answer at all about the install state (§10.3: never
+                             an inert button). The same command the wall's tiles
+                             raise, so a launch from here is attributed exactly
+                             like any other. -->
+                        <Button Grid.Column="0"
+                                Classes="act primary cardact"
+                                Margin="0,0,8,0"
+                                Content="{Binding Tile.PrimaryActionLabel}"
+                                ToolTip.Tip="{Binding Tile.PrimaryActionHint}"
+                                IsVisible="{Binding Tile.HasPrimaryAction}"
+                                Command="{Binding Tile.PrimaryActionCommand}"
+                                CommandParameter="{Binding Tile}"/>
+
+                        <!-- The durable verdict. Not a destructive act and not
+                             styled as one: Danger is the window's close button
+                             and nothing else (§2), and Flare belongs to the
+                             unread dot two inches to the left. -->
+                        <Button Grid.Column="1"
+                                Classes="cardaside"
+                                Content="Not interested"
+                                IsVisible="{Binding CanGiveFeedback}"
+                                Command="{Binding NotInterestedCommand}"/>
+
+                        <!-- The deferral. A separate control because it is a
+                             separate intent — the storage keeps the two apart
+                             (§6b) and one button that guessed between them would
+                             be where the difference was lost. -->
+                        <Button Grid.Column="2"
+                                Classes="cardaside"
+                                Content="Not now"
+                                IsVisible="{Binding CanGiveFeedback}"
+                                Command="{Binding NotNowCommand}"/>
+
+                        <!-- The one fact the sentence never states. A name, so it
+                             wears the outlined badge the tile's overlay uses
+                             rather than a colour. -->
+                        <Border Grid.Column="4"
+                                BorderBrush="{StaticResource Line}"
+                                BorderThickness="1" CornerRadius="3" Padding="5,1"
+                                Margin="8,0,0,0"
+                                VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Tile.StoreBadge}"
+                                       FontFamily="{StaticResource BodyFont}"
+                                       FontSize="9" LetterSpacing="0.54"
+                                       Foreground="{StaticResource TextDim}"/>
+                        </Border>
+                    </Grid>
+
+                    <!-- The receipt. Same line, same height, same place — what
+                         changed is what it says. The prose and the date are two
+                         runs so the date sets in Plex Mono with tabular figures
+                         (§3) while the words beside it stay in the body face,
+                         which is the rule the reason sentence above follows. -->
+                    <Grid ColumnDefinitions="*,Auto"
+                          IsVisible="{Binding IsSetAside}">
+                        <StackPanel Grid.Column="0"
+                                    Orientation="Horizontal" Spacing="5"
+                                    VerticalAlignment="Center">
+                            <TextBlock Classes="body"
+                                       VerticalAlignment="Center"
+                                       Foreground="{StaticResource TextDim}"
+                                       Text="{Binding SetAsideNote}"/>
+                            <TextBlock Classes="data"
+                                       VerticalAlignment="Center"
+                                       Foreground="{StaticResource TextDim}"
+                                       IsVisible="{Binding HasSetAsideDate}"
+                                       Text="{Binding SetAsideDate}"/>
+                        </StackPanel>
+
+                        <!-- Quiet rather than primary: undoing is the way back,
+                             not the thing to do next. It is a real bordered
+                             control though, where the two that put the card here
+                             are borderless — after the act, the way back is the
+                             only offer on the line and can afford to be found
+                             instantly. -->
+                        <Button Grid.Column="1"
+                                Classes="act quiet cardact"
+                                Content="Undo"
+                                Command="{Binding UndoCommand}"/>
+                    </Grid>
+                </Panel>
+
+                <!-- A write that did not land. Both controls stay exactly where
+                     they were so the user can simply press again, and the card
+                     grows by one line rather than claiming a dismissal the
+                     database does not hold. Amber, because §2 gives Amber
+                     attention and Danger the one destructive act — a failed save
+                     is neither an alarm nor a thing to undo. -->
+                <TextBlock DockPanel.Dock="Bottom"
+                           Classes="body"
+                           FontSize="11"
+                           Margin="0,8,0,0"
+                           TextWrapping="Wrap"
+                           Foreground="{StaticResource Amber}"
+                           IsVisible="{Binding HasProblem}"
+                           Text="{Binding Problem}"/>
 
                 <StackPanel Spacing="6">
                     <TextBlock Text="{Binding Tile.Title}"

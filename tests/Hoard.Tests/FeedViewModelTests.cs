@@ -416,9 +416,16 @@ public sealed class FeedViewModelTests
 /// A feed service that returns what a test hands it. <see cref="Gate"/> holds the
 /// answer back so the working state can be observed while a real pass would be
 /// out — the state the app spends its first half-second in.
+///
+/// <para>It also stands in for the feedback store, with the same
+/// append-and-revoke semantics migration 0011 gives the real one: a verdict is a
+/// row, undo is a stamp on it, and nothing is ever deleted. That is what lets
+/// the history assertions below be about the SCREEN rather than about SQLite.</para>
 /// </summary>
 internal sealed class FakeFeedService : IFeedService
 {
+    private readonly List<FeedVerdictRecord> _verdicts = [];
+
     public FakeFeedService(FeedSnapshot next) => Next = next;
 
     public FeedSnapshot Next { get; set; }
@@ -426,6 +433,15 @@ internal sealed class FakeFeedService : IFeedService
     public TaskCompletionSource? Gate { get; init; }
 
     public int Calls { get; private set; }
+
+    /// <summary>Makes every write fail, the way a locked or missing database would.</summary>
+    public bool WritesFail { get; set; }
+
+    /// <summary>The clock the expiry is computed from, so a snooze's date is assertable.</summary>
+    public DateTime Now { get; set; } = new(2026, 8, 27, 10, 0, 0, DateTimeKind.Utc);
+
+    /// <summary>Every verdict ever recorded here, newest first — the real repository's order.</summary>
+    public IReadOnlyList<FeedVerdictRecord> Verdicts => _verdicts;
 
     public async Task<FeedSnapshot> GetShelvesAsync(CancellationToken ct = default)
     {
@@ -437,6 +453,54 @@ internal sealed class FakeFeedService : IFeedService
 
         return Next;
     }
+
+    public Task<FeedVerdictOutcome> RecordVerdictAsync(
+        long releaseId, FeedVerdictKind kind, CancellationToken ct = default)
+    {
+        if (WritesFail)
+        {
+            return Task.FromResult(FeedVerdictOutcome.NotSaved);
+        }
+
+        var expires = kind == FeedVerdictKind.Snoozed ? Now.AddDays(30) : (DateTime?)null;
+
+        // Newest first, like GetAllVerdictsAsync.
+        _verdicts.Insert(0, new FeedVerdictRecord(
+            releaseId, kind, Now, expires, RevokedAt: null, FeedVerdictStatus.Active));
+
+        return Task.FromResult(new FeedVerdictOutcome(Saved: true, expires));
+    }
+
+    public Task<bool> RevokeVerdictAsync(
+        long releaseId, FeedVerdictKind kind, CancellationToken ct = default)
+    {
+        if (WritesFail)
+        {
+            return Task.FromResult(false);
+        }
+
+        var revoked = false;
+        for (var i = 0; i < _verdicts.Count; i++)
+        {
+            var row = _verdicts[i];
+            if (row.ReleaseId != releaseId || row.Kind != kind || row.Status != FeedVerdictStatus.Active)
+            {
+                continue;
+            }
+
+            // A stamp, never a deletion — the row survives as history.
+            _verdicts[i] = row with { RevokedAt = Now, Status = FeedVerdictStatus.Undone };
+            revoked = true;
+        }
+
+        return Task.FromResult(revoked);
+    }
+
+    public Task<IReadOnlyList<FeedVerdictRecord>> GetHistoryAsync(CancellationToken ct = default)
+        => Task.FromResult<IReadOnlyList<FeedVerdictRecord>>(_verdicts.ToList());
+
+    /// <summary>Puts a row in that this session did not write — a lapsed snooze, an old dismissal.</summary>
+    public void Seed(FeedVerdictRecord record) => _verdicts.Insert(0, record);
 }
 
 /// <summary>The service contract says it never throws; this one does, to prove the screen survives it.</summary>
@@ -444,6 +508,17 @@ internal sealed class ThrowingFeedService : IFeedService
 {
     public Task<FeedSnapshot> GetShelvesAsync(CancellationToken ct = default)
         => throw new InvalidOperationException("the database went away mid-pass");
+
+    public Task<FeedVerdictOutcome> RecordVerdictAsync(
+        long releaseId, FeedVerdictKind kind, CancellationToken ct = default)
+        => throw new InvalidOperationException("the database went away mid-write");
+
+    public Task<bool> RevokeVerdictAsync(
+        long releaseId, FeedVerdictKind kind, CancellationToken ct = default)
+        => throw new InvalidOperationException("the database went away mid-write");
+
+    public Task<IReadOnlyList<FeedVerdictRecord>> GetHistoryAsync(CancellationToken ct = default)
+        => throw new InvalidOperationException("the database went away mid-read");
 }
 
 /// <summary>
@@ -480,6 +555,29 @@ internal sealed class FakeTileSource : IGameTileSource
 
     public GameTileViewModel? TileForOwnership(long ownershipId)
         => _empty ? null : _tiles.GetValueOrDefault(ownershipId);
+
+    /// <summary>
+    /// The fixtures above give a tile the same id for both keys, so a release
+    /// lookup is the ownership lookup — which is what the inspection screen
+    /// needs to put a title against a stored verdict.
+    /// </summary>
+    public GameTileViewModel? TileForRelease(long releaseId)
+    {
+        if (_empty)
+        {
+            return null;
+        }
+
+        foreach (var tile in _tiles.Values)
+        {
+            if (tile.ReleaseId == releaseId)
+            {
+                return tile;
+            }
+        }
+
+        return null;
+    }
 }
 
 /// <summary>

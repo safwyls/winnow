@@ -621,6 +621,26 @@ public partial class MainWindow : Window
             }
 #endif
 
+            // The inspection surface is the shallowest layer on this screen, so
+            // it answers Escape first — and it is the only thing Escape does
+            // here. Closing it puts the shelves back; the Feed itself is left
+            // up, because the user asked to leave a list and not to leave the
+            // screen the list belongs to.
+            if (_shell.Feed.IsHistoryOpen)
+            {
+                if (e.Key == Key.Escape)
+                {
+                    _shell.Feed.CloseHistoryCommand.Execute(null);
+                    e.Handled = true;
+                }
+
+                // No arrow walk over it: its rows are ordinary controls in the
+                // window's tree, so Tab already reaches every title and every
+                // Undo in reading order, and a second walk laid over that would
+                // move focus twice per press.
+                return;
+            }
+
             if (FeedPanel.HandleNavigationKey(e))
             {
                 e.Handled = true;

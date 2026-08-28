@@ -53,9 +53,12 @@ public partial class FeedCardView : UserControl
 
     /// <summary>
     /// Puts keyboard focus on the card itself rather than on anything inside
-    /// it. The card is the Button; the Play button in its corner is a second
-    /// Tab stop the user reaches deliberately, and arrow navigation must not
-    /// land them on it by accident.
+    /// it. The card is the Button; Play and the two feedback controls beside it
+    /// are Tab stops the user reaches deliberately, and arrow navigation must
+    /// not land them on one by accident. It matters more now than it did: the
+    /// controls that can set a game aside are on that line, and an arrow key
+    /// that parked focus on one of them would put a dismissal under the next
+    /// press of Space.
     /// </summary>
     public void TakeFocus() => Card.Focus(NavigationMethod.Directional);
 

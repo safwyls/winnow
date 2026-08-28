@@ -91,6 +91,97 @@ public sealed record FeedSnapshot(
 }
 
 /// <summary>
+/// The two things a user can say about a card, in the UI's own vocabulary.
+///
+/// <para><b>They are two and not one, and that is the whole point.</b> "You
+/// were right, I'm done with this" and "not now" are different intents; the
+/// schema keeps them apart (migration 0011's CHECK) and so does the screen. A
+/// single dismiss control that guessed which one was meant would throw the
+/// difference away at the only moment the user knew it.</para>
+///
+/// <para><b>Why this is not <c>Hoard.Core.Domain.FeedVerdictKinds</c>.</b> Same
+/// rule <see cref="FeedConfidence"/> follows: those are the storage's string
+/// constants, and a view model passing <c>"not_interested"</c> across a command
+/// would be writing schema vocabulary in the presentation layer. The
+/// translation happens once, in <see cref="FeedService"/>, which is the
+/// App-layer type allowed to see both sides.</para>
+///
+/// <para>There is deliberately no positive kind. The positive signal is
+/// behavioural — a Hoard-launched session on a game the feed had just shown —
+/// recorded with no UI and no asking (§6b). A thumbs-up would duplicate it with
+/// strictly worse data, and unpressed it would teach the user this surface is
+/// decoration.</para>
+/// </summary>
+public enum FeedVerdictKind
+{
+    /// <summary>"Not interested." Durable; holds until the user takes it back.</summary>
+    NotInterested = 0,
+
+    /// <summary>"Not now." Lapses by itself after the default snooze.</summary>
+    Snoozed = 1,
+}
+
+/// <summary>
+/// Where one stored verdict stands right now — computed by the service, which
+/// owns the clock, so the inspection screen never has to hold one.
+/// </summary>
+public enum FeedVerdictStatus
+{
+    /// <summary>Still binding: not revoked, and (for a snooze) not yet lapsed.</summary>
+    Active = 0,
+
+    /// <summary>The user took it back. The row survives with its revocation stamp — undo does not cost history.</summary>
+    Undone = 1,
+
+    /// <summary>A snooze that ran out on its own. No write happened; expiry is evaluated at read time.</summary>
+    Lapsed = 2,
+}
+
+/// <summary>
+/// One row of "what you have told the feed", ready to draw.
+/// </summary>
+/// <param name="ReleaseId">
+/// What the verdict was stored against — the identity the inspection screen
+/// joins back to a library tile for a title and a cover, and what an undo is
+/// addressed to.
+/// </param>
+/// <param name="Kind">Which of the two things the user said.</param>
+/// <param name="CreatedAt">When they said it (UTC).</param>
+/// <param name="ExpiresAt">When a snooze lapses (UTC). Null for a dismissal, which never does.</param>
+/// <param name="RevokedAt">When they took it back (UTC), or null.</param>
+/// <param name="Status">
+/// The three-way answer, computed against the service's clock. Only
+/// <see cref="FeedVerdictStatus.Active"/> rows can be undone — the rest are
+/// history, and history is the point of keeping them.
+/// </param>
+public sealed record FeedVerdictRecord(
+    long ReleaseId,
+    FeedVerdictKind Kind,
+    DateTime CreatedAt,
+    DateTime? ExpiresAt,
+    DateTime? RevokedAt,
+    FeedVerdictStatus Status);
+
+/// <summary>
+/// What happened when the user pressed one of the two feedback controls.
+/// </summary>
+/// <param name="Saved">
+/// False when the write did not land. The card must NOT then show a receipt: a
+/// dismissal the app failed to store and reported as stored is the one lie this
+/// surface cannot tell, because the game comes back tomorrow and the user
+/// believes they already answered for it.
+/// </param>
+/// <param name="ExpiresAt">
+/// When a snooze lapses, so the card can say the date rather than "in a while".
+/// Null for a dismissal and for a failure.
+/// </param>
+public sealed record FeedVerdictOutcome(bool Saved, DateTime? ExpiresAt)
+{
+    /// <summary>The answer when there is nowhere to write, or when writing threw.</summary>
+    public static FeedVerdictOutcome NotSaved { get; } = new(Saved: false, ExpiresAt: null);
+}
+
+/// <summary>
 /// Everything the Feed screen needs, expressed without naming a scoring type or
 /// a repository.
 ///
@@ -118,4 +209,43 @@ public interface IFeedService
     /// near-tie shuffle from the date, so re-asking does not deal a new hand.
     /// </summary>
     Task<FeedSnapshot> GetShelvesAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Stores one verdict about one release — the "not interested" and "not
+    /// now" controls on a card. A snooze's expiry is the service's to compute
+    /// (§6b's <c>DefaultSnooze</c>), so the screen never has to know how long
+    /// "not now" is; it is told, and says so.
+    /// </summary>
+    /// <returns>
+    /// Never throws. A write that could not land comes back as
+    /// <see cref="FeedVerdictOutcome.NotSaved"/> so the card can say so rather
+    /// than claim a dismissal it does not have.
+    /// </returns>
+    Task<FeedVerdictOutcome> RecordVerdictAsync(
+        long releaseId, FeedVerdictKind kind, CancellationToken ct = default);
+
+    /// <summary>
+    /// Takes one back — every active verdict of that kind on that release gets
+    /// a revocation stamp. Append-and-revoke, never a delete: undo must not cost
+    /// the history that makes this loop inspectable.
+    /// </summary>
+    /// <returns>
+    /// True when something was actually revoked. False is not an error — a
+    /// snooze that lapsed under the user's finger had already undone itself.
+    /// Never throws.
+    /// </returns>
+    Task<bool> RevokeVerdictAsync(
+        long releaseId, FeedVerdictKind kind, CancellationToken ct = default);
+
+    /// <summary>
+    /// Everything the user has ever told the feed, newest first, revoked and
+    /// lapsed rows included.
+    ///
+    /// <para>This is the charter's explainability requirement with a method
+    /// name: dismissed → undone → dismissed again is two rows and a stamp, and
+    /// all of it is visible, because a feedback loop nobody can audit is the
+    /// black box §6b exists to prevent. Never throws — an empty list is the
+    /// answer when there is nothing to read from.</para>
+    /// </summary>
+    Task<IReadOnlyList<FeedVerdictRecord>> GetHistoryAsync(CancellationToken ct = default);
 }

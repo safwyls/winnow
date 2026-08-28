@@ -52,4 +52,23 @@ public interface IGameTileSource
     /// better outcome than an invented one.</para>
     /// </summary>
     GameTileViewModel? TileForOwnership(long ownershipId);
+
+    /// <summary>
+    /// The tile for a RELEASE, or null when the library does not hold one.
+    ///
+    /// <para><b>Why the second key exists.</b> Everything the feed draws is
+    /// keyed by ownership, but the one fact the feedback loop stores is keyed by
+    /// release — a verdict is about the game, not about which of your copies of
+    /// it the card happened to be (§6b widens a dismissal to the work for
+    /// precisely that reason). So the inspection screen, which starts from
+    /// stored rows rather than from cards, has nothing but a release id to put a
+    /// title against.</para>
+    ///
+    /// <para>Null is a real answer here too, and a likelier one than above: a
+    /// verdict outlives the library it was given in. A game consolidated away as
+    /// a demo, or hidden by the non-game preference, still has its row, and the
+    /// screen names it as one it can no longer find rather than dropping it —
+    /// hiding a verdict the user gave would defeat the surface.</para>
+    /// </summary>
+    GameTileViewModel? TileForRelease(long releaseId);
 }

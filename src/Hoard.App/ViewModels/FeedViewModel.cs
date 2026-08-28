@@ -59,6 +59,25 @@ public partial class FeedViewModel : ObservableObject
         {
             _tiles.TilesChanged += OnTilesChanged;
         }
+
+        // The inspection surface. It is built here rather than injected because
+        // it is a state of this screen and not a peer of it — see IsHistoryOpen
+        // for why it does not get a rail row.
+        History = new FeedHistoryViewModel(feed, tiles);
+
+        // A verdict taken back on the history screen has to reach any card still
+        // showing its receipt. Two surfaces over one stored row, and they must
+        // not disagree about it.
+        History.VerdictRevoked += OnVerdictRevoked;
+
+        // The header's count is the history's, so it has to move when that does.
+        History.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(FeedHistoryViewModel.HasEntries))
+            {
+                OnPropertyChanged(nameof(ShowHistoryCount));
+            }
+        };
     }
 
     /// <summary>Sections in presentation order — the engine's claim order, strongest story first.</summary>
@@ -66,6 +85,53 @@ public partial class FeedViewModel : ObservableObject
 
     /// <summary>The screen's own name. Directive rather than clever: it says what the screen is for.</summary>
     public string Title => "Where to start";
+
+    /// <summary>
+    /// Everything the user has ever told the feed, and the undo for each of it.
+    /// </summary>
+    public FeedHistoryViewModel History { get; }
+
+    /// <summary>
+    /// Whether the inspection surface is up in place of the shelves.
+    ///
+    /// <para><b>Why it is a state of this screen and not a rail row.</b> The
+    /// rail's SETTINGS section holds STORES and APPEARANCE and was written to
+    /// grow, and this was the obvious place to put it. Three things say
+    /// otherwise. It is not a preference — it configures nothing; it is the
+    /// record of acts performed on one screen, and filing it under app settings
+    /// files an audit trail as a knob. Its whole value is a number that grows,
+    /// and that section's own note forbids counts on its rows ("a settings row
+    /// would only ever say a constant"). And §12.2's rule — the rail never
+    /// leaves the user on a screen their click did not describe — cuts against a
+    /// SETTINGS row that lands them inside the Feed. So it hangs off the Feed's
+    /// own header, one click from the cards it is about and from the receipts
+    /// that are the other route back.</para>
+    ///
+    /// <para>It is a state rather than a popup for §12.3's reason: Avalonia's
+    /// focus adorner does not render inside a popup, so a flyout here would need
+    /// every ring hand-drawn, while in the window's own tree §8's ring and a
+    /// linear tab order both come free.</para>
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(
+        nameof(ShowShelves), nameof(ShowMessage), nameof(ShowHistory), nameof(ShowCandidates),
+        nameof(HistoryLabel), nameof(ShowHistoryCount))]
+    public partial bool IsHistoryOpen { get; set; }
+
+    /// <summary>
+    /// The header control's own words. One control rather than two, and it says
+    /// which way it goes: a toggle whose label never changes is a toggle whose
+    /// state you have to infer from the screen behind it.
+    /// </summary>
+    public string HistoryLabel => IsHistoryOpen ? "Back to the feed" : "What you've told the feed";
+
+    /// <summary>
+    /// Whether the header states how many verdicts are on record. Not while the
+    /// screen is open — the surface's own header says it two lines below, and
+    /// one number twice is the interface disagreeing with itself if either ever
+    /// lags.
+    /// </summary>
+    public bool ShowHistoryCount => !IsHistoryOpen && History.HasEntries;
 
     /// <summary>
     /// True while the scoring pass is out. Starts true, because the app opens on
@@ -100,6 +166,7 @@ public partial class FeedViewModel : ObservableObject
 
     /// <summary>Whether the header may state the number at all — it must not say "0 games scored" while loading.</summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowCandidates))]
     public partial bool HasCandidates { get; set; }
 
     /// <summary>
@@ -113,9 +180,19 @@ public partial class FeedViewModel : ObservableObject
 
     public bool HasConfidenceNote => !string.IsNullOrEmpty(ConfidenceNote);
 
-    public bool ShowShelves => !IsLoading && Message is null;
+    public bool ShowShelves => !IsLoading && Message is null && !IsHistoryOpen;
 
-    public bool ShowMessage => Message is not null;
+    public bool ShowMessage => Message is not null && !IsHistoryOpen;
+
+    /// <summary>The inspection surface takes the body, so exactly one of these three is ever true.</summary>
+    public bool ShowHistory => IsHistoryOpen;
+
+    /// <summary>
+    /// The header's count line. It states what today's feed was scored from, so
+    /// it goes quiet on the history surface rather than describing a screen the
+    /// user is not looking at.
+    /// </summary>
+    public bool ShowCandidates => HasCandidates && !IsHistoryOpen;
 
     /// <summary>
     /// Computes and renders today's feed. Safe to call repeatedly; the engine
@@ -155,6 +232,13 @@ public partial class FeedViewModel : ObservableObject
 
         Apply(snapshot);
         IsLoading = false;
+
+        // The header's entry point states how many verdicts are on record, so
+        // the count has to exist before anyone opens the screen. One read of a
+        // table that grows a click at a time, on the same background path the
+        // scoring pass just came off — and it is awaited rather than dropped so
+        // the number can never be a load behind what the cards are showing.
+        await History.LoadCommand.ExecuteAsync(null);
     }
 
     private void Apply(FeedSnapshot snapshot)
@@ -191,7 +275,14 @@ public partial class FeedViewModel : ObservableObject
                 // not an error.
                 if (_tiles?.TileForOwnership(item.OwnershipId) is { } tile)
                 {
-                    cards.Add(new FeedCardViewModel(tile, item.Reason));
+                    var card = new FeedCardViewModel(tile, item.Reason, _feed);
+
+                    // The header's count is a live claim about stored rows, so
+                    // it moves when one is written from a card. Cheap: the
+                    // history is one row per verdict ever given, and the read
+                    // goes through the service like every other.
+                    card.VerdictChanged += OnCardVerdictChanged;
+                    cards.Add(card);
                 }
             }
 
@@ -214,6 +305,58 @@ public partial class FeedViewModel : ObservableObject
         Message = _tiles is { HasTiles: false } || snapshot.CandidateCount == 0
             ? "Nothing to score yet. Hoard reads your library first, and the feed follows it."
             : "Nothing to put in front of you today. Everything Hoard scored is either played out, in rotation, or too recent to call forgotten.";
+    }
+
+    /// <summary>
+    /// Opens or closes the inspection surface. Loading is on the way IN only:
+    /// the list is a view of stored rows, and re-reading it on the way out would
+    /// be work done for a screen nobody is looking at.
+    /// </summary>
+    [RelayCommand]
+    private async Task ToggleHistoryAsync()
+    {
+        IsHistoryOpen = !IsHistoryOpen;
+
+        if (IsHistoryOpen)
+        {
+            await History.LoadCommand.ExecuteAsync(null);
+        }
+    }
+
+    /// <summary>
+    /// Back to the shelves. Its own command rather than a second call to the
+    /// toggle, because Escape has to mean "close" and never "open" — a window
+    /// key that opens a screen when the screen is already shut is how a user
+    /// ends up somewhere they did not ask to be.
+    /// </summary>
+    [RelayCommand]
+    private void CloseHistory() => IsHistoryOpen = false;
+
+    /// <summary>
+    /// A card stored or revoked a verdict. Re-reads the history so the header's
+    /// count — and the list itself, if somebody opens it next — agrees with the
+    /// store rather than with the last time anyone looked.
+    /// </summary>
+    private void OnCardVerdictChanged(object? sender, EventArgs e)
+        => _ = History.LoadCommand.ExecuteAsync(null);
+
+    /// <summary>
+    /// A verdict was taken back on the history screen. Any card still showing
+    /// its receipt goes back to offering both controls — the store has one row
+    /// and the two surfaces may not disagree about what it says.
+    /// </summary>
+    private void OnVerdictRevoked(object? sender, long releaseId)
+    {
+        foreach (var shelf in Shelves)
+        {
+            foreach (var card in shelf.Cards)
+            {
+                if (card.Tile.ReleaseId == releaseId)
+                {
+                    card.Restore();
+                }
+            }
+        }
     }
 
     /// <summary>

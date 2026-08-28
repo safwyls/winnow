@@ -274,6 +274,19 @@ public static class Program
         services.AddSingleton<IResolveStateRepository, ResolveStateRepository>();
         services.AddSingleton<ISettingsRepository, SettingsRepository>();
 
+        // M8's feedback loop (recommendation-engine.md §6b), over migration
+        // 0011. It is registered beside the other repositories rather than with
+        // the Feed below because it is storage like all of them — but it is the
+        // one repository the UI WRITES to on a user's click, so the only type
+        // that touches it is FeedService, which is the §5.1 seam in front of the
+        // whole screen. Nothing in ViewModels/ names it.
+        //
+        // Omitting this line does not break anything: FeedService takes it as an
+        // optional dependency and, without it, the feed still computes and the
+        // two card controls are simply not offered. That degradation is
+        // deliberate — an unwired store must cost the loop, never the screen.
+        services.AddSingleton<IFeedFeedbackRepository, FeedFeedbackRepository>();
+
         // Ingest → Resolve → sync (§5.1: the UI reads the database; it never
         // calls these directly. Program composes them, the view models don't).
         services.AddSingleton<LibraryFoldersReader>();
@@ -466,7 +479,10 @@ public static class Program
         //
         // FeedService is also where the pass gets off the UI thread: the reads
         // under the engine are synchronous SQLite, so awaiting it from the
-        // dispatcher would run all ~500ms of it there (§5.1 pitfall 3).
+        // dispatcher would run all ~500ms of it there (§5.1 pitfall 3). Since
+        // the feedback loop landed it is also the only WRITER on that path —
+        // the surfacing log after every pass, and a verdict on every dismiss —
+        // and both writes go through the same Task.Run for the same reason.
         //
         // Same instance of LibraryViewModel under IGameTileSource, for the same
         // reason IStoreTitleCounts takes it: a second one would be a second load

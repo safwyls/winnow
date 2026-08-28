@@ -316,6 +316,30 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     }
 
     /// <summary>
+    /// The tile for a release. The Feed's inspection surface starts from stored
+    /// verdict rows, which are keyed by release rather than by ownership (§6b),
+    /// and this is how it puts a title and a cover against one.
+    ///
+    /// <para>The same linear walk as above, and for the same reason: it is asked
+    /// once per row of a list that holds one entry per game the user has ever
+    /// dismissed. <b>First match wins</b> — a release owned on two stores is two
+    /// tiles, and either of them names the same game, which is the only thing
+    /// this lookup is for.</para>
+    /// </summary>
+    public GameTileViewModel? TileForRelease(long releaseId)
+    {
+        foreach (var tile in _allTiles)
+        {
+            if (tile.ReleaseId == releaseId)
+            {
+                return tile;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// Whether covers dim with age, and whether the hover restore animates.
     /// Owned here because the tiles resolve through it; the control that writes
     /// it is <see cref="DisplaySettingsViewModel"/>.

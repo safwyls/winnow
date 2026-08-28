@@ -105,31 +105,69 @@
                 Padding="24,20,24,18"
                 BorderBrush="{StaticResource Line}"
                 BorderThickness="0,0,0,1">
-            <StackPanel Spacing="7">
-                <TextBlock Classes="display-l" Text="{Binding Title}"/>
+            <Grid ColumnDefinitions="*,Auto">
+                <StackPanel Grid.Column="0" Spacing="7">
+                    <TextBlock Classes="display-l" Text="{Binding Title}"/>
 
-                <StackPanel Orientation="Horizontal" Spacing="6"
-                            IsVisible="{Binding HasCandidates}">
-                    <TextBlock Classes="data"
-                               Foreground="{StaticResource Text}"
-                               Text="{Binding CandidateCountText}"/>
-                    <TextBlock Classes="body"
+                    <StackPanel Orientation="Horizontal" Spacing="6"
+                                IsVisible="{Binding ShowCandidates}">
+                        <TextBlock Classes="data"
+                                   Foreground="{StaticResource Text}"
+                                   Text="{Binding CandidateCountText}"/>
+                        <TextBlock Classes="body"
+                                   Foreground="{StaticResource TextDim}"
+                                   Text="games scored today, and every card says why it's on it."/>
+                    </StackPanel>
+
+                    <!-- §6's confidence copy, driven by the tier the engine
+                         reports. It goes quiet once the library has enough
+                         history that saying anything would be an apology for
+                         nothing. -->
+                    <TextBlock Classes="body" FontSize="12"
+                               MaxWidth="640"
+                               HorizontalAlignment="Left"
+                               TextWrapping="Wrap"
+                               LineHeight="18"
                                Foreground="{StaticResource TextDim}"
-                               Text="games scored today, and every card says why it's on it."/>
+                               IsVisible="{Binding HasConfidenceNote}"
+                               Text="{Binding ConfidenceNote}"/>
                 </StackPanel>
 
-                <!-- §6's confidence copy, driven by the tier the engine reports.
-                     It goes quiet once the library has enough history that
-                     saying anything would be an apology for nothing. -->
-                <TextBlock Classes="body" FontSize="12"
-                           MaxWidth="640"
-                           HorizontalAlignment="Left"
-                           TextWrapping="Wrap"
-                           LineHeight="18"
-                           Foreground="{StaticResource TextDim}"
-                           IsVisible="{Binding HasConfidenceNote}"
-                           Text="{Binding ConfidenceNote}"/>
-            </StackPanel>
+                <!-- ══ The way into "what you've told the feed" ════════════
+                     It hangs off THIS header rather than sitting in the rail's
+                     SETTINGS section, and the argument is three-part. It is not
+                     a preference — it configures nothing; it is the record of
+                     acts performed on this screen, and filing an audit trail
+                     under app settings files it as a knob. Its value is a number
+                     that grows, and that section's own note forbids counts on
+                     its rows ("a settings row would only ever say a constant").
+                     And §12.2's rule — the rail never leaves the user on a screen
+                     their click did not describe — cuts against a SETTINGS row
+                     that lands them inside the Feed.
+
+                     So it is one click from the cards it is about, beside the
+                     count of what those cards were drawn from, and it is the
+                     second route back from a dismissal: the card's own receipt
+                     is the first, and it is the one that catches a misclick.
+
+                     The count is Plex Mono with tabular figures like every other
+                     number, and it is stated only once there is one. -->
+                <Button Grid.Column="1"
+                        Classes="act quiet"
+                        Padding="12,6"
+                        FontSize="12"
+                        VerticalAlignment="Top"
+                        Command="{Binding ToggleHistoryCommand}">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock VerticalAlignment="Center" Text="{Binding HistoryLabel}"/>
+                        <TextBlock Classes="data-s"
+                                   VerticalAlignment="Center"
+                                   Foreground="{StaticResource TextDim}"
+                                   IsVisible="{Binding ShowHistoryCount}"
+                                   Text="{Binding History.CountText}"/>
+                    </StackPanel>
+                </Button>
+            </Grid>
         </Border>
 
         <!-- ══ Working / quiet / broken ═════════════════════════════════════
@@ -250,6 +288,134 @@
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
+        </ScrollViewer>
+
+        <!-- ══ What you've told the feed ═══════════════════════
+             The inspection surface, and it takes the body rather than opening a
+             popup. §12.3's reason, unchanged: Avalonia's focus adorner does not
+             render inside a popup (a popup is its own root and has no adorner
+             layer), so every ring in a flyout here would have to be hand-drawn,
+             while in the window's own tree §8's ring and a linear tab order both
+             come free. Escape closes it, from anywhere on the screen.
+
+             It borrows the section island's shape — a 1px Line box at
+             RadiusPane, a header band, a rule across it, rows below — because
+             that is the structure this screen already teaches, and a second one
+             would be a second thing to learn on a surface whose whole job is to
+             be legible.
+
+             EVERY ROW IS SHOWN, including the ones that no longer bind. A
+             verdict the user took back is two facts (they said it; they undid
+             it) and both are on the row; a snooze that lapsed left no write
+             anywhere, so its row is the only evidence it ever happened, and "why
+             did this come back" is a question this screen has to be able to
+             answer. Hiding either would make the loop exactly the black box the
+             charter forbids. -->
+        <ScrollViewer Grid.Row="1"
+                      IsVisible="{Binding ShowHistory}"
+                      HorizontalScrollBarVisibility="Disabled"
+                      VerticalScrollBarVisibility="Auto">
+            <Border Classes="section" Margin="24,24,24,32">
+                <StackPanel>
+
+                    <StackPanel Margin="18,15,18,14" Spacing="3">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <TextBlock Classes="shelf" Text="{Binding History.Title}"/>
+                            <TextBlock Classes="data-s"
+                                       VerticalAlignment="Center"
+                                       IsVisible="{Binding History.HasEntries}"
+                                       Text="{Binding History.CountText}"/>
+                        </StackPanel>
+                        <TextBlock Classes="body"
+                                   MaxWidth="720"
+                                   HorizontalAlignment="Left"
+                                   TextWrapping="Wrap"
+                                   LineHeight="19"
+                                   Foreground="{StaticResource TextDim}"
+                                   Text="Everything you've said to a card, newest first — including the ones you took back and the ones that ran out on their own. Nothing here is deleted."/>
+                    </StackPanel>
+
+                    <Border Height="1" Background="{StaticResource Line}"/>
+
+                    <!-- Empty is a direction, not a mood (§7): it says where the
+                         controls are, because somebody opening this before ever
+                         using them has asked a reasonable question. -->
+                    <TextBlock Classes="body"
+                               Margin="18,16,18,18"
+                               MaxWidth="620"
+                               HorizontalAlignment="Left"
+                               TextWrapping="Wrap"
+                               LineHeight="19"
+                               Foreground="{StaticResource TextDim}"
+                               IsVisible="{Binding History.ShowMessage}"
+                               Text="{Binding History.Message}"/>
+
+                    <ItemsControl ItemsSource="{Binding History.Entries}"
+                                  IsVisible="{Binding History.HasEntries}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:FeedHistoryEntryViewModel">
+                                <!-- A row, ruled off from the next. 44px is the
+                                     list view's row height and this is the same
+                                     kind of object — a record you scan rather
+                                     than a card you choose from. -->
+                                <Border BorderBrush="{StaticResource LineSoft}"
+                                        BorderThickness="0,0,0,1"
+                                        Padding="18,12">
+                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="14">
+                                        <StackPanel Grid.Column="0" Spacing="4">
+                                            <TextBlock Text="{Binding Title}"
+                                                       FontFamily="{StaticResource DisplayFont}"
+                                                       FontWeight="Bold" FontSize="14"
+                                                       TextWrapping="Wrap"
+                                                       Foreground="{StaticResource Text}"/>
+
+                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                                <!-- Which of the two things they
+                                                     said, in words. Never a
+                                                     colour: the two kinds are
+                                                     told apart by their names
+                                                     for §12.1's reason — a mark
+                                                     survives only while there is
+                                                     one of them, and this app's
+                                                     one mark is the unread
+                                                     dot. -->
+                                                <TextBlock Classes="label"
+                                                           VerticalAlignment="Center"
+                                                           Foreground="{StaticResource TextDim}"
+                                                           Text="{Binding KindLabel}"/>
+                                                <TextBlock Classes="body"
+                                                           VerticalAlignment="Center"
+                                                           Foreground="{StaticResource TextDim}"
+                                                           Text="{Binding StatusNote}"/>
+                                                <TextBlock Classes="data"
+                                                           VerticalAlignment="Center"
+                                                           Foreground="{StaticResource TextDim}"
+                                                           IsVisible="{Binding HasStatusDate}"
+                                                           Text="{Binding StatusDate}"/>
+                                            </StackPanel>
+                                        </StackPanel>
+
+                                        <!-- Only a standing verdict offers one.
+                                             An undone row already has been and a
+                                             lapsed snooze undid itself — a button
+                                             there would invite an act that does
+                                             nothing. -->
+                                        <Button Grid.Column="1"
+                                                Classes="act quiet"
+                                                FontSize="12"
+                                                Padding="14,6"
+                                                VerticalAlignment="Center"
+                                                Content="Undo"
+                                                IsVisible="{Binding CanUndo}"
+                                                Command="{Binding UndoCommand}"/>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                </StackPanel>
+            </Border>
         </ScrollViewer>
 
     </Grid>

@@ -262,5 +262,12 @@ public partial class MainWindowViewModel : ObservableObject
         IsStoresVisible = false;
         IsAppearanceVisible = false;
         IsFeedVisible = false;
+
+        // The Feed's inspection surface is a state of that screen, so leaving
+        // the screen leaves it. It also means the rail's FEED row always lands
+        // on the shelves: this runs on the way in as well as on the way out, and
+        // a landing state that is sometimes a list of past dismissals is not a
+        // landing state.
+        Feed.IsHistoryOpen = false;
     }
 }
