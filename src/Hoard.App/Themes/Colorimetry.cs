@@ -83,50 +83,87 @@ public static class Colorimetry
     }
 
     /// <summary>
+    /// The window's ground as it actually composites — the gaps between the
+    /// panes, and the caption, which is the same paint.
+    ///
+    /// <para>It is the outer of the window's two tiers and the only surface with
+    /// nothing painted between it and the desktop, which is why every other
+    /// measurement here starts by asking for it.</para>
+    /// </summary>
+    public static Color Shell(
+        HoardTheme theme, double transparency, HoardLayout layout, Color backdrop)
+        => Over(theme.Tokens(transparency, layout: layout)["ShellGround"], backdrop);
+
+    /// <summary>
     /// What the rail's metadata ink measures at a given slider position, over a
-    /// given backdrop. The one number the Appearance screen reports, because it
-    /// is the one §8 names a floor for.
+    /// given backdrop — the rail composited on the window's ground, which is
+    /// where it actually sits.
     /// </summary>
-    public static double RailMetadataContrast(HoardTheme theme, double transparency, Color backdrop)
+    public static double RailMetadataContrast(
+        HoardTheme theme, double transparency, Color backdrop, HoardLayout layout = HoardLayouts.Default)
     {
-        var tokens = theme.Tokens(transparency);
-        return Contrast(tokens["TextDim"], Over(tokens["ChromeSurface"], backdrop));
+        var tokens = theme.Tokens(transparency, layout: layout);
+        return Contrast(
+            tokens["TextDim"],
+            Over(tokens["ChromeSurface"], Shell(theme, transparency, layout, backdrop)));
     }
 
     /// <summary>
-    /// The worst the metadata ink does anywhere on the chrome at a given slider
-    /// position: the rail, and a hovered or selected row on it.
+    /// The worst the metadata ink does on any reading surface the transparency
+    /// slider reaches, at a given slider position.
     ///
-    /// <para>The SELECTED ROW is the one that binds, and it is not obvious — it
-    /// is the rail with a veil of <c>Text</c> over it, so it is the lightest
-    /// reading surface in the window and the first to lose its ink. §8 already
-    /// singles it out for the same reason on the opaque palette.</para>
+    /// <para><b>The binding surface moved when the tiers collapsed, and that is
+    /// the honest headline of the change.</b> While the rail sat at a chrome tier
+    /// of its own it was the most open reading surface in the window, and a
+    /// SELECTED rail row — the rail with a veil of <c>Text</c> over it — was the
+    /// worst case. The rail is a pane now, so it opens half as far and its
+    /// ceiling roughly doubled; what is left at the top is the CAPTION, which
+    /// sits on the window's ground and is therefore the most open reading surface
+    /// there is. Measuring only the chrome would now report a number no surface
+    /// in the window actually holds to.</para>
     ///
-    /// <para><b>The command bar used to be a third term here and no longer is,
-    /// because it is no longer chrome.</b> Its search box, its labels and its
-    /// sort menu sit inside the library pane now (§15.1, revised), so they are
-    /// measured where §14.7 measures every other pane ink — against a ground that
-    /// admits <c>1 − MinWallAlpha</c> rather than the chrome's reach, and that
-    /// fails at 59–73% of the slider against the chrome's 26–31%. It was never
-    /// the binding term while it was here: <c>Ground</c> is darker than
-    /// <c>Surface</c> at the same alpha, so a light ink on the bar always read
-    /// better than the same ink on the rail. Dropping it moves no theme's
-    /// ceiling — 27 / 31 / 30 / 26 before and after — which is asserted rather
-    /// than claimed.</para>
+    /// <para><b>It is taken across both layouts rather than for the one that is
+    /// up.</b> The floating layout puts the caption on the ground (85% desktop at
+    /// the far end); the flush layout paints it in the rail's own fill at the
+    /// pane tier (35%). So the two layouts do not fail at the same place, and a
+    /// mark on the slider that moved when the user changed layout would be a
+    /// promise that expired on a setting unrelated to it. The worst of the two is
+    /// reported, so the mark means the same thing whichever layout is up and
+    /// flipping the layout can never invalidate it.</para>
+    ///
+    /// <para>The panes are not measured here, for §14.7's reason and with the
+    /// numbers rechecked: on the wall's ramp <c>TextDim</c> holds to 63 / 71 / 68
+    /// / 74 and a selected list row to 48 / 56 / 53 / 56, against the rail's
+    /// 40 / 54 / 47 / 41 and the caption's 30 / 31 / 31 / 31. Nothing inside a
+    /// pane is the surface that fails first.</para>
     /// </summary>
-    public static double ChromeMetadataContrast(HoardTheme theme, double transparency, Color backdrop)
+    public static double WorstMetadataContrast(
+        HoardTheme theme, double transparency, Color backdrop)
     {
-        var tokens = theme.Tokens(transparency);
-        var rail = Over(tokens["ChromeSurface"], backdrop);
-        var row = Over(tokens["ChromeRaised"], rail);
-        var ink = tokens["TextDim"];
+        var worst = double.MaxValue;
 
-        return Math.Min(Contrast(ink, rail), Contrast(ink, row));
+        foreach (var layout in HoardLayouts.All)
+        {
+            var tokens = theme.Tokens(transparency, layout: layout);
+            var ink = tokens["TextDim"];
+            var shell = Shell(theme, transparency, layout, backdrop);
+
+            // The caption. In floating it IS the ground; in flush it is the
+            // rail's fill on the ground. Over(alpha 0, x) is x, so one line
+            // covers both.
+            worst = Math.Min(worst, Contrast(ink, Over(tokens["CaptionFill"], shell)));
+
+            var rail = Over(tokens["ChromeSurface"], shell);
+            worst = Math.Min(worst, Contrast(ink, rail));
+            worst = Math.Min(worst, Contrast(ink, Over(tokens["ChromeRaised"], rail)));
+        }
+
+        return worst;
     }
 
     /// <summary>
-    /// The last whole percent at which every reading surface in the chrome still
-    /// clears AA against a white wallpaper, for this theme.
+    /// The last whole percent at which every reading surface the slider reaches
+    /// still clears AA against a white wallpaper, for this theme.
     ///
     /// <para>Walked rather than solved. The inks and the alpha move on different
     /// ramps, so the ratio is not monotone in any form worth inverting, and a
@@ -137,7 +174,7 @@ public static class Colorimetry
         var last = 0;
         for (var percent = 0; percent <= 100; percent++)
         {
-            if (ChromeMetadataContrast(theme, percent / 100.0, White) < AaThreshold)
+            if (WorstMetadataContrast(theme, percent / 100.0, White) < AaThreshold)
             {
                 return last;
             }
@@ -150,11 +187,25 @@ public static class Colorimetry
 
     /// <summary>
     /// The cover wall's field as it actually composites: the theme's ground at
-    /// the wall's own alpha, over <paramref name="backdrop"/>.
+    /// the pane tier's alpha, over the WINDOW's ground, over
+    /// <paramref name="backdrop"/>.
+    ///
+    /// <para>The middle term is what changed with the two-tier restructure. A
+    /// pane is painted on the window's ground rather than straight on the
+    /// desktop, so the field's real composite carries both alphas — and it is
+    /// their product, <c>1 − MinWallAlpha</c>, that §14.6's polarity argument is
+    /// about. Measuring the token alone would report a lighter field than the one
+    /// on screen.</para>
     /// </summary>
     public static Color WallField(
-        HoardTheme theme, double transparency, bool wallTranslucent, Color backdrop)
-        => Over(theme.Tokens(transparency, wallTranslucent)["WallGround"], backdrop);
+        HoardTheme theme,
+        double transparency,
+        bool wallTranslucent,
+        Color backdrop,
+        HoardLayout layout = HoardLayouts.Default)
+        => Over(
+            theme.Tokens(transparency, wallTranslucent, layout)["WallGround"],
+            Shell(theme, transparency, layout, backdrop));
 
     /// <summary>
     /// Whether the field is still darker than the art hung on it — the one
@@ -166,13 +217,17 @@ public static class Colorimetry
     /// product.</para>
     /// </summary>
     public static bool WallKeepsItsPolarity(
-        HoardTheme theme, double transparency, bool wallTranslucent, Color backdrop)
-        => Luminance(WallField(theme, transparency, wallTranslucent, backdrop))
+        HoardTheme theme,
+        double transparency,
+        bool wallTranslucent,
+        Color backdrop,
+        HoardLayout layout = HoardLayouts.Default)
+        => Luminance(WallField(theme, transparency, wallTranslucent, backdrop, layout))
             <= Luminance(DormantCapsule);
 
     /// <summary>
     /// The last whole percent at which the translucent field still sits below a
-    /// dormant capsule against a white wallpaper.
+    /// dormant capsule against a white wallpaper, in either layout.
     ///
     /// <para>Walked rather than solved, for the same reason
     /// <see cref="AaCeiling"/> is: it costs nothing and it cannot drift from the
@@ -185,9 +240,12 @@ public static class Colorimetry
         var last = 0;
         for (var percent = 0; percent <= 100; percent++)
         {
-            if (!WallKeepsItsPolarity(theme, percent / 100.0, true, White))
+            foreach (var layout in HoardLayouts.All)
             {
-                return last;
+                if (!WallKeepsItsPolarity(theme, percent / 100.0, true, White, layout))
+                {
+                    return last;
+                }
             }
 
             last = percent;
@@ -195,6 +253,7 @@ public static class Colorimetry
 
         return 100;
     }
+
 
     private static double Channel(byte c)
     {

@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using Avalonia.Media;
 
 namespace Hoard.App.Themes;
@@ -139,7 +139,7 @@ public static class ThemeAudit
         return new ThemeReport(
             AaCeiling: Colorimetry.AaCeiling(theme),
             WallCeiling: Colorimetry.WallPolarityCeiling(theme),
-            MetadataOnChrome: Colorimetry.ChromeMetadataContrast(theme, 0, Colorimetry.White),
+            MetadataOnChrome: Colorimetry.WorstMetadataContrast(theme, 0, Colorimetry.White),
             PrimaryOnChrome: Colorimetry.Contrast(t["Text"], t["Surface"]),
             Edge: Colorimetry.Contrast(theme.Line, theme.Surface),
             // A LUMINANCE ratio, not a WCAG contrast ratio, because that is
@@ -177,8 +177,11 @@ public static class ThemeAudit
 /// field still sits below a dormant capsule, so the dormancy ramp keeps its
 /// polarity. Wants to be HIGHER than <paramref name="AaCeiling"/> — the wall
 /// must not be the thing that fails first.</param>
-/// <param name="MetadataOnChrome">What the metadata ink measures on the chrome
-/// surface that does worst, solid.</param>
+/// <param name="MetadataOnChrome">What the metadata ink measures on the surface
+/// that does worst anywhere in the window, solid. That surface used to be a
+/// selected rail row and is the title bar now: the rail joined the panes and the
+/// caption sits on the window's ground, which is the most open thing there
+/// is.</param>
 /// <param name="PrimaryOnChrome">And the primary ink, on the rail.</param>
 /// <param name="Edge">The <c>Line</c> against <c>Surface</c> ratio — §14.1.1's
 /// value-structure axis, stated as the number the format takes.</param>
@@ -203,8 +206,8 @@ public sealed record ThemeReport(
     /// number is about, because "24%" on its own is a figure with no
     /// unit.</summary>
     public string Headline => AaCeiling >= 100
-        ? "Chrome stays over AA at every transparency."
+        ? "Labels stay over AA at every transparency."
         : AaCeiling <= 0
-            ? "Chrome is under AA the moment transparency leaves zero."
-            : string.Create(CultureInfo.InvariantCulture, $"Chrome stays over AA to {AaCeiling}% transparency.");
+            ? "Labels drop under AA the moment transparency leaves zero."
+            : string.Create(CultureInfo.InvariantCulture, $"Labels stay over AA to {AaCeiling}% transparency.");
 }

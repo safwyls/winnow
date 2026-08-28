@@ -379,6 +379,28 @@ caption and its three buttons are ordinary controls in the window's own tree.
 > `FloatingLayoutTests.The_caption_is_the_ground` holds for floating, and asserts the same
 > property about seams pointed at whichever surface is carrying continuity.
 
+> **Amended a third time (§16), and this time only one of the two layouts moves.** The window
+> runs at **two** levels now rather than three: the ground and the caption at one, every pane at
+> the other, and the chrome tier the rail used to sit on is gone.
+>
+> **Flush: this section stands exactly as written.** There is no window ground to be part of —
+> the panes meet edge to edge and cover it — and the caption still meets the rail at a corner,
+> which is the seam the amendment above exists to prevent. The caption is `ChromeSurface`, same
+> ink and same alpha. What moved underneath it is which *tier* the rail is on, and the caption
+> went with it.
+>
+> **Floating: the caption paints nothing at all past `SOLID`** and the ground shows through it.
+> That is a stronger form of the last amendment's claim than the last amendment could make: the
+> caption and every gap are not two surfaces that agree, they are one surface, over any backdrop,
+> at every position on the slider.
+>
+> **And the older claim — "the caption must not be the *brightest* thing" — holds in flush and
+> does not hold in floating over a bright wallpaper.** The ground is the most open surface in the
+> window by construction, so the caption and the gaps are the brightest band in it together.
+> §15.7 already conceded that for the gaps. It is what makes the caption the surface that sets the
+> AA mark now, at 30 / 31 / 31 / 31 percent of the slider against white — where a selected rail
+> row, which used to set it, now holds to 40 / 54 / 47 / 41. See §16.5 and §16.6.
+
 `Well` survives, one step below `Ground`, on the two surfaces where a tone under the art
 field is still the point: the scrollbar track and the detail modal's scrim.
 
@@ -1120,6 +1142,13 @@ instead: `Volt` is a near-white at 17:1 against the art field, `Azure` a mid ste
 
 ### 14.2 The five grounds
 
+> **Amended (§16): there are two tiers, not three, and the table below describes the middle one
+> as though it still exists.** `ChromeSurface` is a **pane** now — the rail and the filter panel
+> take `WallGround`'s own alpha, exactly as the merge queue and the list view already did — and
+> `ShellGround` is a **ramp** rather than a step, because the layer above it finishes early enough
+> to keep the product linear. The rows still standing are `TileGround` (never), the popovers
+> (never), and `ChromeRaised` (a veil, unchanged). Read §16 for what replaced the rest.
+
 Which surface may admit the desktop is a **token**, not a rule somebody has to
 remember. §13 gap 7 asked for "a named role for chrome that may be translucent as
 opposed to surface that carries reading matter"; these are it.
@@ -1127,19 +1156,23 @@ opposed to surface that carries reading matter"; these are it.
 | Token | What it backs | Translucent? |
 |---|---|---|
 | `ShellGround` | The client area below the caption | Paints **nothing** once the slider leaves zero — the columns over it paint their own |
-| `WallGround` | The field the covers hang in | **Only when asked for**, and then at half the chrome's reach — see §14.6 |
+| `WallGround` | The field the covers hang in | **Only when asked for**, and then ~~at half the chrome's reach~~ **at the pane tier — it admits 35%, and paints 0.588 to get there over the ground (§16.1)** |
 | `PaneGround` | Merge queue, Stores, Appearance, the library's **list** view, the empty state | **Exactly `WallGround`** — same ramp, same setting. See §14.7 for why this changed |
 | `TileGround` | Under the art stack inside one tile | **Never** — see §14.4 |
-| `ChromeSurface` | Rail, filter panel, the list view's column-header strip | Yes |
+| `ChromeSurface` | Rail, filter panel, the list view's column-header strip | Yes — and **it is a pane (§16)**: `WallGround`'s own alpha, and its own unwalked `Surface` for an ink |
 | ~~`ChromeGround`~~ | ~~Command bar, cut bar~~ — **retired (§15.8)**; both bars are inside the library pane and paint no fill | — |
-| `CaptionFill` | The 36px title lip | Yes — and it *is* `ChromeSurface`, same ink and same alpha (§9) |
+| `CaptionFill` | The 36px title lip | Yes. **Flush** it *is* `ChromeSurface`, same ink and same alpha (§9). **Floating** it paints nothing and `ShellGround` shows through it (§16.5) |
 | `ChromeRaised` | Hover / selection fill inside the rail, the panel and the list | Becomes a veil — see below |
 | `ChromeRaisedHalf` | A *hovered* row where `ChromeRaised` is a selected one | The same veil at half strength |
 | `ChromeFieldOnGround` | An input on the command bar or cut bar — search, the action bar's prompt. Its container is the **library pane** (§15.8) | Yes, at **the pane's own reach exactly** — see §14.7 |
-| `ChromeFieldOnSurface` | An input in the filter panel — find, year, the option checkboxes | Yes, on the same terms |
+| `ChromeFieldOnSurface` | An input in the filter panel — find, year, the option checkboxes | Yes, on the same terms — and **the same answer now (§16.1)**: the panel is a pane, so this alpha solves to zero too |
 
-`ShellGround` is a **step, not a ramp**: two stacked alphas multiply, so a shell that faded
-in proportion would stop the slider ever reaching its own end.
+~~`ShellGround` is a **step, not a ramp**: two stacked alphas multiply, so a shell that faded
+in proportion would stop the slider ever reaching its own end.~~ **Superseded (§16.3): the
+premise is right about a ground that fades *in proportion* and this one does not.** The pane over
+it rides `InkRampSpan`, so past the first quarter the product of the two is linear at exactly the
+wall's rate. What the step was protecting — a pane compositing over the ground exactly *once* — is
+asserted directly instead.
 
 **Popovers keep an opaque fill.** A flyout is its own popup root and never receives the
 window's backdrop, so a translucent fill there would sample the *application* rather
@@ -1215,7 +1248,10 @@ bit-for-bit the opaque palette with nothing carrying alpha, and it is the answer
 who wants §8's floor with no argument — which is why the label under that end of the track
 is a word (`SOLID`) and not an absence.
 
-**The far end admits 70% desktop.** `MinChromeAlpha` is `0.30`.
+~~**The far end admits 70% desktop.** `MinChromeAlpha` is `0.30`.~~ **Retired (§16):
+`MinChromeAlpha` no longer exists, because the tier it named no longer exists.** The far end
+admits **85% on the window's ground** and **35% on every pane**, and the two are one identity
+apart rather than two settings.
 
 #### The two ramps, and why they are not the same ramp
 
@@ -1251,6 +1287,14 @@ out for the same reason on the opaque palette.
 rail, so admitting more of it deepens the ground the labels sit on; `ThemeContrastTests`
 asserts that at every position on the slider, for every theme. Against white it falls, and the
 AA ceiling lands at 27% (Hoard), 30% (Nightshift), 30% (Tungsten), 26% (Box art).
+
+> **Amended (§16.6): both the figure and the surface it is measured on moved.** The worst chrome
+> surface used to be a selected rail row, and the rail was the most open reading surface in the
+> window. It is a pane now, so it opens half as far and that row holds to **40 / 54 / 47 / 41**.
+> What sets the mark instead is the **caption**, which sits on the window's ground — the most open
+> surface there is — and the reported ceiling is **30 / 31 / 31 / 31**. Every theme keeps at least
+> the range it had; three of the four gain, and Box art gains five points. The mark was never
+> really about the rail: it is about whichever surface is most open and carries text.
 
 **The range past the mark is a choice the user is allowed to make.** Being protected from it
 is not a service, and being ambushed by it is not either — so the Appearance screen draws the
@@ -1337,7 +1381,17 @@ sitting directly on it, so they take `PaneGround` and stay solid at every settin
 withdrawn, and §14.7 records the measurement that withdrew it.**
 
 **The wall admits exactly half the desktop the chrome does.** `MinWallAlpha` is `0.65` against the
-chrome's `0.30`. It is derived, not chosen by eye, and the constraint is not contrast — it is
+chrome's `0.30`.
+
+> **Amended (§16): the constant survives and the relation it was stated in does not.** `0.65` is
+> still exactly right and its derivation below is untouched — `1 − 0.65 = 0.35` is still what
+> reaches the eye through the field. But "half what the chrome does" is now vacuous: there is no
+> chrome for it to be half of, and every pane in the window admits this same 0.35. What the
+> Appearance screen prints instead is the pair that is left — **the ground admits 85%, a pane
+> admits 35%** — and the constant names an *admission* rather than a paint, because a pane is drawn
+> on the window's ground and paints `MinPaneAlpha` `0.588` to get there. Polarity improved without
+> being retuned, from 29 / 46 / 38 / 44 to **34 / 47 / 41 / 44**, because that ground darkens the
+> field slightly on the way through. It is derived, not chosen by eye, and the constraint is not contrast — it is
 **polarity**. §5.1's ramp is dark capsules on a dark field and only reads that way while the field
 stays *darker* than the capsules on it. Over white the field climbs and eventually passes the
 dormancy floor of an ordinary dark cover, after which a dimmed tile reads as a hole punched in a
@@ -1366,8 +1420,9 @@ and the art field stops being the recess §14.2 says the covers hang in.
 Over the measured dark desktop the question never arises: the composite is darker than `Ground`,
 so opening the field deepens it. `ThemeContrastTests` asserts that at every position.
 
-**The Appearance screen prints both numbers** — how much of the chrome is desktop, and how much of
-the wall — in Plex Mono `tnum`, so the halving is visible rather than asserted. It is a ratio and
+**The Appearance screen prints both numbers** — ~~how much of the chrome is desktop, and how much of
+the wall~~ **how much of the window's ground is desktop, and how much of a pane (§16.1)** — in Plex
+Mono `tnum`, so the relation is visible rather than asserted. It is a ratio and
 not a second slider on purpose: two percentages on one screen that mean different things is a
 worse screen than one quantity with a stated relation.
 
@@ -1376,6 +1431,16 @@ Both preferences persist beside theme and transparency, under `appearance.backdr
 the previous behaviour and a real taste).
 
 ### 14.7 The panes take the field's ramp, and the fields take half of theirs
+
+> **Amended (§16): the argument below was right and did not go far enough.** It moved the merge
+> queue, Stores, Appearance and the list view onto the field's ramp on the grounds that they are
+> content in the library pane's position rather than window furniture. **The rail and the filter
+> panel are content columns by exactly the same test** — §11.1 calls the panel a peer of the rail —
+> so they are on that ramp too, and the chrome tier is gone. Two consequences below are stale:
+> `MinFieldAlpha` is **no longer a half** (its container changed tiers, so the identity now gives
+> **zero**, the same answer `MinPaneFieldAlpha` already gave), and the ceilings in the table are
+> measured against a chrome tier that no longer exists. The **identity** in this section is what
+> survived, and it now governs three levels rather than two.
 
 **The verdict that opened this: half a translucent window is worse than none of it.** With the
 chrome and the art field open and every other surface solid, the window read as two applications
@@ -1447,11 +1512,15 @@ the art field admits, so the window has *one* translucency and not three:
          0.70         ·        0.50        =        0.35
 ```
 
-**`MinFieldAlpha` is `0.50`, and it is not written down anywhere as `0.50`** — it is derived from
-the other two, and `ThemeContrastTests` asserts the identity rather than the constant, so retuning
-either end of the slider cannot leave a stale number behind. Said in one sentence on the Appearance
-screen: **a field admits half of what the surface around it admits**, which is the cover wall's own
-share of the desktop exactly.
+~~**`MinFieldAlpha` is `0.50`**~~ — **it is `0` now (§16.1), and the third move is the point.** It
+is derived from the other two, and `ThemeContrastTests` asserts the identity rather than the
+constant, so retuning either end of the slider cannot leave a stale number behind — which is
+exactly what happened here: the filter panel stopped being chrome, its container term went from
+`0.70` to the wall's own `0.35`, and the half it used to spend vanished. Both fields in the window
+now paint nothing past the ink ramp, by two routes to one answer. ~~Said in one sentence on the
+Appearance screen: **a field admits half of what the surface around it admits**~~ — the sentence the
+screen says now is **a field admits exactly what the pane around it admits**, and it gets there by
+painting nothing at all.
 
 > **Amended (§15.8): this holds for the filter panel's fields, and the command bar's field now
 > answers the same equation with a different container.** Writing the identity generally,
@@ -1585,7 +1654,13 @@ between two panes needs a tone of its own, and there is exactly one left.
 tone under the art field is still the point"*, joining the scrollbar track and the modal scrim
 in a third use that is the same use. The caption, the command bar and the cut bar take the
 same ink at the same alpha, so at `SOLID` the four are one painted field with no boundary
-anywhere in them. That is not a shortage answered by the only remaining option; the deepest
+anywhere in them.
+
+> **Amended (§16.5): the caption does not take the ground's ink at an alpha of its own any more —
+> it takes no fill at all, and this ground is what shows through it.** So the claim holds at every
+> position on the slider rather than at `SOLID`: the caption and every gap are one *surface*, not
+> two that agree. (The command bar and the cut bar left this field for the library pane at §15.8;
+> the caption is the only strip on it.) That is not a shortage answered by the only remaining option; the deepest
 tone is the *right* one for the space behind everything, and it is what makes a gap read as a
 recess rather than as a missing pane.
 
@@ -1665,7 +1740,15 @@ other one (§14.3's seal).
 
 ### 15.6 What it costs, measured
 
-**Nothing §14 measured moved.** The AA ceiling is computed off a selected rail row, the
+~~**Nothing §14 measured moved.**~~ **Superseded (§16.7), and the replacement is a measurement
+rather than a construction.** The claim held while floating merely repainted the caption in a
+deeper tone. Floating puts the caption on the window's **ground** now — the most open surface
+there is — so the two layouts no longer fail in the same place: 30 / 31 / 31 / 31 against flush's
+56 / 69 / 61 / 57. `Colorimetry.AaCeiling` therefore walks **both** layouts and reports the worse,
+so the mark on the track means one thing whichever layout is up and flipping the layout can never
+invalidate it. The polarity floor and the dormancy ramp are still layout-free.
+
+~~The original claim.~~ The AA ceiling is computed off a selected rail row, the
 polarity floor off the wall against a dormant capsule, and the dormancy ramp off `TileGround`;
 the layout touches none of the three. It moves ~~four tokens — `ShellGround`, `CaptionFill`,
 `ChromeGround` and `ChromeFieldOnGround`~~ **two tokens, `ShellGround` and `CaptionFill`
@@ -1692,23 +1775,31 @@ loses a term and the ink stops depending on the layout at all.
 the panes lie on and the caption — and `FloatingLayoutTests` asserts every other token is
 bit-for-bit identical between the two.
 
-**The panes never composite twice, and that is the whole construction.** A painted ground behind
+**The panes never composite TWICE, and that is the whole construction.** A painted ground behind
 translucent panes would stack: a rail at §14.3's measured `0.30` over a shell at `0.30` lands at
 `0.51`, and every figure the Appearance screen prints would describe a window that is not on
-screen. `ShellGround` is a **step, not a ramp** — opaque at zero, nothing at all past it — which
-§14.2 recorded as a tidiness and this layout turns load-bearing.
+screen.
+
+> **Amended (§16.3): "exactly once" is the rule, and "a step, not a ramp" was one way of getting
+> it.** `ShellGround` paints a fill at every position now. What makes that safe is that the pane
+> over it rides `InkRampSpan`, so the product of the two alphas is linear at the wall's rate past
+> the first quarter and lands on `1 − MinWallAlpha` at the end of the track to the last decimal.
+> The *once* is asserted directly in `FloatingLayoutTests`, at every position, in both layouts and
+> both reach states — which is a tighter guarantee than a step was, because a step could be
+> defeated by a second element declaring the token and nothing would have caught it.
 
 ### 15.7 The honest costs
 
 Three, and none of them is fatal:
 
-**At `SOLID` the ground is one field; past it, it is a field with brighter slots cut in it.** A
-gap carries no wordmark, no label and no art, so it takes no fill of ours and admits the *whole*
-desktop, where the caption beside it admits the chrome's 70%-at-most. Over a bright wallpaper
-the gaps are therefore the brightest thing in the window and the caption is not. That is the
-effect working — it is what makes the panes read as genuinely detached rather than as painted
-with a seam — but it does mean the continuity claim is exactly true at zero and approximate
-above it. The Appearance screen says so in its own line rather than leaving it to be noticed.
+~~**At `SOLID` the ground is one field; past it, it is a field with brighter slots cut in it.**~~
+**Repealed (§16.5).** The cost was real and its cause was the middle tier: a gap took no fill of
+ours and admitted the whole desktop, where the caption beside it admitted the chrome's
+70%-at-most, so the ground was one tone at zero and two everywhere else. The caption paints no
+fill either now, and the same `ShellGround` shows through both — one field at every position on
+the slider, not one at zero. What is left of the honesty is the other half of the sentence, and it
+is in §16.5: over a bright wallpaper the ground is the brightest band in the window, and the
+caption is now part of it.
 
 **The gap tone does almost no work under the library pane.** Measured, `Well`-against-`Ground`
 comes out at 1.13:1 in Hoard and 1.02–1.06:1 in the other three, so what makes the wall island
@@ -1791,3 +1882,240 @@ retired: the pane paints its ground once and the bars sit on it, because a secon
 ink at a second alpha is the double composite `ShellGround` is a step and not a ramp to avoid. The
 field on those bars is re-derived in §14.7's amendment. Nothing the Appearance screen reports moved:
 the AA ceiling is 27 / 31 / 30 / 26 before and after.
+
+> **Those figures are the last ones this document reports for the three-tier window (§16).** The
+> reported ceiling is **30 / 31 / 31 / 31** now, and a selected rail row — which set the old
+> figures — holds to **40 / 54 / 47 / 41**. The bar moved because the rail did.
+
+---
+
+## 16. Two tiers, not three
+
+**Asked for on aesthetic grounds and it re-derived four constants.** The request was: *"make
+the rail and filters panes the same level of opacity as the game grid/main pane. Then the
+background and titlebar should be the same, and somewhere between where the background is now
+and the rail is now."* What shipped ran at three levels, and the eye expects two:
+
+| | opened to | who |
+|---|---|---|
+| ground · gaps · caption | 100% in the gaps, 70% on the caption | the shell |
+| **chrome** | **70%** | **rail, filter panel** |
+| wall | 35% | library pane, and the screens that share its place |
+
+The middle tier had no job left to do. §14.7 already moved the merge queue, Stores, Appearance
+and the list view onto the field's ramp, on the argument that they are *content in the library
+pane's position* rather than window furniture. **The rail and the filter panel are content
+columns by the same test** — §11.1 calls the panel "a peer of the rail", and the rail owns the
+bucket, list and settings axis. Nothing about them is chrome except a token name.
+
+So there are two, and one rule generates every number in them.
+
+### 16.1 One free quantity, and everything else forced
+
+A surface painted on another surface **stacks alphas**: what the desktop finally contributes is
+the product. §14.7 already used that to fix an input field's alpha; the same identity applies one
+level further out, to a pane on the window's ground:
+
+```
+alpha = 1 − (1 − MinWallAlpha) / (1 − containerAlpha)
+```
+
+The window's ground is the only surface with **nothing above it**, so it is the only free
+quantity. Everything under it is forced:
+
+| | admits | paints | forced by |
+|---|---|---|---|
+| `ShellGround` — the gaps, and the caption | **85%** | `MinShellAlpha` **0.15** | nothing. This is the choice |
+| any pane — rail, filter panel, art field, settings screens | **35%** | `MinPaneAlpha` **0.588** | the ground |
+| any input field, in a pane or in the panel | **35%** | `MinFieldAlpha` **0** | the pane it is cut into |
+
+`MinWallAlpha` is still `0.65` and **its derivation is untouched**, because `1 − 0.65 = 0.35` is
+still exactly what reaches the eye through a pane. What changed is that the constant now names an
+*admission* rather than a paint. §14.6's polarity argument reads word for word.
+
+### 16.2 What fixes the ground, since the identity does not
+
+The ground answers to one thing: the caption, which carries the wordmark and three window glyphs
+and is the only reading matter on it. So the bar is the mirror image of the one `MinWallAlpha` is
+held to — **the restructure may not cost the user range they already have.** Walked per theme
+against white:
+
+| Ground opens to | AA ceiling (Hoard / Nightshift / Tungsten / Box art) | |
+|---|---|---|
+| 0.12 | 29 / 30 / 30 / 30 | Nightshift loses a point |
+| **0.14** | 29 / 31 / 30 / 30 | the marginal value — two themes exactly at par |
+| **0.15** | **30 / 31 / 31 / 31** | **chosen** |
+| 0.20 | 32 / 33 / 33 / 33 | more range, less window |
+
+`0.15` is taken over the marginal `0.14` for the reason `0.65` was taken over `0.62`: it is the
+round step past the boundary, it buys 1 to 5 points on top, and it states as a pair of numbers
+the Appearance screen prints — **the ground admits 85%, a pane admits 35%.**
+
+**A second route lands within a point and a half of it.** The request was for a value *between*
+admitting everything and admitting the old chrome's 70%. Transmittances compose by **multiplying**,
+so the midpoint between two of them is the geometric mean, not the arithmetic one:
+`√(1.00 × 0.70) = 0.837`, an alpha of `0.163`. The legibility boundary and the honest reading of
+"halfway" agree, and the more conservative of the two is taken.
+
+### 16.3 The pane rides the ink ramp, or the two tiers pull apart in the middle
+
+`ShellGround` used to be a **step** — nothing at all past slider zero — because two stacked alphas
+multiply and a pane on a proportional ground would admit a *quadratic*: 8.75% at the middle of the
+track where it should admit 17.5%, so the tiers would sit twice as far apart through the part of
+the slider anybody uses as they do at its end.
+
+That is a fact about a ground that fades in proportion. It is not a fact about this one, **because
+the layer above it finishes early.** The ground's share is already linear in the slider position,
+so the moment the pane's factor stops moving the product is linear at exactly the wall's rate:
+
+```
+t     0.10   0.20   0.25   0.40   0.60   0.80   1.00
+pane  1.4%   5.6%   8.8%   14.0%  21.0%  28.0%  35.0%
+0.35t 3.5%   7.0%   8.8%   14.0%  21.0%  28.0%  35.0%
+```
+
+Sub-linear under the first quarter, which is the safe direction, and it meets the linear part
+exactly at `InkRampSpan`. That is §14.7's own argument for the field's ramp, promoted one level.
+
+**What the step was really protecting is still protected and is asserted directly:** a pane
+composites over the ground **exactly once**. `FloatingLayoutTests` walks it at every position, in
+both layouts, in both reach states. A second coat — a second element declaring `ShellGround` — puts
+every figure the Appearance screen prints out by the same factor and nothing else would catch it.
+
+**The ground's ink bleeds into the panes, and it was measured rather than waved past.** Some
+fraction of every pane is `Well` rather than its own tone: 9.5% at the far end, at most 34% in the
+middle where the pane is still nearly opaque. Against the same pane painted straight onto the
+desktop the worst tone difference is **1.06 to 1.11:1** — under the `Well`-to-`Ground` step itself,
+which §15.7 measures at 1.02 to 1.13:1 and calls nearly invisible.
+
+### 16.4 The rail's ink ramp is retired, and it had to be
+
+§14.3's ink ramp is a **chrome** compensation: the chrome opened to 0.70 and paid for it with a
+darker ink. There is no chrome. And the ink it walked toward is worse than redundant —
+`TranslucentSurface` is **below `Ground`** in three of the four themes, so at the alpha the rail now
+shares with the art field the walked chrome would sink *under the field beside it*. Measured, over
+white: the walked rail is at or below the wall at **87 to 89 of the 101 slider positions** in Hoard,
+Nightshift and Tungsten; the unwalked one at **none** of them, in any theme.
+
+§14.2's recess — the art hangs *below* the chrome — is therefore carried by the **ink** now rather
+than by the alpha: `Surface` over `Ground`, both unwalked, at one shared alpha, in every theme at
+every position. `ChromeSurface` takes the treatment `PaneGround` has always had.
+
+**`TranslucentSurface` is retired with the tier it belonged to**, exactly as `ChromeGround` was when
+the command bar moved. The field stays on the record and in the theme format so that no user theme
+needs editing; nothing reads it. `TranslucentChromeGround` is untouched and does more work than
+before — it is the ground's own walked ink, in both layouts.
+
+### 16.5 The caption, which is the risk and is now the derivation
+
+**Floating: the caption paints nothing at all and the ground shows through it.** That is stronger
+than the claim §15.2 used to make. The caption used to carry the ground's *ink* at the *chrome's*
+alpha while the gaps beside it carried no fill, so §15.7 had to record an honest cost: *"at SOLID
+the ground is one field; past it, it is a field with brighter slots cut in it."* There are no slots
+now. The caption and every gap are not two surfaces that agree — they are one surface, over any
+backdrop, at every position on the slider. **§15.7's first cost is repealed.**
+
+**Flush: §9's amendment stands exactly as written.** There is no ground to be part of — the panes
+meet edge to edge and cover it — and the caption meets the rail at a corner, which is the seam the
+amendment exists to prevent. So the caption is still `ChromeSurface`, same ink and same alpha; the
+rail moved tiers and the caption went with it. Both are painted on the same `ShellGround`, so the
+equality is true on the glass and not only in the token map.
+
+**And §9's older claim is where the honesty is owed.** *"The caption must not be the brightest
+thing, and the art must be the first thing on screen with light in it."* In flush it holds outright:
+the caption is a chrome tone at the pane tier, level with the rail, above the art by the palette's
+own step. In floating it holds at `SOLID` and over a dark desktop, and **over a bright wallpaper it
+does not** — the ground is the most open surface in the window, so the caption and the gaps are the
+brightest band in it, together. §15.7 already conceded that for the gaps. The caption joins them,
+which is the two-tier structure being visible rather than a regression hiding inside it.
+
+### 16.6 What it measures
+
+Walked per theme against white — the ceiling any wallpaper can reach.
+
+| Last whole percent still clearing 4.5:1 | Hoard | Nightshift | Tungsten | Box art |
+|---|---|---|---|---|
+| **Reported AA ceiling** — *before* | 27 | 31 | 30 | 26 |
+| **Reported AA ceiling** — *after* | **30** | **31** | **31** | **31** |
+| A selected rail row — *before* (this used to set the mark) | 27 | 31 | 30 | 26 |
+| A selected rail row — *after* | **40** | **54** | **47** | **41** |
+| The rail's own labels — after | 56 | 69 | 61 | 57 |
+| The caption on the ground — after *(this sets the mark now)* | 30 | 31 | 31 | 31 |
+| The caption in flush — after | 56 | 69 | 61 | 57 |
+| A pane's `TextDim` — after | 63 | 71 | 68 | 74 |
+| A selected list row in a pane — after | 48 | 56 | 53 | 56 |
+| The field's polarity floor — before / after | 29 → **34** | 46 → **47** | 38 → **41** | 44 → **44** |
+
+**The headline is two numbers that moved in opposite directions, and both are the same change.**
+The rail's ceiling roughly doubled, because the rail stopped being the most open reading surface in
+the window. The *reported* ceiling barely moved, because something else took that position: the
+caption, on a ground the change deliberately opened up. **The mark was never about the rail. It is
+about whichever surface is most open and carries text**, and the restructure moved which one that
+is. Every theme still holds at least the range it had, three of the four gain, and Box art gains
+five points.
+
+**Over a dark desktop nothing gets worse anywhere**, at any position, in any theme — the composite
+is darker than `Ground`, so opening a surface deepens the ground its labels sit on.
+`ThemeContrastTests` asserts it across the range.
+
+**Polarity clears the mark by 4 to 16 points**, so `MinWallAlpha` survives at `0.65` untouched. It
+improved without being retuned: a pane is painted on the window's ground now, which darkens the
+field slightly on the way through.
+
+### 16.7 The mark is taken across both layouts, because it stopped being layout-free
+
+§15.6 used to claim the layout moved nothing §14 measured. **That is no longer true and the
+replacement is a measurement rather than a construction.** Floating puts the caption on the ground
+and flush paints it at the pane tier, so the two layouts fail in different places — 30 / 31 / 31 / 31
+against 56 / 69 / 61 / 57. A mark on the slider that moved when the user changed layout would be a
+promise that expired on an unrelated setting.
+
+So `Colorimetry.AaCeiling` walks **both** layouts and reports the worse. The mark means one thing
+whichever layout is up, and flipping the layout can never invalidate it.
+
+### 16.8 The honest costs
+
+**Two panes at the same tier can still be in different states.** `appearance.wall` still gates the
+art field and the screens beside it, while the rail and the filter panel follow the slider alone.
+With the reach off you get a translucent rail beside a solid library pane — two panes at one *tier*
+in two *states*. That is not new (the same setting produced a starker mismatch before, a rail at
+70% beside a solid field), and it is not fixed here, because the alternative is worse: the flush
+layout has no visible ground, so gating the side panes on the reach setting too would leave a fresh
+install with transparency up showing nothing translucent but a 36px lip. The Appearance screen says
+what the setting does in words instead.
+
+**The typed text in the filter panel's fields lost four points.** It used to hold AA across the
+whole slider on both fields. It still does in the library pane, whose ground is `Ground`; in the
+filter panel it now runs out at **96% and 97%** on Hoard and Box art, because the panel's field
+paints no fill at all — the identity forces it to zero — so the ink under the caret sits on the
+panel's own `Surface` rather than on a `Ground` step cut into it. Four points at the very top of the
+track, on a pure white wallpaper, three times past the mark. The only fill that would buy it back is
+one that makes the field less open than the pane around it, which is §14.7's bolted-shut patch.
+
+**The caption gives up seven points of its own range** in the floating layout — 38% to 31% on
+Nightshift — which is the whole of why the reported ceiling rose by one there rather than by
+twenty. That is the trade the request bought, stated rather than buried: a ground and a caption that
+are one field, at the price of the caption being measured on the most open surface in the window.
+
+### 16.9 The committed sheets state the three-tier figures
+
+**Every `compare--*` sheet in `docs/screenshots/appearance/` was captured before this, and several
+of them print numbers on their captions that are now wrong.** They are left as they are — a
+screenshot is a record of the build that produced it, and re-lettering one is worse than saying
+which figures moved. Read them against this table:
+
+| A sheet says | It is now |
+|---|---|
+| "worst chrome surface" / "a selected rail row" | the **title bar** on the window's ground, in the floating layout |
+| `5.04:1` solid, `2.91:1` at 45% white, `1.01:1` at 100% white *(Hoard)* | `5.04:1`, `2.82:1`, `1.42:1` — the surface changed, not the palette |
+| "past 27% the white figure drops under 4.5:1" *(Hoard)* | **30%** |
+| the AA mark's position on the track | **30 / 31 / 31 / 31**, and taken across both layouts (§16.7) |
+| "the chrome admits 70%, the wall admits half of it" | **the ground admits 85%, a pane admits 35%** |
+| "a field admits half of what the surface around it admits" | **a field admits exactly what the pane around it admits**, by painting nothing |
+| "Chrome only" / "Chrome and the wall" *(the reach choice)* | "The ground and the side panes" / "Everything but the covers" |
+| "the cover wall never opens up at any setting" *(pre-dates §14.6 as well)* | it opens with the reach setting, at the pane tier |
+
+**The window itself is the record that is kept current**, which is the §14.3 argument that put these
+figures on the Appearance screen in the first place: the screen measures the running window and
+reports the worst case live, so a sheet that has gone stale is a picture of an old build rather than
+a claim anybody is still making.

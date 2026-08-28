@@ -995,28 +995,31 @@
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
 
-                            <!-- The relation, printed rather than asserted. Two
-                                 surfaces, one slider, and the wall takes half —
-                                 so the ratio is visible at whatever position the
-                                 user is holding instead of being a claim in a
-                                 sentence. Only drawn when the wall is in, because
-                                 otherwise the second number is zero and a zero
-                                 beside a percentage reads as a fault. -->
+                            <!-- The two tiers, printed rather than asserted: the
+                                 window's ground, and everything laid on it. There
+                                 used to be three numbers here and a halving
+                                 relation between two of them; the chrome tier is
+                                 gone, so there are two, and what they state is
+                                 that nothing in the window sits between them.
+                                 Only drawn when the wall is in, because otherwise
+                                 the library pane is not at the pane figure and
+                                 printing one number for every pane would be a
+                                 claim the window is not making. -->
                             <StackPanel Spacing="6" IsVisible="{Binding WallTranslucent}">
                                 <Grid ColumnDefinitions="Auto,10,*">
                                     <TextBlock Grid.Column="0" Classes="data"
-                                               Text="{Binding ChromeAdmits}"/>
+                                               Text="{Binding GroundAdmits}"/>
                                     <TextBlock Grid.Column="2" Classes="body" FontSize="12"
                                                Foreground="{StaticResource TextDim}"
                                                VerticalAlignment="Center"
-                                               Text="of the chrome is desktop"/>
+                                               Text="of the window's ground is desktop"/>
                                 </Grid>
                                 <Grid ColumnDefinitions="Auto,10,*">
                                     <TextBlock Grid.Column="0" Classes="data"
                                                VerticalAlignment="Top"
-                                               Text="{Binding WallAdmits}"/>
+                                               Text="{Binding PaneAdmits}"/>
                                     <TextBlock Grid.Column="2" Classes="para"
-                                               Text="{Binding WallAdmitsNote}"/>
+                                               Text="{Binding PaneAdmitsNote}"/>
                                 </Grid>
                                 <!-- This used to read "Settings, the review
                                      queue and the list view stay solid at every
@@ -1029,7 +1032,7 @@
                                      described a different build of the app would
                                      be worse than one that said nothing. -->
                                 <TextBlock Classes="para"
-                                           Text="Settings, the review queue and the list view open up with the wall — the same half, the same setting. An input field lands on that same share either way: in the filter panel it takes half of the chrome around it, and in the library pane there is no half left to take, so it stops painting a fill and the pane shows through it."/>
+                                           Text="Settings, the review queue and the list view open up with the wall — the same amount, the same setting. So does every input field, and it gets there by painting nothing at all: a field is a step cut into a pane that is already at this share, so there is nothing left for a fill of its own to spend. It is found by its border and lit by its ring."/>
                             </StackPanel>
                         </StackPanel>
 
@@ -1046,23 +1049,23 @@
                              falls. Neither nags — the second number turns Amber
                              (§2: attention, not error) and says which line it
                              crossed. -->
-                        <!-- The floating layout's fifth surface, reported here
-                             because it is the one thing in the window that does
-                             NOT take a share of the slider. A gap carries no
-                             wordmark, no label and no art, so it opens the whole
-                             way while every surface above reports a fraction -
-                             and a screen that prints the chrome's share and the
-                             wall's owes this one its own line rather than letting
-                             someone infer it. Only drawn when there are gaps and
-                             something can come through them. -->
+                        <!-- The gaps, which are where the outer tier is visible
+                             on its own — everywhere else the ground is behind a
+                             pane. This block used to report a THIRD number: a gap
+                             took no fill of ours and admitted the whole desktop
+                             while the caption beside it admitted the chrome's
+                             share. Both now carry the ground's own figure, so
+                             what is left to say is that they are one field rather
+                             than two that agree. Only drawn when there are gaps
+                             and something can come through them. -->
                         <StackPanel Spacing="6" IsVisible="{Binding ShowGapNote}">
                             <Border Height="1" Background="{StaticResource Line}" Margin="0,2"/>
                             <TextBlock Classes="label" FontSize="9" LetterSpacing="1.2"
-                                       Text="THE GAPS BETWEEN THE PANES"/>
+                                       Text="THE GAPS, AND THE TITLE BAR"/>
                             <Grid ColumnDefinitions="Auto,10,*">
                                 <TextBlock Grid.Column="0" Classes="data"
                                            VerticalAlignment="Top"
-                                           Text="100%"/>
+                                           Text="{Binding GroundAdmits}"/>
                                 <TextBlock Grid.Column="2" Classes="para"
                                            Text="{Binding GapNote}"/>
                             </Grid>
@@ -1070,7 +1073,7 @@
 
                         <StackPanel Spacing="6" Margin="0,4,0,0">
                             <TextBlock Classes="label" FontSize="9" LetterSpacing="1.2"
-                                       Text="LABELS ON THE CHROME"/>
+                                       Text="LABELS ON THE TITLE BAR"/>
 
                             <Grid ColumnDefinitions="Auto,10,*" IsVisible="{Binding !IsSolid}">
                                 <TextBlock Grid.Column="0" Classes="data"

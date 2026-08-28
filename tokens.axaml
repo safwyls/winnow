@@ -165,33 +165,61 @@
     <x:Double x:Key="TitleBarHeight">36</x:Double>
     <x:Double x:Key="WindowButtonWidth">46</x:Double>
 
-    <!-- ══ The five grounds ═══════════════════════════════════════════════
-         Which surface may admit the desktop, and which may not. This replaces
-         the caption-only Mica rule and resolves design-system.md §13 gap 7.
+    <!-- ══ The grounds, and the two tiers they fall into ══════════════════
+         Which surface may admit the desktop, and how much. This replaces the
+         caption-only Mica rule and resolves design-system.md §13 gap 7.
 
          The old rule was reached by a correct measurement and a wrong
          conclusion. TextDim on SurfaceRaised at 85% over white is 3.1:1, under
          AA — so translucency was confined to the 36px caption, where it is
          effectively invisible. What that sum actually proves is narrower than
          it looked: it proves you cannot take an ink CHOSEN FOR AN OPAQUE GROUND
-         and subtract alpha from it. So the chrome takes a DARKER ink and a
-         BRIGHTER dim ink as it opens up. TRANSPARENCY IS A QUANTITY, NOT A
-         SWITCH: the Appearance screen sets it with a slider, 0 (fully opaque,
-         the default) to 100, and every token below walks continuously between
-         its opaque value and the theme's translucent ink. The inks finish that
-         walk in the first quarter of the track and the alpha keeps falling for
-         the other three, which is what buys the range that still clears AA
-         against a white wallpaper. HoardTheme carries the endpoints;
-         ThemeContrastTests carries the proof, across the range.
+         and subtract alpha from it. So the surfaces that open take a DARKER ink
+         and a BRIGHTER dim ink as they do, and the slider walks the two
+         together. HoardTheme carries the endpoints; ThemeContrastTests carries
+         the proof, across the range rather than at one point.
 
-           ShellGround   the whole client area below the caption. Opaque Ground
-                         at zero; NOTHING at all the moment any transparency is
-                         asked for, because the columns over it paint their own
-                         — which is what lets the rail be see-through without
-                         the window painting an opaque field behind it first,
-                         and why it is a step rather than a ramp: two stacked
-                         alphas multiply, and the slider could never reach its
-                         own end.
+         THERE ARE TWO TIERS, NOT THREE. The window used to run at three levels:
+         a ground that admitted everything, a CHROME tier at 0.30 carrying the
+         rail, the caption and the filter panel, and a PANE tier at 0.65 carrying
+         the art field and the screens beside it. Three levels is one more than an
+         eye sorts, and the middle one had no job left: the rail and the filter
+         panel are content columns rather than window furniture, and the argument
+         §14.7 used to put the merge queue and the list view on the field's ramp
+         applies to them word for word. So:
+
+             the ground   admits 85% of the desktop   MinShellAlpha 0.15
+             every pane   admits 35% of it            MinWallAlpha  0.65
+             nothing sits between them
+
+         ONE RULE PRODUCES EVERY OTHER NUMBER IN THAT STACK. A surface painted on
+         another surface stacks alphas, so what the desktop finally contributes is
+         the product of the two. Requiring every pane and every field to admit
+         what the ART FIELD admits — which is the whole two-tier idea — fixes each
+         alpha outright:
+
+             alpha = 1 - (1 - MinWallAlpha) / (1 - containerAlpha)
+
+         The ground is the only surface with nothing above it, so it is the only
+         free quantity in the window; a pane's alpha is forced by the ground, and
+         a field's by the pane it is cut into. Applied down the stack that gives
+         0.588 for a pane and ZERO for both fields.
+
+           ShellGround   THE WHOLE CLIENT AREA, the caption's 36px included, and
+                         the outer of the two tiers. Every gap between panes is
+                         this token showing; so is the caption, which paints no
+                         fill of its own in the floating layout. It is a RAMP,
+                         where it used to be a step that painted nothing at all
+                         past slider zero. The step existed because two stacked
+                         alphas MULTIPLY and a pane on a proportional ground
+                         would admit a quadratic — true of a proportional ground,
+                         and not of this one, because the layer above it finishes
+                         early: paneAlpha rides the ink ramp, so past the first
+                         quarter the product is linear at exactly the wall's rate.
+                         What the step really protected — one coat of the ground
+                         under any pane — is asserted in FloatingLayoutTests.
+                         Inked Well in the floating layout and Ground in the
+                         flush one.
            WallGround    the field the covers hang in. OPAQUE UNLESS ASKED FOR,
                          and opaque at slider zero either way. It used to be
                          opaque at every setting on a §1 argument - the art is
@@ -202,42 +230,76 @@
                          chrome reads as two windows. The half of the reasoning
                          that was construction rather than taste still binds,
                          and it is answered by TileGround below rather than
-                         here. When asked for, the field admits HALF the desktop
-                         the chrome does (MinWallAlpha 0.65 against the chrome's
-                         0.30) - see HoardTheme for the two measurements behind
-                         the ratio.
+                         here. When asked for, the field ADMITS 0.35 of the
+                         desktop, which is unchanged and is what MinWallAlpha's
+                         polarity derivation is about; what changed is that it
+                         PAINTS 0.588 to get there, because the window's ground
+                         is under it now.
            PaneGround    the merge queue, the Stores and Appearance panes, the
                          library's LIST view and the empty state. THE WALL'S OWN
                          RAMP, and the wall's own setting. It used to be opaque
                          at every setting on the grounds that these are text
                          sitting directly on the field - true - and that §14.3
                          therefore rules them out. The principle was right and
-                         the number was the wrong one: §14.3's measurement is
-                         against the CHROME's reach, and the wall admits 0.35 of
-                         the desktop against the chrome's 0.70. Walked per theme
-                         against white, TextDim clears AA to 59/71/65/73 percent
-                         of the slider on the open field, against the chrome's
-                         own 27/31/30/26 - so a pane is not the surface that
-                         fails first, it fails at more than twice the reach of
-                         the one the app already carries labels on.
+                         the number was the wrong one: that measurement was
+                         against the CHROME's reach, and a pane admits 0.35
+                         against the chrome's old 0.70. Walked per theme against
+                         white, TextDim clears AA to 63/71/68/74 percent of the
+                         slider on the open field, against the WINDOW's own
+                         30/31/31/31 - so a pane is not the surface that fails
+                         first, it fails at more than twice the reach of the one
+                         the mark on the slider is drawn from.
                          PaneGround is also what the LIBRARY PANE'S OWN BARS
                          sit on. The command bar and the cut bar are inside the
                          pane (design-system.md §15.1, revised) and paint no
                          fill of their own, so there is no ChromeGround token
                          any more: a second coat of the pane's ink at a second
-                         alpha over the first is exactly the double composite
-                         ShellGround is a step and not a ramp to avoid.
+                         alpha over the first is exactly the double composite the
+                         stack above is arranged to avoid.
+           ChromeSurface the rail, the filter panel and the list view's column
+                         header strip. A PANE now rather than a tier of its own -
+                         same alpha as WallGround at every position, so the two
+                         columns beside each other open together. Its ink stopped
+                         walking with the change and had to: §14.3's ramp is a
+                         chrome compensation, and TranslucentSurface is BELOW
+                         Ground in three of the four themes, so at the alpha the
+                         rail now shares with the art field the walked chrome
+                         would sink under the field beside it - measured, at 87
+                         to 89 of the 101 slider positions. The recess §14.2 asks
+                         for is carried by the INK instead: Surface over Ground,
+                         both unwalked, at one alpha.
            ChromeRaised  a rail or panel row's hover and selection fill. Opaque,
-                         it is the ordinary Surface -> SurfaceRaised step: an ink
-                         that REPLACES what is under it. Translucent it has to be
-                         a VEIL, because a darker ink over an already-translucent
+                         it is the ordinary Surface -> SurfaceRaised step.
+                         Translucent, a DARKER ink over an already-translucent
                          rail composites downwards and the raised row comes out
-                         darker than its neighbour. Only one veil is backdrop-
-                         independent — solving a*(V-rail) = L*(Text-rail) for
-                         every rail gives V = Text — so the veil IS Text, at a
-                         strength that starts as the theme's own opaque step and
-                         grows to 10%. Elevation stays relative, which is what §6
-                         says it is.
+                         darker than its neighbour — so the step becomes a 10%
+                         veil of the theme's own Text, which lifts whatever is
+                         under it on every backdrop. Elevation stays relative,
+                         which is what §6 says it is.
+           TileGround    under the art stack inside a tile, so a cover that has
+                         decoded one of its two dormancy layers and not the
+                         other cannot show the window through the gap.
+           CaptionFill   the 36px title lip, and it has two answers because the
+                         layouts put it in two places. FLOATING: it is part of
+                         the window's ground and paints NOTHING - ShellGround is
+                         directly behind it and shows through, so the caption and
+                         every gap are not two surfaces that agree but one
+                         surface. FLUSH: there is no ground to be part of, the
+                         caption meets the rail at a corner, and §9's amendment
+                         stands as written - it is EXACTLY ChromeSurface, same
+                         ink and same alpha, because a second alpha over the same
+                         backdrop lands on a second tone and puts the corner
+                         back.
+
+                         IT IS THE SURFACE THAT SETS THE AA MARK NOW. On the
+                         ground it is the most open reading surface in the
+                         window, so the wordmark and the three glyphs clear §8's
+                         floor to 30/31/31/31 percent of the slider against
+                         white - where a selected rail row, which used to set the
+                         mark, now holds to 40/54/47/41. The mark is taken across
+                         BOTH layouts and the worse reported, so flipping the
+                         layout cannot invalidate it.
+
            ChromeFieldOnGround / ChromeFieldOnSurface
                          an INPUT's fill - the search box and the action bar's
                          prompt inside the library pane, the filter panel's find
@@ -245,47 +307,46 @@
                          its container in the neutral family, in the direction
                          the opaque palette already took: the pane is Ground so
                          a field on it is Surface, the panel is Surface so a
-                         field in it is Ground. Both take the WALKED ink.
+                         field in it is Ground. NEITHER TAKES A WALKED INK any
+                         more - panes do not walk, and a field cut into an
+                         unwalked ground must be unwalked too.
 
-                         A field is a CHILD of its container, so the two alphas
-                         stack, and that fixes its own alpha outright rather
-                         than leaving it to taste:
+                         BOTH ALPHAS ARE ZERO, by the identity above. The search
+                         box's container was already the library pane, which
+                         admits 1 - MinWallAlpha, so its term solved to zero when
+                         the bars moved inside the pane. The filter panel used to
+                         be CHROME, admitting 0.70, so its field spent the other
+                         half; the panel is a pane now, admits the same 0.35, and
+                         there is no half left. Third time this constant has
+                         moved and the identity has not, which is the point of
+                         writing it as a division.
 
-                             fieldAlpha = 1 - (1 - 0.65) / (1 - containerAlpha)
-
-                         THE TWO FIELDS GET DIFFERENT ANSWERS, and that is the
-                         identity working rather than an inconsistency. The
-                         filter panel is chrome, so its container admits 0.70
-                         and MinFieldAlpha is 0.50 - a field admits HALF of what
-                         the surface around it admits, and TextDim in it clears
-                         AA to 71-76% of the slider against the chrome's 26-31%.
-                         The search box's container is the LIBRARY PANE, which
-                         already admits 0.35 exactly; there is no half left to
-                         spend, MinPaneFieldAlpha solves to ZERO, and past the
-                         ink ramp that field paints nothing at all. It is drawn
+                         So a field paints no fill past the ink ramp. It is drawn
                          by its Line border and lit by its Volt ring, which is
                          what drew it anyway - the fill and the surface around it
                          converge to 1.05:1 at the far end either way. At SOLID
-                         it is opaque Surface, so the step it cuts is untouched.
+                         each is its opaque token, so the step it cuts is
+                         untouched.
 
-                         It also follows the WALL's setting rather than the
-                         slider's, because with the art field solid the pane
-                         under it is solid, and there is nothing being admitted
-                         for the field to match.
-           TileGround    under the art stack inside a tile, so a cover that has
-                         decoded one of its two dormancy layers and not the
-                         other cannot show the window through the gap.
-
-           CaptionFill   the 36px title lip. Always EXACTLY ChromeSurface —
-                         same ink and same alpha, not merely a matching colour,
-                         because a second alpha over the same backdrop lands on
-                         a second tone and puts the corner back.
+                         They still answer different SETTINGS: the panel's field
+                         follows the slider because the panel does, and the
+                         search box follows the reach setting because the library
+                         pane does.
 
          Popovers do NOT open up: a flyout is its own popup root and never
          receives the window's backdrop, so a translucent fill there would
          sample the application rather than the desktop and give a different
          answer at every position. They keep SurfaceRaised, opaque, at every
          slider position.
+
+         TRANSPARENCY IS A QUANTITY, NOT A SWITCH. Mica is a binary window hint,
+         but nothing anyone can see is: the perceived translucency is entirely
+         the alpha on our own surfaces over that backdrop. The Appearance screen
+         sets it with a slider, 0 (fully opaque, the default) to 100, and every
+         token below walks continuously between its opaque value and the theme's
+         translucent ink as it travels. HoardTheme.Tokens(amount,
+         wallTranslucent) is the walk; the second argument is how far it
+         reaches (see the WallGround note above).
 
          Every value here is written at runtime by ThemeService. What is
          declared is the OPAQUE state on the default theme, because that is the

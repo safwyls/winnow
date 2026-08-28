@@ -756,13 +756,42 @@
          bar and the first column of tiles are clipped the moment the window
          is maximised. -->
     <Panel Margin="{Binding $parent[Window].OffScreenMargin}">
-    <Grid RowDefinitions="36,*">
+    <!-- ShellGround is declared HERE rather than on the row below, and moving it
+         up one level is what makes the two-tier arithmetic true on the glass.
+         It is the outer tier: the gaps between the panes are this token showing,
+         and so is the caption, which paints no fill of its own in the floating
+         layout. Every pane and the caption alike composite over it EXACTLY ONCE,
+         which is the half of the old step-not-ramp rule that was load-bearing —
+         a pane's own alpha is derived assuming this layer is under it
+         (HoardTheme.MinPaneAlpha), so a second coat anywhere would put every
+         figure the Appearance screen prints out by the same factor.
+
+         It used to sit on the row below and paint NOTHING past slider zero. That
+         left the caption sitting on raw backdrop while the panes sat on nothing
+         at all, which was consistent — and it meant the gaps admitted the whole
+         desktop where the caption beside them admitted the chrome's share, which
+         is the seam §15.7 recorded as an honest cost and this repeals. -->
+    <Grid RowDefinitions="36,*" Background="{StaticResource ShellGround}">
 
         <!-- ══ TITLE BAR ═══════════════════════════════════════════════════
-             Well, one step DARKER than Ground: the window opens on an unlit
-             lip and the art is the first thing with light in it. The whole
-             strip is the drag handle; the buttons stop the drag because
-             Button marks the pointer press handled. -->
+             The caption is the window's GROUND in the floating layout and the
+             RAIL in the flush one, and CaptionFill carries both answers (see
+             HoardTheme). Floating it paints nothing at all past SOLID and the
+             ShellGround behind it shows through, so the caption and every gap
+             are not two surfaces that agree but one surface — which is the
+             strongest form of §9's "same ink AND same alpha" available. Flush
+             there is no ground to be part of and the caption meets the rail at a
+             corner, so §9's amendment stands as written: it is the rail.
+
+             Either way it is unlit in the sense that mattered — Well is the
+             deepest tone in the palette and Surface is a chrome tone no cover art
+             comes near — and either way the art is the first thing with light in
+             it. The whole strip is the drag handle; the buttons stop the drag
+             because Button marks the pointer press handled.
+
+             Background is Transparent-capable rather than null on purpose: an
+             alpha-zero brush is still hit-tested by Avalonia, and this strip has
+             to answer the pointer to be draggable. -->
         <Border Grid.Row="0"
                 Name="TitleBar"
                 Background="{StaticResource CaptionFill}"
@@ -854,8 +883,10 @@
          every label in the rail would move when the layout changed. An Auto column
          sized by a 220-wide child plus its margins keeps the rail exactly 220 in
          both, and it is the COLUMN that widens. -->
-    <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto"
-          Background="{StaticResource ShellGround}">
+    <!-- No Background here any more: the Grid above paints ShellGround across
+         both rows, and a second coat of it would composite twice under every
+         pane. See the note on that Grid. -->
+    <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto">
 
         <!-- ══ RAIL (220px) ════════════════════════════════════════════════ -->
         <!-- No BorderThickness here: it is a style, because the floating layout

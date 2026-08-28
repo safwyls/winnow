@@ -160,6 +160,8 @@ public class ThemeContrastTests
         Assert.Equal(theme.Surface, t["ChromeSurface"]);
         Assert.Equal(theme.Ground, t["PaneGround"]);
         Assert.Equal(theme.Ground, t["ShellGround"]);
+        Assert.Equal(theme.Ground, t["ChromeFieldOnSurface"]);
+        Assert.Equal(theme.Surface, t["ChromeFieldOnGround"]);
         Assert.Equal(theme.SurfaceRaised, t["ChromeRaised"]);
         Assert.Equal(theme.TextDim, t["TextDim"]);
         Assert.Equal(theme.TextFaint, t["TextFaint"]);
@@ -188,7 +190,7 @@ public class ThemeContrastTests
             var t = theme.Tokens(transparency);
             foreach (var backdrop in new[] { White, DarkDesktop, Black })
             {
-                var rail = Over(t["ChromeSurface"], backdrop);
+                var rail = Over(t["ChromeSurface"], Shell(theme, transparency, backdrop));
                 var row = Over(t["ChromeRaised"], rail);
                 Assert.True(
                     Luminance(row) > Luminance(rail),
@@ -223,8 +225,18 @@ public class ThemeContrastTests
         for (var percent = 0; percent <= ceiling; percent++)
         {
             var t = theme.Tokens(percent / 100.0);
-            var rail = Over(t["ChromeSurface"], White);
+            var shell = Shell(theme, percent / 100.0, White);
+            var rail = Over(t["ChromeSurface"], shell);
             var row = Over(t["ChromeRaised"], rail);
+
+            // The CAPTION, which is what the ceiling is now made of: it sits on
+            // the window's ground, so it is the most open reading surface there
+            // is. Measured in the floating layout, where the ground is what shows
+            // through it; flush paints it at the pane tier and it never binds.
+            var floating = theme.Tokens(percent / 100.0, layout: HoardLayout.Floating);
+            var caption = Over(
+                floating["CaptionFill"],
+                Shell(theme, percent / 100.0, White, HoardLayout.Floating));
 
             // The command bar is inside the library pane now, so it is measured
             // where every other pane ink is: on the pane's own ground, with the
@@ -235,6 +247,7 @@ public class ThemeContrastTests
             // to hold, the bar's DENSITY label included.
             var bar = Field(theme, percent / 100.0, White);
 
+            Assert.True(Contrast(t["TextDim"], caption) >= 4.5, $"{id} TextDim/caption at {percent}% on white");
             Assert.True(Contrast(t["TextDim"], rail) >= 4.5, $"{id} TextDim/rail at {percent}% on white");
             Assert.True(Contrast(t["TextDim"], row) >= 4.5, $"{id} TextDim/selected row at {percent}% on white");
             Assert.True(Contrast(t["TextDim"], bar) >= 4.5, $"{id} TextDim/command bar at {percent}% on white");
@@ -263,7 +276,9 @@ public class ThemeContrastTests
         foreach (var transparency in Range())
         {
             var t = theme.Tokens(transparency);
-            var measured = Contrast(t["TextDim"], Over(t["ChromeSurface"], DarkDesktop));
+            var measured = Contrast(
+                t["TextDim"],
+                Over(t["ChromeSurface"], Shell(theme, transparency, DarkDesktop)));
 
             Assert.True(
                 measured >= solidRail - 0.01,
@@ -344,7 +359,8 @@ public class ThemeContrastTests
 
     /// <summary>
     /// The wall's field is opaque unless it was asked for, opaque at slider zero
-    /// either way, and never more open than the chrome it sits beside.
+    /// either way, and never more open than the panes beside it — which, since
+    /// the tiers collapsed, means never more open than exactly equal to them.
     /// </summary>
     [Theory]
     [MemberData(nameof(ThemeIds))]
@@ -371,10 +387,18 @@ public class ThemeContrastTests
             }
 
             // A field more open than the rail beside it would invert §14.2's
-            // recess — the art hangs BELOW the chrome, in every theme.
+            // recess — the art hangs BELOW the chrome, in every theme. With one
+            // pane tier this is equality when the reach is in, and the recess is
+            // carried by the INK rather than by the alpha: Surface over Ground,
+            // both unwalked, at the same alpha, on the same ground.
             Assert.True(
                 wall.A >= open["ChromeSurface"].A,
                 $"{id}: the field is more open than the chrome at {transparency:P0}");
+
+            Assert.True(
+                Luminance(Over(open["ChromeSurface"], Shell(theme, transparency, White)))
+                    > Luminance(Over(wall, Shell(theme, transparency, White))),
+                $"{id}: the chrome sank to or below the art field at {transparency:P0}");
 
             Assert.True(wall.A <= previous, $"{id}: the field's alpha rose at {transparency:P0}");
             previous = wall.A;
@@ -386,16 +410,46 @@ public class ThemeContrastTests
             Assert.Equal(theme.Ground.B, wall.B);
         }
 
-        // And the far end is exactly half the chrome's reach, which is the
-        // relation the Appearance screen prints.
+        // And at the far end a pane paints MinPaneAlpha and ADMITS
+        // 1 − MinWallAlpha, which are two different numbers because a pane is
+        // painted on the window's ground rather than straight on the desktop.
+        // The identity is asserted rather than either constant, so retuning
+        // either end of the slider cannot leave a stale figure behind — this is
+        // the same rule MinFieldAlpha is held to, one level out.
         var far = theme.Tokens(1, wallTranslucent: true);
         Assert.Equal(
-            Math.Round(255 * HoardTheme.MinWallAlpha),
+            Math.Round(255 * HoardTheme.MinPaneAlpha),
             (double)far["WallGround"].A);
         Assert.Equal(
-            1 - HoardTheme.MinChromeAlpha,
-            (1 - HoardTheme.MinWallAlpha) * 2,
-            precision: 6);
+            1 - HoardTheme.MinWallAlpha,
+            (1 - HoardTheme.MinShellAlpha) * (1 - HoardTheme.MinPaneAlpha),
+            precision: 9);
+
+        // Every pane is at ONE tier: the rail, the filter panel and the art
+        // field paint the same alpha at every position, and the settings screens
+        // beside them are the same token again.
+        foreach (var transparency in Range())
+        {
+            var open = theme.Tokens(transparency, wallTranslucent: true);
+            Assert.Equal(open["WallGround"].A, open["ChromeSurface"].A);
+            Assert.Equal(open["WallGround"], open["PaneGround"]);
+        }
+
+        // And what actually reaches the eye through a pane is linear in the
+        // slider past the first quarter, at exactly the wall's rate. That is
+        // what the pane's alpha riding the INK ramp buys: on the alpha's own
+        // ramp the product of the two layers would be quadratic and a pane would
+        // be half as open as it should be through the middle of the track.
+        for (var percent = 25; percent <= 100; percent++)
+        {
+            var open = theme.Tokens(percent / 100.0, wallTranslucent: true);
+            var admitted = (1 - (open["ShellGround"].A / 255.0))
+                * (1 - (open["WallGround"].A / 255.0));
+
+            Assert.True(
+                Math.Abs(admitted - ((1 - HoardTheme.MinWallAlpha) * (percent / 100.0))) <= 0.006,
+                $"{id}: a pane admits {admitted:P1} at {percent}%, not the wall's linear share");
+        }
     }
 
     /// <summary>
@@ -433,11 +487,16 @@ public class ThemeContrastTests
             aa++;
         }
 
+        // Through the WINDOW'S GROUND, which is the term that did not exist
+        // when this was written. A pane is painted on that ground, and its own
+        // alpha is derived assuming so; measuring the token against white alone
+        // would report a field lighter than the one on screen and would put this
+        // ceiling five points low.
         var polarity = 0;
         while (polarity < 100
             && Luminance(Over(
                 theme.Tokens((polarity + 1) / 100.0, wallTranslucent: true)["WallGround"],
-                White)) <= Luminance(dormant))
+                Shell(theme, (polarity + 1) / 100.0, White))) <= Luminance(dormant))
         {
             polarity++;
         }
@@ -451,7 +510,8 @@ public class ThemeContrastTests
         foreach (var transparency in Range())
         {
             var field = Over(
-                theme.Tokens(transparency, wallTranslucent: true)["WallGround"], DarkDesktop);
+                theme.Tokens(transparency, wallTranslucent: true)["WallGround"],
+                Shell(theme, transparency, DarkDesktop));
             Assert.True(
                 Luminance(field) <= Luminance(dormant),
                 $"{id}: the field passed a dormant cover over a dark desktop at {transparency:P0}");
@@ -471,12 +531,29 @@ public class ThemeContrastTests
         var theme = HoardThemes.ById(id);
         var t = theme.Tokens(transparency: 1);
 
+        // ASKED OF WHAT THE SURFACE ADMITS, not of the alpha it paints, because
+        // a surface is painted on the window's ground and the two alphas
+        // multiply. A pane paints 0.59 and admits 0.35; the alpha on its own
+        // says nothing.
+        var shell = 1 - (t["ShellGround"].A / 255.0);
+
+        Assert.True(
+            shell >= 0.80,
+            $"{id}: the window's ground admits only {shell:P0} at the far end");
+
         foreach (var key in new[] { "ChromeSurface", "CaptionFill" })
         {
-            // The desktop supplies at least 60% of the chrome. The boolean this
-            // replaced supplied 14%.
-            Assert.True(t[key].A <= 102, $"{id}: {key} at the far end is still {t[key].A}/255");
+            var admits = shell * (1 - (t[key].A / 255.0));
+            Assert.True(
+                admits >= 0.30,
+                $"{id}: {key} at the far end admits only {admits:P0}");
         }
+
+        // The caption in the FLOATING layout is not merely as open as the ground
+        // — it IS the ground, painting nothing of its own, which is the strongest
+        // form of §9's "same ink and same alpha" available.
+        var floating = theme.Tokens(transparency: 1, layout: HoardLayout.Floating);
+        Assert.Equal(0, floating["CaptionFill"].A);
 
         // The command bar is NOT on that list any more, and its absence is the
         // change rather than an omission. It is inside the library pane (S15.1,
@@ -490,15 +567,27 @@ public class ThemeContrastTests
             theme.Tokens(transparency: 1, wallTranslucent: true)["WallGround"],
             theme.Tokens(transparency: 1, wallTranslucent: true)["PaneGround"]);
 
-        Assert.Equal(0, t["ShellGround"].A);
+        // ShellGround IS A RAMP NOW, where it used to paint nothing at all past
+        // slider zero. The step existed because two stacked alphas multiply and a
+        // pane on a proportional ground would admit a quadratic; that is answered
+        // by the pane's alpha finishing on the ink ramp rather than by the ground
+        // painting nothing. What the step was really protecting — that a pane
+        // composites over the ground exactly ONCE — is asserted where it belongs,
+        // in FloatingLayoutTests.
+        Assert.Equal(Math.Round(255 * HoardTheme.MinShellAlpha), (double)t["ShellGround"].A);
 
         // And the alpha only ever comes off — no position on the track is denser
-        // than the one before it.
+        // than the one before it, on either tier.
+        byte previousGround = 255;
         byte previous = 255;
         foreach (var transparency in Range())
         {
-            var alpha = theme.Tokens(transparency)["ChromeSurface"].A;
+            var tokens = theme.Tokens(transparency);
+            var ground = tokens["ShellGround"].A;
+            var alpha = tokens["ChromeSurface"].A;
+            Assert.True(ground <= previousGround, $"{id}: the ground's alpha rose at {transparency:P0}");
             Assert.True(alpha <= previous, $"{id}: alpha rose at {transparency:P0}");
+            previousGround = ground;
             previous = alpha;
         }
     }
@@ -749,12 +838,27 @@ public class ThemeContrastTests
         var text = Ceiling(t => Contrast(theme.Tokens(t)["Text"], Field(theme, t, White)));
         var dim = Ceiling(t => Contrast(theme.Tokens(t)["TextDim"], Field(theme, t, White)));
 
+        // And the rail, which is a pane now and is measured as one. It fails
+        // later than the ceiling too — 40 / 54 / 47 / 41 against 30 / 31 / 31 / 31
+        // — because the thing that sets the ceiling is the caption on the ground,
+        // not anything inside a pane.
+        var rail = Ceiling(t => Math.Min(
+            Contrast(
+                theme.Tokens(t)["TextDim"],
+                Over(theme.Tokens(t)["ChromeSurface"], Shell(theme, t, White))),
+            Contrast(
+                theme.Tokens(t)["TextDim"],
+                Over(
+                    theme.Tokens(t)["ChromeRaised"],
+                    Over(theme.Tokens(t)["ChromeSurface"], Shell(theme, t, White))))));
+
         // And a SELECTED list row, which is the pane's lightest reading surface
         // for the same reason a selected rail row is the chrome's.
         var row = Ceiling(t => Contrast(
             theme.Tokens(t)["TextDim"],
             Over(theme.Tokens(t)["ChromeRaised"], Field(theme, t, White))));
 
+        Assert.True(rail > chrome, $"{id}: the rail fails at {rail}%, the window at {chrome}%");
         Assert.True(dim > chrome, $"{id}: pane TextDim fails at {dim}%, chrome at {chrome}%");
         Assert.True(text > chrome, $"{id}: pane Text fails at {text}%, chrome at {chrome}%");
         Assert.True(row > chrome, $"{id}: a selected row fails at {row}%, chrome at {chrome}%");
@@ -829,17 +933,34 @@ public class ThemeContrastTests
     {
         var theme = HoardThemes.ById(id);
 
-        // One formula, two containers. Written as the product rather than as its
-        // answer, so retuning either end of the slider cannot leave a stale
-        // number behind in either field.
+        // ONE FORMULA, APPLIED AT EVERY LEVEL OF THE STACK, and written as the
+        // product rather than as its answer so that retuning either end of the
+        // slider cannot leave a stale number behind anywhere in it.
+        //
+        // The ground is the only free quantity — it has nothing painted between
+        // it and the desktop. A pane's alpha is forced by it; a field's alpha is
+        // forced by the pane it is cut into. That is three applications of
+        // alpha = 1 − (1 − MinWallAlpha) / (1 − containerAlpha).
         Assert.Equal(
             1 - HoardTheme.MinWallAlpha,
-            (1 - HoardTheme.MinChromeAlpha) * (1 - HoardTheme.MinFieldAlpha),
+            (1 - HoardTheme.MinShellAlpha) * (1 - HoardTheme.MinPaneAlpha),
+            precision: 9);
+        Assert.Equal(
+            1 - HoardTheme.MinWallAlpha,
+            (1 - HoardTheme.MinWallAlpha) * (1 - HoardTheme.MinFieldAlpha),
             precision: 9);
         Assert.Equal(
             1 - HoardTheme.MinWallAlpha,
             (1 - HoardTheme.MinWallAlpha) * (1 - HoardTheme.MinPaneFieldAlpha),
             precision: 9);
+
+        // The two field constants coincide for the first time, and that is the
+        // tier collapse showing up in the arithmetic rather than a duplication:
+        // the filter panel used to be chrome, so its container admitted 0.70 and
+        // its field spent the other half. The panel is a pane now, both
+        // containers admit the same thing, and both fields solve to nothing.
+        Assert.Equal(HoardTheme.MinFieldAlpha, HoardTheme.MinPaneFieldAlpha);
+        Assert.Equal(0, HoardTheme.MinFieldAlpha);
 
         byte previousOnGround = 255;
         byte previousOnSurface = 255;
@@ -865,9 +986,10 @@ public class ThemeContrastTests
             // Alphas are stored as bytes, so every share here is quantised to
             // 1/255 and the product of two of them carries both errors.
             const double Rounding = 0.005;
-            var wallShare = 1 - (t["WallGround"].A / 255.0);
-            var paneShare = 1 - (t["PaneGround"].A / 255.0);
-            var panelShare = 1 - (t["ChromeSurface"].A / 255.0);
+            var ground = 1 - (t["ShellGround"].A / 255.0);
+            var wallShare = ground * (1 - (t["WallGround"].A / 255.0));
+            var paneShare = ground * (1 - (t["PaneGround"].A / 255.0));
+            var panelShare = ground * (1 - (t["ChromeSurface"].A / 255.0));
             var paneFieldShare = paneShare * (1 - (onGround.A / 255.0));
             var panelFieldShare = panelShare * (1 - (onSurface.A / 255.0));
 
@@ -885,20 +1007,25 @@ public class ThemeContrastTests
                 $"{id}: a panel field admits more than the art field at {transparency:P0}");
 
             // The ink is one step from the container in the neutral family, and
-            // ONLY THE PANEL'S FIELD WALKS. §14.3's ink ramp is a chrome
-            // compensation — the chrome opens to 0.70 and pays for it with a
-            // darker ink — so a field on the chrome walks with it or the step
-            // between them changes size across the slider. PaneGround does not
-            // walk at all: it is the theme's own Ground at an alpha, at every
-            // position. So the field cut into it is the theme's own Surface at an
-            // alpha, and the step it makes is the opaque palette's step the whole
-            // way across.
+            // NEITHER FIELD WALKS ANY MORE. §14.3's ink ramp was a CHROME
+            // compensation — the chrome opened to 0.70 and paid for it with a
+            // darker ink, so a field on the chrome had to walk with it or the
+            // step between them would change size across the slider. There is no
+            // chrome: the filter panel is a pane, panes are their own opaque
+            // token at an alpha at every position, and a field cut into an
+            // unwalked ground must be unwalked too.
             Assert.Equal(
                 (theme.Surface.R, theme.Surface.G, theme.Surface.B),
                 (onGround.R, onGround.G, onGround.B));
             Assert.Equal(
                 (theme.Ground.R, theme.Ground.G, theme.Ground.B),
+                (onSurface.R, onSurface.G, onSurface.B));
+            Assert.Equal(
+                (theme.Ground.R, theme.Ground.G, theme.Ground.B),
                 (t["PaneGround"].R, t["PaneGround"].G, t["PaneGround"].B));
+            Assert.Equal(
+                (theme.Surface.R, theme.Surface.G, theme.Surface.B),
+                (t["ChromeSurface"].R, t["ChromeSurface"].G, t["ChromeSurface"].B));
         }
 
         // Slider zero is bit-for-bit the opaque palette, here as everywhere: the
@@ -921,11 +1048,14 @@ public class ThemeContrastTests
             }
 
             var t = theme.Tokens(transparency, wallTranslucent: true);
-            var throughPaneField = (1 - (t["PaneGround"].A / 255.0))
+            var ground = 1 - (t["ShellGround"].A / 255.0);
+            var throughPaneField = ground
+                * (1 - (t["PaneGround"].A / 255.0))
                 * (1 - (t["ChromeFieldOnGround"].A / 255.0));
-            var throughPanelField = (1 - (t["ChromeSurface"].A / 255.0))
+            var throughPanelField = ground
+                * (1 - (t["ChromeSurface"].A / 255.0))
                 * (1 - (t["ChromeFieldOnSurface"].A / 255.0));
-            var wall = 1 - (t["WallGround"].A / 255.0);
+            var wall = ground * (1 - (t["WallGround"].A / 255.0));
 
             // Absolute tolerance rather than decimal places: every alpha here is
             // a byte, so a product of two of them carries both quantisations and
@@ -988,19 +1118,36 @@ public class ThemeContrastTests
         {
             Color Fill(double t)
             {
-                var tok = theme.Tokens(t);
+                var tok = theme.Tokens(t, wallTranslucent: true);
                 var container = onBar
                     ? Field(theme, t, White)
-                    : Over(tok["ChromeSurface"], White);
+                    : Over(tok["ChromeSurface"], Shell(theme, t, White));
                 return Over(tok[onBar ? "ChromeFieldOnGround" : "ChromeFieldOnSurface"], container);
             }
 
             var where = onBar ? "on the bar" : "in the panel";
 
-            var typed = Ceiling(t => Contrast(theme.Tokens(t)["Text"], Fill(t)));
-            Assert.Equal(100, typed);
+            // WHAT YOU ARE TYPING, and the one figure the two-tier restructure
+            // cost rather than bought. It used to hold AA across the whole
+            // slider on both fields. It still does in the LIBRARY pane, whose
+            // ground is Ground; in the FILTER PANEL it now runs out at 96 and 97
+            // percent on Hoard and Box art, because the panel's field paints no
+            // fill at all — the identity forces it to zero, since the panel is a
+            // pane and a pane already admits the wall's share — so the ink under
+            // the caret is the panel's own Surface rather than a Ground step cut
+            // into it, and Surface is the lighter of the two.
+            //
+            // Four points at the very top of the track, on a pure white
+            // wallpaper, three times past the mark the Appearance screen draws.
+            // It is recorded rather than engineered away: the only fill that
+            // would buy it back is one that makes the field less open than the
+            // pane around it, which is the bolted-shut patch §14.7 refused.
+            var typed = Ceiling(t => Contrast(theme.Tokens(t, wallTranslucent: true)["Text"], Fill(t)));
+            Assert.True(
+                onBar ? typed == 100 : typed >= 96,
+                $"{id}: what you are typing {where} fails at {typed}%");
 
-            var placeholder = Ceiling(t => Contrast(theme.Tokens(t)["TextDim"], Fill(t)));
+            var placeholder = Ceiling(t => Contrast(theme.Tokens(t, wallTranslucent: true)["TextDim"], Fill(t)));
             Assert.True(
                 placeholder > chrome,
                 $"{id}: the placeholder {where} fails at {placeholder}%, the chrome at {chrome}%");
@@ -1017,18 +1164,34 @@ public class ThemeContrastTests
             // Ground) — which is the palette as shipped and has nothing to do
             // with transparency. Past a few percent it reverses and stays
             // reversed, because the field is then the darker of the two.
-            var ring = Ceiling(t => Contrast(theme.Tokens(t)["Volt"], Fill(t)));
+            var ring = Ceiling(t => Contrast(theme.Tokens(t, wallTranslucent: true)["Volt"], Fill(t)));
             Assert.True(
                 ring > chrome,
                 $"{id}: the focus ring {where} fails at {ring}%, the chrome at {chrome}%");
         }
     }
 
+    /// <summary>
+    /// The WINDOW'S GROUND as it composites — the outer of the two tiers, and
+    /// the surface every other one in the window is painted on.
+    ///
+    /// <para>Nothing here may skip this term. A pane's own alpha is DERIVED
+    /// assuming the ground is under it — <c>(1 − MinShellAlpha)·(1 − MinPaneAlpha)
+    /// = 1 − MinWallAlpha</c> — so measuring a pane straight against the backdrop
+    /// would report a lighter surface than the one on screen, and every ceiling
+    /// in this file would be a number about a window that is not running.</para>
+    /// </summary>
+    private static Color Shell(
+        HoardTheme theme, double transparency, Color backdrop, HoardLayout layout = HoardLayouts.Default)
+        => Over(theme.Tokens(transparency, layout: layout)["ShellGround"], backdrop);
+
     /// <summary>The pane's field as it composites, at a slider position, with
     /// the reach setting in — which is the only state in which any of this is a
     /// question.</summary>
     private static Color Field(HoardTheme theme, double transparency, Color backdrop)
-        => Over(theme.Tokens(transparency, wallTranslucent: true)["PaneGround"], backdrop);
+        => Over(
+            theme.Tokens(transparency, wallTranslucent: true)["PaneGround"],
+            Shell(theme, transparency, backdrop));
 
     /// <summary>The last whole percent at which <paramref name="measure"/> still
     /// clears AA. Walked, for <c>AaCeiling</c>'s reason: the inks and the alpha
@@ -1050,20 +1213,46 @@ public class ThemeContrastTests
         return 100;
     }
 
+    /// <summary>
+    /// The worst any reading surface the slider reaches does, at a position.
+    ///
+    /// <para><b>THE BINDING SURFACE MOVED when the tiers collapsed, and that is
+    /// the honest headline of the change.</b> While the rail sat on a chrome tier
+    /// of its own it was the most open reading surface in the window and a
+    /// SELECTED rail row was the worst case. The rail is a pane now: it opens
+    /// half as far, and its ceiling roughly doubled — 27 / 31 / 30 / 26 to
+    /// 40 / 54 / 47 / 41. What is left at the top is the CAPTION, which sits on
+    /// the window's ground, and which therefore fails at 30 / 31 / 31 / 31. A
+    /// measurement that still looked only at the chrome would report a number no
+    /// surface in the window holds to.</para>
+    ///
+    /// <para><b>Both layouts, worst wins.</b> Floating puts the caption on the
+    /// ground; flush paints it in the rail's own fill at the pane tier, where it
+    /// holds to 56 / 69 / 61 / 57. So the two layouts fail in different places,
+    /// and a mark on the slider that moved when the user changed layout would be
+    /// a promise that expired on an unrelated setting.</para>
+    /// </summary>
     private static double WorstChromeContrast(HoardTheme theme, double transparency, Color backdrop)
     {
-        var t = theme.Tokens(transparency);
-        var rail = Over(t["ChromeSurface"], backdrop);
-        var row = Over(t["ChromeRaised"], rail);
-        var ink = t["TextDim"];
+        var worst = double.MaxValue;
 
-        // The command bar was a third term here until it moved into the library
-        // pane. It never bound - Ground is darker than Surface at the same
-        // alpha, so a light ink always read better on the bar than on the rail -
-        // and it is not chrome any more, so measuring it here would be measuring
-        // a pane against the chrome's bar. Colorimetry.ChromeMetadataContrast
-        // dropped it for the same reason, and no theme's ceiling moved.
-        return Math.Min(Contrast(ink, rail), Contrast(ink, row));
+        foreach (var layout in HoardLayouts.All)
+        {
+            var t = theme.Tokens(transparency, layout: layout);
+            var ink = t["TextDim"];
+            var shell = Shell(theme, transparency, backdrop, layout);
+
+            // The caption. Floating it paints nothing and this IS the ground;
+            // flush it is the rail's fill on the ground. Over(alpha 0, x) is x,
+            // so one line covers both.
+            worst = Math.Min(worst, Contrast(ink, Over(t["CaptionFill"], shell)));
+
+            var rail = Over(t["ChromeSurface"], shell);
+            worst = Math.Min(worst, Contrast(ink, rail));
+            worst = Math.Min(worst, Contrast(ink, Over(t["ChromeRaised"], rail)));
+        }
+
+        return worst;
     }
 
     private static Color Over(Color ink, Color backdrop)

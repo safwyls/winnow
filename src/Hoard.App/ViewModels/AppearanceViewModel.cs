@@ -56,12 +56,12 @@ public partial class AppearanceViewModel : ObservableObject
         [
             new AppearanceOptionViewModel(
                 false,
-                "Chrome only",
-                "The rail, the title bar and the filter panel. The library pane stays solid - its command bar and cut bar with it, since they are part of it - and so do the settings screens and the list view. How Hoard has looked until now."),
+                "The ground and the side panes",
+                "The window's ground - the gaps and the title bar - and the two panes beside the library: the rail and the filter panel. The library pane stays solid, its command bar and cut bar with it since they are part of it, and so do the settings screens and the list view."),
             new AppearanceOptionViewModel(
                 true,
-                "Chrome and the wall",
-                "The library pane opens up too, at half the amount - its field of art, its command bar and its cut bar together - and so does everything that shares its place: settings, the review queue, the list view. The covers themselves stay solid, so the desktop shows in the gutters between them."),
+                "Everything but the covers",
+                "The library pane opens up with the rest - its field of art, its command bar and its cut bar together - and so does everything that shares its place: settings, the review queue, the list view. Every pane is then at one level. The covers themselves stay solid, so the desktop shows in the gutters between them."),
         ];
 
         Layouts =
@@ -166,9 +166,9 @@ public partial class AppearanceViewModel : ObservableObject
     public bool IsSolid => _service.Transparency == 0;
 
     /// <summary>
-    /// What the metadata ink measures right now on the chrome surface that does
-    /// worst — usually a selected rail row, which is the rail with a veil over it
-    /// — against a dark desktop.
+    /// What the metadata ink measures right now on the surface that does worst —
+    /// the title bar, which sits on the window's ground and is therefore the most
+    /// open reading surface there is — against a dark desktop.
     ///
     /// <para>It goes UP as the slider travels, because a dark desktop is darker
     /// than our own rail and admitting more of it deepens the ground the labels
@@ -202,12 +202,13 @@ public partial class AppearanceViewModel : ObservableObject
 
     /// <summary>True once the white-backdrop measurement is under AA.</summary>
     public bool UnderAa => !IsSolid
-        && Colorimetry.ChromeMetadataContrast(_service.Theme, _service.Transparency / 100.0, Colorimetry.White)
+        && Colorimetry.WorstMetadataContrast(_service.Theme, _service.Transparency / 100.0, Colorimetry.White)
             < Colorimetry.AaThreshold;
 
     /// <summary>The highest setting at which the worst case still clears AA, for
     /// the theme that is up. It moves with the theme, which is why it is drawn
-    /// rather than written into the copy.</summary>
+    /// rather than written into the copy — and it is taken across BOTH layouts,
+    /// so changing the layout can never invalidate the mark.</summary>
     public int AaCeiling => Colorimetry.AaCeiling(_service.Theme);
 
     /// <summary>Where to draw the mark on the track, in pixels from its left
@@ -219,10 +220,10 @@ public partial class AppearanceViewModel : ObservableObject
     public double SliderWidth => TrackWidth;
 
     public string ContrastNote => IsSolid
-        ? "Measured on the chrome surface that does worst, which is a selected rail row. Solid, so no desktop reaches it and the number cannot move."
+        ? "Measured on the surface that does worst, which is the title bar: it sits on the window's ground, the most open thing in the window. Solid, so no desktop reaches it and the number cannot move."
         : UnderAa
-            ? $"Measured on the chrome surface that does worst, which is a selected rail row. Past {AaCeiling}% the white figure drops under 4.5:1. Your desktop sits somewhere between the two, and a dark wallpaper sits at the first."
-            : "Measured on the chrome surface that does worst, which is a selected rail row. Your desktop sits somewhere between the two, and a dark wallpaper sits at the first.";
+            ? $"Measured on the surface that does worst, which is the title bar: it sits on the window's ground, the most open thing in the window. Past {AaCeiling}% the white figure drops under 4.5:1. Your desktop sits somewhere between the two, and a dark wallpaper sits at the first."
+            : "Measured on the surface that does worst, which is the title bar: it sits on the window's ground, the most open thing in the window. Your desktop sits somewhere between the two, and a dark wallpaper sits at the first.";
 
     /// <summary>
     /// What the machine actually did with the request. Windows 10, a
@@ -235,8 +236,8 @@ public partial class AppearanceViewModel : ObservableObject
     public string TransparencyStatus => TransparencyUnavailable
         ? "This machine is not compositing the desktop behind the window, so Hoard is drawing solid. The setting stays where you left it and takes effect where it can."
         : WallTranslucent
-            ? "The rail, the title bar, the filter panel and their fields all admit the desktop, and so does the library pane - its field of art, its two bars and the search box on them - along with the panes that share its place. The covers themselves never do, at any setting - the dormancy ramp is two layers that are only opaque together, and it needs its own ground under it."
-            : "The rail, the title bar, the filter panel and the fields in it admit the desktop. The library pane stays solid, and so do its command bar, its cut bar, its search box and the panes that share its place.";
+            ? "Every pane admits the same amount - the rail, the filter panel, the library's field of art with its two bars, and the panes that share its place - and the window's ground behind them admits more. Two levels, and nothing between them. The covers themselves never open, at any setting: the dormancy ramp is two layers that are only opaque together, and it needs its own ground under it."
+            : "The window's ground, the title bar, the rail and the filter panel admit the desktop. The library pane stays solid, and so do its command bar, its cut bar, its search box and the panes that share its place - so two panes side by side are at different levels until you turn this up.";
 
     // ══ Material, and reach ═════════════════════════════════════════════════
     // The screen holds four decisions now, and four rows would be a wall of
@@ -292,25 +293,31 @@ public partial class AppearanceViewModel : ObservableObject
     /// only when something can come through them.
     ///
     /// <para>It is a separate sentence rather than a clause on
-    /// <see cref="TransparencyStatus"/> because it is the one surface in the
-    /// window that does NOT take the chrome's alpha: a gap carries no wordmark,
-    /// no label and no art, so it opens the whole way, and a screen that reports
-    /// every other surface's share owes this one its own line.</para>
+    /// <see cref="TransparencyStatus"/> because it is the one place in the window
+    /// where the outer tier is visible on its own — everywhere else the ground is
+    /// behind a pane. It used to be a line about a THIRD state, the gaps
+    /// admitting the whole desktop where the caption beside them admitted the
+    /// chrome's share; it is now a line about the two tiers being one field
+    /// each.</para>
     /// </summary>
     public bool ShowGapNote => IsFloating && !IsSolid;
 
     public string GapNote =>
-        "The gaps between the panes take no fill of ours at all, so they admit the whole desktop rather than the chrome's share of it. That is what makes the panes read as floating rather than as drawn with a seam - and at SOLID it is the window's own ground in them, one step below the field the covers hang in.";
+        "The gaps and the title bar are one field at every position on the slider rather than only at SOLID - the title bar takes no fill of its own, and the ground shows through it. It is one step below the field the covers hang in, and it is the most open surface in the window, which is what makes the panes read as floating rather than as drawn with a seam.";
 
-    /// <summary>How much of the chrome is desktop at this position, as a whole
-    /// percent. The number the slider is really setting.</summary>
-    public string ChromeAdmits => Admits(HoardTheme.MinChromeAlpha);
+    /// <summary>How much of the WINDOW'S GROUND is desktop at this position, as
+    /// a whole percent - the gaps between the panes and the title bar, which are
+    /// one field. The outer of the two tiers, and the only one of the pair that
+    /// is a free choice rather than a consequence.</summary>
+    public string GroundAdmits => Admits(HoardTheme.MinShellAlpha);
 
-    /// <summary>And the wall's, which is exactly half of it.</summary>
-    public string WallAdmits => Admits(HoardTheme.MinWallAlpha);
+    /// <summary>And a pane's, which is what everything else in the window
+    /// admits: the rail, the filter panel, the field of art, the settings
+    /// screens, and every input field cut into any of them.</summary>
+    public string PaneAdmits => Admits(HoardTheme.MinWallAlpha);
 
-    public string WallAdmitsNote =>
-        "of the wall is - half. Measured over a real wallpaper, the wall at the chrome's own amount comes out level with the rail and lighter than a dormant cover, which turns dimmed art into a hole and the recess the covers hang in into a flat pane. At half it stays under both.";
+    public string PaneAdmitsNote =>
+        "of every pane is - the rail, the filter panel and the field of art alike, along with each input field in them. There is one level for the panes and one for the ground behind them, and nothing in between. The panes stop where they do because of the art rather than the labels: measured over a real wallpaper, a field any more open than this comes out lighter than a dormant cover, which turns dimmed art into a hole punched in a lit pane.";
 
     // ══ YOUR THEMES ═════════════════════════════════════════════════════════
     // A folder of JSON files at %LOCALAPPDATA%\Hoard\themes. The block below is
@@ -400,7 +407,7 @@ public partial class AppearanceViewModel : ObservableObject
     public string ReportAaCeiling => Percent(Report.AaCeiling);
 
     public string ReportAaNote =>
-        "of the slider before the chrome's worst reading surface drops under 4.5:1 on a white wallpaper. The mark on the track below is the same number.";
+        "of the slider before the window's worst reading surface drops under 4.5:1 on a white wallpaper. That surface is the title bar, which sits on the ground. The mark on the track below is the same number.";
 
     /// <summary>And where the cover wall's field stops being darker than a
     /// dormant capsule. Wants to be past the AA mark: §14.6's rule is that the
@@ -408,13 +415,13 @@ public partial class AppearanceViewModel : ObservableObject
     public string ReportWallCeiling => Percent(Report.WallCeiling);
 
     public string ReportWallNote => Report.WallCeiling >= Report.AaCeiling
-        ? "before the art field rises past a dormant cover and the dormancy ramp inverts. Past the chrome's mark, which is the rule: the wall must not be the thing that fails first."
-        : "before the art field rises past a dormant cover and the dormancy ramp inverts. That is BEFORE the chrome's mark, so on this theme the wall fails first - the ramp reads as holes punched in a lit field while the labels are still legible.";
+        ? "before the art field rises past a dormant cover and the dormancy ramp inverts. Past the AA mark, which is the rule: the wall must not be the thing that fails first."
+        : "before the art field rises past a dormant cover and the dormancy ramp inverts. That is BEFORE the AA mark, so on this theme the wall fails first - the ramp reads as holes punched in a lit field while the labels are still legible.";
 
     public string ReportMetadata => Ratio(Report.MetadataOnChrome);
 
     public string ReportMetadataNote =>
-        "for the metadata ink on the chrome surface that does worst, solid. §8 puts the floor at 4.5:1.";
+        "for the metadata ink on the surface that does worst, solid. §8 puts the floor at 4.5:1.";
 
     public string ReportEdge => Ratio(Report.Edge);
 
@@ -532,7 +539,7 @@ public partial class AppearanceViewModel : ObservableObject
 
     private string Ratio(Color backdrop)
     {
-        var ratio = Colorimetry.ChromeMetadataContrast(
+        var ratio = Colorimetry.WorstMetadataContrast(
             _service.Theme, _service.Transparency / 100.0, backdrop);
         return ratio.ToString("0.00", CultureInfo.InvariantCulture) + ":1";
     }
@@ -586,8 +593,8 @@ public partial class AppearanceViewModel : ObservableObject
         OnPropertyChanged(nameof(BackdropSubstituted));
         OnPropertyChanged(nameof(BackdropSubstitutedNote));
         OnPropertyChanged(nameof(WallTranslucent));
-        OnPropertyChanged(nameof(ChromeAdmits));
-        OnPropertyChanged(nameof(WallAdmits));
+        OnPropertyChanged(nameof(GroundAdmits));
+        OnPropertyChanged(nameof(PaneAdmits));
 
         OnPropertyChanged(nameof(IsFloating));
         OnPropertyChanged(nameof(ShowGapNote));

@@ -10,15 +10,22 @@ namespace Hoard.Tests;
 /// translucency is: what it claims about the palette is asserted here rather
 /// than looked at once in a screenshot.
 ///
-/// <para>Four claims carry the layout, and each of them is a test below. The
-/// ground is CONTINUOUS — the caption and every gap are one ink at one alpha,
-/// which is what makes the panes read as lying on a field rather than as three
-/// tones meeting. It is the DEEPEST tone in the window, so a gap is a recess and
-/// never a lit slot. It never composites TWICE, which is the only reason §14.3's
-/// measured chrome alphas survive a layout that puts a painted ground behind
-/// translucent panes. And it moves NOTHING that was measured — the rail, the
-/// wall, the tiles and the panes are bit-for-bit what the flush layout produces,
-/// so the Appearance screen's AA ceiling is still the truth under both.</para>
+/// <para>Four claims carry the layout, and each of them is a test below — and
+/// two of the four were rewritten by the two-tier restructure rather than
+/// carried across. The ground is CONTINUOUS, and now exactly so: the caption
+/// paints nothing of its own and the ground is what shows through it, so the
+/// caption and every gap are one SURFACE rather than two that agree. It is still
+/// the DEEPEST tone in the window at SOLID, so a gap is a recess and never a lit
+/// slot. It composites under a pane EXACTLY ONCE — it is a ramp now rather than
+/// a step, and what makes that safe is that the pane's own alpha finishes on the
+/// ink ramp, so the product of the two stays linear at the wall's rate.</para>
+///
+/// <para><b>And the fourth claim reversed.</b> The layout used to move nothing
+/// that §14 measured, because floating merely repainted the caption in a deeper
+/// tone. It moves the caption onto the window's ground now, which is the most
+/// open surface there is, so floating's AA ceiling is 30 / 31 / 31 / 31 where
+/// flush's is 40 / 54 / 47 / 41. That is answered by measuring both layouts and
+/// reporting the worse, so the mark on the slider still means one thing.</para>
 ///
 /// <para><b>The command bar and the cut bar used to be a fifth thing on that
 /// ground and are not any more.</b> They are inside the library pane in both
@@ -29,6 +36,10 @@ namespace Hoard.Tests;
 public class FloatingLayoutTests
 {
     private static readonly Color White = Color.FromRgb(255, 255, 255);
+
+    private static readonly Color Black = Color.FromRgb(0, 0, 0);
+
+    private static readonly Color DarkDesktop = Color.FromRgb(0x20, 0x1F, 0x1E);
 
     public static TheoryData<string> ThemeIds()
     {
@@ -82,22 +93,47 @@ public class FloatingLayoutTests
         Assert.Equal(theme.Well, solid["ShellGround"]);
         Assert.Equal(solid["CaptionFill"], solid["ShellGround"]);
 
-        // Past SOLID the caption keeps the ground's INK and the chrome's alpha —
-        // it carries a wordmark and three glyphs, so it pays for them. The GAPS
-        // open all the way, and that is stated in §15 rather than asserted away
-        // here: a gap carries nothing, which is exactly the effect the layout is
-        // for.
+        // PAST SOLID THE CAPTION PAINTS NOTHING AT ALL, and the ground behind
+        // it is what is seen. That is stronger than the claim this test used to
+        // make. It used to assert that the caption carried the ground's ink at
+        // the CHROME's alpha and that the gaps, carrying no wordmark, opened
+        // further — one field at SOLID and a field with brighter slots cut in it
+        // everywhere else, which §15.7 recorded as an honest cost. There are no
+        // slots: the caption and every gap are not two surfaces that agree, they
+        // are one surface.
         foreach (var transparency in Range())
         {
             var t = theme.Tokens(transparency, layout: HoardLayout.Floating);
             var caption = t["CaptionFill"];
-            var chrome = t["ChromeSurface"];
 
-            Assert.Equal(chrome.A, caption.A);
-            Assert.True(
-                Luminance(caption) <= Luminance(chrome),
-                $"{id}: the caption rose above the chrome at {transparency:P0}");
+            if (transparency <= 0)
+            {
+                Assert.Equal(t["ShellGround"], caption);
+                continue;
+            }
+
+            Assert.Equal(0, caption.A);
+
+            // Which is to say: over ANY backdrop the caption composites to
+            // exactly the gap beside it. Asserted rather than argued, because
+            // "same ink and same alpha" is a claim about pixels.
+            foreach (var backdrop in new[] { White, DarkDesktop, Black })
+            {
+                Assert.Equal(
+                    Over(t["ShellGround"], backdrop),
+                    Over(caption, Over(t["ShellGround"], backdrop)));
+            }
         }
+
+        // And it is still not the brightest thing in the window at SOLID, which
+        // is what §9's rule actually asks. Past SOLID over a bright wallpaper it
+        // IS — the ground is the most open surface there is, so the caption and
+        // the gaps are the brightest band in the window together. §15.7 conceded
+        // that for the gaps; the caption joins them, and what it costs is
+        // measured on the slider's own AA mark rather than hidden.
+        Assert.True(
+            Luminance(solid["CaptionFill"]) < Luminance(solid["ChromeSurface"]),
+            $"{id}: the caption is not below the chrome at SOLID");
 
         // And nothing else is on that field. The library pane's own bars carry no
         // fill at all in either layout, so there is no second strip for the
@@ -127,33 +163,66 @@ public class FloatingLayoutTests
     }
 
     /// <summary>
-    /// The one construction fact the whole layout rests on.
+    /// A pane composites over the window's ground EXACTLY ONCE, and its own
+    /// alpha is derived on that assumption.
     ///
-    /// <para>A painted ground behind translucent panes would stack: a rail at
-    /// §14.3's measured 0.30 over a shell at 0.30 composites to 0.51, and every
-    /// contrast figure the Appearance screen prints would be describing a window
-    /// that is not on screen. <c>ShellGround</c> is a step and not a ramp for
-    /// exactly this reason, and floating is the layout that turns that from a
-    /// tidiness into a load-bearing property — so it is asserted at every
-    /// position rather than at the ends.</para>
+    /// <para><b>This replaces the rule it used to assert, and the replacement is
+    /// the whole two-tier change.</b> <c>ShellGround</c> painted NOTHING past
+    /// slider zero, because two stacked alphas multiply: a rail at the old
+    /// measured 0.30 over a shell at 0.30 lands at 0.51, and every figure the
+    /// Appearance screen prints would be describing a window that is not on
+    /// screen. That is still true of a shell that fades in PROPORTION. It is not
+    /// true of this one, because the layer above it finishes early —
+    /// <c>paneAlpha</c> rides <c>InkRampSpan</c>, so past the first quarter the
+    /// product of the two is linear at exactly the wall's rate and a pane admits
+    /// <c>1 − MinWallAlpha</c> at the end of the track to the last decimal.</para>
+    ///
+    /// <para>What the step was really protecting is asserted here directly:
+    /// exactly one coat of the ground under any pane, and the product landing
+    /// where the constants say it does. A second coat anywhere — a second Grid
+    /// declaring <c>ShellGround</c>, say — would put every measurement in this
+    /// file out by the same factor and nothing else would catch it.</para>
     /// </summary>
     [Theory]
     [MemberData(nameof(ThemeIds))]
-    public void A_pane_never_composites_over_a_painted_ground(string id)
+    public void A_pane_composites_over_the_ground_exactly_once(string id)
     {
         var theme = HoardThemes.ById(id);
 
         foreach (var transparency in Range())
         {
-            var t = theme.Tokens(transparency, layout: HoardLayout.Floating);
+            foreach (var layout in HoardLayouts.All)
+            {
+                var t = theme.Tokens(transparency, wallTranslucent: true, layout);
+                var ground = 1 - (t["ShellGround"].A / 255.0);
 
-            if (transparency == 0)
-            {
-                Assert.Equal(255, t["ShellGround"].A);
-            }
-            else
-            {
-                Assert.Equal(0, t["ShellGround"].A);
+                if (transparency == 0)
+                {
+                    Assert.Equal(255, t["ShellGround"].A);
+                    Assert.Equal(0, ground);
+                    continue;
+                }
+
+                foreach (var pane in new[] { "ChromeSurface", "WallGround", "PaneGround" })
+                {
+                    var admitted = ground * (1 - (t[pane].A / 255.0));
+
+                    // One coat: the product of exactly two layers, and never
+                    // more than the ground itself lets in.
+                    Assert.True(
+                        admitted <= ground + 0.001,
+                        $"{id}: {pane} admits more than the ground under {layout} at {transparency:P0}");
+
+                    // Past the ink ramp it is the wall's own linear share, which
+                    // is what the early ramp buys. Bytes, so both quantisations
+                    // ride on the product.
+                    if (transparency >= 0.25)
+                    {
+                        Assert.True(
+                            Math.Abs(admitted - ((1 - HoardTheme.MinWallAlpha) * transparency)) <= 0.006,
+                            $"{id}: {pane} admits {admitted:P1} under {layout} at {transparency:P0}");
+                    }
+                }
             }
         }
     }
@@ -249,7 +318,12 @@ public class FloatingLayoutTests
         {
             var t = theme.Tokens(transparency: 1, wallTranslucent: true, layout);
 
-            var throughPaneField = (1 - (t["PaneGround"].A / 255.0))
+            // THREE terms now, not two, and the third is the window's ground.
+            // A pane is painted on it and a pane's own alpha is derived assuming
+            // so, which is the identity reaching one level further out than it
+            // used to: ground, pane, field.
+            var throughPaneField = (1 - (t["ShellGround"].A / 255.0))
+                * (1 - (t["PaneGround"].A / 255.0))
                 * (1 - (t["ChromeFieldOnGround"].A / 255.0));
 
             // Absolute tolerance, not decimal places: both alphas are bytes, so
@@ -295,38 +369,73 @@ public class FloatingLayoutTests
     }
 
     /// <summary>
-    /// The chrome strips get BRIGHTER ink relief, never dimmer, from the layout.
+    /// The layout DOES cost the caption contrast now, and the mark on the slider
+    /// is taken across both layouts so that it cannot lie about it.
     ///
-    /// <para>The caption carries the wordmark and the caption glyphs, and
-    /// floating repaints it from Well instead of Surface. Well is the darkest tone
-    /// in the palette, so over the brightest backdrop a wallpaper can be, every
-    /// ink on that strip lands on a deeper ground than it did — the layout cannot
-    /// be the thing that takes a label under §8's floor. It is the only strip left
-    /// to check: the command bar's labels are on the library pane in both
-    /// layouts, so the layout does not reach them at all.</para>
+    /// <para><b>This reverses the claim it used to make, and the reversal is
+    /// honest rather than a regression hiding in a rename.</b> Floating used to
+    /// repaint the caption from <c>Well</c> at the chrome's own alpha, and
+    /// <c>Well</c> is the darkest tone in the palette, so every ink on that strip
+    /// landed on a deeper ground than it did in flush — the layout could not be
+    /// the thing that took a label under §8's floor. Under two tiers the floating
+    /// caption is not a repainted strip at all: it is the window's GROUND, the
+    /// most open surface there is, and it fails at 30 / 31 / 31 / 31 percent of
+    /// the slider where the flush caption holds to 56 / 69 / 61 / 57.</para>
+    ///
+    /// <para>So §15.6's "nothing §14 measured moved" no longer holds by
+    /// construction, and it is answered by measurement instead:
+    /// <c>Colorimetry.AaCeiling</c> walks BOTH layouts and reports the worse, so
+    /// the mark drawn on the track is a promise that survives the user flipping
+    /// the layout. That is what this asserts.</para>
     /// </summary>
     [Theory]
     [MemberData(nameof(ThemeIds))]
-    public void The_layout_never_costs_the_chrome_strips_contrast(string id)
+    public void The_aa_mark_holds_in_whichever_layout_is_up(string id)
     {
         var theme = HoardThemes.ById(id);
+        var ceiling = Colorimetry.AaCeiling(theme);
 
-        foreach (var transparency in Range())
+        for (var percent = 0; percent <= ceiling; percent++)
         {
-            var flush = theme.Tokens(transparency, layout: HoardLayout.Flush);
-            var floating = theme.Tokens(transparency, layout: HoardLayout.Floating);
+            var transparency = percent / 100.0;
 
-            foreach (var key in new[] { "CaptionFill" })
+            foreach (var layout in HoardLayouts.All)
             {
-                var ink = flush["TextDim"];
-                var before = Contrast(ink, Over(flush[key], White));
-                var after = Contrast(ink, Over(floating[key], White));
+                var t = theme.Tokens(transparency, layout: layout);
+                var shell = Over(t["ShellGround"], White);
+                var caption = Over(t["CaptionFill"], shell);
+                var rail = Over(t["ChromeSurface"], shell);
 
                 Assert.True(
-                    after >= before - 0.001,
-                    $"{id}: {key} lost contrast to the layout at {transparency:0.00} ({before:0.00} to {after:0.00})");
+                    Contrast(t["TextDim"], caption) >= 4.5,
+                    $"{id}: the caption is under AA under {layout} at {percent}%, inside the mark at {ceiling}%");
+                Assert.True(
+                    Contrast(t["TextDim"], rail) >= 4.5,
+                    $"{id}: the rail is under AA under {layout} at {percent}%, inside the mark at {ceiling}%");
+                Assert.True(
+                    Contrast(t["TextDim"], Over(t["ChromeRaised"], rail)) >= 4.5,
+                    $"{id}: a selected row is under AA under {layout} at {percent}%");
             }
         }
+
+        // And the floating caption is the surface that sets it — the flush one
+        // holds far past here, so the mark is floating's number in every theme.
+        var flushCeiling = 0;
+        for (var percent = 0; percent <= 100; percent++)
+        {
+            var t = theme.Tokens(percent / 100.0, layout: HoardLayout.Flush);
+            var shell = Over(t["ShellGround"], White);
+            if (Contrast(t["TextDim"], Over(t["CaptionFill"], shell)) < 4.5)
+            {
+                break;
+            }
+
+            flushCeiling = percent;
+        }
+
+        Assert.True(
+            flushCeiling > ceiling,
+            $"{id}: the flush caption fails at {flushCeiling}%, not past the mark at {ceiling}%");
     }
 
     [Fact]
