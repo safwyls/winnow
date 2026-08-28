@@ -75,10 +75,11 @@ Numbering continues from §8. M0–M2 and M4 are shipped.
 
 | # | Deliverable | Exit criteria | State |
 |---|---|---|---|
-| M4.5 | Epic OAuth ownership source + local fallback | Entitlements resolve when authed; unauthed degrades silently to local files with no loss of install state | **shipped** (sign-in unverified end to end) |
+| M4.5 | Epic OAuth ownership source + local fallback | Entitlements resolve when authed; unauthed degrades silently to local files with no loss of install state | **shipped** — sign-in since verified end to end |
 | M7 | Recommendation core (`Hoard.Recommend`) | Standalone scoring module, explainable output, sensible ranking on a cold library; not yet wired to UI | **shipped** (unwired by design) |
 | M3a | Session detection (§5.2 mechanism A) | Process watching records sessions with true start/end; poll for discovery only, events for exit | **shipped** |
-| M4.6 | Store sign-in UI (Epic) | A sign-in button in the app runs an embedded-browser OAuth flow that captures the code automatically; console flow survives as a documented fallback | next |
+| M4.6 | Store sign-in UI (Epic) | A sign-in button in the app runs an embedded-browser OAuth flow that captures the code automatically; console flow survives as a documented fallback | **shipped** |
+| M11 | Appearance system | Four themes, a transparency slider with a chosen backdrop, an optional island layout, a drop-in JSON theme format, and an application icon | **shipped** — unplanned, see below |
 | — | GOG sign-in | **Held, on evidence.** Nothing to gain today; see below | not scheduled |
 | M3b | Launch + journal prompt | Launching from Hoard records a session; journal prompt opt-in (§9 pitfall 7); `hoard-wrap` offered per-game, never globally | next |
 | M8 | The Feed | Recommender surfaced as the app's primary view; every card states its reason in one sentence | after M3+M7 |
@@ -86,6 +87,27 @@ Numbering continues from §8. M0–M2 and M4 are shipped.
 | M6 | Export (JSON + CSV) | Round-trips through the importer without loss | after M5 |
 | M9 | Install / uninstall management | Install and uninstall delegate to the owning store client and reflect state back | after M6 |
 | M10 | Full-screen mode + gamepad navigation | Whole app navigable on a controller at 10 feet | last |
+
+### M11 was not planned, and is recorded rather than back-justified
+
+The appearance work — four themes, the transparency slider, the Acrylic/Mica choice, the
+island layout, the JSON theme engine and the app icon — appears in no earlier version of this
+document. It was directed turn by turn by the user while reviewing the running app, and it
+grew from "add a Mica effect" into a system.
+
+Recorded as a milestone because it is a system now and someone will otherwise wonder where it
+came from, **not** because it was planned. Two things it produced that outlast it:
+
+- **A measurement discipline for colour.** `Colorimetry` walks AA ceilings per theme, per
+  layout, per slider position, and the Appearance screen prints the number live. That was
+  built to settle arguments about transparency and it now validates user-authored themes.
+- **A named cost every time contrast was traded.** §14–§16 record what each step gave up,
+  including four costs the island layout could not pay for and the reasons two decisions were
+  reversed. The doc argues with itself where the code changed its mind.
+
+The cost is equally plain: **it is polish shipped ahead of M3b and M8**, which are the two
+milestones §2's flywheel actually depends on. Nothing in M11 collects a single session or
+surfaces a single recommendation.
 
 ### Why M4.6 jumped the queue
 
