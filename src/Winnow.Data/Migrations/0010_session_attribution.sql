@@ -1,0 +1,59 @@
+-- 0010_session_attribution.sql — how a session came to be about a particular game.
+-- Append-only: never edit this file once shipped; add 0011_*.sql instead.
+--
+-- ── The distinction, and why it is not a detection method ────────────────────
+--
+-- `detection_method` answers "where did the timestamps come from" — process
+-- watching (§5.2 A), a launch-option wrapper (§5.2 B), an import, or a hand
+-- entry. M3b does not add a way of measuring time; it adds a way of knowing WHO
+-- the time belongs to, and those are different questions with different failure
+-- modes.
+--
+-- Adding a fifth `detection_method` value would have said something untrue. A
+-- session Winnow launched is still discovered by the poll and still ended by the
+-- OS exit callback, so its start and end are exactly as good — and exactly as
+-- approximate — as any other `process_watch` row. What differs is the join to a
+-- game, and §5.2 is explicit that that join is the fragile part: launchers spawn
+-- children, some games relaunch through a second executable, and an engine can
+-- ship the same `Game.exe` under four different titles. When the user clicked
+-- Play inside Winnow, none of that arises — the app already knows which ownership
+-- was asked for.
+--
+-- ── Values ───────────────────────────────────────────────────────────────────
+--
+--   'launch'    Winnow fired the store URI for this ownership and a process
+--               appeared while that launch intent was still live. The ownership
+--               is the one the user pointed at, not one recovered from a path.
+--
+--   'inferred'  The M3a answer, and still the answer for every game started from
+--               Steam, the Epic launcher, Galaxy, a desktop shortcut or a
+--               controller: the running executable resolved into an ownership's
+--               install directory, or its name matched exactly one owned game.
+--
+--   NULL        Not recorded. Every session written before this column existed,
+--               and the honest value for them: nothing in a finished session says
+--               whether a human clicked Play in Winnow or in Steam, so back-filling
+--               'inferred' would be inventing history rather than describing it.
+--               Three-valued for the same reason `ownerships.installed` is, and
+--               readers must not fold NULL into either answer.
+--
+-- CHECK-constrained, unlike 0009's `epic_categories`, because this vocabulary is
+-- ours and closed: it is written by exactly one line of code in Winnow.Monitor. A
+-- third value is a schema change and should have to be one.
+--
+-- ── Shape ────────────────────────────────────────────────────────────────────
+--
+-- ADD COLUMN rather than the twelve-step table rebuild that widening the existing
+-- `detection_method` CHECK would have needed. That matters beyond tidiness:
+-- `session_notes` references `sessions(id)` ON DELETE CASCADE and this app opens
+-- every connection with `PRAGMA foreign_keys = ON`, so a rebuild would have meant
+-- dropping and recreating the parent of a live foreign key on databases that
+-- already hold the user's real play history. ADD COLUMN touches no existing row
+-- and cannot lose one.
+--
+-- No index and no default. The readers are per-ownership session lists that
+-- already scan by `ix_sessions_ownership_started`, and a DEFAULT would silently
+-- put a value on rows nobody looked at.
+
+ALTER TABLE sessions ADD COLUMN attributed_by TEXT
+    CHECK (attributed_by IS NULL OR attributed_by IN ('launch', 'inferred'));

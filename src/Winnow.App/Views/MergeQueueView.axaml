@@ -1,0 +1,358 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Winnow.App.ViewModels"
+             x:Class="Winnow.App.Views.MergeQueueView"
+             x:DataType="vm:MergeQueueViewModel">
+
+    <!--
+        The merge confirm queue — design-system.md §6.
+
+        Two covers side by side at 200x300 with the signal diff between them,
+        and two answers: `Same game` / `Different games`. Never "Merge" /
+        "Cancel", which asks the user to reason about the data model instead of
+        about games.
+
+        Every pending pair is on one scrollable page (§5.3: "present all pending
+        candidates at once, not one modal at a time"). Flare does not appear on
+        this screen at all — it marks unread updates and nothing else.
+    -->
+
+    <UserControl.Resources>
+
+        <!-- One half of a pair. Used twice per card, so it lives here rather
+             than being written out on both sides and drifting. -->
+        <DataTemplate x:Key="MergeSideTemplate" DataType="vm:MergeSideViewModel">
+            <StackPanel Width="200" Spacing="10">
+
+                <!-- §6: 200x300. The 2:3 portrait capsule the grid uses, at the
+                     density slider's maximum — this is a decision that deserves
+                     the art at full size. -->
+                <Border Width="200" Height="300"
+                        CornerRadius="{StaticResource RadiusTile}"
+                        ClipToBounds="True"
+                        BorderThickness="1" BorderBrush="{StaticResource LineSoft}">
+                    <Panel>
+                        <!-- Placeholder (§7): title in Bricolage on a Surface
+                             field. Never a spinner, never a hole. -->
+                        <Border Background="{Binding PlaceholderBrush}"
+                                IsVisible="{Binding ShowPlaceholder}">
+                            <TextBlock Text="{Binding Title}"
+                                       FontFamily="{StaticResource DisplayFont}"
+                                       FontWeight="Bold" FontSize="22" LineHeight="24"
+                                       TextWrapping="Wrap"
+                                       Foreground="White"
+                                       VerticalAlignment="Bottom" Margin="16"/>
+                        </Border>
+
+                        <!-- Real capsule art when the cover cache has it. No
+                             dormancy ramp here: the question is identity, not
+                             recency. -->
+                        <Image Source="{Binding Cover}" Stretch="UniformToFill"/>
+                    </Panel>
+                </Border>
+
+                <TextBlock Classes="body-l"
+                           Text="{Binding Title}"
+                           TextWrapping="Wrap" MaxLines="2"
+                           TextTrimming="CharacterEllipsis"
+                           LineHeight="19"/>
+
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock Classes="data-s" Text="{Binding YearText}"/>
+                    <TextBlock Classes="data-s" Text="·"/>
+                    <!-- When both sides are called "Prey", the release id is the
+                         only thing on screen that tells the two rows apart. -->
+                    <TextBlock Classes="data-s" Text="{Binding ReleaseText}"/>
+                </StackPanel>
+
+                <TextBlock Classes="body" FontSize="12"
+                           Foreground="{StaticResource TextDim}"
+                           Text="{Binding PublisherText}"
+                           TextWrapping="Wrap"/>
+            </StackPanel>
+        </DataTemplate>
+
+    </UserControl.Resources>
+
+    <UserControl.Styles>
+
+        <!-- ══ Candidate card ═══════════════════════════════════════════════
+             Border thickness stays at 2 in both states so selecting a card
+             recolours it instead of reflowing the whole queue under it. -->
+        <Style Selector="Border.card">
+            <Setter Property="Background" Value="{StaticResource Surface}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="BorderThickness" Value="2"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusTile}"/>
+            <Setter Property="Padding" Value="20"/>
+            <Setter Property="Margin" Value="0,0,0,16"/>
+        </Style>
+        <Style Selector="Border.card.selected">
+            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+        </Style>
+
+        <!-- A signal that could not be evaluated is shown, dimmed, with the
+             reason. Hiding it would let "identical title, nothing else known"
+             look like "identical title, year and publisher agree". -->
+        <Style Selector="Grid.signal.unfired">
+            <Setter Property="Opacity" Value="0.55"/>
+        </Style>
+
+        <!-- Evidence colouring. Azure does the informational work and Amber
+             carries "look at this"; Volt stays on selection and Flare stays on
+             unread updates, where the whole product thesis lives. -->
+        <Style Selector="TextBlock.contribution">
+            <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
+        </Style>
+        <Style Selector="TextBlock.contribution.pos">
+            <Setter Property="Foreground" Value="{StaticResource Azure}"/>
+        </Style>
+        <Style Selector="TextBlock.contribution.neg">
+            <Setter Property="Foreground" Value="{StaticResource Amber}"/>
+        </Style>
+
+        <!-- ══ The two answers (§6, §7) ═════════════════════════════════════ -->
+        <Style Selector="Button.answer">
+            <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
+            <Setter Property="Padding" Value="18,9"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        </Style>
+
+        <Style Selector="Button.answer.same">
+            <Setter Property="Background" Value="{StaticResource Volt}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+            <Setter Property="Foreground" Value="{StaticResource VoltInk}"/>
+        </Style>
+        <Style Selector="Button.answer.same:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource VoltHover}"/>
+            <Setter Property="Foreground" Value="{StaticResource VoltInk}"/>
+        </Style>
+        <Style Selector="Button.answer.same:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource VoltPress}"/>
+            <Setter Property="Foreground" Value="{StaticResource VoltInk}"/>
+        </Style>
+
+        <!-- "Different games" is not a cancel and is not destructive: it is the
+             other half of the answer, and it carries as much weight. It reads
+             quieter only because the queue's job is to shrink. -->
+        <Style Selector="Button.answer.different">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+        </Style>
+        <Style Selector="Button.answer.different:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource TextDim}"/>
+            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+        </Style>
+        <Style Selector="Button.answer.different:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
+            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+        </Style>
+
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto,*" Background="{StaticResource PaneGround}">
+
+        <!-- ══ Header ═══════════════════════════════════════════════════════
+             The screen title is the question the screen asks. -->
+        <Border Grid.Row="0"
+                Padding="24,20,24,18"
+                BorderBrush="{StaticResource Line}"
+                BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="*,Auto">
+                <StackPanel Grid.Column="0" Spacing="7">
+                    <TextBlock Classes="display-l" Text="Same game?"/>
+                    <!-- Stands down when the queue is empty: the empty state is
+                         the only thing that should be speaking then. -->
+                    <TextBlock Classes="body"
+                               MaxWidth="620"
+                               TextWrapping="Wrap"
+                               LineHeight="19"
+                               IsVisible="{Binding HasPending}"
+                               Foreground="{StaticResource TextDim}"
+                               Text="{Binding IntroMessage}"/>
+                </StackPanel>
+
+                <!-- Count only while there is something pending: a permanent
+                     zero is noise. -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8"
+                            VerticalAlignment="Top"
+                            IsVisible="{Binding HasPending}">
+                    <TextBlock Classes="data" FontSize="22"
+                               Text="{Binding PendingCountText}"
+                               VerticalAlignment="Bottom"/>
+                    <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
+                               Text="PAIRS"
+                               Margin="0,0,0,3"
+                               VerticalAlignment="Bottom"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ══ The queue — all of it, at once ═══════════════════════════════ -->
+        <ScrollViewer Grid.Row="1"
+                      Name="QueueScroll"
+                      IsVisible="{Binding !ShowEmpty}"
+                      HorizontalScrollBarVisibility="Disabled"
+                      VerticalScrollBarVisibility="Auto">
+            <ItemsControl Name="CardList"
+                          Margin="24,20,24,24"
+                          ItemsSource="{Binding Candidates}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="vm:MergeCandidateViewModel">
+                        <Border Classes="card"
+                                Classes.selected="{Binding IsSelected}"
+                                PointerPressed="OnCardPressed">
+                            <Grid ColumnDefinitions="200,*,200">
+
+                                <ContentControl Grid.Column="0"
+                                                Content="{Binding Left}"
+                                                ContentTemplate="{StaticResource MergeSideTemplate}"/>
+
+                                <!-- ── The signal diff: why the matcher thinks
+                                     these might be the same game (§6).
+                                     Evidence at the top, the answer pinned to
+                                     the bottom, so the two buttons land in the
+                                     same place on every card however much
+                                     evidence a pair happens to carry. ─────── -->
+                                <Grid Grid.Column="1" Margin="28,2,28,0"
+                                      RowDefinitions="Auto,*,Auto">
+
+                                <StackPanel Grid.Row="0" Spacing="14">
+
+                                    <Grid ColumnDefinitions="Auto,*,Auto">
+                                        <TextBlock Grid.Column="0" Classes="label"
+                                                   Text="CONFIDENCE"
+                                                   VerticalAlignment="Bottom"
+                                                   Margin="0,0,0,2"/>
+
+                                        <!-- The matcher's top band. It means
+                                             "look at this one first" and the
+                                             queue already orders by it — this
+                                             says so in words, per §8's rule that
+                                             a signal carried by position alone
+                                             is a signal some users cannot read.
+                                             Azure, because it is informational:
+                                             Volt is selection, Amber is "you've
+                                             been here a lot", and Flare marks
+                                             unread updates and nothing else. -->
+                                        <TextBlock Grid.Column="1" Classes="label"
+                                                   FontSize="10" LetterSpacing="1"
+                                                   Margin="10,0,0,2"
+                                                   VerticalAlignment="Bottom"
+                                                   Foreground="{StaticResource Azure}"
+                                                   IsVisible="{Binding IsPriority}"
+                                                   Text="TOP OF QUEUE"
+                                                   ToolTip.Tip="The strongest evidence in the queue. Still your call — nothing merges on its own."/>
+
+                                        <TextBlock Grid.Column="2" Classes="data"
+                                                   FontSize="20"
+                                                   Text="{Binding ScoreText}"/>
+                                    </Grid>
+
+                                    <Border Height="1" Background="{StaticResource Line}"/>
+
+                                    <ItemsControl ItemsSource="{Binding Signals}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate DataType="vm:MergeSignalViewModel">
+                                                <Grid Classes="signal"
+                                                      Classes.unfired="{Binding !Fired}"
+                                                      ColumnDefinitions="*,Auto,58"
+                                                      RowDefinitions="Auto,Auto"
+                                                      Margin="0,0,0,11">
+                                                    <TextBlock Grid.Row="0" Grid.Column="0"
+                                                               Classes="label"
+                                                               Text="{Binding Label}"
+                                                               VerticalAlignment="Center"/>
+                                                    <TextBlock Grid.Row="0" Grid.Column="1"
+                                                               Classes="data"
+                                                               Margin="12,0,0,0"
+                                                               Text="{Binding ValueText}"
+                                                               VerticalAlignment="Center"/>
+                                                    <TextBlock Grid.Row="0" Grid.Column="2"
+                                                               Classes="data contribution"
+                                                               Classes.pos="{Binding IsForMatch}"
+                                                               Classes.neg="{Binding IsAgainstMatch}"
+                                                               TextAlignment="Right"
+                                                               Text="{Binding ContributionText}"
+                                                               VerticalAlignment="Center"/>
+                                                    <!-- The matcher's own words. This is the
+                                                         line that separates Prey from Prey. -->
+                                                    <TextBlock Grid.Row="1" Grid.ColumnSpan="3"
+                                                               Classes="body" FontSize="11"
+                                                               LineHeight="15"
+                                                               Margin="0,3,0,0"
+                                                               Foreground="{StaticResource TextDim}"
+                                                               TextWrapping="Wrap"
+                                                               Text="{Binding Detail}"/>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+
+                                    <TextBlock Classes="body" FontSize="12"
+                                               IsVisible="{Binding !HasSignals}"
+                                               TextWrapping="Wrap" LineHeight="17"
+                                               Foreground="{StaticResource TextDim}"
+                                               Text="{Binding NoSignalsMessage}"/>
+                                </StackPanel>
+
+                                <!-- ── The answer, under the evidence and
+                                     between the two covers. The question and
+                                     its two answers stay in one column so the
+                                     eye never has to leave the reasoning to act
+                                     on it. ─────────────────────────────────── -->
+                                <StackPanel Grid.Row="2"
+                                            Orientation="Horizontal"
+                                            Spacing="12"
+                                            HorizontalAlignment="Center"
+                                            Margin="0,18,0,0">
+                                    <Button Classes="answer same"
+                                            Content="Same game"
+                                            IsEnabled="{Binding !IsDecided}"
+                                            ToolTip.Tip="Same game (S)"
+                                            Command="{Binding $parent[UserControl].((vm:MergeQueueViewModel)DataContext).SameGameCommand}"
+                                            CommandParameter="{Binding}"/>
+                                    <Button Classes="answer different"
+                                            Content="Different games"
+                                            IsEnabled="{Binding !IsDecided}"
+                                            ToolTip.Tip="Different games (D) — permanent; this pair is never queued again"
+                                            Command="{Binding $parent[UserControl].((vm:MergeQueueViewModel)DataContext).DifferentGamesCommand}"
+                                            CommandParameter="{Binding}"/>
+                                </StackPanel>
+
+                                </Grid>
+
+                                <ContentControl Grid.Column="2"
+                                                Content="{Binding Right}"
+                                                ContentTemplate="{StaticResource MergeSideTemplate}"/>
+
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+
+        <!-- ══ Empty — the normal, healthy state (§7) ═══════════════════════ -->
+        <Border Grid.Row="1" IsVisible="{Binding ShowEmpty}" Padding="32">
+            <TextBlock Classes="body-l"
+                       MaxWidth="460"
+                       TextWrapping="Wrap"
+                       TextAlignment="Center"
+                       LineHeight="22"
+                       Foreground="{StaticResource TextDim}"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       Text="{Binding EmptyMessage}"/>
+        </Border>
+
+    </Grid>
+
+</UserControl>

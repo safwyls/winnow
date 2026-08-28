@@ -1,4 +1,4 @@
-﻿# Hoard — Design System
+﻿# Winnow — Design System
 
 **Applies to:** Avalonia 11+ desktop client, dark-only for v1
 **Companion files:** `tokens.axaml` (drop-in ResourceDictionary), `mock-library.html` (visual target)
@@ -511,7 +511,7 @@ belong there on the merits.
 
 ### 10.2 Signature: the gap rail
 
-**The one thing Hoard can draw that nothing else can.** Storefronts hold your last-played
+**The one thing Winnow can draw that nothing else can.** Storefronts hold your last-played
 date and they hold a game's patch history; nobody puts them on the same axis. The rail runs
 from your last session to now, with the updates that landed in between marked on it.
 
@@ -535,7 +535,7 @@ storefronts discard, and the obvious move is a line through `playtime_snapshots`
 library that table holds **one reading per game** — measured, 611 of 616 — and a line through
 one point is a decoration pretending to be evidence. What the snapshots honestly support is a
 sentence: *"Checked 12 times since 23 Aug 2026 — up 1h 7m."* The delta is between the first
-and last reading Hoard holds, which is the part it actually watched happen, not the total
+and last reading Winnow holds, which is the part it actually watched happen, not the total
 Steam already knew. At one reading it says so; at zero it says nothing at all.
 
 ### 10.3 Getting in
@@ -567,7 +567,7 @@ dead one, and never a URL the data did not supply.
 | No last-played date | `Steam has no date for your last session.` | `Unknown` |
 | Never opened | `You've never opened this.` | `Never played` |
 | Provisional title | `Steam's local files gave an id and no name.` | *(nothing)* |
-| No summary yet | `No description yet. Hoard fills the year, publisher and summary in from IGDB as it works through your library.` | `No data` |
+| No summary yet | `No description yet. Winnow fills the year, publisher and summary in from IGDB as it works through your library.` | `No data` |
 
 Two of those are load-bearing. **"No updates recorded in that stretch"** and not "nothing has
 shipped": update polling is staggered across days (§4.5 of the design doc), so an empty rail
@@ -636,7 +636,7 @@ column is therefore declared first and placed second by `Grid.Column`, so the ke
 
 Steam's library filter is the reference and not the template. Its shape is six
 columns of unlabelled checkboxes plus two free-text fields, and most of what it
-asks about — friends, languages, Deck compatibility — is data Hoard does not
+asks about — friends, languages, Deck compatibility — is data Winnow does not
 have. Copying the shape and greying half of it out would have been worse than
 designing for what this product actually knows.
 
@@ -1091,18 +1091,18 @@ room cannot produce.
 
 ### 14.1.1 Hue is the weakest axis, and the first set spent everything on it
 
-The four themes that shipped first — Hoard, Cold storage, Nightshift, Phosphor — differed
+The four themes that shipped first — Winnow, Cold storage, Nightshift, Phosphor — differed
 in **hue and value and nothing else**, and read as four settings of one theme rather than
-as four themes. Nightshift was Hoard with the lights off; Cold storage was Hoard lifted and
+as four themes. Nightshift was Winnow with the lights off; Cold storage was Winnow lifted and
 cooled. Two were withdrawn.
 
 A room is separated by four things, and hue is the least of them:
 
 | Axis | What it decides | Where it lands |
 |---|---|---|
-| **Temperature** | Which end of the wheel is ground and which is signal | Hoard and Nightshift cool · **Tungsten warm** · Box art neutral |
-| **Chroma strategy** | How much colour the chrome is allowed at all | Hoard committed · Nightshift almost none · **Box art none, and the art is the only colour in the window** |
-| **Value structure** | Where the contrast lives — stepped surfaces, or flat ones with the edges doing the work | Hoard 1.8x art→chrome · **Nightshift 1.4x, flat** · Tungsten 1.8x with the faintest edges · **Box art 4.8x, stark** |
+| **Temperature** | Which end of the wheel is ground and which is signal | Winnow and Nightshift cool · **Tungsten warm** · Box art neutral |
+| **Chroma strategy** | How much colour the chrome is allowed at all | Winnow committed · Nightshift almost none · **Box art none, and the art is the only colour in the window** |
+| **Value structure** | Where the contrast lives — stepped surfaces, or flat ones with the edges doing the work | Winnow 1.8x art→chrome · **Nightshift 1.4x, flat** · Tungsten 1.8x with the faintest edges · **Box art 4.8x, stark** |
 | **Material** | What the chrome reads as | inked board · black glass · felt · mount card |
 
 **The test of the set is that a thumbnail of the rail alone identifies the theme, with no
@@ -1116,7 +1116,7 @@ of one would break the ramp that is the product's whole encoding.
 
 | Theme | What it is, in one sentence |
 |---|---|
-| **Hoard** *(default)* | An inked green-teal stage, stepped evenly, dark enough that the cover art is the only lit thing in the window. The one tuned against six hundred real capsules. |
+| **Winnow** *(default)* | An inked green-teal stage, stepped evenly, dark enough that the cover art is the only lit thing in the window. The one tuned against six hundred real capsules. |
 | **Nightshift** | Black glass: the surfaces stop stepping apart and every boundary becomes a drawn line, so the window is one dark pane with the layout scribed on it. |
 | **Tungsten** | A warm room lit by one lamp — the only theme that is not cool. Edges nearly disappear and warm cover art settles into the field instead of standing off it. |
 | **Box art** | A neutral mount with a 4.8x drop into a near-black art field. The chrome gives up colour entirely, so the covers — and the unread dot — are the only hues on screen. |
@@ -1124,7 +1124,7 @@ of one would break the ramp that is the product's whole encoding.
 **Nightshift kept its name and changed its argument.** As shipped it was a value change and
 nothing else. What makes it a room of its own is not how dark it is but **where the contrast
 lives**: `Line` runs at 2.46:1 against the rail, the brightest edge in the set and nearly
-twice Hoard's, while the art field, the rail and the caption sit within 1.4x of each other.
+twice Winnow's, while the art field, the rail and the caption sit within 1.4x of each other.
 Tungsten is the same idea inverted — the faintest edges in the set, 1.38:1 — and the two are
 unmistakable side by side.
 
@@ -1286,7 +1286,7 @@ out for the same reason on the opaque palette.
 **Over a dark desktop the number never gets worse.** A dark backdrop is *darker* than our own
 rail, so admitting more of it deepens the ground the labels sit on; `ThemeContrastTests`
 asserts that at every position on the slider, for every theme. Against white it falls, and the
-AA ceiling lands at 27% (Hoard), 30% (Nightshift), 30% (Tungsten), 26% (Box art).
+AA ceiling lands at 27% (Winnow), 30% (Nightshift), 30% (Tungsten), 26% (Box art).
 
 > **Amended (§16.6): both the figure and the surface it is measured on moved.** The worst chrome
 > surface used to be a selected rail row, and the rail was the most open reading surface in the
@@ -1398,10 +1398,10 @@ dormancy floor of an ordinary dark cover, after which a dimmed tile reads as a h
 lit field. The wall does not have to hold across the whole slider — past the AA mark the user has
 already been told the labels stop clearing 4.5:1 — it has to not fail **first**:
 
-| Per theme (Hoard / Nightshift / Tungsten / Box art) | | 
+| Per theme (Winnow / Nightshift / Tungsten / Box art) | | 
 |---|---|
 | Chrome's AA ceiling | 27 / 30 / 30 / 26 |
-| Field inverts the ramp, at `0.60` | 25 / 40 / 33 / 38 — **Hoard fails two points early** |
+| Field inverts the ramp, at `0.60` | 25 / 40 / 33 / 38 — **Winnow fails two points early** |
 | Field inverts the ramp, at `0.62` | 27 / 42 / 35 / 40 — the loosest floor that clears all four |
 | Field inverts the ramp, at `0.65` | **29 / 46 / 38 / 44** — chosen |
 
@@ -1458,7 +1458,7 @@ draws. Text on the **wall's** field was therefore never the case that was measur
 
 Walked per theme against white, which is the ceiling any wallpaper can reach:
 
-| Last whole percent still clearing 4.5:1 | Hoard | Nightshift | Tungsten | Box art |
+| Last whole percent still clearing 4.5:1 | Winnow | Nightshift | Tungsten | Box art |
 |---|---|---|---|---|
 | **Chrome**, `TextDim` on its worst surface *(what ships)* | 27 | 31 | 30 | 26 |
 | **Pane**, `TextDim` on the open field | **59** | **71** | **65** | **73** |
@@ -1802,9 +1802,9 @@ is in §16.5: over a bright wallpaper the ground is the brightest band in the wi
 caption is now part of it.
 
 **The gap tone does almost no work under the library pane.** Measured, `Well`-against-`Ground`
-comes out at 1.13:1 in Hoard and 1.02–1.06:1 in the other three, so what makes the wall island
+comes out at 1.13:1 in Winnow and 1.02–1.06:1 in the other three, so what makes the wall island
 float is its **1px `Line` border**, not the gap. Against the rail the gap does read on its own
-(1.28:1 in Hoard, 1.29:1 in Box art) because `Surface` is two steps up. Fixing it would mean
+(1.28:1 in Winnow, 1.29:1 in Box art) because `Surface` is two steps up. Fixing it would mean
 lifting `Ground`, which is the tone §5.1's polarity is calibrated against — so it is not fixed,
 it is stated. **Tungsten is the weakest of the four**: it has the second-faintest gap tone and,
 by design, the faintest `Line` in the set (1.58:1 against the gap), so its library pane floats
@@ -1940,7 +1940,7 @@ and is the only reading matter on it. So the bar is the mirror image of the one 
 held to — **the restructure may not cost the user range they already have.** Walked per theme
 against white:
 
-| Ground opens to | AA ceiling (Hoard / Nightshift / Tungsten / Box art) | |
+| Ground opens to | AA ceiling (Winnow / Nightshift / Tungsten / Box art) | |
 |---|---|---|
 | 0.12 | 29 / 30 / 30 / 30 | Nightshift loses a point |
 | **0.14** | 29 / 31 / 30 / 30 | the marginal value — two themes exactly at par |
@@ -1994,7 +1994,7 @@ which §15.7 measures at 1.02 to 1.13:1 and calls nearly invisible.
 darker ink. There is no chrome. And the ink it walked toward is worse than redundant —
 `TranslucentSurface` is **below `Ground`** in three of the four themes, so at the alpha the rail now
 shares with the art field the walked chrome would sink *under the field beside it*. Measured, over
-white: the walked rail is at or below the wall at **87 to 89 of the 101 slider positions** in Hoard,
+white: the walked rail is at or below the wall at **87 to 89 of the 101 slider positions** in Winnow,
 Nightshift and Tungsten; the unwalked one at **none** of them, in any theme.
 
 §14.2's recess — the art hangs *below* the chrome — is therefore carried by the **ink** now rather
@@ -2033,7 +2033,7 @@ which is the two-tier structure being visible rather than a regression hiding in
 
 Walked per theme against white — the ceiling any wallpaper can reach.
 
-| Last whole percent still clearing 4.5:1 | Hoard | Nightshift | Tungsten | Box art |
+| Last whole percent still clearing 4.5:1 | Winnow | Nightshift | Tungsten | Box art |
 |---|---|---|---|---|
 | **Reported AA ceiling** — *before* | 27 | 31 | 30 | 26 |
 | **Reported AA ceiling** — *after* | **30** | **31** | **31** | **31** |
@@ -2086,7 +2086,7 @@ what the setting does in words instead.
 
 **The typed text in the filter panel's fields lost four points.** It used to hold AA across the
 whole slider on both fields. It still does in the library pane, whose ground is `Ground`; in the
-filter panel it now runs out at **96% and 97%** on Hoard and Box art, because the panel's field
+filter panel it now runs out at **96% and 97%** on Winnow and Box art, because the panel's field
 paints no fill at all — the identity forces it to zero — so the ink under the caret sits on the
 panel's own `Surface` rather than on a `Ground` step cut into it. Four points at the very top of the
 track, on a pure white wallpaper, three times past the mark. The only fill that would buy it back is
@@ -2107,8 +2107,8 @@ which figures moved. Read them against this table:
 | A sheet says | It is now |
 |---|---|
 | "worst chrome surface" / "a selected rail row" | the **title bar** on the window's ground, in the floating layout |
-| `5.04:1` solid, `2.91:1` at 45% white, `1.01:1` at 100% white *(Hoard)* | `5.04:1`, `2.82:1`, `1.42:1` — the surface changed, not the palette |
-| "past 27% the white figure drops under 4.5:1" *(Hoard)* | **30%** |
+| `5.04:1` solid, `2.91:1` at 45% white, `1.01:1` at 100% white *(Winnow)* | `5.04:1`, `2.82:1`, `1.42:1` — the surface changed, not the palette |
+| "past 27% the white figure drops under 4.5:1" *(Winnow)* | **30%** |
 | the AA mark's position on the track | **30 / 31 / 31 / 31**, and taken across both layouts (§16.7) |
 | "the chrome admits 70%, the wall admits half of it" | **the ground admits 85%, a pane admits 35%** |
 | "a field admits half of what the surface around it admits" | **a field admits exactly what the pane around it admits**, by painting nothing |

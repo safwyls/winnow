@@ -1,0 +1,59 @@
+using System.Threading.RateLimiting;
+using Polly;
+using Polly.RateLimiting;
+
+namespace Winnow.Enrich.SteamWeb.Http;
+
+/// <summary>
+/// The single gate in front of the authenticated Steam Web API. Registered as a
+/// singleton so every typed client, background job and retry attempt draws from
+/// the same budget — a per-client limiter would multiply the ceiling by the
+/// number of clients and get the key throttled.
+///
+/// <para>Token bucket rather than a fixed window: a short burst is allowed while
+/// the long-run average stays at
+/// <see cref="SteamWebOptions.RequestsPerSecond"/>. <c>QueueLimit</c> is
+/// effectively unbounded so callers <i>wait</i> for a permit rather than being
+/// rejected — this is background work with nothing better to do, and a rejection
+/// would only turn into a retry anyway.</para>
+///
+/// <para>§4.2's real constraint is the 429 + <c>Retry-After</c> throttle, which
+/// <see cref="SteamWebResilienceHandler"/> owns; this limiter is the cheap
+/// upstream guard that stops Winnow walking into it.</para>
+/// </summary>
+public sealed class SteamWebRateLimiter : IDisposable
+{
+    private readonly TokenBucketRateLimiter _limiter;
+
+    public SteamWebRateLimiter(SteamWebOptions options)
+    {
+        var permits = Math.Max(1, options.RequestsPerSecond);
+        _limiter = new TokenBucketRateLimiter(new TokenBucketRateLimiterOptions
+        {
+            TokenLimit = permits,
+            TokensPerPeriod = permits,
+            ReplenishmentPeriod = TimeSpan.FromSeconds(1),
+            QueueLimit = int.MaxValue,
+            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+            AutoReplenishment = true,
+        });
+
+        Pipeline = new ResiliencePipelineBuilder()
+            .AddRateLimiter(new RateLimiterStrategyOptions
+            {
+                RateLimiter = args => _limiter.AcquireAsync(1, args.Context.CancellationToken),
+            })
+            .Build();
+    }
+
+    /// <summary>Polly pipeline that acquires one permit around each execution.</summary>
+    public ResiliencePipeline Pipeline { get; }
+
+    /// <summary>Permits currently available. Diagnostics and tests.</summary>
+    public int AvailablePermits => (int)_limiter.GetStatistics()!.CurrentAvailablePermits;
+
+    /// <summary>Requests currently waiting for a permit. Diagnostics and tests.</summary>
+    public int QueuedRequests => (int)_limiter.GetStatistics()!.CurrentQueuedCount;
+
+    public void Dispose() => _limiter.Dispose();
+}

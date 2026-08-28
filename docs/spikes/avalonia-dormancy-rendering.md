@@ -10,7 +10,7 @@
 > §4's flush-row geometry makes that disagreement permanent at every window width — measured
 > at 1180px: anchored on 4 per line while arranging 5, an orphaned tile at every anchor
 > index, line origins drifting ~25%, and a scroll extent 22% longer than the content. The
-> cover wall is now `src/Hoard.App/Views/CoverWall.cs`, a purpose-built virtualizing panel
+> cover wall is now `src/Winnow.App/Views/CoverWall.cs`, a purpose-built virtualizing panel
 > whose quantities are all closed-form, so there is nothing to drift. Do not reintroduce the
 > package. Everything else in this document stands.
 

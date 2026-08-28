@@ -1,0 +1,89 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!--
+      net10.0, NOT net10.0-windows, and the reason is a hard constraint rather
+      than a preference.
+
+      docs/spikes/embedded-auth.md §2(c) recommends net10.0-windows for whatever
+      project hosts WebView2, and §7 requires that the Windows-only TFM be
+      quarantined in one leaf project so Winnow.App does not become
+      Windows-targeted. Those two are mutually exclusive: NuGet's compatibility
+      check is one-directional, so a net10.0 project CANNOT reference a
+      net10.0-windows project (NU1201). Making this project net10.0-windows
+      would force Winnow.App to follow, which is exactly what the quarantine
+      exists to prevent.
+
+      Verified rather than assumed, on this machine on 2026-08-26: a net10.0
+      project referencing Microsoft.Web.WebView2 1.0.4129.50 builds, copies
+      Core.dll and all three RIDs of WebView2Loader.dll to output, and
+      CoreWebView2Environment.GetAvailableBrowserVersionString() returns
+      151.0.4129.107 at runtime. Nothing in the API surface this project uses
+      needs a Windows TFM; the P/Invokes are declared here, and every entry point
+      is guarded by OperatingSystem.IsWindows() before it can reach one.
+
+      That is the same shape Winnow.Ingest.Epic already uses for DPAPI: an
+      unconditional package reference on a portable TFM, with the platform check
+      at the call site and a refusal rather than a degrade when the check fails.
+    -->
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Winnow.Auth.WebView</RootNamespace>
+
+    <!--
+      MSB3277 is emitted by this build and is COSMETIC. The WebView2 package's
+      build/Common.targets unconditionally <Reference>s its WPF and WinForms
+      wrapper assemblies with no opt-out property (the targets file was read
+      looking for one), and the WPF wrapper drags WindowsBase 5.0.0.0 against the
+      framework's 4.0.0.0.
+
+      TreatWarningsAsErrors does NOT promote this: it is a C# compiler setting
+      and MSB3277 is an MSBuild warning. Confirmed by building both ways rather
+      than reasoned about. Silenced here as a message so a real warning is not
+      lost in twelve lines of assembly-resolution noise. Neither wrapper is used
+      — this project hosts WebView2 through Avalonia's NativeControlHost.
+    -->
+    <MSBuildWarningsAsMessages>MSB3277</MSBuildWarningsAsMessages>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      Avalonia, for NativeControlHost and the window the browser lives in. NOT
+      Avalonia.Desktop or the Fluent theme: this project renders a browser
+      surface inside a window the host application has already started, and
+      pulling in a second copy of the platform backends would be a way to end up
+      with two of them.
+    -->
+    <PackageReference Include="Avalonia" Version="11.3.20" />
+
+    <!-- Abstractions only. This project logs what happened, never what was
+         captured; the host decides where the lines go, and the DI extension
+         is the seam it is registered through. -->
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.11" />
+
+    <!--
+      Ships ~1.26 MB of DLLs, no browser. The Chromium engine is the OS-provided
+      Evergreen WebView2 Runtime, present on this machine at 151.0.4129.107 with
+      no install step. Its ABSENCE is handled rather than assumed away — see
+      WebView2Runtime — because "Windows 11 always has it" is confirmed on
+      exactly one machine.
+
+      The alternative was CEF, measured at 123 MB for one architecture, on
+      Chromium 120 (2023), dragging ReactiveUI into an app that uses
+      CommunityToolkit.Mvvm. That is roughly 100x the size for a three-year-old
+      browser engine.
+    -->
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4129.50" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      Core only. This project implements IInteractiveAuthPrompt and knows nothing
+      about Epic, tokens, grants or storage — it puts a page in front of the user
+      and returns a code. That is what keeps Winnow.Ingest.* free of any reference
+      to Avalonia or WebView2 (§5.1).
+    -->
+    <ProjectReference Include="..\Winnow.Core\Winnow.Core.csproj" />
+  </ItemGroup>
+
+</Project>

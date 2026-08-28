@@ -71,7 +71,7 @@ no ReactiveUI.
 
 ### Two non-obvious costs, both hit during the spike
 
-**(a) An application manifest is MANDATORY, and Hoard.App does not have one.** CONFIRMED.
+**(a) An application manifest is MANDATORY, and Winnow.App does not have one.** CONFIRMED.
 Without it the very first layout pass throws:
 
 ```
@@ -98,7 +98,7 @@ There is **no opt-out property** — I read the targets file looking for one. Th
 drags `WindowsBase 5.0.0.0`, which conflicts with the framework's `4.0.0.0`, producing
 `MSB3277`.
 
-I assumed this would break Hoard's `TreatWarningsAsErrors=true` and **tested it rather than
+I assumed this would break Winnow's `TreatWarningsAsErrors=true` and **tested it rather than
 asserting it. It does not.** `TreatWarningsAsErrors` is a C# *compiler* setting; `MSB3277`
 is an *MSBuild* warning and is not promoted:
 
@@ -110,19 +110,19 @@ is an *MSBuild* warning and is not promoted:
 
 So it is cosmetic, and `MSBuildWarningsAsMessages=MSB3277` silences it cleanly.
 
-**(c) The TFM must become `net10.0-windows`.** `Hoard.App` is `net10.0` today. This is the
+**(c) The TFM must become `net10.0-windows`.** `Winnow.App` is `net10.0` today. This is the
 strongest argument for putting the browser host in its own small Windows-only project rather
-than in `Hoard.App` directly — see §7.
+than in `Winnow.App` directly — see §7.
 
 > **CORRECTED 2026-08-26, during M4.6.** This is wrong, and it is wrong in a way that would
 > have broken §7's quarantine. NuGet's TFM compatibility check is one-directional: a `net10.0`
 > project **cannot reference** a `net10.0-windows` project (NU1201). So a Windows-targeted
-> leaf project forces `Hoard.App` to follow it, which is exactly what §7 exists to prevent —
+> leaf project forces `Winnow.App` to follow it, which is exactly what §7 exists to prevent —
 > the two recommendations are mutually exclusive.
 >
-> The TFM is not needed. `Hoard.Auth.WebView` targets plain `net10.0`, references
+> The TFM is not needed. `Winnow.Auth.WebView` targets plain `net10.0`, references
 > `Microsoft.Web.WebView2` unconditionally, and guards every entry point with
-> `OperatingSystem.IsWindows()` — the same shape `Hoard.Ingest.Epic` already uses for DPAPI.
+> `OperatingSystem.IsWindows()` — the same shape `Winnow.Ingest.Epic` already uses for DPAPI.
 > Verified on this machine rather than reasoned about: it builds, copies `Core.dll` and all
 > three RIDs of `WebView2Loader.dll` to output, and
 > `CoreWebView2Environment.GetAvailableBrowserVersionString()` returns **151.0.4129.107** at
@@ -160,7 +160,7 @@ point for falling back to §8's console flow.
 1. **It declares `Avalonia 11.0.10`**, not 11.3.20. A 20-minor-version skew under a package
    that hosts a native render surface.
 2. **It drags ReactiveUI in.** Its `CefGlue.Avalonia 120.6099.207` dependency requires
-   `Avalonia.ReactiveUI 11.0.9` and `System.Reactive.Linq 6.0.0-preview.9`. Hoard is
+   `Avalonia.ReactiveUI 11.0.9` and `System.Reactive.Linq 6.0.0-preview.9`. Winnow is
    `CommunityToolkit.Mvvm`. Adding a second MVVM framework and a preview-versioned Rx to the
    app to render one login page is a bad trade.
 3. **The Chromium is old.** CEF 120 is Chromium 120 (December 2023); `CefGlue.Avalonia
@@ -253,7 +253,7 @@ end to end and the host received `CALLED requestexchangecodesignin, codeLen=29`.
 **A useful negative result:** the launcher user-agent made **no observable difference** —
 same probe count, same title, same form. Legendary sets it
 (`user_agent=f'EpicGamesLauncher/{self.core.get_egl_version()}'`), but nothing unauthenticated
-justifies it. Hoard should not spoof the UA on cargo-cult grounds; if it turns out to be
+justifies it. Winnow should not spoof the UA on cargo-cult grounds; if it turns out to be
 needed at the post-authentication step, that is a discovery to make deliberately. **Whether
 it matters after sign-in is UNVERIFIED.**
 
@@ -340,7 +340,7 @@ omitting it entirely yields the same `invalid_grant` as sending a foreign one.
 
 **A `client_secret` is mandatory and there is no PKCE path** — `invalid_client` is raised
 before any grant-specific parameter is examined. Combined with §6's finding that GOG has no
-third-party client registration, this means Hoard would have to ship Galaxy's circulated
+third-party client registration, this means Winnow would have to ship Galaxy's circulated
 secret. That is a harder posture than Epic's, where `epic-oauth.md` §10 could make the
 credentials user-supplied.
 
@@ -355,10 +355,10 @@ be settled from here.**
 
 `http://127.0.0.1:53682/callback` is rejected with `client_redirect_domain_mismatch` by both
 `/id/api/redirect` and `/id/authorize` (§3.3). `launcherAppClient2`'s allowlist contains
-exactly `https://localhost/launcher/authorized` and nothing else, and Hoard cannot alter it
+exactly `https://localhost/launcher/authorized` and nothing else, and Winnow cannot alter it
 because it does not own the client.
 
-The escape hatch — register a real Epic Account Services client of Hoard's own, which *would*
+The escape hatch — register a real Epic Account Services client of Winnow's own, which *would*
 let us set a loopback redirect — **does not reach the library.** `epic-oauth.md` §1 already
 established that EAS consent scopes stop at `basic_profile` / `friends_list` / `presence` /
 `country`, and that `library:public:items` exists only on the launcher client. A
@@ -452,12 +452,12 @@ shortfall. It is correct.** From a read-only copy of this machine's
 | Query | Result |
 |---|---|
 | `LibraryReleases` total | 46 (45 `gog_`, 1 `steam_`) |
-| **Hoard's exact `OwnershipQuery` join, `gog_` + `isOwned=1`** | **45 rows, 45 distinct release keys** |
+| **Winnow's exact `OwnershipQuery` join, `gog_` + `isOwned=1`** | **45 rows, 45 distinct release keys** |
 | Of those 45, `ReleaseProperties.isDlc = 1` | **31** |
 | Of those 45, `isDlc = 0` | **14** |
 
 `GogLibrarySource` drops DLC (`if (winner.IsDlc)`) and library-invisible entries
-(`if (!winner.IsVisibleInLibrary)`). **45 owned releases − 31 DLC = the 14 base games Hoard
+(`if (!winner.IsVisibleInLibrary)`). **45 owned releases − 31 DLC = the 14 base games Winnow
 reports.** The local reader is reading the complete owned set and classifying it correctly.
 There is no gap for authentication to close.
 
@@ -481,17 +481,17 @@ are cross-device playtime aggregation, possible per-session granularity, and ach
 inherits it.** `epic-gog-local-files.md` §14 records that Galaxy only accrues time for
 sessions it launched. The server is populated by that same client (and by third-party
 launchers POSTing sessions). A user who runs a GOG game's `.exe` directly is invisible to
-both. Only §5.2's process monitor reaches them — which Hoard has already shipped (M3a).
+both. Only §5.2's process monitor reaches them — which Winnow has already shipped (M3a).
 
 The cost side is worse than Epic's: a mandatory `client_secret` with no PKCE path, no official
 third-party registration (`docs.gog.com` and `devportal.gog.com` issue credentials per shipped
 *game*, to publishing partners; `/panel`, `/api`, `/oauth` all 404), and therefore a
-credential Hoard would have to ship rather than ask the user for. That is a strictly weaker
+credential Winnow would have to ship rather than ask the user for. That is a strictly weaker
 posture than `epic-oauth.md` §10 achieved.
 
 **Recommendation: build the Epic button now; do not build the GOG button yet.** The one thing
 that could change this is the response body of `GET …/sessions`. If it returns real per-session
-history, that is data no local file holds in any form and it feeds `Hoard.Recommend` directly.
+history, that is data no local file holds in any form and it feeds `Winnow.Recommend` directly.
 Record it as *route CONFIRMED, payload UNVERIFIED*, and settle it with a single throwaway
 authenticated request before committing to the flow — not after.
 
@@ -514,21 +514,21 @@ Ingest-layer ones.
 The shape that satisfies both:
 
 ```
-Hoard.Core            IInteractiveAuthPrompt
+Winnow.Core            IInteractiveAuthPrompt
                         Task<AuthCodeResult> RequestCodeAsync(AuthPromptRequest, CancellationToken)
                       — a contract only; no Avalonia, no WebView2, BCL only, per the
-                        "Hoard.Core: no IO" rule
+                        "Winnow.Core: no IO" rule
 
-Hoard.App.Auth        WebView2AuthPrompt : IInteractiveAuthPrompt        [new, net10.0-windows]
+Winnow.App.Auth        WebView2AuthPrompt : IInteractiveAuthPrompt        [new, net10.0-windows]
  (or a small           - owns NativeControlHost + CoreWebView2
   Windows-only         - per-provider strategy: NavigationStarting match (GOG),
-  Hoard.Auth.WebView)    window.ue bridge + DOM read (Epic)
+  Winnow.Auth.WebView)    window.ue bridge + DOM read (Epic)
                        - returns a code; knows nothing about tokens or grants
 
-Hoard.Ingest.Epic     EpicTokenProvider consumes IInteractiveAuthPrompt, exchanges the code,
+Winnow.Ingest.Epic     EpicTokenProvider consumes IInteractiveAuthPrompt, exchanges the code,
  /Web/Auth/           stores via SettingsEpicTokenStore (DPAPI, CurrentUser)   [exists today]
 
-Hoard.App             UI raises a SignInToEpicCommand -> hosted service ->
+Winnow.App             UI raises a SignInToEpicCommand -> hosted service ->
                       token provider. The view model never touches Ingest.
 ```
 
@@ -537,10 +537,10 @@ Three points this buys:
 - **`Ingest.*` never references Avalonia or WebView2.** It depends on a Core interface. A
   headless caller supplies a console implementation of the same interface — which is exactly
   §8's fallback, for free.
-- **The Windows-only TFM is quarantined** in one leaf project, so `Hoard.App` need not become
+- **The Windows-only TFM is quarantined** in one leaf project, so `Winnow.App` need not become
   `net10.0-windows` and the non-Windows story stays a missing implementation rather than a
   broken build. This is the main argument for a separate project over putting it in
-  `Hoard.App`. *(As built, the leaf project targets plain `net10.0` with runtime platform
+  `Winnow.App`. *(As built, the leaf project targets plain `net10.0` with runtime platform
   guards — see §2(c)'s correction. The quarantine still holds and is in fact stronger: the
   WebView2 dependency lives in one project, and no project in the tree is Windows-targeted.)*
 - **Epic's existing `Web/Auth/` is the template for GOG**, if GOG is ever built:
@@ -553,7 +553,7 @@ Three points this buys:
 
 ## 8. The console flow survives, and it is not optional
 
-`src/Hoard.App/Services/EpicLoginConsole.cs` (`--epic-login`, and `--epic-login --code <code>`)
+`src/Winnow.App/Services/EpicLoginConsole.cs` (`--epic-login`, and `--epic-login --code <code>`)
 must remain documented and working. Three reasons, all concrete:
 
 1. **Headless machines.** WebView2 needs a window; a server or SSH session has none.
@@ -570,7 +570,7 @@ One thing that must **not** be lost in the move: Epic's own warning — *"Do not
 with any 3rd party service. It allows full access to your Epic account."* — is currently shown
 verbatim before the browser opens. An embedded flow makes the code invisible to the user,
 which removes the moment at which they could reconsider. The consent has to move somewhere
-deliberate: state plainly, before the browser opens, that Hoard will hold a credential with
+deliberate: state plainly, before the browser opens, that Winnow will hold a credential with
 full account access. `epic-oauth.md` §10's principle — the decision to impersonate Epic's
 launcher is made by the person doing it — does not get easier to honour just because the flow
 got smoother.
@@ -585,7 +585,7 @@ got smoother.
   GOG's real login pages render; screenshots on disk.
 - WebView2 runtime **151.0.4129.107** present on this machine with no install step.
 - `app.manifest` with `<supportedOS>` is **mandatory**; without it `NativeControlHost` throws.
-  `Hoard.App` has none today.
+  `Winnow.App` has none today.
 - `MSB3277` is emitted but **does not** break `TreatWarningsAsErrors`; `MSBuildWarningsAsMessages`
   silences it. The WebView2 targets reference the WPF/WinForms wrappers with no opt-out.
 - Deployed WebView2 footprint ~2.06 MB (~1.26 MB DLLs). `cef.redist.x64` is **123 MB**.
@@ -607,7 +607,7 @@ got smoother.
 - `GET https://gameplay.gog.com/games/{gid}/users/{uid}/sessions` is a routed, allowed method
   returning 401 (PUT/DELETE/PATCH return 405).
 - GOG has no third-party OAuth client registration; DevPortal credentials are per shipped game.
-- **The local Galaxy DB holds 45 owned `gog_` releases; 31 are DLC; 14 are base games.** Hoard's
+- **The local Galaxy DB holds 45 owned `gog_` releases; 31 are DLC; 14 are base games.** Winnow's
   "14 games" is correct and complete, not a shortfall.
 
 ### UNVERIFIED (needs one real sign-in; do not build on these as facts)
@@ -653,9 +653,9 @@ got smoother.
 
 1. **Epic breaks it.** Legendary's remote `webview_killswitch` exists because this happens.
    Everything must degrade to §8's console flow and then to the local readers.
-2. **Hosting someone's password entry inside Hoard is a posture change.** `epic-oauth.md` §1
+2. **Hosting someone's password entry inside Winnow is a posture change.** `epic-oauth.md` §1
    explicitly **rejected** the embedded webview on this ground — *"hosting someone's password
-   entry inside Hoard is a worse posture than not touching it at all"* — and chose copy-paste
+   entry inside Winnow is a worse posture than not touching it at all"* — and chose copy-paste
    deliberately. This spike answers the *technical* half of that objection and does not
    dissolve the *posture* half. That reversal should be made consciously, and §1 of
    `epic-oauth.md` amended to record it rather than left to contradict this document.

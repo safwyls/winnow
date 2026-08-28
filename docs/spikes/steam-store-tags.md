@@ -121,7 +121,7 @@ many per game, and where a concept like "souls-like" would live. Three structura
 1. **No weight, no ordering.** An unordered set, so no defensible "primary tag".
 2. **No consensus signal.** Weight 1077 means thousands of players agreed; an IGDB keyword means
    one contributor typed it. Noise is indistinguishable from signal.
-3. **Uneven coverage**, contributor-driven and thin on long-tail titles — exactly Hoard's
+3. **Uneven coverage**, contributor-driven and thin on long-tail titles — exactly Winnow's
    unplayed-backlog population. **Unquantified: measure against a real library before relying on
    it.** IGDB maintainers have publicly acknowledged the taxonomy needs a revamp.
 

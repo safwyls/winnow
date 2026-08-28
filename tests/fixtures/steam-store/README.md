@@ -15,7 +15,7 @@ data. See `docs/spikes/steam-store-tags.md` for the findings they encode.
 
 Neither endpoint appears in `ISteamWebAPIUtil/GetSupportedAPIList`. They are
 undocumented store-frontend endpoints under no stability promise, so
-`SteamStoreContractTests` asserts the exact shape Hoard's parser depends on
+`SteamStoreContractTests` asserts the exact shape Winnow's parser depends on
 against these bytes. **The test is the early-warning system**: when someone
 recaptures a fixture and the assertions break, Valve changed the contract, and
 the client's soft-fail path — which already degrades to "no data" rather than
@@ -24,11 +24,11 @@ throwing — has started silently returning nothing.
 Recapture with (Git Bash):
 
 ```
-curl -sS -G -A "Hoard/0.1 (+https://github.com/hoard-app; local game library manager)" \
+curl -sS -G -A "Winnow/0.1 (+https://github.com/winnow-app; local game library manager)" \
   --data-urlencode 'input_json={"ids":[{"appid":1245620},{"appid":570},{"appid":440},{"appid":760}],"context":{"language":"english","country_code":"US","steam_realm":1},"data_request":{"include_tag_count":20,"include_basic_info":true,"include_assets":true,"include_release":true,"include_platforms":true}}' \
   -o getitems-v1.json "https://api.steampowered.com/IStoreBrowseService/GetItems/v1/"
 
-curl -sS -G -A "Hoard/0.1 (+https://github.com/hoard-app; local game library manager)"   --data-urlencode 'input_json={"language":"english"}'   -o getstorecategories-v1.json "https://api.steampowered.com/IStoreBrowseService/GetStoreCategories/v1/"
+curl -sS -G -A "Winnow/0.1 (+https://github.com/winnow-app; local game library manager)"   --data-urlencode 'input_json={"language":"english"}'   -o getstorecategories-v1.json "https://api.steampowered.com/IStoreBrowseService/GetStoreCategories/v1/"
 ```
 
 ## Quirks deliberately preserved
@@ -39,7 +39,7 @@ curl -sS -G -A "Hoard/0.1 (+https://github.com/hoard-app; local game library man
 | that same item carries **`"appid": 0`** while `"id": 760` | The correlation key is `id`, not `appid`. Correlating on `appid` would silently attribute the miss to app 0. The spike did not record this. |
 | 4 items requested, 4 returned, in request order | Convenient but *not* guaranteed — the spike warns never to assume 1:1 alignment, so the parser keys on `id` regardless. |
 | exactly 20 `tags` per successful app, descending `weight`, with a parallel `tagids` array | Steam publishes a top-20 list; `include_tag_count: 100` returns the same 20. |
-| `weight` values (1077, 789, …) | Per-app normalised — comparable within an app, not across. Hoard stores **rank**; the weights survive only here and in `metadata_cache`. |
+| `weight` values (1077, 789, …) | Per-app normalised — comparable within an app, not across. Winnow stores **rank**; the weights survive only here and in `metadata_cache`. |
 | `best_purchase_option.final_price_in_cents` is the **string** `"5999"` while `weight` is a number | Steam mixes numeric encodings within one object; the parser reads numbers from strings everywhere. |
 | every successful item carries a **`categories`** object — and `getitems-v1.json` was captured 2026-08-23, two days before anything read it | Proof that `supported_player_categoryids` / `feature_categoryids` / `controller_categoryids` need **no extra `data_request` flag**. Migration 0007's facets are therefore a re-parse of bodies already in `metadata_cache`, not a backfill. |
 | Dota 2 has no `controller_categoryids`; appid `760` has no `categories` key at all | A partial or absent block is ordinary. The parser reads a missing list as empty, never as an error. |

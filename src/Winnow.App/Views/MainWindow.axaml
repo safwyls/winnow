@@ -1,0 +1,2226 @@
+﻿<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Winnow.App.ViewModels"
+        xmlns:views="using:Winnow.App.Views"
+        xmlns:lists="using:Winnow.App.ViewModels.Lists"
+        x:Class="Winnow.App.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="Winnow"
+        Icon="/Assets/Icons/dragon.ico"
+        Width="1280" Height="820"
+        MinWidth="1200" MinHeight="640"
+        Classes.floating="{Binding IsFloatingLayout}"
+        Background="{StaticResource ShellGround}"
+        TransparencyBackgroundFallback="{StaticResource ShellGround}"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaChromeHints="NoChrome"
+        ExtendClientAreaTitleBarHeightHint="-1">
+
+    <!--
+        M0 library shell — design-system.md §4 layout, §6 components, and the
+        mock's rail / command bar / cover wall. The cover grid is
+        views:CoverWall, the project's own virtualizing uniform panel — the swap
+        docs/spikes/avalonia-dormancy-rendering.md planned for after 12.0,
+        brought forward because ItemsRepeater's UniformGridLayout could not hold
+        §4's flush-row geometry (CoverWall's remarks carry the measurements).
+
+        The client area is extended over the decorations and the caption is
+        drawn here (§9): a light Windows title bar over a dark library put the
+        brightest band in the window above the art. Behaviour the system used
+        to provide is now ours — drag, double-click to maximise, hover/pressed
+        states, Aero Snap, and the maximised overhang — and lives in
+        MainWindow.axaml.cs.
+    -->
+
+    <!-- MinWidth is measured, not guessed. With the filter panel open
+         the content column is the window less the 220 rail and the 276
+         panel, and the command bar needs about 700 of it: the search box
+         at its 120 minimum, the four left controls, the gap, then sort
+         and Filters. Captured at three widths — at 1120 the sort menu
+         overlaps Display, at 1200 it clears. Below that the bar does not
+         degrade gracefully, it collides, so a floor is the honest fix
+         rather than letting the window reach a size it cannot draw. -->
+
+    <Window.Resources>
+
+        <!-- ══ THE MARK (§9) ════════════════════════════════════════════════
+             The dragon from Assets/Icons/dragon.svg, as geometry rather than as
+             an image, and that is the whole reason it is worth the 4.9KB of
+             attribute.
+
+             The SVG is a single-colour vector: thirteen <path> elements, one
+             <g>, no transforms, no gradients, no fills of their own beyond one
+             flat #101c1e repeated thirteen times. So the paths concatenate into
+             ONE StreamGeometry that takes a THEME BRUSH — the mark recolours
+             when the theme does, by the same mechanism as everything else
+             (ThemeService writes Color on the brush object this resolved), and
+             it stays sharp at any DPI. A bitmap would have to be re-exported per
+             theme and per scale factor, and would still be the wrong colour on
+             the fifth theme somebody adds.
+
+             F0 IS LOAD-BEARING AND IS NOT DECORATION. It is the path
+             mini-language's fill-rule command and F0 is EvenOdd, which is what
+             the SVG's own root <svg style="fill-rule:evenodd"> declares and
+             inherits to all thirteen paths. Measured rather than assumed, twice:
+             Avalonia's PathMarkupParser never calls SetFillRule at all without
+             the prefix, so an unprefixed string takes StreamGeometryContext's
+             default and says nothing about which rule was meant; and rendering
+             the artwork both ways differs by exactly ZERO pixels at 512px,
+             because the eye and the jaw gap are negative space in the outline
+             rather than enclosed counters. The prefix costs three characters and
+             makes the next person's edit safe when it stops being zero.
+
+             Deliberately scoped to this window rather than merged into
+             Themes/, and that is the "do not scatter it" rule expressed as
+             lookup scope: the mark lives in the caption. An empty state or a
+             settings card cannot reach it without someone moving it here first
+             and having to say why. -->
+        <StreamGeometry x:Key="DragonMark">F0 M224.46,512c0.518,-7.266 1.631,-14.785 3.44,-22.538c3.954,-16.949 0.94,4.575 15.098,22.538l-18.537,0Z M173.347,248.525c-1.17,-1.139 -42.451,-43.669 -70.061,-70.316c-46.292,-44.677 -39.12,-116.909 -33.133,-136.164c4.585,-0.096 2.943,2.288 5.7,13.728c23.444,97.278 138.264,115.297 170.904,141.874c7.887,6.422 23.74,17.532 24.936,17.587c4.128,0.189 -21.398,-24.012 -30.015,-31.16c-6.324,-5.246 -18.985,-9.905 -21.683,-11.726c-3.659,-2.47 -0.814,-7.023 -2.267,-15.317c-1.91,-10.899 -9.839,-18.966 -1.487,-18.471c28.996,1.72 62.911,37.078 62.971,37.125c6.049,4.787 3.293,-2.542 4.217,-18.856c0.551,-9.723 10.464,3.175 62.862,29.345c90.809,45.354 86.87,111.644 81.559,119.911c-5.022,7.817 -9.863,-0.027 -11.436,-0.113c-9.608,-0.523 -0.703,4.994 18.185,27.924c2.363,2.869 26.167,31.766 32.257,33.444c9.601,2.645 16.916,2.682 10.343,23.626c-3.849,12.266 6.927,25.028 -6.318,45.058c-14.303,21.632 -19.394,16.178 -28.219,10.62c-18.127,-11.418 -30.556,-6.555 -45.559,-5.214c-9.731,0.87 -5.132,-19.486 -19.286,-19.845c-7.513,-0.19 -7.357,-0.87 -12.799,-5.823c-14.348,-13.061 -27.9,2.659 -30.196,-5.82c-5.621,-20.765 -13.004,-18.159 -31.801,-17.435c-22.4,0.863 -23.164,-19.227 -43.858,-32.241c-11.092,-6.976 -35.501,-1.614 -37.138,0.158c-0.399,0.432 1.275,1.098 0.876,1.53l0.75,1.88c3.354,0.004 27.933,0.033 39.7,13.458c20.532,23.423 20.776,28.155 51.768,25.631c12.712,-1.036 6.424,23.894 21.762,22.058c12.455,-1.491 27.935,-9.279 42.134,13.138c14.719,23.238 21.144,14.232 34.934,12.603c8.829,-1.043 41.178,6.231 25.992,19.075c-37.154,31.424 -64.464,-6.445 -122.781,-24.794c-52.176,-16.417 -126.077,9.06 -97.677,-12.059c29.878,-22.218 -25.456,-18.438 -41.465,-23.675c-6.366,-2.083 7.56,-9.802 9.247,-11.285c6.628,-5.823 6.153,-16.972 -0.26,-21.192c-5.026,-3.307 -70.534,-13.498 -67.014,-24.531c0.76,-2.383 33.469,-1.132 52.446,-12.799c29.136,-17.911 -7.768,-18.59 -52.136,-48.266c-38.419,-25.697 -57.428,-76.856 -46.035,-65.186c40.881,41.876 86.777,39.181 117.949,46.272c25.825,5.874 -0.784,-7.531 -4.445,-9.983c-1.145,-0.767 -13.034,-12.424 -14.425,-13.779Zm173.129,87.483c0.049,-0.007 10.654,1.537 18.546,-10.684c2.788,-4.317 0.345,-7.288 -3.852,-4.069c-23.26,17.845 -38.338,-30.154 -72.764,-35.49c-34.708,-5.379 -32.962,-10.923 -35.965,-11.171c-13.298,-1.098 16.964,20.429 18.118,27.137c8.731,50.769 49.105,33.052 75.916,34.277Zm74.206,67.615c6.169,6.276 13.203,16.649 11.716,6.463c-5.552,-38.038 -35.137,-30.463 -28.432,-16.671c0.685,1.409 1.461,3.004 16.716,10.208Z M37.176,512c-2.325,-44.056 4.345,-97.376 30.7,-156.774c1.879,-4.234 32.31,-60.881 37.357,-61.392c4.151,-0.421 7.799,8.148 51.183,28.517c0.975,0.458 12.228,5.741 10.951,7.824c-1.835,2.993 -2.648,2.022 -23.335,8.295c-32.328,5.052 -52.343,0.141 -38.293,15.804c21.221,23.657 49.062,19.201 38.742,29.843c-32.56,33.578 -52.855,79.411 -60.347,127.883l-46.958,0Z M96.579,512c1.307,-7.27 3.202,-15.52 5.492,-25.078c1.424,-5.94 4.176,-3.577 4.887,-3.852c4.667,10.376 11.083,20.338 17.924,28.93l-28.303,-0Z M388.673,197.687c-3.024,0.62 -3.236,1.523 -5.535,-0.47c-4.526,-3.924 -4.188,-4.065 -10.717,-7.946c-43.576,-25.904 -69.498,-29.541 -99.201,-75.143c-25.792,-39.598 -14.344,-91.613 -13.512,-92.153c10.84,-7.041 -8.281,41.516 58.204,83.686c51.72,32.805 50.4,36.537 70.761,92.026Z M139.669,512c-1.504,-1.774 -3.12,-3.746 -4.86,-5.937c-36.022,-45.364 -14.902,-65.266 -5.417,-81.531c5.03,-9.67 6.983,-8.941 7.626,-7.559c0.931,2.001 -2.8,3.03 8.023,26.395c19.423,41.931 28.659,45.392 71.319,27.334c9.015,-3.816 1.562,21.715 -25.802,41.299l-50.889,0Z M170.07,397.357c-24.64,13.692 -3.173,18.636 9.86,22.864c16.154,5.24 37.788,2.42 30.554,8.345c-2.673,2.189 -5.671,3.951 -8.448,6.007c-21.154,15.659 22.048,15.543 18.559,21.039c-0.731,1.152 -38.874,18.823 -47.084,11.577c-10.84,-9.567 -37.038,-58.1 -19.393,-75.807c3.266,-3.277 8.405,-11.668 21.186,-7.969c5.308,1.536 5.255,4.438 5.244,5.019c-0.044,2.374 -9.546,8.341 -10.479,8.927Z M87.829,298.709c-23.875,36.236 -21.555,46.053 -31.211,39.777c-14.589,-9.482 -32.943,-2.392 -21.328,-15.296c28.546,-31.712 59.495,-35.139 57.596,-31.327c-1.265,2.54 -3.793,4.307 -5.058,6.846Z M43.177,388.554c-11.746,43.749 -11.17,45.112 -15.026,45.573c-15.69,1.88 -19.917,3.785 -18.218,-2.114c9.724,-33.751 35.016,-56.036 36.699,-53.085c0.405,0.711 -0.249,0.694 -3.456,9.625Z M136.196,238.394c-8.606,8.327 -10.268,9.255 -25.557,1.892c-0.926,-0.446 -11.658,-5.615 -9.729,-8.397c4.232,-6.103 62.166,-17.301 38.932,3.047c-1.26,1.104 -2.385,2.355 -3.645,3.459Z M405.985,200.128c1.359,-9.848 1.676,-9.568 2.665,-19.307c1.703,-16.78 11.987,16.917 9.91,45.913c-0.604,8.436 -3.627,-0.177 -10.54,-8.493c-6.343,-7.628 -4.736,-8.524 -2.035,-18.113Z M16.206,512c0.713,-6.524 1.441,-10.572 5.465,-21.938c4.541,-12.826 4.08,-0.433 4.6,21.938l-10.065,0Z M153.713,255.095c-9.558,-2.837 -14.446,-0.62 -11.721,-6.341c1.313,-2.756 8.456,-9.024 9.264,-9.733c1.44,-1.263 5.612,-4.924 19.17,14.342c5.446,7.74 -16.589,1.757 -16.712,1.732Z</StreamGeometry>
+
+    </Window.Resources>
+
+    <Window.Styles>
+
+        <!-- ══ Window chrome (§9) ═══════════════════════════════════════════
+             Caption buttons at the Windows metric (46 wide) so muscle memory
+             lands on them, but flat and unlit until touched. Close reddens,
+             which is the one caption convention worth keeping: it is the only
+             button here whose mistake cannot be undone. -->
+        <Style Selector="Button.wincontrol">
+            <Setter Property="Width" Value="{StaticResource WindowButtonWidth}"/>
+            <Setter Property="Height" Value="{StaticResource TitleBarHeight}"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="CornerRadius" Value="0"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Button.wincontrol /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="CornerRadius" Value="0"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.10"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.wincontrol:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
+        </Style>
+        <Style Selector="Button.wincontrol:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource SurfaceHigh}"/>
+        </Style>
+        <Style Selector="Button.wincontrol Path">
+            <Setter Property="Stroke" Value="{StaticResource TextDim}"/>
+            <Setter Property="StrokeThickness" Value="1"/>
+            <Setter Property="Fill" Value="{x:Null}"/>
+        </Style>
+        <Style Selector="Button.wincontrol:pointerover Path">
+            <Setter Property="Stroke" Value="{StaticResource Text}"/>
+        </Style>
+        <Style Selector="Button.wincontrol.close:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource Danger}"/>
+        </Style>
+        <Style Selector="Button.wincontrol.close:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource DangerPress}"/>
+        </Style>
+        <Style Selector="Button.wincontrol.close:pointerover Path">
+            <Setter Property="Stroke" Value="{StaticResource DangerInk}"/>
+        </Style>
+
+        <!-- Fluent's scrollbar keeps its rest/expanded behaviour and its
+             colours come from tokens.axaml; only the stepper arrows go, since
+             a 606-tile wall is scrolled by wheel and thumb and the arrows are
+             two more things drawing attention away from the art. -->
+        <Style Selector="ScrollBar /template/ RepeatButton#PART_LineUpButton">
+            <Setter Property="IsVisible" Value="False"/>
+        </Style>
+        <Style Selector="ScrollBar /template/ RepeatButton#PART_LineDownButton">
+            <Setter Property="IsVisible" Value="False"/>
+        </Style>
+
+        <!-- ══ The scrollbar the resize border was eating ═══════════════════
+             The client area is extended over the decorations (§9), so Windows
+             still hit-tests the outer ~8px of the window as HTRIGHT / HTBOTTOM
+             / HTBOTTOMRIGHT and answers those pixels with a resize cursor
+             BEFORE the client area ever sees the pointer. A 12px scrollbar
+             flush to the edge therefore left 2–4 usable pixels: the user could
+             see the thumb, and could not reach it.
+
+             The fix is an inset, not a wider control. Widening the thumb would
+             have changed nothing — the border wins at the OS level, above
+             Avalonia's hit testing entirely — and hooking WM_NCHITTEST to
+             answer HTCLIENT along that strip would have bought the scrollbar
+             back by taking away edge-resize down the whole right side of the
+             window, which is a worse trade than 10px of ground.
+
+             So every scrollbar at the window edge steps 10px in (§9's
+             ScrollBarEdgeInset: the 8px Windows resize frame plus slack). The
+             resting 4px hairline the design asks for is untouched — this moves
+             where the control sits, not what it looks like — and Fluent's own
+             swell-to-12-on-hover now actually fires, because the pointer can
+             reach the track to trigger it.
+
+             Global rather than per-view: a ScrollBar inside a ListBox lives two
+             templates deep, which no single selector can reach. Interior
+             scrollbars — the rail's, the detail modal's — opt back out with
+             ScrollViewer.inner below. -->
+        <Style Selector="ScrollBar:vertical">
+            <Setter Property="Margin" Value="{StaticResource ScrollBarEdgeInset}"/>
+        </Style>
+        <Style Selector="ScrollViewer.inner /template/ ScrollBar">
+            <Setter Property="Margin" Value="0"/>
+        </Style>
+
+        <!-- ══ Rail bucket (§6) ══════════════════════════════════════════════
+             Hover and selection both fill SurfaceRaised; selection adds the
+             2px Volt left edge. Zero-count rows dim to 40% — never hide, so
+             the rail never reflows. -->
+        <Style Selector="Button.bucket">
+            <Setter Property="Height" Value="36"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="CornerRadius" Value="0"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="Button.bucket /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.12"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.bucket:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource ChromeRaised}"/>
+        </Style>
+        <Style Selector="Button.bucket:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource ChromeRaised}"/>
+        </Style>
+        <Style Selector="Button.bucket.selected /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource ChromeRaised}"/>
+        </Style>
+        <!-- A bucket in force while a LIST is open. Same fill, because it is
+             cutting the grid; no Volt edge, because the Volt edge means "this is
+             where you are" and where you are is the list. See
+             LibraryViewModel.MarkRailSelection. -->
+        <Style Selector="Button.bucket.rule /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource ChromeRaised}"/>
+        </Style>
+
+        <!-- ══ Rail list row ═══════════════════════════════════════════════
+             Same fill, hover and 2px Volt selection edge as a bucket, because a
+             list is another way of cutting the same library and the rail should
+             not need two grammars for that. One difference, and it is the point:
+             the NAME is body type, not the buckets' Display S caps. Bucket names
+             are the application's own vocabulary and are shouted; a list name is
+             the user's own sentence and is not. -->
+        <Style Selector="Button.listrow">
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="CornerRadius" Value="0"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="Button.listrow /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.12"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.listrow:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource ChromeRaised}"/>
+        </Style>
+        <Style Selector="Button.listrow.selected /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource ChromeRaised}"/>
+        </Style>
+
+        <!-- ══ Command bar ═════════════════════════════════════════════════ -->
+        <!-- The field is ChromeFieldOnGround, not Surface: an opaque box on a
+             translucent bar was the one thing in the command bar that could not
+             be seen through, and half the chrome being solid reads worse than
+             none of it being. A field admits half of what the bar around it
+             admits, which at the far end is exactly the cover wall's own share
+             of the desktop. Its ink is the rail's, walked - so it darkens as the
+             bar does and the typed text is paid for the same way (§14.3's two
+             ramps). See MinFieldAlpha.
+
+             It is FOUND by its border, not by its fill. Over a dark desktop the
+             fill and the bar converge to within 1.05:1 at the far end, and they
+             did before this change too, at 1.14:1 - Line is what draws a field,
+             and Volt is what says it has the caret. -->
+        <Style Selector="TextBox.search">
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="MinHeight" Value="30"/>
+            <Setter Property="Padding" Value="10,0"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="Background" Value="{StaticResource ChromeFieldOnGround}"/>
+            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+            <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
+            <Setter Property="FontSize" Value="{StaticResource BodySize}"/>
+            <Setter Property="SelectionBrush" Value="{StaticResource VoltSelection}"/>
+            <Setter Property="CaretBrush" Value="{StaticResource Volt}"/>
+        </Style>
+        <Style Selector="TextBox.search /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="{StaticResource ChromeFieldOnGround}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+        <Style Selector="TextBox.search:pointerover /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="{StaticResource ChromeFieldOnGround}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+        </Style>
+        <!-- Focus is a brush swap on a border whose thickness never changes
+             (§10.7, which §13 gap 6 settles in favour of over §8's adorner):
+             thickening it would reflow the command bar around it. Against
+             white the ring clears AA on the field to 89-100% of the slider,
+             against the chrome's own 26-31%, and past a few percent it reads
+             BETTER on the field than on the bare bar - the field is the darker
+             of the two, which is the same property that lets it open at all. -->
+        <Style Selector="TextBox.search:focus /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="{StaticResource ChromeFieldOnGround}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+        <!-- The placeholder is the dimmest ink a field ever carries, so it is
+             what decides how far this may go: TextDim on the open field clears
+             AA to 71-76% of the slider, against the chrome's own 26-31%. Never
+             TextFaint here - see the year field in FilterPanelView. -->
+        <Style Selector="TextBox.search /template/ TextBlock#PART_Watermark">
+            <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
+        </Style>
+
+        <!-- Segmented grid/list toggle. Volt marks the active segment. -->
+        <Style Selector="Button.seg">
+            <Setter Property="Padding" Value="10,5"/>
+            <Setter Property="CornerRadius" Value="0"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="VerticalAlignment" Value="Stretch"/>
+        </Style>
+        <Style Selector="Button.seg /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.seg:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource SurfaceRaisedGhost}"/>
+        </Style>
+        <!-- ChromeRaised rather than SurfaceRaised: the toggle's own fill opens
+             up with the bar now, and an opaque step over a translucent surface
+             composites DOWNWARDS over a bright wallpaper - the lit segment would
+             come out darker than the unlit one. §14.2's veil is the fix, and it
+             is already solved. -->
+        <Style Selector="Button.seg.on /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource ChromeRaised}"/>
+        </Style>
+        <Style Selector="Button.seg Rectangle">
+            <Setter Property="Fill" Value="{StaticResource TextDim}"/>
+        </Style>
+        <Style Selector="Button.seg.on Rectangle">
+            <Setter Property="Fill" Value="{StaticResource Volt}"/>
+        </Style>
+
+        <!-- Inert chrome controls (sort / store filter stubs), mock's .ctl. -->
+        <Style Selector="Button.ctl">
+            <Setter Property="Padding" Value="9,5"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="Button.ctl /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.ctl:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource ChromeRaised}"/>
+        </Style>
+        <!-- A toggle in a row of menus: the open panel keeps its button lit, so
+             the control and the column it opened are legibly one thing. -->
+        <Style Selector="Button.ctl.on /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource ChromeRaised}"/>
+        </Style>
+        <Style Selector="Button.ctl.on TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+        </Style>
+        <Style Selector="Button.ctl.on Path">
+            <Setter Property="Fill" Value="{StaticResource Volt}"/>
+        </Style>
+
+        <!-- Sort menu (§4's `sort ▾`). Flyout content lives in its own popup
+             root, which styles itself from this window — so these selectors
+             reach it. -->
+        <Style Selector="FlyoutPresenter.sortmenu">
+            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
+            <Setter Property="Padding" Value="4"/>
+            <Setter Property="MinWidth" Value="0"/>
+            <Setter Property="MaxWidth" Value="320"/>
+        </Style>
+        <Style Selector="Button.sortitem">
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="Padding" Value="8,0"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="Button.sortitem /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.sortitem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource GroundVeil}"/>
+        </Style>
+
+        <!-- ══ The selection's context menu ════════════════════════════════
+             Same presenter treatment as the sort menu, because it is the same
+             object: a small dark card of choices on SurfaceRaised with a Line
+             edge. ContextMenu paints its own template from its own Background
+             and BorderBrush rather than through a presenter, so these are set on
+             the control; a Style in this window outranks Fluent's ControlTheme
+             for the same properties.
+
+             §12.3 records why this app has no flyouts: a popup is its own visual
+             root, has no adorner layer, and §8's global 2px Volt ring therefore
+             does not render inside one. So this menu draws its own, and it costs
+             one selector: Avalonia raises MenuItem's `:selected` for the pointer
+             AND for the keyboard walk (Shift+F10 or the Menu key opens the menu,
+             arrows move through it), so one highlight covers both routes — one
+             step of fill above the menu's own ground plus the 2px Volt edge that
+             every picked row in this window wears. Drawn, not adorned (§10.7),
+             and the
+             edge is a border on a Border whose thickness never changes, so the
+             item does not reflow as it lights up. -->
+        <Style Selector="ContextMenu.actions">
+            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
+            <Setter Property="Padding" Value="4"/>
+            <Setter Property="MinWidth" Value="0"/>
+        </Style>
+        <Style Selector="ContextMenu.actions MenuItem">
+            <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
+            <Setter Property="FontSize" Value="{StaticResource BodySize}"/>
+            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+            <Setter Property="Padding" Value="10,7"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="ContextMenu.actions MenuItem /template/ Border#PART_LayoutRoot">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="{StaticResource SelectionEdge}"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
+        </Style>
+        <Style Selector="ContextMenu.actions MenuItem:selected /template/ Border#PART_LayoutRoot">
+            <!-- One step above the menu's own SurfaceRaised ground — the same
+                 #254042 the caption buttons press to. SurfaceRaised on
+                 SurfaceRaised would have been no step at all. -->
+            <Setter Property="Background" Value="{StaticResource SurfaceHigh}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+        </Style>
+        <Style Selector="ContextMenu.actions MenuItem:selected /template/ ContentPresenter#PART_HeaderPresenter">
+            <Setter Property="TextElement.Foreground" Value="{StaticResource Text}"/>
+        </Style>
+
+        <!-- ══ Display preferences popover (§8) ════════════════════════════
+             Same presenter treatment as the sort menu, with room for a line of
+             prose. The checkbox is templated rather than restyled: Fluent's own
+             reads a dozen resource keys for its box, its stroke and its glyph in
+             six states, and overriding all of them to land on this palette is
+             more surface than drawing 16px and a tick. The template keeps the
+             control a real CheckBox, so it toggles on Space, reports its state
+             to automation, and takes the global 2px Volt focus adorner. -->
+        <Style Selector="FlyoutPresenter.prefs">
+            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
+            <Setter Property="Padding" Value="14"/>
+            <Setter Property="MinWidth" Value="0"/>
+            <Setter Property="MaxWidth" Value="360"/>
+        </Style>
+        <Style Selector="CheckBox.pref">
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="MinHeight" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Grid ColumnDefinitions="16,10,*" Background="Transparent">
+                        <!-- §8's 2px Volt focus ring at a 2px offset, drawn in
+                             the template rather than left to the global
+                             FocusAdorner: an adorner needs an adorner layer, and
+                             a flyout is its own popup root — the ring went to
+                             the window's layer and never appeared over the
+                             popup. Negative margin so the ring sits outside the
+                             16px box without widening the column. -->
+                        <Border Grid.Column="0" Name="Ring"
+                                Width="22" Height="22" Margin="-3,0,0,0"
+                                CornerRadius="5"
+                                BorderBrush="{StaticResource Volt}"
+                                BorderThickness="2"
+                                IsHitTestVisible="False"
+                                HorizontalAlignment="Left"
+                                VerticalAlignment="Center"/>
+                        <Panel Grid.Column="0" VerticalAlignment="Center">
+                            <Border Name="Box" Width="16" Height="16"
+                                    CornerRadius="3"
+                                    Background="{StaticResource Surface}"
+                                    BorderBrush="{StaticResource Line}"
+                                    BorderThickness="1"/>
+                            <Path Name="Tick"
+                                  Data="M 0,3.4 L 2.9,6.3 L 8.2,1"
+                                  Stroke="{StaticResource VoltInk}"
+                                  StrokeThickness="2"
+                                  StrokeLineCap="Round"
+                                  StrokeJoin="Round"
+                                  Width="9" Height="8"
+                                  HorizontalAlignment="Center"
+                                  VerticalAlignment="Center"/>
+                        </Panel>
+                        <ContentPresenter Grid.Column="2"
+                                          Content="{TemplateBinding Content}"
+                                          VerticalAlignment="Center"
+                                          FontFamily="{StaticResource BodyFont}"
+                                          FontSize="{StaticResource BodySize}"
+                                          Foreground="{StaticResource Text}"/>
+                    </Grid>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        <Style Selector="CheckBox.pref /template/ Path#Tick">
+            <Setter Property="Opacity" Value="0"/>
+        </Style>
+        <Style Selector="CheckBox.pref /template/ Border#Ring">
+            <Setter Property="Opacity" Value="0"/>
+        </Style>
+        <Style Selector="CheckBox.pref:focus-visible /template/ Border#Ring">
+            <Setter Property="Opacity" Value="1"/>
+        </Style>
+        <Style Selector="CheckBox.pref:pointerover /template/ Border#Box">
+            <Setter Property="BorderBrush" Value="{StaticResource TextDim}"/>
+        </Style>
+        <Style Selector="CheckBox.pref:checked /template/ Border#Box">
+            <Setter Property="Background" Value="{StaticResource Volt}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+        </Style>
+        <Style Selector="CheckBox.pref:checked /template/ Path#Tick">
+            <Setter Property="Opacity" Value="1"/>
+        </Style>
+
+        <!-- ══ List view (§6) ══════════════════════════════════════════════
+             "Same data, no art dependency… 44px rows, Surface ground, Line
+             rules, Volt selection edge." Sortable headers write the same sort
+             state the command-bar menu does. -->
+        <Style Selector="Button.colhead">
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="CornerRadius" Value="0"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="VerticalAlignment" Value="Stretch"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Button.colhead /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.colhead:pointerover TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+        </Style>
+
+        <!-- PaneGround, which the Grid around it has always declared and this
+             ListBox has always painted straight over. Two consequences, both
+             wanted: the rows sit in the art's own recess rather than on a chrome
+             tone in the art's position (§14.2), which lifts every ink on them -
+             TextDim goes 5.88:1 to 6.69:1 on the default theme from the step
+             down alone - and when the field is open the list opens with it
+             instead of being the one pane still bolted shut. -->
+        <Style Selector="ListBox.rows">
+            <Setter Property="Background" Value="{StaticResource PaneGround}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+        </Style>
+        <Style Selector="ListBox.rows ListBoxItem">
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Margin" Value="0"/>
+            <Setter Property="MinHeight" Value="44"/>
+            <Setter Property="CornerRadius" Value="0"/>
+        </Style>
+        <Style Selector="ListBox.rows ListBoxItem /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="CornerRadius" Value="0"/>
+        </Style>
+        <!-- The veil pair, not the ink pair. A row fill is an elevation step,
+             and over a field that can open up a darker INK composites downwards
+             and the selected row comes out below the row beside it - §14.2's
+             inversion, in the one place inside a pane where it could still
+             happen. ChromeRaised and its half ARE SurfaceRaised and
+             SurfaceRaisedHalf at slider zero, so nothing moves at SOLID; walked,
+             the selected row carries TextDim to 43-55% of the slider and the
+             elevation never once inverts. -->
+        <Style Selector="ListBox.rows ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource ChromeRaisedHalf}"/>
+        </Style>
+        <Style Selector="ListBox.rows ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource ChromeRaised}"/>
+        </Style>
+        <Style Selector="ListBox.rows ListBoxItem:selected:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource ChromeRaised}"/>
+        </Style>
+
+        <!-- Density slider — chrome only, so it stays quiet next to the art. -->
+        <Style Selector="Slider.density">
+            <Setter Property="Width" Value="104"/>
+            <Setter Property="MinHeight" Value="0"/>
+            <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
+        </Style>
+        <Style Selector="Slider.density /template/ Track#PART_Track RepeatButton#PART_DecreaseButton /template/ Border">
+            <Setter Property="Background" Value="{StaticResource TextDim}"/>
+            <Setter Property="Height" Value="2"/>
+        </Style>
+        <Style Selector="Slider.density /template/ Track#PART_Track RepeatButton#PART_IncreaseButton /template/ Border">
+            <Setter Property="Background" Value="{StaticResource Line}"/>
+            <Setter Property="Height" Value="2"/>
+        </Style>
+        <Style Selector="Slider.density /template/ Thumb">
+            <Setter Property="Background" Value="{StaticResource TextDim}"/>
+            <Setter Property="Width" Value="12"/>
+            <Setter Property="Height" Value="12"/>
+        </Style>
+        <Style Selector="Slider.density:pointerover /template/ Thumb">
+            <Setter Property="Background" Value="{StaticResource Text}"/>
+        </Style>
+
+
+        <!-- ══ The panes, flush ═══════════════════════════
+             Which edges the layout draws, for the arrangement that has always
+             shipped: the rail's right edge and the filter panel's left one are
+             the two chrome/art seams (§11.1), the command bar and the cut bar
+             rule off the art below them, and the library pane draws nothing of
+             its own because those four already enclose it.
+
+             THE TWO BAR RULES ARE NOT LAYOUT-DEPENDENT ANY MORE. They used to
+             be dropped under the floating layout, because a bar sitting on the
+             window ground had 8px of gap underneath it and a rule above a gap is
+             a rule against nothing. The bars are inside the library pane in both
+             layouts now, so in both layouts there is art directly under them and
+             the rule is what divides the two. One value, no override below.
+
+             In a STYLE and not on the element, and that is the whole reason this
+             block exists. A local value outranks a style setter in Avalonia, so
+             a BorderThickness written inline wins over the floating override
+             silently — measured, not guessed: the first build of this layout
+             came out with no card edges at all and the markup gave no hint why.
+             The same trap the rail's selection edge fell into in M0. -->
+        <Style Selector="Border.railpane">
+            <Setter Property="BorderThickness" Value="0,0,1,0"/>
+        </Style>
+        <Style Selector="Border.filterpane">
+            <Setter Property="BorderThickness" Value="1,0,0,0"/>
+        </Style>
+        <Style Selector="Border.cmdbar">
+            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+        </Style>
+        <Style Selector="Border.cutbar">
+            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+        </Style>
+        <Style Selector="Border.wallpane">
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector="Border.screenpane">
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+
+        <!-- ══ THE AMBIENT DOCK (M3b) ══════════════════════════
+             Two transient surfaces share one corner: the launch strip that says
+             a game is starting, and the journal card that asks about one that
+             just ended. Neither is a dialog, neither takes focus, and neither
+             blocks anything behind it — that is the entire design, and this
+             milestone's acceptance criterion is that pressing Play produces no
+             obstruction at all.
+
+             Bottom-LEFT rather than bottom-right. The right edge is where the
+             filter panel opens and where every scrollbar lives; the left is the
+             quiet corner, and it is the one the eye is least likely to be using
+             while reading covers. -->
+        <Style Selector="Border.dock">
+            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="Padding" Value="14,12"/>
+        </Style>
+
+        <!-- The waiting dot. Volt, because a launch in progress is the primary
+             action still happening; never Flare, which means unread and nothing
+             else. The pulse runs only while the outcome is unknown, so the strip
+             stops moving the instant the watcher confirms the game is up —
+             motion that stops IS the message. -->
+        <Style Selector="Ellipse.pip">
+            <Setter Property="Width" Value="7"/>
+            <Setter Property="Height" Value="7"/>
+            <Setter Property="Fill" Value="{StaticResource Volt}"/>
+        </Style>
+        <Style Selector="Ellipse.pip.problem">
+            <Setter Property="Fill" Value="{StaticResource Amber}"/>
+        </Style>
+        <Style Selector="Ellipse.pip.waiting">
+            <Style.Animations>
+                <Animation Duration="0:0:1.4" IterationCount="INFINITE" Easing="SineEaseInOut">
+                    <KeyFrame Cue="0%"><Setter Property="Opacity" Value="1.0"/></KeyFrame>
+                    <KeyFrame Cue="50%"><Setter Property="Opacity" Value="0.25"/></KeyFrame>
+                    <KeyFrame Cue="100%"><Setter Property="Opacity" Value="1.0"/></KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
+
+        <!-- The dismiss ×. Deliberately not a button reading "Skip": naming the
+             act of ignoring something makes ignoring it a decision, and §9
+             pitfall 7 is about not charging the user for one. -->
+        <Style Selector="Button.dockclose">
+            <Setter Property="Width" Value="22"/>
+            <Setter Property="Height" Value="22"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Button.dockclose:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource SurfaceHigh}"/>
+            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+        </Style>
+        <Style Selector="Button.dockclose:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+        </Style>
+
+        <!-- Rating: five dots, not stars and not a number. A number would have
+             to be typeset in Plex Mono per the design system and would invite a
+             precision the user does not have about an evening they just spent; a
+             dot is a mark, and an unset row of them reads as optional. -->
+        <Style Selector="Button.rate">
+            <Setter Property="Width" Value="20"/>
+            <Setter Property="Height" Value="20"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Button.rate:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+        </Style>
+        <Style Selector="Button.rate Ellipse">
+            <Setter Property="Width" Value="11"/>
+            <Setter Property="Height" Value="11"/>
+            <Setter Property="Fill" Value="Transparent"/>
+            <Setter Property="Stroke" Value="{StaticResource TextFaint}"/>
+            <Setter Property="StrokeThickness" Value="1.5"/>
+        </Style>
+        <Style Selector="Button.rate:pointerover Ellipse">
+            <Setter Property="Stroke" Value="{StaticResource TextDim}"/>
+        </Style>
+        <Style Selector="Button.rate.on Ellipse">
+            <Setter Property="Fill" Value="{StaticResource Volt}"/>
+            <Setter Property="Stroke" Value="{StaticResource Volt}"/>
+        </Style>
+
+        <!-- The note field. One line, no scrollbar, no formatting: §5.2 asks for
+             a free-text note, and a box that invites an essay after a game is a
+             box that gets abandoned half-written. -->
+        <Style Selector="TextBox.note">
+            <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="Padding" Value="9,0"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Background" Value="{StaticResource ChromeFieldOnSurface}"/>
+            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+            <Setter Property="CaretBrush" Value="{StaticResource Volt}"/>
+            <Setter Property="SelectionBrush" Value="{StaticResource VoltSelection}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="6"/>
+        </Style>
+        <Style Selector="TextBox.note /template/ Border#PART_BorderElement">
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+        <Style Selector="TextBox.note:focus /template/ Border#PART_BorderElement">
+            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+        </Style>
+
+        <!-- ══ THE FLOATING LAYOUT (§15) ═════════════════════
+             Everything the layout does that a repainted brush cannot: margins,
+             corner radii and which edges carry a rule. TWO tokens change colour
+             (ShellGround and CaptionFill — see WinnowTheme.Tokens); everything
+             else the setting does is here.
+
+             It used to be four. ChromeGround was the command bar's and the cut
+             bar's own fill and is retired, and ChromeFieldOnGround stopped
+             depending on the layout, because a field steps from its container
+             and the container is the library pane in both now. Both are
+             consequences of the bars moving inside that pane (§15.8) rather than
+             simplifications applied on top of it.
+
+             LAST IN THE FILE ON PURPOSE. Avalonia resolves setters of equal
+             specificity in document order, and every one of these overrides a
+             value the flush markup sets a few hundred lines up. Declared earlier
+             they would silently lose, which is the failure mode this codebase
+             keeps meeting: build green, feature absent.
+
+             WHAT FLOATS AND WHAT DOES NOT, and the rule that decides. The
+             reference draws the line between CONTENT and CHROME, not between
+             big and small: VS Code floats the sidebar, the editor and the
+             secondary panel, and leaves the title bar, the activity strip and
+             the status bar flush on the window ground. JetBrains ships the same
+             split and its users call the result islands. So here: the rail, the
+             library pane and the filter panel are content and become cards; the
+             caption, the command bar and the cut bar are chrome and actions and
+             stay on the ground with the gaps.
+
+             THE GAP IS 8 AND THE RADIUS IS 8, and neither is copied from the
+             reference. 8 is §4's own spacing step (4 · 8 · 12 · 16), it is the
+             smallest step on that scale that reads as a gap rather than as a
+             mis-drawn rule at 100% scaling, and it is exactly the width of the
+             resize band §9.1 measures — so a pane inset by it is a pane no
+             control of which can be eaten by the OS, which is the same number
+             solving two problems. The radius is 8 rather than the tile's 6
+             because radius is read as a proportion of the corner it turns: 6px
+             on a 750px column is a chamfer, and the panes are the largest
+             objects in the window. It stays ABOVE the tile's 6 and the
+             control's 4, so the three radii still rank by the size of the thing
+             they round.
+
+             ONE PANE OWNS EACH GAP, rather than two panes contributing half of
+             it each. Half-and-half was tried first and it is wrong for a reason
+             that only shows up in one state: the filter panel is not always
+             there, so a library pane carrying half a gutter on its right came out
+             with FOUR pixels between it and the window edge whenever the panel
+             was closed - measured on the glass, not reasoned about. So the rail
+             gives up its right margin, the library pane owns both of its own
+             gutters, and the filter panel gives up its left one. Every gap is 8
+             in every state, and no gap is the sum of two margins that can go out
+             of step.
+        -->
+
+        <!-- The rail. Its right edge was the chrome/art seam (§11.1); floating,
+             the gap is that seam and the rule becomes a card border on all four
+             sides. ClipToBounds because a selected row's fill runs the full width
+             of the pane and would square the corners off from the inside. -->
+        <Style Selector="Window.floating Border.railpane">
+            <Setter Property="Margin" Value="8,8,0,8"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusPane}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="ClipToBounds" Value="True"/>
+        </Style>
+
+        <!-- The library island — its header, its cut bar and its field of art.
+             Flush it has no border at all, because the rail's seam, the filter
+             panel's seam and the window's own edges already enclose it; floating
+             is the only layout in which it draws its own.
+
+             Its top margin is the RAIL's now rather than 8-below-a-command-bar,
+             which is the point of the whole revision: the command bar is inside
+             this Border, so the rail, this pane and the filter panel all begin on
+             the same scanline immediately under the caption. -->
+        <Style Selector="Window.floating Border.wallpane">
+            <Setter Property="Margin" Value="8,8,8,8"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusPane}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="ClipToBounds" Value="True"/>
+        </Style>
+
+        <!-- The merge queue, Stores and Appearance, which replace the library
+             pane entirely. Identical to the library pane's own margin, and that
+             is now true by composition rather than by two style blocks that
+             happen to agree: all four occupants of this column are one Border
+             each, running from under the caption to the bottom, level with the
+             rail beside them. -->
+        <Style Selector="Window.floating Border.screenpane">
+            <Setter Property="Margin" Value="8,8,8,8"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusPane}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="ClipToBounds" Value="True"/>
+        </Style>
+
+        <!-- The filter panel, mirroring the rail exactly (§11.1: it is a peer of
+             the rail, not a second column of it). Its top is the rail's top and
+             not the wall's, which is what makes the mirror hold. -->
+        <Style Selector="Window.floating Border.filterpane">
+            <Setter Property="Margin" Value="0,8,8,8"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusPane}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="ClipToBounds" Value="True"/>
+        </Style>
+
+        <!-- THE COMMAND BAR AND THE CUT BAR HAVE NO OVERRIDE HERE ANY MORE, and
+             the deletion is the change rather than a consequence of it. They used
+             to be chrome on the window ground: painted from the caption's ink,
+             margined 8px in to line their gutter up with the pane below, and
+             stripped of their bottom rule because there was a gap under them
+             rather than a pane. All three of those existed to make a strip on the
+             ground look like it belonged to the island it was floating above.
+
+             They are inside the island now, so there is nothing left to
+             reconcile: no fill, the pane's own 20px gutter, and a rule with art
+             directly under it. The layout stopped needing to say anything about
+             them, which is the strongest evidence available that they were in the
+             wrong place. -->
+
+        <!-- §9.1, and the one rule this layout retires rather than keeps.
+             ScrollBarEdgeInset steps every window-edge scrollbar 10px in, because
+             Windows answers the outer 8px with HTRIGHT before the client area
+             sees the pointer and a thumb inside that band is visible and
+             unreachable. §9.1 states the rule about WHICH EDGE a control is on,
+             never about which control it is — and floating moves every one of
+             these scrollbars off the window's edge and onto a pane's. Eight
+             pixels of gap plus the pane's own border is already outside the band,
+             so the inset would now be a second, visible 10px gutter inside an
+             8px-inset card: a scrollbar that does not touch anything. It goes.
+
+             Set here rather than by removing the global rule, because the global
+             rule is still correct for the flush layout and for any window that
+             ever puts a control at its own edge again. -->
+        <Style Selector="Window.floating ScrollBar:vertical">
+            <Setter Property="Margin" Value="0"/>
+        </Style>
+
+    </Window.Styles>
+
+    <!-- OffScreenMargin is the maximised overhang: Windows sizes a maximised
+         window past the work area by the resize border, and with the client
+         area extended that overhang is ours to absorb. Without this the title
+         bar and the first column of tiles are clipped the moment the window
+         is maximised. -->
+    <Panel Margin="{Binding $parent[Window].OffScreenMargin}">
+    <!-- ShellGround is declared HERE rather than on the row below, and moving it
+         up one level is what makes the two-tier arithmetic true on the glass.
+         It is the outer tier: the gaps between the panes are this token showing,
+         and so is the caption, which paints no fill of its own in the floating
+         layout. Every pane and the caption alike composite over it EXACTLY ONCE,
+         which is the half of the old step-not-ramp rule that was load-bearing —
+         a pane's own alpha is derived assuming this layer is under it
+         (WinnowTheme.MinPaneAlpha), so a second coat anywhere would put every
+         figure the Appearance screen prints out by the same factor.
+
+         It used to sit on the row below and paint NOTHING past slider zero. That
+         left the caption sitting on raw backdrop while the panes sat on nothing
+         at all, which was consistent — and it meant the gaps admitted the whole
+         desktop where the caption beside them admitted the chrome's share, which
+         is the seam §15.7 recorded as an honest cost and this repeals. -->
+    <Grid RowDefinitions="36,*" Background="{StaticResource ShellGround}">
+
+        <!-- ══ TITLE BAR ═══════════════════════════════════════════════════
+             The caption is the window's GROUND in the floating layout and the
+             RAIL in the flush one, and CaptionFill carries both answers (see
+             WinnowTheme). Floating it paints nothing at all past SOLID and the
+             ShellGround behind it shows through, so the caption and every gap
+             are not two surfaces that agree but one surface — which is the
+             strongest form of §9's "same ink AND same alpha" available. Flush
+             there is no ground to be part of and the caption meets the rail at a
+             corner, so §9's amendment stands as written: it is the rail.
+
+             Either way it is unlit in the sense that mattered — Well is the
+             deepest tone in the palette and Surface is a chrome tone no cover art
+             comes near — and either way the art is the first thing with light in
+             it. The whole strip is the drag handle; the buttons stop the drag
+             because Button marks the pointer press handled.
+
+             Background is Transparent-capable rather than null on purpose: an
+             alpha-zero brush is still hit-tested by Avalonia, and this strip has
+             to answer the pointer to be draggable. -->
+        <Border Grid.Row="0"
+                Name="TitleBar"
+                Background="{StaticResource CaptionFill}"
+                PointerPressed="OnTitleBarPressed">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+
+                <!-- The mark is the dragon, in TextDim, at 20px.
+                     (It was two 2:3 capsules standing in for one.)
+
+                     TEXTDIM RATHER THAN TEXT, AND THAT IS A CONTRAST ARGUMENT
+                     BEFORE IT IS A TASTE ONE. §16.5 made the caption the surface
+                     that sets the AA mark, and Colorimetry.WorstMetadataContrast
+                     walks exactly ONE ink across CaptionFill to find it —
+                     TextDim. A mark painted in TextDim therefore inherits the
+                     ceiling the Appearance screen already prints (30/31/31/31)
+                     and ThemeContrastTests already asserts, on the most open
+                     reading surface in the window, without adding a second ink
+                     nothing measures. Text would have been safe on contrast and
+                     wrong on hierarchy: brighter than the wordmark it stands in
+                     front of, so the lockup would read mark-then-name instead of
+                     as one object. Line is below the measured floor.
+
+                     FLARE IS NOT AVAILABLE AND THAT IS NOT A NEAR MISS. §2 gives
+                     it to unread updates and the bucket counting them and to
+                     nothing else; a brand mark is the definition of a generic
+                     accent, and spending Flare here would cost the badge its
+                     meaning for a logo nobody has to read.
+
+                     Stretch=Uniform fits the geometry's own bounds into the box,
+                     so the 512 viewBox never has to be restated here. 20px is
+                     measured, not picked: rendered in TextDim on both of the
+                     caption's grounds, 15 and 17 are washy, 19 resolves two
+                     horns and an eye, and 24 out-scales an 11px wordmark in a
+                     36px lip. IsHitTestVisible=False so the mark stays part of
+                     the drag strip rather than a hole in it. -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal"
+                            Spacing="9" Margin="12,0,0,0"
+                            VerticalAlignment="Center">
+                    <Path Data="{StaticResource DragonMark}"
+                          Fill="{StaticResource TextDim}"
+                          Stretch="Uniform"
+                          Width="20" Height="20"
+                          IsHitTestVisible="False"
+                          VerticalAlignment="Center"/>
+                    <TextBlock Classes="display-s"
+                               FontSize="11"
+                               LetterSpacing="1.5"
+                               Foreground="{StaticResource TextDim}"
+                               Text="WINNOW"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal">
+                    <Button Classes="wincontrol"
+                            Click="OnMinimisePressed"
+                            ToolTip.Tip="Minimise">
+                        <Path Data="M 0,5.5 L 10,5.5"/>
+                    </Button>
+                    <Button Name="MaximiseButton"
+                            Classes="wincontrol"
+                            Click="OnMaximisePressed"
+                            ToolTip.Tip="Maximise">
+                        <Panel Width="11" Height="11">
+                            <Path Name="MaximiseGlyph"
+                                  Data="M 0.5,0.5 L 9.5,0.5 L 9.5,9.5 L 0.5,9.5 Z"/>
+                            <Path Name="RestoreGlyph"
+                                  IsVisible="False"
+                                  Data="M 2.5,2.5 L 2.5,0.5 L 10.5,0.5 L 10.5,8.5 L 8.5,8.5 M 0.5,2.5 L 8.5,2.5 L 8.5,10.5 L 0.5,10.5 Z"/>
+                        </Panel>
+                    </Button>
+                    <Button Classes="wincontrol close"
+                            Click="OnClosePressed"
+                            ToolTip.Tip="Close">
+                        <Path Data="M 0.5,0.5 L 9.5,9.5 M 9.5,0.5 L 0.5,9.5"/>
+                    </Button>
+                </StackPanel>
+
+            </Grid>
+        </Border>
+
+    <!-- 220 rail · the library · the filter panel when it is open. The panel is
+         a COLUMN, not an overlay, and it is on the RIGHT: the Filters toggle
+         and Clear filters both live in the command bar's right cluster, and a
+         panel on the far left put every control a full window away from the
+         thing it operates.
+
+         What that costs is the adjacency the panel used to have with the rail —
+         they were one Surface with an internal rule, and the claim "the rail
+         owns the bucket axis, the panel owns every other one" was made by them
+         touching. That claim now gets made where it was always strongest: the
+         cut bar, where the bucket is the first chip and drops like any other
+         rule. See §11.1.
+
+         The element order below is reading order — rail, library, panel — so
+         §8's Tab walk goes left to right across the window and never doubles
+         back. The panel's Grid.Column says where it sits; its position in this
+         file says when it is reached.
+
+         Background is set HERE and not left to the Window, and that is the one
+         line the Mica change turned load-bearing. When the window gets Mica its
+         own Background goes Transparent so the desktop can reach the caption
+         strip; every pixel below the caption is then painted by this Grid
+         instead. It is the boundary tokens.axaml's WellMica note measures:
+         translucency in the 36px lip, an opaque field for everything that
+         carries reading matter or cover art. Nothing under a tile is
+         translucent, so §5.4's two-layer dormancy cross-fade composites over
+         exactly the ground it always did. -->
+    <!-- Auto rather than a literal 220, and the rail carries the width itself.
+         Flush, the two are the same number. Floating, the rail's 8px margins have
+         to come from somewhere, and taking them out of a fixed column would take
+         them out of the rail's own content - 220 of chrome becoming 204 of it, so
+         every label in the rail would move when the layout changed. An Auto column
+         sized by a 220-wide child plus its margins keeps the rail exactly 220 in
+         both, and it is the COLUMN that widens. -->
+    <!-- No Background here any more: the Grid above paints ShellGround across
+         both rows, and a second coat of it would composite twice under every
+         pane. See the note on that Grid. -->
+    <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto">
+
+        <!-- ══ RAIL (220px) ════════════════════════════════════════════════ -->
+        <!-- No BorderThickness here: it is a style, because the floating layout
+             has to change it and a LOCAL VALUE OUTRANKS A STYLE SETTER. Written
+             inline it wins silently and the pane comes out with no card edge -
+             which is exactly what happened the first time. -->
+        <Border Grid.Column="0"
+                Classes="railpane"
+                Width="{StaticResource RailWidth}"
+                Background="{StaticResource ChromeSurface}"
+                BorderBrush="{StaticResource Line}">
+            <!-- Interior: the rail's own right edge is a divider, not the
+                 window's, so this scrollbar keeps its flush position. -->
+            <ScrollViewer Classes="inner" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Margin="0,20">
+
+                    <!-- ── The Feed (M8) ─────────────────────────────────────
+                         The rail's first row, and the state the window opens
+                         in. It is a SCREEN row like SAME GAME? and STORES —
+                         "go somewhere else" rather than "show me less of this"
+                         — but it sits above the cuts rather than beside the
+                         other screens, because it is where the app starts and
+                         a landing state at the bottom of a rail is a landing
+                         state nobody finds.
+
+                         The rule underneath it is the whole argument for the
+                         placement: ALL GAMES and every bucket are one click
+                         away, on the other side of one line. Landing on a feed
+                         must never be a trap for somebody who came to browse.
+
+                         No count. The number that would go here is the shelf
+                         total, which changes daily and means nothing next to a
+                         row that is not a cut of anything — and a rail row that
+                         states a number the user cannot act on is the noise the
+                         REVIEW row hides its own zero to avoid. -->
+                    <Button Classes="bucket"
+                            Classes.selected="{Binding IsFeedVisible}"
+                            Command="{Binding ToggleFeedCommand}"
+                            ToolTip.Tip="Games worth going back to, and why">
+                        <Grid ColumnDefinitions="2,16,*,16">
+                            <Border Grid.Column="0"
+                                    Background="{StaticResource Volt}"
+                                    IsVisible="{Binding IsFeedVisible}"/>
+                            <TextBlock Grid.Column="2"
+                                       Classes="display-s"
+                                       Text="THE FEED"
+                                       VerticalAlignment="Center"/>
+                        </Grid>
+                    </Button>
+
+                    <Border Margin="16,12,16,12"
+                            BorderBrush="{StaticResource Line}"
+                            BorderThickness="0,1,0,0"/>
+
+                    <!-- ── All games ─────────────────────────────────────────
+                         The rail's first row and the app's launch state, which
+                         until now had no name: clearing a bucket filter meant
+                         clicking the row you were already on, which nothing
+                         says and nobody finds.
+
+                         This REPLACES the "606 TITLES" header that used to sit
+                         here. That header and this row are the same number, and
+                         §7 does not want it stated twice two rows apart — so the
+                         one that also does something keeps it. The count moves
+                         from Data 22 to the bucket rows' Data 11 on purpose: a
+                         rail row that looks like a bucket behaves like a bucket,
+                         and a 22px number would have read as a heading rather
+                         than as a thing to click. The library size is still
+                         legible at a glance from the top of the rail, and the
+                         search box's placeholder still spells it out.
+
+                         Same treatment as a bucket, from the same Button.bucket
+                         style: hover fill, SurfaceRaised selection, the 2px Volt
+                         edge bound to the row's own state (name scopes inside a
+                         DataTemplate are why the buckets do it that way — this
+                         row is not in a template, but it matches them so the two
+                         cannot drift). -->
+                    <Button Classes="bucket"
+                            Classes.selected="{Binding Library.AllGames.IsSelected}"
+                            Command="{Binding SelectBucketCommand}"
+                            CommandParameter="{Binding Library.AllGames}"
+                            ToolTip.Tip="Every title you own">
+                        <Grid ColumnDefinitions="2,16,*,Auto,16">
+                            <Border Grid.Column="0"
+                                    Background="{StaticResource Volt}"
+                                    IsVisible="{Binding Library.AllGames.IsSelected}"/>
+                            <TextBlock Grid.Column="2"
+                                       Classes="display-s"
+                                       Text="{Binding Library.AllGames.RailLabel}"
+                                       VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="3"
+                                       Classes="data"
+                                       FontSize="11"
+                                       Foreground="{StaticResource TextDim}"
+                                       Text="{Binding Library.AllGames.CountText}"
+                                       VerticalAlignment="Center"/>
+                        </Grid>
+                    </Button>
+
+                    <!-- The whole library, then the ways of cutting it. The rule
+                         is the grouping: everything below it is a subset of the
+                         row above it. -->
+                    <Border Margin="16,10,16,10"
+                            Height="1"
+                            Background="{StaticResource Line}"/>
+
+                    <ItemsControl ItemsSource="{Binding Library.Buckets}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="vm:BucketViewModel">
+                                <Button Classes="bucket"
+                                        Classes.selected="{Binding IsSelected}"
+                                        Classes.rule="{Binding IsRule}"
+                                        Opacity="{Binding RowOpacity}"
+                                        Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).SelectBucketCommand}"
+                                        CommandParameter="{Binding}">
+                                    <Grid ColumnDefinitions="2,16,Auto,*,Auto,16">
+                                        <!-- 2px Volt selection edge (§6). Driven
+                                             from the row's own state, not from a
+                                             `.selected Border#Edge` selector:
+                                             names inside a DataTemplate live in
+                                             their own scope, so such a selector
+                                             silently matches nothing and the
+                                             edge never appears. -->
+                                        <Border Grid.Column="0"
+                                                Background="{StaticResource Volt}"
+                                                IsVisible="{Binding IsSelected}"/>
+                                        <!-- The same edge in chrome grey: this
+                                             bucket is a rule the open list
+                                             carries, not the row you are on. -->
+                                        <Border Grid.Column="0"
+                                                Background="{StaticResource TextDim}"
+                                                IsVisible="{Binding IsRule}"/>
+                                        <!-- Flare pip: unread-carrying bucket ONLY. -->
+                                        <Border Grid.Column="2"
+                                                Width="7" Height="7" CornerRadius="4"
+                                                Margin="0,0,8,0"
+                                                Background="{StaticResource Flare}"
+                                                BoxShadow="{DynamicResource PipGlow}"
+                                                VerticalAlignment="Center"
+                                                IsVisible="{Binding ShowsFlarePip}"/>
+                                        <TextBlock Grid.Column="3"
+                                                   Classes="display-s"
+                                                   Text="{Binding RailLabel}"
+                                                   VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="4"
+                                                   Classes="data"
+                                                   FontSize="11"
+                                                   Foreground="{StaticResource TextDim}"
+                                                   Text="{Binding CountText}"
+                                                   VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <!-- ── REVIEW ────────────────────────────────────────
+                         The merge confirm queue (§6). Labelled with the
+                         question it asks rather than with "merge": the user
+                         reasons about games, not about records. The row is
+                         permanent so the rail never reflows, but the COUNT
+                         appears only when something is pending — a standing
+                         zero here would be noise. -->
+                    <Border Margin="16,22,16,8"
+                            Padding="0,14,0,0"
+                            BorderBrush="{StaticResource Line}"
+                            BorderThickness="0,1,0,0">
+                        <TextBlock Classes="label"
+                                   FontSize="10"
+                                   LetterSpacing="1.4"
+                                   Text="REVIEW"/>
+                    </Border>
+                    <Button Classes="bucket"
+                            Classes.selected="{Binding IsMergeQueueVisible}"
+                            Opacity="{Binding MergeQueue.RowOpacity}"
+                            Command="{Binding ToggleMergeQueueCommand}"
+                            ToolTip.Tip="Pairs that might be the same game">
+                        <Grid ColumnDefinitions="2,16,*,Auto,16">
+                            <Border Grid.Column="0"
+                                    Background="{StaticResource Volt}"
+                                    IsVisible="{Binding IsMergeQueueVisible}"/>
+                            <TextBlock Grid.Column="2"
+                                       Classes="display-s"
+                                       Text="SAME GAME?"
+                                       VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="3"
+                                       Classes="data"
+                                       FontSize="11"
+                                       Foreground="{StaticResource TextDim}"
+                                       Text="{Binding MergeQueue.PendingCountText}"
+                                       IsVisible="{Binding MergeQueue.HasPending}"
+                                       VerticalAlignment="Center"/>
+                        </Grid>
+                    </Button>
+
+                    <!-- ── SETTINGS ──────────────────────────────────────
+                         The app's own preferences, of which STORES (M4.6) is
+                         the first row. Placed here, between REVIEW and LISTS,
+                         because the rail has two kinds of row and this is the
+                         first kind: REVIEW and SETTINGS are SCREENS, while the
+                         buckets, the lists and the live lists are all CUTS of
+                         the library. Keeping the two screen rows adjacent means
+                         the boundary between "go somewhere else" and "show me
+                         less of this" is one rule on the rail rather than a
+                         thing you learn by clicking.
+
+                         It also has to sit above LISTS rather than below it,
+                         for a mechanical reason: the list sections grow as the
+                         user makes lists, so anything under them moves down the
+                         rail over the life of the install. A fixed section
+                         belongs above the section that grows — and this one is
+                         itself expected to grow, downward, as preferences that
+                         are too big for the display-preferences popover land
+                         here beside STORES.
+
+                         SETTINGS rather than SOURCES resolves design-system.md
+                         §13 gap 3, which recorded SOURCES/STORES as "mildly
+                         redundant" — a one-row section whose heading restated
+                         its row. A heading that names a CATEGORY the row is one
+                         of stops being a restatement the moment there is a
+                         second row, and reads as an ordinary section heading
+                         even while there is only one.
+
+                         No count on the rows here. A settings row would only
+                         ever say a constant, and a permanent constant beside a
+                         permanent row is exactly the noise the REVIEW row's
+                         count is hidden to avoid. -->
+                    <Border Margin="16,22,16,8"
+                            Padding="0,14,0,0"
+                            BorderBrush="{StaticResource Line}"
+                            BorderThickness="0,1,0,0">
+                        <TextBlock Classes="label"
+                                   FontSize="10"
+                                   LetterSpacing="1.4"
+                                   Text="SETTINGS"/>
+                    </Border>
+                    <Button Classes="bucket"
+                            Classes.selected="{Binding IsStoresVisible}"
+                            Command="{Binding ToggleStoresCommand}"
+                            ToolTip.Tip="What Winnow reads your library from, and what each source can't know">
+                        <Grid ColumnDefinitions="2,16,*,16">
+                            <!-- The 2px Volt selection edge, bound to this row's
+                                 own state. Not in a DataTemplate, so a style
+                                 selector could have reached it — it is written
+                                 inline anyway to match the REVIEW row it sits
+                                 under, since two rail rows drawing the same edge
+                                 two different ways is how one of them quietly
+                                 stops drawing it. -->
+                            <Border Grid.Column="0"
+                                    Background="{StaticResource Volt}"
+                                    IsVisible="{Binding IsStoresVisible}"/>
+                            <TextBlock Grid.Column="2"
+                                       Classes="display-s"
+                                       Text="STORES"
+                                       VerticalAlignment="Center"/>
+                        </Grid>
+                    </Button>
+                    <Button Classes="bucket"
+                            Classes.selected="{Binding IsAppearanceVisible}"
+                            Command="{Binding ToggleAppearanceCommand}"
+                            ToolTip.Tip="Theme, and whether the window lets the desktop through">
+                        <Grid ColumnDefinitions="2,16,*,16">
+                            <Border Grid.Column="0"
+                                    Background="{StaticResource Volt}"
+                                    IsVisible="{Binding IsAppearanceVisible}"/>
+                            <TextBlock Grid.Column="2"
+                                       Classes="display-s"
+                                       Text="APPEARANCE"
+                                       VerticalAlignment="Center"/>
+                        </Grid>
+                    </Button>
+
+                    <!-- ══ LISTS / LIVE LISTS ═══════════════════════════════
+                         Two sections, and the heading is the whole of how the
+                         two kinds are told apart. A list holds the games you put
+                         in it; a live list holds the rules and finds them again
+                         every time the library changes — which matters enough
+                         that it has to be legible before the row is clicked.
+
+                         Not a coloured dot beside the count, which was the
+                         obvious move and the wrong one: the rail already has
+                         exactly one dot, the Flare pip on "Patched since", and a
+                         dot's meaning survives precisely as long as there is
+                         only one of them (§5.2). A heading says it in words,
+                         scales to any number of lists, and is legible to a
+                         reader who cannot resolve a 7px mark at all (§8). -->
+                    <Border Margin="16,22,16,8"
+                            Padding="0,14,0,0"
+                            BorderBrush="{StaticResource Line}"
+                            BorderThickness="0,1,0,0"
+                            IsVisible="{Binding Library.Lists.ShowListsHeader}">
+                        <TextBlock Classes="label"
+                                   FontSize="10"
+                                   LetterSpacing="1.4"
+                                   Text="LISTS"/>
+                    </Border>
+
+                    <ItemsControl ItemsSource="{Binding Library.Lists.Lists}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="lists:GameListViewModel">
+                                <Button Classes="listrow"
+                                        Classes.selected="{Binding IsSelected}"
+                                        Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).SelectListCommand}"
+                                        CommandParameter="{Binding}"
+                                        ToolTip.Tip="{Binding Name}">
+                                    <Grid ColumnDefinitions="2,16,*,8,Auto,16">
+                                        <Border Grid.Column="0"
+                                                Background="{StaticResource Volt}"
+                                                IsVisible="{Binding IsSelected}"/>
+                                        <TextBlock Grid.Column="2"
+                                                   Classes="body"
+                                                   Text="{Binding Name}"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="4"
+                                                   Classes="data"
+                                                   FontSize="11"
+                                                   Foreground="{StaticResource TextDim}"
+                                                   Text="{Binding CountText}"
+                                                   VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <!-- The empty state is a direction, not a mood (§7): both
+                         routes in, in the order they are discoverable. -->
+                    <TextBlock Margin="18,4,16,0"
+                               Classes="body"
+                               FontSize="12"
+                               LineHeight="17"
+                               TextWrapping="Wrap"
+                               Foreground="{StaticResource TextDim}"
+                               IsVisible="{Binding Library.Lists.HasNoLists}"
+                               Text="{Binding Library.Lists.EmptyMessageText}"/>
+
+                    <Border Margin="16,20,16,8"
+                            Padding="0,14,0,0"
+                            BorderBrush="{StaticResource Line}"
+                            BorderThickness="0,1,0,0"
+                            IsVisible="{Binding Library.Lists.HasLiveLists}">
+                        <TextBlock Classes="label"
+                                   FontSize="10"
+                                   LetterSpacing="1.4"
+                                   Text="LIVE LISTS"/>
+                    </Border>
+
+                    <ItemsControl ItemsSource="{Binding Library.Lists.LiveLists}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="lists:GameListViewModel">
+                                <Button Classes="listrow"
+                                        Classes.selected="{Binding IsSelected}"
+                                        Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).SelectListCommand}"
+                                        CommandParameter="{Binding}"
+                                        ToolTip.Tip="{Binding KindNote}">
+                                    <Grid ColumnDefinitions="2,16,*,8,Auto,16">
+                                        <Border Grid.Column="0"
+                                                Background="{StaticResource Volt}"
+                                                IsVisible="{Binding IsSelected}"/>
+                                        <TextBlock Grid.Column="2"
+                                                   Classes="body"
+                                                   Text="{Binding Name}"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="4"
+                                                   Classes="data"
+                                                   FontSize="11"
+                                                   Foreground="{StaticResource TextDim}"
+                                                   Text="{Binding CountText}"
+                                                   VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                </StackPanel>
+            </ScrollViewer>
+        </Border>
+
+        <!-- ══ MAIN ════════════════════════════════════════════════════════
+             FOUR PEERS, one visible at a time: the library, the merge confirm
+             queue the rail's REVIEW row opens, and the Stores and Appearance
+             screens its SETTINGS rows open. Every one of them is a single Border
+             with a single IsVisible, and they all start at the same top edge.
+
+             THE COMMAND BAR IS INSIDE THE LIBRARY'S BORDER, and that is the
+             whole of this arrangement. Search, layout, density, display, sort
+             and Filters all act on the library; they are that pane's header, not
+             the window's, and they were reading as window chrome because they
+             sat flush under the caption in a strip of the caption's own ink.
+
+             It also retires a rule. The queue, Stores and Appearance replaced
+             the library "rather than sitting under a command bar whose search
+             and sort mean nothing to them" — a claim four IsVisible bindings
+             had to keep agreeing on. With the bar inside the pane it is a fact
+             of composition: there is no arrangement of these four Borders in
+             which a settings screen can appear under the library's controls,
+             because the controls are part of the library. -->
+        <Panel Grid.Column="1">
+
+        <!-- ── The Feed (M8) ──────────────────────────────────────────────
+             First in the file because it is first on screen: the window opens
+             on it. Otherwise an occupant of this column on exactly the same
+             terms as the queue, Stores and Appearance — one Border, one
+             IsVisible, no command bar, since search, density and sort are the
+             library's controls and mean nothing to a shelf.
+
+             Its right edge is the window's (the filter panel only exists on the
+             library screen), so its scrollbar takes §9.1's edge inset from the
+             window's own ScrollBar:vertical style. It is the screen's only
+             scroller now that the sections are grids rather than rails, and it
+             is vertical: nothing on the Feed scrolls sideways. -->
+        <Border Classes="screenpane"
+                BorderBrush="{StaticResource Line}"
+                IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsFeedVisible}">
+            <views:FeedView Name="FeedPanel"
+                            DataContext="{Binding Feed}"/>
+        </Border>
+
+        <!-- ══ THE LIBRARY ISLAND ═════════════════════════════════════════
+             Its own header, its own cut bar, its own field of art. The Border
+             paints the island's ground ONCE and the two bars inside it paint
+             nothing, which is not tidiness: PaneGround carries alpha, and a
+             strip repainting the same ink at a second alpha over the first is
+             the double composite that ShellGround is a step and not a ramp to
+             avoid. -->
+        <Border Classes="wallpane"
+                Background="{StaticResource WallGround}"
+                BorderBrush="{StaticResource Line}"
+                IsVisible="{Binding IsLibraryVisible}">
+        <Grid RowDefinitions="48,Auto,*">
+
+            <!-- ── Command bar ──────────────────────────────────────────────
+                 No fill of its own — see the island's note above. What separates
+                 it from the art below is its 1px Line rule, which is exactly
+                 what separated it flush, where it was already painted in the art
+                 field's own ink. At SOLID this move costs zero pixels. -->
+            <Border Grid.Row="0"
+                    Classes="cmdbar"
+                    Background="Transparent"
+                    BorderBrush="{StaticResource Line}">
+                  <!-- Search takes the slack; everything else is Auto. A Grid
+                       satisfies its Auto columns before its star one, so the box is
+                       the only thing that gives way when the filter panel takes 276px
+                       out of the row — and the Filters toggle, the one control that
+                       must never be unreachable because it is the way back, sits in
+                       the Auto group on the right beside the sort it pairs with. -->
+                  <Grid ColumnDefinitions="*,Auto" Margin="20,0" VerticalAlignment="Center">
+                    <!-- Three columns, and the third is the point. A capped star
+                         for the search box, Auto for the controls, then a star
+                         spacer that takes everything left over. Without the
+                         spacer the slack lands in the search column, which both
+                         centres the box inside it and pushes layout/density/
+                         display across the bar — the cluster ends up in the
+                         middle rather than on the left. The cap is on the COLUMN
+                         rather than the box because a stretched child with a
+                         MaxWidth centres in its column; a capped column just
+                         stops growing. Search is also the only flexible thing on
+                         the bar, so at 1280 with the filter panel open it is
+                         what gives way, instead of the Filters button losing its
+                         label. -->
+                    <Grid Grid.Column="0" Margin="0,0,12,0">
+                      <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" MinWidth="120" MaxWidth="260"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                      </Grid.ColumnDefinitions>
+                    <TextBox Name="SearchBox"
+                             Grid.Column="0"
+                             Classes="search"
+                             HorizontalAlignment="Stretch"
+                             Text="{Binding Library.SearchText, Mode=TwoWay}"
+                             Watermark="{Binding Library.SearchPlaceholder}"/>
+
+                    <!-- Grid / list segmented toggle. -->
+
+                      <!-- search · layout · density · display. One stack rather than
+                           a column each: none of them competes for width, and the
+                           transient selection controls can join the end without
+                           moving the fixed ones. -->
+                      <StackPanel Grid.Column="1" Orientation="Horizontal"
+                                  Spacing="10" Margin="10,0,0,0" VerticalAlignment="Center">
+                    <!-- The search box's twin: same height, same border, on the
+                         same bar. It takes the same field fill, or it would be
+                         the last solid patch left on the command bar. -->
+                    <Border
+                            BorderBrush="{StaticResource Line}" BorderThickness="1"
+                            CornerRadius="{StaticResource RadiusControl}"
+                            Background="{StaticResource ChromeFieldOnGround}"
+                            ClipToBounds="True" Height="30">
+                        <StackPanel Orientation="Horizontal">
+                            <Button Classes="seg"
+                                    Classes.on="{Binding Library.IsGridView}"
+                                    Command="{Binding Library.ShowGridViewCommand}"
+                                    ToolTip.Tip="Grid">
+                                <UniformGrid Rows="2" Columns="2" Width="13" Height="13">
+                                    <Rectangle Width="5" Height="5" Margin="0,0,1,1"/>
+                                    <Rectangle Width="5" Height="5" Margin="1,0,0,1"/>
+                                    <Rectangle Width="5" Height="5" Margin="0,1,1,0"/>
+                                    <Rectangle Width="5" Height="5" Margin="1,1,0,0"/>
+                                </UniformGrid>
+                            </Button>
+                            <Button Classes="seg"
+                                    Classes.on="{Binding !Library.IsGridView}"
+                                    Command="{Binding Library.ShowListViewCommand}"
+                                    ToolTip.Tip="List">
+                                <StackPanel Width="13" Height="13" Spacing="3"
+                                            VerticalAlignment="Center">
+                                    <Rectangle Height="2" Width="13"/>
+                                    <Rectangle Height="2" Width="13"/>
+                                    <Rectangle Height="2" Width="13"/>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </Border>
+
+                    <TextBlock Classes="label" FontSize="10" Text="DENSITY"
+                               VerticalAlignment="Center"/>
+                    <Slider Name="DensitySlider"
+                            Classes="density"
+                            Minimum="108" Maximum="200"
+                            Value="{Binding Library.TileWidth, Mode=TwoWay}"
+                            VerticalAlignment="Center"
+                            ToolTip.Tip="Tile size"/>
+
+                    <!-- The rule is the seam between two kinds of control.
+                         Everything left of it is per-session (§4 remembers the
+                         view mode, the order and the density for as long as the
+                         process lives); everything right of it is written to
+                         disk and true on the next launch. -->
+                    <Border Width="1" Height="18" Margin="2,0"
+                            Background="{StaticResource Line}"
+                            VerticalAlignment="Center"/>
+
+                    <!-- ── Display preferences (§8) ────────────────────────
+                         §8's "settings toggle to disable the dormancy ramp
+                         entirely" lives behind this rather than beside the
+                         density slider, because it is not the same kind of
+                         thing: density is a knob for the next five minutes,
+                         this is a preference that persists. It also needs a
+                         sentence of explanation, and there is nowhere in a row
+                         of icons to put one. -->
+                    <Button Name="DisplayButton" Classes="ctl"
+                            ToolTip.Tip="Display preferences">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Classes="body" FontSize="12"
+                                       Foreground="{StaticResource TextDim}"
+                                       Text="Display"/>
+                            <Path Data="M 0,0 L 8,0 L 4,5 Z"
+                                  Fill="{StaticResource TextDim}"
+                                  VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <Button.Flyout>
+                            <Flyout Placement="BottomEdgeAlignedRight"
+                                    FlyoutPresenterClasses="prefs"
+                                    Opened="OnDisplayFlyoutOpened">
+                                <StackPanel Width="264" Spacing="8">
+                                    <CheckBox Name="DimCoversToggle"
+                                              Classes="pref"
+                                              Content="Dim dormant covers"
+                                              IsChecked="{Binding Display.DimDormantCovers, Mode=TwoWay}"/>
+                                    <TextBlock Classes="body" FontSize="12"
+                                               Margin="26,0,0,0"
+                                               LineHeight="17"
+                                               TextWrapping="Wrap"
+                                               Foreground="{StaticResource TextDim}"
+                                               Text="Covers fade the longer a game sits unplayed. Off shows every cover at full colour — the unread dots and the rail counts carry the same signal."/>
+
+                                    <Border Height="1" Margin="0,4"
+                                            Background="{StaticResource Line}"/>
+
+                                    <CheckBox Name="NonGameToggle"
+                                              Classes="pref"
+                                              Content="Show non-game entries"
+                                              IsChecked="{Binding Display.ShowNonGameEntries, Mode=TwoWay}"/>
+                                    <TextBlock Classes="body" FontSize="12"
+                                               Margin="26,0,0,0"
+                                               LineHeight="17"
+                                               TextWrapping="Wrap"
+                                               Foreground="{StaticResource TextDim}"
+                                               Text="Steam also carries tools, dedicated servers and soundtracks. They're hidden by default. Anything Steam hasn't told us the type of stays visible either way."/>
+
+                                    <Border Height="1" Margin="0,4"
+                                            Background="{StaticResource Line}"/>
+
+                                    <!-- §5.2's journal prompt. OFF, and it stays off
+                                         until somebody opens this popover and turns
+                                         it on — §9 pitfall 7 names shipping it on by
+                                         default as an uninstall trigger, and it is
+                                         right. The copy says exactly what appears and
+                                         exactly how to be rid of it, because the one
+                                         thing a user needs to know before enabling an
+                                         after-the-fact prompt is how little it will
+                                         cost them to ignore it. -->
+                                    <CheckBox Name="JournalToggle"
+                                              Classes="pref"
+                                              Content="Ask for a note after playing"
+                                              IsChecked="{Binding Display.PromptAfterPlay, Mode=TwoWay}"/>
+                                    <TextBlock Classes="body" FontSize="12"
+                                               Margin="26,0,0,0"
+                                               LineHeight="17"
+                                               TextWrapping="Wrap"
+                                               Foreground="{StaticResource TextDim}"
+                                               Text="Off by default. When on, a small card appears in the corner of this window after a game ends, offering a note and a rating. It never opens a window over your game, never takes focus, and goes away on its own if you ignore it."/>
+                                </StackPanel>
+                            </Flyout>
+                        </Button.Flyout>
+                    </Button>
+
+                    <!-- Multi-select readout: §6 asks the list for multi-select,
+                         so the count says what is picked. It stays after the
+                         Add-to-list BUTTON left the bar (see the library pane's
+                         context menu): the count is the only thing on screen
+                         that says a selection exists at all once the control
+                         acting on it has moved onto the selection itself. -->
+                    <TextBlock Classes="data" FontSize="11"
+                               Foreground="{StaticResource Volt}"
+                               VerticalAlignment="Center"
+                               IsVisible="{Binding Library.HasMultiSelection}"
+                               Text="{Binding Library.SelectedCountText}"/>
+                      </StackPanel>
+                    </Grid>
+
+                    <!-- sort · filters. Filters is last because it is the rightmost
+                         thing on the bar and the panel it opens is now the rightmost
+                         thing in the window. -->
+                    <StackPanel Grid.Column="1" Orientation="Horizontal"
+                                Spacing="10" VerticalAlignment="Center">
+                    <!-- Sort. The button face is the order in force; the menu
+                         is the same state the list-view column headers write. -->
+                    <Button Name="SortButton"
+                            Classes="ctl" ToolTip.Tip="Sort order">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Classes="body" FontSize="12"
+                                       Foreground="{StaticResource TextDim}"
+                                       Text="{Binding Library.SortLabel}"/>
+                            <Path Data="M 0,0 L 8,0 L 4,5 Z"
+                                  Fill="{StaticResource TextDim}"
+                                  VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <Button.Flyout>
+                            <Flyout Placement="BottomEdgeAlignedLeft"
+                                    FlyoutPresenterClasses="sortmenu">
+                                <ItemsControl ItemsSource="{Binding Library.SortOptions}"
+                                              MinWidth="176">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="vm:SortOptionViewModel">
+                                            <Button Classes="sortitem" Click="OnSortItemClick">
+                                                <Grid ColumnDefinitions="14,*">
+                                                    <!-- Volt marks the active order —
+                                                         selection, which is exactly
+                                                         what Volt is for (§2). -->
+                                                    <Border Grid.Column="0"
+                                                            Width="6" Height="6" CornerRadius="3"
+                                                            HorizontalAlignment="Left"
+                                                            VerticalAlignment="Center"
+                                                            Background="{StaticResource Volt}"
+                                                            IsVisible="{Binding IsSelected}"/>
+                                                    <TextBlock Grid.Column="1" Classes="body"
+                                                               Text="{Binding Label}"
+                                                               VerticalAlignment="Center"/>
+                                                </Grid>
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </Flyout>
+                        </Button.Flyout>
+                    </Button>
+
+                    <!-- ── Filters ──────────────────────────────────────────
+                         The panel opens BESIDE THE RAIL rather than over the
+                         grid: the counts next to each option are only worth
+                         having if you can watch them move as you tick things,
+                         which means the panel and the result have to be on
+                         screen together. The badge is how many rules are in
+                         force, so a closed panel is never a silent one. -->
+                    <Button Name="FiltersButton"
+                            Classes="ctl"
+                            Classes.on="{Binding Library.Filters.IsOpen}"
+                            Command="{Binding Library.Filters.ToggleCommand}"
+                            ToolTip.Tip="Filter by genre, tag, store and more">
+                        <StackPanel Orientation="Horizontal" Spacing="7">
+                            <!-- A funnel, drawn rather than lettered: it is the
+                                 one control here that has a universally read
+                                 glyph, and the row is already three words wide. -->
+                            <Path Data="M 0,0 L 11,0 L 6.7,5 L 6.7,10 L 4.3,8.4 L 4.3,5 Z"
+                                  Fill="{StaticResource TextDim}"
+                                  VerticalAlignment="Center"/>
+                            <TextBlock Classes="body" FontSize="12"
+                                       Foreground="{StaticResource TextDim}"
+                                       Text="Filters"/>
+                            <Border Padding="5,0"
+                                    MinWidth="17"
+                                    Height="16"
+                                    CornerRadius="8"
+                                    Background="{StaticResource Volt}"
+                                    VerticalAlignment="Center"
+                                    IsVisible="{Binding Library.Filters.HasSelection}">
+                                <TextBlock Classes="data-s"
+                                           Foreground="{StaticResource VoltInk}"
+                                           TextAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           Text="{Binding Library.Filters.ActiveCountText}"/>
+                            </Border>
+                        </StackPanel>
+                    </Button>
+                    </StackPanel>
+                  </Grid>
+            </Border>
+
+            <!-- ── Cut bar / prompt ─────────────────────────────────────
+                 Auto-height so it takes no room at all when the grid is showing
+                 the whole library.
+
+                 UNDER the command bar and above the art, which is where §11.3
+                 has always put it and is more clearly right inside the pane than
+                 it was outside: the command bar holds the controls, the cut bar
+                 states what those controls did, and the wall is the result. Read
+                 downwards that is cause, claim, consequence — and "926 → 41"
+                 lands against the tiles it is counting rather than a strip
+                 further away from them. Above the command bar it would have been
+                 a caption for a header. -->
+            <views:ActionBarView Grid.Row="1" DataContext="{Binding Library}"/>
+
+            <!-- ── Content ────────────────────────────────────────────────
+                 The cover wall's FIELD may admit the desktop, when the user
+                 asks for it on the Appearance screen; its TILES may not, at any
+                 setting. Covers therefore sit solid on an open field and the
+                 desktop shows in the gutters between them, which is one
+                 continuous window rather than a solid slab bolted to
+                 translucent chrome.
+
+                 The half of the old always-opaque rule that was construction
+                 rather than taste is unchanged and lives in the tile: §5.4's
+                 dormancy cross-fade is two layers that are only opaque
+                 TOGETHER, so each tile paints TileGround under its art stack
+                 and the ramp composites over exactly the ground it was
+                 calibrated against. See tokens.axaml's grounds note. -->
+            <Panel Grid.Row="2">
+
+                <!-- ── The selection's own menu (§6, §12.3) ──────────────────
+                     §6 asks the list view for "sortable columns, multi-select,
+                     bulk list assignment", and Add to list used to be a command
+                     bar button. The grid grew a card back that carries it per
+                     tile, which retires the button for the GRID — but the list
+                     view has no flip, and it is the only view that can hold
+                     twenty rows at once. Deleting the button alone would have
+                     deleted bulk assignment.
+
+                     So the control moved onto the selection rather than away
+                     from it. ONE menu for both views, attached here rather than
+                     to the ListBox and the wall separately, because §12.3's rule
+                     is that Add to list is one control reading whichever
+                     selection is in force — two menus would be two of it.
+                     ContextRequested bubbles, so a right-click on a row or on a
+                     tile reaches this panel either way.
+
+                     Both views arm it before it opens, and neither needed a
+                     change to do so. Avalonia's SelectingItemsControl treats a
+                     right press as "select unless already selected", so
+                     right-clicking one of twenty marked rows keeps all twenty
+                     (measured against Avalonia 11.3.20's UpdateSelection, not
+                     assumed); and OnTilePressed already routes a non-left press
+                     to SelectTile without flipping the card. The label and the
+                     picked set are still derived in the view model (§12.3), so
+                     the keyboard route arms it identically.
+
+                     It opens only when something is picked — the same condition
+                     the button carried as IsVisible — which is what
+                     OnLibraryContextMenuOpening enforces. A menu whose only item
+                     is greyed out is a worse answer than no menu.
+
+                     §12.3 says there are no flyouts in this app because a popup
+                     has no adorner layer and §8's global focus ring does not
+                     render inside one. That rule is not broken here, it is paid:
+                     the ring is DRAWN rather than adorned (§10.7) — see the
+                     ContextMenu.actions styles at the top of this file, where
+                     :selected carries the pointer highlight and the keyboard one
+                     at once. -->
+                <Panel.ContextMenu>
+                    <ContextMenu Classes="actions"
+                                 Opening="OnLibraryContextMenuOpening">
+                        <MenuItem Header="{Binding Library.AddToListLabel}"
+                                  Command="{Binding Library.BeginAddToListCommand}"/>
+                    </ContextMenu>
+                </Panel.ContextMenu>
+
+                <!-- Cover wall. -->
+                <ScrollViewer Name="GridScroll"
+                              IsVisible="{Binding Library.ShowGrid}"
+                              HorizontalScrollBarVisibility="Disabled"
+                              VerticalScrollBarVisibility="Auto"
+                              Padding="0">
+                    <!-- The wall owns its own geometry: it divides the width it
+                         is measured with, so the column count it realizes
+                         against and the column count it arranges with are the
+                         same number, from the same expression, every pass. That
+                         is the whole reason it exists instead of ItemsRepeater
+                         + UniformGridLayout — see CoverWall's remarks. -->
+                    <!-- 24 on the right, not 20: Fluent's scrollbar overlays the
+                         content rather than reserving a column, so the gutter has
+                         to clear the bar AND the §9.1 resize inset (12 + 10).
+                         At 20 the bar clipped two pixels off the last tile and
+                         off the list's idle column. -->
+                    <views:CoverWall Name="TileWall"
+                                     Margin="20,20,24,20"
+                                     Spacing="16"
+                                     CellAspect="1.5"
+                                     MinCellWidth="{Binding Library.TileWidth}"
+                                     ItemsSource="{Binding Library.VisibleTiles}">
+                        <!-- No PointerPressed here any more. The wall's press
+                             handler is registered from code-behind on the TUNNEL
+                             route, because it has to see a press BEFORE the
+                             buttons on a turned card's back face do — see
+                             MainWindow.OnTilePressed. XAML event attributes are
+                             bubble-only, so this could not be expressed here. -->
+                        <views:CoverWall.ItemTemplate>
+                            <DataTemplate DataType="vm:GameTileViewModel">
+                                <views:GameTileView/>
+                            </DataTemplate>
+                        </views:CoverWall.ItemTemplate>
+                    </views:CoverWall>
+                </ScrollViewer>
+
+                <!-- ── List view (§6) ──────────────────────────────────────
+                     The power-user view: same data, no art dependency, so it
+                     stays readable before a single cover has downloaded.
+                     Virtualized (ListBox's VirtualizingStackPanel) because 616
+                     rows is the normal case, not the stress case.
+
+                     PaneGround, not the wall's: this view is text sitting
+                     directly on the field, and the field is allowed to open up
+                     only because the grid's tiles are opaque and nothing reads
+                     on it. A row of titles and playtimes over a wallpaper is
+                     the §14.3 arithmetic all over again. -->
+                <Grid RowDefinitions="30,*" IsVisible="{Binding Library.ShowList}"
+                      Background="{StaticResource PaneGround}">
+
+                    <!-- Column headers. Clicking one writes the shared sort
+                         state; clicking the active one flips its direction. -->
+                    <!-- ChromeSurface: this strip is chrome above the rows the
+                         way the command bar is chrome above the wall, and it is
+                         Surface exactly at slider zero, so nothing moves at
+                         SOLID. -->
+                    <Border Grid.Row="0"
+                            Background="{StaticResource ChromeSurface}"
+                            BorderBrush="{StaticResource Line}"
+                            BorderThickness="0,0,0,1">
+                        <Grid ColumnDefinitions="2,18,*,84,104,92,24">
+                            <Button Grid.Column="2" Classes="colhead"
+                                    Command="{Binding Library.SortByTitleCommand}">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <TextBlock Classes="label" FontSize="10" Text="TITLE"/>
+                                    <Path Data="M 0,5 L 8,5 L 4,0 Z" Fill="{StaticResource Volt}"
+                                          VerticalAlignment="Center"
+                                          IsVisible="{Binding Library.ShowTitleSortUp}"/>
+                                    <Path Data="M 0,0 L 8,0 L 4,5 Z" Fill="{StaticResource Volt}"
+                                          VerticalAlignment="Center"
+                                          IsVisible="{Binding Library.ShowTitleSortDown}"/>
+                                </StackPanel>
+                            </Button>
+
+                            <TextBlock Grid.Column="3" Classes="label" FontSize="10"
+                                       Text="STORE" VerticalAlignment="Center"/>
+
+                            <Button Grid.Column="4" Classes="colhead"
+                                    HorizontalContentAlignment="Right"
+                                    Command="{Binding Library.SortByPlaytimeCommand}">
+                                <StackPanel Orientation="Horizontal" Spacing="6"
+                                            HorizontalAlignment="Right">
+                                    <Path Data="M 0,5 L 8,5 L 4,0 Z" Fill="{StaticResource Volt}"
+                                          VerticalAlignment="Center"
+                                          IsVisible="{Binding Library.ShowPlaytimeSortUp}"/>
+                                    <Path Data="M 0,0 L 8,0 L 4,5 Z" Fill="{StaticResource Volt}"
+                                          VerticalAlignment="Center"
+                                          IsVisible="{Binding Library.ShowPlaytimeSortDown}"/>
+                                    <TextBlock Classes="label" FontSize="10" Text="PLAYTIME"/>
+                                </StackPanel>
+                            </Button>
+
+                            <Button Grid.Column="5" Classes="colhead"
+                                    HorizontalContentAlignment="Right"
+                                    Command="{Binding Library.SortByIdleCommand}"
+                                    ToolTip.Tip="Time since you last played">
+                                <StackPanel Orientation="Horizontal" Spacing="6"
+                                            HorizontalAlignment="Right">
+                                    <Path Data="M 0,5 L 8,5 L 4,0 Z" Fill="{StaticResource Volt}"
+                                          VerticalAlignment="Center"
+                                          IsVisible="{Binding Library.ShowIdleSortUp}"/>
+                                    <Path Data="M 0,0 L 8,0 L 4,5 Z" Fill="{StaticResource Volt}"
+                                          VerticalAlignment="Center"
+                                          IsVisible="{Binding Library.ShowIdleSortDown}"/>
+                                    <TextBlock Classes="label" FontSize="10" Text="IDLE"/>
+                                </StackPanel>
+                            </Button>
+                        </Grid>
+                    </Border>
+
+                    <ListBox Grid.Row="1"
+                             Name="ListRows"
+                             Classes="rows"
+                             SelectionMode="Multiple"
+                             ItemsSource="{Binding Library.VisibleTiles}"
+                             SelectedItem="{Binding Library.SelectedTile, Mode=TwoWay}"
+                             SelectionChanged="OnListSelectionChanged"
+                             DoubleTapped="OnListDoubleTapped">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate DataType="vm:GameTileViewModel">
+                                <Border BorderBrush="{StaticResource Line}"
+                                        BorderThickness="0,0,0,1"
+                                        Height="44">
+                                    <Grid ColumnDefinitions="2,18,*,84,104,92,24">
+                                        <!-- 2px Volt selection edge (§6), bound to
+                                             the row's own state for the same
+                                             name-scope reason as the rail. -->
+                                        <Border Grid.Column="0"
+                                                Background="{StaticResource Volt}"
+                                                IsVisible="{Binding IsSelected}"/>
+                                        <!-- The unread dot: Flare, here and on
+                                             the tile and the rail pip. Nowhere
+                                             else, ever. -->
+                                        <Border Grid.Column="1"
+                                                Width="8" Height="8" CornerRadius="4"
+                                                HorizontalAlignment="Left"
+                                                VerticalAlignment="Center"
+                                                Margin="6,0,0,0"
+                                                Background="{StaticResource Flare}"
+                                                BoxShadow="{DynamicResource PipGlow}"
+                                                IsVisible="{Binding HasUnread}"
+                                                ToolTip.Tip="Patched since you played"/>
+                                        <TextBlock Grid.Column="2"
+                                                   Classes="body-l"
+                                                   FontFamily="{StaticResource DisplayFont}"
+                                                   FontWeight="Bold"
+                                                   Text="{Binding Title}"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   VerticalAlignment="Center"
+                                                   Margin="0,0,12,0"/>
+                                        <TextBlock Grid.Column="3"
+                                                   Classes="body" FontSize="11"
+                                                   Foreground="{StaticResource TextDim}"
+                                                   Text="{Binding StoreBadge}"
+                                                   VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="4"
+                                                   Classes="data"
+                                                   Text="{Binding PlaytimeText}"
+                                                   TextAlignment="Right"
+                                                   VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="5"
+                                                   Classes="data"
+                                                   Foreground="{StaticResource TextDim}"
+                                                   Text="{Binding IdleText}"
+                                                   TextAlignment="Right"
+                                                   VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Grid>
+
+                <!-- Empty states are directions, not moods (§7).
+
+                     Opaque, on the same rule as the list: with no covers on it
+                     the field is not a field between tiles any more, it is the
+                     ground under one sentence — and a sentence is reading
+                     matter. -->
+                <Border IsVisible="{Binding Library.ShowEmpty}" Padding="32"
+                        Background="{StaticResource PaneGround}">
+                    <TextBlock Classes="body-l"
+                               MaxWidth="440"
+                               TextWrapping="Wrap"
+                               TextAlignment="Center"
+                               LineHeight="22"
+                               Foreground="{StaticResource TextDim}"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               Text="{Binding Library.EmptyMessage}"/>
+                </Border>
+
+            </Panel>
+        </Grid>
+        </Border>
+
+        <!-- ── Merge confirm queue (§5.3 step 3 / §6) ────────────────────── -->
+        <Border Classes="screenpane"
+                BorderBrush="{StaticResource Line}"
+                IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsMergeQueueVisible}">
+            <views:MergeQueueView Name="MergeQueue"
+                                  DataContext="{Binding MergeQueue}"/>
+        </Border>
+
+        <!-- The Stores panel. A third occupant of the same pane, on the same
+             terms as the queue: it replaces the library entirely rather than
+             sitting under a command bar whose search, density and sort controls
+             mean nothing here.
+
+             Its right edge is the window's — the filter panel only exists on
+             the library screen — so its scrollbar takes §9.1's edge inset from
+             the window's own ScrollBar:vertical style rather than opting out
+             with ScrollViewer.inner. -->
+        <Border Classes="screenpane"
+                BorderBrush="{StaticResource Line}"
+                IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsStoresVisible}">
+            <views:StoresView Name="StoresPanel"
+                              DataContext="{Binding Stores}"/>
+        </Border>
+
+        <!-- Appearance, on the same terms again. It is the second row under
+             SETTINGS, which is what that heading was renamed for: a section
+             that names a category rather than restating its one row (§13 gap 3)
+             only earns the name once there is a second one. -->
+        <Border Classes="screenpane"
+                BorderBrush="{StaticResource Line}"
+                IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsAppearanceVisible}">
+            <views:AppearanceView Name="AppearancePanel"
+                                  DataContext="{Binding Appearance}"/>
+        </Border>
+
+
+        <!-- ══ AMBIENT DOCK (M3b) ══════════════════════════════
+             A sibling of the four panes rather than a child of any one of them,
+             so a launch strip survives the user switching to the Stores screen
+             while their game starts, and a journal card is still there when they
+             come back from a merge review.
+
+             No Background on the StackPanel and no fixed height: with both
+             children hidden it measures to nothing and cannot be hit, so the
+             covers underneath stay clickable in the corner it occupies. -->
+        <StackPanel HorizontalAlignment="Left" VerticalAlignment="Bottom"
+                    Margin="18,0,0,18" Width="352" Spacing="10">
+
+            <!-- ── Journal prompt (§5.2, opt-in per §9 pitfall 7) ───────────
+                 Never rendered at all unless the user turned the preference on:
+                 the service does not raise the event, so IsOpen never becomes
+                 true. See JournalPromptViewModel for why this is a card in
+                 Winnow's own window rather than the "small unintrusive window"
+                 §5.2 asks for. -->
+            <Border Classes="dock"
+                    DataContext="{Binding Library.Journal}"
+                    x:DataType="vm:JournalPromptViewModel"
+                    IsVisible="{Binding IsOpen}">
+                <StackPanel Spacing="10">
+
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
+                            <TextBlock Classes="body-l" FontSize="13"
+                                       VerticalAlignment="Center"
+                                       TextTrimming="CharacterEllipsis"
+                                       Text="{Binding Title}"/>
+                            <TextBlock Classes="data-s"
+                                       VerticalAlignment="Center"
+                                       Foreground="{StaticResource TextDim}"
+                                       Text="{Binding DurationText}"/>
+                        </StackPanel>
+
+                        <Button Grid.Column="1"
+                                Classes="dockclose"
+                                Content="&#x2715;"
+                                ToolTip.Tip="Dismiss"
+                                Command="{Binding DismissCommand}"/>
+                    </Grid>
+
+                    <StackPanel Orientation="Horizontal" Spacing="2">
+                        <Button Classes="rate" Classes.on="{Binding IsRated1}"
+                                CommandParameter="1" Command="{Binding RateCommand}"
+                                ToolTip.Tip="1 out of 5"><Ellipse/></Button>
+                        <Button Classes="rate" Classes.on="{Binding IsRated2}"
+                                CommandParameter="2" Command="{Binding RateCommand}"
+                                ToolTip.Tip="2 out of 5"><Ellipse/></Button>
+                        <Button Classes="rate" Classes.on="{Binding IsRated3}"
+                                CommandParameter="3" Command="{Binding RateCommand}"
+                                ToolTip.Tip="3 out of 5"><Ellipse/></Button>
+                        <Button Classes="rate" Classes.on="{Binding IsRated4}"
+                                CommandParameter="4" Command="{Binding RateCommand}"
+                                ToolTip.Tip="4 out of 5"><Ellipse/></Button>
+                        <Button Classes="rate" Classes.on="{Binding IsRated5}"
+                                CommandParameter="5" Command="{Binding RateCommand}"
+                                ToolTip.Tip="5 out of 5"><Ellipse/></Button>
+                    </StackPanel>
+
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                        <TextBox Grid.Column="0"
+                                 Name="JournalNote"
+                                 Classes="note"
+                                 Watermark="How was it?"
+                                 Text="{Binding Note, Mode=TwoWay}"
+                                 KeyDown="OnJournalNoteKeyDown"/>
+                        <Button Grid.Column="1"
+                                Classes="act primary"
+                                FontSize="12" Padding="12,5"
+                                Content="Save"
+                                Command="{Binding SaveCommand}"/>
+                    </Grid>
+
+                </StackPanel>
+            </Border>
+
+            <!-- ── Launch strip (M3b) ──────────────────────────
+                 One line, no buttons, nothing to dismiss. It resolves itself:
+                 the pulse stops and the strip goes when the session watcher sees
+                 the game running, and it goes silently when a launch nobody
+                 completed runs out its window. -->
+            <Border Classes="dock"
+                    DataContext="{Binding Library.LaunchStatus}"
+                    x:DataType="vm:LaunchStatusViewModel"
+                    IsVisible="{Binding IsOpen}">
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                    <Ellipse Classes="pip"
+                             Classes.waiting="{Binding IsWaiting}"
+                             Classes.problem="{Binding IsProblem}"
+                             VerticalAlignment="Center"/>
+                    <TextBlock Classes="body" FontSize="12"
+                               VerticalAlignment="Center"
+                               TextTrimming="CharacterEllipsis"
+                               Text="{Binding Message}"/>
+                </StackPanel>
+            </Border>
+
+        </StackPanel>
+
+        </Panel>
+
+        <!-- ══ FILTER PANEL ════════════════════════════════════════════════
+             Last in the file and last in the Tab walk, because it is the
+             rightmost thing on screen. Its own edges are described in
+             FilterPanelView. -->
+        <views:FilterPanelView Grid.Column="2"
+                               Name="FilterPanel"
+                               DataContext="{Binding Library.Filters}"
+                               IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsFilterPanelVisible}"/>
+
+        <!-- ── Game detail modal (§5.3's other half) ─────────────────────────
+             Spans the rail as well as the pane: it is a modal, so nothing
+             behind it is clickable while it is up. Enter on the selection or a
+             double click opens it; Escape or the scrim closes it. -->
+        <views:GameDetailsView Name="DetailsPanel"
+                               Grid.Column="0" Grid.ColumnSpan="3"
+                               DataContext="{Binding Library.Details}"
+                               IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Library.IsDetailsOpen}"/>
+
+    </Grid>
+    </Grid>
+    </Panel>
+
+</Window>

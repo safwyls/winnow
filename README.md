@@ -1,4 +1,4 @@
-# Hoard
+# Winnow
 
 A local-first game library manager that surfaces the games you own, meant to play,
 and forgot existed. No server, no account, no telemetry.
@@ -13,7 +13,7 @@ Requires the **.NET 10 SDK** (`dotnet --list-sdks` should show `10.0.x`).
 
 ```powershell
 cd c:\Users\safwyl\source\hoard
-dotnet run --project src/Hoard.App
+dotnet run --project src/Winnow.App
 ```
 
 The window opens as soon as the local Steam scan finishes (about a second).
@@ -44,7 +44,7 @@ slot comes up. Day one shows a fraction of what week two will.
 Pass them after `--`:
 
 ```powershell
-dotnet run --project src/Hoard.App -- --no-sync
+dotnet run --project src/Winnow.App -- --no-sync
 ```
 
 ### What to look for
@@ -64,21 +64,28 @@ dotnet run --project src/Hoard.App -- --no-sync
 
 | | Path |
 |---|---|
-| Database | `%LOCALAPPDATA%\Hoard\hoard.db` |
-| Cover cache | `%LOCALAPPDATA%\Hoard\covers\` |
+| Database | `%LOCALAPPDATA%\Winnow\winnow.db` |
+| Cover cache | `%LOCALAPPDATA%\Winnow\covers\` |
+
+*Upgrading from Hoard?* The first launch moves `%LOCALAPPDATA%\Hoard\` to
+`%LOCALAPPDATA%\Winnow\` — database, covers, themes and the stored store sign-in
+together — and renames `hoard.db` to `winnow.db`. It happens once and says so in the
+log. If the old database is open in another copy of the app the move is skipped and
+that run reads the old folder in place: nothing is ever half-moved, and nothing is
+deleted.
 
 Nothing leaves the machine except read-only requests to IGDB, Steam's public
-endpoints, and `api.steamcmd.net`. Hoard **never writes to any Steam file.**
+endpoints, and `api.steamcmd.net`. Winnow **never writes to any Steam file.**
 
 To start over, delete the database (the cover cache can stay — it will be reused):
 
 ```powershell
-Remove-Item "$env:LOCALAPPDATA\Hoard\hoard.db*"
+Remove-Item "$env:LOCALAPPDATA\Winnow\winnow.db*"
 ```
 
 ## IGDB (optional)
 
-Hoard works without it — a keyless Steam endpoint covers most titles. IGDB is the
+Winnow works without it — a keyless Steam endpoint covers most titles. IGDB is the
 better source and adds years, publishers and genres, which also sharpens duplicate
 detection. Get a client ID and secret from [dev.twitch.tv](https://dev.twitch.tv/console/apps),
 then:
@@ -89,7 +96,7 @@ setx Igdb__ClientSecret "your-client-secret"
 ```
 
 Open a **new** terminal afterwards. Credentials are read from the environment or
-from `src/Hoard.App/appsettings.local.json` (gitignored); they are never logged and
+from `src/Winnow.App/appsettings.local.json` (gitignored); they are never logged and
 never committed.
 
 ## Tests

@@ -1,0 +1,41 @@
+using Dapper;
+using Winnow.Core.Domain;
+using Winnow.Core.Repositories;
+
+namespace Winnow.Data.Repositories;
+
+public sealed class UpdateEventRepository : IUpdateEventRepository
+{
+    private readonly ISqliteConnectionFactory _factory;
+
+    public UpdateEventRepository(ISqliteConnectionFactory factory) => _factory = factory;
+
+    public async Task<long> InsertAsync(UpdateEvent updateEvent, CancellationToken ct = default)
+    {
+        using var lease = _factory.Lease();
+        return await lease.Connection.ExecuteScalarAsync<long>(new CommandDefinition("""
+            INSERT INTO update_events (release_id, kind, build_id, occurred_at, title, url, raw_json)
+            VALUES (@ReleaseId, @Kind, @BuildId, @OccurredAt, @Title, @Url, @RawJson)
+            RETURNING id;
+            """, updateEvent, transaction: lease.Transaction, cancellationToken: ct));
+    }
+
+    public async Task<IReadOnlyList<UpdateEvent>> GetByReleaseAsync(long releaseId, CancellationToken ct = default)
+    {
+        using var lease = _factory.Lease();
+        var rows = await lease.Connection.QueryAsync<UpdateEvent>(new CommandDefinition("""
+            SELECT id          AS Id,
+                   release_id  AS ReleaseId,
+                   kind        AS Kind,
+                   build_id    AS BuildId,
+                   occurred_at AS OccurredAt,
+                   title       AS Title,
+                   url         AS Url,
+                   raw_json    AS RawJson
+            FROM update_events
+            WHERE release_id = @releaseId
+            ORDER BY occurred_at, id;
+            """, new { releaseId }, transaction: lease.Transaction, cancellationToken: ct));
+        return rows.AsList();
+    }
+}

@@ -1,6 +1,7 @@
-# Hoard — Design Plan (v1)
+# Winnow — Design Plan (v1)
 
-**Name:** Hoard  ·  root namespace `Hoard`, binary `hoard`
+**Name:** Winnow  ·  root namespace `Winnow`, binary `winnow`
+**Renamed:** from Hoard, 2026-08-28. The English word *hoard* is retained where the design system uses it as a common noun — the premise is winnowing one. See `CLAUDE.md`.
 **Target:** Cross-platform desktop application, local-first, no server
 **Status:** Design approved, ready for implementation
 **Audience:** Implementing engineer or coding agent
@@ -376,7 +377,7 @@ Known noise sources, all of which must be handled:
 
 **B. Launch-option wrapper (opt-in, exact)**
 
-The user sets `hoard-wrap %command%` in a specific game's Steam launch options. The wrapper
+The user sets `winnow-wrap %command%` in a specific game's Steam launch options. The wrapper
 executable starts the real command, blocks until it exits, and reports exact start/end to the
 main process over a named pipe / Unix domain socket. This is the same mechanism `mangohud`
 and `gamemoderun` use.

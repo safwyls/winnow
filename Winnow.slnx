@@ -1,0 +1,26 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Winnow.App/Winnow.App.csproj" />
+    <Project Path="src/Winnow.Auth.WebView/Winnow.Auth.WebView.csproj" />
+    <Project Path="src/Winnow.Core/Winnow.Core.csproj" />
+    <Project Path="src/Winnow.Covers/Winnow.Covers.csproj" />
+    <Project Path="src/Winnow.Covers.Igdb/Winnow.Covers.Igdb.csproj" />
+    <Project Path="src/Winnow.Data/Winnow.Data.csproj" />
+    <Project Path="src/Winnow.Enrich.GamesDb/Winnow.Enrich.GamesDb.csproj" />
+    <Project Path="src/Winnow.Enrich.Igdb/Winnow.Enrich.Igdb.csproj" />
+    <Project Path="src/Winnow.Enrich.Steam/Winnow.Enrich.Steam.csproj" />
+    <Project Path="src/Winnow.Enrich.SteamWeb/Winnow.Enrich.SteamWeb.csproj" />
+    <Project Path="src/Winnow.Enrich.Updates/Winnow.Enrich.Updates.csproj" />
+    <Project Path="src/Winnow.Ingest.Epic/Winnow.Ingest.Epic.csproj" />
+    <Project Path="src/Winnow.Ingest.Gog/Winnow.Ingest.Gog.csproj" />
+    <Project Path="src/Winnow.Ingest.Steam/Winnow.Ingest.Steam.csproj" />
+    <Project Path="src/Winnow.Monitor/Winnow.Monitor.csproj" />
+    <Project Path="src/Winnow.Recommend/Winnow.Recommend.csproj" />
+    <Project Path="src/Winnow.Resolve/Winnow.Resolve.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Winnow.Covers.Tests/Winnow.Covers.Tests.csproj" />
+    <Project Path="tests/Winnow.Recommend.Tests/Winnow.Recommend.Tests.csproj" />
+    <Project Path="tests/Winnow.Tests/Winnow.Tests.csproj" />
+  </Folder>
+</Solution>

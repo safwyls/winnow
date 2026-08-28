@@ -2,7 +2,7 @@
     Design tokens — Game Library Manager
 
     ⚠ THIS FILE IS THE DESIGN REFERENCE, NOT THE BUILD INPUT.
-    The authoritative, compiling copy is src/Hoard.App/Themes/tokens.axaml.
+    The authoritative, compiling copy is src/Winnow.App/Themes/tokens.axaml.
     It diverges here deliberately, for reasons recorded as TODOs in that file:
       · the Styles block is keyed (a ResourceDictionary cannot hold an unkeyed
         child) and promoted into Application.Styles at startup by App.axaml.cs
@@ -19,9 +19,9 @@
     Change tokens THERE. Edit this file only to keep the design record honest.
 
     ⚠ THESE VALUES ARE THE DEFAULT THEME, AND THEY ARE THE STARTING STATE.
-    src/Hoard.App/Themes/HoardThemes.cs holds four palettes and ThemeService
+    src/Winnow.App/Themes/WinnowThemes.cs holds four palettes and ThemeService
     writes the chosen one onto these brushes at runtime — so what is declared
-    here is "Hoard, at transparency zero", which is the state that is correct on
+    here is "Winnow, at transparency zero", which is the state that is correct on
     every host. The other three (Nightshift, Tungsten, Box art) are not variants
     of this table and do not differ from it by hue: each takes a different
     TEMPERATURE, CHROMA STRATEGY, VALUE STRUCTURE and MATERIAL, which is what
@@ -34,7 +34,7 @@
         <Application.Resources>
             <ResourceDictionary>
                 <ResourceDictionary.MergedDictionaries>
-                    <ResourceInclude Source="avares://Hoard/Themes/tokens.axaml"/>
+                    <ResourceInclude Source="avares://Winnow/Themes/tokens.axaml"/>
                 </ResourceDictionary.MergedDictionaries>
             </ResourceDictionary>
         </Application.Resources>
@@ -113,7 +113,7 @@
          theme can change, and the failure is silent: the window half repaints
          and the leftovers look like a rendering fault. Every one of them is
          "some role at N%" or "one step past a step", so they are DERIVED from
-         the palette in HoardTheme.Tokens rather than restated per theme. -->
+         the palette in WinnowTheme.Tokens rather than restated per theme. -->
 
     <!-- One step above SurfaceRaised: a selected menu item, a pressed caption
          button. SurfaceRaised on SurfaceRaised is no step at all. -->
@@ -176,7 +176,7 @@
          it looked: it proves you cannot take an ink CHOSEN FOR AN OPAQUE GROUND
          and subtract alpha from it. So the surfaces that open take a DARKER ink
          and a BRIGHTER dim ink as they do, and the slider walks the two
-         together. HoardTheme carries the endpoints; ThemeContrastTests carries
+         together. WinnowTheme carries the endpoints; ThemeContrastTests carries
          the proof, across the range rather than at one point.
 
          THERE ARE TWO TIERS, NOT THREE. The window used to run at three levels:
@@ -344,7 +344,7 @@
          the alpha on our own surfaces over that backdrop. The Appearance screen
          sets it with a slider, 0 (fully opaque, the default) to 100, and every
          token below walks continuously between its opaque value and the theme's
-         translucent ink as it travels. HoardTheme.Tokens(amount,
+         translucent ink as it travels. WinnowTheme.Tokens(amount,
          wallTranslucent) is the walk; the second argument is how far it
          reaches (see the WallGround note above).
 
@@ -376,9 +376,9 @@
     <TimeSpan x:Key="HoverRestoreDuration">0:0:0.140</TimeSpan>
 
     <!-- ══ Type ═══════════════════════════════════════════════════════════ -->
-    <FontFamily x:Key="DisplayFont">avares://Hoard/Assets/Fonts#Bricolage Grotesque</FontFamily>
-    <FontFamily x:Key="BodyFont">avares://Hoard/Assets/Fonts#Plus Jakarta Sans</FontFamily>
-    <FontFamily x:Key="DataFont">avares://Hoard/Assets/Fonts#IBM Plex Mono</FontFamily>
+    <FontFamily x:Key="DisplayFont">avares://Winnow/Assets/Fonts#Bricolage Grotesque</FontFamily>
+    <FontFamily x:Key="BodyFont">avares://Winnow/Assets/Fonts#Plus Jakarta Sans</FontFamily>
+    <FontFamily x:Key="DataFont">avares://Winnow/Assets/Fonts#IBM Plex Mono</FontFamily>
 
     <x:Double x:Key="DisplayLSize">22</x:Double>
     <x:Double x:Key="DisplaySSize">12</x:Double>

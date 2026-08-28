@@ -1,0 +1,83 @@
+-- 0006_work_steam_app_type.sql — Valve's own classification of a Steam appid.
+-- Append-only: never edit this file once shipped; add 0007_*.sql instead.
+--
+-- ── What this column is ──────────────────────────────────────────────────────
+--
+-- `common.type` from `GET https://api.steamcmd.net/v1/info/{appid}` — the same
+-- response `docs/spikes/update-signals.md` §1 already reads
+-- `depots.branches.public.timeupdated` out of. It is Valve's PICS `type` field,
+-- mirrored: the storefront's own answer to "what kind of thing is this appid",
+-- not a guess made from the title.
+--
+-- Verified live against 85 appids of the author's real library on 2026-08-24.
+-- Three values occur and no others:
+--
+--     Game           34
+--     Demo           33
+--     game            4   (case VARIES — 107100 Bastion, 1250 Killing Floor,
+--                          48000 LIMBO and 8980 Borderlands GOTY answer
+--                          lower-case `game` while 2246340 Monster Hunter Wilds
+--                          answers `Game`. Every read MUST be case-insensitive.)
+--     Tool            4   (202480 Skyrim Creation Kit, 2394010 Palworld
+--                          Dedicated Server, 739590 Eco Server, 323910 SteamVR
+--                          Performance Test)
+--     (unreadable)   10   (`common` absent — see below)
+--
+-- No Application, Config, Music, Video, DLC or Series anywhere in the sample:
+-- this library is games, their demos, and four tools.
+--
+-- ── Why it earns a column ────────────────────────────────────────────────────
+--
+-- `Winnow.Core.Queries.DemoConsolidation` hides a demo whose full game is also
+-- owned. Until now the only evidence that an entry WAS a demo was its title
+-- ending in the token `demo`, which misses every entry Steam names differently
+-- — "FINAL FANTASY XIV Online Free Trial" and "Wild Terra 2: New Lands - Free
+-- Weekend" are both typed `Demo` by Valve and carry no such token — and cannot
+-- rule out a real game that happens to end in the word. A stored type turns the
+-- first gate from a title heuristic into a storefront fact.
+--
+-- The SUPPRESSION itself stays derived and is not stored anywhere: §6.1's
+-- bucket query recomputes it on every read, so removing the base game brings
+-- the demo straight back. This column stores an observed external FACT (like
+-- `first_release_year` or `publisher`), never a decision.
+--
+-- ── The limits of the signal, measured rather than assumed ───────────────────
+--
+--   * **Valve has no beta/playtest type.** Every beta, playtest, test server
+--     and open beta in the library answers `Game`: 696790 "Call of Duty: WWII -
+--     PC Open Beta", 622590 "PUBG: Test Server", 1205550 "New World Public Test
+--     Realm", 1341330 "Gatewalkers (Alpha)". So `Game` is NOT a denial that an
+--     entry is a beta, and consolidation must not read it as one — see
+--     DemoConsolidation's remarks for how the two signals are combined.
+--   * **Some appids are unreadable anonymously.** 8510, 854040, 1883690,
+--     3065170 (Monster Hunter Wilds Beta test) and 3562740 (BitCraft Online
+--     Playtest) answer HTTP 200 carrying `"_missing_token": true,
+--     "public_only": "1"` and no `common` object at all. `appdetails` returns
+--     `success:false` for the same appids, so nothing keyless will name or type
+--     them. NULL here therefore means "not known", never "not a demo", and the
+--     title gate remains the fallback for exactly those rows.
+--   * **And some are simply gone.** 229100, 236600, 451070, 813000 and 1253950
+--     answer with an EMPTY inner object — Steam has no such app at all. A
+--     different fact from the one above, and worth keeping distinguishable:
+--     the first set becomes readable with a Steam Web API key, this one never
+--     does.
+--
+-- ── Shape ────────────────────────────────────────────────────────────────────
+--
+-- TEXT, storing the value verbatim as the service sent it (including its
+-- casing), so a future reader can distinguish values this build never saw from
+-- values it normalised away. No CHECK constraint: the vocabulary is Valve's,
+-- undocumented, and can gain a value at any time — a constraint would turn a
+-- new Steam app type into a failed enrichment write.
+--
+-- On `works` rather than `releases` for the same reason `publisher` is: this is
+-- the row the enrichment pass already writes, in the same transaction that
+-- promotes the name out of the same HTTP response, and M0/M1 works and releases
+-- are 1:1. Should a Work ever carry two Steam releases, the type will need to
+-- move down a layer with them.
+--
+-- No index. The only reader is the bucket query, which already scans every
+-- owned row, and the enrichment sweep, whose predicate is a disjunction no
+-- single index can serve (see 0005's note).
+
+ALTER TABLE works ADD COLUMN steam_app_type TEXT;

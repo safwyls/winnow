@@ -1,4 +1,4 @@
-# The repo-root .gitignore excludes *.db (local Hoard databases). This fixture is a
+# The repo-root .gitignore excludes *.db (local Winnow databases). This fixture is a
 # deliberate, sanitized test asset -- re-include it. Regenerate with:
 #   sqlite3 galaxy-2.0.min.db < galaxy-2.0.min.sql
 !galaxy-2.0.min.db

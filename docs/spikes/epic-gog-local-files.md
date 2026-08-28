@@ -267,14 +267,14 @@ holds the same `AppName` and is even weaker.
 "Never played" bucket from local data alone, except for the single most recent title.
 
 An OAuth-gated Epic endpoint *does* return per-game total playtime (section 21) — but it returns
-**no last-played timestamp**, and Hoard's whole staleness model (§6.1) is built on recency,
+**no last-played timestamp**, and Winnow's whole staleness model (§6.1) is built on recency,
 not on totals. So even the network route cannot bucket an Epic game by dormancy.
 
-**The only mechanism that gives Epic games a real last-played date in Hoard is M3's process
+**The only mechanism that gives Epic games a real last-played date in Winnow is M3's process
 monitor (§5.2).** That is a good outcome: §5.2 already maps executables to releases using
 Epic install locations, and the `.item` manifest hands it `InstallLocation` +
 `LaunchExecutable` directly — an exact absolute path, better raw material than Steam's
-`installdir`. Epic playtime accrues from first launch under Hoard, forward only, with no
+`installdir`. Epic playtime accrues from first launch under Winnow, forward only, with no
 history. Surface that honestly in the UI rather than showing a zero that looks like a fact.
 
 > `%LOCALAPPDATA%\EpicGamesLauncher\Saved\Data\*.dat` (named after the account id) and the
@@ -290,7 +290,7 @@ history. Surface that honestly in the UI rather than showing a zero that looks l
    `catcache.bin` really does store `Batman? Arkham Asylum Game of the Year Edition`
    and `LEGO? Batman? 2 DC Super Heroes`: a literal U+003F where the trademark
    symbol belongs. Verified by decoding the base64 payload independently of any
-   Hoard code and dumping codepoints — the `?` is in Epic's bytes, not introduced
+   Winnow code and dumping codepoints — the `?` is in Epic's bytes, not introduced
    by `EpicCatalogReader`. Steam's catalog spells the same games correctly, so the
    two stores disagree on punctuation for titles they both carry. That is a soft-
    matcher problem (`TitleNormalizer` already strips punctuation, and the sweep
@@ -365,13 +365,13 @@ And the hazard that makes copying mandatory rather than merely tidy:
 
 **Procedure:**
 
-1. Copy `galaxy-2.0.db`, then `galaxy-2.0.db-wal`, then `galaxy-2.0.db-shm` into a Hoard-owned
+1. Copy `galaxy-2.0.db`, then `galaxy-2.0.db-wal`, then `galaxy-2.0.db-shm` into a Winnow-owned
    temp directory. Copy the main DB first: the WAL only grows within a checkpoint cycle, so a
    later-copied WAL is a superset of what the main file needs. Missing `-wal`/`-shm` is not an
    error (SQLite recreates them beside the copy); missing WAL **data** is a silent correctness
    bug, so copy it whenever it exists.
 2. Open the **copy** with `Mode=ReadOnly` (`file:...?mode=ro`, no `immutable`). SQLite recovers
-   the WAL into the copy — writes land on Hoard's file, not GOG's.
+   the WAL into the copy — writes land on Winnow's file, not GOG's.
 3. Run `PRAGMA quick_check`. It took **0.02 s** on the 11 MB copy. If it is not `ok`, the
    snapshot was torn by a concurrent checkpoint: delete and retry once, then give up and
    report rather than importing partial data.
@@ -778,7 +778,7 @@ unauthenticated probes of Epic's login redirect and legendary's config server. I
 
 **The flow.** Two viable paths, both still working as of 2026-08-26:
 
-- *Embedded webview (what Heroic does, and what Hoard would copy).* Open
+- *Embedded webview (what Heroic does, and what Winnow would copy).* Open
   `https://www.epicgames.com/id/login?responseType=code` in an embedded browser with UA
   `…EpicGamesLauncher`, watch for navigation to
   `https://localhost/launcher/authorized?code=<authorizationCode>`, scrape `code`.
@@ -802,7 +802,7 @@ Account Services will issue a real client, but its consent scopes stop at
 `basic_profile / friends_list / presence / country` — nothing that reads the storefront
 library. The `library:public:items` and `launcher:download:*` permissions live only on
 Epic's internal launcher client. **Shipping this means shipping Epic's client secret inside
-Hoard and impersonating their launcher.** There is no version of it that does not.
+Winnow and impersonating their launcher.** There is no version of it that does not.
 
 **Tokens.** Access token 8 h; refresh token **~23 days**, rolling — each refresh returns a
 new one, so it runs unattended indefinitely provided the app talks to Epic at least
@@ -821,13 +821,13 @@ GET https://library-service.live.use1a.on.epicgames.com/library/api/public/playt
 
 legendary and Heroic simply never call it (`grep -i playtime` over legendary's source
 returns nothing; Heroic times the child process instead). But three caveats gut its value
-for Hoard specifically:
+for Winnow specifically:
 
 1. **No last-played timestamp anywhere.** `totalTime` is a running total, nothing more.
-   Hoard's staleness buckets (§6.1) are a recency model. A total without a date does not
+   Winnow's staleness buckets (§6.1) are a recency model. A total without a date does not
    place a game in a bucket.
 2. **The total only accrues from `PUT`s the real Epic launcher makes.** A user who plays
-   through Heroic — or through Hoard's own process monitor — accumulates **zero** Epic-side
+   through Heroic — or through Winnow's own process monitor — accumulates **zero** Epic-side
    playtime. For an app about forgotten games, undercounting play is the wrong direction of
    error.
 3. `artifactId` is `releaseInfo[].appId` (i.e. `AppName`), not the catalog item id, and the
@@ -873,13 +873,13 @@ the reason for it.
   feature and systematically undercounts anyone who does not launch through Epic's own client.
 - **The gap it would close is small and bounded:** `catcache.bin` needs the launcher installed
   and signed in once, and goes stale until the launcher is next opened. §4.1 already commits
-  Hoard to eventually-consistent local reads; this is the same bargain.
+  Winnow to eventually-consistent local reads; this is the same bargain.
 
 This is the shape of judgement §4.6 made about PSN — a reverse-engineered flow, someone
 else's credentials, a manual re-auth step, shipped to users — with one difference: here we
 do not need the data it would fetch. The cost is not just the auth flow; it is an embedded
 browser in an Avalonia app, a DPAPI-protected token store, a refresh scheduler, and Epic's
-client secret in Hoard's binary, all to duplicate a file already sitting in `%PROGRAMDATA%`.
+client secret in Winnow's binary, all to duplicate a file already sitting in `%PROGRAMDATA%`.
 
 **Read `catcache.bin`. Document the staleness. Revisit only if Epic encrypts it** — and if
 that day comes, revisit with the playtime endpoint's limits (no dates, EGL-only sessions)

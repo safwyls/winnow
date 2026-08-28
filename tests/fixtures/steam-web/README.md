@@ -9,7 +9,7 @@ order, encodings and per-entry quirks are otherwise verbatim from the wire.
 
 **The key itself is not in these files and never can be** — it travels in the
 query string, which is not part of a response. See
-`src/Hoard.Enrich.SteamWeb/Http/SteamWebRedaction.cs` for how it is kept out of
+`src/Winnow.Enrich.SteamWeb/Http/SteamWebRedaction.cs` for how it is kept out of
 logs.
 
 | File | Endpoint | Request |
@@ -64,10 +64,10 @@ Set `Steam__ApiKey` first, and **never paste the key into a file or a commit**
 (Git Bash):
 
 ```
-curl -sS -A "Hoard/0.1 (+https://github.com/hoard-app; local game library manager)" \
+curl -sS -A "Winnow/0.1 (+https://github.com/winnow-app; local game library manager)" \
   -o getownedgames-v1.json \
   "https://api.steampowered.com/IPlayerService/GetOwnedGames/v1/?steamid=$STEAMID64&include_appinfo=1&include_played_free_games=1&skip_unvetted_apps=false&format=json&key=$Steam__ApiKey"
 ```
 
 `$STEAMID64` is `76561197960265728` + the `userdata/<steam3id>` folder name; see
-`src/Hoard.Enrich.SteamWeb/SteamId.cs`. Then re-sanitize before committing.
+`src/Winnow.Enrich.SteamWeb/SteamId.cs`. Then re-sanitize before committing.

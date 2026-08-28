@@ -1,0 +1,93 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <!-- avares:// URIs in tokens.axaml address the assembly as "Winnow" (design doc: binary `winnow`). -->
+    <AssemblyName>Winnow</AssemblyName>
+    <RootNamespace>Winnow.App</RootNamespace>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+
+    <!-- MANDATORY for the embedded-browser sign-in, and Winnow had none before
+         M4.6. Avalonia's NativeControlHost throws "Application manifest with
+         supported OS list might be required" on the first layout pass without
+         one, before any WebView2 code runs. See app.manifest. -->
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+
+    <!-- The executable's own icon, written into the apphost's RT_GROUP_ICON.
+         Without it the built exe wears the generic .NET icon in Explorer, in
+         the Start menu and anywhere the shell reads the file rather than a
+         running window.
+
+         It is a real multi-size .ico — 16/24/32/48 as DIBs and 64/128/256 as
+         PNGs — generated from Assets/Icons/dragon.svg rather than downscaled
+         from one bitmap, because the shell picks the frame that matches the
+         surface and a 256 stretched to 16 is mud. Assets/Icons/README.md
+         carries the generator and the measurements behind the small sizes. -->
+    <ApplicationIcon>Assets\Icons\dragon.ico</ApplicationIcon>
+
+    <!-- Emitted transitively by the WebView2 package via Winnow.Auth.WebView (its
+         targets reference the unused WPF wrapper, which drags WindowsBase
+         5.0.0.0). Cosmetic: MSB3277 is an MSBuild warning, not a C# one, so
+         TreatWarningsAsErrors does not promote it — verified by building both
+         ways rather than assumed. Silenced so a real warning is not lost in the
+         noise. -->
+    <MSBuildWarningsAsMessages>MSB3277</MSBuildWarningsAsMessages>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AvaloniaResource Include="Assets\**" />
+  </ItemGroup>
+
+  <!-- Git-ignored local credentials, copied next to the executable so
+       Program.cs can load it from AppContext.BaseDirectory. Conditional: the
+       file is absent in every clean checkout and its absence is normal. -->
+  <ItemGroup Condition="Exists('appsettings.local.json')">
+    <None Include="appsettings.local.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.3.20" />
+    <!-- No Avalonia.Controls.ItemsRepeater. Its UniformGridLayout charges every
+         item in a row for a trailing gutter when it computes items-per-line for
+         the scroll anchor, but packs rows greedily when it places them, so §4's
+         flush-row geometry made the two disagree by one column at every window
+         width. The cover wall is Views/CoverWall now — see its remarks and
+         docs/spikes/avalonia-dormancy-rendering.md. -->
+    <PackageReference Include="Avalonia.Desktop" Version="11.3.20" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.20" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.11" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The embedded browser. A leaf project so the WebView2 dependency, and
+         the Windows-only code that drives it, live in exactly one place; the
+         Ingest projects reach it only through Winnow.Core's IInteractiveAuthPrompt
+         and never reference Avalonia or WebView2 themselves (§5.1). -->
+    <ProjectReference Include="..\Winnow.Auth.WebView\Winnow.Auth.WebView.csproj" />
+    <ProjectReference Include="..\Winnow.Core\Winnow.Core.csproj" />
+    <ProjectReference Include="..\Winnow.Covers\Winnow.Covers.csproj" />
+    <ProjectReference Include="..\Winnow.Covers.Igdb\Winnow.Covers.Igdb.csproj" />
+    <ProjectReference Include="..\Winnow.Data\Winnow.Data.csproj" />
+    <ProjectReference Include="..\Winnow.Enrich.GamesDb\Winnow.Enrich.GamesDb.csproj" />
+    <ProjectReference Include="..\Winnow.Enrich.Igdb\Winnow.Enrich.Igdb.csproj" />
+    <ProjectReference Include="..\Winnow.Enrich.Steam\Winnow.Enrich.Steam.csproj" />
+    <ProjectReference Include="..\Winnow.Enrich.SteamWeb\Winnow.Enrich.SteamWeb.csproj" />
+    <ProjectReference Include="..\Winnow.Enrich.Updates\Winnow.Enrich.Updates.csproj" />
+    <ProjectReference Include="..\Winnow.Ingest.Epic\Winnow.Ingest.Epic.csproj" />
+    <ProjectReference Include="..\Winnow.Ingest.Gog\Winnow.Ingest.Gog.csproj" />
+    <ProjectReference Include="..\Winnow.Ingest.Steam\Winnow.Ingest.Steam.csproj" />
+    <ProjectReference Include="..\Winnow.Monitor\Winnow.Monitor.csproj" />
+    <!-- M8. The scoring core, wired at last: the module was built and tested
+         standalone on purpose (charter), and this is the composition root
+         handing it repository implementations. The App layer's own FeedService
+         is the only type that names it — a view model must not (§5.1). -->
+    <ProjectReference Include="..\Winnow.Recommend\Winnow.Recommend.csproj" />
+    <ProjectReference Include="..\Winnow.Resolve\Winnow.Resolve.csproj" />
+  </ItemGroup>
+
+</Project>
+
+
+

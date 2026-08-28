@@ -1,4 +1,4 @@
--- Hoard fixture: minimal GOG Galaxy 2.0 client database.
+-- Winnow fixture: minimal GOG Galaxy 2.0 client database.
 -- Generated from a live galaxy-2.0.db (Galaxy 2.1.8.30, schema user_version=40) and SANITIZED.
 -- Real CREATE TABLE text preserved verbatim so constraints/casing match production.
 -- Regenerate galaxy-2.0.min.db with:  sqlite3 galaxy-2.0.min.db < galaxy-2.0.min.sql

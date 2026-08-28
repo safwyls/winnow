@@ -1,7 +1,7 @@
 ### Here is where notes/observations will be recorded with the intent that they be addressed down the line with Claude
 
 - Option to ignore games not associated with your account (games associated with accounts on the same system show up currently)
-- Option to hide games from Hoard
+- Option to hide games from Winnow
 - Option to enable/disable explicit 18+ content
 - Option to manually find and assign metadata through IGDB
 - Loading indicator when metadata is being fetched

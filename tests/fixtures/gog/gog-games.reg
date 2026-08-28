@@ -1,6 +1,6 @@
 Windows Registry Editor Version 5.00
 
-; Hoard fixture: GOG's per-game install registry, 32-bit view.
+; Winnow fixture: GOG's per-game install registry, 32-bit view.
 ; Real key path on Windows: HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\GOG.com\Games\<gameID>
 ; Captured from a live install and lightly sanitized (BUILDID kept, it is public).
 ; Note gameName/startMenu carry the INSTALLER-LOCALE title (Polish here), not the

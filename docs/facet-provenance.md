@@ -8,7 +8,7 @@ checkbox can be traced to a specific byte on disk.
 Governing documents: `game-library-design.md` §4.3 (store metadata), §4.4 (IGDB),
 §5.1 (enrichment must never block a user-facing path);
 `docs/spikes/steam-store-tags.md` (which store endpoint is actually viable);
-`src/Hoard.Data/Migrations/0007_facets.sql` (why the vocabulary is keyed on the
+`src/Winnow.Data/Migrations/0007_facets.sql` (why the vocabulary is keyed on the
 name and not the provider's id).
 
 Validated end-to-end against the author's 946-release library on 2026-08-25 — see
@@ -25,7 +25,7 @@ appid, so they land on the release. A reader unions the two onto the release it
 is drawing a tile for (`FacetRepository.GetSnapshotAsync`).
 
 `game_mode` is the one kind written at BOTH layers, because both providers answer
-it. It is also the only kind whose vocabulary Hoard owns rather than passes
+it. It is also the only kind whose vocabulary Winnow owns rather than passes
 through.
 
 ## Common transformation: the slug
@@ -59,7 +59,7 @@ knowing before filing a bug:
 | | |
 |---|---|
 | Endpoint | `POST https://api.igdb.com/v4/games`, Apicalypse body as `text/plain` (§4.4) |
-| Query | `Apicalypse.Games()` in `src/Hoard.Enrich.Igdb/Apicalypse.cs` |
+| Query | `Apicalypse.Games()` in `src/Winnow.Enrich.Igdb/Apicalypse.cs` |
 | Auth | Twitch client-credentials; token cached ~60 days, refreshed on 401 (§4.4) |
 | Rate limit | 4 req/s, shared Polly limiter on the typed client |
 | Batch | 400 ids per request (`IgdbOptions.BatchSize`); 865 games = 3 requests |

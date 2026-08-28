@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.9.0" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="4.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Winnow.Core\Winnow.Core.csproj" />
+    <!-- The engine under test depends on Winnow.Core ONLY; Winnow.Data is here
+         so the tests can run it against the real repositories on a real
+         migrated temp-file database — the same convention as Winnow.Tests. -->
+    <ProjectReference Include="..\..\src\Winnow.Data\Winnow.Data.csproj" />
+    <ProjectReference Include="..\..\src\Winnow.Recommend\Winnow.Recommend.csproj" />
+  </ItemGroup>
+
+</Project>

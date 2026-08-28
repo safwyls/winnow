@@ -1,6 +1,6 @@
 # Epic OAuth / library API fixtures
 
-Canned responses for the authenticated Epic client (`src/Hoard.Ingest.Epic/Web/`).
+Canned responses for the authenticated Epic client (`src/Winnow.Ingest.Epic/Web/`).
 **Nothing in these tests opens a socket** — the enrichment charter's rule that HTTP clients
 are tested against fixtures and never against live APIs.
 

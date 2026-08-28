@@ -1,0 +1,66 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+
+    <!-- Arrives transitively from Winnow.App -> Winnow.Auth.WebView -> the WebView2
+         package, whose targets reference the unused WPF wrapper. Cosmetic: an
+         MSBuild warning, not a C# one, so TreatWarningsAsErrors never promoted
+         it. Silenced so a real warning stays visible. -->
+    <MSBuildWarningsAsMessages>MSB3277</MSBuildWarningsAsMessages>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- FakeTimeProvider, for SnapshotSchedulerService: the tick schedule is
+         driven by advancing a clock, so a scheduler test costs microseconds
+         instead of the intervals it is asserting about. -->
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" Version="10.9.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.9.0" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="4.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- View-model tests for the merge confirm queue. Winnow.App is referenced
+         for its ViewModels only — no Avalonia application, dispatcher or
+         rendering is started by any test. -->
+    <ProjectReference Include="..\..\src\Winnow.App\Winnow.App.csproj" />
+    <ProjectReference Include="..\..\src\Winnow.Core\Winnow.Core.csproj" />
+    <ProjectReference Include="..\..\src\Winnow.Data\Winnow.Data.csproj" />
+    <ProjectReference Include="..\..\src\Winnow.Enrich.GamesDb\Winnow.Enrich.GamesDb.csproj" />
+    <ProjectReference Include="..\..\src\Winnow.Enrich.Igdb\Winnow.Enrich.Igdb.csproj" />
+    <ProjectReference Include="..\..\src\Winnow.Enrich.Steam\Winnow.Enrich.Steam.csproj" />
+    <ProjectReference Include="..\..\src\Winnow.Enrich.SteamWeb\Winnow.Enrich.SteamWeb.csproj" />
+    <ProjectReference Include="..\..\src\Winnow.Enrich.Updates\Winnow.Enrich.Updates.csproj" />
+    <ProjectReference Include="..\..\src\Winnow.Ingest.Epic\Winnow.Ingest.Epic.csproj" />
+    <ProjectReference Include="..\..\src\Winnow.Ingest.Gog\Winnow.Ingest.Gog.csproj" />
+    <ProjectReference Include="..\..\src\Winnow.Ingest.Steam\Winnow.Ingest.Steam.csproj" />
+    <ProjectReference Include="..\..\src\Winnow.Monitor\Winnow.Monitor.csproj" />
+    <ProjectReference Include="..\..\src\Winnow.Resolve\Winnow.Resolve.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Sanitized real Steam files (tests/fixtures/steam/README.md) — the reader tests parse these. -->
+    <Content Include="..\fixtures\steam\**" LinkBase="fixtures\steam" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Verbatim store-frontend responses (tests/fixtures/steam-store/README.md) — the contract test pins these. -->
+    <Content Include="..\fixtures\steam-store\**" LinkBase="fixtures\steam-store" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Verbatim update-signal responses (tests/fixtures/update-signals/README.md) — the contract test pins these. -->
+    <Content Include="..\fixtures\update-signals\**" LinkBase="fixtures\update-signals" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Sanitized GetOwnedGames capture (tests/fixtures/steam-web/README.md) — the contract test pins this. -->
+    <Content Include="..\fixtures\steam-web\**" LinkBase="fixtures\steam-web" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Sanitized real Epic launcher files (tests/fixtures/epic/README.md) — the reader tests parse these. -->
+    <Content Include="..\fixtures\epic\**" LinkBase="fixtures\epic" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Canned Epic OAuth / library API responses (tests/fixtures/epic-oauth/README.md). Two of
+         these are verbatim live captures; the rest follow shapes verified from source and from
+         the live GraphQL schema. No test in this project opens a socket. -->
+    <Content Include="..\fixtures\epic-oauth\**" LinkBase="fixtures\epic-oauth" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Sanitized real GOG Galaxy files (tests/fixtures/gog/README.md) — the reader tests parse these. -->
+    <Content Include="..\fixtures\gog\**" LinkBase="fixtures\gog" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Verbatim gamesdb.gog.com response (tests/fixtures/gamesdb/README.md) — the contract test pins
+         this. Nothing personal in it: the endpoint is unauthenticated and account-independent, so
+         there is no account id or entitlement to sanitize. -->
+    <Content Include="..\fixtures\gamesdb\**" LinkBase="fixtures\gamesdb" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

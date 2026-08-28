@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Winnow.Resolve</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Abstractions only: Resolve offers an AddSoftMatching() extension so the
+         composition root does not have to know how §5.3 step 2 is assembled. It
+         does not depend on a container implementation. -->
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.11" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Resolve depends on Core abstractions only (§5.1 module boundaries). -->
+    <ProjectReference Include="..\Winnow.Core\Winnow.Core.csproj" />
+  </ItemGroup>
+
+</Project>

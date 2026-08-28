@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Winnow.Enrich.GamesDb</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.11" />
+    <PackageReference Include="Polly.Core" Version="8.7.0" />
+    <PackageReference Include="Polly.RateLimiting" Version="8.7.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      Core supplies the provider vocabulary and the alias contract; Data supplies
+      `metadata_cache`, the one table this module touches.
+
+      Deliberately NO reference to Winnow.Enrich.Igdb, and none to Winnow.Ingest.Epic:
+      §5.1 keeps `Enrich.*` modules peers of one another, and the Epic alias map
+      this client needs arrives through Winnow.Core's IStoreArtifactAliasSource
+      rather than by reaching into an ingest module. This one shares no
+      credential, no host and no rate budget with IGDB; it is a keyless identity
+      graph, and IGDB remains the metadata backbone it feeds.
+    -->
+    <ProjectReference Include="..\Winnow.Core\Winnow.Core.csproj" />
+    <ProjectReference Include="..\Winnow.Data\Winnow.Data.csproj" />
+  </ItemGroup>
+
+</Project>

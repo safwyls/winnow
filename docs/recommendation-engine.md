@@ -1,9 +1,9 @@
-# Hoard.Recommend — the scoring core
+# Winnow.Recommend — the scoring core
 
 **Status:** built and tested — flat feed, shelf surface, and the feedback loop (§6b:
 verdict storage, cross-day surfacing memory, launch endorsements) — the loop's UI
 affordances are not yet wired (the App layer owns them; the contract is in §6b).
-**Module:** `src/Hoard.Recommend`, depends on `Hoard.Core` only.
+**Module:** `src/Winnow.Recommend`, depends on `Winnow.Core` only.
 **Charter:** `.claude/agents/recommendation-engine.md`. Vocabulary: `game-library-design.md` §6.1.
 
 This document is the argument for the model: every signal, its tier, its weight, and every
@@ -15,7 +15,7 @@ this is the file to argue with — and every number here is a parameter on
 
 ## 1. What the module does, and does not
 
-`RecommendationEngine.GetFeedAsync(request)` reads the library through `Hoard.Core`
+`RecommendationEngine.GetFeedAsync(request)` reads the library through `Winnow.Core`
 repository interfaces and returns a ranked list of **owned** games worth surfacing, each
 carrying a one-sentence human-readable reason and a full per-signal breakdown. It writes
 nothing, caches nothing, and decides no identity questions. Scores are derived values in
@@ -144,7 +144,7 @@ to meet: a number that means something.
 | `PenaltyProbablyDone` | 0.30 | Sized to drop a qualifying row below the bounced midfield but not to zero — it still appears far down the feed, with a reason that says why it is far down. |
 | `PenaltyRecentlySurfaced` | 0.20 | Enough to rotate a shown item behind its unshown near-peers; not enough to bury a strong stale-but-patched hit the user keeps ignoring — if the top item is genuinely the top item, repeating it once or twice is honest. |
 | `SurfacedWindowDays` | 3 | Days back the recently-surfaced set reaches, **excluding today** (a set that included this morning's picks would penalise them on the afternoon refresh — dealing the new hand the day-seed exists to prevent). Sized from the smallest real pool: with S slots and a window of W days, W×S releases carry the penalty, and rotation requires W×S < pool. The smallest measured shelf pool is `stale_but_patched` at ~20 against 6 slots; 3 is the largest whole window under it (18 < 20). |
-| `EndorsementWindowDays` | 3 | Days after a surfacing within which a Hoard-launched session still counts as answering the feed's pitch. Matches the surfacing window, and small for the same reason: past the rotation cycle the launch is the user's own idea, and crediting the feed would be the feed grading its own homework. |
+| `EndorsementWindowDays` | 3 | Days after a surfacing within which a Winnow-launched session still counts as answering the feed's pitch. Matches the surfacing window, and small for the same reason: past the rotation cycle the launch is the user's own idea, and crediting the feed would be the feed grading its own homework. |
 
 ## 6. Cold start: tiers and degradation
 
@@ -251,7 +251,7 @@ loses the information forever; the CHECK constraint is 0010's argument re-applie
 vocabulary is ours and closed, so a third kind is a schema change and has to be one.
 
 **There is deliberately no thumbs-up.** The positive signal is behavioural: M3b already
-records, with no UI and no asking, that the user clicked Play *inside Hoard* — and a
+records, with no UI and no asking, that the user clicked Play *inside Winnow* — and a
 launch-attributed session while the game was on the feed is the user endorsing the pitch
 with their time. An explicit positive affordance would duplicate that with strictly worse
 data (a click costs nothing; forty minutes costs forty minutes), and an unpressed
@@ -301,9 +301,9 @@ at.
 
 ### The plumbing (who reads, who writes)
 
-- `Hoard.Core`: `FeedVerdict` / `FeedSurfacing` / `FeedEndorsement` records and
-  `IFeedFeedbackRepository`. `Hoard.Data`: the implementation over 0011.
-- `Hoard.Recommend.FeedbackSets` is the **read-side bridge**: `LoadAsync(repo, asOf,
+- `Winnow.Core`: `FeedVerdict` / `FeedSurfacing` / `FeedEndorsement` records and
+  `IFeedFeedbackRepository`. `Winnow.Data`: the implementation over 0011.
+- `Winnow.Recommend.FeedbackSets` is the **read-side bridge**: `LoadAsync(repo, asOf,
   tuning)` computes the four id sets (`NotInterested`, `Snoozed`, `RecentlySurfaced`,
   `Endorsed`), `Apply(request)` stamps them on. The engine still stores nothing and
   never writes; its API is unchanged but for the new `EndorsedReleaseIds` set.
@@ -339,7 +339,7 @@ at.
   'launch'` — and the historical feed was never logged, so there is nothing to
   backfill (inventing surfacings for feeds M8 showed but never recorded would be
   inventing history, 0010's rule). The signal accrues from the first logged feed and
-  the first Hoard-launched session onward; the taste effect is tested end-to-end on
+  the first Winnow-launched session onward; the taste effect is tested end-to-end on
   fixtures.
 
 ## 7. Deliberately deferred (and where each would plug in)

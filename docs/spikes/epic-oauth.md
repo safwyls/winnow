@@ -37,10 +37,10 @@ The task framing that prompted this work held that Epic "needs no manual cookie 
 interactive login has two viable shapes and neither is credential-free:
 
 - **Embedded webview** (what Heroic does). The user types their Epic password and 2FA into a
-  browser Hoard hosts. Avalonia has no webview, so this means WebView2 on Windows and
+  browser Winnow hosts. Avalonia has no webview, so this means WebView2 on Windows and
   something else everywhere else. **Rejected** — the cost is large and hosting someone's
-  password entry inside Hoard is a worse posture than not touching it at all.
-- **Manual copy-paste** (what Legendary falls back to, and what Hoard implements). The user
+  password entry inside Winnow is a worse posture than not touching it at all.
+- **Manual copy-paste** (what Legendary falls back to, and what Winnow implements). The user
   signs in on Epic's own page, in their own browser, and pastes back one code.
 
 > **AMENDED 2026-08-26 (M4.6): this rejection was reversed.** The embedded webview
@@ -56,7 +56,7 @@ properties, each verified:
 2. **It is not repeated on a schedule.** PSN's `npsso` expires roughly every two months by
    construction. Epic's refresh token is *rolling* — each refresh returns a new one — so a
    session that is exercised renews indefinitely. Re-login is an exception, not a cadence.
-3. **Hoard never sees the password.** The user authenticates to Epic, on Epic's domain.
+3. **Winnow never sees the password.** The user authenticates to Epic, on Epic's domain.
 
 The honest summary is therefore: **Epic trips one of §4.6's three reasons outright, trips a
 weaker version of the second, and does not trip the third.** That is a materially different
@@ -87,9 +87,9 @@ the spike falsified the first one:
   someone else's.
 
 **What did NOT change: the posture objection stands, and point 3 above is now weaker.** That
-list claims *"Hoard never sees the password — the user authenticates to Epic, on Epic's own
+list claims *"Winnow never sees the password — the user authenticates to Epic, on Epic's own
 domain."* Under an embedded webview the domain is still Epic's, but the **host process is
-Hoard's**, and a host process can read what is typed into the page it renders. Hoard does not
+Winnow's**, and a host process can read what is typed into the page it renders. Winnow does not
 do that. The point is that the user's protection changes from *structural* to *promised*,
 and no amount of care on our side converts it back.
 
@@ -97,7 +97,7 @@ That is a real cost, accepted deliberately rather than argued away:
 
 - The manual flow stays a **peer**, not a legacy path — `IInteractiveAuthPrompt` has a console
   implementation beside the WebView2 one, so a user who declines to type their password into
-  Hoard keeps a first-class route.
+  Winnow keeps a first-class route.
 - Nothing is injected into, read from, or logged around the credential fields. The capture
   hooks are the ones Epic's own page offers (`window.ue`) or its redirect.
 - The consent moment survives the change. The console flow showed Epic's warning before
@@ -129,7 +129,7 @@ responds to it.
 
 **Verdict: no ban risk was found, so the stop condition in the brief is not met.** The work
 proceeds. But it proceeds with the client credentials treated as the user's to supply, not
-Hoard's to ship — see section 10.
+Winnow's to ship — see section 10.
 
 ---
 
@@ -155,7 +155,7 @@ So the `id/login?redirectUrl=…&clientId=…&responseType=code` form **wraps** 
 Signed in, `authorizationCode` is populated. That is the value the user pastes.
 
 **Note the warning text.** Epic shows the user, at the moment of the copy, a message telling
-them not to do what Hoard is about to ask them to do. The implementation reproduces that
+them not to do what Winnow is about to ask them to do. The implementation reproduces that
 warning verbatim in the console flow rather than hiding it. A user who is going to be
 uncomfortable with this should be uncomfortable *before* they paste, not after.
 
@@ -306,7 +306,7 @@ Each of these was individually rejected as a non-existent field on `Playtime`:
 `seconds`, `minutes`.**
 
 **Epic exposes no last-played timestamp anywhere.** This confirms — now by schema rather than
-by inference — what `epic-gog-local-files.md` §8 concluded from the filesystem. Hoard's
+by inference — what `epic-gog-local-files.md` §8 concluded from the filesystem. Winnow's
 staleness buckets (§6.1) are a recency model, so **Epic titles still cannot enter a
 dormancy-based bucket from API data alone.** The only mechanism that gives an Epic game a real
 last-played date remains §5.2's process monitor.
@@ -317,7 +317,7 @@ last-played date remains §5.2's process monitor.
 
 1. **No dates.** `totalTime` is a running total and nothing else. See above.
 2. **It only counts sessions Epic's own launcher started.** The launcher PUTs to the write
-   route; a user who plays through Heroic — or through Hoard's process monitor — accrues
+   route; a user who plays through Heroic — or through Winnow's process monitor — accrues
    **zero** Epic-side playtime. For an app about forgotten games, undercounting play is the
    wrong direction of error. This is why an artifact absent from the playtime list must arrive
    as `null` and never as `0`: absence means "Epic has no figure", not "never played".
@@ -331,7 +331,7 @@ documentation, and no launcher reads the field. **Seconds is the plausible readi
 the default, but it is a reading.**
 
 The implementation does not hardcode it: `EpicWebOptions.PlaytimeUnit` is a setting, and the
-sign-in flow prints raw `totalTime` beside the hours Hoard derives from it so the user can
+sign-in flow prints raw `totalTime` beside the hours Winnow derives from it so the user can
 compare against the launcher's own "You've Played" display in one look.
 
 **The blast radius is smaller than it appears**, and this is worth stating because it is why
@@ -386,30 +386,30 @@ default, and requires a deliberate act to enable.
 ## 10. What the implementation does about the client-secret problem
 
 The one unavoidable cost is that reading a storefront library requires Epic's own launcher
-client. Hoard's response:
+client. Winnow's response:
 
 > **REVERSED 2026-08-26 (M4.6). This section describes what the module did before the sign-in
 > button existed, and is kept because the reasoning is still worth reading — it just lost.**
-> Hoard now ships Epic's launcher pair built in, as the LAST credential source, so anything
+> Winnow now ships Epic's launcher pair built in, as the LAST credential source, so anything
 > the user supplies still wins. What broke the argument below is that a sign-in *button*
 > cannot ask for an OAuth client secret, and there is no pair the user could supply instead:
 > Epic Account Services will register anyone an application, but its consent scopes cannot
 > read entitlements, so `library:public:items` exists only on the launcher client. The choice
-> was never "Hoard's credentials or the user's" — it was "these credentials, or the feature
-> does not exist". Hoard is now the party distributing them, which is a real transfer of
+> was never "Winnow's credentials or the user's" — it was "these credentials, or the feature
+> does not exist". Winnow is now the party distributing them, which is a real transfer of
 > responsibility and is recorded as such in `BuiltInEpicCredentialSource` and `ROADMAP.md` §3.
 > The values were verified live returning HTTP 200 on 2026-08-26 rather than trusted.
 
-**Hoard does not ship Epic's client credentials, and this repository does not contain them.**
+**Winnow does not ship Epic's client credentials, and this repository does not contain them.**
 The pair is user-supplied and stored locally, exactly like the Steam Web API key and the IGDB
 pair — the charter rule is "user-supplied, stored locally, never logged, never committed", and
-baking a credential Hoard has no right to into every checkout would break the last clause.
+baking a credential Winnow has no right to into every checkout would break the last clause.
 
 This is a real trade, not a dodge. It costs the user a setup step they must resolve
 themselves, and it means the module ships disabled and stays that way for anyone who does not
 go looking. In exchange:
 
-- No credential Hoard has no right to enters the repository or a shipped binary.
+- No credential Winnow has no right to enters the repository or a shipped binary.
 - The decision to impersonate Epic's launcher is made by the person doing it.
 - An unconfigured install is a clean no-op that makes no requests at all
   (`Registering_the_module_without_credentials_makes_no_requests_on_any_call`).
@@ -436,10 +436,10 @@ Since M4.6 there are two, and neither needs credentials any more (§10's amendme
 **The embedded browser** — this is the one to run:
 
 ```powershell
-dotnet run --project src/Hoard.App -- --epic-signin
+dotnet run --project src/Winnow.App -- --epic-signin
 ```
 
-A window opens showing what Hoard is about to hold; accepting it loads Epic's own sign-in
+A window opens showing what Winnow is about to hold; accepting it loads Epic's own sign-in
 page inside that window, and the code is captured the instant Epic issues it. On success it
 prints **which of the three capture routes actually fired**, which is the one thing
 `embedded-auth.md` §9 could not settle without a real account.
@@ -448,7 +448,7 @@ prints **which of the three capture routes actually fired**, which is the one th
 breaks the embedded page:
 
 ```powershell
-dotnet run --project src/Hoard.App -- --epic-login
+dotnet run --project src/Winnow.App -- --epic-login
 ```
 
 It prints the Epic sign-in URL together with Epic's own warning about the code, waits for a
@@ -459,9 +459,9 @@ and prints:
 
 - owned title count, and how many carry an `acquisitionDate`
 - whether the playtime endpoint answered, and how many titles carry a figure
-- **raw `totalTime` beside the hours Hoard derives**, for the eight most-played titles
+- **raw `totalTime` beside the hours Winnow derives**, for the eight most-played titles
 
-Compare that last table against the launcher's own "You've Played". If Hoard's column is ~60×
+Compare that last table against the launcher's own "You've Played". If Winnow's column is ~60×
 off, flip `EpicWebOptions.PlaytimeUnit` to `Minutes`. That is the whole of section 7's open
 question, settled by looking.
 
@@ -472,9 +472,9 @@ is also the workaround the day Epic rotates the built-in pair.
 
 **Neither flow asks for, reads, or stores an Epic password.** The console flow sends the user
 to their own browser. The embedded flow hosts Epic's page in a Chromium surface — the user
-types into Epic's form, which posts to Epic over TLS, and Hoard reads only the code Epic hands
+types into Epic's form, which posts to Epic over TLS, and Winnow reads only the code Epic hands
 back. That is a weaker statement than the console flow's and it is made deliberately: the
-password is typed into a window Hoard opened, and §1's amendment says so rather than claiming
+password is typed into a window Winnow opened, and §1's amendment says so rather than claiming
 the two postures are identical.
 
 ---
@@ -496,9 +496,9 @@ the two postures are identical.
 4. **The endpoints are explicitly unsupported by Epic**, on the record. Zero stability
    guarantee and no recourse.
 5. **Signing in creates a session with full account scope.** Epic says so on the page that
-   issues the code. Hoard uses it for two GETs, but the credential is not narrower than that.
+   issues the code. Winnow uses it for two GETs, but the credential is not narrower than that.
 6. **`legendary auth --import` logs the user out of the real Epic Launcher**, because it steals
-   the launcher's refresh token. Hoard does **not** do this — it mints its own session from a
+   the launcher's refresh token. Winnow does **not** do this — it mints its own session from a
    fresh authorization code — but anyone who has used that Legendary path should know why their
    launcher signed out.
 7. **The playtime unit is unverified** until section 11 is run. A wrong unit misstates a

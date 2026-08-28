@@ -20,7 +20,7 @@ SteamCMD was never installed or run here. §4 is arithmetic over measured per-re
 ## 1. `api.steamcmd.net` — ALIVE. §4.5's outage was transient
 
 ```
-GET https://api.steamcmd.net/v1/info/570      (User-Agent: Hoard/0.1 …)
+GET https://api.steamcmd.net/v1/info/570      (User-Agent: Winnow/0.1 …)
 ```
 ```json
 {"data": {"570": {"_change_number": 38253266, "_missing_token": false, "appid": "570",
@@ -177,7 +177,7 @@ games played within 30 days cannot be "stale" soon and can drop to a 30-day swee
 
 ## 5. Signals §4.5 missed
 
-**Local `appmanifest_*.acf` — VERIFIED, free, use as a corroborator.** `Hoard.Ingest.Steam` already
+**Local `appmanifest_*.acf` — VERIFIED, free, use as a corroborator.** `Winnow.Ingest.Steam` already
 reads these; the fields are in `tests/fixtures/steam/` today:
 
 ```

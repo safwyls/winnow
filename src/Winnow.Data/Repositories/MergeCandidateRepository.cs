@@ -1,0 +1,111 @@
+using Dapper;
+using Winnow.Core.Domain;
+using Winnow.Core.Repositories;
+
+namespace Winnow.Data.Repositories;
+
+public sealed class MergeCandidateRepository : IMergeCandidateRepository
+{
+    private readonly ISqliteConnectionFactory _factory;
+
+    public MergeCandidateRepository(ISqliteConnectionFactory factory) => _factory = factory;
+
+    public async Task<long> InsertAsync(MergeCandidate candidate, CancellationToken ct = default)
+    {
+        using var lease = _factory.Lease();
+        return await lease.Connection.ExecuteScalarAsync<long>(new CommandDefinition("""
+            INSERT INTO merge_candidates (left_release_id, right_release_id, score, signals_json, status)
+            VALUES (@LeftReleaseId, @RightReleaseId, @Score, @SignalsJson, @Status)
+            RETURNING id;
+            """, candidate, transaction: lease.Transaction, cancellationToken: ct));
+    }
+
+    public async Task<IReadOnlyList<MergeCandidate>> GetPendingAsync(CancellationToken ct = default)
+    {
+        using var lease = _factory.Lease();
+        var rows = await lease.Connection.QueryAsync<MergeCandidate>(new CommandDefinition("""
+            SELECT id               AS Id,
+                   left_release_id  AS LeftReleaseId,
+                   right_release_id AS RightReleaseId,
+                   score            AS Score,
+                   signals_json     AS SignalsJson,
+                   status           AS Status
+            FROM merge_candidates
+            WHERE status = 'pending'
+            ORDER BY score DESC, id;
+            """, transaction: lease.Transaction, cancellationToken: ct));
+        return rows.AsList();
+    }
+
+    public async Task<MergeCandidate?> FindByPairAsync(
+        long leftReleaseId, long rightReleaseId, CancellationToken ct = default)
+    {
+        using var lease = _factory.Lease();
+
+        // Either orientation: the soft matcher canonicalises to (min, max)
+        // before writing, but a row inserted by hand — or by an earlier build
+        // that did not canonicalise — must still be found, or a re-scan would
+        // insert its mirror image and the user gets asked the same question
+        // twice.
+        return await lease.Connection.QueryFirstOrDefaultAsync<MergeCandidate>(new CommandDefinition("""
+            SELECT id               AS Id,
+                   left_release_id  AS LeftReleaseId,
+                   right_release_id AS RightReleaseId,
+                   score            AS Score,
+                   signals_json     AS SignalsJson,
+                   status           AS Status
+            FROM merge_candidates
+            WHERE (left_release_id = @a AND right_release_id = @b)
+               OR (left_release_id = @b AND right_release_id = @a)
+            ORDER BY id
+            LIMIT 1;
+            """,
+            new { a = leftReleaseId, b = rightReleaseId },
+            transaction: lease.Transaction,
+            cancellationToken: ct));
+    }
+
+    public async Task SetStatusAsync(long id, string status, CancellationToken ct = default)
+    {
+        using var lease = _factory.Lease();
+        await lease.Connection.ExecuteAsync(new CommandDefinition(
+            "UPDATE merge_candidates SET status = @status WHERE id = @id;",
+            new { id, status }, transaction: lease.Transaction, cancellationToken: ct));
+    }
+
+    /// <summary>
+    /// The <c>status = 'pending'</c> predicate is the whole safety property, so
+    /// it lives in the statement rather than in a caller's <c>if</c>: there is
+    /// no ordering of C# that can make this rewrite an answered row.
+    /// </summary>
+    public async Task<bool> UpdatePendingScoreAsync(
+        long id, double score, string? signalsJson, CancellationToken ct = default)
+    {
+        using var lease = _factory.Lease();
+        var rows = await lease.Connection.ExecuteAsync(new CommandDefinition("""
+            UPDATE merge_candidates
+            SET score = @score, signals_json = @signalsJson
+            WHERE id = @id AND status = 'pending';
+            """,
+            new { id, score, signalsJson },
+            transaction: lease.Transaction,
+            cancellationToken: ct));
+
+        return rows > 0;
+    }
+
+    /// <summary>
+    /// Same guard, same reason. Deleting is limited to proposals the user has
+    /// not answered; <c>confirmed</c> and <c>rejected</c> rows are unreachable
+    /// from this statement.
+    /// </summary>
+    public async Task<bool> WithdrawPendingAsync(long id, CancellationToken ct = default)
+    {
+        using var lease = _factory.Lease();
+        var rows = await lease.Connection.ExecuteAsync(new CommandDefinition(
+            "DELETE FROM merge_candidates WHERE id = @id AND status = 'pending';",
+            new { id }, transaction: lease.Transaction, cancellationToken: ct));
+
+        return rows > 0;
+    }
+}

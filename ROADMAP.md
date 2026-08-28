@@ -1,4 +1,4 @@
-# Hoard — Roadmap (v2)
+# Winnow — Roadmap (v2)
 
 Supersedes §8 of `game-library-design.md` for sequencing. The hard constraints in §4 and the
 module boundaries in §5.1 are unchanged and still binding. Where this document contradicts
@@ -6,21 +6,30 @@ module boundaries in §5.1 are unchanged and still binding. Where this document 
 
 ---
 
-## 1. What Hoard is
+## 1. What Winnow is
 
-**Hoard is the library that remembers.**
+**Winnow is the library that remembers.**
+
+*Renamed from Hoard on 2026-08-28, mascot included — the dragon is called Winnow now. The
+name change is not cosmetic in one respect worth recording here: the app's premise is
+**winnowing a hoard**, so the old name named the problem and the new one names the work. The
+hoard is still the domain concept and the word survives in the design system on purpose; see
+`CLAUDE.md`. The three compatibility shims the rename needed — the data-directory move, the
+DbUp journal re-point, and the theme-id alias — are listed there too, and each is
+load-bearing for an install that predates the rename rather than tidy-up that can be
+deleted.*
 
 Every storefront lists your games. None of them retain the history that makes a library
 legible: how long a game sat unopened before you tried it, whether you bounced off it once
 or fought with it across six sessions, whether it has been patched three times since you
 gave up, whether you are the kind of person who ever comes back.
 
-Storefronts discard that. Hoard keeps it. That is the whole asset.
+Storefronts discard that. Winnow keeps it. That is the whole asset.
 
 "Analytics tool" undersells it, correctly — analytics is a panel you open monthly and then
 stop opening. But "launcher" oversells it in a different direction: Playnite already is a
 mature open-source launcher with a plugin ecosystem, and a straight race against it is one
-Hoard loses on maturity alone.
+Winnow loses on maturity alone.
 
 The position that is actually defensible is the intersection.
 
@@ -29,13 +38,13 @@ The position that is actually defensible is the intersection.
 The two halves are not separate ambitions. They are a loop:
 
 ```
-   launch games through Hoard
+   launch games through Winnow
             |
    real session data accrues   <- nobody else has this
             |
    the feed gets genuinely good
             |
-   the feed is the reason to launch through Hoard
+   the feed is the reason to launch through Winnow
 ```
 
 This matters for sequencing. A recommender fed only by periodic library syncs sees **one
@@ -64,9 +73,9 @@ Two consequences fall out immediately, and both are lucky:
 | §1 non-goal | Status | Rationale |
 |---|---|---|
 | Recommendation engine (phase 2) | **Promoted to core** | It is the differentiator. Phase-2 placement assumed it needed a server; it does not — all inference is local over the user's own database. |
-| Any hosted service, user accounts, multi-user | **Unchanged** | Still no server, still no Hoard account, still no telemetry. **Hoard has no accounts; Hoard links yours.** Epic/Steam OAuth authenticates you to *their* service and stores the token locally under DPAPI. That is third-party linking, not account creation, and the distinction is load-bearing. |
+| Any hosted service, user accounts, multi-user | **Unchanged** | Still no server, still no Winnow account, still no telemetry. **Winnow has no accounts; Winnow links yours.** Epic/Steam OAuth authenticates you to *their* service and stores the token locally under DPAPI. That is third-party linking, not account creation, and the distinction is load-bearing. |
 | 3D "games on a shelf" view (cut, §11) | **Still cut** | Full-screen gamepad mode (M10) is a 10-foot UI, not the 3D shelf. Avalonia handles it natively; §11's framework reasoning does not apply and is not reopened. |
-| Shipping storefront client credentials | **Decided 2026-08-26: ship them built-in** | A sign-in button cannot ask the user for credentials, and there is no version where they supply their own: Epic issues no client that can read a personal library (an EOS portal app is rejected with `invalid_client`), and GOG has no public dev portal for this. So the only alternatives were "embed the launcher credentials" or "the feature does not exist". Heroic, Legendary and the Playnite plugins all embed them. Hoard is the party distributing them and that is a real cost; the realistic failure mode is Epic or GOG rotating a client and sign-in breaking until updated, not bans. The published Epic pair was verified live on 2026-08-26 rather than trusted. |
+| Shipping storefront client credentials | **Decided 2026-08-26: ship them built-in** | A sign-in button cannot ask the user for credentials, and there is no version where they supply their own: Epic issues no client that can read a personal library (an EOS portal app is rejected with `invalid_client`), and GOG has no public dev portal for this. So the only alternatives were "embed the launcher credentials" or "the feature does not exist". Heroic, Legendary and the Playnite plugins all embed them. Winnow is the party distributing them and that is a real cost; the realistic failure mode is Epic or GOG rotating a client and sign-in breaking until updated, not bans. The published Epic pair was verified live on 2026-08-26 rather than trusted. |
 | PSN / Xbox (§4.6) | **Unchanged — still excluded** | See the note under M4.5. Epic OAuth is not a precedent for these. |
 
 ## 4. Phases
@@ -76,12 +85,12 @@ Numbering continues from §8. M0–M2 and M4 are shipped.
 | # | Deliverable | Exit criteria | State |
 |---|---|---|---|
 | M4.5 | Epic OAuth ownership source + local fallback | Entitlements resolve when authed; unauthed degrades silently to local files with no loss of install state | **shipped** — sign-in since verified end to end |
-| M7 | Recommendation core (`Hoard.Recommend`) | Standalone scoring module, explainable output, sensible ranking on a cold library; not yet wired to UI | **shipped** (unwired by design) |
+| M7 | Recommendation core (`Winnow.Recommend`) | Standalone scoring module, explainable output, sensible ranking on a cold library; not yet wired to UI | **shipped** (unwired by design) |
 | M3a | Session detection (§5.2 mechanism A) | Process watching records sessions with true start/end; poll for discovery only, events for exit | **shipped** |
 | M4.6 | Store sign-in UI (Epic) | A sign-in button in the app runs an embedded-browser OAuth flow that captures the code automatically; console flow survives as a documented fallback | **shipped** |
 | M11 | Appearance system | Four themes, a transparency slider with a chosen backdrop, an optional island layout, a drop-in JSON theme format, and an application icon | **shipped** — unplanned, see below |
 | — | GOG sign-in | **Held, on evidence.** Nothing to gain today; see below | not scheduled |
-| M3b | Launch + journal prompt | Launching from Hoard records a session; journal prompt opt-in (§9 pitfall 7) | **shipped** — `hoard-wrap` (§5.2 B) deliberately deferred |
+| M3b | Launch + journal prompt | Launching from Winnow records a session; journal prompt opt-in (§9 pitfall 7) | **shipped** — `winnow-wrap` (§5.2 B) deliberately deferred |
 | M8 | The Feed | Recommender surfaced as the app's primary view; every card states its reason in one sentence | **shipped** — no dismiss/snooze yet; nothing remembers yesterday |
 | M5 | GDPR export importer | Historical playtime backfills; feed measurably improves on a cold library | after M8 |
 | M6 | Export (JSON + CSV) | Round-trips through the importer without loss | after M5 |
@@ -142,7 +151,7 @@ session detection means shipping it at its worst and teaching users it is medioc
 data starts accruing the moment M3 lands, so M3 should land as early as possible even though
 the feed is the visible prize — every week M3 is late is a week of history not collected.
 
-**M9 delegates, never reimplements.** Hoard hands installation to the store's own client
+**M9 delegates, never reimplements.** Winnow hands installation to the store's own client
 (`steam://install/`, Galaxy, the Epic launcher). Writing our own downloaders —
 Legendary-style — means owning CDN auth, chunked delivery, patching, and the support burden
 for corrupted installs, for the sole benefit of avoiding a window appearing. Not worth it,
@@ -158,7 +167,7 @@ and M8 deliver to everyone. This is the right feature and the wrong thing to bui
 Deferred, and worth stating why beyond "needs catalog data" (it does — store catalogue
 access we have not built).
 
-There is a product-integrity tension to resolve first. Hoard's premise is *you own a thousand
+There is a product-integrity tension to resolve first. Winnow's premise is *you own a thousand
 games and have played forty*. An app that opens with that diagnosis and then sells you more
 games is incoherent, and users will read it — correctly — as the moment the tool started
 working for someone else.
@@ -176,7 +185,7 @@ Tracked so none of it silently becomes permanent:
   applies them. 23 cross-store pairs are pending on the user's library right now. The
   `ON DELETE CASCADE` hazard on collapsing two releases is documented and unresolved.
 - **Cross-store dedup via `gamesdb.gog.com`** — **built for METADATA, not for dedup.**
-  `Hoard.Enrich.GamesDb` now routes Epic titles to a Steam appid so they can be enriched
+  `Winnow.Enrich.GamesDb` now routes Epic titles to a Steam appid so they can be enriched
   (62 of 67). It deliberately writes no `external_ids` and no merge candidates: that table is
   keyed `(provider, provider_id)` globally, so putting a Steam appid on an Epic release would
   collide with the Steam release that already owns it. gamesdb also resolves *games*, not
@@ -188,7 +197,7 @@ Tracked so none of it silently becomes permanent:
   Steam ids). Not built. This would collapse most of the merge queue automatically via hard
   ids rather than fuzzy title, which is exactly what §5.3 wants.
 - **`SteamSyncService` is misnamed** — it ingests three stores. Rename to
-  `LibrarySyncService` behind an `ILocalLibrarySource` in `Hoard.Core.Ingest`.
+  `LibrarySyncService` behind an `ILocalLibrarySource` in `Winnow.Core.Ingest`.
 - **Session detection is Windows-only in practice.** `GameExecutableIndexBuilder` matches
   `*.exe`, so off Windows the index is empty and nothing is ever recorded — it warns once
   rather than failing silently. Widening the glob is NOT the fix: under Proton the resolved
@@ -200,10 +209,10 @@ Tracked so none of it silently becomes permanent:
 
 ## 7. The risk
 
-This roadmap roughly triples Hoard's surface area. The realistic failure mode is not
+This roadmap roughly triples Winnow's surface area. The realistic failure mode is not
 technical — it is becoming a worse Playnite with an unfinished recommender attached.
 
 The mitigation is ordering, and it is the reason M7 and M3 run ahead of everything visible:
-**the feed must always be further along than the launcher.** If Hoard ever ships launcher
+**the feed must always be further along than the launcher.** If Winnow ever ships launcher
 parity before the recommender is genuinely good, it has spent its differentiation budget on
 catching up to a mature incumbent and has nothing left to be chosen for.

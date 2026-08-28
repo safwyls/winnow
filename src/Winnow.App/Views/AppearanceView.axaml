@@ -1,0 +1,1135 @@
+﻿<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Winnow.App.ViewModels"
+             x:Class="Winnow.App.Views.AppearanceView"
+             x:DataType="vm:AppearanceViewModel">
+
+    <!--
+        SETTINGS › APPEARANCE. Two decisions: which theme, and how much of
+        the desktop the window admits.
+
+        The theme cards are the screen. Each one draws the window at 1/8 scale
+        out of its own palette — the caption and rail as one chrome bracket, one
+        lit row, the seam, a wall of capsules, one unread dot — rather than a
+        strip of colour chips. A chip row says what the hues are; the miniature
+        says what they DO, and since these four themes differ by value structure
+        and material rather than by hue, a chip row would say almost nothing at
+        all. Four of them side by side also state the invariant without a
+        sentence: the Flare dot changes colour and never changes job, and there
+        is exactly one of it per theme.
+
+        Nothing here animates. §12.5's rule is that motion lives in a style so
+        §8's reduced-motion setting can take it away, and a settings screen that
+        cross-fades while you compare four palettes is a settings screen you
+        cannot compare four palettes on.
+    -->
+
+    <UserControl.Styles>
+
+        <!-- ══ A theme card ═══════════════════════════════════════════════
+             A real Button, so it is one Tab stop, fires on Space, and reports
+             itself to automation as the control it is. Selection is a Volt edge
+             at a thickness that never changes (§10.7) — a card that thickens on
+             pick would reflow the row of four beside it. -->
+        <Style Selector="Button.themecard">
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Background" Value="{StaticResource Surface}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="BorderThickness" Value="2"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusTile}"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+        </Style>
+        <Style Selector="Button.themecard /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource Surface}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+        </Style>
+        <Style Selector="Button.themecard:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource TextDim}"/>
+        </Style>
+        <Style Selector="Button.themecard.picked /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+        </Style>
+        <Style Selector="Button.themecard:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+        </Style>
+
+        <!-- ══ A text-only choice ═════════════════════════════════════════
+             The backdrop material and how far the transparency reaches. Same
+             Button grammar as a theme card — one Tab stop, fires on Space, a
+             Volt edge whose thickness never changes — at a smaller size and
+             with no picture, because neither of these two is a picture. A
+             theme is something you can be shown; a material and a reach are
+             CONSEQUENCES, and the honest way to show a consequence is to say
+             it. Hence a name and one sentence.
+
+             Recessed rather than raised: Ground inside a Surface card, so the
+             pair read as two wells cut into the panel rather than as two more
+             cards stacked on it. Four stacked cards is the wall of controls
+             this screen is trying not to become. -->
+        <Style Selector="Button.optioncard">
+            <Setter Property="Padding" Value="14,12"/>
+            <Setter Property="Background" Value="{StaticResource Ground}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="BorderThickness" Value="2"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="VerticalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="VerticalContentAlignment" Value="Top"/>
+        </Style>
+        <Style Selector="Button.optioncard /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource Ground}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+        </Style>
+        <Style Selector="Button.optioncard:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource Ground}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource TextDim}"/>
+        </Style>
+        <Style Selector="Button.optioncard.picked /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource Ground}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+        </Style>
+        <Style Selector="Button.optioncard:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+        </Style>
+
+        <!-- The miniature. Fixed geometry so four of them line up exactly:
+             a 2:3 wall of capsules is the app's own atom (§4) and the mock
+             reads wrong the moment the proportions drift. -->
+        <Style Selector="Border.mini">
+            <Setter Property="Height" Value="96"/>
+            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="ClipToBounds" Value="True"/>
+        </Style>
+
+        <!-- ══ The transparency slider ════════════════════════════════════
+             The command bar's DENSITY slider is the reference and this one keeps
+             its grammar — neutral track, neutral thumb, the travelled side in
+             TextDim and the rest in Line — because a slider that meant something
+             different on the settings screen would be a second convention to
+             learn. It is drawn a step larger, and that is the only difference:
+             density is a knob you nudge while scanning, this is a setting you
+             sit and tune. The thumb stays NEUTRAL rather than Volt (§2: Volt is
+             selection, and a value in force is not a selection).
+        -->
+        <Style Selector="Slider.opacity">
+            <Setter Property="MinHeight" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
+        </Style>
+        <Style Selector="Slider.opacity /template/ Track#PART_Track RepeatButton#PART_DecreaseButton /template/ Border">
+            <Setter Property="Background" Value="{StaticResource TextDim}"/>
+            <Setter Property="Height" Value="4"/>
+            <Setter Property="CornerRadius" Value="2"/>
+        </Style>
+        <Style Selector="Slider.opacity /template/ Track#PART_Track RepeatButton#PART_IncreaseButton /template/ Border">
+            <Setter Property="Background" Value="{StaticResource Line}"/>
+            <Setter Property="Height" Value="4"/>
+            <Setter Property="CornerRadius" Value="2"/>
+        </Style>
+        <Style Selector="Slider.opacity /template/ Thumb">
+            <Setter Property="Background" Value="{StaticResource TextDim}"/>
+            <Setter Property="Width" Value="16"/>
+            <Setter Property="Height" Value="16"/>
+        </Style>
+        <Style Selector="Slider.opacity:pointerover /template/ Thumb">
+            <Setter Property="Background" Value="{StaticResource Text}"/>
+        </Style>
+
+        <!-- §8's focus ring, drawn by the frame rather than adorned on the
+             thumb. The global FocusAdorner puts a rounded box round the whole
+             control, which on a 340px track is a box and not an indicator; and
+             a Thumb's own template ignores BorderBrush, so a ring set there
+             renders nothing. `:focus-within` on the frame is the one place that
+             both shows up and does not move anything: the border thickness
+             never changes, only its brush (§10.7). -->
+        <Style Selector="Border.sliderframe">
+            <Setter Property="BorderThickness" Value="2"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="6,4"/>
+            <Setter Property="Margin" Value="-8,0,0,0"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+        </Style>
+        <Style Selector="Border.sliderframe:focus-within">
+            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+        </Style>
+
+        <!-- The worst-case ratio, once it is under AA. Amber and not Danger:
+             §2 gives Amber "attention" and Danger the one destructive act, and
+             a setting the user chose with the number in front of them is
+             neither an error nor something to be undone for them. -->
+        <Style Selector="TextBlock.ratio.under">
+            <Setter Property="Foreground" Value="{StaticResource Amber}"/>
+        </Style>
+
+        <!-- ══ One line of the themes folder's report ══════════════════════
+             A file that did not load takes AMBER, not Danger, on this screen's
+             own established rule: §2 keeps Danger for the one destructive act
+             and gives Amber "attention", and a theme file with a typo in it is
+             neither an error the app made nor something to be undone for anyone.
+             It is the same call the "not available here" note above already
+             makes.
+
+             A warning - a theme that loaded and is worth a second look - takes
+             the ordinary metadata ink and the ordinary edge, because it is not
+             asking for anything. The two are told apart by the words in the
+             verdict as well as by the edge (§8: never hue alone). -->
+        <Style Selector="Border.problem">
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="BorderThickness" Value="2,0,0,0"/>
+        </Style>
+        <Style Selector="Border.problem.failed">
+            <Setter Property="BorderBrush" Value="{StaticResource Amber}"/>
+        </Style>
+        <Style Selector="Border.problem TextBlock.verdict">
+            <Setter Property="Foreground" Value="{StaticResource TextFaint}"/>
+        </Style>
+        <Style Selector="Border.problem.failed TextBlock.verdict">
+            <Setter Property="Foreground" Value="{StaticResource Amber}"/>
+        </Style>
+
+        <Style Selector="Border.card">
+            <Setter Property="Background" Value="{StaticResource Surface}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
+            <Setter Property="Padding" Value="20"/>
+        </Style>
+
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto,*" Background="{StaticResource PaneGround}">
+
+        <!-- ══ Header ═══════════════════════════════════════════════════════ -->
+        <Border Grid.Row="0"
+                Padding="24,20,24,18"
+                BorderBrush="{StaticResource Line}"
+                BorderThickness="0,0,0,1">
+            <StackPanel Spacing="7">
+                <TextBlock Classes="display-l" Text="{Binding Title}"/>
+                <TextBlock Classes="body"
+                           MaxWidth="640"
+                           HorizontalAlignment="Left"
+                           TextWrapping="Wrap"
+                           LineHeight="19"
+                           Foreground="{StaticResource TextDim}"
+                           Text="{Binding IntroMessage}"/>
+            </StackPanel>
+        </Border>
+
+        <ScrollViewer Grid.Row="1"
+                      Name="ScreenScroll"
+                      HorizontalScrollBarVisibility="Disabled"
+                      VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="24,16,24,28" MaxWidth="920"
+                        HorizontalAlignment="Left" Spacing="14">
+
+                <TextBlock Classes="label" FontSize="10" LetterSpacing="1.4" Text="THEME"/>
+
+                <ItemsControl ItemsSource="{Binding Themes}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <UniformGrid Columns="2"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="vm:ThemeChoiceViewModel">
+                            <Button Classes="themecard"
+                                    Classes.picked="{Binding IsSelected}"
+                                    Margin="0,0,12,12"
+                                    Command="{Binding $parent[ItemsControl].((vm:AppearanceViewModel)DataContext).SelectThemeCommand}"
+                                    CommandParameter="{Binding}"
+                                    ToolTip.Tip="{Binding Reason}">
+                                <StackPanel Spacing="0">
+
+                                    <!-- ══ The window, at 1/8 ══════════════
+                                         Caption and rail as ONE continuous
+                                         chrome bracket (§9), with the art
+                                         recessed inside it. Every piece is one
+                                         of this theme's own brushes, so the card
+                                         keeps showing its palette while the app
+                                         is wearing another.
+
+                                         The two things that separate these four
+                                         themes are both visible here and neither
+                                         is a hue: how far the wall drops below
+                                         the chrome, and how loud the seam
+                                         between them is. -->
+                                    <Border Classes="mini" CornerRadius="4,4,0,0"
+                                            Background="{Binding Ground}">
+                                        <Grid RowDefinitions="12,*">
+
+                                            <!-- The caption takes the rail's
+                                                 colour, so the chrome reads as
+                                                 one block down the side and
+                                                 across the top rather than two
+                                                 tones meeting at a corner. -->
+                                            <Border Grid.Row="0" Background="{Binding Surface}"/>
+
+                                            <Grid Grid.Row="1" ColumnDefinitions="46,*">
+
+                                                <!-- Rail: four rows, one lit,
+                                                     and the lit one carries the
+                                                     2px Volt edge. Its right
+                                                     edge is the chrome/art seam
+                                                     (§11.1), drawn at the
+                                                     theme's own Line — which is
+                                                     Nightshift's whole structure
+                                                     and Tungsten's quietest
+                                                     detail. -->
+                                                <Border Grid.Column="0" Background="{Binding Surface}"
+                                                        BorderBrush="{Binding Line}"
+                                                        BorderThickness="0,0,1,0">
+                                                    <StackPanel Margin="0,6" Spacing="6">
+                                                        <Border Background="{Binding SurfaceRaised}" Height="12">
+                                                            <Grid ColumnDefinitions="2,5,*,6">
+                                                                <Border Grid.Column="0" Background="{Binding Volt}"/>
+                                                                <Border Grid.Column="2" Height="4" CornerRadius="2"
+                                                                        Background="{Binding Text}"/>
+                                                            </Grid>
+                                                        </Border>
+                                                        <!-- The one rail row with a
+                                                             pip beside its count:
+                                                             Patched since, which is
+                                                             what Flare counts (6). -->
+                                                        <Grid ColumnDefinitions="2,5,5,3,*,6" Height="8">
+                                                            <Ellipse Grid.Column="2" Width="4" Height="4"
+                                                                     Fill="{Binding Flare}"
+                                                                     VerticalAlignment="Center"/>
+                                                            <Border Grid.Column="4" Height="4" CornerRadius="2"
+                                                                    Background="{Binding TextDim}" Opacity="0.7"/>
+                                                        </Grid>
+                                                        <Grid ColumnDefinitions="2,5,*,6" Height="8">
+                                                            <Border Grid.Column="2" Height="4" CornerRadius="2"
+                                                                    Background="{Binding TextDim}" Opacity="0.5"/>
+                                                        </Grid>
+                                                        <Grid ColumnDefinitions="2,5,*,6" Height="8">
+                                                            <Border Grid.Column="2" Height="4" CornerRadius="2"
+                                                                    Background="{Binding TextDim}" Opacity="0.3"/>
+                                                        </Grid>
+                                                    </StackPanel>
+                                                </Border>
+
+                                                <!-- The wall. 2:3 capsules, the
+                                                     app's own atom (§4), and the
+                                                     SAME seven on all four cards
+                                                     — real cover art does not
+                                                     change when the room does, so
+                                                     four miniatures that differ
+                                                     only in their chrome are this
+                                                     palette system's whole claim
+                                                     made visually.
+
+                                                     Two of them carry §5.1's
+                                                     dormancy floor: bright tiles
+                                                     are alive, ghosted ones are
+                                                     what you forgot you owned.
+                                                     The row runs off the right
+                                                     edge because a wall does. -->
+                                                <Border Grid.Column="1" Background="{Binding Ground}"
+                                                        Padding="8,9,0,0" ClipToBounds="True">
+                                                    <StackPanel Orientation="Horizontal" Spacing="6"
+                                                                VerticalAlignment="Top">
+                                                        <Panel Width="46" Height="69">
+                                                            <Border CornerRadius="3"
+                                                                    Background="{x:Static vm:ThemeChoiceViewModel.Art1}"/>
+                                                            <!-- The one Flare in the picture, and the
+                                                                 one thing on the card that IS the
+                                                                 theme's own colour. -->
+                                                            <Ellipse Width="6" Height="6"
+                                                                     Fill="{Binding Flare}"
+                                                                     HorizontalAlignment="Right"
+                                                                     VerticalAlignment="Top"
+                                                                     Margin="0,3,3,0"/>
+                                                        </Panel>
+                                                        <Border Width="46" Height="69" CornerRadius="3"
+                                                                Background="{x:Static vm:ThemeChoiceViewModel.Art2}"/>
+                                                        <Border Width="46" Height="69" CornerRadius="3"
+                                                                Background="{x:Static vm:ThemeChoiceViewModel.ArtDormant1}"/>
+                                                        <Border Width="46" Height="69" CornerRadius="3"
+                                                                Background="{x:Static vm:ThemeChoiceViewModel.Art3}"/>
+                                                        <Border Width="46" Height="69" CornerRadius="3"
+                                                                Background="{x:Static vm:ThemeChoiceViewModel.Art4}"/>
+                                                        <Border Width="46" Height="69" CornerRadius="3"
+                                                                Background="{x:Static vm:ThemeChoiceViewModel.ArtDormant2}"/>
+                                                        <Border Width="46" Height="69" CornerRadius="3"
+                                                                Background="{x:Static vm:ThemeChoiceViewModel.Art5}"/>
+                                                    </StackPanel>
+                                                </Border>
+                                            </Grid>
+                                        </Grid>
+                                    </Border>
+
+                                    <StackPanel Margin="16,12,16,14" Spacing="6">
+                                        <Grid ColumnDefinitions="*,Auto">
+                                            <TextBlock Grid.Column="0"
+                                                       Classes="display-l" FontSize="17"
+                                                       Text="{Binding Name}"
+                                                       VerticalAlignment="Center"/>
+                                            <!-- Says which one you are on in a
+                                                 word as well as in an edge (§8):
+                                                 the Volt border is never the
+                                                 only thing carrying it. -->
+                                            <Border Grid.Column="1"
+                                                    IsVisible="{Binding IsSelected}"
+                                                    Background="{StaticResource Volt}"
+                                                    CornerRadius="9" Padding="8,2"
+                                                    VerticalAlignment="Center">
+                                                <TextBlock Classes="label" FontSize="9" LetterSpacing="1"
+                                                           Foreground="{StaticResource VoltInk}"
+                                                           Text="IN USE"/>
+                                            </Border>
+                                        </Grid>
+                                        <TextBlock Classes="para"
+                                                   Text="{Binding Reason}"/>
+
+                                        <!-- ══ A user theme says two more things ══
+                                             Which FILE it came from, so an author
+                                             with four of these knows which one to
+                                             edit; and what it MEASURES, which is
+                                             the thing no other theming system
+                                             hands you.
+
+                                             ThemeContrastTests walks all four
+                                             built-ins across the whole slider on
+                                             every build. A theme that arrives in a
+                                             folder at runtime can never be unit
+                                             tested, so it gets the same walk when
+                                             it loads and the answer is printed
+                                             where the theme is picked. A palette
+                                             an author likes and a palette that can
+                                             carry this window's transparency are
+                                             two different things, and this line is
+                                             the only place that difference shows
+                                             before they have dragged the slider
+                                             and squinted at the rail.
+
+                                             The built-ins do not draw it: the AA
+                                             mark on the track below already
+                                             carries the same number for whichever
+                                             theme is up, and a second copy is a
+                                             second place for it to drift. -->
+                                        <StackPanel IsVisible="{Binding IsUserTheme}"
+                                                    Spacing="4" Margin="0,3,0,0">
+                                            <TextBlock Classes="data-s"
+                                                       Foreground="{StaticResource TextFaint}"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       Text="{Binding SourceFile}"/>
+                                            <TextBlock Classes="para"
+                                                       Foreground="{StaticResource TextDim}"
+                                                       Text="{Binding ContrastHeadline}"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- ══ YOUR THEMES ════════════════════════════════════════
+                     A folder of JSON files. It sits directly under the picker
+                     because that is where its output lands - the cards above
+                     already include whatever parsed - rather than at the bottom
+                     of the screen as an appendix.
+
+                     Three things and no more: where the folder is, what the
+                     theme that is up measures, and what is wrong with the files
+                     in it. There is deliberately no colour picker here. §14's
+                     whole argument is that a room is a value structure and a
+                     material rather than a set of hues, which is exactly what a
+                     row of swatches cannot express - and the file can be kept,
+                     diffed and copied to another machine, which a dialog
+                     cannot. -->
+                <TextBlock Classes="label" FontSize="10" LetterSpacing="1.4"
+                           Margin="0,10,0,0" Text="YOUR THEMES"/>
+
+                <Border Classes="card" MaxWidth="720" HorizontalAlignment="Left"
+                        IsVisible="{Binding HasThemeFolder}">
+                    <StackPanel Spacing="12">
+
+                        <!-- The path, selectable and in Plex Mono. A folder
+                             nobody can find is a feature nobody has, and the
+                             first thing an author needs is somewhere to put a
+                             file. -->
+                        <SelectableTextBlock Classes="data-s"
+                                             TextWrapping="Wrap"
+                                             Foreground="{StaticResource TextDim}"
+                                             Text="{Binding ThemeFolder}"/>
+
+                        <TextBlock Classes="para" Text="{Binding UserThemeSummary}"/>
+
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <!-- The actual authoring workflow. What it writes is
+                                 the theme's eight seeds and the PROPORTIONS it
+                                 is built to - the edge as a contrast ratio, the
+                                 elevation as a step - rather than twenty-four
+                                 hexes, so the first edit an author makes can be
+                                 to the theme's argument instead of to its
+                                 output. -->
+                            <Button Classes="act primary"
+                                    Command="{Binding ExportThemeCommand}"
+                                    Content="Export this theme as a template"/>
+                            <Button Classes="act quiet"
+                                    Command="{Binding ReloadThemesCommand}"
+                                    Content="Re-read the folder"/>
+                        </StackPanel>
+
+                        <TextBlock Classes="para"
+                                   IsVisible="{Binding HasThemeActionStatus}"
+                                   Foreground="{StaticResource Volt}"
+                                   Text="{Binding ThemeActionStatus}"/>
+
+                        <!-- ══ What this theme measures ═══════════════════
+                             Drawn only for a user theme, for the reason the
+                             card's own line is: the built-ins carry these
+                             numbers in §14's tables and on the track below. -->
+                        <StackPanel Spacing="10" IsVisible="{Binding ShowThemeReport}">
+                            <Border Height="1" Background="{StaticResource Line}" Margin="0,2"/>
+
+                            <TextBlock Classes="label" FontSize="10" LetterSpacing="1.4"
+                                       Text="WHAT THIS THEME MEASURES"/>
+
+                            <Grid ColumnDefinitions="Auto,10,*">
+                                <TextBlock Grid.Column="0" Classes="data"
+                                           VerticalAlignment="Top"
+                                           Text="{Binding ReportAaCeiling}"/>
+                                <TextBlock Grid.Column="2" Classes="para"
+                                           Text="{Binding ReportAaNote}"/>
+                            </Grid>
+
+                            <Grid ColumnDefinitions="Auto,10,*">
+                                <TextBlock Grid.Column="0" Classes="data"
+                                           VerticalAlignment="Top"
+                                           Text="{Binding ReportWallCeiling}"/>
+                                <TextBlock Grid.Column="2" Classes="para"
+                                           Text="{Binding ReportWallNote}"/>
+                            </Grid>
+
+                            <Grid ColumnDefinitions="Auto,10,*">
+                                <TextBlock Grid.Column="0" Classes="data"
+                                           VerticalAlignment="Top"
+                                           Text="{Binding ReportMetadata}"/>
+                                <TextBlock Grid.Column="2" Classes="para"
+                                           Text="{Binding ReportMetadataNote}"/>
+                            </Grid>
+
+                            <Grid ColumnDefinitions="Auto,10,*">
+                                <TextBlock Grid.Column="0" Classes="data"
+                                           VerticalAlignment="Top"
+                                           Text="{Binding ReportEdge}"/>
+                                <TextBlock Grid.Column="2" Classes="para"
+                                           Text="{Binding ReportEdgeNote}"/>
+                            </Grid>
+
+                            <Grid ColumnDefinitions="Auto,10,*">
+                                <TextBlock Grid.Column="0" Classes="data"
+                                           VerticalAlignment="Top"
+                                           Text="{Binding ReportField}"/>
+                                <TextBlock Grid.Column="2" Classes="para"
+                                           Text="{Binding ReportFieldNote}"/>
+                            </Grid>
+                        </StackPanel>
+
+                        <!-- ══ What is wrong, and where ═══════════════════
+                             The heart of the validation, and the reason it is
+                             printed rather than logged. A theme that silently
+                             did not load leaves an author with no way to tell a
+                             typo from a taste they disagree with - so a file
+                             that fails is skipped, the app keeps the theme it
+                             had, and the reason appears here naming the file,
+                             the field and what was expected.
+
+                             Errors first, and each line says in words whether
+                             the file loaded as well as in colour (§8: a state is
+                             never carried by hue alone). -->
+                        <StackPanel Spacing="10" IsVisible="{Binding HasProblems}">
+                            <Border Height="1" Background="{StaticResource Line}" Margin="0,2"/>
+
+                            <TextBlock Classes="label" FontSize="10" LetterSpacing="1.4"
+                                       Text="{Binding ProblemsHeading}"/>
+
+                            <ItemsControl ItemsSource="{Binding Problems}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:ThemeProblemViewModel">
+                                        <Border Classes="problem"
+                                                Classes.failed="{Binding IsError}"
+                                                Background="{StaticResource Ground}"
+                                                CornerRadius="{StaticResource RadiusControl}"
+                                                Padding="14,11" Margin="0,0,0,8">
+                                            <StackPanel Spacing="5">
+                                                <Grid ColumnDefinitions="*,Auto">
+                                                    <TextBlock Grid.Column="0"
+                                                               Classes="data-s"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               Text="{Binding Where}"/>
+                                                    <TextBlock Grid.Column="1"
+                                                               Classes="label verdict" FontSize="9" LetterSpacing="1"
+                                                               VerticalAlignment="Center"
+                                                               Text="{Binding Verdict}"/>
+                                                </Grid>
+                                                <TextBlock Classes="para" Text="{Binding Message}"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- ══ TRANSPARENCY ═══════════════════════════════════════ -->
+                <!-- ══ LAYOUT (§15) ═══════════════════════
+                     Its own section, and it sits HERE - under THEME, above
+                     TRANSPARENCY - for a reason that is about what the three
+                     settings are rather than about how many rows fit.
+
+                     The two controls under TRANSPARENCY are QUALIFIERS: they are
+                     meaningless while the slider is at SOLID, which is why they
+                     are not drawn there at all. Layout is not a qualifier of
+                     anything. It applies in every theme at every position on the
+                     slider including zero, so bolting it on as a fourth row
+                     inside that card would have said it depended on a quantity
+                     it does not depend on. It is a peer of THEME: the theme says
+                     what the room is made of, this says how the room is put
+                     together, and structure is what you read first.
+
+                     It is drawn the way THEME is drawn and not the way the
+                     qualifiers are, on the screen's own established rule: a
+                     qualifier is a CONSEQUENCE and the honest way to show one is
+                     to say it in a sentence, but a layout is a SHAPE and there is
+                     nothing else in it - no colour, no number - so the miniature
+                     is not an illustration of the setting, it IS the setting at
+                     1/8 scale. Two cards rather than four, so they take the same
+                     UniformGrid at the same width and the row above and the row
+                     here line up down the screen. -->
+                <TextBlock Classes="label" FontSize="10" LetterSpacing="1.4"
+                           Margin="0,10,0,0" Text="LAYOUT"/>
+
+                <ItemsControl ItemsSource="{Binding Layouts}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <UniformGrid Columns="2"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="vm:LayoutChoiceViewModel">
+                            <Button Classes="themecard"
+                                    Classes.picked="{Binding IsSelected}"
+                                    Margin="0,0,12,12"
+                                    Command="{Binding $parent[ItemsControl].((vm:AppearanceViewModel)DataContext).SelectLayoutCommand}"
+                                    CommandParameter="{Binding}"
+                                    ToolTip.Tip="{Binding Reason}">
+                                <StackPanel Spacing="0">
+
+                                    <!-- ══ The window, at 1/8 ══════════════
+                                         The same drawing on both cards, from one
+                                         template, with exactly the values the
+                                         layout changes bound out of the view
+                                         model: the ground the panes lie on, the
+                                         margin round each, its corner radius, and
+                                         where the theme's Line falls. Everything
+                                         else is identical because everything else
+                                         about the window is - which is the claim
+                                         the pair of cards is making.
+
+                                         Painted from whichever theme is UP, not
+                                         from a fixed palette. That is the one
+                                         place this card deliberately differs from
+                                         a theme card: four theme cards ask "which
+                                         room", two layout cards ask "what would
+                                         this arrangement look like in the room I
+                                         am in". -->
+                                    <Border Classes="mini" CornerRadius="4,4,0,0"
+                                            Background="{Binding GroundFill}">
+                                        <Grid RowDefinitions="12,*">
+
+                                            <!-- The caption. Full width and
+                                                 flush in BOTH layouts - the
+                                                 reference's own line, and the
+                                                 half of §9 that floating does not
+                                                 touch. What changes is its ink:
+                                                 the rail's when the chrome is one
+                                                 bracket, the ground's when the
+                                                 ground is the continuous
+                                                 thing. -->
+                                            <Border Grid.Row="0" Background="{Binding CaptionFill}"/>
+
+                                            <Grid Grid.Row="1" ColumnDefinitions="46,*">
+
+                                                <!-- Rail. Same fill in both, so
+                                                     the eye reads the geometry
+                                                     rather than a recolour. -->
+                                                <Border Grid.Column="0"
+                                                        Background="{Binding RailFill}"
+                                                        Margin="{Binding RailMargin}"
+                                                        CornerRadius="{Binding PaneRadius}"
+                                                        BorderBrush="{Binding LineFill}"
+                                                        BorderThickness="{Binding RailEdge}"
+                                                        ClipToBounds="True">
+                                                    <StackPanel Margin="0,6" Spacing="6">
+                                                        <Grid ColumnDefinitions="2,5,5,3,*,6" Height="8">
+                                                            <Ellipse Grid.Column="2" Width="4" Height="4"
+                                                                     Fill="{Binding FlareFill}"
+                                                                     VerticalAlignment="Center"/>
+                                                            <Border Grid.Column="4" Height="4" CornerRadius="2"
+                                                                    Background="{StaticResource TextDim}" Opacity="0.7"/>
+                                                        </Grid>
+                                                        <Grid ColumnDefinitions="2,5,*,6" Height="8">
+                                                            <Border Grid.Column="2" Height="4" CornerRadius="2"
+                                                                    Background="{StaticResource TextDim}" Opacity="0.5"/>
+                                                        </Grid>
+                                                        <Grid ColumnDefinitions="2,5,*,6" Height="8">
+                                                            <Border Grid.Column="2" Height="4" CornerRadius="2"
+                                                                    Background="{StaticResource TextDim}" Opacity="0.3"/>
+                                                        </Grid>
+                                                    </StackPanel>
+                                                </Border>
+
+                                                <!-- The library island, and the
+                                                     command bar INSIDE it. The
+                                                     bar used to be a sibling
+                                                     above this card - chrome
+                                                     above the art in one layout,
+                                                     an action strip on the
+                                                     window's own ground in the
+                                                     other - and it is the pane's
+                                                     header in both now, so the
+                                                     card starts at the caption
+                                                     and the rail beside it starts
+                                                     level with it.
+                                                
+                                                     That levelling is what the
+                                                     pair of cards is showing
+                                                     besides the gaps, and it is
+                                                     the same in both: what still
+                                                     differs is the gap, the
+                                                     radius and where Line falls.
+                                                
+                                                     Its FILL never moves between
+                                                     the two cards, and that is
+                                                     not an omission: §5.1's
+                                                     polarity is measured against
+                                                     this tone and the layout is
+                                                     not allowed to touch it. -->
+                                                <Border Grid.Column="1"
+                                                        Background="{Binding WallFill}"
+                                                        Margin="{Binding WallMargin}"
+                                                        CornerRadius="{Binding PaneRadius}"
+                                                        BorderBrush="{Binding LineFill}"
+                                                        BorderThickness="{Binding WallEdge}"
+                                                        ClipToBounds="True">
+                                                    <Grid RowDefinitions="10,*">
+
+                                                        <!-- The command bar: no
+                                                             fill of its own, and
+                                                             found by the rule
+                                                             under it, exactly as
+                                                             in the window. -->
+                                                        <Border Grid.Row="0"
+                                                                BorderBrush="{Binding LineFill}"
+                                                                BorderThickness="0,0,0,1"/>
+
+                                                    <Border Grid.Row="1"
+                                                            Padding="7,7,0,0">
+                                                        <StackPanel Orientation="Horizontal" Spacing="5"
+                                                                    VerticalAlignment="Top">
+                                                            <Panel Width="38" Height="57">
+                                                                <Border CornerRadius="2"
+                                                                        Background="{x:Static vm:ThemeChoiceViewModel.Art1}"/>
+                                                                <!-- The one Flare in the
+                                                                     picture, in the corner a
+                                                                     real tile carries it. -->
+                                                                <Ellipse Width="5" Height="5"
+                                                                         Fill="{Binding FlareFill}"
+                                                                         HorizontalAlignment="Right"
+                                                                         VerticalAlignment="Top"
+                                                                         Margin="0,3,3,0"/>
+                                                            </Panel>
+                                                            <Border Width="38" Height="57" CornerRadius="2"
+                                                                    Background="{x:Static vm:ThemeChoiceViewModel.Art2}"/>
+                                                            <Border Width="38" Height="57" CornerRadius="2"
+                                                                    Background="{x:Static vm:ThemeChoiceViewModel.ArtDormant1}"/>
+                                                            <Border Width="38" Height="57" CornerRadius="2"
+                                                                    Background="{x:Static vm:ThemeChoiceViewModel.Art3}"/>
+                                                            <Border Width="38" Height="57" CornerRadius="2"
+                                                                    Background="{x:Static vm:ThemeChoiceViewModel.Art4}"/>
+                                                            <Border Width="38" Height="57" CornerRadius="2"
+                                                                    Background="{x:Static vm:ThemeChoiceViewModel.ArtDormant2}"/>
+                                                        </StackPanel>
+                                                    </Border>
+                                                    </Grid>
+                                                </Border>
+                                            </Grid>
+                                        </Grid>
+                                    </Border>
+
+                                    <StackPanel Margin="16,12,16,14" Spacing="6">
+                                        <Grid ColumnDefinitions="*,Auto">
+                                            <TextBlock Grid.Column="0"
+                                                       Classes="display-l" FontSize="17"
+                                                       Text="{Binding Name}"
+                                                       VerticalAlignment="Center"/>
+                                            <Border Grid.Column="1"
+                                                    IsVisible="{Binding IsSelected}"
+                                                    Background="{StaticResource Volt}"
+                                                    CornerRadius="9" Padding="8,2"
+                                                    VerticalAlignment="Center">
+                                                <TextBlock Classes="label" FontSize="9" LetterSpacing="1"
+                                                           Foreground="{StaticResource VoltInk}"
+                                                           Text="IN USE"/>
+                                            </Border>
+                                        </Grid>
+                                        <TextBlock Classes="para"
+                                                   Text="{Binding Reason}"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <TextBlock Classes="label" FontSize="10" LetterSpacing="1.4"
+                           Margin="0,10,0,0" Text="TRANSPARENCY"/>
+
+                <Border Classes="card" MaxWidth="720" HorizontalAlignment="Left">
+                    <StackPanel Spacing="12">
+
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Grid.Column="0" Classes="body-l"
+                                       Text="Let the desktop through"
+                                       VerticalAlignment="Center"/>
+                            <!-- Every number in Plex Mono, tabular (§3), so the
+                                 reading does not jitter sideways as it is
+                                 dragged past 9 → 10 → 100. -->
+                            <TextBlock Grid.Column="1" Classes="data"
+                                       Text="{Binding TransparencyReading}"
+                                       VerticalAlignment="Center"/>
+                        </Grid>
+
+                        <Border Classes="sliderframe">
+                            <StackPanel Width="{Binding SliderWidth}" Spacing="0">
+
+                                <!-- ══ The AA mark ═══════════════════════════
+                                     Where the worst case — a wall of white
+                                     behind the window — takes the rail's labels
+                                     under 4.5:1. It is a mark and not a stop:
+                                     the range past it is a choice the user is
+                                     allowed to make, and the readout below says
+                                     what it costs in numbers rather than in
+                                     adjectives. Its position is per theme,
+                                     because the answer is.
+
+                                     Both pieces take the same margin off the
+                                     view model, computed from the track's own
+                                     geometry, so the tick sits exactly over the
+                                     value it names. -->
+                                <Panel Height="14" HorizontalAlignment="Stretch">
+                                    <TextBlock Classes="data-s"
+                                               Text="AA"
+                                               Padding="4,0,0,0"
+                                               Foreground="{StaticResource TextFaint}"
+                                               HorizontalAlignment="Left"
+                                               VerticalAlignment="Top"
+                                               Margin="{Binding AaMarkMargin}"/>
+                                </Panel>
+                                <Panel Height="6" HorizontalAlignment="Stretch">
+                                    <Border Width="1" Height="6"
+                                            Background="{StaticResource TextFaint}"
+                                            HorizontalAlignment="Left"
+                                            VerticalAlignment="Bottom"
+                                            Margin="{Binding AaMarkMargin}"/>
+                                </Panel>
+
+                                <Slider Name="TransparencySlider"
+                                        Classes="opacity"
+                                        Minimum="0" Maximum="100"
+                                        SmallChange="1" LargeChange="10"
+                                        Value="{Binding Transparency, Mode=TwoWay}"
+                                        ToolTip.Tip="How much of the desktop the rail, title bar, filter panel and command bar let through"/>
+
+                                <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,2,0,0">
+                                    <!-- Zero is a position, so it is named. -->
+                                    <TextBlock Grid.Column="0" Classes="label" FontSize="9"
+                                               Foreground="{StaticResource TextFaint}"
+                                               Text="SOLID"/>
+                                    <TextBlock Grid.Column="2" Classes="label" FontSize="9"
+                                               Foreground="{StaticResource TextFaint}"
+                                               Text="MOST DESKTOP"/>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- ══ What it is made of, and how far it reaches ════
+                             The screen holds four decisions now, and four rows
+                             stacked would be a wall of controls. So this card is
+                             ONE quantity with two qualifiers hanging off it —
+                             how much, what it is made of, how far it goes — and
+                             the qualifiers are not drawn at all while the
+                             quantity is zero, because at SOLID neither of them
+                             does anything. The common case stays one slider.
+
+                             Both blocks are recessed wells rather than raised
+                             cards, so the eye reads them as parts of the
+                             transparency setting rather than as two more
+                             settings beside it. -->
+                        <StackPanel IsVisible="{Binding ShowComposition}" Spacing="12">
+
+                            <Border Height="1" Background="{StaticResource Line}" Margin="0,2"/>
+
+                            <TextBlock Classes="label" FontSize="9" LetterSpacing="1.2"
+                                       Text="WHAT WINDOWS PUTS BEHIND THE WINDOW"/>
+
+                            <ItemsControl ItemsSource="{Binding Backdrops}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <UniformGrid Columns="2"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="vm:AppearanceOptionViewModel">
+                                        <Button Classes="optioncard"
+                                                Classes.picked="{Binding IsSelected}"
+                                                Margin="0,0,10,0"
+                                                Command="{Binding $parent[ItemsControl].((vm:AppearanceViewModel)DataContext).SelectBackdropCommand}"
+                                                CommandParameter="{Binding}"
+                                                ToolTip.Tip="{Binding Reason}">
+                                            <StackPanel Spacing="5">
+                                                <Grid ColumnDefinitions="*,Auto">
+                                                    <TextBlock Grid.Column="0" Classes="body-l"
+                                                               Text="{Binding Name}"
+                                                               VerticalAlignment="Center"/>
+                                                    <!-- Says which one is on in a
+                                                         word as well as in an edge
+                                                         (§8). -->
+                                                    <Border Grid.Column="1"
+                                                            IsVisible="{Binding IsSelected}"
+                                                            Background="{StaticResource Volt}"
+                                                            CornerRadius="9" Padding="8,2"
+                                                            VerticalAlignment="Center">
+                                                        <TextBlock Classes="label" FontSize="9"
+                                                                   LetterSpacing="1"
+                                                                   Foreground="{StaticResource VoltInk}"
+                                                                   Text="IN USE"/>
+                                                    </Border>
+                                                </Grid>
+                                                <TextBlock Classes="para" Text="{Binding Reason}"/>
+                                            </StackPanel>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <!-- The measurement, stated where the choice is made
+                                 rather than left for someone to discover. Plex
+                                 Mono because it is a number (§3). -->
+                            <Grid ColumnDefinitions="Auto,10,*" IsVisible="{Binding MicaPicked}">
+                                <TextBlock Grid.Column="0" Classes="data"
+                                           VerticalAlignment="Top"
+                                           Text="{Binding MicaComposite}"/>
+                                <TextBlock Grid.Column="2" Classes="para"
+                                           Text="{Binding MicaCompositeNote}"/>
+                            </Grid>
+
+                            <!-- Asked for one, got the other. Falling through is
+                                 right; doing it silently is how someone concludes
+                                 the choice does nothing. Amber, because §2 gives
+                                 Amber attention and this is not an error — the
+                                 user has not done anything wrong by sitting on a
+                                 machine that will not compose Mica. -->
+                            <Border IsVisible="{Binding BackdropSubstituted}"
+                                    Background="{StaticResource Ground}"
+                                    BorderBrush="{StaticResource Amber}"
+                                    BorderThickness="1"
+                                    CornerRadius="{StaticResource RadiusControl}"
+                                    Padding="14,12">
+                                <TextBlock Classes="body" FontSize="12" LineHeight="18"
+                                           TextWrapping="Wrap"
+                                           Text="{Binding BackdropSubstitutedNote}"/>
+                            </Border>
+
+                            <Border Height="1" Background="{StaticResource Line}" Margin="0,2"/>
+
+                            <TextBlock Classes="label" FontSize="9" LetterSpacing="1.2"
+                                       Text="HOW FAR IT REACHES"/>
+
+                            <ItemsControl ItemsSource="{Binding Reach}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <UniformGrid Columns="2"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="vm:AppearanceOptionViewModel">
+                                        <Button Classes="optioncard"
+                                                Classes.picked="{Binding IsSelected}"
+                                                Margin="0,0,10,0"
+                                                Command="{Binding $parent[ItemsControl].((vm:AppearanceViewModel)DataContext).SelectReachCommand}"
+                                                CommandParameter="{Binding}"
+                                                ToolTip.Tip="{Binding Reason}">
+                                            <StackPanel Spacing="5">
+                                                <Grid ColumnDefinitions="*,Auto">
+                                                    <TextBlock Grid.Column="0" Classes="body-l"
+                                                               Text="{Binding Name}"
+                                                               VerticalAlignment="Center"/>
+                                                    <Border Grid.Column="1"
+                                                            IsVisible="{Binding IsSelected}"
+                                                            Background="{StaticResource Volt}"
+                                                            CornerRadius="9" Padding="8,2"
+                                                            VerticalAlignment="Center">
+                                                        <TextBlock Classes="label" FontSize="9"
+                                                                   LetterSpacing="1"
+                                                                   Foreground="{StaticResource VoltInk}"
+                                                                   Text="IN USE"/>
+                                                    </Border>
+                                                </Grid>
+                                                <TextBlock Classes="para" Text="{Binding Reason}"/>
+                                            </StackPanel>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <!-- The two tiers, printed rather than asserted: the
+                                 window's ground, and everything laid on it. There
+                                 used to be three numbers here and a halving
+                                 relation between two of them; the chrome tier is
+                                 gone, so there are two, and what they state is
+                                 that nothing in the window sits between them.
+                                 Only drawn when the wall is in, because otherwise
+                                 the library pane is not at the pane figure and
+                                 printing one number for every pane would be a
+                                 claim the window is not making. -->
+                            <StackPanel Spacing="6" IsVisible="{Binding WallTranslucent}">
+                                <Grid ColumnDefinitions="Auto,10,*">
+                                    <TextBlock Grid.Column="0" Classes="data"
+                                               Text="{Binding GroundAdmits}"/>
+                                    <TextBlock Grid.Column="2" Classes="body" FontSize="12"
+                                               Foreground="{StaticResource TextDim}"
+                                               VerticalAlignment="Center"
+                                               Text="of the window's ground is desktop"/>
+                                </Grid>
+                                <Grid ColumnDefinitions="Auto,10,*">
+                                    <TextBlock Grid.Column="0" Classes="data"
+                                               VerticalAlignment="Top"
+                                               Text="{Binding PaneAdmits}"/>
+                                    <TextBlock Grid.Column="2" Classes="para"
+                                               Text="{Binding PaneAdmitsNote}"/>
+                                </Grid>
+                                <!-- This used to read "Settings, the review
+                                     queue and the list view stay solid at every
+                                     setting", which was true of the build that
+                                     shipped it and is not true now. Those panes
+                                     are on the field's own ramp — measured, the
+                                     labels on them hold their contrast more than
+                                     twice as far up the slider as the labels on
+                                     the rail do — and an Appearance screen that
+                                     described a different build of the app would
+                                     be worse than one that said nothing. -->
+                                <TextBlock Classes="para"
+                                           Text="Settings, the review queue and the list view open up with the wall — the same amount, the same setting. So does every input field, and it gets there by painting nothing at all: a field is a step cut into a pane that is already at this share, so there is nothing left for a fill of its own to spend. It is found by its border and lit by its ring."/>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <Border Height="1" Background="{StaticResource Line}" Margin="0,2"/>
+
+                        <!-- ══ What it costs, live ═══════════════════════════
+                             §8's floor is a claim about the running window, so
+                             the screen measures the window rather than quoting a
+                             number somebody took once. Two backdrops, because
+                             one of them would be a lie in either direction: the
+                             Mica composite is what the user's desktop actually
+                             does and it only ever improves, and white is the
+                             brightest a wallpaper can be and is the one that
+                             falls. Neither nags — the second number turns Amber
+                             (§2: attention, not error) and says which line it
+                             crossed. -->
+                        <!-- The gaps, which are where the outer tier is visible
+                             on its own — everywhere else the ground is behind a
+                             pane. This block used to report a THIRD number: a gap
+                             took no fill of ours and admitted the whole desktop
+                             while the caption beside it admitted the chrome's
+                             share. Both now carry the ground's own figure, so
+                             what is left to say is that they are one field rather
+                             than two that agree. Only drawn when there are gaps
+                             and something can come through them. -->
+                        <StackPanel Spacing="6" IsVisible="{Binding ShowGapNote}">
+                            <Border Height="1" Background="{StaticResource Line}" Margin="0,2"/>
+                            <TextBlock Classes="label" FontSize="9" LetterSpacing="1.2"
+                                       Text="THE GAPS, AND THE TITLE BAR"/>
+                            <Grid ColumnDefinitions="Auto,10,*">
+                                <TextBlock Grid.Column="0" Classes="data"
+                                           VerticalAlignment="Top"
+                                           Text="{Binding GroundAdmits}"/>
+                                <TextBlock Grid.Column="2" Classes="para"
+                                           Text="{Binding GapNote}"/>
+                            </Grid>
+                        </StackPanel>
+
+                        <StackPanel Spacing="6" Margin="0,4,0,0">
+                            <TextBlock Classes="label" FontSize="9" LetterSpacing="1.2"
+                                       Text="LABELS ON THE TITLE BAR"/>
+
+                            <Grid ColumnDefinitions="Auto,10,*" IsVisible="{Binding !IsSolid}">
+                                <TextBlock Grid.Column="0" Classes="data"
+                                           Text="{Binding ContrastOnDarkWallpaper}"/>
+                                <TextBlock Grid.Column="2" Classes="body" FontSize="12"
+                                           Foreground="{StaticResource TextDim}"
+                                           VerticalAlignment="Center"
+                                           Text="{Binding DarkWallpaperNote}"/>
+                            </Grid>
+                            <Grid ColumnDefinitions="Auto,10,*" IsVisible="{Binding !IsSolid}">
+                                <TextBlock Grid.Column="0" Classes="data ratio"
+                                           Classes.under="{Binding UnderAa}"
+                                           Text="{Binding ContrastOnWhiteWallpaper}"/>
+                                <TextBlock Grid.Column="2" Classes="body" FontSize="12"
+                                           Foreground="{StaticResource TextDim}"
+                                           VerticalAlignment="Center"
+                                           Text="{Binding WhiteWallpaperNote}"/>
+                            </Grid>
+
+                            <Grid ColumnDefinitions="Auto,10,*" IsVisible="{Binding IsSolid}">
+                                <TextBlock Grid.Column="0" Classes="data"
+                                           Text="{Binding ContrastOnWhiteWallpaper}"/>
+                                <TextBlock Grid.Column="2" Classes="body" FontSize="12"
+                                           Foreground="{StaticResource TextDim}"
+                                           VerticalAlignment="Center"
+                                           Text="on the chrome, solid"/>
+                            </Grid>
+
+                            <TextBlock Classes="para" Text="{Binding ContrastNote}"/>
+                        </StackPanel>
+
+                        <!-- The honest case. A setting that is up and doing
+                             nothing is worse than a setting at zero, so the
+                             screen says which one this is. Amber because §2
+                             gives Amber "attention", and this is not an error:
+                             the user has not done anything wrong by sitting on
+                             a machine that will not composite. -->
+                        <Border IsVisible="{Binding TransparencyUnavailable}"
+                                Background="{StaticResource Ground}"
+                                BorderBrush="{StaticResource Amber}"
+                                BorderThickness="1"
+                                CornerRadius="{StaticResource RadiusControl}"
+                                Padding="14,12">
+                            <TextBlock Classes="body" FontSize="12" LineHeight="18"
+                                       TextWrapping="Wrap"
+                                       Text="Not available here. Windows 10, a remote session and some virtual display drivers all refuse the backdrop."/>
+                        </Border>
+
+                        <Border Height="1" Background="{StaticResource Line}" Margin="0,2"/>
+
+                        <TextBlock Classes="para"
+                                   Text="{Binding TransparencyStatus}"/>
+                    </StackPanel>
+                </Border>
+
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

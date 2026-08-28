@@ -1,0 +1,91 @@
+-- 0009_work_epic_categories.sql — Epic's own classification of a catalog item.
+-- Append-only: never edit this file once shipped; add 0010_*.sql instead.
+--
+-- ── What this column is ──────────────────────────────────────────────────────
+--
+-- `categories[].path` from
+--   GET https://catalog-public-service-prod.ol.epicgames.com
+--       /catalog/api/shared/namespace/{namespace}/bulk/items?id={catalogItemId}
+--
+-- comma-joined in the storefront's own order, verbatim, e.g.
+--
+--     public,games,applications
+--     engines,engines/ue4
+--     asset-format,asset-format/game-engine,type,type/format-item
+--
+-- Comma is Epic's own separator for this exact list: the `.item` manifest's
+-- `TechnicalType` field is the same array flattened as "public,games,applications".
+-- No category path in the observed vocabulary contains a comma.
+--
+-- This is the Epic sibling of 0006's `steam_app_type`: the storefront's answer to
+-- "what kind of thing is this", not a guess made from the title. It is NOT a
+-- second notion of "non-game" — `Winnow.Core.Queries.EpicGameFilter` holds the one
+-- rule (categories must contain BOTH `games` and `applications`), the local Epic
+-- scan and the library view's filter both call it, and one setting
+-- (`library.show_non_game_entries`) governs Steam and Epic alike.
+--
+-- ── Why it earns a column: measured, on the author's real library ────────────
+--
+-- The local Epic reader classifies from `catcache.bin` and drops non-games before
+-- they can become candidates, so nothing IT reads reaches the grid. The
+-- authenticated library service cannot do that. `/library/api/public/items`
+-- returns raw entitlements carrying `namespace`, `catalogItemId`, `appName` and
+-- `acquisitionDate` — and no categories at all — so the API half of Epic ingest
+-- had no filter to apply and applied none.
+--
+-- The result, counted on 2026-08-26: 29 of 99 Epic ownership rows had no title
+-- from any local file and rendered as `App 16a66a9f5630407d923429470bd5c967`.
+-- Asked of the catalog service, those 29 are:
+--
+--     3   games            LEGO(R) Fortnite: Odyssey (408 minutes played),
+--                          Borderlands 3 Bounty of Blood, ARK Ragnarok
+--     3   engine builds    Unreal Engine 4.0 (320 minutes played), and two
+--                          "Chaos" preview builds
+--    18   sample content   Infinity Blade asset packs, Soul: Cave, the Kite
+--                          open-world demo, the Action RPG sample project
+--     2   hidden content   Fortnite Save the World / LEGO Fortnite entitlements
+--                          carrying the single category `hidden`
+--     1   store DLC        Civilization VI : Aztec DLC (`addons` only)
+--     2   duplicates       the same sample content entitled twice under
+--                          different catalog item ids
+--
+-- Note the two with playtime against them. **These rows are not junk to be
+-- deleted** — the user owns these things, and Epic has recorded 320 minutes in
+-- the Unreal Editor. They are hidden from the games grid by default and shown by
+-- the same toggle that shows Steam's tools and soundtracks. Nothing is removed:
+-- the ownership, its play records and its acquisition date all stay, and flipping
+-- the setting brings the row straight back with no re-sync.
+--
+-- ── The limits of the signal ─────────────────────────────────────────────────
+--
+--   * **NULL means "nobody has read it", never "not a game"** — 0006's central
+--     warning, and it applies here identically. Every Epic work named from
+--     `catcache.bin` before this column existed carries NULL, and an unanswered
+--     catalog lookup leaves the column alone. Unknown is always VISIBLE.
+--   * **The catalog service requires the Epic OAuth session.** An install that
+--     never opted in fills this column for nothing, which is fine: its Epic rows
+--     came from `catcache.bin`, which already applied the same filter before they
+--     became candidates.
+--   * **Categories cannot identify DLC** and this column must not be read as if
+--     they could. "Borderlands 3 Bounty of Blood" carries `application, games,
+--     applications` — indistinguishable from a base game — and its only marker is
+--     a non-empty `mainGameItem`. That is a separate question from this one and
+--     is deliberately not encoded here: hiding a DLC row would also have hidden
+--     LEGO Fortnite: Odyssey, which the user has played for nearly seven hours.
+--
+-- ── Shape ────────────────────────────────────────────────────────────────────
+--
+-- TEXT, verbatim, no CHECK constraint: the vocabulary is Epic's, undocumented,
+-- and demonstrably still growing (`freegames` and `games/experience` appear in
+-- this library and in neither of the earlier surveys). A constraint would turn a
+-- new Epic category into a failed enrichment write.
+--
+-- On `works` for the same reason `steam_app_type` and `publisher` are: it is the
+-- row the enrichment pass already writes, in the same transaction that promotes
+-- the name out of the same HTTP response, and M0/M1 works and releases are 1:1.
+--
+-- No index. The only readers are the bucket query, which already scans every
+-- owned row, and the enrichment sweep, whose predicate is a disjunction no single
+-- index can serve (see 0005's note).
+
+ALTER TABLE works ADD COLUMN epic_categories TEXT;
