@@ -138,9 +138,12 @@ public class ShelfFeedTests : IDisposable
     [Fact]
     public async Task The_genre_cap_prefers_variety_then_relaxes_to_fill()
     {
-        // Six roguelikes and one puzzle game, all sampled. Strict pass:
-        // four roguelikes (the cap), then the puzzle game; relaxation refills
-        // the sixth slot with a fifth roguelike rather than leaving it empty.
+        // Six roguelikes and one puzzle game, all sampled. Strict pass takes
+        // the cap's worth of roguelikes and then the puzzle game; relaxation
+        // refills the remaining slots with roguelikes rather than leaving a
+        // short shelf, because a pool that genuinely IS mostly roguelikes
+        // should still fill. This test is about the RELAXATION half; see
+        // ShelfGenreCap's remarks for why the strict half is not pinned here.
         var rogues = new List<SeededGame>();
         foreach (var name in new[] { "Gloom Alpha", "Gloom Beta", "Gloom Gamma", "Gloom Delta", "Gloom Epsilon", "Gloom Zeta" })
         {

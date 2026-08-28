@@ -66,10 +66,22 @@ public sealed class FeedService : IFeedService
             // screen must not deal a new hand.
             AsOfUtc = _clock.GetUtcNow().UtcDateTime,
 
-            // Ten: a rail the eye can sweep. Past it a shelf stops being a pitch
-            // and becomes another list — which is the surface the library
-            // already is, one click away in the rail.
-            MaxPerShelf = 10,
+            // Six, and the number came from measuring the grid rather than from
+            // taste. Ten was a RAIL's number: items past the right edge cost no
+            // vertical space, so the cap was free. Sections wrap now, and every
+            // item occupies real height — at the 1200px minimum a ten-item
+            // section is five rows and the whole feed runs to roughly six
+            // screenfuls. Six is three rows there and one or two above 1600.
+            //
+            // Past it a shelf stops being a pitch and becomes another list,
+            // which is the surface the library already is, one click away.
+            //
+            // Coupled to RecommendationTuning.ShelfGenreCap, which moved 4 -> 3
+            // in the same change: the property it defends is that no genre may
+            // take a MAJORITY of a shelf, and 4 of 6 is two-thirds. Moving this
+            // number alone would silently re-break the constant that exists to
+            // prevent exactly that.
+            MaxPerShelf = 6,
         };
 
         try

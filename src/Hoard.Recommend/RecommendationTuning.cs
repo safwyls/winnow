@@ -224,11 +224,38 @@ public sealed record RecommendationTuning
 
     /// <summary>
     /// Entries sharing any single genre on one shelf before the strict pass
-    /// skips further ones. 4: below half of the default 10-item shelf, so no
-    /// genre can majority a shelf — but soft, because a pool that genuinely IS
-    /// six RPGs should still fill its shelf (the relaxation pass refills).
+    /// skips further ones.
+    ///
+    /// <para><b>3, and it moved with the shelf size rather than independently.</b>
+    /// The property being defended is that no genre may take a MAJORITY of a
+    /// shelf, and the number that expresses it depends on the shelf. At the old
+    /// size of 10 that was 4 — below half. At 6 it is 3: half at most, never
+    /// four of six. Left at 4 it would have allowed two-thirds of a shelf to
+    /// share one genre, which is the outcome this constant exists to prevent,
+    /// so the two caps are coupled and must move together.</para>
+    ///
+    /// <para>Soft, not hard: a pool that genuinely IS six survival games should
+    /// still fill its shelf, and the relaxation pass refills. The franchise cap
+    /// above is the hard one, because fourteen Infinity Blades is never an
+    /// honest shelf and six survival games can be.</para>
+    ///
+    /// <para><b>Measured: on realistic data this cap rarely binds, and the strict
+    /// pass is NOT pinned by a test.</b> An attempt to pin it — twelve sampled
+    /// games, six of each genre, variety fully available — came back three and
+    /// three with the cap set to 3, to 4, and disabled entirely at 99. Candidates
+    /// that sit close together on every scored dimension are separated by the
+    /// day-seeded jitter, which interleaves genres on its own, so the cap has
+    /// nothing to trim. Forcing it to bite means making one genre dominate the
+    /// score order, and the prevalence cut fights that directly: seeding enough
+    /// committed play to bias the taste profile toward a genre pushes that genre
+    /// past the 25% prevalence threshold, which cuts it from the profile.</para>
+    ///
+    /// <para>So this is a <b>safety net for skewed libraries</b>, not a mechanism
+    /// the ordinary path leans on — and the honest statement is that a wrong
+    /// value here would not fail the suite. Recorded rather than papered over
+    /// with a test that passes whatever the number says.</para>
     /// </summary>
-    public int ShelfGenreCap { get; init; } = 4;
+    public int ShelfGenreCap { get; init; } = 3;
 
     /// <summary>
     /// Candidates short-listed per shelf, as a multiple of the shelf size,

@@ -28,7 +28,7 @@ public sealed record RecommendationRequest
     /// 10: a rail the eye can actually sweep — beyond it a shelf stops being a
     /// pitch and becomes another list.
     /// </summary>
-    public int MaxPerShelf { get; init; } = 10;
+    public int MaxPerShelf { get; init; } = 6;
 
     /// <summary>
     /// §6.1's numbers — refund line, retired floor, stale window. Passed
