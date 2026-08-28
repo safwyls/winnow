@@ -20,7 +20,7 @@ namespace Hoard.App.ViewModels;
 /// sorting are in-memory: the whole library is a few hundred kilobytes of
 /// projection and re-querying SQLite per keystroke would buy nothing.
 /// </summary>
-public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts
+public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGameTileSource
 {
     /// <summary>Rail stub for the unrunnable bucket — no data source in M0, always zero.</summary>
     public const string WontRunKey = "wont_run";
@@ -281,13 +281,34 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts
     /// <see cref="JournalPromptViewModel.TitleFor"/> for why that is a reason to
     /// stay quiet rather than to go and ask the database.
     /// </summary>
-    private string? TitleForOwnership(long ownershipId)
+    private string? TitleForOwnership(long ownershipId) => TileForOwnership(ownershipId)?.Title;
+
+    /// <inheritdoc/>
+    public event EventHandler? TilesChanged;
+
+    /// <inheritdoc/>
+    public bool HasTiles => _allTiles.Count > 0;
+
+    /// <summary>
+    /// The tile for an ownership, out of the set this view model has already
+    /// built. <see cref="IGameTileSource"/> is why it is public: the Feed renders
+    /// the library's own tiles rather than assembling a second projection of the
+    /// same games, so the two screens cannot disagree about a cover, an install
+    /// state or a launch route.
+    ///
+    /// <para>A linear walk over the whole library rather than a dictionary, and
+    /// deliberately: the feed asks fewer than fifty times per load, the journal
+    /// prompt once per session, and an index would be a second structure to keep
+    /// in step with <c>_allTiles</c> across every reload for no measurable
+    /// gain.</para>
+    /// </summary>
+    public GameTileViewModel? TileForOwnership(long ownershipId)
     {
         foreach (var tile in _allTiles)
         {
             if (tile.OwnershipId == ownershipId)
             {
-                return tile.Title;
+                return tile;
             }
         }
 
@@ -696,6 +717,13 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts
 
         _loaded = true;
         ApplyFilter();
+
+        // Every tile object above is new, so anything holding the previous
+        // generation is now holding a projection of a library that no longer
+        // exists. Raised last, with the new set fully in place, so a listener
+        // that reads back through TileForOwnership can only see the finished
+        // state (IGameTileSource).
+        TilesChanged?.Invoke(this, EventArgs.Empty);
     }
 
     [RelayCommand]

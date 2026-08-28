@@ -8,16 +8,23 @@ using Hoard.Core.Repositories;
 namespace Hoard.App.ViewModels;
 
 /// <summary>
-/// Window shell: hosts the library view, the merge confirm queue and the Stores
-/// panel, and owns which of the three the rail is currently pointing at.
+/// Window shell: hosts the Feed, the library view, the merge confirm queue and
+/// the Stores and Appearance screens, and owns which of them the rail is
+/// currently pointing at.
 ///
 /// <para><b>Exactly one screen is up at a time and the rail is the only thing
-/// that switches them.</b> The two non-library screens are mutually exclusive
+/// that switches them.</b> The non-library screens are mutually exclusive
 /// booleans rather than an enum only because each has a rail row bound directly
-/// to its own flag; every path that shows one clears the other, and every path
-/// back to the library clears both. The rule that keeps this honest is
+/// to its own flag; every path that shows one clears the others, and every path
+/// back to the library clears them all. The rule that keeps this honest is
 /// §12.2's: the rail never leaves the user on a screen their click did not
 /// describe.</para>
+///
+/// <para><b>The window opens on the Feed (M8), and that costs the library
+/// nothing.</b> The feed is a peer screen rather than a mode of the library, so
+/// ALL GAMES, every bucket and every list still reach the wall in one click —
+/// each of those paths already went through <c>ShowLibraryPane</c>, which is now
+/// also what closes the feed.</para>
 /// </summary>
 public partial class MainWindowViewModel : ObservableObject
 {
@@ -31,6 +38,7 @@ public partial class MainWindowViewModel : ObservableObject
         MergeQueueViewModel mergeQueue,
         StoresViewModel stores,
         AppearanceViewModel appearance,
+        FeedViewModel feed,
         ISettingsRepository? settings = null,
         Services.SessionJournalService? journal = null)
     {
@@ -38,6 +46,7 @@ public partial class MainWindowViewModel : ObservableObject
         MergeQueue = mergeQueue;
         Stores = stores;
         Appearance = appearance;
+        Feed = feed;
 
         // The one piece of appearance state the SHELL has to read rather than
         // the palette: the floating layout moves margins, corner radii and
@@ -82,6 +91,15 @@ public partial class MainWindowViewModel : ObservableObject
     /// </summary>
     public StoresViewModel Stores { get; }
 
+    /// <summary>
+    /// M8, and the screen the app opens on. Required rather than optional for
+    /// the reason <see cref="Stores"/> is: a rail row that opens an empty pane
+    /// is the failure mode this codebase keeps hitting — build green, tests
+    /// green, feature absent. Missing here, it throws at startup where somebody
+    /// sees it.
+    /// </summary>
+    public FeedViewModel Feed { get; }
+
     /// <summary>The command bar's Display popover — §8's dimming preference.</summary>
     public DisplaySettingsViewModel Display { get; }
 
@@ -108,6 +126,17 @@ public partial class MainWindowViewModel : ObservableObject
     public partial bool IsAppearanceVisible { get; set; }
 
     /// <summary>
+    /// The Feed, and the state the window opens in (ROADMAP: "recommender
+    /// surfaced as the app's primary view"). It is a peer of the other three
+    /// screens rather than a mode of the library, which is what keeps ALL GAMES
+    /// exactly one rail click away — landing on the feed must never be a trap
+    /// for somebody who came to browse.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsLibraryVisible), nameof(IsFilterPanelVisible))]
+    public partial bool IsFeedVisible { get; set; } = true;
+
+    /// <summary>
     /// Whether the content panes float as rounded cards on the window's ground
     /// (§15). Read by one style class on the window; everything downstream of it
     /// is a style selector rather than a binding, so the flush layout costs
@@ -115,7 +144,8 @@ public partial class MainWindowViewModel : ObservableObject
     /// </summary>
     public bool IsFloatingLayout => Appearance.Service.IsFloating;
 
-    public bool IsLibraryVisible => !IsMergeQueueVisible && !IsStoresVisible && !IsAppearanceVisible;
+    public bool IsLibraryVisible =>
+        !IsMergeQueueVisible && !IsStoresVisible && !IsAppearanceVisible && !IsFeedVisible;
 
     /// <summary>The filter panel is part of the library screen, not of the window.</summary>
     public bool IsFilterPanelVisible => IsLibraryVisible && Library.Filters.IsOpen;
@@ -155,6 +185,24 @@ public partial class MainWindowViewModel : ObservableObject
 
     [RelayCommand]
     private void ShowLibrary() => ShowLibraryPane();
+
+    /// <summary>
+    /// The rail's FEED row. Toggles like every other screen row, so the same
+    /// click that opened it gives the library back — and unlike the others it is
+    /// where the window starts.
+    ///
+    /// <para>Nothing is loaded here. The scoring pass costs ~500ms over a
+    /// thousand games and must not ride on a click any more than on startup
+    /// (§5.1 pitfall 3): the feed is computed once after the library loads, and
+    /// re-entering the screen shows what it already worked out.</para>
+    /// </summary>
+    [RelayCommand]
+    private void ToggleFeed()
+    {
+        var open = !IsFeedVisible;
+        ShowLibraryPane();
+        IsFeedVisible = open;
+    }
 
     /// <summary>The rail row toggles, so the same click that opened the queue closes it.</summary>
     [RelayCommand]
@@ -213,5 +261,6 @@ public partial class MainWindowViewModel : ObservableObject
         IsMergeQueueVisible = false;
         IsStoresVisible = false;
         IsAppearanceVisible = false;
+        IsFeedVisible = false;
     }
 }

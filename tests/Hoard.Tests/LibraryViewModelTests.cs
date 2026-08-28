@@ -703,7 +703,12 @@ public sealed class LibraryViewModelTests
         var library = fixture.CreateViewModel();
         await library.LoadCommand.ExecuteAsync(null);
 
-        var shell = new MainWindowViewModel(library, fixture.CreateMergeQueue(), DetachedStores.Create(), DetachedAppearance.Create())
+        var shell = new MainWindowViewModel(
+            library,
+            fixture.CreateMergeQueue(),
+            DetachedStores.Create(),
+            DetachedAppearance.Create(),
+            DetachedFeed.Create())
         {
             IsMergeQueueVisible = true,
         };
@@ -713,6 +718,74 @@ public sealed class LibraryViewModelTests
         Assert.False(shell.IsMergeQueueVisible);
         Assert.True(shell.IsLibraryVisible);
         Assert.True(library.AllGames.IsSelected);
+    }
+
+    /// <summary>
+    /// M8: the window opens on the Feed, and that must cost the library
+    /// nothing. ALL GAMES is one rail click from the landing state — the same
+    /// click, through the same command, that brings it back from every other
+    /// screen.
+    /// </summary>
+    [Fact]
+    public async Task The_app_opens_on_the_feed_and_all_games_is_one_click_away()
+    {
+        using var fixture = new LibraryFixture();
+        await fixture.SeedAsync("Anything", minutes: 10, lastPlayed: Now.AddDays(-9));
+
+        var library = fixture.CreateViewModel();
+        await library.LoadCommand.ExecuteAsync(null);
+
+        var shell = new MainWindowViewModel(
+            library,
+            fixture.CreateMergeQueue(),
+            DetachedStores.Create(),
+            DetachedAppearance.Create(),
+            DetachedFeed.Create());
+
+        // The landing state, before anything has been clicked.
+        Assert.True(shell.IsFeedVisible);
+        Assert.False(shell.IsLibraryVisible);
+
+        shell.SelectBucketCommand.Execute(library.AllGames);
+
+        Assert.False(shell.IsFeedVisible);
+        Assert.True(shell.IsLibraryVisible);
+        Assert.True(library.AllGames.IsSelected);
+
+        // And the rail row toggles back, like every other screen row.
+        shell.ToggleFeedCommand.Execute(null);
+        Assert.True(shell.IsFeedVisible);
+        Assert.False(shell.IsLibraryVisible);
+
+        shell.ToggleFeedCommand.Execute(null);
+        Assert.False(shell.IsFeedVisible);
+        Assert.True(shell.IsLibraryVisible);
+    }
+
+    /// <summary>
+    /// The Feed renders the library's own tiles rather than a second projection
+    /// of the same games (<see cref="IGameTileSource"/>), so the lookup has to
+    /// be the same object the wall is showing — a copy would be a second answer
+    /// about a cover, an install state or a launch route.
+    /// </summary>
+    [Fact]
+    public async Task The_tile_source_hands_back_the_walls_own_tile()
+    {
+        using var fixture = new LibraryFixture();
+        await fixture.SeedAsync("Anything", minutes: 10, lastPlayed: Now.AddDays(-9));
+
+        var library = fixture.CreateViewModel();
+
+        Assert.False(((IGameTileSource)library).HasTiles);
+
+        await library.LoadCommand.ExecuteAsync(null);
+
+        var source = (IGameTileSource)library;
+        var wall = library.VisibleTiles[0];
+
+        Assert.True(source.HasTiles);
+        Assert.Same(wall, source.TileForOwnership(wall.OwnershipId));
+        Assert.Null(source.TileForOwnership(-1));
     }
 
     // ── Dimming (§8's toggle over the §5.1 ramp) ─────────────────────────────

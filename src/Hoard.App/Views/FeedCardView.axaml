@@ -1,0 +1,316 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Hoard.App.ViewModels"
+             x:Class="Hoard.App.Views.FeedCardView"
+             x:DataType="vm:FeedCardViewModel">
+
+    <!--
+        ══ A feed card ══════════════════════════════════════════════════════
+        The cover, the name, and THE SENTENCE — in full, on the front, without
+        hovering, without trimming.
+
+        THE CARD IS SIZED TO THE SENTENCE AND NOT THE OTHER WAY ROUND. Measured
+        on the real library (46 items across five shelves): the reasons run 78
+        to 256 characters, median 115, 90th percentile 155. At 13/18 over the
+        182px text column that is six lines at the 90th percentile, which is
+        what sets the card's 180px cover and its ~212px height — the geometry
+        is downstream of the prose. A card that trimmed the reason to fit would
+        be a cover in a grid, which is the storefront feed this app exists to
+        beat.
+
+        WHY THIS CARD DOES NOT FLIP. The library's tiles turn over because a
+        cover has nowhere to put four facts. This face is already showing the
+        one fact that matters, and every fact on the tile's back — the bucket,
+        the playtime, the last-played year — is a clause of the sentence printed
+        here. Turning it over would hide the reason to reveal a weaker
+        restatement of it. Both actions the back face carries are on this face
+        instead: the primary Play/Install, and the detail modal, which the whole
+        card opens.
+
+        THE CARD IS A BUTTON, and that is what buys most of §8's floor for free:
+        a Tab stop, Enter and Space, and a press that opens the detail modal. The
+        Play button inside it marks its own press handled, so the two never both
+        fire. What a Button does NOT give is a ring anyone can see — Fluent
+        repaints its own border by a shade and calls that focus — so the 2px Volt
+        one is drawn below, and it was drawn only after looking at the running
+        app and failing to find the framework's.
+
+        FLARE APPEARS HERE EXACTLY ONCE, on the unread dot, and only on a cover
+        whose game has been patched since it was played. It is not on the shelf
+        heading, not on the card edge, and not on the patched shelf's cards as a
+        set — the badge means something for as long as nothing else wears that
+        colour (§2).
+    -->
+
+    <UserControl.Styles>
+
+        <!-- The card. Opaque Surface over the pane's own (possibly translucent)
+             ground, on the same rule the Stores cards follow: anything carrying
+             reading matter or cover art is a solid field. It is also what the
+             dormancy cross-fade needs — the two art layers are only opaque
+             together once both have decoded, and a partly transparent tile shows
+             whatever the window is standing on. -->
+        <Style Selector="Button.feedcard">
+            <Setter Property="Background" Value="{StaticResource Surface}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusTile}"/>
+            <!-- Zero, with the inset moved onto the content below: the focus
+                 ring has to be drawn at the CARD's edge rather than at its
+                 content's, and a ring inside the padding would be a rectangle
+                 floating 14px in from the border it is supposed to be marking. -->
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="VerticalContentAlignment" Value="Stretch"/>
+        </Style>
+        <!-- Elevation is the Surface → SurfaceRaised step (§4). The one place a
+             drop shadow is permitted is a tile on the wall, and a card is not
+             one — what lifts under the pointer here is the ART, by waking up. -->
+        <Style Selector="Button.feedcard /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource Surface}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusTile}"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.14"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.feedcard:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
+        </Style>
+        <Style Selector="Button.feedcard:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource SurfaceHigh}"/>
+        </Style>
+
+        <!-- ══ §8's focus ring: 2px Volt, visible, and it does not reflow ═══
+             Drawn as an element inside the card rather than as a border-brush
+             swap on the presenter, for the reason the wall's tiles draw their
+             selection edge the same way: §10.7 forbids a thickness change on
+             focus (it moves everything the border encloses), and a 1px swap
+             cannot be the 2px §8 asks for. An element can be exactly 2px and
+             costs the layout nothing, because it is not in the flow.
+
+             The presenter's own border is PINNED on focus so the Fluent theme
+             does not repaint it underneath this: two focus indicators on one
+             control is how the weaker one ends up being the one people learn. -->
+        <Style Selector="Button.feedcard:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+        <Style Selector="Border#FocusRing">
+            <Setter Property="IsVisible" Value="False"/>
+        </Style>
+        <Style Selector="Button.feedcard:focus-visible Border#FocusRing">
+            <Setter Property="IsVisible" Value="True"/>
+        </Style>
+
+        <!-- §5.1's dormancy cross-fade, and the 140ms restore that is the most
+             important interaction in the app: the game wakes up under the
+             cursor. The transition lives in a style rather than on the element
+             because §8's reduced-motion setting has to be able to take it away,
+             and a local Transitions value would outrank any selector trying to. -->
+        <Style Selector="Panel#Art Border#VividArt, Panel#Art Image#VividArtwork">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.14" Easing="CubicEaseOut"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <!-- Reduced motion: the state snaps instead of fading (§8). An empty
+             transition set, not a zero duration — there is then no animation to
+             schedule at all. -->
+        <Style Selector="Panel#Art.snap Border#VividArt, Panel#Art.snap Image#VividArtwork">
+            <Setter Property="Transitions">
+                <Transitions/>
+            </Setter>
+        </Style>
+
+        <!-- Compact action. The app's one primary treatment (Volt fill) at the
+             card's scale; the sizes are local values because nothing overrides
+             them and a second class for two numbers would be furniture. -->
+        <Style Selector="Button.cardact">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Padding" Value="14,6"/>
+            <Setter Property="MinWidth" Value="0"/>
+        </Style>
+
+    </UserControl.Styles>
+
+    <Button Name="Card"
+            Classes="feedcard"
+            Width="344"
+            Command="{Binding Tile.OpenDetailsCommand}"
+            CommandParameter="{Binding Tile}">
+        <!-- No tooltip on the card, and that is a correction made at the glass
+             rather than a preference. Hovering a card is the RESTING state of
+             reading this screen, so a tooltip on it pops up over the sentence on
+             the card beside it — the interface covering the one thing it exists
+             to show. The pointer already turns, the card already lifts to
+             SurfaceRaised, and the art already wakes up; that is three signals
+             that it is a target, none of which is in the way. -->
+        <Panel>
+        <Grid Margin="14" ColumnDefinitions="120,14,*">
+
+            <!-- ══ The art ══════════════════════════════════════════════════
+                 The same two-layer cross-fade the wall uses (the floor variant
+                 under the vivid one, whose opacity carries the ramp), the same
+                 placeholder underneath it, and the same unread badge on top.
+                 Reproduced rather than shared because a tile is a 2:3 cell with
+                 a hover scrim and a back face, and this is a 2:3 illustration
+                 beside a paragraph — the two would fight over what the pointer
+                 means. What they DO share is the view model, so a cover, a ramp
+                 position and a badge can never differ between the two screens. -->
+            <Panel Grid.Column="0"
+                   Name="Art"
+                   Width="120" Height="180"
+                   VerticalAlignment="Top"
+                   Classes.snap="{Binding Tile.SnapDormancy}">
+
+                <Border CornerRadius="{StaticResource RadiusTile}" ClipToBounds="True"
+                        BorderThickness="1" BorderBrush="{StaticResource LineSoft}">
+                    <Panel>
+                        <!-- Opaque ground under both art layers: between the
+                             first decoded bitmap and the second, a dimmed cover
+                             is a partly transparent one. -->
+                        <Border Background="{StaticResource TileGround}"/>
+
+                        <!-- §7's placeholder: the title in Bricolage on a
+                             Surface field, until real art lands and whenever a
+                             game has none. Never a spinner, never a hole. -->
+                        <Border Background="{Binding Tile.FloorBrush}"
+                                IsVisible="{Binding Tile.ShowPlaceholder}">
+                            <TextBlock Text="{Binding Tile.Title}"
+                                       FontFamily="{StaticResource DisplayFont}"
+                                       FontWeight="Bold" FontSize="15" LineHeight="17"
+                                       TextWrapping="Wrap"
+                                       Foreground="{Binding Tile.FloorTitleBrush}"
+                                       VerticalAlignment="Bottom" Margin="10"/>
+                        </Border>
+                        <Border Name="VividArt"
+                                Background="{Binding Tile.VividBrush}"
+                                Opacity="{Binding Tile.DisplayAlpha}"
+                                IsVisible="{Binding Tile.ShowPlaceholder}">
+                            <TextBlock Text="{Binding Tile.Title}"
+                                       FontFamily="{StaticResource DisplayFont}"
+                                       FontWeight="Bold" FontSize="15" LineHeight="17"
+                                       TextWrapping="Wrap"
+                                       Foreground="White"
+                                       VerticalAlignment="Bottom" Margin="10"/>
+                        </Border>
+
+                        <Image Source="{Binding Tile.FloorCover}" Stretch="UniformToFill"/>
+                        <Image Name="VividArtwork"
+                               Source="{Binding Tile.VividCover}" Stretch="UniformToFill"
+                               Opacity="{Binding Tile.DisplayAlpha}"/>
+
+                        <!-- Gloss sweep, as on the wall. -->
+                        <Border IsHitTestVisible="False">
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0%,0%" EndPoint="70%,100%">
+                                    <GradientStop Offset="0" Color="#29FFFFFF"/>
+                                    <GradientStop Offset="0.42" Color="#00FFFFFF"/>
+                                </LinearGradientBrush>
+                            </Border.Background>
+                        </Border>
+                    </Panel>
+                </Border>
+
+                <!-- The unread badge (§5.2), outside the clip so its glow is not
+                     sheared off at the corner. Flare's one use, here as on the
+                     wall: an update landed after the last session. Never on a
+                     never-opened game — an unplayed game has nothing to be
+                     behind on — and the sentence beside it says the same thing
+                     in words, which is §8's redundancy. -->
+                <Border Width="14" Height="14" CornerRadius="7"
+                        Background="{StaticResource Flare}"
+                        BorderBrush="{StaticResource Ground}" BorderThickness="2"
+                        BoxShadow="{DynamicResource BadgeGlow}"
+                        HorizontalAlignment="Right" VerticalAlignment="Top"
+                        Margin="0,6,6,0"
+                        IsVisible="{Binding Tile.HasUnread}"/>
+            </Panel>
+
+            <!-- ══ The name, the sentence, the way in ═══════════════════════ -->
+            <DockPanel Grid.Column="2" LastChildFill="True">
+
+                <!-- Actions sit at the bottom of the card whatever the sentence
+                     does above them, so a rail of cards has one action line
+                     rather than a ragged one. -->
+                <Grid DockPanel.Dock="Bottom" ColumnDefinitions="Auto,*,Auto" Margin="0,10,0,0">
+
+                    <!-- Play when it is on disk, Install when it is not, and
+                         NOTHING when the app cannot honestly name either — no id
+                         for the store, no verified install route, or no answer
+                         at all about the install state (§10.3: never an inert
+                         button). The same command the wall's tiles raise, so a
+                         launch from here is attributed exactly like any other. -->
+                    <Button Grid.Column="0"
+                            Classes="act primary cardact"
+                            Content="{Binding Tile.PrimaryActionLabel}"
+                            ToolTip.Tip="{Binding Tile.PrimaryActionHint}"
+                            IsVisible="{Binding Tile.HasPrimaryAction}"
+                            Command="{Binding Tile.PrimaryActionCommand}"
+                            CommandParameter="{Binding Tile}"/>
+
+                    <!-- The one fact the sentence never states. A name, so it
+                         wears the outlined badge the tile's overlay uses rather
+                         than a colour. -->
+                    <Border Grid.Column="2"
+                            BorderBrush="{StaticResource Line}"
+                            BorderThickness="1" CornerRadius="3" Padding="5,1"
+                            VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Tile.StoreBadge}"
+                                   FontFamily="{StaticResource BodyFont}"
+                                   FontSize="9" LetterSpacing="0.54"
+                                   Foreground="{StaticResource TextDim}"/>
+                    </Border>
+                </Grid>
+
+                <StackPanel Spacing="6">
+                    <TextBlock Text="{Binding Tile.Title}"
+                               FontFamily="{StaticResource DisplayFont}"
+                               FontWeight="Bold" FontSize="15" LineHeight="17"
+                               TextWrapping="Wrap" MaxLines="2"
+                               TextTrimming="CharacterEllipsis"
+                               Foreground="{StaticResource Text}"/>
+
+                    <!-- THE REASON. No MaxLines, no TextTrimming, no tooltip —
+                         it wraps to whatever it needs and the card grows. Its
+                         inlines are built in the code-behind so every number in
+                         it sets in Plex Mono with tabular figures (§3) while the
+                         sentence keeps the body face: the feed is where this
+                         app's numbers moved out of columns and into prose, and
+                         they are still numbers. FontFeatures is set here and
+                         inherited by those runs. -->
+                    <TextBlock Name="Reason"
+                               Classes="body"
+                               FontFeatures="tnum"
+                               TextWrapping="Wrap"
+                               LineHeight="18"
+                               Foreground="{StaticResource Text}"/>
+                </StackPanel>
+
+            </DockPanel>
+        </Grid>
+
+        <!-- Drawn INSIDE the card's own bounds, exactly as the tile's selection
+             edge is and for the same reason: §8 asks for a 2px ring at a 2px
+             offset, and an outward offset on a card at the end of a rail is a
+             ring the ScrollViewer clips — a half-drawn ring reads as a
+             rendering fault rather than as focus. The 1px Ground separator
+             inside it is the tile's too, so the ring reads as a ring and not as
+             a thicker border. -->
+        <Border Name="FocusRing"
+                BorderBrush="{StaticResource Volt}" BorderThickness="2"
+                CornerRadius="{StaticResource RadiusTile}"
+                IsHitTestVisible="False">
+            <Border BorderBrush="{StaticResource Ground}" BorderThickness="1"
+                    CornerRadius="4"/>
+        </Border>
+        </Panel>
+    </Button>
+
+</UserControl>

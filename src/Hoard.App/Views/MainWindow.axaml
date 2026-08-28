@@ -1091,6 +1091,44 @@
             <ScrollViewer Classes="inner" HorizontalScrollBarVisibility="Disabled">
                 <StackPanel Margin="0,20">
 
+                    <!-- ── The Feed (M8) ─────────────────────────────────────
+                         The rail's first row, and the state the window opens
+                         in. It is a SCREEN row like SAME GAME? and STORES —
+                         "go somewhere else" rather than "show me less of this"
+                         — but it sits above the cuts rather than beside the
+                         other screens, because it is where the app starts and
+                         a landing state at the bottom of a rail is a landing
+                         state nobody finds.
+
+                         The rule underneath it is the whole argument for the
+                         placement: ALL GAMES and every bucket are one click
+                         away, on the other side of one line. Landing on a feed
+                         must never be a trap for somebody who came to browse.
+
+                         No count. The number that would go here is the shelf
+                         total, which changes daily and means nothing next to a
+                         row that is not a cut of anything — and a rail row that
+                         states a number the user cannot act on is the noise the
+                         REVIEW row hides its own zero to avoid. -->
+                    <Button Classes="bucket"
+                            Classes.selected="{Binding IsFeedVisible}"
+                            Command="{Binding ToggleFeedCommand}"
+                            ToolTip.Tip="Games worth going back to, and why">
+                        <Grid ColumnDefinitions="2,16,*,16">
+                            <Border Grid.Column="0"
+                                    Background="{StaticResource Volt}"
+                                    IsVisible="{Binding IsFeedVisible}"/>
+                            <TextBlock Grid.Column="2"
+                                       Classes="display-s"
+                                       Text="THE FEED"
+                                       VerticalAlignment="Center"/>
+                        </Grid>
+                    </Button>
+
+                    <Border Margin="16,12,16,12"
+                            BorderBrush="{StaticResource Line}"
+                            BorderThickness="0,1,0,0"/>
+
                     <!-- ── All games ─────────────────────────────────────────
                          The rail's first row and the app's launch state, which
                          until now had no name: clearing a bucket filter meant
@@ -1438,6 +1476,24 @@
              which a settings screen can appear under the library's controls,
              because the controls are part of the library. -->
         <Panel Grid.Column="1">
+
+        <!-- ── The Feed (M8) ──────────────────────────────────────────────
+             First in the file because it is first on screen: the window opens
+             on it. Otherwise an occupant of this column on exactly the same
+             terms as the queue, Stores and Appearance — one Border, one
+             IsVisible, no command bar, since search, density and sort are the
+             library's controls and mean nothing to a shelf.
+
+             Its right edge is the window's (the filter panel only exists on the
+             library screen), so its scrollbar takes §9.1's edge inset from the
+             window's own ScrollBar:vertical style. The per-shelf rails opt back
+             out — theirs is an interior divider. -->
+        <Border Classes="screenpane"
+                BorderBrush="{StaticResource Line}"
+                IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsFeedVisible}">
+            <views:FeedView Name="FeedPanel"
+                            DataContext="{Binding Feed}"/>
+        </Border>
 
         <!-- ══ THE LIBRARY ISLAND ═════════════════════════════════════════
              Its own header, its own cut bar, its own field of art. The Border

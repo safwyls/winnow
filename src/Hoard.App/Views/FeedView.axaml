@@ -1,0 +1,202 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Hoard.App.ViewModels"
+             xmlns:views="using:Hoard.App.Views"
+             x:Class="Hoard.App.Views.FeedView"
+             x:DataType="vm:FeedViewModel">
+
+    <!--
+        ══ The Feed (M8) ════════════════════════════════════════════════════
+        The screen the app opens on, and the point of the product: five shelves
+        over one scoring pass, each shelf stating its own reason and each card
+        stating its own.
+
+        WHY RAILS AND NOT A WALL. The library already IS the wall, one rail
+        click away, and it is the right shape for six hundred covers you are
+        scanning. This surface is the opposite errand: five short arguments, in
+        order, each of which has to be READ rather than scanned. So the shelves
+        stack vertically and the games run horizontally inside them — the shape
+        that puts a heading, a pitch and a row of reasons on one scanline
+        (§6a: "a shelf is a REASON with items attached").
+
+        WHY THERE IS NO VIRTUALIZATION HERE, and it is measured rather than
+        assumed. The engine caps a shelf at ten items and omits empty shelves,
+        so the ceiling is fifty cards — against the six hundred that made
+        CoverWall necessary. CoverWall is also the wrong tool twice over: it is
+        vertical, and it is uniform, and these cards are neither (a rail's height
+        is set by its longest reason). Fifty cards of two images each is the same
+        order as one screenful of the wall, which the app already realizes on
+        every scroll. If a shelf cap ever moves past ~40, measure again.
+
+        WHAT THE PATCHED SHELF DOES NOT GET. It is the app's headline story and
+        therefore the most tempting place in the interface to spend Flare — on
+        its heading, on its cards' edges, on its count. It gets none of it. Every
+        shelf is drawn identically and the patched one leads by being first,
+        which is the engine's claim order. Flare's one appearance on this screen
+        is the unread dot on a cover, which is what it has always meant (§2).
+    -->
+
+    <UserControl.Styles>
+
+        <!-- The shelf heading. Bricolage, because a shelf title is the app's own
+             voice making a claim — but not display-l, which is the screen's own
+             name and has to outrank it. -->
+        <Style Selector="TextBlock.shelf">
+            <Setter Property="FontFamily" Value="{StaticResource DisplayFont}"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontSize" Value="17"/>
+            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+        </Style>
+
+        <!-- The rail's own scrollbar is a divider of ours, not the window's, so
+             it keeps its flush position rather than taking §9.1's edge inset —
+             the same opt-out the rail and the detail modal take. -->
+        <Style Selector="ScrollViewer.rail /template/ ScrollBar">
+            <Setter Property="Margin" Value="0"/>
+        </Style>
+
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto,*" Background="{StaticResource PaneGround}">
+
+        <!-- ══ Header ═══════════════════════════════════════════════════════
+             Same construction as the Stores screen's: the name, one line of
+             what this is, and a rule under it. The count is a NUMBER, so it
+             sets in Plex Mono with tabular figures like every number in the
+             app — and it is only stated once there is one to state, because "0
+             games scored" while the pass is out would be a lie the screen tells
+             for half a second. -->
+        <Border Grid.Row="0"
+                Padding="24,20,24,18"
+                BorderBrush="{StaticResource Line}"
+                BorderThickness="0,0,0,1">
+            <StackPanel Spacing="7">
+                <TextBlock Classes="display-l" Text="{Binding Title}"/>
+
+                <StackPanel Orientation="Horizontal" Spacing="6"
+                            IsVisible="{Binding HasCandidates}">
+                    <TextBlock Classes="data"
+                               Foreground="{StaticResource Text}"
+                               Text="{Binding CandidateCountText}"/>
+                    <TextBlock Classes="body"
+                               Foreground="{StaticResource TextDim}"
+                               Text="games scored today, and every card says why it's on it."/>
+                </StackPanel>
+
+                <!-- §6's confidence copy, driven by the tier the engine reports.
+                     It goes quiet once the library has enough history that
+                     saying anything would be an apology for nothing. -->
+                <TextBlock Classes="body" FontSize="12"
+                           MaxWidth="640"
+                           HorizontalAlignment="Left"
+                           TextWrapping="Wrap"
+                           LineHeight="18"
+                           Foreground="{StaticResource TextDim}"
+                           IsVisible="{Binding HasConfidenceNote}"
+                           Text="{Binding ConfidenceNote}"/>
+            </StackPanel>
+        </Border>
+
+        <!-- ══ Working / quiet / broken ═════════════════════════════════════
+             One sentence, never a blank pane and never a spinner. All three
+             states point at the rail, because the library is one click away and
+             a feed that cannot answer must not read as an app that cannot. -->
+        <Border Grid.Row="1"
+                Padding="32"
+                IsVisible="{Binding ShowMessage}">
+            <StackPanel MaxWidth="480" Spacing="18"
+                        HorizontalAlignment="Center" VerticalAlignment="Center">
+                <TextBlock Classes="body-l"
+                           TextWrapping="Wrap"
+                           TextAlignment="Center"
+                           LineHeight="22"
+                           Foreground="{StaticResource TextDim}"
+                           Text="{Binding Message}"/>
+                <!-- Only a FAILED pass offers this. A quiet feed is not
+                     something to try again at, and a button saying so would be
+                     the app arguing with its own answer. -->
+                <Button Classes="act quiet"
+                        Content="Try again"
+                        HorizontalAlignment="Center"
+                        IsVisible="{Binding CanRetry}"
+                        Command="{Binding LoadCommand}"/>
+            </StackPanel>
+        </Border>
+
+        <!-- ══ The shelves ══════════════════════════════════════════════════ -->
+        <ScrollViewer Grid.Row="1"
+                      Name="Page"
+                      IsVisible="{Binding ShowShelves}"
+                      HorizontalScrollBarVisibility="Disabled"
+                      VerticalScrollBarVisibility="Auto">
+            <ItemsControl ItemsSource="{Binding Shelves}" Margin="0,0,0,28">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:FeedShelfViewModel">
+                        <StackPanel Margin="0,22,0,0">
+
+                            <StackPanel Margin="24,0,24,12" Spacing="3">
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <TextBlock Classes="shelf" Text="{Binding Title}"/>
+
+                                    <!-- How many are on the rail, beside the
+                                         name rather than out at the pane's far
+                                         edge: a count belongs to the thing it
+                                         counts, and a number a thousand pixels
+                                         away from its noun is an orphan.
+
+                                         This is what makes a SHORT shelf read as
+                                         finished rather than as half-loaded —
+                                         six cards saying 6 is an answer, three
+                                         cards saying 10 is an invitation to
+                                         scroll. -->
+                                    <TextBlock Classes="data-s"
+                                               VerticalAlignment="Center"
+                                               Text="{Binding CountText}"/>
+                                </StackPanel>
+                                    <!-- The shelf's own pitch, in the engine's
+                                         words. It is the sentence the cards
+                                         under it are all instances of. -->
+                                <TextBlock Classes="body"
+                                           MaxWidth="720"
+                                           HorizontalAlignment="Left"
+                                           TextWrapping="Wrap"
+                                           LineHeight="19"
+                                           Foreground="{StaticResource TextDim}"
+                                           Text="{Binding Blurb}"/>
+                            </StackPanel>
+
+                            <ScrollViewer Classes="rail"
+                                          HorizontalScrollBarVisibility="Auto"
+                                          VerticalScrollBarVisibility="Disabled">
+                                <ItemsControl Name="RailItems"
+                                              ItemsSource="{Binding Cards}"
+                                              Margin="24,0,24,4">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <!-- Horizontal, so every card in one
+                                                 rail is arranged to the tallest
+                                                 card's height and the action row
+                                                 lands on one line across the
+                                                 shelf. A rail whose longest
+                                                 reason is 256 characters is
+                                                 simply a taller rail. -->
+                                            <StackPanel Orientation="Horizontal" Spacing="14"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:FeedCardViewModel">
+                                            <views:FeedCardView/>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+
+    </Grid>
+
+</UserControl>

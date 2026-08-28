@@ -382,13 +382,43 @@ public partial class MainWindow : Window
             await display.LoadAsync();
         }
 
+        // M8, and LAST on purpose. The scoring pass is ~500ms over a thousand
+        // games (Hoard.App.Services.IFeedService carries the measurement), and
+        // it needs the library's tiles to exist before it can build a card —
+        // the feed renders the library's own tiles rather than a second
+        // projection of them (IGameTileSource).
+        //
+        // Nothing above it waits on it: the window is up, the wall is built and
+        // the rail is populated by the time this runs, and the feed says what it
+        // is doing until it answers. The service moves the work off this thread;
+        // awaiting here only sequences it after the reads it depends on.
+        if (_shell?.Feed is { } feed)
+        {
+            await feed.LoadCommand.ExecuteAsync(null);
+        }
+
 #if DEBUG
+        // The window now OPENS on the feed (M8), so every capture flag that
+        // wants a library state has to say so — otherwise the shell is showing
+        // two panes at once, which is a state the rail cannot produce and the
+        // screenshot cannot be read. Through the command rather than the flag,
+        // exactly as --open-stores has always done, so each screen reads its
+        // state on the way in like a real click.
+        if (_shell is not null && Environment.GetCommandLineArgs()
+                .Any(a => a is "--open-library" or "--open-list" or "--open-filters"
+                    or "--open-first-list" or "--open-live-list" or "--grid-probe"
+                    || a.StartsWith("--check=", StringComparison.Ordinal)
+                    || a.StartsWith("--filters-scroll=", StringComparison.Ordinal)))
+        {
+            _shell.ShowLibraryCommand.Execute(null);
+        }
+
         // --open-queue lands on the merge confirm queue instead of the library,
         // so the screen can be captured and reviewed without driving the rail.
         // Debug-only, same convention as --seed-sample.
         if (_shell is not null && Environment.GetCommandLineArgs().Contains("--open-queue"))
         {
-            _shell.IsMergeQueueVisible = true;
+            _shell.ToggleMergeQueueCommand.Execute(null);
         }
 
         // Same convention and same reason as --open-queue: the Stores panel has
@@ -558,6 +588,27 @@ public partial class MainWindow : Window
             if (e.Key == Key.Escape)
             {
                 _shell.ShowLibraryCommand.Execute(null);
+                e.Handled = true;
+            }
+
+            return;
+        }
+
+        // The Feed answers the arrow keys and nothing else. Its cards are real
+        // buttons, so Tab, Enter and Space are already the framework's — what
+        // the window supplies is the SHAPE (left/right along a rail, up/down
+        // across shelves, §8's keyboard floor on a surface the wall's walk knows
+        // nothing about).
+        //
+        // The early return is the load-bearing half: without it every arrow key
+        // pressed on the feed would ALSO walk the library's selection behind it,
+        // moving a highlight the user cannot see on a screen they are not
+        // looking at — and Enter would then open the modal for whichever tile
+        // that walk had landed on.
+        if (_shell is { IsFeedVisible: true })
+        {
+            if (FeedPanel.HandleNavigationKey(e))
+            {
                 e.Handled = true;
             }
 

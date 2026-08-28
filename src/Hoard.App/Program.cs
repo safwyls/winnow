@@ -19,6 +19,7 @@ using Hoard.Ingest.Epic.Web;
 using Hoard.Ingest.Gog;
 using Hoard.Ingest.Steam;
 using Hoard.Monitor;
+using Hoard.Recommend;
 using Hoard.Resolve;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -452,6 +453,29 @@ public static class Program
         services.AddSingleton<JournalPromptViewModel>();
 
         services.AddSingleton<LibraryViewModel>();
+
+        // M8 — the Feed, and the screen the window opens on.
+        //
+        // The scoring core has been built, tested and deliberately unwired
+        // since M7 (its charter required it to prove itself standalone first).
+        // These three lines are the wiring: the engine takes the same
+        // repository singletons as everything else, FeedService is the App-layer
+        // seam in front of it — the only type that names Hoard.Recommend, for
+        // the same §5.1 reason StoreConnections is the only type that names the
+        // Epic client — and the view model reads through that seam.
+        //
+        // FeedService is also where the pass gets off the UI thread: the reads
+        // under the engine are synchronous SQLite, so awaiting it from the
+        // dispatcher would run all ~500ms of it there (§5.1 pitfall 3).
+        //
+        // Same instance of LibraryViewModel under IGameTileSource, for the same
+        // reason IStoreTitleCounts takes it: a second one would be a second load
+        // of the whole library, and its tiles would be a different (empty) set.
+        services.AddSingleton<IRecommendationEngine, RecommendationEngine>();
+        services.AddSingleton<IFeedService, FeedService>();
+        services.AddSingleton<IGameTileSource>(
+            sp => sp.GetRequiredService<LibraryViewModel>());
+        services.AddSingleton<FeedViewModel>();
 
         // MainWindowViewModel takes MergeQueueViewModel as a required
         // dependency, so omitting this throws at startup rather than at build.

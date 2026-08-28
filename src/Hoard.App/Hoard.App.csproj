@@ -79,6 +79,11 @@
     <ProjectReference Include="..\Hoard.Ingest.Gog\Hoard.Ingest.Gog.csproj" />
     <ProjectReference Include="..\Hoard.Ingest.Steam\Hoard.Ingest.Steam.csproj" />
     <ProjectReference Include="..\Hoard.Monitor\Hoard.Monitor.csproj" />
+    <!-- M8. The scoring core, wired at last: the module was built and tested
+         standalone on purpose (charter), and this is the composition root
+         handing it repository implementations. The App layer's own FeedService
+         is the only type that names it — a view model must not (§5.1). -->
+    <ProjectReference Include="..\Hoard.Recommend\Hoard.Recommend.csproj" />
     <ProjectReference Include="..\Hoard.Resolve\Hoard.Resolve.csproj" />
   </ItemGroup>
 

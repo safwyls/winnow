@@ -82,7 +82,7 @@ Numbering continues from §8. M0–M2 and M4 are shipped.
 | M11 | Appearance system | Four themes, a transparency slider with a chosen backdrop, an optional island layout, a drop-in JSON theme format, and an application icon | **shipped** — unplanned, see below |
 | — | GOG sign-in | **Held, on evidence.** Nothing to gain today; see below | not scheduled |
 | M3b | Launch + journal prompt | Launching from Hoard records a session; journal prompt opt-in (§9 pitfall 7) | **shipped** — `hoard-wrap` (§5.2 B) deliberately deferred |
-| M8 | The Feed | Recommender surfaced as the app's primary view; every card states its reason in one sentence | after M3+M7 |
+| M8 | The Feed | Recommender surfaced as the app's primary view; every card states its reason in one sentence | **shipped** — no dismiss/snooze yet; nothing remembers yesterday |
 | M5 | GDPR export importer | Historical playtime backfills; feed measurably improves on a cold library | after M8 |
 | M6 | Export (JSON + CSV) | Round-trips through the importer without loss | after M5 |
 | M9 | Install / uninstall management | Install and uninstall delegate to the owning store client and reflect state back | after M6 |
