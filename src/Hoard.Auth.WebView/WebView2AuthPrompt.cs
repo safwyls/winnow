@@ -1,6 +1,7 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Controls.Primitives;
 using Avalonia.Layout;
 using Avalonia.Threading;
@@ -969,6 +970,23 @@ public sealed class WebView2AuthPrompt : IInteractiveAuthPrompt
             Title = "Sign in to " + request.ProviderName,
             Classes = { "consent" },
 
+            // THE HOST'S ICON, NOT A DEFAULT ONE, AND THIS SCREEN IS THE REASON.
+            // Everything else here exists so the user can see who is asking for
+            // their Epic session and decide; the window furniture should not be
+            // the one part of it that stays anonymous. A "Sign in to Epic Games"
+            // window wearing the stock Avalonia icon in the taskbar is a window
+            // that does not say which application put it there, on the exact
+            // screen where that is the question.
+            //
+            // Taken from the running application rather than from an asset,
+            // because §5.1 keeps this project off Hoard.App: there is no
+            // avares://Hoard/ this side of the boundary, and hard-coding a copy
+            // of the mark here would be a second file to keep in step with the
+            // first. This reads whatever the host window is already wearing, so
+            // it follows the app's icon by construction and is simply null in a
+            // host that has none.
+            Icon = HostIcon(),
+
             // Sized to the notice, not to the browser that comes later. The
             // window was 1024x820 for the browser's benefit from the first
             // frame, which left the consent text hugging the top of a large
@@ -983,6 +1001,16 @@ public sealed class WebView2AuthPrompt : IInteractiveAuthPrompt
             Content = root,
         };
     }
+
+    /// <summary>
+    /// The icon the host application's main window is wearing, or
+    /// <see langword="null"/> if there is no desktop lifetime or no main window
+    /// — a console host driving this prompt gets the platform default, which is
+    /// the correct answer there.
+    /// </summary>
+    private static WindowIcon? HostIcon()
+        => (Application.Current?.ApplicationLifetime
+                as IClassicDesktopStyleApplicationLifetime)?.MainWindow?.Icon;
 
     /// <summary>
     /// Turns the notice into blocks, without touching a word of it.

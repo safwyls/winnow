@@ -14,6 +14,18 @@
          one, before any WebView2 code runs. See app.manifest. -->
     <ApplicationManifest>app.manifest</ApplicationManifest>
 
+    <!-- The executable's own icon, written into the apphost's RT_GROUP_ICON.
+         Without it the built exe wears the generic .NET icon in Explorer, in
+         the Start menu and anywhere the shell reads the file rather than a
+         running window.
+
+         It is a real multi-size .ico — 16/24/32/48 as DIBs and 64/128/256 as
+         PNGs — generated from Assets/Icons/dragon.svg rather than downscaled
+         from one bitmap, because the shell picks the frame that matches the
+         surface and a 256 stretched to 16 is mud. Assets/Icons/README.md
+         carries the generator and the measurements behind the small sizes. -->
+    <ApplicationIcon>Assets\Icons\dragon.ico</ApplicationIcon>
+
     <!-- Emitted transitively by the WebView2 package via Hoard.Auth.WebView (its
          targets reference the unused WPF wrapper, which drags WindowsBase
          5.0.0.0). Cosmetic: MSB3277 is an MSBuild warning, not a C# one, so
