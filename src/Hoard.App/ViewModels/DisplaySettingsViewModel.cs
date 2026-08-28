@@ -26,6 +26,7 @@ public partial class DisplaySettingsViewModel : ObservableObject
     private readonly DormancyRamp _ramp;
     private readonly ISettingsRepository? _settings;
     private readonly Func<Task>? _reloadLibrary;
+    private readonly SessionJournalService? _journal;
 
     /// <summary>True while <see cref="LoadAsync"/> is seeding the property, so
     /// reading the stored value does not immediately write it back.</summary>
@@ -42,11 +43,13 @@ public partial class DisplaySettingsViewModel : ObservableObject
     public DisplaySettingsViewModel(
         DormancyRamp ramp,
         ISettingsRepository? settings = null,
-        Func<Task>? reloadLibrary = null)
+        Func<Task>? reloadLibrary = null,
+        SessionJournalService? journal = null)
     {
         _ramp = ramp;
         _settings = settings;
         _reloadLibrary = reloadLibrary;
+        _journal = journal;
         DimDormantCovers = ramp.DimsDormantCovers;
     }
 
@@ -67,6 +70,23 @@ public partial class DisplaySettingsViewModel : ObservableObject
     /// </summary>
     [ObservableProperty]
     public partial bool ShowNonGameEntries { get; set; }
+
+    /// <summary>
+    /// M3b / §5.2's journal prompt, and the toggle §9 pitfall 7 requires to
+    /// exist: <b>false unless the user comes here and turns it on</b>. There is
+    /// no first-run offer and no "would you like to enable this?" — an
+    /// onboarding question about an interruption is the same interruption,
+    /// moved earlier.
+    ///
+    /// <para>It sits in the Display popover rather than in a settings screen of
+    /// its own, and that is a compromise rather than a claim: this is the app's
+    /// only surface for preferences that persist, and inventing a fourth rail
+    /// row to hold one checkbox would cost more than the mild category stretch
+    /// of calling an after-play prompt a display preference. If a real Settings
+    /// screen ever lands, this moves.</para>
+    /// </summary>
+    [ObservableProperty]
+    public partial bool PromptAfterPlay { get; set; }
 
     /// <summary>
     /// The in-flight write, exposed so a caller — or a test — can wait for the
@@ -91,9 +111,18 @@ public partial class DisplaySettingsViewModel : ObservableObject
         var storedNonGame = await _settings.GetAsync(
             BucketThresholds.ShowNonGameEntriesSettingKey, ct);
 
+        // The service owns the key and the "absent means off" reading, so the
+        // checkbox and the thing that decides whether to prompt cannot end up
+        // with two opinions about what an unset row means.
+        if (_journal is not null)
+        {
+            await _journal.LoadAsync(ct);
+        }
+
         _loading = true;
         try
         {
+            PromptAfterPlay = _journal?.PromptEnabled ?? false;
             if (bool.TryParse(storedDim, out var dim))
             {
                 DimDormantCovers = dim;
@@ -125,6 +154,19 @@ public partial class DisplaySettingsViewModel : ObservableObject
         PendingSave = _settings.SetAsync(
             DormancyRamp.DimCoversSettingKey,
             value ? "true" : "false");
+    }
+
+    partial void OnPromptAfterPlayChanged(bool value)
+    {
+        if (_loading || _journal is null)
+        {
+            return;
+        }
+
+        // Takes effect immediately rather than on restart: the service is the
+        // one thing that decides whether to raise the event, and it is the same
+        // instance the prompt is listening to.
+        PendingSave = _journal.SetPromptEnabledAsync(value);
     }
 
     partial void OnShowNonGameEntriesChanged(bool value)

@@ -405,7 +405,8 @@
                                 Content="{Binding PrimaryActionLabel}"
                                 ToolTip.Tip="{Binding PrimaryActionHint}"
                                 IsVisible="{Binding HasPrimaryAction}"
-                                Click="OnPrimaryActionPressed"/>
+                                Command="{Binding PrimaryActionCommand}"
+                                CommandParameter="{Binding}"/>
 
                         <!-- The single-game route into lists. The command bar's
                              button is the bulk route and stays exactly where it

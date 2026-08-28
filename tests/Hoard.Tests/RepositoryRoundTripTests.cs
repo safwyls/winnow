@@ -405,6 +405,52 @@ public class RepositoryRoundTripTests : IDisposable
         Assert.NotNull(note);
         Assert.Equal("Finally beat the bridge boss!", note.Note);
         Assert.Equal(5, note.Rating);
+
+        // M3b's column. Unset here, and unset must round-trip as NULL rather
+        // than as a default: "nobody recorded how this was attributed" is a
+        // different fact from "it was inferred".
+        Assert.Null(session.AttributedBy);
+    }
+
+    /// <summary>
+    /// M3b: the attribution axis survives a write and a read, in both of its
+    /// values, alongside a detection method that does not change with it.
+    /// </summary>
+    [Fact]
+    public async Task Session_attribution_round_trips_beside_the_detection_method()
+    {
+        var (_, _, ownershipId) = await SeedOwnershipAsync();
+        var sessions = new SessionRepository(_db.Factory);
+
+        var launched = await sessions.InsertAsync(new Session
+        {
+            OwnershipId = ownershipId,
+            StartedAt = Utc(2026, 8, 21, 20, 0, 0),
+            EndedAt = Utc(2026, 8, 21, 21, 0, 0),
+            DurationSeconds = 3600,
+            DetectionMethod = DetectionMethods.ProcessWatch,
+            AttributedBy = SessionAttributions.Launch,
+        });
+
+        var inferred = await sessions.InsertAsync(new Session
+        {
+            OwnershipId = ownershipId,
+            StartedAt = Utc(2026, 8, 22, 20, 0, 0),
+            EndedAt = Utc(2026, 8, 22, 21, 0, 0),
+            DurationSeconds = 3600,
+            DetectionMethod = DetectionMethods.ProcessWatch,
+            AttributedBy = SessionAttributions.Inferred,
+        });
+
+        Assert.Equal(
+            SessionAttributions.Launch, (await sessions.GetAsync(launched))!.AttributedBy);
+        Assert.Equal(
+            SessionAttributions.Inferred, (await sessions.GetAsync(inferred))!.AttributedBy);
+
+        // Both are process_watch: the launch changed who the session belongs to,
+        // not how its start and end were measured.
+        var all = await sessions.GetByOwnershipAsync(ownershipId);
+        Assert.All(all, s => Assert.Equal(DetectionMethods.ProcessWatch, s.DetectionMethod));
     }
 
     [Fact]

@@ -234,6 +234,70 @@ public sealed class TileActionsTests
         Assert.True(details.HasLinks);
     }
 
+    // ══ Launching (M3b) ════════════════════════════════════════════════
+
+    /// <summary>
+    /// Every tile launches through the LIBRARY, not through its own view.
+    ///
+    /// <para>That is not tidiness. A launch has to name the ownership it is
+    /// launching so the session watcher does not have to infer it, and a Click
+    /// handler holding a <see cref="GameLink"/> knows a URI and nothing else. If
+    /// this assertion ever fails, the Play button still works and every session
+    /// it produces silently drops back to inference — the exact failure mode this
+    /// codebase keeps meeting: build green, tests green, feature absent.</para>
+    /// </summary>
+    [Fact]
+    public async Task Every_tile_launches_through_the_librarys_own_command()
+    {
+        using var fixture = new FlipFixture();
+        await fixture.SeedAsync("Anvil");
+        var library = await fixture.LoadAsync();
+
+        var anvil = library.VisibleTiles.Single(t => t.Title == "Anvil");
+
+        Assert.Same(library.LaunchCommand, anvil.PrimaryActionCommand);
+    }
+
+    /// <summary>
+    /// The detail panel presses the same command on the same tile. Two routes to
+    /// one launch, and only one of them declaring an intent would be a Play
+    /// button whose attribution depended on which surface it was clicked from.
+    /// </summary>
+    [Fact]
+    public void The_detail_panel_launches_through_the_same_command_as_the_tile()
+    {
+        var tile = Tile(ExternalIdProviders.Steam, installed: true);
+        tile.PrimaryActionCommand = new CommunityToolkit.Mvvm.Input.RelayCommand(() => { });
+
+        var details = new GameDetailsViewModel(tile, "Bounced off", [], Now);
+
+        Assert.Same(tile, details.Tile);
+        Assert.Same(tile.PrimaryActionCommand, details.Tile.PrimaryActionCommand);
+    }
+
+    /// <summary>
+    /// Play is a launch; Install is not. Only the first is worth declaring an
+    /// attribution window for or waiting on — a download produces no process for
+    /// minutes or hours — and the string on the button must not be what decides
+    /// which is which, or a rename becomes a bug.
+    /// </summary>
+    [Fact]
+    public void The_kind_of_action_is_carried_by_the_link_not_by_its_label()
+    {
+        Assert.True(Tile(ExternalIdProviders.Steam, installed: true).PrimaryAction!.StartsGame);
+        Assert.False(Tile(ExternalIdProviders.Steam, installed: false).PrimaryAction!.StartsGame);
+
+        Assert.True(Tile(ExternalIdProviders.Gog, installed: true).PrimaryAction!.StartsGame);
+        Assert.False(Tile(ExternalIdProviders.Gog, installed: false).PrimaryAction!.StartsGame);
+
+        Assert.True(Tile(ExternalIdProviders.Epic, installed: true).PrimaryAction!.StartsGame);
+
+        // A store page is neither, and nothing about it should ever be waited on.
+        var storePage = StoreActions.LinksFor(ExternalIdProviders.Steam, "620", null)[0];
+        Assert.False(storePage.StartsGame);
+        Assert.Equal(GameLinkKind.Link, storePage.Kind);
+    }
+
     // ══ The card flip ═══════════════════════════════════════════════════════
 
     [Fact]

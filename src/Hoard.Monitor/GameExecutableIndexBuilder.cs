@@ -100,6 +100,18 @@ public sealed class GameExecutableIndexBuilder
             "mono", "jre", "jdk", "python", "node_modules", ".git",
         };
 
+    /// <summary>
+    /// Levels the one-game launch scan descends past the library-wide limit, and
+    /// the factor it multiplies the per-game executable cap by. Two and eight:
+    /// enough to reach a binary buried under <c>Engine/Binaries/Win64</c> inside
+    /// a versioned subdirectory, and enough that no shipped title's executable
+    /// list is truncated. Deliberately constants rather than settings — there is
+    /// nothing here a user could tune with better information than this.
+    /// </summary>
+    private const int LaunchScanExtraDepth = 2;
+
+    private const int LaunchScanCapMultiplier = 8;
+
     private readonly IOwnershipRepository _ownerships;
     private readonly SessionWatcherOptions _options;
     private readonly TimeProvider _timeProvider;
@@ -212,12 +224,68 @@ public sealed class GameExecutableIndexBuilder
     /// the prerequisite installers.</para>
     /// </summary>
     private List<string> ScanExecutables(string installPath)
+        => ScanExecutables(installPath, _options.ExecutableScanDepth, _options.MaxExecutablesPerGame);
+
+    /// <summary>
+    /// Every executable NAME under one game's install directory, scanned deeper
+    /// and wider than the library-wide index bothers with.
+    ///
+    /// <para><b>Why one game gets a more expensive scan than the library does.</b>
+    /// The index's depth limit and per-game cap exist because it walks every
+    /// installed game on every rebuild, and §5.2 is emphatic that the discovery
+    /// loop must stay cheap. Those limits have a cost: a title whose real binary
+    /// sits five directories down, or which ships more than
+    /// <see cref="SessionWatcherOptions.MaxExecutablesPerGame"/> executables,
+    /// contributes an incomplete name set and can be missed.</para>
+    ///
+    /// <para>A declared launch changes the arithmetic completely. It is one
+    /// directory, once, triggered by a person clicking a button — so it can
+    /// afford the walk the library-wide pass cannot, and it buys back exactly the
+    /// games the caps were losing. The pruning stays: <see cref="SkippedDirectories"/>
+    /// and <see cref="NonGameExecutables"/> are about correctness, not cost, and
+    /// letting a crash reporter into this set would let it claim the session.</para>
+    ///
+    /// <para>Runs on the thread pool: it is filesystem work on a cold directory
+    /// tree, called from the watcher's tick.</para>
+    /// </summary>
+    public Task<IReadOnlySet<string>> ScanLaunchNamesAsync(
+        string? installPath, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(installPath) || !SafeDirectoryExists(installPath))
+        {
+            return Task.FromResult<IReadOnlySet<string>>(
+                new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+        }
+
+        return Task.Run<IReadOnlySet<string>>(
+            () =>
+            {
+                var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                foreach (var path in ScanExecutables(
+                    installPath,
+                    _options.ExecutableScanDepth + LaunchScanExtraDepth,
+                    _options.MaxExecutablesPerGame * LaunchScanCapMultiplier))
+                {
+                    ct.ThrowIfCancellationRequested();
+                    var name = Path.GetFileNameWithoutExtension(path);
+                    if (name.Length > 0)
+                    {
+                        names.Add(name);
+                    }
+                }
+
+                return names;
+            },
+            ct);
+    }
+
+    private List<string> ScanExecutables(string installPath, int maxDepth, int cap)
     {
         var found = new List<string>();
         var queue = new Queue<(string Directory, int Depth)>();
         queue.Enqueue((installPath, 0));
 
-        while (queue.Count > 0 && found.Count < _options.MaxExecutablesPerGame)
+        while (queue.Count > 0 && found.Count < cap)
         {
             var (directory, depth) = queue.Dequeue();
 
@@ -240,16 +308,16 @@ public sealed class GameExecutableIndexBuilder
                     }
 
                     found.Add(file);
-                    if (found.Count >= _options.MaxExecutablesPerGame)
+                    if (found.Count >= cap)
                     {
                         _logger.LogDebug(
                             "Executable scan of {Path} hit the {Cap}-executable cap; stopping.",
-                            installPath, _options.MaxExecutablesPerGame);
+                            installPath, cap);
                         break;
                     }
                 }
 
-                if (depth >= _options.ExecutableScanDepth)
+                if (depth >= maxDepth)
                 {
                     continue;
                 }

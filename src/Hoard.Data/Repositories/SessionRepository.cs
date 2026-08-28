@@ -12,7 +12,8 @@ public sealed class SessionRepository : ISessionRepository
         started_at       AS StartedAt,
         ended_at         AS EndedAt,
         duration_s       AS DurationSeconds,
-        detection_method AS DetectionMethod
+        detection_method AS DetectionMethod,
+        attributed_by    AS AttributedBy
         """;
 
     private readonly ISqliteConnectionFactory _factory;
@@ -23,8 +24,10 @@ public sealed class SessionRepository : ISessionRepository
     {
         using var lease = _factory.Lease();
         return await lease.Connection.ExecuteScalarAsync<long>(new CommandDefinition("""
-            INSERT INTO sessions (ownership_id, started_at, ended_at, duration_s, detection_method)
-            VALUES (@OwnershipId, @StartedAt, @EndedAt, @DurationSeconds, @DetectionMethod)
+            INSERT INTO sessions (
+                ownership_id, started_at, ended_at, duration_s, detection_method, attributed_by)
+            VALUES (
+                @OwnershipId, @StartedAt, @EndedAt, @DurationSeconds, @DetectionMethod, @AttributedBy)
             RETURNING id;
             """, session, transaction: lease.Transaction, cancellationToken: ct));
     }

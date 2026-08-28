@@ -34,6 +34,7 @@ public sealed class SessionWatcherHarness : IDisposable
         _releases = new ReleaseRepository(_db.Factory);
         _ownerships = new OwnershipRepository(_db.Factory);
         Sessions = new SessionRepository(_db.Factory);
+        Settings = new SettingsRepository(_db.Factory);
         SessionWrites = new FlakySessionRepository(Sessions);
 
         Clock = new FakeTimeProvider(Origin);
@@ -43,7 +44,13 @@ public sealed class SessionWatcherHarness : IDisposable
         configure?.Invoke(options);
         var wrapped = Options.Create(options);
         IndexBuilder = new GameExecutableIndexBuilder(_ownerships, wrapped, Clock);
-        Watcher = new SessionWatcher(Processes, IndexBuilder, SessionWrites, wrapped, Clock);
+
+        // M3b: the registry the UI declares launches on. Real rather than
+        // faked — it is a few fields and a lock, and the thing worth testing is
+        // the watcher and the registry agreeing, not either alone.
+        Intents = new LaunchIntents(wrapped);
+        Watcher = new SessionWatcher(
+            Processes, IndexBuilder, SessionWrites, wrapped, Clock, logger: null, intents: Intents);
     }
 
     public FakeTimeProvider Clock { get; }
@@ -52,9 +59,22 @@ public sealed class SessionWatcherHarness : IDisposable
 
     public GameExecutableIndexBuilder IndexBuilder { get; }
 
+    /// <summary>The launch-intent registry the watcher consults (M3b).</summary>
+    public LaunchIntents Intents { get; }
+
+    /// <summary>Declares a Hoard launch at the harness clock's current time.</summary>
+    public bool Declare(long ownershipId) => Intents.Declare(ownershipId, Clock.GetUtcNow().UtcDateTime);
+
     public SessionWatcher Watcher { get; }
 
     public SessionRepository Sessions { get; }
+
+    /// <summary>
+    /// The same settings table the app reads its preferences from, so the
+    /// journal prompt's opt-in can be exercised against a real row rather than a
+    /// stub that always answers.
+    /// </summary>
+    public SettingsRepository Settings { get; }
 
     /// <summary>
     /// The repository the watcher writes through. Pass-through by default; a

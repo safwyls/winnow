@@ -59,3 +59,42 @@ public static class DetectionMethods
     /// <summary>Entered by hand.</summary>
     public const string Manual = "manual";
 }
+
+/// <summary>
+/// Valid <see cref="Session.AttributedBy"/> values (CHECK-constrained in the
+/// schema, and nullable there because every session recorded before M3b
+/// predates the column).
+///
+/// <para><b>This is the axis M3b exists to add, and it is not a quality score
+/// — it is a record of what was known.</b> §5.2 lists the ways attribution by
+/// inference goes wrong: launchers spawn children, games relaunch through a
+/// second executable, an engine ships the same <c>Game.exe</c> name as three
+/// other titles, and a process whose main module cannot be read has no path to
+/// join on at all. Every one of those is a case where the watcher has to pick
+/// between candidates. When Hoard fired the launch URI itself there is nothing
+/// to pick between: the app already knows which ownership the user clicked, and
+/// the intent hands the watcher that answer instead of making it guess.</para>
+///
+/// <para>Stored rather than derived because it cannot be reconstructed later:
+/// nothing in a finished session says whether a human clicked Play in Hoard or
+/// in Steam. A recommender that eventually wants to weight exact sessions above
+/// inferred ones can only do that if the distinction was written down at the
+/// time.</para>
+/// </summary>
+public static class SessionAttributions
+{
+    /// <summary>
+    /// Hoard fired the launch and a process appeared while that intent was
+    /// live. The ownership is the one the user clicked, not one resolved from a
+    /// path.
+    /// </summary>
+    public const string Launch = "launch";
+
+    /// <summary>
+    /// Inferred: the running executable's path fell inside an ownership's
+    /// install directory, or its name matched exactly one owned game. The
+    /// M3a behaviour, and still the answer for every game started from Steam,
+    /// the Epic launcher, Galaxy or a desktop shortcut.
+    /// </summary>
+    public const string Inferred = "inferred";
+}

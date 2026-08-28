@@ -119,6 +119,12 @@ public sealed class SessionWatcher : IDisposable
     /// </summary>
     private readonly List<Session> _pending = [];
 
+    /// <summary>
+    /// M3b's attribution seam: the launches Hoard fired itself. Consulted only
+    /// where inference has already failed — see <see cref="LaunchIntents"/>.
+    /// </summary>
+    private readonly LaunchIntents _intents;
+
     private GameExecutableIndex _index = GameExecutableIndex.Empty;
     private DateTime _indexBuiltAtUtc = DateTime.MinValue;
     private long _discoveryPass;
@@ -130,7 +136,8 @@ public sealed class SessionWatcher : IDisposable
         ISessionRepository sessions,
         IOptions<SessionWatcherOptions> options,
         TimeProvider? timeProvider = null,
-        ILogger<SessionWatcher>? logger = null)
+        ILogger<SessionWatcher>? logger = null,
+        LaunchIntents? intents = null)
     {
         ArgumentNullException.ThrowIfNull(options);
 
@@ -140,7 +147,29 @@ public sealed class SessionWatcher : IDisposable
         _options = options.Value;
         _timeProvider = timeProvider ?? TimeProvider.System;
         _logger = logger ?? NullLogger<SessionWatcher>.Instance;
+
+        // Optional, and a private empty registry when absent, so a host that
+        // never wired the UI still watches exactly as M3a did. Nothing declares
+        // against a registry nobody can reach, so every attribution stays
+        // inferred and no code path below has to test for null.
+        _intents = intents ?? new LaunchIntents(options);
     }
+
+    /// <summary>
+    /// Raised after a session has been written, with the row as stored — id
+    /// assigned, and <see cref="Session.AttributedBy"/> filled in.
+    ///
+    /// <para>This is what the journal prompt waits for, and the reason it is an
+    /// event rather than the UI polling the table: §5.2's prompt is "on session
+    /// end", and a poll would either be late or be a second query loop over a
+    /// table nothing else reads.</para>
+    ///
+    /// <para>Raised on the tick that drained the queue. Handlers are invoked
+    /// defensively — one that throws is logged and skipped rather than allowed
+    /// to abort the drain, because a subscriber's bug must not cost the sessions
+    /// still queued behind this one.</para>
+    /// </summary>
+    public event EventHandler<Session>? SessionRecorded;
 
     /// <summary>The executable index as of the last rebuild. Exposed for diagnostics and tests.</summary>
     public GameExecutableIndex Index => _index;
@@ -157,9 +186,11 @@ public sealed class SessionWatcher : IDisposable
     {
         var now = _timeProvider.GetUtcNow().UtcDateTime;
         await EnsureIndexAsync(now, ct).ConfigureAwait(false);
+        await DescribeIntentsAsync(now, ct).ConfigureAwait(false);
 
-        var started = Discover();
+        var started = Discover(now);
         var debounced = Collect(now);
+        _intents.Sweep(now);
         var recorded = await DrainPendingAsync(ct).ConfigureAwait(false);
 
         int running, queued;
@@ -204,9 +235,10 @@ public sealed class SessionWatcher : IDisposable
                 break;
             }
 
+            long id;
             try
             {
-                await _sessions.InsertAsync(session, ct).ConfigureAwait(false);
+                id = await _sessions.InsertAsync(session, ct).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -234,11 +266,101 @@ public sealed class SessionWatcher : IDisposable
 
             recorded++;
             _logger.LogInformation(
-                "Recorded a {Duration:n0}s session for ownership {OwnershipId} ({Start:u} → {End:u}).",
-                session.DurationSeconds ?? 0, session.OwnershipId, session.StartedAt, session.EndedAt);
+                "Recorded a {Duration:n0}s {Attribution} session for ownership {OwnershipId} "
+                + "({Start:u} → {End:u}).",
+                session.DurationSeconds ?? 0,
+                session.AttributedBy ?? "unattributed",
+                session.OwnershipId,
+                session.StartedAt,
+                session.EndedAt);
+
+            Announce(session with { Id = id });
         }
 
         return recorded;
+    }
+
+    /// <summary>
+    /// Tells subscribers a session landed. Defended for the same reason the exit
+    /// callback is: this crosses out of the module into UI code, and an
+    /// exception escaping here would abandon the sessions still queued behind
+    /// this one.
+    /// </summary>
+    private void Announce(Session session)
+    {
+        try
+        {
+            SessionRecorded?.Invoke(this, session);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "A session-recorded handler threw for session {SessionId}; the session is written "
+                + "and the drain continues.",
+                session.Id);
+        }
+    }
+
+    /// <summary>
+    /// Tells each newly declared launch what its game's processes look like: the
+    /// install root the index already holds, and a deeper one-game executable
+    /// scan than the library-wide index can afford.
+    ///
+    /// <para>Runs after the index refresh so a game installed since the last
+    /// rebuild has a root to be described with, and before discovery so a store
+    /// client that was already warm cannot start the game inside the same tick
+    /// that would have described it.</para>
+    ///
+    /// <para>A failed scan leaves the intent described-but-empty rather than
+    /// undescribed, so it is not retried every five seconds for the whole
+    /// window; the cost is one launch attributed by inference, which is what
+    /// M3a would have done anyway.</para>
+    /// </summary>
+    private async Task DescribeIntentsAsync(DateTime now, CancellationToken ct)
+    {
+        var awaiting = _intents.AwaitingDescription(now);
+        if (awaiting.Count == 0)
+        {
+            return;
+        }
+
+        var index = _index;
+        foreach (var ownershipId in awaiting)
+        {
+            var root = index.RootFor(ownershipId);
+            IReadOnlySet<string> names;
+            try
+            {
+                names = await _indexBuilder.ScanLaunchNamesAsync(root, ct).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(
+                    ex, "Could not scan {Path} for the launch of ownership {OwnershipId}.",
+                    root ?? "<no install path>", ownershipId);
+                names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            }
+
+            _intents.Describe(ownershipId, root, names);
+
+            _logger.LogDebug(
+                "Launch of ownership {OwnershipId} is watching {Count} executable name(s) under {Path}.",
+                ownershipId, names.Count, root ?? "<no install path>");
+        }
+
+        // A process resolved and rejected minutes ago now has a reason to be
+        // reconsidered: the game the user just asked for may be one of them,
+        // running from outside the install root that made it look like a
+        // stranger. One extra path resolution per suspect, once per launch.
+        lock (_gate)
+        {
+            _rejected.Clear();
+        }
     }
 
     /// <summary>
@@ -424,9 +546,14 @@ public sealed class SessionWatcher : IDisposable
     /// not one syscall. Resolving paths first and filtering after would spend a
     /// fifth of a core on that answer, permanently.</para>
     /// </summary>
-    private int Discover()
+    private int Discover(DateTime now)
     {
         var index = _index;
+
+        // Snapshotted once per pass, outside the lock below, and empty whenever
+        // nobody has pressed Play. See LaunchIntents.ExpectedNames for why this
+        // does not breach §5.2's cost rule.
+        var expected = _intents.ExpectedNames(now);
         var listings = _source.List();
         List<ProcessListing> candidates;
         long pass;
@@ -474,7 +601,8 @@ public sealed class SessionWatcher : IDisposable
 
                 // ***** The Tier 1 filter. Nothing above this line opened a
                 // handle, and nothing below it runs for a non-candidate. *****
-                if (!index.ProcessNames.Contains(listing.ProcessName))
+                if (!index.ProcessNames.Contains(listing.ProcessName)
+                    && !expected.Contains(listing.ProcessName))
                 {
                     continue;
                 }
@@ -495,7 +623,15 @@ public sealed class SessionWatcher : IDisposable
                 continue;
             }
 
-            var ownershipId = index.Match(process.ExecutablePath, process.ProcessName);
+            // Inference first, ALWAYS. A path that resolves inside some game's
+            // install directory is that game, whatever the user last clicked —
+            // filesystem evidence outranks a declaration, and inverting this
+            // would let a pending launch relabel a second game the user started
+            // from Steam while waiting. The intent is consulted only where M3a
+            // would have shrugged: see LaunchIntents.Attribute for the two rules
+            // and for what it deliberately refuses to do.
+            var ownershipId = index.Match(process.ExecutablePath, process.ProcessName)
+                ?? _intents.Attribute(process.ExecutablePath, process.ProcessName, now);
             if (ownershipId is null)
             {
                 // A name collision with something that is not a game: the user's
@@ -515,9 +651,15 @@ public sealed class SessionWatcher : IDisposable
                 continue;
             }
 
-            if (Attach(process, ownershipId.Value, pass))
+            if (Attach(process, ownershipId.Value, pass, now))
             {
                 started++;
+
+                // Outside Attach, and therefore outside its lock: this raises an
+                // event the UI is listening to. Idempotent per declared launch,
+                // so a game whose second executable joins the same session does
+                // not announce itself twice.
+                _intents.Fulfil(ownershipId.Value, now);
             }
         }
 
@@ -529,8 +671,15 @@ public sealed class SessionWatcher : IDisposable
     /// first process for that game. Returns false when the watcher is already
     /// disposed or the pid is somehow taken.
     /// </summary>
-    private bool Attach(ITrackedProcess process, long ownershipId, long discoveryPass)
+    private bool Attach(ITrackedProcess process, long ownershipId, long discoveryPass, DateTime now)
     {
+        // Read before taking the lock: LaunchIntents has a lock of its own, and
+        // nesting two of them in one order here and the other order anywhere
+        // else is how a deadlock gets written.
+        var attribution = _intents.IsLive(ownershipId, now)
+            ? SessionAttributions.Launch
+            : SessionAttributions.Inferred;
+
         lock (_gate)
         {
             if (_disposed || !_tracked.TryAdd(process.Pid, new TrackedGame(process, ownershipId)))
@@ -541,7 +690,7 @@ public sealed class SessionWatcher : IDisposable
 
             if (!_live.TryGetValue(ownershipId, out var live))
             {
-                live = new LiveSession(ownershipId, process.StartedAtUtc, discoveryPass);
+                live = new LiveSession(ownershipId, process.StartedAtUtc, discoveryPass, attribution);
                 _live[ownershipId] = live;
                 _logger.LogDebug(
                     "Session opened for ownership {OwnershipId} at {Start:u} (first process {Name}, pid {Pid}).",
@@ -734,6 +883,7 @@ public sealed class SessionWatcher : IDisposable
             EndedAt = endedAt,
             DurationSeconds = (long)duration.TotalSeconds,
             DetectionMethod = DetectionMethods.ProcessWatch,
+            AttributedBy = live.Attribution,
         };
     }
 
@@ -756,6 +906,7 @@ public sealed class SessionWatcher : IDisposable
             EndedAt = null,
             DurationSeconds = null,
             DetectionMethod = DetectionMethods.ProcessWatch,
+            AttributedBy = live.Attribution,
         };
     }
 
@@ -785,9 +936,18 @@ public sealed class SessionWatcher : IDisposable
     /// One game's in-progress session. Spans however many processes the game
     /// runs through — see the type remarks on <see cref="SessionWatcher"/>.
     /// </summary>
-    private sealed class LiveSession(long ownershipId, DateTime startedAtUtc, long openedInPass)
+    private sealed class LiveSession(
+        long ownershipId, DateTime startedAtUtc, long openedInPass, string attribution)
     {
         public long OwnershipId { get; } = ownershipId;
+
+        /// <summary>
+        /// Fixed when the session OPENS, not when it is written. A later process
+        /// joining cannot change the answer: whether Hoard started this sitting
+        /// was settled by the first process that belonged to it, and a game that
+        /// hands off to a second executable is the same sitting by definition.
+        /// </summary>
+        public string Attribution { get; } = attribution;
 
         /// <summary>
         /// When this sitting began. Seeded from the first process seen for the

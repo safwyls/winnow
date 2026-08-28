@@ -96,6 +96,33 @@ public sealed class GameExecutableIndex
     }
 
     /// <summary>
+    /// This ownership's install root, normalised the way <see cref="Match"/>
+    /// compares them, or null when the library has no usable path for it.
+    ///
+    /// <para>Exists for <see cref="LaunchIntents"/>: an intent needs to know what
+    /// the game it is waiting for looks like, and this is where that already
+    /// lives. The alternative was a second reader of
+    /// <c>ownerships.install_path</c>, which is exactly the "two answers that can
+    /// disagree" this module's project file forbids.</para>
+    ///
+    /// <para>Longest-first order means an ownership listed twice — it should not
+    /// be, but the constructor takes what it is given — answers with its deepest
+    /// root, the same one <see cref="Match"/> would pick.</para>
+    /// </summary>
+    public string? RootFor(long ownershipId)
+    {
+        foreach (var root in _roots)
+        {
+            if (root.OwnershipId == ownershipId)
+            {
+                return root.Path;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// The Tier 1 filter set: every executable name belonging to an installed,
     /// owned game. <b>This is the only thing the 5-second poll consults</b>, and
     /// the reason the poll costs a hash lookup per running process instead of a

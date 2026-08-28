@@ -898,6 +898,37 @@ public partial class MainWindow : Window
     /// still being attached when Opened fires, so the content has no visual tree
     /// to focus into yet.</para>
     /// </summary>
+    /// <summary>
+    /// The journal card's note field. Enter saves, Escape dismisses, and both
+    /// mark the key handled so the window's own Escape chain never sees them:
+    /// the card is not modal and must not start behaving like it, so Escape
+    /// pressed anywhere else still means "give me the library back".
+    ///
+    /// <para>There is deliberately no global key that opens or answers this
+    /// card. It is an offer, and an offer with a keyboard shortcut is a
+    /// prompt.</para>
+    /// </summary>
+    private void OnJournalNoteKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (_library?.Journal is not { IsOpen: true } journal)
+        {
+            return;
+        }
+
+        switch (e.Key)
+        {
+            case Key.Enter:
+                journal.SaveCommand.Execute(null);
+                e.Handled = true;
+                break;
+
+            case Key.Escape:
+                journal.DismissCommand.Execute(null);
+                e.Handled = true;
+                break;
+        }
+    }
+
     private void OnDisplayFlyoutOpened(object? sender, EventArgs e)
     {
         if (sender is not Flyout { Content: Control content })

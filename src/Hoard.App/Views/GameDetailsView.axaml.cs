@@ -72,18 +72,12 @@ public partial class GameDetailsView : UserControl
     private void OnClosePressed(object? sender, RoutedEventArgs e)
         => CloseRequested?.Invoke(this, EventArgs.Empty);
 
-    /// <summary>
-    /// Play / Install. <c>steam://run/&lt;appid&gt;</c> hands the launch to
-    /// Steam's own protocol handler, which is the difference between an
-    /// affordance and a button that opens a web page about launching.
-    /// </summary>
-    private async void OnPrimaryActionPressed(object? sender, RoutedEventArgs e)
-    {
-        if (DataContext is GameDetailsViewModel { PrimaryAction: { } action })
-        {
-            await LaunchAsync(action);
-        }
-    }
+    // Play / Install is a command now, bound straight to the tile's own
+    // PrimaryActionCommand (M3b). It left this class for the reason the tile's
+    // copy did: a launch has to name the ownership it is launching so the
+    // session watcher does not have to infer it, and a handler holding a
+    // GameLink knows a URI and nothing else. The links below are unaffected —
+    // a store page is a page, and nothing needs to be attributed to it.
 
     /// <summary>Store page, patch-notes hub — whatever the links row holds.</summary>
     private async void OnLinkPressed(object? sender, RoutedEventArgs e)

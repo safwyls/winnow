@@ -39,11 +39,12 @@ namespace Hoard.App.ViewModels;
 /// </summary>
 public sealed record GameLink
 {
-    private GameLink(string label, string uri, string? hint)
+    private GameLink(string label, string uri, string? hint, GameLinkKind kind)
     {
         Label = label;
         Uri = uri;
         Hint = hint;
+        Kind = kind;
     }
 
     /// <summary>Steam's browser protocol.</summary>
@@ -70,6 +71,22 @@ public sealed record GameLink
     /// <summary>Tooltip. Null falls back to showing the URI itself.</summary>
     public string? Hint { get; }
 
+    /// <summary>
+    /// What pressing this is expected to DO, as against where it goes.
+    ///
+    /// <para>M3b needs the distinction and the label cannot carry it: a launch
+    /// that is supposed to produce a running game is the only kind worth
+    /// declaring an attribution intent for, and the only kind worth waiting on.
+    /// <c>steam://install/</c> starts a download that may take an hour and
+    /// produces no process to attribute; matching on the string "Play" would
+    /// have made the copy load-bearing, which is how a rename becomes a
+    /// bug.</para>
+    /// </summary>
+    public GameLinkKind Kind { get; }
+
+    /// <summary>True when pressing this should end with a game running.</summary>
+    public bool StartsGame => Kind == GameLinkKind.Play;
+
     /// <summary>Tooltip text: the caller's hint, or the destination itself.</summary>
     public string Tooltip => Hint ?? Uri;
 
@@ -89,7 +106,8 @@ public sealed record GameLink
     /// The only constructor. Returns null — never a placeholder — when the
     /// target is missing, relative, or on a scheme we do not open.
     /// </summary>
-    public static GameLink? Create(string label, string? uri, string? hint = null)
+    public static GameLink? Create(
+        string label, string? uri, string? hint = null, GameLinkKind kind = GameLinkKind.Link)
     {
         if (string.IsNullOrWhiteSpace(label) || string.IsNullOrWhiteSpace(uri))
         {
@@ -140,7 +158,7 @@ public sealed record GameLink
         //     decoded %3A back to ':' would split the path into segments the
         //     launcher does not recognise. It does not: the escapes come out
         //     byte-identical.
-        return new GameLink(label, parsed.ToString(), hint);
+        return new GameLink(label, parsed.ToString(), hint, kind);
     }
 
     /// <summary>
@@ -152,4 +170,28 @@ public sealed record GameLink
     /// </summary>
     public static bool IsSteamAppId(string? appId)
         => appId is { Length: > 0 and <= 10 } && appId.All(char.IsAsciiDigit);
+}
+
+/// <summary>
+/// What a <see cref="GameLink"/> is FOR. Three answers, and the middle one is
+/// the reason the enum exists rather than a boolean.
+/// </summary>
+public enum GameLinkKind
+{
+    /// <summary>A store page, a patch-notes hub, a launcher view. Opens something to read.</summary>
+    Link = 0,
+
+    /// <summary>
+    /// Starts the game. The only kind that declares a launch intent, and the
+    /// only kind the ambient indicator waits on.
+    /// </summary>
+    Play,
+
+    /// <summary>
+    /// Starts a download in the store's own client. Fires and is forgotten:
+    /// there is no process to attribute, the wait is measured in hours rather
+    /// than seconds, and pretending otherwise would leave an indicator spinning
+    /// on the screen for the rest of the evening.
+    /// </summary>
+    Install,
 }

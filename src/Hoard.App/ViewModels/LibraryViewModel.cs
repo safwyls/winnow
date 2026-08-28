@@ -66,6 +66,13 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts
     /// </summary>
     private readonly Services.IEpicLaunchKeys? _epicLaunchKeys;
 
+    /// <summary>
+    /// M3b. Optional, like every other seam on this view model: with nothing
+    /// registered the Play button is inert rather than absent, and the library
+    /// still loads.
+    /// </summary>
+    private readonly Services.GameLaunchService? _launcher;
+
     private IReadOnlyList<GameTileViewModel> _allTiles = [];
     private FacetSnapshot _facets = FacetSnapshot.Empty;
     private bool _loaded;
@@ -90,7 +97,10 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts
         IPlaytimeSnapshotRepository? snapshots = null,
         IFacetRepository? facets = null,
         IGameListRepository? lists = null,
-        Services.IEpicLaunchKeys? epicLaunchKeys = null)
+        Services.IEpicLaunchKeys? epicLaunchKeys = null,
+        Services.GameLaunchService? launcher = null,
+        LaunchStatusViewModel? launchStatus = null,
+        JournalPromptViewModel? journal = null)
     {
         _libraryQueries = libraryQueries;
         _ownerships = ownerships;
@@ -101,6 +111,20 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts
         _snapshots = snapshots;
         _facetRepository = facets;
         _epicLaunchKeys = epicLaunchKeys;
+        _launcher = launcher;
+
+        // Both optional for the reason every seam here is: an unregistered one
+        // costs the feature and not the window. With no launcher the Play button
+        // is a command that does nothing rather than a crash, and with no status
+        // strip the launch still happens and is still attributed — the strip is
+        // the acknowledgement, not the mechanism.
+        LaunchStatus = launchStatus ?? new LaunchStatusViewModel();
+        Journal = journal ?? new JournalPromptViewModel();
+
+        // The prompt names the game; only the loaded library can. Assigned here
+        // rather than injected because the dependency runs this way round — see
+        // JournalPromptViewModel.TitleFor.
+        Journal.TitleFor = TitleForOwnership;
 
         Filters = new FilterPanelViewModel(ApplyFilter);
         Lists = new ListsViewModel(lists);
@@ -169,6 +193,106 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts
 
     /// <summary>The rail's LISTS and LIVE LISTS sections.</summary>
     public ListsViewModel Lists { get; }
+
+    /// <summary>
+    /// M3b's ambient launch strip. Lives on the library rather than the window
+    /// because the library is what raises the launch; the shell just gives it a
+    /// corner to sit in.
+    /// </summary>
+    public LaunchStatusViewModel LaunchStatus { get; }
+
+    /// <summary>§5.2's journal prompt (opt-in, §9 pitfall 7).</summary>
+    public JournalPromptViewModel Journal { get; }
+
+    /// <summary>
+    /// M3b: Play / Install, for the tile's back face and the detail panel alike.
+    ///
+    /// <para><b>Every branch below ends without a dialog</b>, which is the whole
+    /// acceptance criterion for this milestone. The store client not running is
+    /// not an error and is not mentioned — starting it is what the URI is for. A
+    /// user who cancels at the store's own prompt gets silence, because they did
+    /// not fail at anything. A second click while the first launch is in flight
+    /// does nothing at all rather than firing a second prompt. The one case that
+    /// says anything is the one Hoard can actually diagnose: the shell had no
+    /// handler for the scheme, so nothing was even asked to start.</para>
+    ///
+    /// <para><b>It does not await the game.</b> The strip resolves later, off the
+    /// watcher's own signal, so this command completes as soon as the URI is
+    /// handed over — nothing in the UI is blocked on another application's
+    /// startup time.</para>
+    /// </summary>
+    [RelayCommand]
+    private async Task LaunchAsync(GameTileViewModel? tile)
+    {
+        if (tile?.PrimaryAction is not { } action)
+        {
+            return;
+        }
+
+        if (_launcher is null)
+        {
+            return;
+        }
+
+        var outcome = await _launcher.LaunchAsync(tile.OwnershipId, action);
+
+        // Only a Play is worth acknowledging. An Install hands off to a download
+        // the store will show its own progress for, over minutes or hours; a
+        // Hoard strip alongside it would be a second, worse progress indicator
+        // for something Hoard cannot see.
+        if (!action.StartsGame)
+        {
+            return;
+        }
+
+        switch (outcome)
+        {
+            case Services.LaunchDispatch.HandedOff:
+                LaunchStatus.Waiting(tile.OwnershipId, tile.Title);
+                break;
+
+            case Services.LaunchDispatch.Refused:
+                LaunchStatus.Refused(tile.Title, StoreName(tile.Store));
+                break;
+
+            case Services.LaunchDispatch.AlreadyRunning:
+                // The first click's strip is still up and still correct.
+                break;
+        }
+    }
+
+    /// <summary>
+    /// The store, as a person would say it. Only ever reaches the user inside
+    /// the one message that names a store, so it is deliberately the client's
+    /// name rather than the storefront's — the thing that did not answer is the
+    /// application, not the shop.
+    /// </summary>
+    private static string StoreName(string store) => store switch
+    {
+        ExternalIdProviders.Steam => "Steam",
+        ExternalIdProviders.Epic => "the Epic Games Launcher",
+        ExternalIdProviders.Gog => "GOG Galaxy",
+        _ => "the store",
+    };
+
+    /// <summary>
+    /// The name of the game behind an ownership, from the tiles already loaded.
+    /// Null when the library does not hold it — see
+    /// <see cref="JournalPromptViewModel.TitleFor"/> for why that is a reason to
+    /// stay quiet rather than to go and ask the database.
+    /// </summary>
+    private string? TitleForOwnership(long ownershipId)
+    {
+        foreach (var tile in _allTiles)
+        {
+            if (tile.OwnershipId == ownershipId)
+            {
+                return tile.Title;
+            }
+        }
+
+        return null;
+    }
 
     /// <summary>
     /// Whether covers dim with age, and whether the hover restore animates.
@@ -502,6 +626,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts
             // bulk one (§12.3), and two implementations would be two behaviours.
             tile.AddToListCommand = BeginAddToListCommand;
             tile.OpenDetailsCommand = OpenDetailsCommand;
+            tile.PrimaryActionCommand = LaunchCommand;
 
             // What the game IS, for the filter panel to cut on. Read from the
             // one snapshot rather than passed through the constructor: it is a

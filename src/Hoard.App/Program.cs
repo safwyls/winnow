@@ -1,4 +1,4 @@
-﻿using Avalonia;
+using Avalonia;
 using Avalonia.Threading;
 using Hoard.App.Services;
 using Hoard.App.ViewModels;
@@ -424,6 +424,32 @@ public static class Program
         // SqliteEpicCatalogCache wrote. See IEpicLaunchKeys for why the UI is
         // allowed to read it and where it should eventually live instead.
         services.AddSingleton<IEpicLaunchKeys, SqliteEpicLaunchKeys>();
+
+        // M3b (§5.2): launching, and the seam that makes a Hoard-started session
+        // exactly attributed instead of inferred.
+        //
+        // TopLevelUriDispatcher is the ONE place a URI leaves this application —
+        // the two view code-behinds that used to call TopLevel.Launcher for the
+        // Play button no longer do. GameLaunchService declares the launch on
+        // LaunchIntents (registered by AddSessionWatching above, and a singleton
+        // because it is the rendezvous between the UI and the watcher) before
+        // firing the URI, so a warm store client cannot start the game before
+        // the watcher has been told whose it is.
+        services.AddSingleton<IUriDispatcher, TopLevelUriDispatcher>();
+        services.AddSingleton<GameLaunchService>();
+
+        // §5.2's journal prompt, and §9 pitfall 7's constraint on it: OFF unless
+        // the user turned it on. The service holds that gate, so a disabled
+        // prompt is an event that is never raised rather than a card that exists
+        // and hides. It subscribes to the watcher's SessionRecorded, which is why
+        // it is a singleton and why it is registered after AddSessionWatching.
+        services.AddSingleton<SessionJournalService>();
+
+        // The two ambient surfaces. Both are optional to LibraryViewModel, so a
+        // host that skipped them still loads a library and still launches games;
+        // registered here because the shell renders them.
+        services.AddSingleton<LaunchStatusViewModel>();
+        services.AddSingleton<JournalPromptViewModel>();
 
         services.AddSingleton<LibraryViewModel>();
 

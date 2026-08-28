@@ -254,8 +254,16 @@ public static class StoreActions
         }
 
         return installed
-            ? GameLink.Create("Play", $"{GameLink.SteamScheme}://run/{appId}", "Launch through Steam")
-            : GameLink.Create("Install", $"{GameLink.SteamScheme}://install/{appId}", "Start the download in Steam");
+            ? GameLink.Create(
+                "Play",
+                $"{GameLink.SteamScheme}://run/{appId}",
+                "Launch through Steam",
+                GameLinkKind.Play)
+            : GameLink.Create(
+                "Install",
+                $"{GameLink.SteamScheme}://install/{appId}",
+                "Start the download in Steam",
+                GameLinkKind.Install);
     }
 
     private static GameLink? GogPrimary(string? productId, bool installed)
@@ -269,11 +277,13 @@ public static class StoreActions
             ? GameLink.Create(
                 "Play",
                 $"{GameLink.GogScheme}://launchGame/{GogReleaseKey(productId!)}",
-                "Launch through GOG Galaxy")
+                "Launch through GOG Galaxy",
+                GameLinkKind.Play)
             : GameLink.Create(
                 "Install",
                 $"{GameLink.GogScheme}://installationScreen/{productId}",
-                "Open this game's install screen in GOG Galaxy");
+                "Open this game's install screen in GOG Galaxy",
+                GameLinkKind.Install);
     }
 
     /// <summary>
@@ -286,6 +296,7 @@ public static class StoreActions
             ? GameLink.Create(
                 "Play",
                 $"{GameLink.EpicScheme}://apps/{launch.PathSegment}?action=launch&silent=true",
-                "Launch through the Epic Games Launcher")
+                "Launch through the Epic Games Launcher",
+                GameLinkKind.Play)
             : null;
 }

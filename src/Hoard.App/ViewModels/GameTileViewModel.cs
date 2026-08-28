@@ -394,6 +394,21 @@ public partial class GameTileViewModel : ObservableObject
     /// for the many rows list view can select at once (§6, §12.3), and per-card
     /// flipping would make "add twenty games to a list" twenty flips.</para>
     /// </summary>
+    /// <summary>
+    /// M3b: Play / Install, raised as a command rather than opened by the view.
+    ///
+    /// <para>It moved off the code-behind for one reason: a launch has to tell
+    /// the session watcher which game it is (<c>LaunchIntents</c>), and a
+    /// <c>Click</c> handler holding a URI has no idea what an ownership is. The
+    /// library publishes the command, the tile carries it, and the button binds
+    /// to it — the same wiring, and the same §5.1 reason, as the two below.</para>
+    ///
+    /// <para>Null leaves the button inert rather than absent, which is why the
+    /// view still gates visibility on <see cref="HasPrimaryAction"/>: an
+    /// unwired command is a composition mistake, not a fact about the game.</para>
+    /// </summary>
+    public System.Windows.Input.ICommand? PrimaryActionCommand { get; set; }
+
     public System.Windows.Input.ICommand? AddToListCommand { get; set; }
 
     /// <summary>

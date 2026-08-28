@@ -31,7 +31,8 @@ public partial class MainWindowViewModel : ObservableObject
         MergeQueueViewModel mergeQueue,
         StoresViewModel stores,
         AppearanceViewModel appearance,
-        ISettingsRepository? settings = null)
+        ISettingsRepository? settings = null,
+        Services.SessionJournalService? journal = null)
     {
         Library = library;
         MergeQueue = mergeQueue;
@@ -58,6 +59,7 @@ public partial class MainWindowViewModel : ObservableObject
         Display = new DisplaySettingsViewModel(
             library.Ramp,
             settings,
+            journal: journal,
             reloadLibrary: async () =>
             {
                 // The toggle owns the flag; the library owns the query. Setting

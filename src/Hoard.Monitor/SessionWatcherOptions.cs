@@ -118,6 +118,26 @@ public sealed class SessionWatcherOptions
     public int MaxExecutablesPerGame { get; set; } = 64;
 
     /// <summary>
+    /// How long a launch Hoard fired itself stays eligible to claim a process
+    /// (M3b, <see cref="LaunchIntents"/>).
+    ///
+    /// <para>Ninety seconds, and the bound is set by two opposite mistakes.
+    /// Too short and the window closes while a cold store client is still
+    /// starting — §5.2 already notes a game can take thirty seconds to appear,
+    /// and that is measured from a client that was already running. Too long and
+    /// a launch the user abandoned at Steam's own prompt is still sitting there
+    /// when they start something else half an hour later, ready to put that
+    /// session on the wrong game.</para>
+    ///
+    /// <para>Being wrong in the short direction costs an attribution that falls
+    /// back to inference — which is M3a's behaviour and is usually correct
+    /// anyway. Being wrong in the long direction costs a fabricated fact. So the
+    /// window is deliberately shorter than "surely the game has started by
+    /// now".</para>
+    /// </summary>
+    public TimeSpan LaunchWindow { get; set; } = TimeSpan.FromSeconds(90);
+
+    /// <summary>
     /// Whether the watcher runs at all. Off mirrors <c>--no-sync</c> and
     /// <c>--seed-sample</c>: both mean "leave this database alone", and a
     /// session appearing under a seeded library would be a fabricated fact about

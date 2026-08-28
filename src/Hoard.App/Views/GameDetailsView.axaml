@@ -382,7 +382,8 @@
                                     IsVisible="{Binding HasPrimaryAction}"
                                     Content="{Binding PrimaryAction.Label}"
                                     ToolTip.Tip="{Binding PrimaryAction.Tooltip}"
-                                    Click="OnPrimaryActionPressed"/>
+                                    Command="{Binding Tile.PrimaryActionCommand}"
+                                    CommandParameter="{Binding Tile}"/>
 
                             <ItemsControl ItemsSource="{Binding Links}">
                                 <ItemsControl.ItemsPanel>

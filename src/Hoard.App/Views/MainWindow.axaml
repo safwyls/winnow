@@ -651,6 +651,132 @@
             <Setter Property="BorderThickness" Value="0"/>
         </Style>
 
+        <!-- ══ THE AMBIENT DOCK (M3b) ══════════════════════════
+             Two transient surfaces share one corner: the launch strip that says
+             a game is starting, and the journal card that asks about one that
+             just ended. Neither is a dialog, neither takes focus, and neither
+             blocks anything behind it — that is the entire design, and this
+             milestone's acceptance criterion is that pressing Play produces no
+             obstruction at all.
+
+             Bottom-LEFT rather than bottom-right. The right edge is where the
+             filter panel opens and where every scrollbar lives; the left is the
+             quiet corner, and it is the one the eye is least likely to be using
+             while reading covers. -->
+        <Style Selector="Border.dock">
+            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="Padding" Value="14,12"/>
+        </Style>
+
+        <!-- The waiting dot. Volt, because a launch in progress is the primary
+             action still happening; never Flare, which means unread and nothing
+             else. The pulse runs only while the outcome is unknown, so the strip
+             stops moving the instant the watcher confirms the game is up —
+             motion that stops IS the message. -->
+        <Style Selector="Ellipse.pip">
+            <Setter Property="Width" Value="7"/>
+            <Setter Property="Height" Value="7"/>
+            <Setter Property="Fill" Value="{StaticResource Volt}"/>
+        </Style>
+        <Style Selector="Ellipse.pip.problem">
+            <Setter Property="Fill" Value="{StaticResource Amber}"/>
+        </Style>
+        <Style Selector="Ellipse.pip.waiting">
+            <Style.Animations>
+                <Animation Duration="0:0:1.4" IterationCount="INFINITE" Easing="SineEaseInOut">
+                    <KeyFrame Cue="0%"><Setter Property="Opacity" Value="1.0"/></KeyFrame>
+                    <KeyFrame Cue="50%"><Setter Property="Opacity" Value="0.25"/></KeyFrame>
+                    <KeyFrame Cue="100%"><Setter Property="Opacity" Value="1.0"/></KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
+
+        <!-- The dismiss ×. Deliberately not a button reading "Skip": naming the
+             act of ignoring something makes ignoring it a decision, and §9
+             pitfall 7 is about not charging the user for one. -->
+        <Style Selector="Button.dockclose">
+            <Setter Property="Width" Value="22"/>
+            <Setter Property="Height" Value="22"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Button.dockclose:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource SurfaceHigh}"/>
+            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+        </Style>
+        <Style Selector="Button.dockclose:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+        </Style>
+
+        <!-- Rating: five dots, not stars and not a number. A number would have
+             to be typeset in Plex Mono per the design system and would invite a
+             precision the user does not have about an evening they just spent; a
+             dot is a mark, and an unset row of them reads as optional. -->
+        <Style Selector="Button.rate">
+            <Setter Property="Width" Value="20"/>
+            <Setter Property="Height" Value="20"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Button.rate:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+        </Style>
+        <Style Selector="Button.rate Ellipse">
+            <Setter Property="Width" Value="11"/>
+            <Setter Property="Height" Value="11"/>
+            <Setter Property="Fill" Value="Transparent"/>
+            <Setter Property="Stroke" Value="{StaticResource TextFaint}"/>
+            <Setter Property="StrokeThickness" Value="1.5"/>
+        </Style>
+        <Style Selector="Button.rate:pointerover Ellipse">
+            <Setter Property="Stroke" Value="{StaticResource TextDim}"/>
+        </Style>
+        <Style Selector="Button.rate.on Ellipse">
+            <Setter Property="Fill" Value="{StaticResource Volt}"/>
+            <Setter Property="Stroke" Value="{StaticResource Volt}"/>
+        </Style>
+
+        <!-- The note field. One line, no scrollbar, no formatting: §5.2 asks for
+             a free-text note, and a box that invites an essay after a game is a
+             box that gets abandoned half-written. -->
+        <Style Selector="TextBox.note">
+            <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="Padding" Value="9,0"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Background" Value="{StaticResource ChromeFieldOnSurface}"/>
+            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+            <Setter Property="CaretBrush" Value="{StaticResource Volt}"/>
+            <Setter Property="SelectionBrush" Value="{StaticResource VoltSelection}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="6"/>
+        </Style>
+        <Style Selector="TextBox.note /template/ Border#PART_BorderElement">
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+        <Style Selector="TextBox.note:focus /template/ Border#PART_BorderElement">
+            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+        </Style>
+
         <!-- ══ THE FLOATING LAYOUT (§15) ═════════════════════
              Everything the layout does that a repainted brush cannot: margins,
              corner radii and which edges carry a rule. TWO tokens change colour
@@ -1475,6 +1601,29 @@
                                                TextWrapping="Wrap"
                                                Foreground="{StaticResource TextDim}"
                                                Text="Steam also carries tools, dedicated servers and soundtracks. They're hidden by default. Anything Steam hasn't told us the type of stays visible either way."/>
+
+                                    <Border Height="1" Margin="0,4"
+                                            Background="{StaticResource Line}"/>
+
+                                    <!-- §5.2's journal prompt. OFF, and it stays off
+                                         until somebody opens this popover and turns
+                                         it on — §9 pitfall 7 names shipping it on by
+                                         default as an uninstall trigger, and it is
+                                         right. The copy says exactly what appears and
+                                         exactly how to be rid of it, because the one
+                                         thing a user needs to know before enabling an
+                                         after-the-fact prompt is how little it will
+                                         cost them to ignore it. -->
+                                    <CheckBox Name="JournalToggle"
+                                              Classes="pref"
+                                              Content="Ask for a note after playing"
+                                              IsChecked="{Binding Display.PromptAfterPlay, Mode=TwoWay}"/>
+                                    <TextBlock Classes="body" FontSize="12"
+                                               Margin="26,0,0,0"
+                                               LineHeight="17"
+                                               TextWrapping="Wrap"
+                                               Foreground="{StaticResource TextDim}"
+                                               Text="Off by default. When on, a small card appears in the corner of this window after a game ends, offering a note and a rating. It never opens a window over your game, never takes focus, and goes away on its own if you ignore it."/>
                                 </StackPanel>
                             </Flyout>
                         </Button.Flyout>
@@ -1890,6 +2039,108 @@
             <views:AppearanceView Name="AppearancePanel"
                                   DataContext="{Binding Appearance}"/>
         </Border>
+
+
+        <!-- ══ AMBIENT DOCK (M3b) ══════════════════════════════
+             A sibling of the four panes rather than a child of any one of them,
+             so a launch strip survives the user switching to the Stores screen
+             while their game starts, and a journal card is still there when they
+             come back from a merge review.
+
+             No Background on the StackPanel and no fixed height: with both
+             children hidden it measures to nothing and cannot be hit, so the
+             covers underneath stay clickable in the corner it occupies. -->
+        <StackPanel HorizontalAlignment="Left" VerticalAlignment="Bottom"
+                    Margin="18,0,0,18" Width="352" Spacing="10">
+
+            <!-- ── Journal prompt (§5.2, opt-in per §9 pitfall 7) ───────────
+                 Never rendered at all unless the user turned the preference on:
+                 the service does not raise the event, so IsOpen never becomes
+                 true. See JournalPromptViewModel for why this is a card in
+                 Hoard's own window rather than the "small unintrusive window"
+                 §5.2 asks for. -->
+            <Border Classes="dock"
+                    DataContext="{Binding Library.Journal}"
+                    x:DataType="vm:JournalPromptViewModel"
+                    IsVisible="{Binding IsOpen}">
+                <StackPanel Spacing="10">
+
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
+                            <TextBlock Classes="body-l" FontSize="13"
+                                       VerticalAlignment="Center"
+                                       TextTrimming="CharacterEllipsis"
+                                       Text="{Binding Title}"/>
+                            <TextBlock Classes="data-s"
+                                       VerticalAlignment="Center"
+                                       Foreground="{StaticResource TextDim}"
+                                       Text="{Binding DurationText}"/>
+                        </StackPanel>
+
+                        <Button Grid.Column="1"
+                                Classes="dockclose"
+                                Content="&#x2715;"
+                                ToolTip.Tip="Dismiss"
+                                Command="{Binding DismissCommand}"/>
+                    </Grid>
+
+                    <StackPanel Orientation="Horizontal" Spacing="2">
+                        <Button Classes="rate" Classes.on="{Binding IsRated1}"
+                                CommandParameter="1" Command="{Binding RateCommand}"
+                                ToolTip.Tip="1 out of 5"><Ellipse/></Button>
+                        <Button Classes="rate" Classes.on="{Binding IsRated2}"
+                                CommandParameter="2" Command="{Binding RateCommand}"
+                                ToolTip.Tip="2 out of 5"><Ellipse/></Button>
+                        <Button Classes="rate" Classes.on="{Binding IsRated3}"
+                                CommandParameter="3" Command="{Binding RateCommand}"
+                                ToolTip.Tip="3 out of 5"><Ellipse/></Button>
+                        <Button Classes="rate" Classes.on="{Binding IsRated4}"
+                                CommandParameter="4" Command="{Binding RateCommand}"
+                                ToolTip.Tip="4 out of 5"><Ellipse/></Button>
+                        <Button Classes="rate" Classes.on="{Binding IsRated5}"
+                                CommandParameter="5" Command="{Binding RateCommand}"
+                                ToolTip.Tip="5 out of 5"><Ellipse/></Button>
+                    </StackPanel>
+
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                        <TextBox Grid.Column="0"
+                                 Name="JournalNote"
+                                 Classes="note"
+                                 Watermark="How was it?"
+                                 Text="{Binding Note, Mode=TwoWay}"
+                                 KeyDown="OnJournalNoteKeyDown"/>
+                        <Button Grid.Column="1"
+                                Classes="act primary"
+                                FontSize="12" Padding="12,5"
+                                Content="Save"
+                                Command="{Binding SaveCommand}"/>
+                    </Grid>
+
+                </StackPanel>
+            </Border>
+
+            <!-- ── Launch strip (M3b) ──────────────────────────
+                 One line, no buttons, nothing to dismiss. It resolves itself:
+                 the pulse stops and the strip goes when the session watcher sees
+                 the game running, and it goes silently when a launch nobody
+                 completed runs out its window. -->
+            <Border Classes="dock"
+                    DataContext="{Binding Library.LaunchStatus}"
+                    x:DataType="vm:LaunchStatusViewModel"
+                    IsVisible="{Binding IsOpen}">
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                    <Ellipse Classes="pip"
+                             Classes.waiting="{Binding IsWaiting}"
+                             Classes.problem="{Binding IsProblem}"
+                             VerticalAlignment="Center"/>
+                    <TextBlock Classes="body" FontSize="12"
+                               VerticalAlignment="Center"
+                               TextTrimming="CharacterEllipsis"
+                               Text="{Binding Message}"/>
+                </StackPanel>
+            </Border>
+
+        </StackPanel>
 
         </Panel>
 

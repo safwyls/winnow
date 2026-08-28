@@ -434,6 +434,79 @@ public class MigrationTests
             "SELECT last_played_at FROM play_records;"));
     }
 
+    /// <summary>
+    /// 0010 adds <c>sessions.attributed_by</c>: whether Hoard started the game
+    /// itself or worked out afterwards which game a process belonged to (M3b).
+    ///
+    /// <para>Applied on top of a database that already holds sessions, because
+    /// that is the only interesting case — the user has real play history and it
+    /// must survive. NULL on those rows is the correct answer and not a gap to be
+    /// back-filled: nothing in a finished session says whether a human clicked
+    /// Play in Hoard or in Steam, so writing 'inferred' over them would be
+    /// inventing history rather than describing it.</para>
+    /// </summary>
+    [Fact]
+    public void Migration_0010_adds_session_attribution_and_leaves_old_rows_null()
+    {
+        using var db = new TempDatabase();
+
+        long sessionId;
+        using (var conn = db.Factory.Open())
+        {
+            conn.Execute("ALTER TABLE sessions DROP COLUMN attributed_by;");
+            conn.Execute("DELETE FROM SchemaVersions WHERE ScriptName LIKE '%0010%';");
+
+            var workId = conn.ExecuteScalar<long>(
+                "INSERT INTO works (name) VALUES ('Riven') RETURNING id;");
+            var releaseId = conn.ExecuteScalar<long>(
+                "INSERT INTO releases (work_id, name) VALUES (@workId, 'Riven') RETURNING id;",
+                new { workId });
+            var ownershipId = conn.ExecuteScalar<long>(
+                "INSERT INTO ownerships (release_id, store) VALUES (@releaseId, 'steam') RETURNING id;",
+                new { releaseId });
+
+            sessionId = conn.ExecuteScalar<long>(
+                """
+                INSERT INTO sessions (ownership_id, started_at, ended_at, duration_s, detection_method)
+                VALUES (@ownershipId, '2026-08-01 20:00:00', '2026-08-01 21:00:00', 3600, 'process_watch')
+                RETURNING id;
+                """,
+                new { ownershipId });
+        }
+
+        db.Initializer.Initialize();
+
+        using var after = db.Factory.Open();
+
+        Assert.Contains(
+            "attributed_by",
+            after.Query<string>("SELECT name FROM pragma_table_info('sessions');"));
+
+        // The pre-existing sitting is intact, and unattributed rather than guessed at.
+        Assert.Equal(3600, after.ExecuteScalar<long>(
+            "SELECT duration_s FROM sessions WHERE id = @sessionId;", new { sessionId }));
+        Assert.Null(after.ExecuteScalar<string?>(
+            "SELECT attributed_by FROM sessions WHERE id = @sessionId;", new { sessionId }));
+
+        // The vocabulary is ours and closed, so unlike 0009's epic_categories it
+        // IS constrained: a third value should have to be a schema change.
+        after.Execute(
+            "UPDATE sessions SET attributed_by = 'launch' WHERE id = @sessionId;", new { sessionId });
+        after.Execute(
+            "UPDATE sessions SET attributed_by = 'inferred' WHERE id = @sessionId;", new { sessionId });
+
+        Assert.Throws<Microsoft.Data.Sqlite.SqliteException>(() =>
+            after.Execute(
+                "UPDATE sessions SET attributed_by = 'guessed' WHERE id = @sessionId;",
+                new { sessionId }));
+
+        // detection_method is untouched. The two axes are orthogonal: a launched
+        // session is still timed by the process watcher, and saying otherwise
+        // would be a claim about its timestamps that is not true.
+        Assert.Equal("process_watch", after.ExecuteScalar<string>(
+            "SELECT detection_method FROM sessions WHERE id = @sessionId;", new { sessionId }));
+    }
+
     [Fact]
     public void Every_connection_has_wal_and_foreign_keys_enabled()
     {

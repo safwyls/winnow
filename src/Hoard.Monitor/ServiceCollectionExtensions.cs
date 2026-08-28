@@ -35,6 +35,13 @@ public static class ServiceCollectionExtensions
         services.TryAddSingleton(TimeProvider.System);
         services.TryAddSingleton<IProcessSource, SystemProcessSource>();
         services.TryAddSingleton<GameExecutableIndexBuilder>();
+
+        // M3b's attribution seam. A singleton because it is a rendezvous: the UI
+        // declares a launch on it and the watcher reads that declaration back.
+        // Two instances would be two apps that cannot hear each other, and the
+        // failure would be silent — every session would simply keep being
+        // attributed by inference and nobody would notice the seam was dead.
+        services.TryAddSingleton<LaunchIntents>();
         services.TryAddSingleton<SessionWatcher>();
         services.AddHostedService<SessionWatcherService>();
 
