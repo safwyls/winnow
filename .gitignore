@@ -24,10 +24,15 @@ Thumbs.db
 appsettings.local.json
 *.secrets.json
 
-# Appearance review captures. The compare--*.png sheets ARE committed: they
-# carry the measured result and are the record of why the transparency lines
-# fall where they do. The per-theme grids beside them are review artifacts,
-# superseded by the next design change, and 19MB of PNG that git would keep
-# forever.
+# Appearance review captures, ALL of them including the compare--*.png sheets.
+#
+# The sheets were committed as the record of why the transparency and layout
+# lines fall where they do, and that reasoning was worth keeping — but it is
+# kept in prose. design-system.md §14-16 carries every measurement the sheets
+# illustrated, in numbers that survive a re-render; the images were 35MB of a
+# 60MB repository for a claim a table already makes.
+#
+# They stay reproducible: every capture flag that produced them is still in the
+# app (--theme=, --transparency=, --wall=, --layout=, --backdrop=), so anyone
+# arguing with a measurement can regenerate the picture rather than trust it.
 docs/screenshots/appearance/*.png
-!docs/screenshots/appearance/compare--*.png
