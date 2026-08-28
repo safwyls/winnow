@@ -133,6 +133,21 @@ public static class RecommendationScorer
                 "you were probably right to move on.");
         }
 
+        // Mode mismatch: the library's hours sit overwhelmingly on one side of
+        // the single-player/online line and this candidate lives entirely on
+        // the other. Sized to at least cancel a perfect taste match — a genre
+        // hit on a game the user will never actually launch with strangers is
+        // a false positive — but not to bury the row: mode facets can be
+        // missing or wrong, and a demotion is recoverable where an exclusion
+        // is not.
+        if (facts.ModeMismatch != ModeMismatch.None)
+        {
+            Add(SignalNames.ModeMismatch, -tuning.PenaltyModeMismatch, 1.0,
+                facts.ModeMismatch == ModeMismatch.OnlineOnlyForSoloPlayer
+                    ? "It's online multiplayer only, and nearly everything you actually play is single-player."
+                    : "It's single-player only, and nearly everything you actually play is online.");
+        }
+
         if (facts.RecentlySurfaced)
         {
             Add(SignalNames.RecentlySurfaced, -tuning.PenaltyRecentlySurfaced, 1.0,

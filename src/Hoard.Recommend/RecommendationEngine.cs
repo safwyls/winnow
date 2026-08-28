@@ -55,89 +55,17 @@ public sealed class RecommendationEngine : IRecommendationEngine
         _facets = facets;
     }
 
+    /// <summary>Everything both entry points share: the assembled pool and the request's derived seed.</summary>
+    private sealed record CandidatePool(
+        List<CandidateFacts> Candidates,
+        IReadOnlyList<Core.Queries.OwnershipBucket> BucketRows,
+        int Seed);
+
     public async Task<RecommendationFeed> GetFeedAsync(
         RecommendationRequest request, CancellationToken ct = default)
     {
         var tuning = request.Tuning;
-        var seed = request.ShuffleSeed
-            ?? DateOnly.FromDateTime(request.AsOfUtc).DayNumber;
-
-        // ── Bulk reads: everything Tier 0 needs ────────────────────────────
-        var bucketRows = await _library.GetOwnershipBucketsAsync(request.Thresholds, ct);
-        var identities = (await _releases.GetIdentitiesAsync(ct))
-            .ToDictionary(i => i.ReleaseId);
-        var ownershipsById = (await _ownerships.GetAllAsync(ct))
-            .ToDictionary(o => o.Id);
-        var facetSnapshot = await _facets.GetSnapshotAsync(ct);
-
-        // Stores per WORK, over every ownership in the library (not just the
-        // candidates): the bought-twice signal is about the work, and the
-        // second copy may sit on a row the bucket query filtered from view.
-        var storesByWork = new Dictionary<long, HashSet<string>>();
-        foreach (var ownership in ownershipsById.Values)
-        {
-            if (identities.TryGetValue(ownership.ReleaseId, out var identity))
-            {
-                if (!storesByWork.TryGetValue(identity.WorkId, out var stores))
-                {
-                    storesByWork[identity.WorkId] = stores = new HashSet<string>(StringComparer.Ordinal);
-                }
-
-                stores.Add(ownership.Store);
-            }
-        }
-
-        var taste = TasteProfile.Build(bucketRows, facetSnapshot, request.Thresholds);
-
-        // ── Candidate assembly and hard exclusions ─────────────────────────
-        var candidates = new List<CandidateFacts>(bucketRows.Count);
-        foreach (var row in bucketRows)
-        {
-            if (row.Bucket == LibraryBuckets.Retired)
-            {
-                // §6.1 precedence made concrete: the 200-hour game never comes
-                // back, patches notwithstanding. It still testified to the
-                // taste profile above — being finished with a game is the
-                // strongest taste evidence there is.
-                continue;
-            }
-
-            if (request.NotInterestedReleaseIds.Contains(row.ReleaseId)
-                || request.SnoozedReleaseIds.Contains(row.ReleaseId))
-            {
-                continue;
-            }
-
-            if (!identities.TryGetValue(row.ReleaseId, out var identity)
-                || identity.NameIsProvisional)
-            {
-                // A tile named "App 1203620" cannot carry an explainable
-                // recommendation; enrichment clears the flag and the game
-                // joins the pool on the next request.
-                continue;
-            }
-
-            ownershipsById.TryGetValue(row.OwnershipId, out var ownership);
-            var (affinity, facetName) = taste.AffinityFor(row.ReleaseId);
-
-            candidates.Add(new CandidateFacts
-            {
-                OwnershipId = row.OwnershipId,
-                ReleaseId = row.ReleaseId,
-                WorkId = identity.WorkId,
-                Title = identity.MatchTitle,
-                Store = ownership?.Store ?? string.Empty,
-                Bucket = row.Bucket,
-                PlaytimeMinutes = row.PlaytimeMinutes,
-                LastPlayedAt = row.LastPlayedAt,
-                Installed = ownership?.Installed ?? false,
-                StoreCount = storesByWork.TryGetValue(identity.WorkId, out var stores) ? stores.Count : 1,
-                TasteAffinity = affinity,
-                TasteFacetName = facetName,
-                RecentlySurfaced = request.RecentlySurfacedReleaseIds.Contains(row.ReleaseId),
-            });
-        }
-
+        var (candidates, bucketRows, seed) = await AssemblePoolAsync(request, ct);
         // ── Preliminary rank, then probe the shortlist ─────────────────────
         // The final feed is drawn from the shortlist alone. That is sound
         // because history can only ADD to a row's score (tried-to-like-it is a
@@ -207,6 +135,197 @@ public sealed class RecommendationEngine : IRecommendationEngine
             Tier = DetectTier(probe, tuning),
             CandidateCount = candidates.Count,
         };
+    }
+
+    public async Task<ShelfFeed> GetShelvesAsync(
+        RecommendationRequest request, CancellationToken ct = default)
+    {
+        var tuning = request.Tuning;
+        var (candidates, bucketRows, seed) = await AssemblePoolAsync(request, ct);
+
+        IReadOnlyList<SignalContribution> Score(CandidateFacts facts)
+            => RecommendationScorer.Score(facts, request.Thresholds, tuning, request.AsOfUtc, seed);
+
+        // Preliminary pass over the whole pool — pure and cheap. Each shelf
+        // shortlists its own top slice (overfetched for the diversity caps and
+        // cross-shelf claims), and only the union of those slices is probed
+        // for history. The same monotonicity argument as the flat feed's
+        // shortlist: probing can only ADD to a score, so a row outside a
+        // shelf's top 3× cannot be hiding enough evidence to reach its top 1×.
+        var preliminary = candidates
+            .Select(facts => new ScoredCandidate(facts, Score(facts), 0))
+            .Select(s => s with { Score = RecommendationScorer.Total(s.Signals) })
+            .ToList();
+
+        var definitions = ShelfBuilder.Definitions(request.Thresholds, tuning);
+        var perShelf = Math.Max(request.MaxPerShelf,
+            request.MaxPerShelf * Math.Max(1, tuning.ShelfOverfetchFactor));
+
+        var union = new List<CandidateFacts>();
+        var seen = new HashSet<long>();
+        foreach (var definition in definitions)
+        {
+            var slice = preliminary
+                .Where(s => ShelfBuilder.IsEligible(definition, s.Facts, s.Signals))
+                .OrderByDescending(s => s.Score)
+                .ThenBy(s => s.Facts.ReleaseId)
+                .Take(perShelf);
+
+            foreach (var entry in slice)
+            {
+                if (union.Count >= tuning.ShelfProbeLimit)
+                {
+                    break;
+                }
+
+                if (seen.Add(entry.Facts.OwnershipId))
+                {
+                    union.Add(entry.Facts);
+                }
+            }
+        }
+
+        // Recently played rows join the probe purely for tier detection —
+        // same reasoning as the flat feed: history physically accrues on the
+        // games being played, which every shelf by design excludes.
+        var recentProbe = bucketRows
+            .Where(r => r.LastPlayedAt is not null)
+            .OrderByDescending(r => r.LastPlayedAt)
+            .Take(tuning.RecentProbeLimit)
+            .Select(r => r.OwnershipId);
+
+        var probe = await ProbeHistoryAsync(
+            union.Select(f => f.OwnershipId).Concat(recentProbe).Distinct().ToList(), ct);
+
+        var scored = new List<ScoredCandidate>(union.Count);
+        foreach (var facts in union)
+        {
+            var enriched = await EnrichAsync(facts, probe, ct);
+            var signals = Score(enriched);
+            scored.Add(new ScoredCandidate(enriched, signals, RecommendationScorer.Total(signals)));
+        }
+
+        return new ShelfFeed
+        {
+            Shelves = ShelfBuilder.Build(definitions, scored, tuning, request.MaxPerShelf),
+            Tier = DetectTier(probe, tuning),
+            CandidateCount = candidates.Count,
+        };
+    }
+
+    /// <summary>
+    /// The shared front half of both entry points: bulk reads, the taste
+    /// profile, hard exclusions, and one <see cref="CandidateFacts"/> per
+    /// surviving ownership. Four bulk reads cover every Tier-0 signal.
+    /// </summary>
+    private async Task<CandidatePool> AssemblePoolAsync(
+        RecommendationRequest request, CancellationToken ct)
+    {
+        var tuning = request.Tuning;
+        var seed = request.ShuffleSeed
+            ?? DateOnly.FromDateTime(request.AsOfUtc).DayNumber;
+
+        var bucketRows = await _library.GetOwnershipBucketsAsync(request.Thresholds, ct);
+        var identities = (await _releases.GetIdentitiesAsync(ct))
+            .ToDictionary(i => i.ReleaseId);
+        var ownershipsById = (await _ownerships.GetAllAsync(ct))
+            .ToDictionary(o => o.Id);
+        var facetSnapshot = await _facets.GetSnapshotAsync(ct);
+
+        // Stores per WORK, over every ownership in the library (not just the
+        // candidates): the bought-twice signal is about the work, and the
+        // second copy may sit on a row the bucket query filtered from view.
+        var storesByWork = new Dictionary<long, HashSet<string>>();
+        foreach (var ownership in ownershipsById.Values)
+        {
+            if (identities.TryGetValue(ownership.ReleaseId, out var identity))
+            {
+                if (!storesByWork.TryGetValue(identity.WorkId, out var stores))
+                {
+                    storesByWork[identity.WorkId] = stores = new HashSet<string>(StringComparer.Ordinal);
+                }
+
+                stores.Add(ownership.Store);
+            }
+        }
+
+        var taste = TasteProfile.Build(bucketRows, facetSnapshot, request.Thresholds, tuning);
+
+        // ── Candidate assembly and hard exclusions ─────────────────────────
+        var candidates = new List<CandidateFacts>(bucketRows.Count);
+        foreach (var row in bucketRows)
+        {
+            if (row.Bucket == LibraryBuckets.Retired)
+            {
+                // §6.1 precedence made concrete: the 200-hour game never comes
+                // back, patches notwithstanding. It still testified to the
+                // taste profile above — being finished with a game is the
+                // strongest taste evidence there is.
+                continue;
+            }
+
+            if (request.NotInterestedReleaseIds.Contains(row.ReleaseId)
+                || request.SnoozedReleaseIds.Contains(row.ReleaseId))
+            {
+                continue;
+            }
+
+            if (!identities.TryGetValue(row.ReleaseId, out var identity)
+                || identity.NameIsProvisional)
+            {
+                // A tile named "App 1203620" cannot carry an explainable
+                // recommendation; enrichment clears the flag and the game
+                // joins the pool on the next request.
+                continue;
+            }
+
+            ownershipsById.TryGetValue(row.OwnershipId, out var ownership);
+            var (affinity, facetName) = taste.AffinityFor(row.ReleaseId);
+
+            candidates.Add(new CandidateFacts
+            {
+                OwnershipId = row.OwnershipId,
+                ReleaseId = row.ReleaseId,
+                WorkId = identity.WorkId,
+                Title = identity.MatchTitle,
+                Store = ownership?.Store ?? string.Empty,
+                Bucket = row.Bucket,
+                PlaytimeMinutes = row.PlaytimeMinutes,
+                LastPlayedAt = row.LastPlayedAt,
+                Installed = ownership?.Installed ?? false,
+                StoreCount = storesByWork.TryGetValue(identity.WorkId, out var stores) ? stores.Count : 1,
+                TasteAffinity = affinity,
+                TasteFacetName = facetName,
+                RecentlySurfaced = request.RecentlySurfacedReleaseIds.Contains(row.ReleaseId),
+                ModeMismatch = taste.ClassifyModes(
+                    row.ReleaseId, tuning.ModeEvidenceMinGames, tuning.ModeDominanceShare),
+                GenreFacetIds = GenreIdsFor(facetSnapshot, row.ReleaseId),
+            });
+        }
+
+        return new CandidatePool(candidates, bucketRows, seed);
+    }
+
+    /// <summary>Genre-kind facet ids for one release — the shelf diversity cap's raw material.</summary>
+    private static IReadOnlyList<long> GenreIdsFor(
+        Core.Queries.FacetSnapshot snapshot, long releaseId)
+    {
+        if (!snapshot.ByRelease.TryGetValue(releaseId, out var facets))
+        {
+            return [];
+        }
+
+        List<long>? genres = null;
+        foreach (var facetId in facets.FacetIds)
+        {
+            if (snapshot.ById.TryGetValue(facetId, out var facet)
+                && facet.Kind == Core.Queries.FacetKinds.Genre)
+            {
+                (genres ??= []).Add(facetId);
+            }
+        }
+
+        return genres is null ? [] : genres;
     }
 
     /// <summary>

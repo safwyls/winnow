@@ -31,20 +31,55 @@ internal sealed class TasteProfile
     private readonly Dictionary<long, double> _weightByFacet;
     private readonly FacetSnapshot _snapshot;
     private readonly double _maxWeight;
+    private readonly int _committedWithModes;
+    private readonly int _committedSinglePlayer;
 
-    private TasteProfile(Dictionary<long, double> weightByFacet, FacetSnapshot snapshot)
+    private TasteProfile(
+        Dictionary<long, double> weightByFacet,
+        FacetSnapshot snapshot,
+        int committedWithModes,
+        int committedSinglePlayer)
     {
         _weightByFacet = weightByFacet;
         _snapshot = snapshot;
         _maxWeight = weightByFacet.Count == 0 ? 0 : weightByFacet.Values.Max();
+        _committedWithModes = committedWithModes;
+        _committedSinglePlayer = committedSinglePlayer;
     }
 
     public static TasteProfile Build(
         IReadOnlyList<OwnershipBucket> bucketRows,
         FacetSnapshot snapshot,
-        BucketThresholds thresholds)
+        BucketThresholds thresholds,
+        RecommendationTuning tuning)
     {
+        // ── The prevalence cut ─────────────────────────────────────────────
+        // A descriptor carried by a quarter of the library describes the
+        // LIBRARY, not the user. Measured on the real data, "Action" sits on
+        // roughly two-thirds of releases, and with it in play the affinity
+        // metric saturated: 266 of 427 never-opened rows scored a perfect
+        // match, which is a metric measuring nothing. Cutting facets above
+        // the prevalence ceiling turns the profile's peaks from
+        // Action/Adventure/Singleplayer into Survival/Sandbox/Crafting — the
+        // things this user actually, distinctively plays. The absolute floor
+        // protects small libraries (and test fixtures), where three carriers
+        // of one genre is coincidence, not genericity.
+        var totalWithFacets = snapshot.Releases.Count;
+        var genericAt = Math.Max(
+            tuning.TasteFacetPrevalenceFloor,
+            (int)Math.Ceiling(tuning.TasteFacetMaxPrevalence * totalWithFacets));
+        var carriers = new Dictionary<long, int>();
+        foreach (var release in snapshot.Releases)
+        {
+            foreach (var facetId in release.FacetIds)
+            {
+                carriers[facetId] = carriers.GetValueOrDefault(facetId) + 1;
+            }
+        }
+
         var weights = new Dictionary<long, double>();
+        var committedWithModes = 0;
+        var committedSinglePlayer = 0;
         foreach (var row in bucketRows)
         {
             if (row.PlaytimeMinutes < thresholds.BouncedFloorMinutes)
@@ -60,14 +95,74 @@ internal sealed class TasteProfile
             var weight = Math.Sqrt(row.PlaytimeMinutes);
             foreach (var facetId in facets.FacetIds)
             {
-                if (IsTasteKind(snapshot, facetId))
+                if (IsTasteKind(snapshot, facetId)
+                    && carriers.GetValueOrDefault(facetId) < genericAt)
                 {
                     weights[facetId] = weights.GetValueOrDefault(facetId) + weight;
                 }
             }
+
+            // The mode tally behind ClassifyModes. Game COUNTS, not minutes:
+            // the sentence the signal ships is "nearly everything you play is
+            // single-player", and a count is that sentence's arithmetic —
+            // minutes-weighting would let one MMO bender reclassify a solo
+            // player. Committed games only, same floor as the taste weights:
+            // below the refund line the game cannot testify about anything.
+            if (facets.GameModes.Count > 0)
+            {
+                committedWithModes++;
+                if (facets.GameModes.Contains(GameModes.SinglePlayer))
+                {
+                    committedSinglePlayer++;
+                }
+            }
         }
 
-        return new TasteProfile(weights, snapshot);
+        return new TasteProfile(weights, snapshot, committedWithModes, committedSinglePlayer);
+    }
+
+    /// <summary>
+    /// Whether a candidate's modes clash with how this user demonstrably
+    /// plays. Fires only under dominance: at least <paramref name="minGames"/>
+    /// committed mode-carrying games, of which at least
+    /// <paramref name="dominanceShare"/> sit on one side — and only against a
+    /// candidate that is EXCLUSIVELY the other side. A candidate with no mode
+    /// facets is unknown, never mismatched.
+    /// </summary>
+    public ModeMismatch ClassifyModes(
+        long releaseId, int minGames, double dominanceShare)
+    {
+        if (_committedWithModes < minGames
+            || !_snapshot.ByRelease.TryGetValue(releaseId, out var facets)
+            || facets.GameModes.Count == 0)
+        {
+            return ModeMismatch.None;
+        }
+
+        var singleShare = _committedSinglePlayer / (double)_committedWithModes;
+        var modes = facets.GameModes;
+        var hasSingle = modes.Contains(GameModes.SinglePlayer);
+
+        // "Online-only" is deliberately the competitive trio, not co-op or
+        // split-screen: couch co-op beside a solo library is a maybe, an
+        // MMO beside one is a mistake.
+        var onlineOnly = !hasSingle
+            && (modes.Contains(GameModes.Multiplayer)
+                || modes.Contains(GameModes.Mmo)
+                || modes.Contains(GameModes.BattleRoyale));
+
+        if (onlineOnly && singleShare >= dominanceShare)
+        {
+            return ModeMismatch.OnlineOnlyForSoloPlayer;
+        }
+
+        var soloOnly = hasSingle && modes.Count == 1;
+        if (soloOnly && 1 - singleShare >= dominanceShare)
+        {
+            return ModeMismatch.SoloOnlyForOnlinePlayer;
+        }
+
+        return ModeMismatch.None;
     }
 
     /// <summary>

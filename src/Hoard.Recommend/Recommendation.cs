@@ -12,8 +12,9 @@ public enum DataTier
     /// <summary>
     /// One sync, one snapshot per game, no sessions. Only retroactive facts
     /// exist — playtime totals, last-played, patch history, facets — and the
-    /// feed runs entirely on them. The measured real library is here today
-    /// (955 of 960 snapshot-bearing ownerships hold exactly one reading).
+    /// feed runs entirely on them. The real library sat here until the first
+    /// sessions landed in 2026-08 (955 of 960 snapshot-bearing ownerships
+    /// held exactly one reading).
     /// </summary>
     ColdStart = 0,
 
@@ -61,6 +62,7 @@ public static class SignalNames
     public const string Installed = "installed";
     public const string BoughtTwice = "bought_twice";
     public const string RecentlyPlayed = "recently_played";
+    public const string ModeMismatch = "mode_mismatch";
     public const string ProbablyDone = "probably_done";
     public const string RecentlySurfaced = "recently_surfaced";
     public const string Jitter = "jitter";

@@ -6,6 +6,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- The test project exercises the internal pieces (Franchise, ShelfBuilder,
+         TasteProfile) directly — the pure parts are unit-tested to the decimal. -->
+    <InternalsVisibleTo Include="Hoard.Recommend.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- Hoard.Core ONLY (§5.1). The engine reads through repository interfaces
          and returns scored results; it must never grow a reference to Data,
          Ingest, Enrich or the App — the composition root hands it

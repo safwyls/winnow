@@ -47,6 +47,16 @@ internal static class ReasonBuilder
             parts.Add(probablyDone.Explanation);
         }
 
+        // Same honesty rule for the mode mismatch: a row demoted for being
+        // online-only in a single-player library must say so where it does
+        // surface, or the demotion is arbitrary from the user's side.
+        var modeMismatch = contributions.FirstOrDefault(
+            c => c.Signal == SignalNames.ModeMismatch);
+        if (modeMismatch is not null)
+        {
+            parts.Add(modeMismatch.Explanation);
+        }
+
         return string.Join(" ", parts);
     }
 

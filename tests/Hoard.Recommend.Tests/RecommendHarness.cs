@@ -185,4 +185,19 @@ public sealed class RecommendHarness : IDisposable
     /// <summary>Attaches a single genre to the work, minting the facet row as the backfill would.</summary>
     public Task SeedGenreAsync(SeededGame game, string genre)
         => Facets.SetWorkFacetsAsync(game.WorkId, [new FacetAssignment(FacetKinds.Genre, genre)]);
+
+    /// <summary>Attaches several genres at once — the diversity-cap tests need multi-genre games.</summary>
+    public Task SeedGenresAsync(SeededGame game, params string[] genres)
+        => Facets.SetWorkFacetsAsync(
+            game.WorkId,
+            genres.Select(g => new FacetAssignment(FacetKinds.Genre, g)).ToList());
+
+    /// <summary>
+    /// Attaches game-mode facets to the release, the way the Steam category
+    /// sync writes them. Slugs from <see cref="GameModes"/>.
+    /// </summary>
+    public Task SeedModesAsync(SeededGame game, params string[] modeSlugs)
+        => Facets.SetReleaseFacetsAsync(
+            game.ReleaseId,
+            modeSlugs.Select(GameModes.Assignment).ToList());
 }

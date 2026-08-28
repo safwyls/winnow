@@ -24,6 +24,13 @@ public sealed record RecommendationRequest
     public int MaxResults { get; init; } = 20;
 
     /// <summary>
+    /// Items per shelf for <see cref="IRecommendationEngine.GetShelvesAsync"/>.
+    /// 10: a rail the eye can actually sweep — beyond it a shelf stops being a
+    /// pitch and becomes another list.
+    /// </summary>
+    public int MaxPerShelf { get; init; } = 10;
+
+    /// <summary>
     /// §6.1's numbers — refund line, retired floor, stale window. Passed
     /// through to the bucket query and reused by the commitment curve, so the
     /// feed and the library rail can never disagree about what "bounced" means.

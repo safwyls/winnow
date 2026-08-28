@@ -68,6 +68,36 @@ public sealed record RecommendationTuning
     /// </summary>
     public double PenaltyRecentlySurfaced { get; init; } = 0.20;
 
+    /// <summary>
+    /// The candidate sits entirely on the wrong side of the single-player /
+    /// online line for this user (see <see cref="ModeMismatch"/>). Equal to
+    /// the taste weight on purpose: a perfect genre match on a game the user
+    /// will never launch with strangers should net to zero, not to a
+    /// recommendation. A demotion rather than an exclusion because mode facets
+    /// can be missing or miscoded — measured on the real library this fires on
+    /// 12 never-opened rows (Team Fortress Classic, Deathmatch Classic, …),
+    /// every one of them a wrong thing to surface to a 93%-single-player user.
+    /// </summary>
+    public double PenaltyModeMismatch { get; init; } = 0.10;
+
+    // ── Mode-mismatch evidence floors ───────────────────────────────────────
+
+    /// <summary>
+    /// Committed mode-carrying games required before the profile may claim a
+    /// dominant mode at all. 20: below it, a handful of purchases could fake a
+    /// dominance; at 20+ games with an 85% share, chance is off the table.
+    /// The measured library has 261.
+    /// </summary>
+    public int ModeEvidenceMinGames { get; init; } = 20;
+
+    /// <summary>
+    /// Share of committed mode-carrying games that must sit on one side before
+    /// the other side counts as a mismatch. 0.85: past seventeen-in-twenty the
+    /// minority mode is occasional experimentation, not a second taste the
+    /// model should serve. The measured library is at 0.93 single-player.
+    /// </summary>
+    public double ModeDominanceShare { get; init; } = 0.85;
+
     // ── Time thresholds ─────────────────────────────────────────────────────
 
     /// <summary>
@@ -150,6 +180,70 @@ public sealed record RecommendationTuning
     /// the daily shuffle can only reorder rows no real signal separates.
     /// </summary>
     public double JitterAmplitude { get; init; } = 0.03;
+
+    // ── Shelves ─────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Taste-affinity floor for the <see cref="ShelfIds.OnYourTaste"/> shelf:
+    /// how strongly a never-opened game must match the profile before "right
+    /// up your alley" is an honest sentence. Affinity is normalised against
+    /// the profile's peak DISTINCTIVE facet (see the prevalence cut), so 0.6
+    /// means "carries a descriptor at least 60% as loved as your most-loved
+    /// one". Measured on the real library this admits a rotating pool of
+    /// ~200 of the 427 never-opened rows — months of daily rotation, not
+    /// three favourites and not the whole pile.
+    /// </summary>
+    public double OnTasteMinAffinity { get; init; } = 0.6;
+
+    /// <summary>
+    /// Share of the facet-carrying library past which a descriptor stops
+    /// counting as taste. 0.25: measured, "Action" sits on ~two-thirds of the
+    /// real library's releases and saturated the affinity metric (266 of 427
+    /// never-opened rows at a perfect score); at a quarter, the profile's
+    /// peaks become the user's distinctive tastes (Survival, Sandbox,
+    /// Crafting on the measured library) rather than the library's furniture.
+    /// </summary>
+    public double TasteFacetMaxPrevalence { get; init; } = 0.25;
+
+    /// <summary>
+    /// Absolute carrier count below which a facet is never treated as generic
+    /// regardless of share — in a 20-game library, five carriers of one genre
+    /// is a small collection, not genericity. 8: the prevalence cut only
+    /// starts meaning something once a facet could have that many carriers.
+    /// </summary>
+    public int TasteFacetPrevalenceFloor { get; init; } = 8;
+
+    /// <summary>
+    /// Entries one franchise may hold on one shelf. 1, and deliberately never
+    /// relaxed: the measured library has 14 unplayed "Infinity Blade" entries,
+    /// and a shelf that is one franchise five times is a broken feed even when
+    /// every individual score is right. The rest of the franchise rotates
+    /// through later days.
+    /// </summary>
+    public int ShelfFranchiseCap { get; init; } = 1;
+
+    /// <summary>
+    /// Entries sharing any single genre on one shelf before the strict pass
+    /// skips further ones. 4: below half of the default 10-item shelf, so no
+    /// genre can majority a shelf — but soft, because a pool that genuinely IS
+    /// six RPGs should still fill its shelf (the relaxation pass refills).
+    /// </summary>
+    public int ShelfGenreCap { get; init; } = 4;
+
+    /// <summary>
+    /// Candidates short-listed per shelf, as a multiple of the shelf size,
+    /// before history probing and the diversity passes. 3×: enough slack for
+    /// the caps and cross-shelf claims to bite without probing the library.
+    /// </summary>
+    public int ShelfOverfetchFactor { get; init; } = 3;
+
+    /// <summary>
+    /// Hard ceiling on ownerships probed for history across all shelf
+    /// shortlists combined — the shelf-feed analogue of
+    /// <see cref="HistoryProbeLimit"/>, kept separate because five shelves
+    /// legitimately probe more than one list does.
+    /// </summary>
+    public int ShelfProbeLimit { get; init; } = 150;
 
     // ── Tier detection and probing ──────────────────────────────────────────
 

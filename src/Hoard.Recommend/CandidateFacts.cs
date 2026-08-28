@@ -1,6 +1,25 @@
 namespace Hoard.Recommend;
 
 /// <summary>
+/// How a candidate's game modes sit against the way this user actually plays.
+/// Classified by <see cref="TasteProfile.ClassifyModes"/>, only when the
+/// evidence clears the tuning's floors — a library that plays a bit of
+/// everything, or one with too few mode-carrying committed games, classifies
+/// everything as <see cref="None"/>.
+/// </summary>
+public enum ModeMismatch
+{
+    /// <summary>No mismatch, or not enough evidence to claim one.</summary>
+    None = 0,
+
+    /// <summary>The candidate is online-multiplayer-only and the user's committed games are overwhelmingly single-player.</summary>
+    OnlineOnlyForSoloPlayer = 1,
+
+    /// <summary>The candidate is strictly single-player and the user's committed games are overwhelmingly online.</summary>
+    SoloOnlyForOnlinePlayer = 2,
+}
+
+/// <summary>
 /// Everything the scorer may know about one candidate, already read and
 /// flattened. The split matters: <see cref="RecommendationScorer"/> is pure
 /// functions over this record, so every curve and penalty is unit-testable
@@ -45,6 +64,20 @@ public sealed record CandidateFacts
 
     /// <summary>True when the caller's feed showed this release recently.</summary>
     public bool RecentlySurfaced { get; init; }
+
+    /// <summary>
+    /// The engine's verdict on game-mode fit (see <see cref="Recommend.ModeMismatch"/>).
+    /// Computed against the taste profile's mode tally, because the scorer is
+    /// pure over these facts and cannot see the profile itself.
+    /// </summary>
+    public ModeMismatch ModeMismatch { get; init; }
+
+    /// <summary>
+    /// Genre-kind facet ids this candidate carries, for the shelf-level
+    /// diversity cap. Empty when nothing is known — a game with no metadata
+    /// can never be "too much of one genre".
+    /// </summary>
+    public IReadOnlyList<long> GenreFacetIds { get; init; } = [];
 
     /// <summary>
     /// Distinct play episodes the history shows (snapshot rises, or sessions

@@ -13,4 +13,11 @@ public interface IRecommendationEngine
     /// inputs: same database state, same request (seed included) — same feed.
     /// </summary>
     Task<RecommendationFeed> GetFeedAsync(RecommendationRequest request, CancellationToken ct = default);
+
+    /// <summary>
+    /// Computes the shelf-shaped feed: several themed rails over the same
+    /// scoring pass, each item claimed by at most one shelf. Deterministic for
+    /// identical inputs, same as <see cref="GetFeedAsync"/>.
+    /// </summary>
+    Task<ShelfFeed> GetShelvesAsync(RecommendationRequest request, CancellationToken ct = default);
 }
