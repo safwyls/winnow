@@ -272,6 +272,36 @@ public sealed record RecommendationTuning
     /// </summary>
     public int ShelfProbeLimit { get; init; } = 150;
 
+    // ── Feedback loop windows ───────────────────────────────────────────────
+    // Read by FeedbackSets (which turns the stored feedback into a request's
+    // id sets), not by the scorer — the engine itself only ever sees the sets.
+
+    /// <summary>
+    /// Days back the recently-surfaced set reaches, EXCLUDING today (today's
+    /// own surfacings must never penalise today's feed, or a refresh would
+    /// deal a new hand).
+    ///
+    /// <para><b>3, from the smallest real pool.</b> The penalty only rotates
+    /// while some of a shelf's pool is unpenalised: with S slots a day and a
+    /// window of W days, W×S releases carry the penalty, so rotation requires
+    /// W×S &lt; pool. The smallest measured shelf pool is stale_but_patched at
+    /// ~20 releases against 6 slots — 3 is the largest whole window that stays
+    /// under it (18 &lt; 20). The big pools (taste ~200, shelfware ~400) sit far
+    /// above the bound and get their guarantee for free: nothing shown today
+    /// returns for at least 3 days unless its pool is genuinely exhausted.</para>
+    /// </summary>
+    public int SurfacedWindowDays { get; init; } = 3;
+
+    /// <summary>
+    /// Days after a surfacing within which a Hoard-launched session still
+    /// counts as answering the feed's pitch. 3, matching the surfacing window
+    /// and for the same reason it is small: the card was on screen that day
+    /// and lingers in memory for roughly the rotation cycle; past that, a
+    /// launch is the user's own idea and crediting the feed would be the
+    /// feed grading its own homework.
+    /// </summary>
+    public int EndorsementWindowDays { get; init; } = 3;
+
     // ── Tier detection and probing ──────────────────────────────────────────
 
     /// <summary>Sessions needed (with the span below) to call the library Established.</summary>

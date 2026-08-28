@@ -1,7 +1,8 @@
 # Hoard.Recommend — the scoring core
 
-**Status:** built and tested — flat feed and shelf surface — not yet wired into the UI or
-composition root (M8 does that deliberately).
+**Status:** built and tested — flat feed, shelf surface, and the feedback loop (§6b:
+verdict storage, cross-day surfacing memory, launch endorsements) — the loop's UI
+affordances are not yet wired (the App layer owns them; the contract is in §6b).
 **Module:** `src/Hoard.Recommend`, depends on `Hoard.Core` only.
 **Charter:** `.claude/agents/recommendation-engine.md`. Vocabulary: `game-library-design.md` §6.1.
 
@@ -68,13 +69,13 @@ contributes zero and the gap is *visible*, which is the honest way to degrade).
 | **Patch after dormancy** | 0 | +0.40 | "A major update landed since you stopped playing." Bucket `stale_but_patched` — the app's headline fact, computed by the §6.1 query from the correlated build-push + announcement pair. Retroactive, so available on day one. |
 | **Commitment shape** | 0 | +0.25 | Where the playtime sits against §6.1's refund line: bounced-just-past-the-line peaks (they committed and gave up — the highest-value pile), decaying toward the retired floor; sampled (1–119 min) sits above never-opened (they showed intent); never-opened is the wide flat base. |
 | **Dormancy** | 0 | +0.15 | How long since last played, ramping from the fresh window to saturation at 2 years and staying flat (see §2 for why it must not decay). Null date beside real minutes reads as "unknown, certainly ancient" = fully dormant, matching the bucket query's reasoning. |
-| **Taste affinity** | 0 | +0.10 | The candidate carries a genre/theme/tag that the user's actual hours concentrate in. Explicitly a **tiebreaker** for the 754-row shelfware pile, not the lead — genre similarity is the commodity the charter says loses to incumbents. Profile is playtime-weighted (√minutes, refund line and up), so retired games — excluded as candidates — still testify about taste. Facets above the **prevalence cut** (carried by >25% of the facet-carrying library) are excluded from the profile entirely: measured, they saturate the metric into meaninglessness (see §2's re-measurement). |
+| **Taste affinity** | 0 | +0.10 | The candidate carries a genre/theme/tag that the user's actual hours concentrate in. Explicitly a **tiebreaker** for the 754-row shelfware pile, not the lead — genre similarity is the commodity the charter says loses to incumbents. Profile is playtime-weighted (√minutes, refund line and up — with one exception: a feed-**endorsed** release testifies below the line with whatever √minutes it has, §6b), so retired games — excluded as candidates — still testify about taste. Facets above the **prevalence cut** (carried by >25% of the facet-carrying library) are excluded from the profile entirely: measured, they saturate the metric into meaninglessness (see §2's re-measurement). |
 | **Tried to like it** | 1 | +0.10 | Distinct return episodes (snapshot rises or sessions beyond the first): 40 minutes across six evenings is a different fact from 40 minutes once. Zero until history accrues; a bonus, never a prerequisite. |
 | **Installed** | 0 | +0.05 | Zero friction: it is on disk right now. |
 | **Bought twice** | 0 | +0.05 | The same work owned on 2+ stores is a purchase made twice — intent money can measure. Fires only after cross-store merges are confirmed (see §2). |
 | **Recently played** (penalty) | 0 | −0.60 | Played within the fresh window — not forgotten, so not this feed's business. Sized to sink anything: no combination of positives outruns it into the top of a realistic feed. |
 | **Probably done** (penalty) | 0 | −0.30 | Deep in the bounced pile (a fair shake of hours), deeply dormant, and nothing has changed since — the model's way of saying "you were right to drop this" instead of nagging. The contribution's explanation says exactly that, which is the charter's honesty requirement made concrete. |
-| **Recently surfaced** (penalty) | 0 | −0.20 | Caller-supplied set of releases the feed showed recently — the anti-"same five games forever" mechanism that needs no storage of ours. |
+| **Recently surfaced** (penalty) | 0 | −0.20 | Caller-supplied set of releases the feed showed recently — the anti-"same five games forever" mechanism. Since migration 0011 the caller loads it from the `feed_surfacings` log via `FeedbackSets` (§6b); the engine still stores nothing. |
 | **Mode mismatch** (penalty) | 0 | −0.10 | The candidate sits entirely on the wrong side of the single-player/online line for how this user demonstrably plays (93% single-player by committed game count, measured). Fires only under dominance (≥85% share over ≥20 mode-carrying committed games) and only against a candidate that is *exclusively* the other side; co-op without versus is a maybe, not a mistake. Sized to cancel a perfect taste match, not to bury — mode facets can be missing or wrong. |
 | **Shuffle jitter** | 0 | +0.03 max | Deterministic per (seed, release) noise, seeded by the day by default. Big enough to rotate near-ties inside the shelfware pile, small enough to never reorder games a real signal separates. |
 
@@ -101,8 +102,12 @@ score = Σ (weight_s × value_s) − Σ penalties + jitter
 1. **Retired** (§6.1 precedence: retired outranks everything, patches included). The
    200-hour game does not come back, ever.
 2. Releases in the caller's **not-interested** set — the user's explicit "you were right,
-   drop it" verdict, permanent until they change it.
-3. Releases in the caller's **snoozed** set — the temporary form of the same thing.
+   drop it" verdict, permanent until they change it. Widened to the release's **work**:
+   after a cross-store merge, dismissing the Steam card must not let the GOG copy
+   resurface the same game. The stored fact stays the clicked release (§6b); the widening
+   is recomputed per request.
+3. Releases in the caller's **snoozed** set — the temporary form of the same thing, same
+   work-widening.
 4. Works with **provisional names** — unexplainable tiles (6 rows today).
 5. Everything the §6.1 query already dropped upstream: consolidated demos/betas, and
    non-game entries (tools, soundtracks) under the default setting.
@@ -138,6 +143,8 @@ to meet: a number that means something.
 | `PenaltyRecentlyPlayed` | 0.60 | Must dominate: max realistic positive sum ≈ 0.55 for a non-stale row. A game played yesterday cannot crack the feed's top even if it is installed, twice-bought and on-taste. |
 | `PenaltyProbablyDone` | 0.30 | Sized to drop a qualifying row below the bounced midfield but not to zero — it still appears far down the feed, with a reason that says why it is far down. |
 | `PenaltyRecentlySurfaced` | 0.20 | Enough to rotate a shown item behind its unshown near-peers; not enough to bury a strong stale-but-patched hit the user keeps ignoring — if the top item is genuinely the top item, repeating it once or twice is honest. |
+| `SurfacedWindowDays` | 3 | Days back the recently-surfaced set reaches, **excluding today** (a set that included this morning's picks would penalise them on the afternoon refresh — dealing the new hand the day-seed exists to prevent). Sized from the smallest real pool: with S slots and a window of W days, W×S releases carry the penalty, and rotation requires W×S < pool. The smallest measured shelf pool is `stale_but_patched` at ~20 against 6 slots; 3 is the largest whole window under it (18 < 20). |
+| `EndorsementWindowDays` | 3 | Days after a surfacing within which a Hoard-launched session still counts as answering the feed's pitch. Matches the surfacing window, and small for the same reason: past the rotation cycle the launch is the user's own idea, and crediting the feed would be the feed grading its own homework. |
 
 ## 6. Cold start: tiers and degradation
 
@@ -197,8 +204,11 @@ Rules that make it a feed rather than five lists:
   the shelfware/taste pools are near-tie-dense by construction (measured spread of the
   taste shelf: ~0.008 across its top ten, vs. jitter amplitude 0.03) — two consecutive days
   produce visibly different tails on the big shelves with no storage anywhere. The
-  caller-fed recently-surfaced set remains the *cross-day memory* for the small pools
-  (twenty stale games rotating through ten slots needs the caller to remember yesterday).
+  caller-fed recently-surfaced set is the *cross-day memory* for the small pools
+  (twenty stale games rotating through six slots needs someone to remember yesterday) —
+  since §6b that memory is real: the `feed_surfacings` log, loaded through
+  `FeedbackSets`, and measured on the real library it rotates four of the five shelves
+  **completely** day over day with the jitter seed pinned.
 - **Empty shelves are omitted**, never rendered blank. `CandidateCount` still says how big
   the scored pool was, so a UI can tell "quiet feed" from "empty library".
 
@@ -219,6 +229,118 @@ update since, most recently 'SPOTREP #00121'. Sandbox is where your hours go, an
 one."), the mode-mismatch sentence appears exactly where it should (Star Wars: The Old
 Republic demoted to the bottom of the patched shelf, saying why), and consecutive seeds
 rotate the taste shelf completely.
+
+## 6b. The feedback loop (2026-08-27)
+
+The user can now steer the model — and the design's first commitment is that steering
+stays inspectable and reversible, because feedback is exactly where recommenders turn
+into black boxes. Everything below observes one split: **what the user said and what the
+feed showed are truth, stored** (migration `0011_feed_feedback.sql`); **everything those
+facts do to a score is derived, recomputed per request**, same as every §6.1 bucket.
+
+### The vocabulary: two negatives, no explicit positive
+
+| Kind | Semantics | Storage |
+|---|---|---|
+| `not_interested` | "You were right, I'm done with this game." Durable; holds until revoked. | `feed_verdicts` row, no expiry (the CHECK forbids one). |
+| `snoozed` | "Not now." Lapses by itself. | `feed_verdicts` row, expiry REQUIRED (the CHECK forbids omitting it). Default length `FeedVerdictKinds.DefaultSnooze` = 30 days: "not now" naturally reads at month granularity — shorter is just the rotation the surfacing memory already provides, longer drifts into a dismissal the user didn't give. |
+| *(launch endorsement)* | "I answered the pitch by playing." | **Not stored** — derived: a JOIN between `sessions.attributed_by = 'launch'` (M3b) and `feed_surfacings`, within `EndorsementWindowDays`. |
+
+The two negatives are kept apart because they are different intents, and collapsing them
+loses the information forever; the CHECK constraint is 0010's argument re-applied — the
+vocabulary is ours and closed, so a third kind is a schema change and has to be one.
+
+**There is deliberately no thumbs-up.** The positive signal is behavioural: M3b already
+records, with no UI and no asking, that the user clicked Play *inside Hoard* — and a
+launch-attributed session while the game was on the feed is the user endorsing the pitch
+with their time. An explicit positive affordance would duplicate that with strictly worse
+data (a click costs nothing; forty minutes costs forty minutes), and an unpressed
+thumbs-up teaches the user the feedback surface is decoration. `attributed_by` is
+three-valued and the join honours it: `'inferred'` (started from Steam and merely
+detected) and NULL ("not recorded" — every pre-M3b session) never count. If an explicit
+positive ever earns its place, it is one new CHECK'd kind away.
+
+### What each fact does to a score — one effect apiece, each one sentence
+
+- **Not-interested / snooze → hard exclusion (§4), widened to the work.** Not a
+  penalty: arguing with an explicit verdict is nagging. The stored fact is the release
+  the user clicked; the widening to its work (so a merged GOG twin cannot resurface the
+  game) is a query, recomputed per request.
+- **Surfacing → the recently-surfaced penalty (−0.20), window `SurfacedWindowDays`,
+  excluding today.** Today's exclusion is what keeps the feed stable within a day: the
+  morning's picks are in the log, and penalising them on the afternoon refresh would
+  deal the new hand the day-derived shuffle seed exists to prevent.
+- **Endorsement → taste testimony below the refund line.** The profile's evidence floor
+  (§3) gets its one exception: an endorsed release testifies with the √minutes it
+  actually has. That currency is the anti-overfit argument in arithmetic — three
+  feed-driven launches (√40 ≈ 6 each) cannot outvote one committed game (√6000 ≈ 77),
+  so a handful of clicks is *incapable* of reshaping a profile built from years of
+  hours. Endorsed sub-refund rows stay out of the mode tally: reclassifying how the
+  user plays needs commitment, not one answered pitch.
+
+### What dismissals deliberately do NOT do
+
+A dismissal never touches the taste profile. "Not interested in this game" is a verdict
+about one game, not about its genre: at n = 3 dismissals, inferring facet-distaste is
+noise, and because facets are shared by dozens of games, punishing a facet for three of
+its carriers would suppress a 50-game pool — the monoculture failure arriving through
+the feedback door. Exclusion-only is the conservative answer, and it is stated here so
+nobody "improves" it casually: the feed's diversity survives any number of dismissals
+because each one removes exactly one work from a ~1,000-row candidate pool.
+
+### Reversibility and inspection
+
+Verdicts are **append-and-revoke, never edited, never deleted**: undo stamps
+`revoked_at` on the active rows (`RevokeVerdictsAsync`), a lapsed snooze needs no write
+at all, and `GetAllVerdictsAsync` returns the entire history — dismissed → undone →
+dismissed again is two rows and a stamp, all visible. "Active" is computed at read time
+(`revoked_at IS NULL AND (expires_at IS NULL OR expires_at > asOf)`), never stored, so
+there is no cached state to drift. The surfacing log is equally inspectable: any
+recommendation's "why am I seeing this again / why did this vanish" has a row to point
+at.
+
+### The plumbing (who reads, who writes)
+
+- `Hoard.Core`: `FeedVerdict` / `FeedSurfacing` / `FeedEndorsement` records and
+  `IFeedFeedbackRepository`. `Hoard.Data`: the implementation over 0011.
+- `Hoard.Recommend.FeedbackSets` is the **read-side bridge**: `LoadAsync(repo, asOf,
+  tuning)` computes the four id sets (`NotInterested`, `Snoozed`, `RecentlySurfaced`,
+  `Endorsed`), `Apply(request)` stamps them on. The engine still stores nothing and
+  never writes; its API is unchanged but for the new `EndorsedReleaseIds` set.
+- **The App-layer contract** (for whoever wires the UI; nothing below is built here):
+  1. Before computing: `sets = await FeedbackSets.LoadAsync(feedbackRepo, now, tuning)`,
+     then `engine.GetShelvesAsync(sets.Apply(request))`.
+  2. After computing: `feedbackRepo.RecordSurfacedAsync(FeedbackSets.SurfacingsOf(feed,
+     now))` — idempotent per (release, day), so refreshes are free.
+  3. On "not interested": `RecordVerdictAsync` with kind `not_interested`, no expiry.
+     On "not now": kind `snoozed`, `ExpiresAt = now + FeedVerdictKinds.DefaultSnooze`
+     (or a UI-offered duration — the schema stores the explicit expiry).
+  4. On undo: `RevokeVerdictsAsync(releaseId, kind, now)`.
+  5. The settings/inspection surface renders `GetAllVerdictsAsync` and offers revoke.
+  No pruning anywhere: the surfacing log is ~30 rows/day and is load-bearing twice
+  (rotation window + endorsement join); pruning it would silently erase endorsement
+  evidence.
+
+### Verified on the real library (2026-08-27 copy, 997 candidates)
+
+- **Verdicts:** dismissing Arma 3 + Counter-Strike 2 and snoozing Deep Rock Galactic
+  removed exactly those three, same day, same seed; the patched shelf refilled with
+  Abiotic Factor / Forever Skies / Stationeers rather than collapsing. Undoing the
+  Arma 3 dismissal put it straight back; the history shows all four rows including the
+  revocation stamp.
+- **Rotation:** with the day-1 seed **pinned** and no memory, day 2 kept 30/30 items —
+  the M8 gap made visible (jitter alone rotates nothing unless the seed changes). With
+  the memory loaded, day 2 kept **0/6 on four of five shelves**. The fifth,
+  `ready_to_play`, kept 6/6 because its eligible pool is exactly six installed
+  sub-refund games — the penalty drove its scores down (Fez to −0.06) but there was
+  nothing to rotate to, which is the documented honest behaviour: repeating a genuinely
+  exhausted pool beats hiding it.
+- **Endorsements:** the real library has 8 sessions, none yet `attributed_by =
+  'launch'` — and the historical feed was never logged, so there is nothing to
+  backfill (inventing surfacings for feeds M8 showed but never recorded would be
+  inventing history, 0010's rule). The signal accrues from the first logged feed and
+  the first Hoard-launched session onward; the taste effect is tested end-to-end on
+  fixtures.
 
 ## 7. Deliberately deferred (and where each would plug in)
 
@@ -245,7 +367,9 @@ rotate the taste shelf completely.
 
 | Failure | Defence |
 |---|---|
-| Same five games forever | Recently-surfaced penalty (caller-fed) + daily-seeded jitter inside score bands + one-work-one-shelf claims and the franchise/genre caps (§6a). |
+| Same five games forever | Recently-surfaced penalty — fed since §6b from the persisted `feed_surfacings` log, so rotation no longer depends on the jitter seed happening to change — + daily-seeded jitter inside score bands + one-work-one-shelf claims and the franchise/genre caps (§6a). |
+| Feedback becomes a black box | Feedback facts are append-and-revoke rows the user can list and undo (`GetAllVerdictsAsync` / `RevokeVerdictsAsync`); every effect is a query over them, so "what have I told it and what is that doing" always has an exact answer (§6b). |
+| Three dismissals collapse the feed into a monoculture | Dismissals are exclusion-only — they never touch the taste profile (§6b's stated non-effect) — and endorsements pay for taste testimony in √minutes, the same currency as played hours, so no handful of clicks can outvote the library's history. |
 | A shelf that is one franchise five times | `ShelfFranchiseCap` = 1, hard, measured against the 14-entry Infinity Blade pile. |
 | "Matches your taste" via a tag half the library wears | The prevalence cut: facets carried by >25% of the library cannot testify. Without it, 266 of 427 never-opened rows scored a perfect match — a metric measuring nothing. |
 | Recommending games the user will never play with strangers | Mode-mismatch demotion, evidence-gated, with the sentence said out loud where the row does surface. |
@@ -259,7 +383,9 @@ rotate the taste shelf completely.
 ## 9. Wiring it in later (not now)
 
 The intended composition: the UI (or a background service) constructs
-`RecommendationEngine` from the same DI container as everything else, persists the
-not-interested / snoozed / recently-surfaced sets under `settings` or a list, and renders
-`RecommendationFeed`. None of that is built here, on purpose — the charter requires this
-module to prove itself standalone first.
+`RecommendationEngine` from the same DI container as everything else and renders the
+feed. The feedback sets now have real storage (§6b): the composition root registers
+`FeedFeedbackRepository`, and `FeedService` follows the five-step contract in §6b — load
+`FeedbackSets`, apply, compute, record surfacings, and route the dismiss / snooze / undo
+commands to the repository. The UI affordances themselves (the "not for me" button, the
+inspection list) are the remaining unbuilt piece, owned by the App layer.

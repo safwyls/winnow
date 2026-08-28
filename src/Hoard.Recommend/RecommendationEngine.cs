@@ -249,7 +249,23 @@ public sealed class RecommendationEngine : IRecommendationEngine
             }
         }
 
-        var taste = TasteProfile.Build(bucketRows, facetSnapshot, request.Thresholds, tuning);
+        var taste = TasteProfile.Build(
+            bucketRows, facetSnapshot, request.Thresholds, tuning, request.EndorsedReleaseIds);
+
+        // A verdict is about the GAME, not the row whose card the user
+        // happened to click: after a confirmed cross-store merge one work
+        // holds two releases, and dismissing the Steam card must not let the
+        // GOG copy resurface the same game tomorrow. The stored fact stays
+        // the clicked release; this widening to the work is a query,
+        // recomputed per request — exactly the derived/truth split.
+        var excludedWorks = new HashSet<long>();
+        foreach (var releaseId in request.NotInterestedReleaseIds.Concat(request.SnoozedReleaseIds))
+        {
+            if (identities.TryGetValue(releaseId, out var excluded))
+            {
+                excludedWorks.Add(excluded.WorkId);
+            }
+        }
 
         // ── Candidate assembly and hard exclusions ─────────────────────────
         var candidates = new List<CandidateFacts>(bucketRows.Count);
@@ -271,7 +287,8 @@ public sealed class RecommendationEngine : IRecommendationEngine
             }
 
             if (!identities.TryGetValue(row.ReleaseId, out var identity)
-                || identity.NameIsProvisional)
+                || identity.NameIsProvisional
+                || excludedWorks.Contains(identity.WorkId))
             {
                 // A tile named "App 1203620" cannot carry an explainable
                 // recommendation; enrichment clears the flag and the game

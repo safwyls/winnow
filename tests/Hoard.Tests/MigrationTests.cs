@@ -16,6 +16,7 @@ public class MigrationTests
         "lists", "list_items",
         "merge_candidates",
         "metadata_cache", "settings",
+        "feed_verdicts", "feed_surfacings",
     ];
 
     [Fact]
@@ -505,6 +506,85 @@ public class MigrationTests
         // would be a claim about its timestamps that is not true.
         Assert.Equal("process_watch", after.ExecuteScalar<string>(
             "SELECT detection_method FROM sessions WHERE id = @sessionId;", new { sessionId }));
+    }
+
+    /// <summary>
+    /// 0011 adds the feedback loop's two tables: what the user told the feed
+    /// (verdicts) and what the feed showed the user (surfacings). Both are
+    /// facts, not derived values — §6.1's rule is that scores stay queries,
+    /// and neither of these is a score. The vocabulary and the
+    /// kind-implies-expiry pairing are CHECK-constrained the way 0010's
+    /// attributed_by is, because both vocabularies are ours and closed: a
+    /// verdict kind that silently starts meaning something else later is the
+    /// failure the constraint exists to prevent.
+    /// </summary>
+    [Fact]
+    public void Migration_0011_adds_feedback_tables_with_closed_vocabularies()
+    {
+        using var db = new TempDatabase();
+        using var conn = db.Factory.Open();
+
+        var workId = conn.ExecuteScalar<long>(
+            "INSERT INTO works (name) VALUES ('Riven') RETURNING id;");
+        var releaseId = conn.ExecuteScalar<long>(
+            "INSERT INTO releases (work_id, name) VALUES (@workId, 'Riven') RETURNING id;",
+            new { workId });
+
+        // The two shapes the writer is allowed to produce.
+        conn.Execute("""
+            INSERT INTO feed_verdicts (release_id, kind, created_at)
+            VALUES (@releaseId, 'not_interested', '2026-08-27 12:00:00');
+            """, new { releaseId });
+        conn.Execute("""
+            INSERT INTO feed_verdicts (release_id, kind, created_at, expires_at)
+            VALUES (@releaseId, 'snoozed', '2026-08-27 12:00:00', '2026-09-26 12:00:00');
+            """, new { releaseId });
+
+        // The vocabulary is closed: a third kind is a schema change.
+        Assert.Throws<Microsoft.Data.Sqlite.SqliteException>(() =>
+            conn.Execute("""
+                INSERT INTO feed_verdicts (release_id, kind, created_at)
+                VALUES (@releaseId, 'more_like_this', '2026-08-27 12:00:00');
+                """, new { releaseId }));
+
+        // A snooze with no expiry is a dismissal wearing a different name —
+        // the writer must say which one it means.
+        Assert.Throws<Microsoft.Data.Sqlite.SqliteException>(() =>
+            conn.Execute("""
+                INSERT INTO feed_verdicts (release_id, kind, created_at)
+                VALUES (@releaseId, 'snoozed', '2026-08-27 12:00:00');
+                """, new { releaseId }));
+
+        // And a not-interested cannot smuggle an expiry in.
+        Assert.Throws<Microsoft.Data.Sqlite.SqliteException>(() =>
+            conn.Execute("""
+                INSERT INTO feed_verdicts (release_id, kind, created_at, expires_at)
+                VALUES (@releaseId, 'not_interested', '2026-08-27 12:00:00', '2026-09-26 12:00:00');
+                """, new { releaseId }));
+
+        // One row per release per day: the engine's one-work-one-shelf rule
+        // expressed as a primary key.
+        conn.Execute("""
+            INSERT INTO feed_surfacings (release_id, surfaced_on, shelf_id)
+            VALUES (@releaseId, '2026-08-27', 'on_your_taste');
+            """, new { releaseId });
+        Assert.Throws<Microsoft.Data.Sqlite.SqliteException>(() =>
+            conn.Execute("""
+                INSERT INTO feed_surfacings (release_id, surfaced_on, shelf_id)
+                VALUES (@releaseId, '2026-08-27', 'ready_to_play');
+                """, new { releaseId }));
+
+        // Both tables hang off releases with the usual FK enforcement.
+        Assert.Throws<Microsoft.Data.Sqlite.SqliteException>(() =>
+            conn.Execute("""
+                INSERT INTO feed_verdicts (release_id, kind, created_at)
+                VALUES (999999, 'not_interested', '2026-08-27 12:00:00');
+                """));
+        Assert.Throws<Microsoft.Data.Sqlite.SqliteException>(() =>
+            conn.Execute("""
+                INSERT INTO feed_surfacings (release_id, surfaced_on, shelf_id)
+                VALUES (999999, '2026-08-27', 'on_your_taste');
+                """));
     }
 
     [Fact]

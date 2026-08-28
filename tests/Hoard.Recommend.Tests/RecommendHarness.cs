@@ -32,6 +32,7 @@ public sealed class RecommendHarness : IDisposable
         Sessions = new SessionRepository(_db.Factory);
         UpdateEvents = new UpdateEventRepository(_db.Factory);
         Facets = new FacetRepository(_db.Factory);
+        Feedback = new FeedFeedbackRepository(_db.Factory);
 
         Engine = new RecommendationEngine(
             new LibraryQueryRepository(_db.Factory),
@@ -51,6 +52,10 @@ public sealed class RecommendHarness : IDisposable
     public SessionRepository Sessions { get; }
     public UpdateEventRepository UpdateEvents { get; }
     public FacetRepository Facets { get; }
+
+    /// <summary>The feedback loop's storage — verdicts, surfacings, endorsements (migration 0011).</summary>
+    public FeedFeedbackRepository Feedback { get; }
+
     public RecommendationEngine Engine { get; }
 
     public void Dispose() => _db.Dispose();
@@ -172,7 +177,8 @@ public sealed class RecommendHarness : IDisposable
             ObservedAt = observedAt,
         });
 
-    public Task SeedSessionAsync(SeededGame game, DateTime startedAt, int durationMinutes = 30)
+    public Task SeedSessionAsync(
+        SeededGame game, DateTime startedAt, int durationMinutes = 30, string? attributedBy = null)
         => Sessions.InsertAsync(new Session
         {
             OwnershipId = game.OwnershipId,
@@ -180,6 +186,7 @@ public sealed class RecommendHarness : IDisposable
             EndedAt = startedAt.AddMinutes(durationMinutes),
             DurationSeconds = durationMinutes * 60L,
             DetectionMethod = DetectionMethods.ProcessWatch,
+            AttributedBy = attributedBy,
         });
 
     /// <summary>Attaches a single genre to the work, minting the facet row as the backfill would.</summary>

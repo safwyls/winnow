@@ -57,6 +57,18 @@ public sealed record RecommendationRequest
     public IReadOnlySet<long> RecentlySurfacedReleaseIds { get; init; } = EmptySet;
 
     /// <summary>
+    /// Releases whose feed pitch the user answered by playing: a session Hoard
+    /// itself launched, started while the game was on (or had just been on)
+    /// the feed. The behavioural positive — see
+    /// <c>Hoard.Core.Domain.FeedEndorsement</c> and <see cref="FeedbackSets"/>.
+    /// Its one scoring effect is on the taste profile: an endorsed game may
+    /// testify about taste below the refund line, weighted by the minutes it
+    /// actually has — so a handful of feed-driven launches is arithmetically
+    /// incapable of outvoting years of committed play.
+    /// </summary>
+    public IReadOnlySet<long> EndorsedReleaseIds { get; init; } = EmptySet;
+
+    /// <summary>
     /// Seed for the deterministic near-tie shuffle. Null (the default) derives
     /// it from <see cref="AsOfUtc"/>'s DATE, so the feed rotates daily but is
     /// stable within a day — refreshing the view must not deal a new hand.

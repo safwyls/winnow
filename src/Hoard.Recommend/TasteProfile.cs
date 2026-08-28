@@ -19,7 +19,9 @@ namespace Hoard.Recommend;
 /// cannot testify about taste either. Retired games clear the floor by
 /// definition and carry most of the profile's weight — excluded as
 /// candidates, they still say more about what the user loves than anything
-/// else in the library.</para>
+/// else in the library. The floor's one exception is a feed-endorsed release
+/// (launched off the feed — see <see cref="RecommendationRequest.EndorsedReleaseIds"/>),
+/// which testifies with whatever √minutes it actually has.</para>
 ///
 /// <para><b>Which kinds.</b> Genres, themes and Steam tags — the descriptors
 /// that say what a game IS. Features ("Steam Cloud"), controller support and
@@ -51,7 +53,8 @@ internal sealed class TasteProfile
         IReadOnlyList<OwnershipBucket> bucketRows,
         FacetSnapshot snapshot,
         BucketThresholds thresholds,
-        RecommendationTuning tuning)
+        RecommendationTuning tuning,
+        IReadOnlySet<long>? endorsedReleaseIds = null)
     {
         // ── The prevalence cut ─────────────────────────────────────────────
         // A descriptor carried by a quarter of the library describes the
@@ -82,7 +85,20 @@ internal sealed class TasteProfile
         var committedSinglePlayer = 0;
         foreach (var row in bucketRows)
         {
-            if (row.PlaytimeMinutes < thresholds.BouncedFloorMinutes)
+            // ── The evidence floor, and the one exception feedback earns ───
+            // The refund line stays the floor: under 120 minutes a game was
+            // never really played and cannot testify. The exception is a
+            // release the user launched OFF THE FEED (an endorsement): they
+            // answered the pitch with their time, and silencing that answer
+            // would waste the loop's best positive signal. It still testifies
+            // with only the √minutes it actually has — the same currency as
+            // everything else — so three feed-driven launches (√40 ≈ 6 each)
+            // cannot outvote one committed game (√6000 ≈ 77), which is the
+            // arithmetic that stops a handful of clicks from steering the
+            // profile. This is the endorsement's ONLY scoring effect.
+            var committed = row.PlaytimeMinutes >= thresholds.BouncedFloorMinutes;
+            var endorsed = endorsedReleaseIds?.Contains(row.ReleaseId) ?? false;
+            if (!committed && !endorsed)
             {
                 continue;
             }
@@ -107,8 +123,12 @@ internal sealed class TasteProfile
             // single-player", and a count is that sentence's arithmetic —
             // minutes-weighting would let one MMO bender reclassify a solo
             // player. Committed games only, same floor as the taste weights:
-            // below the refund line the game cannot testify about anything.
-            if (facets.GameModes.Count > 0)
+            // below the refund line the game cannot testify about anything —
+            // and an ENDORSED sub-refund row stays out of this tally too: the
+            // endorsement exception above is scoped to taste weights only,
+            // because reclassifying how the user plays needs commitment, not
+            // one answered pitch.
+            if (committed && facets.GameModes.Count > 0)
             {
                 committedWithModes++;
                 if (facets.GameModes.Contains(GameModes.SinglePlayer))
