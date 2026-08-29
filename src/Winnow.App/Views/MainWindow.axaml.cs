@@ -312,7 +312,7 @@ public partial class MainWindow : Window
         // reads its state on the way in, exactly as a real click would.
         if (_shell is not null && Environment.GetCommandLineArgs().Contains("--open-stores"))
         {
-            await _shell.ToggleStoresCommand.ExecuteAsync(null);
+            await _shell.ShowStoresCommand.ExecuteAsync(null);
         }
 
         // §5.1's ramp has to be reviewable in a screenshot on a machine whose
@@ -329,7 +329,7 @@ public partial class MainWindow : Window
         // driving the rail.
         if (_shell is not null && Environment.GetCommandLineArgs().Contains("--open-appearance"))
         {
-            _shell.ToggleAppearanceCommand.Execute(null);
+            _shell.ShowAppearanceCommand.Execute(null);
         }
 
         if (_library is not null && Environment.GetCommandLineArgs().Contains("--open-list"))
@@ -462,12 +462,12 @@ public partial class MainWindow : Window
             return;
         }
 
-        // The Stores panel answers Escape the same way the queue does — give the
-        // library back — and answers nothing else. It has no selection to walk
-        // and no one-key answers, so every other key is left alone rather than
-        // swallowed; a letter typed here belongs to whatever has focus, which on
-        // that screen is a selectable command line.
-        if (_shell is { IsStoresVisible: true })
+        // The settings surface answers Escape the same way the merge queue
+        // does: give the library back. It answers nothing else. It has no
+        // selection to walk and no one-key shortcuts, so every other key
+        // belongs to whatever control has focus, which on Stores is a
+        // selectable command line.
+        if (_shell is { IsSettingsVisible: true })
         {
             if (e.Key == Key.Escape)
             {

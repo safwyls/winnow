@@ -1628,7 +1628,7 @@ editor and the secondary panel. Mapped onto this window:
 | **Caption** | Flush, full width | Chrome. It is a lip, not a pane (§9) |
 | **Command bar** | ~~Flush~~ → **inside the library card** | **Revised, §15.8.** They operate the library and nothing else, so they are its header |
 | **Cut bar** | ~~Flush~~ → **inside the library card** | Revised on the same rule |
-| **Rail** | **Card** | Content — the bucket, list and settings axis |
+| **Rail** | **Card** | Content — the feed, bucket and list axis |
 | **Cover wall / list view / empty state** | **Card** | Content |
 | **Merge queue · Stores · Appearance** | **Card** | Content; they replace the library pane and take its island |
 | **Filter panel** | **Card** | Content, and a peer of the rail (§11.1) |

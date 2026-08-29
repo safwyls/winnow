@@ -246,6 +246,48 @@
             <Setter Property="Background" Value="{StaticResource ChromeRaised}"/>
         </Style>
 
+        <!-- ══ Rail glyph button ═══════════════════════════════════════════
+             The gear at the foot of the rail. Same fill grammar as a bucket
+             row (ChromeRaised on hover, Volt glyph while the surface it
+             opens is up) with no label and no count, because it is not a
+             cut of the library. The Volt focus ring is the global adorner's
+             (tokens.axaml), so nothing is drawn here for it. -->
+        <Style Selector="Button.railglyph">
+            <Setter Property="Width" Value="32"/>
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="Button.railglyph /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.12"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.railglyph:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource ChromeRaised}"/>
+        </Style>
+        <Style Selector="Button.railglyph.on /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource ChromeRaised}"/>
+        </Style>
+        <Style Selector="Button.railglyph Path">
+            <Setter Property="Fill" Value="{StaticResource TextDim}"/>
+        </Style>
+        <Style Selector="Button.railglyph:pointerover Path">
+            <Setter Property="Fill" Value="{StaticResource Text}"/>
+        </Style>
+        <Style Selector="Button.railglyph.on Path">
+            <Setter Property="Fill" Value="{StaticResource Volt}"/>
+        </Style>
+
         <!-- ══ Command bar ═════════════════════════════════════════════════ -->
         <!-- The field is ChromeFieldOnGround, not Surface: an opaque box on a
              translucent bar was the one thing in the command bar that could not
@@ -332,6 +374,25 @@
         </Style>
         <Style Selector="Button.seg.on Rectangle">
             <Setter Property="Fill" Value="{StaticResource Volt}"/>
+        </Style>
+
+        <!-- The command bar's segmented toggle grammar reused with words
+             instead of glyphs, for the settings surface's three sections.
+             Volt marks the section on show, exactly as it marks the active
+             glyph above. Padding and alignment differ; the fill and ink
+             rules are inherited from Button.seg. -->
+        <Style Selector="Button.seg.tab">
+            <Setter Property="Padding" Value="14,0"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Button.seg.tab TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
+        </Style>
+        <Style Selector="Button.seg.tab:pointerover TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+        </Style>
+        <Style Selector="Button.seg.tab.on TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource Volt}"/>
         </Style>
 
         <!-- Inert chrome controls (sort / store filter stubs), mock's .ctl. -->
@@ -863,18 +924,33 @@
                 Width="{StaticResource RailWidth}"
                 Background="{StaticResource ChromeSurface}"
                 BorderBrush="{StaticResource Line}">
+            <!-- Rows scroll; the gear does not. Grid RowDefinitions="*,Auto"
+                 pins the gear below the ScrollViewer so it stays visible
+                 however far the rail is scrolled. Grid rather than DockPanel
+                 because DockPanel requires the docked child to be declared
+                 first, and this file's rule is that element order equals
+                 reading order equals Tab walk order; the gear must be the
+                 last Tab stop in the rail. -->
+            <Grid RowDefinitions="*,Auto">
+
             <!-- Interior: the rail's own right edge is a divider, not the
                  window's, so this scrollbar keeps its flush position. -->
-            <ScrollViewer Classes="inner" HorizontalScrollBarVisibility="Disabled">
+            <ScrollViewer Grid.Row="0" Classes="inner" HorizontalScrollBarVisibility="Disabled">
                 <StackPanel Margin="0,20">
 
-                    <!-- ── The Feed (M8) ─────────────────────────────────────
-                         Rail's first row, window's launch state. A screen row
-                         above the cuts so it is always one click from ALL GAMES.
-                         No count (not a cut of anything). -->
+                    <!-- ── Feed & All Games ─────────────────────────────────
+                         Rail's first section: two entry points above the
+                         derived-bucket list, not library cuts. Feed navigates
+                         to the feed panel (not a toggle); it sits first because
+                         the feed is the window's launch state, and it takes the
+                         Volt edge from ALL GAMES while it is up, because exactly
+                         one row is ever where you are (§12.2). All Games selects
+                         the all-games bucket and reuses the bucket style, so its
+                         count renders as Data 11 rather than a heading's
+                         Data 22. -->
                     <Button Classes="bucket"
                             Classes.selected="{Binding IsFeedVisible}"
-                            Command="{Binding ToggleFeedCommand}"
+                            Command="{Binding ShowFeedCommand}"
                             ToolTip.Tip="Games worth going back to, and why">
                         <Grid ColumnDefinitions="2,16,*,16">
                             <Border Grid.Column="0"
@@ -882,18 +958,11 @@
                                     IsVisible="{Binding IsFeedVisible}"/>
                             <TextBlock Grid.Column="2"
                                        Classes="display-s"
-                                       Text="THE FEED"
+                                       Text="FEED"
                                        VerticalAlignment="Center"/>
                         </Grid>
                     </Button>
 
-                    <Border Margin="16,12,16,12"
-                            BorderBrush="{StaticResource Line}"
-                            BorderThickness="0,1,0,0"/>
-
-                    <!-- ── All games ─────────────────────────────────────────
-                         Replaces the old header; same bucket style so count is
-                         Data 11, not the heading's Data 22. -->
                     <Button Classes="bucket"
                             Classes.selected="{Binding Library.AllGames.IsSelected}"
                             Command="{Binding SelectBucketCommand}"
@@ -969,6 +1038,39 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
 
+                    <!-- ── ACCOUNT ───────────────────────────────────────
+                         STATS is a reading of the user's Steam account, not a
+                         cut of their library, so it sits BELOW the buckets:
+                         everything under the divider above is a subset of ALL
+                         GAMES, and this is not a subset of anything. It is not
+                         behind the gear either; PURCHASES there is the act of
+                         importing the pages, and this is the content those
+                         pages produced. Content before configuration, so it
+                         leads the rail's non-cut sections. -->
+                    <Border Margin="16,22,16,8"
+                            Padding="0,14,0,0"
+                            BorderBrush="{StaticResource Line}"
+                            BorderThickness="0,1,0,0">
+                        <TextBlock Classes="label"
+                                   FontSize="10"
+                                   LetterSpacing="1.4"
+                                   Text="ACCOUNT"/>
+                    </Border>
+                    <Button Classes="bucket"
+                            Classes.selected="{Binding IsAccountStatsVisible}"
+                            Command="{Binding ToggleAccountStatsCommand}"
+                            ToolTip.Tip="{Binding AccountStats.RailTooltip}">
+                        <Grid ColumnDefinitions="2,16,*,16">
+                            <Border Grid.Column="0"
+                                    Background="{StaticResource Volt}"
+                                    IsVisible="{Binding IsAccountStatsVisible}"/>
+                            <TextBlock Grid.Column="2"
+                                       Classes="display-s"
+                                       Text="{Binding AccountStats.RailRow}"
+                                       VerticalAlignment="Center"/>
+                        </Grid>
+                    </Button>
+
                     <!-- ── REVIEW ────────────────────────────────────────
                          Merge confirm queue (§6). Count shown only when
                          pending; row always visible so the rail never reflows. -->
@@ -1000,63 +1102,6 @@
                                        Foreground="{StaticResource TextDim}"
                                        Text="{Binding MergeQueue.PendingCountText}"
                                        IsVisible="{Binding MergeQueue.HasPending}"
-                                       VerticalAlignment="Center"/>
-                        </Grid>
-                    </Button>
-
-                    <!-- ── SETTINGS ──────────────────────────────────────
-                         Screen rows (not library cuts), placed above LISTS
-                         because the list sections grow. No counts. -->
-                    <Border Margin="16,22,16,8"
-                            Padding="0,14,0,0"
-                            BorderBrush="{StaticResource Line}"
-                            BorderThickness="0,1,0,0">
-                        <TextBlock Classes="label"
-                                   FontSize="10"
-                                   LetterSpacing="1.4"
-                                   Text="SETTINGS"/>
-                    </Border>
-                    <Button Classes="bucket"
-                            Classes.selected="{Binding IsStoresVisible}"
-                            Command="{Binding ToggleStoresCommand}"
-                            ToolTip.Tip="What Winnow reads your library from, and what each source can't know">
-                        <Grid ColumnDefinitions="2,16,*,16">
-                            <!-- 2px Volt selection edge, inline to match the
-                                 other rail rows. -->
-                            <Border Grid.Column="0"
-                                    Background="{StaticResource Volt}"
-                                    IsVisible="{Binding IsStoresVisible}"/>
-                            <TextBlock Grid.Column="2"
-                                       Classes="display-s"
-                                       Text="STORES"
-                                       VerticalAlignment="Center"/>
-                        </Grid>
-                    </Button>
-                    <Button Classes="bucket"
-                            Classes.selected="{Binding IsAccountImportVisible}"
-                            Command="{Binding ToggleAccountImportCommand}"
-                            ToolTip.Tip="{Binding AccountImport.RailTooltip}">
-                        <Grid ColumnDefinitions="2,16,*,16">
-                            <Border Grid.Column="0"
-                                    Background="{StaticResource Volt}"
-                                    IsVisible="{Binding IsAccountImportVisible}"/>
-                            <TextBlock Grid.Column="2"
-                                       Classes="display-s"
-                                       Text="{Binding AccountImport.RailRow}"
-                                       VerticalAlignment="Center"/>
-                        </Grid>
-                    </Button>
-                    <Button Classes="bucket"
-                            Classes.selected="{Binding IsAppearanceVisible}"
-                            Command="{Binding ToggleAppearanceCommand}"
-                            ToolTip.Tip="Theme, and whether the window lets the desktop through">
-                        <Grid ColumnDefinitions="2,16,*,16">
-                            <Border Grid.Column="0"
-                                    Background="{StaticResource Volt}"
-                                    IsVisible="{Binding IsAppearanceVisible}"/>
-                            <TextBlock Grid.Column="2"
-                                       Classes="display-s"
-                                       Text="APPEARANCE"
                                        VerticalAlignment="Center"/>
                         </Grid>
                     </Button>
@@ -1157,6 +1202,29 @@
 
                 </StackPanel>
             </ScrollViewer>
+
+            <!-- The gear. A glyph and no label: the three sections name
+                 themselves once the surface is open, and every other rail
+                 row is a library cut, which this is not. Pinned in the
+                 Grid's Auto row so it cannot be scrolled past. -->
+            <Border Grid.Row="1"
+                    Padding="14,10"
+                    BorderBrush="{StaticResource Line}"
+                    BorderThickness="0,1,0,0">
+                <Button Name="SettingsButton"
+                        Classes="railglyph"
+                        Classes.on="{Binding IsSettingsVisible}"
+                        Command="{Binding ShowSettingsCommand}"
+                        HorizontalAlignment="Left"
+                        AutomationProperties.Name="Settings"
+                        ToolTip.Tip="Where your library comes from, how purchases are imported, and how the window looks">
+                    <Path Data="F0 M 12.95,6.10 L 15.22,6.40 L 15.22,9.60 L 12.95,9.90 L 12.84,10.16 L 14.24,11.98 L 11.98,14.24 L 10.16,12.84 L 9.90,12.95 L 9.60,15.22 L 6.40,15.22 L 6.10,12.95 L 5.84,12.84 L 4.02,14.24 L 1.76,11.98 L 3.16,10.16 L 3.05,9.90 L 0.78,9.60 L 0.78,6.40 L 3.05,6.10 L 3.16,5.84 L 1.76,4.02 L 4.02,1.76 L 5.84,3.16 L 6.10,3.05 L 6.40,0.78 L 9.60,0.78 L 9.90,3.05 L 10.16,3.16 L 11.98,1.76 L 14.24,4.02 L 12.84,5.84 Z M 5.50,8.00 A 2.50,2.50 0 1 0 10.50,8.00 A 2.50,2.50 0 1 0 5.50,8.00 Z"
+                          Stretch="Uniform"
+                          Width="16" Height="16"/>
+                </Button>
+            </Border>
+
+            </Grid>
         </Border>
 
         <!-- ══ MAIN ════════════════════════════════════════════════════════
@@ -1613,29 +1681,84 @@
                                   DataContext="{Binding MergeQueue}"/>
         </Border>
 
-        <!-- The Stores panel. Replaces the library entirely (no command bar). -->
+        <!-- The STATS screen, the rail's ACCOUNT row. Same terms as every other
+             screen pane: one Border, one IsVisible, no command bar. -->
         <Border Classes="screenpane"
                 BorderBrush="{StaticResource Line}"
-                IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsStoresVisible}">
-            <views:StoresView Name="StoresPanel"
-                              DataContext="{Binding Stores}"/>
+                IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsAccountStatsVisible}">
+            <views:AccountStatsView Name="AccountStatsPanel"
+                                    DataContext="{Binding AccountStats}"/>
         </Border>
 
-        <!-- The Steam account-page import screen (M5 item 3), second row under
-             SETTINGS. Same terms as every other screen pane. -->
+        <!-- ══ THE SETTINGS SURFACE ════════════════════════════════════════
+             One pane holding Stores, Purchases and Appearance, opened by
+             the gear at the foot of the rail. The three sections switch
+             through a segmented control that reuses the command bar's
+             grid/list toggle grammar (same bordered field, same ChromeRaised
+             fill, Volt on the active label), in a 48px header that lines up
+             with the command bar and the filter panel's header (§11.1).
+             Each screen keeps its own header and its own scroll. -->
         <Border Classes="screenpane"
                 BorderBrush="{StaticResource Line}"
-                IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsAccountImportVisible}">
-            <views:SteamAccountImportView Name="AccountImportPanel"
-                                          DataContext="{Binding AccountImport}"/>
-        </Border>
+                IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsSettingsVisible}">
+            <Grid RowDefinitions="48,*" Background="{StaticResource PaneGround}">
 
-        <!-- Appearance screen, third row under SETTINGS. -->
-        <Border Classes="screenpane"
-                BorderBrush="{StaticResource Line}"
-                IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsAppearanceVisible}">
-            <views:AppearanceView Name="AppearancePanel"
-                                  DataContext="{Binding Appearance}"/>
+                <Border Grid.Row="0"
+                        BorderBrush="{StaticResource Line}"
+                        BorderThickness="0,0,0,1">
+                    <StackPanel Orientation="Horizontal"
+                                Spacing="14"
+                                Margin="24,0"
+                                VerticalAlignment="Center">
+                        <TextBlock Classes="label"
+                                   FontSize="10"
+                                   LetterSpacing="1.4"
+                                   Text="SETTINGS"
+                                   VerticalAlignment="Center"/>
+                        <Border BorderBrush="{StaticResource Line}"
+                                BorderThickness="1"
+                                CornerRadius="{StaticResource RadiusControl}"
+                                Background="{StaticResource ChromeFieldOnGround}"
+                                ClipToBounds="True"
+                                Height="30">
+                            <StackPanel Orientation="Horizontal">
+                                <Button Classes="seg tab"
+                                        Classes.on="{Binding IsStoresVisible}"
+                                        Command="{Binding ShowStoresCommand}"
+                                        ToolTip.Tip="What Winnow reads your library from, and what each source can't know">
+                                    <TextBlock Classes="display-s" Text="STORES"/>
+                                </Button>
+                                <Button Classes="seg tab"
+                                        Classes.on="{Binding IsAccountImportVisible}"
+                                        Command="{Binding ShowAccountImportCommand}"
+                                        ToolTip.Tip="{Binding AccountImport.RailTooltip}">
+                                    <TextBlock Classes="display-s"
+                                               Text="{Binding AccountImport.RailRow}"/>
+                                </Button>
+                                <Button Classes="seg tab"
+                                        Classes.on="{Binding IsAppearanceVisible}"
+                                        Command="{Binding ShowAppearanceCommand}"
+                                        ToolTip.Tip="Theme, and whether the window lets the desktop through">
+                                    <TextBlock Classes="display-s" Text="APPEARANCE"/>
+                                </Button>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Border>
+
+                <Panel Grid.Row="1">
+                    <views:StoresView Name="StoresPanel"
+                                      DataContext="{Binding Stores}"
+                                      IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsStoresVisible}"/>
+                    <views:SteamAccountImportView Name="AccountImportPanel"
+                                                  DataContext="{Binding AccountImport}"
+                                                  IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsAccountImportVisible}"/>
+                    <views:AppearanceView Name="AppearancePanel"
+                                          DataContext="{Binding Appearance}"
+                                          IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsAppearanceVisible}"/>
+                </Panel>
+
+            </Grid>
         </Border>
 
 

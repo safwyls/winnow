@@ -368,6 +368,16 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     [ObservableProperty]
     public partial BucketViewModel? SelectedBucket { get; set; }
 
+    /// <summary>
+    /// Whether the library is the screen on show. The rail's Volt edge means
+    /// "this is where you are" and exactly one row ever carries it, so while
+    /// the Feed or another screen is up the rows keep their underlying
+    /// selection (<see cref="SelectedBucket"/> is untouched) and drop the
+    /// visible mark. Written by the shell whenever IsLibraryVisible changes.
+    /// </summary>
+    [ObservableProperty]
+    public partial bool IsCurrentScreen { get; set; } = true;
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(TileHeight))]
     public partial double TileWidth { get; set; } = 148;
@@ -1258,19 +1268,26 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         ApplyFilter();
     }
 
+    partial void OnIsCurrentScreenChanged(bool value)
+    {
+        _ = value;
+        MarkRailSelection();
+    }
+
     /// <summary>Updates rail selection: one Volt edge for the active location, IsRule for a bucket inside a list.</summary>
     private void MarkRailSelection()
     {
         var inList = Lists.IsListOpen;
+        var here = IsCurrentScreen;
 
         foreach (var bucket in Buckets)
         {
             var current = ReferenceEquals(bucket, SelectedBucket);
-            bucket.IsSelected = current && !inList;
-            bucket.IsRule = current && inList;
+            bucket.IsSelected = here && current && !inList;
+            bucket.IsRule = here && current && inList;
         }
 
-        AllGames.IsSelected = SelectedBucket is null && !inList;
+        AllGames.IsSelected = here && SelectedBucket is null && !inList;
     }
 
     /// <summary>The open live list's saved rules, or null when no live list is open.</summary>

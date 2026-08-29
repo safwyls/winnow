@@ -51,7 +51,7 @@ days, so a game enters that bucket when its slot comes up.
 
 ### Connecting stores
 
-`SETTINGS › PLATFORMS` shows what each platform contributes.
+`SETTINGS › STORES` (the gear at the foot of the rail) shows what each platform contributes.
 
 | Platform | From local files | Adds when signed in |
 |---|---|---|
