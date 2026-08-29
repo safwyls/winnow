@@ -63,10 +63,11 @@ Two consequences fall out immediately, and both are lucky:
   (`steam://rungameid/440`) and is nearly free; knowing when it stopped is the real work, and
   it was specified a year ago in §5.2. The launcher pivot costs far less than it appears to,
   provided M3 lands first.
-- **M5 was already the cold-start fix.** The GDPR-export importer backfills historical
-  playtime. A recommender on a library synced this morning has one snapshot per game and no
-  sessions — nearly every interesting signal is degenerate. M5 is the single biggest lever
-  against that, which promotes it from "export nicety" to "makes the feed work on day one."
+- **M5 was already the cold-start fix.** Historical playtime backfill (mechanism revised
+  2026-08-28; see §4) gives the recommender a real longitudinal series on install day. A
+  recommender on a library synced this morning has one snapshot per game and no sessions,
+  so nearly every interesting signal is degenerate. M5 is the single biggest lever against
+  that.
 
 ## 3. Amendments to the design doc
 
@@ -77,6 +78,7 @@ Two consequences fall out immediately, and both are lucky:
 | 3D "games on a shelf" view (cut, §11) | **Still cut** | Full-screen gamepad mode (M10) is a 10-foot UI, not the 3D shelf. Avalonia handles it natively; §11's framework reasoning does not apply and is not reopened. |
 | Shipping storefront client credentials | **Decided 2026-08-26: ship them built-in** | A sign-in button cannot ask the user for credentials, and there is no version where they supply their own: Epic issues no client that can read a personal library (an EOS portal app is rejected with `invalid_client`), and GOG has no public dev portal for this. So the only alternatives were "embed the launcher credentials" or "the feature does not exist". Heroic, Legendary and the Playnite plugins all embed them. Winnow is the party distributing them and that is a real cost; the realistic failure mode is Epic or GOG rotating a client and sign-in breaking until updated, not bans. The published Epic pair was verified live on 2026-08-26 rather than trusted. |
 | PSN / Xbox (§4.6) | **Unchanged — still excluded** | See the note under M4.5. Epic OAuth is not a precedent for these. |
+| §4.7 no-scraping rule | **Amended 2026-08-28** | M5's saved-HTML importer gains an embedded-WebView peer route: user-present, ephemeral session, two pages only. The manual save-the-pages route remains a first-class equal, not a fallback. Binding conditions below. |
 
 ## 4. Phases
 
@@ -92,7 +94,7 @@ Numbering continues from §8. M0–M2 and M4 are shipped.
 | — | GOG sign-in | **Held, on evidence.** Nothing to gain today; see below | not scheduled |
 | M3b | Launch + journal prompt | Launching from Winnow records a session; journal prompt opt-in (§9 pitfall 7) | **shipped** — `winnow-wrap` (§5.2 B) deliberately deferred |
 | M8 | The Feed | Recommender surfaced as the app's primary view; every card states its reason in one sentence | **shipped** — no dismiss/snooze yet; nothing remembers yesterday |
-| M5 | GDPR export importer | Historical playtime backfills; feed measurably improves on a cold library | after M8 |
+| M5 | Historical playtime backfill (redefined 2026-08-28) | Historical playtime backfills; feed measurably improves on a cold library | **built** — reviewed 2026-08-29, 2,111 tests passing; exit criterion half-proven (backfill tested, feed improvement awaiting live validation with user's key) |
 | M6 | Export (JSON + CSV) | Round-trips through the importer without loss | after M5 |
 | M9 | Install / uninstall management | Install and uninstall delegate to the owning store client and reflect state back | after M6 |
 | M10 | Full-screen mode + gamepad navigation | Whole app navigable on a controller at 10 feet | last |
@@ -143,6 +145,73 @@ One thing could reopen it: `GET gameplay.gog.com/.../sessions` exists and accept
 (PUT/DELETE answer 405), but no known client reads it and its payload is unverified. If it
 carries session history, that is longitudinal data worth having and this gets rescheduled.
 Until someone looks, it stays held.
+
+### Why M5 was redefined (2026-08-28)
+
+The original M5 assumed a downloadable GDPR export archive containing a per-session playtime
+breakdown. That premise came from a single unreliable source (takeoutday.org) and was never
+verified against Valve's own documentation. `docs/spikes/steam-gdpr-export.md` measured it:
+there is no downloadable archive. Valve's Privacy Dashboard is a set of login-gated live
+pages, and its playtime page carries cumulative totals only, the same shape Winnow already
+ingests from `IPlayerService/GetOwnedGames` and `localconfig.vdf`. The export-file mechanism
+cannot backfill historical playtime because the data it was supposed to contain does not exist
+in that form.
+
+The spike also found where the historical data actually is. The replacement scope, approved
+the same day:
+
+1. **`IPlayerService/ClientGetLastPlayedTimes`** for `first_playtime` per app. One call,
+   existing key. Converts every ownership from a point into a span, which is the
+   bounced-vs-retired discrimination the feed turns on.
+2. **`ISaleFeatureService/GetUserYearInReview`** for years 2022 onward. Per-game per-month
+   playtime seconds and session counts, backfilling `playtime_snapshots` with a real
+   longitudinal series on install day. This is the actual cold-start fix. Auth verified
+   2026-08-28: both endpoints accept the stored Web API key (recorded in the spike).
+3. **A saved-HTML importer** for the account licenses and purchase-history pages only
+   (`acquired_at`, `license_type`, `price_paid_cents`). The user saves the pages from their
+   own browser; Winnow parses local files. This preserves §4.7's no-scraping rule: the
+   distinction is who fetches. Explicitly not building a general importer over the ~100
+   dashboard pages.
+
+The exit criterion is unchanged: historical playtime backfills and the feed measurably
+improves on a cold library. The mechanism changed, not the goal.
+
+**Prerequisite landed the same day.** The observation-identity foundations (review findings
+F10/F19) made play records and snapshots idempotent on their full fact. A historical backfill
+can now insert out-of-order points safely and re-running an import is a no-op. Without this,
+M5's new mechanism would have duplicated rows on every re-import.
+
+### Why §4.7 was amended, not violated (2026-08-28)
+
+§4.7 of the design doc prohibits scraping authenticated Steam account pages. M5's saved-HTML
+importer (item 3 above) honored that rule by having the user save the pages themselves;
+Winnow only parsed local files.
+
+The user has now approved an embedded alternative. Winnow may open an ephemeral WebView
+session in which the user logs into Steam and, while the user is present, harvest the
+rendered HTML of exactly two pages: `store.steampowered.com/account/licenses/` and
+`store.steampowered.com/account/history/`. The harvested HTML goes to the same parser the
+manual route uses.
+
+Four conditions make this an amendment rather than a violation, and all four are binding:
+
+1. **Ephemeral session.** The WebView uses an in-private, in-memory profile. Cookies are
+   never persisted to disk. The profile is torn down after harvest. Winnow never sees the
+   password; it is typed into Steam's own page, and Steam Guard works normally.
+2. **Two-page allowlist.** Only the two named pages are harvested. The origin and navigation
+   allowlisting discipline established by the OAuth hardening (review finding F05) applies.
+3. **Manual route is an equal peer.** The save-the-pages route is presented in the UI as an
+   equal option with a transparent explanation of what each route does, not as a fallback
+   footnote. A user who declines to type their Steam password near a third-party app loses
+   nothing but convenience.
+4. **One parser.** Both routes feed the same parser. The embedded path is a fetch strategy,
+   not a separate importer.
+
+The spirit of §4.7 is that Winnow must never hold or exfiltrate the user's session or
+impersonate their browser. A user-present, user-authenticated, ephemeral, two-page harvest
+honors that spirit. The ecosystem precedent is the same class of risk already accepted for
+the Epic embedded sign-in (M4.6): Playnite's Steam integration and the Heroic/Legendary
+family both operate this way. ToS exposure is user-driven and low-volume.
 
 ### Why that order
 
@@ -212,6 +281,17 @@ Tracked so none of it silently becomes permanent:
   `STEAM_COMPAT_DATA_PATH` from `/proc/<pid>/environ` — a different design.
 - **IGDB cache has no `payload_version`.** Adding a field to the cached shape silently yields
   empty results for 30 days rather than refetching. A latent trap, not yet a bug.
+- **Imported acquisition facts are stored but unread.** `acquired_at`, `license_type` and
+  `price_paid_cents` land in the database from M5's importer but nothing queries them yet.
+  M6 export is the intended first consumer.
+- **`OwnershipRepository.UpsertAsync` could overwrite an imported `acquired_at`** if a Steam
+  candidate source ever starts supplying `AcquiredAt`. Today both hard-code null, so the
+  safety is incidental. Worth an enforcing test when the field is next touched.
+- **$0.00 purchase rows are skipped, not recorded as zero.** The importer drops them; whether
+  to store a zero or omit entirely is a user decision, untested either way.
+- **Saved-file licenses route captures one page per file.** The embedded route paginates
+  automatically; the manual route inherently gets one page per saved HTML file. Multi-file
+  merge in the loader is the fix if coverage ever matters.
 
 ## 7. The risk
 

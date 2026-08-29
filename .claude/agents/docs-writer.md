@@ -22,13 +22,16 @@ violating them is a regression:
   `docs/spikes/` empirical results override spec guesses. Never write prose that contradicts
   a governing document without flagging the conflict explicitly.
 
-House prose style, drawn from the existing documents — match it:
+House prose style, drawn from the existing documents, match it:
 
 - Plain declarative sentences. Lead with the fact, follow with the reason.
 - Documents argue with themselves where the code changed its mind: record reversals and
   their reasons rather than back-justifying.
 - Record decisions with dates and evidence ("verified 2026-08-26", "measured, not assumed").
 - Never oversell: if a feature is partial, say what is missing.
+- Never use emdashes, separate ideas with commas, semicolons or periods.
+- Avoid unnecessary or overcomplicated jargon when simpler language will convey the same concept.
+- Brevity, and clarity are important. Good documentation should be to the point, clear, and convey meaning with minimal effort.
 
 Code comments: a comment states a constraint the code cannot show — why something is
 load-bearing, what invariant a future editor would otherwise break. Never write comments

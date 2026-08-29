@@ -36,3 +36,6 @@ appsettings.local.json
 # app (--theme=, --transparency=, --wall=, --layout=, --backdrop=), so anyone
 # arguing with a measurement can regenerate the picture rather than trust it.
 docs/screenshots/appearance/*.png
+
+# Raw user-saved Steam account pages (real account data; fixtures are sanitized copies)
+gdpr/
