@@ -20,4 +20,17 @@ public interface IOwnershipRepository
     Task<long> UpsertAsync(OwnershipUpsert ownership, CancellationToken ct = default);
 
     Task<IReadOnlyList<Ownership>> GetAllAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Fills empty acquisition columns on an existing ownership row. Every
+    /// assignment is COALESCE(stored, incoming) so a column that already holds a
+    /// value keeps it. Returns true when at least one column was actually written.
+    ///
+    /// <para>The WHERE clause requires at least one column to be genuinely empty
+    /// AND to have something to put in it. That makes re-runs idempotent and
+    /// makes the return value honest: without it the UPDATE would write each
+    /// column back onto itself and "did the import do anything" would always
+    /// answer yes.</para>
+    /// </summary>
+    Task<bool> FillAcquisitionFactsAsync(OwnershipAcquisitionFill fill, CancellationToken ct = default);
 }
