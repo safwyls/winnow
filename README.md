@@ -71,7 +71,10 @@ is available as an alternative.
 | Your themes | `%LOCALAPPDATA%\Winnow\themes\` |
 
 Nothing leaves the machine except read-only requests to IGDB, Steam's public endpoints,
-`gamesdb.gog.com` and `api.steamcmd.net`. Credentials are encrypted at rest with DPAPI.
+`gamesdb.gog.com` and `api.steamcmd.net`. Credential protection is uneven today: Epic refresh
+tokens are encrypted at rest with DPAPI (`CurrentUser` scope), but Steam Web API keys and IGDB
+client secrets are stored as plaintext rows in the local database. Anyone with access to
+`winnow.db` can read those two. Encrypting them the same way is tracked as future work.
 **Winnow never writes to any Steam, Epic or GOG file.**
 
 *Upgrading from Hoard?* The first launch moves `%LOCALAPPDATA%\Hoard\` to

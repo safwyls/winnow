@@ -188,17 +188,19 @@ public sealed class WorkRepository : IWorkRepository
                             ELSE @IgdbId
                           END,
 
-                -- COALESCE: incoming only fills NULLs, never overwrites.
-                first_release_year = COALESCE(@FirstReleaseYear, first_release_year),
-                summary            = COALESCE(@Summary,          summary),
-                cover_url          = COALESCE(@CoverUrl,         cover_url),
-                publisher          = COALESCE(@Publisher,        publisher),
+                -- COALESCE: incoming only fills NULLs, never overwrites. The
+                -- stored value goes first so an established fact wins over any
+                -- later non-null response from a weaker or changed source.
+                first_release_year = COALESCE(first_release_year, @FirstReleaseYear),
+                summary            = COALESCE(summary,            @Summary),
+                cover_url          = COALESCE(cover_url,          @CoverUrl),
+                publisher          = COALESCE(publisher,          @Publisher),
 
                 -- Migration 0006. Same one-way rule.
-                steam_app_type     = COALESCE(@SteamAppType,     steam_app_type),
+                steam_app_type     = COALESCE(steam_app_type,     @SteamAppType),
 
                 -- Migration 0009. Same one-way rule.
-                epic_categories    = COALESCE(@EpicCategories,   epic_categories)
+                epic_categories    = COALESCE(epic_categories,    @EpicCategories)
             WHERE id = @WorkId;
             """,
             new
