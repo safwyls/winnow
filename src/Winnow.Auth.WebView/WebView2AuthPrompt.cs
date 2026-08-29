@@ -16,6 +16,27 @@ namespace Winnow.Auth.WebView;
 /// Signs the user in by hosting the provider's page in an embedded WebView2
 /// window and capturing the code via four parallel routes (session harvest,
 /// launcher JS bridge, redirect interception, DOM read). Never throws.
+///
+/// <para><b>What this class is allowed to believe.</b> Every trust decision is
+/// <see cref="AuthFlowPolicy"/>'s, built once per attempt from the request, and
+/// this class only wires it up — which is what makes the security model testable
+/// without a browser. Four rules, and none of them has an exception:</para>
+///
+/// <list type="number">
+/// <item><description>The launcher bridge is defined only in the top-level
+/// document of a trusted origin. WebView2's injection hook cannot filter by
+/// frame or origin, so the filter travels inside the script.</description></item>
+/// <item><description>A web message is read only when WebView2 reports it came
+/// from a trusted origin. Shape is not identity: a page that thinks it is inside
+/// the launcher can post anything.</description></item>
+/// <item><description>The window goes only where the policy approves. A popup
+/// elsewhere is handed to the user's own browser rather than hosted next to the
+/// sign-in cookies.</description></item>
+/// <item><description>A code on the registered redirect is spent only after the
+/// OAuth <c>state</c> comes back unchanged, matched on scheme, host, port and
+/// path — with the port, because a redirect on another port is another
+/// principal.</description></item>
+/// </list>
 /// </summary>
 public sealed class WebView2AuthPrompt : IInteractiveAuthPrompt
 {
@@ -45,94 +66,6 @@ public sealed class WebView2AuthPrompt : IInteractiveAuthPrompt
     /// forever with a window open in front of the user.</para>
     /// </summary>
     private const int MaxDeliberateNavigations = 2;
-
-    /// <summary>
-    /// The launcher bridge, injected before any of the page's own script runs.
-    ///
-    /// <para>Shaped after <c>legendary/utils/webview_login.py</c>, which is the
-    /// reference implementation of this mechanism. Epic's page probes for
-    /// <c>window.ue.signinprompt</c> and, believing it is inside the launcher,
-    /// hands the exchange code out through it.</para>
-    ///
-    /// <para><c>registersignincompletecallback</c> is reported too, and not as
-    /// noise: the page calling it is the page saying sign-in finished, which is
-    /// one of the signals that triggers the harvest step.</para>
-    ///
-    /// <para>Defensive in two ways that matter. It never throws into the page —
-    /// a bridge that raises inside Epic's own handler could take the sign-in down
-    /// with it — and it posts a structured object rather than a bare string, so
-    /// the host is never guessing what a message means.</para>
-    /// </summary>
-    private const string BridgeScript = """
-        (function () {
-            function post(kind, value) {
-                try { window.chrome.webview.postMessage({ kind: kind, value: value }); } catch (e) { }
-            }
-            window.ue = {
-                signinprompt: {
-                    requestexchangecodesignin: function (code) { post('exchange', code); },
-                    registersignincompletecallback: function () { post('signed-in', null); }
-                },
-                common: {
-                    launchexternalurl: function (url) { post('external', url); }
-                }
-            };
-        })();
-        """;
-
-    /// <summary>
-    /// Reads a rendered JSON body out of the page, or null when the document is
-    /// not JSON.
-    ///
-    /// <para>The <c>contentType</c> test is what makes this provider-neutral and
-    /// precise rather than "scrape every page and hope". Chromium reports
-    /// <c>application/json</c> for these responses while still building a DOM
-    /// around them, which is exactly the pair of facts this depends on and both
-    /// were confirmed by the spike.</para>
-    /// </summary>
-    private const string ReadJsonBodyScript = """
-        (function () {
-            try {
-                if (document.contentType !== 'application/json') { return null; }
-                return document.body ? document.body.innerText : null;
-            } catch (e) { return null; }
-        })();
-        """;
-
-    /// <summary>
-    /// The in-page harvester: same-origin fetch on a timer, guarded to one
-    /// instance per document, stops on the first populated answer.
-    /// </summary>
-    private const string HarvesterScriptTemplate = """
-        (function () {
-            if (window.__winnowHarvesting) { return; }
-            window.__winnowHarvesting = true;
-            var url = %URL%;
-            var remaining = %ATTEMPTS%;
-            var timer = null;
-            function ask() {
-                if (window.__winnowHarvested || remaining <= 0) {
-                    if (timer) { clearInterval(timer); }
-                    return;
-                }
-                remaining--;
-                try {
-                    fetch(url, { credentials: 'include', cache: 'no-store' })
-                        .then(function (r) { return r.text(); })
-                        .then(function (body) {
-                            if (window.__winnowHarvested) { return; }
-                            window.chrome.webview.postMessage({ kind: 'harvest', value: body });
-                        })
-                        .catch(function () { });
-                } catch (e) { }
-            }
-            // Immediately, then on a slow timer. The immediate call is what makes
-            // a completed sign-in visible on the very next navigation rather than
-            // up to one interval later.
-            ask();
-            timer = setInterval(ask, %INTERVAL%);
-        })();
-        """;
 
     private readonly string _profileRoot;
     private readonly ILogger _log;
@@ -220,9 +153,20 @@ public sealed class WebView2AuthPrompt : IInteractiveAuthPrompt
     /// </summary>
     private sealed class RunState
     {
-        public RunState(AuthPromptRequest request) => Request = request;
+        public RunState(AuthPromptRequest request)
+        {
+            Request = request;
+            Policy = AuthFlowPolicy.For(request);
+        }
 
         public AuthPromptRequest Request { get; }
+
+        /// <summary>
+        /// Every trust decision this run makes: which origins may hold the bridge,
+        /// which may post a message, where the window may go, and whether a
+        /// returned state is the one that was sent.
+        /// </summary>
+        public AuthFlowPolicy Policy { get; }
 
         public TaskCompletionSource<AuthCodeResult> Captured { get; }
             = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -357,68 +301,222 @@ public sealed class WebView2AuthPrompt : IInteractiveAuthPrompt
 
         if (request.Strategies.HasFlag(AuthCaptureStrategies.LauncherJsBridge))
         {
-            // Before any of the page's own script runs, on every document
-            // including iframes. Registering it after navigation would lose the
-            // race against a page that probes for the bridge during load — and
-            // Epic's does, 21 times.
-            await browser.AddScriptToExecuteOnDocumentCreatedAsync(BridgeScript);
+            // Before any of the page's own script runs. Registering it after
+            // navigation would lose the race against a page that probes for the
+            // bridge during load — and Epic's does, 21 times.
+            //
+            // WebView2 has no per-frame or per-origin filter on this hook: it
+            // runs in every document of the session, iframes included. So the
+            // filter travels inside the script, which defines nothing unless it
+            // is the top frame of a document on a trusted origin. See
+            // AuthBridgeScripts.
+            await browser.AddScriptToExecuteOnDocumentCreatedAsync(
+                AuthBridgeScripts.Bridge(state.Policy.TrustedOrigins));
         }
 
-        if (request.Strategies.HasFlag(AuthCaptureStrategies.RedirectInterception) && request.RedirectUrl is not null)
-        {
-            browser.NavigationStarting += (_, e) =>
-            {
-                if (!Uri.TryCreate(e.Uri, UriKind.Absolute, out var uri) || !IsRedirectTarget(uri, request.RedirectUrl))
-                {
-                    return;
-                }
-
-                // Cancel unconditionally, even when there is no code to take.
-                // Nothing listens on this address, so allowing the navigation
-                // only buys a connection failure and an error page the user has
-                // to look at.
-                e.Cancel = true;
-
-                if (ReadQueryParameter(uri, request.RedirectCodeParameter) is { } code)
-                {
-                    state.Capture(AuthCodeKind.AuthorizationCode, code, "redirect interception");
-                    return;
-                }
-
-                // Worth a line: it means the redirect half of the hypothesis is
-                // right and only the parameter name is wrong, which is a much
-                // smaller thing to fix than it looks from a silent failure. The
-                // URI is NOT logged — it is the object that would carry a code.
-                _log.LogWarning(
-                    "Reached the {Provider} redirect target with no '{Parameter}' parameter on it.",
-                    request.ProviderName, request.RedirectCodeParameter);
-
-                // The session almost certainly exists at this point, so ask for
-                // the code directly rather than treating a nameless redirect as
-                // the end of the road.
-                TryHarvestByNavigation(browser, state, "the redirect fired without a code");
-            };
-        }
+        // ALWAYS armed, whatever the capture strategies are: this is the
+        // navigation policy, not a capture route. A window that carries the
+        // launcher bridge must not be steerable onto an origin nobody approved,
+        // and the redirect is intercepted from inside the same decision so a
+        // single classification governs both.
+        browser.NavigationStarting += (sender, e) =>
+            OnNavigationStarting((CoreWebView2)sender!, state, e);
 
         browser.NavigationCompleted += async (sender, e) =>
             await OnNavigationCompletedAsync((CoreWebView2)sender!, state, e);
 
         // Popups. Several of Epic's alternative sign-in options (Google, Steam,
         // Xbox) open one, and a WebView2 with no handler simply drops it — the
-        // button appears broken. Folding it into the same window is best effort
-        // and imperfect for a flow that expects to post back to its opener, but
-        // it is strictly better than nothing happening.
-        browser.NewWindowRequested += (sender, e) =>
+        // button appears broken.
+        //
+        // An APPROVED destination is still folded into this window: best effort,
+        // imperfect for a flow that expects to post back to its opener, and
+        // strictly better than nothing happening. An unapproved one is handed to
+        // the user's own browser instead of being hosted here, because hosting it
+        // would put an arbitrary page inside the session that holds the sign-in
+        // cookies and, before this change, the bridge.
+        browser.NewWindowRequested += (sender, e) => OnNewWindowRequested((CoreWebView2)sender!, state, e);
+    }
+
+    /// <summary>
+    /// The navigation gate: classifies where the window is being sent and either
+    /// allows it, captures the redirect, or refuses.
+    /// </summary>
+    private void OnNavigationStarting(
+        CoreWebView2 browser, RunState state, CoreWebView2NavigationStartingEventArgs e)
+    {
+        Uri.TryCreate(e.Uri, UriKind.Absolute, out var uri);
+
+        switch (state.Policy.ClassifyNavigation(uri))
         {
-            e.Handled = true;
-            ((CoreWebView2)sender!).Navigate(e.Uri);
-        };
+            case AuthNavigationDecision.Allow:
+                return;
+
+            case AuthNavigationDecision.CaptureRedirect:
+                // Cancel unconditionally, even when there is nothing to take.
+                // Nothing listens on this address, so allowing the navigation
+                // only buys a connection failure and an error page the user has
+                // to look at.
+                e.Cancel = true;
+                HandleRedirect(browser, state, uri!);
+                return;
+
+            default:
+                e.Cancel = true;
+
+                // The origin, never the URL: a blocked navigation's query is
+                // exactly where an injected code would be sitting.
+                _log.LogWarning(
+                    "Refused to send the {Provider} sign-in window to {Origin}: it is not an approved "
+                    + "origin for this flow.",
+                    state.Request.ProviderName,
+                    AuthFlowPolicy.OriginOf(uri) ?? "a non-web address");
+                return;
+        }
+    }
+
+    /// <summary>Handles a window the page asked to open.</summary>
+    private void OnNewWindowRequested(
+        CoreWebView2 browser, RunState state, CoreWebView2NewWindowRequestedEventArgs e)
+    {
+        // Handled on every path. Leaving it unhandled lets WebView2 open its own
+        // popup window, which is the one outcome with no policy applied to it.
+        e.Handled = true;
+
+        Uri.TryCreate(e.Uri, UriKind.Absolute, out var uri);
+
+        switch (state.Policy.ClassifyPopup(uri))
+        {
+            case AuthNavigationDecision.Allow:
+                browser.Navigate(uri!.ToString());
+                return;
+
+            case AuthNavigationDecision.CaptureRedirect:
+                HandleRedirect(browser, state, uri!);
+                return;
+
+            case AuthNavigationDecision.OpenExternally:
+                _log.LogInformation(
+                    "The {Provider} sign-in page asked to open {Origin}, which is not part of this flow. "
+                    + "Handing it to the default browser rather than hosting it here.",
+                    state.Request.ProviderName,
+                    AuthFlowPolicy.OriginOf(uri) ?? "another site");
+                OpenExternally(uri!);
+                return;
+
+            default:
+                _log.LogWarning(
+                    "Refused a window the {Provider} sign-in page asked to open: it is not a web address.",
+                    state.Request.ProviderName);
+                return;
+        }
+    }
+
+    /// <summary>
+    /// Reads the registered redirect, once the navigation to it has been
+    /// cancelled.
+    ///
+    /// <para><b>State is checked before the code is looked at, and there is no
+    /// path around it.</b> A redirect carrying someone else's code is exactly
+    /// what login-CSRF looks like, and the code is a full-account credential the
+    /// moment it is spent.</para>
+    /// </summary>
+    private void HandleRedirect(CoreWebView2 browser, RunState state, Uri uri)
+    {
+        var request = state.Request;
+
+        switch (state.Policy.VerifyState(uri))
+        {
+            case AuthStateVerification.Mismatched:
+                // Not a degraded flow — a wrong answer. Something drove the
+                // browser to the redirect with a state this attempt never
+                // minted, so the code on it belongs to another attempt or
+                // another account. Refuse, and do not go asking for a
+                // replacement: the window is no longer trustworthy.
+                _log.LogWarning(
+                    "Discarded a {Provider} redirect whose OAuth state did not match this sign-in. "
+                    + "Nothing was captured.",
+                    request.ProviderName);
+                return;
+
+            case AuthStateVerification.Missing:
+                // Either the provider dropped the parameter or someone crafted
+                // the redirect. Both are handled the same way and neither spends
+                // the code: fall through to asking the provider directly, which
+                // answers for the session in THIS browser and cannot be aimed at
+                // another account.
+                _log.LogWarning(
+                    "A {Provider} redirect arrived with no OAuth state on it, so its code was not used. "
+                    + "Asking the provider for a code instead.",
+                    request.ProviderName);
+                TryHarvestByNavigation(browser, state, "the redirect carried no state");
+                return;
+
+            default:
+                break;
+        }
+
+        if (AuthFlowPolicy.ReadQueryParameter(uri, request.RedirectCodeParameter) is { } code)
+        {
+            state.Capture(AuthCodeKind.AuthorizationCode, code, "redirect interception");
+            return;
+        }
+
+        // Worth a line: it means the redirect half of the hypothesis is right and
+        // only the parameter name is wrong, which is a much smaller thing to fix
+        // than it looks from a silent failure. The URI is NOT logged — it is the
+        // object that would carry a code.
+        _log.LogWarning(
+            "Reached the {Provider} redirect target with no '{Parameter}' parameter on it.",
+            request.ProviderName, request.RedirectCodeParameter);
+
+        // The session almost certainly exists at this point, so ask for the code
+        // directly rather than treating a nameless redirect as the end of the road.
+        TryHarvestByNavigation(browser, state, "the redirect fired without a code");
+    }
+
+    /// <summary>
+    /// Hands a URL to the user's own browser. Best effort and deliberately silent
+    /// on failure: the sign-in itself is unaffected either way.
+    /// </summary>
+    private void OpenExternally(Uri uri)
+    {
+        try
+        {
+            using var process = System.Diagnostics.Process.Start(
+                new System.Diagnostics.ProcessStartInfo(uri.ToString()) { UseShellExecute = true });
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception
+            or InvalidOperationException
+            or PlatformNotSupportedException
+            or FileNotFoundException)
+        {
+            _log.LogDebug("Could not open a link in the default browser ({ExceptionType}).", ex.GetType().Name);
+        }
     }
 
     /// <summary>Handles one message from the injected bridge or harvester.</summary>
     private void OnWebMessage(CoreWebView2 browser, RunState state, CoreWebView2WebMessageReceivedEventArgs e)
     {
-        if (state.Done || TryReadMessage(e) is not var (kind, value))
+        if (state.Done)
+        {
+            return;
+        }
+
+        // THE ORIGIN CHECK, and it is first because everything below it treats
+        // the message as coming from the provider. WebView2 reports the posting
+        // document's URL — an iframe's own URL when an iframe posted it — and
+        // that is the only identity a web message carries. Without this, any
+        // document in the session can post {"kind":"exchange"} and have it spent.
+        if (!state.Policy.AcceptsMessageFrom(e.Source))
+        {
+            _log.LogDebug(
+                "Ignored a page message from {Origin}, which is not a trusted origin for this sign-in.",
+                AuthFlowPolicy.OriginOf(e.Source) ?? "an unidentified document");
+            return;
+        }
+
+        if (TryReadMessage(e) is not var (kind, value))
         {
             return;
         }
@@ -463,10 +561,20 @@ public sealed class WebView2AuthPrompt : IInteractiveAuthPrompt
 
         try
         {
+            // browser.Source is the TOP-level document, which is the only thing
+            // ExecuteScriptAsync touches. Everything below reads or writes that
+            // document, so an untrusted one is left entirely alone: not scraped,
+            // not injected into, not treated as a signal.
+            if (!Uri.TryCreate(browser.Source, UriKind.Absolute, out var current)
+                || !state.Policy.IsTrustedOrigin(current))
+            {
+                return;
+            }
+
             if (state.Request.Strategies.HasFlag(AuthCaptureStrategies.JsonBodyScrape)
                 && state.Request.JsonCodeFields.Count > 0)
             {
-                var body = UnwrapScriptResult(await browser.ExecuteScriptAsync(ReadJsonBodyScript));
+                var body = UnwrapScriptResult(await browser.ExecuteScriptAsync(AuthBridgeScripts.ReadJsonBody));
                 var reading = AuthCodeBody.Read(body, state.Request.JsonCodeFields);
 
                 if (reading.Outcome != AuthCodeBodyOutcome.NotACodeBody)
@@ -480,20 +588,16 @@ public sealed class WebView2AuthPrompt : IInteractiveAuthPrompt
                 }
             }
 
-            if (!Uri.TryCreate(browser.Source, UriKind.Absolute, out var current))
-            {
-                return;
-            }
-
             if (state.Request.Strategies.HasFlag(AuthCaptureStrategies.SessionHarvest)
                 && state.Request.HarvestUrl is { } harvest)
             {
                 if (IsSameOrigin(current, harvest))
                 {
                     // Same origin, so the fetch carries the provider's cookies.
-                    // Injected on every document; the script no-ops if it is
-                    // already running in this one.
-                    await browser.ExecuteScriptAsync(BuildHarvesterScript(harvest));
+                    // The script no-ops if it is already running in this document,
+                    // and refuses to run at all outside a trusted top-level one.
+                    await browser.ExecuteScriptAsync(AuthBridgeScripts.Harvester(
+                        harvest, state.Policy.TrustedOrigins, HarvestInterval, MaxHarvestAttempts));
                 }
 
                 if (HasLeftTheSignInJourney(current, state.Request))
@@ -520,7 +624,7 @@ public sealed class WebView2AuthPrompt : IInteractiveAuthPrompt
         {
             case AuthCodeBodyOutcome.CodeFound when reading.Code is { Length: > 0 } code:
                 // Stops the in-page harvester so no second code is ever minted.
-                _ = browser.ExecuteScriptAsync("window.__winnowHarvested = true;");
+                _ = browser.ExecuteScriptAsync(AuthBridgeScripts.StopHarvesting);
                 state.Capture(reading.Kind, code, via);
                 return;
 
@@ -616,23 +720,6 @@ public sealed class WebView2AuthPrompt : IInteractiveAuthPrompt
         => string.Equals(a.Scheme, b.Scheme, StringComparison.OrdinalIgnoreCase)
             && string.Equals(a.Host, b.Host, StringComparison.OrdinalIgnoreCase)
             && a.Port == b.Port;
-
-    /// <summary>
-    /// Builds the harvester with its URL and interval substituted in as JSON
-    /// literals — which is also the escaping, since a JSON string literal is a
-    /// JavaScript string literal.
-    /// </summary>
-    private static string BuildHarvesterScript(Uri harvestUrl)
-        => HarvesterScriptTemplate
-            .Replace("%URL%", JsonSerializer.Serialize(harvestUrl.ToString()), StringComparison.Ordinal)
-            .Replace(
-                "%INTERVAL%",
-                ((int)HarvestInterval.TotalMilliseconds).ToString(System.Globalization.CultureInfo.InvariantCulture),
-                StringComparison.Ordinal)
-            .Replace(
-                "%ATTEMPTS%",
-                MaxHarvestAttempts.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                StringComparison.Ordinal);
 
     /// <summary>
     /// Pulls <c>kind</c> and <c>value</c> out of a message posted by the injected
@@ -950,44 +1037,6 @@ public sealed class WebView2AuthPrompt : IInteractiveAuthPrompt
         }
 
         window.Position = new PixelPoint(x, y);
-    }
-
-    /// <summary>
-    /// Whether a navigation is heading for the registered redirect. Scheme, host
-    /// and path only — the query is the payload and must not take part in the
-    /// match.
-    /// </summary>
-    private static bool IsRedirectTarget(Uri candidate, Uri redirect)
-        => string.Equals(candidate.Scheme, redirect.Scheme, StringComparison.OrdinalIgnoreCase)
-            && string.Equals(candidate.Host, redirect.Host, StringComparison.OrdinalIgnoreCase)
-            && string.Equals(
-                candidate.AbsolutePath.TrimEnd('/'),
-                redirect.AbsolutePath.TrimEnd('/'),
-                StringComparison.OrdinalIgnoreCase);
-
-    /// <summary>
-    /// One decoded query parameter, or null. Hand-parsed rather than through a
-    /// helper so nothing constructs an intermediate collection that a debugger, a
-    /// log sink or a crash dump would show the code in.
-    /// </summary>
-    private static string? ReadQueryParameter(Uri uri, string name)
-    {
-        foreach (var pair in uri.Query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries))
-        {
-            var equals = pair.IndexOf('=', StringComparison.Ordinal);
-            if (equals < 0)
-            {
-                continue;
-            }
-
-            if (string.Equals(Uri.UnescapeDataString(pair[..equals]), name, StringComparison.Ordinal))
-            {
-                var value = Uri.UnescapeDataString(pair[(equals + 1)..]);
-                return string.IsNullOrWhiteSpace(value) ? null : value;
-            }
-        }
-
-        return null;
     }
 
     /// <summary>

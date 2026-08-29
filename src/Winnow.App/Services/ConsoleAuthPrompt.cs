@@ -9,6 +9,16 @@ namespace Winnow.App.Services;
 /// lets the user authenticate in their own browser, and reads back the pasted
 /// authorization code. Peer to the embedded-browser flow for headless machines,
 /// missing WebView2, or when Epic breaks the embedded page. Never prints secrets.
+///
+/// <para><b>It does not check <see cref="AuthPromptRequest.ExpectedState"/>, and
+/// that is correct rather than an omission.</b> State exists to bind a redirect
+/// the flow did not choose to the authorization request it claims to answer.
+/// Here there is no redirect: the user reads a code off a page in their own
+/// browser and types it in. The person is the transport, and there is no
+/// intermediary to impersonate one. The state still travels on
+/// <see cref="AuthPromptRequest.StartUrl"/> — the provider echoes it back to the
+/// same person — so nothing is lost by carrying it, and demanding it back from a
+/// paste would break the documented fallback for no gain.</para>
 /// </summary>
 public sealed class ConsoleAuthPrompt : IInteractiveAuthPrompt
 {

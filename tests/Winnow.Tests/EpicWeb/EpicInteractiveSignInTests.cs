@@ -280,6 +280,88 @@ public class EpicInteractiveSignInTests
     }
 
     [Fact]
+    public async Task Every_attempt_mints_its_own_state_and_sends_it_on_the_authorize_url()
+    {
+        // F05. Without this the flow will spend whatever code reaches the
+        // redirect, whoever put it there — login-CSRF, and the resulting session
+        // is somebody else's account.
+        var prompt = Captures("browser", AuthCodeKind.AuthorizationCode, "CODE");
+        using var host = new EpicWebTestHost(EpicWebTestHost.Healthy(), prompts: [prompt]);
+
+        await host.SignIn.SignInAsync();
+        var first = prompt.LastRequest!;
+
+        Assert.False(string.IsNullOrWhiteSpace(first.ExpectedState));
+        Assert.Equal("state", first.StateParameter);
+
+        // On the URL Epic is asked with, not merely held in memory: a state the
+        // provider never saw cannot come back.
+        Assert.Contains(
+            "state=" + Uri.EscapeDataString(first.ExpectedState!),
+            first.StartUrl.AbsoluteUri,
+            StringComparison.Ordinal);
+
+        // Per ATTEMPT, not per process. A state reused across sign-ins is a state
+        // an earlier redirect can still satisfy.
+        await host.SignIn.SignInAsync();
+        Assert.NotEqual(first.ExpectedState, prompt.LastRequest!.ExpectedState);
+    }
+
+    [Fact]
+    public async Task The_state_binds_the_redirect_the_browser_is_watching_for()
+    {
+        // The two halves have to agree, so this asserts them together: the policy
+        // the browser runs on is built from this very request.
+        var prompt = Captures("browser", AuthCodeKind.AuthorizationCode, "CODE");
+        using var host = new EpicWebTestHost(EpicWebTestHost.Healthy(), prompts: [prompt]);
+
+        await host.SignIn.SignInAsync();
+        var policy = AuthFlowPolicy.For(prompt.LastRequest!);
+        var state = prompt.LastRequest!.ExpectedState!;
+
+        Assert.Equal(
+            AuthStateVerification.Matched,
+            policy.VerifyState(new Uri(
+                "https://localhost/launcher/authorized?code=REAL&state=" + Uri.EscapeDataString(state))));
+
+        Assert.Equal(
+            AuthStateVerification.Mismatched,
+            policy.VerifyState(new Uri("https://localhost/launcher/authorized?code=INJECTED&state=attacker")));
+
+        Assert.Equal(
+            AuthStateVerification.Missing,
+            policy.VerifyState(new Uri("https://localhost/launcher/authorized?code=INJECTED")));
+    }
+
+    [Fact]
+    public async Task Epics_own_origins_are_trusted_and_the_social_providers_are_only_navigable()
+    {
+        var prompt = Captures("browser", AuthCodeKind.AuthorizationCode, "CODE");
+        using var host = new EpicWebTestHost(EpicWebTestHost.Healthy(), prompts: [prompt]);
+
+        await host.SignIn.SignInAsync();
+        var policy = AuthFlowPolicy.For(prompt.LastRequest!);
+
+        Assert.True(policy.IsTrustedOrigin(new Uri("https://www.epicgames.com/id/login")));
+        Assert.True(policy.IsTrustedOrigin(new Uri("https://localhost/launcher/authorized")));
+
+        // Google is offered on Epic's login page, so the window may render it —
+        // and that is all it may do. No bridge, no messages, no body reads.
+        Assert.True(policy.IsNavigableOrigin(new Uri("https://accounts.google.com/o/oauth2/auth")));
+        Assert.False(policy.IsTrustedOrigin(new Uri("https://accounts.google.com/o/oauth2/auth")));
+        Assert.False(policy.AllowsBridge(new Uri("https://accounts.google.com/o/oauth2/auth")));
+
+        // Anything else is refused rather than hosted, and a popup to it goes to
+        // the user's own browser.
+        Assert.Equal(
+            AuthNavigationDecision.Block,
+            policy.ClassifyNavigation(new Uri("https://evil.example/steal")));
+        Assert.Equal(
+            AuthNavigationDecision.OpenExternally,
+            policy.ClassifyPopup(new Uri("https://evil.example/steal")));
+    }
+
+    [Fact]
     public async Task Starting_on_the_code_endpoint_is_opt_out_and_still_carries_a_harvest_url()
     {
         // Only useful for a browser profile that is already signed in. Kept
@@ -296,6 +378,15 @@ public class EpicInteractiveSignInTests
         var request = prompt.LastRequest!;
         Assert.Contains("/id/api/redirect", request.StartUrl.AbsoluteUri, StringComparison.Ordinal);
         Assert.Equal(request.StartUrl, request.HarvestUrl);
+
+        // And no state, because there is no authorization request to bind. A
+        // state demanded back from a flow that never sent one would fail every
+        // redirect on this path.
+        Assert.Null(request.ExpectedState);
+        Assert.Equal(
+            AuthStateVerification.NotRequired,
+            AuthFlowPolicy.For(request).VerifyState(
+                new Uri("https://localhost/launcher/authorized?code=X")));
     }
 
     [Fact]

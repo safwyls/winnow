@@ -179,12 +179,25 @@ public sealed class EpicInteractiveSignIn
         var harvest = new Uri(string.Format(
             CultureInfo.InvariantCulture, _options.AuthorizationCodeUrlFormat, clientId));
 
+        // ONE STATE PER ATTEMPT, minted here because this is where the
+        // authorization request is made and nowhere else has a claim on it.
+        //
+        // It binds the code that comes back to this sign-in: a redirect reaching
+        // the embedded browser without exactly this value has its code discarded
+        // rather than spent (RFC 6749 §10.12). Only meaningful when the flow
+        // actually starts on the authorize endpoint — the opt-out path below asks
+        // Epic's code endpoint directly, makes no authorization request, and so
+        // has no state to send and nothing to demand back.
+        var state = _options.UseAuthorizeEndpointForSignIn ? AuthState.Create() : null;
+
         var start = _options.UseAuthorizeEndpointForSignIn
-            ? new Uri(string.Format(
-                CultureInfo.InvariantCulture,
-                _options.AuthorizeUrlFormat,
-                Uri.EscapeDataString(clientId),
-                Uri.EscapeDataString(redirect.ToString())))
+            ? WithState(
+                new Uri(string.Format(
+                    CultureInfo.InvariantCulture,
+                    _options.AuthorizeUrlFormat,
+                    Uri.EscapeDataString(clientId),
+                    Uri.EscapeDataString(redirect.ToString()))),
+                state!)
             : harvest;
 
         return new AuthPromptRequest
@@ -195,6 +208,11 @@ public sealed class EpicInteractiveSignIn
             RedirectUrl = redirect,
             ConsentNotice = ConsentNotice,
             Strategies = AuthCaptureStrategies.All,
+            ExpectedState = state,
+
+            // Where the sign-in window may go, beyond Epic's own origins. Not a
+            // trust grant: see EpicWebOptions.SocialSignInOrigins.
+            AdditionalNavigableOrigins = _options.SocialSignInOrigins,
 
             // Priority order, and the order matters: an exchange code arrives
             // through the bridge as a push, while these are read off a body that
@@ -216,5 +234,26 @@ public sealed class EpicInteractiveSignIn
             // resumed without retyping a password.
             ProfileKey = "epic",
         };
+    }
+
+    /// <summary>
+    /// Appends <c>state</c> to an authorize URL, unless the configured format
+    /// already carries one of its own.
+    ///
+    /// <para>Appended rather than added as a third format placeholder: the format
+    /// is user-settable, and a new <c>{2}</c> would turn every overriding
+    /// configuration into a <see cref="FormatException"/> at sign-in time.</para>
+    /// </summary>
+    private static Uri WithState(Uri authorizeUrl, string state)
+    {
+        if (AuthFlowPolicy.ReadQueryParameter(authorizeUrl, "state") is not null)
+        {
+            return authorizeUrl;
+        }
+
+        var separator = authorizeUrl.Query.Length > 1 ? '&' : '?';
+
+        return new Uri(string.Concat(
+            authorizeUrl.AbsoluteUri, separator, "state=", Uri.EscapeDataString(state)));
     }
 }

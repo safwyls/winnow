@@ -80,12 +80,47 @@ public sealed record AuthPromptRequest
 
     /// <summary>
     /// The provider's registered redirect target for <see cref="AuthCaptureStrategies.RedirectInterception"/>.
-    /// Matched on scheme/host/path. No listener needed; navigation is intercepted before connection.
+    /// Matched on scheme, host, <b>port</b> and path — see <see cref="AuthFlowPolicy.IsRedirectTarget"/>.
+    /// No listener needed; navigation is intercepted before connection.
     /// </summary>
     public Uri? RedirectUrl { get; init; }
 
     /// <summary>Query parameter on <see cref="RedirectUrl"/> that carries the code.</summary>
     public string RedirectCodeParameter { get; init; } = "code";
+
+    /// <summary>
+    /// The OAuth <c>state</c> minted for this attempt and sent on
+    /// <see cref="StartUrl"/>. A redirect that comes back without exactly this
+    /// value must not have its code spent (RFC 6749 §10.12).
+    ///
+    /// <para>Null means no state was sent, which is legitimate for a flow that
+    /// starts on the provider's code endpoint rather than its authorize endpoint:
+    /// there is no authorization request to bind, so there is nothing to check.
+    /// It must never be null merely because a caller forgot — mint one with
+    /// <see cref="AuthState.Create"/>.</para>
+    ///
+    /// <para>Not a secret in the credential sense — it is public in the URL — but
+    /// it is unguessable, and compared with
+    /// <see cref="AuthState.Matches"/> rather than <c>==</c>.</para>
+    /// </summary>
+    public string? ExpectedState { get; init; }
+
+    /// <summary>Query parameter on <see cref="RedirectUrl"/> that carries <see cref="ExpectedState"/> back.</summary>
+    public string StateParameter { get; init; } = "state";
+
+    /// <summary>
+    /// Extra HTTPS origins the embedded browser may <em>render</em> — the
+    /// provider's social-login hand-offs, typically. Origin only; any path is
+    /// ignored.
+    ///
+    /// <para>These are navigable, never trusted: no bridge is injected into them,
+    /// no web message is accepted from them, and no page body is read from them.
+    /// The trusted set is derived from <see cref="StartUrl"/>,
+    /// <see cref="HarvestUrl"/> and <see cref="RedirectUrl"/> and cannot be
+    /// widened. Anything outside both sets is refused, and a popup to it is handed
+    /// to the user's own browser instead.</para>
+    /// </summary>
+    public IReadOnlyList<Uri> AdditionalNavigableOrigins { get; init; } = [];
 
     /// <summary>
     /// Provider-origin URL that returns the code as JSON for an already-authenticated browser,

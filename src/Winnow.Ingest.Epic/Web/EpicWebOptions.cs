@@ -61,6 +61,41 @@ public sealed class EpicWebOptions
     /// <summary>The only redirect target Epic's launcher client accepts; watched by the embedded browser.</summary>
     public Uri LauncherRedirectUrl { get; set; } = new("https://localhost/launcher/authorized");
 
+    /// <summary>
+    /// Origins the embedded sign-in browser may <em>render</em> beyond Epic's own:
+    /// the identity providers Epic offers on its login page.
+    ///
+    /// <para>Navigable, never trusted. No launcher bridge is injected into these,
+    /// no page message is accepted from them and no body is read from them — they
+    /// exist so that "Sign in with Google/Xbox/Steam/…" still works inside the
+    /// window rather than dying at a blocked navigation. The trusted set stays
+    /// exactly Epic's own origins, derived from the URLs above.</para>
+    ///
+    /// <para>Settable because the list is a snapshot of Epic's login page rather
+    /// than a contract: if Epic adds a provider, a user can name its origin here
+    /// instead of waiting for a release. Removing entries only narrows what the
+    /// window will render, and the console flow (<c>--epic-login</c>) is
+    /// unaffected either way.</para>
+    /// </summary>
+    public IReadOnlyList<Uri> SocialSignInOrigins { get; set; } =
+    [
+        // Epic's own, beyond www: the bare apex (which redirects to www) and the
+        // captcha service its login page hands off to.
+        new("https://epicgames.com"),
+        new("https://talon-website-prod.ol.epicgames.com"),
+
+        // The identity providers Epic's login page offers.
+        new("https://accounts.google.com"),
+        new("https://appleid.apple.com"),
+        new("https://www.facebook.com"),
+        new("https://login.live.com"),
+        new("https://account.live.com"),
+        new("https://my.account.sony.com"),
+        new("https://ca.account.sony.com"),
+        new("https://accounts.nintendo.com"),
+        new("https://steamcommunity.com"),
+    ];
+
     /// <summary>How long a fetched Epic library stays authoritative before a resync refetches it.</summary>
     public TimeSpan CacheTtl { get; set; } = TimeSpan.FromHours(6);
 
