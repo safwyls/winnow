@@ -4,18 +4,9 @@
              x:Class="Winnow.App.Views.MergeQueueView"
              x:DataType="vm:MergeQueueViewModel">
 
-    <!--
-        The merge confirm queue — design-system.md §6.
-
-        Two covers side by side at 200x300 with the signal diff between them,
-        and two answers: `Same game` / `Different games`. Never "Merge" /
-        "Cancel", which asks the user to reason about the data model instead of
-        about games.
-
-        Every pending pair is on one scrollable page (§5.3: "present all pending
-        candidates at once, not one modal at a time"). Flare does not appear on
-        this screen at all — it marks unread updates and nothing else.
-    -->
+    <!-- Merge confirm queue (§6). Two covers side by side with signal diff
+         and two answers: Same game / Different games. All pending pairs on one
+         scrollable page. No Flare on this screen. -->
 
     <UserControl.Resources>
 
@@ -215,12 +206,8 @@
                                                 Content="{Binding Left}"
                                                 ContentTemplate="{StaticResource MergeSideTemplate}"/>
 
-                                <!-- ── The signal diff: why the matcher thinks
-                                     these might be the same game (§6).
-                                     Evidence at the top, the answer pinned to
-                                     the bottom, so the two buttons land in the
-                                     same place on every card however much
-                                     evidence a pair happens to carry. ─────── -->
+                                <!-- ── The signal diff (§6). Evidence at top,
+                                     answer pinned to bottom. ────────────── -->
                                 <Grid Grid.Column="1" Margin="28,2,28,0"
                                       RowDefinitions="Auto,*,Auto">
 
@@ -232,16 +219,8 @@
                                                    VerticalAlignment="Bottom"
                                                    Margin="0,0,0,2"/>
 
-                                        <!-- The matcher's top band. It means
-                                             "look at this one first" and the
-                                             queue already orders by it — this
-                                             says so in words, per §8's rule that
-                                             a signal carried by position alone
-                                             is a signal some users cannot read.
-                                             Azure, because it is informational:
-                                             Volt is selection, Amber is "you've
-                                             been here a lot", and Flare marks
-                                             unread updates and nothing else. -->
+                                        <!-- Top-of-queue label in Azure (§8:
+                                             position alone is not enough). -->
                                         <TextBlock Grid.Column="1" Classes="label"
                                                    FontSize="10" LetterSpacing="1"
                                                    Margin="10,0,0,2"
@@ -303,11 +282,7 @@
                                                Text="{Binding NoSignalsMessage}"/>
                                 </StackPanel>
 
-                                <!-- ── The answer, under the evidence and
-                                     between the two covers. The question and
-                                     its two answers stay in one column so the
-                                     eye never has to leave the reasoning to act
-                                     on it. ─────────────────────────────────── -->
+                                <!-- ── The answer ─────────────────────────── -->
                                 <StackPanel Grid.Row="2"
                                             Orientation="Horizontal"
                                             Spacing="12"

@@ -89,7 +89,7 @@ public partial class MergeCandidateViewModel : ObservableObject
 
     /// <summary>Shown in place of the breakdown when the row carries no recorded evidence.</summary>
     public string NoSignalsMessage =>
-        "No breakdown was recorded for this pair. Decide from the covers and titles, or leave it — nothing merges on its own.";
+        "No breakdown available. Decide from the covers and titles.";
 
     /// <summary>Keyboard/pointer selection: 2px Volt edge, matching the grid (§8).</summary>
     [ObservableProperty]

@@ -3,77 +3,14 @@ using Avalonia.Media;
 namespace Winnow.App.Themes;
 
 /// <summary>
-/// The themes that ship, and the reason each one is here.
-///
-/// <para><b>Four, and the first one is the default and stays the standout.</b>
-/// The other three are not alternative brandings of the same idea. Each is a
-/// different room, and the test of the set is that a THUMBNAIL OF THE RAIL
-/// ALONE identifies which one you are in, with no label.</para>
-///
-/// <para><b>Hue is the weakest axis, and the first set of themes spent all of
-/// its budget there.</b> Four palettes that differ by rotation and by value read
-/// as four settings of one design — a darker one, a lifted one, a green one.
-/// So these differ on the axes that actually make a room:</para>
-///
-/// <list type="table">
-///   <item>
-///     <term>Temperature</term>
-///     <description>Winnow and Nightshift are cool, Tungsten is genuinely warm,
-///     Box art is neutral. A warm room is not a hue rotation of a cool one: it
-///     inverts which end of the wheel is the ground and which is the signal.</description>
-///   </item>
-///   <item>
-///     <term>Chroma strategy</term>
-///     <description>How much colour the chrome is allowed at all. Winnow's
-///     neutral is committed green-teal; Box art's has none, and holds saturation
-///     back for the cover art and the two colours that mean STOP and UNREAD.</description>
-///   </item>
-///   <item>
-///     <term>Value structure</term>
-///     <description>Where the contrast lives. Winnow steps evenly; Nightshift is
-///     almost flat and lets edges carry the layout; Box art puts a 4.8x jump
-///     between the art field and the chrome; Tungsten's steps are the softest in
-///     the set.</description>
-///   </item>
-///   <item>
-///     <term>Material</term>
-///     <description>What the chrome reads as — inked board, black glass, felt,
-///     mount card. Carried by how surfaces step and how visible the edges are,
-///     never by the accent.</description>
-///   </item>
-/// </list>
-///
-/// <para><b>Two rules hold across all four.</b> Volt is the room's own colour at
-/// full voltage, so selection reads as the chrome intensified rather than as a
-/// decoration on top of it (§2). And Flare is the one hue the room cannot
-/// produce, spent on unread updates and the bucket that counts them and on
-/// nothing else — the colour may change per theme, the job may not.</para>
-///
-/// <para>Deliberately <b>no light theme.</b> §9 keeps the caption at a chrome
-/// tone so the first inch of the window is unlit, §5.3's tile scrim fades to
-/// Ground, and §5.1's dormancy floor was calibrated against dark capsules on a
-/// dark field. A light theme is not this table with the steps reversed; it is a
-/// second pass over all three, and shipping a half-done one would break the ramp
-/// that is the product's whole encoding.</para>
+/// The four themes that ship. Each differs on temperature, chroma strategy,
+/// value structure and material so a rail thumbnail alone identifies the theme.
+/// Volt is always the room at full voltage; Flare is always the unreachable hue.
 /// </summary>
 public static class WinnowThemes
 {
-    /// <summary>
-    /// The house look, unchanged (§2). One dark green-teal ink stepped six
-    /// times, mint Volt, hot pink Flare.
-    ///
-    /// <para><b>Material: inked board.</b> The chrome is a stage — a hued
-    /// neutral so Volt is the room turned up, dark enough that cover art is the
-    /// only thing on screen with real light in it, and cool enough that the
-    /// warm-and-dark Steam capsule reads as warm against it. The value structure
-    /// is the most even in the set: 1.8x from the art field to the rail, 1.6x
-    /// from the rail to a selected row, edges at 1.6:1. Nothing is doing
-    /// anything clever, which is what makes it the one you can look at for an
-    /// hour.</para>
-    ///
-    /// <para>This is the default because it is the one tuned against six hundred
-    /// real capsules rather than against a mock.</para>
-    /// </summary>
+    /// <summary>The house look (§2). Green-teal inked board, mint Volt, hot
+    /// pink Flare. Default because it was tuned against real capsules.</summary>
     public static readonly WinnowTheme Winnow = new()
     {
         Id = "winnow",
@@ -107,32 +44,8 @@ public static class WinnowThemes
         TranslucentTextFaint = C("#7A9CA0"),
     };
 
-    /// <summary>
-    /// Black glass, with the layout etched onto it rather than stacked out of it.
-    ///
-    /// <para><b>This is the theme that had to earn its slot.</b> Shipped first as
-    /// "Winnow with the lights off", it was a value change and nothing else, and
-    /// the verdict on it was exactly that. What makes it a room of its own is not
-    /// how dark it is — it is <b>where the contrast lives</b>. Every other theme
-    /// separates its surfaces by stepping them apart; this one does not step at
-    /// all. The art field, the rail and the caption sit within 1.4x of each other
-    /// at the bottom of the scale, effectively one black pane, and every boundary
-    /// in the window is a <i>drawn line</i>: <c>Line</c> runs at 2.5:1 against
-    /// the rail, the brightest edge in the set and nearly twice Winnow's. The
-    /// window reads as one sheet of glass with the layout scribed on it.</para>
-    ///
-    /// <para><b>Material: black glass. Temperature: cold.</b> The ink is a blue
-    /// black rather than Winnow's green-teal, so the two are not siblings at any
-    /// brightness — and the room at full voltage is a hard cyan rather than a
-    /// mint. Chroma in the neutrals is almost nil; what little there is, is in
-    /// the edges, which is why the hairlines read as light on glass rather than
-    /// as grey rules.</para>
-    ///
-    /// <para>It answers a real condition: a dark room, and a panel that does not
-    /// backlight. The chrome contributes almost no light of its own, so the only
-    /// lit things in the window are six hundred capsules — §1 taken literally,
-    /// which the flat structure states far better than dimness did.</para>
-    /// </summary>
+    /// <summary>Black glass. Surfaces barely step; every boundary is a drawn
+    /// line (2.5:1 edge). Blue-black ink, hard cyan Volt.</summary>
     public static readonly WinnowTheme Nightshift = new()
     {
         Id = "nightshift",
@@ -171,32 +84,8 @@ public static class WinnowThemes
         TranslucentTextFaint = C("#7C8AA6"),
     };
 
-    /// <summary>
-    /// A warm room, lit by one lamp. The only theme in the set that is not cool.
-    ///
-    /// <para><b>Temperature is the axis, and it is the one none of the first four
-    /// took.</b> Every hue rotation between blue, teal and green is still a cold
-    /// room; a tobacco-brown ground is not that room at a different angle. It
-    /// changes which end of the wheel is ground and which is signal, and it
-    /// changes what happens to the art: warm-and-dark Steam capsules stop being
-    /// pushed cool by simultaneous contrast and settle into the field instead of
-    /// standing off it. Covers read softer here than anywhere else in the table.
-    /// That is a preference, not a defect, and it is the whole reason to pick
-    /// it.</para>
-    ///
-    /// <para><b>Material: felt. Value structure: the softest in the set.</b>
-    /// <c>Line</c> runs at 1.4:1 against the rail — the quietest edge of the
-    /// four — so the surfaces are told apart by tone rather than by rule, and
-    /// nothing in the chrome has a hard boundary. Beside Nightshift, which is the
-    /// same idea inverted, the two are unmistakable at thumbnail size: one is all
-    /// edge and no step, the other all step and no edge.</para>
-    ///
-    /// <para><b>What it costs, stated rather than hidden.</b> A warm room spends
-    /// the warm end of the wheel on the ground, so Volt (brass) and Amber (ember)
-    /// sit 27° apart — closer than any other pair in the set. They are told apart
-    /// by lightness and by where each appears, and the room's one unreachable
-    /// hue, magenta, is reserved for Flare as always.</para>
-    /// </summary>
+    /// <summary>A warm room lit by one lamp. Tobacco-brown felt, brass Volt,
+    /// softest edges in the set (1.4:1). Warm covers settle into the field.</summary>
     public static readonly WinnowTheme Tungsten = new()
     {
         Id = "tungsten",
@@ -239,36 +128,9 @@ public static class WinnowThemes
         TranslucentTextFaint = C("#94805F"),
     };
 
-    /// <summary>
-    /// A neutral mount, and the art is the only colour in the window.
-    ///
-    /// <para><b>Chroma strategy is the axis here, not hue — there is no hue.</b>
-    /// §1 says the art is the interface; this is that claim taken to the end of
-    /// its argument. The whole neutral family is a true graphite with no lean at
-    /// all, <c>Volt</c> is cold white light rather than a colour (a neutral room
-    /// at full voltage is not a hue, it is brightness), <c>Amber</c> is a sand
-    /// and <c>Azure</c> a steel. Only the two colours that mean STOP and UNREAD
-    /// keep their saturation, which makes this the theme where §2's rule is
-    /// literally visible: <c>Flare</c> is not merely the one hue the room cannot
-    /// produce, it is the only hue in the window that did not come out of a cover.</para>
-    ///
-    /// <para><b>Value structure: the starkest in the set, and inverted from what
-    /// the others do.</b> The art field drops to near-black and the chrome jumps
-    /// 4.8x above it — against Winnow's 1.8x and Nightshift's 1.4x. So the covers
-    /// sit in a mount, the way a print does, and the chrome is a board around
-    /// them rather than a slightly different shade of the same room. At thumbnail
-    /// size it is the only rail in the set that is visibly lighter than the wall
-    /// beside it.</para>
-    ///
-    /// <para><b>Material: mount card.</b> Matte, neutral, and it never argues
-    /// with what is hung on it. Someone whose library is mostly art they chose
-    /// for the art picks this one.</para>
-    ///
-    /// <para>Volt and Azure sit 29° apart on the wheel and are told apart by
-    /// lightness rather than by hue — Volt is a near-white at 17:1 against the
-    /// art field, Azure a mid steel. That is deliberate and it is the cost of the
-    /// no-chroma rule: this room has no second saturated colour to spend.</para>
-    /// </summary>
+    /// <summary>A neutral mount. True graphite with no chroma; the covers and
+    /// Flare are the only hues in the window. Starkest value structure in the
+    /// set (4.8x field-to-chrome). Cold white Volt.</summary>
     public static readonly WinnowTheme BoxArt = new()
     {
         Id = "box-art",
@@ -317,20 +179,8 @@ public static class WinnowThemes
     public static WinnowTheme Default => Winnow;
 
     /// <summary>
-    /// The id the house theme shipped under before the rename to Winnow, and
-    /// the value sitting in <c>appearance.theme</c> in every database that
-    /// predates it.
-    ///
-    /// <para><b>Renaming the id without this would orphan a real preference.</b>
-    /// It happens to orphan it onto the same theme today, because this theme is
-    /// also the default — so the window would look identical and the bug would
-    /// be invisible until the day the default changed, at which point a
-    /// preference the user set on purpose would silently become someone else's
-    /// choice. Aliasing is a line of code; discovering that later is not.</para>
-    ///
-    /// <para><b>It is tried only after a real lookup misses</b>, so a
-    /// user-authored theme that claims the id <c>hoard</c> still wins it — the
-    /// alias is a bridge for old settings, not a reservation.</para>
+    /// The id the house theme shipped under before the rename. Tried only
+    /// after a real lookup misses, so a user theme claiming "hoard" still wins.
     /// </summary>
     public const string LegacyDefaultId = "hoard";
 

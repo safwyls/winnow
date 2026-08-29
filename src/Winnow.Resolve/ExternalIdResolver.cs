@@ -7,12 +7,8 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace Winnow.Resolve;
 
 /// <summary>
-/// Counts of what one <see cref="ExternalIdResolver.ResolveAsync"/> pass did.
-///
-/// <para>Counted in OBSERVATIONS, not in candidates: a pass first collapses the
-/// candidates addressing one ownership into one observation
-/// (<see cref="CandidateOwnershipMerge"/>), so an appid both Steam sources
-/// reported contributes 1 here rather than 2.</para>
+/// Counts of what one <see cref="ExternalIdResolver.ResolveAsync"/> pass did,
+/// counted in observations (after <see cref="CandidateOwnershipMerge"/>).
 /// </summary>
 /// <param name="MatchedExisting">Observations that hit an existing release by external id.</param>
 /// <param name="CreatedReleases">Observations that minted a new Work + Release.</param>
@@ -29,50 +25,12 @@ public sealed record ResolveResult(
     int NamesPromoted = 0);
 
 /// <summary>
-/// The M0 resolver (§5.1, §5.3 step 1): maps <see cref="CandidateOwnership"/>
-/// records onto Work/Release/Ownership/PlayRecord via the external-id hard
-/// join ONLY — provider + provider_id, exact match. A hit updates ownership
-/// install state and appends play observations; a miss creates a fresh
-/// Work + Release (1:1 for M0) + external id + ownership.
-///
-/// <para><b>Never</b> fuzzy/title matching here. Soft matching writes to the
-/// merge_candidates queue with a human in the loop, and that is M1's job —
-/// fuzzy matching would confidently merge Prey (2006) with Prey (2017) (§5.3).</para>
-///
-/// <para>Idempotent by change detection, not by observation time: a re-sync
-/// with unchanged playtime writes no new play_records or playtime_snapshots
-/// even though ObservedAt differs.</para>
-///
-/// <para><b>One pass, one observation per ownership.</b> Change detection asks
-/// whether a candidate differs from the newest STORED record, which is only a
-/// meaningful question if the candidates within a pass are a time series. Two
-/// sources describing the same appid are not: they are two views of one instant.
-/// So the pass opens by collapsing them through
-/// <see cref="CandidateOwnershipMerge"/>. Doing it here rather than in the
-/// caller is what makes the invariant hold for every caller — this is the only
-/// component that knows candidates map many-to-one onto ownerships, because
-/// performing that mapping is its job. Left un-collapsed, two sources that
-/// disagree by a single minute each "changed" relative to the other and appended
-/// a row apiece on every sync, forever.</para>
-///
-/// <para><b>Provisional names.</b> A candidate may arrive with a null
-/// <see cref="CandidateOwnership.Title"/> — a Steam appid known only from
-/// localconfig playtime, with no installed manifest to name it. Since
-/// <c>works.name</c> is NOT NULL, such a work is created as
-/// <c>"App &lt;provider_id&gt;"</c> with <c>name_is_provisional = 1</c>, and the
-/// M1 enrichment pass replaces it. The promotion is one-way: when a real title
-/// later arrives (the user installs the game) it overwrites the placeholder and
-/// clears the flag, but a real title is never overwritten by a placeholder, so
-/// a game that gets uninstalled keeps its name.</para>
-///
-/// <para><b>Atomicity.</b> The whole pass runs inside one
-/// <see cref="IUnitOfWork"/>: one connection, one transaction, one commit.
-/// A work, its release and its external id are only meaningful together — a
-/// crash between the release insert and the external-id insert would leave a
-/// work no later sync can find by external id, so the next sync mints a
-/// duplicate and the library shows both, forever (§5.3: "get it wrong and the
-/// dataset is untrustworthy"). It is also what makes a cold 615-game sync one
-/// fsync instead of several thousand.</para>
+/// Hard-join resolver (§5.3 step 1): maps <see cref="CandidateOwnership"/>
+/// onto Work/Release/Ownership/PlayRecord by exact (provider, provider_id)
+/// match. A hit updates ownership and appends play observations; a miss
+/// creates a new Work + Release + external id. Collapses duplicate sources
+/// via <see cref="CandidateOwnershipMerge"/> before comparing. Idempotent
+/// by change detection. Runs atomically in one <see cref="IUnitOfWork"/>.
 /// </summary>
 public sealed class ExternalIdResolver
 {
@@ -106,8 +64,7 @@ public sealed class ExternalIdResolver
         IReadOnlyCollection<CandidateOwnership> candidates,
         CancellationToken ct = default)
     {
-        // Two views of one ownership become one observation before anything is
-        // compared against the database. See the type docs.
+        // Collapse duplicate sources into one observation per ownership.
         var observations = CandidateOwnershipMerge.Coalesce(candidates);
 
         var matched = 0;
@@ -116,9 +73,7 @@ public sealed class ExternalIdResolver
         var snapshotsWritten = 0;
         var namesPromoted = 0;
 
-        // Repositories enlist in this scope automatically; nothing below changes
-        // shape. Dispose without Commit — a throw, a cancellation, a crash —
-        // rolls the entire pass back, leaving no half-built entity behind.
+        // Dispose without Commit rolls the entire pass back.
         using var scope = _unitOfWork.Begin();
 
         foreach (var candidate in observations)
@@ -148,12 +103,8 @@ public sealed class ExternalIdResolver
 
             var ownershipId = await UpsertOwnershipAsync(releaseId, candidate, ct);
 
-            // A candidate carrying neither minutes nor a date is "no
-            // observation", not an observation of zero — never fabricate a play
-            // record for it. A date without minutes IS an observation, though:
-            // an appmanifest LastPlayed on a machine whose userdata is
-            // unreadable is the only evidence of play that machine has, and
-            // discarding it read the entire library as never_played.
+            // Neither minutes nor date means "no observation". A date without
+            // minutes IS an observation (appmanifest LastPlayed with no userdata).
             if (candidate.PlaytimeMinutes is not null || candidate.LastPlayedAt is not null)
             {
                 var minutes = candidate.PlaytimeMinutes ?? 0;
@@ -163,8 +114,7 @@ public sealed class ExternalIdResolver
                     playRecordsWritten++;
                 }
 
-                // Snapshots are a playtime series; a date-only observation has
-                // no point to plot, so it appends nothing.
+                // Date-only observations have no playtime to plot.
                 if (candidate.PlaytimeMinutes is not null
                     && await AppendSnapshotIfChangedAsync(ownershipId, minutes, candidate, ct))
                 {
@@ -185,23 +135,14 @@ public sealed class ExternalIdResolver
         return new ResolveResult(matched, created, playRecordsWritten, snapshotsWritten, namesPromoted);
     }
 
-    /// <summary>
-    /// The placeholder name for a title-less candidate. Deliberately stable and
-    /// derivable from the provider id so a re-sync produces the same string.
-    /// </summary>
+    /// <summary>Placeholder name for a title-less candidate.</summary>
     private static string ProvisionalName(CandidateOwnership candidate)
         => $"App {candidate.ProviderId}";
 
     private async Task<long> CreateWorkAndReleaseAsync(CandidateOwnership candidate, CancellationToken ct)
     {
-        // M0: Work and Release are 1:1, both named from the raw candidate
-        // title. Enrichment/merging refines this later — never here.
-        // A missing title means the source has no name for this app (played but
-        // uninstalled on Steam); works.name is NOT NULL, so mint a flagged
-        // placeholder rather than inventing a title. Whitespace-only counts as
-        // missing: an appmanifest with `"name" ""` would otherwise create a
-        // blank work that is not flagged provisional, so promotion can never
-        // repair it and the library shows a nameless tile forever.
+        // Work and Release are 1:1 in M0. Missing/blank title gets a flagged
+        // placeholder so promotion can repair it later.
         var provisional = string.IsNullOrWhiteSpace(candidate.Title);
         var name = provisional ? ProvisionalName(candidate) : candidate.Title!;
 
@@ -226,17 +167,11 @@ public sealed class ExternalIdResolver
         return releaseId;
     }
 
-    /// <summary>
-    /// Promotes a placeholder name to a real title when a later sync supplies
-    /// one. One-way by construction: a candidate with no title cannot demote an
-    /// existing name, and a work already holding a real title is left alone
-    /// (renaming on every sync would fight both enrichment and the user).
-    /// </summary>
+    /// <summary>One-way promotion of a placeholder name to a real title.</summary>
     private async Task<bool> PromoteProvisionalNameAsync(
         Release release, CandidateOwnership candidate, CancellationToken ct)
     {
-        // Whitespace-only is "no title", not a title: it must neither promote a
-        // placeholder nor overwrite a real name with blanks.
+        // Whitespace-only is "no title".
         if (string.IsNullOrWhiteSpace(candidate.Title))
         {
             return false;
@@ -252,8 +187,7 @@ public sealed class ExternalIdResolver
 
         await _works.UpdateNameAsync(work.Id, title, nameIsProvisional: false, ct);
 
-        // Releases have no flag of their own; in M0 they are 1:1 with the work,
-        // so the placeholder they were created with is promoted alongside it.
+        // Also promote the release name (1:1 with work in M0).
         if (!string.Equals(release.Name, title, StringComparison.Ordinal))
         {
             await _releases.UpdateNameAsync(release.Id, title, ct);
@@ -267,18 +201,8 @@ public sealed class ExternalIdResolver
 
     private Task<long> UpsertOwnershipAsync(
         long releaseId, CandidateOwnership candidate, CancellationToken ct)
-        // M0: one ownership per (release, store), now enforced by a UNIQUE index
-        // (migration 0003) instead of a read-then-insert. Account attribution is
-        // not part of the key — matching on it would mint duplicate ownerships
-        // when the winning account changes between syncs — but it IS refreshed
-        // on every pass, so it always names the account whose minutes and
-        // last-played the newest play record carries.
-        //
+        // One ownership per (release, store), enforced by UNIQUE index.
         // Installed passes through as the three-valued answer the source gave.
-        // The resolver deliberately does not decide it: flattening null to false
-        // here, or ranking sources by name, would put "which source ran last"
-        // back in charge of what the library says is on disk. The write rule
-        // lives in the upsert, where "no opinion" can leave the columns alone.
         => _ownerships.UpsertAsync(new OwnershipUpsert(
             ReleaseId: releaseId,
             Store: candidate.Provider,
@@ -312,9 +236,7 @@ public sealed class ExternalIdResolver
     private async Task<bool> AppendSnapshotIfChangedAsync(
         long ownershipId, long minutes, CandidateOwnership candidate, CancellationToken ct)
     {
-        // Only the newest snapshot decides whether this one is a change. Reading
-        // the whole series to look at its last element is an N+1 over a table
-        // that grows for the lifetime of the library.
+        // Only compare against the newest snapshot.
         var lastSnapshot = await _snapshots.GetLatestAsync(ownershipId, ct);
         if (lastSnapshot is not null && lastSnapshot.PlaytimeMinutes == minutes)
         {

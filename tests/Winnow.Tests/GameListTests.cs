@@ -6,14 +6,7 @@ using Xunit;
 namespace Winnow.Tests;
 
 /// <summary>
-/// The two kinds of list, against a migrated database.
-///
-/// <para><b>A list</b> is a fixed, ordered set the user assembled by hand.
-/// <b>A live list</b> stores a rule and no items, and its membership is whatever
-/// the rule says at the moment it is read. The tests that matter most are the
-/// two that state the difference — a live list keeps up when the library changes
-/// and a manual list does not — and the one that states what deleting a list
-/// costs, which is nothing but the list.</para>
+/// Manual lists and live lists against a migrated database.
 /// </summary>
 public class GameListTests : IDisposable
 {

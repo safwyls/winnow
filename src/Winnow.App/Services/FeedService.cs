@@ -7,60 +7,14 @@ using Microsoft.Extensions.Logging;
 namespace Winnow.App.Services;
 
 /// <summary>
-/// The only place in the app where the Feed screen's question meets the module
-/// that can answer it, and the only place the feedback loop is written.
-///
-/// <para><b>Three jobs, and the second one is the load-bearing one.</b> It
-/// translates <see cref="ShelfFeed"/> into the App-layer shapes in
-/// <see cref="IFeedService"/> — see there for why the view model may not name a
-/// scoring type — it gets the scoring pass off the UI thread, and it owns the
-/// storage side of §6b: verdicts in, surfacings out.</para>
-///
-/// <para><b>Why <see cref="Task.Run(Func{Task})"/> around an async method.</b>
-/// <c>RecommendationEngine</c> is asynchronous in signature and synchronous in
-/// fact: every read underneath it is Dapper over Microsoft.Data.Sqlite, which
-/// completes on the calling thread. Awaiting <c>GetShelvesAsync</c> from the
-/// dispatcher would therefore run all ~500ms of it ON the dispatcher and freeze
-/// the window — the await would never yield, because there is nothing to yield
-/// to. Measured on the author's library: 638ms cold, 490–530ms warm, over 997
-/// candidates. §5.1 pitfall 3 is exactly this. <b>Every method on this class
-/// obeys the same rule</b>, including the three-row verdict writes: they are the
-/// same synchronous provider, and a lock contended by a running scoring pass is
-/// not a fast write.</para>
-///
-/// <para><b>The engine is optional and a missing one is an answer.</b> A host
-/// that never registered it gets <see cref="FeedSnapshot.Unavailable"/>, which
-/// the screen already draws as a sentence — an unregistered module degrades into
-/// copy rather than into a startup failure, the same rule
-/// <see cref="StoreConnections"/> follows. The feedback store is optional in
-/// exactly the same way, and degrades further: with no store the feed still
-/// computes, and only the loop is missing.</para>
-///
-/// <para><b>The §6b contract, in order, once per load.</b>
-/// <c>FeedbackSets.LoadAsync</c> → <c>Apply(request)</c> →
-/// <c>GetShelvesAsync</c> → <c>RecordSurfacedAsync(SurfacingsOf(feed, now))</c>.
-/// All four run on the same background task and against the same instant, which
-/// is what stops "active", "recent" and "today" disagreeing between the read
-/// that feeds the engine and the write that records what it produced.</para>
-///
-/// <para><b>A failed surfacing write is not a failed feed.</b> The log is the
-/// engine's cross-day rotation memory (§6a), so losing a day of it costs
-/// rotation quality — the user sees some of yesterday's picks again — and
-/// nothing else. It is therefore caught and logged where it happens, inside the
-/// background task, and the computed feed is returned regardless. Letting it
-/// throw would turn "rotation is slightly worse today" into "the Feed screen is
-/// an apology", which is the wrong trade by an enormous margin.</para>
+/// Implements <see cref="IFeedService"/>: translates the recommendation engine's
+/// output into App-layer types, runs scoring off the UI thread (Dapper calls are
+/// synchronous ~500ms), and owns the verdict/surfacing feedback loop (§6b).
+/// Engine and feedback store are both optional; missing ones degrade gracefully.
 /// </summary>
 public sealed class FeedService : IFeedService
 {
-    /// <summary>
-    /// The model's parameters, resolved once so that the request and the
-    /// feedback read cannot drift. <c>FeedbackSets.LoadAsync</c> reads
-    /// <c>SurfacedWindowDays</c> and <c>EndorsementWindowDays</c> off it while
-    /// the engine reads every other number, and two instances here would mean a
-    /// recently-surfaced set computed over a different window than the penalty
-    /// that consumes it.
-    /// </summary>
+    /// <summary>Shared tuning instance so the feedback read and the scoring pass use the same parameters.</summary>
     private static readonly RecommendationTuning Tuning = RecommendationTuning.Default;
 
     private readonly IRecommendationEngine? _engine;
@@ -256,11 +210,7 @@ public sealed class FeedService : IFeedService
         }
     }
 
-    /// <summary>
-    /// §6b's five steps, minus the two the user's clicks drive: read the
-    /// feedback sets, stamp them on the request, score, log what was shown.
-    /// Runs entirely on a background thread — see the class remarks.
-    /// </summary>
+    /// <summary>Loads feedback, scores candidates, records surfacings. Runs on a background thread.</summary>
     private async Task<ShelfFeed> ComputeAsync(DateTime now, CancellationToken ct)
     {
         // No store is a real state, not an error: the feed still computes, it
@@ -299,19 +249,7 @@ public sealed class FeedService : IFeedService
         return feed;
     }
 
-    /// <summary>
-    /// Appends what this feed showed to the surfacing log — the cross-day
-    /// memory behind rotation (§6a) and half of the launch-endorsement join
-    /// (§6b). Idempotent per (release, day), so a same-day refresh writes
-    /// nothing and cannot shift the day's feed.
-    ///
-    /// <para><b>It swallows.</b> This is a write on a path that used to only
-    /// read, and the feed must survive it failing: the cost of a lost day is
-    /// that tomorrow's rotation repeats some of today's picks, which is a worse
-    /// feed and not a broken one. The alternative — an exception out of here —
-    /// would replace five shelves of real recommendations with an apology over a
-    /// bookkeeping row.</para>
-    /// </summary>
+    /// <summary>Logs surfacings for rotation memory. Idempotent per (release, day). Swallows failures.</summary>
     private async Task RecordSurfacedAsync(ShelfFeed feed, DateTime now, CancellationToken ct)
     {
         if (_feedback is null)
@@ -360,14 +298,14 @@ public sealed class FeedService : IFeedService
         _ => FeedConfidence.EarlyDays,
     };
 
-    /// <summary>The App layer's word for the kind, in the schema's own vocabulary. The seam, in two lines.</summary>
+    /// <summary>Maps the App-layer verdict kind to the schema's storage string.</summary>
     private static string StorageKind(FeedVerdictKind kind) => kind switch
     {
         FeedVerdictKind.Snoozed => FeedVerdictKinds.Snoozed,
         _ => FeedVerdictKinds.NotInterested,
     };
 
-    /// <summary>The reverse, and null for a kind this build has no word for.</summary>
+    /// <summary>Maps the storage string to the App-layer kind, or null if unrecognised.</summary>
     private static FeedVerdictKind? Kind(string storageKind) => storageKind switch
     {
         FeedVerdictKinds.NotInterested => FeedVerdictKind.NotInterested,
@@ -375,11 +313,7 @@ public sealed class FeedService : IFeedService
         _ => null,
     };
 
-    /// <summary>
-    /// Where a stored row stands, computed rather than read: "active" is never a
-    /// column (§6b), so a lapsed snooze becomes inactive with no write anywhere
-    /// and there is no cached state to drift.
-    /// </summary>
+    /// <summary>Computes verdict status from the row and current time. "Active" is derived, never stored.</summary>
     private static FeedVerdictStatus Status(FeedVerdict verdict, DateTime now)
     {
         if (verdict.RevokedAt is not null)

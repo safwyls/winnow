@@ -17,32 +17,13 @@ internal sealed record EpicLibraryRecord(
     DateTime? AcquiredAt);
 
 /// <summary>
-/// Reads the authenticated Epic responses.
-///
-/// <para>Hand-walked with <see cref="JsonDocument"/> rather than bound to POCOs,
-/// matching every other reader in this assembly and for the same reason the
-/// csproj records: Epic's shapes are full of fields whose <i>absence</i> carries
-/// meaning, and a binder turns absence into a default that reads as an answer.
-/// The specific case here is playtime — an artifact missing from the playtime
-/// list must become null, and a binder would hand back zero.</para>
-///
-/// <para>Every reader returns null for "this is not that shape" rather than
-/// throwing. A response Winnow cannot parse is an unanswered pass, never a
-/// crash.</para>
+/// Reads authenticated Epic responses with <see cref="JsonDocument"/>, preserving
+/// the distinction between absent and default-valued fields. Returns null for
+/// unparseable responses.
 /// </summary>
 internal static class EpicWebJson
 {
-    /// <summary>
-    /// One page of library items, or null when the body is not a library page.
-    ///
-    /// <para>Pagination is <c>responseMetadata.nextCursor</c>, re-sent as
-    /// <c>?cursor=</c>. An absent or blank cursor ends the walk.</para>
-    ///
-    /// <para>A record missing either <c>catalogItemId</c> or <c>appName</c> is
-    /// skipped rather than failing the page: the first is the ownership key and
-    /// the second is the playtime key, and a record with neither cannot be joined
-    /// to anything. Skipping one bad record is better than discarding a library.</para>
-    /// </summary>
+    /// <summary>One page of library items, or null when the body is not a library page.</summary>
     public static EpicLibraryPage? TryReadLibraryPage(string? body)
     {
         if (string.IsNullOrWhiteSpace(body))
@@ -105,22 +86,8 @@ internal static class EpicWebJson
     }
 
     /// <summary>
-    /// The playtime list, keyed by <c>artifactId</c>, or null when the body is
-    /// not a playtime list.
-    ///
-    /// <para>Shape confirmed from the live GraphQL schema, which fronts this same
-    /// REST service: <c>Playtime { accountId: String!, artifactId: String!,
-    /// totalTime: Int! }</c>. All three are non-null in the schema, so a record
-    /// missing <c>artifactId</c> or <c>totalTime</c> is a shape change rather
-    /// than an ordinary variation, and is skipped.</para>
-    ///
-    /// <para><b>An empty array is a real answer</b> — "Epic has recorded no
-    /// playtime for this account" — and is returned as an empty dictionary, not
-    /// as null. The distinction matters: null means the call failed and every
-    /// item's playtime stays unknown, while empty means the call worked and every
-    /// item's playtime is genuinely unrecorded. Both leave
-    /// <see cref="EpicLibraryItem.TotalPlaytime"/> null, but only the second
-    /// justifies saying so.</para>
+    /// The playtime list keyed by <c>artifactId</c>, or null when the body is not
+    /// a playtime list. An empty dictionary means Epic answered with no playtime.
     /// </summary>
     public static IReadOnlyDictionary<string, long>? TryReadPlaytime(string? body)
     {
@@ -170,19 +137,8 @@ internal static class EpicWebJson
     }
 
     /// <summary>
-    /// One <c>catalog/api/shared/namespace/{ns}/bulk/items</c> response, or null
-    /// when the body is not that shape.
-    ///
-    /// <para><b>The response is an OBJECT keyed by catalog item id</b>, not an
-    /// array — verified live 2026-08-26 against the author's account. Ids the
-    /// service does not recognise are simply absent from it, which is a real
-    /// answer ("Epic has no such catalog item") and is why the caller can cache a
-    /// miss. That is a different thing from the request failing, and only this
-    /// method's <c>null</c> means the latter.</para>
-    ///
-    /// <para>An empty object is therefore returned as an empty dictionary, not as
-    /// null: Epic answered, and answered that it knows none of the ids asked
-    /// about.</para>
+    /// Reads a catalog bulk-items response (object keyed by catalog item id), or
+    /// null when the body is not that shape.
     /// </summary>
     public static IReadOnlyDictionary<string, EpicCatalogItemInfo>? TryReadCatalogItems(string? body)
     {
@@ -285,18 +241,7 @@ internal static class EpicWebJson
             ReadMainGameCatalogItemId(entry));
     }
 
-    /// <summary>
-    /// The parent catalog item id, from either spelling.
-    ///
-    /// <para>The live response carries <b>both</b> <c>mainGameItem</c> (an
-    /// object) and <c>mainGameItemList</c> (an array), and which of them is
-    /// present varies per entry — asset packs have only the list, and it is
-    /// empty; the Borderlands 3 and ARK add-ons have both. Reading only one
-    /// spelling would silently classify half the DLC in a library as base games.
-    /// The empty-string case matters too: <c>catcache.bin</c> writes
-    /// <c>{"namespace":"","id":""}</c> on a base game rather than omitting the
-    /// object, so blank is filtered here and not left to the caller.</para>
-    /// </summary>
+    /// <summary>The parent catalog item id from <c>mainGameItem</c> or <c>mainGameItemList</c>, or null.</summary>
     private static string? ReadMainGameCatalogItemId(JsonElement entry)
     {
         if (entry.TryGetProperty("mainGameItem", out var mainGame)

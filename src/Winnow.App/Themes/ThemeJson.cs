@@ -5,44 +5,15 @@ using Avalonia.Media;
 namespace Winnow.App.Themes;
 
 /// <summary>
-/// Reads a theme file, and writes one.
-///
-/// <para><b>The whole surface is <c>string in, theme-or-diagnostics out</c>.</b>
-/// Nothing here opens a file, resolves a path, or runs anything the document
-/// asked it to. A theme is a colour table with a name on it, and the only two
-/// value shapes that cross this boundary are a hex colour and a bounded number
-/// — no expressions, no references to other files, no paths dereferenced from
-/// the document, and no code. That is not a policy applied on top of the
-/// format; it is the reason the format has no place to put any of those things.
-/// <c>UserThemeStore</c> does the file handling and hands text in.</para>
-///
-/// <para><b>Nothing here throws.</b> A theme file is the one input to this
-/// application that a person hand-edits and then immediately looks at the
-/// window to see whether it worked, so a parse failure has to arrive as
-/// something the Appearance screen can print rather than as an exception in a
-/// path the settings screen is on. Every failure comes back as a
-/// <see cref="ThemeDiagnostic"/> naming the file, the field and what was
-/// expected.</para>
+/// Reads a theme file and writes one. Pure string-in, theme-or-diagnostics-out;
+/// nothing here opens a file or throws. Failures come back as
+/// <see cref="ThemeDiagnostic"/> instances for the Appearance screen.
 /// </summary>
 public static class ThemeJson
 {
     /// <summary>
-    /// The version this build reads, and refuses anything else.
-    ///
-    /// <para><b>Honoured from day one, because the alternative has already
-    /// happened here.</b> ROADMAP §6 records the IGDB cache shipping with no
-    /// <c>payload_version</c>: a field added to the cached shape later would
-    /// have yielded empty results against thirty days of old rows, silently,
-    /// with nothing to notice it by. A theme file has the same property and a
-    /// worse failure — a document written to a version that moved a field would
-    /// load with that field at its default and produce a theme the author did
-    /// not write, in colours close enough to look intentional.</para>
-    ///
-    /// <para><b>So an unknown version is REFUSED, not best-guessed.</b> Both
-    /// directions: a file from a later build is refused because we cannot know
-    /// what its fields mean, and a file claiming a version below 1 is refused
-    /// because there was no such format. Refusal costs an author one line in a
-    /// text editor; a silent wrong answer costs them an afternoon.</para>
+    /// The version this build reads; an unknown version is refused rather than
+    /// best-guessed so a moved field cannot silently produce the wrong theme.
     /// </summary>
     public const int SchemaVersion = 1;
 
@@ -61,15 +32,8 @@ public static class ThemeJson
 
     private const int MaxIdLength = 48;
 
-    /// <summary>
-    /// Every scalar the format accepts, with the range it accepts it in and the
-    /// sentence that explains it.
-    ///
-    /// <para>One table rather than a switch, because it is read three ways: to
-    /// validate, to name the unknown keys an author's typo produced, and to
-    /// write the commented example. Three copies of eleven field names is three
-    /// chances for one of them to drift.</para>
-    /// </summary>
+    /// <summary>Every scalar the format accepts, with its valid range. One
+    /// table used for validation, unknown-key diagnostics, and export.</summary>
     private static readonly (string Key, double Min, double Max, bool Structure)[] Scalars =
     [
         ("elevation", 0.005, 0.30, true),
@@ -235,16 +199,8 @@ public static class ThemeJson
     }
 
     /// <summary>
-    /// A theme as a file an author can start from: its eight seeds, the
-    /// proportions it is actually built to, and only those colours the
-    /// proportions do not reproduce.
-    ///
-    /// <para><b>What makes this a template rather than a dump.</b> Running
-    /// <c>ThemeDerivation.Fit</c> first means the exported Nightshift says
-    /// <c>"edge": 2.46</c> — which is the whole of what makes Nightshift a room
-    /// rather than a dark palette — instead of <c>"Line": "#3E5275"</c>, which
-    /// says nothing and cannot be edited without re-deriving four other
-    /// values by hand.</para>
+    /// Exports a theme as a template: seeds, fitted proportions, and only
+    /// those colours the derivation cannot reproduce.
     /// </summary>
     public static string Export(WinnowTheme theme)
     {
@@ -304,15 +260,8 @@ public static class ThemeJson
         string.Create(CultureInfo.InvariantCulture, $"#{c.R:X2}{c.G:X2}{c.B:X2}");
 
     /// <summary>
-    /// A colour, strictly.
-    ///
-    /// <para>Not <c>Color.Parse</c>: that throws, accepts the 140 CSS names, and
-    /// accepts an eight-digit form whose alpha this format has nothing to do
-    /// with. All three are wrong for an author's tool - the first because a
-    /// parse failure has to become a printed sentence, the second because
-    /// <c>"papayawhip"</c> in a palette file is a mistake dressed as a value,
-    /// and the third because an alpha written here would be silently dropped by
-    /// the token layer that applies its own.</para>
+    /// Parses a six-digit hex colour strictly. No CSS names, no eight-digit
+    /// alpha form, and failures return a diagnostic rather than throwing.
     /// </summary>
     public static bool TryParseColour(string? value, out Color colour, out string problem)
     {

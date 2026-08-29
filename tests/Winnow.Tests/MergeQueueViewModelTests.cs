@@ -240,10 +240,10 @@ public sealed class MergeQueueViewModelTests
         Assert.True(card.IsPriority);
 
         Assert.Equal(
-            ["TITLE DISTANCE", "YEAR DELTA", "PUBLISHER", "COVER", "EDITION"],
+            ["TITLE", "YEAR", "PUBLISHER", "COVER", "EDITION"],
             card.Signals.Select(s => s.Label));
 
-        var year = card.Signals.Single(s => s.Label == "YEAR DELTA");
+        var year = card.Signals.Single(s => s.Label == "YEAR");
         Assert.True(year.Fired);
         Assert.Equal("Δ1", year.ValueText);
         Assert.Equal("+0.15", year.ContributionText);
@@ -279,7 +279,7 @@ public sealed class MergeQueueViewModelTests
         Assert.Equal("—", card.YearDeltaText);
         Assert.Equal("—", card.PublisherMatchText);
 
-        var year = card.Signals.Single(s => s.Label == "YEAR DELTA");
+        var year = card.Signals.Single(s => s.Label == "YEAR");
         Assert.False(year.Fired);
         Assert.Equal("—", year.ValueText);
         Assert.Equal(" 0.00", year.ContributionText);
@@ -393,9 +393,7 @@ public sealed class MergeQueueViewModelTests
         // the queue. It states nothing about the library, because nothing has
         // yet looked at the library.
         Assert.Equal(
-            "Nothing to review yet. Winnow hasn't finished comparing your library for records that "
-            + "might be the same game — that runs in the background after a scan. Anything it can't "
-            + "call lands here, and nothing merges until you say so.",
+            "Nothing to review yet. Still comparing your library for duplicates.",
             queue.EmptyMessage);
     }
 
@@ -412,8 +410,7 @@ public sealed class MergeQueueViewModelTests
         Assert.True(queue.HasCompletedSweep);
 
         Assert.Equal(
-            "Nothing to review. Winnow compared every record in your library and found no two it "
-            + "couldn't tell apart. Anything ambiguous lands here, and nothing merges until you say so.",
+            "Nothing to review. No ambiguous pairs found.",
             queue.EmptyMessage);
     }
 

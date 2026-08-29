@@ -1,4 +1,5 @@
 using Winnow.Core.Domain;
+using Winnow.Core.Queries;
 using Winnow.Core.Repositories;
 using Winnow.Data.Repositories;
 using Winnow.Resolve;
@@ -239,6 +240,121 @@ public sealed class LibrarySoftMatchSweepTests
         Assert.NotNull(await fixture.ResolveState.GetLastSoftMatchSweepAsync());
     }
 
+    // ── Only games are worth asking a human about ────────────────────────────
+
+    /// <summary>
+    /// The case that put 27 of 28 pairs in a real review queue. Epic's
+    /// authenticated library service returns bare entitlements, so the engine
+    /// builds and marketplace asset packs it hands over reach the database as
+    /// works — and Epic issues the same display name under two different catalog
+    /// item ids, so "Infinity Blade: Weapons" really does duplicate itself. The
+    /// title match is correct; the question is not worth asking.
+    /// </summary>
+    [Fact]
+    public async Task Epic_engine_and_asset_entitlements_are_never_compared()
+    {
+        using var fixture = new SweepFixture();
+        await fixture.AddAsync(
+            "Infinity Blade: Weapons",
+            epicCategories: "asset-format/game-engine,type/format-item,asset-format");
+        await fixture.AddAsync(
+            "Infinity Blade: Weapons",
+            epicCategories: "assets/showcasedemos,assets");
+        await fixture.AddAsync("Unreal Engine", epicCategories: "engines,engines/ue4");
+        await fixture.AddAsync("Unreal Engine Chaos", epicCategories: "engines/unstable,engines,engines/ue4");
+
+        var report = await fixture.Sweep.SweepAsync();
+
+        Assert.Equal(4, report.Excluded);
+        Assert.Equal(0, report.PairsProposed);
+        Assert.Empty(await fixture.Candidates.GetPendingAsync());
+    }
+
+    /// <summary>Valve's vocabulary, same rule: a dedicated server is not a game.</summary>
+    [Fact]
+    public async Task Steam_tools_are_never_compared()
+    {
+        using var fixture = new SweepFixture();
+        await fixture.AddAsync("Palworld Dedicated Server", steamAppType: "Tool");
+        await fixture.AddAsync("Palworld Dedicated Server", steamAppType: "tool");
+
+        var report = await fixture.Sweep.SweepAsync();
+
+        Assert.Equal(2, report.Excluded);
+        Assert.Empty(await fixture.Candidates.GetPendingAsync());
+    }
+
+    /// <summary>
+    /// The regression this filter could most easily cause. Most of a real
+    /// library has never been probed, so an unclassified row is the NORMAL case:
+    /// if null read as "not a game" the sweep would compare nothing at all.
+    /// </summary>
+    [Fact]
+    public async Task An_unclassified_release_is_still_compared()
+    {
+        using var fixture = new SweepFixture();
+        await fixture.AddAsync("The Witcher 3: Wild Hunt", 2015);
+        await fixture.AddAsync("The Witcher III: Wild Hunt", 2015);
+
+        var report = await fixture.Sweep.SweepAsync();
+
+        Assert.Equal(0, report.Excluded);
+        Assert.Equal(1, report.Outcome.Queued);
+    }
+
+    /// <summary>
+    /// A pair queued before anything knew what these rows were. The classifying
+    /// pass writes <c>epic_categories</c>, the next sweep stops admitting them —
+    /// and the rows already in the queue have to go, because nothing will ever
+    /// propose them again and the user cannot clear them except by answering a
+    /// question about two asset packs.
+    /// </summary>
+    [Fact]
+    public async Task A_pending_pair_is_retired_once_its_releases_are_classified()
+    {
+        using var fixture = new SweepFixture();
+        var left = await fixture.AddAsync("Infinity Blade: Ice Lands");
+        var right = await fixture.AddAsync("Infinity Blade: Ice Lands");
+
+        Assert.Equal(1, (await fixture.Sweep.SweepAsync()).Outcome.Queued);
+        Assert.Single(await fixture.Candidates.GetPendingAsync());
+
+        await fixture.ClassifyEpicAsync(left, "assets/showcasedemos,assets");
+        await fixture.ClassifyEpicAsync(right, "asset-format/game-engine,type/format-item");
+
+        var report = await fixture.Sweep.SweepAsync();
+
+        Assert.Equal(1, report.ExcludedWithdrawn);
+        Assert.Empty(await fixture.Candidates.GetPendingAsync());
+    }
+
+    /// <summary>
+    /// Retirement is a proposal being retracted, never a decision being erased.
+    /// Both terminal statuses survive it — a pair the user answered stays
+    /// answered, which is what stops a rejected pair coming back.
+    /// </summary>
+    [Fact]
+    public async Task Retiring_never_touches_an_answered_pair()
+    {
+        using var fixture = new SweepFixture();
+        var left = await fixture.AddAsync("Infinity Blade: Ice Lands");
+        var right = await fixture.AddAsync("Infinity Blade: Ice Lands");
+
+        await fixture.Sweep.SweepAsync();
+        var answered = Assert.Single(await fixture.Candidates.GetPendingAsync());
+        await fixture.Candidates.SetStatusAsync(answered.Id, MergeCandidateStatuses.Rejected);
+
+        await fixture.ClassifyEpicAsync(left, "assets/showcasedemos,assets");
+        await fixture.ClassifyEpicAsync(right, "assets/showcasedemos,assets");
+
+        var report = await fixture.Sweep.SweepAsync();
+
+        Assert.Equal(0, report.ExcludedWithdrawn);
+        Assert.Equal(
+            MergeCandidateStatuses.Rejected,
+            (await fixture.Candidates.FindByPairAsync(left, right))!.Status);
+    }
+
     // ── Fixture ──────────────────────────────────────────────────────────────
 
     private sealed class SweepFixture : IDisposable
@@ -271,16 +387,36 @@ public sealed class LibrarySoftMatchSweepTests
         public LibrarySoftMatchSweep Sweep { get; }
 
         /// <summary>One work, one release, one Steam id — the M1 shape.</summary>
-        public async Task<long> AddAsync(string title, int? year = null, bool provisional = false)
+        /// <param name="steamAppType">Valve's <c>common.type</c>; null is the unprobed norm.</param>
+        /// <param name="epicCategories">Epic's comma-joined category paths; null is the unprobed norm.</param>
+        public async Task<long> AddAsync(
+            string title,
+            int? year = null,
+            bool provisional = false,
+            string? steamAppType = null,
+            string? epicCategories = null)
         {
             var workId = await Works.InsertAsync(new Work
             {
                 Name = title,
                 FirstReleaseYear = year,
                 NameIsProvisional = provisional,
+                SteamAppType = steamAppType,
+                EpicCategories = epicCategories,
             });
 
             return await AddReleaseAsync(workId, title);
+        }
+
+        /// <summary>
+        /// What the Epic catalog pass does to a work that was already in the
+        /// library: fills in the categories nobody had read when it was queued.
+        /// </summary>
+        public async Task ClassifyEpicAsync(long releaseId, string epicCategories)
+        {
+            var release = await Releases.GetAsync(releaseId);
+            await Works.ApplyEnrichmentAsync(
+                new WorkEnrichment(release!.WorkId, EpicCategories: epicCategories));
         }
 
         public async Task<long> AddReleaseAsync(long workId, string name)

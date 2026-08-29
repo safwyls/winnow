@@ -39,54 +39,11 @@ public sealed record EnrichmentLookupPlan(
 }
 
 /// <summary>
-/// Works out, per store, how a release reaches IGDB — the step that did not
-/// exist while enrichment only ever asked about Steam.
-///
-/// <para><b>The bug this class is the answer to.</b> The enrichment pass asked
-/// the repository for Steam targets and asked IGDB with Steam's
-/// <c>external_game_source</c>, both hardcoded. Every Epic and GOG release in
-/// the library was therefore invisible to it — measured on the author's real
-/// library as 67 Epic and 14 GOG works with zero <c>igdb_id</c>, zero covers,
-/// zero years and zero summaries between them. Not a low number: exactly zero,
-/// which is what a question nobody asked looks like.</para>
-///
-/// <para><b>Three routes, and the reason each store gets the one it gets</b>
-/// (all measured, see <c>docs/spikes/epic-gog-local-files.md</c> section 19–20
-/// and re-verified live against the author's library while fixing this):</para>
-/// <list type="bullet">
-///   <item><b>Steam → source 1.</b> The original path, 865 of 946 matched.</item>
-///   <item><b>GOG → source 5.</b> IGDB stores the bare GOG product id verbatim,
-///     so this is the same hard join with a different source id and no other
-///     machinery at all: 13 of 14 matched on the first try. The single miss is
-///     "The Witcher 3 REDkit", a modding toolkit rather than a game.</item>
-///   <item><b>Epic → gamesdb → Steam appid → source 1.</b> Epic has no direct
-///     route. IGDB's source-26 uids are Epic store <i>offer</i> ids and CMS
-///     <i>page</i> ids; the launcher writes <c>CatalogItemId</c>, a third id
-///     space. Measured 0 of 67. So the Epic id is translated to its
-///     <c>AppName</c> from the local catalog, resolved through GOG's
-///     cross-store identity graph, and the Steam appid that comes back goes
-///     down the route that already works for 946 titles: 62 of 67 resolved.</item>
-/// </list>
-///
-/// <para><b>Why the Epic hop is not "just fuzzy matching with extra steps".</b>
-/// Every link is an exact identifier published by the service that owns it —
-/// <c>catalogItemId → AppName</c> from Epic's own catalog file,
-/// <c>epic/AppName → game_id → steam/appid</c> from GOG's graph,
-/// <c>appid → IGDB game</c> from <c>external_games</c>. No title is normalised
-/// and no similarity is scored, which is what §5.3's non-negotiable is about.
-/// The one thing it inherits is that gamesdb resolves <i>games</i>, not
-/// <i>editions</i>: an Epic "Gold Edition" can land on the base game's IGDB
-/// record. That is the right granularity for the Work columns this pass writes
-/// (title, year, summary, cover) and the wrong one for a Release, so this class
-/// produces metadata lookups and never a merge — §9's pitfall 5 stands
-/// untouched.</para>
-///
-/// <para><b>Nothing here writes anything, and silence is never an answer.</b> A
-/// target with no route is simply absent from <see cref="EnrichmentLookupPlan.Lookups"/>,
-/// and the caller must leave its columns exactly as it found them. Epic with no
-/// launcher on disk, gamesdb unreachable, and a title that genuinely has no
-/// cross-store twin are all indistinguishable here — deliberately, because the
-/// only safe reading of all three is "learned nothing this run".</para>
+/// Plans how each store's releases reach IGDB for enrichment.
+/// Steam and GOG use direct <c>external_game_source</c> lookups.
+/// Epic has no IGDB-indexed id, so it bridges through GOG's cross-store
+/// identity graph to obtain a Steam appid. Targets with no route are
+/// omitted from the plan and left unchanged by the caller.
 /// </summary>
 public sealed class EnrichmentLookupPlanner
 {
@@ -155,13 +112,7 @@ public sealed class EnrichmentLookupPlanner
         return new EnrichmentLookupPlan(lookups, routes);
     }
 
-    /// <summary>
-    /// The two-hop Epic route. Both hops are optional and both fail soft: no
-    /// alias source (no launcher on this machine), no identity graph
-    /// (unregistered), a title with no <c>AppName</c>, and a title with no Steam
-    /// twin all end the same way — the target has no lookup, and the caller
-    /// leaves its row alone.
-    /// </summary>
+    /// <summary>Plans the two-hop Epic route (Epic alias -> gamesdb -> Steam/GOG appid). Both hops fail soft.</summary>
     private async Task PlanEpicAsync(
         List<EnrichmentTarget> targets,
         Dictionary<TargetKey, IgdbLookup> lookups,
@@ -257,10 +208,7 @@ public sealed class EnrichmentLookupPlanner
             bridged, targets.Count, noAlias, noTwin);
     }
 
-    /// <summary>
-    /// The merged Epic alias map. Several sources may be registered; the first
-    /// to supply an id wins, and one throwing must not silence the rest.
-    /// </summary>
+    /// <summary>Merges Epic aliases from all registered sources. First value per id wins; individual source failures are swallowed.</summary>
     private async Task<Dictionary<string, string>> ReadEpicAliasesAsync(CancellationToken ct)
     {
         var merged = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -286,11 +234,7 @@ public sealed class EnrichmentLookupPlanner
         return merged;
     }
 
-    /// <summary>
-    /// The first all-digits id, or null. Both stores IGDB indexes use numeric
-    /// ids — Steam appids and GOG product ids alike — so this is a shape test
-    /// with real content, not a guess.
-    /// </summary>
+    /// <summary>Returns the first all-digits id, or null. Steam appids and GOG product ids are both numeric.</summary>
     private static string? FirstNumeric(IReadOnlyList<string> ids)
     {
         foreach (var id in ids)

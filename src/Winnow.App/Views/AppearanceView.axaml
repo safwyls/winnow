@@ -4,33 +4,14 @@
              x:Class="Winnow.App.Views.AppearanceView"
              x:DataType="vm:AppearanceViewModel">
 
-    <!--
-        SETTINGS › APPEARANCE. Two decisions: which theme, and how much of
-        the desktop the window admits.
-
-        The theme cards are the screen. Each one draws the window at 1/8 scale
-        out of its own palette — the caption and rail as one chrome bracket, one
-        lit row, the seam, a wall of capsules, one unread dot — rather than a
-        strip of colour chips. A chip row says what the hues are; the miniature
-        says what they DO, and since these four themes differ by value structure
-        and material rather than by hue, a chip row would say almost nothing at
-        all. Four of them side by side also state the invariant without a
-        sentence: the Flare dot changes colour and never changes job, and there
-        is exactly one of it per theme.
-
-        Nothing here animates. §12.5's rule is that motion lives in a style so
-        §8's reduced-motion setting can take it away, and a settings screen that
-        cross-fades while you compare four palettes is a settings screen you
-        cannot compare four palettes on.
-    -->
+    <!-- SETTINGS > APPEARANCE. Theme picker (1/8-scale miniatures of the
+         window), layout picker, and transparency slider with backdrop/reach
+         qualifiers. Nothing animates on this screen. -->
 
     <UserControl.Styles>
 
         <!-- ══ A theme card ═══════════════════════════════════════════════
-             A real Button, so it is one Tab stop, fires on Space, and reports
-             itself to automation as the control it is. Selection is a Volt edge
-             at a thickness that never changes (§10.7) — a card that thickens on
-             pick would reflow the row of four beside it. -->
+             Button for keyboard access. Constant border thickness (§10.7). -->
         <Style Selector="Button.themecard">
             <Setter Property="Padding" Value="0"/>
             <Setter Property="Background" Value="{StaticResource Surface}"/>
@@ -58,18 +39,9 @@
         </Style>
 
         <!-- ══ A text-only choice ═════════════════════════════════════════
-             The backdrop material and how far the transparency reaches. Same
-             Button grammar as a theme card — one Tab stop, fires on Space, a
-             Volt edge whose thickness never changes — at a smaller size and
-             with no picture, because neither of these two is a picture. A
-             theme is something you can be shown; a material and a reach are
-             CONSEQUENCES, and the honest way to show a consequence is to say
-             it. Hence a name and one sentence.
-
-             Recessed rather than raised: Ground inside a Surface card, so the
-             pair read as two wells cut into the panel rather than as two more
-             cards stacked on it. Four stacked cards is the wall of controls
-             this screen is trying not to become. -->
+             Backdrop material and reach. Same Button grammar as theme cards.
+             Recessed (Ground inside Surface) to read as part of the
+             transparency setting, not as separate cards. -->
         <Style Selector="Button.optioncard">
             <Setter Property="Padding" Value="14,12"/>
             <Setter Property="Background" Value="{StaticResource Ground}"/>
@@ -108,14 +80,9 @@
         </Style>
 
         <!-- ══ The transparency slider ════════════════════════════════════
-             The command bar's DENSITY slider is the reference and this one keeps
-             its grammar — neutral track, neutral thumb, the travelled side in
-             TextDim and the rest in Line — because a slider that meant something
-             different on the settings screen would be a second convention to
-             learn. It is drawn a step larger, and that is the only difference:
-             density is a knob you nudge while scanning, this is a setting you
-             sit and tune. The thumb stays NEUTRAL rather than Volt (§2: Volt is
-             selection, and a value in force is not a selection).
+             Same grammar as the density slider (neutral thumb, TextDim
+             travelled side). Slightly larger since this is a sit-and-tune
+             setting.
         -->
         <Style Selector="Slider.opacity">
             <Setter Property="MinHeight" Value="0"/>
@@ -141,13 +108,9 @@
             <Setter Property="Background" Value="{StaticResource Text}"/>
         </Style>
 
-        <!-- §8's focus ring, drawn by the frame rather than adorned on the
-             thumb. The global FocusAdorner puts a rounded box round the whole
-             control, which on a 340px track is a box and not an indicator; and
-             a Thumb's own template ignores BorderBrush, so a ring set there
-             renders nothing. `:focus-within` on the frame is the one place that
-             both shows up and does not move anything: the border thickness
-             never changes, only its brush (§10.7). -->
+        <!-- Focus ring on the slider frame via :focus-within (global
+             FocusAdorner and Thumb's own template both fail here).
+             Constant thickness, brush-only swap (§10.7). -->
         <Style Selector="Border.sliderframe">
             <Setter Property="BorderThickness" Value="2"/>
             <Setter Property="BorderBrush" Value="Transparent"/>
@@ -160,26 +123,14 @@
             <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
         </Style>
 
-        <!-- The worst-case ratio, once it is under AA. Amber and not Danger:
-             §2 gives Amber "attention" and Danger the one destructive act, and
-             a setting the user chose with the number in front of them is
-             neither an error nor something to be undone for them. -->
+        <!-- Worst-case ratio under AA turns Amber (attention, not error). -->
         <Style Selector="TextBlock.ratio.under">
             <Setter Property="Foreground" Value="{StaticResource Amber}"/>
         </Style>
 
         <!-- ══ One line of the themes folder's report ══════════════════════
-             A file that did not load takes AMBER, not Danger, on this screen's
-             own established rule: §2 keeps Danger for the one destructive act
-             and gives Amber "attention", and a theme file with a typo in it is
-             neither an error the app made nor something to be undone for anyone.
-             It is the same call the "not available here" note above already
-             makes.
-
-             A warning - a theme that loaded and is worth a second look - takes
-             the ordinary metadata ink and the ordinary edge, because it is not
-             asking for anything. The two are told apart by the words in the
-             verdict as well as by the edge (§8: never hue alone). -->
+             Failed files take Amber; warnings take ordinary ink. The two are
+             told apart in words as well as by edge colour (§8). -->
         <Style Selector="Border.problem">
             <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
             <Setter Property="BorderThickness" Value="2,0,0,0"/>
@@ -249,40 +200,20 @@
                                 <StackPanel Spacing="0">
 
                                     <!-- ══ The window, at 1/8 ══════════════
-                                         Caption and rail as ONE continuous
-                                         chrome bracket (§9), with the art
-                                         recessed inside it. Every piece is one
-                                         of this theme's own brushes, so the card
-                                         keeps showing its palette while the app
-                                         is wearing another.
-
-                                         The two things that separate these four
-                                         themes are both visible here and neither
-                                         is a hue: how far the wall drops below
-                                         the chrome, and how loud the seam
-                                         between them is. -->
+                                         Chrome bracket + wall in this theme's
+                                         own brushes. -->
                                     <Border Classes="mini" CornerRadius="4,4,0,0"
                                             Background="{Binding Ground}">
                                         <Grid RowDefinitions="12,*">
 
-                                            <!-- The caption takes the rail's
-                                                 colour, so the chrome reads as
-                                                 one block down the side and
-                                                 across the top rather than two
-                                                 tones meeting at a corner. -->
+                                            <!-- Caption in rail's colour. -->
                                             <Border Grid.Row="0" Background="{Binding Surface}"/>
 
                                             <Grid Grid.Row="1" ColumnDefinitions="46,*">
 
-                                                <!-- Rail: four rows, one lit,
-                                                     and the lit one carries the
-                                                     2px Volt edge. Its right
-                                                     edge is the chrome/art seam
-                                                     (§11.1), drawn at the
-                                                     theme's own Line — which is
-                                                     Nightshift's whole structure
-                                                     and Tungsten's quietest
-                                                     detail. -->
+                                                <!-- Rail with one lit row and
+                                                     chrome/art seam at theme's
+                                                     Line. -->
                                                 <Border Grid.Column="0" Background="{Binding Surface}"
                                                         BorderBrush="{Binding Line}"
                                                         BorderThickness="0,0,1,0">
@@ -294,10 +225,8 @@
                                                                         Background="{Binding Text}"/>
                                                             </Grid>
                                                         </Border>
-                                                        <!-- The one rail row with a
-                                                             pip beside its count:
-                                                             Patched since, which is
-                                                             what Flare counts (6). -->
+                                                        <!-- Patched-since row with
+                                                             Flare pip. -->
                                                         <Grid ColumnDefinitions="2,5,5,3,*,6" Height="8">
                                                             <Ellipse Grid.Column="2" Width="4" Height="4"
                                                                      Fill="{Binding Flare}"
@@ -316,22 +245,9 @@
                                                     </StackPanel>
                                                 </Border>
 
-                                                <!-- The wall. 2:3 capsules, the
-                                                     app's own atom (§4), and the
-                                                     SAME seven on all four cards
-                                                     — real cover art does not
-                                                     change when the room does, so
-                                                     four miniatures that differ
-                                                     only in their chrome are this
-                                                     palette system's whole claim
-                                                     made visually.
-
-                                                     Two of them carry §5.1's
-                                                     dormancy floor: bright tiles
-                                                     are alive, ghosted ones are
-                                                     what you forgot you owned.
-                                                     The row runs off the right
-                                                     edge because a wall does. -->
+                                                <!-- The wall: same seven 2:3 capsules
+                                                     on all four cards, two showing
+                                                     dormancy floor. -->
                                                 <Border Grid.Column="1" Background="{Binding Ground}"
                                                         Padding="8,9,0,0" ClipToBounds="True">
                                                     <StackPanel Orientation="Horizontal" Spacing="6"
@@ -339,9 +255,7 @@
                                                         <Panel Width="46" Height="69">
                                                             <Border CornerRadius="3"
                                                                     Background="{x:Static vm:ThemeChoiceViewModel.Art1}"/>
-                                                            <!-- The one Flare in the picture, and the
-                                                                 one thing on the card that IS the
-                                                                 theme's own colour. -->
+                                                            <!-- Flare dot in this theme's colour. -->
                                                             <Ellipse Width="6" Height="6"
                                                                      Fill="{Binding Flare}"
                                                                      HorizontalAlignment="Right"
@@ -372,10 +286,7 @@
                                                        Classes="display-l" FontSize="17"
                                                        Text="{Binding Name}"
                                                        VerticalAlignment="Center"/>
-                                            <!-- Says which one you are on in a
-                                                 word as well as in an edge (§8):
-                                                 the Volt border is never the
-                                                 only thing carrying it. -->
+                                            <!-- Selected state in word + edge (§8). -->
                                             <Border Grid.Column="1"
                                                     IsVisible="{Binding IsSelected}"
                                                     Background="{StaticResource Volt}"
@@ -389,32 +300,10 @@
                                         <TextBlock Classes="para"
                                                    Text="{Binding Reason}"/>
 
-                                        <!-- ══ A user theme says two more things ══
-                                             Which FILE it came from, so an author
-                                             with four of these knows which one to
-                                             edit; and what it MEASURES, which is
-                                             the thing no other theming system
-                                             hands you.
-
-                                             ThemeContrastTests walks all four
-                                             built-ins across the whole slider on
-                                             every build. A theme that arrives in a
-                                             folder at runtime can never be unit
-                                             tested, so it gets the same walk when
-                                             it loads and the answer is printed
-                                             where the theme is picked. A palette
-                                             an author likes and a palette that can
-                                             carry this window's transparency are
-                                             two different things, and this line is
-                                             the only place that difference shows
-                                             before they have dragged the slider
-                                             and squinted at the rail.
-
-                                             The built-ins do not draw it: the AA
-                                             mark on the track below already
-                                             carries the same number for whichever
-                                             theme is up, and a second copy is a
-                                             second place for it to drift. -->
+                                        <!-- A user theme shows its source file and
+                                             contrast measurements. Built-ins omit
+                                             this; the AA mark on the track covers
+                                             it. -->
                                         <StackPanel IsVisible="{Binding IsUserTheme}"
                                                     Spacing="4" Margin="0,3,0,0">
                                             <TextBlock Classes="data-s"
@@ -432,20 +321,8 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
 
-                <!-- ══ YOUR THEMES ════════════════════════════════════════
-                     A folder of JSON files. It sits directly under the picker
-                     because that is where its output lands - the cards above
-                     already include whatever parsed - rather than at the bottom
-                     of the screen as an appendix.
-
-                     Three things and no more: where the folder is, what the
-                     theme that is up measures, and what is wrong with the files
-                     in it. There is deliberately no colour picker here. §14's
-                     whole argument is that a room is a value structure and a
-                     material rather than a set of hues, which is exactly what a
-                     row of swatches cannot express - and the file can be kept,
-                     diffed and copied to another machine, which a dialog
-                     cannot. -->
+                <!-- YOUR THEMES: folder path, contrast report, and file
+                     problems. No colour picker; themes are JSON files. -->
                 <TextBlock Classes="label" FontSize="10" LetterSpacing="1.4"
                            Margin="0,10,0,0" Text="YOUR THEMES"/>
 
@@ -453,10 +330,7 @@
                         IsVisible="{Binding HasThemeFolder}">
                     <StackPanel Spacing="12">
 
-                        <!-- The path, selectable and in Plex Mono. A folder
-                             nobody can find is a feature nobody has, and the
-                             first thing an author needs is somewhere to put a
-                             file. -->
+                        <!-- The path, selectable and in Plex Mono. -->
                         <SelectableTextBlock Classes="data-s"
                                              TextWrapping="Wrap"
                                              Foreground="{StaticResource TextDim}"
@@ -465,13 +339,8 @@
                         <TextBlock Classes="para" Text="{Binding UserThemeSummary}"/>
 
                         <StackPanel Orientation="Horizontal" Spacing="10">
-                            <!-- The actual authoring workflow. What it writes is
-                                 the theme's eight seeds and the PROPORTIONS it
-                                 is built to - the edge as a contrast ratio, the
-                                 elevation as a step - rather than twenty-four
-                                 hexes, so the first edit an author makes can be
-                                 to the theme's argument instead of to its
-                                 output. -->
+                            <!-- Exports the theme's seeds and proportions, not
+                                 raw hex values. -->
                             <Button Classes="act primary"
                                     Command="{Binding ExportThemeCommand}"
                                     Content="Export this theme as a template"/>
@@ -486,9 +355,7 @@
                                    Text="{Binding ThemeActionStatus}"/>
 
                         <!-- ══ What this theme measures ═══════════════════
-                             Drawn only for a user theme, for the reason the
-                             card's own line is: the built-ins carry these
-                             numbers in §14's tables and on the track below. -->
+                             User themes only (built-ins show on the track). -->
                         <StackPanel Spacing="10" IsVisible="{Binding ShowThemeReport}">
                             <Border Height="1" Background="{StaticResource Line}" Margin="0,2"/>
 
@@ -537,17 +404,9 @@
                         </StackPanel>
 
                         <!-- ══ What is wrong, and where ═══════════════════
-                             The heart of the validation, and the reason it is
-                             printed rather than logged. A theme that silently
-                             did not load leaves an author with no way to tell a
-                             typo from a taste they disagree with - so a file
-                             that fails is skipped, the app keeps the theme it
-                             had, and the reason appears here naming the file,
-                             the field and what was expected.
-
-                             Errors first, and each line says in words whether
-                             the file loaded as well as in colour (§8: a state is
-                             never carried by hue alone). -->
+                             Validation printed here (not logged) so authors can
+                             see why a file was skipped. Errors first; verdict
+                             stated in words as well as colour (§8). -->
                         <StackPanel Spacing="10" IsVisible="{Binding HasProblems}">
                             <Border Height="1" Background="{StaticResource Line}" Margin="0,2"/>
 
@@ -583,31 +442,10 @@
                     </StackPanel>
                 </Border>
 
-                <!-- ══ TRANSPARENCY ═══════════════════════════════════════ -->
-                <!-- ══ LAYOUT (§15) ═══════════════════════
-                     Its own section, and it sits HERE - under THEME, above
-                     TRANSPARENCY - for a reason that is about what the three
-                     settings are rather than about how many rows fit.
-
-                     The two controls under TRANSPARENCY are QUALIFIERS: they are
-                     meaningless while the slider is at SOLID, which is why they
-                     are not drawn there at all. Layout is not a qualifier of
-                     anything. It applies in every theme at every position on the
-                     slider including zero, so bolting it on as a fourth row
-                     inside that card would have said it depended on a quantity
-                     it does not depend on. It is a peer of THEME: the theme says
-                     what the room is made of, this says how the room is put
-                     together, and structure is what you read first.
-
-                     It is drawn the way THEME is drawn and not the way the
-                     qualifiers are, on the screen's own established rule: a
-                     qualifier is a CONSEQUENCE and the honest way to show one is
-                     to say it in a sentence, but a layout is a SHAPE and there is
-                     nothing else in it - no colour, no number - so the miniature
-                     is not an illustration of the setting, it IS the setting at
-                     1/8 scale. Two cards rather than four, so they take the same
-                     UniformGrid at the same width and the row above and the row
-                     here line up down the screen. -->
+                <!-- ══ LAYOUT (§15) ═══════════════════════════════════════
+                     Sits between THEME and TRANSPARENCY because it is a peer of
+                     THEME (applies at every slider position), not a transparency
+                     qualifier. Two cards with 1/8-scale miniatures. -->
                 <TextBlock Classes="label" FontSize="10" LetterSpacing="1.4"
                            Margin="0,10,0,0" Text="LAYOUT"/>
 
@@ -628,43 +466,21 @@
                                 <StackPanel Spacing="0">
 
                                     <!-- ══ The window, at 1/8 ══════════════
-                                         The same drawing on both cards, from one
-                                         template, with exactly the values the
-                                         layout changes bound out of the view
-                                         model: the ground the panes lie on, the
-                                         margin round each, its corner radius, and
-                                         where the theme's Line falls. Everything
-                                         else is identical because everything else
-                                         about the window is - which is the claim
-                                         the pair of cards is making.
-
-                                         Painted from whichever theme is UP, not
-                                         from a fixed palette. That is the one
-                                         place this card deliberately differs from
-                                         a theme card: four theme cards ask "which
-                                         room", two layout cards ask "what would
-                                         this arrangement look like in the room I
-                                         am in". -->
+                                         Same template on both cards, differing
+                                         only in the layout values (margins,
+                                         radius, Line position). Uses the
+                                         current theme's palette. -->
                                     <Border Classes="mini" CornerRadius="4,4,0,0"
                                             Background="{Binding GroundFill}">
                                         <Grid RowDefinitions="12,*">
 
-                                            <!-- The caption. Full width and
-                                                 flush in BOTH layouts - the
-                                                 reference's own line, and the
-                                                 half of §9 that floating does not
-                                                 touch. What changes is its ink:
-                                                 the rail's when the chrome is one
-                                                 bracket, the ground's when the
-                                                 ground is the continuous
-                                                 thing. -->
+                                            <!-- Caption: fill changes between
+                                                 layouts. -->
                                             <Border Grid.Row="0" Background="{Binding CaptionFill}"/>
 
                                             <Grid Grid.Row="1" ColumnDefinitions="46,*">
 
-                                                <!-- Rail. Same fill in both, so
-                                                     the eye reads the geometry
-                                                     rather than a recolour. -->
+                                                <!-- Rail (same fill in both). -->
                                                 <Border Grid.Column="0"
                                                         Background="{Binding RailFill}"
                                                         Margin="{Binding RailMargin}"
@@ -691,32 +507,10 @@
                                                     </StackPanel>
                                                 </Border>
 
-                                                <!-- The library island, and the
-                                                     command bar INSIDE it. The
-                                                     bar used to be a sibling
-                                                     above this card - chrome
-                                                     above the art in one layout,
-                                                     an action strip on the
-                                                     window's own ground in the
-                                                     other - and it is the pane's
-                                                     header in both now, so the
-                                                     card starts at the caption
-                                                     and the rail beside it starts
-                                                     level with it.
-                                                
-                                                     That levelling is what the
-                                                     pair of cards is showing
-                                                     besides the gaps, and it is
-                                                     the same in both: what still
-                                                     differs is the gap, the
-                                                     radius and where Line falls.
-                                                
-                                                     Its FILL never moves between
-                                                     the two cards, and that is
-                                                     not an omission: §5.1's
-                                                     polarity is measured against
-                                                     this tone and the layout is
-                                                     not allowed to touch it. -->
+                                                <!-- Library island with command bar
+                                                     inside. Fill is identical in
+                                                     both layouts (§5.1 polarity
+                                                     depends on it). -->
                                                 <Border Grid.Column="1"
                                                         Background="{Binding WallFill}"
                                                         Margin="{Binding WallMargin}"
@@ -726,11 +520,8 @@
                                                         ClipToBounds="True">
                                                     <Grid RowDefinitions="10,*">
 
-                                                        <!-- The command bar: no
-                                                             fill of its own, and
-                                                             found by the rule
-                                                             under it, exactly as
-                                                             in the window. -->
+                                                        <!-- Command bar, found by
+                                                             its bottom rule. -->
                                                         <Border Grid.Row="0"
                                                                 BorderBrush="{Binding LineFill}"
                                                                 BorderThickness="0,0,0,1"/>
@@ -816,19 +607,9 @@
                             <StackPanel Width="{Binding SliderWidth}" Spacing="0">
 
                                 <!-- ══ The AA mark ═══════════════════════════
-                                     Where the worst case — a wall of white
-                                     behind the window — takes the rail's labels
-                                     under 4.5:1. It is a mark and not a stop:
-                                     the range past it is a choice the user is
-                                     allowed to make, and the readout below says
-                                     what it costs in numbers rather than in
-                                     adjectives. Its position is per theme,
-                                     because the answer is.
-
-                                     Both pieces take the same margin off the
-                                     view model, computed from the track's own
-                                     geometry, so the tick sits exactly over the
-                                     value it names. -->
+                                     Tick where worst-case contrast drops under
+                                     4.5:1. Position is per-theme, computed from
+                                     track geometry in the view model. -->
                                 <Panel Height="14" HorizontalAlignment="Stretch">
                                     <TextBlock Classes="data-s"
                                                Text="AA"
@@ -865,19 +646,10 @@
                             </StackPanel>
                         </Border>
 
-                        <!-- ══ What it is made of, and how far it reaches ════
-                             The screen holds four decisions now, and four rows
-                             stacked would be a wall of controls. So this card is
-                             ONE quantity with two qualifiers hanging off it —
-                             how much, what it is made of, how far it goes — and
-                             the qualifiers are not drawn at all while the
-                             quantity is zero, because at SOLID neither of them
-                             does anything. The common case stays one slider.
-
-                             Both blocks are recessed wells rather than raised
-                             cards, so the eye reads them as parts of the
-                             transparency setting rather than as two more
-                             settings beside it. -->
+                        <!-- ══ Backdrop and reach qualifiers ═════════════════
+                             Hidden while slider is at SOLID (neither does
+                             anything at zero). Recessed wells, not raised
+                             cards. -->
                         <StackPanel IsVisible="{Binding ShowComposition}" Spacing="12">
 
                             <Border Height="1" Background="{StaticResource Line}" Margin="0,2"/>
@@ -936,12 +708,8 @@
                                            Text="{Binding MicaCompositeNote}"/>
                             </Grid>
 
-                            <!-- Asked for one, got the other. Falling through is
-                                 right; doing it silently is how someone concludes
-                                 the choice does nothing. Amber, because §2 gives
-                                 Amber attention and this is not an error — the
-                                 user has not done anything wrong by sitting on a
-                                 machine that will not compose Mica. -->
+                            <!-- Backdrop substitution notice. Amber for
+                                 attention (not an error). -->
                             <Border IsVisible="{Binding BackdropSubstituted}"
                                     Background="{StaticResource Ground}"
                                     BorderBrush="{StaticResource Amber}"
@@ -995,16 +763,8 @@
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
 
-                            <!-- The two tiers, printed rather than asserted: the
-                                 window's ground, and everything laid on it. There
-                                 used to be three numbers here and a halving
-                                 relation between two of them; the chrome tier is
-                                 gone, so there are two, and what they state is
-                                 that nothing in the window sits between them.
-                                 Only drawn when the wall is in, because otherwise
-                                 the library pane is not at the pane figure and
-                                 printing one number for every pane would be a
-                                 claim the window is not making. -->
+                            <!-- The two transparency tiers (ground and pane).
+                                 Only drawn when the wall is translucent. -->
                             <StackPanel Spacing="6" IsVisible="{Binding WallTranslucent}">
                                 <Grid ColumnDefinitions="Auto,10,*">
                                     <TextBlock Grid.Column="0" Classes="data"
@@ -1021,16 +781,8 @@
                                     <TextBlock Grid.Column="2" Classes="para"
                                                Text="{Binding PaneAdmitsNote}"/>
                                 </Grid>
-                                <!-- This used to read "Settings, the review
-                                     queue and the list view stay solid at every
-                                     setting", which was true of the build that
-                                     shipped it and is not true now. Those panes
-                                     are on the field's own ramp — measured, the
-                                     labels on them hold their contrast more than
-                                     twice as far up the slider as the labels on
-                                     the rail do — and an Appearance screen that
-                                     described a different build of the app would
-                                     be worse than one that said nothing. -->
+                                <!-- These panes now match the library pane's
+                                     transparency. -->
                                 <TextBlock Classes="para"
                                            Text="Settings, the review queue and the list view open up with the wall — the same amount, the same setting. So does every input field, and it gets there by painting nothing at all: a field is a step cut into a pane that is already at this share, so there is nothing left for a fill of its own to spend. It is found by its border and lit by its ring."/>
                             </StackPanel>
@@ -1038,26 +790,11 @@
 
                         <Border Height="1" Background="{StaticResource Line}" Margin="0,2"/>
 
-                        <!-- ══ What it costs, live ═══════════════════════════
-                             §8's floor is a claim about the running window, so
-                             the screen measures the window rather than quoting a
-                             number somebody took once. Two backdrops, because
-                             one of them would be a lie in either direction: the
-                             Mica composite is what the user's desktop actually
-                             does and it only ever improves, and white is the
-                             brightest a wallpaper can be and is the one that
-                             falls. Neither nags — the second number turns Amber
-                             (§2: attention, not error) and says which line it
-                             crossed. -->
-                        <!-- The gaps, which are where the outer tier is visible
-                             on its own — everywhere else the ground is behind a
-                             pane. This block used to report a THIRD number: a gap
-                             took no fill of ours and admitted the whole desktop
-                             while the caption beside it admitted the chrome's
-                             share. Both now carry the ground's own figure, so
-                             what is left to say is that they are one field rather
-                             than two that agree. Only drawn when there are gaps
-                             and something can come through them. -->
+                        <!-- ══ Live contrast measurements ═══════════════════
+                             Two backdrops measured: Mica composite and white
+                             (worst case). Under-AA number turns Amber. -->
+                        <!-- Gaps and title bar share the ground's transparency
+                             figure. Only drawn when translucent. -->
                         <StackPanel Spacing="6" IsVisible="{Binding ShowGapNote}">
                             <Border Height="1" Background="{StaticResource Line}" Margin="0,2"/>
                             <TextBlock Classes="label" FontSize="9" LetterSpacing="1.2"
@@ -1105,12 +842,8 @@
                             <TextBlock Classes="para" Text="{Binding ContrastNote}"/>
                         </StackPanel>
 
-                        <!-- The honest case. A setting that is up and doing
-                             nothing is worse than a setting at zero, so the
-                             screen says which one this is. Amber because §2
-                             gives Amber "attention", and this is not an error:
-                             the user has not done anything wrong by sitting on
-                             a machine that will not composite. -->
+                        <!-- Transparency unavailable on this machine.
+                             Amber for attention (not an error). -->
                         <Border IsVisible="{Binding TransparencyUnavailable}"
                                 Background="{StaticResource Ground}"
                                 BorderBrush="{StaticResource Amber}"

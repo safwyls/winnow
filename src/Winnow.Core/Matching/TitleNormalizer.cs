@@ -5,43 +5,14 @@ using System.Text.RegularExpressions;
 namespace Winnow.Core.Matching;
 
 /// <summary>
-/// Turns a raw store title into a <see cref="NormalizedTitle"/> (§5.3 step 2,
-/// "normalised title"). Pure, deterministic, allocation-cheap, no IO.
+/// Turns a raw store title into a <see cref="NormalizedTitle"/> (§5.3 step 2).
+/// Pure, deterministic, no IO. Shared by the soft matcher and
+/// <see cref="Winnow.Core.Queries.DemoConsolidation"/> so both agree on title identity.
 ///
-/// <para><b>Why this lives in Core rather than in Winnow.Resolve.</b> It began as
-/// the soft matcher's private machinery, but it is now read by two callers on
-/// opposite sides of the app: the matcher (§5.3 step 2) and the read model's
-/// demo consolidation (<see cref="Winnow.Core.Queries.DemoConsolidation"/>,
-/// which runs inside the derived-bucket query). §5.3 turns on there being ONE
-/// answer to "is this the same title?" — a second normaliser in the query layer
-/// would be a second, silently diverging opinion about sequel ordinals and
-/// edition markers, which is the machinery that stops <c>Portal Demo</c> from
-/// binding to <c>Portal 2</c>. It is pure and BCL-only, so it sits inside
-/// Core's charter unchanged, and the dependency graph stays acyclic: nothing
-/// had to start depending on Winnow.Resolve to reuse it.</para>
-///
-/// <para>The pipeline, in order — the order matters:</para>
-/// <list type="number">
-///   <item>strip trademark/registered/service marks (<c>Assassin's Creed® IV Black Flag™</c>);</item>
-///   <item>lift a parenthesised year out into <see cref="NormalizedTitle.ParsedYear"/>;</item>
-///   <item>fold accents via NFD + non-spacing-mark removal (<c>Pokémon</c> → <c>pokemon</c>);</item>
-///   <item>lower-case invariantly;</item>
-///   <item>delete apostrophes and full stops so <c>Assassin's</c> → <c>assassins</c> and
-///         <c>S.T.A.L.K.E.R.</c> → <c>stalker</c>, rather than shattering into letters;</item>
-///   <item>expand <c>&amp;</c> to <c>and</c>;</item>
-///   <item>every other non-alphanumeric becomes a space — this is what collapses subtitle
-///         separators (<c>:</c>, <c>-</c>, <c>–</c>, <c>—</c>, <c>|</c>, <c>~</c>);</item>
-///   <item>fold roman numerals to arabic (<c>The Witcher III</c> ≡ <c>The Witcher 3</c>);</item>
-///   <item>extract and remove edition markers, longest phrase first;</item>
-///   <item>drop articles;</item>
-///   <item>fold spelled-out cardinals to arabic (<c>Episode One</c> ≡ <c>Episode 1</c>) —
-///         last, so <c>Day One Edition</c> is lifted out as an edition marker before
-///         its <c>one</c> can be read as a number.</item>
-/// </list>
-///
-/// <para><b>Why NFD and not NFKD.</b> NFKD would expand <c>™</c> to the letters
-/// <c>TM</c> and glue them onto the previous word. The marks are deleted in
-/// step 1 precisely so that never happens.</para>
+/// <para>Pipeline (order matters): strip marks, lift parenthesised year,
+/// fold accents (NFD), lower-case, join apostrophes/dots, expand &amp;,
+/// collapse non-alnum to space, fold roman numerals, extract edition markers,
+/// drop articles, fold spelled-out cardinals.</para>
 /// </summary>
 public static partial class TitleNormalizer
 {
@@ -54,12 +25,7 @@ public static partial class TitleNormalizer
     /// <summary>Roman numerals only fold inside a plausible sequel range.</summary>
     private const int MaxRomanOrdinal = 30;
 
-    /// <summary>
-    /// Edition markers meaning "a separate build". Skyrim Special Edition is not
-    /// Skyrim: different executable, different achievement set, different mod
-    /// ecosystem (§9 pitfall 5). Longest phrase wins, so <c>special edition</c>
-    /// is matched before the bare <c>edition</c> fallback.
-    /// </summary>
+    /// <summary>Edition markers meaning "a separate build" (§9 pitfall 5). Longest phrase wins.</summary>
     private static readonly string[][] RebuildEditionPhrases =
     [
         ["special", "edition"],
@@ -80,11 +46,7 @@ public static partial class TitleNormalizer
         ["classic"],
     ];
 
-    /// <summary>
-    /// Edition markers meaning "same build, more content". A disagreement here
-    /// costs a small penalty, not a veto — The Witcher 3 and The Witcher 3 GOTY
-    /// are a merge the user plausibly wants, and it is their call.
-    /// </summary>
+    /// <summary>Edition markers meaning "same build, more content". Disagreement is a small penalty, not a veto.</summary>
     private static readonly string[][] BundleEditionPhrases =
     [
         ["game", "of", "the", "year", "edition"],
@@ -113,19 +75,8 @@ public static partial class TitleNormalizer
     private static readonly string[] LeadingArticles = ["a", "an"];
 
     /// <summary>
-    /// Spelled-out cardinals, folded to arabic so they reach
-    /// <see cref="NormalizedTitle.Ordinals"/> and are compared exactly.
-    ///
-    /// <para>Without this the ordinal veto was inconsistent with itself:
-    /// <c>Half-Life 2: Episode II</c> vs <c>Episode III</c> was caught, because
-    /// roman numerals fold, while <c>Episode One</c> vs <c>Episode Two</c> both
-    /// reduced to ordinals <c>[2]</c> — the "2" of Half-Life 2 — scored 0.84 on
-    /// title similarity and queued two games nobody would confuse.</para>
-    ///
-    /// <para>Twenty is the ceiling for the same reason
-    /// <see cref="MaxRomanOrdinal"/> is thirty: past that the word is prose, not
-    /// a sequel number. <c>zero</c> is deliberately absent — <c>Katana Zero</c>,
-    /// <c>Zero Escape</c> and <c>Ground Zero</c> are names.</para>
+    /// Spelled-out cardinals folded to arabic so ordinal comparison is consistent
+    /// with roman numeral folding. Ceiling is 20; "zero" is absent (it is a name).
     /// </summary>
     private static readonly Dictionary<string, int> NumberWords = new(StringComparer.Ordinal)
     {
@@ -200,11 +151,7 @@ public static partial class TitleNormalizer
             ParsedYear: parsedYear);
     }
 
-    /// <summary>
-    /// Publisher names carry legal-form noise that varies per store feed
-    /// ("Bethesda Softworks" / "Bethesda Softworks LLC"). Normalise the same way
-    /// as a title and drop those suffixes before comparing.
-    /// </summary>
+    /// <summary>Normalises a publisher name, stripping legal-form suffixes (LLC, Inc, etc.).</summary>
     public static string NormalizePublisher(string? publisher)
     {
         var tokens = Tokenize(FoldAccents(RemoveChars(publisher ?? string.Empty, MarkChars)));
@@ -285,34 +232,9 @@ public static partial class TitleNormalizer
     }
 
     /// <summary>
-    /// Folds roman numerals to arabic so <c>Dark Souls III</c> and
-    /// <c>Dark Souls 3</c> normalise identically — and, more importantly, so
-    /// <c>Dark Souls II</c> and <c>Dark Souls III</c> produce ordinals 2 and 3
-    /// that can be compared exactly.
-    ///
-    /// <para>Three guards keep the fold from firing on ordinary words. Values above
-    /// <see cref="MaxRomanOrdinal"/> are left alone, which rules out <c>mix</c>
-    /// (= 1009) and bare <c>l</c>/<c>c</c>/<c>d</c>/<c>m</c>; and two guards
-    /// cover the single-letter numerals, which are also just letters:</para>
-    /// <list type="bullet">
-    ///   <item><b>Leading position.</b> A one-letter token at the front of a
-    ///     title is a word or a brand mark, never a sequel number:
-    ///     <c>I Am Setsuna</c>, <c>V Rising</c>, <c>X Rebirth</c>.</item>
-    ///   <item><b>Bare <c>x</c>, anywhere.</b> <c>X</c> is used as a name at
-    ///     least as often as it is used for ten — <c>Mega Man X</c> is a
-    ///     different series from <c>Mega Man</c>, not its tenth entry. Folding
-    ///     it made <c>Mega Man X</c> and <c>Mega Man 10</c> normalise to the
-    ///     same string, scoring 1.00 title similarity with no veto able to
-    ///     separate them, because at that point nothing distinguishable is
-    ///     left. <c>v</c> folds because it does not collide this way:
-    ///     <c>Grand Theft Auto V</c> and <c>Grand Theft Auto 5</c> are one game
-    ///     written two ways, and no <c>Grand Theft Auto 5</c> sequel exists to
-    ///     be confused with.
-    ///     <para>The cost is real and deliberate: <c>Final Fantasy X</c> no
-    ///     longer matches <c>Final Fantasy 10</c>, and instead of a wrong
-    ///     merge candidate the user simply never sees that pair. §5.3 is
-    ///     precision over recall, always.</para></item>
-    /// </list>
+    /// Folds roman numerals to arabic within <see cref="MaxRomanOrdinal"/>.
+    /// Guards: leading single-letter tokens are never folded (names like "I Am Setsuna"),
+    /// and bare "x" is never folded (it is a name more often than "10").
     /// </summary>
     private static List<string> FoldRomanNumerals(List<string> tokens)
     {
@@ -336,15 +258,8 @@ public static partial class TitleNormalizer
     }
 
     /// <summary>
-    /// Folds a spelled-out cardinal to arabic, so <c>Episode One</c> and
-    /// <c>Episode 1</c> produce the same ordinal and <c>Episode One</c> and
-    /// <c>Episode Two</c> produce different ones.
-    ///
-    /// <para>The leading token is never folded, for the same reason the roman
-    /// fold leaves a leading <c>i</c> alone: at the front of a title the word
-    /// is the name. <c>Five Nights at Freddy's</c>, <c>Two Point Hospital</c>,
-    /// <c>Seven Kingdoms</c>, <c>One Piece</c> and <c>Nine Sols</c> all start
-    /// with a number word and none of them is a sequel number.</para>
+    /// Folds spelled-out cardinals to arabic. Leading token is never folded
+    /// (it is a name, not a sequel number).
     /// </summary>
     private static List<string> FoldNumberWords(List<string> tokens)
     {
@@ -420,12 +335,7 @@ public static partial class TitleNormalizer
         return sb.ToString();
     }
 
-    /// <summary>
-    /// Removes every occurrence of a known edition phrase, longest first, and
-    /// returns the canonical markers found. Phrases are matched as contiguous
-    /// token runs anywhere in the title, not just at the end — GOG puts them in
-    /// the middle often enough ("Fallout 2 Classic Edition Bundle").
-    /// </summary>
+    /// <summary>Removes known edition phrases (longest first, anywhere in the title) and returns the markers found.</summary>
     private static IReadOnlyList<string> ExtractEditions(
         List<string> tokens, string[][] phrases, out List<string> remaining)
     {

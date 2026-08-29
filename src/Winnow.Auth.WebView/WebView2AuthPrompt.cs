@@ -13,103 +13,15 @@ using Microsoft.Web.WebView2.Core;
 namespace Winnow.Auth.WebView;
 
 /// <summary>
-/// Signs the user in by hosting the provider's own page in an embedded Chromium
-/// window, and reading the code the moment the provider issues it.
-///
-/// <para><b>What this replaces, and why the replacement is structural.</b> The
-/// manual flow asks the user to copy an authorization code out of a page and
-/// paste it back. That code is single-use and dies within minutes, so every
-/// misstep between issuing and spending it — a prompt that hung, a terminal that
-/// ate the input, an environment variable that did not propagate — burns the
-/// code and needs a fresh one. Reading it the instant the provider issues it
-/// removes the window rather than making it easier to hit.</para>
-///
-/// <para><b>The shape of the flow, and the mistake it was built out of.</b> The
-/// first version started on Epic's <c>id/api/redirect</c> endpoint, on the
-/// reasoning that it is the page that prints a code and that the alternative
-/// route was unverified. It never worked for a single user, because that
-/// endpoint is an API that answers <i>for a browser that already has a
-/// session</i> — and an embedded browser opens an isolated profile with no
-/// cookies at all. Every first-time sign-in landed on
-/// <c>{"authorizationCode":null,"exchangeCode":null,…}</c> and no login form was
-/// ever rendered. The caution was right; the framing was wrong, because only one
-/// of the two candidate URLs can BEGIN an unauthenticated flow. So:</para>
-/// <list type="number">
-///   <item><description><b>Start somewhere that renders a login form</b> —
-///   confirmed to be <c>/id/authorize</c> with the registered redirect.</description></item>
-///   <item><description><b>Notice that authentication finished</b>, by any of
-///   several independent signals.</description></item>
-///   <item><description><b>Then go and ASK for the code</b> at the harvest URL,
-///   which now has a session to answer about.</description></item>
-/// </list>
-/// <para>Step 3 is what makes the whole thing independent of whether the
-/// provider volunteers anything. The other routes all wait for the provider to
-/// DO something; this one stops hoping and asks.</para>
-///
-/// <para><b>Four capture routes, all armed at once.</b> Their evidential
-/// standing differs and the difference is deliberately preserved:</para>
-/// <list type="bullet">
-///   <item><description><b>Session harvest — the backbone.</b> A same-origin
-///   <c>fetch</c> of the harvest URL from inside the page, repeated while the
-///   browser sits on the provider's origin. Non-destructive: it never navigates
-///   the user's page, so it can run while they are still typing a password, and
-///   it returns nothing but "no session" until there is one.</description></item>
-///   <item><description><b>The launcher JS bridge — CONFIRMED live.</b> Epic's
-///   sign-in page reads <c>window.ue</c> 21 times of its own accord (measured
-///   2026-08-26, identically with and without a spoofed launcher user-agent),
-///   and the injected bridge was driven end to end. Yields an
-///   <see cref="AuthCodeKind.ExchangeCode"/>. That the page CALLS it after a
-///   successful sign-in is the part no unauthenticated probe could
-///   settle.</description></item>
-///   <item><description><b>Redirect interception — mechanism CONFIRMED, premise
-///   UNVERIFIED.</b> <c>NavigationStarting</c> delivers the full URL including
-///   the query before any connection is attempted, so an unroutable https
-///   redirect needs no listener and no certificate — that half is proven. That
-///   the authenticated flow actually 302s there carrying <c>?code=</c> is a
-///   hypothesis. It is armed because arming it is free; nothing depends on
-///   it.</description></item>
-///   <item><description><b>DOM read — CONFIRMED.</b> The JSON body renders into
-///   a <c>&lt;pre&gt;</c> even at <c>application/json</c>, and
-///   <c>ExecuteScriptAsync</c> reads it. This is what reads the harvest page when
-///   the flow navigates to it rather than fetching it.</description></item>
-/// </list>
-///
-/// <para><b>All four together rather than in sequence</b>, for a reason that
-/// survives the redesign: each route needs a whole interactive sign-in to test,
-/// and codes are single-use, so trying them one at a time would make the user
-/// sign in repeatedly and burn a code on every miss. The result records which
-/// one fired.</para>
-///
-/// <para><b>The user-agent is deliberately NOT spoofed.</b> Legendary sends a
-/// launcher string and the obvious move is to copy it, but the spike measured
-/// identical behaviour with and without — same 21 probes, same page, same form —
-/// so it is cargo cult until something authenticated says otherwise. It also
-/// makes the browser more fingerprintable to Epic's bot detection, not less.
-/// (<c>EpicWebOptions.UserAgent</c> still sends a launcher string on the API
-/// client; that is a separate, older decision and is left alone.)</para>
-///
-/// <para><b>Nothing here throws.</b> Runtime missing, window closed, page
-/// changed, network gone, nobody signed in — every one is an
-/// <see cref="AuthCodeResult"/> with a reason, and every one leaves the existing
-/// local ingest exactly as it was.</para>
+/// Signs the user in by hosting the provider's page in an embedded WebView2
+/// window and capturing the code via four parallel routes (session harvest,
+/// launcher JS bridge, redirect interception, DOM read). Never throws.
 /// </summary>
 public sealed class WebView2AuthPrompt : IInteractiveAuthPrompt
 {
     /// <summary>
     /// How often the in-page harvester asks the provider whether a session
-    /// exists yet.
-    ///
-    /// <para>An unauthenticated answer mints NOTHING — the endpoint returns null
-    /// code fields — and the harvester stops permanently on the first populated
-    /// one, so exactly one code is ever issued however long the user takes.</para>
-    ///
-    /// <para><b>Five seconds rather than one, and bounded, because this polls
-    /// Epic's own origin while the user is signing in to it.</b> Epic throttles
-    /// (<c>errors.com.epicgames.common.throttled</c> is real; the thresholds are
-    /// unpublished) and the one thing that must not happen is Winnow's own
-    /// polling getting the sign-in it is watching throttled. Twelve requests a
-    /// minute, ceasing at <see cref="MaxHarvestAttempts"/>, against a flow that
-    /// also fires one immediately on every navigation.</para>
+    /// exists yet. Bounded to avoid throttling the provider's own origin.
     /// </summary>
     private static readonly TimeSpan HarvestInterval = TimeSpan.FromSeconds(5);
 
@@ -188,21 +100,8 @@ public sealed class WebView2AuthPrompt : IInteractiveAuthPrompt
         """;
 
     /// <summary>
-    /// The in-page harvester: asks the provider for a code on a timer, from the
-    /// provider's own origin, without ever navigating away.
-    ///
-    /// <para><b>Same-origin <c>fetch</c> is what makes this safe to run during
-    /// sign-in.</b> Navigating to the harvest URL to look would rip the login
-    /// form out from under a user mid-password; a fetch is invisible to them.
-    /// Cookies ride along because the request is same-origin, which is the whole
-    /// mechanism: the moment the session cookie exists, the same request that has
-    /// been answering "null" starts answering with a code.</para>
-    ///
-    /// <para>Guarded to one instance per document, and it stops itself on the
-    /// first populated answer so that exactly one code is ever minted. Failures
-    /// are swallowed — a CSP that blocks the fetch, an HTML challenge, an offline
-    /// moment — because the deliberate navigation is the belt for all of
-    /// them.</para>
+    /// The in-page harvester: same-origin fetch on a timer, guarded to one
+    /// instance per document, stops on the first populated answer.
     /// </summary>
     private const string HarvesterScriptTemplate = """
         (function () {
@@ -613,18 +512,7 @@ public sealed class WebView2AuthPrompt : IInteractiveAuthPrompt
         }
     }
 
-    /// <summary>
-    /// Acts on one reading of a code-bearing body.
-    ///
-    /// <para><b>"No session" is handled as its own thing here</b>, which is the
-    /// point of the redesign. A body with every code field null is not a failed
-    /// capture — it is the provider saying nobody has signed in — and answering
-    /// it by falling through to "no code captured" is what made the original
-    /// flow report a symptom instead of a cause. When the flow navigated to the
-    /// code endpoint to get this answer, the remedy is to put a login page back
-    /// in front of the user; when it merely polled in the background, the remedy
-    /// is to keep waiting, because the user is probably still typing.</para>
-    /// </summary>
+    /// <summary>Acts on one reading of a code-bearing body.</summary>
     private void ApplyBodyReading(
         CoreWebView2 browser, RunState state, AuthCodeBodyReading reading, string via, bool navigateOnNoSession)
     {
@@ -835,55 +723,9 @@ public sealed class WebView2AuthPrompt : IInteractiveAuthPrompt
     private const double BrowserHeight = 820;
 
     /// <summary>
-    /// The window, showing the notice and nothing else until the user accepts.
-    ///
-    /// <para><b>Appearance comes entirely from class names.</b> This project
-    /// references Avalonia and <c>Winnow.Core</c> and nothing else — no theme, no
-    /// <c>tokens.axaml</c>, no <c>Winnow.App</c> — because that quarantine is what
-    /// keeps WebView2 and its Windows-only code in one leaf project (§5.1).
-    /// Wiring the token dictionary in here would drag the application's theme
-    /// into the auth machinery and point the dependency the wrong way. So the
-    /// window is built out of structure and CLASS NAMES, and whichever
-    /// application is running supplies the paint: the classes used here —
-    /// <c>consent</c>, <c>consent-quote</c>, <c>consent-actions</c>,
-    /// <c>display-l</c>, <c>para</c>, <c>lead</c>, <c>act primary</c>,
-    /// <c>act quiet</c> — are defined in <c>Winnow.App/Themes/controls.axaml</c>
-    /// and <c>tokens.axaml</c>. A host that does not merge those styles gets the
-    /// theme's own defaults, which is legible; nothing here half-paints.</para>
-    ///
-    /// <para><b>Nothing is set as a local value that a style is meant to
-    /// own.</b> A local value outranks a style setter in Avalonia, so a "safe
-    /// fallback" colour written on the control here would silently win over the
-    /// application's own and there would be no way to tell from the running
-    /// window. Layout — margins, spacing, alignment — is the tree's business and
-    /// is set here; ink, type and edges are not.</para>
-    ///
-    /// <para><b>The window keeps the system title bar</b>, unlike
-    /// <c>MainWindow</c>, which draws its own (§9). The browser REPLACES this
-    /// window's content, so a hand-drawn caption would be replaced along with
-    /// it and leave a browser nobody can drag or close. Recorded as a gap rather
-    /// than worked around.</para>
-    ///
-    /// <para><b>This window is deliberately OPAQUE, and stays opaque when
-    /// <c>MainWindow</c> takes Mica.</b> <c>TransparencyLevelHint</c> is a plain
-    /// Avalonia property, so this project could set it without gaining a single
-    /// reference — which is exactly why the decision is written down here rather
-    /// than left to whoever reads the two windows side by side and assumes one
-    /// was forgotten. Three reasons, and the first two are specific to this
-    /// window:</para>
-    ///
-    /// <para>The content is replaced by a hosted native HWND the moment consent
-    /// is given, and a hosted HWND paints over the composition surface — so a
-    /// Mica consent phase would become an opaque browser phase, a window that
-    /// changes material halfway through one flow. And this is the screen where
-    /// the WORDS are the product: a provider's own warning, quoted verbatim, in
-    /// 12/18 sage on a paragraph measure. <c>tokens.axaml</c>'s <c>WellMica</c>
-    /// note records that translucency costs a <c>TextDim</c> paragraph its
-    /// contrast floor against a light backdrop, and a consent notice whose
-    /// legibility depends on the reader's wallpaper is not a consent notice.
-    /// Third, the compensating treatment would have to live in
-    /// <c>controls.axaml</c>, which this project cannot name (§5.1) — so the
-    /// honest options here were opaque or half-painted.</para>
+    /// Builds the consent window. Appearance comes from class names only (this
+    /// project has no theme reference). Keeps the system title bar; deliberately
+    /// opaque.
     /// </summary>
     private static Window BuildConsentWindow(AuthPromptRequest request, TaskCompletionSource<bool> consent)
     {
@@ -1012,36 +854,7 @@ public sealed class WebView2AuthPrompt : IInteractiveAuthPrompt
         => (Application.Current?.ApplicationLifetime
                 as IClassicDesktopStyleApplicationLifetime)?.MainWindow?.Icon;
 
-    /// <summary>
-    /// Turns the notice into blocks, without touching a word of it.
-    ///
-    /// <para><b>The provider's own warning is the most important text on this
-    /// screen and is drawn as its own block.</b> The notice carries it as an
-    /// indented quotation, which is how it reads in a terminal; indentation in
-    /// proportional type is not emphasis, it is a ragged left edge. So an
-    /// indented block becomes an inset, Amber-edged field at Body L while the
-    /// paragraphs around it stay at the 12/18 measure. Same words, in the order
-    /// they were written.</para>
-    ///
-    /// <para><b>Hard line breaks inside a block are joined, blank lines are
-    /// kept.</b> The notice is wrapped at about 76 columns for a console; run
-    /// through a 720px proportional measure those breaks would land mid-sentence
-    /// at arbitrary places. Joining the lines of one paragraph with a space and
-    /// letting the layout wrap it changes the line endings and nothing else — no
-    /// word is added, removed, reordered or softened, which is the whole
-    /// constraint on this screen (<c>docs/spikes/epic-oauth.md</c> §1: the
-    /// user's protection here is a promise rather than a structure, and the
-    /// screen has to keep saying so).</para>
-    ///
-    /// <para><b>The two paragraphs touching the quotation take full ink</b>
-    /// (<c>lead</c>) rather than the sage the rest of the prose wears: the one
-    /// before it says whose warning it is, the one after it says that Winnow is
-    /// the third party the warning is about. Those two sentences are the
-    /// disclosure, and a screen that made them quieter while making the window
-    /// prettier would have made it less honest.</para>
-    ///
-    /// <para>Provider-neutral: it keys off the notice's shape, not off Epic.</para>
-    /// </summary>
+    /// <summary>Turns the notice into blocks, without touching a word of it.</summary>
     private static IEnumerable<Control> RenderNotice(string notice)
     {
         var blocks = ReadNoticeBlocks(notice);
@@ -1080,13 +893,7 @@ public sealed class WebView2AuthPrompt : IInteractiveAuthPrompt
     /// <summary>One block of the notice: a paragraph, or an indented quotation.</summary>
     private readonly record struct NoticeBlock(string Text, bool IsQuotation);
 
-    /// <summary>
-    /// Splits a notice on blank lines and reflows each block onto one line.
-    ///
-    /// <para>A block every one of whose lines is indented is a quotation. That is
-    /// the only structure the notice has and the only structure read out of it —
-    /// nothing here parses meaning, matches a provider, or rewrites text.</para>
-    /// </summary>
+    /// <summary>Splits a notice on blank lines and reflows each block onto one line.</summary>
     private static IReadOnlyList<NoticeBlock> ReadNoticeBlocks(string notice)
     {
         var blocks = new List<NoticeBlock>();
@@ -1113,15 +920,6 @@ public sealed class WebView2AuthPrompt : IInteractiveAuthPrompt
     /// <summary>
     /// Grows the window from notice-sized to browser-sized, at the moment the
     /// browser replaces the content and not before.
-    ///
-    /// <para>Presentation only: it changes no gating and creates nothing. The
-    /// browser is still constructed by the caller's next line, which is still
-    /// the first line that runs after consent.</para>
-    ///
-    /// <para>It keeps the window's centre rather than its top-left, so a window
-    /// that was centred on the user's screen is still centred after it grows by
-    /// 240x260, and clamps into the working area so growing near an edge cannot
-    /// push the browser off it.</para>
     /// </summary>
     private static void PrepareForBrowser(Window window)
     {

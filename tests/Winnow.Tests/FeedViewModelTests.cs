@@ -6,38 +6,11 @@ using Xunit;
 namespace Winnow.Tests;
 
 /// <summary>
-/// The Feed's view model — M8's half of the recommender.
-///
-/// <para><b>Nothing here scores anything.</b> The screen talks to
-/// <see cref="IFeedService"/>, which is the App-layer seam that exists so this
-/// is possible: every state — working, five shelves, a thin shelf, an omitted
-/// one, a quiet library and a failed pass — is driven by a fake returning
-/// values. A test that ran the real engine would need a thousand-row database
-/// and would be asserting on <c>Winnow.Recommend</c>'s behaviour, which its own
-/// 68 tests already own.</para>
-///
-/// <para><b>What is actually being defended here</b> is the one rule the
-/// milestone cannot lose: every card states its reason, in the engine's own
-/// words, in full. So the reason is asserted verbatim rather than by prefix, and
-/// the run-splitting that sets its numbers in the data face is asserted to
-/// reproduce the sentence exactly.</para>
-///
-/// <para>No Avalonia application, dispatcher or rendering is involved.</para>
+/// Feed view model tests driven by a fake <see cref="IFeedService"/>.
 /// </summary>
 public sealed class FeedViewModelTests
 {
-    /// <summary>
-    /// A real reason off the author's library, kept whole: the playtime, the
-    /// year, the quoted patch title and the taste clause. It is the longest
-    /// shape the patched shelf produces short of a mode-mismatch row, and it is
-    /// what the card has to be able to say without trimming.
-    ///
-    /// <para>The shelf ids below are literals rather than
-    /// <c>Winnow.Recommend.ShelfIds</c>, which is the seam's own argument made in
-    /// the test: these are the ids the App layer receives across
-    /// <see cref="IFeedService"/>, and a test reaching for the scoring module's
-    /// constants would be asserting the boundary does not exist.</para>
-    /// </summary>
+    /// <summary>A real reason string covering playtime, year, patch title and taste clause.</summary>
     private const string PatchedReason =
         "You put 2.8 hours into this in 2021 and it has had an update since, most recently \"PATCH NOTES - S06.05.02\". Survival is where your hours go, and this is one.";
 
@@ -169,7 +142,7 @@ public sealed class FeedViewModelTests
         Assert.True(feed.ShowMessage);
         Assert.False(feed.ShowShelves);
         Assert.NotNull(feed.Message);
-        Assert.Contains("Working out where to start", feed.Message!);
+        Assert.Contains("Building the feed", feed.Message!);
 
         // And it must not state a count it does not have yet.
         Assert.False(feed.HasCandidates);
@@ -214,8 +187,8 @@ public sealed class FeedViewModelTests
         // It must never be worded as a fact about the library — the library is
         // fine, and the copy says where it is.
         Assert.NotNull(feed.Message);
-        Assert.Contains("couldn't work out a feed", feed.Message!);
-        Assert.Contains("All games is in the rail", feed.Message!);
+        Assert.Contains("Couldn't build the feed", feed.Message!);
+        Assert.Contains("All games", feed.Message!);
 
         // And retrying is a real route out of it.
         service.Next = FullFeed(tiles);
@@ -249,7 +222,7 @@ public sealed class FeedViewModelTests
             new FakeFeedService(new FeedSnapshot([], 997, FeedConfidence.Settling, Failed: false)),
             tiles);
         await quiet.LoadCommand.ExecuteAsync(null);
-        Assert.Contains("Nothing to put in front of you today", quiet.Message!);
+        Assert.Contains("Nothing to suggest right now", quiet.Message!);
 
         // Nothing scored at all: the library has not been read yet, which is a
         // completely different claim and must not be worded as the first one.
@@ -316,7 +289,7 @@ public sealed class FeedViewModelTests
         var cold = new FeedViewModel(new FakeFeedService(FullFeed(tiles, FeedConfidence.EarlyDays)), tiles);
         await cold.LoadCommand.ExecuteAsync(null);
         Assert.True(cold.HasConfidenceNote);
-        Assert.Contains("sharpens", cold.ConfidenceNote!);
+        Assert.Contains("Improves", cold.ConfidenceNote!);
 
         var settled = new FeedViewModel(new FakeFeedService(FullFeed(tiles, FeedConfidence.Established)), tiles);
         await settled.LoadCommand.ExecuteAsync(null);
@@ -413,14 +386,8 @@ public sealed class FeedViewModelTests
 }
 
 /// <summary>
-/// A feed service that returns what a test hands it. <see cref="Gate"/> holds the
-/// answer back so the working state can be observed while a real pass would be
-/// out — the state the app spends its first half-second in.
-///
-/// <para>It also stands in for the feedback store, with the same
-/// append-and-revoke semantics migration 0011 gives the real one: a verdict is a
-/// row, undo is a stamp on it, and nothing is ever deleted. That is what lets
-/// the history assertions below be about the SCREEN rather than about SQLite.</para>
+/// A feed service that returns what a test hands it, with an optional gate for
+/// observing the working state.
 /// </summary>
 internal sealed class FakeFeedService : IFeedService
 {

@@ -5,20 +5,8 @@ namespace Winnow.App.Themes;
 
 /// <summary>
 /// The shape of a <c>*.json</c> theme file, as System.Text.Json sees it.
-///
-/// <para><b>Read and write are two types on purpose.</b> The reader has to
-/// survive anything on disk, so its numbers and colours arrive as loose maps
-/// that <see cref="ThemeJson"/> validates key by key and reports on by name.
-/// The writer has to produce a file a person will edit, so it is ordered,
-/// omits what it has nothing to say about, and never emits a map with a
-/// nullable value in it. Sharing one type between the two would mean the export
-/// carried the reader's tolerances into a file we are holding up as an
-/// example.</para>
-///
-/// <para><b>Every member is nullable and nothing here validates.</b> "Absent",
-/// "present and wrong" and "present and right" are three different diagnostics,
-/// and a DTO that defaulted a missing field could not tell the first two apart.
-/// <see cref="ThemeJson"/> owns all three answers.</para>
+/// Read and write are separate types; every member is nullable so
+/// <see cref="ThemeJson"/> can distinguish absent from wrong.
 /// </summary>
 internal sealed class ThemeDocument
 {
@@ -98,22 +86,9 @@ internal sealed class ThemeExportDocument
 }
 
 /// <summary>
-/// The source-generated contract, matching the codebase's other two
-/// (<c>LibraryFilterJson</c>, <c>SoftMatchJsonContext</c>).
-///
-/// <para><b><see cref="JsonUnmappedMemberHandling.Disallow"/> is deliberate and
-/// it is the one place this format is strict.</b> Inside a version, a top-level
-/// field this build does not recognise is a typo — <c>"strucutre"</c> — and the
-/// alternative to refusing is a theme that silently ignores a whole block the
-/// author is watching for an effect from. Forward compatibility is
-/// <c>schemaVersion</c>'s job, not silence's. The KEYS inside the maps are
-/// handled the other way round, in <see cref="ThemeJson"/>: an unknown override
-/// name is a warning and the rest of the theme still loads, because a map's
-/// keys are content rather than structure.</para>
-///
-/// <para>Comments and trailing commas are allowed on read so the example file
-/// shipped into the themes folder can explain itself in place, which is the
-/// only documentation an author is guaranteed to find.</para>
+/// Source-generated JSON contract. Unmapped top-level fields are disallowed
+/// (typo detection); map keys are validated in <see cref="ThemeJson"/>.
+/// Comments and trailing commas are allowed on read.
 /// </summary>
 [JsonSourceGenerationOptions(
     PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,

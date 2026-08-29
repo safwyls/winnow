@@ -5,46 +5,9 @@ using Microsoft.Extensions.Options;
 namespace Winnow.App.Services;
 
 /// <summary>
-/// The M2 snapshot scheduler (§5 "Core / Snapshot Scheduler", §8 M2). Re-runs
-/// the local Steam scan-and-resolve on an interval for as long as the app is
-/// running, so <c>playtime_snapshots</c> gains points while the user plays
-/// rather than only at launch.
-///
-/// <para><b>Why this exists.</b> §1's premise is longitudinal history that the
-/// storefronts discard. Until M2 the only writer of that history was Program's
-/// one-shot startup sync, so a tray-resident app left open for a week recorded
-/// exactly one point for that week — the delta from a Tuesday evening and a
-/// Thursday evening collapsed into a single jump with no shape. The resolver
-/// was already correct; nothing was calling it often enough.</para>
-///
-/// <para><b>Cheap by construction.</b> The tick is
-/// <see cref="SteamSyncService"/> — the same filesystem-only path Program runs
-/// at startup, no network anywhere in it. The resolver is idempotent by change
-/// detection, so a tick over unchanged files opens one read transaction,
-/// compares, and commits nothing. See <see cref="SnapshotSchedulerOptions"/>
-/// for why the interval is not shorter.</para>
-///
-/// <para><b>No overlap, by structure rather than by lock.</b> This is one
-/// sequential loop: the tick is awaited to completion before the next
-/// <c>WaitForNextTickAsync</c> is even issued, so two scans can never be in
-/// flight together. <see cref="PeriodicTimer"/> coalesces ticks that elapse
-/// during a long scan into at most one pending tick, so a scan that overruns
-/// its interval is followed by a single immediate catch-up tick, never a
-/// backlog. This matters beyond CPU: SQLite has one writer, and
-/// <see cref="Winnow.Data.SqliteConnectionFactory.Begin"/> throws outright if a
-/// unit of work is already open on the same async flow.</para>
-///
-/// <para><b>Shutdown.</b> <c>stoppingToken</c> is honoured at every await and
-/// checked before a tick starts, and cancellation ends the loop instead of
-/// retrying — because Program's <c>finally</c> disposes the host, and the
-/// SQLite connection factory with it, right after <c>StopAsync</c> returns.
-/// <see cref="BackgroundService.StopAsync"/> awaits this loop, so a tick that
-/// is mid-transaction when the window closes rolls back and unwinds before
-/// anything it writes through can be disposed. A tick must therefore never
-/// swallow cancellation and carry on.</para>
-///
-/// <para>§5.1: this composes ingest and resolve exactly as Program does and
-/// touches no repository itself; the UI reads the database afterwards.</para>
+/// Re-runs the local scan-and-resolve on an interval so
+/// <c>playtime_snapshots</c> gains points while the user plays rather than
+/// only at launch. Sequential loop with no overlap.
 /// </summary>
 public sealed class SnapshotSchedulerService : BackgroundService
 {

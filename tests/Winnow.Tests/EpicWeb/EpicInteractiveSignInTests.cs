@@ -12,16 +12,8 @@ using Xunit;
 namespace Winnow.Tests.EpicWeb;
 
 /// <summary>
-/// The M4.6 sign-in machinery: the prompt chain, the two grants, the built-in
-/// credential precedence, and the ways all of it is allowed to fail.
-///
-/// <para><b>What is deliberately NOT tested here.</b> Nothing in this file opens
-/// a browser, and no test claims a capture route works. Whether Epic's page
-/// calls <c>window.ue.signinprompt.requestexchangecodesignin</c> after a
-/// successful sign-in, and whether the authenticated flow 302s to the registered
-/// redirect carrying <c>?code=</c>, are both UNVERIFIED and can only be settled
-/// by one real sign-in. A test that faked either would be a test asserting that
-/// the fake works.</para>
+/// Epic sign-in machinery: prompt chain, grants, credential precedence and
+/// failure paths, all without a real browser.
 /// </summary>
 public class EpicInteractiveSignInTests
 {

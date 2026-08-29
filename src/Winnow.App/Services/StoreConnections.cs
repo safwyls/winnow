@@ -4,29 +4,8 @@ using Winnow.Ingest.Epic.Web.Auth;
 namespace Winnow.App.Services;
 
 /// <summary>
-/// The only place in the app where the Stores panel's questions meet the
-/// modules that can answer them.
-///
-/// <para><b>Why this exists beside <see cref="EpicSignInService"/> rather than
-/// inside it.</b> That service is the seam for one act — start a session, end
-/// it, ask whether one is live — and its own remarks say it is deliberately not
-/// a view model and has no UI in it. The panel needs three further things it
-/// has no business answering: whether Steam has a key, who the stored Epic
-/// session belongs to, and a failure reduced to a sentence and a remedy. Those
-/// are presentation concerns, so they live here, in front of it, and
-/// <c>EpicSignInService</c> is left exactly as it shipped.</para>
-///
-/// <para><b>Every dependency is optional and a missing one is an answer, not a
-/// crash.</b> A host that never called <c>AddSteamWebApi</c> gets "no key
-/// configured", which is true. A host that never called <c>AddEpicWebApi</c>
-/// gets no session and a sign-in that reports <see cref="StoreSignInProblem.NotConfigured"/>.
-/// Both are states the panel already draws, so an unregistered module degrades
-/// into copy rather than into a startup failure.</para>
-///
-/// <para><b>Nothing here is on a network path.</b> Both status reads are local:
-/// a key lookup across the configured sources, and one DPAPI unprotect of the
-/// <c>epic.oauth.session.v1</c> settings row. See <see cref="IStoreConnections"/>
-/// for why that matters on a user-facing surface.</para>
+/// Bridges the Stores panel's questions to the ingest modules that can answer
+/// them. Every dependency is optional; a missing one degrades into copy, not a crash.
 /// </summary>
 public sealed class StoreConnections : IStoreConnections
 {

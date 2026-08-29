@@ -7,17 +7,9 @@ using Winnow.App.ViewModels;
 namespace Winnow.App.Views;
 
 /// <summary>
-/// Code-behind for the game detail modal. Its whole job is the platform reach
-/// the view model must not have: dismissing, opening a target through the
-/// shell, and asking the cover cache for art at detail resolution.
-///
-/// <para><b>Every outbound target arrives here already validated.</b> The
-/// handlers below read a <see cref="GameLink"/> off the pressed control's data
-/// context and hand its URI to <c>TopLevel.Launcher</c>; none of them builds,
-/// concatenates or repairs a URL. A string that failed
-/// <see cref="GameLink.Create"/> is a null link, which the view binds
-/// <c>IsVisible</c> to — so an unopenable target is a button that was never
-/// rendered rather than one that fails when pressed.</para>
+/// Code-behind for the game detail modal. Handles dismissing, opening
+/// validated links through the shell, and requesting cover art at detail
+/// resolution.
 /// </summary>
 public partial class GameDetailsView : UserControl
 {

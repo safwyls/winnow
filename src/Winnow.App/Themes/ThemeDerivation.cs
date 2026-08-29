@@ -3,34 +3,9 @@ using Avalonia.Media;
 namespace Winnow.App.Themes;
 
 /// <summary>
-/// Seeds plus proportions in, a complete <see cref="WinnowTheme"/> out — and the
-/// same arithmetic run backwards, so a built-in can be exported as a template
-/// that states its own proportions rather than a wall of hex.
-///
-/// <para><b>The ramps are walked in HSV, not in RGB.</b> A neutral family is one
-/// ink stepped, and "one ink" means a fixed hue and chroma with the value
-/// moving; interpolating in RGB toward white desaturates as it climbs, which
-/// turns a committed green-teal room into a grey one four steps up. Measured
-/// against the four built-ins, an HSV walk reproduces every neutral to within
-/// six units of eight bits and most of them to within two.</para>
-///
-/// <para><b>What it cannot reproduce is where the overrides go, and that is the
-/// useful result.</b> The residuals are not scattered: they land on Winnow's
-/// <c>TextDim</c> (a cool sage deliberately rotated 20° off the neutral — §2
-/// says so in as many words), on the near-black <c>Well</c> tones that carry
-/// extra chroma at the bottom of the scale, and on Box art's <c>VoltInk</c>,
-/// which is an ink for a colourless Volt and therefore has no hue family to be
-/// derived from. Every one of those is a decision a person made against real
-/// cover art, which is precisely the class of thing a derivation should NOT be
-/// inventing — so they are carried explicitly and the format is honest about
-/// it.</para>
-///
-/// <para><b>The accent steps are constants here rather than fields in the
-/// format</b>, because measuring them across the built-ins produced no spread
-/// worth exposing: Danger's press lands at 0.798, 0.793, 0.802 and 0.799 of its
-/// value in the four themes. Eight schema fields to express a number that does
-/// not vary would be eight more ways to get a theme wrong. See
-/// <see cref="ThemeShape"/> for the ones that DID vary.</para>
+/// Seeds plus proportions in, a complete <see cref="WinnowTheme"/> out; the same
+/// arithmetic run backwards exports a built-in as a template. Ramps are walked
+/// in HSV (not RGB) to preserve hue through the neutral family.
 /// </summary>
 public static class ThemeDerivation
 {
@@ -66,22 +41,9 @@ public static class ThemeDerivation
     private const double FaintLiftChroma = 0.85;
 
     /// <summary>
-    /// What happens to a neutral's chroma when its value is scaled DOWN — the
-    /// exponent in <c>S' = S · r^-k</c>, where <c>r</c> is the value ratio.
-    ///
-    /// <para><b>Not a fudge factor; the alternative is visibly wrong.</b>
-    /// Scaling only the value holds saturation and therefore drops absolute
-    /// chroma in proportion, so a committed green-teal <c>Ground</c> taken to
-    /// 44% of its value comes out very nearly black — and every one of the three
-    /// tones the built-ins put down there (<c>Well</c> and the two translucent
-    /// inks) carries MORE saturation than its parent, not the same. Measured
-    /// against Winnow's own translucent chrome ink the law lands on 1.366 against
-    /// an actual 1.366, and on Box art's 1.351 against 1.364.</para>
-    ///
-    /// <para>It applies only downward. A tone lifted above its parent
-    /// (<c>SurfaceRaised</c>, <c>Line</c>) keeps its saturation, which is what
-    /// the built-ins do: their neutrals lose a little chroma as they climb and
-    /// gain a lot as they fall.</para>
+    /// Exponent in <c>S' = S * r^-k</c> for darkening a neutral's chroma.
+    /// Without it, deep tones lose their room colour and fade to black.
+    /// Applies only downward; lifted tones keep their saturation.
     /// </summary>
     private const double DarkeningChroma = 0.42;
 
@@ -173,17 +135,8 @@ public static class ThemeDerivation
     }
 
     /// <summary>
-    /// The sixteen derived colours.
-    ///
-    /// <para><b><paramref name="overrides"/> is read here as well as applied
-    /// afterwards, and that is a correctness point rather than an
-    /// optimisation.</b> Four of the sixteen are derived from another derived
-    /// colour: the translucent inks are what <c>TextDim</c> and
-    /// <c>TextFaint</c> become as the chrome opens up (§14.3). An author who
-    /// states <c>TextDim</c> outright and gets a translucent partner walked from
-    /// the value they replaced has been handed two inks that are not the same
-    /// ink — which is the one thing §14.3's compensation cannot survive. So the
-    /// chain reads the EFFECTIVE value at each link.</para>
+    /// The sixteen derived colours. <paramref name="overrides"/> is read at each
+    /// link so translucent inks derive from the effective TextDim/TextFaint.
     /// </summary>
     public static Dictionary<string, Color> Derive(
         ThemeSeeds seeds,
@@ -272,14 +225,7 @@ public static class ThemeDerivation
     };
 
     /// <summary>
-    /// The arithmetic run backwards: what proportions is this theme actually
-    /// built to?
-    ///
-    /// <para>This is what makes "export a built-in as a starting template" worth
-    /// doing. A template carrying <c>"edge": 2.46</c> tells an author that
-    /// Nightshift's structure IS its edge and invites them to move it; a
-    /// template carrying <c>"Line": "#3E5275"</c> tells them nothing and dares
-    /// them to guess.</para>
+    /// The arithmetic run backwards: what proportions is this theme built to?
     /// </summary>
     public static ThemeShape Fit(WinnowTheme theme)
         => Refine(theme, RawFit(theme));
@@ -311,20 +257,8 @@ public static class ThemeDerivation
 
     /// <summary>
     /// Rounds each fitted scalar to the shortest decimal that still reproduces
-    /// the colours it is answerable for.
-    ///
-    /// <para><b>Without this the export is a token dump wearing a schema.</b>
-    /// A ratio measured off a hand-picked hex comes out as 0.4666666666666667;
-    /// rounding it for the file moves the colour it derives by a unit, so
-    /// every one of the sixteen derived fields ends up restated in
-    /// <c>overrides</c> and the seeds seed nothing. Rounding it to 0.47 and
-    /// CHECKING keeps the file legible and the derivation load-bearing at the
-    /// same time — and where no short form works, the long one is written,
-    /// which is the honest answer rather than a silent loss.</para>
-    ///
-    /// <para>Each scalar is refined against the theme's own upstream colours
-    /// rather than against derived ones, so a miss in <c>TextDim</c> does not
-    /// cascade into a wrong fit for <c>dimLift</c>.</para>
+    /// the colours it governs, so the export stays legible. Each scalar is
+    /// refined against upstream colours to avoid cascading misses.
     /// </summary>
     private static ThemeShape Refine(WinnowTheme theme, ThemeShape raw)
     {

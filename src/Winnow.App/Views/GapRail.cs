@@ -6,37 +6,9 @@ using Avalonia.Media.Immutable;
 namespace Winnow.App.Views;
 
 /// <summary>
-/// The stretch between your last session and now, with the updates you missed
-/// marked on it. The detail view's signature, and the one drawing in the app
-/// that states design-system.md §1 outright rather than encoding it.
-///
-/// <para><b>Why this and not a playtime chart.</b> §1 names longitudinal
-/// playtime as the thing storefronts discard, and the obvious move is a line
-/// through <c>playtime_snapshots</c>. On a real library that table holds one
-/// reading per game — a line through one point is a decoration pretending to be
-/// evidence, and §7 does not allow the interface to imply data it does not
-/// hold. The join that IS always available, and that nothing else in the world
-/// performs, is <c>play_records.last_played_at</c> against
-/// <c>update_events.occurred_at</c>: you stopped here, these shipped, that was
-/// this long ago. That is the rail.</para>
-///
-/// <para><b>The rule is the dormancy ramp turned on its side.</b> It runs from
-/// <c>Volt</c> at the last-played end to <c>Line</c> at today — the same
-/// recede §5.1 applies to the cover art, drawn once at a size where it can be
-/// read as a legend for the whole grid. The user has been looking at faded
-/// capsules for weeks; this is the one screen with room to say why.</para>
-///
-/// <para>Marks are <c>Flare</c>, which is legal here and only here in this
-/// panel: they are literally the unread signal §5.2 defines — an update that
-/// landed after the last session — plotted in time instead of stacked in a
-/// corner. Everything the rail draws is restated in text beneath it (§8: the
-/// encoding is decorative-redundant), so a user who cannot resolve a 7px dot
-/// loses nothing.</para>
-///
-/// <para>Custom-drawn rather than assembled from panels because the marks are
-/// positioned by fraction of an arbitrary width, which no stock Avalonia layout
-/// expresses without either a measure-time width or a Canvas full of bindings.
-/// There is no animation and no hit testing: it is a diagram.</para>
+/// The stretch between your last session and now, with missed updates marked
+/// on it. Custom-drawn gradient rule from Volt to Line with Flare dots at
+/// each update's position.
 /// </summary>
 public sealed class GapRail : Control
 {

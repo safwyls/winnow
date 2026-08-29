@@ -4,21 +4,7 @@ using Xunit;
 namespace Winnow.Tests;
 
 /// <summary>
-/// The Feed's wrapping grid — the arithmetic, not the rendering.
-///
-/// <para><b>Why this is worth a test file at all.</b> §5.4 of the design system
-/// records the one layout bug this codebase has already paid for: Avalonia's
-/// <c>UniformGridLayout</c> charged every item in a row for a trailing gutter
-/// when it computed items-per-line, then packed rows greedily when it placed
-/// them, and the two disagreed by one column at every window width — an orphaned
-/// tile and a scroll extent 22% too long. <see cref="FeedGrid"/> does the same
-/// job on the same geometry, so it does the same arithmetic, and the arithmetic
-/// is asserted rather than eyeballed.</para>
-///
-/// <para><b>The property under test is "flush":</b> whatever the width, the row
-/// exactly fills it — the columns plus the gutters between them come back to the
-/// width given, to within the sub-pixel remainder the floor deliberately leaves
-/// at the right edge. Nothing here constructs a control or needs a window.</para>
+/// Feed grid column/gutter arithmetic: rows fill their width flush.
 /// </summary>
 public sealed class FeedGridTests
 {

@@ -32,25 +32,9 @@ public interface IIgdbClient
         IEnumerable<string> appIds, TimeSpan? cacheTtl = null, CancellationToken ct = default);
 
     /// <summary>
-    /// The same <c>external_games</c> hard join against any
-    /// <c>external_game_source</c> — Steam is 1, GOG is 5, Epic is 26 — rather
-    /// than Steam alone.
-    ///
-    /// <para><b>Why this is the general method and the Steam one is the
-    /// special case.</b> The Steam-only shape above is what the whole enrichment
-    /// path was built on, and it meant the 67 Epic and 14 GOG releases in the
-    /// author's library had exactly zero <c>igdb_id</c>, cover, year and
-    /// summary between them. GOG needs nothing more than this call with source
-    /// 5: its product ids are IGDB's uids verbatim.</para>
-    ///
-    /// <para>Batching, caching and cached misses work exactly as they do for
-    /// Steam, but under a source-scoped cache key — the same string can be a
-    /// valid id on two storefronts, and a GOG miss must never be read back as a
-    /// Steam answer.</para>
-    ///
-    /// <para><b>A failed batch is not a miss.</b> Nothing is cached for a
-    /// request that did not complete, so a source with nothing to say leaves the
-    /// caller with no entry rather than an authoritative empty one.</para>
+    /// The general <c>external_games</c> hard join against any
+    /// <c>external_game_source</c> (Steam = 1, GOG = 5, Epic = 26). Batched
+    /// and cached under source-scoped keys. A failed batch is not cached.
     /// </summary>
     /// <param name="externalGameSourceId">
     /// IGDB's <c>external_game_source</c> id. Take it from

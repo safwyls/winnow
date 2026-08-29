@@ -9,6 +9,14 @@ namespace Winnow.Data.Repositories;
 /// facts (latest play record, correlated update events) with caller-supplied
 /// thresholds — never persisted, so thresholds can be retuned freely.
 ///
+/// <para>One of those stored facts is the user's own: an
+/// <c>update_acknowledgements</c> watermark (migration 0012) drops the build
+/// pushes they have already read out of the <c>major_update</c> CTE, which is
+/// the whole of the "dismiss the Patched since flag" feature. It lives here
+/// because design-system.md §5.2 makes the badge identical to
+/// <c>stale_but_patched</c> membership, so every surface that draws or counts
+/// that badge inherits the dismissal from this one query.</para>
+///
 /// <para>Demo consolidation (<see cref="DemoConsolidation"/>) is derived here
 /// for the same reason and in the same pass: a demo whose full game is also
 /// owned is dropped from the result, so the library shows one entry per game
@@ -73,6 +81,26 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
                 )
                 WHERE rn = 1
             ),
+            acknowledged AS (
+                -- The user's "I've seen this patch" watermark per release
+                -- (migration 0012): the occurred_at of the newest build push
+                -- they have dismissed and not taken back.
+                --
+                -- MAX() because repeated dismissals ACCUMULATE — rows are
+                -- appended and revoked, never updated in place — so the latest
+                -- standing one is the one in force.
+                --
+                -- `revoked_at IS NULL` rather than an "active" column, for
+                -- 0011's reason: standing is a property of the asking moment,
+                -- so it stays a query. Note it is still weaker than
+                -- "suppressing": a standing row stops suppressing the instant a
+                -- newer correlated push outranks it, which is decided below and
+                -- costs no write.
+                SELECT release_id, MAX(acknowledged_through) AS through
+                FROM update_acknowledgements
+                WHERE revoked_at IS NULL
+                GROUP BY release_id
+            ),
             major_update AS (
                 -- §4.5 and pitfall 4: a "major update" is a build push AND an
                 -- announcement within the same window. Neither alone qualifies —
@@ -87,10 +115,48 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
                 -- The build push is the moment the user's game actually changed,
                 -- so it — not the announcement, which may tease or recap — is the
                 -- timestamp compared against last-played.
+                --
+                -- ── The acknowledgement filter ───────────────────────────────
+                --
+                -- A push at or before the release's standing watermark does not
+                -- qualify at all: the user has already read that patch and
+                -- dismissed §5.2's dot for it. The test is applied BEFORE the
+                -- MAX() and before the announcement-correlation EXISTS, so a
+                -- dismissed push cannot become the reported occurred_at and
+                -- cannot lend its announcement to itself. A push strictly after
+                -- the watermark survives, and the badge comes back with NO WRITE
+                -- ANYWHERE — the whole point of storing an instant rather than a
+                -- flag. Compared with datetime() on both sides, as the staleness
+                -- test below is.
+                --
+                -- Applying it HERE, once, is the entire reach of the feature.
+                -- design-system.md §5.2 states the badge IS `stale_but_patched`
+                -- bucket membership, so this single exclusion makes the tile
+                -- badge, the rail's "Patched since" count, the library filter
+                -- chip, the recommender's bucket bonus and the feed's
+                -- `patched_while_away` shelf agree at once — none of them need
+                -- to learn that acknowledgements exist, and a second consumer
+                -- answering the same question separately would be the beginning
+                -- of them disagreeing.
+                --
+                -- The exclusion is UNCONDITIONAL and takes no parameter. It is a
+                -- stored user fact, NOT a tunable, so it does not belong in
+                -- BucketThresholds beside the floors and windows: those exist to
+                -- be retuned, and no retuning may put back a badge the user
+                -- personally dismissed.
+                --
+                -- Nothing in update_events is deleted or mutated to achieve
+                -- this. §4.5's "store both raw signals so the heuristic can be
+                -- retuned" still holds — the acknowledgement is a separate fact
+                -- layered over untouched rows, which is also why the detail
+                -- view can still list every update the user missed.
                 SELECT push.release_id,
                        MAX(push.occurred_at) AS occurred_at
                 FROM update_events push
+                LEFT JOIN acknowledged ack ON ack.release_id = push.release_id
                 WHERE push.kind = 'build_push'
+                  AND (ack.through IS NULL
+                       OR datetime(push.occurred_at) > datetime(ack.through))
                   AND EXISTS (
                       SELECT 1
                       FROM update_events news

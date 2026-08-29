@@ -7,22 +7,8 @@ using Microsoft.Extensions.Logging;
 namespace Winnow.Enrich.GamesDb;
 
 /// <summary>
-/// Client for <c>GET https://gamesdb.gog.com/platforms/{platform}/external_releases/{external_id}</c>
-/// — the cross-store identity graph GOG Galaxy itself uses, served
-/// unauthenticated.
-///
-/// <para><b>Terms this is used under, recorded so nobody has to re-derive
-/// them.</b> Undocumented and unversioned; it is Galaxy's backing service, not a
-/// published API. Treated exactly as §4.5 treats api.steamcmd.net: useful, free,
-/// expected to break. Hence a 90-day cache, cached misses, a 4 req/s ceiling
-/// enforced by a Polly rate limiter on the pipeline, a descriptive User-Agent,
-/// and a hard rule that it never appears in a user-facing path (§5.1).</para>
-///
-/// <para><b>Never throws.</b> Every failure mode — offline, DNS, TLS, 5xx after
-/// retries, a body that is not the JSON this endpoint has always returned —
-/// returns null, and null is cached only when it came from a 404. A dead
-/// service means "these titles keep their empty metadata and are asked again
-/// next run", which is the only outcome §5.1 allows.</para>
+/// Client for gamesdb.gog.com's cross-store identity graph. Never throws;
+/// failures return null and are not cached.
 /// </summary>
 public sealed class GamesDbClient : IGameIdentityGraph
 {
@@ -194,14 +180,7 @@ public sealed class GamesDbClient : IGameIdentityGraph
 
     private readonly record struct Fetch(FetchOutcome Outcome, CachedRelease? Payload);
 
-    /// <summary>
-    /// The cached projection: a game id and the store releases sharing it.
-    ///
-    /// <para>The response body is ~14 KB and this stores about 200 bytes of it.
-    /// Titles, summaries and artwork are dropped on purpose — §4.4 makes IGDB
-    /// the metadata backbone, and a second source of titles is how two rows for
-    /// one game end up disagreeing about what they are called.</para>
-    /// </summary>
+    /// <summary>The cached projection: a game id and the store releases sharing it.</summary>
     private sealed record CachedRelease(string GameId, IReadOnlyList<CachedStoreId> Releases)
     {
         internal static CachedRelease? From(GamesDbLookupDto? dto)

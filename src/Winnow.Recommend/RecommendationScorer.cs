@@ -4,22 +4,12 @@ using Winnow.Core.Queries;
 namespace Winnow.Recommend;
 
 /// <summary>
-/// The model itself: pure functions from <see cref="CandidateFacts"/> to
-/// signal contributions. No IO, no clock, no randomness that is not seeded —
-/// every curve here is testable to the decimal, and public on purpose so the
-/// model can be argued with (docs/recommendation-engine.md is the argument).
-///
-/// <para><b>Missing evidence contributes zero and is absent from the
-/// breakdown.</b> Nothing is renormalised: a cold-start library produces
-/// lower absolute scores, which is true, and hiding it by scaling up the
-/// signals that remain would be the model overclaiming.</para>
+/// Pure scoring model: <see cref="CandidateFacts"/> to signal contributions.
+/// No IO, no unseeded randomness. Missing evidence contributes zero (no renormalisation).
 /// </summary>
 public static class RecommendationScorer
 {
-    /// <summary>
-    /// Scores one candidate. Returns every signal that moved the score,
-    /// penalties included; the total is <see cref="Total"/> over the result.
-    /// </summary>
+    /// <summary>Scores one candidate. Returns every signal that moved the score; sum via <see cref="Total"/>.</summary>
     public static IReadOnlyList<SignalContribution> Score(
         CandidateFacts facts,
         BucketThresholds thresholds,
@@ -179,24 +169,13 @@ public static class RecommendationScorer
         return total;
     }
 
-    /// <summary>
-    /// Days since last played, or null when there is no date. Callers must
-    /// pair null with the minutes to tell "never opened" from the ancient-play
-    /// sentinel — see <see cref="CandidateFacts.LastPlayedAt"/>.
-    /// </summary>
+    /// <summary>Days since last played, or null when there is no date.</summary>
     private static double? DormancyDays(CandidateFacts facts, DateTime asOfUtc)
         => facts.LastPlayedAt is { } lastPlayed
             ? Math.Max(0.0, (asOfUtc - lastPlayed).TotalDays)
             : null;
 
-    /// <summary>
-    /// The commitment curve — where the minutes sit against §6.1's refund
-    /// line. Piecewise, with a deliberate DISCONTINUITY at the line: 0.70 on
-    /// one side, 1.00 on the other, because crossing it is a different fact
-    /// about the user (committed past the point of no return, then gave up —
-    /// the highest-value pile), not more of the same fact. A smooth curve here
-    /// would quietly repeal the §6.1 boundary this module inherits.
-    /// </summary>
+    /// <summary>Piecewise commitment curve with a deliberate discontinuity at the refund line.</summary>
     private static (double Value, string Why) CommitmentValue(
         CandidateFacts facts, BucketThresholds thresholds, RecommendationTuning tuning)
     {
@@ -231,12 +210,7 @@ public static class RecommendationScorer
         return (bounced, $"You put {Phrases.Duration(minutes)} in — past the refund line — then let it go.");
     }
 
-    /// <summary>
-    /// SplitMix64 over (seed, releaseId), folded to [0, 1). Explicit integer
-    /// mixing rather than <c>GetHashCode</c>/<c>Random</c> because the jitter
-    /// must be identical across runs, processes and platforms — "the feed I
-    /// saw this morning" has to be reconstructible from its inputs.
-    /// </summary>
+    /// <summary>Deterministic SplitMix64 jitter in [0, 1) for (seed, releaseId). Identical across runs and platforms.</summary>
     public static double JitterValue(int seed, long releaseId)
     {
         unchecked
@@ -250,11 +224,7 @@ public static class RecommendationScorer
     }
 }
 
-/// <summary>
-/// The two number-to-prose helpers every explanation shares. Invariant
-/// culture: reason strings are data the UI renders, and a Turkish locale must
-/// produce the same feed as any other.
-/// </summary>
+/// <summary>Number-to-prose helpers for reason strings. Invariant culture throughout.</summary>
 internal static class Phrases
 {
     /// <summary>"40 minutes", "5.2 hours", "33 hours".</summary>

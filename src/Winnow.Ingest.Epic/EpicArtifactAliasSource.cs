@@ -7,53 +7,9 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace Winnow.Ingest.Epic;
 
 /// <summary>
-/// Maps Epic's <c>CatalogItemId</c> — the id Winnow stores in
-/// <c>external_ids</c> — to its <c>AppName</c>, the id every service that can
-/// resolve an Epic title actually keys on.
-///
-/// <para><b>Why the two ids both exist and why we store the one we store.</b>
-/// <c>docs/spikes/epic-gog-local-files.md</c> section 3 establishes
-/// <c>(CatalogNamespace, CatalogItemId)</c> as the stable product identity;
-/// <c>AppName</c> is a per-artifact release id and a codename — "Bluebird" is
-/// Fez, "Wombat" is World War Z — which is why section 9 lists rendering it as
-/// Epic trap #2. So the catalog item id is the right thing in the database and
-/// stays there. But section 20 measured that <c>gamesdb.gog.com</c> keys its Epic
-/// releases on <c>AppName</c> and nothing else: <c>epic/Bluebird</c> resolves,
-/// and the catalog item id returns a clean 404 (re-verified while fixing the
-/// missing-metadata bug). The alias is the bridge between the id we keep and
-/// the id we must ask with.</para>
-///
-/// <para><b>Where the aliases come from.</b> <c>releaseInfo[0].appId</c> on each
-/// catalog entry, which the spike verifies is byte-identical to the manifest's
-/// <c>AppName</c>, with the installed manifests and the third-party records as
-/// belt and braces for entries the catalog has not caught up with. All three are
-/// files the launcher already wrote.</para>
-///
-/// <para><b>And, since 2026-08-26, the authenticated library service — because
-/// the local files alone left a measurable hole.</b> Every source above is
-/// derived from <c>catcache.bin</c> or from an installation, so a title the
-/// account owns but the launcher has never cached has no alias, therefore no
-/// gamesdb hop, therefore no IGDB record, therefore no name, year, cover or
-/// summary. On the author's library that was 29 of 99 Epic rows, sitting in the
-/// grid as <c>App &lt;32 hex&gt;</c> and enriching for none of them — not a low
-/// match rate but a question nobody could ask. <c>/library/api/public/items</c>
-/// returns <c>appName</c> on every entitlement, which is exactly the missing
-/// half, so it is read here as the LAST source: the local files still win every
-/// id they know, and the API only fills what they have never held.</para>
-///
-/// <para>That read is free in the ordinary case — it is the same cached library
-/// the ownership feed already fetched — and it is optional in every sense: the
-/// account client arrives as a nullable dependency, an install with no Epic
-/// session contributes nothing, and a failed fetch contributes nothing. None of
-/// those is distinguishable from "this account owns no extra titles", and none of
-/// them may remove an alias the local files supplied.</para>
-///
-/// <para><b>An empty map is "cannot say", never "no aliases exist".</b> A
-/// machine with no Epic launcher, an unreadable <c>%PROGRAMDATA%</c>, or a
-/// catalog the launcher has not written since login all produce an empty map,
-/// and the caller must respond by leaving those rows alone. Recording the
-/// silence as an answer is the failure this codebase has already paid for
-/// twice.</para>
+/// Maps Epic's <c>CatalogItemId</c> (the id stored in <c>external_ids</c>) to
+/// its <c>AppName</c> (the id gamesdb keys on). Sources: catalog cache, installed
+/// manifests, third-party records, and optionally the authenticated library API.
 /// </summary>
 public sealed class EpicArtifactAliasSource : IStoreArtifactAliasSource
 {
@@ -145,21 +101,8 @@ public sealed class EpicArtifactAliasSource : IStoreArtifactAliasSource
     }
 
     /// <summary>
-    /// Adds aliases for entitlements the local files have never held, and returns
-    /// how many were new.
-    ///
-    /// <para><b>Last, and additive only.</b> <see cref="Add"/> is a
-    /// <c>TryAdd</c>, so every id the launcher's own files supplied keeps the
-    /// value they gave it — this can only fill gaps. The ordering is deliberate:
-    /// the local files describe what this machine will actually install and
-    /// launch, so where the two disagree about an artifact codename the local
-    /// record wins.</para>
-    ///
-    /// <para><b>Every failure is silence, and silence adds nothing.</b> No client
-    /// registered, no credentials, no session, a lapsed refresh token, Epic
-    /// unreachable — all end here having added zero aliases and left the local map
-    /// exactly as it was built. None of them may be allowed to look like "this
-    /// account owns nothing else".</para>
+    /// Adds aliases from the authenticated library API for entitlements the local
+    /// files never held. Additive only; failures add nothing.
     /// </summary>
     private async Task<int> AddApiAliasesAsync(Dictionary<string, string> aliases, CancellationToken ct)
     {

@@ -9,42 +9,8 @@ using Microsoft.Extensions.Logging;
 namespace Winnow.Ingest.Epic.Web.Auth;
 
 /// <summary>
-/// Owns the Epic OAuth session end to end: code exchange, refresh, persistence,
-/// and giving up cleanly.
-///
-/// <para><b>The one endpoint.</b>
-/// <c>POST /account/api/oauth/token</c> on
-/// <c>account-public-service-prod03.ol.epicgames.com</c>, HTTP Basic with the
-/// user-supplied client pair, form-encoded body, <c>token_type=eg1</c>. Verified
-/// live 2026-08-26: the service validates the client pair before the grant, so a
-/// wrong id/secret answers <c>invalid_client</c> (numeric 18033) whatever the
-/// grant is — which is why <see cref="EpicSignInFailure"/> tells the two apart
-/// and the UI can say something true about which one is wrong.</para>
-///
-/// <para><b>Secrets travel in the body, never the URI.</b> The authorization
-/// code, the refresh token and the client secret all go into a
-/// <c>FormUrlEncodedContent</c>. This is the same reasoning
-/// <c>TwitchTokenProvider</c> records at length and it applies harder here: a
-/// URI is the most-copied string in an HTTP stack — it reaches request logging,
-/// <c>HttpRequestException</c> messages, proxy access logs and Polly telemetry —
-/// and Epic's own login page describes the code as "full access to your Epic
-/// account".</para>
-///
-/// <para><b>Three layers of cache, cheapest first:</b> the in-memory field, the
-/// encrypted <see cref="IEpicTokenStore"/> (so a restart reuses a live session),
-/// then Epic. One <see cref="SemaphoreSlim"/> serialises every mint and refresh,
-/// so a burst of parallel calls on a cold start spends the refresh token once
-/// rather than racing several exchanges of the same value against each other —
-/// which, because Epic rotates the refresh token on every use, would leave all
-/// but one of them holding a token that has already been superseded.</para>
-///
-/// <para><b>Expiry is read from the response, never assumed.</b> No lifetime is
-/// hardcoded. Public claims about Epic's token lifetimes (8 hours, 23 days, 30
-/// days) circulate widely and could not be confirmed from any authoritative
-/// source during the spike, so this client believes only what the response says:
-/// <c>expires_at</c> if present, else <c>expires_in</c> seconds, else a short
-/// conservative floor. The refresh expiry is allowed to be absent entirely —
-/// see <see cref="EpicOAuthToken.IsRefreshUsable"/>.</para>
+/// Owns the Epic OAuth session: code exchange, refresh, encrypted persistence,
+/// and graceful degradation when the session lapses.
 /// </summary>
 public sealed class EpicTokenProvider : IEpicTokenProvider
 {
@@ -62,13 +28,7 @@ public sealed class EpicTokenProvider : IEpicTokenProvider
     private EpicOAuthToken? _cached;
     private bool _loadedFromStore;
 
-    /// <summary>
-    /// Set once the refresh token has been rejected or has lapsed. Stops this
-    /// process re-attempting a refresh that cannot succeed on every subsequent
-    /// sync — the session is gone until the user signs in again, and hammering
-    /// the endpoint to rediscover that on a 15-minute scheduler is exactly the
-    /// traffic pattern the rate limiter exists to prevent.
-    /// </summary>
+    /// <summary>Latched when the refresh token is rejected or expired, preventing futile retries.</summary>
     private bool _sessionLapsed;
 
     public EpicTokenProvider(
@@ -115,15 +75,7 @@ public sealed class EpicTokenProvider : IEpicTokenProvider
         => SignInWithGrantAsync("exchange_code", "exchange_code", exchangeCode, ct);
 
     /// <summary>
-    /// The one code-for-session exchange, shared by both interactive grants.
-    ///
-    /// <para><b>Why two grants at all.</b> The manual flow yields an
-    /// <c>authorization_code</c> from Epic's redirect page; the embedded browser
-    /// yields an <c>exchange_code</c>, because Epic's sign-in page pushes that
-    /// value out through the launcher's <c>window.ue</c> bridge rather than
-    /// rendering a code anywhere. They differ only in <c>grant_type</c> and in
-    /// the name of the field carrying the value — everything after the response
-    /// arrives is identical, so it lives here once rather than twice.</para>
+    /// Shared code-for-session exchange for both authorization_code and exchange_code grants.
     /// </summary>
     /// <param name="grantType">Epic's <c>grant_type</c> value.</param>
     /// <param name="codeField">Form field the code goes in for that grant.</param>
@@ -311,14 +263,7 @@ public sealed class EpicTokenProvider : IEpicTokenProvider
         }
     }
 
-    /// <summary>
-    /// Refreshes the session. Caller must hold <see cref="_gate"/>.
-    ///
-    /// <para><b>This is the degrade-to-local path, and it never throws.</b>
-    /// Every exit that is not a fresh token returns null, and null means the
-    /// caller contributes no candidates this pass while the local readers carry
-    /// on exactly as they would with the API switched off.</para>
-    /// </summary>
+    /// <summary>Refreshes the session. Caller must hold <see cref="_gate"/>. Returns null to degrade gracefully.</summary>
     private async Task<EpicOAuthToken?> RefreshLockedAsync(
         EpicClientCredentials credentials, CancellationToken ct)
     {
@@ -478,14 +423,8 @@ public sealed class EpicTokenProvider : IEpicTokenProvider
     }
 
     /// <summary>
-    /// Maps an Epic error response onto the reason the caller acts on.
-    ///
-    /// <para>Epic distinguishes these by <c>errorCode</c> rather than by status —
-    /// both a bad client pair and a spent authorization code come back 400 — so
-    /// the code is what is matched. Matching is by substring on the stable middle
-    /// of the identifier, because Epic's full codes are long, versioned, and vary
-    /// by grant (<c>…oauth.corrective_action_required</c>,
-    /// <c>…oauth.expired_exchange_code_session</c> and friends).</para>
+    /// Maps an Epic error response onto the reason the caller acts on, matching
+    /// by <c>errorCode</c> substring since Epic distinguishes failures that way.
     /// </summary>
     private static EpicSignInFailure ClassifyFailure(HttpStatusCode status, string body)
     {
@@ -529,29 +468,14 @@ public sealed class EpicTokenProvider : IEpicTokenProvider
 }
 
 /// <summary>
-/// Reads Epic's OAuth responses. Hand-walked with <see cref="JsonDocument"/>
-/// rather than bound to a POCO, matching the local Epic readers and for the same
-/// reason: the shape has optional fields whose <i>absence</i> is meaningful, and
-/// a binder turns absence into a default that reads as an answer.
+/// Reads Epic's OAuth responses with <see cref="JsonDocument"/>, preserving the
+/// distinction between absent and default-valued fields.
 /// </summary>
 internal static class EpicOAuthJson
 {
     /// <summary>
     /// Builds a token from a successful response body, or null when the body is
-    /// not one.
-    ///
-    /// <para><b>Expiry is taken from whatever Epic actually sent.</b>
-    /// <c>expires_at</c> is preferred because it is absolute and immune to the
-    /// round-trip latency an <c>expires_in</c> countdown silently absorbs;
-    /// <c>expires_in</c> is the fallback; and if neither is present the token
-    /// gets a deliberately short floor so it is refreshed soon rather than
-    /// trusted indefinitely.</para>
-    ///
-    /// <para><b>The refresh expiry is allowed to be missing and is left null when
-    /// it is.</b> Not a sentinel, not <c>DateTimeOffset.MaxValue</c>, not
-    /// "now + a guess" — null, meaning Epic did not say. See
-    /// <see cref="EpicOAuthToken.IsRefreshUsable"/> for why that distinction
-    /// decides whether a live session keeps working.</para>
+    /// not one. Expiry is read from the response, never assumed.
     /// </summary>
     public static EpicOAuthToken? TryReadToken(
         string body, string clientId, DateTimeOffset now, EpicWebOptions options)

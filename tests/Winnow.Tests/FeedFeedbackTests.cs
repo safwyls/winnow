@@ -9,21 +9,7 @@ using Xunit;
 namespace Winnow.Tests;
 
 /// <summary>
-/// The feed's feedback loop, from the two controls on a card to the row they
-/// leave behind and the two routes back from it.
-///
-/// <para><b>Nothing here scores anything and nothing here opens a window.</b>
-/// The view-model half runs against <see cref="FakeFeedService"/>, which keeps
-/// verdicts with migration 0011's own semantics — append, revoke by stamp, never
-/// delete — so the assertions are about the SCREEN. The service half runs a real
-/// <see cref="FeedService"/> against a fake engine and a fake store, which is
-/// where the §6b contract (load the sets, apply, compute, record what was shown)
-/// can actually be observed.</para>
-///
-/// <para><b>The rule these defend</b> is that steering the model stays
-/// inspectable and reversible. A dismissal that cannot be undone at the point of
-/// the act is one people stop using; a history that hides what was taken back is
-/// the black box the charter forbids.</para>
+/// The feed's feedback loop: dismiss, pin, undo, and the history they leave.
 /// </summary>
 public sealed class FeedFeedbackTests
 {

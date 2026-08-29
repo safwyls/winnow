@@ -6,40 +6,13 @@ using Winnow.App.Services;
 namespace Winnow.App.ViewModels;
 
 /// <summary>
-/// "What you've told the feed" — the inspection surface, and the reason this
-/// loop is not a black box.
-///
-/// <para><b>Why it exists at all.</b> A recommender that quietly accumulates
-/// dismissals is one the user cannot argue with: games stop appearing and there
-/// is nothing to point at. §6b's answer is that verdicts are append-and-revoke
-/// rows, and this screen is the other half of that answer — the whole history,
-/// including what was taken back. Dismissed → undone → dismissed again is two
-/// rows and a stamp, and all three facts are on screen, because a revocation
-/// the interface hides is a revocation the user has to take on trust.</para>
-///
-/// <para><b>Lapsed rows are shown too.</b> A snooze that ran out needed no write
-/// (§6b: "active" is computed at read time), so the only evidence it ever
-/// happened is its row — and "why did this come back" is exactly the question
-/// this surface has to be able to answer.</para>
-///
-/// <para><b>Undo lives here as well as on the card.</b> The card's receipt is
-/// the immediate route back and covers the misclick; this is the one that works
-/// a week later, and it is the only route back for a verdict given on a day the
-/// feed no longer shows.</para>
-///
-/// <para><b>Titles come from the library's own tiles</b>
-/// (<see cref="IGameTileSource.TileForRelease"/>), so a game is named here
-/// exactly as it is named on the wall. A release the library no longer holds
-/// keeps its row and says so — dropping it would hide a verdict the user gave,
-/// which is the failure this whole screen exists to prevent.</para>
+/// Verdict history screen (§6b): shows every feed response the user has given,
+/// including revoked and lapsed rows, with undo. Titles come from
+/// <see cref="IGameTileSource.TileForRelease"/>.
 /// </summary>
 public partial class FeedHistoryViewModel : ObservableObject
 {
-    /// <summary>
-    /// Both parameters optional for the reason the rest of this screen's are: an
-    /// unwired host costs the list rather than the window, and the empty state
-    /// is a sentence either way.
-    /// </summary>
+    /// <summary>Both parameters optional; without them the screen shows its empty state.</summary>
     public FeedHistoryViewModel(IFeedService? feed = null, IGameTileSource? tiles = null)
     {
         _feed = feed;
@@ -55,12 +28,7 @@ public partial class FeedHistoryViewModel : ObservableObject
     /// <summary>The screen's own name, and it names the act rather than the table.</summary>
     public string Title => "What you've told the feed";
 
-    /// <summary>
-    /// How many verdicts are on record, in Plex Mono with tabular figures like
-    /// every number in the app. Counts every row, revoked and lapsed included —
-    /// this is a history, and a history that only counted the parts still in
-    /// force would be the summary of it rather than the thing itself.
-    /// </summary>
+    /// <summary>Total verdict count (all rows, including revoked and lapsed). Plex Mono, tnum.</summary>
     [ObservableProperty]
     public partial string CountText { get; set; } = "0";
 
@@ -69,22 +37,13 @@ public partial class FeedHistoryViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(ShowMessage))]
     public partial bool HasEntries { get; set; }
 
-    /// <summary>
-    /// The one sentence shown when the list is empty. It is a direction rather
-    /// than a mood (§7): it says where the controls are, because someone opening
-    /// this screen before ever using them has asked a reasonable question.
-    /// </summary>
+    /// <summary>Empty-state message directing the user to the feed controls (§7).</summary>
     public string Message =>
-        "Nothing yet. Every card carries “Not interested” and “Not now”, and whatever you tell it lands here — including the ones you take back.";
+        "Nothing yet. Your feed responses will appear here.";
 
     public bool ShowMessage => !HasEntries;
 
-    /// <summary>
-    /// Re-reads the whole history. Cheap by construction — one row per verdict
-    /// ever given, against a log that grows by a click at a time — and it still
-    /// goes through the service, which puts the read on a background thread with
-    /// everything else that touches SQLite.
-    /// </summary>
+    /// <summary>Reloads the full verdict history from the service.</summary>
     [RelayCommand]
     private async Task LoadAsync(CancellationToken ct)
     {
@@ -120,19 +79,10 @@ public partial class FeedHistoryViewModel : ObservableObject
         CountText = Entries.Count.ToString("N0");
     }
 
-    /// <summary>
-    /// Raised after a row here is taken back, carrying the release it was on, so
-    /// the Feed can put any card still showing that receipt back to its
-    /// unanswered state. Two surfaces over one row must not disagree about it.
-    /// </summary>
+    /// <summary>Raised after a verdict is revoked, carrying the release id for feed synchronisation.</summary>
     public event EventHandler<long>? VerdictRevoked;
 
-    /// <summary>
-    /// The undo behind every active row. Reloads afterwards rather than mutating
-    /// the row in place: a revocation is a new fact about a stored row, and
-    /// re-reading is how this screen stays a view of the store rather than a
-    /// second copy of it that can drift.
-    /// </summary>
+    /// <summary>Revokes a verdict and reloads the list from the store.</summary>
     private async Task Revoke(FeedHistoryEntryViewModel entry, CancellationToken ct)
     {
         if (_feed is null)
@@ -159,13 +109,8 @@ public partial class FeedHistoryViewModel : ObservableObject
 }
 
 /// <summary>
-/// One stored verdict, as a line somebody can read: which game, which of the two
-/// things they said, and where it stands now.
-///
-/// <para><b>The status is a sentence and a date, split.</b> The date sets in the
-/// data face with tabular figures (§3) and the words beside it stay prose, which
-/// is the same rule the feed's reason sentences follow — this app's numbers live
-/// inside sentences on these screens and are still numbers.</para>
+/// One verdict row: game title, kind (snoozed/dismissed), and current status.
+/// The date is split out for Plex Mono rendering (§3).
 /// </summary>
 public sealed class FeedHistoryEntryViewModel
 {
@@ -227,11 +172,7 @@ public sealed class FeedHistoryEntryViewModel
 
     public bool HasStatusDate => StatusDate.Length > 0;
 
-    /// <summary>
-    /// Only a standing verdict can be taken back. An undone one already has been,
-    /// and a lapsed snooze undid itself — offering a button for either would be
-    /// the screen inviting an act that does nothing.
-    /// </summary>
+    /// <summary>Only active verdicts can be undone; undone and lapsed rows already are.</summary>
     public bool CanUndo => Status == FeedVerdictStatus.Active;
 
     /// <summary>Takes this verdict back. See <see cref="FeedHistoryViewModel"/>'s own remarks.</summary>

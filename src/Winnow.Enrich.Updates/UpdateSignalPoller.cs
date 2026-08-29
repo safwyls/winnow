@@ -7,41 +7,11 @@ using Microsoft.Extensions.Logging;
 namespace Winnow.Enrich.Updates;
 
 /// <summary>
-/// M2's update-signal poller: the thing that finally makes "Patched since"
-/// non-zero.
-///
-/// <para>It writes both of §4.5's raw signals into <c>update_events</c> and
-/// stops there. It never decides what a "major update" is — that correlation
-/// lives in <c>LibraryQueryRepository</c>'s bucket query, at read time, precisely
-/// so the heuristic can be retuned without re-fetching. Feeding it correct raw
-/// rows is this class's entire job.</para>
-///
-/// <para><b>The schedule is the design.</b> A naive full poll of a 616-game
-/// library is 1,232 requests and ~20 minutes; the spike's three rules bring that
-/// to roughly 63 requests a day:</para>
-///
-/// <list type="number">
-/// <item><b>Eliminate.</b> Never-opened games can never show the badge
-/// (design-system §5.2), and retired ones are outranked in the bucket query, so
-/// neither is polled. On a typical large Steam library that is ~40% of it gone
-/// before a single request. See <see cref="IPollCandidateSource"/>.</item>
-/// <item><b>Cascade.</b> Announcements are rare; depot pushes are constant — Dota
-/// 2 and Elden Ring both carry fresh pushes with no patch note behind them. So
-/// the cheap keyless Valve signal sweeps wide, and the ~12 KB volunteer service
-/// is touched only when a new patch note actually appears. Because
-/// <c>timeupdated</c> is a persistent point-in-time value, that one call usually
-/// also sees a build that landed days <i>earlier</i>, resolving the pair
-/// immediately.</item>
-/// <item><b>Stagger.</b> Each app is pinned to one of
-/// <see cref="UpdateSignalOptions.SweepPeriodDays"/> slots by a stable hash of
-/// its appid, so a day's batch is about a seventh of the eligible set. Up to a
-/// week of detection latency is irrelevant for a badge about a game last played
-/// six months ago.</item>
-/// </list>
-///
-/// <para>Nothing here may block a user-facing path (§5.1). Every failure mode —
-/// a dead network, a 403, steamcmd.net going dark as §4.5 saw it do — degrades
-/// to "no signal this pass" and leaves the app due next time.</para>
+/// Polls for update signals (news + build pushes) and writes raw rows into
+/// <c>update_events</c>. Uses three cost-reduction rules: eliminate (skip
+/// never-opened/retired), cascade (cheap news first, expensive build only on
+/// change), and stagger (stable hash assigns apps to daily slots). Failures
+/// degrade to "no signal this pass", never blocking a user-facing path.
 /// </summary>
 public sealed class UpdateSignalPoller
 {
@@ -74,16 +44,7 @@ public sealed class UpdateSignalPoller
         _log = log;
     }
 
-    /// <summary>
-    /// Polls one day's worth of due apps and returns what it did.
-    ///
-    /// <para>Safe and cheap to call more than once a day: an app polled today is
-    /// not due again today, so a second call in the same session is a no-op that
-    /// costs one query and no requests. That, rather than a timer this class
-    /// owns, is what makes the schedule survive restarts — all the state lives
-    /// in the database, so "call this once per background session" is a correct
-    /// integration whether the app runs daily or twice an hour.</para>
-    /// </summary>
+    /// <summary>Polls one day's worth of due apps. Idempotent within a day -- schedule state lives in the database.</summary>
     public async Task<UpdatePollReport> PollDueBatchAsync(CancellationToken ct = default)
     {
         var now = _clock.GetUtcNow().UtcDateTime;
@@ -225,11 +186,7 @@ public sealed class UpdateSignalPoller
         await _state.SetAsync(candidate.AppId, next, now, ct);
     }
 
-    /// <summary>
-    /// The daily re-check for an app whose announcement is still waiting on its
-    /// build push — the Stardew Valley case, where the build landed two days
-    /// after the post.
-    /// </summary>
+    /// <summary>Re-checks a watched app whose announcement is still waiting on its build push.</summary>
     private async Task<UpdatePollState> ResolveWatchAsync(
         PollCandidate candidate, UpdatePollState state, DateTime now, Tally tally, CancellationToken ct)
     {
@@ -241,9 +198,7 @@ public sealed class UpdateSignalPoller
         return await ConfirmBuildAsync(candidate, state, announcedAt, now, tally, ct);
     }
 
-    /// <summary>
-    /// One steamcmd.net call, plus the decision about whether to keep watching.
-    /// </summary>
+    /// <summary>One steamcmd.net call, plus the decision about whether to keep watching.</summary>
     private async Task<UpdatePollState> ConfirmBuildAsync(
         PollCandidate candidate,
         UpdatePollState state,
@@ -359,21 +314,7 @@ public sealed class UpdateSignalPoller
 
     // ── Schedule ────────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Whether an app is due today. Four rules, in order:
-    ///
-    /// <list type="bullet">
-    /// <item>Polled already today → not due. This is what makes
-    /// <c>PollDueBatchAsync</c> safe to call repeatedly, and what makes the
-    /// stagger survive a restart: the answer comes from the database, not from
-    /// anything held in memory.</item>
-    /// <item>On the watch list with the window still open → due daily.</item>
-    /// <item>Its slot matches today → due.</item>
-    /// <item>Overdue by <see cref="UpdateSignalOptions.CatchUpAfter"/> → due,
-    /// whatever its slot. Covers a machine switched off through its slot day and
-    /// a batch truncated by the cap.</item>
-    /// </list>
-    /// </summary>
+    /// <summary>Whether an app is due today: not yet polled today, and either on the watch list, in today's slot, or overdue.</summary>
     private bool IsDue(string appId, UpdatePollState? state, DateTime now)
     {
         if (state?.LastPolledAt is { } lastPolled)
@@ -400,14 +341,7 @@ public sealed class UpdateSignalPoller
     private static bool IsWatching(UpdatePollState? state, DateTime now)
         => state?.WatchUntil is { } until && until > now;
 
-    /// <summary>
-    /// Which of the sweep's slots an appid belongs to.
-    ///
-    /// <para>FNV-1a over the appid's bytes, not <see cref="string.GetHashCode()"/>:
-    /// .NET randomises string hashing per process, so the built-in hash would
-    /// reshuffle every app into a different slot on every launch and destroy the
-    /// staggering it is supposed to provide.</para>
-    /// </summary>
+    /// <summary>Stable slot assignment for an appid via FNV-1a (not string.GetHashCode, which is randomised per process).</summary>
     public static int Slot(string appId, int sweepPeriodDays)
     {
         var period = Math.Max(1, sweepPeriodDays);
@@ -425,11 +359,7 @@ public sealed class UpdateSignalPoller
         return (int)(hash % (uint)period);
     }
 
-    /// <summary>
-    /// Today's slot, counted in whole days since the Unix epoch so it advances
-    /// once per UTC day on every machine and never depends on when the app
-    /// happens to be running.
-    /// </summary>
+    /// <summary>Today's slot, counted in whole days since Unix epoch mod the sweep period.</summary>
     public static int TodaySlot(DateTime now, int sweepPeriodDays)
     {
         var period = Math.Max(1, sweepPeriodDays);

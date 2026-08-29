@@ -3,15 +3,9 @@
 **A local-first game library manager that surfaces the games you own, meant to play, and
 forgot existed.** No server, no account, no telemetry.
 
-Large PC libraries decay into three piles: games that are old or unplayable, games you
-finished, and — the one that matters — **games you intended to play and forgot existed.**
-Storefronts are good at the first two and blind to the third, because the facts that
-identify it are ones they discard: how long a game sat unopened, whether you bounced off it
-once or fought with it across six sessions, whether it has been patched three times since
-you gave up.
-
-Winnow keeps that history. Winnow is also the dragon on the icon; the thing being winnowed
-is the hoard.
+Large PC libraries accumulate games you meant to play and forgot about. Storefronts don't
+track the signals that matter: how long a game sat unopened, whether you bounced off it,
+whether it's been patched since you last tried. Winnow does.
 
 ---
 
@@ -24,11 +18,9 @@ is the hoard.
 - **A feed that says why.** Every recommendation carries a sentence — *"You put 2.8 hours
   into this in 2021 and it has had an update since, most recently 'PATCH NOTES – S06.05.02'."*
   Not a genre tag, not a star rating. The reason is the product.
-- **Buckets that mean something.** *Never played* is under 2 hours — Steam's refund window,
-  the one non-arbitrary line available. *Bounced off* is above it: you committed past the
-  point of no return and stopped anyway, which is a far more interesting fact.
-- **Patch-aware staleness.** Games updated since you last played them, which needs two
-  independent signals to avoid firing on every trivial push.
+- **Buckets that mean something.** *Never played* is under 2 hours (Steam's refund window).
+  *Bounced off* is above that — you tried it and stopped.
+- **Patch tracking.** Games updated since you last played them.
 - **Launch and session tracking.** Click Play; the game starts and nothing else happens.
   Winnow records when you actually played, which storefronts never retain.
 - **Themes and transparency**, including a drop-in JSON theme format.
@@ -47,32 +39,28 @@ Windows only in practice — Epic and GOG discovery uses the registry, credentia
 and session detection is Windows-shaped. It builds elsewhere; it will find less.
 
 The window opens as soon as the local scan finishes, about a second. Titles, cover art and
-update signals fill in behind it, deliberately: a browsable library immediately beats a
-correct one in thirty seconds.
+update signals fill in behind it.
 
 ### First run
 
 The first run does the most work — scanning launcher files, creating a record per game, then
 fetching titles and covers. Give it a minute or two.
 
-**`Patched since` grows over the first week.** The update poller spreads its sweep across
-seven days to stay light on Valve's endpoints and the volunteer `api.steamcmd.net` service,
-so a game enters that bucket only when its slot comes up.
+**`Patched` grows over the first week.** The update poller spreads its sweep across seven
+days, so a game enters that bucket when its slot comes up.
 
 ### Connecting stores
 
-`SETTINGS › STORES` shows what each store contributes and what it's missing.
+`SETTINGS › PLATFORMS` shows what each platform contributes.
 
-| Store | From local files | Adds when signed in |
+| Platform | From local files | Adds when signed in |
 |---|---|---|
-| Steam | Installed games, playtime, last played | Games you own but never installed *(needs an API key)* |
-| Epic | Owned titles, install state | Per-game playtime and acquisition dates — Epic writes neither to disk |
-| GOG | Everything Winnow needs | Nothing — signing in is not offered, because it would add a credential for no data |
+| Steam | Installed games, playtime, last played | Full owned list *(needs an API key)* |
+| Epic | Owned titles, install state | Playtime and acquisition dates |
+| GOG | Everything Winnow needs | Not needed |
 
-Epic sign-in opens Epic's own page in an embedded browser. It tells you plainly, before
-anything opens, that Winnow will hold a credential with full access to your Epic account —
-because Epic issues no narrower one. A console flow (`--epic-login`) exists for anyone who
-would rather not type a password into a window Winnow opened.
+Epic sign-in opens Epic's own page in an embedded browser. A console flow (`--epic-login`)
+is available as an alternative.
 
 ### Where your data lives
 
@@ -83,28 +71,25 @@ would rather not type a password into a window Winnow opened.
 | Your themes | `%LOCALAPPDATA%\Winnow\themes\` |
 
 Nothing leaves the machine except read-only requests to IGDB, Steam's public endpoints,
-`gamesdb.gog.com` and `api.steamcmd.net`. Store credentials are encrypted at rest with DPAPI
-and never leave your machine. **Winnow never writes to any Steam, Epic or GOG file.**
+`gamesdb.gog.com` and `api.steamcmd.net`. Credentials are encrypted at rest with DPAPI.
+**Winnow never writes to any Steam, Epic or GOG file.**
 
-*Upgrading from Hoard?* The first launch moves `%LOCALAPPDATA%\Hoard\` across — database,
-covers, themes and stored sign-ins together — and says so in the log. If the old database is
-open elsewhere the move is skipped and that run reads the old folder in place. Nothing is
-ever half-moved and nothing is deleted.
+*Upgrading from Hoard?* The first launch moves `%LOCALAPPDATA%\Hoard\` to
+`%LOCALAPPDATA%\Winnow\` automatically.
 
 ### Optional: IGDB
 
 Winnow works without it; a keyless Steam endpoint covers most titles. IGDB adds years,
-publishers and genres, which also sharpens duplicate detection and the recommendation feed.
-Get a client ID and secret from [dev.twitch.tv](https://dev.twitch.tv/console/apps):
+publishers and genres. Get a client ID and secret from
+[dev.twitch.tv](https://dev.twitch.tv/console/apps):
 
 ```powershell
 setx Igdb__ClientId     "your-client-id"
 setx Igdb__ClientSecret "your-client-secret"
 ```
 
-**Then open a new terminal** — a shell reads user-scope variables only when it starts.
-Alternatively use `src/Winnow.App/appsettings.local.json` (gitignored), which has no such
-trap.
+**Then open a new terminal** — environment variables are read at shell startup.
+Or use `src/Winnow.App/appsettings.local.json` (gitignored).
 
 ### Writing a theme
 
@@ -126,9 +111,8 @@ and a few numbers; everything else is derived:
 }
 ```
 
-Winnow reports each theme's measured contrast — *"chrome stays over AA to 27%"* — so you can
-see what a palette costs before shipping it. A broken theme is skipped with the file, field
-and expectation named, never a silent fallback. The app writes an annotated example on first
+Winnow reports each theme's measured contrast so you can see the impact on readability.
+Broken themes are skipped with a diagnostic. The app writes an annotated example on first
 run.
 
 ---
@@ -155,16 +139,15 @@ Winnow.Auth.WebView   WebView2 host for embedded sign-in. References Avalonia + 
 Winnow.App            Avalonia UI and the composition root. Assembly name `Winnow`.
 ```
 
-### The rules that are load-bearing
+### Key constraints
 
 - **Four-layer identity: Work → Release → Ownership → PlayRecord.** Never collapse Release
   into Work. Skyrim SE is not Skyrim; the achievement sets differ.
 - **Never auto-merge on a fuzzy title.** Hard external-id joins only; everything else queues
   for confirmation. This is the failure that makes people leave.
 - **Derived buckets are queries, not stored columns.** Thresholds get tuned; stored values rot.
-- **A source's silence is not an answer.** A field a source cannot speak to arrives `null`,
-  never `false` or `0`. This has cost real data twice — once clearing the entire library's
-  install state.
+- **A source's silence is not an answer.** A field a source cannot provide arrives `null`,
+  never `false` or `0`.
 - **Migrations are append-only.** Embedded `NNNN_*.sql`; never edit a shipped one.
 - **Never write to a Steam, Epic or GOG file.** Copy before reading anything live.
 
@@ -196,11 +179,8 @@ dotnet test -p:BaseOutputPath=C:\Temp\winnow-verify\
 | [`docs/recommendation-engine.md`](docs/recommendation-engine.md) | The scoring model, every threshold, and why. |
 | [`CLAUDE.md`](CLAUDE.md) | Module map, conventions, and traps that already cost real debugging. |
 
-`docs/spikes/` outranks the specs deliberately. Several constraints exist *because* the
-widely-circulated answer was wrong — Steam's collections store has moved twice,
-`ISteamNews` returns 403 to mean "no news feed" rather than rate limiting, and Epic's own
-catalog stores a literal `?` where trademark symbols belong. Verify against reality; write
-down what you find.
+`docs/spikes/` outranks the specs because several assumptions in the specs turned out to be
+wrong — verified findings are in the spike documents.
 
 ### What isn't built
 
@@ -210,12 +190,9 @@ JSON/CSV export, install management, and full-screen gamepad navigation. See `RO
 
 ### A note on shipped credentials
 
-`BuiltInEpicCredentialSource` carries Epic's launcher client id and secret. Epic issues no
-client that can read a personal library, so the alternatives were embedding these or the
-feature not existing — the same choice Legendary, Heroic and the Playnite plugins made. They
-sit at the *lowest* priority in the credential chain, so a user-supplied pair always wins.
-The realistic failure mode is Epic rotating the client, not bans. See
-`docs/spikes/epic-oauth.md`.
+`BuiltInEpicCredentialSource` carries Epic's launcher client id and secret — the same
+approach Legendary, Heroic and Playnite use. They sit at the lowest priority in the
+credential chain, so a user-supplied pair always wins. See `docs/spikes/epic-oauth.md`.
 
 ---
 

@@ -7,42 +7,9 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace Winnow.Ingest.Gog;
 
 /// <summary>
-/// Composes GOG's local sources into the normalised
-/// <see cref="CandidateOwnership"/> feed (§5.1: ingest emits candidates only and
-/// never writes works/releases — that is Resolve's job). Strictly read-only
-/// against every GOG file, and a machine without GOG simply yields an empty list.
-///
-/// <para><b>Two sources, in priority order</b>
-/// (docs/spikes/epic-gog-local-files.md sections 10, 13, 16):</para>
-/// <list type="number">
-/// <item><b>Galaxy's client database</b> — authoritative wherever it exists. The
-/// owned library including uninstalled titles, canonical titles, real playtime,
-/// real last-played, purchase dates and install paths. Read through
-/// <see cref="GalaxyDatabaseSnapshot"/>, which copies before it opens; the live
-/// file is never opened, for any reason, including <c>mode=ro</c>.</item>
-/// <item><b>GOG's install registry plus <c>goggame-&lt;id&gt;.info</c></b> — the
-/// path for users who never install Galaxy, which is a first-class way to own GOG
-/// games. It also fills in games installed standalone that Galaxy has not
-/// noticed, so it runs even when the database is present.</item>
-/// </list>
-///
-/// <para><b>GOG really does have playtime, unlike Epic.</b>
-/// <c>GameTimes.minutesInGame</c> is minutes and <c>LastPlayedDates</c> is UTC,
-/// and both survive uninstall — The Witcher 3 reports 50 minutes and a 2018
-/// last-played while not installed, so playtime is never gated on install state.
-/// A <c>GameTimes</c> row of <c>0</c> is a real answer and is emitted as <c>0</c>;
-/// no row at all is emitted as null, because those are different statements.
-/// Games discovered only through the registry carry null playtime for the same
-/// reason: that path has no playtime source whatsoever, and a zero there would be
-/// a claim rather than an observation. Galaxy only accrues time for sessions it
-/// launched, exactly as §4.1's caveat says of Steam's local config.</para>
-///
-/// <para><b>Titles.</b> Galaxy's <c>title</c> GamePiece is canonical and is
-/// preferred always. Every install-side source carries the <i>installer-locale</i>
-/// title instead — GWENT's registry name and <c>.info</c> name are Polish on an
-/// English install — so those are used only where Galaxy is absent. GOG's product
-/// id hard-joins to IGDB directly, so a GOG title never has to carry identity and
-/// a local one can never reach the fuzzy matcher.</para>
+/// Composes GOG's local sources (Galaxy database + install registry) into the
+/// normalised <see cref="CandidateOwnership"/> feed. Strictly read-only; a
+/// machine without GOG simply yields an empty list.
 /// </summary>
 public sealed class GogLibrarySource
 {

@@ -6,21 +6,7 @@ namespace Winnow.Ingest.Epic;
 
 /// <summary>
 /// Reads <c>Data\Catalog\catcache.bin</c>, the launcher's entitlement catalog
-/// (docs/spikes/epic-gog-local-files.md section 6).
-///
-/// <para><b>This file is why Epic needs no OAuth.</b> It is the account's owned
-/// library — every entitled title, installed or not — written by the launcher on
-/// start-up after login. The launcher's own log shows it landing immediately
-/// after "found 74 entitled apps". Reading it closes the owned-but-not-installed
-/// gap with no network call, no token store and no borrowed client secret.</para>
-///
-/// <para><b>Format: base64 of plain UTF-8 JSON.</b> Not gzipped, not encrypted,
-/// despite the <c>.bin</c> extension. Decoding yields a top-level array of
-/// catalog entries.</para>
-///
-/// <para><b>Staleness:</b> rewritten only when the launcher starts and logs in,
-/// so it is eventually-consistent in exactly the way §4.1 already commits Winnow
-/// to for Steam's config tree. Same bargain, same rule.</para>
+/// (base64 of plain JSON). Contains the owned library whether installed or not.
 /// </summary>
 public sealed class EpicCatalogReader
 {

@@ -5,17 +5,7 @@ using Xunit;
 namespace Winnow.Tests;
 
 /// <summary>
-/// The Stores panel's view model — M4.6's UI half.
-///
-/// <para><b>Nothing here opens a browser, reaches Epic, or needs an account.</b>
-/// The panel talks to <see cref="IStoreConnections"/>, which is the App-layer
-/// seam that exists precisely so this is possible: the whole state machine —
-/// signed out, signing in, signed in, expired, and each distinct failure — is
-/// driven by a fake returning values. A test that needed a real sign-in would
-/// be a test nobody could run twice, since the authorization code behind it is
-/// single-use.</para>
-///
-/// <para>No Avalonia application, dispatcher or rendering is involved.</para>
+/// Stores panel view model driven by a fake <see cref="IStoreConnections"/>.
 /// </summary>
 public sealed class StoresViewModelTests
 {
@@ -402,7 +392,7 @@ public sealed class StoresViewModelTests
 
         // The point of the row: the user is looking at a smaller library than
         // they own, and only this screen can tell them.
-        Assert.Contains("missing from your library", stores.SteamAddsMessage, StringComparison.Ordinal);
+        Assert.Contains("Set an API key", stores.SteamAddsMessage, StringComparison.Ordinal);
         Assert.True(stores.ShowSteamKeyHint);
         Assert.Contains("Steam__ApiKey", stores.SteamKeyHintMessage, StringComparison.Ordinal);
     }
@@ -431,7 +421,7 @@ public sealed class StoresViewModelTests
     {
         var stores = new StoresViewModel(new FakeStoreConnections());
 
-        Assert.Contains("nothing to sign into", stores.GogNoSignInMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Not needed", stores.GogNoSignInMessage, StringComparison.OrdinalIgnoreCase);
 
         // The panel exposes exactly two sign-in commands and both are Epic's.
         // A GOG one appearing here is the regression this asserts against.

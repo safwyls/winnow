@@ -7,34 +7,8 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace Winnow.Ingest.Epic.Web.Auth;
 
 /// <summary>
-/// Persists the Epic session in the §6 <c>settings</c> table as a single
-/// DPAPI-encrypted blob.
-///
-/// <para><b>Encrypted before it reaches the database, never after.</b> The whole
-/// session is serialised to JSON, handed to <see cref="IEpicSecretProtector"/>,
-/// and only the base64 ciphertext is written. The database therefore never holds
-/// the access token, the refresh token, the account id or the display name in
-/// the clear — which matters more here than for the Steam key, because an Epic
-/// refresh token is, in the words Epic itself prints on the page that issues the
-/// authorization code, "full access to your Epic account".</para>
-///
-/// <para><b>If it cannot be encrypted it is not written.</b> When the protector
-/// is unavailable or fails, <see cref="SaveAsync"/> writes nothing and says so
-/// once. There is deliberately no plaintext path, not even a guarded one: the
-/// failure mode of a plaintext fallback is silent and permanent, while the
-/// failure mode of refusing is a login the user repeats after a restart.</para>
-///
-/// <para><b>One key, not seven.</b> The session fields are only ever useful
-/// together — an access token without its expiry is unusable, and a refresh
-/// token without the client id that minted it cannot be spent. Storing them as
-/// one blob makes a partial write impossible, and makes a damaged ciphertext
-/// unreadable-and-therefore-discarded rather than half-readable.</para>
-///
-/// <para><b>The settings repository is optional</b>, for the module-boundary
-/// reason set out on <see cref="Credentials.SettingsTableEpicCredentialSource"/>:
-/// <c>Winnow.Ingest.Epic</c> does not reference <c>Winnow.Data</c>. No repository
-/// means no persistence, which is the same in-memory-only behaviour as an
-/// unavailable protector.</para>
+/// Persists the Epic session in the settings table as a single DPAPI-encrypted
+/// blob. Refuses to store unencrypted; no-op when the repository is absent.
 /// </summary>
 public sealed class SettingsEpicTokenStore : IEpicTokenStore
 {

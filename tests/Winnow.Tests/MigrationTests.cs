@@ -17,6 +17,7 @@ public class MigrationTests
         "merge_candidates",
         "metadata_cache", "settings",
         "feed_verdicts", "feed_surfacings",
+        "update_acknowledgements",
     ];
 
     [Fact]
@@ -585,6 +586,134 @@ public class MigrationTests
                 INSERT INTO feed_surfacings (release_id, surfaced_on, shelf_id)
                 VALUES (999999, '2026-08-27', 'on_your_taste');
                 """));
+    }
+
+    /// <summary>
+    /// 0012 adds the "I've seen this patch" watermark: the instant the user
+    /// dismissed §5.2's unread dot on one release. A fact, stored, like 0011's
+    /// verdicts — and, like them, appended and revoked rather than updated in
+    /// place, with no "active" column and (unlike a snooze) no expiry.
+    ///
+    /// <para>What this asserts about the SHAPE is as much about what is absent
+    /// as what is present: no kind, no expires_at, no uniqueness on release_id.
+    /// Each of those would be a different feature — a vocabulary, a lapse, or an
+    /// upsert — and all three are ruled out in the migration's header.</para>
+    /// </summary>
+    [Fact]
+    public void Migration_0012_adds_the_acknowledgement_watermark_as_an_append_only_log()
+    {
+        using var db = new TempDatabase();
+        using var conn = db.Factory.Open();
+
+        var workId = conn.ExecuteScalar<long>(
+            "INSERT INTO works (name) VALUES ('Riven') RETURNING id;");
+        var releaseId = conn.ExecuteScalar<long>(
+            "INSERT INTO releases (work_id, name) VALUES (@workId, 'Riven') RETURNING id;",
+            new { workId });
+
+        // Repeated dismissals ACCUMULATE. There is deliberately no unique index
+        // on release_id: a second, later patch dismissed is a second row, and
+        // the bucket query takes MAX(acknowledged_through) rather than making
+        // the writer overwrite history to say which one wins.
+        conn.Execute("""
+            INSERT INTO update_acknowledgements (release_id, acknowledged_through, created_at)
+            VALUES (@releaseId, '2026-03-01 00:00:00', '2026-03-02 09:00:00'),
+                   (@releaseId, '2026-06-01 00:00:00', '2026-06-02 09:00:00');
+            """, new { releaseId });
+
+        Assert.Equal(2, conn.ExecuteScalar<long>(
+            "SELECT COUNT(*) FROM update_acknowledgements WHERE release_id = @releaseId;",
+            new { releaseId }));
+
+        // "Standing" is revoked_at IS NULL, evaluated in the query — never a
+        // stored column. Both rows stand until something stamps them.
+        Assert.Equal("2026-06-01 00:00:00", conn.ExecuteScalar<string>("""
+            SELECT MAX(acknowledged_through) FROM update_acknowledgements
+            WHERE release_id = @releaseId AND revoked_at IS NULL;
+            """, new { releaseId }));
+
+        // Undo is a stamp, not a DELETE: the row survives its own revocation.
+        conn.Execute("""
+            UPDATE update_acknowledgements SET revoked_at = '2026-06-10 09:00:00'
+            WHERE release_id = @releaseId AND revoked_at IS NULL;
+            """, new { releaseId });
+        Assert.Equal(2, conn.ExecuteScalar<long>(
+            "SELECT COUNT(*) FROM update_acknowledgements WHERE release_id = @releaseId;",
+            new { releaseId }));
+        Assert.Null(conn.ExecuteScalar<string?>("""
+            SELECT MAX(acknowledged_through) FROM update_acknowledgements
+            WHERE release_id = @releaseId AND revoked_at IS NULL;
+            """, new { releaseId }));
+
+        // No expiry column, and there must not be one: an acknowledgement is
+        // answered by the next real patch, never by a clock. A dismissal that
+        // timed out would re-raise the dot for an update already read, which is
+        // the one thing §5.2's mark must never do.
+        var columns = conn.Query<string>(
+            "SELECT name FROM pragma_table_info('update_acknowledgements');").ToList();
+        Assert.Equal(
+            ["id", "release_id", "acknowledged_through", "created_at", "revoked_at"],
+            columns);
+
+        // Indexed by release, like 0011's verdicts — the bucket query groups on it.
+        Assert.Equal(1, conn.ExecuteScalar<long>("""
+            SELECT COUNT(*) FROM sqlite_master
+            WHERE type = 'index' AND name = 'ix_update_acknowledgements_release';
+            """));
+
+        // Hangs off releases with the usual FK enforcement...
+        Assert.Throws<Microsoft.Data.Sqlite.SqliteException>(() =>
+            conn.Execute("""
+                INSERT INTO update_acknowledgements (release_id, acknowledged_through, created_at)
+                VALUES (999999, '2026-03-01 00:00:00', '2026-03-02 09:00:00');
+                """));
+
+        // ...and cascades on delete, matching 0011.
+        conn.Execute("DELETE FROM releases WHERE id = @releaseId;", new { releaseId });
+        Assert.Equal(0, conn.ExecuteScalar<long>(
+            "SELECT COUNT(*) FROM update_acknowledgements;"));
+    }
+
+    /// <summary>
+    /// 0012 applies to a database that already holds update events and buckets
+    /// them — the state every existing install is in. Nothing is back-filled:
+    /// an empty acknowledgement table means "the user has dismissed nothing",
+    /// which is the correct reading and leaves every existing badge standing.
+    /// </summary>
+    [Fact]
+    public void Migration_0012_applies_over_existing_update_events_and_acknowledges_nothing()
+    {
+        using var db = new TempDatabase();
+
+        long releaseId;
+        using (var conn = db.Factory.Open())
+        {
+            conn.Execute("DROP TABLE update_acknowledgements;");
+            conn.Execute("DELETE FROM SchemaVersions WHERE ScriptName LIKE '%0012%';");
+
+            var workId = conn.ExecuteScalar<long>(
+                "INSERT INTO works (name) VALUES ('Riven') RETURNING id;");
+            releaseId = conn.ExecuteScalar<long>(
+                "INSERT INTO releases (work_id, name) VALUES (@workId, 'Riven') RETURNING id;",
+                new { workId });
+            conn.Execute("""
+                INSERT INTO update_events (release_id, kind, occurred_at, title)
+                VALUES (@releaseId, 'build_push', '2026-05-01 00:00:00', NULL),
+                       (@releaseId, 'announcement', '2026-05-02 00:00:00', 'Patch notes');
+                """, new { releaseId });
+        }
+
+        db.Initializer.Initialize();
+
+        using var after = db.Factory.Open();
+
+        // The raw signals are untouched. §4.5 requires both be kept so the
+        // heuristic can be retuned; the acknowledgement is a fact layered over
+        // them, and must never be implemented by pruning one.
+        Assert.Equal(2, after.ExecuteScalar<long>(
+            "SELECT COUNT(*) FROM update_events WHERE release_id = @releaseId;", new { releaseId }));
+        Assert.Equal(0, after.ExecuteScalar<long>(
+            "SELECT COUNT(*) FROM update_acknowledgements;"));
     }
 
     [Fact]

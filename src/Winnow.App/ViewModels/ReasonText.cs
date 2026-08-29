@@ -11,29 +11,9 @@ namespace Winnow.App.ViewModels;
 public readonly record struct ReasonRun(string Text, bool IsData);
 
 /// <summary>
-/// Splits a reason sentence into prose runs and data runs, so a card can set
-/// its numbers in the data face without touching the engine's words.
-///
-/// <para><b>Why this exists at all.</b> §3's rule is that every number in the
-/// app renders in Plex Mono with tabular figures, and the feed is the surface
-/// where the app's numbers stopped living in columns and moved into sentences —
-/// "You put 2.8 hours into this in 2021 and it has had an update since". Setting
-/// the whole sentence in the body face would be the first place in Winnow where a
-/// playtime and a year are not in the data face; setting the whole thing in the
-/// data face would turn a sentence into a readout. So the sentence keeps its
-/// voice and the numbers keep theirs.</para>
-///
-/// <para><b>The rule is per WORD, not per digit</b>, and that is deliberate. A
-/// digit-level split cuts "7.9.1b" into "7.9.1" and "b", and "v0.2.6428.27798"
-/// into four pieces — version strings are data all the way through, and the
-/// patch titles the engine quotes are full of them. Any whitespace-delimited
-/// word containing a digit is data; everything else is prose. One rule, and it
-/// is explainable out loud, which is the same standard the reasons themselves
-/// are held to.</para>
-///
-/// <para>Punctuation the sentence owns is peeled back off the edges — the
-/// quotation marks around a patch title and the full stop that ends a clause
-/// belong to the prose, not to the number inside them.</para>
+/// Splits a reason sentence into prose and data runs so numbers render in Plex
+/// Mono with tabular figures (§3). Any whitespace-delimited word containing a
+/// digit is data; sentence-owned punctuation at the edges stays prose.
 /// </summary>
 public static class ReasonText
 {

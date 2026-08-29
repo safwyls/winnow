@@ -6,31 +6,9 @@ using Winnow.Core.Queries;
 namespace Winnow.App.ViewModels.Filters;
 
 /// <summary>
-/// The filter panel: one column of labelled groups, every option carrying the
-/// number of titles it would leave you with.
-///
-/// <para><b>It does not repeat the rail.</b> The rail's buckets are the filter's
-/// bucket dimension — selecting <c>Bounced off</c> there is the same act as
-/// ticking it here would be, and two controls writing one axis is how a panel
-/// starts disagreeing with the screen behind it. So the panel sits directly
-/// beside the rail on the same <c>Surface</c>, holds only the axes the rail does
-/// not, and the two meet in the cut bar above the grid, where the bucket appears
-/// as the first chip and can be dropped like any other.</para>
-///
-/// <para><b>There is deliberately no "has updates" group.</b>
-/// <see cref="LibraryFilter.HasUnread"/> selects exactly the rail's
-/// <c>Patched since</c> bucket, and design-system §5.2 gives the unread signal
-/// one home. A second door onto it would need a second marker, and the only
-/// marker for unread is Flare.</para>
-///
-/// <para><b>Every group here is a group a live list can store.</b> That is the
-/// rule that decides which kinds are drawn. <see cref="FacetKinds"/> also holds
-/// player perspective, which <see cref="LibraryFilter"/> has no field for — so
-/// it is not drawn, because a rule that vanishes the moment you save it is
-/// worse than a rule you never had. Features and controller support ARE drawn,
-/// because the filter record gained
-/// <see cref="LibraryFilter.FeatureIds"/> and
-/// <see cref="LibraryFilter.ControllerIds"/> for exactly this reason.</para>
+/// The filter panel: a column of checkable groups with residual counts.
+/// Holds only the axes the rail does not (no bucket or unread group).
+/// Every group here maps to a <see cref="LibraryFilter"/> field so live lists can persist it.
 /// </summary>
 public partial class FilterPanelViewModel : ObservableObject
 {
@@ -50,7 +28,7 @@ public partial class FilterPanelViewModel : ObservableObject
     private readonly Action _onChanged;
     private readonly List<GroupSpec> _specs = [];
 
-    /// <summary>True while a saved filter is being poured in, so one recompute covers the lot.</summary>
+    /// <summary>Suppresses per-option change callbacks during batch application.</summary>
     private bool _applying;
 
     public FilterPanelViewModel(Action onChanged)
@@ -65,10 +43,8 @@ public partial class FilterPanelViewModel : ObservableObject
             }
         }
 
-        // Order is the order they are read in: what the game IS, then what it is
-        // to you as a purchase. Genre before theme before tag is descending
-        // confidence — IGDB's genres are curated, its themes looser, and store
-        // tags are whatever the crowd typed.
+        // Order: genre > theme > tag (descending curation confidence), then modes,
+        // features, controller, store, installed.
         Add(new FilterGroupViewModel(GenreKey, "GENRE", Changed, sortByCount: true),
             t => Ids(t.Facets.GenreIds));
         Add(new FilterGroupViewModel(ThemeKey, "THEME", Changed, sortByCount: true),
@@ -78,24 +54,13 @@ public partial class FilterPanelViewModel : ObservableObject
         Add(new FilterGroupViewModel(TagKey, "STORE TAG", Changed, sortByCount: true, findWatermark: "Find a tag…"),
             t => Ids(t.Facets.TagIds));
 
-        // The reference storefront's FEATURES and HARDWARE SUPPORT columns, and
-        // the two named for what they answer rather than for the table they come
-        // out of: "Steam features" is a heading about Valve, and the user is
-        // asking whether the game has achievements.
         Add(new FilterGroupViewModel(FeatureKey, "FEATURES", Changed, sortByCount: true, findWatermark: "Find a feature…"),
             t => Ids(t.Facets.FeatureIds));
         Add(new FilterGroupViewModel(ControllerKey, "CONTROLLER", Changed, sortByCount: true),
             t => Ids(t.Facets.ControllerIds));
-        Add(new FilterGroupViewModel(StoreKey, "STORE", Changed),
+        Add(new FilterGroupViewModel(StoreKey, "PLATFORM", Changed),
             t => [t.Store]);
-        // GameTileViewModel.Installed is three-valued — null means no source
-        // looked — but this group is a two-way cut, and the question it asks is
-        // "which of these do I know are on disk". An unknown is not one of them,
-        // so it lands with the known "no"s. That is the same reading
-        // FilterableRow takes, deliberately: the panel and a saved live list have
-        // to agree, and the one place the third state is answered by name is the
-        // Play/Install button, which declines to be named at all rather than
-        // guess (StoreActions.PrimaryFor).
+        // Two-way cut: unknown install state groups with "not on disk".
         Add(new FilterGroupViewModel(InstalledKey, "ON DISK", Changed),
             t => [t.IsOnDisk ? OnDisk : NotOnDisk]);
 
@@ -104,52 +69,29 @@ public partial class FilterPanelViewModel : ObservableObject
 
     public IReadOnlyList<FilterGroupViewModel> Groups { get; }
 
-    /// <summary>
-    /// The groups worth drawing. Two are left out, for two different reasons.
-    ///
-    /// <para>A dimension with no data at all draws nothing — four columns of
-    /// greyed checkboxes is the wall this panel is deliberately not.</para>
-    ///
-    /// <para>And a dimension whose one option is true of every title draws
-    /// nothing either. "STORE · Steam 926" on a Steam-only library is not a
-    /// filter, it is a fact about the library restated as a control that cannot
-    /// change anything. It reappears by itself the day a second store lands,
-    /// which is the day it starts meaning something.</para>
-    /// </summary>
+    /// <summary>Groups with data that can actually filter (excludes empty and single-value-covers-all groups).</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasGroups), nameof(HasDescriptorGroups))]
     public partial IReadOnlyList<FilterGroupViewModel> VisibleGroups { get; set; } = [];
 
     public bool HasGroups => VisibleGroups.Count > 0;
 
-    /// <summary>
-    /// Whether anything the enrichment backfill supplies is on screen. Store and
-    /// on-disk come free with an ownership row, so their presence says nothing
-    /// about whether metadata has arrived — and a panel showing only those two
-    /// needs to say why rather than look finished.
-    /// </summary>
+    /// <summary>True when any metadata-derived group (genre, theme, tag, mode, feature, controller) is visible.</summary>
     public bool HasDescriptorGroups => VisibleGroups.Any(g =>
         g.Key is GenreKey or ThemeKey or TagKey or ModeKey or FeatureKey or ControllerKey);
 
-    /// <summary>
-    /// Panel open state. Not persisted: a filter panel that is up when you launch
-    /// is a library you did not ask to have cut down.
-    /// </summary>
+    /// <summary>Panel open state (not persisted across launches).</summary>
     [ObservableProperty]
     public partial bool IsOpen { get; set; }
 
-    /// <summary>
-    /// Release-year bounds, as typed. Text rather than a slider or two spinners:
-    /// a year is four characters the user already knows, and a range you set by
-    /// dragging is a range you cannot state exactly.
-    /// </summary>
+    /// <summary>Release-year lower bound, as typed text.</summary>
     [ObservableProperty]
     public partial string YearFromText { get; set; } = string.Empty;
 
     [ObservableProperty]
     public partial string YearToText { get; set; } = string.Empty;
 
-    /// <summary>Watermarks: the oldest and newest year the library actually holds.</summary>
+    /// <summary>Oldest year in the library (watermark for input field).</summary>
     [ObservableProperty]
     public partial string EarliestYearText { get; set; } = "—";
 
@@ -172,11 +114,7 @@ public partial class FilterPanelViewModel : ObservableObject
 
     public int? YearTo => ParseYear(YearToText);
 
-    /// <summary>
-    /// Rebuilds every group's options from the library as it now stands.
-    /// Selections survive by key, so a reload after an enrichment pass does not
-    /// silently drop a rule the user set five minutes ago.
-    /// </summary>
+    /// <summary>Rebuilds every group's options from the current tiles. Selections survive by key.</summary>
     public void Rebuild(IReadOnlyList<GameTileViewModel> tiles, FacetSnapshot snapshot)
     {
         var names = snapshot.ById;
@@ -198,9 +136,6 @@ public partial class FilterPanelViewModel : ObservableObject
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .Select(s => (s, StoreLabel(s))));
 
-        // Both states always, even when the library is entirely one of them: the
-        // pair is what makes the group legible as a question rather than as a
-        // lone switch, and the residual count says which half is empty.
         SetOptions(InstalledKey, [(OnDisk, "Installed"), (NotOnDisk, "Not installed")]);
 
         var years = tiles.Select(t => t.ReleaseYear).Where(y => y is > 0).Select(y => y!.Value).ToList();
@@ -213,10 +148,7 @@ public partial class FilterPanelViewModel : ObservableObject
             .Select(s => s.Group)];
     }
 
-    /// <summary>
-    /// True when the group has one option and every title carries it — a control
-    /// whose only setting selects the whole library.
-    /// </summary>
+    /// <summary>True when the group has one option that every title carries (cannot filter).</summary>
     private static bool CannotCut(GroupSpec spec, IReadOnlyList<GameTileViewModel> tiles)
     {
         if (spec.Group.AllOptions.Count != 1 || tiles.Count == 0)
@@ -247,11 +179,7 @@ public partial class FilterPanelViewModel : ObservableObject
         return true;
     }
 
-    /// <summary>
-    /// The panel's half of a live list's rules. The rail supplies the bucket and
-    /// the command bar supplies the search text; <c>LibraryViewModel</c> puts the
-    /// three together.
-    /// </summary>
+    /// <summary>Builds a <see cref="LibraryFilter"/> from the panel's current selections.</summary>
     public LibraryFilter ToFilter() => new()
     {
         GenreIds = LongKeys(GenreKey),
@@ -266,15 +194,7 @@ public partial class FilterPanelViewModel : ObservableObject
         YearTo = YearTo,
     };
 
-    /// <summary>
-    /// The same filter with one group's selections lifted — the rule set a
-    /// residual count is taken under.
-    ///
-    /// <para>Lifting the group's own selections is the whole trick. Without it,
-    /// ticking one genre drops every other genre to zero and the panel becomes a
-    /// dead end — which is wrong twice over, because options inside a group widen
-    /// the result rather than narrow it.</para>
-    /// </summary>
+    /// <summary>Returns the current filter with <paramref name="groupKey"/>'s selections cleared (for residual counts).</summary>
     public LibraryFilter FilterWithout(string groupKey)
     {
         var filter = ToFilter();
@@ -292,14 +212,7 @@ public partial class FilterPanelViewModel : ObservableObject
         };
     }
 
-    /// <summary>
-    /// Writes every option's residual count.
-    ///
-    /// <para><paramref name="matching"/> answers "which of the tiles currently in
-    /// play satisfy this filter" — the caller owns that, because the baseline is
-    /// the library after the rail's bucket, any open list and the search box, and
-    /// those are the other AND terms that make each count true.</para>
-    /// </summary>
+    /// <summary>Recomputes residual counts for every group using <paramref name="matching"/> to evaluate filters.</summary>
     public void Recount(Func<LibraryFilter, IReadOnlyList<GameTileViewModel>> matching)
     {
         foreach (var spec in _specs)
@@ -319,19 +232,7 @@ public partial class FilterPanelViewModel : ObservableObject
         ActiveCount = _specs.Sum(s => s.Group.Checked.Count()) + (HasYearRange ? 1 : 0);
     }
 
-    /// <summary>
-    /// Every rule in force, as dismissable chips for the cut bar.
-    ///
-    /// <para><paramref name="context"/> is the open live list's rules AS SAVED,
-    /// or null when the panel's contents are the user's own. It exists because
-    /// §12.2's "opening a live list pours its rules back into the panel" makes
-    /// the list's rules and the user's rules physically identical in these
-    /// controls — so the only place the difference can still be stated is here,
-    /// on the strip whose whole job is to say what is cutting the grid. A rule
-    /// the context supplied is a <see cref="FilterChipOrigin.List"/> chip; one
-    /// the user added on top of it is
-    /// <see cref="FilterChipOrigin.Unsaved"/>.</para>
-    /// </summary>
+    /// <summary>Yields dismissable chips for the cut bar. <paramref name="context"/> distinguishes list-contributed vs. user-added rules.</summary>
     public IEnumerable<FilterChipViewModel> BuildChips(LibraryFilter? context = null)
     {
         foreach (var spec in _specs)
@@ -365,11 +266,7 @@ public partial class FilterPanelViewModel : ObservableObject
         _ => FilterChipOrigin.Unsaved,
     };
 
-    /// <summary>
-    /// Whether one ticked option is part of the rules the open live list was
-    /// saved with. Keyed on the option's own key, which is what the group holds
-    /// and what <see cref="Apply"/> poured in, so the two answers cannot drift.
-    /// </summary>
+    /// <summary>Whether the given option is part of the open live list's saved rules.</summary>
     private static bool InContext(string groupKey, string optionKey, LibraryFilter? context)
     {
         if (context is null)
@@ -395,7 +292,7 @@ public partial class FilterPanelViewModel : ObservableObject
         => long.TryParse(optionKey, NumberStyles.Integer, CultureInfo.InvariantCulture, out var id)
             && ids.Contains(id);
 
-    /// <summary>Pours a saved live list's rules in, then asks for exactly one recompute.</summary>
+    /// <summary>Applies a saved filter to all groups, then triggers one recompute.</summary>
     public void Apply(LibraryFilter filter)
     {
         _applying = true;
@@ -532,11 +429,7 @@ public partial class FilterPanelViewModel : ObservableObject
             .Where(names.ContainsKey)
             .Select(id => (Text(id), names[id].Name));
 
-    /// <summary>
-    /// A game mode's display name. Migration 0007 seeded the vocabulary with
-    /// real names, so the snapshot is asked first; the fallback exists because a
-    /// mode can be true of a release before its vocabulary row has been read.
-    /// </summary>
+    /// <summary>Display name for a game mode slug; looks up the snapshot first, falls back to hardcoded names.</summary>
     private static string ModeLabel(string slug, FacetSnapshot snapshot)
     {
         foreach (var facet in snapshot.Facets)
@@ -559,12 +452,7 @@ public partial class FilterPanelViewModel : ObservableObject
         };
     }
 
-    /// <summary>
-    /// "steam" is how it is stored; "Steam" is how it is read. The three known
-    /// stores are named rather than title-cased, because GOG is an acronym and
-    /// "Gog" is a misspelling of a brand on the user's own screen. Anything else
-    /// falls back to title case, which is right far more often than it is wrong.
-    /// </summary>
+    /// <summary>Display name for a store key. Known stores use proper casing (GOG, not Gog); unknown falls back to title case.</summary>
     private static string StoreLabel(string store) => store.ToLowerInvariant() switch
     {
         "" => store,

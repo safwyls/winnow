@@ -6,46 +6,12 @@ using Microsoft.Extensions.Logging;
 namespace Winnow.Ingest.Epic.Web.Auth;
 
 /// <summary>
-/// Drives one interactive Epic sign-in: builds the request, finds a prompt that
-/// can run here, and spends whatever code comes back on the grant it belongs to.
-///
-/// <para><b>This is the only place that knows the mapping.</b> A prompt returns
-/// a code and says which KIND it is; this class turns that into the right
-/// <c>grant_type</c>. The prompt knows nothing about tokens or grants, and
-/// <see cref="EpicTokenProvider"/> knows nothing about browsers — the seam
-/// between them is <see cref="IInteractiveAuthPrompt"/>, which lives in
-/// <c>Winnow.Core</c> so that this project never references a UI framework
-/// (§5.1).</para>
-///
-/// <para><b>The prompt chain falls through in registration order.</b> The
-/// embedded browser is registered first and the console second, so a machine
-/// with a WebView2 runtime gets the automatic flow and one without — a headless
-/// host, an unusual Windows install, a future where Epic breaks the embedded
-/// page — gets the manual one. A prompt that reports itself unavailable, or that
-/// runs and captures nothing, is skipped; a user who deliberately CANCELS is
-/// not. Escalating past a cancel would put a second window in front of someone
-/// who just closed the first.</para>
-///
-/// <para><b>Nothing here throws.</b> Every ending is an
-/// <see cref="EpicSignInResult"/>, and every failing ending leaves the existing
-/// local Epic ingest exactly as it was.</para>
+/// Drives one interactive Epic sign-in: builds the request, falls through
+/// registered prompts in order, and exchanges the captured code for a session.
 /// </summary>
 public sealed class EpicInteractiveSignIn
 {
-    /// <summary>
-    /// What the user is told before anything opens.
-    ///
-    /// <para><b>The first paragraph is Epic's own warning, verbatim</b>, from the
-    /// body of <c>id/api/redirect</c>. The console flow has always printed it at
-    /// the moment the user copied the code. The embedded flow never shows the
-    /// user a code at all, so that moment disappears — and the consent has to
-    /// move somewhere deliberate rather than evaporate because the flow got
-    /// smoother (<c>docs/spikes/embedded-auth.md</c> §8).</para>
-    ///
-    /// <para>The rest says the thing Epic's warning implies but does not spell
-    /// out for this situation: Winnow is the third party, and what it will be
-    /// holding afterwards is not a read-only library key.</para>
-    /// </summary>
+    /// <summary>Consent notice shown before sign-in, starting with Epic's own warning.</summary>
     public const string ConsentNotice =
         "Epic's own warning, on the page that issues this credential:\n"
         + "\n"
@@ -86,17 +52,7 @@ public sealed class EpicInteractiveSignIn
         _log = log;
     }
 
-    /// <summary>
-    /// Which prompt captured the code on the last successful run, and by which
-    /// mechanism — "embedded browser via launcher bridge", say. Null until one
-    /// succeeds.
-    ///
-    /// <para>Exists because the three capture routes cannot be told apart without
-    /// a real sign-in, and one of them
-    /// (<see cref="AuthCaptureStrategies.RedirectInterception"/>) is an
-    /// unverified hypothesis. This is how the first person to run it finds out
-    /// which one actually fired. It never contains a code.</para>
-    /// </summary>
+    /// <summary>Which prompt and mechanism captured the code on the last successful run. Null until one succeeds.</summary>
     public string? LastCaptureRoute { get; private set; }
 
     /// <summary>
@@ -214,27 +170,7 @@ public sealed class EpicInteractiveSignIn
         return EpicSignInResult.Failed(lastFailure);
     }
 
-    /// <summary>
-    /// The one request every prompt is handed.
-    ///
-    /// <para><b>Two URLs with different jobs, and conflating them is what broke
-    /// the first build of this flow.</b> <c>StartUrl</c> has to render a login
-    /// form for a browser with no cookies, because that is the state of every
-    /// embedded profile on a first run; <c>HarvestUrl</c> is an API that issues a
-    /// code for a browser that already has a session. Starting on the harvest URL
-    /// produced <c>{"authorizationCode":null,"exchangeCode":null,…}</c> for every
-    /// user and no login page at all.</para>
-    ///
-    /// <para><b>All capture routes are armed at once, and that is not
-    /// laziness.</b> The obvious reading of "try the bridge, then the redirect,
-    /// then the DOM" is sequential attempts — but each attempt is a whole
-    /// interactive sign-in, and an authorization code is single-use and dies in
-    /// minutes, so serialising them would make the user sign in repeatedly and
-    /// burn a code on every miss. Armed together in one browser session they cost
-    /// nothing extra: whichever mechanism Epic actually exercises fires first and
-    /// the others never do. The result records which one it was, so a real
-    /// sign-in settles the question the spike could not.</para>
-    /// </summary>
+    /// <summary>Builds the prompt request with start and harvest URLs and all capture routes armed.</summary>
     private AuthPromptRequest BuildRequest(string clientId)
     {
         var redirect = _options.LauncherRedirectUrl;

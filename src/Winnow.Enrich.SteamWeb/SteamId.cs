@@ -3,28 +3,8 @@ using System.Globalization;
 namespace Winnow.Enrich.SteamWeb;
 
 /// <summary>
-/// A Steam account identity, carried as the 64-bit form the Web API takes and
-/// convertible back to the steam3 account id the local scan uses.
-///
-/// <para><b>Why this type exists.</b> Two identifiers for the same account are
-/// in play. <c>userdata/&lt;steam3id&gt;</c> (§4.1, see
-/// <c>Winnow.Ingest.Steam.SteamAccountEnumerator</c>) is the <i>steam3 account
-/// id</i>: 49024752. <c>IPlayerService/GetOwnedGames</c> (§4.2) takes the
-/// <i>SteamID64</i>: 76561198009290480. They differ by a constant — the
-/// individual-account SteamID64 is <c>0x0110000100000000</c> + the account id,
-/// which is <see cref="SteamId64Base"/> = 76561197960265728.</para>
-///
-/// <para>The repository's own sanitized fixture records exactly this pairing:
-/// <c>tests/fixtures/steam/README.md</c> documents steam3id <c>12345678</c>
-/// alongside <c>LastOwner</c> <c>76561197972611406</c>, and
-/// 76561197960265728 + 12345678 = 76561197972611406. Verified against the live
-/// account on 2026-08-24: the id derived this way from the local
-/// <c>userdata</c> folder name returned that account's own library, including
-/// <c>rtime_last_played</c>, which §4.2 says is only returned when the key
-/// belongs to the queried account.</para>
-///
-/// <para>No network call is needed to make the conversion, so Winnow never has
-/// to ask <c>ISteamUser/ResolveVanityURL</c> who the local user is.</para>
+/// A Steam account identity, carried as the 64-bit SteamID64 form the Web API
+/// takes and convertible back to the steam3 account id the local scan uses.
 /// </summary>
 public readonly record struct SteamId
 {

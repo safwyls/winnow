@@ -5,24 +5,9 @@ using Microsoft.Extensions.Logging;
 namespace Winnow.App.Services;
 
 /// <summary>
-/// The app-layer seam a "Sign in to Epic" command binds to.
-///
-/// <para><b>This exists so a view model never touches an ingest component.</b>
-/// §5.1 is explicit that the UI reads the database and raises commands, and
-/// composition belongs to <c>Program</c>. A button that resolved
-/// <c>EpicInteractiveSignIn</c> or <c>IEpicTokenProvider</c> directly would put
-/// the ingest layer in the view model's constructor and quietly delete that
-/// boundary; this one type is what a command talks to instead.</para>
-///
-/// <para><b>It is deliberately not a view model and has no UI in it.</b> Where
-/// the sign-in is offered, what it looks like and how its result is presented
-/// are separate decisions. This answers three questions — is a session live,
-/// start one, end one — and nothing else.</para>
-///
-/// <para><b>Nothing here throws.</b> Every failure comes back as an
-/// <see cref="EpicSignInResult"/> with a reason, and every one of them leaves
-/// the local Epic readers, and therefore the user's Epic library, exactly as
-/// they were.</para>
+/// App-layer seam for Epic sign-in (§5.1). Answers three questions: is a session
+/// live, start one, end one. Never throws; failures come back as
+/// <see cref="EpicSignInResult"/> with a reason.
 /// </summary>
 public sealed class EpicSignInService
 {
@@ -38,32 +23,14 @@ public sealed class EpicSignInService
         _log = log;
     }
 
-    /// <summary>
-    /// Which prompt and mechanism last captured a code — "embedded browser via
-    /// launcher JS bridge", say. Null until a sign-in succeeds in this process.
-    ///
-    /// <para>Worth surfacing somewhere eventually: of the three capture routes
-    /// the embedded browser arms, one is an unverified hypothesis, and this is
-    /// how anyone finds out which one Epic actually exercises. It never contains
-    /// a code.</para>
-    /// </summary>
+    /// <summary>Which prompt mechanism last captured a code. Null until a sign-in succeeds in this process.</summary>
     public string? LastCaptureRoute => _signIn.LastCaptureRoute;
 
-    /// <summary>
-    /// Whether a stored session exists that is still worth trying. Makes no
-    /// network request.
-    /// </summary>
+    /// <summary>Whether a stored session is still worth trying. No network request.</summary>
     public ValueTask<bool> IsSignedInAsync(CancellationToken ct = default)
         => _client.IsSignedInAsync(ct);
 
-    /// <summary>
-    /// Runs the interactive sign-in: consent, the provider's own page, a code,
-    /// and an encrypted session.
-    ///
-    /// <para>Safe to invoke from a UI command. It is long-running by nature — it
-    /// waits on a human — so a caller must not block the UI thread on it, but the
-    /// browser window it opens is its own and does not freeze the app.</para>
-    /// </summary>
+    /// <summary>Runs the interactive sign-in (consent, browser, code, encrypted session). Long-running; do not block the UI thread.</summary>
     public async Task<EpicSignInResult> SignInAsync(CancellationToken ct = default)
     {
         try
@@ -101,20 +68,10 @@ public sealed class EpicSignInService
         }
     }
 
-    /// <summary>
-    /// Ends the session and deletes the stored credential.
-    ///
-    /// <para>Epic ownership then falls back to the local launcher files, which is
-    /// where it comes from by default anyway — signing out costs acquisition
-    /// dates and playtime, never games.</para>
-    /// </summary>
+    /// <summary>Ends the session and deletes the stored credential. Ownership falls back to local files.</summary>
     public Task SignOutAsync(CancellationToken ct = default) => _client.SignOutAsync(ct);
 
-    /// <summary>
-    /// One sentence a UI can show for a failure. Each says what to DO, because
-    /// the remedies here are genuinely different from one another and a generic
-    /// "sign-in failed" would send the user to the wrong one.
-    /// </summary>
+    /// <summary>Returns a user-facing sentence for a failure, stating the specific remedy.</summary>
     public static string Explain(EpicSignInFailure failure) => failure switch
     {
         EpicSignInFailure.None =>

@@ -11,28 +11,8 @@ using Microsoft.Extensions.Logging;
 namespace Winnow.Ingest.Epic.Web;
 
 /// <summary>
-/// Client for Epic's library service: the owned library, and per-artifact
-/// playtime.
-///
-/// <para>Everything that could go wrong slowly — retry, 429 backoff, the request
-/// rate, the 401 refresh — lives in the <see cref="HttpClient"/> handler
-/// pipeline, so this class only has to worry about three things: what to ask,
-/// what not to ask twice, and what never to write down.</para>
-///
-/// <para><b>Soft-fail is the contract, not a courtesy</b> (§5.1). No
-/// credentials, no session, a lapsed refresh token, a 401 the auth handler could
-/// not refresh past, a 429 the retries could not outlast, a dead network, a body
-/// that will not parse: all become an unanswered
-/// <see cref="EpicOwnedLibrary"/>, logged, never thrown at a caller, and —
-/// critically — never written to the cache. Caching a failure would record "this
-/// account owns nothing" for a whole TTL on the strength of one 503.</para>
-///
-/// <para><b>Playtime failing does not fail the library.</b> The two are separate
-/// calls and the library is the more valuable of the two, so a playtime call that
-/// 401s, 429s or returns nonsense leaves every item's playtime null and
-/// <see cref="EpicOwnedLibrary.PlaytimeAnswered"/> false while the ownership
-/// data still lands. Null there means "not told", and the local readers are
-/// unaffected either way.</para>
+/// Client for Epic's library service: owned library and per-artifact playtime.
+/// Soft-fails on every error; failures are never cached.
 /// </summary>
 public sealed class EpicAccountClient : IEpicAccountClient
 {
@@ -52,15 +32,7 @@ public sealed class EpicAccountClient : IEpicAccountClient
     /// </summary>
     private const string LibraryItemsPath = "library/api/public/items?includeMetadata=true";
 
-    /// <summary>
-    /// Per-artifact playtime for the whole account.
-    ///
-    /// <para>Verified to exist live on 2026-08-26 by routing discrimination: this
-    /// path answers 401 while a bogus sibling under the same prefix answers 404,
-    /// so the service routes it and merely requires auth. The corresponding
-    /// GraphQL query <c>PlaytimeTracking.total(accountId:)</c> returns
-    /// <c>[Playtime]</c> of <c>{ accountId, artifactId, totalTime }</c>.</para>
-    /// </summary>
+    /// <summary>Per-artifact playtime for the whole account.</summary>
     private const string PlaytimePathFormat = "library/api/public/playtime/account/{0}/all";
 
     private static readonly JsonSerializerOptions CacheSerializerOptions = new();
@@ -222,17 +194,7 @@ public sealed class EpicAccountClient : IEpicAccountClient
                 PlaytimeAnswered: stale.Any(static i => i.TotalPlaytime is not null))
             : EpicOwnedLibrary.Unanswered(now);
 
-    /// <summary>
-    /// Walks every page of the library. Returns null when Epic did not answer —
-    /// the single place where "Epic said no" becomes "no data" instead of an
-    /// exception.
-    ///
-    /// <para>A partial walk is discarded rather than returned. Half a library
-    /// looks exactly like a library that shrank, and the candidate feed has no
-    /// way to distinguish them; returning null costs one skipped pass, while
-    /// returning half would present a truncated entitlement list as a complete
-    /// one.</para>
-    /// </summary>
+    /// <summary>Walks every page of the library. Returns null when Epic did not answer; partial results are discarded.</summary>
     private async Task<IReadOnlyList<EpicLibraryRecord>?> FetchLibraryAsync(CancellationToken ct)
     {
         var records = new List<EpicLibraryRecord>();
@@ -281,14 +243,7 @@ public sealed class EpicAccountClient : IEpicAccountClient
         return null;
     }
 
-    /// <summary>
-    /// Per-artifact playtime, or null when Epic did not answer.
-    ///
-    /// <para>Null and empty are different and both are returned faithfully: null
-    /// means the call failed and nothing can be said about anyone's playtime,
-    /// while an empty dictionary means Epic answered and has no figures. Only the
-    /// second is evidence.</para>
-    /// </summary>
+    /// <summary>Per-artifact playtime, or null when Epic did not answer.</summary>
     private async Task<IReadOnlyDictionary<string, long>?> FetchPlaytimeAsync(
         string accountId, CancellationToken ct)
     {
@@ -314,14 +269,7 @@ public sealed class EpicAccountClient : IEpicAccountClient
         return parsed;
     }
 
-    /// <summary>
-    /// One GET against the library service. Returns the body, or null when the
-    /// request did not produce one.
-    ///
-    /// <para><b>No message here names the URI.</b> Every path in this service
-    /// carries either the account id or an artifact id, so the endpoint
-    /// description passed in by the caller is what gets logged.</para>
-    /// </summary>
+    /// <summary>One GET against the library service. Returns the body, or null on failure.</summary>
     private async Task<string?> SendAsync(string path, string what, CancellationToken ct)
     {
         try
@@ -367,19 +315,7 @@ public sealed class EpicAccountClient : IEpicAccountClient
         }
     }
 
-    /// <summary>
-    /// Serialises the normalised items for the cache.
-    ///
-    /// <para><b>Normalised rather than verbatim, unlike the Steam Web module</b>,
-    /// which stores the raw response body so unprojected fields survive. There is
-    /// no single raw body to store here: a library is N paginated responses plus
-    /// a separate playtime call, and stitching them back together on read would
-    /// duplicate the join this class already does. The fields not projected are
-    /// display metadata Winnow sources locally anyway.</para>
-    ///
-    /// <para>The payload contains no account id, no token and no display name —
-    /// only catalog ids, codenames and figures.</para>
-    /// </summary>
+    /// <summary>Serialises the normalised library items for the cache.</summary>
     private static string WriteCache(IReadOnlyList<EpicLibraryItem> items)
         => JsonSerializer.Serialize(items, CacheSerializerOptions);
 

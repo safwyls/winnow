@@ -42,17 +42,8 @@ public interface IEpicThirdPartyInstallProbe
 }
 
 /// <summary>
-/// Reads the delivering launcher's HKLM install key, read-only. The paths Epic
-/// records already contain <c>WOW6432Node</c>, so they are used verbatim rather
-/// than through a 32-bit registry view.
-///
-/// <para><b>Why a missing key is a real <c>false</c> and not a shrug.</b> Epic
-/// names the exact key that holds the install directory. If the key or value is
-/// absent, the delivering launcher has no install record for the title, which is
-/// the same kind of observation the Steam reader makes when it walks every
-/// library root and finds no appmanifest. What is <i>not</i> an answer is being
-/// unable to look at all — off Windows, without a pointer, or when the read
-/// throws — and those cases return <see cref="EpicInstallState.Unknown"/>.</para>
+/// Reads the delivering launcher's HKLM install key to determine install state
+/// of third-party-managed Epic titles.
 /// </summary>
 public sealed class WindowsEpicThirdPartyInstallProbe : IEpicThirdPartyInstallProbe
 {

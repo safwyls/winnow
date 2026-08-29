@@ -4,16 +4,7 @@ using Winnow.Core.Ingest;
 
 namespace Winnow.Enrich.SteamWeb.Model;
 
-/// <summary>
-/// One entry from <c>IPlayerService/GetOwnedGames</c> (§4.2).
-///
-/// <para>Everything the endpoint returns that an ingest source could want is
-/// projected here — appid, name, both playtime figures, last-played, icon hash.
-/// The full response body is also stored verbatim in <c>metadata_cache</c>, so
-/// the per-platform playtime splits (<c>playtime_windows_forever</c> and
-/// friends), <c>content_descriptorids</c> and anything Valve adds later are
-/// recoverable without a refetch.</para>
-/// </summary>
+/// <summary>One entry from <c>IPlayerService/GetOwnedGames</c> (§4.2).</summary>
 /// <param name="AppId">Steam appid, as a string, matching <c>ExternalId.ProviderId</c>.</param>
 /// <param name="Title">
 /// Name as Steam reports it, or null when the field was absent or blank.
@@ -57,24 +48,7 @@ public sealed record SteamOwnedGame(
     /// <summary>True when Steam reports no playtime at all for this appid on this account.</summary>
     public bool NeverPlayed => PlaytimeForeverMinutes <= 0 && LastPlayedUtc is null;
 
-    /// <summary>
-    /// Projects onto the §5.1 ingest contract.
-    ///
-    /// <para><b><c>Installed</c> is null, and that is the whole point.</b>
-    /// <c>GetOwnedGames</c> reports licences; it cannot see the local disk, so it
-    /// has no opinion on install state or install path. Null is how the ingest
-    /// contract says "this source does not know" — see
-    /// <see cref="CandidateOwnership.Installed"/> — and it leaves whatever the
-    /// local scan (§4.1) recorded untouched. Emitting <c>false</c> here instead
-    /// is the bug that emptied the "Installed" filter: these candidates are
-    /// resolved after the local ones, so every sync cleared the install flags the
-    /// appmanifests had just set. Never let this source clear a local answer.
-    /// §4.1 likewise makes the local figure authoritative for playtime; the Web
-    /// API's can lag behind a session Steam has not yet synced.</para>
-    ///
-    /// <para><c>AcquiredAt</c> stays null: <c>GetOwnedGames</c> does not expose a
-    /// purchase or licence date in any form.</para>
-    /// </summary>
+    /// <summary>Projects onto the §5.1 ingest contract.</summary>
     /// <param name="accountRef">Steam3 account id — <see cref="SteamId.AccountRef"/>, so the
     /// candidate attributes to the same account as its locally-scanned twin.</param>
     /// <param name="source">Provenance string; <see cref="SteamWebApiClient.SourceName"/> by default.</param>
@@ -97,15 +71,6 @@ public sealed record SteamOwnedGame(
 /// <summary>
 /// The result of one <c>GetOwnedGames</c> call: the account's library, plus
 /// whether Steam actually answered.
-///
-/// <para><b><see cref="Succeeded"/> is the load-bearing field.</b> An empty
-/// <see cref="Games"/> list means two completely different things depending on
-/// it: "this account owns nothing" (answered) versus "the request failed, or
-/// Steam returned the bare <c>{"response":{}}</c> envelope it sends for a
-/// profile it will not disclose" (unanswered). Only the first is evidence about
-/// the library. A caller that reconciles ownership must do nothing at all on an
-/// unanswered result — treating one as an empty library would delete the user's
-/// entire collection.</para>
 /// </summary>
 /// <param name="SteamId">The account queried.</param>
 /// <param name="Succeeded">Whether Steam returned a library, however small.</param>

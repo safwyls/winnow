@@ -319,6 +319,14 @@ public static class Program
         // deliberate — an unwired store must cost the loop, never the screen.
         services.AddSingleton<IFeedFeedbackRepository, FeedFeedbackRepository>();
 
+        // "I've seen this patch" — the user dismissing §5.2's unread dot on one
+        // release, over migration 0012. The App layer is its only caller: the
+        // badge's dismiss/undo writes here, and NOTHING reads it to decide
+        // whether to draw a badge. The watermark is applied once inside
+        // LibraryQueryRepository's bucket query, so every surface that draws or
+        // counts "Patched since" already agrees without seeing this type.
+        services.AddSingleton<IUpdateAcknowledgementRepository, UpdateAcknowledgementRepository>();
+
         // Ingest → Resolve → sync (§5.1: the UI reads the database; it never
         // calls these directly. Program composes them, the view models don't).
         services.AddSingleton<LibraryFoldersReader>();
@@ -493,6 +501,17 @@ public static class Program
         // registered here because the shell renders them.
         services.AddSingleton<LaunchStatusViewModel>();
         services.AddSingleton<JournalPromptViewModel>();
+
+        // The §5.1 seam in front of migration 0012, and the only App type that
+        // names IUpdateAcknowledgementRepository. It is registered here rather
+        // than with the repositories because it is not storage: it owns the
+        // watermark rule — a C# mirror of LibraryQueryRepository's major_update
+        // CTE — and gets the writes off the dispatcher, exactly as FeedService
+        // does for the feedback loop.
+        //
+        // Optional to LibraryViewModel for the usual reason: omitting this line
+        // costs the "mark as read" control on the detail panel and nothing else.
+        services.AddSingleton<IUpdateFlagService, UpdateFlagService>();
 
         services.AddSingleton<LibraryViewModel>();
 

@@ -7,27 +7,8 @@ using Microsoft.Web.WebView2.Core;
 namespace Winnow.Auth.WebView;
 
 /// <summary>
-/// An Avalonia control that is a Chromium browser.
-///
-/// <para><b>Avalonia has no WebView, and this is the whole of what it takes to
-/// give it one</b> — about forty lines, proven by a running program rather than
-/// argued for (<c>docs/spikes/embedded-auth.md</c> §2). Subclass
-/// <see cref="NativeControlHost"/>, create a bare child window under the parent
-/// HWND Avalonia hands over, and attach a <c>CoreWebView2Controller</c> to it.
-/// No WPF, no WinForms, no CEF, no ReactiveUI.</para>
-///
-/// <para><b>An application manifest with a <c>&lt;supportedOS&gt;</c> list is a
-/// PREREQUISITE, not a detail.</b> Without one, Avalonia's own guard throws
-/// <c>"Unable to create child window for native control host. Application
-/// manifest with supported OS list might be required."</c> on the first layout
-/// pass — before any WebView2 code runs. See <c>src/Winnow.App/app.manifest</c>,
-/// which exists because of this.</para>
-///
-/// <para><b>Every dimension is multiplied by <c>RenderScaling</c>.</b> Avalonia
-/// lays out in device-independent units and both <c>MoveWindow</c> and
-/// <c>Controller.Bounds</c> are in physical pixels, so skipping the scale gives
-/// a browser occupying the top-left quarter of its control on a 200% display —
-/// which is most laptops.</para>
+/// An Avalonia control that hosts a Chromium browser via
+/// <see cref="NativeControlHost"/> and WebView2.
 /// </summary>
 public sealed class WebView2Host : NativeControlHost
 {
@@ -49,11 +30,6 @@ public sealed class WebView2Host : NativeControlHost
     /// <summary>
     /// Completes when the browser is attached and usable, or faults when it
     /// cannot be created.
-    ///
-    /// <para>A task rather than an event because the caller's next move is always
-    /// "navigate", which cannot happen until this is done, and because a fault
-    /// here has to reach the caller as a failed sign-in rather than as an
-    /// unobserved exception on the UI thread.</para>
     /// </summary>
     public Task<CoreWebView2Controller> Ready => _ready.Task;
 

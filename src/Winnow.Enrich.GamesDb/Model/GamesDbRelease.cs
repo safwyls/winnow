@@ -9,16 +9,8 @@ public static class GamesDbPlatforms
 }
 
 /// <summary>
-/// What one lookup produced: the id of the underlying <i>game</i> and every
-/// store release gamesdb knows shares it.
-///
-/// <para><b>This resolves games, not editions, and that distinction is load
-/// bearing.</b> <c>steam_224760</c> and <c>gog_1207659211</c> collapse to one
-/// <see cref="GameId"/>, which is the right granularity for a Work and the
-/// wrong one for a Release — §5.3's four-layer model and §9's pitfall 5 (Skyrim
-/// Special Edition is not Skyrim) both still apply. Winnow uses this to find
-/// <i>metadata</i> for a title it could not otherwise look up, and never to
-/// decide that two releases are the same release.</para>
+/// What one lookup produced: the id of the underlying game and every store
+/// release gamesdb knows shares it. Resolves games, not editions.
 /// </summary>
 /// <param name="Platform">The platform the lookup was made under.</param>
 /// <param name="ExternalId">The id the lookup was made with.</param>
@@ -32,17 +24,8 @@ public sealed record GamesDbGame(
 {
     /// <summary>
     /// The first id under <paramref name="platform"/>, or null when gamesdb
-    /// lists no release there.
-    ///
-    /// <para>Null is a fact about the game — an Epic exclusive genuinely has no
-    /// Steam twin — and callers must treat it as "no route this way", never as
-    /// "the lookup failed".</para>
-    ///
-    /// <para><b>Prefer <see cref="IdsOn"/> where the id has a known shape.</b>
-    /// The graph is crowd-shaped and carries junk: Fez lists <c>steam/224760</c>
-    /// and also <c>steam/steam_224760</c>, the release key pasted into the id
-    /// field. Order across duplicates is not guaranteed, so a caller that knows
-    /// what a valid id looks like should filter rather than take the first.</para>
+    /// lists no release there. Prefer <see cref="IdsOn"/> where the id has a
+    /// known shape, since the graph can carry junk entries.
     /// </summary>
     public string? IdOn(string platform)
     {

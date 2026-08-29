@@ -12,29 +12,9 @@ namespace Winnow.Ingest.Epic.Web;
 public readonly record struct EpicCatalogCacheEntry(string? PayloadJson, DateTime FetchedAt);
 
 /// <summary>
-/// Where answers from Epic's catalog service are kept so a resync does not
-/// refetch them.
-///
-/// <para><b>Per item, unlike <see cref="IEpicLibraryCache"/>.</b> The library is
-/// one blob that is only ever wanted whole; the catalog is asked about whichever
-/// handful of catalog item ids an enrichment slice happens to hold, and those
-/// slices overlap across runs. One row per catalog item is what makes the second
-/// run of a partially-enriched library free.</para>
-///
-/// <para><b>What may be cached, and what may not.</b> A parsed entry may. A
-/// definite miss — the service answered and the id was not in the response — may,
-/// as a null payload, because "Epic has no such item" does not become true later
-/// in a way a shorter TTL would catch. A 5xx, a 429 the retries could not
-/// outlast, a dead socket or an unparseable body may <b>not</b>: caching those
-/// would record a transport failure as a fact about the user's library for a
-/// whole TTL, which is the mistake this codebase has already paid for twice.</para>
-///
-/// <para><b>The default is in-memory, for the module-boundary reason recorded on
-/// <see cref="IEpicLibraryCache"/>:</b> <c>Winnow.Ingest.Epic</c> does not
-/// reference <c>Winnow.Data</c>. A host that wants these answers in the §6
-/// <c>metadata_cache</c> table — which the app does — registers its own
-/// implementation before calling <c>AddEpicWebApi</c>; every registration there
-/// is <c>TryAdd</c>.</para>
+/// Per-item cache for Epic catalog service answers. In-memory by default; hosts
+/// may register a persistent implementation. A null payload records a definite
+/// miss; transport failures must not be cached.
 /// </summary>
 public interface IEpicCatalogCache
 {

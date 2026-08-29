@@ -8,16 +8,9 @@ using Microsoft.Extensions.Logging;
 namespace Winnow.Enrich.Updates;
 
 /// <summary>
-/// Client for <c>ISteamNews/GetNewsForApp/v2</c>, per
-/// <c>docs/spikes/update-signals.md</c> §3.
-///
-/// <para>Retry, 429 backoff and the request rate all live in the
-/// <see cref="HttpClient"/> handler pipeline, so this class only decides what to
-/// ask, what a given answer means, and what not to ask twice.</para>
-///
-/// <para><b>The 403 rule is the reason this class exists rather than a five-line
-/// helper.</b> See <see cref="NewsOutcome.NoFeed"/> and
-/// <see cref="Http.UpdateSignalResilienceHandler"/>.</para>
+/// Client for <c>ISteamNews/GetNewsForApp/v2</c>. Retry and rate limiting live
+/// in the HttpClient pipeline; this class decides what to ask and what a given
+/// answer means (including the 403-is-no-feed rule).
 /// </summary>
 public sealed class SteamNewsClient : ISteamNewsClient
 {
@@ -27,11 +20,7 @@ public sealed class SteamNewsClient : ISteamNewsClient
     /// <summary><c>metadata_cache.provider</c> for the no-feed negatives this client stores.</summary>
     public const string CacheProvider = "steam-news";
 
-    /// <summary>
-    /// v2, not v1: the spike found <c>v1</c> lacks the <c>feeds</c> parameter,
-    /// and while this client filters by <c>tags</c> instead, pinning the newer
-    /// version keeps the documented parameter set available.
-    /// </summary>
+    /// <summary>v2 endpoint path (v1 lacks the <c>feeds</c> parameter).</summary>
     private const string NewsPath = "ISteamNews/GetNewsForApp/v2/";
 
     private readonly HttpClient _http;

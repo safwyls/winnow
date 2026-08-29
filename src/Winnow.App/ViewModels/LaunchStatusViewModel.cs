@@ -4,38 +4,9 @@ using Winnow.Monitor;
 namespace Winnow.App.ViewModels;
 
 /// <summary>
-/// The ambient answer to "did that work?" after Play is pressed.
-///
-/// <para><b>The problem it solves, stated exactly.</b> A cold Steam client
-/// starting a large game can take thirty seconds or more before anything appears
-/// on screen. Doing nothing for thirty seconds after a click reads as a broken
-/// button, and a user who concludes the button is broken clicks it again — two
-/// store prompts, or worse. So something has to acknowledge the press.</para>
-///
-/// <para><b>Why it is a line of text and not a dialog, a spinner overlay or a
-/// progress bar.</b> A modal takes the window hostage while the user waits for a
-/// different application to do something; that is friction charged for nothing,
-/// and the user's brief for this milestone names it. A blocking spinner is the
-/// same idea with worse manners. A progress bar would be a lie — Winnow has no
-/// idea how far along Steam is and cannot get one. What is left is a small strip
-/// that says what is happening, occupies no attention, and gets out of the way
-/// on its own.</para>
-///
-/// <para><b>It resolves off the same signal that proves the launch worked.</b>
-/// The waiting state ends when the session watcher attaches to a process for
-/// this ownership, not on a timer — which means the indicator disappearing is a
-/// real fact about a real running game rather than an animation finishing. That
-/// is the one thing a launcher can say that a spinner cannot, and it exists only
-/// because §5.2's watcher and M3b's launch share
-/// <see cref="LaunchIntents"/>.</para>
-///
-/// <para><b>Silence is a state, and it is the common one.</b> A launch that never
-/// produces a process — the user cancelled at Steam's own prompt, or thought
-/// better of it — expires and the strip simply goes away. It does not say
-/// "launch failed", because nothing failed; the user changed their mind, and
-/// being told off for it is exactly the friction this milestone is spending its
-/// budget to avoid. The one message with a negative tone is reserved for the one
-/// case Winnow actually knows went wrong: the URI never reached a handler.</para>
+/// Non-modal status strip shown after Play is pressed. Resolves when the session
+/// watcher confirms a running process via <see cref="LaunchIntents"/>, or expires
+/// quietly if no process appears. The only negative message is a refused URI.
 /// </summary>
 public partial class LaunchStatusViewModel : ObservableObject, IDisposable
 {

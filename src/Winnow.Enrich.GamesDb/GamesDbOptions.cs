@@ -1,15 +1,6 @@
 namespace Winnow.Enrich.GamesDb;
 
-/// <summary>
-/// Tunables for the gamesdb.gog.com identity graph.
-///
-/// <para><b>Every default here is a courtesy setting, not a documented one.</b>
-/// This is GOG Galaxy's own backing service, unversioned and unpublished — the
-/// same category as api.steamcmd.net in §4.5. There is no published rate limit
-/// to respect, which means the only defensible posture is to stay well under
-/// what the real client would generate and to cache hard enough that a warm
-/// library never touches it again.</para>
-/// </summary>
+/// <summary>Tunables for the gamesdb.gog.com identity graph.</summary>
 public sealed class GamesDbOptions
 {
     /// <summary>Service root. Trailing slash required — relative URIs hang off it.</summary>

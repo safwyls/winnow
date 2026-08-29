@@ -22,49 +22,10 @@ public readonly record struct SessionWatcherTick(
     int Running, int Started, int Recorded, int Debounced, int Queued);
 
 /// <summary>
-/// §5.2 mechanism A: the process-watching session detector. Discovery is polled
-/// (Tier 1), exit is event-driven (Tier 2), and neither decides what gets
-/// written — the OS's own start and exit timestamps do.
-///
-/// <para><b>A session belongs to an ownership, not to a process.</b> That single
-/// decision is what answers three of §5.2's four named noise sources at once,
-/// and it is worth stating before the code makes it look incidental. A watcher
-/// that opened a session per pid would record, for a real Unreal title on the
-/// developer's own machine: three seconds for <c>Palworld.exe</c> (the shim),
-/// then two hours for <c>Palworld-Win64-Shipping.exe</c> (the game). Two rows,
-/// one of them a lie about the user having bounced off. Grouping by the
-/// ownership whose install directory both executables live under collapses that
-/// to the one thing that happened. The same grouping handles a launcher that
-/// precedes or outlives the game, and a Proton/Wine process tree, without
-/// needing to reconstruct parent/child relationships at all — every member of
-/// the tree resolves to the same install directory, which is a stronger join
-/// than a parent pid and one that survives re-parenting.</para>
-///
-/// <para>The session opens at the earliest <c>StartTime</c> of any process in
-/// the group and closes when the last of them has been gone for
-/// <see cref="SessionWatcherOptions.RelaunchGrace"/>.</para>
-///
-/// <para><b>The accepted cost of that grouping</b> is that a run which never
-/// reaches the game still counts as one. A user who opens a launcher, sits in
-/// its settings for two minutes and closes it without pressing Play gets a
-/// two-minute session against the game, because from outside the process there
-/// is no way to tell that apart from a game that started and was quickly
-/// abandoned — and the alternative, attributing nothing until some specific
-/// "real" executable appears, would silently drop every game whose only
-/// executable <i>is</i> its launcher. The debounce floor absorbs the short
-/// version of this, and §5.2 mechanism B is the exact answer for anyone who
-/// cares about the rest.</para>
-///
-/// <para><b>Threading.</b> Exit callbacks arrive on thread pool threads; they
-/// take the lock, record a timestamp, and return. Everything else — matching,
-/// finalising, and every database write — happens on whichever single caller is
-/// driving <see cref="TickAsync"/>. Nothing writes to SQLite from a callback,
-/// which matters because <c>SqliteConnectionFactory.Begin</c> throws outright if
-/// a unit of work is already open on the same flow and because SQLite has one
-/// writer.</para>
-///
-/// <para>§5.1: reads <see cref="IOwnershipRepository"/>, writes
-/// <see cref="ISessionRepository"/>, and knows nothing about the UI.</para>
+/// Process-watching session detector. Sessions belong to ownerships, not processes --
+/// all processes under one install directory are grouped into a single session.
+/// Discovery is polled (Tier 1), exit is event-driven (Tier 2). Exit callbacks
+/// record timestamps under a lock; all DB writes happen on the tick caller's thread.
 /// </summary>
 public sealed class SessionWatcher : IDisposable
 {
@@ -86,43 +47,17 @@ public sealed class SessionWatcher : IDisposable
     /// <summary>Open sessions by ownership id. At most one per game at a time.</summary>
     private readonly Dictionary<long, LiveSession> _live = [];
 
-    /// <summary>
-    /// Pids whose name passed the Tier 1 filter but which turned out not to be
-    /// one of ours — a same-named process running from somewhere outside every
-    /// install directory. Without this, every poll would re-open and re-resolve
-    /// the same innocent process for as long as it runs.
-    /// </summary>
+    /// <summary>Pids that passed the name filter but resolved outside all install directories (negative cache).</summary>
     private readonly Dictionary<int, string> _rejected = [];
 
-    /// <summary>
-    /// Exited processes whose handle is released on the next tick rather than
-    /// inside the callback. Disposing a <c>Process</c> from its own
-    /// <c>Exited</c> handler is asking for trouble, and the extra few seconds of
-    /// held handle keeps the pid pinned that much longer.
-    /// </summary>
+    /// <summary>Exited processes whose handles are released on the next tick (not inside the callback).</summary>
     private readonly List<ITrackedProcess> _closing = [];
 
-    /// <summary>
-    /// Finished sessions that have not been written yet.
-    ///
-    /// <para><b>Why finalising and writing are separate steps with a queue
-    /// between them.</b> A session leaves <see cref="_live"/> the moment it is
-    /// finalised, so if the insert that follows fails there is nowhere left to
-    /// recover it from — the tracking state has already forgotten the game ever
-    /// ran. That is not a theoretical path: a host stop landing between the
-    /// reconciliation and the first insert cancels the write, and SQLite's
-    /// single writer means a lock contended by the snapshot scheduler can fail
-    /// one too. Losing an hour of someone's evening to a five-millisecond lock
-    /// is exactly the outcome this module exists to prevent, so a session sits
-    /// here until the database has actually accepted it, and the next tick — or
-    /// <see cref="FlushAsync"/> — tries again.</para>
-    /// </summary>
+    // Sessions stay queued until the DB accepts them, so a failed insert does
+    // not lose the session -- the next tick or FlushAsync retries.
     private readonly List<Session> _pending = [];
 
-    /// <summary>
-    /// M3b's attribution seam: the launches Winnow fired itself. Consulted only
-    /// where inference has already failed — see <see cref="LaunchIntents"/>.
-    /// </summary>
+    /// <summary>M3b attribution: launches Winnow fired itself. Consulted only after inference fails.</summary>
     private readonly LaunchIntents _intents;
 
     private GameExecutableIndex _index = GameExecutableIndex.Empty;
@@ -155,33 +90,13 @@ public sealed class SessionWatcher : IDisposable
         _intents = intents ?? new LaunchIntents(options);
     }
 
-    /// <summary>
-    /// Raised after a session has been written, with the row as stored — id
-    /// assigned, and <see cref="Session.AttributedBy"/> filled in.
-    ///
-    /// <para>This is what the journal prompt waits for, and the reason it is an
-    /// event rather than the UI polling the table: §5.2's prompt is "on session
-    /// end", and a poll would either be late or be a second query loop over a
-    /// table nothing else reads.</para>
-    ///
-    /// <para>Raised on the tick that drained the queue. Handlers are invoked
-    /// defensively — one that throws is logged and skipped rather than allowed
-    /// to abort the drain, because a subscriber's bug must not cost the sessions
-    /// still queued behind this one.</para>
-    /// </summary>
+    /// <summary>Raised after a session is written. Handlers are invoked defensively (a throw is logged and skipped).</summary>
     public event EventHandler<Session>? SessionRecorded;
 
     /// <summary>The executable index as of the last rebuild. Exposed for diagnostics and tests.</summary>
     public GameExecutableIndex Index => _index;
 
-    /// <summary>
-    /// One pass: refresh the index if it is due, discover newly started game
-    /// processes, and write any session whose relaunch grace has elapsed.
-    ///
-    /// <para>Must be called from one caller at a time — the hosted service's
-    /// sequential loop guarantees that. Concurrent calls would not corrupt the
-    /// tracking state (it is locked) but could open two SQLite writes at once.</para>
-    /// </summary>
+    /// <summary>One pass: refresh index, discover new game processes, write completed sessions. Not thread-safe for concurrent callers.</summary>
     public async Task<SessionWatcherTick> TickAsync(CancellationToken ct = default)
     {
         var now = _timeProvider.GetUtcNow().UtcDateTime;
@@ -203,16 +118,7 @@ public sealed class SessionWatcher : IDisposable
         return new SessionWatcherTick(running, started, recorded, debounced, queued);
     }
 
-    /// <summary>
-    /// Writes as many queued sessions as the database will accept, oldest first,
-    /// and returns how many landed. A session is removed from the queue only
-    /// after its insert has returned, so a failure part-way through leaves the
-    /// remainder queued for the next attempt rather than dropping them.
-    ///
-    /// <para>Cancellation stops the drain instead of throwing: the queue is the
-    /// recovery mechanism, and <see cref="FlushAsync"/> — which runs on its own
-    /// token during shutdown — is the next attempt.</para>
-    /// </summary>
+    /// <summary>Drains the pending session queue to the database, oldest first. Cancellation stops the drain without throwing.</summary>
     private async Task<int> DrainPendingAsync(CancellationToken ct)
     {
         var recorded = 0;
@@ -280,12 +186,7 @@ public sealed class SessionWatcher : IDisposable
         return recorded;
     }
 
-    /// <summary>
-    /// Tells subscribers a session landed. Defended for the same reason the exit
-    /// callback is: this crosses out of the module into UI code, and an
-    /// exception escaping here would abandon the sessions still queued behind
-    /// this one.
-    /// </summary>
+    /// <summary>Raises <see cref="SessionRecorded"/>; a throwing handler is logged and skipped.</summary>
     private void Announce(Session session)
     {
         try
@@ -302,21 +203,7 @@ public sealed class SessionWatcher : IDisposable
         }
     }
 
-    /// <summary>
-    /// Tells each newly declared launch what its game's processes look like: the
-    /// install root the index already holds, and a deeper one-game executable
-    /// scan than the library-wide index can afford.
-    ///
-    /// <para>Runs after the index refresh so a game installed since the last
-    /// rebuild has a root to be described with, and before discovery so a store
-    /// client that was already warm cannot start the game inside the same tick
-    /// that would have described it.</para>
-    ///
-    /// <para>A failed scan leaves the intent described-but-empty rather than
-    /// undescribed, so it is not retried every five seconds for the whole
-    /// window; the cost is one launch attributed by inference, which is what
-    /// M3a would have done anyway.</para>
-    /// </summary>
+    /// <summary>Describes newly declared launches with install root and executable names from a deep scan.</summary>
     private async Task DescribeIntentsAsync(DateTime now, CancellationToken ct)
     {
         var awaiting = _intents.AwaitingDescription(now);
@@ -364,35 +251,8 @@ public sealed class SessionWatcher : IDisposable
     }
 
     /// <summary>
-    /// Closes the watcher's books because the app is shutting down. Sessions
-    /// whose game has already exited are written normally; sessions still in
-    /// flight are written <b>with no end time</b>.
-    ///
-    /// <para><b>Why an open row rather than "ended now", and rather than
-    /// nothing.</b> The user closing Winnow while a game is running is not an
-    /// edge case — closing the library before settling into a long session is a
-    /// perfectly ordinary thing to do — so all three options here get exercised
-    /// on real machines. Writing <c>ended_at = now</c> would state a falsehood
-    /// (the game is still running) and would bias every duration in the table
-    /// downward in exactly the population of longest sessions. Writing nothing
-    /// would lose the session entirely, and §6.1's episode counting cares more
-    /// that a sitting happened than how long it was. The schema already allows
-    /// <c>ended_at</c> and <c>duration_s</c> to be null, which is precisely the
-    /// fact available: this session started, and this process never saw it
-    /// end.</para>
-    ///
-    /// <para>The debounce still applies, measured against elapsed-so-far: a game
-    /// launched thirty seconds before Winnow was closed is as likely to be a
-    /// mis-click as any other short run, and is dropped on the same rule.</para>
-    ///
-    /// <para>An open row is never repaired — nothing can know when the game
-    /// actually stopped. Mechanism B (§5.2 B, the launch-option wrapper) is the
-    /// answer for anyone who wants exactness here, and is the reason the spec
-    /// ships both.</para>
-    ///
-    /// <para>Anything the tick loop finalised but could not write is still
-    /// queued, so this drains that queue too — a failed write on the last tick
-    /// before shutdown gets one more attempt here rather than being lost.</para>
+    /// Shutdown flush. Already-exited games get real end times; still-running games
+    /// are written with null end time. Also drains any previously queued sessions.
     /// </summary>
     public async Task<int> FlushAsync(CancellationToken ct = default)
     {
@@ -450,16 +310,7 @@ public sealed class SessionWatcher : IDisposable
         }
     }
 
-    /// <summary>
-    /// Adds a finished session to the write queue. Caller holds the lock.
-    ///
-    /// <para>Bounded, because the alternative to dropping the oldest row is
-    /// growing without limit against a database that is never going to answer —
-    /// and an app that eventually dies of memory pressure loses the whole queue
-    /// anyway. The cap is far above any plausible backlog: it is thousands of
-    /// sessions, and reaching it means the database has been unwritable for
-    /// months.</para>
-    /// </summary>
+    /// <summary>Adds a finished session to the write queue. Caller holds the lock. Bounded to <see cref="MaxPendingSessions"/>.</summary>
     private void Enqueue(Session session)
     {
         if (_pending.Count >= MaxPendingSessions)
@@ -534,18 +385,7 @@ public sealed class SessionWatcher : IDisposable
         }
     }
 
-    /// <summary>
-    /// Tier 1 discovery. Returns the number of processes newly attached.
-    ///
-    /// <para><b>The name filter runs before anything else touches a process.</b>
-    /// §5.2 calls this out specifically and it is the only part of this loop with
-    /// a cost worth reasoning about. Measured on the developer's machine: 528
-    /// processes running, the enumeration 12 ms, resolving all 528 paths
-    /// 1,007 ms. None of the 528 was a game, which is the normal state, so the
-    /// steady state of this method is 528 hash lookups against a 30-name set and
-    /// not one syscall. Resolving paths first and filtering after would spend a
-    /// fifth of a core on that answer, permanently.</para>
-    /// </summary>
+    /// <summary>Tier 1 discovery: filters by name first, then resolves paths only for candidates.</summary>
     private int Discover(DateTime now)
     {
         var index = _index;
@@ -666,11 +506,7 @@ public sealed class SessionWatcher : IDisposable
         return started;
     }
 
-    /// <summary>
-    /// Adds a tracked process to its game's session, opening one if this is the
-    /// first process for that game. Returns false when the watcher is already
-    /// disposed or the pid is somehow taken.
-    /// </summary>
+    /// <summary>Adds a tracked process to its game's session, opening one if needed.</summary>
     private bool Attach(ITrackedProcess process, long ownershipId, long discoveryPass, DateTime now)
     {
         // Read before taking the lock: LaunchIntents has a lock of its own, and
@@ -725,11 +561,7 @@ public sealed class SessionWatcher : IDisposable
         return true;
     }
 
-    /// <summary>
-    /// §5.2 Tier 2: the OS told us. Runs on a thread pool thread, does the least
-    /// possible work, and touches no IO — the session it may have completed is
-    /// written by the next <see cref="TickAsync"/>.
-    /// </summary>
+    /// <summary>Exit callback (thread pool). Records timestamp under lock; DB writes happen on the next tick.</summary>
     private void OnProcessExited(object? sender, EventArgs e)
     {
         if (sender is not ITrackedProcess process)
@@ -790,11 +622,7 @@ public sealed class SessionWatcher : IDisposable
         }
     }
 
-    /// <summary>
-    /// Finalises every session whose last process has been gone for longer than
-    /// the relaunch grace, and releases the handles of processes that exited
-    /// since the previous tick.
-    /// </summary>
+    /// <summary>Finalises sessions past the relaunch grace and releases handles of exited processes.</summary>
     private int Collect(DateTime now)
     {
         var debounced = 0;
@@ -847,10 +675,7 @@ public sealed class SessionWatcher : IDisposable
         return debounced;
     }
 
-    /// <summary>
-    /// Turns a completed group into a row, or null when the debounce floor
-    /// rejects it. §5.2: "ignore sessions under 60s by default (configurable)".
-    /// </summary>
+    /// <summary>Builds a session row, or null if under the debounce floor.</summary>
     private Session? BuildSession(LiveSession live, DateTime endedAt)
     {
         var duration = endedAt - live.StartedAtUtc;
@@ -887,10 +712,7 @@ public sealed class SessionWatcher : IDisposable
         };
     }
 
-    /// <summary>
-    /// The shutdown form: a session known to have started and not known to have
-    /// ended. See <see cref="FlushAsync"/> for why this shape exists.
-    /// </summary>
+    /// <summary>Builds a session with null end time (shutdown while game still running).</summary>
     private Session? BuildOpenSession(LiveSession live, DateTime now)
     {
         var elapsed = now - live.StartedAtUtc;
@@ -932,27 +754,16 @@ public sealed class SessionWatcher : IDisposable
 
     private sealed record TrackedGame(ITrackedProcess Process, long OwnershipId);
 
-    /// <summary>
-    /// One game's in-progress session. Spans however many processes the game
-    /// runs through — see the type remarks on <see cref="SessionWatcher"/>.
-    /// </summary>
+    /// <summary>One game's in-progress session, spanning all processes under its install directory.</summary>
     private sealed class LiveSession(
         long ownershipId, DateTime startedAtUtc, long openedInPass, string attribution)
     {
         public long OwnershipId { get; } = ownershipId;
 
-        /// <summary>
-        /// Fixed when the session OPENS, not when it is written. A later process
-        /// joining cannot change the answer: whether Winnow started this sitting
-        /// was settled by the first process that belonged to it, and a game that
-        /// hands off to a second executable is the same sitting by definition.
-        /// </summary>
+        /// <summary>Fixed when the session opens; later processes joining cannot change it.</summary>
         public string Attribution { get; } = attribution;
 
-        /// <summary>
-        /// When this sitting began. Seeded from the first process seen for the
-        /// game and then narrowed by <see cref="Join"/>, under the rules there.
-        /// </summary>
+        /// <summary>Session start time, narrowed by <see cref="Join"/>.</summary>
         public DateTime StartedAtUtc { get; private set; } = startedAtUtc;
 
         /// <summary>Discovery pass in which this session was opened. See <see cref="Join"/>.</summary>
@@ -965,41 +776,10 @@ public sealed class SessionWatcher : IDisposable
         public int LiveProcesses { get; private set; }
 
         /// <summary>
-        /// Adds a process to the group, narrowing the session start if this
-        /// process began earlier — but by how much depends on when it joined.
-        ///
-        /// <para><b>Why the rule is not simply "take the minimum".</b> An
-        /// unconditional minimum lets any process that ever matches this game
-        /// drag the session's start backwards without limit, and the install
-        /// directory is not a set of things that only run while the game does. A
-        /// resident updater, a dedicated server left running, a mod manager, a
-        /// tool the user parked in the game folder — any of them, once the
-        /// executable index picks it up, joins the group carrying a start time
-        /// that may be days old, and the session then claims the sitting began
-        /// last Tuesday. That row is worse than no row: it is indistinguishable
-        /// from a real week-long session, and every duration statistic built on
-        /// the table inherits it.</para>
-        ///
-        /// <para>So the minimum is free only within the discovery pass that
-        /// opened the session. Everything seen together in that first sweep is
-        /// one launch — the launcher and the game it already spawned, the whole
-        /// of a process tree, a game that was already running when Winnow started
-        /// — and their earliest start is the honest start.</para>
-        ///
-        /// <para>A process joining in a <i>later</i> pass may still pull the
-        /// start back, because a launcher's successor legitimately can have
-        /// started fractionally before we noticed the handoff, but no further
-        /// back than <paramref name="maxPullBack"/> (the relaunch grace, which
-        /// is already the window in which two processes are considered the same
-        /// sitting). Anything older than that is a stranger, and it joins the
-        /// session as a participant without rewriting when the session
-        /// began.</para>
-        ///
-        /// <para>The residual is that such a stranger still holds
-        /// <see cref="LiveProcesses"/> above zero and keeps the session open
-        /// while it runs. That costs latency and a longer session, not a
-        /// fabricated start date, and the executable deny-list is what keeps the
-        /// usual suspects out of the group in the first place.</para>
+        /// Adds a process to the group. Within the opening pass, the earliest start
+        /// wins freely. In later passes, the start can only pull back by at most
+        /// <paramref name="maxPullBack"/> to prevent long-running tools from
+        /// backdating the session.
         /// </summary>
         public void Join(DateTime startedAtUtc, long discoveryPass, TimeSpan maxPullBack)
         {

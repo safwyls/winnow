@@ -18,34 +18,7 @@ public static class EpicWebServiceCollectionExtensions
 {
     /// <summary>
     /// Registers <see cref="IEpicAccountClient"/> and everything under it.
-    ///
-    /// <para><b>No credentials are required to call this.</b> A host that
-    /// registers the module and a user who never enters a client pair produce a
-    /// client that declines every call and makes no requests (§5.1) — there is no
-    /// startup failure and no configuration step. Registering it is safe on every
-    /// machine, exactly like <c>AddSteamWebApi</c>.</para>
-    ///
-    /// <para><b>This does not replace <c>AddEpicIngest</c>.</b> The two are a
-    /// union, not a choice (§4.2's rule applied to Epic): the local readers see
-    /// install state, install paths and third-party-managed titles, and the API
-    /// sees the true entitlement list, acquisition dates and playtime. A host
-    /// that registers only this one loses install state entirely. Register both.</para>
-    ///
-    /// <para><b>Handler order is deliberate and outermost first:</b> auth (owns
-    /// the bearer header and the single 401 refresh) → retry (owns 429/5xx
-    /// backoff) → rate limiter (owns the request budget). The limiter sits
-    /// innermost so retried attempts spend permits like any other request and a
-    /// backoff storm cannot exceed the configured rate; auth sits outermost so
-    /// its re-auth attempt goes back through both.</para>
-    ///
-    /// <para><b>The logging change is a security control, not a preference.</b>
-    /// <c>RemoveAllLoggers()</c> strips the two loggers
-    /// <c>IHttpClientFactory</c> attaches by default, both of which write the
-    /// full request URI at <c>Information</c>. Every path on the library service
-    /// carries the user's Epic account id, and the playtime paths additionally
-    /// name a specific owned game, so leaving them in place would write both to
-    /// the log on every sync. <see cref="RedactingEpicHttpClientLogger"/>
-    /// replaces them. This affects only this module's clients.</para>
+    /// No credentials are required; unconfigured installs decline every call.
     /// </summary>
     public static IServiceCollection AddEpicWebApi(this IServiceCollection services)
         => services.AddEpicWebApi(configure: null);
@@ -167,14 +140,8 @@ public static class EpicWebServiceCollectionExtensions
     }
 
     /// <summary>
-    /// Adds the two configuration sources the developer credential path reads: a
-    /// git-ignored <c>appsettings.local.json</c> beside the executable, and
-    /// environment variables (<c>Epic__ClientId</c>, <c>Epic__ClientSecret</c>).
-    ///
-    /// <para>Optional. A host that already configures these — as the default
-    /// generic host does for environment variables — needs nothing from here.
-    /// Neither source is ever written to; Winnow only reads credentials it did not
-    /// create.</para>
+    /// Adds <c>appsettings.local.json</c> and environment variables for Epic
+    /// credential configuration. Optional if the host already provides these.
     /// </summary>
     public static IConfigurationBuilder AddEpicWebLocalConfiguration(this IConfigurationBuilder builder)
         => builder

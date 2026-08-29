@@ -92,13 +92,8 @@ public enum BuildInfoOutcome
     Ok,
 
     /// <summary>
-    /// The service answered and had nothing: the spike's
-    /// <c>{"data": {"999999999": {}}, "status": "success"}</c>, verified live.
-    ///
-    /// <para><b>A missing app is a 200, not a 404</b>, so this must be decided by
-    /// branching on the empty inner object. Reading it as a parse failure would
-    /// mark every app Steam has retired as "the service is broken" and keep
-    /// re-asking; reading the HTTP status would never notice at all.</para>
+    /// The service answered and had nothing (200 with empty inner object).
+    /// A missing app is a 200, not a 404.
     /// </summary>
     NoData,
 
@@ -112,19 +107,9 @@ public enum BuildInfoOutcome
 }
 
 /// <summary>The <c>public</c> branch of an app's depots, from steamcmd.net.</summary>
-/// <param name="BuildId">
-/// <c>depots.branches.public.buildid</c> — the build users are actually on.
-/// </param>
-/// <param name="UpdatedAt">
-/// <c>timeupdated</c>: when the branch pointer flipped, i.e. when the build
-/// reached users. §4.5 names this field and the spike confirms the choice.
-/// </param>
-/// <param name="BuildUpdatedAt">
-/// <c>timebuildupdated</c>: when the build itself was produced. Stored but not
-/// used for correlation — it ran 279 seconds ahead of <paramref name="UpdatedAt"/>
-/// for Dota 2 and thirty days ahead for Elden Ring, so the two are not
-/// interchangeable.
-/// </param>
+/// <param name="BuildId"><c>depots.branches.public.buildid</c>.</param>
+/// <param name="UpdatedAt"><c>timeupdated</c>: when the build reached users.</param>
+/// <param name="BuildUpdatedAt"><c>timebuildupdated</c>: when the build was produced. Stored but not used for correlation.</param>
 /// <param name="RawJson">The branch object verbatim, plus the change number.</param>
 public sealed record BuildBranch(
     string? BuildId,
@@ -147,30 +132,11 @@ public sealed record BuildInfoFetch(BuildInfoOutcome Outcome, BuildBranch? Branc
     public static BuildInfoFetch Unavailable { get; } = new(BuildInfoOutcome.Unavailable, null);
 }
 
-/// <summary>
-/// The <c>common</c> block of a steamcmd.net <c>/v1/info/{appid}</c> response —
-/// Steam's own name and classification for an appid, riding along in the body
-/// this module already fetches for its build signal.
-/// </summary>
+/// <summary>The <c>common</c> block from a steamcmd.net response: Steam's own name and type for an appid.</summary>
 /// <param name="AppId">The appid asked about.</param>
-/// <param name="Name">
-/// <c>common.name</c>: Steam's title for the appid. The third and last name
-/// source in the enrichment chain, behind IGDB (§4.4's backbone) and the Steam
-/// store — it names appids both of them refuse, verified live: 4028270
-/// "Everwind Demo", 2614110 "Enshrouded Demo", 202480 "Skyrim Creation Kit".
-/// </param>
-/// <param name="Type">
-/// <c>common.type</c>: Valve's classification, verbatim including its casing,
-/// which is NOT stable — Bastion answers <c>game</c>, Monster Hunter Wilds
-/// answers <c>Game</c>. Every comparison must be case-insensitive.
-/// </param>
-/// <param name="ParentAppId">
-/// <c>common.parent</c>: the appid this one is a demo/tool OF, when Steam
-/// publishes one (107110 Bastion Demo → 107100). Read and carried but not yet
-/// consumed — binding on it would be a hard external-id join, which is a
-/// stronger rule than the title match consolidation uses today and a change to
-/// §5.3's matching contract rather than to this client.
-/// </param>
+/// <param name="Name"><c>common.name</c>: Steam's title. Third name source after IGDB and the Steam store.</param>
+/// <param name="Type"><c>common.type</c>: Valve's classification. Casing is NOT stable -- compare case-insensitively.</param>
+/// <param name="ParentAppId"><c>common.parent</c>: the appid this is a demo/tool of, when present.</param>
 public sealed record SteamAppInfo(
     string AppId,
     string? Name,
@@ -183,24 +149,10 @@ public enum AppInfoOutcome
     /// <summary>A <c>common</c> block was returned. <see cref="AppInfoFetch.Info"/> is set.</summary>
     Ok,
 
-    /// <summary>
-    /// The service answered and carried no <c>common</c> block for this appid.
-    ///
-    /// <para>Two verified shapes reach here and both are answers, not failures.
-    /// The first is the missing-app body — <c>{"data":{"999999999":{}}}</c> at
-    /// HTTP 200. The second is the <b>restricted</b> one: HTTP 200 with
-    /// <c>"_missing_token": true, "public_only": "1"</c> and no <c>common</c> at
-    /// all, which 8510, 854040, 1883690, 3065170 and 3562740 all answer
-    /// on the author's library. Those appids need a Steam Web API key; nothing
-    /// this module can do differently will name them, so re-asking daily would
-    /// spend a volunteer service's bandwidth to relearn the same nothing.</para>
-    /// </summary>
+    /// <summary>The service answered with no <c>common</c> block (missing app or restricted/needs API key).</summary>
     NoData,
 
-    /// <summary>
-    /// The service did not answer — offline, 5xx, an unparseable body. Nothing
-    /// is learned and nothing is cached, so the appid is asked again next pass.
-    /// </summary>
+    /// <summary>The service did not answer (offline, 5xx, unparseable). Not cached; asked again next pass.</summary>
     Unavailable,
 }
 

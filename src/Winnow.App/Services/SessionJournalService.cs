@@ -13,35 +13,13 @@ namespace Winnow.App.Services;
 public readonly record struct EndedSession(long SessionId, long OwnershipId, long DurationSeconds);
 
 /// <summary>
-/// §5.2's journal prompt, and §9 pitfall 7's constraint on it.
-///
-/// <para>The pitfall is quoted in full because it is the whole specification for
-/// this class: <i>"Shipping the journal prompt on by default. An unexpected popup
-/// after every game exit is an uninstall trigger. Opt-in, explicitly."</i></para>
-///
-/// <para><b>Off is the default and it is a real default, not a stored one.</b>
-/// The setting is absent from a fresh database and absent parses as off, so a
-/// user who never opens the preference never sees a prompt in their life. There
-/// is no first-run offer, no "would you like to enable journaling?" — an
-/// onboarding question about a feature is the same interruption as the feature,
-/// moved earlier.</para>
-///
-/// <para><b>Only completed sittings.</b> A session written with no end time is
-/// the shutdown flush recording a game that was still running when Winnow closed
-/// (§5.2's in-flight write). Prompting for a note about a game the user has not
-/// stopped playing would be nonsense, and prompting as the app exits would be
-/// worse.</para>
-///
-/// <para>§5.1: an App-layer service. It owns the subscription to the watcher and
-/// the one settings key, so the view model neither sees <c>Winnow.Monitor</c> nor
-/// reads the settings table.</para>
+/// Journal prompt service (§5.2). Opt-in by default (§9 pitfall 7). Subscribes
+/// to the session watcher and raises <see cref="SessionEnded"/> only for
+/// completed sittings when the preference is on.
 /// </summary>
 public sealed class SessionJournalService : IDisposable
 {
-    /// <summary>
-    /// The settings key. Named for the thing the user turns on rather than for
-    /// the mechanism, the way <c>DormancyRamp.DimCoversSettingKey</c> is.
-    /// </summary>
+    /// <summary>The settings key for the journal prompt preference.</summary>
     public const string PromptSettingKey = "journal.prompt_after_play";
 
     private readonly ISessionRepository _sessions;
@@ -67,19 +45,10 @@ public sealed class SessionJournalService : IDisposable
         }
     }
 
-    /// <summary>
-    /// Raised for a completed session, and <b>only when the preference is
-    /// on</b>. The gate is here rather than in the view model on purpose: a
-    /// disabled prompt should not be a window that exists and stays hidden, it
-    /// should be an event that is never raised.
-    /// </summary>
+    /// <summary>Raised for a completed session, only when the preference is on.</summary>
     public event EventHandler<EndedSession>? SessionEnded;
 
-    /// <summary>
-    /// Whether to ask. False until the stored preference says otherwise —
-    /// including on a database that has never heard of the key, which is every
-    /// database until someone turns it on.
-    /// </summary>
+    /// <summary>Whether the prompt is enabled. False until the stored preference says otherwise.</summary>
     public bool PromptEnabled { get; private set; }
 
     /// <summary>Reads the stored preference. Anything unparseable stays off.</summary>
@@ -136,12 +105,7 @@ public sealed class SessionJournalService : IDisposable
         }
     }
 
-    /// <summary>
-    /// Raised on the watcher's tick thread. Nothing here touches the UI — the
-    /// view model marshals — and nothing here may throw: the watcher defends its
-    /// drain loop against a throwing subscriber, but relying on someone else's
-    /// try/catch is not a design.
-    /// </summary>
+    /// <summary>Watcher callback. Runs on the tick thread; must not throw or touch the UI.</summary>
     private void OnSessionRecorded(object? sender, Session session)
     {
         if (!PromptEnabled || session.EndedAt is null || session.Id <= 0)

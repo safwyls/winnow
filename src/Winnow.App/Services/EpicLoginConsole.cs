@@ -6,37 +6,10 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Winnow.App.Services;
 
 /// <summary>
-/// The one-time interactive Epic sign-in, run from a terminal:
-/// <c>dotnet run --project src/Winnow.App -- --epic-login</c>.
-///
-/// <para><b>What this is now, since M4.6.</b> The embedded-browser sign-in
-/// (<c>--epic-signin</c>, and eventually a button) captures the code the instant
-/// Epic issues it, and it is the better flow. This one did NOT become a legacy
-/// path: it is the peer that runs where a browser window cannot — a headless
-/// machine, a Windows install with no WebView2 runtime, and the day Epic breaks
-/// the embedded page, which <c>docs/spikes/epic-oauth.md</c> §12.3 names as the
-/// realistic failure mode. Both go through the same
-/// <c>IInteractiveAuthPrompt</c> seam, so the fallback is exercised by the same
-/// code path rather than kept alive by good intentions.</para>
-///
-/// <para>Here the user signs in to Epic in their own browser, on Epic's own page,
-/// and pastes back one code that is spent immediately. Winnow never sees a
-/// password, and the code it does see is never logged, never written to disk, and
-/// dead within minutes.</para>
-///
-/// <para><b>It doubles as the verification step</b>, which is the other reason it
-/// prints rather than silently succeeding. Two things about the Epic API could
-/// not be settled without a real token — whether the playtime endpoint returns
-/// data for this account, and what unit its <c>totalTime</c> is in — so this
-/// prints the raw figures for the account's most-played titles, next to the
-/// number Winnow would derive from them. Comparing that against the launcher's own
-/// "You've Played" display settles
-/// <see cref="EpicWebOptions.PlaytimeUnit"/> in one look.</para>
-///
-/// <para><b>Nothing here prints a secret.</b> Not the client secret, not the
-/// pasted code, not the access or refresh token, not the account id. The success
-/// line names the display name only, because the user has just proved they own
-/// the account and needs to see which one they connected.</para>
+/// Console-based Epic sign-in flow (<c>--epic-login</c>). Peer to the
+/// embedded-browser flow for headless/no-WebView2 environments. Also prints
+/// a playtime verification table to confirm <see cref="EpicWebOptions.PlaytimeUnit"/>.
+/// Never prints secrets.
 /// </summary>
 public static class EpicLoginConsole
 {
@@ -44,26 +17,12 @@ public static class EpicLoginConsole
     public const string Argument = "--epic-login";
 
     /// <summary>
-    /// Optional companion argument carrying the authorization code, as
-    /// <c>--epic-login --code &lt;code&gt;</c>.
-    ///
-    /// <para>Exists because the interactive prompts cannot be relied on. This is
-    /// a <c>WinExe</c> — a GUI-subsystem binary — so it owns no console of its
-    /// own, and whether <see cref="Console.ReadLine"/> ever returns depends on
-    /// how the host terminal wired up the child's handles. When that goes wrong
-    /// it does not fail, it HANGS, with a prompt that may not even have been
-    /// rendered; the user sees a browser open and then nothing, and has no way to
-    /// tell a stuck process from one that is working. Passing the code as an
-    /// argument removes console input from the flow entirely, which is why the
-    /// instructions print this route before the prompt that might swallow
-    /// them.</para>
+    /// Optional companion argument (<c>--code &lt;code&gt;</c>) to bypass console
+    /// input, which can hang in this WinExe process.
     /// </summary>
     public const string CodeArgument = "--code";
 
-    /// <summary>
-    /// Pulls the authorization code out of the command line, accepting both
-    /// <c>--code &lt;value&gt;</c> and <c>--code=&lt;value&gt;</c>. Null when absent.
-    /// </summary>
+    /// <summary>Parses <c>--code &lt;value&gt;</c> or <c>--code=value</c> from the command line. Null when absent.</summary>
     public static string? CodeFrom(IReadOnlyList<string> args)
     {
         ArgumentNullException.ThrowIfNull(args);
@@ -85,10 +44,7 @@ public static class EpicLoginConsole
         return null;
     }
 
-    /// <summary>
-    /// Runs the flow. Returns a process exit code: 0 on success, 1 on anything
-    /// the user needs to act on.
-    /// </summary>
+    /// <summary>Runs the sign-in flow. Returns 0 on success, 1 on failure.</summary>
     public static async Task<int> RunAsync(
         IServiceProvider services, string? presetCode = null, CancellationToken ct = default)
     {
@@ -154,15 +110,7 @@ public static class EpicLoginConsole
         return 0;
     }
 
-    /// <summary>
-    /// Fetches the library once and prints what it found — the actual
-    /// verification.
-    ///
-    /// <para>Internal because <c>--epic-signin</c> ends on the same report: the
-    /// playtime unit is still unverified (<c>docs/spikes/epic-oauth.md</c> §7)
-    /// and whichever sign-in route the user took, this is the table that settles
-    /// it.</para>
-    /// </summary>
+    /// <summary>Fetches the library and prints the playtime verification table. Used by both sign-in routes.</summary>
     internal static async Task ReportLibraryAsync(
         IEpicAccountClient client, IServiceProvider services, CancellationToken ct)
     {
@@ -246,16 +194,7 @@ public static class EpicLoginConsole
     private static string Truncate(string value, int length)
         => value.Length <= length ? value : value[..(length - 1)] + "~";
 
-    /// <summary>
-    /// The "nothing to sign in with" message.
-    ///
-    /// <para><b>Nearly unreachable, and kept for the day it is not.</b> Winnow now
-    /// ships a built-in launcher client pair as the LAST credential source
-    /// (<c>BuiltInEpicCredentialSource</c>), so every install is configured by
-    /// default. This prints only if that pair has been removed or emptied — which
-    /// is exactly what a maintainer would do the day Epic rotates it, and on that
-    /// day the message needs to say what to supply.</para>
-    /// </summary>
+    /// <summary>Prints instructions when no Epic OAuth client credentials are available.</summary>
     private static void WriteCredentialInstructions()
     {
         Console.Error.WriteLine();

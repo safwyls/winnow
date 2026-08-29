@@ -356,57 +356,15 @@ public partial class GameTileViewModel : ObservableObject
     public partial bool IsSelected { get; set; }
 
     /// <summary>
-    /// The card is turned over: the art is face-down and the back's facts and
-    /// actions are showing.
-    ///
-    /// <para><b>This lives on the view model and nowhere else, and that is not a
-    /// style preference.</b> <see cref="Views.CoverWall"/> virtualizes: a
-    /// container scrolled out of the viewport is recycled and comes back bound
-    /// to a different game. State kept on the container therefore does not
-    /// travel with the game it was about — it stays with the container and gets
-    /// handed to whatever lands in it next, which is precisely the bug that
-    /// retired <c>ItemsRepeater</c> here. A tile view model outlives every
-    /// container it is ever shown in, so a flag on it is the only place the flip
-    /// can be correct.</para>
-    ///
-    /// <para><b>Flips therefore survive scrolling, deliberately, and exactly one
-    /// card is ever turned over.</b> Persisting is what falls out of putting the
-    /// state on the model, and it is also right: a card you turned over and
-    /// scrolled past should be as you left it when you come back, the way a card
-    /// on a table is. What would be wrong is a WALL of turned cards — §1 says
-    /// the art is the interface, and a grid of backs is a grid with no art in
-    /// it — so the library turns the previous one face-up as it turns the next
-    /// one over (see <c>LibraryViewModel.FlipTile</c>). One card at a time also
-    /// matches what the back face is for: the flip is the single-game route, and
-    /// the command bar stays the bulk route (§12.3).</para>
+    /// Whether the card is flipped to show its back face. Lives on the VM (not
+    /// the container) because the cover wall virtualizes — container state
+    /// doesn't survive recycling. Only one card is flipped at a time.
     /// </summary>
     [ObservableProperty]
     public partial bool IsFlipped { get; set; }
 
-    /// <summary>
-    /// "Add to list" for this one game, wired to the library's own command by
-    /// the library (§5.1: the view model raises a command, it does not reach
-    /// into a repository). Null in a bare view-model test, which renders the
-    /// button disabled rather than crashing.
-    ///
-    /// <para>It is the same command the command bar's button runs, deliberately.
-    /// The flip is the single-game route into it; the command bar is the route
-    /// for the many rows list view can select at once (§6, §12.3), and per-card
-    /// flipping would make "add twenty games to a list" twenty flips.</para>
-    /// </summary>
-    /// <summary>
-    /// M3b: Play / Install, raised as a command rather than opened by the view.
-    ///
-    /// <para>It moved off the code-behind for one reason: a launch has to tell
-    /// the session watcher which game it is (<c>LaunchIntents</c>), and a
-    /// <c>Click</c> handler holding a URI has no idea what an ownership is. The
-    /// library publishes the command, the tile carries it, and the button binds
-    /// to it — the same wiring, and the same §5.1 reason, as the two below.</para>
-    ///
-    /// <para>Null leaves the button inert rather than absent, which is why the
-    /// view still gates visibility on <see cref="HasPrimaryAction"/>: an
-    /// unwired command is a composition mistake, not a fact about the game.</para>
-    /// </summary>
+    /// <summary>Add to list, wired by the library. Null in tests.</summary>
+    /// <summary>Play/Install command, wired by the library for session tracking.</summary>
     public System.Windows.Input.ICommand? PrimaryActionCommand { get; set; }
 
     public System.Windows.Input.ICommand? AddToListCommand { get; set; }

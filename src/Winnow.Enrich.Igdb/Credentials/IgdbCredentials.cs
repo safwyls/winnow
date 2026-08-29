@@ -1,12 +1,8 @@
 namespace Winnow.Enrich.Igdb.Credentials;
 
 /// <summary>
-/// A Twitch application's client id and secret, supplied by the user (§4.2:
-/// keys are user-supplied and stored locally).
-///
-/// <para><b>Never logged.</b> <see cref="ToString"/> is overridden precisely
-/// because the compiler-generated record <c>ToString</c> would print the
-/// secret the first time anyone interpolated one of these into a log line.</para>
+/// A Twitch application's client id and secret, supplied by the user.
+/// <see cref="ToString"/> is overridden to prevent accidental secret logging.
 /// </summary>
 public sealed record IgdbCredentials(string ClientId, string ClientSecret)
 {

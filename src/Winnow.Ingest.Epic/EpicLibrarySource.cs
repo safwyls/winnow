@@ -6,57 +6,9 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace Winnow.Ingest.Epic;
 
 /// <summary>
-/// Composes the Epic Games Launcher's local files into the normalised
-/// <see cref="CandidateOwnership"/> feed (§5.1: ingest emits candidates only and
-/// never writes works/releases — that is Resolve's job). Strictly read-only
-/// against every Epic file, and a machine without the launcher simply yields an
-/// empty list.
-///
-/// <para><b>The candidate set is the union of three sources</b>
-/// (docs/spikes/epic-gog-local-files.md sections 1, 6, 7):</para>
-/// <list type="number">
-/// <item><c>Data\Catalog\catcache.bin</c> — the entitlement catalog, i.e. the
-/// whole owned library whether installed or not. This is the base set, and it is
-/// what makes an OAuth flow unnecessary.</item>
-/// <item><c>Data\Manifests\*.item</c> — one per installation. Authoritative for
-/// install state, install path and title.</item>
-/// <item><c>Data\ThirPartyManagedApps\*.json</c> — Epic-owned titles delivered
-/// through another launcher (Ubisoft Connect here). <b>These never get a
-/// <c>.item</c> manifest</b>, so a manifests-only reader misses them and, worse,
-/// would read their missing manifest as "not installed".</item>
-/// </list>
-///
-/// <para><b>Epic has no playtime and no last-played on disk. Anywhere.</b> The
-/// whole tree was searched. The single exception is one
-/// <c>LastPlayedGame</c> slot in <c>GameUserSettings.ini</c>, overwritten on
-/// every launch, which knows nothing about any other title. So every candidate
-/// from this source carries <see cref="CandidateOwnership.PlaytimeMinutes"/> and
-/// <see cref="CandidateOwnership.LastPlayedAt"/> as <b>null — meaning "this
-/// source cannot know", never zero</b>. A zero would be a claim that the user has
-/// never played the game, which this reader has no evidence for, and it would
-/// feed the staleness buckets a fact that is not one. The only mechanism that can
-/// give an Epic title a real last-played date is §5.2's process monitor, for
-/// which the manifest hands over an exact absolute
-/// <see cref="EpicManifest.LaunchExecutablePath"/>.</para>
-///
-/// <para><b>Install state, on the other hand, Epic can answer</b> — so this
-/// source does, with a non-null <see cref="CandidateOwnership.Installed"/>
-/// wherever it genuinely looked. Reading the manifests directory IS how Epic
-/// install state is known: a complete manifest means installed, and no manifest
-/// for a title that would have one means the game is off disk, which is what
-/// makes an uninstall visible. The two cases where it declines to answer are both
-/// real ignorance rather than caution: the manifests directory could not be found
-/// at all, and third-party-managed titles whose delivering launcher could not be
-/// probed.</para>
-///
-/// <para><b>Identity.</b> <see cref="CandidateOwnership.ProviderId"/> is the
-/// <c>CatalogItemId</c> — unique across all 297 catalog entries observed, and
-/// stable. It is emphatically <i>not</i> <c>AppName</c>, which is a per-artifact
-/// codename ("Bluebird" is Fez) and would ship gibberish if it ever reached a
-/// title. Cross-store dedup is out of scope here; the ids that route to it
-/// (<c>AppName</c>, <c>CatalogNamespace</c>) survive on
-/// <see cref="EpicManifest"/> and <see cref="EpicCatalogEntry"/> for when it
-/// is built.</para>
+/// Composes the Epic launcher's local files (catalog, manifests, third-party apps)
+/// into the normalised <see cref="CandidateOwnership"/> feed. Read-only; yields
+/// nothing on machines without the launcher.
 /// </summary>
 public sealed class EpicLibrarySource
 {

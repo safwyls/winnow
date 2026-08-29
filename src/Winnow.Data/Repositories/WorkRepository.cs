@@ -35,11 +35,7 @@ public sealed class WorkRepository : IWorkRepository
             """, work, transaction: lease.Transaction, cancellationToken: ct));
     }
 
-    /// <summary>
-    /// Renames a work and sets its provisional flag. Callers must not use this
-    /// to overwrite a real title with a placeholder — see
-    /// <see cref="Work.NameIsProvisional"/>.
-    /// </summary>
+    /// <summary>Renames a work and sets its provisional flag.</summary>
     public async Task UpdateNameAsync(
         long id, string name, bool nameIsProvisional, CancellationToken ct = default)
     {
@@ -87,74 +83,9 @@ public sealed class WorkRepository : IWorkRepository
     }
 
     /// <summary>
-    /// "Which works are still missing anything?" — a placeholder name, or any
-    /// empty metadata column. The disjunction is the point: a library named by
-    /// an earlier build has no provisional rows left, and asking only about
-    /// those would back-fill nothing.
-    ///
-    /// <para>No index serves an OR across five columns, and none is wanted: the
-    /// projection is six flags over a few hundred rows, and the answer is the
-    /// empty set once the backlog drains.</para>
-    ///
-    /// <para><b>The row order is load-bearing, and getting it wrong starved a
-    /// whole store.</b> This used to end <c>ORDER BY w.id, e.provider</c>. Work
-    /// ids are insertion order and the stores were ingested in milestone order,
-    /// so the id ranges partition cleanly by store — on the author's library
-    /// steam 1-946, epic 947-1059, gog 1014-1027. The caller is rate-limited
-    /// (IGDB and gamesdb both at 4 req/s) and, having no per-run cap, stops only
-    /// when the window closes. So every run began at Steam's stragglers, walked
-    /// up by id, and died wherever the user happened to quit. Measured
-    /// consequence: <b>GOG 0 of 14 enriched, Epic 18 of 99</b>, and the 18 that
-    /// made it sat at the very start of Epic's id range. The cache proved the
-    /// mechanism rather than merely suggesting it — 89 gamesdb rows for Epic
-    /// beside <i>zero</i> IGDB <c>external:5</c> rows, so the GOG lookup had
-    /// never once executed. This is structural rather than unlucky: ordering by
-    /// insertion id makes the most recently added store permanently last, so it
-    /// is starved by every short run forever, and each new store inherits the
-    /// same fate on the day it lands.</para>
-    ///
-    /// <para><b>Two properties replace it, in this precedence.</b></para>
-    /// <list type="number">
-    ///   <item><b>Emptiest first.</b> <c>MissingColumns</c> counts the five
-    ///     metadata columns that are NULL and the sort takes the highest first.
-    ///     A user staring at a wall of placeholder art cares about the works
-    ///     with nothing at all; the one that already has four fields and needs a
-    ///     publisher can wait for the next run. A truncated pass therefore does
-    ///     the most visible good it can with the time it got.</item>
-    ///   <item><b>Round-robin across providers, within each tier.</b>
-    ///     <c>ROW_NUMBER() OVER (PARTITION BY provider, MissingColumns)</c>
-    ///     numbers each store's rows 1, 2, 3... independently, and sorting on
-    ///     that rank ahead of anything store-specific interleaves them: every
-    ///     store's first row, then every store's second, and so on. No store can
-    ///     be systematically last, which is the property that actually failed.
-    ///     14 GOG rows are served inside the first ~42 rows of the sweep instead
-    ///     of behind 946 of someone else's, and a store added tomorrow is
-    ///     interleaved from its first sweep rather than appended after the
-    ///     incumbents.</item>
-    /// </list>
-    ///
-    /// <para><b>Deliberately still a query, with no new column.</b> §6.1's rule
-    /// is that derived things are queries rather than stored values, and
-    /// priority here is derived entirely from columns already present. A
-    /// <c>last_enriched_at</c> watermark would have re-introduced the exact
-    /// failure the caller's cache remarks warn about — permanently suppressing
-    /// works a source only learns about later — and would have needed a
-    /// migration to express what <c>ROW_NUMBER()</c> expresses for free.</para>
-    ///
-    /// <para><b>Ordering alone is not the whole fix.</b> The caller must also
-    /// process in bounded slices, because a cancellation arriving before its
-    /// write phase discards everything regardless of the order the rows came
-    /// back in. See <c>EnrichmentSyncService.EnrichAsync</c>.</para>
-    ///
-    /// <para><b>Every store provider, not one.</b> The <c>provider</c> parameter
-    /// this method used to take was answered <c>steam</c> by its only caller,
-    /// which is why the author's 67 Epic and 14 GOG releases had zero metadata
-    /// of any kind — they were never in a result set. <c>ExternalIdProviders.Stores</c>
-    /// is expanded by Dapper into the <c>IN</c> list, so adding a store to that
-    /// constant is all it takes for this sweep to see it. <c>igdb</c> is excluded
-    /// by not being in that list: it is Winnow's own canonical id, not a
-    /// storefront's, and using it as a lookup key would be asking IGDB to
-    /// resolve an id IGDB gave us.</para>
+    /// Returns works missing any metadata (name, IGDB id, year, summary, cover,
+    /// publisher) or needing type classification. Ordered emptiest-first, then
+    /// round-robin across store providers to prevent any store from being starved.
     /// </summary>
     public async Task<IReadOnlyList<EnrichmentTarget>> GetEnrichmentTargetsAsync(
         CancellationToken ct = default)
@@ -177,14 +108,8 @@ public sealed class WorkRepository : IWorkRepository
                    (w.epic_categories    IS NOT NULL) AS HasEpicCategories,
                    COALESCE(NULLIF(TRIM(r.name), ''), w.name) AS Title,
 
-                   -- How empty is this work? The five columns the metadata
-                   -- sources fill, counted as NULLs, so 5 means "nothing at
-                   -- all". steam_app_type is deliberately not among them: it is
-                   -- a demo-detection detail nobody looking at the library can
-                   -- see, and letting it into the priority would rank a fully
-                   -- illustrated game beside one still showing a placeholder.
-                   -- EnrichmentTarget.MissingColumns recomputes this from the
-                   -- flags above; the two must stay in step.
+                   -- Count of NULL metadata columns (5 = nothing at all).
+                   -- steam_app_type excluded: not user-visible metadata.
                    ((w.igdb_id            IS NULL)
                   + (w.first_release_year IS NULL)
                   + (w.summary            IS NULL)
@@ -199,17 +124,8 @@ public sealed class WorkRepository : IWorkRepository
                OR w.summary            IS NULL
                OR w.cover_url          IS NULL
                OR w.publisher          IS NULL
-               -- migration 0006. NOT "every untyped work": that would return the
-               -- whole library forever and invite 616 requests to a volunteer
-               -- service to learn `Game` six hundred times. Valve's type only
-               -- ever changes an outcome for a row DemoConsolidation reasons
-               -- about, so the predicate narrows to rows whose title already
-               -- looks like a handout. This LIKE is a cheap PREFILTER only —
-               -- it over-selects ("Demonologist", "The Turing Test") and the
-               -- caller applies DemoConsolidation.IsVariantTitle, the real
-               -- tokenised gate, to what it returns. SQLite cannot run the
-               -- normaliser, and a second opinion about titles written in SQL
-               -- is exactly what §5.3 says must not exist.
+               -- migration 0006: cheap LIKE prefilter for demo-like titles.
+               -- Over-selects; caller applies DemoConsolidation.IsVariantTitle.
                OR (w.steam_app_type IS NULL
                    AND (LOWER(COALESCE(NULLIF(TRIM(r.name), ''), w.name)) LIKE '%demo%'
                      OR LOWER(COALESCE(NULLIF(TRIM(r.name), ''), w.name)) LIKE '%beta%'
@@ -224,50 +140,21 @@ public sealed class WorkRepository : IWorkRepository
             FROM (
                 SELECT candidate.*,
 
-                       -- Each store numbered independently, 1, 2, 3..., within
-                       -- its own emptiness tier. Sorting on this rank BEFORE
-                       -- anything store-specific is what interleaves the stores;
-                       -- ordering by provider first would only rename the
-                       -- starvation. Partitioning by MissingColumns as well as
-                       -- Provider restarts every store at rank 1 in each tier,
-                       -- so a store with a long tail of tier-5 rows does not
-                       -- push its tier-4 rows behind another store's.
+                       -- Round-robin: each store numbered independently per tier.
                        ROW_NUMBER() OVER (
                            PARTITION BY Provider, MissingColumns
                            ORDER BY WorkId) AS ProviderRank
                 FROM candidate
             )
-            -- WorkId and Provider are tie-breakers only, present so the order is
-            -- total and a run is reproducible. They must stay last: promoting
-            -- either above ProviderRank is how the original bug is written.
-            --
-            -- WorkId before Provider, and that ordering is load-bearing rather
-            -- than arbitrary. A rank-1 tie is at most one row per store, so this
-            -- decides nothing about fairness — but it does decide which row of a
-            -- cross-store DUPLICATE reaches the writer first, and works.igdb_id
-            -- is UNIQUE: the first arrival claims the canonical id and the
-            -- second is refused (metadata still written, identity left to the
-            -- merge queue and a human, §5.3). Sorting on Provider here would
-            -- hand that claim to whichever store sorts first alphabetically,
-            -- flipping every existing duplicate in the library from its Steam
-            -- row to its Epic one for no reason anybody chose. Lowest work id
-            -- wins is what the old ORDER BY did, it is stable across runs, and
-            -- it is none of this change's business to alter.
+            -- Tie-breakers: WorkId before Provider for stable cross-store dedup.
             ORDER BY MissingColumns DESC, ProviderRank, WorkId, Provider;
             """, new { providers }, transaction: lease.Transaction, cancellationToken: ct));
         return rows.AsList();
     }
 
     /// <summary>
-    /// One statement per work, every column guarded so the write can only ever
-    /// add information.
-    ///
-    /// <para>The pre-read of <c>name_is_provisional</c> is what lets the caller
-    /// move the release name in the same transaction: SQLite's RETURNING clause
-    /// reports the row AFTER the update, which cannot distinguish "was already
-    /// named" from "was named by this statement". The UPDATE re-checks the flag
-    /// itself rather than trusting the read, so a title that became real
-    /// between the two statements still wins.</para>
+    /// Applies enrichment to a work. Every column is guarded so writes can only
+    /// add information. Returns true if a provisional name was promoted.
     /// </summary>
     public async Task<bool> ApplyEnrichmentAsync(
         WorkEnrichment enrichment, CancellationToken ct = default)
@@ -291,12 +178,7 @@ public sealed class WorkRepository : IWorkRepository
                 name_is_provisional = CASE WHEN @PromoteName = 1 AND name_is_provisional = 1
                             THEN 0 ELSE name_is_provisional END,
 
-                -- igdb_id is the canonical identity and UNIQUE. Filled only when
-                -- absent, and only when no OTHER work already claims it: two
-                -- Steam appids resolving to one IGDB game is a duplicate in the
-                -- user's library, and the answer to that is a merge candidate
-                -- for a human (§5.3), never a silent identity steal or a failed
-                -- transaction that rolls back the whole enrichment pass.
+                -- igdb_id is UNIQUE. Skip if another work already claims it.
                 igdb_id = CASE
                             WHEN igdb_id IS NOT NULL THEN igdb_id
                             WHEN @IgdbId IS NULL     THEN NULL
@@ -306,23 +188,16 @@ public sealed class WorkRepository : IWorkRepository
                             ELSE @IgdbId
                           END,
 
-                -- COALESCE(incoming, stored): a source that said nothing cannot
-                -- erase what a source that did say something already wrote.
+                -- COALESCE: incoming only fills NULLs, never overwrites.
                 first_release_year = COALESCE(@FirstReleaseYear, first_release_year),
                 summary            = COALESCE(@Summary,          summary),
                 cover_url          = COALESCE(@CoverUrl,         cover_url),
                 publisher          = COALESCE(@Publisher,        publisher),
 
-                -- Migration 0006. Same one-way rule: Valve saying nothing about
-                -- an appid (the `_missing_token` shape) must not erase a type an
-                -- earlier, luckier fetch already recorded.
+                -- Migration 0006. Same one-way rule.
                 steam_app_type     = COALESCE(@SteamAppType,     steam_app_type),
 
-                -- Migration 0009, and the same one-way rule again. Epic's
-                -- catalog service being unreachable, or the user not having
-                -- signed in, must not un-classify a work an earlier run
-                -- classified — that is precisely how a source's SILENCE gets
-                -- recorded as an answer.
+                -- Migration 0009. Same one-way rule.
                 epic_categories    = COALESCE(@EpicCategories,   epic_categories)
             WHERE id = @WorkId;
             """,
@@ -345,11 +220,7 @@ public sealed class WorkRepository : IWorkRepository
         return promoteName;
     }
 
-    /// <summary>
-    /// Blank is not an answer. A source returning <c>""</c> means "I do not
-    /// know", and storing it would satisfy the "column is filled" test forever
-    /// while showing the user nothing.
-    /// </summary>
+    /// <summary>Normalises blank/whitespace to null so empty strings never satisfy the "filled" test.</summary>
     private static string? Trimmed(string? value)
         => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 }

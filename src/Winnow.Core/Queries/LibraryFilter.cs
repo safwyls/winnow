@@ -4,50 +4,15 @@ using System.Text.Json.Serialization;
 namespace Winnow.Core.Queries;
 
 /// <summary>
-/// A library filter: what the filter panel has selected, and what a live list
-/// stores in <c>lists.filter_json</c>.
-///
-/// <para><b>Every field is an "any of"; the fields are "all of".</b> Selecting
-/// two genres widens the result to games in either; selecting a genre and a store
-/// narrows it to games that are both. That is what the reference storefront does
-/// and what a checkbox column means, and it is the only combination rule here —
-/// there is no expression tree, no nesting and no negation. If a filter ever
-/// needs those, it needs a new version of this type, not a clever
-/// reinterpretation of this one.</para>
-///
-/// <para><b>An empty filter matches everything.</b> <see cref="IsEmpty"/> is the
-/// difference between "the user selected nothing" and "the user selected
-/// something that nothing satisfies", and the two must never be confused: a live
-/// list whose filter failed to parse degrades to the whole library, which is
-/// visibly wrong and recoverable, rather than to an empty list, which looks like
-/// data loss.</para>
-///
-/// <para><b>Applied in memory, never pushed into SQL.</b> <c>LibraryViewModel</c>
-/// filters the whole library in memory because it is a few hundred kilobytes of
-/// projection and re-querying SQLite per keystroke buys nothing; live-list
-/// membership is the same question over the same rows and is answered the same
-/// way, through <see cref="Apply"/>. One implementation, so a saved list and the
-/// panel that saved it can never disagree about what the filter meant.</para>
+/// A library filter stored in <c>lists.filter_json</c>. Within each field, values
+/// are OR'd ("any of"); across fields, they are AND'd ("all of").
+/// An empty filter matches everything. Applied in memory, not pushed into SQL.
 /// </summary>
 public sealed record LibraryFilter
 {
-    // Every collection below is stored in a backing field and normalised on the
-    // way in, so NONE of them can ever be null however the object was made.
-    //
-    // That is not defensive habit; it is required by the one thing this type
-    // promises. `System.Text.Json`'s SOURCE-GENERATED deserializer assigns every
-    // property it knows about, using the default for the ones the document does
-    // not carry — and for `IReadOnlyList<T>` that default is null, not the
-    // property initializer. So a stored filter written before a field existed
-    // (or written by a build that simply had nothing selected for it, or hand-
-    // edited in a database browser) comes back with a null collection, and the
-    // very next `Buckets.Count` throws.
-    //
-    // That is precisely the case `FromJson` exists to survive. A filter that
-    // parses without error and then explodes on first use is not tolerant; it
-    // has just moved the failure somewhere harder to find. Measured, not
-    // assumed: `FromJson("""{"search":"portal"}""")` returned an object with
-    // five null lists before this was here.
+    // Backing fields ensure collections are never null. The source-generated
+    // JSON deserializer defaults IReadOnlyList<T> to null (not the initializer),
+    // so without this, a stored filter missing a field would throw on .Count.
 
     private readonly IReadOnlyList<string> _buckets = [];
     private readonly IReadOnlyList<string> _stores = [];
@@ -72,15 +37,7 @@ public sealed record LibraryFilter
         init => _stores = OrEmpty(value);
     }
 
-    /// <summary>
-    /// <see cref="Facet.Id"/> values of kind <see cref="FacetKinds.Genre"/>.
-    ///
-    /// <para>Winnow's own surrogate ids (migration 0007), not IGDB's — the cached
-    /// IGDB payloads carry genre NAMES only, the ids having been dropped at
-    /// projection time long before this feature existed. The migration explains
-    /// why re-fetching to recover them would have been the more expensive and
-    /// more fragile choice.</para>
-    /// </summary>
+    /// <summary><see cref="Facet.Id"/> values of kind <see cref="FacetKinds.Genre"/> (Winnow surrogate ids, not IGDB's).</summary>
     public IReadOnlyList<long> GenreIds
     {
         get => _genreIds;
@@ -101,16 +58,7 @@ public sealed record LibraryFilter
         init => _tagIds = OrEmpty(value);
     }
 
-    /// <summary>
-    /// <see cref="Facet.Id"/> values of kind <see cref="FacetKinds.Feature"/> —
-    /// Steam's storefront categories: achievements, cloud saves, workshop,
-    /// family sharing.
-    ///
-    /// <para>Ids rather than slugs, unlike <see cref="GameModes"/>, because only
-    /// one provider names these. The moment a second one does, this becomes the
-    /// same string-keyed problem game modes already are and gets the same
-    /// answer — a vocabulary Winnow owns.</para>
-    /// </summary>
+    /// <summary><see cref="Facet.Id"/> values of kind <see cref="FacetKinds.Feature"/> (Steam storefront categories).</summary>
     public IReadOnlyList<long> FeatureIds
     {
         get => _featureIds;
@@ -127,11 +75,7 @@ public sealed record LibraryFilter
         init => _controllerIds = OrEmpty(value);
     }
 
-    /// <summary>
-    /// Game-mode slugs from <see cref="Queries.GameModes"/> — the one facet
-    /// matched by name rather than by id, because two providers write it and
-    /// neither one's ids could serve as the key.
-    /// </summary>
+    /// <summary>Game-mode slugs from <see cref="Queries.GameModes"/>. Matched by slug, not id.</summary>
     public IReadOnlyList<string> GameModes
     {
         get => _gameModes;
@@ -147,12 +91,7 @@ public sealed record LibraryFilter
     /// </summary>
     public bool? HasUnread { get; init; }
 
-    /// <summary>
-    /// Earliest first-release year, inclusive. A game whose year is unknown does
-    /// NOT match any bounded range: "we have no idea when this came out" is not
-    /// evidence that it came out in the window, and quietly including it would
-    /// make the count wrong in the direction nobody checks.
-    /// </summary>
+    /// <summary>Earliest first-release year, inclusive. Unknown years do not match any bounded range.</summary>
     public int? YearFrom { get; init; }
 
     /// <summary>Latest first-release year, inclusive. Same treatment of an unknown year.</summary>
@@ -161,11 +100,7 @@ public sealed record LibraryFilter
     /// <summary>Case-insensitive substring of the title. Whitespace-only is no filter at all.</summary>
     public string? Search { get; init; }
 
-    /// <summary>
-    /// Nothing selected, so every row matches. Computed rather than stored so it
-    /// cannot drift from the field values, and ignored by the serializer for the
-    /// same reason.
-    /// </summary>
+    /// <summary>True when nothing is selected (every row matches).</summary>
     [JsonIgnore]
     public bool IsEmpty
         => Buckets.Count == 0
@@ -185,40 +120,13 @@ public sealed record LibraryFilter
     /// <summary>The filter that selects nothing and therefore matches everything.</summary>
     public static LibraryFilter Empty { get; } = new();
 
-    /// <summary>
-    /// The normaliser the init accessors run values through. The parameter is
-    /// nullable so that passing a value the compiler believes cannot be null is
-    /// not flagged as a redundant check — the deserializer disagrees with the
-    /// compiler here, and the deserializer is the one holding the file.
-    /// </summary>
+    /// <summary>Returns the list or empty if null (guards against deserializer nulls).</summary>
     private static IReadOnlyList<T> OrEmpty<T>(IReadOnlyList<T>? values) => values ?? [];
 
-    /// <summary>
-    /// Serialises for storage in <c>lists.filter_json</c>.
-    ///
-    /// <para>Unset scalars are omitted rather than written as null, so a stored
-    /// filter reads as what the user actually chose. Empty collections are
-    /// written as <c>[]</c>: the serializer has no "omit if empty" for them, and
-    /// inventing one through a converter would buy a few bytes at the cost of the
-    /// one thing this method must be, which is boring.</para>
-    /// </summary>
+    /// <summary>Serialises for storage in <c>lists.filter_json</c>.</summary>
     public string ToJson() => JsonSerializer.Serialize(this, LibraryFilterJson.Default.LibraryFilter);
 
-    /// <summary>
-    /// Reads a stored filter. <b>Total: never throws, for any input.</b>
-    ///
-    /// <para>Null, empty, malformed JSON, JSON of the wrong shape, and JSON
-    /// written by a future version carrying fields this build does not know all
-    /// return a usable filter. Unknown fields are ignored; absent fields take
-    /// their defaults.</para>
-    ///
-    /// <para><b>Why totality is the requirement and not merely nice.</b> This
-    /// value comes off disk, and the row it comes from is a list the user made.
-    /// A parse failure that throws is a list that vanishes from the sidebar and
-    /// takes its name and description with it; a parse failure that returns
-    /// <see cref="Empty"/> is a list that shows the whole library until it is
-    /// re-saved. One of those is a bug and the other is data loss.</para>
-    /// </summary>
+    /// <summary>Deserialises a stored filter. Never throws; returns <see cref="Empty"/> on any parse failure.</summary>
     public static LibraryFilter FromJson(string? json)
     {
         if (string.IsNullOrWhiteSpace(json))
@@ -245,22 +153,7 @@ public sealed record LibraryFilter
         }
     }
 
-    /// <summary>
-    /// Structural equality, because the compiler-generated version is not.
-    ///
-    /// <para>A record compares its fields with <c>EqualityComparer&lt;T&gt;</c>,
-    /// which for <c>IReadOnlyList&lt;T&gt;</c> means REFERENCE equality — so two
-    /// filters carrying the same three genre ids in two different arrays would
-    /// compare unequal. The one thing callers most want to ask a filter is
-    /// "is this the same as the one I already applied", and a record that
-    /// answers that with "no, always" is a record that repaints the library on
-    /// every keystroke and re-saves a list that did not change.</para>
-    ///
-    /// <para><b>Set comparison, not sequence comparison.</b> Every collection
-    /// here means "any of", so order carries no meaning and neither do
-    /// duplicates: <c>[3, 9]</c>, <c>[9, 3]</c> and <c>[3, 9, 3]</c> select
-    /// exactly the same games and are the same filter.</para>
-    /// </summary>
+    /// <summary>Set-based structural equality (order-independent, since each collection means "any of").</summary>
     public bool Equals(LibraryFilter? other)
         => other is not null
            && SameSet(Buckets, other.Buckets, StringComparer.Ordinal)
@@ -277,11 +170,7 @@ public sealed record LibraryFilter
            && YearTo == other.YearTo
            && string.Equals(Search?.Trim(), other.Search?.Trim(), StringComparison.Ordinal);
 
-    /// <summary>
-    /// Order-independent, to agree with <see cref="Equals(LibraryFilter)"/>:
-    /// the collections are combined by XOR, which is commutative, rather than by
-    /// the usual order-sensitive rolling hash.
-    /// </summary>
+    /// <summary>Order-independent hash to agree with <see cref="Equals(LibraryFilter)"/>.</summary>
     public override int GetHashCode()
     {
         var hash = new HashCode();
@@ -317,25 +206,10 @@ public sealed record LibraryFilter
         return hash;
     }
 
-    /// <summary>
-    /// Whether one row satisfies this filter.
-    ///
-    /// <para>Convenience for a single row; <see cref="Apply"/> is the form to use
-    /// over a collection, because it builds the lookup sets once instead of once
-    /// per row.</para>
-    /// </summary>
+    /// <summary>Whether one row satisfies this filter. Prefer <see cref="Apply"/> for collections.</summary>
     public bool Matches(FilterableRow row) => new LibraryFilterMatcher(this).Matches(row);
 
-    /// <summary>
-    /// The rows that satisfy this filter, in the order given.
-    ///
-    /// <para>This is live-list membership. A live list stores this filter and no
-    /// <c>list_items</c>, so its contents are whatever this returns at the moment
-    /// it is read — which is the entire point: a list defined as "RPGs I have
-    /// never played" gains and loses members as playtime and metadata change, and
-    /// materialising it into rows would freeze it into a manual list wearing a
-    /// live list's name.</para>
-    /// </summary>
+    /// <summary>Returns the rows satisfying this filter, preserving input order.</summary>
     public IReadOnlyList<FilterableRow> Apply(IEnumerable<FilterableRow> rows)
     {
         if (IsEmpty)
@@ -349,13 +223,7 @@ public sealed record LibraryFilter
 }
 
 /// <summary>
-/// One library row as the filter sees it: the projection
-/// <see cref="LibraryFilter"/> asks questions of, and nothing more.
-///
-/// <para>Assembled by the caller from the derived-bucket query, the ownership
-/// row and the facet snapshot. Deliberately a flat record of answers rather than
-/// a reference to a view model, so live-list membership can be computed —
-/// and tested — without a UI.</para>
+/// One library row's filterable attributes, assembled from bucket query + ownership + facets.
 /// </summary>
 /// <param name="ReleaseId">The release this row is about.</param>
 /// <param name="OwnershipId">The ownership this row is about; a release owned on two stores is two rows.</param>
@@ -363,11 +231,7 @@ public sealed record LibraryFilter
 /// <param name="Store">The store that sold it.</param>
 /// <param name="Title">The display title, for <see cref="LibraryFilter.Search"/>.</param>
 /// <param name="Installed">Whether it is installed locally.</param>
-/// <param name="HasUnread">
-/// Whether an update landed after the last session — the same fact as membership
-/// of <see cref="LibraryBuckets.StaleButPatched"/> (design-system §5.2), passed
-/// in rather than re-derived so the badge and the filter cannot disagree.
-/// </param>
+/// <param name="HasUnread">Whether an update landed after the last session.</param>
 /// <param name="FirstReleaseYear">Year of first release, or null when unknown.</param>
 /// <param name="FacetIds">Every facet id true of this release, across every kind.</param>
 /// <param name="GameModes">Game-mode slugs true of this release.</param>
@@ -383,10 +247,7 @@ public sealed record FilterableRow(
     IReadOnlyList<long> FacetIds,
     IReadOnlyList<string> GameModes);
 
-/// <summary>
-/// A <see cref="LibraryFilter"/> with its lookup sets built once, so filtering a
-/// library is one pass rather than one set-construction per row.
-/// </summary>
+/// <summary>Pre-built lookup sets for a <see cref="LibraryFilter"/>, so filtering is one pass.</summary>
 internal sealed class LibraryFilterMatcher
 {
     private readonly LibraryFilter _filter;
@@ -394,11 +255,7 @@ internal sealed class LibraryFilterMatcher
     private readonly HashSet<string>? _stores;
     private readonly HashSet<string>? _gameModes;
 
-    // The three id fields are kept apart rather than merged into one set even
-    // though facet ids share a namespace: a filter naming a genre AND a tag must
-    // require both, and a single merged set would silently turn that "and" into
-    // an "or" — the one mistake in this file that would produce plausible,
-    // wrong results instead of visibly broken ones.
+    // Facet-kind sets are kept separate so genre AND tag means both are required.
     private readonly HashSet<long>? _genreIds;
     private readonly HashSet<long>? _themeIds;
     private readonly HashSet<long>? _tagIds;
@@ -500,13 +357,7 @@ internal sealed class LibraryFilterMatcher
     }
 }
 
-/// <summary>
-/// Source-generated serialization context for <see cref="LibraryFilter"/>.
-///
-/// <para>Source-generated rather than reflection-based because §3.1 keeps
-/// NativeAOT viable, and reflection-based <c>System.Text.Json</c> is one of the
-/// things that quietly makes it not.</para>
-/// </summary>
+/// <summary>Source-generated serialization context for <see cref="LibraryFilter"/>.</summary>
 [JsonSourceGenerationOptions(
     // Matches the snake_case the rest of Winnow's stored and wire JSON uses, and
     // keeps the stored value readable to anyone opening the database by hand.

@@ -1,51 +1,16 @@
 namespace Winnow.Core.Ingest;
 
 /// <summary>
-/// Collapses the candidates of ONE ingest pass down to one candidate per
-/// ownership, so a pass that saw a game through two sources records one
-/// observation of it rather than two.
-///
-/// <para><b>The problem this exists to kill.</b> Steam is visible through two
-/// readers that overlap: the local files (§4.1) and <c>GetOwnedGames</c> (§4.2).
-/// The union of the two is deliberate — each sees games the other cannot — but
-/// for the appids in the overlap it produces two candidates that land on the
-/// same <c>(release, store)</c> ownership. The resolver's change detection
-/// compares each candidate against the newest stored play record, and two
-/// candidates for one ownership are not a time series: they are two views of the
-/// same instant. When the two views disagreed at all — Steam's own two playtime
-/// figures differ by a minute on Arma 2 (2 vs 3), Operation Arrowhead (153 vs
-/// 154) and Portal (279 vs 280) — each one "changed" relative to the other, so
-/// both appended a row, and every later sync appended two more. At the snapshot
-/// scheduler's 15-minute cadence that grows without bound, and the detail view
-/// shows whichever of the pair happened to be newest.</para>
-///
-/// <para><b>Why merging, and not source ranking.</b> Suppressing the Web API for
-/// appids the local files also see would settle the row and lose nothing on
-/// those appids — but it would put "which source wins" back in charge, and that
-/// reasoning is what emptied the install filter. The rule here is instead about
-/// what each field IS. Playtime and last-played are both monotonic counters for
-/// the same account's same game, so <c>max</c> is safe from either direction: a
-/// stale source cannot pull a number backwards, and there is no order in which
-/// the answers differ. §4.1's "local is primary" then falls out as a consequence
-/// rather than as a policy — the local files are ahead of the Web API's cache far
-/// more often than behind it, so they usually supply the max.</para>
-///
-/// <para><b>Only within one pass.</b> This never looks at the database. Two
-/// observations taken at different times are still a series and both still belong
-/// in <c>play_records</c>; it is only simultaneous views that collapse.</para>
+/// Collapses candidates within one ingest pass to one per ownership, so
+/// overlapping sources (e.g. local files and GetOwnedGames) record one
+/// observation rather than two. Monotonic fields (playtime, last-played) take
+/// the max; simultaneous views only -- never touches the database.
 /// </summary>
 public static class CandidateOwnershipMerge
 {
     /// <summary>
-    /// Merges candidates that address the same ownership, preserving first-seen
-    /// order. The key is <c>(Provider, ProviderId)</c> — exactly the hard join
-    /// the resolver uses to find the release, and the resolver keys ownership on
-    /// <c>(release, store)</c> with store = provider, so this is the same
-    /// grouping the database will apply.
-    ///
-    /// <para><c>AccountRef</c> is deliberately NOT part of the key, matching the
-    /// ownership upsert: keying on it would split one ownership's observations
-    /// back into two whenever the winning account changed.</para>
+    /// Merges candidates sharing the same <c>(Provider, ProviderId)</c>, preserving
+    /// first-seen order. AccountRef is not part of the key.
     /// </summary>
     public static IReadOnlyList<CandidateOwnership> Coalesce(
         IEnumerable<CandidateOwnership> candidates)
@@ -73,36 +38,9 @@ public static class CandidateOwnershipMerge
     }
 
     /// <summary>
-    /// Merges two views of one ownership, field by field. Both arguments must
-    /// address the same <c>(Provider, ProviderId)</c>.
-    ///
-    /// <list type="bullet">
-    /// <item><b>PlaytimeMinutes, LastPlayedAt</b> — the larger of the two, each
-    /// independently, ignoring nulls. Both are monotonic for a given account and
-    /// game, so the larger is the less stale answer and neither source can move
-    /// the other backwards. They merge independently rather than as a tuple
-    /// because both candidates describe the SAME account: the "never mix fields
-    /// across accounts" rule <c>SteamLibrarySource</c> enforces is about two
-    /// different people's records, a different situation that is already settled
-    /// before candidates reach here.</item>
-    /// <item><b>Installed, InstallPath</b> — from the first candidate with a
-    /// non-null <c>Installed</c>; the two always move together (see
-    /// <see cref="CandidateOwnership.Installed"/>). Only a source that reads the
-    /// local disk has an opinion at all, so at most one candidate does and there
-    /// is nothing to tie-break.</item>
-    /// <item><b>Title, AccountRef, AcquiredAt</b> — first real answer wins;
-    /// blank or null is not an answer. That is exactly what the resolver already
-    /// did across two candidates (a real name is never overwritten, and the
-    /// ownership upsert COALESCEs attribution), so merging changes nothing about
-    /// which of two differing titles a work ends up with.</item>
-    /// <item><b>Source</b> — whichever candidate supplied the winning playtime,
-    /// so <c>play_records.source</c> names the reader the stored figure actually
-    /// came from. Falls back to the first when neither has minutes.</item>
-    /// <item><b>ObservedAt</b> — the later of the two. One of the pair may be
-    /// served from a cache (§4.2 caches aggressively) and be hours old; the
-    /// merged row is an observation as of the freshest input that fed it, which
-    /// also keeps <c>play_records.observed_at</c> monotonic across syncs.</item>
-    /// </list>
+    /// Merges two views of one ownership. Playtime/LastPlayed: max independently.
+    /// Installed: first non-null. Title/AccountRef/AcquiredAt: first real answer.
+    /// Source: follows winning playtime. ObservedAt: the later.
     /// </summary>
     public static CandidateOwnership Merge(CandidateOwnership first, CandidateOwnership second)
     {
@@ -116,8 +54,7 @@ public static class CandidateOwnershipMerge
             : second.Installed is not null ? second
             : null;
 
-        // Only a strictly better playtime figure moves provenance; equal figures
-        // keep the first candidate's source, so the merge stays deterministic.
+        // Only a strictly better playtime moves provenance; equal keeps first.
         var secondWonPlaytime = playtime is not null
             && second.PlaytimeMinutes == playtime
             && first.PlaytimeMinutes != playtime;
@@ -136,7 +73,7 @@ public static class CandidateOwnershipMerge
         };
     }
 
-    /// <summary>Blank is "no title" / "no account", never an answer — see <see cref="CandidateOwnership.Title"/>.</summary>
+    /// <summary>First non-blank value wins; blank is "no answer".</summary>
     private static string? FirstReal(string? first, string? second)
         => !string.IsNullOrWhiteSpace(first) ? first
             : !string.IsNullOrWhiteSpace(second) ? second

@@ -1,20 +1,9 @@
 namespace Winnow.Ingest.Epic;
 
 /// <summary>
-/// One <c>Data\ThirPartyManagedApps\&lt;ns&gt;_&lt;catalogId&gt;_&lt;appName&gt;.json</c>
-/// file (docs/spikes/epic-gog-local-files.md section 7) — an Epic-owned title
-/// that installs and runs through a different launcher, observed here as
-/// <c>UbisoftConnect</c> for Watch Dogs and For Honor.
-///
-/// <para><b>These titles never get a <c>.item</c> manifest.</b> An Epic reader
-/// that walks only <c>Manifests\</c> misses them entirely. They do appear in
-/// <c>catcache.bin</c>, so ownership is already covered; this file exists to
-/// resolve their <i>install</i> state, by naming the other launcher's own
-/// registry record.</para>
-///
-/// <para>Note the key casing differs from the <c>.item</c> manifest:
-/// <c>CatalogID</c> (capital D) here versus <c>CatalogItemId</c> there, and
-/// <c>Namespace</c> versus <c>CatalogNamespace</c>.</para>
+/// A third-party-managed Epic title that installs through another launcher
+/// (e.g. Ubisoft Connect). No <c>.item</c> manifest; install state comes from the
+/// delivering launcher's registry key.
 /// </summary>
 /// <param name="CatalogItemId">From the <c>CatalogID</c> key; joins to a catalog entry's <c>id</c>.</param>
 /// <param name="CatalogNamespace">From the <c>Namespace</c> key.</param>

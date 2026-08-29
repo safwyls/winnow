@@ -4,20 +4,8 @@ namespace Winnow.Enrich.SteamWeb.Http;
 
 /// <summary>
 /// Turns a Steam Web API request URI into something safe to write to a log.
-///
-/// <para><b>Why this is not optional.</b> §4.2's <c>GetOwnedGames</c> takes the
-/// API key as a query parameter and offers no alternative — there is no header
-/// form and no POST body form, so unlike the IGDB module (which moved its secret
-/// out of the query string into a form body for exactly this reason) this client
-/// cannot avoid putting a secret in a URI. The URI therefore has to be treated
-/// as secret-bearing everywhere it could be printed.</para>
-///
-/// <para><b>Allowlist, not denylist.</b> Redacting a parameter called
-/// <c>key</c> would be one refactor away from leaking: the day someone adds
-/// <c>access_token</c> or <c>webapi_key</c>, a denylist silently starts printing
-/// it. So every parameter value is redacted <i>except</i> the handful named in
-/// <see cref="SafeParameters"/>, all of which are the request-shape flags §4.2
-/// requires and the account id being queried.</para>
+/// Uses an allowlist (<see cref="SafeParameters"/>); all other parameter
+/// values are redacted.
 /// </summary>
 public static class SteamWebRedaction
 {

@@ -14,88 +14,9 @@ using Microsoft.Extensions.Logging;
 namespace Winnow.App.Services;
 
 /// <summary>
-/// Fills in what the local Steam files could not know: real titles, and the
-/// metadata §6 gives <c>works</c> columns for — <c>igdb_id</c>,
-/// <c>first_release_year</c>, <c>summary</c>, <c>cover_url</c> and (migration
-/// 0005) <c>publisher</c>.
-///
-/// <para><b>Three sources, deliberately ordered.</b> IGDB is the designed
-/// metadata backbone (§4.4) and wins any disagreement — it carries the
-/// canonical title plus the year, summary, cover and publisher. Steam's keyless
-/// store endpoint fills whatever IGDB does not answer for, and covers the case
-/// where no IGDB credentials are configured at all, so the library is never
-/// stuck showing appids because of a missing API key. The Steam endpoint is
-/// asked about <b>titles only</b>: it is undocumented, it is strictly a
-/// fallback, and it has nothing to say about the columns the matcher needs.</para>
-///
-/// <para><b>Third, and last: api.steamcmd.net.</b> The unofficial PICS mirror
-/// this project already polls for build signals carries <c>common.name</c>
-/// beside the <c>depots</c> block, and it names appids the first two refuse.
-/// Measured on the author's library: of 18 works still showing <c>App
-/// &lt;appid&gt;</c> after IGDB and <c>IStoreBrowseService/GetItems</c>, it
-/// names <b>11</b> — including 4028270 "Everwind Demo", 2614110 "Enshrouded
-/// Demo" and 202480 "Skyrim Creation Kit". The remaining seven answer with no
-/// <c>common</c> block at all and cannot be named without a Steam Web API key.
-/// It is LAST because of what it is: unofficial,
-/// unaffiliated with Valve, volunteer-run and explicitly without an SLA (§4.4
-/// keeps IGDB the backbone; <c>docs/spikes/update-signals.md</c> §1 records the
-/// terms). It is asked one appid at a time, only about works that still have no
-/// name, and its answers are cached for
-/// <see cref="UpdateSignalOptions.AppInfoCacheTtl"/> in the same
-/// <c>metadata_cache</c> row the build poller uses — so a name and a build
-/// signal for one appid cost one request between them, not two.</para>
-///
-/// <para>The same response also carries <c>common.type</c>, Valve's own
-/// classification (<c>Game</c>, <c>Demo</c>, <c>Tool</c>), which migration 0006
-/// stores and <see cref="DemoConsolidation"/> reads as its first gate. That is
-/// why a handful of already-named works reach step 4 as well: an entry whose
-/// title looks like a handout is worth one request to learn what Steam says it
-/// actually is.</para>
-///
-/// <para><b>Two IGDB calls, not one.</b> <c>external_games</c> is the
-/// high-precision Steam-appid join (§4.4) and its expanded <c>game.*</c> fields
-/// carry name, year, summary and cover — but not publisher, which lives on
-/// <c>involved_companies</c> and is only reachable through <c>/games</c>. Both
-/// batch 400 ids per request, so a 616-game library costs about four requests
-/// on a cold cache and none on a warm one.</para>
-///
-/// <para><b>Why metadata matters beyond display.</b> §5.3 scores a soft match on
-/// title, release year, publisher and cover hash. Until this pass stored the
-/// year and the publisher, two of those four signals could never fire on a
-/// library-internal pair, and every candidate in the merge queue was scored on
-/// title similarity alone — the one thing §5.3 says must never be trusted by
-/// itself. Persisting the metadata IGDB already returns is therefore a precision
-/// change, not a cosmetic one.</para>
-///
-/// <para><b>Every store, not just Steam.</b> This pass spent its life asking
-/// the repository for <c>steam</c> targets and asking IGDB with Steam's
-/// <c>external_game_source</c>. The consequence was measurable and total: on the
-/// author's library, 67 Epic works and 14 GOG works had zero <c>igdb_id</c>,
-/// zero covers, zero years and zero summaries between them, while 946 Steam
-/// works had ~865 of each. Exactly zero rather than a small number is the
-/// signature of a population no query ever selected. The target query now
-/// returns every store provider and
-/// <see cref="EnrichmentLookupPlanner"/> works out how each one reaches IGDB —
-/// GOG directly on source 5, Epic through GOG's cross-store identity graph.
-/// Steps 3 and 4 below stay Steam-only, because a Steam appid is the only thing
-/// either endpoint can be asked about.</para>
-///
-/// <para><b>Sliced, because this pass is routinely killed half-finished.</b>
-/// Nothing bounds a run except the window closing, and the run is rate-limited
-/// at both ends — IGDB and gamesdb at 4 req/s each. So "cancelled partway" is
-/// the normal case on a cold library, not the exceptional one, and the shape of
-/// the pass decides what survives it. It used to run all four source steps over
-/// the whole library before opening its first transaction, which meant a run cut
-/// short during step 0 kept <b>nothing</b>. It now plans, asks and writes
-/// <see cref="DefaultSliceSize"/> targets at a time, so a run that dies keeps
-/// every slice it finished. That, together with the interleaved order
-/// <see cref="IWorkRepository.GetEnrichmentTargetsAsync"/> returns rows in, is
-/// what stops the newest store from being starved by every short run — see that
-/// method for the measurements.</para>
-///
-/// <para>§5.1: this composes ingest-adjacent sources and the repositories, and
-/// the UI never calls it — Program sequences it, the view models read the
-/// database afterwards.</para>
+/// Fills in what the local Steam files could not know: real titles and the
+/// metadata columns (igdb_id, first_release_year, summary, cover_url, publisher)
+/// from IGDB, the Steam store, steamcmd.net and Epic's catalog service, in slices.
 /// </summary>
 public sealed class EnrichmentSyncService
 {
@@ -169,40 +90,8 @@ public sealed class EnrichmentSyncService
     public int SliceSize { get; init; } = DefaultSliceSize;
 
     /// <summary>
-    /// Names every work still carrying a placeholder, and back-fills the
-    /// metadata columns of every work missing any of them.
-    ///
-    /// <para><b>Why the target set is wider than "provisional".</b> On the
-    /// author's real library 616 works already have real names and not one has a
-    /// year, summary, cover or publisher — they were named by a build that threw
-    /// the rest of the IGDB answer away. Keyed on <c>name_is_provisional</c>
-    /// alone this pass would look at nothing and back-fill nothing, forever. So
-    /// the query asks the wider question: which works are missing <i>anything</i>
-    /// (<see cref="IWorkRepository.GetEnrichmentTargetsAsync"/>).</para>
-    ///
-    /// <para><b>Idempotent, and free once warm.</b> Three separate mechanisms,
-    /// each covering a different cost:</para>
-    /// <list type="bullet">
-    ///   <item><b>No re-fetch.</b> Both IGDB calls read <c>metadata_cache</c>
-    ///     first, with a 30-day TTL and cached misses recorded as such, so a
-    ///     second launch spends no requests — not even on the appids IGDB has
-    ///     never heard of. This, not a stored watermark, is what keeps a
-    ///     re-run off the network; a watermark would also permanently suppress
-    ///     works IGDB only learns about later.</item>
-    ///   <item><b>No re-write.</b> A work whose every column is filled is not
-    ///     returned by the query at all, and a target the sources say nothing
-    ///     new about never opens a transaction.</item>
-    ///   <item><b>No fallback flood.</b> The Steam store is asked only about
-    ///     works that still need a <i>name</i>. Without that split, a
-    ///     credential-free machine would hit an undocumented endpoint 616 times
-    ///     on every launch to re-learn titles it already has. steamcmd.net is
-    ///     held to a stricter version of the same rule — see
-    ///     <c>ReadSteamCmdAsync</c> — because it is a volunteer service.
-    ///     The handful of appids it can never answer for (the
-    ///     <c>_missing_token</c> set) stay in the target list forever, and it is
-    ///     the client's own cached miss, not this query, that keeps them off the
-    ///     wire: one request per appid per <c>AppInfoCacheTtl</c>.</item>
-    /// </list>
+    /// Names every work still carrying a placeholder and back-fills metadata
+    /// columns for every work missing any of them. Idempotent and free once warm.
     /// </summary>
     public async Task<EnrichmentReport> EnrichAsync(CancellationToken ct = default)
     {
@@ -276,30 +165,8 @@ public sealed class EnrichmentSyncService
     }
 
     /// <summary>
-    /// One slice: plan, ask, write. The whole pass used to be this method's body
-    /// run once over every target, and that shape is what made a truncated run
-    /// worthless rather than merely partial.
-    ///
-    /// <para><b>Why slicing, and not just a better ORDER BY.</b> The four source
-    /// steps ran to completion for the entire library BEFORE the write step
-    /// opened its first transaction. Step 0 alone costs one rate-limited gamesdb
-    /// request per Epic work — 99 of them at 4 req/s on the author's library —
-    /// so a window closed twenty seconds in was cancelled inside step 0 and
-    /// committed <b>nothing at all</b>, whatever order the rows arrived in. The
-    /// evidence was in the cache: 89 gamesdb rows written for Epic beside zero
-    /// IGDB rows of any kind for that run, which is what "died before it ever
-    /// got to ask IGDB" looks like from the outside. Reordering the query fixes
-    /// which rows a short run works on; slicing is what makes a short run keep
-    /// what it did.</para>
-    ///
-    /// <para><b>What a slice costs.</b> The two IGDB calls are per slice rather
-    /// than per run, so a 231-target backlog at
-    /// <see cref="DefaultSliceSize"/> spends roughly 18 requests where it used
-    /// to spend 3 — about four extra seconds against the 4 req/s limiter, once,
-    /// on a cold cache. Both calls read <c>metadata_cache</c> first and both
-    /// batch far above the slice size, so the extra requests are the price of
-    /// durability rather than a per-launch tax. That trade is only worth making
-    /// in this direction: the alternative spends nothing and keeps nothing.</para>
+    /// One slice: plan, ask, write. Commits after each slice so a truncated run
+    /// keeps every slice it finished.
     /// </summary>
     private async Task EnrichSliceAsync(
         IReadOnlyList<EnrichmentTarget> slice, RunState run, CancellationToken ct)
@@ -587,27 +454,9 @@ public sealed class EnrichmentSyncService
         => new(target.Provider, target.ProviderId);
 
     /// <summary>
-    /// Step 4: what api.steamcmd.net can say about the appids the first two
-    /// sources left unfinished. Adds any name it supplies to
-    /// <paramref name="titles"/> and returns Valve's <c>common.type</c> for
-    /// every appid it answered about.
-    ///
-    /// <para><b>Two disjoint reasons to ask, and both are narrow.</b> A work
-    /// still carrying a placeholder is asked outright — that is the name
-    /// fallback, and it is bounded by how many appids IGDB and the store both
-    /// missed (18 on the author's 616-game library). A work that already has a
-    /// name is asked only when its title reads like a handout
-    /// (<see cref="DemoConsolidation.IsVariantTitle"/>) and no type is stored,
-    /// because that is the only shape whose type can change what the library
-    /// shows. Everything else is offered the cache and nothing more: if the
-    /// update poller already fetched that appid the type is free, and if it did
-    /// not, no request is made.</para>
-    ///
-    /// <para><b>Never throws.</b> Every outcome other than a name is a
-    /// no-op — a dead volunteer service degrades to "the work keeps its
-    /// placeholder and is asked again next launch", exactly as an IGDB failure
-    /// does, and never to an exception that would take the write phase down with
-    /// it (§5.1: enrichment must never block a user-facing path).</para>
+    /// Step 4: asks steamcmd.net about appids the first two sources left
+    /// unfinished. Adds names to <paramref name="titles"/> and returns
+    /// Valve's <c>common.type</c> for every appid it answered about. Never throws.
     /// </summary>
     private async Task<SteamCmdResult> ReadSteamCmdAsync(
         IReadOnlyList<EnrichmentTarget> targets,
@@ -686,38 +535,9 @@ public sealed class EnrichmentSyncService
         IReadOnlyDictionary<string, string> Types, IReadOnlySet<string> Named);
 
     /// <summary>
-    /// Step 3b: what Epic's catalog service can say about the Epic catalog item
-    /// ids in this slice. Adds any title it supplies to <paramref name="titles"/>
-    /// and returns the full answer per catalog item id, so the writer can also
-    /// store the categories.
-    ///
-    /// <para><b>The gap this closes, measured on the author's library.</b> The
-    /// authenticated library endpoint returns entitlements carrying
-    /// <c>namespace</c>, <c>catalogItemId</c>, <c>appName</c> and
-    /// <c>acquisitionDate</c> — no title, no categories. So 29 of 99 Epic
-    /// ownership rows had no name from any source and rendered as
-    /// <c>App 16a66a9f5630407d923429470bd5c967</c>, and the local Epic scan's
-    /// game filter had nothing to judge them by. Asked of the catalog service
-    /// those 29 resolve to three games (one with 408 minutes played), three
-    /// Unreal Engine builds (one with 320 minutes played), eighteen engine sample
-    /// packs, two <c>hidden</c> Fortnite content entitlements and a store DLC.
-    /// None of them is deleted: the games are named and stay, and the rest are
-    /// named and hidden behind the existing "show non-game entries" toggle.</para>
-    ///
-    /// <para><b>Asked once per work, ever.</b> The gate is
-    /// <see cref="EnrichmentTarget.HasEpicCategories"/>: what a catalog item is
-    /// called and what kind of thing it is do not change, so a work that has been
-    /// classified is never asked again, and the client's own 30-day cache —
-    /// including its cached misses — keeps the rest off the wire between runs.
-    /// Epic works already named by <c>catcache.bin</c> are asked once and then
-    /// never again, which is the whole cost of classifying the store.</para>
-    ///
-    /// <para><b>Never throws, and never writes.</b> No Epic module registered, no
-    /// session, an unreachable service, a 429 the retries could not outlast: all
-    /// return an empty map, which reaches <see cref="BuildPatch"/> as no fields
-    /// at all and leaves every stored title and classification exactly as it was.
-    /// That is the point: a source that cannot answer must leave the row
-    /// alone.</para>
+    /// Step 3b: asks Epic's catalog service about Epic catalog item ids in this
+    /// slice. Adds titles to <paramref name="titles"/> and returns the full
+    /// answer per id so the writer can store categories. Never throws.
     /// </summary>
     private async Task<IReadOnlyDictionary<string, EpicCatalogItemInfo>> ReadEpicCatalogAsync(
         IReadOnlyList<EnrichmentTarget> targets,
@@ -850,22 +670,8 @@ public sealed class EnrichmentSyncService
         => string.IsNullOrWhiteSpace(first) ? second : first;
 
     /// <summary>
-    /// Reduces IGDB's publisher list to the one name migration 0005 stores.
-    ///
-    /// <para><b>Ordinal-first, not "whatever IGDB listed first".</b> The pair
-    /// this signal exists to score is two library rows for the SAME game under
-    /// different store ids. Both resolve to the same IGDB game and therefore see
-    /// the same set of publishers, so any order-independent choice makes the two
-    /// sides agree and the signal fire. IGDB's own row order is not guaranteed
-    /// stable between fetches, so picking the first element would let a
-    /// re-fetch months apart write two different names for one game and turn a
-    /// corroborating signal into a -0.15 mismatch penalty. Multi-publisher games
-    /// are the norm rather than the exception — The Witcher 3 lists four, in
-    /// regional order — so this is not a hypothetical.</para>
-    ///
-    /// <para>Comparison is ordinal and case-insensitive so the pick does not
-    /// drift with the machine's culture; the stored string keeps IGDB's own
-    /// casing.</para>
+    /// Reduces IGDB's publisher list to one deterministic name (ordinal-first)
+    /// for migration 0005's single publisher column.
     /// </summary>
     internal static string? PrimaryPublisher(IgdbGame? game)
     {
@@ -893,33 +699,7 @@ public sealed class EnrichmentSyncService
     }
 }
 
-/// <param name="Outstanding">Works carrying a placeholder name when the run began.</param>
-/// <param name="Promoted">Works given a real title this run.</param>
-/// <param name="FromIgdb">How many of the promotions came from IGDB rather than the fallback.</param>
-/// <param name="Elapsed">Wall-clock time for the whole pass.</param>
-/// <param name="MetadataFilled">
-/// Works that had at least one column written — the back-fill count. Larger than
-/// <paramref name="Promoted"/> on any library whose titles were already real,
-/// which after the first run is every library.
-/// </param>
-/// <param name="FromSteamCmd">
-/// How many promotions came from api.steamcmd.net, the third and last source.
-/// Reported separately from <paramref name="FromIgdb"/> because it is the one
-/// name source with no SLA: a number that starts climbing while the other two
-/// flatline is the signal that the library has come to depend on a volunteer
-/// service.
-/// </param>
-/// <remarks>
-/// <para><b>There is deliberately no "was this run truncated?" flag here.</b> A
-/// pass the window closing cut short does not return at all — it rethrows the
-/// <see cref="OperationCanceledException"/>, which is how its one caller already
-/// tells the two apart, so a <c>Completed</c> property could only ever be
-/// <c>true</c>. What was missing was never a field: it was that the truncated
-/// path logged <i>nothing</i>, so a run that died a third of the way through and
-/// a run with nothing left to do looked identical in the log. Both paths now
-/// write a line, and they say different words —
-/// <c>EnrichmentSyncService.EnrichAsync</c>.</para>
-/// </remarks>
+/// <summary>Results of one enrichment run. A truncated run rethrows rather than returning this.</summary>
 public sealed record EnrichmentReport(
     int Outstanding,
     int Promoted,

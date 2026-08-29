@@ -6,32 +6,8 @@ using Xunit;
 namespace Winnow.Tests;
 
 /// <summary>
-/// design-system.md §8's accessibility floor, held for every theme across the
-/// whole transparency range — and §2's rule that Flare has exactly one job.
-///
-/// <para><b>Why this exists as a test and not as a note in a design file.</b>
-/// §13 gap 7 recorded a translucent surface measuring 3.1:1 and concluded that
-/// translucency could not reach a reading surface. The measurement was right;
-/// what it actually proved was narrower — that an ink chosen for an opaque
-/// ground cannot have alpha subtracted from it. The chrome therefore takes a
-/// darker ink and a brighter dim ink as it opens up, and a claim like that is
-/// only worth making if something re-checks it every build. A theme added later,
-/// or an alpha nudged by eye until it "looked about right", fails here rather
-/// than in somebody's rail.</para>
-///
-/// <para><b>Three backdrops, and the first one is the argument.</b> WHITE is the
-/// ceiling: no wallpaper, and no compositor, can hand the window anything
-/// brighter, so a number that holds against white holds everywhere without
-/// assuming anything about how Windows composes Mica. MICA is the composite
-/// measured on a real desktop and recorded in tokens.axaml — what actually
-/// happens. BLACK is the other end. Light ink on a translucent dark surface gets
-/// WORSE as the backdrop brightens, so white is the case that binds and the
-/// other two are there to prove the range was walked rather than assumed.</para>
-///
-/// <para><b>The sums are re-implemented here on purpose.</b>
-/// <c>Winnow.App.Themes.Colorimetry</c> carries the same arithmetic so the
-/// Appearance screen can report a live number; a test that called it would prove
-/// only that the code agrees with itself.</para>
+/// Accessibility floor (§8) and Flare-discipline (§2) across every theme and
+/// transparency level, with re-implemented sums.
 /// </summary>
 public class ThemeContrastTests
 {
@@ -96,17 +72,7 @@ public class ThemeContrastTests
     }
 
     /// <summary>
-    /// §9 as amended: the caption takes the RAIL's colour, so the chrome is one
-    /// continuous bracket rather than two tones meeting at a corner — and the
-    /// art field is the recess inside it.
-    ///
-    /// <para>Same ink AND same alpha, checked at every slider position, because
-    /// matching colours at differing alphas composite to two different tones over
-    /// the same backdrop and put the corner straight back.</para>
-    ///
-    /// <para>The lip is still unlit in the sense that survives: the caption is a
-    /// chrome tone, not a platform-bright strip, and the wall it sits above is
-    /// darker than it is in every theme.</para>
+    /// The caption takes the rail's colour at every slider position (§9).
     /// </summary>
     [Theory]
     [MemberData(nameof(ThemeIds))]
@@ -200,17 +166,7 @@ public class ThemeContrastTests
     }
 
     /// <summary>
-    /// The range the accessibility floor covers, and the fact that it is a real
-    /// range rather than a token one.
-    ///
-    /// <para><b>This is the honest shape of the trade.</b> The slider deliberately
-    /// travels past the point where the WORST case — a wall of white behind the
-    /// window — takes the rail's metadata ink under AA, because the user asked to
-    /// be able to choose that and being protected from it is not a service. What
-    /// the system owes is that the safe part of the range is not a sliver and that
-    /// the Appearance screen can say exactly where it ends: so every theme must
-    /// clear AA at 15% or better, and every theme's own ceiling is drawn on the
-    /// track and reported live.</para>
+    /// The AA floor covers a real part of the slider range (at least 20%).
     /// </summary>
     [Theory]
     [MemberData(nameof(ThemeIds))]
@@ -255,14 +211,8 @@ public class ThemeContrastTests
     }
 
     /// <summary>
-    /// What actually happens on a machine, as opposed to the ceiling: over the
-    /// Mica composite measured on a real desktop the metadata ink comes out AHEAD
-    /// of where it sits on a solid rail, everywhere on the slider.
-    ///
-    /// <para>Windows composes dark Mica by darkening the wallpaper hard, so the
-    /// backdrop is DARKER than our own rail and admitting more of it deepens the
-    /// ground the labels sit on. Asserted rather than described, because it is the
-    /// claim the Appearance screen's first number makes.</para>
+    /// Over a dark desktop the metadata ink beats its opaque self at every slider
+    /// position.
     /// </summary>
     [Theory]
     [MemberData(nameof(ThemeIds))]
@@ -324,15 +274,7 @@ public class ThemeContrastTests
     }
 
     /// <summary>
-    /// The tile keeps its own ground under the dormancy cross-fade, whatever the
-    /// field behind it is doing. §5.4 composites two bitmap layers by opacity;
-    /// between the first decoding and the second, a dimmed tile is a partly
-    /// transparent tile, and over a translucent field that means the desktop
-    /// showing through the ramp's floor.
-    ///
-    /// <para>This was belt-and-braces while the wall was opaque at every
-    /// setting. Now that the field can open up it is the ONLY thing holding, so
-    /// it is asserted in both reach states rather than in the default one.</para>
+    /// The tile ground stays opaque in both reach states, whatever the field does.
     /// </summary>
     [Theory]
     [MemberData(nameof(ThemeIds))]
@@ -453,21 +395,7 @@ public class ThemeContrastTests
     }
 
     /// <summary>
-    /// The open field never fails before the labels do.
-    ///
-    /// <para>§5.1's ramp is dark capsules on a dark field, and it only reads that
-    /// way while the field stays darker than the capsules. Over a white
-    /// wallpaper the field climbs and at some position it passes the dormancy
-    /// floor of a middling dark cover; past there a dimmed tile reads as a hole
-    /// punched in a lit field rather than as faded art, and the ramp is the
-    /// product.</para>
-    ///
-    /// <para>The wall does not have to hold across the whole slider — the range
-    /// past the AA mark is already a place the user is told the labels stop
-    /// clearing 4.5:1. What it must not do is fail FIRST, because then the
-    /// translucent field would be quietly costing something the screen does not
-    /// report. That is what fixes <c>MinWallAlpha</c>, and it is why the
-    /// constant is 0.65 rather than something picked by eye.</para>
+    /// The open field stays under the art at least as far as the labels hold.
     /// </summary>
     [Theory]
     [MemberData(nameof(ThemeIds))]
@@ -592,13 +520,7 @@ public class ThemeContrastTests
         }
     }
 
-    /// <summary>
-    /// A theme change is applied by writing colours onto the brush objects the
-    /// views already resolved, so a token the dictionary does not hold has to be
-    /// skipped rather than added — an added key is one nothing reads, and a
-    /// missing token that silently "works" is the failure this codebase keeps
-    /// hitting.
-    /// </summary>
+    /// <summary>Applying a theme writes existing brushes in place, never adds keys.</summary>
     [Fact]
     public void Applying_a_theme_writes_the_brushes_in_place()
     {
@@ -630,17 +552,7 @@ public class ThemeContrastTests
         Assert.Same(WinnowThemes.Winnow, WinnowThemes.Default);
     }
 
-    /// <summary>
-    /// A session that was told what to look like never writes what it looks like.
-    ///
-    /// <para>The debug capture flags exist so every theme and every slider
-    /// position can be reviewed in a screenshot without leaving a preference
-    /// behind in somebody's real library. Suppressing the write only while the
-    /// override was being applied was not enough: a capture run drove the
-    /// Appearance screen, posted input reached the slider, and the row the run
-    /// had promised not to touch was rewritten. The seal is for the whole
-    /// session now, and this is the test that says so.</para>
-    /// </summary>
+    /// <summary>An overridden session never writes a preference.</summary>
     [Fact]
     public async Task An_overridden_session_never_writes_a_preference()
     {
@@ -666,15 +578,7 @@ public class ThemeContrastTests
         Assert.False(service.WallTranslucent);
     }
 
-    /// <summary>
-    /// Asking for a material and getting the other one is a THIRD answer, and
-    /// the screen has to be able to tell it from a refusal.
-    ///
-    /// <para>Falling through to the other backdrop is right — a machine that
-    /// cannot do Mica is better off with acrylic than with a solid window — but
-    /// a substitution nobody is told about is how a user concludes the choice
-    /// does nothing at all.</para>
-    /// </summary>
+    /// <summary>A substituted backdrop is distinguishable from a refused one.</summary>
     [Fact]
     public void A_substituted_backdrop_is_not_the_same_answer_as_a_refused_one()
     {
@@ -721,12 +625,7 @@ public class ThemeContrastTests
         Assert.False(service.BackdropSubstituted);
     }
 
-    /// <summary>
-    /// The wall's field is painted translucent only when there is a desktop
-    /// reaching the window for it to show. A see-through field over a window
-    /// with nothing behind it is the failure the opaque token set exists to
-    /// catch, and it is the same failure for the wall as for the rail.
-    /// </summary>
+    /// <summary>The field opens only when the desktop is actually arriving.</summary>
     [Fact]
     public void The_field_opens_only_when_the_desktop_is_actually_arriving()
     {
@@ -774,11 +673,7 @@ public class ThemeContrastTests
         }
     }
 
-    /// <summary>
-    /// The setting the checkbox wrote is answered, not orphaned. Somebody who
-    /// turned transparency on does not get silently returned to solid because the
-    /// control that set it was replaced by a better one.
-    /// </summary>
+    /// <summary>The old boolean transparency preference migrates to a slider value.</summary>
     [Theory]
     [InlineData("0", 0)]
     [InlineData("55", 55)]
@@ -799,30 +694,7 @@ public class ThemeContrastTests
     // WCAG 2.x relative luminance and contrast ratio, and an sRGB source-over
     // composite — which is what the GPU does, so it is what the window shows.
 
-    /// <summary>
-    /// The worst the metadata ink does anywhere on the chrome at one slider
-    /// position: the rail, a selected row on it, and the command bar. The
-    /// selected row is usually the one that binds — the rail with a veil over
-    /// it, so the lightest reading surface in the window.
-    /// </summary>
-    /// <summary>
-    /// The panes that share the wall's position take the wall's ramp — and the
-    /// reason they are allowed to is a measurement, not a preference.
-    ///
-    /// <para><b>What this replaces.</b> <c>PaneGround</c> was opaque at every
-    /// setting on the grounds that the merge queue, Stores, Appearance, the list
-    /// view and the empty state are text sitting directly on the field, and that
-    /// §14.3 rules that out. The principle was right; the number it was measured
-    /// against was the CHROME's. The wall admits 0.35 of the desktop where the
-    /// chrome admits 0.70, and the rail already carries labels at the chrome's
-    /// full reach — so a pane on the wall's ramp is not a new risk, it is a
-    /// smaller one than the app already ships.</para>
-    ///
-    /// <para>The bar, therefore, is the same one <c>MinWallAlpha</c> is held to:
-    /// <b>a pane must not be the surface that fails first.</b> Its ink has to
-    /// clear AA at least as far up the slider as the chrome's does, against
-    /// white, which is the ceiling any wallpaper can reach.</para>
-    /// </summary>
+    /// <summary>A pane's ink clears AA further than the chrome's does.</summary>
     [Theory]
     [MemberData(nameof(ThemeIds))]
     public void A_pane_carries_its_ink_further_than_the_chrome_does(string id)
@@ -875,14 +747,7 @@ public class ThemeContrastTests
         }
     }
 
-    /// <summary>
-    /// A pane is the wall, in alpha and in ink, and it answers the same setting.
-    ///
-    /// <para>Two panes are never on screen at once, but a pane and the wall are
-    /// one keystroke apart, and the complaint that started this was exactly that
-    /// they did not match. Anything looser than equality here would let them
-    /// drift apart again by a rounding step.</para>
-    /// </summary>
+    /// <summary>A pane equals the wall in alpha and ink at every position.</summary>
     [Theory]
     [MemberData(nameof(ThemeIds))]
     public void A_pane_is_the_field(string id)
@@ -906,26 +771,8 @@ public class ThemeContrastTests
     }
 
     /// <summary>
-    /// A field admits exactly what the art field admits — and the alpha that
-    /// buys that is forced by where the field IS, rather than chosen.
-    ///
-    /// <para>A field is a CHILD of the surface it is drawn on, so the two alphas
-    /// stack: the desktop's share of a field is
-    /// <c>(1 − containerAlpha) · (1 − fieldAlpha)</c>. Requiring a field to admit
-    /// what the art field admits — so the window has one translucency rather than
-    /// three — solves for the field's own alpha outright, and this asserts the
-    /// IDENTITY rather than either constant.</para>
-    ///
-    /// <para><b>The two fields no longer get the same answer, and that is the
-    /// identity working rather than an inconsistency.</b> The filter panel is
-    /// chrome, so its container admits 0.70 and <c>MinFieldAlpha</c> is a half.
-    /// The search box and the cut bar's prompt are inside the LIBRARY PANE now
-    /// (§15.1, revised), and a pane already admits <c>1 − MinWallAlpha</c>
-    /// exactly — there is no half left for a field to spend, so
-    /// <c>MinPaneFieldAlpha</c> solves to zero and that field paints nothing past
-    /// the ink ramp. The two-term form the old version of this test asserted was
-    /// never a fact about fields; it was a fact about what was underneath them,
-    /// and what was underneath them moved.</para>
+    /// A field admits what the art field admits, with its alpha forced by its
+    /// container.
     /// </summary>
     [Theory]
     [MemberData(nameof(ThemeIds))]
@@ -1089,23 +936,7 @@ public class ThemeContrastTests
     }
 
     /// <summary>
-    /// An input is a TARGET, not a surface, so it is held to a stricter bar than
-    /// a pane: it has to stay legible while somebody is typing in it, and its
-    /// placeholder — the dimmest ink any field carries — has to stay readable
-    /// too.
-    ///
-    /// <para>It clears that by a distance, because the field is the darkest
-    /// thing in the chrome: half the reach of the bar it sits on, over an ink
-    /// one step below it. The typed <c>Text</c> holds AA across the whole
-    /// slider in every theme, and the placeholder holds it to roughly 85% —
-    /// against the chrome's own 26 to 31.</para>
-    ///
-    /// <para><b>§8's floor is asserted for the placeholder specifically</b>,
-    /// because that is where this was already broken before any of it was
-    /// translucent: the year field's watermark was <c>TextFaint</c>, which
-    /// measures 3.58 to 4.13 on the OPAQUE ground. A watermark ink is for
-    /// watermarks and disabled arrows; a hint the user is meant to read is
-    /// neither, so it is <c>TextDim</c> now and this is what keeps it there.</para>
+    /// A field stays legible further than the chrome around it.
     /// </summary>
     [Theory]
     [MemberData(nameof(ThemeIds))]
@@ -1171,16 +1002,7 @@ public class ThemeContrastTests
         }
     }
 
-    /// <summary>
-    /// The WINDOW'S GROUND as it composites — the outer of the two tiers, and
-    /// the surface every other one in the window is painted on.
-    ///
-    /// <para>Nothing here may skip this term. A pane's own alpha is DERIVED
-    /// assuming the ground is under it — <c>(1 − MinShellAlpha)·(1 − MinPaneAlpha)
-    /// = 1 − MinWallAlpha</c> — so measuring a pane straight against the backdrop
-    /// would report a lighter surface than the one on screen, and every ceiling
-    /// in this file would be a number about a window that is not running.</para>
-    /// </summary>
+    /// <summary>The window's ground as it composites over a backdrop.</summary>
     private static Color Shell(
         WinnowTheme theme, double transparency, Color backdrop, WinnowLayout layout = WinnowLayouts.Default)
         => Over(theme.Tokens(transparency, layout: layout)["ShellGround"], backdrop);
@@ -1213,25 +1035,7 @@ public class ThemeContrastTests
         return 100;
     }
 
-    /// <summary>
-    /// The worst any reading surface the slider reaches does, at a position.
-    ///
-    /// <para><b>THE BINDING SURFACE MOVED when the tiers collapsed, and that is
-    /// the honest headline of the change.</b> While the rail sat on a chrome tier
-    /// of its own it was the most open reading surface in the window and a
-    /// SELECTED rail row was the worst case. The rail is a pane now: it opens
-    /// half as far, and its ceiling roughly doubled — 27 / 31 / 30 / 26 to
-    /// 40 / 54 / 47 / 41. What is left at the top is the CAPTION, which sits on
-    /// the window's ground, and which therefore fails at 30 / 31 / 31 / 31. A
-    /// measurement that still looked only at the chrome would report a number no
-    /// surface in the window holds to.</para>
-    ///
-    /// <para><b>Both layouts, worst wins.</b> Floating puts the caption on the
-    /// ground; flush paints it in the rail's own fill at the pane tier, where it
-    /// holds to 56 / 69 / 61 / 57. So the two layouts fail in different places,
-    /// and a mark on the slider that moved when the user changed layout would be
-    /// a promise that expired on an unrelated setting.</para>
-    /// </summary>
+    /// <summary>Worst chrome contrast at a slider position, across both layouts.</summary>
     private static double WorstChromeContrast(WinnowTheme theme, double transparency, Color backdrop)
     {
         var worst = double.MaxValue;

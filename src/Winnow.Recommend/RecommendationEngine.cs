@@ -4,28 +4,9 @@ using Winnow.Core.Repositories;
 namespace Winnow.Recommend;
 
 /// <summary>
-/// Assembles <see cref="CandidateFacts"/> from the repositories and hands them
-/// to <see cref="RecommendationScorer"/>. All the judgement lives in the
-/// scorer and the tuning; this class is deliberately just honest plumbing —
-/// bulk reads for what every candidate needs, bounded per-row probes for what
-/// only the shortlist needs.
-///
-/// <para><b>Read path.</b> Four bulk reads (buckets, release identities,
-/// ownerships, facet snapshot) cover every Tier-0 signal. Snapshot, session
-/// and update-event history have per-ownership interfaces only, so they are
-/// probed for the shortlist (3× the requested feed, capped by
-/// <see cref="RecommendationTuning.HistoryProbeLimit"/>) plus the most
-/// recently played rows — which is where longitudinal history physically
-/// accrues first, and therefore where tier detection has to look; the probe
-/// budget exists so a 1,000-game library costs ~90 small queries per refresh
-/// instead of 2,000.</para>
-///
-/// <para><b>What is inherited rather than reimplemented.</b> The §6.1 bucket
-/// query upstream already consolidated demos/betas into their base game,
-/// hid non-game entries, correlated update signals into "major update", and
-/// applied the never-opened/retired/stale precedence. This engine trusts
-/// those rows: recomputing any of it here would be a second definition that
-/// could disagree with the library view the user is looking at.</para>
+/// Assembles <see cref="CandidateFacts"/> from repositories and hands them to
+/// <see cref="RecommendationScorer"/>. Bulk reads cover Tier-0 signals; history
+/// is probed only for the shortlist and recently-played rows to bound query count.
 /// </summary>
 public sealed class RecommendationEngine : IRecommendationEngine
 {
@@ -213,11 +194,7 @@ public sealed class RecommendationEngine : IRecommendationEngine
         };
     }
 
-    /// <summary>
-    /// The shared front half of both entry points: bulk reads, the taste
-    /// profile, hard exclusions, and one <see cref="CandidateFacts"/> per
-    /// surviving ownership. Four bulk reads cover every Tier-0 signal.
-    /// </summary>
+    /// <summary>Bulk reads, taste profile, hard exclusions, and one <see cref="CandidateFacts"/> per surviving ownership.</summary>
     private async Task<CandidatePool> AssemblePoolAsync(
         RecommendationRequest request, CancellationToken ct)
     {
@@ -345,11 +322,7 @@ public sealed class RecommendationEngine : IRecommendationEngine
         return genres is null ? [] : genres;
     }
 
-    /// <summary>
-    /// Reads snapshot and session history for the given ownerships, one
-    /// ownership at a time — the shape the Core interfaces offer. Bounded by
-    /// the caller (shortlist + recent probe), never the whole library.
-    /// </summary>
+    /// <summary>Reads snapshot and session history for the given ownerships, bounded by the caller.</summary>
     private async Task<HistoryProbe> ProbeHistoryAsync(
         IReadOnlyList<long> ownershipIds, CancellationToken ct)
     {
@@ -402,14 +375,7 @@ public sealed class RecommendationEngine : IRecommendationEngine
         return new HistoryProbe(episodes, anyMultiSnapshot, sessionCount, firstSession, lastSession);
     }
 
-    /// <summary>
-    /// Adds the probed history to a shortlist row's facts: return episodes
-    /// for scoring, and — for stale rows — the update detail that turns
-    /// "it has been updated" into "3 updates since, most recently X" in the
-    /// reason. Update events are fetched here, per stale shortlist row only:
-    /// scoring already has the fact (bucket membership); this is decoration
-    /// for rows the user will actually read.
-    /// </summary>
+    /// <summary>Enriches a shortlist row with return episodes and, for stale rows, update detail for the reason text.</summary>
     private async Task<CandidateFacts> EnrichAsync(
         CandidateFacts facts, HistoryProbe probe, CancellationToken ct)
     {
@@ -447,11 +413,7 @@ public sealed class RecommendationEngine : IRecommendationEngine
         return enriched;
     }
 
-    /// <summary>
-    /// Evidence-based tier detection over the probed rows. An approximation by
-    /// construction (the probe is a bounded sample), biased toward the
-    /// recently played rows on purpose — that is where history accrues first.
-    /// </summary>
+    /// <summary>Detects the data tier from the probed rows (bounded sample, biased toward recently played).</summary>
     private static DataTier DetectTier(HistoryProbe probe, RecommendationTuning tuning)
     {
         if (probe.SessionCount >= tuning.Tier2MinSessions

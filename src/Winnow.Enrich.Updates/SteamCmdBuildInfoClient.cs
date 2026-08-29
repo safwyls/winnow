@@ -154,30 +154,8 @@ public sealed class SteamCmdBuildInfoClient : IBuildInfoClient
     }
 
     /// <summary>
-    /// One request, both projections, one cache write.
-    ///
-    /// <para><b>The body is cached when EITHER projection succeeded.</b> Both
-    /// live in a single <c>metadata_cache</c> row, so caching on the build
-    /// branch alone would discard the <c>common</c> block of every app that has
-    /// one and no public branch — and the loss would be indistinguishable, to
-    /// every later reader, from the service not knowing.</para>
-    ///
-    /// <para><b>Only a GENUINE miss is cached as a null payload.</b> Two
-    /// different bodies project nothing and they are not the same fact. The
-    /// verified missing-app shape —
-    /// <c>{"data":{"999999999":{}},"status":"success"}</c> at HTTP 200 — is
-    /// Steam having no such app, and is stored as a miss. The restricted shape
-    /// (<c>"_missing_token": true, "public_only": "1"</c>, no <c>common</c>, no
-    /// <c>depots</c>) is the mirror declining to describe an app that plainly
-    /// exists, and is stored <i>verbatim</i>: callers still see
-    /// <see cref="AppInfoOutcome.NoData"/>, but the reason survives on disk, so
-    /// "this appid needs a Steam Web API key" stays answerable without spending
-    /// another request to rediscover it.</para>
-    ///
-    /// <para>Nothing at all is cached when the request itself failed. Recording
-    /// "this app has no data" for a whole TTL on the strength of one 503, from a
-    /// service §4.5 already watched go dark, is the single negative this client
-    /// must never write.</para>
+    /// One request, both projections, one cache write. Cached when either projection
+    /// succeeded; genuine misses are cached as null payload; request failures are never cached.
     /// </summary>
     private async Task<FetchedApp> FetchAsync(string appId, string key, CancellationToken ct)
     {
@@ -218,11 +196,7 @@ public sealed class SteamCmdBuildInfoClient : IBuildInfoClient
         public static FetchedApp Unavailable { get; } = new(FetchOutcome.Unavailable, null, null);
     }
 
-    /// <summary>
-    /// One GET. Returns the body, or null when the request did not produce one —
-    /// the single place where "steamcmd.net said no" becomes "no build signal"
-    /// instead of an exception.
-    /// </summary>
+    /// <summary>One GET. Returns the body, or null on failure.</summary>
     private async Task<string?> GetAsync(string path, CancellationToken ct)
     {
         try

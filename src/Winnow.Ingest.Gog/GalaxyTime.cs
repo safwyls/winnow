@@ -3,22 +3,8 @@ using System.Globalization;
 namespace Winnow.Ingest.Gog;
 
 /// <summary>
-/// Galaxy's timestamp convention (docs/spikes/epic-gog-local-files.md
-/// section 14).
-///
-/// <para><b>Galaxy's database is UTC. GOG's registry is local time.</b> Both were
-/// measured against the same install: <c>InstalledBaseProducts.installationDate</c>
-/// read <c>2026-08-26 06:17:36</c> while the registry's <c>INSTALLDATE</c> for the
-/// same install read <c>2026-08-25 23:17:36</c> — seven hours apart on a UTC−7
-/// machine. Mixing the two shifts every GOG date by the user's offset. Only the
-/// database's form is parsed here; the registry's local-time value deliberately
-/// has no parser, because nothing in the candidate feed should carry it.</para>
-///
-/// <para>The UTC reading was confirmed independently: GWENT's
-/// <c>LastPlayedDates</c> row is <c>2017-07-01 03:32:16</c> and the
-/// <c>myFriendsActivity</c> GamePiece for the same release carries
-/// <c>last_played_date: 1498879936</c>, which is that instant in UTC to the
-/// second.</para>
+/// Galaxy's timestamp convention. Database columns are UTC; the registry is
+/// local time and deliberately has no parser here.
 /// </summary>
 public static class GalaxyTime
 {

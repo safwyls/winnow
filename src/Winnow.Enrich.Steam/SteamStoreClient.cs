@@ -7,27 +7,9 @@ using Microsoft.Extensions.Logging;
 namespace Winnow.Enrich.Steam;
 
 /// <summary>
-/// Client for Steam's two keyless store-frontend endpoints, per
-/// <c>docs/spikes/steam-store-tags.md</c>.
-///
-/// <para>Everything that could go wrong slowly — retry, 429 backoff, the request
-/// rate — lives in the <see cref="HttpClient"/> handler pipeline, so this class
-/// only has to worry about three things: what to ask, how to batch it, and what
-/// not to ask twice.</para>
-///
-/// <para><b>Soft-fail is the contract, not a courtesy.</b> These endpoints are
-/// undocumented; the spike's instruction is to treat a shape change as expected.
-/// So a non-200, an unparseable body, or a dead network produces "no data for
-/// this batch" and is logged — it is never thrown at a caller, and it is never
-/// written to the cache. Caching a failure as a miss would record "Steam has
-/// never heard of these 600 games" for a whole TTL on the strength of one
-/// 503.</para>
-///
-/// <para><b>Tags are fetched and cached, and nothing is built on them.</b> The
-/// full response body is stored per app in <c>metadata_cache</c>, so weights,
-/// descriptions, release dates and Deck compatibility are all recoverable later
-/// without a refetch. The exposed surface stays deliberately at names plus tag
-/// ranks.</para>
+/// Client for Steam's keyless store-frontend endpoints. Soft-fail on all paths;
+/// failures are logged, never thrown or cached. Retry and rate limiting live in
+/// the <see cref="HttpClient"/> handler pipeline.
 /// </summary>
 public sealed class SteamStoreClient : ISteamStoreClient
 {

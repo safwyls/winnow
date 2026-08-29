@@ -10,59 +10,16 @@ using Microsoft.Extensions.Logging;
 namespace Winnow.Ingest.Epic.Web;
 
 /// <summary>
-/// Client for Epic's catalog service — the one endpoint that can name an owned
-/// entitlement and say what kind of thing it is.
-///
-/// <para><b>The gap it closes, measured.</b> The library service returns
-/// entitlements with no title and no categories, so the API half of Epic ingest
-/// could neither name what it owned nor filter it. On the author's real library
-/// that put 29 tiles titled <c>App &lt;32 hex&gt;</c> into the grid, none of
-/// which could enrich either, because the <c>catalogItemId → AppName</c> alias
-/// that routes an Epic title to IGDB was built from <c>catcache.bin</c> and those
-/// items are not in it. One call per namespace answers all three questions: the
-/// title, the categories the existing
-/// <see cref="Core.Queries.EpicGameFilter"/> judges, and
-/// <c>releaseInfo[0].appId</c>.</para>
-///
-/// <para><b>Verified live before any of this was written</b> (§10's rule).
-/// On 2026-08-26, against the author's own session:
-/// <c>GET catalog-public-service-prod.ol.epicgames.com/catalog/api/shared/namespace/{ns}/bulk/items?id=…</c>
-/// answered 200 with an object keyed by catalog item id, each value carrying
-/// <c>title</c>, <c>categories[].path</c>, <c>namespace</c>,
-/// <c>releaseInfo[].appId</c> and (where applicable) <c>mainGameItem</c>. It
-/// answered for every one of the 99 distinct catalog item ids the account owns.
-/// Unauthenticated it answers 401 while a bogus sibling path answers 404, so the
-/// route is real and merely gated — the same routing discrimination that
-/// established the playtime endpoint.</para>
-///
-/// <para><b>What is cached and what is not.</b> Parsed entries and definite
-/// misses go to <see cref="IEpicCatalogCache"/> — the second is an answer, since
-/// an id Epic does not recognise will not start being recognised inside a TTL.
-/// Transport failures do not: caching a 503 would record "this is not a game" for
-/// a whole TTL on the strength of one bad minute.</para>
-///
-/// <para><b>Soft-fail, always.</b> Every failure mode ends as an id absent from
-/// the returned dictionary, which the ingest contract reads as "this source said
-/// nothing" and which leaves a good <c>catcache.bin</c> title and an existing
-/// classification untouched. Nothing here throws except cancellation.</para>
+/// Client for Epic's catalog service: resolves title, categories, and AppName for
+/// owned catalog items. Caches hits and definite misses; transport failures are
+/// not cached. Soft-fails on every error.
 /// </summary>
 public sealed class EpicCatalogClient : IEpicCatalogClient
 {
     /// <summary>Named/typed <see cref="HttpClient"/> for the catalog service.</summary>
     public const string HttpClientName = "epic-catalog";
 
-    /// <summary>
-    /// The bulk-items route. <c>{0}</c> is the namespace; the ids follow as
-    /// repeated <c>id=</c> parameters.
-    ///
-    /// <para><c>country</c> and <c>locale</c> are what the launcher sends and are
-    /// kept: without them the service still answers, but the title comes back in
-    /// whatever it decides, and a library that renames itself by machine locale
-    /// is a worse outcome than one that is consistently English. There is
-    /// deliberately no <c>includeDLCDetails</c>/<c>includeMainGameDetails</c>
-    /// here — <c>mainGameItem</c> arrives without them and the expansions only
-    /// enlarge a response nothing reads.</para>
-    /// </summary>
+    /// <summary>Bulk-items route. <c>{0}</c> is the namespace; ids follow as <c>id=</c> parameters.</summary>
     private const string BulkItemsPathFormat = "catalog/api/shared/namespace/{0}/bulk/items";
 
     private static readonly JsonSerializerOptions CacheSerializerOptions = new();
@@ -244,14 +201,7 @@ public sealed class EpicCatalogClient : IEpicCatalogClient
         return answers;
     }
 
-    /// <summary>
-    /// <c>catalogItemId → namespace</c> from the account's owned library.
-    ///
-    /// <para>Empty when the library did not answer, which the caller treats as
-    /// "ask nothing" rather than as "these items have no namespace". The two are
-    /// opposite instructions and the distinction is the whole of this method's
-    /// job.</para>
-    /// </summary>
+    /// <summary>Resolves <c>catalogItemId → namespace</c> from the owned library. Empty when unanswered.</summary>
     private async Task<IReadOnlyDictionary<string, string>> ReadNamespacesAsync(CancellationToken ct)
     {
         var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -361,16 +311,7 @@ public sealed class EpicCatalogClient : IEpicCatalogClient
         }
     }
 
-    /// <summary>
-    /// Serialises one normalised entry for the cache.
-    ///
-    /// <para>Normalised rather than verbatim: a bulk response covers many items
-    /// and the cache is keyed per item, so storing the raw body would either
-    /// duplicate it N times or need the batch reconstructed on read. The fields
-    /// dropped are description, images, EULA ids and store attributes, none of
-    /// which anything in Winnow reads — and the payload contains no account id and
-    /// no token, only catalog ids, codenames, a title and category paths.</para>
-    /// </summary>
+    /// <summary>Serialises one normalised catalog entry for the cache.</summary>
     private static string WriteCache(EpicCatalogItemInfo item)
         => JsonSerializer.Serialize(item, CacheSerializerOptions);
 

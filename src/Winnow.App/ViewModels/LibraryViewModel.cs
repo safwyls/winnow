@@ -205,21 +205,8 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     public JournalPromptViewModel Journal { get; }
 
     /// <summary>
-    /// M3b: Play / Install, for the tile's back face and the detail panel alike.
-    ///
-    /// <para><b>Every branch below ends without a dialog</b>, which is the whole
-    /// acceptance criterion for this milestone. The store client not running is
-    /// not an error and is not mentioned — starting it is what the URI is for. A
-    /// user who cancels at the store's own prompt gets silence, because they did
-    /// not fail at anything. A second click while the first launch is in flight
-    /// does nothing at all rather than firing a second prompt. The one case that
-    /// says anything is the one Winnow can actually diagnose: the shell had no
-    /// handler for the scheme, so nothing was even asked to start.</para>
-    ///
-    /// <para><b>It does not await the game.</b> The strip resolves later, off the
-    /// watcher's own signal, so this command completes as soon as the URI is
-    /// handed over — nothing in the UI is blocked on another application's
-    /// startup time.</para>
+    /// M3b: Play / Install. Hands the URI to the shell and returns immediately;
+    /// the session strip resolves later off the watcher's own signal.
     /// </summary>
     [RelayCommand]
     private async Task LaunchAsync(GameTileViewModel? tile)
@@ -683,23 +670,14 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
 
             tile.Facets = TileFacets.From(facets, _facets.ById);
 
-            // The flat projection LibraryFilter matches on. Built once per tile
-            // so the panel and a saved live list ask the SAME question of the
-            // SAME row — one implementation of what a filter means (see
-            // LibraryFilter's remarks), rather than a second one in the view.
+            // Build the filterable row once so panel and live lists share one implementation.
             tile.Row = new FilterableRow(
                 ReleaseId: row.ReleaseId,
                 OwnershipId: row.OwnershipId,
                 Bucket: row.Bucket,
                 Store: tile.Store,
                 Title: tile.Title,
-                // The filter row's install flag is two-valued because the "on
-                // disk" facet is a two-way cut: an unknown state is not KNOWN to
-                // be on disk, so it falls on the same side of that question as a
-                // known "no". This is not the conflation the tile refuses to
-                // make — the tile refuses to NAME a button it cannot back, while
-                // this is a filter answering "which of these do I know are on
-                // disk", where the honest answer for an unknown is "not these".
+                // Two-valued: unknown install state counts as not-on-disk for filtering.
                 Installed: tile.IsOnDisk,
                 HasUnread: tile.HasUnread,
                 FirstReleaseYear: tile.ReleaseYear,
@@ -716,37 +694,25 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             bucket.Count = bucketRows.Count(r => r.Bucket == bucket.Key);
         }
 
-        // The rail's own total, on the row that selects it. This is the only
-        // place the rail states the library size — the 22px "606 TITLES" header
-        // that used to sit two rows above it said the same number with no
-        // affordance attached, which is the duplication §7 warns about.
+        // Rail's "All games" count.
         AllGames.Count = _allTiles.Count;
 
         TotalCount = _allTiles.Count;
         TotalCountText = TotalCount.ToString("N0");
         SearchPlaceholder = $"Search {TotalCountText} titles…";
 
-        // Options are rebuilt from the library as it now stands, and selections
-        // survive by key — a reload after an enrichment pass must not silently
-        // drop a rule the user set five minutes ago.
+        // Rebuild filter options; selections survive by key across reloads.
         Filters.Rebuild(_allTiles, _facets);
 
         await Lists.LoadAsync();
 
-        // A reload replaces every list row object and re-finds the open one by
-        // id, so the rail's marks have to be re-derived from the new objects —
-        // otherwise a live list that survives a reload keeps the Volt edge on a
-        // bucket that is no longer where you are.
+        // Re-derive rail selection marks after list objects are replaced.
         MarkRailSelection();
 
         _loaded = true;
         ApplyFilter();
 
-        // Every tile object above is new, so anything holding the previous
-        // generation is now holding a projection of a library that no longer
-        // exists. Raised last, with the new set fully in place, so a listener
-        // that reads back through TileForOwnership can only see the finished
-        // state (IGameTileSource).
+        // Notify listeners that the tile set has been replaced.
         TilesChanged?.Invoke(this, EventArgs.Empty);
     }
 
@@ -771,11 +737,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         }
     }
 
-    /// <summary>
-    /// List-view column headers. A header that is already the active sort
-    /// flips direction; one that is not takes its own most useful direction
-    /// first — nobody opens a playtime column wanting the smallest number.
-    /// </summary>
+    /// <summary>Toggles title sort direction. First click sorts A-Z.</summary>
     [RelayCommand]
     private void SortByTitle()
         => Sort = Sort == LibrarySort.NameAscending
@@ -794,25 +756,11 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             ? LibrarySort.RecentlyPlayed
             : LibrarySort.DormantLongest;
 
-    /// <summary>
-    /// Rail click. "All games" clears the filter; a bucket selects itself, or
-    /// clears the filter when it was already the selection — the old, invisible
-    /// escape hatch, kept because it costs nothing now that there is a visible
-    /// one, and because a selected row that ignores its own click reads as
-    /// broken.
-    ///
-    /// <para><b>It also leaves whatever list you were in, and takes that list's
-    /// rules with it</b> (<see cref="LeaveListContext"/>). A bucket and a list
-    /// are both answers to "what am I looking at", and clicking one is a
-    /// statement that you have stopped looking at the other.</para>
-    /// </summary>
+    /// <summary>Selects a bucket (toggling off if already selected). Also leaves the open list.</summary>
     [RelayCommand]
     private void SelectBucket(BucketViewModel? bucket) => Batched(() =>
     {
-        // The click-the-row-you-are-on escape hatch does NOT apply inside a live
-        // list: there the lit bucket is the LIST's rule and not the user's own
-        // click, so clicking it means "give me that bucket and nothing else",
-        // not "give me it a second time, which means clear it".
+        // Toggle-off does not apply inside a live list (the bucket is the list's rule).
         var toggling = Lists.Open is not { IsLive: true }
             && bucket is not null
             && ReferenceEquals(SelectedBucket, bucket);
@@ -824,13 +772,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             : bucket;
     });
 
-    /// <summary>
-    /// Opens the detail modal for a tile. Two reads, both keyed on rows this
-    /// view model already holds: the release's update events, and the
-    /// ownership's playtime history. Everything else was joined at load, so the
-    /// modal appears with its identity and its gap already correct and only the
-    /// two lists fill in.
-    /// </summary>
+    /// <summary>Opens the detail modal, loading update events and playtime history.</summary>
     [RelayCommand]
     private async Task OpenDetailsAsync(GameTileViewModel? tile)
     {
@@ -842,17 +784,12 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
 
         SelectTile(target);
 
-        // The modal is the richer version of the back face, so the card goes
-        // face-up on the way in: coming back from Escape to a turned card would
-        // be the wall remembering a step the user has already taken.
+        // Clear card flip on the way into the modal.
         ClearFlip();
 
         var events = await _updateEvents.GetByReleaseAsync(target.ReleaseId);
 
-        // Newest first: the update the user missed most recently is the one
-        // they are trying to catch up on (§5.2). Each row is told the last-
-        // played date so it can say whether it is one the user actually missed
-        // — the distinction the Flare dot marks and the rail plots.
+        // Newest first; each row knows whether it landed after last play.
         var updates = events
             .OrderByDescending(e => e.OccurredAt)
             .ThenByDescending(e => e.Id)
@@ -876,22 +813,8 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     private void CloseDetails() => Details = null;
 
     // ══ Lists ═══════════════════════════════════════════════════════════════
-    // Two kinds, one rail section each. A LIST holds the games you put in it; a
-    // LIVE LIST holds the rules and finds them again. Everything below keeps
-    // that distinction visible rather than papering over it — a manual list is
-    // opened by loading its membership, a live one by loading its rules into
-    // the very controls that made them.
 
-    /// <summary>
-    /// Opens a list. A manual one becomes an extra AND term over the library; a
-    /// live one pours its saved rules back into the rail and the panel, so the
-    /// user is looking at the filter that defines it and can edit it in place.
-    /// Either way the search box is cleared, because a list is a fresh question.
-    ///
-    /// <para><b>It leaves the list you were in first.</b> A list is a PLACE, and
-    /// you are only ever in one — so opening list B cannot leave list A's rules
-    /// lying in the panel underneath it.</para>
-    /// </summary>
+    /// <summary>Opens a list: manual adds an AND term, live restores its saved rules into the panel.</summary>
     [RelayCommand]
     private void OpenList(GameListViewModel? list) => Batched(() =>
     {
@@ -929,34 +852,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         Batched(LeaveListContext);
     }
 
-    /// <summary>
-    /// Steps out of the open list, whichever kind it is.
-    ///
-    /// <para><b>This is the whole of the live-list fix.</b> §12.2 has a live list
-    /// add no AND term of its own: opening one pours its rules into the rail and
-    /// the panel so they are editable in place, which is what makes the two kinds
-    /// of list visibly different. What was missing was the other half of that
-    /// bargain. The poured-in rules were indistinguishable from rules the user
-    /// had set, so clicking "All games" cleared the bucket and left the list's
-    /// genre, mode and tag terms silently applied — and the user believed they
-    /// were looking at their whole library when they were looking at a live list
-    /// with extra filters on top. That is the most expensive confusion this
-    /// screen can produce (§11.3), arriving by the one door the cut bar could
-    /// not watch.</para>
-    ///
-    /// <para>So: <b>a list is a place, and its rules are the place's, not
-    /// yours.</b> Entering one is entering a context; leaving takes the context's
-    /// contribution with it. That is the same contract a manual list already
-    /// honours — its membership term goes when you leave — stated once for both
-    /// kinds. A manual list contributes only membership, so leaving it still
-    /// leaves the rail, the panel and the search box exactly as the user set
-    /// them; §12.2's "the ones in Couch co-op night I haven't installed" is
-    /// untouched.</para>
-    ///
-    /// <para>The panel is deliberately left OPEN on the way out of a live list.
-    /// Closing it would hide the very thing that proves the rules went, and the
-    /// user did not open it — entering the list did.</para>
-    /// </summary>
+    /// <summary>Leaves the open list, clearing a live list's contributed rules. Panel stays open.</summary>
     private void LeaveListContext()
     {
         if (Lists.Open is not { } open)
@@ -974,19 +870,13 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             return;
         }
 
-        // Everything ApplySavedFilter poured in, poured back out. Batched, so
-        // the grid is rebuilt once against the state the caller lands on rather
-        // than three times against a half-torn-down rule set.
+        // Clear all rules the live list contributed.
         SelectedBucket = null;
         SearchText = string.Empty;
         Filters.Clear();
     }
 
-    /// <summary>
-    /// A hand-built list opens in the order it was built. The row is added to
-    /// the sort menu at the same moment, so the order the grid is in is always
-    /// one the menu can name.
-    /// </summary>
+    /// <summary>Switches to list order and adds the sort menu row.</summary>
     private void EnterListOrder()
     {
         if (!SortOptions.Contains(_listOrderOption))
@@ -1009,10 +899,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         Sort = _sortBeforeList;
     }
 
-    /// <summary>
-    /// "Add to list". One control for both views: the grid selects one tile and
-    /// the list selects many, and this reads whichever is in force.
-    /// </summary>
+    /// <summary>Opens the "Add to list" prompt for the current selection.</summary>
     [RelayCommand(CanExecute = nameof(HasSelection))]
     private void BeginAddToList()
     {
@@ -1049,11 +936,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             });
     }
 
-    /// <summary>
-    /// §7's exact words, and the exact place they belong: on the bar that
-    /// already states what the filter has left you with. What you save is what
-    /// that line describes.
-    /// </summary>
+    /// <summary>Prompts the user to name and save the current filter as a live list.</summary>
     [RelayCommand]
     private void BeginSaveLiveList()
         => Prompt = new ActionPromptViewModel(
@@ -1118,11 +1001,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             initialText: list.Name);
     }
 
-    /// <summary>
-    /// Deleting asks first, and the question says what survives. A list is the
-    /// only thing in this application a user can destroy, and the one fear worth
-    /// answering out loud is that the games go with it.
-    /// </summary>
+    /// <summary>Confirms and deletes the open list. Titles remain in the library.</summary>
     [RelayCommand]
     private void BeginDeleteList()
     {
@@ -1164,12 +1043,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     [RelayCommand(CanExecute = nameof(CanMoveDownInList))]
     private Task MoveDownInListAsync() => MoveInListAsync(1);
 
-    /// <summary>
-    /// Reordering is one row at a time, by the keyboard as well as the buttons
-    /// (Alt+Up / Alt+Down). Not drag and drop: the rows are virtualized, a drag
-    /// across 400 of them is a scroll fight, and §8 asks for the whole interface
-    /// to be reachable without a pointer anyway.
-    /// </summary>
+    /// <summary>Moves the selected row by <paramref name="delta"/> positions in the open manual list.</summary>
     public async Task MoveInListAsync(int delta)
     {
         if (Lists.Open is not { IsManual: true } list || SelectedTiles.Count != 1)
@@ -1189,15 +1063,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     public bool CanReorderOpenList
         => Lists.Open is { IsManual: true } && SelectedTiles.Count == 1 && Sort == LibrarySort.ListOrder;
 
-    /// <summary>
-    /// Where the selected title sits in the open list, or -1.
-    ///
-    /// <para>The two move buttons test it rather than merely testing that
-    /// something is selected: the top row cannot go up and the bottom row cannot
-    /// go down, and a live button that does nothing when pressed is exactly the
-    /// thing §7 is about — it makes the user doubt the control rather than the
-    /// position they are in.</para>
-    /// </summary>
+    /// <summary>Index of the selected title in the open list, or -1. Used to disable move buttons at bounds.</summary>
     private int PositionInOpenList
         => CanReorderOpenList && Lists.Open is { } list
             ? list.ReleaseIds.ToList().IndexOf(SelectedTiles[0].ReleaseId)
@@ -1211,11 +1077,6 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             && PositionInOpenList < list.ReleaseIds.Count - 1;
 
     // ── What the cut bar offers, and when ───────────────────────────────────
-    // The strip is 40px and the buttons on it are small, so the rule is that at
-    // most four are ever up at once. Membership actions and list-metadata
-    // actions are mutually exclusive on purpose: with rows selected you are
-    // editing what is IN the list, with nothing selected you are editing the
-    // list itself, and those are two different jobs sharing one row of chrome.
 
     /// <summary>"Save as live list" — offered on any cut that is not already one.</summary>
     public bool ShowSaveLiveList => CanSaveLiveList && !Lists.IsLiveListOpen;
@@ -1247,12 +1108,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         RaiseActionState();
     }
 
-    /// <summary>
-    /// The name the save prompt opens with: the rules, read out. Two chips at
-    /// most — past that the name stops being a name — and the user can type over
-    /// it. An untitled list is not offered, because a rail full of "Live list 3"
-    /// is a rail nobody reads.
-    /// </summary>
+    /// <summary>Suggests a list name from the first two active filter chips.</summary>
     private string SuggestedListName()
     {
         var parts = CutChips
@@ -1270,9 +1126,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         var bucketKey = filter.Buckets.Count > 0 ? filter.Buckets[0] : null;
         var bucket = bucketKey is null ? null : Buckets.FirstOrDefault(b => b.Key == bucketKey);
 
-        // The rail moves first, then the panel; the panel's Apply raises exactly
-        // one recompute at the end, so the grid is never rebuilt against a
-        // half-restored rule set.
+        // Rail first, then panel; panel's Apply triggers one recompute.
         SelectedBucket = bucket;
         SearchText = filter.Search ?? string.Empty;
         Filters.Apply(filter);
@@ -1289,34 +1143,15 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     }
 
     // ══ The card flip ═══════════════════════════════════════════════════════
-    // One click turns a cover over. The back carries a few facts and the actions
-    // for that one game — the primary action, Add to list, and the route on to
-    // the detail modal, whose gesture the flip took.
-    //
-    // The state lives on the tile view model (see GameTileViewModel.IsFlipped
-    // for why that is forced rather than chosen), and this is the rule that
-    // keeps it from becoming a wall of face-down cards: EXACTLY ONE tile is
-    // turned over at a time. §1 says the art is the interface, so a grid showing
-    // its backs is a grid with nothing in it.
+    // Exactly one tile is flipped at a time. State lives on the tile VM.
 
-    /// <summary>
-    /// The one tile currently showing its back, or null. Not an
-    /// <c>ObservableProperty</c>: nothing binds to it, and the flag the view
-    /// reads is the one on each tile.
-    /// </summary>
+    /// <summary>The flipped tile, or null. Not observable; the per-tile flag is what the view binds.</summary>
     private GameTileViewModel? _flipped;
 
     /// <summary>The turned-over tile, for the keyboard and for tests.</summary>
     public GameTileViewModel? FlippedTile => _flipped;
 
-    /// <summary>
-    /// Turn a card over — or back, when it is the one already turned.
-    ///
-    /// <para>Flipping also selects, because turning a card over IS picking it,
-    /// and because "Add to list" reads the selection (§12.3): a back face whose
-    /// button acted on some other tile would be the worst kind of working
-    /// button.</para>
-    /// </summary>
+    /// <summary>Flips a tile (or unflips if already flipped). Also selects it.</summary>
     [RelayCommand]
     public void FlipTile(GameTileViewModel? tile)
     {
@@ -1381,9 +1216,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
 
     partial void OnSelectedTileChanged(GameTileViewModel? oldValue, GameTileViewModel? newValue)
     {
-        // Selection lives on the tiles because both views bind to it; keeping
-        // the flags in one place stops the grid and the list disagreeing about
-        // what is selected.
+        // Selection flags live on tiles so grid and list views stay in sync.
         if (oldValue is not null)
         {
             oldValue.IsSelected = false;
@@ -1394,25 +1227,14 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             newValue.IsSelected = true;
         }
 
-        // Selection and the flip move together: exactly one card is ever turned
-        // over, and it is always the selected one. Arrowing off a turned card
-        // therefore turns it back, which is also what makes the keyboard route
-        // out of the back face a key the user already knows.
+        // Arrowing off a flipped card unflips it.
         if (!ReferenceEquals(_flipped, newValue))
         {
             ClearFlip();
         }
 
-        // The grid selects exactly one tile, and it selects it by arrow key as
-        // often as by pointer. Deriving the picked set here rather than in the
-        // pointer handler is what makes that true: with it only in the handler,
-        // walking the wall with the arrows moved the Volt outline and left "Add
-        // to list" hidden, which is §8's keyboard floor failing quietly on the
-        // one control the whole lists feature hangs off.
-        //
-        // List view is excluded because it can hold more than one selection, and
-        // its SelectionChanged handler — which runs after this — is the only
-        // thing that knows the whole set.
+        // Grid view: derive SelectedTiles here so keyboard nav keeps "Add to list" visible.
+        // List view excluded; its SelectionChanged handler owns the multi-select set.
         if (IsGridView)
         {
             SelectedTiles = newValue is null ? [] : [newValue];
@@ -1427,23 +1249,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         ApplyFilter();
     }
 
-    /// <summary>
-    /// Which rail row is lit, and how.
-    ///
-    /// <para><b>Exactly one row ever carries the Volt edge, and it always means
-    /// the same thing: this is where you are.</b> No bucket IS the "All games"
-    /// state — including the one the app launches in, so the rail is never
-    /// showing a library nothing in it claims.</para>
-    ///
-    /// <para>With a list open, the place you are is the list, so its row takes
-    /// the Volt edge and a bucket in force takes <see cref="BucketViewModel.IsRule"/>
-    /// instead — the same fill, a TextDim edge. Before this, both rows drew the
-    /// Volt edge at once: a live list carrying <c>Bounced off</c> lit "Bounced
-    /// off" AND the list, and clicking "All games" then lit a THIRD row while
-    /// leaving the list's genres applied. Three rows claiming to be where you
-    /// are is how a user ends up certain they are looking at their whole
-    /// library.</para>
-    /// </summary>
+    /// <summary>Updates rail selection: one Volt edge for the active location, IsRule for a bucket inside a list.</summary>
     private void MarkRailSelection()
     {
         var inList = Lists.IsListOpen;
@@ -1458,22 +1264,11 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         AllGames.IsSelected = SelectedBucket is null && !inList;
     }
 
-    /// <summary>
-    /// The rules the open live list is contributing, exactly as they were saved
-    /// — or null whenever the filter surface belongs to the user. Everything
-    /// that needs to tell a list's rule from the user's own reads this and
-    /// nothing else, so there is one answer to that question in the view model.
-    /// </summary>
+    /// <summary>The open live list's saved rules, or null when no live list is open.</summary>
     private LibraryFilter? ContextFilter
         => Lists.Open is { IsLive: true } live ? live.Filter : null;
 
-    /// <summary>
-    /// Runs a group of writes as one change to the cut. Entering or leaving a
-    /// list touches the rail, the search box and every group in the panel; each
-    /// of those raises its own recompute, and without this the grid is rebuilt
-    /// once per write against a rule set nobody asked for and the counts in the
-    /// panel flicker through states that never existed.
-    /// </summary>
+    /// <summary>Suspends filter recomputation during a multi-write operation, then applies once.</summary>
     private void Batched(Action write)
     {
         _suspended++;
@@ -1490,20 +1285,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         ApplyFilter();
     }
 
-    /// <summary>
-    /// <inheritdoc cref="IStoreTitleCounts.TitlesByStore"/>
-    ///
-    /// <para>Computed on demand rather than cached: the Stores panel asks once
-    /// per opening, and a cached copy would be one more thing that has to be
-    /// invalidated when the library reloads behind the enrichment pass — which
-    /// is exactly the class of bug where the build is green and the number on
-    /// screen is last week's.</para>
-    ///
-    /// <para>Counted over <c>_allTiles</c>, never over
-    /// <see cref="VisibleTiles"/>: the panel is answering "where did your
-    /// library come from", and the answer must not move because a bucket is
-    /// selected or a search box has three letters in it.</para>
-    /// </summary>
+    /// <summary>Counts titles per store over all tiles (not just visible). Computed on demand.</summary>
     public IReadOnlyDictionary<string, int> TitlesByStore()
     {
         var counts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
@@ -1515,11 +1297,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         return counts;
     }
 
-    /// <summary>
-    /// The dimming preference moved. Every built tile re-reads the ramp; nothing
-    /// is rebuilt and nothing is re-fetched, so the floor variants the cover
-    /// cache holds stay exactly as they were.
-    /// </summary>
+    /// <summary>Refreshes dormancy on all tiles when the ramp preference changes.</summary>
     private void OnRampChanged(object? sender, PropertyChangedEventArgs e)
     {
         foreach (var tile in _allTiles)
@@ -1528,19 +1306,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         }
     }
 
-    /// <summary>
-    /// The whole cut, in one place. Five AND terms, in the order they were added
-    /// to the product: the rail's bucket, an open list, the filter panel, the
-    /// release-year range and the search box.
-    ///
-    /// <para><b>The baseline the panel counts against is everything except the
-    /// panel.</b> That is what makes the number beside each option true — it is
-    /// what you would get if you ticked it, given the bucket you are in and the
-    /// text you have typed, rather than how many of that genre you happen to
-    /// own. The panel then lifts each group's own selections when counting that
-    /// group, because options inside a group widen rather than narrow (see
-    /// <see cref="FilterPanelViewModel.Recount"/>).</para>
-    /// </summary>
+    /// <summary>Applies all filter terms (bucket, list, panel, search) and rebuilds the visible set.</summary>
     private void ApplyFilter()
     {
         if (!_loaded || _suspended > 0)
@@ -1548,9 +1314,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             return;
         }
 
-        // The wall is about to be rebuilt under whatever was turned over. A card
-        // that stays face-down through a search or a bucket change is a card the
-        // user did not leave there — and it may not even be in the new set.
+        // Unflip before rebuilding; the flipped tile may leave the visible set.
         ClearFlip();
 
         IEnumerable<GameTileViewModel> query = _allTiles;
@@ -1559,12 +1323,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             query = query.Where(t => t.Bucket == bucket.Key);
         }
 
-        // A manual list is one more AND term rather than a separate screen, so
-        // the rail, the panel and the search box all still work inside it: "the
-        // ones in Co-op night I have not installed" is a question the user can
-        // now ask without leaving the list. A LIVE list adds no term — opening
-        // one loads its rules into the panel and the rail, which is the whole
-        // difference between the two kinds made visible.
+        // Manual list: AND term on membership. Live list: no term (rules are in the panel).
         if (Lists.Open is { IsManual: true } openList)
         {
             var members = openList.ReleaseIds.ToHashSet();
@@ -1579,10 +1338,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
 
         var baseline = query.ToList();
 
-        // One matcher implementation for the panel, the grid and every live
-        // list: LibraryFilter.Apply. The panel supplies the rule set, this
-        // supplies the rows, and a residual count is the same call with one
-        // group's selections lifted.
+        // Recount panel options against the baseline (bucket + list + search, before panel).
         Filters.Recount(filter => Matching(baseline, filter));
 
         var visible = Order(Matching(baseline, Filters.ToFilter())).ToList();
@@ -1600,12 +1356,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         RefreshCutBar(visible.Count);
     }
 
-    /// <summary>
-    /// The tiles in <paramref name="tiles"/> that satisfy <paramref name="filter"/>.
-    /// Ownership id is the key because it is what a library row IS — one release
-    /// owned on two stores is two tiles, and matching back on release id would
-    /// merge them.
-    /// </summary>
+    /// <summary>Returns tiles matching the filter. Keyed on ownership id (not release) to preserve cross-store dupes.</summary>
     private static IReadOnlyList<GameTileViewModel> Matching(
         IReadOnlyList<GameTileViewModel> tiles, LibraryFilter filter)
     {
@@ -1621,12 +1372,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         return [.. tiles.Where(t => kept.Contains(t.OwnershipId))];
     }
 
-    /// <summary>
-    /// Both kinds of list count themselves against the library as it now stands.
-    /// A manual list loses a member when the game behind it is consolidated
-    /// away, and a live list's number moving on its own IS the feature — so the
-    /// rail states both from the same pass and neither is a stored total.
-    /// </summary>
+    /// <summary>Recounts list membership for both manual and live lists against the current library.</summary>
     private void RefreshListCounts()
     {
         foreach (var list in Lists.Lists)
@@ -1637,29 +1383,18 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
 
         foreach (var list in Lists.LiveLists)
         {
-            // Against the whole library, not the current cut: a rail count that
-            // moved when you clicked a different bucket would be describing the
-            // screen instead of the list.
+            // Counted against the whole library, not the current cut.
             list.Count = Matching(_allTiles, list.Filter).Count;
         }
     }
 
-    /// <summary>
-    /// The strip that says what you are looking at. It appears the moment the
-    /// grid stops showing the whole library, because a library that has been cut
-    /// down and does not admit it is the most expensive confusion this screen
-    /// can produce — the panel can be closed and the rail scrolled past.
-    /// </summary>
+    /// <summary>Rebuilds the cut bar chips and text from the active filters.</summary>
     private void RefreshCutBar(int visibleCount)
     {
         var chips = new List<FilterChipViewModel>();
         var context = ContextFilter;
 
-        // The open list leads the bar, ahead of the rules, because it is not a
-        // rule — it is the place the rules belong to, and "which live list am I
-        // in" is the question this strip was failing to answer. Its chip shows
-        // its kind rather than hiding it in a tooltip, and dropping it leaves
-        // the list, taking the list's rules with it.
+        // Open list chip leads the bar; dropping it leaves the list.
         if (Lists.Open is { } list)
         {
             chips.Add(new FilterChipViewModel(
@@ -1669,11 +1404,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
                 FilterChipOrigin.Context));
         }
 
-        // Then the rail's bucket, because it is the pile you are standing in and
-        // because this is the only place the rail and the panel are stated as
-        // one filter — which is the whole of that claim now that the panel is no
-        // longer physically joined to the rail (§11.1). Dropping it clears the
-        // rail.
+        // Bucket chip; dropping it clears the rail.
         if (SelectedBucket is { } bucket)
         {
             chips.Add(new FilterChipViewModel(
@@ -1694,24 +1425,14 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         VisibleCountText = visibleCount.ToString("N0");
         IsCut = chips.Count > 0 || visibleCount != TotalCount;
 
-        // A live list whose rules have been changed but not saved says so, and
-        // offers both answers by name. LibraryFilter compares as a SET rather
-        // than by reference — its own remarks explain why the compiler-generated
-        // equality would have answered "different" on every keystroke — so this
-        // is one operator and not a hand-rolled fingerprint.
+        // Detect unsaved edits to the open live list (LibraryFilter uses set equality).
         IsLiveListEdited = Lists.Open is { IsLive: true } live
             && BuildFilter() != live.Filter;
 
         RaiseActionState();
     }
 
-    /// <summary>
-    /// The whole cut as one saveable rule: the rail's bucket, the panel's
-    /// groups, and the search box. All three, because all three are visibly
-    /// shaping the grid the user is about to name — saving "co-op" and silently
-    /// dropping the word they typed would produce a list that does not match the
-    /// screen it was saved from.
-    /// </summary>
+    /// <summary>Builds a <see cref="LibraryFilter"/> from the current bucket, panel, and search.</summary>
     private LibraryFilter BuildFilter()
     {
         var search = SearchText.Trim();
@@ -1722,16 +1443,10 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         };
     }
 
-    /// <summary>
-    /// Every order ties-breaks on title, so a re-sort of the same set is
-    /// stable and the grid does not shuffle underneath a user who changed
-    /// nothing but the window width.
-    /// </summary>
+    /// <summary>Sorts tiles by the current order, tie-breaking on title for stability.</summary>
     private IEnumerable<GameTileViewModel> Order(IEnumerable<GameTileViewModel> tiles) => Sort switch
     {
-        // Never played counts as maximally dormant — DateTime.MinValue sorts it
-        // to the front here and to the back under RecentlyPlayed, which is what
-        // "you have never opened this" should do in both directions.
+        // Never-played = MinValue: front for DormantLongest, back for RecentlyPlayed.
         LibrarySort.DormantLongest => tiles
             .OrderBy(t => t.LastPlayedUtc ?? DateTime.MinValue)
             .ThenBy(t => t.Title, StringComparer.OrdinalIgnoreCase),
@@ -1751,19 +1466,13 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         LibrarySort.NameDescending => tiles
             .OrderByDescending(t => t.Title, StringComparer.OrdinalIgnoreCase),
 
-        // The positions the user put them in. Falls through to title order when
-        // no manual list is open, which is the only state in which it can be
-        // asked for and not answerable.
+        // User-defined positions; falls through to title order if no manual list is open.
         LibrarySort.ListOrder when Lists.Open is { IsManual: true } list => OrderByPosition(tiles, list),
 
         _ => tiles.OrderBy(t => t.Title, StringComparer.OrdinalIgnoreCase),
     };
 
-    /// <summary>
-    /// Hand-built order. The index map is built once per sort rather than
-    /// searched per comparison — a list of four hundred would otherwise be a
-    /// quadratic scan on every keystroke in the search box.
-    /// </summary>
+    /// <summary>Orders tiles by their stored position in the list, using an index map for O(n) lookup.</summary>
     private static IEnumerable<GameTileViewModel> OrderByPosition(
         IEnumerable<GameTileViewModel> tiles, GameListViewModel list)
     {
@@ -1810,8 +1519,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             }
         }
 
-        // LibraryBuckets.Active has no rail row: it is the healthy middle of the
-        // library, which the rail deliberately does not offer as a pile.
+        // Active has no rail row; mapped to a human label here.
         return bucketKey == LibraryBuckets.Active ? "In rotation" : bucketKey;
     }
 
@@ -1833,10 +1541,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             return $"No titles match “{search}”.";
         }
 
-        // A filter that has emptied the grid is the most common empty state
-        // there is, and the only one with an obvious next move. It is tested
-        // before the bucket messages because those describe a library, and this
-        // describes a control the user is holding.
+        // Filter empty state (most common) tested before bucket-specific messages.
         if (Filters.HasSelection)
         {
             return "No titles match these filters. Drop one to widen the cut.";

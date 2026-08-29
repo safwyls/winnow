@@ -17,34 +17,9 @@ namespace Winnow.Enrich.SteamWeb;
 public static class ServiceCollectionExtensions
 {
     /// <summary>
-    /// Registers <see cref="ISteamWebApiClient"/> and everything under it.
-    ///
-    /// <para><b>No key is required to call this.</b> A host that registers the
-    /// module and a user who never enters a key produce a client that declines
-    /// every call and makes no requests (§5.1) — there is no startup failure and
-    /// no configuration step.</para>
-    ///
-    /// <para>Storage defaults to the SQLite-backed <c>settings</c> and
-    /// <c>metadata_cache</c> tables and therefore expects an
-    /// <c>ISqliteConnectionFactory</c> in the container. Register an
-    /// <see cref="ISettingsRepository"/> or <see cref="ISteamWebMetadataCache"/>
-    /// of your own beforehand to override — every registration here is
-    /// <c>TryAdd</c>.</para>
-    ///
-    /// <para>Handler order on the pipeline is deliberate and outermost first:
-    /// retry (owns 429/5xx backoff and <c>Retry-After</c>, §4.2) → rate limiter
-    /// (owns the request budget). The limiter sits innermost so retried attempts
-    /// spend permits like any other request and a backoff storm cannot exceed the
-    /// configured rate.</para>
-    ///
-    /// <para><b>The logging change is a security control, not a preference.</b>
-    /// <c>RemoveAllLoggers()</c> strips the two loggers
-    /// <see cref="IHttpClientFactory"/> attaches by default, both of which write
-    /// the full request URI at <c>Information</c>. §4.2's <c>GetOwnedGames</c>
-    /// carries the user's API key in that URI and offers no header or body
-    /// alternative, so leaving them in place would write the key to the log on
-    /// every sync. <see cref="RedactingHttpClientLogger"/> replaces them.
-    /// This affects only this module's client.</para>
+    /// Registers <see cref="ISteamWebApiClient"/> and everything under it. No
+    /// key is required; a user who never enters one gets a client that declines
+    /// every call.
     /// </summary>
     public static IServiceCollection AddSteamWebApi(this IServiceCollection services)
         => services.AddSteamWebApi(configure: null);
@@ -97,14 +72,8 @@ public static class ServiceCollectionExtensions
     }
 
     /// <summary>
-    /// Adds the two configuration sources the developer key path reads: a
-    /// git-ignored <c>appsettings.local.json</c> beside the executable, and
-    /// environment variables (<c>Steam__ApiKey</c>).
-    ///
-    /// <para>Optional. A host that already configures these — as the default
-    /// generic host does for environment variables — needs nothing from here.
-    /// Neither source is ever written to; Winnow only reads keys it did not
-    /// create.</para>
+    /// Adds <c>appsettings.local.json</c> and environment variables as
+    /// configuration sources for the developer key path.
     /// </summary>
     public static IConfigurationBuilder AddSteamWebLocalConfiguration(this IConfigurationBuilder builder)
         => builder

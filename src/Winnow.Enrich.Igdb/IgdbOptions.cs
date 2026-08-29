@@ -70,35 +70,14 @@ public sealed class IgdbOptions
     public int SteamExternalGameSourceId { get; set; } = 1;
 
     /// <summary>
-    /// IGDB's <c>external_game_source</c> id for GOG.
-    ///
-    /// <para><b>This one is a genuine hard join and it works today.</b> IGDB's
-    /// source-5 <c>uid</c> is the bare GOG product id as a string — byte-identical
-    /// to what Galaxy's <c>gog_&lt;id&gt;</c> releaseKey carries and to what
-    /// Winnow stores in <c>external_ids.provider_id</c>, with no transformation.
-    /// Re-verified live against the author's library: 13 of 14 owned GOG base
-    /// games matched in a single request. The one miss is
-    /// <c>1441199941</c>, "The Witcher 3 REDkit" — a modding toolkit IGDB does
-    /// not carry as a game, which is the right answer rather than a failure.</para>
+    /// IGDB's <c>external_game_source</c> id for GOG. Source-5 uids are bare
+    /// GOG product ids, byte-identical to what Winnow stores.
     /// </summary>
     public int GogExternalGameSourceId { get; set; } = 5;
 
     /// <summary>
-    /// IGDB's <c>external_game_source</c> id for the Epic Games Store.
-    ///
-    /// <para><b>Present for completeness and all but useless — read this before
-    /// building on it.</b> §4.4 claims <c>external_games</c> maps the "Epic
-    /// catalog id"; it does not. IGDB's source-26 uids are Epic <i>store offer</i>
-    /// ids (32-hex) and CMS <i>page</i> ids (dashed UUID), and the launcher
-    /// writes neither to disk — it writes <c>CatalogItemId</c>, which is a third
-    /// id space. Measured twice, once during the spike and once again while
-    /// fixing this: <b>0 of the author's 67 owned Epic catalog item ids match any
-    /// of IGDB's 10,145 source-26 rows</b>, and titles like ABZU have no
-    /// source-26 row at all, so no id mapping could rescue it. Epic reaches IGDB
-    /// through the cross-store hop instead — see
-    /// <c>Winnow.Enrich.GamesDb</c>. This id stays configured so the attempt is
-    /// one line if IGDB's Epic coverage ever changes shape, not because it
-    /// currently resolves anything.</para>
+    /// IGDB's <c>external_game_source</c> id for the Epic Games Store. Currently
+    /// does not resolve anything — Epic reaches IGDB through the cross-store hop.
     /// </summary>
     public int EpicExternalGameSourceId { get; set; } = 26;
 

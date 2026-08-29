@@ -11,28 +11,8 @@ using Microsoft.Extensions.Logging;
 namespace Winnow.Enrich.SteamWeb;
 
 /// <summary>
-/// Client for <c>IPlayerService/GetOwnedGames</c> (§4.2).
-///
-/// <para>Everything that could go wrong slowly — retry, 429 backoff, the request
-/// rate — lives in the <see cref="HttpClient"/> handler pipeline, so this class
-/// only has to worry about three things: what to ask, what not to ask twice, and
-/// what never to write down.</para>
-///
-/// <para><b>The key never appears in a log line.</b> It goes into the query
-/// string because <c>GetOwnedGames</c> offers no other way to send it, and from
-/// there: the framework's own request logging is removed for this client and
-/// replaced by <see cref="RedactingHttpClientLogger"/>; every message in this
-/// class names the endpoint constant rather than the built URI; and the URI is
-/// built locally, used once, and never handed to a logger or an exception
-/// message. <see cref="SteamApiKey.ToString"/> is redacted so an accidental
-/// interpolation cannot leak one either.</para>
-///
-/// <para><b>Soft-fail is the contract, not a courtesy</b> (§5.1). A missing key,
-/// a 403, a 429 the retries could not outlast, a dead network, a body that will
-/// not parse: all become an unanswered <see cref="SteamOwnedLibrary"/>, logged,
-/// never thrown at a caller, and — critically — never written to the cache.
-/// Caching a failure would record "this account owns nothing" for a whole TTL on
-/// the strength of one 503.</para>
+/// Client for <c>IPlayerService/GetOwnedGames</c> (§4.2). The API key never
+/// appears in a log line; failures soft-fail rather than throwing.
 /// </summary>
 public sealed class SteamWebApiClient : ISteamWebApiClient
 {

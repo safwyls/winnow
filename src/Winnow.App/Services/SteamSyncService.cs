@@ -193,22 +193,8 @@ public sealed class SteamSyncService : ISteamSync
     }
 
     /// <summary>
-    /// The authenticated Epic half of the union. Needs a user-supplied OAuth
-    /// client pair and a one-time interactive sign-in, so it runs only when both
-    /// are present.
-    ///
-    /// <para><b>Every way this can fail yields no candidates and leaves the local
-    /// Epic scan untouched.</b> Not configured, configured but never signed in, a
-    /// refresh token that lapsed while the app was closed, Epic unreachable, a
-    /// 429 the retries could not outlast — all of them return an empty list. That
-    /// is the fallback, and it is deliberately expressed as "this source
-    /// contributed nothing this pass" rather than as an error: §5.1 forbids
-    /// enrichment blocking a user-facing path, and this one is on the startup
-    /// path.</para>
-    ///
-    /// <para>Note that <c>_epic.Scan()</c> above has already run and its
-    /// candidates are already in the union by the time this is called. Nothing
-    /// here can subtract from them.</para>
+    /// The authenticated Epic half of the union. Returns empty on any failure,
+    /// leaving the local Epic scan untouched.
     /// </summary>
     private async Task<IReadOnlyList<CandidateOwnership>> EpicApiCandidatesAsync(CancellationToken ct)
     {

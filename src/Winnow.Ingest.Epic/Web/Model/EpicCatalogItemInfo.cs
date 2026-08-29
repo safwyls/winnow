@@ -4,30 +4,8 @@ using Winnow.Core.Queries;
 namespace Winnow.Ingest.Epic.Web.Model;
 
 /// <summary>
-/// What Epic's catalog service says about one owned catalog item — the two facts
-/// the library service does not carry, plus the ids that route to everything
-/// else.
-///
-/// <para><b>Why this type exists at all.</b>
-/// <c>/library/api/public/items</c> returns entitlements: <c>namespace</c>,
-/// <c>catalogItemId</c>, <c>appName</c>, <c>acquisitionDate</c>, and nothing
-/// else. No title and no categories. So the API half of Epic ingest could
-/// neither name what it found nor tell a game from an Unreal Engine build, and
-/// on the author's library it contributed 29 ownership rows that rendered as
-/// <c>App 16a66a9f5630407d923429470bd5c967</c>. The catalog service answers both
-/// questions in one call, keyed by exactly the two ids the library service
-/// already handed over.</para>
-///
-/// <para><b>The same shape <c>catcache.bin</c> stores.</b> The local catalog file
-/// is the launcher's cache of these very entries, so <see cref="Title"/>,
-/// <see cref="Categories"/> and <see cref="AppName"/> are the same fields
-/// <see cref="EpicCatalogEntry"/> reads, reached over the network for the items
-/// the local file has never held. One difference is worth knowing and is not a
-/// bug on either side: <c>catcache.bin</c> stores trademark symbols
-/// transliterated to a literal <c>?</c> (<c>epic-gog-local-files.md</c> trap 3),
-/// while the service returns the real character — this library's
-/// <c>LEGO® Fortnite: Odyssey</c> arrives with a genuine U+00AE. Neither is
-/// "corrected" anywhere; both are stored as sent.</para>
+/// What Epic's catalog service says about one owned catalog item: title,
+/// categories, and routing ids the library service does not carry.
 /// </summary>
 /// <param name="CatalogItemId">The key. Same value as the library service's <c>catalogItemId</c>.</param>
 /// <param name="Namespace">Epic sandbox/namespace id, echoed back by the service.</param>
@@ -60,31 +38,11 @@ public sealed record EpicCatalogItemInfo(
     string? AppName,
     string? MainGameCatalogItemId)
 {
-    /// <summary>
-    /// Whether the one shared rule admits this as a game, or null when the entry
-    /// carried no categories to judge it by.
-    ///
-    /// <para>Deliberately delegates to <see cref="EpicGameFilter"/> rather than
-    /// restating the rule: the local scan uses that predicate to decide what
-    /// never becomes a candidate, and the library view uses it to decide what
-    /// leaves the games grid. A second copy here is how the two would drift.</para>
-    /// </summary>
+    /// <summary>Whether the entry's categories pass <see cref="EpicGameFilter"/>, or null if no categories.</summary>
     [JsonIgnore]
     public bool? IsGame => Categories.Count == 0 ? null : EpicGameFilter.IsGame(Categories);
 
-    /// <summary>
-    /// Whether this entry is DLC — a non-empty parent id, the only marker that
-    /// works (<c>epic-gog-local-files.md</c> section 4).
-    ///
-    /// <para><b>Reported, and deliberately not acted on by the non-game
-    /// filter.</b> Categories cannot tell DLC from a base game — "Borderlands 3
-    /// Bounty of Blood" carries <c>application, games, applications</c> — and
-    /// hiding on this flag would also have hidden LEGO Fortnite: Odyssey, which
-    /// carries a <c>mainGameItem</c> pointing at Fortnite and 408 minutes of the
-    /// user's time. DLC visibility is a separate product question from "is this a
-    /// game", and this property exists so that question can be asked later
-    /// without a second round trip.</para>
-    /// </summary>
+    /// <summary>Whether this entry is DLC (has a non-empty parent catalog item id).</summary>
     [JsonIgnore]
     public bool IsDlc => EpicGameFilter.IsDlc(MainGameCatalogItemId);
 

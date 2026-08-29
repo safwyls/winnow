@@ -3,30 +3,9 @@ using Winnow.Core.Queries;
 namespace Winnow.Recommend;
 
 /// <summary>
-/// The playtime-weighted descriptor profile the taste-affinity tiebreaker
-/// reads: which genres, themes and tags the user's actual hours concentrate
-/// in, built from the games they committed to.
-///
-/// <para><b>Why √minutes.</b> Raw minutes would let one 350-hour game define
-/// the whole profile (the measured library's top game IS 350 hours); a flat
-/// count would say a 2-hour bounce testifies as loudly as a 250-hour love
-/// affair. The square root keeps order without letting one obsession drown
-/// the rest — and, like every shape choice here, it is a tiebreaker's shape,
-/// not a learned model.</para>
-///
-/// <para><b>Why the refund line is the evidence floor.</b> §6.1's argument
-/// cuts both ways: under 120 minutes the game was never really played, so it
-/// cannot testify about taste either. Retired games clear the floor by
-/// definition and carry most of the profile's weight — excluded as
-/// candidates, they still say more about what the user loves than anything
-/// else in the library. The floor's one exception is a feed-endorsed release
-/// (launched off the feed — see <see cref="RecommendationRequest.EndorsedReleaseIds"/>),
-/// which testifies with whatever √minutes it actually has.</para>
-///
-/// <para><b>Which kinds.</b> Genres, themes and Steam tags — the descriptors
-/// that say what a game IS. Features ("Steam Cloud"), controller support and
-/// game modes describe the wrapper, and "you like games with achievements" is
-/// not a taste anyone holds.</para>
+/// Playtime-weighted descriptor profile for the taste-affinity tiebreaker. Weights facets
+/// by sqrt(minutes) from committed games (above the refund line) plus endorsed releases.
+/// Only genre, theme and tag facets count; generic facets above a prevalence ceiling are excluded.
 /// </summary>
 internal sealed class TasteProfile
 {
@@ -141,14 +120,7 @@ internal sealed class TasteProfile
         return new TasteProfile(weights, snapshot, committedWithModes, committedSinglePlayer);
     }
 
-    /// <summary>
-    /// Whether a candidate's modes clash with how this user demonstrably
-    /// plays. Fires only under dominance: at least <paramref name="minGames"/>
-    /// committed mode-carrying games, of which at least
-    /// <paramref name="dominanceShare"/> sit on one side — and only against a
-    /// candidate that is EXCLUSIVELY the other side. A candidate with no mode
-    /// facets is unknown, never mismatched.
-    /// </summary>
+    /// <summary>Whether a candidate's modes clash with the user's dominant play mode. Returns <see cref="ModeMismatch.None"/> when evidence is insufficient.</summary>
     public ModeMismatch ClassifyModes(
         long releaseId, int minGames, double dominanceShare)
     {
@@ -185,18 +157,7 @@ internal sealed class TasteProfile
         return ModeMismatch.None;
     }
 
-    /// <summary>
-    /// The candidate's affinity: the strongest single descriptor it shares
-    /// with the profile, normalised to [0,1] against the profile's own peak,
-    /// plus that descriptor's display name for the explanation. A single
-    /// maximum rather than an overlap sum because the explanation has to name
-    /// ONE thing ("Survival is where your hours go") — a signal whose
-    /// arithmetic is a dot product nobody can narrate would fail the
-    /// one-sentence rule.
-    ///
-    /// <para>(null, null) when there is no evidence on either side — absent
-    /// evidence contributes nothing, it is never a zero match.</para>
-    /// </summary>
+    /// <summary>Returns the candidate's strongest shared facet normalised to [0,1], or (null, null) if no evidence.</summary>
     public (double? Affinity, string? FacetName) AffinityFor(long releaseId)
     {
         if (_maxWeight <= 0 || !_snapshot.ByRelease.TryGetValue(releaseId, out var facets))

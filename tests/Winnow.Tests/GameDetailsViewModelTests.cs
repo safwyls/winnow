@@ -334,7 +334,6 @@ public sealed class GameDetailsViewModelTests
 
         Assert.True(details.HasRecordLine);
         Assert.StartsWith("Checked once, on ", details.RecordLine, StringComparison.Ordinal);
-        Assert.EndsWith("Winnow keeps every reading from here.", details.RecordLine, StringComparison.Ordinal);
     }
 
     /// <summary>

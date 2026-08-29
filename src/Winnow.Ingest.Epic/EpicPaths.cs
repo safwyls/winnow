@@ -3,33 +3,8 @@ using Microsoft.Win32;
 namespace Winnow.Ingest.Epic;
 
 /// <summary>
-/// Locates the Epic Games Launcher's local data tree
-/// (docs/spikes/epic-gog-local-files.md sections 1, 6, 7). Discovery only —
-/// every file under these paths is opened read-only, never written.
-///
-/// <para>Everything the ingest needs hangs off one directory, the launcher's
-/// <c>Data</c> root:</para>
-/// <list type="bullet">
-/// <item><c>Data\Manifests\*.item</c> — the installed titles</item>
-/// <item><c>Data\Catalog\catcache.bin</c> — the entitlement catalog, i.e. the
-/// owned library whether installed or not</item>
-/// <item><c>Data\ThirPartyManagedApps\*.json</c> — Epic-owned titles delivered
-/// through another launcher. Epic's own misspelling; the directory really is
-/// <c>ThirParty</c></item>
-/// </list>
-///
-/// <para><b>Do not hardcode the root.</b> The launcher publishes the manifests
-/// directory in the registry and the <c>Data</c> root is its parent, so
-/// discovery starts there and only falls back to the well-known
-/// <c>%PROGRAMDATA%</c> location. Note that the registry value uses forward
-/// slashes.</para>
-///
-/// <para><b><c>LauncherInstalled.dat</c> is deliberately absent from this
-/// class.</b> It lives under <c>%PROGRAMDATA%\Epic\UnrealEngineLauncher\</c>,
-/// it tracks Unreal <i>Engine</i> installs rather than games, and it was
-/// observed reporting an empty installation list on a machine with a game
-/// installed and playable. It is a dead path, exactly like Steam's
-/// <c>sharedconfig.vdf</c>.</para>
+/// Locates the Epic Games Launcher's local data tree. Discovery via registry,
+/// falling back to <c>%PROGRAMDATA%</c>. Read-only.
 /// </summary>
 public static class EpicPaths
 {

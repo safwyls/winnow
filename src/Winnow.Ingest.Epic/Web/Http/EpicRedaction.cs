@@ -5,30 +5,9 @@ using Microsoft.Extensions.Logging;
 namespace Winnow.Ingest.Epic.Web.Http;
 
 /// <summary>
-/// Turns an Epic request URI into something safe to write to a log.
-///
-/// <para><b>What is sensitive here is different from Steam.</b> The Steam Web
-/// API puts the user's key in the query string, so
-/// <c>SteamWebRedaction</c> is about a secret. Epic puts its credentials in
-/// headers and bodies, so no Epic URI contains a secret — but every library and
-/// playtime path contains the <c>{accountId}</c> segment, which identifies a
-/// real person's Epic account, and the playtime paths additionally contain an
-/// <c>{artifactId}</c>, which names a specific game that specific person owns.
-/// Neither belongs in a log file.</para>
-///
-/// <para><b>Path segments, not just parameters.</b> That is the structural
-/// difference from the Steam redactor and the reason this is a separate type
-/// rather than a shared one: Steam's secret is a query value, Epic's identifiers
-/// are path segments. A redactor that only walked the query string would print
-/// the account id on every single request while looking like it was doing its
-/// job.</para>
-///
-/// <para><b>Allowlist, not denylist</b>, on both. A denylist is one refactor
-/// away from leaking: the day someone adds a parameter or a segment nobody
-/// updated the list for, a denylist starts printing it. So every query value is
-/// redacted except the handful named in <see cref="SafeParameters"/>, and every
-/// path segment after a recognised collection name is redacted rather than being
-/// matched against a list of things that look like ids.</para>
+/// Redacts account and artifact identifiers from Epic request URIs for logging.
+/// Uses an allowlist for safe query parameters and redacts path segments after
+/// known collection names.
 /// </summary>
 public static class EpicRedaction
 {
@@ -133,28 +112,8 @@ public static class EpicRedaction
 }
 
 /// <summary>
-/// Replaces <see cref="IHttpClientFactory"/>'s built-in request logging for this
-/// module's clients.
-///
-/// <para><b>The problem this solves.</b> A typed client built by
-/// <c>IHttpClientFactory</c> gets two logging handlers for free — one outside the
-/// handler chain and one just above the primary handler — and both write
-/// <c>"Sending HTTP request {Method} {Uri}"</c> at <c>Information</c>, with
-/// <c>{Uri}</c> being the whole request URI. For this module that URI carries the
-/// user's Epic account id on every library and playtime call, so on any host with
-/// <c>System.Net.Http.HttpClient</c> logging at Information — the default for a
-/// generic host — the free logging would write it to the log file on every sync.
-/// Careful logging inside this module would not help: the leak is upstream of
-/// anything the module writes.</para>
-///
-/// <para><b>The fix.</b> The registration calls <c>RemoveAllLoggers()</c> on both
-/// of this module's client builders and adds this one in their place. It prints
-/// only what <see cref="EpicRedaction.Describe"/> allows through, and at
-/// <c>Debug</c>/<c>Warning</c> rather than Information — a library sync is a
-/// handful of requests and does not need announcing.</para>
-///
-/// <para>It is scoped to this module's builders alone, so no other module's HTTP
-/// logging is affected.</para>
+/// Replaces the default <see cref="IHttpClientFactory"/> request logging with
+/// redacted URIs via <see cref="EpicRedaction.Describe"/>.
 /// </summary>
 public sealed class RedactingEpicHttpClientLogger : IHttpClientLogger
 {

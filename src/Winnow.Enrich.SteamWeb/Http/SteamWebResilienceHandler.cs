@@ -8,24 +8,8 @@ namespace Winnow.Enrich.SteamWeb.Http;
 
 /// <summary>
 /// Polly retry for the Steam Web API pipeline: exponential backoff with jitter
-/// for transient failures, and explicit <c>Retry-After</c> honouring for 429 —
-/// which §4.2 requires from the first commit, not after the first throttle.
-///
-/// <para>§4.2: since June 2025 Steam throttles profile endpoints aggressively,
-/// answering 429 with a <c>Retry-After</c> of 60–120 s.
-/// <see cref="SteamWebOptions.MaxRetryDelay"/> is set high enough to honour the
-/// top of that range and no higher, so a mistaken or hostile header cannot park
-/// a sync for hours.</para>
-///
-/// <para>403 is deliberately <b>not</b> retried. On this API it means the key is
-/// missing, wrong, or not entitled to the profile — none of which a delay fixes,
-/// and all of which the client soft-fails on instead.</para>
-///
-/// <para><b>Nothing here logs a URI.</b> The <c>key</c> parameter travels in the
-/// query string (<c>GetOwnedGames</c> offers no alternative), so every message
-/// in this file names the status code and nothing else. See
-/// <see cref="RedactingHttpClientLogger"/> for why the framework's own request
-/// logging is removed rather than trusted.</para>
+/// for transient failures, and explicit <c>Retry-After</c> honouring for 429.
+/// 403 is not retried; nothing here logs a URI.
 /// </summary>
 public sealed class SteamWebResilienceHandler : DelegatingHandler
 {

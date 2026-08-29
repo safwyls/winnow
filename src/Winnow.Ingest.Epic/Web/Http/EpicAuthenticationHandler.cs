@@ -5,25 +5,8 @@ using Microsoft.Extensions.Logging;
 namespace Winnow.Ingest.Epic.Web.Http;
 
 /// <summary>
-/// Attaches the bearer token to every library request and handles the one case
-/// that invalidates it: a 401.
-///
-/// <para>Outermost handler in the pipeline, so its re-auth attempt goes back
-/// through retry and rate limiting like any other request. A 401 is answered by
-/// exactly one refresh-and-retry; a second 401 is returned to the caller rather
-/// than looped on, because at that point the session itself is gone and
-/// re-refreshing forever would burn the rate limit to rediscover that on every
-/// sync.</para>
-///
-/// <para><b>Unlike the IGDB handler, this one never throws when unauthenticated.</b>
-/// <c>IgdbAuthenticationHandler</c> raises <c>IgdbNotConfiguredException</c> when
-/// no token can be had, on the grounds that a caller reaching it has skipped its
-/// <c>IsConfiguredAsync</c> check. The rule here is different on purpose: "no
-/// session" is not a programming error in this module, it is the expected steady
-/// state of a user whose refresh token lapsed while the app was closed. So a
-/// missing token becomes a synthetic 401 and the client degrades to the local
-/// readers — which is the entire point of the fallback and must not depend on
-/// nobody having forgotten a check.</para>
+/// Attaches the bearer token and handles 401 with a single refresh-and-retry.
+/// A missing token produces a synthetic 401 rather than throwing.
 /// </summary>
 public sealed class EpicAuthenticationHandler : DelegatingHandler
 {

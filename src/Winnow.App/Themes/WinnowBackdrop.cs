@@ -1,23 +1,9 @@
 namespace Winnow.App.Themes;
 
 /// <summary>
-/// Which material Windows composes behind the window — and, as the value the
-/// platform reports back, which one it actually agreed to.
-///
-/// <para><b>The two are genuinely different pictures, not two spellings of
-/// "translucent".</b> Acrylic is a blur-behind at a high radius: it samples
-/// whatever is under the window and the desktop is unmistakably present in the
-/// chrome. Mica samples the wallpaper and then tints toward its own near-black
-/// base so hard that the wallpaper contributes almost nothing — measured on this
-/// machine the composite behind our chrome back-solves to the same near-black
-/// tone whether the wallpaper under the window is orange rock or blue sky. That
-/// makes Mica a TONE rather than a VIEW, which is a legitimate thing to prefer
-/// and a dishonest thing to sell as transparency.</para>
-///
-/// <para><see cref="None"/> is not a choice anyone can pick. It is what the
-/// platform reports when it refused both, and it exists so the answer to "what
-/// did we get" is a value rather than a bool that cannot tell a refusal from a
-/// substitution.</para>
+/// Which material Windows composes behind the window. Acrylic is blur-behind;
+/// Mica is a wallpaper tint. <see cref="None"/> is a platform refusal, never
+/// a user choice.
 /// </summary>
 public enum WinnowBackdrop
 {

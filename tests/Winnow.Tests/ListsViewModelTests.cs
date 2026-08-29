@@ -37,7 +37,7 @@ public sealed class ListsViewModelTests
         Assert.True(library.Lists.ShowListsHeader);
         Assert.False(library.Lists.HasLiveLists);
         Assert.Equal(
-            "No lists yet. Select titles and choose Add to list, or filter the library and save the result as a live list.",
+            "No lists yet. Select titles to create one, or save a filter as a live list.",
             library.Lists.EmptyMessageText);
     }
 

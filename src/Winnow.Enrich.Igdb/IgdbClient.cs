@@ -10,18 +10,8 @@ using Microsoft.Extensions.Logging;
 namespace Winnow.Enrich.Igdb;
 
 /// <summary>
-/// Apicalypse client for IGDB v4.
-///
-/// <para>Everything that could go wrong slowly — auth, retry, 4 req/s — lives in
-/// the <see cref="HttpClient"/> handler pipeline, so this class only has to
-/// worry about three things: what to ask, how to batch it, and what not to ask
-/// twice.</para>
-///
-/// <para><b>Editions are out of scope here.</b> §4.4 identifies
-/// <c>game_versions</c> as the endpoint that models Skyrim vs. Special Edition
-/// vs. Anniversary, and it is the right abstraction for the Release layer — but
-/// that is a later milestone. Nothing in this class should start inferring
-/// editions from names in the meantime.</para>
+/// Apicalypse client for IGDB v4. Auth, retry and rate limiting live in the
+/// <see cref="HttpClient"/> handler pipeline.
 /// </summary>
 public sealed class IgdbClient : IIgdbClient
 {
@@ -61,16 +51,8 @@ public sealed class IgdbClient : IIgdbClient
     }
 
     /// <summary>
-    /// Cache key for a Steam appid lookup.
-    ///
-    /// <para><b>Kept in its original, un-namespaced shape on purpose.</b> The
-    /// obvious tidy-up when the resolver was generalised past Steam was to move
-    /// every source onto <see cref="ExternalCacheKey"/> — and it would have
-    /// invalidated all 865 cached Steam rows on the author's machine, spending
-    /// the 4 req/s budget to re-learn what was already on disk and leaving the
-    /// library unnamed for the duration on any machine that had since lost its
-    /// credentials. Source 1 keeps this key forever; every other source gets the
-    /// namespaced one.</para>
+    /// Cache key for a Steam appid lookup. Kept in its original un-namespaced
+    /// shape to preserve existing cached rows.
     /// </summary>
     public static string SteamAppCacheKey(string appId) => "steam-app:" + appId;
 

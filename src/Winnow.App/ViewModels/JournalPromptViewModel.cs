@@ -5,32 +5,10 @@ using Winnow.App.Services;
 namespace Winnow.App.ViewModels;
 
 /// <summary>
-/// §5.2's journal prompt: "a small unintrusive window offering a free-text note
-/// and optional rating", shown after a game exits — <b>only</b> when the user has
-/// turned it on (§9 pitfall 7).
-///
-/// <para><b>It is not a window, and that is the most important decision here.</b>
-/// §5.2 says window; a window is wrong, and the pitfall list explains why in its
-/// own words — "an unexpected popup after every game exit is an uninstall
-/// trigger". A window appears, takes focus, and interrupts. The moment a game
-/// exits is the moment the user is alt-tabbing to a browser, standing up, or
-/// starting something else; a popup arriving then is not a question, it is an
-/// obstruction. So this is a card inside Winnow's own window, in the corner,
-/// which the user meets only when they come back to Winnow of their own accord.
-/// If they never come back, they never see it, and nothing was lost.</para>
-///
-/// <para><b>Dismissible without a decision.</b> The close control is not
-/// "Skip" or "No thanks" — those are answers, and demanding an answer is the
-/// interruption. It is a ×, Escape works, and an untouched card removes itself
-/// after <see cref="Patience"/> without being told to. Nothing anywhere waits on
-/// it and nothing is recorded by ignoring it: the session row is already written
-/// and complete, and a note is an optional annotation on it.</para>
-///
-/// <para><b>One at a time, and a typed note is never taken away.</b> A second
-/// session ending while a card is up replaces it only if nothing has been typed
-/// or rated. If the user is mid-sentence, the new session is dropped rather than
-/// stacking a queue of interruptions behind them — the design's own preference
-/// for "one strip of chrome, not two", applied to time instead of space.</para>
+/// Post-session journal prompt (§5.2): an in-window card offering a free-text note
+/// and optional rating after a game exits. Opt-in only (§9 pitfall 7). Self-dismisses
+/// after <see cref="Patience"/> if untouched; a second session replaces the card only
+/// when nothing has been typed or rated.
 /// </summary>
 public partial class JournalPromptViewModel : ObservableObject, IDisposable
 {

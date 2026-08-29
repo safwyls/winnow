@@ -6,22 +6,8 @@ namespace Winnow.Monitor;
 public sealed record GameExecutable(string Path, long OwnershipId);
 
 /// <summary>
-/// The executable→release map of §5.2, in the shape the two tiers actually need
-/// it: a <b>set of names</b> for Tier 1 to filter on, and a <b>set of install
-/// roots</b> for Tier 2 to attribute a resolved path to.
-///
-/// <para><b>Why the map is by install directory and not by exact executable
-/// path.</b> An exact-path map is only as good as the moment it was built. Games
-/// gain executables when they are patched, ship platform-specific launchers that
-/// appear on first run, and Unreal titles keep their real binary several levels
-/// down beside a shim. A prefix match against the install root answers correctly
-/// for every executable a game will ever have, including the ones that did not
-/// exist when the scan ran; the scan's only remaining job is to supply the
-/// <i>names</i> Tier 1 filters on, and a stale name set costs a missed session
-/// rather than a wrong one.</para>
-///
-/// <para>Immutable, and rebuilt wholesale rather than mutated — the watcher can
-/// swap the reference between polls without a lock.</para>
+/// The executable-to-release map: a set of process names for Tier 1 filtering,
+/// and a set of install roots for Tier 2 attribution. Immutable; rebuilt wholesale.
 /// </summary>
 public sealed class GameExecutableIndex
 {

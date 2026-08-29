@@ -4,39 +4,21 @@ using CommunityToolkit.Mvvm.Input;
 namespace Winnow.App.ViewModels.Filters;
 
 /// <summary>
-/// One labelled block of the filter panel — GENRE, STORE TAG, GAME MODE and so
-/// on. Options inside a group are an OR; groups are AND'd together
-/// (<see cref="Winnow.Core.Queries.LibraryFilter"/>).
-///
-/// <para><b>Two shapes, chosen by how long the tail is.</b> A short dimension —
-/// game mode, on disk, controller — lists every option in alphabetical order,
-/// because a fixed position is what makes a block scannable on the second visit.
-/// A long one — store tag at 378 values, features at 42, genre at 23 — leads
-/// with its commonest options and shows the head of the list, with a field to
-/// reach the rest. The reference storefront makes STORE TAGS a free-text field
-/// for the same reason and loses the counts doing it; this keeps both.</para>
+/// One labelled group of checkable options in the filter panel (e.g. GENRE, GAME MODE).
+/// Options within a group are OR'd; groups are AND'd together.
+/// Short groups list all options alphabetically; long groups show a truncated head sorted by count.
 /// </summary>
 public partial class FilterGroupViewModel : ObservableObject
 {
-    /// <summary>
-    /// How many rows a long group shows before "Show all". Eight is two more
-    /// than the tallest short group, so a collapsed long group never reads as
-    /// the shortest thing on the panel.
-    /// </summary>
+    /// <summary>Rows shown before "Show all" in a long group.</summary>
     private const int HeadCount = 8;
 
     private readonly Action _onChanged;
     private readonly List<FilterOptionViewModel> _all = [];
 
     /// <summary>
-    /// Whether <see cref="_all"/> has been put into its display order yet.
-    ///
-    /// <para>A count-ordered group is ordered ONCE, on the first counts it is
-    /// given, and then holds that order for the rest of the session. Re-sorting
-    /// on every recount was the obvious reading of "commonest first" and it is
-    /// wrong: every tick anywhere on the panel moves every count, so the rows
-    /// would rearrange themselves under the pointer between one click and the
-    /// next. A list you cannot click twice in the same place is not a list.</para>
+    /// Whether <see cref="_all"/> has been sorted. Count-ordered groups sort once
+    /// on first real counts, then hold that order to avoid rows shifting on every recount.
     /// </summary>
     private bool _ordered;
 
@@ -89,10 +71,7 @@ public partial class FilterGroupViewModel : ObservableObject
 
     public bool CanExpand => HiddenCount > 0 || IsExpanded;
 
-    /// <summary>
-    /// "Show all 214" — the number is the point, so it is in the button rather
-    /// than left for the user to guess at.
-    /// </summary>
+    /// <summary>Toggle text: "Show all N" or "Show fewer".</summary>
     public string ShowAllText
         => IsExpanded ? "Show fewer" : $"Show all {_all.Count:N0}";
 
@@ -100,11 +79,7 @@ public partial class FilterGroupViewModel : ObservableObject
 
     public bool HasSelection => _all.Exists(o => o.IsChecked);
 
-    /// <summary>
-    /// Rebuilds the option rows. Called once per library load, never per
-    /// keystroke: the rows carry the checked state, and replacing them on every
-    /// recount would drop the user's selection under their cursor.
-    /// </summary>
+    /// <summary>Rebuilds option rows from scratch, preserving checked state by key.</summary>
     public void SetOptions(IEnumerable<(string Key, string Label)> options)
     {
         var previously = _all.Where(o => o.IsChecked).Select(o => o.Key).ToHashSet(StringComparer.Ordinal);
@@ -123,11 +98,7 @@ public partial class FilterGroupViewModel : ObservableObject
         Reflow();
     }
 
-    /// <summary>
-    /// Writes fresh residual counts. The ORDER does not move (see
-    /// <see cref="_ordered"/>) — only the numbers do, which is the whole point:
-    /// the user watches the column change while the rows stay put.
-    /// </summary>
+    /// <summary>Updates residual counts without reordering rows.</summary>
     public void SetCounts(IReadOnlyDictionary<string, int> counts)
     {
         foreach (var option in _all)
@@ -176,9 +147,6 @@ public partial class FilterGroupViewModel : ObservableObject
     {
         _ = value;
 
-        // Typing in a find field opens the group: the match the user is after is
-        // very often past the eighth row, and a field that filters a list it is
-        // not showing is a field that looks broken.
         Reflow();
     }
 
@@ -192,8 +160,7 @@ public partial class FilterGroupViewModel : ObservableObject
                     : string.Compare(a.Label, b.Label, StringComparison.CurrentCultureIgnoreCase)
                 : (a, b) => string.Compare(a.Label, b.Label, StringComparison.CurrentCultureIgnoreCase));
 
-            // Alphabetical groups are settled from the start; a count-ordered one
-            // is only settled once it has real counts to settle on.
+            // Count-ordered groups wait for real counts before locking order.
             _ordered = !SortByCount || _all.Exists(o => o.Count > 0);
         }
 
@@ -208,8 +175,7 @@ public partial class FilterGroupViewModel : ObservableObject
 
         var matches = ordered.ToList();
 
-        // A ticked option is never hidden behind "Show all". Losing sight of a
-        // rule that is shaping the grid is how a filter panel becomes a haunting.
+        // Checked options are always shown, even when collapsed.
         var shown = IsExpanded || searching
             ? matches
             : matches.Where((o, i) => i < HeadCount || o.IsChecked).ToList();

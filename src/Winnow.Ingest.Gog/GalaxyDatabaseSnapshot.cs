@@ -6,42 +6,8 @@ namespace Winnow.Ingest.Gog;
 
 /// <summary>
 /// A private, disposable copy of Galaxy's client database, opened read-only.
-/// <b>Nothing else in this assembly is allowed to open
-/// <c>galaxy-2.0.db</c>.</b>
-///
-/// <para><b>Why the copy is mandatory, not tidy</b>
-/// (docs/spikes/epic-gog-local-files.md section 11). The database is in WAL mode
-/// and Galaxy holds it open. It was measured directly that <b>opening a WAL
-/// database with <c>mode=ro</c> CREATES <c>-wal</c> and <c>-shm</c> files next to
-/// it</b>: a directory containing only <c>galaxy-2.0.db</c> contained all three
-/// after a single read-only <c>SELECT</c>. <c>mode=ro</c> restricts writes to the
-/// <i>database</i>, not to the <i>directory</i>. Pointing it at
-/// <c>%PROGRAMDATA%\GOG.com\Galaxy\storage</c> therefore writes into a
-/// store-owned directory, which §4.1 forbids absolutely. Copy first, always.</para>
-///
-/// <para><b>Why all three files are copied.</b> Three strategies were measured
-/// on the live 11 MB database with a 10 MB write-ahead log:</para>
-/// <list type="table">
-/// <item><term>copy <c>.db</c> + <c>-wal</c> + <c>-shm</c>, open the copy <c>?mode=ro</c></term>
-///   <description>sees the latest data — the only correct option</description></item>
-/// <item><term>copy <c>.db</c> only</term>
-///   <description><b>silently stale</b></description></item>
-/// <item><term>copy <c>.db</c> + <c>-wal</c>, open <c>?mode=ro&amp;immutable=1</c></term>
-///   <description><b>silently stale</b> — <c>immutable=1</c> produced byte-identical
-///   results to discarding the write-ahead log entirely. It is the intuitive
-///   choice for "don't disturb it" and it is the wrong one: it returns data from
-///   an arbitrary past checkpoint with no error and no warning</description></item>
-/// </list>
-///
-/// <para>The main database is copied <i>first</i> deliberately: the WAL only grows
-/// within a checkpoint cycle, so a later-copied WAL is a superset of what the
-/// earlier-copied main file needs. A missing <c>-wal</c>/<c>-shm</c> is not an
-/// error (SQLite recreates them beside the copy); missing WAL <i>data</i> is a
-/// silent correctness bug, so they are copied whenever they exist.</para>
-///
-/// <para><see cref="Dispose"/> deletes the copy. Connection pooling is switched
-/// off in the connection string so the handle really closes and the file really
-/// goes.</para>
+/// Copies <c>.db</c> + <c>-wal</c> + <c>-shm</c> to avoid writing into the
+/// store-owned directory. <see cref="Dispose"/> deletes the copy.
 /// </summary>
 public sealed class GalaxyDatabaseSnapshot : IDisposable
 {

@@ -5,40 +5,11 @@ using Winnow.Core.Matching;
 namespace Winnow.Resolve.Matching;
 
 /// <summary>
-/// §5.3 step 2 — soft matching. Pure, deterministic, side-effect-free: no IO,
-/// no clock, no randomness, no state. Given two <see cref="MatchSubject"/>s it
-/// returns a confidence in [0,1] and the itemised breakdown behind it.
-///
-/// <para><b>It cannot merge anything.</b> The type has no repository, no
-/// connection and no write path — that is deliberate. Merging on fuzzy title
-/// similarity is §5.3's one non-negotiable and §9's second-most-likely pitfall:
-/// a fuzzy matcher will confidently merge Prey (2006) with Prey (2017), and one
-/// wrong merge that silently absorbs a user's playtime destroys trust in every
-/// number the app displays. Scoring and queueing are separate objects so that
-/// the scoring object is structurally incapable of doing the damage.</para>
-///
-/// <para><b>Vetoes before scoring.</b> Three differences are treated as proof
-/// rather than evidence, and short-circuit to score 0:</para>
-/// <list type="bullet">
-///   <item><b>Sequel ordinal.</b> Portal / Portal 2 are 86% similar as strings;
-///     Half-Life / Half-Life 2 are 90%. No weighting of a string-distance metric
-///     can separate those from a genuine near-match, because the difference is
-///     one character carrying the entire meaning. So the ordinal is extracted
-///     during normalisation and compared exactly.</item>
-///   <item><b>Rebuild edition.</b> Skyrim, Skyrim Special Edition and Skyrim
-///     Anniversary Edition are three <c>Release</c>s of one <c>Work</c>, with
-///     different achievement sets and mod ecosystems. Merging them is a bug
-///     (§9 pitfall 5), so they never enter the queue at all — asking the user
-///     about every base/remaster pair in a 600-game library is exactly the
-///     noise that gets a queue abandoned.</item>
-///   <item><b>Title below the floor.</b> Title agreement is a necessary
-///     condition, not merely a weighted one.</item>
-/// </list>
-///
-/// <para><b>Symmetry.</b> Every signal is computed from a symmetric function
-/// (edit distance, |Δyear|, set equality, Hamming distance), and signals are
-/// summed in a fixed declaration order rather than argument order, so
-/// <c>Score(a, b)</c> and <c>Score(b, a)</c> are bit-identical doubles.</para>
+/// Pure, stateless soft matcher (§5.3 step 2). Given two <see cref="MatchSubject"/>s,
+/// returns a confidence score in [0,1] with an itemised signal breakdown.
+/// Cannot merge anything -- holds no repository or write path. Vetoes on
+/// sequel ordinal mismatch, rebuild edition mismatch, or title below floor.
+/// Symmetric: <c>Score(a, b)</c> equals <c>Score(b, a)</c>.
 /// </summary>
 public sealed class SoftMatcher
 {
@@ -52,11 +23,7 @@ public sealed class SoftMatcher
 
     public SoftMatchThresholds Thresholds => _thresholds;
 
-    /// <summary>
-    /// Scores one candidate pair. Never merges, never writes, never throws on
-    /// missing metadata — an absent year/publisher/cover is a signal that does
-    /// not fire, not an error.
-    /// </summary>
+    /// <summary>Scores one candidate pair. Missing metadata is a signal that does not fire, not an error.</summary>
     public SoftMatchScore Score(MatchSubject left, MatchSubject right)
     {
         ArgumentNullException.ThrowIfNull(left);
@@ -84,9 +51,7 @@ public sealed class SoftMatcher
             ? BitOperations.PopCount(left.CoverPerceptualHash.Value ^ right.CoverPerceptualHash.Value)
             : null;
 
-        // Signals are built even for a vetoed pair: the merge-confirm UI and the
-        // logs both need to be able to say WHY, and "Prey vs Prey, Δ11 years" is
-        // the explanation, not the score.
+        // Signals are built even for vetoed pairs, for diagnostics.
         var signals = new List<SoftMatchSignal>(5)
         {
             TitleSignal(titleSimilarity, leftTitle, rightTitle),
@@ -138,14 +103,9 @@ public sealed class SoftMatcher
     }
 
     /// <summary>
-    /// Scores <paramref name="subject"/> against every possibility and returns
-    /// them best-first. Ordering is total and deterministic — score descending,
-    /// then release id ascending — so a re-scan produces the same review order
-    /// and the same tie-breaks, run after run.
-    ///
-    /// <para>Returns every possibility including discarded ones; filtering is
-    /// <see cref="SoftMatchScore.ShouldQueue"/>'s job at the call site, and a
-    /// caller debugging "why wasn't this matched?" needs the zeroes.</para>
+    /// Scores <paramref name="subject"/> against every possibility, returned
+    /// best-first (score descending, release id ascending). Includes discarded
+    /// scores for diagnostics.
     /// </summary>
     public IReadOnlyList<RankedMatch> Rank(MatchSubject subject, IEnumerable<MatchSubject> possibilities)
     {
@@ -290,8 +250,7 @@ public sealed class SoftMatcher
         return new SoftMatchSignal(
             SoftMatchSignalNames.CoverHash,
             Fired: true,
-            // 64 bits; distance 32 is the expected value for unrelated images,
-            // so agreement is reported over the useful 0–32 half of the range.
+            // Agreement over the useful 0-32 half of the 64-bit range.
             Agreement: Math.Clamp(1.0 - (d / 32.0), 0.0, 1.0),
             Contribution: contribution,
             Detail: $"Hamming distance {d}/64");
@@ -325,14 +284,7 @@ public sealed class SoftMatcher
 
     // ── String similarity ────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Half normalised edit distance over the whole core, half Dice coefficient
-    /// over the token multiset. Neither alone is enough: edit distance alone
-    /// scores word-reordered titles far too low, and token overlap alone scores
-    /// <c>Doom</c> against <c>Doom Eternal</c> at 1.0 because containment is not
-    /// similarity. Averaging the two costs recall on heavily abbreviated store
-    /// titles and buys precision, which is the trade §5.3 demands.
-    /// </summary>
+    /// <summary>Average of normalised edit distance and token Dice coefficient.</summary>
     internal static double Similarity(NormalizedTitle left, NormalizedTitle right)
     {
         if (left.IsEmpty || right.IsEmpty)

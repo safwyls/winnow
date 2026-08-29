@@ -25,20 +25,8 @@ public interface IUriDispatcher
 }
 
 /// <summary>
-/// The real one: Avalonia's <c>TopLevel.Launcher</c>, which is <c>ShellExecute</c>
-/// on Windows and the desktop portal elsewhere. The app never shells out to
-/// <c>steam.exe</c>, the Epic launcher or <c>GalaxyClient.exe</c> by name — the
-/// protocol handler the store registered for itself is the supported entry
-/// point, and it is also the only one that works when the client is installed
-/// somewhere unusual.
-///
-/// <para><b>Nothing here throws.</b> Launching a protocol URI fails in ways that
-/// are entirely ordinary — the store client is not installed, the user answered
-/// "no" to the shell's own "open this application?" prompt, the handler
-/// registration is broken — and every one of them surfaces as a
-/// <c>Win32Exception</c> out of ShellExecute. A dialog for any of those is the
-/// friction this milestone exists to avoid, so they come back as <c>false</c>
-/// and the caller decides what, if anything, is worth saying.</para>
+/// The real dispatcher: hands URIs to <c>TopLevel.Launcher</c> (ShellExecute on
+/// Windows). Never throws; failures return <c>false</c>.
 /// </summary>
 public sealed class TopLevelUriDispatcher : IUriDispatcher
 {

@@ -21,21 +21,6 @@ namespace Winnow.Tests;
 
 /// <summary>
 /// The pass that turns <c>App 1203620</c> into <c>Portal 2</c>.
-///
-/// <para>Three properties are worth pinning, and all three are about what
-/// happens when something goes wrong rather than when everything works.
-/// <b>Isolation:</b> IGDB is the backbone (§4.4) but it needs credentials this
-/// machine does not have and a Twitch endpoint that can be down, and neither
-/// may take the credential-free Steam fallback down with it. <b>Idempotency:</b>
-/// this runs on every launch and must cost one indexed query once the backlog
-/// is drained. <b>One-way promotion:</b> a real title is never overwritten by a
-/// placeholder — the failure that would rename a user's library back to appids.
-/// </para>
-///
-/// <para>Both clients are fakes. Nothing here touches the network, and no IGDB
-/// credentials are needed or used: the fakes stand in for exactly the
-/// behaviours a live run would exhibit, including the ones that only occur when
-/// IGDB is unreachable.</para>
 /// </summary>
 public sealed class EnrichmentSyncServiceTests
 {
@@ -1055,25 +1040,8 @@ public sealed class EnrichmentSyncServiceTests
     // ── Starvation: what a run that does not finish leaves behind ────────────
 
     /// <summary>
-    /// <b>The bug this file exists to keep out.</b> Enrichment used to take its
-    /// targets in <c>ORDER BY w.id</c>, and work ids are insertion order — so on
-    /// a library ingested one store per milestone, the id ranges partition by
-    /// store and the store added last sits behind every row of every store added
-    /// before it. Nothing caps a run but the window closing, and the run is
-    /// rate-limited, so every short run walked the same prefix and stopped in
-    /// the same place. Measured on the author's library: <b>GOG 0 of 14
-    /// enriched, Epic 18 of 99</b>, with the 18 sitting at the very start of
-    /// Epic's id range and the GOG lookup never having executed once.
-    ///
-    /// <para><b>This test is deliberately not an assertion about the ORDER BY
-    /// clause.</b> A test that pins the SQL text passes for a query that still
-    /// starves somebody — it only pins today's spelling. This runs a real pass
-    /// against a real database, cuts it off after the first slice the way a
-    /// closing window does, and asks the only question the user was actually
-    /// asking: did the store with the highest ids get anything at all?</para>
-    ///
-    /// <para>GOG holds the highest work ids here precisely because that is the
-    /// arrangement the old ordering punished.</para>
+    /// A run cut short must still reach every store, not just the one with the
+    /// lowest work ids.
     /// </summary>
     [Fact]
     public async Task A_run_cut_short_still_reaches_the_provider_holding_the_highest_ids()

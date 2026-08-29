@@ -14,25 +14,7 @@ using Xunit;
 namespace Winnow.Tests;
 
 /// <summary>
-/// The pass that turns metadata Winnow already fetched into rows a filter can
-/// query.
-///
-/// <para><b>Every test here runs against real clients with no working
-/// network.</b> Both hosts are built by the production DI extensions and given a
-/// transport that fails every request the way a disconnected machine does — so
-/// what the pass reads is <c>metadata_cache</c>, seeded with the exact payload
-/// shapes the two clients write: the projected <c>IgdbGame</c> record, and the
-/// verbatim store item body captured in tests/fixtures/steam-store/.</para>
-///
-/// <para>The transport fails rather than throws on purpose. A test double that
-/// threw something the client does not catch would pass for the wrong reason —
-/// it would prove the client crashes, not that the pass stayed off the wire. So
-/// the requests are counted instead, and
-/// <see cref="SyncHost.AssertNoRequestsMade"/> is the actual assertion.</para>
-///
-/// <para>That is the claim migration 0005 made and 0007 collects on — the data
-/// was kept so a later feature could build its table "without spending a single
-/// request".</para>
+/// Facet sync from cached metadata, with no network.
 /// </summary>
 public sealed class FacetSyncServiceTests : IDisposable
 {

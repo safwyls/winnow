@@ -1,28 +1,9 @@
 namespace Winnow.App.Themes;
 
 /// <summary>
-/// The scalars a theme's ramps are built out of — the numbers that answer
-/// "how far apart", where the seed colours answer "which colour".
-///
-/// <para><b>Why these are numbers in the format and the accent ramps are
-/// not.</b> Every value here was measured across the four built-ins and came
-/// back SPREAD: the edge runs 1.38:1 to 2.46:1, the well sits at 47% to 63% of
-/// the ground, the chrome's translucent ink at 41% to 85% of its opaque one.
-/// §14.1.1 says why — value structure and edge weight are two of the four axes
-/// that separate a room, so a format that fixed them would only be able to
-/// express one theme in four different hues, which is exactly the mistake the
-/// first set of themes made.</para>
-///
-/// <para><b>What is NOT here was measured too, and came back flat.</b> The
-/// hover and press steps on Volt and Danger land within a couple of percent of
-/// each other in every built-in — Danger's press is 0.798, 0.793, 0.802, 0.799
-/// of its value across the four — so they are engine constants in
-/// <see cref="ThemeDerivation"/> rather than schema surface. An author who
-/// wants a different one writes the colour into <c>overrides</c>, which is one
-/// field instead of eight.</para>
-///
-/// <para>Every default here is the mean of the four built-ins, so a theme that
-/// declares nothing but its eight seeds gets the house proportions.</para>
+/// The scalars a theme's ramps are built from -- the numbers that answer
+/// "how far apart", where the seed colours answer "which colour". Defaults
+/// are the mean of the four built-ins.
 /// </summary>
 public sealed record ThemeShape
 {
@@ -38,17 +19,8 @@ public sealed record ThemeShape
     /// in the floating layout — every gap between panes.</summary>
     public double WellDepth { get; init; } = 0.55;
 
-    /// <summary>
-    /// <c>Line</c>'s contrast ratio against <c>Surface</c>, stated as the ratio
-    /// rather than as a colour.
-    ///
-    /// <para>This is the single most expressive number in the format. §14.1.1's
-    /// value-structure axis is almost entirely this: Nightshift is 2.46 and
-    /// reads as one sheet of glass with the layout scribed on it, Tungsten is
-    /// 1.38 and reads as felt where nothing has a hard boundary. Writing it as
-    /// a ratio rather than a hex means an author changing the neutral does not
-    /// have to re-pick the edge to keep the same room.</para>
-    /// </summary>
+    /// <summary><c>Line</c>'s contrast ratio against <c>Surface</c>. The most
+    /// expressive number in the format: Nightshift 2.46, Tungsten 1.38.</summary>
     public double Edge { get; init; } = 1.60;
 
     /// <summary>The metadata ink's HSV value. §8 puts a floor under what this
@@ -60,18 +32,8 @@ public sealed record ThemeShape
     /// chroma scaled down rather than a chroma of its own.</summary>
     public double DimChroma { get; init; } = 0.41;
 
-    /// <summary>
-    /// How dark the ink that sits ON a Volt fill goes, as its contrast ratio
-    /// against Volt — the Play button's label, the "Same game" button's.
-    ///
-    /// <para><b>A ratio because that is the thing being decided.</b> What this
-    /// ink has to be is readable on the fill; §8 asks 7:1 of the pair. It is a
-    /// field rather than a constant because Volt's own brightness varies hugely
-    /// across the set — Box art's is a near-white at 0.96 value and Winnow's a
-    /// mint at 0.91 — and a fixed ratio put Box art's ink 45 units off. Stated
-    /// as a ratio, an author who changes Volt does not have to re-pick the ink
-    /// that goes on it.</para>
-    /// </summary>
+    /// <summary>VoltInk's contrast ratio against Volt. A ratio so changing
+    /// Volt does not require re-picking its ink.</summary>
     public double VoltInkContrast { get; init; } = 9.5;
 
     /// <summary>The quietest ink that is still ink — watermarks, disabled
@@ -83,16 +45,9 @@ public sealed record ThemeShape
     /// room it takes more of the room's colour, not less.</summary>
     public double FaintChroma { get; init; } = 0.65;
 
-    /// <summary>
-    /// <c>TranslucentSurface</c> as a fraction of <c>Surface</c>'s value — how
-    /// much darker the chrome's ink goes at the far end of the slider.
-    ///
-    /// <para>§14.3: an ink chosen for an opaque ground cannot have alpha
-    /// subtracted from it, so the chrome takes a darker ink as it opens up and
-    /// the metadata ink brightens to pay for what is left. These two numbers
-    /// and the two lifts below are that compensation, and they are the reason
-    /// a user theme can be translucent at all rather than being forced solid.</para>
-    /// </summary>
+    /// <summary><c>TranslucentSurface</c> as a fraction of <c>Surface</c>'s
+    /// value. Part of the section 14.3 ink compensation that makes translucency
+    /// work.</summary>
     public double ChromeInk { get; init; } = 0.48;
 
     /// <summary>The same for the art field's ink — <c>TranslucentChromeGround</c>,

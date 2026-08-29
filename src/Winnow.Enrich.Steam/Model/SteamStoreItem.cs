@@ -1,16 +1,8 @@
 namespace Winnow.Enrich.Steam.Model;
 
 /// <summary>
-/// One user-defined store tag on an app, as ranked by Steam.
-///
-/// <para><b>Rank, not weight, is the stored signal.</b> The spike measured
-/// <c>weight</c> against the store page's raw vote counts for the same app and
-/// found a constant per-app ratio (7.032–7.037 across all 20 tags) with
-/// byte-identical rank order: it is a per-app normalisation, comparable
-/// <i>within</i> an app and meaningless <i>across</i> apps. A number that looks
-/// cross-comparable but is not is worse than no number, so it does not appear
-/// here. The raw weights survive verbatim in the cached response body
-/// (<c>metadata_cache</c>) if a future feature ever needs them.</para>
+/// One user-defined store tag on an app, as ranked by Steam. Only rank is
+/// stored; weight is a per-app normalisation unsuitable for cross-app comparison.
 /// </summary>
 /// <param name="TagId">Steam's tag id. Resolve to a name via <see cref="SteamTagVocabulary"/>.</param>
 /// <param name="Rank">1-based position in Steam's ordering; 1 is the app's top tag.</param>
@@ -35,18 +27,8 @@ public sealed record SteamStoreItem(string AppId, string Name, IReadOnlyList<Ste
     public static readonly IReadOnlyList<SteamStoreTag> NoTags = [];
 
     /// <summary>
-    /// Valve's own storefront classification of this app: how many people can
-    /// play it, which Steam features it uses, what controllers it supports.
-    ///
-    /// <para><b>Already in the response, and already in the cache.</b> Verified
-    /// live on 2026-08-25 against the exact <c>data_request</c> the spike
-    /// established and this client has always sent: <c>categories</c> comes back
-    /// as a sibling of <c>tags</c> with no extra flag, no extra request and no
-    /// key. Every app body <c>metadata_cache</c> already holds contains it —
-    /// re-reading them is a local parse, not a fetch.</para>
-    ///
-    /// <para>An init property rather than a positional parameter so that a
-    /// cached body written before anything read this field still projects.</para>
+    /// Valve's storefront classification (player modes, features, controller
+    /// support). Init property so pre-existing cached bodies still project.
     /// </summary>
     public SteamStoreCategories Categories { get; init; } = SteamStoreCategories.None;
 }
@@ -91,29 +73,9 @@ public sealed record SteamStoreCategories(
 }
 
 /// <summary>
-/// Steam's category vocabulary from <c>IStoreBrowseService/GetStoreCategories</c>
-/// — the only way to turn a category id into a display name, and the exact
-/// counterpart of <see cref="SteamTagVocabulary"/>.
-///
-/// <para><b>Verified live on 2026-08-25</b>, resolving the open question the tag
-/// spike left: keyless, one request, 16 KB, 72 categories, and it needs no
-/// <c>data_request</c> flag because the ids were already arriving. This is the
-/// whole "Features" and "Hardware support" vocabulary of the reference filter
-/// panel for one HTTP GET a month.</para>
-///
-/// <para><b>Duplicate display names are Valve's, not a bug here.</b> Ids 55 and
-/// 56 are both "DualShock Controller Support" (wired and Bluetooth), 57 and 58
-/// are both "DualSense Controller Support", and 30 and 51 are both "Steam
-/// Workshop" (global and Steam China). Anything keying on the NAME collapses
-/// them, which is the right answer for a checkbox list — migration 0007 does
-/// exactly that and says so.</para>
-///
-/// <para><b>Some names are unresolved localization tokens.</b> Three categories
-/// answer with <c>display_name</c> values like
-/// <c>#category_playable_at_your_own_pace</c>; the endpoint simply failed to
-/// localize them. <see cref="NameFor"/> falls back to <c>internal_name</c>, which
-/// for those three is a perfectly good English phrase ("Playable at Your Own
-/// Pace").</para>
+/// Steam's category vocabulary from <c>IStoreBrowseService/GetStoreCategories</c>.
+/// The only way to turn a category id into a display name. Duplicate display
+/// names and unresolved localization tokens are upstream; see migration 0007.
 /// </summary>
 /// <param name="Names">categoryid → display name.</param>
 public sealed record SteamStoreCategoryVocabulary(IReadOnlyDictionary<int, string> Names)

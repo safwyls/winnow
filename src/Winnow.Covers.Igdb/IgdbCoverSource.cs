@@ -75,18 +75,8 @@ public sealed class IgdbCoverSource : ICoverSource
     public int LookupBatchCount => _lookup.BatchCount;
 
     /// <summary>
-    /// Two key shapes, reached two different ways.
-    ///
-    /// <para><b>A Steam appid</b> is resolved through the <c>external_games</c>
-    /// hard join to find the cover, which needs credentials and a request.</para>
-    ///
-    /// <para><b>An IGDB image id</b> is the cover — no lookup, no credentials,
-    /// no API call, just a CDN fetch. This is the shape a release with no Steam
-    /// appid arrives as, built from the <c>cover_url</c> the enrichment pass
-    /// already stored, and it is what puts art on Epic and GOG tiles. It also
-    /// means those tiles keep working on a machine whose IGDB credentials have
-    /// been revoked, because the id was stored the first time and images.igdb.com
-    /// is unauthenticated.</para>
+    /// Accepts two key shapes: a Steam appid (resolved via <c>external_games</c>)
+    /// or an IGDB image id (direct CDN fetch, no credentials needed).
     /// </summary>
     public bool CanHandle(CoverKey key)
         => (key.Provider == CoverProviders.Steam

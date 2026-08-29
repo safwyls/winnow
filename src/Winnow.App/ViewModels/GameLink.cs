@@ -1,41 +1,10 @@
 namespace Winnow.App.ViewModels;
 
 /// <summary>
-/// One outbound affordance on the detail view, and the only way the app is
-/// allowed to build one.
-///
-/// <para><b>A link exists only if its URI passed <see cref="Create"/>.</b>
-/// Nothing in the view constructs a URI, concatenates a URL into a binding, or
-/// hands raw text to the shell — the view binds a label and a validated string,
-/// and a target that failed validation is a null this object, which renders as
-/// no button at all rather than as a dead or dangerous one. That is the whole
-/// reason this is a factory over a private constructor.</para>
-///
-/// <para>Five schemes are allowed and no others:</para>
-/// <list type="bullet">
-///   <item><c>https</c> and <c>http</c> — store pages, patch notes, anything the
-///     data supplied.</item>
-///   <item><c>steam</c> — Valve's own protocol handler, which is what makes
-///     <c>Play</c> a real launch rather than a button that opens a web page
-///     about launching. <c>steam://run/&lt;appid&gt;</c> starts the game;
-///     <c>steam://install/&lt;appid&gt;</c> starts the download.</item>
-///   <item><c>com.epicgames.launcher</c> — the Epic Games Launcher's handler.</item>
-///   <item><c>goggalaxy</c> — GOG Galaxy's handler.</item>
-/// </list>
-///
-/// <para><b>The two launcher schemes were added by measurement, not by
-/// reading.</b> Both are registered on the author's machine with a
-/// <c>URL Protocol</c> value under <c>HKCR</c>, and the exact path grammar each
-/// one accepts is recorded in <see cref="StoreActions"/> beside the evidence for
-/// it. §10 of the design doc is explicit that a widely-circulated answer is not
-/// an answer here; a URI this class admits is one somebody watched work.</para>
-///
-/// <para>Everything else is refused, including the ones that look harmless:
-/// <c>file:</c> (the shell would open arbitrary local paths from stored data),
-/// <c>javascript:</c> and <c>data:</c> (script and payload delivery), and any
-/// relative or malformed string. update_events.url is captured from a network
-/// response (§4.5), so it is untrusted input, and "we only ever write Steam
-/// URLs there" is a property of today's poller rather than of this view.</para>
+/// A validated outbound link for the detail view (play, install, store page, patch notes).
+/// Built only through <see cref="Create"/>, which rejects anything not on the allowed
+/// scheme list: https, http, steam, <see cref="EpicScheme"/>, <see cref="GogScheme"/>.
+/// A failed validation returns null, rendering no button.
 /// </summary>
 public sealed record GameLink
 {

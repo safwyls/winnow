@@ -2,46 +2,16 @@ using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using Winnow.App.Services;
 using Winnow.Core.Domain;
 using Winnow.Covers;
 
 namespace Winnow.App.ViewModels;
 
 /// <summary>
-/// Everything the tile deliberately does not say.
-///
-/// <para>design-system.md §5.3 caps the hover overlay at four facts — "the tile
-/// is a decision surface, not a detail view" — which only works if the detail
-/// view exists somewhere. This is that somewhere: a modal over the library,
-/// opened by <c>Enter</c> or a double click and dismissed by <c>Escape</c> or a
-/// click on the scrim (§8: keyboard reachable, Escape closes).</para>
-///
-/// <para><b>The panel answers four questions, in the order a person asks
-/// them.</b> What is this (art, title, year, publisher, summary). What is my
-/// history with it (playtime, and the gap). What happened while I was away
-/// (updates). Get me in (launch, store, patch notes). The layout is those four
-/// bands and nothing else.</para>
-///
-/// <para><b>The gap is the signature.</b> Winnow is the only thing that holds
-/// <c>play_records.last_played_at</c> and <c>update_events.occurred_at</c> in
-/// one place, so it is the only thing that can draw the stretch between your
-/// last session and now with the patches you missed marked on it. §1 calls that
-/// join the product; nothing in the UI had ever shown it. It is deliberately
-/// NOT a playtime chart: <c>playtime_snapshots</c> holds one reading per game
-/// on a fresh install, and a line through one point is a decoration pretending
-/// to be evidence. What the snapshots honestly support is a sentence — how many
-/// times Winnow has checked, since when, and what it has seen move — and that is
-/// what <see cref="RecordLine"/> is.</para>
-///
-/// <para><b>Nothing here is invented.</b> Year, publisher and summary arrive
-/// from IGDB enrichment behind a library the user is already browsing (§7), so
-/// each is legitimately null for a long while after first run. A null fact
-/// renders as no row at all rather than as "Unknown" — a placeholder that turns
-/// into real data later is a lie with a timer on it. Facts the schema has but
-/// this data source never fills (acquired_at, license_type, price, edition,
-/// platform, achievements) are absent from the design rather than bound and
-/// hidden: a row that can never appear is dead weight impersonating a
-/// feature.</para>
+/// Game detail modal (§5.3). Shows identity, play history, updates, and
+/// launch actions. Null fields render as absent rows, not placeholders.
 /// </summary>
 public partial class GameDetailsViewModel : ObservableObject
 {
@@ -50,14 +20,23 @@ public partial class GameDetailsViewModel : ObservableObject
 
     public const double CoverHeight = CoverWidth * 1.5;
 
-    /// <summary>
-    /// The most marks the gap rail will draw. Past this the rail stops being a
-    /// picture of a gap and becomes a smear; the list below is the exhaustive
-    /// record, and it stays exhaustive.
-    /// </summary>
+    /// <summary>Max update marks on the gap rail before it overflows to the list.</summary>
     private const int MaxRailMarks = 14;
 
     private readonly ICoverCache? _covers;
+
+    /// <summary>Update flag service. Null hides the mark-as-read control.</summary>
+    private readonly IUpdateFlagService? _flags;
+
+    /// <summary>Raw update events for this release, passed to <see cref="IUpdateFlagService.DismissAsync"/>.</summary>
+    private readonly IReadOnlyList<UpdateEvent> _events;
+
+    /// <summary>Re-runs the library query after a dismissal changes bucket membership.</summary>
+    private readonly Func<Task>? _reloadLibrary;
+
+    private readonly DateTime _nowUtc;
+
+    private bool _busy;
 
     public GameDetailsViewModel(
         GameTileViewModel tile,
@@ -65,20 +44,34 @@ public partial class GameDetailsViewModel : ObservableObject
         IReadOnlyList<UpdateEventViewModel> updates,
         DateTime nowUtc,
         IReadOnlyList<PlaytimeSnapshot>? snapshots = null,
-        ICoverCache? covers = null)
+        ICoverCache? covers = null,
+        IReadOnlyList<UpdateEvent>? updateEvents = null,
+        DateTime? acknowledgedThrough = null,
+        IUpdateFlagService? updateFlags = null,
+        Func<Task>? reloadLibrary = null)
     {
         Tile = tile;
         BucketLabel = bucketLabel;
         Updates = updates;
         _covers = covers;
+        _nowUtc = nowUtc;
+        _events = updateEvents ?? [];
+        _flags = updateFlags;
+        _reloadLibrary = reloadLibrary;
 
         LastPlayedUtc = tile.LastPlayedUtc is { } played
             ? UpdateEventViewModel.AsUtc(played)
             : null;
 
-        RailMarks = BuildRailMarks(updates, LastPlayedUtc, nowUtc);
+        // Unread flag = bucket membership; dismissal standing is separate.
+        FlagIsRaised = tile.HasUnread;
+        DismissalStands = acknowledgedThrough is not null;
+
         RecordLine = BuildRecordLine(snapshots ?? [], nowUtc);
         (PrimaryAction, Links) = BuildLinks(tile);
+
+        // Derives acknowledged state, rail marks, and caption.
+        ApplyWatermark(acknowledgedThrough);
     }
 
     /// <summary>The tile this describes — title, store, art and the stat strings all come from it.</summary>
@@ -88,20 +81,12 @@ public partial class GameDetailsViewModel : ObservableObject
 
     public string Title => Tile.Title;
 
-    /// <summary>
-    /// "App 8510" is an appid wearing a title's clothes. Saying so is the
-    /// difference between a panel that is honestly waiting for metadata and one
-    /// that looks broken.
-    /// </summary>
+    /// <summary>True when the title is a raw app id, not a real name.</summary>
     public bool TitleIsProvisional => Tile.NameIsProvisional;
 
-    public string ProvisionalNote => "Steam's local files gave an id and no name. Winnow shows the id until enrichment lands one.";
+    public string ProvisionalNote => "Name not yet available. Showing the app id until metadata loads.";
 
-    /// <summary>
-    /// Year and publisher share a line but not a typeface: the year is a number
-    /// and sets in Plex Mono, the publisher is a name and sets in Jakarta (§3).
-    /// The separator belongs to the year run so it disappears with it.
-    /// </summary>
+    /// <summary>Year with separator, or empty. Plex Mono for the number, Jakarta for the publisher.</summary>
     public string IdentityYearText => HasReleaseYear
         ? HasPublisher ? $"{ReleaseYearText} · " : ReleaseYearText
         : string.Empty;
@@ -123,15 +108,7 @@ public partial class GameDetailsViewModel : ObservableObject
     /// <summary>The §7 bucket name this game currently falls in ("Never played").</summary>
     public string BucketLabel { get; }
 
-    /// <summary>
-    /// Install state as a fact, not a verdict — and only when there is one.
-    ///
-    /// <para><see cref="GameTileViewModel.Installed"/> is three-valued: null
-    /// means no source looked, which is neither "Installed" nor "Not installed".
-    /// The chip is absent in that case rather than guessing, on §10.5's rule
-    /// that a null fact renders as no row at all — a placeholder that turns into
-    /// real data later is a lie with a timer on it.</para>
-    /// </summary>
+    /// <summary>Install state text. Three-valued: null means unknown and hides the chip.</summary>
     public string InstallText => Tile.Installed == true ? "Installed" : "Not installed";
 
     /// <summary>False when nothing has looked at this game's install state.</summary>
@@ -159,57 +136,46 @@ public partial class GameDetailsViewModel : ObservableObject
     /// <summary>Rail's headline: how long that has been. "2y 8mo".</summary>
     public string IdleText => Tile.IdleText;
 
-    /// <summary>
-    /// Why there is no rail, said plainly. Two different facts, and §7 will not
-    /// let them collapse into one: a game you never opened, and a game Steam
-    /// recorded minutes for without recording a date.
-    /// </summary>
+    /// <summary>Explanation when there is no gap rail (never played vs. no date recorded).</summary>
     public string NoGapText => Tile.PlaytimeMinutes <= 0
         ? "You've never opened this."
         : "Steam has no date for your last session.";
 
     /// <summary>
-    /// Positions, 0–1, of the updates that landed inside the gap. Empty is a
-    /// legitimate and common answer, and the rail says so in words.
+    /// Positions (0-1) of unread updates on the gap rail. Observable so a
+    /// dismissal updates the rail immediately.
     /// </summary>
-    public IReadOnlyList<double> RailMarks { get; }
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasRailMarks))]
+    public partial IReadOnlyList<double> RailMarks { get; set; } = [];
 
     public bool HasRailMarks => RailMarks.Count > 0;
 
-    /// <summary>
-    /// The rail's caption. Counts only what landed after the last session —
-    /// which is the definition the unread badge and the "Patched since" bucket
-    /// both use (§5.2).
-    ///
-    /// <para>The zero case says "recorded", not "nothing shipped". Update
-    /// polling is staggered across days (§4.5), so an empty rail can mean the
-    /// game had a quiet decade or that its turn has not come round yet — and
-    /// the interface may only claim the one of those it can actually
-    /// support.</para>
-    /// </summary>
+    /// <summary>Gap rail caption: counts updates since last play, distinguishing unread from read.</summary>
     public string GapCaption
     {
         get
         {
-            var missed = Updates.Count(u => u.IsSinceYouPlayed);
-            return missed switch
+            var missed = Updates.Count(u => u.IsUnread);
+            if (missed > 0)
+            {
+                return missed == 1
+                    ? "1 update landed while you were away."
+                    : $"{missed} updates landed while you were away.";
+            }
+
+            // No unread marks: either nothing was recorded, or user marked them read.
+            var read = Updates.Count(u => u.IsSinceYouPlayed);
+            return read switch
             {
                 0 => "No updates recorded in that stretch.",
-                1 => "1 update landed while you were away.",
-                _ => $"{missed} updates landed while you were away.",
+                1 => "1 update landed while you were away. You've marked it read.",
+                _ => $"{read} updates landed while you were away. You've marked them read.",
             };
         }
     }
 
-    /// <summary>
-    /// What Winnow's own longitudinal record actually amounts to for this game.
-    ///
-    /// <para>This is §1's "playtime history that storefronts discard", stated at
-    /// the resolution the data supports rather than drawn as a chart it does
-    /// not. On a fresh install it is one reading and this line says so; after a
-    /// month of the snapshot scheduler it is the only place a user can see that
-    /// a number moved.</para>
-    /// </summary>
+    /// <summary>Longitudinal playtime record sentence (e.g. "Checked 5 times since Jan — up 3h").</summary>
     public string RecordLine { get; }
 
     public bool HasRecordLine => RecordLine.Length > 0;
@@ -221,33 +187,162 @@ public partial class GameDetailsViewModel : ObservableObject
 
     public bool HasUpdates => Updates.Count > 0;
 
-    /// <summary>
-    /// §7: a label labels. "Since you played" is a claim about the rows under
-    /// it, so it is only used when the rows under it are that — otherwise the
-    /// section is what it is, a history.
-    /// </summary>
+    /// <summary>"SINCE YOU PLAYED" when gap updates exist, otherwise "UPDATE HISTORY".</summary>
     public string UpdatesLabel => Updates.Any(u => u.IsSinceYouPlayed)
         ? "SINCE YOU PLAYED"
         : "UPDATE HISTORY";
 
+    // ── Under the list: "I've read this one" ────────────────────────────────
+
+    /// <summary>Whether the unread flag is raised on this release (from bucket membership).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowDismissFlag))]
+    [NotifyPropertyChangedFor(nameof(ShowRestoreFlag))]
+    public partial bool FlagIsRaised { get; set; }
+
+    /// <summary>Whether an acknowledgement is standing. Can be true alongside FlagIsRaised if a newer push outranked the watermark.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowRestoreFlag))]
+    public partial bool DismissalStands { get; set; }
+
+    /// <summary>Offered while the flag is up: the way to say you have read it.</summary>
+    public bool ShowDismissFlag => _flags is not null && FlagIsRaised;
+
+    /// <summary>Offered while the flag is down due to a dismissal (the undo control).</summary>
+    public bool ShowRestoreFlag => _flags is not null && !FlagIsRaised && DismissalStands;
+
+    /// <summary>Whether the block is on screen at all. Neither state, no block.</summary>
+    public bool ShowFlagControl => ShowDismissFlag || ShowRestoreFlag;
+
+    /// <summary>Label for the dismiss control.</summary>
+    public string DismissFlagLabel => "Mark as read";
+
+    /// <summary>Explanatory note under the dismiss control.</summary>
+    public string DismissFlagNote => "Removes from Patched. A newer patch puts it back.";
+
+    /// <summary>The way back, named for what it does rather than as "Undo".</summary>
+    public string RestoreFlagLabel => "Show it again";
+
+    /// <summary>Explanatory note under the restore control.</summary>
+    public string RestoreFlagNote => "Marked read. A newer patch will flag it again.";
+
+    /// <summary>Error message when a flag write fails. Null when no error.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasFlagProblem))]
+    public partial string? FlagProblem { get; set; }
+
+    public bool HasFlagProblem => FlagProblem is not null;
+
+    /// <summary>Marks the current update as read.</summary>
+    [RelayCommand]
+    private async Task DismissFlagAsync(CancellationToken ct)
+    {
+        if (_busy || _flags is null || !FlagIsRaised)
+        {
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            FlagProblem = null;
+
+            var outcome = await _flags.DismissAsync(Tile.ReleaseId, _events, ct);
+            if (!outcome.Saved)
+            {
+                // Both refusals leave the badge in place.
+                FlagProblem = outcome.Result == UpdateFlagResult.NothingToDo
+                    ? "There's no patch here to mark read."
+                    : "Couldn't save that — nothing changed.";
+                return;
+            }
+
+            ApplyWatermark(outcome.AcknowledgedThrough);
+            FlagIsRaised = false;
+            DismissalStands = true;
+
+            await ReloadLibraryAsync();
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch
+        {
+            // Belt-and-braces; service should not throw but must not take the window down.
+            FlagProblem = "Couldn't save that — nothing changed.";
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    /// <summary>Revokes the standing dismissal (stamp, not delete).</summary>
+    [RelayCommand]
+    private async Task RestoreFlagAsync(CancellationToken ct)
+    {
+        if (_busy || _flags is null || !DismissalStands)
+        {
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            FlagProblem = null;
+
+            var outcome = await _flags.RestoreAsync(Tile.ReleaseId, ct);
+            if (outcome.Result == UpdateFlagResult.NotStored)
+            {
+                FlagProblem = "Couldn't undo that just now.";
+                return;
+            }
+
+            // Both Stored and NothingToDo mean no acknowledgement stands.
+            ApplyWatermark(null);
+            DismissalStands = false;
+            FlagIsRaised = true;
+
+            await ReloadLibraryAsync();
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch
+        {
+            FlagProblem = "Couldn't undo that just now.";
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    /// <summary>Applies the watermark to rows and re-derives rail marks and caption.</summary>
+    private void ApplyWatermark(DateTime? acknowledgedThrough)
+    {
+        // The service extends the watermark to cover correlated announcements.
+        var readThrough = _flags is null
+            ? acknowledgedThrough
+            : _flags.ReadThrough(Tile.ReleaseId, _events, acknowledgedThrough);
+
+        foreach (var update in Updates)
+        {
+            update.IsAcknowledged = readThrough is { } through && update.OccurredAtUtc <= through;
+        }
+
+        RailMarks = BuildRailMarks(Updates, LastPlayedUtc, _nowUtc);
+        OnPropertyChanged(nameof(GapCaption));
+    }
+
+    /// <summary>Reloads the library after a flag change so bucket counts update.</summary>
+    private Task ReloadLibraryAsync() => _reloadLibrary?.Invoke() ?? Task.CompletedTask;
+
     // ── Band 4: get me in ───────────────────────────────────────────────────
 
-    /// <summary>
-    /// The one filled affordance — <c>Play</c> when the game is on disk,
-    /// <c>Install</c> when it is not, through whichever launcher owns it.
-    ///
-    /// <para>Named for what it does, so it cannot lie: a button reading "Play"
-    /// on an uninstalled 60GB game promises something the next sixty minutes
-    /// will not deliver. Null when this app cannot name one honestly — no id for
-    /// the store, no verified install route for the store, or no answer at all
-    /// about the install state — in which case the panel simply has no primary
-    /// action, never an inert button.</para>
-    ///
-    /// <para>It is <see cref="GameTileViewModel.PrimaryAction"/> itself, not a
-    /// second computation of the same thing. The back of the cover tile offers
-    /// the same button, and two implementations of "which one is this" is how
-    /// one surface ends up saying Play while the other says Install.</para>
-    /// </summary>
+    /// <summary>Play or Install link, from the tile. Null when no honest action is available.</summary>
     public GameLink? PrimaryAction { get; }
 
     public bool HasPrimaryAction => PrimaryAction is not null;
@@ -257,12 +352,7 @@ public partial class GameDetailsViewModel : ObservableObject
 
     public bool HasLinks => Links.Count > 0;
 
-    /// <summary>
-    /// The install directory, for the shell's "open folder". Handed to
-    /// <c>ILauncher.LaunchDirectoryInfoAsync</c> as a path, never as a
-    /// <c>file:</c> URI — <see cref="GameLink"/> refuses that scheme on purpose,
-    /// and this is the one local target the design actually wants.
-    /// </summary>
+    /// <summary>Install directory path for "open folder", or null if not on disk.</summary>
     public string? OpenableFolder => Tile.IsOnDisk ? Tile.InstallPath : null;
 
     public bool HasOpenableFolder => OpenableFolder is not null;
@@ -277,13 +367,8 @@ public partial class GameDetailsViewModel : ObservableObject
 
     public bool HasSummary => Summary is not null;
 
-    /// <summary>
-    /// §7: an empty screen is an invitation, not a shrug. A game with no
-    /// summary and no update history is the normal state of a library Winnow has
-    /// only just read, and the panel says which of those two things is true
-    /// rather than showing a gap.
-    /// </summary>
-    public string EmptyBodyText => "No description yet. Winnow fills the year, publisher and summary in from IGDB as it works through your library.";
+    /// <summary>Placeholder when no summary is available yet.</summary>
+    public string EmptyBodyText => "No description yet. Metadata fills in automatically.";
 
     public bool ShowEmptyBody => !HasSummary;
 
@@ -303,11 +388,7 @@ public partial class GameDetailsViewModel : ObservableObject
     /// <summary>The tile's own placeholder gradient, so the modal looks like the tile it came from.</summary>
     public IBrush PlaceholderBrush => Tile.VividBrush;
 
-    /// <summary>
-    /// Full saturation, always. The dormancy ramp is a scanning aid for the
-    /// grid (§5.1); once the user has chosen a game, fading its art tells them
-    /// something they just acted on.
-    /// </summary>
+    /// <summary>Requests the cover at full saturation for the given display width.</summary>
     public void RequestCover(double displayWidthPixels)
     {
         if (_covers is null || Tile.CoverKey is not { } key)
@@ -337,12 +418,7 @@ public partial class GameDetailsViewModel : ObservableObject
 
     // ── Construction helpers ────────────────────────────────────────────────
 
-    /// <summary>
-    /// Where each missed update sits between "you stopped" and "now", as a
-    /// fraction. Updates from before the last session are not marks — they are
-    /// not in the gap — but they stay in the list below, because the list is
-    /// the record and the rail is the argument.
-    /// </summary>
+    /// <summary>Computes 0-1 positions for unread updates within the gap.</summary>
     private static IReadOnlyList<double> BuildRailMarks(
         IReadOnlyList<UpdateEventViewModel> updates,
         DateTime? lastPlayedUtc,
@@ -360,22 +436,14 @@ public partial class GameDetailsViewModel : ObservableObject
         }
 
         return updates
-            .Where(u => u.IsSinceYouPlayed)
+            .Where(u => u.IsUnread)
             .OrderBy(u => u.OccurredAtUtc)
             .Select(u => Math.Clamp((u.OccurredAtUtc - played).TotalSeconds / span, 0.0, 1.0))
             .Take(MaxRailMarks)
             .ToArray();
     }
 
-    /// <summary>
-    /// §1's longitudinal history, stated as a sentence.
-    ///
-    /// <para>"Checked" rather than "sampled" or "snapshotted" (§7: name things
-    /// by what people recognise). The delta is between the first and last
-    /// reading Winnow holds, which is exactly the claim it can defend — not
-    /// total playtime, which Steam supplies, but the part Winnow watched
-    /// happen.</para>
-    /// </summary>
+    /// <summary>Builds the playtime record sentence from snapshots.</summary>
     private static string BuildRecordLine(IReadOnlyList<PlaytimeSnapshot> snapshots, DateTime nowUtc)
     {
         if (snapshots.Count == 0)
@@ -388,7 +456,7 @@ public partial class GameDetailsViewModel : ObservableObject
 
         if (ordered.Length == 1)
         {
-            return $"Checked once, on {since}. Winnow keeps every reading from here.";
+            return $"Checked once, on {since}.";
         }
 
         var gained = ordered[^1].PlaytimeMinutes - ordered[0].PlaytimeMinutes;
@@ -412,19 +480,7 @@ public partial class GameDetailsViewModel : ObservableObject
         return rest == 0 ? $"{hours}h" : $"{hours}h {rest}m";
     }
 
-    /// <summary>
-    /// The outbound affordances, all of them derived from an id this database
-    /// holds and none of them invented.
-    ///
-    /// <para><b>This used to return early without a Steam appid</b>, which meant
-    /// every Epic and GOG row in the library — 113 of them on the author's
-    /// machine — had no primary action and no links whatsoever, on a panel whose
-    /// third band is called "get me in". Both halves now come from
-    /// <see cref="StoreActions"/>, which knows one thing per store and says so
-    /// with the evidence attached; a store it cannot reach still returns
-    /// nothing, but it returns nothing per store rather than for everything that
-    /// is not Steam.</para>
-    /// </summary>
+    /// <summary>Builds the primary action and store links from the tile's store ids.</summary>
     private static (GameLink? Primary, IReadOnlyList<GameLink> Links) BuildLinks(GameTileViewModel tile)
         => (tile.PrimaryAction, StoreActions.LinksFor(tile.Store, tile.SteamAppId, tile.GogProductId));
 }

@@ -4,16 +4,7 @@ using Winnow.Core.Repositories;
 
 namespace Winnow.Data.Repositories;
 
-/// <summary>
-/// Dapper over migration 0007's three tables.
-///
-/// <para>The read is one query per table and one join in C#, rather than one
-/// clever query with two <c>UNION ALL</c> branches and a <c>GROUP_CONCAT</c>. The
-/// whole point of §3.1's choice of Dapper over an ORM was SQL you can read; a
-/// statement that assembles a per-release array in SQLite and parses it back out
-/// in C# would be neither readable SQL nor readable C#, and the library is 926
-/// rows.</para>
-/// </summary>
+/// <summary>Dapper repository for facets, work_facets and release_facets (migration 0007).</summary>
 public sealed class FacetRepository : IFacetRepository
 {
     private readonly ISqliteConnectionFactory _factory;
@@ -41,20 +32,8 @@ public sealed class FacetRepository : IFacetRepository
             ORDER BY kind, name;
             """, transaction: lease.Transaction, cancellationToken: ct))).AsList();
 
-        // Both layers of §6's identity model, unioned onto the release the caller
-        // is going to draw a tile for.
-        //
-        // Branch 1 — the WORK's descriptors, reaching the release through
-        // releases.work_id. Skyrim's genres are Skyrim's, whichever edition the
-        // user happens to own.
-        //
-        // Branch 2 — the RELEASE's own. Steam tags belong to one appid and stop
-        // there; that is the whole reason there are two tables.
-        //
-        // UNION, not UNION ALL: a facet true at both layers (a game mode, which
-        // IGDB writes onto the work and Steam writes onto the release) must
-        // appear once. Rank survives only from branch 2 because only Steam
-        // publishes an order, and only for tags.
+        // UNION of work_facets and release_facets. UNION (not ALL) deduplicates
+        // facets present at both layers.
         var assignments = (await lease.Connection.QueryAsync<AssignmentRow>(new CommandDefinition("""
             SELECT ReleaseId, FacetId, Rank
             FROM (
@@ -71,15 +50,8 @@ public sealed class FacetRepository : IFacetRepository
                        rf.rank       AS Rank
                 FROM release_facets rf
             )
-            -- Rank ascending with NULLs last, so a release's tags come back in
-            -- Steam's own order (rank 1 is its top tag) and the unranked kinds
-            -- trail behind by id. The spike's finding that weight is comparable
-            -- only within an app is exactly why the ORDER is the only part of it
-            -- worth keeping — and this is where it is kept.
-            --
-            -- The subquery wrapper is not decoration: SQLite restricts the
-            -- ORDER BY of a compound SELECT to bare result columns, so
-            -- `Rank IS NULL` cannot appear there.
+            -- Rank ascending, NULLs last. Subquery wrapper needed because SQLite
+            -- restricts ORDER BY of a compound SELECT to bare result columns.
             ORDER BY ReleaseId, Rank IS NULL, Rank, FacetId;
             """, transaction: lease.Transaction, cancellationToken: ct))).AsList();
 
@@ -96,24 +68,7 @@ public sealed class FacetRepository : IFacetRepository
                 byRelease[row.ReleaseId] = entry;
             }
 
-            // ONE entry per facet id, whatever the two layers each said about
-            // rank. The SQL UNION above dedupes whole ROWS, so it only collapses
-            // a cross-layer facet when both branches agree on Rank — which they
-            // do for the one kind written at both layers today (game modes,
-            // NULL on both sides), and which is why this never fired.
-            //
-            // It stops being true the moment a RANKED kind is written at the
-            // work layer: (release, facet, 1) and (release, facet, NULL) are
-            // distinct rows, the UNION keeps both, and CountsFor increments
-            // twice for one release — a filter checkbox reading "Roguelike 41"
-            // beside 40 tiles. That is not hypothetical; the tag spike's own
-            // recommended fallback is to write IGDB keywords when GetItems
-            // yields nothing, and keywords are facts about the WORK.
-            //
-            // Deduping here rather than in the SQL keeps the rank that the
-            // ORDER BY already chose: rank-ascending-NULLs-last means the first
-            // sighting of a facet is its best-placed one, so the Steam ordering
-            // survives and the work layer's rankless copy is the one dropped.
+            // Deduplicate cross-layer facets, keeping the best-ranked sighting.
             if (!entry.Seen.Add(row.FacetId))
             {
                 continue;
@@ -121,9 +76,7 @@ public sealed class FacetRepository : IFacetRepository
 
             entry.Ids.Add(row.FacetId);
 
-            // Game modes are also handed over as slugs, because that is what
-            // LibraryFilter.GameModes matches on — the one facet two providers
-            // write, so the one facet no provider's id could key.
+            // Game modes are matched by slug in LibraryFilter.
             if (gameModeSlugs.TryGetValue(row.FacetId, out var slug))
             {
                 entry.Modes.Add(slug);
@@ -149,16 +102,8 @@ public sealed class FacetRepository : IFacetRepository
         => SetAsync("release_facets", "release_id", releaseId, facets, ranked: true, ct);
 
     /// <summary>
-    /// Replaces one scope's assignments, and writes nothing at all when the
-    /// stored set already matches.
-    ///
-    /// <para><b>The read-first check is the feature, not an optimisation.</b> The
-    /// backfill runs on every launch over every work in the library, and the
-    /// answer is almost always "the same as last time". Without this, a warm
-    /// re-run would rewrite roughly ten thousand rows to arrive at the state it
-    /// started in, churning the WAL and touching mtimes for nothing. With it, a
-    /// second run reports zero — which is also how the idempotence test states
-    /// its claim, rather than by comparing table dumps.</para>
+    /// Replaces one scope's facet assignments, writing nothing when the stored
+    /// set already matches (idempotent on re-runs).
     /// </summary>
     private async Task<int> SetAsync(
         string table,
@@ -168,11 +113,7 @@ public sealed class FacetRepository : IFacetRepository
         bool ranked,
         CancellationToken ct)
     {
-        // Desired state, keyed by facet id. An assignment with no usable key is
-        // dropped here rather than minting a nameless row — see
-        // IFacetRepository.SetWorkFacetsAsync. The key is the assignment's own
-        // slug where it has one (closed vocabularies) and the folded name where
-        // it does not (a provider's vocabulary).
+        // Desired state, keyed by facet id. Assignments with no usable key are dropped.
         var desired = new Dictionary<long, int?>();
 
         using var lease = _factory.Lease();
@@ -185,14 +126,7 @@ public sealed class FacetRepository : IFacetRepository
                 continue;
             }
 
-            // Game modes are a CLOSED vocabulary that migration 0007 seeded with
-            // fixed ids, so an assignment that does not name one of the six is
-            // dropped rather than minting a seventh row. Without this, one caller
-            // building the assignment by hand from the display name ("Co-op",
-            // which folds to `co_op`, not `co_operative`) would silently add a
-            // duplicate checkbox beside the seeded one and split its count in
-            // two — a bug that looks like a data problem and is a spelling one.
-            // Use GameModes.Assignment to build these.
+            // Game modes are a closed vocabulary; reject unknown slugs.
             if (assignment.Kind == FacetKinds.GameMode && !GameModes.All.Contains(slug))
             {
                 continue;
@@ -200,10 +134,7 @@ public sealed class FacetRepository : IFacetRepository
 
             var facetId = await EnsureFacetAsync(lease, assignment.Kind, slug, assignment.Name.Trim(), ct);
 
-            // First mention wins the rank. Two assignments that collapse onto one
-            // facet (Valve ships duplicate category display names — 55 and 56 are
-            // both "DualShock Controller Support") keep the better-placed of the
-            // two, which for a rank-ordered kind is the earlier one.
+            // First mention wins the rank (handles duplicate display names).
             if (!desired.ContainsKey(facetId))
             {
                 desired[facetId] = ranked ? assignment.Rank : null;
@@ -251,19 +182,7 @@ public sealed class FacetRepository : IFacetRepository
         return written;
     }
 
-    /// <summary>
-    /// The id of a facet, minting it on first sight.
-    ///
-    /// <para><b>Insert-only, never delete.</b> These ids are what a live list's
-    /// <c>filter_json</c> refers to, so a facet that stops appearing anywhere in
-    /// the library keeps its row: it costs one row and it keeps every saved
-    /// filter that mentions it meaningful. Migration 0007 records the same
-    /// promise from the schema's side.</para>
-    ///
-    /// <para>The <c>DO NOTHING</c> plus <c>SELECT</c> shape rather than
-    /// <c>RETURNING</c>: <c>ON CONFLICT DO NOTHING ... RETURNING</c> returns no
-    /// row on the conflict path, which is the common path here.</para>
-    /// </summary>
+    /// <summary>Returns the id of a facet, inserting it on first sight. Insert-only, never deleted.</summary>
     private static async Task<long> EnsureFacetAsync(
         DbLease lease, string kind, string slug, string name, CancellationToken ct)
     {

@@ -6,43 +6,9 @@ using Avalonia.VisualTree;
 namespace Winnow.App.Views;
 
 /// <summary>
-/// Code-behind for the Feed. Its one job is §8's keyboard floor: the whole
-/// interface reachable without a pointer.
-///
-/// <para><b>What comes free and what does not.</b> Each card is a
-/// <see cref="Button"/>, so Tab and Shift+Tab already walk every card in reading
-/// order, Enter and Space already open the detail modal, and the card draws its
-/// own 2px Volt ring. What does not come free is the shape.</para>
-///
-/// <para><b>The shape changed with the layout, and porting the old walk would
-/// have been a bug.</b> While the sections were horizontal rails, Left and Right
-/// stepped along a rail and Up and Down crossed between them — one axis per
-/// structure, and Left/Right was the axis that reached a rail's hidden tail at
-/// all. The sections are wrapping grids now, so:</para>
-///
-/// <list type="bullet">
-/// <item><b>Left and Right walk the sequence</b>, wrapping from the end of one
-/// row to the start of the next exactly as reading does, and spilling into the
-/// neighbouring section at a section's ends. Two keys therefore reach every card
-/// on the screen, and no press is ever a dead end.</item>
-/// <item><b>Up and Down move by one row</b> — which is <see cref="FeedGrid.Columns"/>
-/// cards, a number that changes with the window width, so the walk is read off
-/// the panel rather than assumed. Leaving a section's first or last row crosses
-/// into the section above or below <b>and holds the column</b>, clamped where
-/// that section's row is shorter.</item>
-/// </list>
-///
-/// <para>This is the wall's own arrangement (<c>MainWindow.MoveSelection</c>
-/// steps by <c>TileWall.Columns</c> vertically and by one horizontally), which
-/// matters more than it looks: a user who has learned the arrow keys on the
-/// library must not have to learn a second set here.</para>
-///
-/// <para><b>The grids are found in the visual tree rather than tracked.</b> The
-/// sections are an <c>ItemsControl</c> of templated content, so the panels
-/// holding the cards do not exist until the template has been applied and are
-/// replaced wholesale on every reload. Reading them at the moment of the key
-/// press cannot go stale; a cached list would, silently, and the symptom would
-/// be arrow keys that stop working after a refresh.</para>
+/// Code-behind for the Feed. Implements keyboard navigation: Left/Right walk
+/// the sequence across sections, Up/Down move by row respecting the live
+/// column count.
 /// </summary>
 public partial class FeedView : UserControl
 {

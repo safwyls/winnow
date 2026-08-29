@@ -9,19 +9,8 @@ public static class ExternalIdProviders
     public const string Igdb = "igdb";
 
     /// <summary>
-    /// The providers a store ingest writes — every provider except
-    /// <see cref="Igdb"/>, which is Winnow's own canonical identity rather than
-    /// something a user owns a copy on.
-    ///
-    /// <para><b>This list exists because asking about one store at a time is how
-    /// a whole population goes missing.</b> Enrichment spent its life calling
-    /// <c>GetEnrichmentTargetsAsync(Steam)</c>; the 67 Epic and 14 GOG rows in
-    /// the author's library were never once asked about, and measured zero
-    /// <c>igdb_id</c>, zero covers, zero years and zero summaries — not partial,
-    /// exactly zero, which is the signature of a query that never ran rather
-    /// than a source that had nothing to say. Any sweep over "the library"
-    /// should iterate this, and a new store becomes visible to every such sweep
-    /// by being added here once.</para>
+    /// Store-ingest providers (all except <see cref="Igdb"/>). Sweeps over the
+    /// library should iterate this so no store is accidentally skipped.
     /// </summary>
     public static readonly IReadOnlyList<string> Stores = [Steam, Gog, Epic];
 }
@@ -61,40 +50,15 @@ public static class DetectionMethods
 }
 
 /// <summary>
-/// Valid <see cref="Session.AttributedBy"/> values (CHECK-constrained in the
-/// schema, and nullable there because every session recorded before M3b
-/// predates the column).
-///
-/// <para><b>This is the axis M3b exists to add, and it is not a quality score
-/// — it is a record of what was known.</b> §5.2 lists the ways attribution by
-/// inference goes wrong: launchers spawn children, games relaunch through a
-/// second executable, an engine ships the same <c>Game.exe</c> name as three
-/// other titles, and a process whose main module cannot be read has no path to
-/// join on at all. Every one of those is a case where the watcher has to pick
-/// between candidates. When Winnow fired the launch URI itself there is nothing
-/// to pick between: the app already knows which ownership the user clicked, and
-/// the intent hands the watcher that answer instead of making it guess.</para>
-///
-/// <para>Stored rather than derived because it cannot be reconstructed later:
-/// nothing in a finished session says whether a human clicked Play in Winnow or
-/// in Steam. A recommender that eventually wants to weight exact sessions above
-/// inferred ones can only do that if the distinction was written down at the
-/// time.</para>
+/// Valid <see cref="Session.AttributedBy"/> values (CHECK-constrained in the schema,
+/// nullable because sessions recorded before M3b predate the column).
+/// Stored because it cannot be reconstructed from a finished session.
 /// </summary>
 public static class SessionAttributions
 {
-    /// <summary>
-    /// Winnow fired the launch and a process appeared while that intent was
-    /// live. The ownership is the one the user clicked, not one resolved from a
-    /// path.
-    /// </summary>
+    /// <summary>Winnow fired the launch; ownership is exact, not path-inferred.</summary>
     public const string Launch = "launch";
 
-    /// <summary>
-    /// Inferred: the running executable's path fell inside an ownership's
-    /// install directory, or its name matched exactly one owned game. The
-    /// M3a behaviour, and still the answer for every game started from Steam,
-    /// the Epic launcher, Galaxy or a desktop shortcut.
-    /// </summary>
+    /// <summary>Inferred from the executable's path or name matching an ownership.</summary>
     public const string Inferred = "inferred";
 }

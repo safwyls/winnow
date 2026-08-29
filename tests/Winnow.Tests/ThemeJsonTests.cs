@@ -5,24 +5,8 @@ using Xunit;
 namespace Winnow.Tests;
 
 /// <summary>
-/// The JSON theme format, held to the one standard that stops it being a toy:
-/// <b>Winnow's own four themes have to be expressible in it, and have to load
-/// through it.</b>
-///
-/// <para><b>Why that is the test and not "does it parse a file I wrote".</b> A
-/// format validated against themes written FOR it is validated against itself.
-/// The built-ins were hand-tuned against six hundred real capsules by a person
-/// who overruled the arithmetic wherever it looked wrong, months before this
-/// format existed — so they are the adversarial case, and any field they need
-/// that the schema lacks is a field a user will need too. The rule when one of
-/// them does not round-trip is to add the field, never to special-case the
-/// theme.</para>
-///
-/// <para><b>The other half is that a bad file must never break the app.</b>
-/// Every malformed input below asserts two things: that no exception escapes,
-/// and that the diagnostic NAMES the field. An author whose theme silently did
-/// not load has no way to tell a typo from a taste they disagree with, which is
-/// why validation here is a tool rather than a gate.</para>
+/// JSON theme format: built-in round-trip, derivation fidelity, and safe
+/// handling of malformed input.
 /// </summary>
 public class ThemeJsonTests
 {
@@ -64,14 +48,8 @@ public class ThemeJsonTests
     }
 
     /// <summary>
-    /// And the same claim made where it actually matters: every TOKEN the
-    /// window paints, at every position on the transparency slider, in both
-    /// layouts, with the wall open and shut.
-    ///
-    /// <para>The colours matching is the input; this is the output. A format
-    /// that reproduced the record but not the tokens would mean something in
-    /// <c>WinnowTheme.Tokens</c> was reading state the format does not carry —
-    /// which is exactly the failure a per-field comparison would miss.</para>
+    /// Every token matches at every slider position, both layouts, wall open and
+    /// shut.
     /// </summary>
     [Theory]
     [MemberData(nameof(BuiltInIds))]
@@ -104,14 +82,8 @@ public class ThemeJsonTests
     }
 
     /// <summary>
-    /// The exported template states the theme's own PROPORTIONS, not just its
-    /// colours — which is the whole reason exporting a built-in is a useful
-    /// starting point rather than a wall of hex.
-    ///
-    /// <para>Nightshift's identity is its edge: <c>Line</c> at 2.46:1 against
-    /// the rail, the brightest in the set and nearly twice Winnow's. If the
-    /// export does not carry that as a number an author can move, it has
-    /// carried the theme's appearance without carrying its argument.</para>
+    /// The export carries structural proportions (edge weight, seeds), not just
+    /// hex colours.
     /// </summary>
     [Fact]
     public void Export_states_the_themes_own_structure()
@@ -127,34 +99,7 @@ public class ThemeJsonTests
     }
 
     /// <summary>
-    /// The derivation has to be doing real work, or the format is a token dump
-    /// with extra steps — and the honest measure of "real work" is DISTANCE, not
-    /// exact agreement.
-    ///
-    /// <para><b>Why exact agreement was the wrong bar, measured rather than
-    /// assumed.</b> The built-ins' colours are hand-picked eight-bit hexes, and
-    /// at the bottom of the scale eight bits is coarse: Winnow's translucent
-    /// chrome ink sits three degrees of hue off its own <c>Surface</c>, which is
-    /// a distance of one part in 255 on one channel and cannot be expressed by
-    /// any value or chroma ratio at all. So most derived fields land beside
-    /// their hand-tuned target rather than on it, and the export carries the
-    /// difference in <c>overrides</c> — which is what overrides are for, and why
-    /// the round-trip above is exact regardless.</para>
-    ///
-    /// <para>What the seeds DO have to do is get within sight: twelve units on
-    /// the worst channel, across sixteen derived colours and four themes tuned
-    /// by hand against six hundred real capsules. Anything looser and an author
-    /// supplying eight colours would not be getting this palette system, they
-    /// would be getting a different one.</para>
-    ///
-    /// <para><b>Three fields use most of that allowance, and they are the three
-    /// the derivation deliberately does not have a schema field for.</b>
-    /// Nightshift's <c>VoltHover</c> and Box art's <c>VoltPress</c> take a
-    /// chroma step well outside what the other themes agree on, and Tungsten's
-    /// faint ink keeps its saturation where the rest shed it. Adding four schema
-    /// fields to close a gap that is invisible on a hover state, on three of
-    /// sixty-four measurements, would be paying in the format's whole surface
-    /// area for nothing anyone can see.</para>
+    /// The derivation lands within 12 units of every hand-tuned built-in colour.
     /// </summary>
     [Theory]
     [MemberData(nameof(BuiltInIds))]
@@ -180,13 +125,8 @@ public class ThemeJsonTests
     }
 
     /// <summary>
-    /// And the seeds have to be carrying the STRUCTURE even where they miss the
-    /// exact byte: the neutral ramp's steps, the edge weight, the ink levels.
-    ///
-    /// <para>This is the claim that matters for a theme nobody hand-tuned. A
-    /// derivation that landed within eight units but got the ORDER of the
-    /// neutral family wrong, or put the edge on the wrong side of the surface,
-    /// would pass the distance test and produce an incoherent room.</para>
+    /// The derivation reproduces structural ordering (neutral ramp, edge weight,
+    /// ink levels).
     /// </summary>
     [Theory]
     [MemberData(nameof(BuiltInIds))]

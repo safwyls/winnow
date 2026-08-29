@@ -13,35 +13,8 @@ public sealed class GalaxyLibraryReader
 {
     /// <summary>
     /// The ownership query, verified against the live database (schema
-    /// <c>user_version = 40</c>).
-    ///
-    /// <para><b><c>substr(releaseKey, 1, 4) = 'gog_'</c> is the single most
-    /// important line in this file.</b> Galaxy's <c>LibraryReleases</c> holds
-    /// <i>other stores'</i> releases marked owned. On the machine this was written
-    /// against it holds <c>steam_1091500</c> (Cyberpunk 2077) with
-    /// <c>isOwned = 1</c>. Ingesting it unfiltered re-imports a game the Steam
-    /// ingest already owns; on a machine with a connected Steam integration that
-    /// is not one duplicate but the entire library, duplicated.</para>
-    ///
-    /// <para><b>Both obvious alternatives were measured and both fail.</b>
-    /// <c>Platforms</c> is a static list of the 86 integrations Galaxy
-    /// <i>supports</i>, and it contains no <c>gog</c> row at all — GOG-native
-    /// releases carry the prefix but have no platform row, so any join to
-    /// <c>Platforms</c> returns nothing. And <c>PlatformConnections</c> read
-    /// <c>Disconnected</c> on all 86 rows while the library still held that Steam
-    /// release: nothing prunes releases when an integration is removed. Filter on
-    /// the prefix.</para>
-    ///
-    /// <para>Other load-bearing details: the title comes from a GamePiece whose
-    /// <c>value</c> is a JSON string in a TEXT column, and whose <c>userId</c> is
-    /// NOT NULL for the <c>title</c> type — omit the user from that lookup and
-    /// every title comes back empty. It is read as a correlated subquery rather
-    /// than a join so that a second piece for the same release can never multiply
-    /// rows. <c>isDlc</c> is nullable with no default and <c>ReleaseProperties</c>
-    /// may have no row at all, hence the <c>COALESCE</c>. Install state comes from
-    /// <c>InstalledBaseProducts</c> via <c>ProductsToReleaseKeys.gogId</c>, which
-    /// is the sanctioned mapping — do not parse the id out of the release key
-    /// string to get there.</para>
+    /// <c>user_version = 40</c>). Filters on the <c>gog_</c> releaseKey prefix
+    /// to exclude other stores' releases Galaxy tracks.
     /// </summary>
     private const string OwnershipQuery = """
         SELECT lr.releaseKey,

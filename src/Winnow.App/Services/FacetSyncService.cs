@@ -9,37 +9,11 @@ using Microsoft.Extensions.Logging;
 namespace Winnow.App.Services;
 
 /// <summary>
-/// Materialises the descriptors the library filter panel needs (migration 0007)
-/// out of metadata Winnow has already fetched.
-///
-/// <para><b>This pass is a re-read, not a re-fetch.</b> Both sources it uses are
-/// cache-first by construction — <see cref="IIgdbClient.GetGamesAsync"/> and
-/// <see cref="ISteamStoreClient.GetItemsAsync"/> consult
-/// <c>metadata_cache</c> before the network and record misses as misses — so on
-/// the author's library the IGDB half costs zero requests for all 865 cached
-/// games, and the Steam half costs requests only for appids the store has never
-/// been asked about. Migration 0005 predicted exactly this: the data was kept
-/// verbatim so that a later feature could build its table "without spending a
-/// single request".</para>
-///
-/// <para><b>Where the descriptors come from, and why each one is where it
-/// is.</b></para>
-/// <list type="bullet">
-///   <item><b>IGDB → the Work.</b> Genres, themes and player perspectives are
-///     facts about the game: Skyrim is an RPG whichever edition is owned.</item>
-///   <item><b>Steam → the Release.</b> Store tags and storefront categories
-///     belong to one appid. Skyrim and Skyrim Special Edition are separate apps
-///     with separately-voted tags, and folding them together would be §6.2's
-///     forbidden blend in different clothes.</item>
-///   <item><b>Game modes → both.</b> The one descriptor both sources answer, in
-///     incompatible words, normalised onto <see cref="GameModes"/> so the filter
-///     asks it once.</item>
-/// </list>
-///
-/// <para>§5.1: this composes enrichment clients and repositories, exactly as
-/// <see cref="EnrichmentSyncService"/> does, and the UI never calls it. It must
-/// never block a user-facing path and it never throws at its caller: every
-/// failure degrades to "fewer facets this run", which the next run fixes.</para>
+/// Materialises filter-panel descriptors (migration 0007) from cached IGDB and
+/// Steam metadata. IGDB supplies work-level facets (genres, themes, perspectives);
+/// Steam supplies release-level facets (tags, categories). Game modes come from
+/// both, normalised onto <see cref="GameModes"/>. Cache-first, so warm re-runs
+/// cost zero requests.
 /// </summary>
 public sealed class FacetSyncService
 {
@@ -63,18 +37,7 @@ public sealed class FacetSyncService
         _logger = logger;
     }
 
-    /// <summary>
-    /// Re-derives every release's descriptors from the caches and stores what
-    /// changed.
-    ///
-    /// <para><b>Idempotent, and free on a second run.</b> Two mechanisms, and
-    /// they cover different costs. Nothing is re-FETCHED because both clients
-    /// read the cache first. Nothing is re-WRITTEN because
-    /// <see cref="IFacetRepository.SetWorkFacetsAsync"/> compares before it
-    /// writes and reports zero when the stored set already matched — so a warm
-    /// re-run touches no rows at all, rather than rewriting ten thousand of them
-    /// to arrive where it started.</para>
-    /// </summary>
+    /// <summary>Re-derives descriptors from caches and stores what changed. Idempotent: a warm re-run touches no rows.</summary>
     public async Task<FacetSyncReport> SyncAsync(CancellationToken ct = default)
     {
         var targets = await _libraryQueries.GetFacetTargetsAsync(ct);
@@ -143,14 +106,7 @@ public sealed class FacetSyncService
         return report;
     }
 
-    /// <summary>
-    /// The IGDB games behind the library's works, from the cache wherever
-    /// possible.
-    ///
-    /// <para>Returns empty rather than throwing on any failure — IGDB being
-    /// unconfigured is the ordinary case on a fresh machine, not an error, and
-    /// the Steam half of this pass stands on its own.</para>
-    /// </summary>
+    /// <summary>Loads IGDB games from cache. Returns empty on any failure so the Steam half still runs.</summary>
     private async Task<IReadOnlyDictionary<long, IgdbGame>> ReadIgdbAsync(
         IReadOnlyList<FacetTarget> targets, CancellationToken ct)
     {
@@ -181,19 +137,7 @@ public sealed class FacetSyncService
         }
     }
 
-    /// <summary>
-    /// The store items behind the library's Steam releases, plus the two
-    /// vocabularies their ids resolve through.
-    ///
-    /// <para><b>Both vocabularies or neither.</b> Tag ids and category ids are
-    /// meaningless without their name maps, and a release write replaces that
-    /// release's whole descriptor set — so writing with half a vocabulary in hand
-    /// would silently DELETE the other half's stored facets. When either
-    /// vocabulary comes back empty the Steam half is skipped entirely and the
-    /// next run picks it up. Both maps prefer a stale cached snapshot to an empty
-    /// one, so this only happens on a machine that has never reached the store at
-    /// all — which is also a machine with nothing to lose.</para>
-    /// </summary>
+    /// <summary>Loads Steam store items and both vocabularies (tags, categories). Skips the Steam half entirely if either vocabulary is empty.</summary>
     private async Task<SteamFacetSource> ReadSteamAsync(
         IReadOnlyList<FacetTarget> targets, CancellationToken ct)
     {
@@ -224,16 +168,7 @@ public sealed class FacetSyncService
         return new SteamFacetSource(items, tags, categories);
     }
 
-    /// <summary>
-    /// What IGDB says about a game, as work-level descriptors.
-    ///
-    /// <para>Game modes are folded onto Winnow's vocabulary and everything else is
-    /// passed through by name. An IGDB mode this build has no slug for is
-    /// dropped rather than minted as its own facet: the game-mode vocabulary is
-    /// closed by design, and a stray seventh checkbox appearing because IGDB
-    /// added a value is worse than not offering it until someone decides what it
-    /// means.</para>
-    /// </summary>
+    /// <summary>Extracts work-level descriptors from an IGDB game. Unknown game modes are dropped (closed vocabulary).</summary>
     private static List<FacetAssignment> WorkFacets(IgdbGame game)
     {
         var genres = OrEmpty(game.Genres);
@@ -259,29 +194,10 @@ public sealed class FacetSyncService
         return facets;
     }
 
-    /// <summary>
-    /// Reads a list off a cached <see cref="IgdbGame"/> that may not have one.
-    ///
-    /// <para>The type declares these lists as non-nullable, but the values come
-    /// from JSON on disk rather than from the constructor: a payload written
-    /// before a field existed simply has no property for it, and the
-    /// deserializer supplies the default — <c>null</c> — for a positional
-    /// parameter it cannot fill. Since surviving exactly that case is the reason
-    /// the cache shape was left alone, the reader has to be able to survive it
-    /// too. The nullable parameter is what keeps this from being flagged as a
-    /// redundant check.</para>
-    /// </summary>
+    /// <summary>Returns the list or empty. The nullable parameter handles cached payloads written before the field existed.</summary>
     private static IReadOnlyList<string> OrEmpty(IReadOnlyList<string>? values) => values ?? [];
 
-    /// <summary>
-    /// What the Steam store says about one appid, as release-level descriptors.
-    ///
-    /// <para>Tags keep their rank — the only part of Steam's <c>weight</c> that
-    /// means anything across apps (see <c>docs/spikes/steam-store-tags.md</c>).
-    /// Player categories become game modes; feature and controller categories
-    /// become their own kinds. An id the vocabulary cannot name is skipped, not
-    /// invented: an unnamed checkbox is not a filter.</para>
-    /// </summary>
+    /// <summary>Extracts release-level descriptors from a Steam store item. Tags keep their rank; player categories map to game modes.</summary>
     private static List<FacetAssignment> ReleaseFacets(SteamStoreItem item, SteamFacetSource source)
     {
         var facets = new List<FacetAssignment>();

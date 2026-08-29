@@ -1,39 +1,9 @@
 ﻿namespace Winnow.App.Themes;
 
 /// <summary>
-/// How the window is put together: one continuous surface divided by rules, or
-/// content panes floating as rounded cards on the window's own ground.
-///
-/// <para><b>This is structure, not material.</b> A theme says what the room is
-/// made of and the transparency slider says how much of the desktop it admits;
-/// this says how the pieces are ARRANGED, and it is orthogonal to both — every
-/// layout works in every theme at every position on the slider. That is why it
-/// is its own section on the Appearance screen rather than a fifth theme or a
-/// third qualifier hanging off the slider.</para>
-///
-/// <para><b>Where the pattern comes from.</b> VS Code shipped it in Aug 2026 and
-/// JetBrains ships the same thing, where its users call it <i>islands</i>. Both
-/// draw the same line in the same place, and it is not "everything becomes a
-/// card": <b>chrome stays flush to the window and content regions detach.</b>
-/// The title bar spans the full width and does not float; neither does the
-/// activity strip or the status bar. What floats is the sidebar, the editor and
-/// the secondary panel — and the window's own background shows through the gaps
-/// between them, which is the whole of what makes them read as floating.</para>
-///
-/// <para><b>Which of Winnow's regions are content.</b> The rail, the library pane
-/// (the cover wall, the list view, or whichever screen has replaced it) and the
-/// filter panel. Only the caption stays flush on the ground with the gaps — see
-/// the notes in <see cref="WinnowTheme.Tokens"/> for what that does to the
-/// palette.</para>
-///
-/// <para><b>The command bar and the cut bar are not a fourth region.</b> They
-/// were, and it did not work: flush under the caption and painted from the
-/// caption's own ink, they made the first inch of the window one tall
-/// undifferentiated block of chrome — and they are not window chrome. Search,
-/// layout, density, display and sort all act on the library. They are its
-/// header, so they are inside its pane, in BOTH layouts. Which pane a control
-/// belongs to is a fact about what the control does, and that is not a function
-/// of whether the panes are inset.</para>
+/// How the window is put together: flush (one surface divided by rules) or
+/// floating (content panes as rounded cards on the window's ground).
+/// Orthogonal to theme and transparency; every layout works with both.
 /// </summary>
 public enum WinnowLayout
 {
@@ -48,14 +18,8 @@ public enum WinnowLayout
     Floating,
 }
 
-/// <summary>
-/// The layout list, and the copy the Appearance screen shows for each one.
-///
-/// <para>Written here beside the enum rather than in the view model for the same
-/// reason <see cref="WinnowBackdrops"/> is: the name and the sentence are part of
-/// what the value MEANS, and a settings screen that had to carry them would be
-/// the second place they could drift.</para>
-/// </summary>
+/// <summary>The layout list and the copy the Appearance screen shows for
+/// each one.</summary>
 public static class WinnowLayouts
 {
     /// <summary>What an unset preference reads as. Flush, because it is what the

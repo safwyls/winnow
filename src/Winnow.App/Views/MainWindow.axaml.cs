@@ -57,78 +57,6 @@ public partial class MainWindow : Window
     /// <summary>
     /// Asks Windows for the backdrop the user's preference needs, and reports
     /// back what it actually got.
-    ///
-    /// <para><b>The markup declares the opaque window and this method upgrades
-    /// it</b>, never the other way round. The XAML is the state that is correct
-    /// on every host — opaque <c>ShellGround</c>, opaque <c>CaptionFill</c> — so
-    /// a machine where none of this works needs nothing to go right in order to
-    /// look deliberate. The upgrade happens before the window is shown, so there
-    /// is no opaque first frame to flash.</para>
-    ///
-    /// <para><b>The hint is a list, and the head of it is now the user's
-    /// choice.</b> Acrylic asks <c>[AcrylicBlur, Mica, None]</c>; Mica asks
-    /// <c>[Mica, AcrylicBlur, None]</c>. Acrylic is the default, for the reason
-    /// set out below, and the second entry is a real fallback rather than a
-    /// formality — a machine that refuses one is better off with the other than
-    /// with nothing. What it may not be is SILENT: whichever material comes
-    /// back is handed to <see cref="ThemeService.SetActiveBackdrop"/> by name,
-    /// and the Appearance screen says so when it is not the one that was
-    /// asked for.</para>
-    ///
-    /// <para>The list used to lead with Mica unconditionally, and the reason was
-    /// good: Mica samples the
-    /// desktop WALLPAPER, one image that does not move, so the contrast sums the
-    /// translucent inks are built on had something bounded to run against.
-    /// AcrylicBlur was refused because it samples whatever is behind the window —
-    /// no bound, no measurement, and a rail whose legibility changes when the
-    /// user alt-tabs.</para>
-    ///
-    /// <para><b>What that reasoning did not know is that dark Mica cannot produce
-    /// translucency at any alpha.</b> Windows composes it by tinting toward its
-    /// own near-black base so hard that the wallpaper contributes almost nothing:
-    /// measured on this machine, the composite behind our chrome back-solves to
-    /// <c>#201F1E</c> whether the wallpaper under the window is orange rock or
-    /// blue sky. At 30% alpha — the far end of the slider, the most desktop the
-    /// application offers — the rail lands on a neutral dark grey and the desktop
-    /// is not visible in it. The limit was the MATERIAL, not the alpha, which is
-    /// why turning the alpha down did not fix the complaint that transparency
-    /// "doesn't come across as transparency at all".</para>
-    ///
-    /// <para><b>And the objection to acrylic is now answered structurally rather
-    /// than by picking a tame backdrop.</b> WHITE bounds every backdrop there is,
-    /// wallpaper or window; the palette is measured against it across the whole
-    /// slider (<c>ThemeContrastTests</c>), and the Appearance screen reports the
-    /// worst case live and marks the point where it crosses AA. The real
-    /// objection was to shipping a number nobody could check. The number is on
-    /// screen now.</para>
-    ///
-    /// <para><b>That is an argument for the DEFAULT, not for the only option.</b>
-    /// Reading as a tone rather than as a view is a legitimate thing to want —
-    /// it is quieter and it is what the rest of Windows 11 does — and someone
-    /// who wants it should not have to be talked out of transparency to get it.
-    /// So Mica is offered by name, described by what it actually does, and never
-    /// arrives by accident.</para>
-    ///
-    /// <para><b>The fallback the platform reports is not always the fallback
-    /// that was asked for, which is exactly why this reads
-    /// <see cref="TopLevel.ActualTransparencyLevel"/> instead of assuming.</b>
-    /// Avalonia's Win32 backend walks the hint list, skips levels the machine
-    /// cannot do, and if it exhausts the list falls back to its own default —
-    /// which under the WinUI composition path is <c>Transparent</c>, not the
-    /// <c>None</c> that was requested. A Windows 10 host therefore lands on a
-    /// genuinely see-through window, and <c>TransparencyBackgroundFallback</c>
-    /// does not fire because that only covers <c>None</c>. So the test here names
-    /// the levels that count — acrylic, blur or Mica — and never "not None". With transparency off
-    /// the window's own <c>Background</c> is an opaque brush either way, so a
-    /// host that reports <c>Transparent</c> against our wishes still paints a
-    /// solid window.</para>
-    ///
-    /// <para>Subscribed as well as read once: Avalonia re-applies the backdrop
-    /// when the OS theme variant changes, and a remote-desktop session or a
-    /// composition failure can take it away while the window is open. Whichever
-    /// way it moves, <see cref="ThemeService.SetActiveBackdrop"/> hears about
-    /// it and the opaque token set goes back on — a translucent rail over a
-    /// window with nothing behind it is the failure this exists to avoid.</para>
     /// </summary>
     private void RequestBackdrop()
     {
@@ -161,28 +89,8 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Paints the one surface the backdrop decision reaches directly — the
-    /// window's own background — and tells the theme service what happened.
-    ///
-    /// <para>With a backdrop the window goes transparent so the desktop can reach
-    /// the chrome; the rail, the filter panel, the command bar and the caption
-    /// paint their own translucent fills over it, and the cover wall paints an
-    /// opaque one. Without it, everything goes back to the tokens it is declared
-    /// with. There is deliberately no third state: half a translucent window is
-    /// the failure this is written to avoid.</para>
-    ///
-    /// <para><b>The test is positive and names each level, never "not None".</b>
-    /// Avalonia's Win32 backend can land on <c>Transparent</c> when it exhausts
-    /// the hint list, which is a genuinely see-through window with nothing behind
-    /// it — the exact state the opaque token set exists to catch. Every arm below
-    /// is an equality against a level that means something is being composited;
-    /// everything else falls to <see cref="WinnowBackdrop.None"/> by default,
-    /// including levels this build has never heard of.</para>
-    ///
-    /// <para><c>Blur</c> maps to acrylic rather than to its own value because it
-    /// is what it is: a blur-behind. It is the older Win32 spelling of the same
-    /// picture, so a machine that lands on it has honoured an acrylic request
-    /// rather than substituted for it.</para>
+    /// Paints the window's background and tells the theme service which backdrop
+    /// the platform actually granted.
     /// </summary>
     private void ApplyBackdrop()
     {
@@ -201,17 +109,8 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// The theme service repainted the resource dictionary. Two things follow.
-    ///
-    /// <para>The backdrop may need re-requesting, because turning transparency
-    /// on is the only thing that makes Mica worth asking for.</para>
-    ///
-    /// <para>And the tree gets an explicit invalidation pass. Mutating a brush's
-    /// colour raises <c>IAffectsRender.Invalidated</c>, which reaches every
-    /// property registered with <c>AffectsRender</c> — but a control that cached
-    /// a measured text layout, or one whose brush is only read inside a control
-    /// template, can miss it. One walk per theme change costs nothing and means
-    /// a half-repainted window cannot happen.</para>
+    /// The theme service repainted the resource dictionary; re-request the
+    /// backdrop and invalidate the visual tree.
     /// </summary>
     private void OnThemeApplied(object? sender, EventArgs e)
     {
@@ -240,21 +139,6 @@ public partial class MainWindow : Window
 
     /// <summary>
     /// Drag moves the window; a double press maximises or restores it.
-    ///
-    /// <para><see cref="Window.BeginMoveDrag"/> hands the press to the system's
-    /// own move loop, which is what buys Aero Snap, the edge previews and
-    /// Win+Arrow for free rather than reimplementing them badly. The cost is
-    /// that the loop is modal: it owns the pointer until the button comes up,
-    /// so the second press of a double click reaches us through this handler or
-    /// not at all. Hence both tests below — the framework's click count when the
-    /// move loop leaves it intact, and our own press clock when it does not.
-    /// The two can never both fire for one press, so the window cannot toggle
-    /// twice and appear to ignore the gesture.</para>
-    ///
-    /// <para>The gesture is deliberately NOT wired to <c>DoubleTapped</c> as
-    /// well. Avalonia raises that from the tunnelling half of this same press,
-    /// so a second handler would toggle the window a second time on the same
-    /// click and land it back where it started.</para>
     /// </summary>
     private void OnTitleBarPressed(object? sender, PointerPressedEventArgs e)
     {
@@ -914,29 +798,9 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// The cover wall's one pointer gesture: <b>a click turns the card over</b>,
-    /// and a double click opens the detail modal.
-    ///
-    /// <para><b>Registered on the TUNNEL route, from code-behind</b> — the one
-    /// thing that could not be written as a XAML event attribute, which is
-    /// bubble-only. A turned card's back face carries real buttons, and the
-    /// second press of a double click lands wherever the pointer happens to be
-    /// over a face that appeared 160ms ago. Seeing the press on the way down
-    /// lets this method take that press for the modal and mark it handled before
-    /// any of those buttons is offered it, so a double click can never fire
-    /// Play, Add to list or Details as a side effect of asking for the panel. A
-    /// bubble handler would have been given it after the button had already
-    /// acted.</para>
-    ///
-    /// <para>A single press is left unhandled and allowed to continue down: a
-    /// press that lands on one of the back's buttons is that button's, and the
-    /// card must not also turn under it. Everything else turns the card.</para>
-    ///
-    /// <para>The flip itself is a command on the library, not a flag written
-    /// here, so the wall's virtualization cannot corrupt it and so the keyboard
-    /// route below reaches exactly the same state (§8). Selection follows from
-    /// it for the same reason it always has: the picked set is derived in the
-    /// view model, so a press and an arrow key produce the same state.</para>
+    /// A click turns the card over; a double click opens the detail modal.
+    /// Registered on the tunnel route so the double click is caught before the
+    /// back face's buttons.
     /// </summary>
     private void OnTilePressed(object? sender, PointerPressedEventArgs e)
     {
@@ -973,25 +837,7 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Puts focus on the display preference when its popover opens. §8 asks for
-    /// a keyboard-reachable control with a visible focus ring, and a flyout that
-    /// opens without moving focus leaves the only control inside it reachable by
-    /// pointer alone — the button that opened it still holds focus, and Tab from
-    /// there walks the command bar behind the popup.
-    ///
-    /// <para>Posted at input priority rather than run inline: the presenter is
-    /// still being attached when Opened fires, so the content has no visual tree
-    /// to focus into yet.</para>
-    /// </summary>
-    /// <summary>
-    /// The journal card's note field. Enter saves, Escape dismisses, and both
-    /// mark the key handled so the window's own Escape chain never sees them:
-    /// the card is not modal and must not start behaving like it, so Escape
-    /// pressed anywhere else still means "give me the library back".
-    ///
-    /// <para>There is deliberately no global key that opens or answers this
-    /// card. It is an offer, and an offer with a keyboard shortcut is a
-    /// prompt.</para>
+    /// The journal card's note field. Enter saves, Escape dismisses.
     /// </summary>
     private void OnJournalNoteKeyDown(object? sender, KeyEventArgs e)
     {
@@ -1080,24 +926,7 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// The selection's context menu opens only when there is a selection —
-    /// exactly the condition the retired command-bar button carried as
-    /// <c>IsVisible</c>, moved here because a menu is not a control that can
-    /// simply not be drawn.
-    ///
-    /// <para>The menu is attached to the whole library pane so that one menu
-    /// serves both views (§12.3: Add to list is ONE control reading whichever
-    /// selection is in force). The cost of that reach is that a right-click on
-    /// the pane's empty ground, the empty-state sentence or the space under the
-    /// last row also asks for it, and none of those is a selection. Cancelling
-    /// is the honest answer: a menu whose only item is greyed out tells the user
-    /// less than no menu at all, and it would appear in places nothing is
-    /// selectable.</para>
-    ///
-    /// <para>Selection has already been updated by the time this runs — both
-    /// views take the right press on <c>PointerPressed</c> and
-    /// <c>ContextRequested</c> follows it — so <c>HasSelection</c> here is the
-    /// state the menu is about to act on, not the previous one.</para>
+    /// The context menu opens only when there is a selection; cancels otherwise.
     /// </summary>
     private void OnLibraryContextMenuOpening(object? sender, CancelEventArgs e)
         => e.Cancel = _library is not { HasSelection: true };
@@ -1136,19 +965,7 @@ public partial class MainWindow : Window
         }
     }
 
-    /// <summary>
-    /// Sends both views back to the top. The offset belongs to the scroll
-    /// viewer, not to the list it happens to be showing: filter 616 tiles down
-    /// to three and nothing re-anchors it, so the viewport stays where the long
-    /// set left it — far past the end of the short one — and the user sees empty
-    /// space. Switching views is the same case, since the two panes scroll
-    /// independently and only one of them is ever measured.
-    ///
-    /// <para>This is the whole of what the view has to do about a set change.
-    /// <see cref="CoverWall"/> recomputes its geometry and its realized rows
-    /// from the item count on the next measure pass, so there is nothing to
-    /// re-seat and nothing that can be left describing the previous set.</para>
-    /// </summary>
+    /// <summary>Sends both views back to the top after a set or view change.</summary>
     private void ResetScroll()
     {
         GridScroll.Offset = new Vector(0, 0);
@@ -1195,13 +1012,7 @@ public partial class MainWindow : Window
     // where it is. Escape turns it back (see UnwindCut) and returns focus here,
     // as do the arrow keys by way of moving the selection.
 
-    /// <summary>
-    /// Turns the selected card over, or back, and takes focus with it.
-    ///
-    /// <para>Focus is moved on the keyboard route only. A pointer flip must not
-    /// steal focus from wherever the user last put it — they are already holding
-    /// the device that can reach the buttons.</para>
-    /// </summary>
+    /// <summary>Turns the selected card over, or back, and takes focus with it.</summary>
     private void FlipSelectedTile()
     {
         if (_library is not { IsGridView: true, SelectedTile: { } tile })

@@ -15,19 +15,8 @@ public enum ThemeSeverity
 }
 
 /// <summary>
-/// One thing wrong with one theme file, said the way an author can act on it.
-///
-/// <para><b>Validation here is a tool, not a gate.</b> A theme that fails is
-/// skipped and the app keeps the theme it had; a theme that merely worries us
-/// loads anyway. What neither may do is fail silently — an author working
-/// against a silent fallback has no way to tell a typo from a taste they
-/// disagree with. So every diagnostic names the FILE, the FIELD and what was
-/// expected, and the Appearance screen prints them.</para>
-///
-/// <para><see cref="Field"/> is a path into the document — <c>seeds.ground</c>,
-/// <c>structure.edge</c>, <c>overrides.Line</c> — rather than a token name, so
-/// it points at the line an author has to edit rather than at the concept the
-/// line produces. It is empty for a diagnostic about the file as a whole.</para>
+/// One thing wrong with one theme file. Names the file, the field (as a
+/// document path like <c>seeds.ground</c>), and what was expected.
 /// </summary>
 /// <param name="Severity">Whether the theme still loads.</param>
 /// <param name="File">The file's name, not its full path: the folder is stated

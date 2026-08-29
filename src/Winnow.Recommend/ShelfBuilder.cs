@@ -16,41 +16,13 @@ internal sealed record ShelfDefinition(
     Func<CandidateFacts, IReadOnlyList<SignalContribution>, bool> Eligible);
 
 /// <summary>
-/// Turns one scored candidate pool into themed shelves. Pure — all the reads
-/// happened upstream — so every claim below is unit-testable without a
-/// database.
-///
-/// <para><b>Why shelves at all.</b> One ranked list buries every story below
-/// the first: the patched comeback, the bounced-but-changed, the on-taste
-/// shelfware and the installed-and-waiting all collapse into "a list of
-/// games". A shelf is a REASON with items attached, and every shelf here runs
-/// entirely on Tier-0 facts — this is the surface that makes day one worth
-/// looking at, and history only sharpens it (see
-/// docs/recommendation-engine.md §6a).</para>
-///
-/// <para><b>Claim order = presentation order.</b> A work appears on at most
-/// one shelf per feed, claimed by the earliest shelf whose rule it meets —
-/// two rails both fronting the same game is the same-five-games failure
-/// sideways. The order runs strongest story first: changed-since-you-left,
-/// then you-committed-once, then zero-friction, then you-sampled-it, then
-/// pure taste. Items a later shelf loses to a claim are items that earned a
-/// better sentence.</para>
-///
-/// <para><b>Diversity is a correctness property.</b> Within a shelf: at most
-/// <see cref="RecommendationTuning.ShelfFranchiseCap"/> per franchise (hard —
-/// the measured library would otherwise fill a shelf with Infinity Blade) and
-/// at most <see cref="RecommendationTuning.ShelfGenreCap"/> sharing one genre
-/// (soft — a second pass refills from the skips, because a pool that
-/// genuinely is six RPGs should still fill its shelf rather than fake
-/// variety it does not have).</para>
+/// Turns a scored candidate pool into themed shelves (pure, no IO). Each work appears on
+/// at most one shelf, claimed by the first matching definition. Franchise and genre caps
+/// enforce diversity within each shelf.
 /// </summary>
 internal static class ShelfBuilder
 {
-    /// <summary>
-    /// The shelf catalogue, in claim order. Every rule here reads Tier-0
-    /// facts only — buckets, minutes, install state, facets — which is the
-    /// point: the shelf surface must be fully populated on day one.
-    /// </summary>
+    /// <summary>The shelf catalogue in claim order. All rules use Tier-0 facts only.</summary>
     public static IReadOnlyList<ShelfDefinition> Definitions(
         BucketThresholds thresholds, RecommendationTuning tuning)
     {
@@ -105,22 +77,12 @@ internal static class ShelfBuilder
         ];
     }
 
-    /// <summary>
-    /// Whether a candidate belongs on a shelf at all. The one rule shared by
-    /// every shelf: a game played inside the fresh window is not forgotten,
-    /// and no rail may pretend otherwise — the same fact the scorer's
-    /// recently-played penalty encodes, read off the signals rather than
-    /// recomputed so the two can never disagree.
-    /// </summary>
+    /// <summary>True if the candidate passes the shelf's rule and was not recently played.</summary>
     public static bool IsEligible(
         ShelfDefinition shelf, CandidateFacts facts, IReadOnlyList<SignalContribution> signals)
         => !Fired(signals, SignalNames.RecentlyPlayed) && shelf.Eligible(facts, signals);
 
-    /// <summary>
-    /// Fills the shelves from the scored pool. <paramref name="scored"/> must
-    /// already be the union of every shelf's shortlist; entries are re-ranked
-    /// per shelf by final score here.
-    /// </summary>
+    /// <summary>Fills shelves from the scored pool (must be the union of every shelf's shortlist).</summary>
     public static IReadOnlyList<RecommendationShelf> Build(
         IReadOnlyList<ShelfDefinition> definitions,
         IReadOnlyList<ScoredCandidate> scored,
@@ -154,14 +116,7 @@ internal static class ShelfBuilder
         return shelves;
     }
 
-    /// <summary>
-    /// The two-pass fill. Strict pass: skip anything that would put a second
-    /// franchise entry or a genre past its cap on the shelf. Relaxation pass:
-    /// refill the remaining slots from the genre-skips in score order — the
-    /// genre cap is a preference for variety, not a quota to leave slots
-    /// empty over. The franchise cap is never relaxed; see
-    /// <see cref="RecommendationTuning.ShelfFranchiseCap"/>.
-    /// </summary>
+    /// <summary>Two-pass fill: strict pass enforces franchise and genre caps; relaxation pass refills from genre-skips.</summary>
     private static List<Recommendation> Fill(
         List<ScoredCandidate> pool,
         HashSet<long> claimedWorks,

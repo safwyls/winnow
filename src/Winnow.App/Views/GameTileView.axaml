@@ -79,29 +79,10 @@
             </Setter>
         </Style>
 
-        <!-- ══ The card flip (§5.3's overlay, turned into a face) ═══════════
-             One click turns the cover over. The two faces are the two halves of
-             a 160ms turn: the front squashes to a line about its own centre in
-             80ms, and the back opens out from a line over the next 80ms. It is
-             a transition rather than a keyframe animation precisely so it runs
-             in BOTH directions from one declaration — a class-triggered
-             animation would turn the card over and then snap it back.
-
-             §8's reduced-motion rule is why the `.snap` selector below empties
-             the transition sets rather than shortening them: an empty set has
-             no animation to schedule at all, and the card simply IS turned over.
-             That is the same treatment, from the same OS setting, that the
-             dormancy cross-fade already takes — design-system.md §13 gap 1 notes
-             the app has no reduced-motion setting of its own to hang new motion
-             off, and this deliberately does not invent one: it reuses the signal
-             that already exists (SPI_GETCLIENTAREAANIMATION, read once by
-             DormancyRamp).
-
-             Every resting value here is a STYLE setter and none of them is a
-             local value on the element. A local Opacity="0" outranks a style
-             setter in Avalonia's precedence, so writing the back face's resting
-             state inline would pin it shut for good — and would put it out of
-             reach of the reduced-motion selector as well. -->
+        <!-- Card flip (§5.3). 160ms turn: front squashes in 80ms, back opens
+             in 80ms. Transition-based so it reverses automatically. Resting
+             values are style setters (not local) so reduced-motion and flipped
+             selectors can override them. -->
 
         <Style Selector="Border#Face">
             <Setter Property="Opacity" Value="1"/>
@@ -419,7 +400,7 @@
 
                         <Button Classes="tile-act"
                                 Content="Details"
-                                ToolTip.Tip="Everything the tile doesn't say"
+                                ToolTip.Tip="Full details"
                                 Command="{Binding OpenDetailsCommand}"
                                 CommandParameter="{Binding}"/>
                     </StackPanel>

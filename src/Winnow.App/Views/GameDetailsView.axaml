@@ -6,34 +6,9 @@
              x:DataType="vm:GameDetailsViewModel"
              Focusable="True">
 
-    <!--
-        The game detail modal. design-system.md §5.3 caps the hover overlay at
-        four facts because "the tile is a decision surface, not a detail view" —
-        this is the detail view that cap presupposes, and §10 is its spec.
-
-        Four bands, in the order a person asks the questions:
-          1  WHAT IS THIS      art, title, year, publisher, store, bucket, state
-          2  MY HISTORY        playtime, and the gap rail
-          3  GET ME IN         Play / Install, store page, patch notes, folder
-          4  THE REST          summary, update list, on-disk and appid facts
-
-        Everything on this screen is a fact we hold. Year, publisher and summary
-        arrive with IGDB enrichment behind a library the user is already
-        browsing (§7), so each row is bound and simply absent until its fact
-        exists. No "Unknown", no grey placeholder line: a stand-in that becomes
-        real data an hour later teaches the user to distrust the whole panel.
-
-        Facts the SCHEMA has but this data source never fills — acquired_at,
-        license_type, price, edition, platform, achievements — are absent from
-        the markup entirely rather than bound and hidden. A row that can never
-        appear is dead weight impersonating a feature.
-
-        No flyout anywhere in this panel, deliberately. The global FocusAdorner
-        does not render inside a popup (an adorner needs an adorner layer, and a
-        popup is its own root — see MainWindow's CheckBox.pref template), so a
-        menu here would need its focus ring hand-drawn. Three links do not need
-        hiding behind one.
-    -->
+    <!-- Game detail modal (§10). Four bands: identity, history, actions, rest.
+         Rows appear when their data exists. No flyouts (focus adorner
+         cannot render inside a popup). -->
 
     <UserControl.Styles>
 
@@ -44,19 +19,7 @@
         </Style>
 
         <!-- ══ Focus, drawn rather than adorned ═══════════════════════════════
-             §8 asks for visible keyboard focus everywhere. The global
-             FocusAdorner in tokens.axaml could not deliver it here — measured on
-             the running window, it put a few stray pixels at the corners of the
-             close button and nothing on the rest — so this panel draws its own,
-             the same way MainWindow's CheckBox.pref does for the same class of
-             reason.
-
-             The ring is a BRUSH swap on a border whose THICKNESS never changes.
-             Thickening a border on focus reflows the row it is in, and a set of
-             buttons that shuffle sideways as you tab through them is worse than
-             no ring at all. It is set on PART_ContentPresenter rather than on
-             the Button, because Fluent's own state styles write that presenter
-             directly and a TemplateBinding would lose to them on hover. -->
+             Brush swap on constant-thickness border (FocusAdorner fails here). -->
 
         <!-- Close affordance and patch-notes rows: quiet until touched. The 1px
              border is transparent at rest, so it costs nothing but reserves the
@@ -105,6 +68,30 @@
             <Setter Property="Foreground" Value="{StaticResource Azure}"/>
         </Style>
 
+        <!-- Secondary action: Text colour, not Azure (acts on our DB, not
+             outbound) and not Flare (§2). -->
+        <Style Selector="Button.secondary">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
+            <Setter Property="Padding" Value="11,6"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="Button.secondary /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.secondary:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
+        </Style>
+        <Style Selector="Button.secondary:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
+        </Style>
+        <Style Selector="Button.secondary :is(TextBlock)">
+            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+        </Style>
+
         <!-- The one filled control on the screen. Volt marks the active thing,
              and starting the game is the most active thing there is (§2). -->
         <Style Selector="Button.launch">
@@ -135,29 +122,14 @@
             <Setter Property="BorderBrush" Value="{StaticResource VoltPress}"/>
             <Setter Property="Foreground" Value="{StaticResource VoltInk}"/>
         </Style>
-        <!-- The one place the focus ring is not Volt, because it cannot be:
-             Volt on a Volt fill is nothing. It is the button's own ink instead —
-             the same dark green-teal the label is set in — which reads as the
-             control being armed rather than as a different colour arriving. -->
+        <!-- Focus ring uses VoltInk here (Volt on Volt is invisible). -->
         <Style Selector="Button.launch:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="BorderBrush" Value="{StaticResource VoltInk}"/>
         </Style>
 
-        <!-- Copyable text. The I-beam makes the affordance visible before the
-             drag; selection itself needs no focus, but Ctrl+C does — and every
-             focusable line is also a Tab stop.
-
-             SelectableTextBlock arrives focusable from its own control theme, so
-             the four lines worth stopping on (title, summary, appid, install
-             path) keep it and everything else opts OUT with Focusable="False".
-             Measured before it was written: with all of them focusable it took
-             five Tab presses to reach the Play button, past a publisher name and
-             a release year nobody tabs to a modal to copy.
-
-             Focused text gets a raised field rather than a ring. §8 wants the
-             focus visible, and a 2px outline around a five-line paragraph is a
-             box, not an indicator. Keyboard focus only — a tint that appeared
-             mid-drag would fight the selection it is meant to support. -->
+        <!-- Copyable text. Only title, summary, appid and install path keep
+             Focusable; the rest opt out to shorten the Tab run to Play.
+             Focused text gets a raised field (keyboard only), not a ring. -->
         <Style Selector="SelectableTextBlock.copyable">
             <Setter Property="Cursor" Value="Ibeam"/>
         </Style>
@@ -165,10 +137,9 @@
             <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
         </Style>
 
-        <!-- Update rows. The Flare dot is the §5.2 unread signal, so it appears
-             on the rows that really did land after the last session and on no
-             others; older rows keep the column's width with a hairline tick so
-             the two lists stay aligned. -->
+        <!-- Update rows. Flare dot shows on rows that landed after last
+             session and are above the dismissal watermark (migration 0012).
+             Older rows keep the column width for alignment. -->
         <Style Selector="Border.updaterow:pointerover">
             <Setter Property="Background" Value="{StaticResource SurfaceRaisedFaint}"/>
         </Style>
@@ -195,22 +166,8 @@
                 KeyboardNavigation.TabNavigation="Cycle"
                 HorizontalAlignment="Center" VerticalAlignment="Center">
 
-            <!--
-                Two columns, and the split is what the columns are ABOUT rather
-                than where the art happened to fit.
-
-                LEFT is the object: its art, the id Steam calls it, and where it
-                lives on disk. RIGHT is your relationship with it: what you have
-                played, the gap, the way back in, then what it says about itself
-                and what changed while you were gone.
-
-                The left column carrying the appid and the path is also what
-                fixes a real layout fault. With everything in one right-hand
-                stack, a game with no last-played date left ~130px of nothing
-                beside a 300px cover — the panel read as broken rather than as
-                sparse. Two short facts under the art fill exactly that, and
-                they belong there on the merits.
-            -->
+            <!-- Two columns: LEFT is the object (art, appid, path),
+                 RIGHT is your relationship (playtime, gap, actions, updates). -->
             <Grid ColumnDefinitions="200,*" ColumnSpacing="26" Margin="26,24,26,0">
 
 
@@ -241,10 +198,8 @@
                                 </Button>
                             </Grid>
 
-                            <!-- Year and publisher. Bricolage names the game;
-                                 Plex Mono states the number; Jakarta sets the
-                                 other name. The three faces touching is what
-                                 says which of the three each one is (§3). -->
+                            <!-- Year and publisher: three typefaces distinguish
+                                 the three kinds of content (§3). -->
                             <StackPanel Orientation="Horizontal"
                                         IsVisible="{Binding HasIdentityLine}">
                                 <SelectableTextBlock Classes="data copyable"
@@ -287,11 +242,8 @@
                                            Foreground="{StaticResource TextDim}"
                                            Text="{Binding BucketLabel}"/>
                             </Border>
-                            <!-- Install state is three-valued and only two of
-                                 the three are sayable: null means no source
-                                 looked, and §10.5's rule is that a fact nothing
-                                 can fill is absent rather than bound and
-                                 hidden — never "Unknown". -->
+                            <!-- Install state: null (no source looked) is
+                                 hidden, never shown as "Unknown" (§10.5). -->
                             <Border Background="{StaticResource SurfaceRaised}"
                                     CornerRadius="3" Padding="7,3" VerticalAlignment="Center"
                                     IsVisible="{Binding HasInstallState}">
@@ -422,12 +374,8 @@
                             Background="{StaticResource Line}"/>
 
                 <!-- ══ Band 4: the rest ═════════════════════════════════════ -->
-                <!-- The band's own breathing room is the CONTENT's margin, not
-                     the ScrollViewer's padding. Padding here is not counted in
-                     the viewer's desired height, so the card sized itself ~40px
-                     short and clipped its last row mid-line — with no scrollbar,
-                     because as far as the viewer was concerned everything
-                     fitted. A margin on the scrolled content is measured. -->
+                <!-- Breathing room is the content's margin, not ScrollViewer
+                     padding (padding is not counted in desired height). -->
                 <ScrollViewer Grid.Row="2"
                               Classes="inner"
                               HorizontalScrollBarVisibility="Disabled"
@@ -452,10 +400,8 @@
                                        Text="{Binding EmptyBodyText}"/>
                         </StackPanel>
 
-                        <!-- §5.2: the badge exists so the user can go read what
-                             changed. Announcements carry a page; build pushes
-                             do not, and offering a dead link would be worse
-                             than offering none. -->
+                        <!-- Updates list. Patch-notes links only appear when the
+                             update carries a page (§5.2). -->
                         <StackPanel Spacing="4" IsVisible="{Binding HasUpdates}">
                             <TextBlock Classes="label" Text="{Binding UpdatesLabel}"/>
                             <ItemsControl ItemsSource="{Binding Updates}">
@@ -474,8 +420,8 @@
                                                         VerticalAlignment="Center"
                                                         Background="{StaticResource Flare}"
                                                         BoxShadow="{DynamicResource PipGlow}"
-                                                        IsVisible="{Binding IsSinceYouPlayed}"
-                                                        ToolTip.Tip="Landed after your last session"/>
+                                                        IsVisible="{Binding IsUnread}"
+                                                        ToolTip.Tip="Unread update"/>
                                                 <SelectableTextBlock Grid.Column="1" Classes="body copyable"
                                                            Focusable="False"
                                                            Text="{Binding Headline}"
@@ -500,25 +446,59 @@
                             </ItemsControl>
                         </StackPanel>
 
+                        <!-- "I've read this one": placed under the update list.
+                             Not "Not interested"; that is the feed card's verdict. -->
+                        <StackPanel Spacing="8" IsVisible="{Binding ShowFlagControl}">
+
+                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12"
+                                  IsVisible="{Binding ShowDismissFlag}">
+                                <Button Grid.Column="0" Classes="secondary"
+                                        Command="{Binding DismissFlagCommand}"
+                                        ToolTip.Tip="{Binding DismissFlagNote}">
+                                    <TextBlock Classes="body" FontSize="12"
+                                               Text="{Binding DismissFlagLabel}"/>
+                                </Button>
+                                <TextBlock Grid.Column="1" Classes="body"
+                                           FontSize="12" LineHeight="17"
+                                           TextWrapping="Wrap"
+                                           VerticalAlignment="Center"
+                                           Foreground="{StaticResource TextDim}"
+                                           Text="{Binding DismissFlagNote}"/>
+                            </Grid>
+
+                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12"
+                                  IsVisible="{Binding ShowRestoreFlag}">
+                                <Button Grid.Column="0" Classes="secondary"
+                                        Command="{Binding RestoreFlagCommand}"
+                                        ToolTip.Tip="{Binding RestoreFlagNote}">
+                                    <TextBlock Classes="body" FontSize="12"
+                                               Text="{Binding RestoreFlagLabel}"/>
+                                </Button>
+                                <TextBlock Grid.Column="1" Classes="body"
+                                           FontSize="12" LineHeight="17"
+                                           TextWrapping="Wrap"
+                                           VerticalAlignment="Center"
+                                           Foreground="{StaticResource TextDim}"
+                                           Text="{Binding RestoreFlagNote}"/>
+                            </Grid>
+
+                            <!-- A write that did not land. Controls stay in
+                                 place for retry; Amber for attention (§2). -->
+                            <TextBlock Classes="body" FontSize="11"
+                                       TextWrapping="Wrap"
+                                       Foreground="{StaticResource Amber}"
+                                       IsVisible="{Binding HasFlagProblem}"
+                                       Text="{Binding FlagProblem}"/>
+                        </StackPanel>
+
                     </StackPanel>
                 </ScrollViewer>
 
                 </Grid>
 
                 <!-- ══ Left: the object ═════════════════════════════════════
-                     Declared AFTER the right column although it renders to the
-                     left of it. Avalonia's tab navigation walks the tree, not
-                     the TabIndex of a non-focusable container — measured, not
-                     assumed — so with the left column first, two Tab presses
-                     into a modal landed on an appid and an install path while
-                     the Play button was six stops away. Grid.Column places it;
-                     the declaration order is the keyboard's order.
-
-                     Its own bottom margin, not the grid's: the right column's
-                     breathing room lives on the scrolled content, and a margin
-                     on the shared grid would double up over there. Without it
-                     the appid's descenders clip on any game whose left column
-                     is the taller of the two. -->
+                     Declared after right column so Tab reaches Play first
+                     (tree order, not TabIndex). -->
                 <StackPanel Grid.Column="0" Grid.Row="0" Spacing="18"
                             Margin="0,0,0,24">
 

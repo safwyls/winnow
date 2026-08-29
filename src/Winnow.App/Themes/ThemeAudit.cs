@@ -4,25 +4,9 @@ using Avalonia.Media;
 namespace Winnow.App.Themes;
 
 /// <summary>
-/// What a theme measures, and what about it looks like a mistake.
-///
-/// <para><b>This is the half of the theme engine that could not exist in a
-/// stylesheet.</b> <c>ThemeContrastTests</c> walks every built-in across the
-/// whole transparency range and holds it to §8's floor and §2's Flare rule; a
-/// theme that arrives in a folder at runtime can never be unit-tested, so it
-/// gets the same walk at load time and the answer is printed on its card. "This
-/// theme's chrome stays over AA to 24%" is a stronger thing to hand an author
-/// than a validation pass, because it is about the theme they wrote rather than
-/// about the file they typed.</para>
-///
-/// <para><b>Everything here WARNS and nothing here refuses.</b> Including the
-/// Flare rule, which is the one invariant the built-ins are held to by a failing
-/// test. That is not an inconsistency: the built-ins are ours and are the
-/// product's own claim about what a colour means, and a user theme is theirs. A
-/// person who wants their unread markers in the same red as the close button is
-/// allowed to have that, and is told exactly what it costs — the badge stops
-/// meaning "unread" and starts meaning "coloured", and unread updates were the
-/// point.</para>
+/// Runtime audit of a theme's contrast and Flare separation. Walks the
+/// transparency range and warns; never refuses. Results are printed on the
+/// theme's card in the Appearance screen.
 /// </summary>
 public static class ThemeAudit
 {

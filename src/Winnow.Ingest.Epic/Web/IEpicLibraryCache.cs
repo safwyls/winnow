@@ -9,19 +9,7 @@ public readonly record struct EpicCacheEntry(string? PayloadJson, DateTime Fetch
 
 /// <summary>
 /// Where a fetched Epic library is kept so a resync does not refetch it.
-///
-/// <para><b>Deliberately not the <c>metadata_cache</c> table.</b> The Steam Web,
-/// IGDB and store modules each keep their own narrow view of that table, and this
-/// module could too — at the cost of a <c>Winnow.Data</c> project reference in
-/// <c>Winnow.Ingest.Epic</c>, whose local readers need nothing but the filesystem.
-/// The boundary is worth more than the persistence: an in-memory cache is
-/// entirely adequate for the way Winnow actually runs, since the app sits in the
-/// tray and the snapshot scheduler resyncs every 15 minutes against a 6-hour TTL.
-/// A restart costs exactly one refetch.</para>
-///
-/// <para>A host that wants the library cached across restarts registers its own
-/// implementation before calling <c>AddEpicWebApi</c>; every registration there
-/// is <c>TryAdd</c>.</para>
+/// In-memory by default; hosts may register a persistent implementation.
 /// </summary>
 public interface IEpicLibraryCache
 {

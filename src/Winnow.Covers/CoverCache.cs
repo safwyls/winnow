@@ -8,47 +8,22 @@ using SkiaSharp;
 
 namespace Winnow.Covers;
 
-/// <summary>
-/// The two layers of the dormancy cross-fade
-/// (docs/spikes/avalonia-dormancy-rendering.md): the floor variant sits under
-/// the vivid art, whose opacity carries the ramp.
-/// </summary>
-/// <param name="Vivid">Full-saturation cover, decoded at display resolution.</param>
-/// <param name="Floor">Saturation 0.22 / brightness 0.60 variant of the same image.</param>
+/// <summary>The two layers of the dormancy cross-fade: vivid art and desaturated floor variant.</summary>
 public sealed record CoverArt(Bitmap Vivid, Bitmap Floor);
 
 /// <summary>Cover art for the grid. Never blocks a user-facing path (§5.1).</summary>
 public interface ICoverCache
 {
-    /// <summary>
-    /// A cover already decoded and in memory. Synchronous and allocation-free on
-    /// the hit path so a recycled tile can repaint in the same layout pass
-    /// instead of flashing its placeholder.
-    /// </summary>
+    /// <summary>Synchronous lookup for a cover already decoded and in memory.</summary>
     bool TryGet(CoverKey key, double displayWidthPixels, out CoverArt art);
 
-    /// <summary>
-    /// The cover, fetching and decoding off-thread if needed.
-    /// <see langword="null"/> means "no art" — keep the placeholder.
-    /// </summary>
+    /// <summary>The cover, fetching and decoding off-thread if needed. Null means no art available.</summary>
     Task<CoverArt?> GetAsync(CoverKey key, double displayWidthPixels, CancellationToken ct = default);
 }
 
 /// <summary>
-/// Bounded in-memory LRU over <see cref="CoverPipeline"/>.
-/// <para><b>Memory bound.</b> Decoded bitmaps are capped by total pixel bytes,
-/// not by count, because the same 616 tiles cost 4x more at 2x DPI. The default
-/// is 128 MB of BGRA pixels counting both layers: a 148 DIP tile at 1x decodes
-/// to 160x240 (154 KB/layer, 307 KB/pair → ~430 covers) and at 2x to 320x480
-/// (614 KB/layer, 1.2 MB/pair → ~107 covers). A 1180x760 window realizes roughly
-/// 24 tiles, a maximised 4K one under 200, so even the worst case holds several
-/// screenfuls of scrollback without eviction thrash — and eviction is cheap
-/// anyway, because the disk cache means a re-decode never touches the network.
-/// </para>
-/// <para>The bound itself lives in <see cref="DecodedLru{TKey,TValue}"/>, which
-/// is where the eviction rule and the <see cref="GC.AddMemoryPressure(long)"/>
-/// accounting are documented — and, because it is free of Avalonia, where they
-/// can be tested without starting a rendering platform.</para>
+/// Bounded in-memory LRU over <see cref="CoverPipeline"/>. Capped by total pixel
+/// bytes (not count) via <see cref="DecodedLru{TKey,TValue}"/>.
 /// </summary>
 public sealed class CoverCache : ICoverCache, IDisposable
 {

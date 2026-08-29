@@ -64,6 +64,32 @@ public class UpdatePollerTests : IDisposable
         Assert.DoesNotContain(neverOpened, eligible.Select(c => c.ReleaseId));
     }
 
+    /// <summary>
+    /// A release whose badge the user has DISMISSED (migration 0012) is still
+    /// polled, and must stay polled. The dismissal is a watermark cleared by the
+    /// next correlated build push, so polling is the only thing that can ever
+    /// re-raise the flag; filtering acknowledged releases out of the eligible
+    /// set — the obvious-looking saving — would mean no newer push is ever
+    /// fetched, the watermark is never passed, and every dismissal silently
+    /// becomes permanent.
+    /// </summary>
+    [Fact]
+    public async Task Dismissed_games_are_still_polled()
+    {
+        var releaseId = await SeedAsync("830", playtimeMinutes: 600, lastPlayed: Now.AddYears(-2).UtcDateTime);
+
+        await new UpdateAcknowledgementRepository(_db.Factory).RecordAsync(new UpdateAcknowledgement
+        {
+            ReleaseId = releaseId,
+            AcknowledgedThrough = Now.AddYears(-1).UtcDateTime,
+            CreatedAt = Now.UtcDateTime,
+        });
+
+        var eligible = await new SqlitePollCandidateSource(_db.Factory).GetEligibleAsync(6_000);
+
+        Assert.Equal(["830"], eligible.Select(c => c.AppId));
+    }
+
     [Fact]
     public async Task Zero_minutes_with_a_real_last_played_date_is_still_eligible()
     {

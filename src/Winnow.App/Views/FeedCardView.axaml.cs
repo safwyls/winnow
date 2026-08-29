@@ -9,30 +9,9 @@ using Winnow.App.ViewModels;
 namespace Winnow.App.Views;
 
 /// <summary>
-/// Code-behind for a feed card. Three jobs, and none of them is decoration.
-///
-/// <para><b>The sentence.</b> The reason is set as inlines rather than as a
-/// single string so that every number in it renders in IBM Plex Mono with
-/// tabular figures (§3) while the sentence itself keeps the body face. The split
-/// is <see cref="ReasonText"/>'s and is unit-tested there; this class only turns
-/// runs into <see cref="Run"/>s.</para>
-///
-/// <para><b>Hover.</b> The view model's <c>IsPointerOver</c> drives
-/// <c>DisplayAlpha</c>, which the vivid art layer animates over 140ms —
-/// Avalonia's <c>:pointerover</c> pseudo-class cannot reach a view-model
-/// property, so the pointer events do it explicitly, exactly as the wall's tiles
-/// do.</para>
-///
-/// <para><b>Cover art, and why it is requested but never released.</b> The feed
-/// renders the LIBRARY's tile view models (see
-/// <see cref="IGameTileSource"/>), and the wall releases a tile's decoded
-/// bitmaps whenever it recycles the container showing it — which happens while
-/// the user is scrolling the library, with the feed hidden behind it. A feed
-/// card would then come back to a blank cover. So the card watches its tile and
-/// re-requests when the bitmaps go, which is normally a synchronous hit in the
-/// cover cache's memory tier. It does NOT release on the way out: fewer than
-/// fifty cards exist, the cache is the real owner of the pixels, and releasing
-/// here would blank the wall from the other direction.</para>
+/// Code-behind for a feed card: sets reason text as mixed-font inlines, drives
+/// hover state on the tile view model, and re-requests cover art when the wall
+/// recycles the tile's bitmaps.
 /// </summary>
 public partial class FeedCardView : UserControl
 {

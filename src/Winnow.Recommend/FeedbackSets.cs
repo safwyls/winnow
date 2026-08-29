@@ -4,23 +4,9 @@ using Winnow.Core.Repositories;
 namespace Winnow.Recommend;
 
 /// <summary>
-/// The read-side bridge of the feedback loop: turns what the feedback store
-/// holds (verdicts, the surfacing log, launch-attributed sessions) into the
-/// four id sets a <see cref="RecommendationRequest"/> carries.
-///
-/// <para><b>Why this lives here and not in the engine.</b> The engine's
-/// contract is that intent arrives on the request and nothing persists inside
-/// the module — a computed feed must be droppable at any moment. That contract
-/// survives feedback: the store is truth (what the user said, what the feed
-/// showed), this class is a pure read over it, and the engine still sees only
-/// sets. It also does not live in the App layer, because how stored feedback
-/// becomes scoring input is recommendation policy (the windows are
-/// <see cref="RecommendationTuning"/> parameters), not presentation.</para>
-///
-/// <para><b>This class never writes.</b> Recording verdicts and surfacings is
-/// the caller's act (FeedService, on user clicks and after each feed).
-/// Winnow.Recommend reads through repository interfaces and returns scored
-/// results — feedback changes nothing about that.</para>
+/// Read-side bridge of the feedback loop: turns stored verdicts, surfacings, and
+/// endorsements into the four id sets a <see cref="RecommendationRequest"/> carries.
+/// Pure read — recording verdicts and surfacings is the caller's responsibility.
 /// </summary>
 public sealed record FeedbackSets
 {
@@ -41,11 +27,7 @@ public sealed record FeedbackSets
     /// <summary>Nothing stored yet — the sets a first launch runs on.</summary>
     public static FeedbackSets Empty { get; } = new();
 
-    /// <summary>
-    /// Reads the store and computes the sets as of one instant — the same
-    /// instant the feed will be computed at, so "active", "recent" and
-    /// "today" cannot disagree between the two reads.
-    /// </summary>
+    /// <summary>Reads the feedback store and computes the sets as of <paramref name="asOfUtc"/>.</summary>
     public static async Task<FeedbackSets> LoadAsync(
         IFeedFeedbackRepository feedback,
         DateTime asOfUtc,
@@ -113,13 +95,7 @@ public sealed record FeedbackSets
         EndorsedReleaseIds = EndorsedReleaseIds,
     };
 
-    /// <summary>
-    /// The surfacing rows one computed shelf feed should append to the log —
-    /// every item of every shelf, stamped with the feed's own day. The caller
-    /// records these via <see cref="IFeedFeedbackRepository.RecordSurfacedAsync"/>
-    /// right after rendering; the (release, day) primary key makes a same-day
-    /// repeat a no-op.
-    /// </summary>
+    /// <summary>Returns surfacing rows for every item in the feed, stamped with the feed's day.</summary>
     public static IReadOnlyList<FeedSurfacing> SurfacingsOf(ShelfFeed feed, DateTime asOfUtc)
     {
         var day = DateOnly.FromDateTime(asOfUtc);

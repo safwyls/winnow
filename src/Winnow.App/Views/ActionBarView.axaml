@@ -6,39 +6,11 @@
              x:Class="Winnow.App.Views.ActionBarView"
              x:DataType="vm:LibraryViewModel">
 
-    <!--
-        The strip between the command bar and the art. Two modes, never both.
-
-        · THE CUT BAR. What you are looking at, stated once: the place you are
-          in, then the rules, then "926 → 41". This is the seam where the rail
-          and the filter panel become one filter — and since the panel moved to
-          the right of the grid it is the ONLY thing making that claim, because
-          the two no longer touch (§11.1). The open list leads, the rail's
-          bucket follows it, the panel's options are the rest, and dropping any
-          of them goes back to the control that set it.
-
-          It exists because a library that has been cut down and does not admit
-          it is the most expensive confusion this screen can produce: the panel
-          can be closed and the rail scrolled past, and then 41 of 926 games
-          look like the whole hoard.
-
-          Each chip also says WHO SET IT — see the provenance styles below.
-          Without that, a live list's poured-in rules are indistinguishable from
-          the user's own, which is exactly how someone ends up certain they are
-          browsing their whole library while a live list is still cutting it.
-
-          The arrow is the only one in the application. It is here because this
-          is the only place a number becomes another number.
-
-        · THE PROMPT. Naming a live list, picking a list to add to, confirming a
-          delete. Deliberately a strip and not a flyout: Avalonia's global
-          FocusAdorner cannot render inside a popup (a popup is its own root and
-          has no adorner layer), so every control in a menu here would need its
-          ring hand-drawn — the same reason design-system §10.7 gives for the
-          detail panel having no flyout either. In the window's own tree, §8's
-          focus ring and a linear Tab order both come free, and the question
-          sits directly above the thing it is about.
-    -->
+    <!-- Strip between command bar and art. Two modes, never both:
+         · CUT BAR — shows active filters as chips (list, bucket, panel rules)
+           with a total→filtered count. Chips indicate provenance (user vs list).
+         · PROMPT — naming/picking/deleting a list. A strip, not a flyout,
+           because FocusAdorner cannot render inside a popup (§10.7). -->
 
     <UserControl.Styles>
 
@@ -56,24 +28,9 @@
             <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
 
-        <!-- ══ Chip provenance (§12.2) ═════════════════════════════════════
-             Opening a live list pours its rules into the rail and the panel, so
-             that a user can edit them where they made them. The price is that
-             the list's rules and the user's own become physically identical in
-             those controls — and this strip is the only place left that can say
-             which is which.
-
-             The distinction is drawn in the grammar the palette already has,
-             not in a new colour. VOLT MEANS YOU CHOSE THIS. A rule the open
-             live list contributed was not chosen by the user at all, so it
-             loses the Volt edge and takes the neutral one every other piece of
-             chrome wears — and its label drops to TextDim, which on
-             SurfaceRaised measures 5.04:1 and clears §8's floor.
-
-             That leaves exactly one Volt-edged chip family, meaning what it
-             always meant, and a reader who cannot separate the two edges still
-             gets the whole distinction from the tooltip (§8: the mark is never
-             the only carrier). -->
+        <!-- Chip provenance (§12.2). User-set chips get Volt edges; rules
+             poured in from the open live list get neutral Line edges and
+             TextDim labels (5.04:1 on SurfaceRaised). -->
         <Style Selector="Border.chip.fromlist">
             <Setter Property="Background" Value="{StaticResource Surface}"/>
             <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
@@ -82,22 +39,15 @@
             <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
         </Style>
 
-        <!-- The open list itself. Not a rule but the place the rules belong to,
-             so it leads the bar, wears the same neutral edge, and states its
-             KIND on the chip — "which live list am I in" being the question the
-             whole strip was failing to answer. -->
+        <!-- Open list chip — leads the bar, neutral edge, states its kind. -->
         <Style Selector="Border.chip.context">
             <Setter Property="Background" Value="{StaticResource Surface}"/>
             <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
             <Setter Property="Padding" Value="8,3,5,3"/>
         </Style>
 
-        <!-- ══ Strip button ════════════════════════════════════════════════
-             The ring is a brush swap on a border whose thickness never changes
-             (§10.7): thickening a border on focus reflows the row, and buttons
-             that shuffle sideways as you tab are worse than no ring. Set on
-             PART_ContentPresenter, because Fluent's own state styles write that
-             presenter directly and a TemplateBinding loses to them on hover. -->
+        <!-- Strip button. Focus ring is a brush swap (constant border
+             thickness) on PART_ContentPresenter, not TemplateBinding (§10.7). -->
         <Style Selector="Button.strip">
             <Setter Property="Padding" Value="10,4"/>
             <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
@@ -340,7 +290,7 @@
                     <!-- The library, and what is left of it. -->
                     <StackPanel Orientation="Horizontal" Spacing="6"
                                 Margin="0,0,6,0" VerticalAlignment="Center"
-                                ToolTip.Tip="Titles in your library, and titles in this cut">
+                                ToolTip.Tip="Total and filtered count">
                         <TextBlock Classes="data"
                                    Foreground="{StaticResource TextDim}"
                                    Text="{Binding TotalCountText}"

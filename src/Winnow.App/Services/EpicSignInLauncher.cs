@@ -7,41 +7,16 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Winnow.App.Services;
 
 /// <summary>
-/// The minimal way to run the embedded-browser sign-in:
-/// <c>dotnet run --project src/Winnow.App -- --epic-signin</c>.
-///
-/// <para><b>This is a trigger, not a feature.</b> Where a sign-in button lives
-/// in the UI is a separate decision; this exists so the flow can be exercised
-/// end to end — which is the only way the three capture routes can be told
-/// apart, since none of them can be settled without a real Epic
-/// account.</para>
-///
-/// <para><b>Why it starts Avalonia by hand instead of running the app.</b> The
-/// embedded browser needs a window, and a window needs a running Avalonia
-/// application — so unlike <c>--epic-login</c>, this cannot happen before
-/// Avalonia starts. But starting the app normally would open the main window,
-/// the sync, the scheduler and the session watcher underneath a flow that ends
-/// in an exit code. <see cref="AppBuilder.SetupWithoutStarting"/> plus a
-/// dispatcher loop gives exactly the window system and nothing else:
-/// <c>App.OnFrameworkInitializationCompleted</c> sets a main window only for
-/// <c>IClassicDesktopStyleApplicationLifetime</c>, and there is no lifetime
-/// here, so it does nothing.</para>
+/// Runs the embedded-browser Epic sign-in from the command line
+/// (<c>--epic-signin</c>). Starts Avalonia without the main window
+/// so the WebView2 browser has a window system but nothing else runs.
 /// </summary>
 public static class EpicSignInLauncher
 {
     /// <summary>The argument that selects this path.</summary>
     public const string Argument = "--epic-signin";
 
-    /// <summary>
-    /// Runs the flow and returns a process exit code: 0 on success, 1 on
-    /// anything the user needs to act on.
-    /// </summary>
-    /// <param name="services">The host container, already migrated.</param>
-    /// <param name="avalonia">
-    /// <c>Program.BuildAvaloniaApp</c>. Passed in rather than called here so this
-    /// file does not own Avalonia configuration — <c>Program</c> does.
-    /// </param>
-    /// <param name="ct">Cancellation, honoured by closing the window.</param>
+    /// <summary>Runs the flow and returns a process exit code (0 = success, 1 = failure).</summary>
     public static int Run(IServiceProvider services, Func<AppBuilder> avalonia, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(services);

@@ -4,20 +4,8 @@ using CommunityToolkit.Mvvm.Input;
 namespace Winnow.App.ViewModels.Lists;
 
 /// <summary>
-/// The strip above the grid, in the one mode where it is asking rather than
-/// reporting: name a live list, pick a list to add to, confirm a delete.
-///
-/// <para><b>It is a strip and not a flyout, deliberately.</b> Avalonia's global
-/// <c>FocusAdorner</c> does not render inside a popup — a popup is its own root
-/// and has no adorner layer — so every control in a menu here would have to draw
-/// its own ring by hand, exactly as the display-preferences checkbox does and
-/// as design-system §10.7 records for the detail panel. Keeping these three
-/// tasks in the window's own tree keeps §8's focus ring free, keeps Tab order
-/// linear, and puts the question directly above the thing it is about.</para>
-///
-/// <para>It replaces the cut bar rather than stacking under it: a transient task
-/// is always about the cut the bar was describing, and two strips of chrome
-/// between the command bar and the art is one too many.</para>
+/// Inline prompt strip above the grid for transient actions: naming a list,
+/// picking a list to add to, or confirming a delete. Replaces the cut bar while active.
 /// </summary>
 public partial class ActionPromptViewModel : ObservableObject
 {

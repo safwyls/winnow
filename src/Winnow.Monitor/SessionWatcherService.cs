@@ -5,33 +5,9 @@ using Microsoft.Extensions.Options;
 namespace Winnow.Monitor;
 
 /// <summary>
-/// Drives <see cref="SessionWatcher.TickAsync"/> on the §5.2 poll interval for
-/// as long as the app is running, and closes the watcher's books on shutdown.
-///
-/// <para><b>Nothing here is on a user-facing path (§5.1, pitfall 3).</b> The
-/// first tick lands one interval after start rather than at T+0 — a deliberate
-/// copy of <c>SnapshotSchedulerService</c>'s reasoning: the first tick builds the
-/// executable index, which walks install directories, and the window opening is
-/// not the moment to do that. Five seconds later nobody is watching. A game
-/// launched in that first five seconds is still recorded correctly, because the
-/// recorded start time comes from the OS, not from us.</para>
-///
-/// <para><b>No overlap, by structure rather than by lock</b> — the same shape as
-/// the snapshot scheduler, for the same reasons. One sequential loop, each tick
-/// awaited to completion before the next is requested, and
-/// <see cref="PeriodicTimer"/> coalescing anything that elapses during a long
-/// tick into at most one catch-up. SQLite has a single writer and
-/// <c>SqliteConnectionFactory.Begin</c> throws if a unit of work is already open
-/// on the same flow, so "two ticks in flight" is not a performance concern here,
-/// it is an exception.</para>
-///
-/// <para><b>Shutdown.</b> <see cref="BackgroundService.StopAsync"/> awaits this
-/// loop, and the loop's last act is <see cref="SessionWatcher.FlushAsync"/> —
-/// which writes, so it must happen before the host disposes the connection
-/// factory. It runs on a token deliberately separate from
-/// <c>stoppingToken</c>: that token is already cancelled by the time the flush
-/// is reached, and passing it would cancel the very write the flush exists to
-/// perform.</para>
+/// Drives <see cref="SessionWatcher.TickAsync"/> on the poll interval for as
+/// long as the app is running, and flushes in-flight sessions on shutdown.
+/// Sequential loop with no overlap.
 /// </summary>
 public sealed class SessionWatcherService : BackgroundService
 {
@@ -101,20 +77,8 @@ public sealed class SessionWatcherService : BackgroundService
     }
 
     /// <summary>
-    /// One poll. Swallows ordinary failures so a transient problem — an install
-    /// directory that vanished mid-scan, a failed index rebuild — costs one pass
-    /// rather than the rest of the run; rethrows cancellation so the loop
-    /// actually stops.
-    ///
-    /// <para><b>This catch is not what protects finished sessions.</b> An
-    /// earlier version of this comment claimed a failed tick "costs one data
-    /// point", which was not true of the code: a session finalised inside the
-    /// tick had already left the tracking state, so an insert that threw here
-    /// lost it for good. The queue in <c>SessionWatcher</c> is what makes the
-    /// claim true — a session stays queued until the database accepts it, and
-    /// this handler only decides whether the <i>loop</i> continues. Reinstating
-    /// a comment that asserts a safety property the code does not have is worse
-    /// than having no comment at all.</para>
+    /// One poll. Swallows ordinary failures so a transient problem costs one
+    /// pass rather than the rest of the run; rethrows cancellation.
     /// </summary>
     private async Task TickAsync(CancellationToken ct)
     {

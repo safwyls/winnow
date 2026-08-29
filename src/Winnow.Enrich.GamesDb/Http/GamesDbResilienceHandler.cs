@@ -8,22 +8,8 @@ namespace Winnow.Enrich.GamesDb.Http;
 
 /// <summary>
 /// Polly retry for gamesdb.gog.com: exponential backoff with jitter for
-/// genuinely transient failures, and explicit <c>Retry-After</c> honouring for
-/// 429 — the same policy shape §4.2 requires of every Steam client, applied here
-/// from the first commit rather than after the first throttling.
-///
-/// <para><b>404 is deliberately not retried, and that is the important line in
-/// this file.</b> A 404 from this endpoint means "gamesdb has no release under
-/// that platform and id" — a fact about the game, which is a normal answer for
-/// an Epic exclusive or a title GOG's graph has never indexed. Retrying it
-/// spends four requests and a growing backoff to re-learn the same nothing, on
-/// an unpublished endpoint, for every unmatchable title in the library. The
-/// client turns a 404 into a cached miss instead.</para>
-///
-/// <para>There is no circuit breaker, for the reason the update-signal module
-/// records: a breaker keyed on "failures" lets one permanently-absent id
-/// suppress the sweep for every other title. The only status that slows anything
-/// down here is 429.</para>
+/// transient failures, and explicit <c>Retry-After</c> honouring for 429.
+/// 404 is deliberately not retried.
 /// </summary>
 public sealed class GamesDbResilienceHandler : DelegatingHandler
 {
@@ -93,11 +79,7 @@ public sealed class GamesDbResilienceHandler : DelegatingHandler
             cancellationToken);
 
     /// <summary>
-    /// The complete set of statuses worth trying again. An allow-list, not a
-    /// deny-list, so a status nobody thought about defaults to "give up and let
-    /// the caller decide" rather than to "hammer it three more times".
-    ///
-    /// <para><b>404 is absent on purpose</b> — see the type remarks.</para>
+    /// The statuses worth retrying (allow-list). 404 is absent on purpose.
     /// </summary>
     internal static bool IsTransient(HttpStatusCode status)
         => status is HttpStatusCode.TooManyRequests

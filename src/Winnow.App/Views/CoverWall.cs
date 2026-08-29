@@ -8,32 +8,9 @@ using Avalonia.Layout;
 namespace Winnow.App.Views;
 
 /// <summary>
-/// The virtualizing cover wall (§4): a uniform 2:3 grid that reflows on
-/// available width and realizes only the rows the viewport can see.
-///
-/// <para><b>Why this exists instead of <c>ItemsRepeater</c> +
-/// <c>UniformGridLayout</c>.</b> That pair computes items-per-line two different
-/// ways. <c>UniformGridLayout</c>'s anchor and extent math uses
-/// <c>floor(available / (itemWidth + spacing))</c> — every item is charged for a
-/// trailing gutter, including the last one in a row — while the flow algorithm
-/// that actually places the tiles packs them greedily and fits one more whenever
-/// the row ends flush. §4's geometry ("the row divides the remaining space
-/// evenly") produces exactly that flush row at every window width, so the two
-/// disagreed permanently: five tiles per line on screen, four per line in the
-/// anchor arithmetic. The visible result was a tile orphaned alone in column 0
-/// at the scroll anchor, every row below it displaced downward — measured at
-/// 7,800px of drift over 606 tiles — and a scroll extent 22% longer than the
-/// content. The only way to satisfy that layout is to leave a full gutter of
-/// dead space at the right edge of every row, which is the geometry §4 exists to
-/// prevent. See docs/spikes/avalonia-dormancy-rendering.md for the standing plan
-/// to retire the package.</para>
-///
-/// <para><b>Why this is safe to own.</b> Every cell is the same size, so nothing
-/// here is estimated: rows, extent, cell rect and the visible row range are all
-/// closed-form in the item count. There is no realization window to go stale
-/// while the wall is hidden behind list view, and no cached items-per-line that
-/// can disagree with the arrangement — both come from one expression, evaluated
-/// in <see cref="MeasureOverride"/>, every pass.</para>
+/// Virtualizing cover wall (§4): a uniform 2:3 grid that reflows on available
+/// width and realizes only the rows the viewport can see. Replaces
+/// ItemsRepeater + UniformGridLayout, which disagreed on items-per-line.
 /// </summary>
 public class CoverWall : Panel
 {

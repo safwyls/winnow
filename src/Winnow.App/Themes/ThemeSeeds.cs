@@ -3,35 +3,9 @@ using Avalonia.Media;
 namespace Winnow.App.Themes;
 
 /// <summary>
-/// The eight colours that ARE a theme, in the sense that nothing else about it
-/// can be guessed from them.
-///
-/// <para><b>Why eight, and why these eight.</b> A <see cref="WinnowTheme"/> has
-/// twenty-four colours in it, and a format that demanded all twenty-four would
-/// be unauthorable — worse, it would let someone ship an incoherent theme by
-/// getting the eighteenth one wrong, because nothing would be holding the ramps
-/// to each other. The test applied to every field was: <i>can this be derived
-/// from something else without losing a decision?</i></para>
-///
-/// <list type="bullet">
-///   <item><description><b>Sixteen could.</b> <c>SurfaceRaised</c> is
-///   <c>Surface</c> lifted, <c>VoltPress</c> is <c>Volt</c> pressed,
-///   <c>TranslucentTextDim</c> is <c>TextDim</c> paying for the alpha the chrome
-///   spent. Every one of them is a CONSEQUENCE of a decision made
-///   elsewhere.</description></item>
-///   <item><description><b>These eight could not.</b> Two of them build the room
-///   — <see cref="Ground"/> is the field the art hangs in and
-///   <see cref="Surface"/> is the chrome, and the jump between them is §14.1.1's
-///   value-structure axis (1.4x in Nightshift, 4.8x in Box art). One is the ink
-///   the room is read with. And five are the ROLES §2 assigns jobs to, which a
-///   theme may recolour and may never conflate.</description></item>
-/// </list>
-///
-/// <para><b><see cref="Flare"/> is a seed for a reason that is not about
-/// derivation.</b> It is the one hue the room cannot produce — that is what an
-/// unread marker has to be — so there is nothing in the room to derive it from,
-/// by construction. Everything else here has a family; Flare is the one colour
-/// with no family, which is exactly its job.</para>
+/// The eight colours that are a theme: two that build the room (Ground,
+/// Surface), one ink (Text), and five roles. The other sixteen colours in
+/// a <see cref="WinnowTheme"/> are derived from these.
 /// </summary>
 public sealed record ThemeSeeds
 {

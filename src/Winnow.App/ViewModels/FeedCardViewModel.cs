@@ -5,46 +5,10 @@ using Winnow.App.Services;
 namespace Winnow.App.ViewModels;
 
 /// <summary>
-/// One card on one shelf: a game the library already knows how to draw, the
-/// sentence that says why it is in front of you, and the two things you are
-/// allowed to say back.
-///
-/// <para><b>The reason is on the FRONT, in full, always.</b> Not a tooltip, not
-/// trimmed to "Patched", not paraphrased into a genre label — the sentence is
-/// the product, and a wall of covers with the reasons hidden is the storefront
-/// feed Winnow is trying to beat. The card is therefore sized to the sentence
-/// (measured on the real library: median 115 characters, 90th percentile 155,
-/// longest 256) rather than the sentence trimmed to a card.</para>
-///
-/// <para><b>And that is why the card does not flip.</b> The library's tiles turn
-/// over because a cover has nowhere to put four facts; this card is already
-/// showing the one fact that matters, and turning it over would hide the reason
-/// to reveal a weaker restatement of it — the bucket name, the playtime and the
-/// last-played date are all clauses of the sentence on the front. Both actions
-/// the back face carried are on this face instead: the primary Play/Install and
-/// the route to the detail modal.</para>
-///
-/// <para><b>Two feedback controls, never one (§6b).</b> "Not interested" is a
-/// verdict and "not now" is a deferral; the storage keeps them apart because
-/// collapsing them loses the difference forever, and a single dismiss control
-/// that guessed would be the place the loss happened. They sit in the action
-/// line the card already had, so they cost the sentence no height at all — see
-/// the view for the geometry, which is the whole of how they stay
-/// secondary.</para>
-///
-/// <para><b>Undo is where the click was, and it stays.</b> Acting does not make
-/// the card vanish: the action line becomes a one-line receipt with an
-/// <c>Undo</c> in the same place the pressed control stood, and it holds until
-/// the feed is next computed. No timer, because a recoverable act with a
-/// countdown on it is an act somebody loses a race with — and an
-/// irreversible-feeling dismiss is how a feedback affordance stops being used at
-/// all. Past that, the history screen is the second route back, which is why it
-/// exists.</para>
-///
-/// <para><b>A write that did not land never shows a receipt.</b> The card says
-/// it could not save it and leaves both controls where they were. Claiming a
-/// dismissal the database does not hold would put the game back on the feed
-/// tomorrow in front of a user who believes they already answered for it.</para>
+/// One feed recommendation card: a borrowed library tile, the engine's reason
+/// sentence, and "not interested" / "not now" feedback (§6b). After a verdict
+/// the action line becomes an undo receipt; a failed write keeps both controls
+/// in place.
 /// </summary>
 public partial class FeedCardViewModel : ObservableObject
 {

@@ -7,53 +7,9 @@ using Winnow.Core.Repositories;
 namespace Winnow.App.Services;
 
 /// <summary>
-/// Owns the four appearance decisions — which theme is up, how much desktop the
-/// window admits, what Windows composes behind it, and how far that reaches —
-/// applies them to the live resource dictionary, and remembers them.
-///
-/// <para>The last three are one setting with two qualifiers rather than three
-/// settings: the quantity is the slider, and the material and the reach only
-/// mean anything once it has left zero. <see cref="ActiveWallTranslucency"/> is
-/// the AND of all of it, which is why the wall cannot open up on a machine that
-/// is not compositing.</para>
-///
-/// <para><b>How a theme change reaches the window.</b> Every view in this app
-/// names its tokens with <c>StaticResource</c>, which resolves once when the
-/// XAML is parsed and never looks again — so replacing the dictionary would
-/// repaint precisely nothing. What all of them share is the brush OBJECT they
-/// resolved, so this writes <see cref="SolidColorBrush.Color"/> on the brushes
-/// already in <c>Application.Resources</c>. <c>Brush</c> implements
-/// <c>IAffectsRender</c>, and every render property registered with
-/// <c>AffectsRender</c> subscribes to it, so the window invalidates down the
-/// same path a colour animation takes. No binding is re-evaluated, no control is
-/// rebuilt, and no view has to be rewritten to <c>DynamicResource</c> for a
-/// feature that arrived after it.</para>
-///
-/// <para><b>Transparency is a quantity, not a switch.</b> Mica itself is a
-/// binary window hint, but nothing the user can see is: the perceived
-/// translucency is entirely the alpha on our own surfaces over that backdrop, so
-/// it is continuous and ours to set. It is stored as a whole percent, 0 meaning
-/// fully opaque — which stays a real position, is the default, and is the answer
-/// for anyone who wants the accessibility floor with no argument.</para>
-///
-/// <para><b>Requested is not active.</b> Transparency is a preference; whether
-/// the machine can honour it is a fact. Windows 10, a remote-desktop session and
-/// a composition failure all end with <see cref="TopLevel.ActualTransparencyLevel"/>
-/// reporting none of the levels that count — and Avalonia's Win32 backend falls
-/// back to <c>Transparent</c> rather than the <c>None</c> that was asked for, so
-/// the test has to be positive. The window reports what it actually got through
-/// <see cref="SetActiveBackdrop"/>, and the OPAQUE token set is applied
-/// whenever the answer is no. A translucent rail over a window with nothing
-/// behind it is the failure this exists to avoid: the preference is remembered,
-/// so it comes back by itself on a machine that can do it.</para>
-///
-/// <para><b>And "not what you asked for" is a third answer, not the second
-/// one.</b> Mica needs Windows 11; acrylic works further back. Asking for one
-/// and getting the other is better than getting nothing, so the window still
-/// falls through — but it lands in <see cref="ActiveBackdrop"/> as the material
-/// that is actually on screen, and the Appearance screen says so. Substituting
-/// is fine; substituting silently is how a user concludes the toggle does
-/// nothing.</para>
+/// Owns the four appearance decisions (theme, transparency, backdrop material,
+/// wall translucency), applies them to the live resource dictionary by mutating
+/// brush colours in place, and persists them in the settings table.
 /// </summary>
 public sealed class ThemeService
 {
@@ -81,20 +37,7 @@ public sealed class ThemeService
     /// figure in §14 was measured against.</summary>
     public const string LayoutSettingKey = "appearance.layout";
 
-    /// <summary>
-    /// What a stored <c>true</c> becomes.
-    ///
-    /// <para><b>Not the 14% the boolean actually painted.</b> That setting's whole
-    /// problem was that it was imperceptible, so converting someone to the number
-    /// that produced it would convert them to the complaint.</para>
-    ///
-    /// <para><b>And not the far end either.</b> A migration may not carry anyone
-    /// across a floor they did not choose to cross: 25 is inside every theme's AA
-    /// ceiling — the lowest of the four is 26 — so the window they get
-    /// back is unmistakably translucent AND still clears §8 against the brightest
-    /// backdrop a wallpaper can produce. The slider is right there for anyone who
-    /// wants more, with the number in front of them.</para>
-    /// </summary>
+    /// <summary>What a stored <c>true</c> becomes when migrating from the old boolean toggle.</summary>
     public const int MigratedTransparency = 25;
 
     private readonly ISettingsRepository? _settings;
@@ -121,28 +64,16 @@ public sealed class ThemeService
     public event EventHandler? Applied;
 
     /// <summary>
-    /// Raised when the SET of themes changed rather than which one is up: the
-    /// folder was re-read, a file appeared, a file stopped parsing.
-    ///
-    /// <para>Separate from <see cref="Applied"/> because the two ask different
-    /// things of a listener. <c>Applied</c> means repaint what you have;
-    /// this means the list you drew is out of date. The Appearance screen
-    /// rebuilds its cards on this one and repaints them on the other, and
-    /// conflating them would rebuild four theme cards on every drag of the
-    /// transparency slider.</para>
+    /// Raised when the set of available themes changed (folder re-read, file
+    /// added or removed), as distinct from which theme is currently active.
     /// </summary>
     public event EventHandler? CatalogueChanged;
 
     public WinnowTheme Theme => _theme;
 
     /// <summary>
-    /// Every theme that can be picked: the four built-ins, then whatever parsed
-    /// out of the user's themes folder, in file-name order.
-    ///
-    /// <para>Built-ins lead and always do. They are the set §14.1.1 argues for
-    /// and the one the default belongs to, and a picker whose first card moved
-    /// depending on what is in a folder would be a picker nobody could learn the
-    /// shape of.</para>
+    /// Every theme that can be picked: the four built-ins first, then user themes
+    /// from the themes folder in file-name order.
     /// </summary>
     public IReadOnlyList<WinnowTheme> Catalogue => _catalogue;
 
@@ -170,14 +101,7 @@ public sealed class ThemeService
     /// <see cref="WinnowBackdrop.None"/> until a window says otherwise.</summary>
     public WinnowBackdrop ActiveBackdrop => _activeBackdrop;
 
-    /// <summary>
-    /// Whether the desktop is reaching the window at all.
-    ///
-    /// <para>Written against the two values that mean yes rather than against
-    /// "not <see cref="WinnowBackdrop.None"/>", so that a value added later has
-    /// to be admitted deliberately. The platform-side test that produces
-    /// <see cref="_activeBackdrop"/> is positive for the same reason.</para>
-    /// </summary>
+    /// <summary>Whether the desktop is reaching the window at all.</summary>
     public bool BackdropAvailable
         => _activeBackdrop is WinnowBackdrop.Acrylic or WinnowBackdrop.Mica;
 
@@ -194,10 +118,6 @@ public sealed class ThemeService
     /// <summary>
     /// Whether the content panes float as rounded cards on the window's ground,
     /// or meet edge to edge.
-    ///
-    /// <para>Independent of everything else here on purpose: it is STRUCTURE
-    /// where the theme is material and the slider is quantity, so it applies in
-    /// every theme at every position and is not a qualifier of either.</para>
     /// </summary>
     public WinnowLayout Layout => _layout;
 
@@ -299,13 +219,8 @@ public sealed class ThemeService
     }
 
     /// <summary>
-    /// The stored value, in either shape it can have.
-    ///
-    /// <para>A whole percent is what this setting holds now. A <c>true</c> or
-    /// <c>false</c> is what the toggle that preceded it wrote, and both are
-    /// answered rather than discarded — a preference someone set does not get to
-    /// silently evaporate because the control that set it was replaced. Anything
-    /// else reads as unset, which is opaque.</para>
+    /// Parses the stored transparency value: a whole percent, or the legacy
+    /// boolean (<c>true</c> becomes <see cref="MigratedTransparency"/>).
     /// </summary>
     public static int ParseTransparency(string? stored)
     {
@@ -318,19 +233,8 @@ public sealed class ThemeService
     }
 
     /// <summary>
-    /// Overrides both preferences for this process and SEALS THE SERVICE AGAINST
-    /// WRITING for the rest of it. Debug capture flags use it: an agent taking a
-    /// screenshot must not leave a preference behind in the user's real library.
-    ///
-    /// <para><b>The seal is the part that was missing, and it was missing in the
-    /// way that costs you a real user's settings row.</b> Suppressing the write
-    /// only for the duration of the override was enough as long as nothing
-    /// afterwards changed the state — and then a capture run drove the Appearance
-    /// screen, something in the posted input reached the slider, and the
-    /// preference the run had promised not to touch was rewritten in the live
-    /// database. A promise that holds until the first click is not a promise. A
-    /// session that was told what to look like is not one whose looks are worth
-    /// saving, so nothing it does gets written.</para>
+    /// Overrides appearance for this process and seals the service against
+    /// writing for the rest of it (used by debug capture flags).
     /// </summary>
     public void OverrideForSession(
         WinnowTheme theme,
@@ -402,15 +306,8 @@ public sealed class ThemeService
                 : WinnowThemes.Default);
 
     /// <summary>
-    /// Re-reads the themes folder and repaints if the theme that is up came out
-    /// of it.
-    ///
-    /// <para><b>The active theme is re-resolved BY ID, not kept.</b> A reload
-    /// produces new <see cref="WinnowTheme"/> instances, so holding the old
-    /// object would leave the window wearing the palette from before the save —
-    /// which is the entire thing hot reload exists to avoid. A file that stopped
-    /// parsing, or was deleted, resolves to the default and the diagnostics say
-    /// why.</para>
+    /// Re-reads the themes folder and repaints if the active theme came from it.
+    /// The active theme is re-resolved by id so hot reload picks up the new palette.
     /// </summary>
     public void ReloadUserThemes()
     {
@@ -629,14 +526,7 @@ public sealed class ThemeService
         => percent.ToString(CultureInfo.InvariantCulture);
 
     /// <summary>
-    /// Writes one preference, behind whatever write is already in flight.
-    ///
-    /// <para><b>Chained rather than replaced, and that became load-bearing when
-    /// a theme got to bring its own opening position.</b> Every caller before
-    /// this wrote exactly one key per user action, so overwriting
-    /// <see cref="PendingSave"/> was harmless. Picking a theme now writes up to
-    /// five in a row, and a caller — or a test — that waited on the last one
-    /// would be waiting on a task that says nothing about the other four.</para>
+    /// Writes one preference, chained behind whatever write is already in flight.
     /// </summary>
     private void Save(string key, string value)
     {

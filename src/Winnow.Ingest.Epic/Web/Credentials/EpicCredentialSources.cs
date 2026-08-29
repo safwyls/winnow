@@ -4,22 +4,8 @@ using Microsoft.Extensions.Configuration;
 namespace Winnow.Ingest.Epic.Web.Credentials;
 
 /// <summary>
-/// The <c>settings</c> table — the product path. The pair is user-supplied and
-/// stored locally, so the app's settings screen writes here and this is the
-/// first source consulted.
-///
-/// <para>Reads through <see cref="ISettingsRepository"/>, the shared §6
-/// key/value contract, rather than a private store of its own.</para>
-///
-/// <para><b>The repository is optional, and that is a module-boundary
-/// decision.</b> <c>Winnow.Ingest.Epic</c> deliberately does not reference
-/// <c>Winnow.Data</c> — the local readers need nothing but the filesystem, and a
-/// project reference added for one settings lookup would drag the whole data
-/// layer into a module whose §5.1 job is to read a source and emit candidates.
-/// So this source takes the <i>interface</i> from <c>Winnow.Core</c> and accepts
-/// null for it: a host that has no settings table simply has no credentials
-/// here, which is the same well-trodden "not configured" path as a host that has
-/// one and never wrote to it.</para>
+/// Reads Epic OAuth credentials from the <c>settings</c> table. First source
+/// consulted. The repository is optional for module-boundary reasons.
 /// </summary>
 public sealed class SettingsTableEpicCredentialSource : IEpicCredentialSource
 {
@@ -45,14 +31,8 @@ public sealed class SettingsTableEpicCredentialSource : IEpicCredentialSource
 }
 
 /// <summary>
-/// <see cref="IConfiguration"/> — the developer path. Reads
-/// <c>Epic:ClientId</c> / <c>Epic:ClientSecret</c>, which the standard providers
-/// populate from the environment variables <c>Epic__ClientId</c> /
-/// <c>Epic__ClientSecret</c> and from an optional, git-ignored
-/// <c>appsettings.local.json</c>.
-///
-/// <para>Tolerates a host with no configuration at all, because "no credentials"
-/// must never be a startup failure.</para>
+/// Reads Epic OAuth credentials from <see cref="IConfiguration"/>
+/// (<c>Epic:ClientId</c> / <c>Epic:ClientSecret</c>). Developer path.
 /// </summary>
 public class ConfigurationEpicCredentialSource : IEpicCredentialSource
 {
@@ -84,17 +64,7 @@ public class ConfigurationEpicCredentialSource : IEpicCredentialSource
     }
 }
 
-/// <summary>
-/// DI-constructible <see cref="ConfigurationEpicCredentialSource"/>.
-///
-/// <para>Exists only so the registration can use
-/// <c>TryAddEnumerable(ServiceDescriptor.Singleton&lt;IEpicCredentialSource, …&gt;())</c>,
-/// which needs a concrete implementation type to deduplicate on and therefore
-/// cannot take a factory lambda — and a lambda is what would otherwise be needed,
-/// because <see cref="IConfiguration"/> is optional here and DI has no way to
-/// inject an optional dependency. Same shape as
-/// <c>DefaultConfigurationApiKeySource</c> in the Steam Web module.</para>
-/// </summary>
+/// <summary>DI-constructible wrapper for <see cref="ConfigurationEpicCredentialSource"/>.</summary>
 internal sealed class DefaultConfigurationEpicCredentialSource : ConfigurationEpicCredentialSource
 {
     public DefaultConfigurationEpicCredentialSource(IServiceProvider services)
@@ -103,13 +73,7 @@ internal sealed class DefaultConfigurationEpicCredentialSource : ConfigurationEp
     }
 }
 
-/// <summary>
-/// DI-constructible <see cref="SettingsTableEpicCredentialSource"/>, for the
-/// same <c>TryAddEnumerable</c> reason as
-/// <see cref="DefaultConfigurationEpicCredentialSource"/> — and additionally
-/// because <see cref="ISettingsRepository"/> is optional here (see that class's
-/// remarks) and DI cannot inject an optional dependency.
-/// </summary>
+/// <summary>DI-constructible wrapper for <see cref="SettingsTableEpicCredentialSource"/>.</summary>
 internal sealed class DefaultSettingsTableEpicCredentialSource : IEpicCredentialSource
 {
     private readonly SettingsTableEpicCredentialSource _inner;

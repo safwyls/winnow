@@ -1,57 +1,23 @@
 namespace Winnow.Core.Domain;
 
 /// <summary>
-/// Valid <see cref="FeedVerdict.Kind"/> values (CHECK-constrained in the
-/// schema, migration 0011).
-///
-/// <para><b>Two kinds, and the difference is the point.</b> "Not interested"
-/// and "not now" are different intents — one is a verdict, the other a
-/// deferral — and a single dismiss button would collapse them into whichever
-/// meaning the implementer happened to pick. The vocabulary is ours and
-/// closed, so like <see cref="SessionAttributions"/> it is CHECK-constrained:
-/// a third kind is a schema change and should have to be one.</para>
-///
-/// <para><b>There is deliberately no explicit positive kind.</b> The positive
-/// signal is behavioural: a session with
-/// <see cref="SessionAttributions.Launch"/> on a game the feed had just
-/// surfaced is the user answering the feed's pitch with their time, recorded
-/// with no UI and no asking. A thumbs-up button would duplicate that with
-/// strictly worse data (a click costs nothing; forty minutes costs forty
-/// minutes) and, unpressed, would teach the user the feedback surface is
-/// decoration. If one ever earns its place, adding a kind here is the
-/// deliberate act the CHECK constraint makes it.</para>
+/// Valid <see cref="FeedVerdict.Kind"/> values (CHECK-constrained in the schema, migration 0011).
 /// </summary>
 public static class FeedVerdictKinds
 {
-    /// <summary>
-    /// Durable "stop showing me this" — the user's explicit "you were right,
-    /// I'm done with this game". Never expires; holds until revoked.
-    /// </summary>
+    /// <summary>Permanent dismissal. Never expires; holds until revoked.</summary>
     public const string NotInterested = "not_interested";
 
-    /// <summary>
-    /// "Not now": temporarily set aside. Always carries an expiry (the schema
-    /// enforces it), because a snooze with no expiry is a dismissal wearing a
-    /// different name.
-    /// </summary>
+    /// <summary>Temporary deferral. Always carries an expiry (schema-enforced).</summary>
     public const string Snoozed = "snoozed";
 
-    /// <summary>
-    /// Default snooze length: one calendar month. "Not now" naturally reads at
-    /// month granularity ("not this month"); shorter and a snooze is just the
-    /// rotation the surfacing memory already provides, longer and it drifts
-    /// toward a dismissal the user didn't give. A UI may offer other lengths —
-    /// the schema stores the explicit expiry, so this is a default, not a rule.
-    /// </summary>
+    /// <summary>Default snooze length: 30 days. The UI may offer other lengths.</summary>
     public static readonly TimeSpan DefaultSnooze = TimeSpan.FromDays(30);
 }
 
 /// <summary>
-/// One thing the user explicitly told the feed about one release — a fact,
-/// stored (§6.1's line: what the user said is truth; what it does to a score
-/// stays a query). Appended and revoked, never edited or deleted, so the full
-/// history remains inspectable: the user can always see everything they have
-/// told the system, including what they later took back.
+/// User feedback on a release (not-interested or snoozed).
+/// Appended and revoked, never edited or deleted.
 /// </summary>
 public sealed record FeedVerdict
 {
@@ -70,10 +36,7 @@ public sealed record FeedVerdict
     /// </summary>
     public DateTime? ExpiresAt { get; init; }
 
-    /// <summary>
-    /// When the user took it back (UTC). Null while the verdict stands. Undo
-    /// is a timestamp, not a deletion: reversibility must not cost history.
-    /// </summary>
+    /// <summary>When the user undid this verdict (UTC). Null while it stands.</summary>
     public DateTime? RevokedAt { get; init; }
 
     /// <summary>Whether this verdict binds at the given instant: not revoked, not lapsed.</summary>
@@ -82,11 +45,8 @@ public sealed record FeedVerdict
 }
 
 /// <summary>
-/// One release the feed put in front of the user on one day, and the shelf
-/// that claimed it. The cross-day memory behind rotation, and one half of the
-/// launch-endorsement join (the other half is
-/// <see cref="Session.AttributedBy"/>). A fact about what the app did — not
-/// derivable from anything else, which is why it is stored.
+/// Records that a release was shown on the feed on a given day, and which shelf claimed it.
+/// Used for rotation memory and launch-endorsement joins.
 /// </summary>
 public sealed record FeedSurfacing
 {
@@ -100,17 +60,9 @@ public sealed record FeedSurfacing
 }
 
 /// <summary>
-/// The strongest positive feedback the system can receive, and it is derived,
-/// never stored: a session Winnow itself launched
-/// (<see cref="SessionAttributions.Launch"/>) that started within a few days
-/// of the feed surfacing that game. The user answered a pitch by playing —
-/// implicit, behavioural, and free.
-///
-/// <para>An approximation, stated: the launch is known to have come from
-/// inside Winnow while the game was on (or had very recently been on) the
-/// feed, not provably from a click on the feed card itself. Sessions with
-/// <c>attributed_by</c> null or 'inferred' never qualify — null means "not
-/// recorded", never "not launched here".</para>
+/// Derived (never stored) positive signal: a Winnow-launched session that started
+/// within a few days of the feed surfacing that game. Only sessions with
+/// <c>attributed_by = 'launch'</c> qualify.
 /// </summary>
 public sealed record FeedEndorsement
 {

@@ -5,39 +5,13 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Winnow.Enrich.Updates;
 
-/// <summary>
-/// Composition for the update-signal module. The host's composition root calls
-/// <see cref="AddUpdateSignals(IServiceCollection)"/>; nothing outside this
-/// assembly needs to know which handlers, limiters or stores are involved.
-/// </summary>
+/// <summary>DI composition for the update-signal module.</summary>
 public static class ServiceCollectionExtensions
 {
     /// <summary>
     /// Registers <see cref="UpdateSignalPoller"/> and everything under it.
-    ///
-    /// <para><b>No credentials, no configuration, no setup step.</b> Both
-    /// endpoints are keyless — <c>GetNewsForApp</c> verified live returning 200
-    /// with no <c>key=</c>, and steamcmd.net states outright that "no
-    /// authentication or verification is required" — so unlike IGDB there is no
-    /// "not configured" state to handle, and M2 needs no settings screen for API
-    /// keys.</para>
-    ///
-    /// <para>Storage defaults to SQLite over the existing <c>metadata_cache</c>,
-    /// <c>update_events</c> and ownership tables, and therefore expects an
-    /// <c>ISqliteConnectionFactory</c> in the container. Register any of the
-    /// storage interfaces yourself beforehand to override — every registration
-    /// here is <c>TryAdd</c>.</para>
-    ///
-    /// <para>Two typed clients against two different hosts, each with its own
-    /// pipeline and its own singleton rate limiter. Handler order is deliberate
-    /// and outermost first: retry (which owns 429 backoff and <c>Retry-After</c>,
-    /// and pointedly does NOT own 403) → rate limiter (which owns the request
-    /// budget). The limiter sits innermost so retried attempts spend permits like
-    /// any other request and a backoff storm cannot exceed the configured
-    /// rate.</para>
-    ///
-    /// <para>The budgets are separate because the hosts are: Valve's API and a
-    /// free volunteer PICS mirror do not share a courtesy budget.</para>
+    /// Both endpoints are keyless; no credentials or settings screen needed.
+    /// Storage interfaces are <c>TryAdd</c> -- register your own beforehand to override.
     /// </summary>
     public static IServiceCollection AddUpdateSignals(this IServiceCollection services)
         => services.AddUpdateSignals(configure: null);

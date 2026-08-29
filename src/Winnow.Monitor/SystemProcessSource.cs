@@ -7,12 +7,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Winnow.Monitor;
 
-/// <summary>
-/// The real <see cref="IProcessSource"/>: <c>System.Diagnostics.Process</c> for
-/// enumeration and lifetime, with a Windows-specific path resolver behind it.
-/// Every test drives a fake instead, so nothing in this file is exercised by the
-/// suite — which is the reason it is kept as thin and as obvious as it is.
-/// </summary>
+/// <summary>Production <see cref="IProcessSource"/> using <c>System.Diagnostics.Process</c> with Windows-specific path resolution.</summary>
 public sealed class SystemProcessSource : IProcessSource
 {
     private readonly ILogger<SystemProcessSource> _logger;
@@ -20,18 +15,7 @@ public sealed class SystemProcessSource : IProcessSource
     public SystemProcessSource(ILogger<SystemProcessSource>? logger = null)
         => _logger = logger ?? NullLogger<SystemProcessSource>.Instance;
 
-    /// <summary>
-    /// §5.2 Tier 1. <c>Process.GetProcesses()</c> is one
-    /// <c>NtQuerySystemInformation</c> snapshot on Windows and one <c>/proc</c>
-    /// walk on Linux; the <c>Process</c> objects it hands back are lazily
-    /// populated and hold no handle until something asks for a property that
-    /// needs one. Reading <c>Id</c> and <c>ProcessName</c> does not, so this
-    /// method opens nothing.
-    ///
-    /// <para>The objects are disposed immediately. They are cheap shells here
-    /// precisely because no handle was ever opened, and the ones that matter are
-    /// re-opened deliberately by <see cref="Track"/>.</para>
-    /// </summary>
+    /// <summary>Enumerates all processes (Tier 1). Reads only pid and name; opens no handles.</summary>
     public IReadOnlyList<ProcessListing> List()
     {
         Process[] processes;
@@ -70,11 +54,7 @@ public sealed class SystemProcessSource : IProcessSource
         return listings;
     }
 
-    /// <summary>
-    /// §5.2 Tier 2. Opens the process, reads its true start time and path, and
-    /// arms the OS exit callback. See <see cref="ITrackedProcess"/> for why the
-    /// handle then stays open.
-    /// </summary>
+    /// <summary>Opens the process, reads start time and path, arms the exit callback (Tier 2).</summary>
     public ITrackedProcess? Track(int pid, string expectedName)
     {
         Process? process = null;
@@ -121,24 +101,8 @@ public sealed class SystemProcessSource : IProcessSource
     }
 
     /// <summary>
-    /// True process creation time, UTC, without ever passing through local time.
-    ///
-    /// <para><b>Why not <c>Process.StartTime.ToUniversalTime()</c>.</b> The
-    /// kernel records creation as a UTC FILETIME, and the BCL's
-    /// <c>Process.StartTime</c> converts it to <i>local</i> time before handing
-    /// it over; converting back is not the identity function. During the
-    /// repeated hour of a DST fall-back, one local timestamp names two distinct
-    /// UTC instants and <see cref="DateTime.ToUniversalTime"/> resolves the
-    /// ambiguity by assuming standard time — so a game launched in the hour
-    /// before the clocks go back is recorded an hour late, and its session an
-    /// hour short (or, at the other end, an hour long). Reading the FILETIME
-    /// directly has no ambiguous case to resolve.</para>
-    ///
-    /// <para>Once a year, for one hour, on a subset of sessions — which is
-    /// exactly the kind of defect that is never reproduced and never believed.
-    /// The non-Windows fallback keeps the round trip because there is no
-    /// portable alternative in the BCL; <c>/proc</c> field 22 plus boot time
-    /// would be the equivalent fix there.</para>
+    /// True process creation time, UTC. Reads the kernel FILETIME directly to
+    /// avoid DST ambiguity in <c>Process.StartTime.ToUniversalTime()</c>.
     /// </summary>
     private static DateTime ResolveStartTimeUtc(Process process)
     {
@@ -152,37 +116,9 @@ public sealed class SystemProcessSource : IProcessSource
     }
 
     /// <summary>
-    /// Full executable path, or null when the OS will not say.
-    ///
-    /// <para><b>Why not just <c>MainModule.FileName</c>.</b> The BCL implements
-    /// that with <c>EnumProcessModules</c>, which needs
-    /// <c>PROCESS_QUERY_INFORMATION | PROCESS_VM_READ</c> — and PROCESS_VM_READ
-    /// is precisely the right that kernel-mode anti-cheat (EAC, BattlEye and
-    /// friends) strips from every handle opened against the games it protects.
-    /// Those drivers leave <c>PROCESS_QUERY_LIMITED_INFORMATION</c> alone,
-    /// because Task Manager needs it. So on the exact population of games most
-    /// worth recording sessions for, <c>MainModule</c> throws and
-    /// <c>QueryFullProcessImageName</c> answers.</para>
-    ///
-    /// <para><b>And the choice matters more than it looks, because of the
-    /// ordering above.</b> <see cref="Track"/> reads <c>Process.StartTime</c>
-    /// before it gets here, and the BCL implements <i>that</i> with
-    /// <c>GetProcessTimes</c> on a <c>PROCESS_QUERY_LIMITED_INFORMATION</c>
-    /// handle — the same right <c>QueryFullProcessImageName</c> needs. So the
-    /// two succeed and fail together: any process this method is asked about is
-    /// one whose path it can read. With <c>MainModule</c> as the only resolver
-    /// there would be a whole class of processes that track successfully and
-    /// then have no path, which forces
-    /// <see cref="GameExecutableIndex.Match"/> down onto the weaker
-    /// name-only rule for exactly the games most likely to have an ambiguous
-    /// name. Measured on this machine, 182 of 528 running processes refuse the
-    /// limited-information handle; those never reach here at all, because
-    /// <c>StartTime</c> already threw.</para>
-    ///
-    /// <para>Null therefore remains possible but is close to unreachable on
-    /// Windows. The real gap is one level up: an elevated game cannot be opened
-    /// by an unelevated Winnow at any access level, so it is never tracked and
-    /// never records a session. §5.2 mechanism B is the answer for those.</para>
+    /// Full executable path, or null when the OS refused. Uses
+    /// <c>QueryFullProcessImageName</c> on Windows (works with anti-cheat),
+    /// falling back to <c>MainModule.FileName</c>.
     /// </summary>
     private string? ResolveExecutablePath(Process process)
     {
@@ -207,30 +143,13 @@ public sealed class SystemProcessSource : IProcessSource
         }
     }
 
-    /// <summary>
-    /// Wraps a live <c>Process</c>. The handle inside it is held until
-    /// <see cref="Dispose"/> — see <see cref="ITrackedProcess"/> for the two
-    /// reasons, one of which is not obvious.
-    /// </summary>
+    /// <summary>Wraps a live <c>Process</c>, holding the handle until <see cref="Dispose"/>.</summary>
     private sealed class SystemTrackedProcess : ITrackedProcess
     {
         private readonly Process _process;
 
-        /// <summary>
-        /// Captured at construction and never read back off the
-        /// <see cref="Process"/>.
-        ///
-        /// <para><b>This is a crash fix, not a micro-optimisation.</b>
-        /// <c>Process.Id</c> throws <see cref="InvalidOperationException"/> once
-        /// the object has been disposed — <c>Process.Close()</c> clears the
-        /// cached id — and the watcher can dispose a tracked process (shutdown,
-        /// <c>Dispose</c>) at the same moment an exit callback is already in
-        /// flight on a thread pool thread with the delegate captured. That
-        /// callback reads the pid first thing. An exception thrown from a thread
-        /// pool callback is unhandled and takes the whole app down with it, so
-        /// the one property every exit path touches must not be able to
-        /// throw.</para>
-        /// </summary>
+        // Cached at construction: Process.Id throws after disposal, and exit
+        // callbacks on the thread pool would crash the app if they hit that.
         private readonly int _pid;
 
         private readonly object _gate = new();
@@ -330,19 +249,7 @@ public sealed class SystemProcessSource : IProcessSource
             Exited?.Invoke(this, EventArgs.Empty);
         }
 
-        /// <summary>
-        /// The OS's own record of when the process ended, so a callback serviced
-        /// late — thread pool starvation, a laptop resuming from sleep — still
-        /// yields the right end timestamp rather than "whenever we woke up".
-        /// Null when the handle will not give it up; the watcher then falls back
-        /// to its clock.
-        ///
-        /// <para>Read as a UTC FILETIME for the same reason the start time is —
-        /// see <see cref="ResolveStartTimeUtc"/>. Opening a fresh handle by pid
-        /// is safe here even though the process has exited: this object still
-        /// holds one, which keeps the process object alive and the pid
-        /// unrecycled until <see cref="Dispose"/>.</para>
-        /// </summary>
+        /// <summary>OS exit time (UTC FILETIME), or null when unavailable. Immune to late callback delivery.</summary>
         private DateTime? ReadExitTimeUtc()
         {
             if (OperatingSystem.IsWindows()
@@ -369,11 +276,7 @@ public sealed class SystemProcessSource : IProcessSource
         private const uint ProcessQueryLimitedInformation = 0x1000;
         private const int ErrorInsufficientBuffer = 122;
 
-        /// <summary>
-        /// Creation and exit times as the kernel records them: UTC FILETIMEs,
-        /// never routed through local time. <paramref name="exitedUtc"/> is null
-        /// while the process is still running (the API writes a zero FILETIME).
-        /// </summary>
+        /// <summary>Kernel creation/exit times as UTC FILETIMEs. <paramref name="exitedUtc"/> is null while running.</summary>
         internal static bool TryGetProcessTimesUtc(int pid, out DateTime createdUtc, out DateTime? exitedUtc)
         {
             createdUtc = default;

@@ -6,17 +6,8 @@ using Xunit;
 namespace Winnow.Tests.EpicWeb;
 
 /// <summary>
-/// <see cref="EpicArtifactAliasSource"/> once it reads the authenticated library
-/// as well as the launcher's own files.
-///
-/// <para><b>The half of the bug this fixes.</b> The alias map is what turns a
-/// stored Epic <c>catalogItemId</c> into the <c>AppName</c> that
-/// <c>gamesdb.gog.com</c> keys on, and it was built entirely from
-/// <c>catcache.bin</c> and the installed manifests. An entitlement the launcher
-/// has never cached therefore had no alias, so no gamesdb hop, so no IGDB record,
-/// so no name, year, cover or summary — for 29 of 99 Epic rows on the author's
-/// library, that was not a low match rate but a question nobody could ask. The
-/// library endpoint returns <c>appName</c> on every entitlement it owns.</para>
+/// <see cref="EpicArtifactAliasSource"/> with the authenticated library augmenting
+/// local launcher files.
 /// </summary>
 public sealed class EpicAliasSourceTests
 {

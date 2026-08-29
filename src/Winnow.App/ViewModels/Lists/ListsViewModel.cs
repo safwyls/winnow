@@ -7,19 +7,9 @@ using Winnow.Core.Repositories;
 namespace Winnow.App.ViewModels.Lists;
 
 /// <summary>
-/// The rail's LISTS and LIVE LISTS sections, and every write behind them.
-///
-/// <para>The repository is optional so the library still composes — and the
-/// sections still render their empty state — when the host has not registered
-/// one. Nothing here throws on the rail: a list that fails to save is a list
-/// that stays on screen and is gone next launch, which is visible and
-/// recoverable, where an exception on a rail row is a window that will not
-/// open.</para>
-///
-/// <para><b>A live list is never materialised.</b> Nothing in this class reads
-/// or writes <c>list_items</c> for one; its members are whatever
-/// <see cref="LibraryFilter"/> selects at the moment the grid is drawn, which is
-/// the difference the two section headings are announcing.</para>
+/// Manages the rail's LISTS and LIVE LISTS sections and their persistence.
+/// Repository is optional (graceful degradation when not registered).
+/// Live lists are never materialised; their members come from <see cref="LibraryFilter"/> at draw time.
 /// </summary>
 public partial class ListsViewModel : ObservableObject
 {
@@ -51,22 +41,14 @@ public partial class ListsViewModel : ObservableObject
 
     public bool HasNoLists => Lists.Count == 0 && LiveLists.Count == 0;
 
-    /// <summary>
-    /// The LISTS heading stands over the hand-built section and over the empty
-    /// state — it is the section that always exists, because it is the one a
-    /// first list lands in. LIVE LISTS appears only once there is one.
-    /// </summary>
+    /// <summary>Show the LISTS header when there are manual lists or when both sections are empty.</summary>
     public bool ShowListsHeader => Lists.Count > 0 || HasNoLists;
 
-    /// <summary>
-    /// §7: an empty state is a direction. Both routes in, in the order they are
-    /// discoverable — the selection you already have, then the filter you might
-    /// not have opened yet.
-    /// </summary>
+    /// <summary>Empty-state guidance text.</summary>
     public const string EmptyMessage =
-        "No lists yet. Select titles and choose Add to list, or filter the library and save the result as a live list.";
+        "No lists yet. Select titles to create one, or save a filter as a live list.";
 
-    /// <summary>The same sentence, bindable from XAML.</summary>
+    /// <summary>Bindable accessor for <see cref="EmptyMessage"/>.</summary>
     public string EmptyMessageText => EmptyMessage;
 
     public IEnumerable<GameListViewModel> All => Lists.Concat(LiveLists);
@@ -101,9 +83,7 @@ public partial class ListsViewModel : ObservableObject
             }
         }
 
-        // A reload replaces every row object, so the open list has to be found
-        // again by id — otherwise the rail's Volt edge lands on nothing and the
-        // grid is filtered by a list the sidebar no longer marks.
+        // Re-find the open list by id after reload (row objects were replaced).
         Open = openId is { } id ? All.FirstOrDefault(l => l.Id == id) : null;
         foreach (var list in All)
         {
@@ -179,8 +159,6 @@ public partial class ListsViewModel : ObservableObject
 
             if (_lists is not null)
             {
-                // Append rather than add-at-position: re-adding a game the user
-                // already put in the list must not send it to the bottom.
                 await _lists.AppendItemAsync(list.Id, id, ct);
             }
         }
@@ -208,11 +186,7 @@ public partial class ListsViewModel : ObservableObject
         list.ReleaseIds = [.. list.ReleaseIds.Where(id => !dropped.Contains(id))];
     }
 
-    /// <summary>
-    /// Moves one release by <paramref name="delta"/> places. Reordering is a
-    /// manual list's whole reason for storing a position — a live list's order
-    /// belongs to the sort control, like the rest of the library.
-    /// </summary>
+    /// <summary>Moves one release by <paramref name="delta"/> places in a manual list.</summary>
     public async Task<bool> MoveAsync(
         GameListViewModel list, long releaseId, int delta, CancellationToken ct = default)
     {
@@ -253,16 +227,14 @@ public partial class ListsViewModel : ObservableObject
 
         if (_lists is not null)
         {
-            // The description goes back unchanged. The repository replaces it
-            // with exactly what it is handed, so passing nothing would quietly
-            // erase a field the user never touched.
+            // Pass description back unchanged to avoid erasing it.
             await _lists.RenameAsync(list.Id, trimmed, list.Description, ct);
         }
 
         Resort(list.IsLive ? LiveLists : Lists);
     }
 
-    /// <summary>Rewrites a live list's rules in place — "Update" rather than "Save a second one".</summary>
+    /// <summary>Updates a live list's filter rules in place.</summary>
     public async Task UpdateFilterAsync(
         GameListViewModel list, LibraryFilter filter, CancellationToken ct = default)
     {
@@ -279,7 +251,7 @@ public partial class ListsViewModel : ObservableObject
         }
     }
 
-    /// <summary>Deletes the list. The games are not touched, and the copy says so.</summary>
+    /// <summary>Deletes the list (games themselves are not affected).</summary>
     public async Task DeleteAsync(GameListViewModel list, CancellationToken ct = default)
     {
         if (ReferenceEquals(Open, list))

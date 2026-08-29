@@ -27,15 +27,23 @@ public static class SampleDataSeeder
 
     public static async Task SeedAsync(IServiceProvider services)
     {
-        await SeedLibraryAsync(services);
+        var seededEmptyLibrary = await SeedLibraryAsync(services);
 
         // Runs whether or not the library was seeded, so the merge confirm
         // queue is verifiable against a REAL scanned library — soft matching is
         // not wired into the sync yet, so a real library's queue is empty.
-        await SeedMergeCandidatesAsync(services);
+        //
+        // But it may only MINT releases into a library it seeded itself: see
+        // SeedMergeCandidatesAsync.
+        await SeedMergeCandidatesAsync(services, mayMintReleases: seededEmptyLibrary);
     }
 
-    private static async Task SeedLibraryAsync(IServiceProvider services)
+    /// <returns>
+    /// True when the library was empty and this pass filled it — i.e. every row
+    /// in the database is now sample data. False when a real scanned library was
+    /// found and left alone, which is what forbids the merge pass from minting.
+    /// </returns>
+    private static async Task<bool> SeedLibraryAsync(IServiceProvider services)
     {
         var works = services.GetRequiredService<IWorkRepository>();
         var releases = services.GetRequiredService<IReleaseRepository>();
@@ -46,7 +54,7 @@ public static class SampleDataSeeder
         if ((await works.GetAllAsync()).Count > 0)
         {
             Console.WriteLine("--seed-sample: library is not empty, skipping.");
-            return;
+            return false;
         }
 
         var now = DateTime.UtcNow;
@@ -106,6 +114,7 @@ public static class SampleDataSeeder
         }
 
         Console.WriteLine($"--seed-sample: inserted {Samples.Length} sample titles.");
+        return true;
     }
 
     // ── Merge confirm queue (design-system §6) ───────────────────────────────
@@ -146,7 +155,27 @@ public static class SampleDataSeeder
     /// whatever status they carry, so a pair answered "Different games" stays
     /// rejected rather than being resurrected by the next seed.</para>
     /// </summary>
-    private static async Task SeedMergeCandidatesAsync(IServiceProvider services)
+    /// <param name="mayMintReleases">
+    /// <b>False against a real library, and that is the whole point of the
+    /// flag.</b> This pass runs even when <see cref="SeedLibraryAsync"/> found a
+    /// populated database, because seeing the queue render over the user's own
+    /// rows is exactly what it is for. But "reuse the user's row" and "invent a
+    /// row the user does not own" are different acts, and only the first one is
+    /// debug-only: a minted release is a permanent work + release + external_id
+    /// in <c>%LOCALAPPDATA%\Winnow\winnow.db</c>, carrying no ownership, that
+    /// nothing later removes. Three of them (Witcher 3 GOTY, Prey 3970, Deus Ex
+    /// HR Director's Cut) reached a real library that way and one was merged
+    /// into a genuine record before anyone noticed, because a phantom release is
+    /// invisible in the grid — no ownership, no tile — and visible only here.
+    ///
+    /// <para>So minting is allowed only in the library this pass seeded itself,
+    /// where every row is sample data already. Otherwise a pair whose appid the
+    /// real library does not hold is skipped and said so out loud. Losing a demo
+    /// pair is nothing; writing a game the user does not own into their library
+    /// is a lie about what they own (§5.3).</para>
+    /// </param>
+    private static async Task SeedMergeCandidatesAsync(
+        IServiceProvider services, bool mayMintReleases)
     {
         var works = services.GetRequiredService<IWorkRepository>();
         var releases = services.GetRequiredService<IReleaseRepository>();
@@ -158,19 +187,30 @@ public static class SampleDataSeeder
 
         foreach (var (left, right) in MergePairs)
         {
-            var leftRelease = await FindOrCreateReleaseAsync(works, releases, left);
-            var rightRelease = await FindOrCreateReleaseAsync(works, releases, right);
+            var leftRelease = await FindReleaseAsync(works, releases, left, mayMintReleases);
+            var rightRelease = await FindReleaseAsync(works, releases, right, mayMintReleases);
 
-            var low = Math.Min(leftRelease, rightRelease);
-            var high = Math.Max(leftRelease, rightRelease);
+            if (leftRelease is not { } leftId || rightRelease is not { } rightId)
+            {
+                // At least one side is a game this library does not hold, and
+                // minting it is not on the table. Nothing is written.
+                Console.WriteLine(
+                    $"--seed-sample: skipped {left.Title} / {right.Title} — not in this library, "
+                    + "and --seed-sample does not add games to a library it did not seed.");
+                skipped++;
+                continue;
+            }
+
+            var low = Math.Min(leftId, rightId);
+            var high = Math.Max(leftId, rightId);
             if (low == high || await candidates.FindByPairAsync(low, high) is not null)
             {
                 skipped++;
                 continue;
             }
 
-            var lowSide = low == leftRelease ? left : right;
-            var highSide = low == leftRelease ? right : left;
+            var lowSide = low == leftId ? left : right;
+            var highSide = low == leftId ? right : left;
 
             var score = matcher.Score(Subject(low, lowSide), Subject(high, highSide));
             if (!score.ShouldQueue)
@@ -211,17 +251,29 @@ public static class SampleDataSeeder
     /// <summary>
     /// Reuses the release the real scan already created for this appid when
     /// there is one — the point of running this against the real library is that
-    /// the pair is about the user's own rows — and mints one otherwise.
-    /// No ownership row is created: the queue asks about releases, and inventing
-    /// ownerships would misreport how many games the library actually holds.
+    /// the pair is about the user's own rows — and mints one otherwise, but only
+    /// when <paramref name="mayMint"/> says the whole library is sample data.
+    /// Returns null when the appid is absent and minting is forbidden.
+    ///
+    /// <para>No ownership row is created either way: the queue asks about
+    /// releases, and inventing ownerships would misreport how many games the
+    /// library actually holds. That is also precisely why a minted release is so
+    /// hard to notice afterwards — with no ownership it never becomes a tile, so
+    /// it exists only in the merge queue and in the soft-match sweep's
+    /// input.</para>
     /// </summary>
-    private static async Task<long> FindOrCreateReleaseAsync(
-        IWorkRepository works, IReleaseRepository releases, MergeSide side)
+    private static async Task<long?> FindReleaseAsync(
+        IWorkRepository works, IReleaseRepository releases, MergeSide side, bool mayMint)
     {
         var existing = await releases.FindByExternalIdAsync(ExternalIdProviders.Steam, side.SteamAppId);
         if (existing is not null)
         {
             return existing.Id;
+        }
+
+        if (!mayMint)
+        {
+            return null;
         }
 
         var workId = await works.InsertAsync(new Work

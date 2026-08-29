@@ -4,16 +4,7 @@ using Xunit;
 namespace Winnow.Tests.Updates;
 
 /// <summary>
-/// Shape assertions against the bytes captured on 2026-08-23
-/// (`tests/fixtures/update-signals/`). Neither source is safe to assume stable:
-/// the `tags` filter is undocumented (Valve's own description misspells the
-/// value), and api.steamcmd.net is an unofficial volunteer mirror that §4.5
-/// recorded erroring outright during design.
-///
-/// <para><b>This test is the early-warning system.</b> When someone recaptures a
-/// fixture and these break, the contract changed — and the soft-fail paths,
-/// which already degrade to "no signal" rather than throw, can be re-verified
-/// against the new reality instead of discovered in production.</para>
+/// Shape assertions for update-signal fixtures (news and build-info).
 /// </summary>
 public class UpdateSignalContractTests
 {

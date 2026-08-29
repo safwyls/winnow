@@ -6,21 +6,6 @@ namespace Winnow.Auth.WebView;
 /// <summary>
 /// Answers one question without side effects: is there a WebView2 runtime on
 /// this machine?
-///
-/// <para><b>Why this is a real question and not a formality.</b> WebView2 ships
-/// no browser — the Chromium engine is the OS-provided Evergreen runtime.
-/// Microsoft documents it as included in Windows 11, and it was found
-/// preinstalled at 151.0.4129.107 during the spike, but that is one machine.
-/// Windows 10, an LTSC or Server SKU, an image built with it stripped, or a
-/// managed fleet that blocks Edge updates are all real; treating its presence as
-/// certain would turn a graceful fallback into a crash on somebody's
-/// laptop.</para>
-///
-/// <para><b>The detection point is an exception, by design of the API.</b>
-/// <see cref="CoreWebView2Environment.GetAvailableBrowserVersionString()"/>
-/// throws <c>WebView2RuntimeNotFoundException</c> when there is nothing to find
-/// — there is no TryGet form — so the throw IS the answer and catching it is not
-/// swallowing an error.</para>
 /// </summary>
 public static class WebView2Runtime
 {
@@ -28,14 +13,7 @@ public static class WebView2Runtime
     private static bool _probed;
     private static string? _version;
 
-    /// <summary>
-    /// The installed runtime's version, or null when there is none.
-    ///
-    /// <para>Probed once and remembered. A runtime installed while Winnow is
-    /// running will not be noticed until the next launch, which is the right
-    /// trade: this is called on a UI path, and the failing case is a native load
-    /// attempt, not a cheap registry read.</para>
-    /// </summary>
+    /// <summary>The installed runtime's version, or null when there is none.</summary>
     public static string? Version
     {
         get
@@ -57,15 +35,9 @@ public static class WebView2Runtime
     public static bool IsAvailable => OperatingSystem.IsWindows() && Version is not null;
 
     /// <summary>
-    /// The probe itself, kept out of its caller so that a failure to LOAD the
-    /// WebView2 assembly or its native loader is caught too.
-    ///
-    /// <para><see cref="MethodImplOptions.NoInlining"/> is load-bearing. The JIT
-    /// resolves the types a method references when it compiles that method, so an
-    /// inlined body would raise <c>FileNotFoundException</c> or
-    /// <c>DllNotFoundException</c> at the CALLER's frame — outside this try —
-    /// and the fallback would never run. The same trick, for the same reason, is
-    /// standard around optional native dependencies.</para>
+    /// The probe itself, kept in a separate method with
+    /// <see cref="MethodImplOptions.NoInlining"/> so assembly-load failures
+    /// are caught here rather than at the caller.
     /// </summary>
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static string? Probe()

@@ -7,19 +7,7 @@ using Xunit;
 namespace Winnow.Tests;
 
 /// <summary>
-/// M3b's launch path from the button down to the URI, and the ambient strip that
-/// acknowledges it.
-///
-/// <para><b>No game is started here and none could be.</b> The dispatcher is an
-/// interface for exactly this reason: what needs proving is that Winnow hands the
-/// right URI to the platform, declares the right intent first, withdraws it when
-/// the platform refuses, and never blocks or throws — none of which requires a
-/// 60GB title, a store client, or a sign-in.</para>
-///
-/// <para>The acceptance criterion for this milestone is "click Play, the game
-/// starts, and nothing else happens", so most of these tests assert an ABSENCE:
-/// no second dispatch, no error on a cancelled launch, no strip left on
-/// screen.</para>
+/// Launch path from the Play button to the URI dispatcher and the ambient strip.
 /// </summary>
 public sealed class GameLaunchTests
 {

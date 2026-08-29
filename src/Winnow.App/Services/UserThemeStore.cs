@@ -6,18 +6,7 @@ namespace Winnow.App.Services;
 
 /// <summary>
 /// The folder of user themes: where it is, what is in it, and when it changed.
-///
-/// <para><b>The only type in the engine that touches a file.</b>
-/// <c>ThemeJson</c> takes text and returns a theme or a list of complaints, and
-/// keeping the IO out here is what makes "a theme file is data" checkable rather
-/// than asserted — there is no path in the document for anything to
-/// dereference, because the document never reaches anything that could.</para>
-///
-/// <para><b>Nothing here throws either.</b> A themes folder is a place a person
-/// keeps files, so it can be missing, read-only, on a disconnected network
-/// drive, or full of things that are not themes. All of those are conditions to
-/// report, and none of them is a reason the settings screen should not
-/// open.</para>
+/// All IO errors are reported as diagnostics, never thrown.
 /// </summary>
 public sealed class UserThemeStore : IDisposable
 {
@@ -60,19 +49,7 @@ public sealed class UserThemeStore : IDisposable
     public string Directory { get; }
 
     /// <summary>
-    /// Creates the folder if it is missing, and puts a working theme in it if it
-    /// is empty.
-    ///
-    /// <para><b>An empty folder is the wrong first thing to show an author.</b>
-    /// It says the feature exists and nothing else - not the shape of a file,
-    /// not which fields are seeds, not that <c>edge</c> is a contrast ratio. So
-    /// the first thing in the folder is the default theme exported through the
-    /// same code path a user theme is read by, with a header explaining the two
-    /// kinds of field. Copy it, change the id, change eight colours.</para>
-    ///
-    /// <para>Only when the folder is EMPTY. It is a folder the user owns; a
-    /// file re-appearing after they deleted it is the app arguing with
-    /// them.</para>
+    /// Creates the folder if missing and seeds an example theme if it is empty.
     /// </summary>
     public IReadOnlyList<ThemeDiagnostic> EnsureSeeded()
     {
@@ -239,20 +216,8 @@ public sealed class UserThemeStore : IDisposable
     }
 
     /// <summary>
-    /// Starts watching the folder, so an author editing a palette sees it
-    /// without restarting.
-    ///
-    /// <para><b>Cheap enough to be worth it, and this is the whole cost.</b> One
-    /// <see cref="FileSystemWatcher"/> on one folder, a debounce timer, and a
-    /// re-read of a few kilobytes. The reload path is the load path — nothing
-    /// about applying a theme is different because it arrived from a file that
-    /// changed — and the repaint is the one <c>ThemeService</c> already does by
-    /// writing colours onto the brushes the views resolved, which costs an
-    /// invalidation rather than a rebuild.</para>
-    ///
-    /// <para>A watcher that cannot be created is not an error: the feature
-    /// degrades to "reload after restart", which is what it would have been
-    /// anyway.</para>
+    /// Starts watching the folder for changes so an author sees edits without
+    /// restarting. Degrades silently if the watcher cannot be created.
     /// </summary>
     public void Watch()
     {
@@ -328,14 +293,8 @@ public sealed class UserThemeStore : IDisposable
     }
 
     /// <summary>
-    /// The file written into an empty folder: an explanation, then the default
-    /// theme exported through the same code the reader parses.
-    ///
-    /// <para>The header is comments rather than a separate README because a
-    /// README is a second file that goes stale; this one is beside the fields it
-    /// describes, and the fields under it were generated from the same tables
-    /// the parser validates against, so the example cannot describe a format the
-    /// build does not have.</para>
+    /// The file written into an empty folder: a commented header, then the
+    /// default theme exported through the same code the reader parses.
     /// </summary>
     private static string ExampleText()
     {

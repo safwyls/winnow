@@ -5,14 +5,7 @@ using Xunit;
 namespace Winnow.Tests.SteamWeb;
 
 /// <summary>
-/// Pins the exact <c>GetOwnedGames</c> shape Winnow's parser depends on against
-/// the bytes captured on 2026-08-24 (<c>tests/fixtures/steam-web/README.md</c>).
-///
-/// <para><b>This test is the early-warning system.</b> The client soft-fails by
-/// design: a shape change produces an unanswered result rather than an
-/// exception, which means a silent stop. When someone recaptures the fixture and
-/// these assertions break, that is the signal that Valve changed the contract —
-/// before the silence reaches a user.</para>
+/// Shape assertions for <c>GetOwnedGames</c> against captured fixtures.
 /// </summary>
 public class SteamWebContractTests
 {

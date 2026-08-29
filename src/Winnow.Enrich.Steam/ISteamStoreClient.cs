@@ -3,20 +3,8 @@ using Winnow.Enrich.Steam.Model;
 namespace Winnow.Enrich.Steam;
 
 /// <summary>
-/// Winnow's window onto Steam's store-frontend endpoints —
-/// <c>IStoreBrowseService/GetItems</c> and <c>IStoreService/GetTagList</c>.
-///
-/// <para><b>This is a fallback, not the backbone.</b> §4.4 makes IGDB the
-/// metadata backbone; this exists because IGDB needs Twitch credentials and
-/// these two endpoints need none, so a library is usable regardless of when
-/// those credentials arrive.</para>
-///
-/// <para><b>Both endpoints are undocumented</b> — the spike found neither in
-/// <c>ISteamWebAPIUtil/GetSupportedAPIList</c>. They are publicly callable today
-/// under no stability promise. Every method here is therefore total: a shape
-/// change, a non-200, or a dead network yields empty, never an exception, so
-/// nothing built on this can be broken by Valve changing its mind (§5.1 —
-/// enrichment must never block or break a user-facing path).</para>
+/// Winnow's window onto Steam's undocumented, keyless store-frontend endpoints.
+/// Fallback to IGDB; every method is total (yields empty on failure).
 /// </summary>
 public interface ISteamStoreClient
 {

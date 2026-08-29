@@ -6,19 +6,8 @@ using Xunit;
 namespace Winnow.Tests;
 
 /// <summary>
-/// The Epic half of the "hide non-game entries" filter — the same setting, the
-/// same place in the read query, and the same rule the local Epic scan applies
-/// before a candidate is ever emitted.
-///
-/// <para><b>The bug these pin.</b> Epic's authenticated library endpoint returns
-/// raw entitlements with no categories, so the API half of Epic ingest had
-/// nothing to filter on and filtered nothing. On the author's library that put
-/// 29 rows in the grid titled <c>App &lt;32 hex&gt;</c>: three real games, three
-/// Unreal Engine builds, eighteen engine sample packs, two <c>hidden</c> Fortnite
-/// content entitlements and a store DLC. The fix classifies them from Epic's own
-/// catalog service and hides the non-games — it does <b>not</b> delete them. Two
-/// of the 29 have recorded playtime against them, and the user owns all of them
-/// either way.</para>
+/// Filtering non-game Epic entitlements (engine builds, samples, DLC) out of the
+/// library grid.
 /// </summary>
 public class EpicNonGameFilterTests : IDisposable
 {

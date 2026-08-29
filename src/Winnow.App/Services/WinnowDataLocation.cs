@@ -39,30 +39,8 @@ public sealed record DataLocation(string Root, string DatabasePath, DataMigratio
 
 /// <summary>
 /// The app's data directory, and the one-time migration of the library that
-/// Hoard left at <c>%LOCALAPPDATA%\Hoard</c>.
-///
-/// <para><b>The rename is the dangerous part of the rename.</b> Changing the
-/// path without moving what is under it does not produce an error — it produces
-/// an empty database, silently, and a user who concludes their thousand-title
-/// library is gone. So the path is not a constant that changed; it is resolved
-/// once at startup, and resolving it is what performs the move.</para>
-///
-/// <para><b>Every failure lands on the old data, never on nothing.</b> If the
-/// legacy database is open in another process, or the move and the copy both
-/// fail, this returns the LEGACY directory and the app runs against the real
-/// library exactly where it already is. That is the whole reason
-/// <see cref="DataLocation"/> carries a path rather than this class exposing a
-/// static one: a half-migrated library is worse than an unmigrated one, and an
-/// empty one is worse than both.</para>
-///
-/// <para><b>Nothing here deletes the user's data.</b> The move is a directory
-/// rename, which is the operating system relocating the tree in one verified
-/// step. The copy fallback leaves the original in place forever. The only thing
-/// ever deleted is a destination this class created moments earlier and could
-/// not finish — reachable only after <c>Directory.Move</c> refused, which on
-/// every platform means it copied nothing and the legacy tree is still whole.
-/// Notably there is no rollback anywhere: putting a tree BACK is the only step
-/// that could leave the library somewhere the caller is not about to look.</para>
+/// Hoard left at <c>%LOCALAPPDATA%\Hoard</c>. Every failure lands on the old
+/// data, never on nothing.
 /// </summary>
 public static class WinnowDataLocation
 {
@@ -78,15 +56,7 @@ public static class WinnowDataLocation
     /// <summary>What the database was called before the rename to Winnow.</summary>
     public const string LegacyDatabaseFileName = "hoard.db";
 
-    /// <summary>
-    /// The database and both of SQLite's sidecars, in the order they are renamed.
-    ///
-    /// <para><b>The <c>-wal</c> is not optional baggage.</b> SQLite finds a
-    /// write-ahead log by the database's file name, so a <c>winnow.db</c> beside
-    /// an orphaned <c>hoard.db-wal</c> opens clean and silently drops every
-    /// transaction that had not been checkpointed — which, after an unclean
-    /// shutdown, is real sessions the user played.</para>
-    /// </summary>
+    /// <summary>The database and both of SQLite's sidecars, in rename order.</summary>
     private static readonly string[] DatabaseParts = ["", "-wal", "-shm"];
 
     /// <summary>The real paths under <c>%LOCALAPPDATA%</c>.</summary>
@@ -122,15 +92,8 @@ public static class WinnowDataLocation
     }
 
     /// <summary>
-    /// The database inside a directory, found by looking rather than by
-    /// assuming.
-    ///
-    /// <para>A run that moved the tree but could not rename the file inside it
-    /// leaves a COMPLETE library under the new folder under the OLD file name.
-    /// That is not a half-migration — everything is present and consistent, only
-    /// the name is stale — and it must still open. Naming the file by rule
-    /// rather than by inspection is precisely what would turn it into an empty
-    /// database, so this looks; the next launch retries the rename.</para>
+    /// The database inside a directory, found by looking rather than assuming.
+    /// Falls back to the legacy file name if the rename has not completed yet.
     /// </summary>
     private static string DatabaseIn(string directory)
     {
@@ -237,13 +200,7 @@ public static class WinnowDataLocation
         }
     }
 
-    /// <summary>
-    /// Whether anything holds the legacy database or a sidecar open.
-    ///
-    /// <para>An exclusive open is the only honest test — <c>File.Exists</c> and
-    /// a lock file both answer a different question. A directory with no
-    /// database in it (covers alone, say) is not busy.</para>
-    /// </summary>
+    /// <summary>Whether anything holds the legacy database or a sidecar open.</summary>
     private static bool IsBusy(string legacyRoot)
     {
         var database = Path.Combine(legacyRoot, LegacyDatabaseFileName);

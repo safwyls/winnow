@@ -76,11 +76,11 @@ public sealed class MergeSignalViewModel
         var (label, value) = signal.Name switch
         {
             SoftMatchSignalNames.Title => (
-                "Title distance",
+                "Title",
                 Number(1.0 - payload.TitleSimilarity)),
 
             SoftMatchSignalNames.ReleaseYear => (
-                "Year delta",
+                "Year",
                 payload.YearDelta is { } delta
                     ? string.Create(CultureInfo.InvariantCulture, $"Δ{delta}")
                     : Unknown),

@@ -5,19 +5,7 @@ using Xunit;
 namespace Winnow.Tests;
 
 /// <summary>
-/// "Which works does enrichment still have something to do for?"
-///
-/// <para><b>This query used to take a provider, and its only caller passed
-/// <c>steam</c>.</b> That one argument is why the author's 67 Epic and 14 GOG
-/// works measured zero <c>igdb_id</c>, zero covers, zero years and zero
-/// summaries between them while 946 Steam works had roughly 865 of each. Not a
-/// low number — exactly zero, which is the signature of a population no query
-/// ever selected, and is otherwise indistinguishable from "the metadata source
-/// had nothing to say about any of them".</para>
-///
-/// <para>These tests pin the fix at the level where it can regress silently: a
-/// store missing from <see cref="ExternalIdProviders.Stores"/> would be invisible
-/// again, and nothing else in the system would notice.</para>
+/// Enrichment target query must cover all stores, not just Steam.
 /// </summary>
 public class EnrichmentTargetQueryTests : IDisposable
 {

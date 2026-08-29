@@ -4,80 +4,21 @@
              x:Class="Winnow.App.Views.FeedCardView"
              x:DataType="vm:FeedCardViewModel">
 
-    <!--
-        ══ A feed card ══════════════════════════════════════════════════════
-        The cover, the name, and THE SENTENCE — in full, on the front, without
-        hovering, without trimming.
-
-        THE CARD IS SIZED TO THE SENTENCE AND NOT THE OTHER WAY ROUND. Measured
-        on the real library (46 items across five shelves): the reasons run 78
-        to 256 characters, median 115, 90th percentile 155. A card that trimmed
-        the reason to fit would be a cover in a grid, which is the storefront
-        feed this app exists to beat.
-
-        ══ WHAT THE GRID CHANGED, AND IT IS THE MEASURE ═════════════════════
-        This card was 344px wide with a 120x180 cover, and both numbers were
-        the rail's. A fixed width is what a horizontally scrolling row needs;
-        with the sections now wrapping grids (FeedView.axaml) the card takes
-        whatever width its column got, and FeedGrid holds a floor of 420 so the
-        column it is given is always at least that.
-
-        The shape did NOT change — cover left, sentence right is still correct,
-        because the sentence is the payload and putting it beside the art is
-        what keeps it the payload. The PROPORTIONS did. At 344 the text column
-        was 182px, which is about twenty-seven characters: a newspaper column,
-        well under the readable band, and six lines deep at the 90th
-        percentile. At the 443px a card gets at the 1200px minimum width, the
-        same column is 291px and about forty-four characters — four lines for
-        the same sentence, and a shorter card for it.
-
-        So the cover shrinks with it, 120x180 -> 108x162. That is TileMinWidth
-        exactly: the smallest a capsule is ever drawn on the wall, and still
-        large enough to recognise. It is what stops the art, rather than the
-        prose, from setting the card's height — which on a surface whose whole
-        job is the reason would be the geometry arguing with the point.
-
-        WHY THIS CARD DOES NOT FLIP. The library's tiles turn over because a
-        cover has nowhere to put four facts. This face is already showing the
-        one fact that matters, and every fact on the tile's back — the bucket,
-        the playtime, the last-played year — is a clause of the sentence printed
-        here. Turning it over would hide the reason to reveal a weaker
-        restatement of it. Both actions the back face carries are on this face
-        instead: the primary Play/Install, and the detail modal, which the whole
-        card opens.
-
-        THE CARD IS A BUTTON, and that is what buys most of §8's floor for free:
-        a Tab stop, Enter and Space, and a press that opens the detail modal. The
-        Play button inside it marks its own press handled, so the two never both
-        fire. What a Button does NOT give is a ring anyone can see — Fluent
-        repaints its own border by a shade and calls that focus — so the 2px Volt
-        one is drawn below, and it was drawn only after looking at the running
-        app and failing to find the framework's.
-
-        FLARE APPEARS HERE EXACTLY ONCE, on the unread dot, and only on a cover
-        whose game has been patched since it was played. It is not on the shelf
-        heading, not on the card edge, and not on the patched shelf's cards as a
-        set — the badge means something for as long as nothing else wears that
-        colour (§2).
-    -->
+    <!-- Feed card: cover, name, and full reason sentence. Card is a Button
+         (Tab stop, Enter, detail modal). Cover is 108x162 (TileMinWidth).
+         Flare appears once, on the unread dot only (§2). -->
 
     <UserControl.Styles>
 
-        <!-- The card. Opaque Surface over the pane's own (possibly translucent)
-             ground, on the same rule the Stores cards follow: anything carrying
-             reading matter or cover art is a solid field. It is also what the
-             dormancy cross-fade needs — the two art layers are only opaque
-             together once both have decoded, and a partly transparent tile shows
-             whatever the window is standing on. -->
+        <!-- The card. Opaque Surface (needed for dormancy cross-fade and
+             readability over translucent pane ground). -->
         <Style Selector="Button.feedcard">
             <Setter Property="Background" Value="{StaticResource Surface}"/>
             <Setter Property="BorderBrush" Value="{StaticResource LineSoft}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="CornerRadius" Value="{StaticResource RadiusTile}"/>
-            <!-- Zero, with the inset moved onto the content below: the focus
-                 ring has to be drawn at the CARD's edge rather than at its
-                 content's, and a ring inside the padding would be a rectangle
-                 floating 14px in from the border it is supposed to be marking. -->
+            <!-- Zero padding; inset is on the content. Focus ring draws
+                 at the card's edge. -->
             <Setter Property="Padding" Value="0"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
@@ -104,17 +45,8 @@
             <Setter Property="Background" Value="{StaticResource SurfaceHigh}"/>
         </Style>
 
-        <!-- ══ §8's focus ring: 2px Volt, visible, and it does not reflow ═══
-             Drawn as an element inside the card rather than as a border-brush
-             swap on the presenter, for the reason the wall's tiles draw their
-             selection edge the same way: §10.7 forbids a thickness change on
-             focus (it moves everything the border encloses), and a 1px swap
-             cannot be the 2px §8 asks for. An element can be exactly 2px and
-             costs the layout nothing, because it is not in the flow.
-
-             The presenter's own border is PINNED on focus so the Fluent theme
-             does not repaint it underneath this: two focus indicators on one
-             control is how the weaker one ends up being the one people learn. -->
+        <!-- ══ §8's focus ring: 2px Volt, no reflow ═══════════════════════
+             Element-drawn so thickness stays constant (§10.7). -->
         <Style Selector="Button.feedcard:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="BorderBrush" Value="{StaticResource LineSoft}"/>
             <Setter Property="BorderThickness" Value="1"/>
@@ -126,11 +58,8 @@
             <Setter Property="IsVisible" Value="True"/>
         </Style>
 
-        <!-- §5.1's dormancy cross-fade, and the 140ms restore that is the most
-             important interaction in the app: the game wakes up under the
-             cursor. The transition lives in a style rather than on the element
-             because §8's reduced-motion setting has to be able to take it away,
-             and a local Transitions value would outrank any selector trying to. -->
+        <!-- §5.1's dormancy cross-fade. Transition in a style (not on the
+             element) so reduced-motion can remove it. -->
         <Style Selector="Panel#Art Border#VividArt, Panel#Art Image#VividArtwork">
             <Setter Property="Transitions">
                 <Transitions>
@@ -157,33 +86,8 @@
         </Style>
 
         <!-- ══ The two feedback controls ═══════════════════════════════════
-             "Not interested" and "Not now", and everything about this style is
-             about WEIGHT. The reason sentence is the card's payload; these are
-             the reply to it, and a reply that competes with what it is replying
-             to has taken the screen over.
-
-             So: no fill, no border, TextDim, 11px, beside a Volt-filled Play at
-             12px with a solid ground under it. Three axes of difference in the
-             same line, and the eye sorts them in one pass.
-
-             THEY ARE ALWAYS VISIBLE, and that is a decision rather than a
-             default. Revealing them on hover would have bought a quieter resting
-             card and cost them to everyone navigating by keyboard and everyone
-             on a touch screen — a hover-only control is one that some people
-             simply do not have. What hover and focus buy instead is CONTRAST:
-             the pair lifts from TextDim to Text when the pointer or the keyboard
-             is on the card. At rest TextDim on Surface measures 5.88:1, well
-             over §8's floor, so quiet here never means unreadable.
-
-             They cost the sentence NO HEIGHT: they sit in the action line the
-             card already had, whose height is set by the Play button beside
-             them. The reason above is untouched, un-trimmed and un-tooltipped,
-             exactly as it was.
-
-             BorderThickness is a constant 2 with the resting brush transparent,
-             so §8's focus ring is a brush swap and never a reflow (§10.7) — a
-             control that shifts sideways as you tab onto it is worse than no
-             ring. -->
+             "Not interested" and "Not now". TextDim at rest, full Text on
+             card hover/focus-within. Constant border for focus ring. -->
         <Style Selector="Button.cardaside">
             <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
@@ -202,9 +106,7 @@
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderBrush" Value="Transparent"/>
         </Style>
-        <!-- The card is hovered or the keyboard is inside it: the pair comes up
-             to full ink. This is the only thing hover buys them — never their
-             existence. -->
+        <!-- Card hovered/focused: feedback controls lift to full ink. -->
         <Style Selector="Button.feedcard:pointerover Button.cardaside /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Foreground" Value="{StaticResource Text}"/>
         </Style>
@@ -225,17 +127,8 @@
             <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
         </Style>
 
-        <!-- A card the user has answered. Only the ART dims — the title and the
-             sentence stay at full ink, because "the reason stays fully visible
-             on the front" does not stop being true the moment somebody replies
-             to it, and a dimmed paragraph is a paragraph somebody has to squint
-             at to remember what they just did. The art is the one element on the
-             card that is not reading matter, so it is the one that can carry
-             "this is out of the way now" for nothing.
-
-             The state is said in words as well, on the receipt line — §8's
-             decorative-redundancy rule, the same one the dormancy ramp lives
-             under. -->
+        <!-- A card the user has answered. Only the art dims (text stays
+             full ink). State also stated in words on the receipt line (§8). -->
         <Style Selector="Button.feedcard.setaside Panel#Art">
             <Setter Property="Opacity" Value="0.42"/>
         </Style>
@@ -247,25 +140,15 @@
             Classes.setaside="{Binding IsSetAside}"
             Command="{Binding Tile.OpenDetailsCommand}"
             CommandParameter="{Binding Tile}">
-        <!-- No tooltip on the card, and that is a correction made at the glass
-             rather than a preference. Hovering a card is the RESTING state of
-             reading this screen, so a tooltip on it pops up over the sentence on
-             the card beside it — the interface covering the one thing it exists
-             to show. The pointer already turns, the card already lifts to
-             SurfaceRaised, and the art already wakes up; that is three signals
-             that it is a target, none of which is in the way. -->
+        <!-- No tooltip; hovering is the resting state of reading this
+             screen, so a tooltip would cover adjacent cards' sentences. -->
         <Panel>
         <Grid Margin="14" ColumnDefinitions="108,14,*">
 
             <!-- ══ The art ══════════════════════════════════════════════════
-                 The same two-layer cross-fade the wall uses (the floor variant
-                 under the vivid one, whose opacity carries the ramp), the same
-                 placeholder underneath it, and the same unread badge on top.
-                 Reproduced rather than shared because a tile is a 2:3 cell with
-                 a hover scrim and a back face, and this is a 2:3 illustration
-                 beside a paragraph — the two would fight over what the pointer
-                 means. What they DO share is the view model, so a cover, a ramp
-                 position and a badge can never differ between the two screens. -->
+                 Two-layer dormancy cross-fade and unread badge, same as the
+                 wall tiles. Reproduced (not shared) because pointer semantics
+                 differ; they share the view model. -->
             <Panel Grid.Column="0"
                    Name="Art"
                    Width="108" Height="162"
@@ -275,14 +158,10 @@
                 <Border CornerRadius="{StaticResource RadiusTile}" ClipToBounds="True"
                         BorderThickness="1" BorderBrush="{StaticResource LineSoft}">
                     <Panel>
-                        <!-- Opaque ground under both art layers: between the
-                             first decoded bitmap and the second, a dimmed cover
-                             is a partly transparent one. -->
+                        <!-- Opaque ground under both art layers. -->
                         <Border Background="{StaticResource TileGround}"/>
 
-                        <!-- §7's placeholder: the title in Bricolage on a
-                             Surface field, until real art lands and whenever a
-                             game has none. Never a spinner, never a hole. -->
+                        <!-- Placeholder (§7): title on Surface until art loads. -->
                         <Border Background="{Binding Tile.FloorBrush}"
                                 IsVisible="{Binding Tile.ShowPlaceholder}">
                             <TextBlock Text="{Binding Tile.Title}"
@@ -321,12 +200,8 @@
                     </Panel>
                 </Border>
 
-                <!-- The unread badge (§5.2), outside the clip so its glow is not
-                     sheared off at the corner. Flare's one use, here as on the
-                     wall: an update landed after the last session. Never on a
-                     never-opened game — an unplayed game has nothing to be
-                     behind on — and the sentence beside it says the same thing
-                     in words, which is §8's redundancy. -->
+                <!-- Unread badge (§5.2), outside clip for glow. Flare's one
+                     use: an update landed after last session. -->
                 <Border Width="14" Height="14" CornerRadius="7"
                         Background="{StaticResource Flare}"
                         BorderBrush="{StaticResource Ground}" BorderThickness="2"
@@ -340,50 +215,17 @@
             <DockPanel Grid.Column="2" LastChildFill="True">
 
                 <!-- ══ The action line ═════════════════════════
-                     Actions sit at the bottom of the card whatever the sentence
-                     does above them, so a row of cards has one action line
-                     rather than a ragged one.
-
-                     ══ AND IT IS WHERE THE FEEDBACK CONTROLS GO ════════════
-                     "Not interested" and "not now" had one hard requirement:
-                     they must not compete with the reason, crowd it, or push it
-                     below the fold. Putting them HERE is the whole answer, and
-                     it is a geometry answer rather than a styling one — this
-                     line already exists and its height is already set by the
-                     Play button, so two more controls on it cost the sentence
-                     exactly nothing. Anywhere else on the card — a row of their
-                     own, a strip under the reason, a corner over the art — would
-                     have been paid for in the one currency this screen has none
-                     of.
-
-                     They sit a Play button away from Play and three weights
-                     below it (no fill, no border, TextDim, 11px against a
-                     Volt-filled 12px), so the primary action still reads first
-                     in the line. See the styles above for why they are always
-                     visible rather than revealed on hover.
-
-                     ══ AND THE UNDO IS THIS SAME LINE ═══════════════════
-                     Acting swaps the row for a one-line receipt with Undo in it.
-                     The card does not vanish, does not shrink and does not move
-                     the ones beside it: the row's height is unchanged, so
-                     nothing in the grid reflows under a user who has just
-                     clicked. The undo therefore appears within a few pixels of
-                     the control that was pressed, which is the only place a
-                     misclick can be caught without hunting — and it stays until
-                     the feed is next computed rather than counting down. -->
+                     Pinned to the bottom so rows of cards align. Holds Play,
+                     the two feedback controls, and the store badge. On act,
+                     swaps for a receipt with Undo (same height, no reflow). -->
                 <Panel DockPanel.Dock="Bottom" Margin="0,10,0,0">
 
                     <!-- The unanswered state. -->
                     <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto"
                           IsVisible="{Binding ShowActions}">
 
-                        <!-- Play when it is on disk, Install when it is not, and
-                             NOTHING when the app cannot honestly name either — no
-                             id for the store, no verified install route, or no
-                             answer at all about the install state (§10.3: never
-                             an inert button). The same command the wall's tiles
-                             raise, so a launch from here is attributed exactly
-                             like any other. -->
+                        <!-- Play/Install, or hidden if no action can be
+                             honestly named (§10.3). -->
                         <Button Grid.Column="0"
                                 Classes="act primary cardact"
                                 Margin="0,0,8,0"
@@ -393,20 +235,15 @@
                                 Command="{Binding Tile.PrimaryActionCommand}"
                                 CommandParameter="{Binding Tile}"/>
 
-                        <!-- The durable verdict. Not a destructive act and not
-                             styled as one: Danger is the window's close button
-                             and nothing else (§2), and Flare belongs to the
-                             unread dot two inches to the left. -->
+                        <!-- The durable verdict. Not styled as destructive. -->
                         <Button Grid.Column="1"
                                 Classes="cardaside"
                                 Content="Not interested"
                                 IsVisible="{Binding CanGiveFeedback}"
                                 Command="{Binding NotInterestedCommand}"/>
 
-                        <!-- The deferral. A separate control because it is a
-                             separate intent — the storage keeps the two apart
-                             (§6b) and one button that guessed between them would
-                             be where the difference was lost. -->
+                        <!-- The deferral. Separate control because it is a
+                             separate intent (§6b). -->
                         <Button Grid.Column="2"
                                 Classes="cardaside"
                                 Content="Not now"
@@ -428,11 +265,7 @@
                         </Border>
                     </Grid>
 
-                    <!-- The receipt. Same line, same height, same place — what
-                         changed is what it says. The prose and the date are two
-                         runs so the date sets in Plex Mono with tabular figures
-                         (§3) while the words beside it stay in the body face,
-                         which is the rule the reason sentence above follows. -->
+                    <!-- The receipt. Date in Plex Mono, prose in body face. -->
                     <Grid ColumnDefinitions="*,Auto"
                           IsVisible="{Binding IsSetAside}">
                         <StackPanel Grid.Column="0"
@@ -449,12 +282,8 @@
                                        Text="{Binding SetAsideDate}"/>
                         </StackPanel>
 
-                        <!-- Quiet rather than primary: undoing is the way back,
-                             not the thing to do next. It is a real bordered
-                             control though, where the two that put the card here
-                             are borderless — after the act, the way back is the
-                             only offer on the line and can afford to be found
-                             instantly. -->
+                        <!-- Quiet, not primary: the way back, not the next
+                             action. -->
                         <Button Grid.Column="1"
                                 Classes="act quiet cardact"
                                 Content="Undo"
@@ -462,12 +291,8 @@
                     </Grid>
                 </Panel>
 
-                <!-- A write that did not land. Both controls stay exactly where
-                     they were so the user can simply press again, and the card
-                     grows by one line rather than claiming a dismissal the
-                     database does not hold. Amber, because §2 gives Amber
-                     attention and Danger the one destructive act — a failed save
-                     is neither an alarm nor a thing to undo. -->
+                <!-- A write that did not land. Controls stay in place for
+                     retry; Amber for attention (§2). -->
                 <TextBlock DockPanel.Dock="Bottom"
                            Classes="body"
                            FontSize="11"
@@ -485,14 +310,8 @@
                                TextTrimming="CharacterEllipsis"
                                Foreground="{StaticResource Text}"/>
 
-                    <!-- THE REASON. No MaxLines, no TextTrimming, no tooltip —
-                         it wraps to whatever it needs and the card grows. Its
-                         inlines are built in the code-behind so every number in
-                         it sets in Plex Mono with tabular figures (§3) while the
-                         sentence keeps the body face: the feed is where this
-                         app's numbers moved out of columns and into prose, and
-                         they are still numbers. FontFeatures is set here and
-                         inherited by those runs. -->
+                    <!-- THE REASON. Full wrap, no trimming. Inlines built in
+                         code-behind so numbers use Plex Mono tnum (§3). -->
                     <TextBlock Name="Reason"
                                Classes="body"
                                FontFeatures="tnum"
@@ -504,13 +323,9 @@
             </DockPanel>
         </Grid>
 
-        <!-- Drawn INSIDE the card's own bounds, exactly as the tile's selection
-             edge is and for the same reason: §8 asks for a 2px ring at a 2px
-             offset, and an outward offset on a card at the end of a rail is a
-             ring the ScrollViewer clips — a half-drawn ring reads as a
-             rendering fault rather than as focus. The 1px Ground separator
-             inside it is the tile's too, so the ring reads as a ring and not as
-             a thicker border. -->
+        <!-- Focus ring drawn inside the card bounds (outward offset
+             would be clipped by ScrollViewer). 1px Ground separator
+             inside the 2px Volt ring. -->
         <Border Name="FocusRing"
                 BorderBrush="{StaticResource Volt}" BorderThickness="2"
                 CornerRadius="{StaticResource RadiusTile}"

@@ -58,6 +58,19 @@ public sealed class SqlitePollCandidateSource : IPollCandidateSource
         //    `stale_but_patched`, so a 200-hour game cannot show the badge no
         //    matter what lands in update_events.
         //
+        //  - A DISMISSED release is NOT excluded, and must never be. This is
+        //    the one exclusion that looks obvious and is a bug. Migration 0012
+        //    lets the user dismiss §5.2's dot until a genuinely newer update
+        //    arrives, and "newer" can only be discovered by polling: the
+        //    acknowledgement is a WATERMARK, cleared by the next correlated
+        //    build push rather than by a clock or a writer. Filtering
+        //    update_acknowledgements out of the poll set would mean no newer
+        //    push is ever fetched for that release, so the watermark is never
+        //    passed, so every dismissal becomes permanent — silently, with the
+        //    user's own "until something real comes in" turned into a mute.
+        //    Eligibility here stays on PLAYTIME alone, and the dismissal is
+        //    applied exactly once, in LibraryQueryRepository's major_update CTE.
+        //
         // `dead` has no column in the §6 schema yet, so there is nothing to
         // filter on; when it arrives it belongs in this WHERE clause.
         const string sql = """

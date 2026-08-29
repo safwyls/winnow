@@ -5,72 +5,14 @@
              x:Class="Winnow.App.Views.FeedView"
              x:DataType="vm:FeedViewModel">
 
-    <!--
-        ══ The Feed (M8) ════════════════════════════════════════════════════
-        The screen the app opens on, and the point of the product: five sections
-        over one scoring pass, each section stating its own reason and each card
-        stating its own.
-
-        ══ THE RAILS ARE GONE, AND THEY WERE WRONG ══════════════════════════
-        This screen used to run each section as a horizontal rail. The argument
-        for that was "a heading, a pitch and a row of reasons on one scanline",
-        and it does not survive contact with a desktop. A rail is a television
-        convention: it assumes a remote control and a viewer who cannot see the
-        pointer. Here the wheel does the wrong thing by default, the shelf never
-        says how much it holds, and everything past the right edge is
-        functionally invisible — the old note in this file boasted that a rail
-        shows "how much is off to the right", which is an admission that the
-        content was hidden. A recommendation nobody scrolls to was not made.
-
-        So every section is a GRID BOUND TO THE WINDOW. Cards wrap to as many
-        per row as the width fits, the page scrolls vertically, and nothing on
-        this screen scrolls horizontally anywhere. A section of ten is two or
-        three rows, all of them visible. Views/FeedGrid.cs carries the geometry.
-
-        ══ AND THE SECTIONS ARE NOW ISLANDS, WHICH IS NOT DECORATION ════════
-        Stacking sideways-scrolling rails delineated them by the act of
-        scrolling: you knew where one shelf ended because the other one did not
-        move with it. Stacked grids of similar-looking cards have no such
-        boundary, and a heading with a wider margin over it is not one either —
-        someone scrolling past would have to read the nearest heading to know
-        which claim the card under their pointer belongs to.
-
-        So a section is bounded on all four sides: a 1px Line box at RadiusPane,
-        with its own header divided from its cards by a rule that crosses it.
-        That is the LIBRARY PANE'S OWN SHAPE at section scale — an island whose
-        first band is a header and whose field is below the rule (§15.1, §11.1)
-        — so the screen borrows a structure the window already teaches rather
-        than inventing a second one. It costs no ink and no fill: the box is an
-        outline, the ground inside it is the pane's own, and the transparency
-        slider reaches the desktop between the cards exactly as before.
-
-        The hierarchy is stated in the two line weights. The ENCLOSURE takes
-        Line and the CARDS take LineSoft, so the structure outranks its contents
-        rather than tying with them.
-
-        WHY THERE IS NO VIRTUALIZATION HERE, and it is measured rather than
-        assumed. The engine caps a section at ten items and omits empty ones, so
-        the ceiling is fifty cards — against the six hundred that made CoverWall
-        necessary. CoverWall is also the wrong tool twice over: it is uniform,
-        and these cards are not (a row's height is set by its longest reason).
-
-        WHAT THE PATCHED SECTION DOES NOT GET. It is the app's headline story
-        and therefore the most tempting place in the interface to spend Flare —
-        on its heading, on its box, on its count. It gets none of it. Every
-        section is drawn identically and the patched one leads by being first,
-        which is the engine's claim order. Flare's one appearance on this screen
-        is the unread dot on a cover, which is what it has always meant (§2).
-    -->
+    <!-- ══ The Feed (M8) ════════════════════════════════════════════════════
+         Five sections in wrapping grids (FeedGrid.cs), no virtualization
+         (~50 cards max). Flare on the unread dot only. -->
 
     <UserControl.Styles>
 
-        <!-- ══ A section ════════════════════════════════════════════════════
-             The enclosure, and the reason someone scrolling past always knows
-             which claim they are inside. Outline only — a fill would either be
-             a second opaque plate the size of the pane (the transparency
-             slider's top end pays for that) or, as a translucent veil of
-             SurfaceRaised over a translucent ground, the inverted elevation
-             §14.2 spells out. Line and a radius say it for nothing. -->
+        <!-- Section: outline only, no fill (avoids a second opaque layer or
+             the inverted elevation from §14.2). -->
         <Style Selector="Border.section">
             <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
             <Setter Property="BorderThickness" Value="1"/>
@@ -92,15 +34,8 @@
     <Grid RowDefinitions="Auto,*" Background="{StaticResource PaneGround}">
 
         <!-- ══ Header ═══════════════════════════════════════════════════════
-             Same construction as the Stores screen's: the name, one line of
-             what this is, and a rule under it. The rule is FULL BLEED where a
-             section's is inset inside a box, which is the whole of how the
-             screen's own header is told apart from the five under it.
-
-             The count is a NUMBER, so it sets in Plex Mono with tabular figures
-             like every number in the app — and it is only stated once there is
-             one to state, because "0 games scored" while the pass is out would
-             be a lie the screen tells for half a second. -->
+             Full-bleed rule distinguishes this from section headers. Count
+             shown only once nonzero. -->
         <Border Grid.Row="0"
                 Padding="24,20,24,18"
                 BorderBrush="{StaticResource Line}"
@@ -116,13 +51,11 @@
                                    Text="{Binding CandidateCountText}"/>
                         <TextBlock Classes="body"
                                    Foreground="{StaticResource TextDim}"
-                                   Text="games scored today, and every card says why it's on it."/>
+                                   Text="games scored"/>
                     </StackPanel>
 
-                    <!-- §6's confidence copy, driven by the tier the engine
-                         reports. It goes quiet once the library has enough
-                         history that saying anything would be an apology for
-                         nothing. -->
+                    <!-- Confidence note from the scoring engine; hidden once
+                         the library has enough history. -->
                     <TextBlock Classes="body" FontSize="12"
                                MaxWidth="640"
                                HorizontalAlignment="Left"
@@ -133,25 +66,8 @@
                                Text="{Binding ConfidenceNote}"/>
                 </StackPanel>
 
-                <!-- ══ The way into "what you've told the feed" ════════════
-                     It hangs off THIS header rather than sitting in the rail's
-                     SETTINGS section, and the argument is three-part. It is not
-                     a preference — it configures nothing; it is the record of
-                     acts performed on this screen, and filing an audit trail
-                     under app settings files it as a knob. Its value is a number
-                     that grows, and that section's own note forbids counts on
-                     its rows ("a settings row would only ever say a constant").
-                     And §12.2's rule — the rail never leaves the user on a screen
-                     their click did not describe — cuts against a SETTINGS row
-                     that lands them inside the Feed.
-
-                     So it is one click from the cards it is about, beside the
-                     count of what those cards were drawn from, and it is the
-                     second route back from a dismissal: the card's own receipt
-                     is the first, and it is the one that catches a misclick.
-
-                     The count is Plex Mono with tabular figures like every other
-                     number, and it is stated only once there is one. -->
+                <!-- ══ Feed history toggle ══════════════════════════════════
+                     Audit trail of feed responses; second undo route. -->
                 <Button Grid.Column="1"
                         Classes="act quiet"
                         Padding="12,6"
@@ -171,9 +87,7 @@
         </Border>
 
         <!-- ══ Working / quiet / broken ═════════════════════════════════════
-             One sentence, never a blank pane and never a spinner. All three
-             states point at the rail, because the library is one click away and
-             a feed that cannot answer must not read as an app that cannot. -->
+             One sentence, never blank. Points at the rail. -->
         <Border Grid.Row="1"
                 Padding="32"
                 IsVisible="{Binding ShowMessage}">
@@ -185,9 +99,7 @@
                            LineHeight="22"
                            Foreground="{StaticResource TextDim}"
                            Text="{Binding Message}"/>
-                <!-- Only a FAILED pass offers this. A quiet feed is not
-                     something to try again at, and a button saying so would be
-                     the app arguing with its own answer. -->
+                <!-- Retry shown only on failure. -->
                 <Button Classes="act quiet"
                         Content="Try again"
                         HorizontalAlignment="Center"
@@ -196,11 +108,7 @@
             </StackPanel>
         </Border>
 
-        <!-- ══ The sections ═════════════════════════════════════════════════
-             The ONE scroller on this screen, and it is vertical. Its right edge
-             is the window's, so its scrollbar takes §9.1's edge inset from the
-             window's own ScrollBar:vertical style; there is no longer any
-             interior scroller to opt back out of it. -->
+        <!-- ══ The sections ═════════════════════════════════════════════════ -->
         <ScrollViewer Grid.Row="1"
                       Name="Page"
                       IsVisible="{Binding ShowShelves}"
@@ -208,11 +116,8 @@
                       VerticalScrollBarVisibility="Auto">
             <ItemsControl ItemsSource="{Binding Shelves}" Margin="24,24,24,32">
 
-                <!-- 24 between islands, against the 14 gutter inside one: a
-                     step on §4's scale rather than a nudge, so the spacing is
-                     pulling the same direction the boxes are. Anything closer
-                     to the gutter and the two gaps read as the same gap, which
-                     is the spacing arguing with the delineation. -->
+                <!-- 24 between islands vs 14 gutter inside, so section
+                     spacing outranks card spacing. -->
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
                         <StackPanel Spacing="24"/>
@@ -229,19 +134,8 @@
                                     <StackPanel Orientation="Horizontal" Spacing="10">
                                         <TextBlock Classes="shelf" Text="{Binding Title}"/>
 
-                                        <!-- How many are in the section, beside
-                                             the name rather than out at the
-                                             box's far edge: a count belongs to
-                                             the thing it counts.
-
-                                             It says something different now
-                                             that the whole section is visible.
-                                             On a rail it told you how much was
-                                             hidden; here it is the section
-                                             agreeing with what you can already
-                                             count, which is what makes a short
-                                             section read as finished rather
-                                             than as half-loaded. -->
+                                        <!-- Section count, beside its name. Confirms
+                                             a short section is complete. -->
                                         <TextBlock Classes="data-s"
                                                    VerticalAlignment="Center"
                                                    Text="{Binding CountText}"/>
@@ -259,20 +153,13 @@
                                                Text="{Binding Blurb}"/>
                                 </StackPanel>
 
-                                <!-- The rule that crosses the box, exactly as
-                                     the command bar's crosses the library pane.
-                                     Above it the section says what it is;
-                                     below it are the games. -->
+                                <!-- Divider between section header and cards. -->
                                 <Border Height="1" Background="{StaticResource Line}"/>
 
                                 <ItemsControl ItemsSource="{Binding Cards}" Margin="16">
                                     <ItemsControl.ItemsPanel>
                                         <ItemsPanelTemplate>
-                                            <!-- Window-bound: the column count
-                                                 falls out of the width, the row
-                                                 divides it evenly, and no card
-                                                 is charged for a gutter it does
-                                                 not have a neighbour on. -->
+                                            <!-- Column count derived from width. -->
                                             <views:FeedGrid MinItemWidth="420" Gutter="14"/>
                                         </ItemsPanelTemplate>
                                     </ItemsControl.ItemsPanel>
@@ -290,27 +177,8 @@
             </ItemsControl>
         </ScrollViewer>
 
-        <!-- ══ What you've told the feed ═══════════════════════
-             The inspection surface, and it takes the body rather than opening a
-             popup. §12.3's reason, unchanged: Avalonia's focus adorner does not
-             render inside a popup (a popup is its own root and has no adorner
-             layer), so every ring in a flyout here would have to be hand-drawn,
-             while in the window's own tree §8's ring and a linear tab order both
-             come free. Escape closes it, from anywhere on the screen.
-
-             It borrows the section island's shape — a 1px Line box at
-             RadiusPane, a header band, a rule across it, rows below — because
-             that is the structure this screen already teaches, and a second one
-             would be a second thing to learn on a surface whose whole job is to
-             be legible.
-
-             EVERY ROW IS SHOWN, including the ones that no longer bind. A
-             verdict the user took back is two facts (they said it; they undid
-             it) and both are on the row; a snooze that lapsed left no write
-             anywhere, so its row is the only evidence it ever happened, and "why
-             did this come back" is a question this screen has to be able to
-             answer. Hiding either would make the loop exactly the black box the
-             charter forbids. -->
+        <!-- Feedback history: inline panel (not a popup; focus adorner needs
+             the main tree). Every row shown so the loop is auditable. -->
         <ScrollViewer Grid.Row="1"
                       IsVisible="{Binding ShowHistory}"
                       HorizontalScrollBarVisibility="Disabled"
@@ -332,14 +200,12 @@
                                    TextWrapping="Wrap"
                                    LineHeight="19"
                                    Foreground="{StaticResource TextDim}"
-                                   Text="Everything you've said to a card, newest first — including the ones you took back and the ones that ran out on their own. Nothing here is deleted."/>
+                                   Text="Your feed responses, newest first."/>
                     </StackPanel>
 
                     <Border Height="1" Background="{StaticResource Line}"/>
 
-                    <!-- Empty is a direction, not a mood (§7): it says where the
-                         controls are, because somebody opening this before ever
-                         using them has asked a reasonable question. -->
+                    <!-- Empty state points at the controls (§7). -->
                     <TextBlock Classes="body"
                                Margin="18,16,18,18"
                                MaxWidth="620"
@@ -354,10 +220,7 @@
                                   IsVisible="{Binding History.HasEntries}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:FeedHistoryEntryViewModel">
-                                <!-- A row, ruled off from the next. 44px is the
-                                     list view's row height and this is the same
-                                     kind of object — a record you scan rather
-                                     than a card you choose from. -->
+                                <!-- A row, ruled off from the next. -->
                                 <Border BorderBrush="{StaticResource LineSoft}"
                                         BorderThickness="0,0,0,1"
                                         Padding="18,12">
@@ -370,15 +233,8 @@
                                                        Foreground="{StaticResource Text}"/>
 
                                             <StackPanel Orientation="Horizontal" Spacing="8">
-                                                <!-- Which of the two things they
-                                                     said, in words. Never a
-                                                     colour: the two kinds are
-                                                     told apart by their names
-                                                     for §12.1's reason — a mark
-                                                     survives only while there is
-                                                     one of them, and this app's
-                                                     one mark is the unread
-                                                     dot. -->
+                                                <!-- Verdict kind in words, not
+                                                     colour (§12.1). -->
                                                 <TextBlock Classes="label"
                                                            VerticalAlignment="Center"
                                                            Foreground="{StaticResource TextDim}"
@@ -395,11 +251,7 @@
                                             </StackPanel>
                                         </StackPanel>
 
-                                        <!-- Only a standing verdict offers one.
-                                             An undone row already has been and a
-                                             lapsed snooze undid itself — a button
-                                             there would invite an act that does
-                                             nothing. -->
+                                        <!-- Undo only on standing verdicts. -->
                                         <Button Grid.Column="1"
                                                 Classes="act quiet"
                                                 FontSize="12"

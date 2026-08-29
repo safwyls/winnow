@@ -13,18 +13,10 @@ namespace Winnow.Resolve;
 public static class SoftMatchServiceCollectionExtensions
 {
     /// <summary>
-    /// Registers the soft matcher, the queue writer and the library sweep that
-    /// drives them.
-    ///
-    /// <para><b>What the container must already hold.</b>
-    /// <c>IReleaseRepository</c>, <c>IMergeCandidateRepository</c>,
-    /// <c>IResolveStateRepository</c> and <c>IUnitOfWorkFactory</c> — all of
-    /// them Winnow.Core abstractions the data layer supplies. Resolve depends on
-    /// Core alone (§5.1) and so cannot register their implementations
-    /// itself.</para>
-    ///
-    /// <para>Every registration is <c>TryAdd</c>, so re-tuned thresholds or a
-    /// fake sweep registered beforehand win.</para>
+    /// Registers the soft matcher, the queue writer and the library sweep.
+    /// Requires <c>IReleaseRepository</c>, <c>IMergeCandidateRepository</c>,
+    /// <c>IResolveStateRepository</c> and <c>IUnitOfWorkFactory</c> from the
+    /// data layer. All registrations use <c>TryAdd</c>.
     /// </summary>
     public static IServiceCollection AddSoftMatching(this IServiceCollection services)
         => services.AddSoftMatching(SoftMatchThresholds.Default, SoftMatchSweepOptions.Default);
@@ -49,10 +41,7 @@ public static class SoftMatchServiceCollectionExtensions
         services.TryAddSingleton(sweep);
         services.TryAddSingleton(TimeProvider.System);
 
-        // Singletons because all three are stateless: the matcher is pure, and
-        // the other two hold only their dependencies. Nothing here caches a
-        // library between passes — a sweep re-reads everything, which is what
-        // makes it idempotent rather than incremental.
+        // Stateless -- no library state is cached between passes.
         services.TryAddSingleton<SoftMatcher>();
         services.TryAddSingleton<SoftMatchResolver>();
         services.TryAddSingleton<LibrarySoftMatchSweep>();

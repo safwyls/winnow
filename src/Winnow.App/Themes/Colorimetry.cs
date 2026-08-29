@@ -3,18 +3,8 @@
 namespace Winnow.App.Themes;
 
 /// <summary>
-/// WCAG 2.x relative luminance and contrast ratio, plus an sRGB source-over
-/// composite — which is what the GPU does, so it is what the window shows.
-///
-/// <para>This exists so the Appearance screen can state the consequence of the
-/// transparency slider <i>live</i>, at the position the user is holding, rather
-/// than quoting a number somebody measured once. §8's floor is a claim about the
-/// running application; a settings screen that describes a different build of it
-/// is worse than one that says nothing.</para>
-///
-/// <para><b>ThemeContrastTests deliberately carries its own copy of these
-/// sums.</b> A test that calls the same arithmetic it is checking proves the
-/// code agrees with itself. The two are kept separate on purpose.</para>
+/// WCAG 2.x relative luminance, contrast ratio, and sRGB source-over composite.
+/// Used by the Appearance screen to state the slider's consequence live.
 /// </summary>
 public static class Colorimetry
 {
@@ -26,15 +16,8 @@ public static class Colorimetry
     public static readonly Color White = Color.FromRgb(255, 255, 255);
 
     /// <summary>
-    /// A dark desktop: the other end of the bracket, and a real measurement
-    /// rather than a round number.
-    ///
-    /// <para>Back-solved from the composite Windows put behind our chrome on this
-    /// machine — the tone its own dark backdrop lands on, whatever the wallpaper
-    /// under the window happens to be. Anyone running a dark wallpaper is at or
-    /// near this; anyone running a bright one is somewhere between here and
-    /// <see cref="White"/>, which is why the Appearance screen states both and
-    /// claims neither is "the" number.</para>
+    /// A dark desktop, back-solved from the composite Windows puts behind the
+    /// chrome. The other end of the bracket from <see cref="White"/>.
     /// </summary>
     public static readonly Color DarkDesktop = Color.FromRgb(0x20, 0x1F, 0x1E);
 
@@ -42,18 +25,8 @@ public static class Colorimetry
     public const double AaThreshold = 4.5;
 
     /// <summary>
-    /// A dormant capsule, for judging the field it hangs on.
-    ///
-    /// <para>The §5.1 floor — saturation 0.22, hue −6°, brightness 0.68 — applied
-    /// to an ordinary dark-blue cover (<c>#2B4C74</c>, the same stimulus the
-    /// Appearance screen's theme miniatures use). Written down rather than
-    /// recomputed because it is a fixed reference and not a live value:
-    /// <c>PlaceholderArt.Floor</c> is the arithmetic, this is one answer from it.</para>
-    ///
-    /// <para>It is deliberately not the DARKEST capsule a library can hold. No
-    /// field stays below a near-black cover, and asking it to would rule out
-    /// every setting including the ones that look right. This is a middling dark
-    /// one, which is what the wall is mostly made of.</para>
+    /// A dormant capsule for judging the field it hangs on. The section 5.1 floor
+    /// applied to a mid-dark cover; a fixed reference, not a live value.
     /// </summary>
     public static readonly Color DormantCapsule = Color.FromRgb(0x2C, 0x32, 0x37);
 
@@ -109,33 +82,9 @@ public static class Colorimetry
     }
 
     /// <summary>
-    /// The worst the metadata ink does on any reading surface the transparency
-    /// slider reaches, at a given slider position.
-    ///
-    /// <para><b>The binding surface moved when the tiers collapsed, and that is
-    /// the honest headline of the change.</b> While the rail sat at a chrome tier
-    /// of its own it was the most open reading surface in the window, and a
-    /// SELECTED rail row — the rail with a veil of <c>Text</c> over it — was the
-    /// worst case. The rail is a pane now, so it opens half as far and its
-    /// ceiling roughly doubled; what is left at the top is the CAPTION, which
-    /// sits on the window's ground and is therefore the most open reading surface
-    /// there is. Measuring only the chrome would now report a number no surface
-    /// in the window actually holds to.</para>
-    ///
-    /// <para><b>It is taken across both layouts rather than for the one that is
-    /// up.</b> The floating layout puts the caption on the ground (85% desktop at
-    /// the far end); the flush layout paints it in the rail's own fill at the
-    /// pane tier (35%). So the two layouts do not fail at the same place, and a
-    /// mark on the slider that moved when the user changed layout would be a
-    /// promise that expired on a setting unrelated to it. The worst of the two is
-    /// reported, so the mark means the same thing whichever layout is up and
-    /// flipping the layout can never invalidate it.</para>
-    ///
-    /// <para>The panes are not measured here, for §14.7's reason and with the
-    /// numbers rechecked: on the wall's ramp <c>TextDim</c> holds to 63 / 71 / 68
-    /// / 74 and a selected list row to 48 / 56 / 53 / 56, against the rail's
-    /// 40 / 54 / 47 / 41 and the caption's 30 / 31 / 31 / 31. Nothing inside a
-    /// pane is the surface that fails first.</para>
+    /// The worst the metadata ink does on any reading surface the slider
+    /// reaches, taken across both layouts so the mark cannot be invalidated
+    /// by a layout change.
     /// </summary>
     public static double WorstMetadataContrast(
         WinnowTheme theme, double transparency, Color backdrop)

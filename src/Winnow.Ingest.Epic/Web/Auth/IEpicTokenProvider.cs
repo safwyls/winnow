@@ -19,12 +19,7 @@ public enum EpicSignInFailure
     /// </summary>
     InvalidClientCredentials,
 
-    /// <summary>
-    /// Epic rejected the authorization code: mistyped, already spent, or past
-    /// its very short life. Authorization codes are single-use and expire in
-    /// minutes, so this is the common first-attempt failure and the message for
-    /// it must say "get a fresh code", not "check your credentials".
-    /// </summary>
+    /// <summary>Epic rejected the authorization code: mistyped, spent, or expired.</summary>
     InvalidAuthorizationCode,
 
     /// <summary>Network, DNS, TLS, timeout, or a 5xx the retry policy could not outlast.</summary>
@@ -33,42 +28,16 @@ public enum EpicSignInFailure
     /// <summary>Epic answered with something this client could not parse.</summary>
     UnexpectedResponse,
 
-    /// <summary>
-    /// The user backed out of the interactive sign-in: closed the browser
-    /// window, declined the consent step, or entered nothing. Deliberate, so the
-    /// caller must not retry it, escalate to another prompt, or word it as a
-    /// fault.
-    /// </summary>
+    /// <summary>The user deliberately cancelled the interactive sign-in.</summary>
     Cancelled,
 
-    /// <summary>
-    /// No interactive prompt could run here. Nothing is wrong with the
-    /// credentials or the network: this is a headless host, or one with no
-    /// WebView2 runtime and no attached console. The remedy is the documented
-    /// console flow (<c>--epic-login</c>), not a retry.
-    /// </summary>
+    /// <summary>No interactive prompt could run on this host.</summary>
     NoInteractivePrompt,
 
-    /// <summary>
-    /// A prompt ran but produced no code — Epic changed its sign-in page, or the
-    /// flow ended somewhere this client did not recognise. This is the failure
-    /// mode <c>docs/spikes/epic-oauth.md</c> §12.3 names as the realistic one,
-    /// and the remedy is the console flow while it is fixed.
-    /// </summary>
+    /// <summary>A prompt ran but produced no code.</summary>
     NoCodeCaptured,
 
-    /// <summary>
-    /// Epic's code endpoint answered, and answered that no account is signed in —
-    /// every code field present and null.
-    ///
-    /// <para><b>Separate from <see cref="NoCodeCaptured"/> because the remedies
-    /// are opposite.</b> That one means the capture broke and the manual flow is
-    /// the way round it; this means the sign-in never completed, which the user
-    /// can simply do. The first real run of the embedded flow reported the former
-    /// while the latter was true, because the flow started on an endpoint that
-    /// only answers for an already-authenticated browser — and the symptom hid
-    /// the cause completely.</para>
-    /// </summary>
+    /// <summary>Epic's code endpoint answered with no signed-in account.</summary>
     NoAuthenticatedSession,
 }
 
@@ -97,15 +66,8 @@ public sealed record EpicSignInResult(
 }
 
 /// <summary>
-/// Owns the Epic OAuth session: exchanges an authorization code for one,
-/// refreshes it before it lapses, and gives up cleanly when it cannot.
-///
-/// <para><b>Nothing here throws for an expected condition.</b> Not configured,
-/// not signed in, a refresh token that has expired, Epic unreachable — all of
-/// them answer null from <see cref="GetAsync"/>. The caller's response to null is
-/// always the same and always safe: contribute no candidates this pass and let
-/// the local readers stand. That is the fallback requirement, expressed as a
-/// type rather than as a convention someone has to remember.</para>
+/// Owns the Epic OAuth session: exchange, refresh, persistence, and graceful
+/// degradation. Returns null from <see cref="GetAsync"/> on any expected failure.
 /// </summary>
 public interface IEpicTokenProvider
 {
@@ -122,31 +84,10 @@ public interface IEpicTokenProvider
     /// </summary>
     ValueTask<bool> IsSignedInAsync(CancellationToken ct = default);
 
-    /// <summary>
-    /// Exchanges an authorization code — the one the user copies out of Epic's
-    /// redirect page — for a session, and stores it encrypted.
-    ///
-    /// <para>The code is single-use and short-lived. It is never logged, never
-    /// stored, and never placed in a URI.</para>
-    /// </summary>
+    /// <summary>Exchanges an authorization code for a session and stores it encrypted.</summary>
     Task<EpicSignInResult> SignInWithAuthorizationCodeAsync(string authorizationCode, CancellationToken ct = default);
 
-    /// <summary>
-    /// Exchanges a launcher <i>exchange</i> code for a session, and stores it
-    /// encrypted.
-    ///
-    /// <para><b>A second grant, not a second spelling of the first.</b> Epic's
-    /// sign-in page hands an <c>exchange_code</c> — never an authorization code —
-    /// to a host that implements the launcher's <c>window.ue</c> JavaScript
-    /// bridge, and that value is only redeemable as
-    /// <c>grant_type=exchange_code</c>. Both grants are on the launcher client's
-    /// allowlist (<c>docs/spikes/epic-oauth.md</c> §2), so this costs one form
-    /// field rather than a second client.</para>
-    ///
-    /// <para>The embedded-browser prompt is what produces these, and it says
-    /// which kind it captured; nothing infers the grant from the string's
-    /// shape.</para>
-    /// </summary>
+    /// <summary>Exchanges a launcher exchange code for a session and stores it encrypted.</summary>
     Task<EpicSignInResult> SignInWithExchangeCodeAsync(string exchangeCode, CancellationToken ct = default);
 
     /// <summary>

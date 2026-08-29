@@ -8,16 +8,7 @@ using Xunit;
 namespace Winnow.Tests;
 
 /// <summary>
-/// The cover tile's two new jobs: the primary action it offers, and the card
-/// flip that reveals it.
-///
-/// <para><b>Why the URIs are asserted literally.</b> These are the strings this
-/// app hands to another program's protocol handler, and a typo in one is a
-/// button that appears to work and does nothing — which the design doc's §10.3
-/// forbids more strongly than it forbids a missing button. The Epic case in
-/// particular is asserted byte for byte against a shortcut the Epic Games
-/// Launcher wrote itself, so this test fails if anything about the composite key
-/// or its escaping drifts.</para>
+/// Cover tile primary actions and card flip, with URIs asserted literally.
 /// </summary>
 public sealed class TileActionsTests
 {
@@ -40,15 +31,8 @@ public sealed class TileActionsTests
     }
 
     /// <summary>
-    /// <c>goggalaxy://launchGame/&lt;GRK&gt;</c>, where a GRK for a GOG-native
-    /// product is <c>gog_&lt;productId&gt;</c> — the same key Galaxy's own
-    /// database uses and the GOG ingest splits the provider id out of.
-    ///
-    /// <para>The authority arrives lowercased because <see cref="Uri"/>
-    /// lowercases it on the round trip <see cref="GameLink"/> insists on, and
-    /// Galaxy's dispatcher is case-insensitive — confirmed by firing the
-    /// lowercased form of a command at a running client. Asserting the
-    /// lowercased string is asserting what actually leaves the app.</para>
+    /// GOG plays through <c>goggalaxy://launchGame/gog_&lt;productId&gt;</c>,
+    /// lowercased by the <see cref="Uri"/> round trip.
     /// </summary>
     [Fact]
     public void Gog_on_disk_plays_through_galaxy()
@@ -237,14 +221,7 @@ public sealed class TileActionsTests
     // ══ Launching (M3b) ════════════════════════════════════════════════
 
     /// <summary>
-    /// Every tile launches through the LIBRARY, not through its own view.
-    ///
-    /// <para>That is not tidiness. A launch has to name the ownership it is
-    /// launching so the session watcher does not have to infer it, and a Click
-    /// handler holding a <see cref="GameLink"/> knows a URI and nothing else. If
-    /// this assertion ever fails, the Play button still works and every session
-    /// it produces silently drops back to inference — the exact failure mode this
-    /// codebase keeps meeting: build green, tests green, feature absent.</para>
+    /// Every tile launches through the library's own command, not its own view.
     /// </summary>
     [Fact]
     public async Task Every_tile_launches_through_the_librarys_own_command()

@@ -4,302 +4,53 @@ namespace Winnow.App.Themes;
 
 /// <summary>
 /// A complete palette, and the rule that makes several of them one system.
-///
-/// <para><b>The role is the invariant, never the colour.</b> §2 gives every hue
-/// a job — <c>Volt</c> is selection and recency, <c>Amber</c> is "you have been
-/// here a lot", <c>Azure</c> does the boring informational work, <c>Danger</c>
-/// is the one destructive affordance — and <c>Flare</c> marks unread updates and
-/// the bucket that counts them and NOTHING else. A theme may change which colour
-/// plays a role. It may not change what the role means, and it may not spend a
-/// role's colour on a second job. <see cref="Flare"/> is therefore the one value
-/// here that no other property may equal: the moment two roles share it the
-/// badge stops meaning anything and the product loses its point.
-/// <c>ThemeContrastTests</c> asserts exactly that, per theme.</para>
-///
-/// <para><b>Every theme's Volt is its own room at full voltage.</b> §2's
-/// argument for a hued neutral rather than grey is that it makes Volt the
-/// chrome's own colour intensified rather than a decoration sitting on top of
-/// it. That reasoning is not specific to teal, so it is the rule the other
-/// themes are built to as well — and <c>Flare</c> stays the one hue the room
-/// cannot produce, which is what an unread marker has to be.</para>
-///
-/// <para><b>Themes differ on four axes, and hue is the weakest of them.</b> The
-/// first set shipped varied mostly in hue and value, and read as four settings
-/// of one theme rather than as four themes. What actually separates a room is
-/// its TEMPERATURE, its CHROMA STRATEGY (how much colour the chrome is allowed
-/// at all), its VALUE STRUCTURE (where the contrast lives — whether surfaces
-/// step apart or sit flat and let edges do the work) and its MATERIAL (whether
-/// the chrome reads as ink, glass, felt or board). <see cref="WinnowThemes"/>
-/// records which axis each theme takes, and the test of the set is that a
-/// thumbnail of the rail alone identifies the theme.</para>
-///
-/// <para><b>Why the fields are colours and not brushes.</b> Every view in the
-/// app reaches its tokens with <c>StaticResource</c>, which resolves once at
-/// parse time and never looks again, so swapping the dictionary would repaint
-/// nothing. What every view DOES share is the brush OBJECT it resolved, so a
-/// theme change is applied by writing <see cref="SolidColorBrush.Color"/> on the
-/// brushes already in <c>Application.Resources</c> — <c>Brush</c> raises
-/// <c>IAffectsRender.Invalidated</c>, which is the same path a colour animation
-/// takes, so the window repaints without a single binding being re-evaluated.
-/// See <c>ThemeService</c>.</para>
+/// Roles are invariant (Volt = selection, Flare = unread, etc.); colours may
+/// change per theme. Fields are colours so theme changes write
+/// <see cref="SolidColorBrush.Color"/> on existing brushes in resources.
 /// </summary>
 public sealed record WinnowTheme
 {
     /// <summary>
-    /// The alpha the WINDOW'S GROUND reaches at the far end of the slider — the
-    /// gaps between the panes, and the caption, which is part of that same
-    /// field.
-    ///
-    /// <para><b>There are two tiers now, not three, and this is the outer
-    /// one.</b> The window used to run at three levels: a ground that admitted
-    /// everything, a CHROME tier at <c>0.30</c> carrying the rail, the caption
-    /// and the filter panel, and a PANE tier at <see cref="MinWallAlpha"/>
-    /// carrying the art field and the screens that share its place. Three levels
-    /// is one more than an eye sorts, and the middle one had no job left to do:
-    /// the rail and the filter panel are content columns rather than window
-    /// furniture, and the argument §14.7 used to move the merge queue and the
-    /// list view onto the field's ramp applies to them word for word. So the
-    /// chrome tier is gone. Every pane in the window sits at one level; the
-    /// ground and the caption sit at the other.
-    /// </para>
-    ///
-    /// <para><b>This is the one number in the stack that is FREE, and the
-    /// caption is what fixes it.</b> Everything below it is forced by the
-    /// identity in <see cref="MinPaneAlpha"/>. The ground itself is answerable to
-    /// nothing except the one thing painted on it that has to be read — the
-    /// wordmark and the three window glyphs — so the bar is the mirror image of
-    /// the one <see cref="MinWallAlpha"/> is held to: <b>the restructure may not
-    /// cost the user range they already have.</b> Walked per theme against white,
-    /// the most open the ground can be while no theme's AA ceiling falls below
-    /// where it stands today (27 / 31 / 30 / 26) is <c>0.14</c>:</para>
-    ///
-    /// <list type="table">
-    ///   <item><term>Ground at 0.12</term><description>29 / 30 / 30 / 30 — Nightshift loses a point</description></item>
-    ///   <item><term>Ground at 0.14</term><description>29 / 31 / 30 / 30 — the marginal value, two themes exactly at par</description></item>
-    ///   <item><term>Ground at 0.15</term><description>30 / 31 / 31 / 31 — chosen</description></item>
-    ///   <item><term>Ground at 0.20</term><description>32 / 33 / 33 / 33 — more range, less window</description></item>
-    /// </list>
-    ///
-    /// <para><c>0.15</c> is taken over the marginal <c>0.14</c> for the reason
-    /// <c>0.65</c> was taken over <c>0.62</c>: it is the round step past the
-    /// boundary, it buys 1 to 5 points of margin on top, and it states as a pair
-    /// of numbers the Appearance screen can print — <b>the ground admits 85% of
-    /// the desktop, a pane admits 35%</b>.</para>
-    ///
-    /// <para><b>A second route lands within two points of it, which is why the
-    /// round number is not a fudge.</b> The request that opened this asked for
-    /// the ground and the caption to sit "somewhere between where the background
-    /// is now and where the rail is now" — between admitting everything and
-    /// admitting the old chrome's 70%. Transmittances COMPOSE by multiplying, so
-    /// the midpoint between two of them is the geometric mean rather than the
-    /// arithmetic one: <c>√(1.00 · 0.70) = 0.837</c>, an alpha of <c>0.163</c>.
-    /// The legibility boundary and the honest reading of "halfway" agree to
-    /// within a point and a half, and the more conservative of the two is
-    /// taken.</para>
+    /// The alpha the window's ground reaches at the far end of the slider
+    /// (gaps between panes and caption). Chosen to keep caption ink above AA
+    /// in every theme: ground admits 85%, a pane admits 35%.
     /// </summary>
     public const double MinShellAlpha = 0.15;
 
     /// <summary>
-    /// How much of the desktop a PANE finally admits at the far end of the
-    /// slider — the art field, the rail, the filter panel, and every screen that
-    /// takes the library pane's place.
-    ///
-    /// <para><b>The number and its derivation are unchanged, and that is the
-    /// point of writing the tier this way round.</b> <c>1 − 0.65 = 0.35</c> is
-    /// still exactly what reaches the eye through any pane, so §14.6's argument
-    /// for it survives the restructure intact: the constraint is POLARITY, not
-    /// contrast. §5.1's ramp encodes dormancy as dark capsules on a dark field
-    /// and only reads that way while the field stays DARKER than the capsules
-    /// hung on it. Over a white wallpaper the field climbs, and at some position
-    /// it passes the dormancy floor of an ordinary dark cover — after which a
-    /// dormant tile stops reading as dimmed art and starts reading as a hole
-    /// punched in a lit field, which inverts the one encoding the product is
-    /// built on.</para>
-    ///
-    /// <para>The bar is that the field must not fail FIRST. A field the user
-    /// cannot read labels over is a place they are already told not to go
-    /// (§14.3), so the wall does not have to hold past the AA mark — it has to
-    /// hold to it. Walked per theme against white, with the dormancy floor of a
-    /// mid-dark cover (sat 0.22, bright 0.68) as the target:</para>
-    ///
-    /// <list type="table">
-    ///   <item><term>AA ceiling, two tiers</term><description>30 / 31 / 31 / 31</description></item>
-    ///   <item><term>Field inverts, at 0.65</term><description>34 / 47 / 41 / 44 — clears all four, by 4 to 16 points</description></item>
-    /// </list>
-    ///
-    /// <para><b>What DID change is that the number is an admission rather than a
-    /// paint.</b> A pane is drawn ON the window's ground, so its own alpha and the
-    /// ground's stack; <see cref="MinPaneAlpha"/> is what a pane paints, and this
-    /// is what comes through. The ground darkens the field slightly on the way,
-    /// which is why polarity improved from 29 / 46 / 38 / 44 to 34 / 47 / 41 / 44
-    /// without the constant moving at all.</para>
-    ///
-    /// <para><b>The halving relation it used to state has gone with the tier it
-    /// referred to.</b> "The wall admits exactly half what the chrome does" was
-    /// true and is now vacuous — there is no chrome for it to be half of. What
-    /// the Appearance screen prints instead is the relation that is left: the
-    /// ground admits 85%, a pane admits 35%, and every field in the window admits
-    /// exactly what the pane around it does.</para>
-    ///
-    /// <para><b>Over the measured dark desktop the question does not arise.</b>
-    /// The composite is darker than <c>Ground</c>, so opening the field DEEPENS
-    /// it and the polarity gets better rather than worse — the same asymmetry
-    /// §14.3 records for the inks.</para>
+    /// How much of the desktop a pane finally admits at the far end of the
+    /// slider. Constrained by polarity: the field must stay darker than a
+    /// dormant capsule so the dormancy ramp keeps its encoding.
     /// </summary>
     public const double MinWallAlpha = 0.65;
 
     /// <summary>
-    /// What a PANE actually paints, over the window's ground.
-    ///
-    /// <para><b>Forced rather than chosen — and it is the same identity that has
-    /// governed input fields since §14.7, promoted one level out.</b> A pane is a
-    /// child of the ground it is laid on, so the two alphas stack: what the
-    /// desktop finally contributes to a pane is
-    /// <c>(1 − shellAlpha) · (1 − paneAlpha)</c>. Asking that a pane admit what
-    /// the art field admits — which is the whole of the two-tier idea — fixes the
-    /// number outright:</para>
-    ///
-    /// <code>
-    ///   (1 − MinShellAlpha) · (1 − MinPaneAlpha) = 1 − MinWallAlpha
-    ///          0.85         ·       0.4118       =        0.35
-    /// </code>
-    ///
-    /// <para>So the window has ONE rule from the desktop inward, applied three
-    /// times: <c>alpha = 1 − (1 − MinWallAlpha) / (1 − containerAlpha)</c>, where
-    /// the container of a pane is the ground and the container of a field is the
-    /// pane it is cut into. The ground is the only surface with nothing above it,
-    /// which is exactly why it is the only free quantity.</para>
-    ///
-    /// <para><b>It rides the INK ramp rather than the alpha's, and that is what
-    /// keeps the stack honest across the slider rather than only at its end.</b>
-    /// The ground's share is already linear in the slider position, so the moment
-    /// this factor stops moving the product of the two is linear at exactly the
-    /// wall's rate — a pane admits <c>0.35 · t</c> at EVERY position past the
-    /// first quarter, which is the same claim <see cref="MinPaneFieldAlpha"/>
-    /// makes one level further in. On the alpha's own linear ramp the product
-    /// would be QUADRATIC: at the middle of the track a pane would admit 8.75%
-    /// where it should admit 17.5%, so the two tiers would sit twice as far apart
-    /// through the part of the slider anybody actually uses as they do at its
-    /// end. Below the first quarter the product is sub-linear rather than
-    /// super-linear, which is the safe direction, and it meets the linear part
-    /// exactly at <see cref="InkRampSpan"/>.</para>
-    ///
-    /// <para><b>The ground's ink bleeds into the pane, and the amount is bounded
-    /// and was measured rather than waved past.</b> A pane's composite ink is its
-    /// own tone at this alpha plus the ground's showing through the rest, so some
-    /// fraction of every pane is <c>Well</c> rather than its own tone: 9.5% at the
-    /// far end, at most 34% in the middle of the track where the pane is still
-    /// nearly opaque. Measured against the same pane painted straight onto the
-    /// desktop, the worst tone difference that produces is 1.06 to 1.11:1 across
-    /// the whole slider — under the <c>Well</c>-to-<c>Ground</c> step itself,
-    /// which §15.7 already measures at 1.02 to 1.13:1 and calls nearly
-    /// invisible.</para>
+    /// What a pane actually paints, over the window's ground. Forced by the
+    /// stacking identity: <c>(1 - MinShellAlpha) * (1 - MinPaneAlpha) =
+    /// 1 - MinWallAlpha</c>. Rides the ink ramp to keep the product linear.
     /// </summary>
     public const double MinPaneAlpha =
         1 - ((1 - MinWallAlpha) / (1 - MinShellAlpha));
 
     /// <summary>
-    /// The alpha an INPUT FIELD IN THE FILTER PANEL reaches at the far end of
-    /// the slider, measured against the surface it is drawn on rather than
-    /// against the desktop.
-    ///
-    /// <para><b>It is forced, not chosen, and this is the third time the number
-    /// has moved while the identity has not.</b> A field is a child of the
-    /// surface it sits in, so the two alphas stack: what the desktop finally
-    /// contributes to a field is
-    /// <c>(1 − containerAdmits) · (1 − fieldAlpha)</c>. Asking that a field admit
-    /// exactly what the art field admits — which is the whole point, so the
-    /// window has one translucency rather than three — fixes the number
-    /// outright:</para>
-    ///
-    /// <code>
-    ///   fieldAlpha = 1 − (1 − MinWallAlpha) / (1 − containerAlpha)
-    /// </code>
-    ///
-    /// <para><b>The filter panel changed tiers, so its answer changed with
-    /// it.</b> The panel was chrome, its container term was the chrome's
-    /// <c>0.30</c>, and the answer was exactly a half. The panel is a PANE now,
-    /// and a pane already admits <c>1 − MinWallAlpha</c> — there is no half left
-    /// for a field to spend:</para>
-    ///
-    /// <code>
-    ///   (1 − MinWallAlpha) · (1 − MinFieldAlpha) = 1 − MinWallAlpha
-    ///          0.35        ·        1.00         =        0.35
-    /// </code>
-    ///
-    /// <para><b>Zero, and it has to be zero</b> — the same answer, by the same
-    /// route, that <see cref="MinPaneFieldAlpha"/> already gave when the command
-    /// bar moved inside the library pane. The two fields are separate constants
-    /// because the identity is per-container and they would part company again
-    /// the moment either field moved; they agree today because both containers
-    /// are panes, which is the two-tier collapse showing up in the arithmetic
-    /// rather than a coincidence worth deleting.</para>
-    ///
-    /// <para><b>What it costs is small and already recorded.</b> §14.7 measures a
-    /// field found by its border and lit by its ring, with the fill and the
-    /// surface around it converging to 1.05:1 at the far end — the fill was
-    /// nearly cosmetic there already. Slider zero is untouched, so the step a
-    /// field cuts into the panel is exactly the step it always was at
-    /// <c>SOLID</c>, and it fades out over <see cref="InkRampSpan"/> like every
-    /// other compensation on this slider.</para>
-    ///
-    /// <para><b>And the ink stopped walking with it.</b> §14.3's ink ramp was a
-    /// CHROME compensation — the chrome opened to 0.70 and paid for it with a
-    /// darker ink — and there is no chrome. The panel is its own <c>Surface</c>
-    /// at an alpha at every position, so the field cut into it is the theme's own
-    /// <c>Ground</c> at an alpha, and the step between them is the opaque
-    /// palette's step the whole way across.</para>
+    /// The alpha an input field in the filter panel reaches at the far end
+    /// of the slider. Forced to zero: the pane already admits
+    /// <c>1 - MinWallAlpha</c>, so there is no budget left for the field.
     /// </summary>
     public const double MinFieldAlpha =
         1 - ((1 - MinWallAlpha) / (1 - MinWallAlpha));
 
     /// <summary>
-    /// The alpha an input field INSIDE THE LIBRARY PANE reaches at the far end
-    /// of the slider — the command bar's search box and the cut bar's prompt.
-    ///
-    /// <para><b>Same identity as <see cref="MinFieldAlpha"/>, same container tier
-    /// now, and it is written as the division rather than as its answer so that
-    /// the derivation stays visible.</b> The command bar and the cut bar sit
-    /// inside the library pane (§15.8), so a field on either is a child of the
-    /// PANE, and a pane's ground already admits exactly
-    /// <c>1 − MinWallAlpha</c>:</para>
-    ///
-    /// <code>
-    ///   (1 − MinWallAlpha) · (1 − MinPaneFieldAlpha) = 1 − MinWallAlpha
-    ///          0.35        ·            1.00         =        0.35
-    /// </code>
-    ///
-    /// <para><b>Zero, and it has to be zero.</b> The surface the field sits on is
-    /// already AT the window's declared translucency, so anything the field
-    /// paints on top of it makes the field LESS open than the wall — a
-    /// bolted-shut patch in an open pane, which is §14.7's own verdict arriving
-    /// one level further in. The only fill that leaves the identity intact is no
-    /// fill.</para>
-    ///
-    /// <para><b>It follows the WALL's setting, not the slider's</b>, and that is
-    /// still the one thing separating it from the panel's field. With the art
-    /// field solid the pane under it is solid, the identity is vacuous — nothing
-    /// is admitted for the field to match — and a field that faded anyway would
-    /// lose its step for no gain at all. So it is opaque exactly when the pane is
-    /// opaque, which is the same condition <c>WallGround</c> and
-    /// <c>PaneGround</c> answer.</para>
+    /// The alpha an input field inside the library pane reaches at the far
+    /// end of the slider. Same identity as <see cref="MinFieldAlpha"/>,
+    /// same answer (zero); follows the wall's setting, not the slider's.
     /// </summary>
     public const double MinPaneFieldAlpha =
         1 - ((1 - MinWallAlpha) / (1 - MinWallAlpha));
 
     /// <summary>
-    /// How much of the slider the ink compensation is spent over.
-    ///
-    /// <para><b>The inks have to move faster than the alpha, and this is the
-    /// whole reason why.</b> Alpha coming off lightens a dark surface over any
-    /// backdrop brighter than it, immediately; the darker ink and the brighter
-    /// metadata ink that pay for it were arriving in proportion, so the first
-    /// few percent of travel cost contrast that the compensation had not yet
-    /// delivered. Front-loading it — both inks fully converted by the first
-    /// quarter of the track, alpha continuing to fall for the other three —
-    /// moves the point where the worst case drops under AA from 18% to 27% on
-    /// the default theme, and from single digits on the selected row to that same
-    /// 27%. Measured; anything shorter than a quarter buys nothing more.</para>
+    /// How much of the slider the ink compensation is spent over. Front-loading
+    /// it avoids a contrast dip at the start of the track.
     /// </summary>
     private const double InkRampSpan = 0.25;
 
@@ -392,13 +143,8 @@ public sealed record WinnowTheme
     public ThemeAppearanceDefaults? Defaults { get; init; }
 
     /// <summary>
-    /// The file this theme was read out of, as a bare file name — <c>null</c>
-    /// for the built-ins.
-    ///
-    /// <para>A NAME and not a path, deliberately. The Appearance screen prints
-    /// the folder once and then prints this beside each theme, so what differs
-    /// is what is shown; and nothing in the app ever dereferences it, which is
-    /// the other half of "a theme file is data" — see <c>ThemeJson</c>.</para>
+    /// The file this theme was read out of, as a bare file name (null for
+    /// built-ins). A name, not a path; nothing in the app dereferences it.
     /// </summary>
     public string? SourceFile { get; init; }
 
@@ -409,15 +155,9 @@ public sealed record WinnowTheme
     public bool IsUserTheme => SourceFile is not null;
 
     /// <summary>
-    /// The veil of <see cref="Text"/> that, laid over <see cref="Surface"/>,
-    /// reproduces this theme's own <see cref="SurfaceRaised"/> — the mean of the
-    /// three channel ratios.
-    ///
-    /// <para>Derived rather than written down, because it is not a taste
-    /// decision: it is the answer to "how strong is this theme's elevation step,
-    /// expressed as a veil", and a theme whose steps were retuned would otherwise
-    /// leave a stale number behind. It is the strength the hover veil starts at,
-    /// so the moment the slider leaves zero the selected row does not move.</para>
+    /// The veil strength that reproduces this theme's Surface-to-SurfaceRaised
+    /// step, derived from the three channel ratios. Starting point for the
+    /// hover veil so leaving slider zero is invisible.
     /// </summary>
     private double OpaqueVeilStrength
     {
@@ -434,13 +174,9 @@ public sealed record WinnowTheme
     }
 
     /// <summary>
-    /// Every token this theme writes, as a flat key → colour map, at the
-    /// transparency given — <c>0</c> fully opaque, <c>1</c> the most desktop the
-    /// slider offers.
-    ///
-    /// <para>The derived alphas are computed here rather than written into each
-    /// theme by hand, because they are all "this role at N%" and a theme that
-    /// had to restate seventeen of them would drift on the eighteenth.</para>
+    /// Every token this theme writes, as a flat key-to-colour map at the given
+    /// transparency (0 fully opaque, 1 most open). Derived alphas are computed
+    /// here rather than written into each theme by hand.
     /// </summary>
     public Dictionary<string, Color> Tokens(
         double transparency,

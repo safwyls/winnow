@@ -1,23 +1,8 @@
 namespace Winnow.Monitor;
 
 /// <summary>
-/// One running process as the Tier 1 enumeration sees it (§5.2 A): a pid and a
-/// name, and deliberately <b>nothing else</b>.
-///
-/// <para><b>The absence of a path here is the design.</b> §5.2 says resolving
-/// the executable path is "substantially more expensive than the enumeration
-/// itself". Measured on the developer's Windows 11 machine, with 528 processes
-/// running: <b>the enumeration takes 12 ms and resolving every path takes
-/// 1,007 ms</b> — eighty-four times the cost, and, at the five-second poll, a
-/// permanent twenty per cent of one core spent on a machine that is usually
-/// running no games at all. (182 of those 528 refuse the query outright, so a
-/// third of the second is spent failing.) The same pass filtered by name first
-/// resolves two or three paths and costs nothing measurable.</para>
-///
-/// <para>A snapshot type carrying an <c>ExecutablePath</c> would make "resolve
-/// every path, then filter" the natural way to write the watcher. With the path
-/// unavailable until <see cref="IProcessSource.Track"/>, the cheap version is
-/// the only version that compiles.</para>
+/// One running process as the Tier 1 enumeration sees it: a pid and a name,
+/// deliberately without an executable path (path resolution is Tier 2).
 /// </summary>
 /// <param name="Pid">OS process id. Only unique among <i>live</i> processes — see <see cref="ITrackedProcess"/>.</param>
 /// <param name="ProcessName">
@@ -28,21 +13,9 @@ namespace Winnow.Monitor;
 public readonly record struct ProcessListing(int Pid, string ProcessName);
 
 /// <summary>
-/// The whole of the watcher's contact with the operating system, and therefore
-/// the seam every test drives. Two methods, split along the §5.2 tier boundary:
-/// <see cref="List"/> is Tier 1 (cheap, polled, names only) and
-/// <see cref="Track"/> is Tier 2 (expensive, per-candidate, pins the process and
-/// arms its exit callback).
-///
-/// <para><b>Implementations must not resolve executable paths in
-/// <see cref="List"/>.</b> That is not a performance note appended to an
-/// otherwise free choice; it is the contract. See <see cref="ProcessListing"/>.</para>
-///
-/// <para>A fake implementing this interface can script every failure mode §5.2
-/// names — a launcher that precedes the game, a first executable that hands off
-/// to a second, a whole process tree, a pid recycled by the OS, a blip under the
-/// debounce floor — with no game, no timer and no real process anywhere. That
-/// was the point of putting the seam here rather than around the watcher.</para>
+/// The watcher's OS seam. <see cref="List"/> is Tier 1 (cheap, polled, names
+/// only); <see cref="Track"/> is Tier 2 (per-candidate, pins process, arms exit
+/// callback). Implementations must not resolve paths in <see cref="List"/>.
 /// </summary>
 public interface IProcessSource
 {
@@ -79,28 +52,9 @@ public interface IProcessSource
 }
 
 /// <summary>
-/// A process the watcher has taken hold of (§5.2 Tier 2). Disposing releases the
-/// OS handle and unsubscribes the exit callback.
-///
-/// <para><b>Why the handle is held for the whole life of the session, and not
-/// released once the path and start time have been read.</b> Two reasons, and
-/// only one of them is obvious:</para>
-/// <list type="number">
-/// <item>It is what delivers <see cref="Exited"/>. The kernel signals the
-/// process handle; that is the event-driven exit §5.2 requires in place of
-/// polling.</item>
-/// <item><b>It pins the pid.</b> Windows will not recycle a process id while any
-/// handle to that process object remains open, and the same is true of the
-/// zombie entry a Linux parent holds. So for as long as the watcher is tracking
-/// a game, no other process on the machine can appear at that pid — which closes,
-/// by construction, the race a polling implementation would have to defend
-/// against explicitly: seeing "pid 8104 is still there" on the next tick and
-/// having no way to know it is a different pid 8104. Nothing in the code below
-/// re-checks pid identity per tick because nothing has to.</item>
-/// </list>
-/// <para>The second reason is the one that gets refactored away by someone
-/// tidying up a handle that "isn't used after startup". It is used. Holding it
-/// <i>is</i> the use.</para>
+/// A process the watcher has taken hold of (Tier 2). Disposing releases the OS
+/// handle and unsubscribes the exit callback. The handle is held for the session's
+/// lifetime to deliver <see cref="Exited"/> and to pin the pid against reuse.
 /// </summary>
 public interface ITrackedProcess : IDisposable
 {
@@ -135,15 +89,8 @@ public interface ITrackedProcess : IDisposable
     DateTime StartedAtUtc { get; }
 
     /// <summary>
-    /// Whether the process has exited, as last observed <b>by the exit
-    /// callback</b>.
-    ///
-    /// <para><b>Reading this is not exit detection and must never be used as
-    /// such</b> (§5.2: "Polling is for discovery only — never for exit
-    /// detection"). It exists for the one race the callback cannot cover: a
-    /// process that exits between <see cref="IProcessSource.Track"/> arming the
-    /// event and the caller reading it back. Everything after that comes from
-    /// <see cref="Exited"/>.</para>
+    /// Whether the process has exited. Exists only for the race between
+    /// <see cref="IProcessSource.Track"/> and the exit callback; not for polling.
     /// </summary>
     bool HasExited { get; }
 

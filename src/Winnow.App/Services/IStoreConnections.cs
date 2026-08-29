@@ -1,21 +1,8 @@
 namespace Winnow.App.Services;
 
 /// <summary>
-/// Why a sign-in attempt produced no session, in the Stores panel's own
-/// vocabulary.
-///
-/// <para><b>Why this is not just <c>EpicSignInFailure</c>.</b> §5.1 says the UI
-/// reads the database and raises commands and never touches an ingest
-/// component. A view model that switched on <c>EpicSignInFailure</c> would be
-/// referencing a type out of <c>Winnow.Ingest.Epic</c> — the boundary deleted by
-/// an enum rather than by a method call, which is the version of it nobody
-/// notices. The translation happens once, in
-/// <see cref="StoreConnections"/>, which is an App-layer service and is allowed
-/// to see both sides.</para>
-///
-/// <para>The cases are kept apart because the <i>remedies</i> are genuinely
-/// different, and the panel routes on them: two of these send the user to the
-/// console flow, one says "try again", one says nothing is wrong at all.</para>
+/// Why a sign-in attempt produced no session, in the Stores panel's vocabulary.
+/// Translated from ingest-layer failures by <see cref="StoreConnections"/>.
 /// </summary>
 public enum StoreSignInProblem
 {
@@ -69,14 +56,6 @@ public enum StoreSignInProblem
 /// <summary>
 /// What Winnow remembers about a storefront account, with no network call made
 /// to find out.
-///
-/// <para><b><see cref="IsLive"/> and "a session exists" are different
-/// questions, and the panel needs both.</b> A refresh token that lapsed while
-/// the app was closed leaves a stored session that is real, names a real
-/// account, and cannot be used. Collapsing the two into one boolean is what
-/// turns that into the app silently forgetting who you were — the user signed
-/// in, and the panel would say "not connected" with no explanation of what
-/// changed.</para>
 /// </summary>
 /// <param name="IsLive">Whether the session is still worth trying. Not proof Epic will honour it.</param>
 /// <param name="DisplayName">
@@ -128,26 +107,7 @@ public static class StoreSignInMessages
 
 /// <summary>
 /// Everything the Stores panel needs to know and to do, expressed without a
-/// single ingest or repository type.
-///
-/// <para><b>This is the §5.1 seam for the whole panel, not just for the
-/// button.</b> "Is a Steam Web API key set" and "who is the Epic session for"
-/// are both questions whose only honest answers live inside ingest modules, so
-/// the temptation is to resolve <c>ISteamWebApiClient</c> and
-/// <c>IEpicTokenStore</c> in the view model and read them. That is the same
-/// boundary violation as calling ingest to do work, arriving through a
-/// getter.</para>
-///
-/// <para><b>Nothing here throws, and nothing here touches the network.</b> The
-/// panel is a user-facing path (§5.1, §9 pitfall 3): a status read that could
-/// spend a minute inside a retry policy would freeze the screen that exists to
-/// explain itself. The two status calls read local state only — a settings row,
-/// a DPAPI unprotect — and every failure is a value, never an exception.</para>
-///
-/// <para><see cref="SignInToEpicAsync"/> is the one long-running member. It
-/// waits on a human typing a password and a 2FA code, so it can legitimately
-/// take minutes; it must be awaited off the UI thread's critical path and it
-/// must be cancellable.</para>
+/// single ingest or repository type. Nothing throws; status reads are local only.
 /// </summary>
 public interface IStoreConnections
 {
@@ -164,24 +124,9 @@ public interface IStoreConnections
     /// </summary>
     ValueTask<StoreSession?> GetEpicSessionAsync(CancellationToken ct = default);
 
-    /// <summary>
-    /// Runs the interactive Epic sign-in: the consent notice, Epic's own page,
-    /// a code, an encrypted session.
-    ///
-    /// <para><b>The consent notice belongs to this call and must not be
-    /// duplicated above it.</b> Every <c>IInteractiveAuthPrompt</c> is required
-    /// to show it and take a deliberate accept before anything navigates, which
-    /// is where the moment went when the embedded flow stopped showing the user
-    /// a code (<c>docs/spikes/embedded-auth.md</c> §8). A second confirmation in
-    /// the panel would not add protection; it would train the user to click
-    /// through the one that matters.</para>
-    /// </summary>
+    /// <summary>Runs the interactive Epic sign-in (consent, browser, code, encrypted session).</summary>
     Task<StoreSignInOutcome> SignInToEpicAsync(CancellationToken ct = default);
 
-    /// <summary>
-    /// Ends the Epic session and deletes the stored credential. Epic ownership
-    /// falls back to the local launcher files, which is where it comes from by
-    /// default anyway — this costs playtime and acquisition dates, never games.
-    /// </summary>
+    /// <summary>Ends the Epic session and deletes the stored credential. Ownership falls back to local files.</summary>
     Task SignOutOfEpicAsync(CancellationToken ct = default);
 }

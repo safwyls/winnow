@@ -7,28 +7,9 @@ using Polly.Retry;
 namespace Winnow.Enrich.Updates.Http;
 
 /// <summary>
-/// Polly retry for both update-signal pipelines: exponential backoff with jitter
-/// for genuinely transient failures, and explicit <c>Retry-After</c> honouring
-/// for 429 — what §4.2 requires from the first commit.
-///
-/// <para><b>What this policy deliberately does NOT handle is the whole point of
-/// the file.</b> <see cref="IsTransient"/> is an allow-list, and 403 is not on
-/// it. From <c>ISteamNews/GetNewsForApp</c>, 403 means "this appid has no news
-/// feed" — verified live for appids 460, 480, 520 and 750, every one of them
-/// answering 403 with body <c>{}</c> while known-good appids answered 200 in the
-/// same burst. It is a fact about one game, not a signal about Winnow's request
-/// rate.</para>
-///
-/// <para>The naive reading costs hours. Retry 403 and every delisted game in the
-/// library pays four requests instead of one and a growing backoff between them;
-/// add a circuit breaker keyed on "failures" and a single dead appid opens the
-/// circuit and suppresses the sweep for every <i>other</i> game too. So there is
-/// no circuit breaker in this module at all, and the only status that slows
-/// anything down is 429.</para>
-///
-/// <para>The clients turn 403 into a cached per-appid negative
-/// (<see cref="Model.NewsOutcome.NoFeed"/>); by the time the response reaches
-/// them this handler has already passed it through untouched.</para>
+/// Polly retry for update-signal pipelines: exponential backoff with jitter for
+/// transient failures, <c>Retry-After</c> honouring for 429. 403 is deliberately
+/// NOT retried -- it means "no news feed" for that appid, not rate limiting.
 /// </summary>
 public abstract class UpdateSignalResilienceHandler : DelegatingHandler
 {
@@ -96,15 +77,7 @@ public abstract class UpdateSignalResilienceHandler : DelegatingHandler
             request,
             cancellationToken);
 
-    /// <summary>
-    /// The complete set of statuses worth trying again. An allow-list, not a
-    /// deny-list, so a status nobody thought about defaults to "give up and let
-    /// the caller decide" rather than to "hammer it three more times".
-    ///
-    /// <para><b>403 is absent on purpose</b> — see the type remarks. So are 404
-    /// and 422 (steamcmd.net returns 422 for a malformed appid); none of them
-    /// becomes true by asking again.</para>
-    /// </summary>
+    /// <summary>Allow-list of statuses worth retrying. 403, 404, 422 are absent on purpose.</summary>
     internal static bool IsTransient(HttpStatusCode status)
         => status is HttpStatusCode.TooManyRequests
             or HttpStatusCode.RequestTimeout
@@ -134,12 +107,7 @@ public abstract class UpdateSignalResilienceHandler : DelegatingHandler
         return clone;
     }
 
-    /// <summary>
-    /// <c>Retry-After</c> in either documented form: delta-seconds, or an
-    /// HTTP-date converted to a delay relative to the response's own <c>Date</c>
-    /// header (falling back to local time) so clock skew cannot produce a
-    /// negative or absurd wait.
-    /// </summary>
+    /// <summary>Parses <c>Retry-After</c> as delta-seconds or HTTP-date.</summary>
     private static TimeSpan? GetRetryAfter(HttpResponseMessage response)
     {
         var retryAfter = response.Headers.RetryAfter;
@@ -173,11 +141,7 @@ public sealed class SteamNewsResilienceHandler : UpdateSignalResilienceHandler
     }
 }
 
-/// <summary>
-/// Retry policy for api.steamcmd.net. The retry count is shared with the news
-/// pipeline, but the request rate below it is not — see
-/// <see cref="BuildInfoRateLimiter"/>.
-/// </summary>
+/// <summary>Retry policy for api.steamcmd.net.</summary>
 public sealed class BuildInfoResilienceHandler : UpdateSignalResilienceHandler
 {
     public BuildInfoResilienceHandler(UpdateSignalOptions options, ILogger<BuildInfoResilienceHandler> logger)

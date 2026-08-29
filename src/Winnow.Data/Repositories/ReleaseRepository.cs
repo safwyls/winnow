@@ -103,7 +103,9 @@ public sealed class ReleaseRepository : IReleaseRepository
                    w.name                AS WorkName,
                    w.first_release_year  AS FirstReleaseYear,
                    w.publisher           AS Publisher,
-                   w.name_is_provisional AS NameIsProvisional
+                   w.name_is_provisional AS NameIsProvisional,
+                   w.steam_app_type      AS SteamAppType,
+                   w.epic_categories     AS EpicCategories
             FROM releases r
             JOIN works w ON w.id = r.work_id
             ORDER BY r.id;

@@ -8,20 +8,8 @@ public static class IgdbCoverServiceCollectionExtensions
 {
     /// <summary>
     /// Registers <see cref="IgdbCoverSource"/> as an additional
-    /// <see cref="ICoverSource"/>.
-    ///
-    /// <para><b>Call this after <c>AddCoverCache()</c>.</b> Sources are tried in
-    /// registration order and the first one to answer wins, so the order is the
-    /// policy: Steam's <c>library_600x900_2x.jpg</c> is the 2:3 portrait
-    /// <c>design-system.md</c> §5 is drawn around and must stay first, with IGDB
-    /// filling only what Steam declines. Registering this first would silently
-    /// swap the art on 500 tiles that were never in question.</para>
-    ///
-    /// <para>Also requires <c>AddIgdbEnrichment()</c> somewhere in the same
-    /// container for <c>IIgdbClient</c>; order relative to that call does not
-    /// matter. With no credentials configured the source declines every key
-    /// without a request and the grid behaves exactly as it did before it
-    /// existed.</para>
+    /// <see cref="ICoverSource"/>. Call after <c>AddCoverCache()</c> so Steam's
+    /// portrait capsule stays first in registration order.
     /// </summary>
     public static IServiceCollection AddIgdbCoverSource(this IServiceCollection services)
         => services.AddIgdbCoverSource(null);

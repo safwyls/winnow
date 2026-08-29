@@ -7,54 +7,10 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace Winnow.Ingest.Steam;
 
 /// <summary>
-/// Composes the Steam local-file readers into the normalised
-/// <see cref="CandidateOwnership"/> feed for the whole install (§5.1: ingest
-/// emits candidates only; it never writes works/releases — that is Resolve's
-/// job). Strictly read-only against every Steam file, and a machine without
-/// Steam simply yields an empty list.
-///
-/// <para><b>Candidate set is the union of two sources:</b> (a) appids with an
-/// <c>appmanifest_*.acf</c> in any library root — the installed games; and (b)
-/// appids with a <c>Playtime</c> record in any account's
-/// <c>localconfig.vdf</c> — everything ever launched on this machine, whether
-/// or not it is still installed. Manifest data is authoritative where a
-/// manifest exists (title, install dir, install state). A playtime-only appid
-/// has no local title source at all, so it is emitted with
-/// <c>Title: null</c>, <c>Installed: false</c>, <c>InstallPath: null</c> — a
-/// provisional candidate the resolver names as a placeholder pending
-/// enrichment. The uninstalled-but-played pile is the whole point: on a real
-/// install it outnumbers the installed games by an order of magnitude.</para>
-///
-/// <para><b>This source always answers on install state</b> — every candidate
-/// carries a non-null <see cref="CandidateOwnership.Installed"/>, because
-/// reading the appmanifests IS how install state is known (§4.1). A manifest
-/// means installed (its <c>StateFlags</c> decides fully vs. partially); no
-/// manifest in any library root means not installed, and that <c>false</c> is
-/// an observation, not a shrug. It is what makes an uninstall visible.
-/// Sources that cannot see the disk emit null instead — see
-/// <see cref="CandidateOwnership.Installed"/>.</para>
-///
-/// <para><b>Multi-account playtime strategy:</b> installed apps come from the
-/// machine-wide appmanifests, but playtime is per-account. When more than one
-/// <c>userdata/&lt;steam3id&gt;</c> account has playtime for the same appid,
-/// the account with the highest total <c>Playtime</c> wins the whole record —
-/// minutes, last-played, and <see cref="CandidateOwnership.AccountRef"/>
-/// attribution move together (ties broken by most recent last-played).
-/// Fields are never mixed across accounts, so the numbers stay coherent. The
-/// same rule decides playtime-only candidates, which additionally take their
-/// account attribution from the winner.</para>
-///
-/// <para><b>The machine-level manifest date.</b> An <c>appmanifest</c> also
-/// records a <c>LastPlayed</c>, but it belongs to the machine, not to any
-/// account. It is used only when NO account has a playtime record for the appid
-/// — a machine whose <c>userdata/</c> is missing or unreadable, where it is the
-/// only evidence of play that exists. Such a candidate is emitted with no
-/// <see cref="CandidateOwnership.AccountRef"/> at all, because attributing it
-/// would be a guess. It is never used to fill a gap in a winning account's own
-/// record: a winner whose date is the <c>86400</c> "before Steam tracked this"
-/// sentinel keeps its null, since borrowing another account's session to stand
-/// in for it can make a genuinely dormant title look recently played — the exact
-/// mistake the staleness buckets exist to avoid.</para>
+/// Emits <see cref="CandidateOwnership"/> candidates from Steam's local files:
+/// union of installed appmanifests and per-account playtime from localconfig.vdf.
+/// Read-only; yields an empty list when no Steam install is found. Multi-account
+/// playtime ties are broken by highest total minutes, then most recent last-played.
 /// </summary>
 public sealed class SteamLibrarySource
 {
@@ -75,12 +31,7 @@ public sealed class SteamLibrarySource
         "2180100", // Proton Hotfix
     };
 
-    /// <summary>
-    /// Path equality for deduplicating library roots. Windows and macOS
-    /// filesystems are case-insensitive by default; Linux ones are not, and
-    /// <c>/games/Steam</c> and <c>/games/steam</c> there are two different
-    /// libraries. Folding them would silently drop one whole root's games.
-    /// </summary>
+    /// <summary>Path equality for deduplicating library roots (case-insensitive on Windows/macOS, ordinal on Linux).</summary>
     private static readonly StringComparer PathComparer =
         OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()
             ? StringComparer.OrdinalIgnoreCase
@@ -94,19 +45,7 @@ public sealed class SteamLibrarySource
     private readonly TimeProvider _timeProvider;
     private readonly string? _steamRoot;
 
-    /// <param name="libraryFoldersReader">Reader for <c>libraryfolders.vdf</c>.</param>
-    /// <param name="appManifestReader">Reader for <c>appmanifest_*.acf</c>.</param>
-    /// <param name="localConfigReader">Reader for a user's <c>localconfig.vdf</c>.</param>
-    /// <param name="accountEnumerator">Enumerator over <c>userdata/&lt;steam3id&gt;</c>.</param>
-    /// <param name="logger">Optional logger.</param>
-    /// <param name="timeProvider">Clock stamping <see cref="CandidateOwnership.ObservedAt"/>.</param>
-    /// <param name="steamRoot">
-    /// Fixed install root for the argument-less <see cref="Scan()"/>. Null — the
-    /// default — means locate it per <see cref="SteamPaths.FindSteamRoot"/>.
-    /// Set it to point at a Steam install this machine's registry does not name,
-    /// and in tests to drive a caller (the sync service) over a fixture root
-    /// instead of whatever Steam the test machine happens to have.
-    /// </param>
+    /// <param name="steamRoot">Fixed install root; null (default) uses <see cref="SteamPaths.FindSteamRoot"/>.</param>
     public SteamLibrarySource(
         LibraryFoldersReader? libraryFoldersReader = null,
         AppManifestReader? appManifestReader = null,
@@ -125,16 +64,7 @@ public sealed class SteamLibrarySource
         _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
-    /// <summary>
-    /// Scans the Steam install and returns one candidate per
-    /// appid in the union of installed appmanifests across all library folders
-    /// and played apps across every account's localconfig.vdf. Never throws for
-    /// a missing install.
-    /// </summary>
-    /// <param name="steamRoot">
-    /// Install root to scan. Null falls back to the root this instance was
-    /// constructed with, then to <see cref="SteamPaths.FindSteamRoot"/>.
-    /// </param>
+    /// <summary>Scans the Steam install and returns one candidate per appid. Never throws for a missing install.</summary>
     public IReadOnlyList<CandidateOwnership> Scan(string? steamRoot = null)
     {
         steamRoot ??= _steamRoot ?? SteamPaths.FindSteamRoot();
@@ -247,11 +177,7 @@ public sealed class SteamLibrarySource
         return candidates;
     }
 
-    /// <summary>
-    /// Picks the single account whose record owns this appid: highest total
-    /// playtime, ties broken by the most recent last-played. Returns
-    /// <c>(null, null)</c> when no account has a playtime record for the appid.
-    /// </summary>
+    /// <summary>Picks the account with the highest playtime for this appid, ties broken by most recent last-played.</summary>
     private static (SteamAppPlaytime? Winner, SteamAccount? Account) ResolvePlaytimeWinner(
         string appId,
         List<(SteamAccount Account, IReadOnlyDictionary<string, SteamAppPlaytime> Apps)> playtimeByAccount)

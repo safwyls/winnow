@@ -5,22 +5,8 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace Winnow.Ingest.Epic;
 
 /// <summary>
-/// Reads <c>Data\Manifests\*.item</c> — the authoritative source for which Epic
-/// titles are installed (docs/spikes/epic-gog-local-files.md sections 1, 2).
-/// Read-only, and never throws for a missing directory or an unreadable file:
-/// a machine without Epic simply yields nothing.
-///
-/// <para><b>On encoding.</b> The observed files are UTF-8 with <i>no</i> BOM,
-/// CRLF, tab-indented. A BOM was expected and is not there. Reading through
-/// <see cref="JsonDocument"/> handles both cases, so nothing here depends on
-/// which one a future launcher build writes.</para>
-///
-/// <para><b>Why hand-walked rather than deserialized.</b> The shapes are full of
-/// values that look like one type and are another —
-/// <c>"OwnershipToken": "false"</c> is the string, <c>InstallSize</c> is a JSON
-/// number, and <c>MainGameCatalogItemId</c> is present-but-empty on a base game.
-/// Reading each field explicitly keeps those facts visible instead of letting a
-/// binder paper over them.</para>
+/// Reads <c>Data\Manifests\*.item</c> -- the authoritative source for which Epic
+/// titles are installed. Read-only; never throws for missing files.
 /// </summary>
 public sealed class EpicManifestReader
 {

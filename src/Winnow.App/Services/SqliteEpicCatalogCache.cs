@@ -5,33 +5,9 @@ using Winnow.Ingest.Epic.Web;
 namespace Winnow.App.Services;
 
 /// <summary>
-/// Persists Epic catalog answers in the §6 <c>metadata_cache</c> table, beside
-/// IGDB's, steamcmd's and the Steam store's.
-///
-/// <para><b>Why this lives in the composition root rather than in the Epic
-/// module.</b> <c>Winnow.Ingest.Epic</c> deliberately does not reference
-/// <c>Winnow.Data</c> — its §5.1 job is to read a source and emit candidates, and
-/// dragging the data layer into it to cache one lookup would be a poor trade for
-/// a boundary that has held all the way through. So the module ships an
-/// in-memory default and declares the seam; the host, which already references
-/// both, fills it in. This is the same arrangement the interface documents.</para>
-///
-/// <para><b>Why it is worth persisting at all, when the library cache is not.</b>
-/// The two answer different kinds of question. The owned library is account
-/// state with a six-hour TTL, so a restart costs one refetch and nothing is
-/// gained by keeping it. A catalog answer is a property of the product — what
-/// this catalog item is called and what kind of thing it is — and does not change
-/// on any timescale a launch cycle cares about. Holding it only in memory would
-/// mean an authenticated request per Epic work per launch, forever, to relearn
-/// <c>public,games,applications</c>.</para>
-///
-/// <para><b>A null payload is a cached MISS, not an empty row.</b> The column is
-/// nullable and stores exactly that: the service answered and does not recognise
-/// this catalog item. Absence of the row is the different thing — never asked.
-/// The client relies on both, and this class must not collapse them.</para>
-///
-/// <para>Nothing account-identifying is stored: the payload is a catalog id, a
-/// namespace, an artifact codename, a title and category paths.</para>
+/// Persists Epic catalog answers in the <c>metadata_cache</c> table. Lives in
+/// the composition root because <c>Winnow.Ingest.Epic</c> does not reference
+/// <c>Winnow.Data</c>. A null payload is a cached miss, not an empty row.
 /// </summary>
 public sealed class SqliteEpicCatalogCache : IEpicCatalogCache
 {

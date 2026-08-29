@@ -11,21 +11,8 @@ public static class WebViewAuthServiceCollectionExtensions
 {
     /// <summary>
     /// Registers <see cref="WebView2AuthPrompt"/> as an
-    /// <see cref="IInteractiveAuthPrompt"/>.
-    ///
-    /// <para><b>Registration order is the fallback order.</b> Prompts are
-    /// consulted in the order they were registered, so this goes in before the
-    /// console peer: a machine with a WebView2 runtime gets the automatic flow,
-    /// and one without falls through. Nothing here inspects the runtime — this
-    /// is safe to call on any machine, and the prompt reports itself unavailable
-    /// at the moment of use rather than at startup.</para>
-    ///
-    /// <para><b>A plain <c>AddSingleton</c> rather than
-    /// <c>TryAddEnumerable</c></b>, because the prompt is constructed by a
-    /// factory (it takes a path) and <c>TryAddEnumerable</c> rejects a
-    /// factory-built descriptor it cannot distinguish by implementation type.
-    /// Call this once; calling it twice would put two browsers in the
-    /// chain.</para>
+    /// <see cref="IInteractiveAuthPrompt"/>. Safe to call on any machine;
+    /// the prompt reports itself unavailable at use time if no runtime exists.
     /// </summary>
     /// <param name="services">The container.</param>
     /// <param name="profileRoot">

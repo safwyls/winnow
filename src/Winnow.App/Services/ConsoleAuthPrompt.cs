@@ -5,33 +5,10 @@ using Winnow.Core.Auth;
 namespace Winnow.App.Services;
 
 /// <summary>
-/// The manual sign-in, behind the same seam as the embedded one: print the URL,
-/// let the user authenticate in their own browser, take the code they paste
-/// back.
-///
-/// <para><b>This is a peer, not a legacy path.</b> Three concrete situations
-/// need it, and none of them is hypothetical:</para>
-/// <list type="number">
-///   <item><description><b>Headless machines.</b> WebView2 needs a window; an
-///   SSH session or a service account has none.</description></item>
-///   <item><description><b>A missing WebView2 runtime.</b> It ships with
-///   Windows 11 and was found preinstalled during the spike — on one machine.
-///   Server SKUs, LTSC, stripped images and fleets that block Edge updates are
-///   all real, and <c>GetAvailableBrowserVersionString()</c> throwing is the
-///   detection point.</description></item>
-///   <item><description><b>Epic breaking the embedded flow.</b> Legendary ships
-///   a remote <c>webview_killswitch</c> because this happens periodically. When
-///   the automatic route stops working, the manual one has to still be
-///   there.</description></item>
-/// </list>
-///
-/// <para>Implementing <see cref="IInteractiveAuthPrompt"/> is what makes that
-/// structural rather than a maintenance promise: the fallback is the same
-/// interface, resolved from the same chain, exercised by the same code path.</para>
-///
-/// <para><b>Nothing here prints a secret.</b> Not the client pair, not the
-/// pasted code, not any token. The code is read straight into the result and
-/// never echoed.</para>
+/// Console-based <see cref="IInteractiveAuthPrompt"/>: prints the sign-in URL,
+/// lets the user authenticate in their own browser, and reads back the pasted
+/// authorization code. Peer to the embedded-browser flow for headless machines,
+/// missing WebView2, or when Epic breaks the embedded page. Never prints secrets.
 /// </summary>
 public sealed class ConsoleAuthPrompt : IInteractiveAuthPrompt
 {
@@ -121,15 +98,7 @@ public sealed class ConsoleAuthPrompt : IInteractiveAuthPrompt
             AuthCodeResult.Captured(AuthCodeKind.AuthorizationCode, code.Trim(), "pasted by the user"));
     }
 
-    /// <summary>
-    /// Writes a prompt and reads one line, flushing first.
-    ///
-    /// <para>The flush is the point. <see cref="Console.Write(string)"/> leaves a
-    /// prompt with no trailing newline sitting in the buffer, and a
-    /// GUI-subsystem process whose stdout is a pipe rather than a console does
-    /// not necessarily push it out before blocking on input — so the user waits
-    /// at an invisible prompt for a process that looks hung.</para>
-    /// </summary>
+    /// <summary>Writes a prompt, flushes stdout (required for WinExe piped output), and reads one line.</summary>
     private static string? ReadLine(string prompt)
     {
         Console.Write(prompt);
@@ -137,10 +106,7 @@ public sealed class ConsoleAuthPrompt : IInteractiveAuthPrompt
         return Console.ReadLine();
     }
 
-    /// <summary>
-    /// Opens the user's own browser. Best effort — the URL is printed above
-    /// regardless, so a locked-down or headless machine loses nothing.
-    /// </summary>
+    /// <summary>Best-effort browser open via shell execute. The URL is already printed above as fallback.</summary>
     private static void TryOpenBrowser(Uri url)
     {
         try
@@ -156,14 +122,7 @@ public sealed class ConsoleAuthPrompt : IInteractiveAuthPrompt
         }
     }
 
-    /// <summary>
-    /// Whether there is anywhere to prompt.
-    ///
-    /// <para>Redirected streams count: a caller who piped input has supplied
-    /// somewhere to read from, which is exactly the non-interactive case the
-    /// <c>--code</c> argument exists for and which must not be treated as "no
-    /// console".</para>
-    /// </summary>
+    /// <summary>Whether there is anywhere to prompt. Redirected streams count as available.</summary>
     private static bool HasConsole()
     {
         if (Console.IsInputRedirected || Console.IsOutputRedirected)
@@ -187,25 +146,9 @@ public sealed class ConsoleAuthPrompt : IInteractiveAuthPrompt
     }
 
     /// <summary>
-    /// Attaches this process to the terminal that launched it.
-    ///
-    /// <para><b>Necessary because <c>Winnow.App</c> is a <c>WinExe</c></b>, which
-    /// tells Windows not to allocate a console. Without this, every
-    /// <c>Console.WriteLine</c> goes nowhere and <c>Console.ReadLine</c> returns
-    /// null immediately — the flow would appear to do nothing at all.
-    /// <c>ATTACH_PARENT_PROCESS</c> borrows the console of whatever launched it,
-    /// which is the terminal the user typed <c>dotnet run</c> into.</para>
-    ///
-    /// <para><b>Skipped when the standard streams are already redirected</b>, and
-    /// that guard is not theoretical. Attaching rebinds <see cref="Console"/> to
-    /// the real console handles, which for a piped invocation means output stops
-    /// reaching the pipe and <c>Console.ReadLine</c> stops reading it — the flow
-    /// hangs forever waiting on a console nobody is typing into. Measured, not
-    /// guessed.</para>
-    ///
-    /// <para>Internal rather than private because <c>EpicLoginConsole</c> prints
-    /// its verification report through the same borrowed console and would
-    /// otherwise carry a second copy of this.</para>
+    /// Attaches this WinExe process to its parent terminal's console via
+    /// <c>ATTACH_PARENT_PROCESS</c>. Skipped when streams are already redirected,
+    /// because attaching would rebind Console away from the pipe and hang.
     /// </summary>
     internal static void AttachConsoleIfNeeded()
     {

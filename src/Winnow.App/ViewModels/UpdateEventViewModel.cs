@@ -1,21 +1,15 @@
+using CommunityToolkit.Mvvm.ComponentModel;
 using Winnow.Core.Domain;
 
 namespace Winnow.App.ViewModels;
 
 /// <summary>
-/// One update to this game, as the detail view lists it.
-/// design-system.md §5.2: the unread badge exists so the user can go read what
-/// changed, so every row that has a page is openable and every row that does
-/// not says so by simply not offering a link.
-///
-/// <para>A row also knows whether it landed <b>after</b> the user's last
-/// session. That is the distinction the whole product is built on, and until
-/// now the detail view did not draw it: it listed every update a release had
-/// ever had under the heading "N updates since you played", which for a game
-/// with a 2023 patch and no recorded session was simply false. Rows that really
-/// are since-you-played carry the Flare dot; the rest are history.</para>
+/// One update/patch row in the detail panel. Tracks two independent flags:
+/// <see cref="IsSinceYouPlayed"/> (landed after last session, immutable) and
+/// <see cref="IsAcknowledged"/> (user marked as read, migration 0012). The Flare
+/// dot binds to <see cref="IsUnread"/> = since-you-played AND not acknowledged.
 /// </summary>
-public sealed class UpdateEventViewModel
+public sealed partial class UpdateEventViewModel : ObservableObject
 {
     private UpdateEventViewModel(
         string headline,
@@ -54,12 +48,38 @@ public sealed class UpdateEventViewModel
     public bool IsAnnouncement { get; }
 
     /// <summary>
-    /// Landed after the user's last recorded session — the fact the Flare dot
-    /// marks, here and nowhere else in this view. False when there is no last-
-    /// played date at all: a game you have never opened has nothing to be
-    /// behind on (§5.2).
+    /// Landed after the user's last recorded session — a fact about the gap,
+    /// and an immutable one. False when there is no last-played date at all: a
+    /// game you have never opened has nothing to be behind on (§5.2).
+    ///
+    /// <para>This is what the section heading and the rail's caption count.
+    /// Dismissing the flag does not make an update stop having landed while you
+    /// were away, so neither of those sentences changes when it is
+    /// dismissed.</para>
     /// </summary>
     public bool IsSinceYouPlayed { get; }
+
+    /// <summary>
+    /// Whether the user has said they have read this one — set by
+    /// <see cref="GameDetailsViewModel"/> from the release's standing
+    /// acknowledgement watermark, and by nothing else. True for every row at or
+    /// before that instant, which is the same comparison the bucket query's
+    /// <c>major_update</c> CTE makes when it decides the dot is out.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsUnread))]
+    public partial bool IsAcknowledged { get; set; }
+
+    /// <summary>
+    /// What the Flare dot marks, here and nowhere else in this view: landed
+    /// after your last session and not yet declared read.
+    ///
+    /// <para>§2 makes Flare the rarest colour in the interface and gives it one
+    /// job. Leaving it on a row the user has just dismissed would be that one
+    /// job quietly becoming two — "unread" and "recent" — which is exactly how
+    /// the badge stops meaning anything.</para>
+    /// </summary>
+    public bool IsUnread => IsSinceYouPlayed && !IsAcknowledged;
 
     public static UpdateEventViewModel Create(UpdateEvent updateEvent, DateTime? lastPlayedUtc = null)
     {

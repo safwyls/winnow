@@ -1,45 +1,16 @@
 namespace Winnow.Core.Matching;
 
 /// <summary>
-/// The structured result of running a raw store title through
-/// <see cref="TitleNormalizer"/>.
-///
-/// <para>Normalisation deliberately does NOT flatten everything into one
-/// string. Two of the four things it pulls out — the sequel ordinal and the
-/// edition marker — are the signals that separate genuinely different games
-/// whose titles are almost identical (§5.3, §9 pitfall 5). Fold them into the
-/// core string and <c>Portal</c> / <c>Portal 2</c> come out 0.86 similar, which
-/// is exactly how a fuzzy matcher talks itself into a wrong merge.</para>
+/// Structured result of <see cref="TitleNormalizer"/>. Keeps ordinals and edition
+/// markers separate from the core so the matcher can weight them independently.
 /// </summary>
-/// <param name="Original">The title as supplied, untouched. Shown in the merge-confirm UI.</param>
-/// <param name="Core">
-/// Space-joined comparable tokens: case-folded, de-accented, de-punctuated,
-/// articles dropped, roman numerals folded to arabic, edition suffix removed,
-/// parenthesised year removed. This is the only part string similarity sees.
-/// </param>
-/// <param name="Tokens">The core, tokenised. Used for the token-overlap half of the similarity.</param>
-/// <param name="Ordinals">
-/// Numeric tokens of the core, in order — the sequel number. <c>Portal 2</c>
-/// yields <c>[2]</c>, <c>Portal</c> yields <c>[]</c>, <c>Left 4 Dead 2</c>
-/// yields <c>[4, 2]</c>. Compared exactly, never fuzzily.
-/// </param>
-/// <param name="RebuildEditions">
-/// Edition markers that denote a SEPARATE BUILD — Special Edition, Remastered,
-/// Anniversary. These are different <c>Release</c>s with different achievement
-/// sets and mod ecosystems; merging them is a bug (§9 pitfall 5), so a
-/// disagreement here vetoes the pair outright.
-/// </param>
-/// <param name="BundleEditions">
-/// Edition markers that denote the SAME BUILD plus content — GOTY, Complete,
-/// Deluxe, Director's Cut. A disagreement is a mild penalty, not a veto: the
-/// user may well want The Witcher 3 and The Witcher 3 GOTY treated as one.
-/// </param>
-/// <param name="ParsedYear">
-/// A parenthesised four-digit year lifted out of the title, as in
-/// <c>Prey (2006)</c> — the disambiguation convention IGDB and Wikipedia both
-/// use. Only parenthesised years are lifted; a bare trailing year is left in
-/// place so <c>Madden NFL 2004</c> and <c>Madden NFL 2005</c> stay distinct.
-/// </param>
+/// <param name="Original">Title as supplied, untouched.</param>
+/// <param name="Core">Space-joined comparable tokens (case-folded, de-accented, articles dropped, editions removed).</param>
+/// <param name="Tokens">The core, tokenised.</param>
+/// <param name="Ordinals">Numeric tokens (sequel numbers). Compared exactly, never fuzzily.</param>
+/// <param name="RebuildEditions">Edition markers meaning a separate build (remaster, etc.). Disagreement vetoes a match.</param>
+/// <param name="BundleEditions">Edition markers meaning same build + content (GOTY, etc.). Disagreement is a mild penalty.</param>
+/// <param name="ParsedYear">Parenthesised four-digit year lifted from the title, e.g. "Prey (2006)".</param>
 public sealed record NormalizedTitle(
     string Original,
     string Core,
