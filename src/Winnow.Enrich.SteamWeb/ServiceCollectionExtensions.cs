@@ -68,6 +68,27 @@ public static class ServiceCollectionExtensions
             .AddHttpMessageHandler<SteamWebResilienceHandler>()
             .AddHttpMessageHandler<SteamWebRateLimitingHandler>();
 
+        // M5's two history endpoints, on an identical pipeline. A second typed
+        // client rather than more methods on the first, because they are a
+        // different job (a background backfill that runs a handful of times
+        // per install, not the per-sync ownership read), and a caller that
+        // only wants one should not be able to reach the other.
+        //
+        // The handlers are separate INSTANCES (both are transient) but the
+        // limiter they close over is the same singleton, so the two clients pace
+        // themselves against one another rather than each staying under a limit
+        // they are jointly over. That is the whole reason SteamWebRateLimiter is
+        // registered as a singleton above and not built inside the handler.
+        services.AddHttpClient<ISteamHistoryClient, SteamHistoryClient>(client =>
+            {
+                client.BaseAddress = options.BaseAddress;
+                client.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", options.UserAgent);
+            })
+            .RemoveAllLoggers()
+            .AddLogger<RedactingHttpClientLogger>()
+            .AddHttpMessageHandler<SteamWebResilienceHandler>()
+            .AddHttpMessageHandler<SteamWebRateLimitingHandler>();
+
         return services;
     }
 

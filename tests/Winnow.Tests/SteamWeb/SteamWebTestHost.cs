@@ -125,6 +125,12 @@ public sealed class SteamWebTestHost : IDisposable
     /// <summary>Endpoint key as <see cref="RecordedSteamWebRequest.Endpoint"/> reports it.</summary>
     public const string GetOwnedGames = "IPlayerService/GetOwnedGames";
 
+    /// <summary>M5's per-month longitudinal source.</summary>
+    public const string GetUserYearInReview = "ISaleFeatureService/GetUserYearInReview";
+
+    /// <summary>M5's cumulative anchor and first-played source.</summary>
+    public const string ClientGetLastPlayedTimes = "IPlayerService/ClientGetLastPlayedTimes";
+
     private readonly ServiceProvider _services;
 
     public SteamWebTestHost(
@@ -174,6 +180,13 @@ public sealed class SteamWebTestHost : IDisposable
         services.AddHttpClient<ISteamWebApiClient, SteamWebApiClient>()
             .ConfigurePrimaryHttpMessageHandler(() => Handler);
 
+        // The same substitution for the history client. One handler instance for
+        // both, so a test can assert on the combined request sequence — which is
+        // the point: the two clients share a rate limiter and are meant to be
+        // countable as one stream of traffic to one host.
+        services.AddHttpClient<ISteamHistoryClient, SteamHistoryClient>()
+            .ConfigurePrimaryHttpMessageHandler(() => Handler);
+
         _services = services.BuildServiceProvider();
     }
 
@@ -188,6 +201,9 @@ public sealed class SteamWebTestHost : IDisposable
     public CapturingLoggerProvider Logs { get; }
 
     public ISteamWebApiClient Client => _services.GetRequiredService<ISteamWebApiClient>();
+
+    /// <summary>M5's history client, on the same fake transport and the same limiter.</summary>
+    public ISteamHistoryClient History => _services.GetRequiredService<ISteamHistoryClient>();
 
     public T Resolve<T>()
         where T : notnull
