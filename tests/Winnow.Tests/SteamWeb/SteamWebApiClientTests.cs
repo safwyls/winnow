@@ -229,6 +229,35 @@ public class SteamWebApiClientTests
         Assert.Equal(first.Games, second.Games);
     }
 
+    /// <summary>
+    /// F10's companion. The merge now stamps a play record with the WINNING
+    /// source's own observation time rather than the later of the two reads, so
+    /// nothing downstream is papering over a backdated candidate any more: a
+    /// cache hit must not hand ingest an observation that is hours old, or the
+    /// row it produces loses the resolver's latest-record query to the row it
+    /// should be superseding. The cached FACTS stay as old as they are; the
+    /// observation that they are still the best answer is current.
+    /// </summary>
+    [Fact]
+    public async Task A_cache_hit_does_not_backdate_the_candidates_it_hands_ingest()
+    {
+        using var host = new SteamWebTestHost(SteamWebTestHost.DefaultResponder());
+
+        var fresh = await host.Client.GetOwnershipCandidatesAsync(Account);
+        Assert.NotEmpty(fresh);
+        Assert.All(fresh, c => Assert.Equal(host.Clock.Now.UtcDateTime, c.ObservedAt));
+
+        var fetchedAt = host.Clock.Now.UtcDateTime;
+        host.Clock.Advance(TimeSpan.FromHours(3));
+
+        var cached = await host.Client.GetOwnershipCandidatesAsync(Account);
+
+        // Served from cache — one request in total — and stamped now.
+        Assert.Single(host.Handler.Requests);
+        Assert.All(cached, c => Assert.Equal(host.Clock.Now.UtcDateTime, c.ObservedAt));
+        Assert.All(cached, c => Assert.True(c.ObservedAt > fetchedAt));
+    }
+
     [Fact]
     public async Task The_cache_holds_the_response_body_verbatim()
     {

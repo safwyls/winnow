@@ -154,17 +154,26 @@ public sealed class ExternalIdResolver
 
                 var minutes = candidate.PlaytimeMinutes ?? 0;
                 var lastPlayedAt = candidate.LastPlayedAt;
+                var source = candidate.Source;
 
                 if (playtime is PlaytimeView.LowerBound)
                 {
-                    minutes = Math.Max(
-                        minutes,
-                        Math.Max(latestRecord?.PlaytimeMinutes ?? 0, latestSnapshot?.PlaytimeMinutes ?? 0));
+                    var floor = Math.Max(
+                        latestRecord?.PlaytimeMinutes ?? 0, latestSnapshot?.PlaytimeMinutes ?? 0);
+
+                    if (floor > minutes)
+                    {
+                        // The minutes are no longer this source's unaided report;
+                        // the row must not claim they are.
+                        minutes = floor;
+                        source = PlayRecordSources.Carried(source);
+                    }
+
                     lastPlayedAt = Later(lastPlayedAt, latestRecord?.LastPlayedAt);
                 }
 
                 if (await AppendPlayRecordIfChangedAsync(
-                        latestRecord, ownershipId, minutes, lastPlayedAt, candidate, ct))
+                        latestRecord, ownershipId, minutes, lastPlayedAt, source, candidate, ct))
                 {
                     playRecordsWritten++;
                 }
@@ -279,9 +288,14 @@ public sealed class ExternalIdResolver
         long ownershipId,
         long minutes,
         DateTime? lastPlayedAt,
+        string source,
         CandidateOwnership candidate,
         CancellationToken ct)
     {
+        // Short-circuit for the common case: a sync tick that learned nothing
+        // new. This only compares against the newest row, so it cannot catch an
+        // out-of-order replay; idempotency for those belongs to TryAppendAsync
+        // and the identity index behind it.
         if (latest is not null
             && latest.PlaytimeMinutes == minutes
             && latest.LastPlayedAt == lastPlayedAt)
@@ -289,33 +303,32 @@ public sealed class ExternalIdResolver
             return false;
         }
 
-        await _playRecords.InsertAsync(new PlayRecord
+        return await _playRecords.TryAppendAsync(new PlayRecord
         {
             OwnershipId = ownershipId,
             PlaytimeMinutes = minutes,
             LastPlayedAt = lastPlayedAt,
-            Source = candidate.Source,
+            Source = source,
             ObservedAt = candidate.ObservedAt,
-        }, ct);
-        return true;
+        }, ct) is not null;
     }
 
     private async Task<bool> AppendSnapshotIfChangedAsync(
         PlaytimeSnapshot? lastSnapshot, long ownershipId, long minutes,
         CandidateOwnership candidate, CancellationToken ct)
     {
-        // Only compare against the newest snapshot.
+        // Same short-circuit as AppendPlayRecordIfChangedAsync: newest-row only,
+        // with out-of-order idempotency delegated to the identity index.
         if (lastSnapshot is not null && lastSnapshot.PlaytimeMinutes == minutes)
         {
             return false;
         }
 
-        await _snapshots.InsertAsync(new PlaytimeSnapshot
+        return await _snapshots.TryAppendAsync(new PlaytimeSnapshot
         {
             OwnershipId = ownershipId,
             PlaytimeMinutes = minutes,
             ObservedAt = candidate.ObservedAt,
-        }, ct);
-        return true;
+        }, ct) is not null;
     }
 }

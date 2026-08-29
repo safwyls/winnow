@@ -274,9 +274,17 @@ public sealed class DatabaseBackupTests
     /// </summary>
     private static void Rewind(TempDatabase db)
     {
+        // Rewinds to 0011, so everything after it has to be undone here too —
+        // both its journal row and whatever it created, or the re-run fails on
+        // an object that is already there. A new migration adds a line.
         using var connection = db.Factory.Open();
         connection.Execute("DROP TABLE IF EXISTS update_acknowledgements;");
-        connection.Execute("DELETE FROM SchemaVersions WHERE ScriptName LIKE '%0012%';");
+        connection.Execute("DROP INDEX IF EXISTS ux_play_records_observation;");
+        connection.Execute("DROP INDEX IF EXISTS ux_playtime_snapshots_observation;");
+        connection.Execute("""
+            DELETE FROM SchemaVersions
+            WHERE ScriptName LIKE '%0012%' OR ScriptName LIKE '%0013%';
+            """);
     }
 
     /// <summary>Overwrites the back half of the file, the way a bad sector would.</summary>

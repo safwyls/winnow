@@ -136,7 +136,15 @@ public sealed class SteamWebApiClient : ISteamWebApiClient
         SteamId steamId, TimeSpan? cacheTtl = null, CancellationToken ct = default)
     {
         var library = await GetOwnedGamesAsync(steamId, cacheTtl, ct);
-        return library.Succeeded ? library.ToCandidates(SourceName) : [];
+
+        // Stamped now, not at the library's fetch time: on a cache hit the
+        // facts may be hours old, but the observation that they are still
+        // Winnow's best answer is current. A backdated candidate would sit
+        // behind the newest stored row by observed_at and lose the resolver's
+        // latest-record comparison on every subsequent sync.
+        return library.Succeeded
+            ? library.ToCandidates(SourceName, _clock.GetUtcNow().UtcDateTime)
+            : [];
     }
 
     /// <summary>

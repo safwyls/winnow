@@ -29,6 +29,19 @@ public sealed class PlayRecordRepository : IPlayRecordRepository
             """, record, transaction: lease.Transaction, cancellationToken: ct));
     }
 
+    public async Task<long?> TryAppendAsync(PlayRecord record, CancellationToken ct = default)
+    {
+        // Untargeted DO NOTHING: covers the COALESCE expression index from 0013
+        // without naming it, while FK/CHECK violations still throw.
+        using var lease = _factory.Lease();
+        return await lease.Connection.ExecuteScalarAsync<long?>(new CommandDefinition("""
+            INSERT INTO play_records (ownership_id, playtime_minutes, last_played_at, source, observed_at)
+            VALUES (@OwnershipId, @PlaytimeMinutes, @LastPlayedAt, @Source, @ObservedAt)
+            ON CONFLICT DO NOTHING
+            RETURNING id;
+            """, record, transaction: lease.Transaction, cancellationToken: ct));
+    }
+
     public async Task<PlayRecord?> GetLatestAsync(long ownershipId, CancellationToken ct = default)
     {
         using var lease = _factory.Lease();

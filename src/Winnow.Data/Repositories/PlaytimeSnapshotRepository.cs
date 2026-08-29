@@ -20,6 +20,18 @@ public sealed class PlaytimeSnapshotRepository : IPlaytimeSnapshotRepository
             """, snapshot, transaction: lease.Transaction, cancellationToken: ct));
     }
 
+    /// <inheritdoc/>
+    public async Task<long?> TryAppendAsync(PlaytimeSnapshot snapshot, CancellationToken ct = default)
+    {
+        using var lease = _factory.Lease();
+        return await lease.Connection.ExecuteScalarAsync<long?>(new CommandDefinition("""
+            INSERT INTO playtime_snapshots (ownership_id, playtime_minutes, observed_at)
+            VALUES (@OwnershipId, @PlaytimeMinutes, @ObservedAt)
+            ON CONFLICT DO NOTHING
+            RETURNING id;
+            """, snapshot, transaction: lease.Transaction, cancellationToken: ct));
+    }
+
     public async Task<PlaytimeSnapshot?> GetLatestAsync(long ownershipId, CancellationToken ct = default)
     {
         // Same ordering as PlayRecordRepository.GetLatestAsync: observed_at is

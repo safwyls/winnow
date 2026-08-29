@@ -1,4 +1,5 @@
 using Winnow.App.Services;
+using Winnow.Core.Domain;
 using Winnow.Core.Ingest;
 using Winnow.Core.Queries;
 using Winnow.Data.Repositories;
@@ -203,6 +204,16 @@ public sealed class CrossJobPlaytimeSeriesTests : IDisposable
         var latest = records[^1];
         Assert.Equal(playedToday, latest.LastPlayedAt);
         Assert.Equal(AccountWideMinutes, latest.PlaytimeMinutes);
+
+        // F10. The date is steam_local's, the minutes are not: they were carried
+        // forward because localconfig could not see the whole total. The row has
+        // to say so rather than filing the web's 900 minutes under the local
+        // reader's name.
+        Assert.True(PlayRecordSources.IsCarried(latest.Source));
+        Assert.Equal(PlayRecordSources.Carried(SteamLibrarySource.SourceName), latest.Source);
+
+        // The rows that ARE one reader's unaided report are not labelled.
+        Assert.All(records.Take(2), r => Assert.False(PlayRecordSources.IsCarried(r.Source)));
         Assert.Equal(
             [LocalMinutes, AccountWideMinutes, AccountWideMinutes],
             records.Select(r => r.PlaytimeMinutes));
@@ -365,6 +376,13 @@ public sealed class CrossJobPlaytimeSeriesTests : IDisposable
     /// <summary>
     /// Stands in for the HTTP call and nothing else: candidates come through the
     /// real <see cref="SteamOwnedGame.ToCandidate"/> projection.
+    ///
+    /// <para>Candidates are stamped at call time rather than with the library's
+    /// own <c>ObservedAt</c>, which is what the real client does now — a cached
+    /// response's fetch time can be hours old, and a candidate carrying it would
+    /// lose the latest-record query to the local scan it is meant to be
+    /// correcting. Pinned on the client itself in
+    /// <c>SteamWebApiClientTests.A_cache_hit_does_not_backdate_the_candidates_it_hands_ingest</c>.</para>
     /// </summary>
     private sealed class OwnedLibraryStub(long minutes, DateTime lastPlayed, bool configured = true)
         : ISteamWebApiClient
@@ -384,6 +402,6 @@ public sealed class CrossJobPlaytimeSeriesTests : IDisposable
         public async Task<IReadOnlyList<CandidateOwnership>> GetOwnershipCandidatesAsync(
             SteamId steamId, TimeSpan? cacheTtl = null, CancellationToken ct = default)
             => (await GetOwnedGamesAsync(steamId, cacheTtl, ct))
-                .ToCandidates(SteamWebApiClient.SourceName);
+                .ToCandidates(SteamWebApiClient.SourceName, DateTime.UtcNow);
     }
 }

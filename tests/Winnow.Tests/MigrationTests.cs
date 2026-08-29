@@ -764,4 +764,115 @@ public class MigrationTests
             conn.Execute(
                 "INSERT INTO releases (work_id, name) VALUES (999999, 'orphan');"));
     }
+
+    /// <summary>
+    /// 0013 gives an observation an identity. Applied on top of the 0012 shape
+    /// with duplicate rows ALREADY on disk — which is the only state that
+    /// matters, because a database that has been running the pre-fix resolver is
+    /// exactly where the duplicates are, and a unique index that cannot be
+    /// created on a populated database is a migration that bricks the app on
+    /// launch.
+    /// </summary>
+    [Fact]
+    public void Migration_0013_dedupes_before_it_constrains_and_keeps_the_canonical_row()
+    {
+        using var db = new TempDatabase();
+
+        long ownershipId;
+        using (var conn = db.Factory.Open())
+        {
+            // Rewind to 0012: drop the indexes and forget the script ran.
+            conn.Execute("DROP INDEX ux_play_records_observation;");
+            conn.Execute("DROP INDEX ux_playtime_snapshots_observation;");
+            conn.Execute("DELETE FROM SchemaVersions WHERE ScriptName LIKE '%0013%';");
+
+            var workId = conn.ExecuteScalar<long>(
+                "INSERT INTO works (name) VALUES ('Portal 2') RETURNING id;");
+            var releaseId = conn.ExecuteScalar<long>(
+                "INSERT INTO releases (work_id, name) VALUES (@workId, 'Portal 2') RETURNING id;",
+                new { workId });
+            ownershipId = conn.ExecuteScalar<long>("""
+                INSERT INTO ownerships (release_id, store, installed)
+                VALUES (@releaseId, 'steam', 1) RETURNING id;
+                """, new { releaseId });
+
+            // What the pre-fix resolver actually wrote: the same stale reading
+            // re-appended on every pass, with a null date — the case a plain
+            // UNIQUE over a nullable column would not catch.
+            for (var i = 0; i < 4; i++)
+            {
+                conn.Execute("""
+                    INSERT INTO play_records (ownership_id, playtime_minutes, last_played_at, source, observed_at)
+                    VALUES (@ownershipId, 40, NULL, 'steam_web_api', '2019-03-04 21:00:00');
+                    """, new { ownershipId });
+            }
+
+            // The same again, this time WITH a date, to prove the dedupe keys on
+            // the whole fact rather than on the address.
+            for (var i = 0; i < 3; i++)
+            {
+                conn.Execute("""
+                    INSERT INTO play_records (ownership_id, playtime_minutes, last_played_at, source, observed_at)
+                    VALUES (@ownershipId, 40, '2019-03-01 10:00:00', 'steam_web_api', '2019-03-04 21:00:00');
+                    """, new { ownershipId });
+            }
+
+            // A genuinely different observation at the same instant: another
+            // reader, disagreeing. It is not a duplicate and must survive.
+            conn.Execute("""
+                INSERT INTO play_records (ownership_id, playtime_minutes, last_played_at, source, observed_at)
+                VALUES (@ownershipId, 900, NULL, 'steam_local', '2019-03-04 21:00:00');
+                """, new { ownershipId });
+
+            for (var i = 0; i < 5; i++)
+            {
+                conn.Execute("""
+                    INSERT INTO playtime_snapshots (ownership_id, playtime_minutes, observed_at)
+                    VALUES (@ownershipId, 40, '2019-03-04 21:00:00');
+                    """, new { ownershipId });
+            }
+        }
+
+        db.Initializer.Initialize();
+
+        using var after = db.Factory.Open();
+
+        // Three distinct facts out of eight rows in, and the survivors are the
+        // lowest ids — the canonical row, not the last one written.
+        var records = after.Query<(long Id, long Minutes, string? LastPlayed, string Source)>("""
+            SELECT id, playtime_minutes, last_played_at, source
+            FROM play_records WHERE ownership_id = @ownershipId ORDER BY id;
+            """, new { ownershipId }).AsList();
+
+        Assert.Equal(3, records.Count);
+        Assert.Equal([1L, 5L, 8L], records.Select(r => r.Id));
+        Assert.Equal([40L, 40L, 900L], records.Select(r => r.Minutes));
+
+        Assert.Equal(1, after.ExecuteScalar<long>(
+            "SELECT COUNT(*) FROM playtime_snapshots WHERE ownership_id = @ownershipId;",
+            new { ownershipId }));
+
+        // Both indexes exist and are unique.
+        foreach (var index in new[] { "ux_play_records_observation", "ux_playtime_snapshots_observation" })
+        {
+            Assert.Equal(1, after.ExecuteScalar<long>("""
+                SELECT COUNT(*) FROM sqlite_master
+                WHERE type = 'index' AND name = @index;
+                """, new { index }));
+        }
+
+        // And they bite: the null-date replay that filled the table is now one
+        // observation, rejected rather than appended.
+        Assert.Throws<Microsoft.Data.Sqlite.SqliteException>(() =>
+            after.Execute("""
+                INSERT INTO play_records (ownership_id, playtime_minutes, last_played_at, source, observed_at)
+                VALUES (@ownershipId, 40, NULL, 'steam_web_api', '2019-03-04 21:00:00');
+                """, new { ownershipId }));
+
+        Assert.Throws<Microsoft.Data.Sqlite.SqliteException>(() =>
+            after.Execute("""
+                INSERT INTO playtime_snapshots (ownership_id, playtime_minutes, observed_at)
+                VALUES (@ownershipId, 40, '2019-03-04 21:00:00');
+                """, new { ownershipId }));
+    }
 }

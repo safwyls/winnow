@@ -99,11 +99,20 @@ public sealed record SteamOwnedLibrary(
     /// Projects the whole library onto the §5.1 ingest contract. See
     /// <see cref="SteamOwnedGame.ToCandidate"/> for the field caveats.
     /// </summary>
-    public IReadOnlyList<CandidateOwnership> ToCandidates(string source)
+    /// <param name="source">Provenance string for every candidate.</param>
+    /// <param name="observedAt">
+    /// Stamp for the observation, defaulting to <see cref="ObservedAt"/>.
+    /// Callers feeding ingest pass the current time instead: on a cache hit
+    /// <see cref="ObservedAt"/> is when the response was fetched, which can be
+    /// hours old, and a backdated candidate would sit behind the newest stored
+    /// row by <c>observed_at</c>, losing the resolver's latest-record
+    /// comparison on every subsequent sync.
+    /// </param>
+    public IReadOnlyList<CandidateOwnership> ToCandidates(string source, DateTime? observedAt = null)
         => Games.Count == 0
             ? []
             : Games
-                .Select(g => g.ToCandidate(SteamId.AccountRef, source, ObservedAt))
+                .Select(g => g.ToCandidate(SteamId.AccountRef, source, observedAt ?? ObservedAt))
                 .ToArray();
 
     /// <summary>Diagnostics. Carries counts, never the key that fetched them.</summary>

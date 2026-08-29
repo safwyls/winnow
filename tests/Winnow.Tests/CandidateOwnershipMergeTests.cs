@@ -220,21 +220,58 @@ public class CandidateOwnershipMergeTests
     }
 
     /// <summary>
-    /// One of the pair may have been served from the §4.2 cache and be hours
-    /// stale. The merged observation is as of the freshest input that fed it,
-    /// which is what keeps play_records.observed_at monotonic across syncs — and
-    /// what stopped a cached 1970 row winning the "latest record" query the
-    /// moment the cache happened to refresh mid-sync.
+    /// F10. The observation time is part of the play tuple, not a field chosen
+    /// on its own: a row saying "this source, at this instant, reported these
+    /// minutes" has to name the instant that source actually reported them.
+    /// Taking the later of the two reads made the stamp describe a read that did
+    /// not produce the stored figure.
+    ///
+    /// <para>The staleness worry that rule was carrying is real and is now
+    /// handled where it belongs — <c>SteamWebApiClient.GetOwnershipCandidatesAsync</c>
+    /// stamps candidates with the current time rather than the cached response's
+    /// fetch time, exactly as <c>EpicAccountClient</c> already did, so no
+    /// candidate reaching this merge is backdated at all.</para>
     /// </summary>
     [Fact]
-    public void The_merged_observation_is_stamped_with_the_later_of_the_two_reads()
+    public void The_merged_observation_is_the_winning_sources_own_read()
     {
         var merged = Assert.Single(CandidateOwnershipMerge.Coalesce(
         [
-            Web("400", playtime: 280, observedAt: Utc(2026, 8, 25, 2, 25)),
+            Web("400", playtime: 279, observedAt: Utc(2026, 8, 25, 2, 25)),
             Local("400", playtime: 280, observedAt: Utc(2026, 8, 25, 16, 1)),
         ]));
 
+        Assert.Equal(280, merged.PlaytimeMinutes);
+        Assert.Equal("steam_local", merged.Source);
+        Assert.Equal(Utc(2026, 8, 25, 16, 1), merged.ObservedAt);
+
+        // And the other way round, so it is the winner that decides rather than
+        // the later clock.
+        var webWon = Assert.Single(CandidateOwnershipMerge.Coalesce(
+        [
+            Web("400", playtime: 281, observedAt: Utc(2026, 8, 25, 2, 25)),
+            Local("400", playtime: 280, observedAt: Utc(2026, 8, 25, 16, 1)),
+        ]));
+
+        Assert.Equal("steam_web_api", webWon.Source);
+        Assert.Equal(Utc(2026, 8, 25, 2, 25), webWon.ObservedAt);
+    }
+
+    /// <summary>
+    /// An ownership nobody has played says nothing about play, so source and
+    /// observation time are only answering "when was this last seen" — and the
+    /// later look is the better answer to that.
+    /// </summary>
+    [Fact]
+    public void With_no_play_fact_on_either_side_the_later_look_stamps_the_sighting()
+    {
+        var merged = Assert.Single(CandidateOwnershipMerge.Coalesce(
+        [
+            Web("400", observedAt: Utc(2026, 8, 25, 2, 25)),
+            Local("400", observedAt: Utc(2026, 8, 25, 16, 1)),
+        ]));
+
+        Assert.Null(merged.PlaytimeMinutes);
         Assert.Equal(Utc(2026, 8, 25, 16, 1), merged.ObservedAt);
     }
 
@@ -257,9 +294,15 @@ public class CandidateOwnershipMergeTests
     public void An_empty_pass_merges_to_nothing()
         => Assert.Empty(CandidateOwnershipMerge.Coalesce([]));
 
-    /// <summary>Three views collapse to one, not to two.</summary>
+    /// <summary>
+    /// Three views collapse to one, not to two — and to ONE candidate's answer,
+    /// which is F10 in a single assertion. The 280-minute reading and the
+    /// 25 May date come from different sources, and the pair "280 minutes, last
+    /// played 25 May" is a sentence no reader said. The winner reported 280
+    /// minutes on 22 May, so that is the pair that is stored.
+    /// </summary>
     [Fact]
-    public void More_than_two_sources_still_produce_a_single_observation()
+    public void More_than_two_sources_collapse_to_one_sources_answer_not_a_blend()
     {
         var merged = Assert.Single(CandidateOwnershipMerge.Coalesce(
         [
@@ -269,6 +312,50 @@ public class CandidateOwnershipMergeTests
         ]));
 
         Assert.Equal(280, merged.PlaytimeMinutes);
-        Assert.Equal(Utc(2018, 5, 25), merged.LastPlayedAt);
+        Assert.Equal(Utc(2018, 5, 22), merged.LastPlayedAt);
+    }
+
+    /// <summary>
+    /// The cross-account case F10 names. GetOwnedGames is queried per account,
+    /// so a game owned on two accounts arrives as two candidates under one
+    /// (provider, provider_id). Ownership is keyed on (release, store) and does
+    /// not carry the account, so these two do merge — but the result has to be
+    /// one account's hours under that account's name, never account A's minutes
+    /// filed under account B.
+    /// </summary>
+    [Fact]
+    public void Two_accounts_do_not_blend_into_an_ownership_neither_of_them_has()
+    {
+        var quiet = Web("400", playtime: 120, lastPlayed: Utc(2026, 8, 1))
+            with { AccountRef = "11111111" };
+        var busy = Web("400", playtime: 4000, lastPlayed: Utc(2020, 1, 1))
+            with { AccountRef = "22222222" };
+
+        var merged = Assert.Single(CandidateOwnershipMerge.Coalesce([quiet, busy]));
+
+        // The whole tuple is the busy account's, including the older date that
+        // comes with it — that account genuinely has 4000 minutes and last
+        // played in 2020.
+        Assert.Equal(4000, merged.PlaytimeMinutes);
+        Assert.Equal(Utc(2020, 1, 1), merged.LastPlayedAt);
+        Assert.Equal("22222222", merged.AccountRef);
+    }
+
+    /// <summary>
+    /// Attribution follows the minutes, but an unattributed winner does not
+    /// erase what the other side knows: with no account on the winning tuple the
+    /// loser's answers "who owns this", which is the only question left.
+    /// </summary>
+    [Fact]
+    public void An_unattributed_winner_still_takes_the_account_the_loser_names()
+    {
+        var merged = Assert.Single(CandidateOwnershipMerge.Coalesce(
+        [
+            Web("400", playtime: 10) with { AccountRef = "11111111" },
+            Web("400", playtime: 900) with { AccountRef = null },
+        ]));
+
+        Assert.Equal(900, merged.PlaytimeMinutes);
+        Assert.Equal("11111111", merged.AccountRef);
     }
 }
