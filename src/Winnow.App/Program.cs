@@ -373,6 +373,12 @@ public static class Program
         services.AddSingleton<IResolveStateRepository, ResolveStateRepository>();
         services.AddSingleton<ISettingsRepository, SettingsRepository>();
 
+        // Storage for the account-page facts (migration 0014) and the read-only
+        // stats query over them. The stats repository computes and stores nothing,
+        // so the UI reading it can never see a stale aggregate.
+        services.AddSingleton<IAccountFactRepository, AccountFactRepository>();
+        services.AddSingleton<IAccountStatsRepository, AccountStatsRepository>();
+
         // M8's feedback loop (recommendation-engine.md §6b), over migration
         // 0011. It is registered beside the other repositories rather than with
         // the Feed below because it is storage like all of them — but it is the
@@ -562,6 +568,13 @@ public static class Program
         // is one: the saved-file route has to be testable without a window.
         services.AddSingleton<ISteamAccountPageFilePicker, TopLevelSteamAccountPageFilePicker>();
         services.AddSingleton<SteamAccountImportViewModel>();
+
+        // The STATS screen. It reads IAccountStatsRepository (registered above)
+        // and nothing else — no importer, no harvester, no parser — which is
+        // §5.1's rule that the UI reads the database and raises commands. The
+        // screen refreshes on open rather than caching, so a singleton holds no
+        // stale figures; it is one only because the shell is.
+        services.AddSingleton<AccountStatsViewModel>();
 
         // Appearance. The service is a singleton because it owns the ONE live
         // resource dictionary; a second instance would be a second opinion

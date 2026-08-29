@@ -18,6 +18,7 @@ public class MigrationTests
         "metadata_cache", "settings",
         "feed_verdicts", "feed_surfacings",
         "update_acknowledgements",
+        "account_transactions", "account_licenses",
     ];
 
     [Fact]

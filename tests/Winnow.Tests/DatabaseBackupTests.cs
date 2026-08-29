@@ -281,9 +281,13 @@ public sealed class DatabaseBackupTests
         connection.Execute("DROP TABLE IF EXISTS update_acknowledgements;");
         connection.Execute("DROP INDEX IF EXISTS ux_play_records_observation;");
         connection.Execute("DROP INDEX IF EXISTS ux_playtime_snapshots_observation;");
+        connection.Execute("DROP TABLE IF EXISTS account_transactions;");
+        connection.Execute("DROP TABLE IF EXISTS account_licenses;");
         connection.Execute("""
             DELETE FROM SchemaVersions
-            WHERE ScriptName LIKE '%0012%' OR ScriptName LIKE '%0013%';
+            WHERE ScriptName LIKE '%0012%'
+               OR ScriptName LIKE '%0013%'
+               OR ScriptName LIKE '%0014%';
             """);
     }
 

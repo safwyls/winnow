@@ -9,8 +9,11 @@ using Winnow.Ingest.Steam.AccountPages;
 namespace Winnow.App.Services;
 
 /// <summary>
-/// ROADMAP M5 item 3: imports acquisition facts (date, licence type, price) from
-/// the two Steam account pages into existing ownership rows.
+/// ROADMAP M5 item 3: does two things per pass. First, it records every parsed
+/// row from both account pages as a fact in the <c>account_transactions</c> /
+/// <c>account_licenses</c> tables (migration 0014), regardless of whether the
+/// row matches an owned release. Second, it fills acquisition facts (date,
+/// licence type, price) into matching ownership rows exactly as before.
 ///
 /// <para>This service writes ONLY to existing ownerships. It never creates works,
 /// releases or ownerships; that is the resolver's job (§5.1). An unmatched title
@@ -105,6 +108,18 @@ public sealed record SteamAccountPageImportReport
     /// <summary>Purchase rows with no product name (wallet movements, redemptions).</summary>
     public int SkippedNonProductRows { get; init; }
 
+    /// <summary>Transaction rows this pass wrote to the fact table.</summary>
+    public int TransactionFactsRecorded { get; init; }
+
+    /// <summary>Transaction rows this pass found already recorded from an earlier capture.</summary>
+    public int TransactionFactsAlreadyRecorded { get; init; }
+
+    /// <summary>Licence rows this pass wrote to the fact table.</summary>
+    public int LicenseFactsRecorded { get; init; }
+
+    /// <summary>Licence rows this pass found already recorded from an earlier capture.</summary>
+    public int LicenseFactsAlreadyRecorded { get; init; }
+
     /// <summary>Wall-clock time for the whole pass.</summary>
     public TimeSpan Elapsed { get; init; }
 
@@ -136,9 +151,17 @@ public sealed record SteamAccountPageImportReport
 }
 
 /// <summary>
-/// Implements <see cref="ISteamAccountPageImport"/>.
+/// Implements <see cref="ISteamAccountPageImport"/>. Two jobs per pass:
 ///
-/// <para>Matching is conservative per §5.3: exact-or-normalized title match via
+/// <para><b>1. Fact recording.</b> Every parsed row is stored in the fact tables
+/// (migration 0014), including rows the ownership fill refuses: bundles, gifts,
+/// in-game purchases, refunds and wallet movements are all facts about the
+/// account even when they are not facts about an ownership. A row with no owned
+/// release still gets recorded. Re-running is free: identity is the whole
+/// fact.</para>
+///
+/// <para><b>2. Ownership fill.</b> The paragraphs below describe this job.
+/// Matching is conservative per §5.3: exact-or-normalized title match via
 /// <see cref="TitleNormalizer"/> against the user's owned Steam releases. Nothing
 /// fuzzy is ever auto-applied. If two owned releases normalise to the same key,
 /// that key is ambiguous and neither is touched. Provisional names (machine-minted
@@ -161,6 +184,7 @@ public sealed class SteamAccountPageImportService : ISteamAccountPageImport
 {
     private readonly IOwnershipRepository _ownerships;
     private readonly IReleaseRepository _releases;
+    private readonly IAccountFactRepository _facts;
     private readonly IUnitOfWorkFactory _unitOfWork;
     private readonly LibrarySyncGate _gate;
     private readonly ILogger<SteamAccountPageImportService> _logger;
@@ -168,12 +192,14 @@ public sealed class SteamAccountPageImportService : ISteamAccountPageImport
     public SteamAccountPageImportService(
         IOwnershipRepository ownerships,
         IReleaseRepository releases,
+        IAccountFactRepository facts,
         IUnitOfWorkFactory unitOfWork,
         LibrarySyncGate gate,
         ILogger<SteamAccountPageImportService> logger)
     {
         _ownerships = ownerships;
         _releases = releases;
+        _facts = facts;
         _unitOfWork = unitOfWork;
         _gate = gate;
         _logger = logger;
@@ -212,10 +238,13 @@ public sealed class SteamAccountPageImportService : ISteamAccountPageImport
         // line is parsing and reading and holds no lock.
         var filled = 0;
         var alreadyComplete = 0;
+        var facts = new FactCounters();
 
         using (await _gate.EnterAsync(ct).ConfigureAwait(false))
         {
             using var scope = _unitOfWork.Begin();
+
+            await RecordFactsAsync(parsed, pages.CapturedAt.UtcDateTime, facts, ct).ConfigureAwait(false);
 
             foreach (var (ownershipId, fill) in pending)
             {
@@ -279,6 +308,10 @@ public sealed class SteamAccountPageImportService : ISteamAccountPageImport
             SkippedRefundedRows = counters.SkippedRefundedRows,
             SkippedNonPurchaseRows = counters.SkippedNonPurchaseRows,
             SkippedNonProductRows = counters.SkippedNonProductRows,
+            TransactionFactsRecorded = facts.TransactionsRecorded,
+            TransactionFactsAlreadyRecorded = facts.TransactionsAlreadyRecorded,
+            LicenseFactsRecorded = facts.LicensesRecorded,
+            LicenseFactsAlreadyRecorded = facts.LicensesAlreadyRecorded,
             Elapsed = Stopwatch.GetElapsedTime(started),
         };
 
@@ -382,6 +415,136 @@ public sealed class SteamAccountPageImportService : ISteamAccountPageImport
         }
     }
 
+    // ── Fact recording ───────────────────────────────────────────────────────
+    // This pass stores EVERY parsed row, including the ones the ownership fill
+    // refuses. Bundles, gifts, in-game purchases, refunds and wallet movements
+    // are all facts about the account even when they are not facts about an
+    // ownership. Ownership matching is irrelevant here; a row with no owned
+    // release still gets recorded. It runs inside the same gate and unit of
+    // work as the fills, so a capture is stored atomically or not at all.
+    // Re-running is free: identity is the whole fact (migration 0014).
+    private async Task RecordFactsAsync(
+        SteamAccountPageParseResult parsed, DateTime capturedAt, FactCounters facts, CancellationToken ct)
+    {
+        if (parsed.History.Outcome == SteamAccountPageParseOutcome.Parsed)
+        {
+            foreach (var row in parsed.History.Rows)
+            {
+                ct.ThrowIfCancellationRequested();
+
+                if (await _facts.TryAppendAsync(TransactionFact(row, capturedAt), ct).ConfigureAwait(false) is not null)
+                {
+                    facts.TransactionsRecorded++;
+                }
+                else
+                {
+                    facts.TransactionsAlreadyRecorded++;
+                }
+            }
+        }
+
+        if (parsed.Licenses.Outcome != SteamAccountPageParseOutcome.Parsed)
+        {
+            return;
+        }
+
+        foreach (var row in parsed.Licenses.Rows)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            if (await _facts.TryAppendAsync(LicenseFact(row, capturedAt), ct).ConfigureAwait(false) is not null)
+            {
+                facts.LicensesRecorded++;
+            }
+            else
+            {
+                facts.LicensesAlreadyRecorded++;
+            }
+        }
+    }
+
+    private static AccountTransactionFact TransactionFact(SteamPurchaseRow row, DateTime capturedAt)
+    {
+        var kind = ClassifyKind(row);
+
+        return new AccountTransactionFact
+        {
+            Source = AccountFactSources.Steam,
+            Kind = kind,
+            TransactionTypeRaw = row.TransactionType,
+            OccurredAt = row.PurchasedAtUtc,
+            ItemNames = row.Items,
+            Note = row.Note,
+            TotalCents = row.Total?.Cents,
+            ListPriceCents = row.OriginalPrice?.Cents,
+            DiscountPercent = row.DiscountPercent,
+            WalletChangeCents = row.WalletChange?.Cents,
+            CurrencySymbol = row.Total?.CurrencySymbol
+                ?? row.BasePrice?.CurrencySymbol
+                ?? row.WalletChange?.CurrencySymbol,
+            PaymentKind = row.PaymentKind,
+            Refunded = row.Refunded,
+
+            // Presence only. The page renders the recipient's persona, community
+            // URL and miniprofile id on exactly the gift rows; none of it is read
+            // and none of it is stored.
+            GiftRecipientPresent = string.Equals(kind, AccountTransactionKinds.GiftPurchase, StringComparison.Ordinal),
+            AppId = row.AppId,
+            CapturedAt = capturedAt,
+        };
+    }
+
+    private static AccountLicenseFact LicenseFact(SteamLicenseRow row, DateTime capturedAt) => new()
+    {
+        Source = AccountFactSources.Steam,
+        ItemName = row.ItemName,
+        AcquiredAt = row.AcquiredAtUtc,
+        AcquisitionKind = row.LicenseType,
+        AcquisitionMethodRaw = row.AcquisitionMethod,
+        PackageId = row.PackageId,
+        CapturedAt = capturedAt,
+    };
+
+    private static string ClassifyKind(SteamPurchaseRow row)
+    {
+        if (Is(row, SteamTransactionTypes.GiftPurchase))
+        {
+            return AccountTransactionKinds.GiftPurchase;
+        }
+
+        if (Is(row, SteamTransactionTypes.InGamePurchase))
+        {
+            return AccountTransactionKinds.InGamePurchase;
+        }
+
+        if (Is(row, SteamTransactionTypes.Refund))
+        {
+            return AccountTransactionKinds.Refund;
+        }
+
+        if (row.IsProductRow)
+        {
+            return Is(row, SteamTransactionTypes.Purchase)
+                ? AccountTransactionKinds.Purchase
+                : AccountTransactionKinds.Other;
+        }
+
+        // No product names: a wallet movement. Credit the user PAID for carries a
+        // total; credit redeemed from a code carries only the balance change,
+        // because what that code cost is not on this page.
+        if (row.WalletChange is { Cents: > 0 })
+        {
+            return row.Total is not null
+                ? AccountTransactionKinds.WalletCreditPurchase
+                : AccountTransactionKinds.WalletCreditRedemption;
+        }
+
+        return AccountTransactionKinds.Other;
+    }
+
+    private static bool Is(SteamPurchaseRow row, string transactionType)
+        => string.Equals(row.TransactionType, transactionType, StringComparison.Ordinal);
+
     private static PendingFill Pending(Dictionary<long, PendingFill> pending, long ownershipId)
     {
         if (!pending.TryGetValue(ownershipId, out var fill))
@@ -479,6 +642,14 @@ public sealed class SteamAccountPageImportService : ISteamAccountPageImport
 
             return true;
         }
+    }
+
+    private sealed class FactCounters
+    {
+        public int TransactionsRecorded;
+        public int TransactionsAlreadyRecorded;
+        public int LicensesRecorded;
+        public int LicensesAlreadyRecorded;
     }
 
     private sealed class Counters

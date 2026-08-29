@@ -18,12 +18,14 @@ public class SteamAccountPageImportTests : IDisposable
     private readonly WorkRepository _works;
     private readonly ReleaseRepository _releases;
     private readonly OwnershipRepository _ownerships;
+    private readonly AccountFactRepository _facts;
 
     public SteamAccountPageImportTests()
     {
         _works = new WorkRepository(_db.Factory);
         _releases = new ReleaseRepository(_db.Factory);
         _ownerships = new OwnershipRepository(_db.Factory);
+        _facts = new AccountFactRepository(_db.Factory);
     }
 
     public void Dispose() => _db.Dispose();
@@ -35,6 +37,7 @@ public class SteamAccountPageImportTests : IDisposable
     private SteamAccountPageImportService Service() => new(
         _ownerships,
         _releases,
+        _facts,
         _db.Factory,
         new LibrarySyncGate(),
         NullLogger<SteamAccountPageImportService>.Instance);
