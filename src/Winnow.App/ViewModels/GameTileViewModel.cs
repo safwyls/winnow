@@ -1,7 +1,5 @@
 using Avalonia.Media;
 using Avalonia.Media.Immutable;
-using Avalonia.Media.Imaging;
-using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Winnow.App.Services;
 using Winnow.Core.Domain;
@@ -15,12 +13,12 @@ namespace Winnow.App.ViewModels;
 /// 0.22, brightness 0.60) sits under the vivid art, whose opacity is
 /// <see cref="DisplayAlpha"/> — the ramp value normally, 1.0 under the
 /// pointer (the view animates the change over 140ms).
-/// <para>Real cover art (M1) is exactly that swap and nothing more: when
-/// <see cref="VividCover"/> arrives it paints over the procedural
-/// <see cref="PlaceholderArt"/> layers, sharing the same
-/// <see cref="DisplayAlpha"/> and the same 140ms transition. The placeholder
-/// stays underneath as the fallback, so a missing or still-loading cover shows
-/// the title on a Surface field (§7) rather than a hole or a spinner.</para>
+/// <para>The decoded bitmaps live on the requesting surface's own
+/// <see cref="CoverPresenter"/> rather than here, because one tile is shown
+/// by the wall and by a feed card at the same time and a recycled wall
+/// container must not blank a visible card. The procedural placeholder stays
+/// underneath as the fallback, so a missing or still-loading cover shows the
+/// title on a Surface field (§7) rather than a hole or a spinner.</para>
 /// </summary>
 public partial class GameTileViewModel : ObservableObject
 {
@@ -32,10 +30,8 @@ public partial class GameTileViewModel : ObservableObject
     /// </summary>
     private static readonly DormancyRamp DefaultRamp = new();
 
-    private readonly ICoverCache? _covers;
     private readonly DormancyRamp _ramp;
     private readonly DateTime _nowUtc;
-    private bool _coverWanted;
 
     public GameTileViewModel(
         long ownershipId,
@@ -48,7 +44,7 @@ public partial class GameTileViewModel : ObservableObject
         DateTime nowUtc,
         bool hasUnread = false,
         CoverKey? coverKey = null,
-        ICoverCache? covers = null,
+        ICoverLeases? covers = null,
         Work? work = null,
         Ownership? ownership = null,
         DormancyRamp? ramp = null,
@@ -61,7 +57,7 @@ public partial class GameTileViewModel : ObservableObject
         SteamAppId = GameLink.IsSteamAppId(steamAppId) ? steamAppId : null;
         GogProductId = StoreActions.IsGogProductId(gogProductId) ? gogProductId : null;
         EpicLaunchKey = epicLaunchKey;
-        _covers = covers;
+        Leases = covers;
         _ramp = ramp ?? DefaultRamp;
         _nowUtc = nowUtc;
         OwnershipId = ownershipId;
@@ -275,77 +271,25 @@ public partial class GameTileViewModel : ObservableObject
     /// <summary>Provider id this tile's art is fetched under; null when we know no id for it.</summary>
     public CoverKey? CoverKey { get; }
 
-    /// <summary>Real vivid cover, decoded at display resolution. Null until it arrives.</summary>
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasCover), nameof(ShowPlaceholder))]
-    public partial Bitmap? VividCover { get; set; }
-
-    /// <summary>Real floor variant (sat 0.22 / bright 0.60), pre-computed by the cover cache.</summary>
-    [ObservableProperty]
-    public partial Bitmap? FloorCover { get; set; }
-
-    public bool HasCover => VividCover is not null;
-
-    /// <summary>Procedural art is the fallback: it paints whenever no cover is loaded.</summary>
-    public bool ShowPlaceholder => VividCover is null;
+    /// <summary>
+    /// Where any surface showing this game acquires its art. The tile holds the
+    /// identity and the lease source; the loaded bitmaps live on each surface's
+    /// own <see cref="CoverPresenter"/>, because one tile is on the wall and in
+    /// the feed at the same time and a recycled wall container must not blank a
+    /// visible card.
+    /// </summary>
+    internal ICoverLeases? Leases { get; }
 
     /// <summary>
-    /// Called when the tile is realized. A memory hit applies synchronously so
-    /// scrolling back never flashes the placeholder; anything else is handed to
-    /// the cover cache and arrives later (§5.1 — art never blocks the UI).
+    /// A new cover presenter for this game, already targeted at its key and
+    /// lease source. Owned by the caller and released independently of every
+    /// other surface's presenter.
     /// </summary>
-    public void RequestCover(double displayWidthPixels)
+    internal CoverPresenter NewCoverPresenter()
     {
-        _coverWanted = true;
-        if (_covers is null || CoverKey is not { } key)
-        {
-            return;
-        }
-
-        if (_covers.TryGet(key, displayWidthPixels, out var cached))
-        {
-            Apply(cached);
-            return;
-        }
-
-        _ = LoadCoverAsync(key, displayWidthPixels);
-    }
-
-    /// <summary>
-    /// Called when the tile is recycled out of the visual tree. Dropping the
-    /// references is what makes the cache's memory bound real: off-screen tiles
-    /// keep nothing alive, so the LRU is the only owner of decoded pixels.
-    /// </summary>
-    public void ReleaseCover()
-    {
-        _coverWanted = false;
-        VividCover = null;
-        FloorCover = null;
-    }
-
-    private async Task LoadCoverAsync(CoverKey key, double displayWidthPixels)
-    {
-        var art = await _covers!.GetAsync(key, displayWidthPixels).ConfigureAwait(false);
-        if (art is null)
-        {
-            return;
-        }
-
-        // Covers appear as they arrive; the tile is already on screen showing
-        // its placeholder, so this is a repaint, not a load gate.
-        Dispatcher.UIThread.Post(() =>
-        {
-            if (_coverWanted)
-            {
-                Apply(art);
-            }
-        });
-    }
-
-    private void Apply(CoverArt art)
-    {
-        FloorCover = art.Floor;
-        VividCover = art.Vivid;
+        var presenter = new CoverPresenter();
+        presenter.Target(CoverKey, Leases);
+        return presenter;
     }
 
     [ObservableProperty]

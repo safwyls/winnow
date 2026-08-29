@@ -10,7 +10,7 @@ namespace Winnow.App.ViewModels;
 /// the action line becomes an undo receipt; a failed write keeps both controls
 /// in place.
 /// </summary>
-public partial class FeedCardViewModel : ObservableObject
+public partial class FeedCardViewModel : ObservableObject, IDisposable
 {
     /// <summary>
     /// Optional so a host that never registered the feedback store costs the two
@@ -25,6 +25,7 @@ public partial class FeedCardViewModel : ObservableObject
     public FeedCardViewModel(GameTileViewModel tile, string reason, IFeedService? feed = null)
     {
         Tile = tile;
+        Cover = tile.NewCoverPresenter();
         Reason = reason;
         ReasonRuns = ReasonText.Split(reason);
         _feed = feed;
@@ -35,6 +36,15 @@ public partial class FeedCardViewModel : ObservableObject
     /// <see cref="IGameTileSource"/> for why the feed borrows rather than builds.
     /// </summary>
     public GameTileViewModel Tile { get; }
+
+    /// <summary>
+    /// This card's own cover state. The tile is borrowed and the wall recycles
+    /// it; the art on this card is not the wall's to blank.
+    /// </summary>
+    public CoverPresenter Cover { get; }
+
+    /// <summary>Drops this card's cover state when the shelf it belongs to is replaced.</summary>
+    public void Dispose() => Cover.Dispose();
 
     /// <summary>
     /// The engine's sentence, verbatim, for the accessible name and for any

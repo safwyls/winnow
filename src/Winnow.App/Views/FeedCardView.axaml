@@ -163,7 +163,7 @@
 
                         <!-- Placeholder (§7): title on Surface until art loads. -->
                         <Border Background="{Binding Tile.FloorBrush}"
-                                IsVisible="{Binding Tile.ShowPlaceholder}">
+                                IsVisible="{Binding Cover.ShowPlaceholder}">
                             <TextBlock Text="{Binding Tile.Title}"
                                        FontFamily="{StaticResource DisplayFont}"
                                        FontWeight="Bold" FontSize="15" LineHeight="17"
@@ -174,7 +174,7 @@
                         <Border Name="VividArt"
                                 Background="{Binding Tile.VividBrush}"
                                 Opacity="{Binding Tile.DisplayAlpha}"
-                                IsVisible="{Binding Tile.ShowPlaceholder}">
+                                IsVisible="{Binding Cover.ShowPlaceholder}">
                             <TextBlock Text="{Binding Tile.Title}"
                                        FontFamily="{StaticResource DisplayFont}"
                                        FontWeight="Bold" FontSize="15" LineHeight="17"
@@ -183,9 +183,9 @@
                                        VerticalAlignment="Bottom" Margin="10"/>
                         </Border>
 
-                        <Image Source="{Binding Tile.FloorCover}" Stretch="UniformToFill"/>
+                        <Image Source="{Binding Cover.Floor}" Stretch="UniformToFill"/>
                         <Image Name="VividArtwork"
-                               Source="{Binding Tile.VividCover}" Stretch="UniformToFill"
+                               Source="{Binding Cover.Vivid}" Stretch="UniformToFill"
                                Opacity="{Binding Tile.DisplayAlpha}"/>
 
                         <!-- Gloss sweep, as on the wall. -->

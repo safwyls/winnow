@@ -3,6 +3,7 @@
              xmlns:vm="using:Winnow.App.ViewModels"
              x:Class="Winnow.App.Views.GameTileView"
              x:DataType="vm:GameTileViewModel"
+             Name="Root"
              ClipToBounds="False">
 
     <!--
@@ -254,7 +255,7 @@
 
                     <!-- Layer 1: dormancy floor (sat 0.22 / bright 0.60). -->
                     <Border Background="{Binding FloorBrush}"
-                            IsVisible="{Binding ShowPlaceholder}">
+                            IsVisible="{Binding #Root.Cover.ShowPlaceholder}">
                         <TextBlock Classes="art-title" Text="{Binding Title}"
                                    FontFamily="{StaticResource DisplayFont}"
                                    FontWeight="Bold" FontSize="19" LineHeight="20"
@@ -270,7 +271,7 @@
                          there, still cached, still valid. -->
                     <Border Name="VividArt"
                             Background="{Binding VividBrush}" Opacity="{Binding DisplayAlpha}"
-                            IsVisible="{Binding ShowPlaceholder}">
+                            IsVisible="{Binding #Root.Cover.ShowPlaceholder}">
                         <TextBlock Classes="art-title" Text="{Binding Title}"
                                    FontFamily="{StaticResource DisplayFont}"
                                    FontWeight="Bold" FontSize="19" LineHeight="20"
@@ -282,9 +283,9 @@
                     <!-- Real cover art: the same two layers, the same alpha, the
                          same 140ms transition. The spike's whole point is that
                          swapping the source changes nothing about the fade. -->
-                    <Image Source="{Binding FloorCover}" Stretch="UniformToFill"/>
+                    <Image Source="{Binding #Root.Cover.Floor}" Stretch="UniformToFill"/>
                     <Image Name="VividArtwork"
-                           Source="{Binding VividCover}" Stretch="UniformToFill"
+                           Source="{Binding #Root.Cover.Vivid}" Stretch="UniformToFill"
                            Opacity="{Binding DisplayAlpha}"/>
 
                     <!-- Gloss sweep, per mock's .art::after. -->

@@ -302,9 +302,10 @@ public class CoverWall : Panel
             Children.Add(container);
         }
 
-        // DataContext, then visible: GameTileView releases the previous game's
-        // bitmaps on the context swap and requests the new game's art, so the
-        // container is never briefly showing one game's art under another's.
+        // DataContext, then visible: the context swap retargets GameTileView's
+        // presenter, which drops the previous game's art and lease and requests
+        // the new game's, so the container never briefly shows one game's art
+        // under another's.
         container.DataContext = item;
         container.IsVisible = true;
         return container;
@@ -319,10 +320,9 @@ public class CoverWall : Panel
 
         container.IsVisible = false;
 
-        // Clearing the context is what releases the decoded bitmaps —
-        // GameTileView.OnDataContextChanged calls ReleaseCover on the game it
-        // was showing. That is what keeps the cover cache's memory bound honest
-        // with 616 tiles and only a screenful realized.
+        // Clearing the context retargets GameTileView's presenter, which drops
+        // the art and the lease it held. That is what keeps the cover cache's
+        // memory bound honest with 616 tiles and only a screenful realized.
         container.DataContext = null;
         _pool.Add(container);
     }

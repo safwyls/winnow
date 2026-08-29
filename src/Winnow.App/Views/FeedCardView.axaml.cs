@@ -1,4 +1,3 @@
-using System.ComponentModel;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
 using Avalonia.Input;
@@ -10,8 +9,9 @@ namespace Winnow.App.Views;
 
 /// <summary>
 /// Code-behind for a feed card: sets reason text as mixed-font inlines, drives
-/// hover state on the tile view model, and re-requests cover art when the wall
-/// recycles the tile's bitmaps.
+/// hover state on the borrowed tile view model, and asks the card's own
+/// <see cref="CoverPresenter"/> for art at 108 DIP scaled by render scaling.
+/// The card holds its own cover state; the wall cannot blank it.
 /// </summary>
 public partial class FeedCardView : UserControl
 {
@@ -24,6 +24,7 @@ public partial class FeedCardView : UserControl
     private const double CoverWidth = 108;
 
     private GameTileViewModel? _tile;
+    private CoverPresenter? _cover;
 
     public FeedCardView()
     {
@@ -68,28 +69,13 @@ public partial class FeedCardView : UserControl
     protected override void OnDetachedFromVisualTree(Avalonia.VisualTreeAttachmentEventArgs e)
     {
         base.OnDetachedFromVisualTree(e);
-
-        // Stop watching, but leave the bitmaps alone — see the class remarks.
-        if (_tile is not null)
-        {
-            _tile.PropertyChanged -= OnTileChanged;
-        }
-
         SetHover(false);
     }
 
     private void Bind(FeedCardViewModel? card)
     {
-        if (_tile is not null)
-        {
-            _tile.PropertyChanged -= OnTileChanged;
-        }
-
         _tile = card?.Tile;
-        if (_tile is not null)
-        {
-            _tile.PropertyChanged += OnTileChanged;
-        }
+        _cover = card?.Cover;
 
         WriteReason(card);
         RequestCover();
@@ -135,20 +121,9 @@ public partial class FeedCardView : UserControl
         }
     }
 
-    private void OnTileChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        // The wall recycled a container that was showing this game and released
-        // its bitmaps. Ask again: the cache usually answers from memory, and the
-        // card is on screen either way.
-        if (e.PropertyName == nameof(GameTileViewModel.VividCover) && _tile?.VividCover is null)
-        {
-            RequestCover();
-        }
-    }
-
     private void RequestCover()
     {
-        if (_tile is null || this.GetVisualRoot() is null)
+        if (_cover is null || this.GetVisualRoot() is null)
         {
             return;
         }
@@ -156,7 +131,7 @@ public partial class FeedCardView : UserControl
         // Display resolution, not source resolution (§5.4). The cover cache
         // snaps the width to a bucket, so DPI cannot start a re-decode treadmill.
         var scaling = TopLevel.GetTopLevel(this)?.RenderScaling ?? 1.0;
-        _tile.RequestCover(CoverWidth * scaling);
+        _cover.Request(CoverWidth * scaling);
     }
 
     private void SetHover(bool value)

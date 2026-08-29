@@ -52,6 +52,13 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     private readonly ICoverCache? _covers;
 
     /// <summary>
+    /// What a tile hands to any surface that wants to show its art — each
+    /// surface acquires its own lease from this pool. Optional for the same
+    /// reason the cache is: an unregistered one costs the art, not the window.
+    /// </summary>
+    private readonly ICoverLeases? _leases;
+
+    /// <summary>
     /// Genre / theme / store tag / game mode (migration 0007). Optional: with
     /// nothing registered the panel still cuts on store, on-disk and release
     /// year, and simply does not draw the groups that need enriched metadata.
@@ -100,7 +107,8 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         Services.IEpicLaunchKeys? epicLaunchKeys = null,
         Services.GameLaunchService? launcher = null,
         LaunchStatusViewModel? launchStatus = null,
-        JournalPromptViewModel? journal = null)
+        JournalPromptViewModel? journal = null,
+        ICoverLeases? leases = null)
     {
         _libraryQueries = libraryQueries;
         _ownerships = ownerships;
@@ -108,6 +116,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         _works = works;
         _updateEvents = updateEvents;
         _covers = covers;
+        _leases = leases;
         _snapshots = snapshots;
         _facetRepository = facets;
         _epicLaunchKeys = epicLaunchKeys;
@@ -638,7 +647,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
                 // badge is that bucket membership — nothing else earns Flare.
                 hasUnread: row.Bucket == LibraryBuckets.StaleButPatched,
                 coverKey: coverKeyByRelease.TryGetValue(row.ReleaseId, out var coverKey) ? coverKey : null,
-                covers: _covers,
+                covers: _leases,
                 work: work,
                 ownership: ownership,
                 ramp: Ramp,

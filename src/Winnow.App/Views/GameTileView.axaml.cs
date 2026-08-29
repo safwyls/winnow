@@ -16,9 +16,10 @@ namespace Winnow.App.Views;
 /// property, so the two pointer events do it explicitly.</para>
 /// <para>Cover art: realization is the load trigger. The wall only gives a
 /// container a data context while its cell is on screen (plus a buffer row), so
-/// "visible first" falls out of the context swap for free — and the swap to null
-/// releases the bitmaps, which is what keeps the cache's memory bound honest
-/// with 616 tiles virtualized.</para>
+/// "visible first" falls out of the context swap for free — and the swap
+/// retargets this container's <see cref="Cover"/> presenter, which drops the
+/// previous game's art and lease. Detaching releases it. That is what keeps the
+/// cache's memory bound honest with 616 tiles virtualized.</para>
 /// </summary>
 public partial class GameTileView : UserControl
 {
@@ -32,6 +33,14 @@ public partial class GameTileView : UserControl
     {
         InitializeComponent();
     }
+
+    /// <summary>
+    /// This container's own cover state, retargeted when the wall recycles it
+    /// onto another game. The same tile appears on the wall and on a feed card
+    /// at once, so recycling this container may only drop what this container
+    /// is showing.
+    /// </summary>
+    public CoverPresenter Cover { get; } = new();
 
     protected override void OnPointerEntered(PointerEventArgs e)
     {
@@ -54,13 +63,14 @@ public partial class GameTileView : UserControl
         SetHover(IsPointerOver);
 
         // Recycling swaps the data context without ever detaching, so this — not
-        // OnDetachedFromVisualTree — is the common release path. Missing it
-        // leaves every game the container has ever shown holding its bitmaps,
-        // and the cache's memory bound stops meaning anything.
+        // OnDetachedFromVisualTree — is the common path that retargets the
+        // presenter. Missing it leaves this container's presenter holding a
+        // lease on the previous game's art, and the cache's memory bound stops
+        // meaning anything.
         if (!ReferenceEquals(_bound, DataContext))
         {
-            _bound?.ReleaseCover();
             _bound = DataContext as GameTileViewModel;
+            Cover.Target(_bound?.CoverKey, _bound?.Leases);
         }
 
         if (this.GetVisualRoot() is not null)
@@ -73,18 +83,19 @@ public partial class GameTileView : UserControl
     {
         base.OnAttachedToVisualTree(e);
         _bound = DataContext as GameTileViewModel;
+        Cover.Target(_bound?.CoverKey, _bound?.Leases);
         RequestCover();
     }
 
     protected override void OnDetachedFromVisualTree(Avalonia.VisualTreeAttachmentEventArgs e)
     {
         base.OnDetachedFromVisualTree(e);
-        _bound?.ReleaseCover();
+        Cover.Release();
     }
 
     private void RequestCover()
     {
-        if (DataContext is not GameTileViewModel tile)
+        if (DataContext is not GameTileViewModel)
         {
             return;
         }
@@ -94,7 +105,7 @@ public partial class GameTileView : UserControl
         // re-decode treadmill.
         var width = Bounds.Width > 0 ? Bounds.Width : NominalTileWidth;
         var scaling = TopLevel.GetTopLevel(this)?.RenderScaling ?? 1.0;
-        tile.RequestCover(width * scaling);
+        Cover.Request(width * scaling);
     }
 
     private void SetHover(bool value)

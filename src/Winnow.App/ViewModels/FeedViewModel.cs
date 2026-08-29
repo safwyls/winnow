@@ -157,6 +157,17 @@ public partial class FeedViewModel : ObservableObject
             return;
         }
 
+        // Each card owns its cover state, so the cards going off the screen are
+        // the only thing that may drop it.
+        foreach (var shelf in Shelves)
+        {
+            foreach (var card in shelf.Cards)
+            {
+                card.VerdictChanged -= OnCardVerdictChanged;
+                card.Dispose();
+            }
+        }
+
         Shelves.Clear();
 
         CandidateCountText = snapshot.CandidateCount.ToString("N0");

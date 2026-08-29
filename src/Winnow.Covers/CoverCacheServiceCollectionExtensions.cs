@@ -11,11 +11,12 @@ public static class CoverCacheServiceCollectionExtensions
 {
     /// <summary>
     /// Registers the cover pipeline: Steam's portrait capsule as the first
-    /// source, the <c>%LOCALAPPDATA%\Winnow\covers\</c> disk cache, and the
-    /// bounded in-memory <see cref="ICoverCache"/>. Registering another
-    /// <see cref="ICoverSource"/> afterwards makes it the gap-filler for keys
-    /// Steam declines — that is where IGDB covers plug in, with no dependency
-    /// here on IGDB or any credential.
+    /// source, the <c>%LOCALAPPDATA%\Winnow\covers\</c> disk cache, the
+    /// bounded in-memory <see cref="ICoverCache"/>, and the
+    /// <see cref="CoverLeasePool"/> that reference-counts decoded art across
+    /// surfaces. Registering another <see cref="ICoverSource"/> afterwards
+    /// makes it the gap-filler for keys Steam declines — that is where IGDB
+    /// covers plug in, with no dependency here on IGDB or any credential.
     /// </summary>
     public static IServiceCollection AddCoverCache(this IServiceCollection services)
         => services.AddCoverCache(null);
@@ -40,6 +41,10 @@ public static class CoverCacheServiceCollectionExtensions
         services.TryAddSingleton<CoverDiskCache>();
         services.TryAddSingleton<CoverPipeline>();
         services.TryAddSingleton<ICoverCache, CoverCache>();
+
+        // One pool for the process: leases are the refcount over (cover, width
+        // bucket), so a second instance would be a second, independent count.
+        services.TryAddSingleton<ICoverLeases, CoverLeasePool>();
 
         return services;
     }
