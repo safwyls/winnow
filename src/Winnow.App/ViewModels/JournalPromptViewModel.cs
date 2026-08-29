@@ -94,8 +94,34 @@ public partial class JournalPromptViewModel : ObservableObject, IDisposable
 
     public bool IsRated5 => Rating >= 5;
 
-    /// <summary>The in-flight write, so a test can wait for the note to reach disk.</summary>
-    public Task PendingSave { get; private set; } = Task.CompletedTask;
+    /// <summary>
+    /// Whether a write is in flight. The card stays open, and Save, Dismiss, the
+    /// note box and the rating dots all lock — a Note typed over an in-flight
+    /// save could be wiped by the Close() that follows it landing.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SaveLabel))]
+    public partial bool IsSaving { get; set; }
+
+    /// <summary>
+    /// Set when a write did not land. The card stays open with the note and
+    /// rating exactly as typed, because an unwritten note may not disappear —
+    /// the same Save button is the retry.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasError))]
+    public partial string? Problem { get; set; }
+
+    public bool HasError => Problem is not null;
+
+    public string SaveLabel => IsSaving ? "Saving…" : "Save";
+
+    /// <summary>
+    /// The in-flight command, for a test to await. Tracks the whole outcome —
+    /// write, then close-or-error — never just the raw call, so awaiting it
+    /// only resolves once the card has actually settled.
+    /// </summary>
+    public Task PendingSave => SaveCommand.ExecutionTask ?? Task.CompletedTask;
 
     /// <summary>
     /// Opens the card. Public so a test — and only a test — can drive it without
@@ -115,6 +141,7 @@ public partial class JournalPromptViewModel : ObservableObject, IDisposable
         DurationText = DurationOf(ended.DurationSeconds);
         Note = string.Empty;
         Rating = 0;
+        Problem = null;
         IsOpen = true;
 
         Arm();
@@ -136,7 +163,7 @@ public partial class JournalPromptViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void Rate(string? value)
     {
-        if (!int.TryParse(value, out var star) || star is < 1 or > 5)
+        if (IsSaving || !int.TryParse(value, out var star) || star is < 1 or > 5)
         {
             return;
         }
@@ -146,26 +173,67 @@ public partial class JournalPromptViewModel : ObservableObject, IDisposable
     }
 
     /// <summary>
-    /// Writes and closes. Writing nothing is allowed and writes nothing: a Save
-    /// pressed on an empty card is a dismissal that took the long way round.
+    /// Writes and closes only once the write lands. Writing nothing is allowed
+    /// and writes nothing: a Save pressed on an empty card is a dismissal that
+    /// took the long way round. A write that fails leaves the card exactly as
+    /// it was — open, with the note and rating intact — instead of closing over
+    /// a note nobody wrote down.
     /// </summary>
     [RelayCommand]
-    private void Save()
+    private async Task SaveAsync(CancellationToken ct)
     {
-        if (_journal is not null && HasContent)
+        if (IsSaving)
         {
-            PendingSave = _journal.SaveAsync(
+            return;
+        }
+
+        if (_journal is null || !HasContent)
+        {
+            Close();
+            return;
+        }
+
+        IsSaving = true;
+        Problem = null;
+        try
+        {
+            await _journal.SaveAsync(
                 _sessionId,
                 Note,
-                Rating is >= 1 and <= 5 ? Rating : null);
+                Rating is >= 1 and <= 5 ? Rating : null,
+                ct);
+            Close();
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch
+        {
+            Problem = "Couldn't save. Your note is still here — try again.";
+        }
+        finally
+        {
+            IsSaving = false;
+        }
+    }
+
+    /// <summary>
+    /// The ×, and Escape. Not an answer — an absence of one. Locked out mid-save
+    /// so a click cannot close the card out from under a write that is about to
+    /// either land (fine either way) or fail (which must find the card still
+    /// open to show it).
+    /// </summary>
+    [RelayCommand]
+    private void Dismiss()
+    {
+        if (IsSaving)
+        {
+            return;
         }
 
         Close();
     }
-
-    /// <summary>The ×, and Escape. Not an answer — an absence of one.</summary>
-    [RelayCommand]
-    private void Dismiss() => Close();
 
     public void Dispose()
     {
@@ -189,6 +257,7 @@ public partial class JournalPromptViewModel : ObservableObject, IDisposable
         IsOpen = false;
         Note = string.Empty;
         Rating = 0;
+        Problem = null;
         _sessionId = 0;
         _timer?.Dispose();
         _timer = null;

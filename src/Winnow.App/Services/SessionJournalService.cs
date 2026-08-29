@@ -22,10 +22,21 @@ public sealed class SessionJournalService : IDisposable
     /// <summary>The settings key for the journal prompt preference.</summary>
     public const string PromptSettingKey = "journal.prompt_after_play";
 
+    /// <summary>
+    /// How long <see cref="Dispose"/> blocks for a write still on the wire. The
+    /// host disposes this synchronously (`using var host` in Program.cs), so
+    /// this is the only seam left that can stop a note write from being
+    /// abandoned mid-flight at process exit — it must not hang shutdown forever
+    /// if the database never answers.
+    /// </summary>
+    private static readonly TimeSpan DrainTimeout = TimeSpan.FromSeconds(5);
+
     private readonly ISessionRepository _sessions;
     private readonly ISettingsRepository? _settings;
     private readonly SessionWatcher? _watcher;
     private readonly ILogger<SessionJournalService> _logger;
+    private readonly Lock _pendingSavesGate = new();
+    private readonly List<Task> _pendingSaves = [];
     private bool _disposed;
 
     public SessionJournalService(
@@ -82,7 +93,8 @@ public sealed class SessionJournalService : IDisposable
     /// is a normal answer, and so is a sentence with no stars.
     /// </summary>
     public Task SaveAsync(long sessionId, string? note, int? rating, CancellationToken ct = default)
-        => _sessions.SetNoteAsync(
+    {
+        var write = _sessions.SetNoteAsync(
             new SessionNote
             {
                 SessionId = sessionId,
@@ -90,6 +102,35 @@ public sealed class SessionJournalService : IDisposable
                 Rating = rating is >= 1 and <= 5 ? rating : null,
             },
             ct);
+
+        Track(write);
+        return write;
+    }
+
+    /// <summary>
+    /// Keeps a write reachable from <see cref="Dispose"/> until it settles, so
+    /// a shutdown that lands between Save and its completion can still wait for
+    /// the row instead of abandoning it.
+    /// </summary>
+    private void Track(Task write)
+    {
+        lock (_pendingSavesGate)
+        {
+            _pendingSaves.Add(write);
+        }
+
+        write.ContinueWith(
+            _ =>
+            {
+                lock (_pendingSavesGate)
+                {
+                    _pendingSaves.Remove(write);
+                }
+            },
+            CancellationToken.None,
+            TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
+    }
 
     public void Dispose()
     {
@@ -102,6 +143,26 @@ public sealed class SessionJournalService : IDisposable
         if (_watcher is not null)
         {
             _watcher.SessionRecorded -= OnSessionRecorded;
+        }
+
+        Task[] pending;
+        lock (_pendingSavesGate)
+        {
+            pending = [.. _pendingSaves];
+        }
+
+        if (pending.Length == 0)
+        {
+            return;
+        }
+
+        try
+        {
+            Task.WaitAll(pending, DrainTimeout);
+        }
+        catch (AggregateException ex)
+        {
+            _logger.LogWarning(ex, "A journal note failed to save during shutdown.");
         }
     }
 

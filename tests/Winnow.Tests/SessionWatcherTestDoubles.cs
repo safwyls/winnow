@@ -179,8 +179,9 @@ public sealed class FakeProcess : ITrackedProcess
 
 /// <summary>
 /// A <see cref="ISessionRepository"/> that can be told to reject the next few
-/// inserts, so the watcher's write-failure path is reachable from a test. Every
-/// other call passes straight through to a real repository on a real database.
+/// inserts or note writes, so the watcher's write-failure path and the journal
+/// prompt's (F17) are both reachable from a test. Every other call passes
+/// straight through to a real repository on a real database.
 /// </summary>
 public sealed class FlakySessionRepository(ISessionRepository inner) : ISessionRepository
 {
@@ -189,6 +190,9 @@ public sealed class FlakySessionRepository(ISessionRepository inner) : ISessionR
 
     /// <summary>Insert calls received, successful or not.</summary>
     public int InsertAttempts { get; private set; }
+
+    /// <summary>Note writes to reject before letting writes through again.</summary>
+    public int FailNextNoteWrites { get; set; }
 
     public Task<long> InsertAsync(Session session, CancellationToken ct = default)
     {
@@ -210,7 +214,16 @@ public sealed class FlakySessionRepository(ISessionRepository inner) : ISessionR
         => inner.GetByOwnershipAsync(ownershipId, ct);
 
     public Task SetNoteAsync(SessionNote note, CancellationToken ct = default)
-        => inner.SetNoteAsync(note, ct);
+    {
+        if (FailNextNoteWrites > 0)
+        {
+            FailNextNoteWrites--;
+            return Task.FromException(
+                new InvalidOperationException("database is locked (simulated)"));
+        }
+
+        return inner.SetNoteAsync(note, ct);
+    }
 
     public Task<SessionNote?> GetNoteAsync(long sessionId, CancellationToken ct = default)
         => inner.GetNoteAsync(sessionId, ct);

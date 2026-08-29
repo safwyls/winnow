@@ -1628,7 +1628,7 @@
                     DataContext="{Binding Library.Journal}"
                     x:DataType="vm:JournalPromptViewModel"
                     IsVisible="{Binding IsOpen}">
-                <StackPanel Spacing="10">
+                <StackPanel Spacing="10" IsEnabled="{Binding !IsSaving}">
 
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
@@ -1677,9 +1677,18 @@
                         <Button Grid.Column="1"
                                 Classes="act primary"
                                 FontSize="12" Padding="12,5"
-                                Content="Save"
+                                Content="{Binding SaveLabel}"
                                 Command="{Binding SaveCommand}"/>
                     </Grid>
+
+                    <!-- A write that did not land. The note and rating above are
+                         untouched; Save is the retry. Amber for attention (§2),
+                         never Flare — that colour is reserved for unread updates. -->
+                    <TextBlock Classes="body" FontSize="11"
+                               TextWrapping="Wrap"
+                               Foreground="{StaticResource Amber}"
+                               IsVisible="{Binding HasError}"
+                               Text="{Binding Problem}"/>
 
                 </StackPanel>
             </Border>

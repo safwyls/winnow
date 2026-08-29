@@ -1,6 +1,7 @@
 using Winnow.App.Services;
 using Winnow.App.ViewModels;
 using Winnow.Core.Domain;
+using Winnow.Core.Repositories;
 using Winnow.Data.Repositories;
 using Winnow.Monitor;
 using Microsoft.Extensions.Options;
@@ -131,6 +132,84 @@ public sealed class JournalPromptTests
     }
 
     /// <summary>
+    /// F17: a write that does not land must not take the note with it. The
+    /// card stays open, the words and the star stay exactly as entered, and
+    /// nothing reaches the database — then the very same Save button, pressed
+    /// again against a database that is no longer flaky, is the retry.
+    /// </summary>
+    [Fact]
+    public async Task A_failed_save_keeps_the_note_open_and_the_same_button_retries()
+    {
+        using var fixture = new JournalFixture();
+        await fixture.Journal.SetPromptEnabledAsync(true);
+        var sessionId = await fixture.RecordSessionAsync(endsAt: T0.AddMinutes(47));
+
+        fixture.SessionWrites.FailNextNoteWrites = 1;
+
+        fixture.Prompt.RateCommand.Execute("5");
+        fixture.Prompt.Note = "so close to the end";
+        fixture.Prompt.SaveCommand.Execute(null);
+        await fixture.Prompt.PendingSave;
+
+        Assert.True(fixture.Prompt.IsOpen);
+        Assert.True(fixture.Prompt.HasError);
+        Assert.Equal("so close to the end", fixture.Prompt.Note);
+        Assert.Equal(5, fixture.Prompt.Rating);
+        Assert.Null(await fixture.Sessions.GetNoteAsync(sessionId));
+
+        fixture.Prompt.SaveCommand.Execute(null);
+        await fixture.Prompt.PendingSave;
+
+        Assert.False(fixture.Prompt.IsOpen);
+        Assert.False(fixture.Prompt.HasError);
+        var note = await fixture.Sessions.GetNoteAsync(sessionId);
+        Assert.NotNull(note);
+        Assert.Equal("so close to the end", note!.Note);
+        Assert.Equal(5, note.Rating);
+    }
+
+    /// <summary>
+    /// F17's other half: a save started right before the app exits must still
+    /// land rather than being abandoned mid-write. Program.cs disposes the
+    /// host — and <see cref="SessionJournalService"/> with it — synchronously
+    /// (`using var host`), so <see cref="SessionJournalService.Dispose"/> is the
+    /// only seam left that can still wait for the row instead of dropping it.
+    /// </summary>
+    [Fact]
+    public async Task Disposing_mid_save_waits_for_the_write_to_land()
+    {
+        using var harness = new SessionWatcherHarness();
+        var game = await harness.AddGameAsync("Bluebird", "bluebird.exe");
+        harness.Processes.Start(900, "bluebird", game.Exe("bluebird.exe"), T0);
+        await harness.TickAtAsync(T0.AddSeconds(5));
+        harness.Processes.Exit(900, T0.AddMinutes(47));
+        await harness.TickAtAsync(T0.AddMinutes(48));
+        var sessionId = (await harness.SessionsForAsync(game.OwnershipId)).Single().Id;
+
+        var gated = new GatedSessionRepository(harness.Sessions);
+        var journal = new SessionJournalService(gated, harness.Settings);
+
+        var save = journal.SaveAsync(sessionId, "shutdown mid-write", 3);
+        var disposeTask = Task.Run(journal.Dispose);
+
+        // The write cannot have reached the database yet: GatedSessionRepository
+        // is still awaiting Release below, and Dispose can only return once the
+        // task it is draining completes. Neither of these is a timing guess.
+        Assert.False(disposeTask.IsCompleted);
+        Assert.Null(await harness.Sessions.GetNoteAsync(sessionId));
+
+        gated.Release.SetResult();
+
+        await disposeTask.WaitAsync(TimeSpan.FromSeconds(5));
+        await save;
+
+        var note = await harness.Sessions.GetNoteAsync(sessionId);
+        Assert.NotNull(note);
+        Assert.Equal("shutdown mid-write", note!.Note);
+        Assert.Equal(3, note.Rating);
+    }
+
+    /// <summary>
     /// A rating given by accident has to be retractable, or the card has become
     /// a thing you cannot leave without answering.
     /// </summary>
@@ -239,13 +318,18 @@ public sealed class JournalPromptTests
         public JournalFixture(Func<long, string?>? titleFor = null)
         {
             Sessions = _harness.Sessions;
+            // Through the flaky wrapper rather than Sessions directly: it is a
+            // pass-through until a test arms FailNextNoteWrites, so every other
+            // fixture user is unaffected.
             Journal = new SessionJournalService(
-                Sessions, _harness.Settings, _harness.Watcher);
+                _harness.SessionWrites, _harness.Settings, _harness.Watcher);
             Prompt = new JournalPromptViewModel(
                 Journal, titleFor ?? (_ => "Bluebird"), post: a => a());
         }
 
         public SessionRepository Sessions { get; }
+
+        public FlakySessionRepository SessionWrites => _harness.SessionWrites;
 
         public SessionJournalService Journal { get; }
 
@@ -283,5 +367,35 @@ public sealed class JournalPromptTests
             Journal.Dispose();
             _harness.Dispose();
         }
+    }
+
+    /// <summary>
+    /// An <see cref="ISessionRepository"/> whose note write blocks on
+    /// <see cref="Release"/> before reaching a real repository — so a test can
+    /// prove <see cref="SessionJournalService.Dispose"/> actually waits for an
+    /// in-flight write rather than merely finishing quickly enough that it
+    /// looks like it did.
+    /// </summary>
+    private sealed class GatedSessionRepository(ISessionRepository inner) : ISessionRepository
+    {
+        public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public Task<long> InsertAsync(Session session, CancellationToken ct = default)
+            => inner.InsertAsync(session, ct);
+
+        public Task<Session?> GetAsync(long id, CancellationToken ct = default)
+            => inner.GetAsync(id, ct);
+
+        public Task<IReadOnlyList<Session>> GetByOwnershipAsync(long ownershipId, CancellationToken ct = default)
+            => inner.GetByOwnershipAsync(ownershipId, ct);
+
+        public async Task SetNoteAsync(SessionNote note, CancellationToken ct = default)
+        {
+            await Release.Task;
+            await inner.SetNoteAsync(note, ct);
+        }
+
+        public Task<SessionNote?> GetNoteAsync(long sessionId, CancellationToken ct = default)
+            => inner.GetNoteAsync(sessionId, ct);
     }
 }
