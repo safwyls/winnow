@@ -20,6 +20,7 @@ public partial class MainWindowViewModel : ObservableObject
         StoresViewModel stores,
         AppearanceViewModel appearance,
         FeedViewModel feed,
+        SteamAccountImportViewModel accountImport,
         ISettingsRepository? settings = null,
         Services.SessionJournalService? journal = null)
     {
@@ -28,6 +29,7 @@ public partial class MainWindowViewModel : ObservableObject
         Stores = stores;
         Appearance = appearance;
         Feed = feed;
+        AccountImport = accountImport;
 
         // Floating layout is structural (margins, radii, borders), not colour.
         appearance.Service.Applied += (_, _) => OnPropertyChanged(nameof(IsFloatingLayout));
@@ -60,6 +62,9 @@ public partial class MainWindowViewModel : ObservableObject
 
     public AppearanceViewModel Appearance { get; }
 
+    /// <summary>The Steam account-page import screen (ROADMAP M5 item 3).</summary>
+    public SteamAccountImportViewModel AccountImport { get; }
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsLibraryVisible), nameof(IsFilterPanelVisible))]
     public partial bool IsMergeQueueVisible { get; set; }
@@ -74,6 +79,11 @@ public partial class MainWindowViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(IsLibraryVisible), nameof(IsFilterPanelVisible))]
     public partial bool IsAppearanceVisible { get; set; }
 
+    /// <summary>The Steam account-page import screen, a third SETTINGS row.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsLibraryVisible), nameof(IsFilterPanelVisible))]
+    public partial bool IsAccountImportVisible { get; set; }
+
     /// <summary>The Feed — the default landing screen.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsLibraryVisible), nameof(IsFilterPanelVisible))]
@@ -83,7 +93,8 @@ public partial class MainWindowViewModel : ObservableObject
     public bool IsFloatingLayout => Appearance.Service.IsFloating;
 
     public bool IsLibraryVisible =>
-        !IsMergeQueueVisible && !IsStoresVisible && !IsAppearanceVisible && !IsFeedVisible;
+        !IsMergeQueueVisible && !IsStoresVisible && !IsAppearanceVisible
+        && !IsAccountImportVisible && !IsFeedVisible;
 
     /// <summary>The filter panel is part of the library screen, not of the window.</summary>
     public bool IsFilterPanelVisible => IsLibraryVisible && Library.Filters.IsOpen;
@@ -143,6 +154,25 @@ public partial class MainWindowViewModel : ObservableObject
         IsAppearanceVisible = open;
     }
 
+    /// <summary>
+    /// Toggles the import screen. Opening it asks the embedded browser whether
+    /// it could run here — a question that opens no window and does no IO — so
+    /// that the screen can say so before anything is pressed. Opening this
+    /// screen must never start either route.
+    /// </summary>
+    [RelayCommand]
+    private async Task ToggleAccountImportAsync()
+    {
+        var open = !IsAccountImportVisible;
+        ShowLibraryPane();
+        IsAccountImportVisible = open;
+
+        if (open)
+        {
+            await AccountImport.RefreshCommand.ExecuteAsync(null);
+        }
+    }
+
     /// <summary>Toggles the Platforms screen; refreshes store state on open.</summary>
     [RelayCommand]
     private async Task ToggleStoresAsync()
@@ -163,6 +193,7 @@ public partial class MainWindowViewModel : ObservableObject
         IsMergeQueueVisible = false;
         IsStoresVisible = false;
         IsAppearanceVisible = false;
+        IsAccountImportVisible = false;
         IsFeedVisible = false;
 
         // Leaving the feed also closes its history view.

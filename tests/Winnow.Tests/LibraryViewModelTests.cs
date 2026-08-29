@@ -708,7 +708,8 @@ public sealed class LibraryViewModelTests
             fixture.CreateMergeQueue(),
             DetachedStores.Create(),
             DetachedAppearance.Create(),
-            DetachedFeed.Create())
+            DetachedFeed.Create(),
+            DetachedAccountImport.Create())
         {
             IsMergeQueueVisible = true,
         };
@@ -740,7 +741,8 @@ public sealed class LibraryViewModelTests
             fixture.CreateMergeQueue(),
             DetachedStores.Create(),
             DetachedAppearance.Create(),
-            DetachedFeed.Create());
+            DetachedFeed.Create(),
+            DetachedAccountImport.Create());
 
         // The landing state, before anything has been clicked.
         Assert.True(shell.IsFeedVisible);

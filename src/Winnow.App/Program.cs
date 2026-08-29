@@ -90,12 +90,21 @@ public static class Program
                 bootstrapLog.CreateLogger(typeof(WinnowDataLocation).FullName!));
         }
 
-        ConfigureServices(builder.Services, DataLocation);
-
-        // Both flags mean "leave this database alone", so the scheduler has to
-        // honour them too — otherwise rows appear fifteen minutes into UI work
+        // Both flags mean "leave this database alone", so every writer has to
+        // honour them — otherwise rows appear fifteen minutes into UI work
         // against a fixed or seeded library.
         var writesSuppressed = args.Contains("--no-sync") || args.Contains("--seed-sample");
+
+        // Registered BEFORE ConfigureServices, not configured after it. The
+        // backfill's options are a plain singleton rather than an IOptions
+        // binding (the same shape SteamWebOptions uses), so the only way to
+        // override them is to win the TryAddSingleton race. A Configure<T>
+        // call would write into an options system nothing reads, silently
+        // leaving the flag off.
+        builder.Services.AddSingleton(new SteamPlaytimeBackfillOptions { Enabled = !writesSuppressed });
+
+        ConfigureServices(builder.Services, DataLocation);
+
         builder.Services.Configure<SnapshotSchedulerOptions>(o => o.Enabled = !writesSuppressed);
         builder.Services.Configure<RemoteOwnershipSchedulerOptions>(o => o.Enabled = !writesSuppressed);
         builder.Services.Configure<SessionWatcherOptions>(o => o.Enabled = !writesSuppressed);
@@ -195,6 +204,27 @@ public static class Program
                             ? await backfill.SyncAsync(scanned, Shutdown.Token)
                             : await backfill.SyncAsync(Shutdown.Token);
                         if (remote.Result?.CreatedReleases > 0 || remote.Result?.NamesPromoted > 0)
+                        {
+                            await RefreshLibraryAsync(services);
+                        }
+
+                        // M5. After the remote sync and not before it: the
+                        // backfill attaches historical points to ownerships it
+                        // never creates, so the pass that creates them has to
+                        // have run. Completed years are recorded in the settings
+                        // table and never refetched, so on every launch after
+                        // the first this costs one request for the current year
+                        // and one for the cumulative anchor, both cached for
+                        // six hours, so a relaunch costs none at all.
+                        var history = await services.GetRequiredService<ISteamPlaytimeBackfill>()
+                            .BackfillAsync(Shutdown.Token);
+
+                        // Four years of series appearing under a library the UI
+                        // has already loaded moves dormancy and every signal the
+                        // recommender derives from it. Without this the feed
+                        // reads the cold-start library until the next launch,
+                        // which is the exact state M5 exists to end.
+                        if (history.WroteAnything)
                         {
                             await RefreshLibraryAsync(services);
                         }
@@ -447,6 +477,13 @@ public static class Program
         // user-supplied key; unconfigured is a clean no-op.
         services.AddSteamWebApi();
 
+        // M5. Historical playtime out of Steam Replay and ClientGetLastPlayedTimes:
+        // the cold-start fix, and the only source Winnow has for a longitudinal
+        // series on install day. Registered here because it needs both the Steam
+        // Web module above and the App layer's repositories; unconfigured is a
+        // clean no-op, exactly as the ownership backfill is.
+        services.AddSteamPlaytimeBackfill();
+
         // The same idea for Epic, and the same clean no-op when unconfigured.
         // catcache.bin already gives the owned library locally, so this is NOT
         // how Epic ownership is discovered — it is the only route to two facts
@@ -499,6 +536,32 @@ public static class Program
         services.AddSingleton<IStoreTitleCounts>(
             sp => sp.GetRequiredService<LibraryViewModel>());
         services.AddSingleton<StoresViewModel>();
+
+        // M5 item 3, and the §4.7 amendment. Two routes to the same two account
+        // pages and the same parser, and these are the two lines that wire them.
+        //
+        // The harvester is registered unconditionally: it reports itself
+        // unavailable at use time on a machine with no WebView2 runtime, and the
+        // import screen says so and offers the saved-file route, which reads the
+        // same pages. Registering it behind a platform check would make the
+        // screen's answer depend on how the host was composed rather than on
+        // what the machine can do.
+        //
+        // The profile root is the temp directory rather than the WebView2 folder
+        // beside the database: this session is in-private and in-memory by
+        // construction (amendment condition 1), and every run makes its own
+        // subdirectory and deletes it, so nothing accumulates.
+        services.AddSteamAccountPageHarvester();
+
+        // The importer, the saved-file loader, and the interface binding the
+        // view model resolves. Fill-only and idempotent — it writes to existing
+        // ownerships and never creates one (§5.1).
+        services.AddSteamAccountPageImport();
+
+        // The OS file dialog, behind a seam for the same reason IUriDispatcher
+        // is one: the saved-file route has to be testable without a window.
+        services.AddSingleton<ISteamAccountPageFilePicker, TopLevelSteamAccountPageFilePicker>();
+        services.AddSingleton<SteamAccountImportViewModel>();
 
         // Appearance. The service is a singleton because it owns the ONE live
         // resource dictionary; a second instance would be a second opinion

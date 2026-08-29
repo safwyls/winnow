@@ -1033,6 +1033,20 @@
                         </Grid>
                     </Button>
                     <Button Classes="bucket"
+                            Classes.selected="{Binding IsAccountImportVisible}"
+                            Command="{Binding ToggleAccountImportCommand}"
+                            ToolTip.Tip="{Binding AccountImport.RailTooltip}">
+                        <Grid ColumnDefinitions="2,16,*,16">
+                            <Border Grid.Column="0"
+                                    Background="{StaticResource Volt}"
+                                    IsVisible="{Binding IsAccountImportVisible}"/>
+                            <TextBlock Grid.Column="2"
+                                       Classes="display-s"
+                                       Text="{Binding AccountImport.RailRow}"
+                                       VerticalAlignment="Center"/>
+                        </Grid>
+                    </Button>
+                    <Button Classes="bucket"
                             Classes.selected="{Binding IsAppearanceVisible}"
                             Command="{Binding ToggleAppearanceCommand}"
                             ToolTip.Tip="Theme, and whether the window lets the desktop through">
@@ -1607,7 +1621,16 @@
                               DataContext="{Binding Stores}"/>
         </Border>
 
-        <!-- Appearance screen, second row under SETTINGS. -->
+        <!-- The Steam account-page import screen (M5 item 3), second row under
+             SETTINGS. Same terms as every other screen pane. -->
+        <Border Classes="screenpane"
+                BorderBrush="{StaticResource Line}"
+                IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsAccountImportVisible}">
+            <views:SteamAccountImportView Name="AccountImportPanel"
+                                          DataContext="{Binding AccountImport}"/>
+        </Border>
+
+        <!-- Appearance screen, third row under SETTINGS. -->
         <Border Classes="screenpane"
                 BorderBrush="{StaticResource Line}"
                 IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsAppearanceVisible}">

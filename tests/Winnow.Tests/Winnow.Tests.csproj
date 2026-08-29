@@ -43,6 +43,9 @@
   <ItemGroup>
     <!-- Sanitized real Steam files (tests/fixtures/steam/README.md) — the reader tests parse these. -->
     <Content Include="..\fixtures\steam\**" LinkBase="fixtures\steam" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Sanitized saved Steam account pages (tests/fixtures/steam-account-pages/README.md) — the
+         licences/purchase-history parser tests parse these. -->
+    <Content Include="..\fixtures\steam-account-pages\**" LinkBase="fixtures\steam-account-pages" CopyToOutputDirectory="PreserveNewest" />
     <!-- Verbatim store-frontend responses (tests/fixtures/steam-store/README.md) — the contract test pins these. -->
     <Content Include="..\fixtures\steam-store\**" LinkBase="fixtures\steam-store" CopyToOutputDirectory="PreserveNewest" />
     <!-- Verbatim update-signal responses (tests/fixtures/update-signals/README.md) — the contract test pins these. -->

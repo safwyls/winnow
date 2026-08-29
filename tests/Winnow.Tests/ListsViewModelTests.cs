@@ -435,7 +435,8 @@ public sealed class ListsViewModelTests
             fixture.CreateMergeQueue(),
             DetachedStores.Create(),
             DetachedAppearance.Create(),
-            DetachedFeed.Create());
+            DetachedFeed.Create(),
+            DetachedAccountImport.Create());
         shell.SelectListCommand.Execute(live);
         Assert.Same(live, library.Lists.Open);
 
