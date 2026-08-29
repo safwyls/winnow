@@ -281,9 +281,13 @@ Tracked so none of it silently becomes permanent:
   `STEAM_COMPAT_DATA_PATH` from `/proc/<pid>/environ` — a different design.
 - **IGDB cache has no `payload_version`.** Adding a field to the cached shape silently yields
   empty results for 30 days rather than refetching. A latent trap, not yet a bug.
-- **Imported acquisition facts are stored but unread.** `acquired_at`, `license_type` and
-  `price_paid_cents` land in the database from M5's importer but nothing queries them yet.
-  M6 export is the intended first consumer.
+- **Account stats query surface exists with no UI in front of it.** The raw page rows are
+  stored in `account_transactions` / `account_licenses` (migration 0014) and read by
+  `IAccountStatsRepository`, but the account stats page is not built, so the query surface
+  has no screen. The ownership columns `acquired_at` / `license_type` / `price_paid_cents`
+  are still read by nothing; M6 export remains their intended first consumer. The fact
+  tables cannot distinguish two identical same-day transactions, so an exact repeat purchase
+  on one day is undercounted by one.
 - **`OwnershipRepository.UpsertAsync` could overwrite an imported `acquired_at`** if a Steam
   candidate source ever starts supplying `AcquiredAt`. Today both hard-code null, so the
   safety is incidental. Worth an enforcing test when the field is next touched.
@@ -292,6 +296,22 @@ Tracked so none of it silently becomes permanent:
 - **Saved-file licenses route captures one page per file.** The embedded route paginates
   automatically; the manual route inherently gets one page per saved HTML file. Multi-file
   merge in the loader is the fix if coverage ever matters.
+- **Single-entry rail sections (deferred 2026-08-29).** With SETTINGS replaced by a
+  gear-opened pane (2026-08-29, sibling change), the rail below the bucket divider is:
+  ACCOUNT (one row, STATS), REVIEW (one row, SAME GAME?), LISTS, gear. Both ACCOUNT and
+  REVIEW spend a section heading on a single destination; each reads as structural overhead
+  for one row. No better shape is known; deferred until further feature development shows
+  where these rows best land. Constraint: whatever replaces them must preserve the rail's
+  stated grammar. Everything above the divider is a subset of ALL GAMES; below it, content
+  precedes work queue precedes configuration.
+- **Account stats presentation is a first pass; cleanup shelved (deferred 2026-08-29).**
+  The screen is functional and its figures are correct. Presentation polish is low ROI until
+  core functionality (M5, M6) is complete. What cleanup means concretely, so the future pass
+  has a starting point: layout beyond the uniform card/StatRow table (visual hierarchy,
+  grouping, spacing), and derived figures the stored facts already support that the first
+  pass omitted. Candidates: per-transaction averages, per-year averages, percentage
+  breakdowns across the spend-by-kind slices, cost per hour played and spend on games never
+  launched (both crossing account data with the playtime M5 backfills).
 
 ## 7. The risk
 
