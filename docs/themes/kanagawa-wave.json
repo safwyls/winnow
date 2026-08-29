@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "id": "kanagawa-wave",
+  "name": "Kanagawa Wave",
+  "reason": "Kanagawa's lacquered night sea: sumi-blue chrome, aqua selection, and violet reserved for unread updates.",
+  "seeds": {
+    "ground": "#1F1F28",
+    "surface": "#2A2A37",
+    "text": "#DCD7BA",
+    "flare": "#B39BD4",
+    "volt": "#7FB4CA",
+    "amber": "#C0A36E",
+    "azure": "#7E9CD8",
+    "danger": "#E46876"
+  },
+  "structure": {
+    "elevation": 0.05,
+    "wellDepth": 0.55,
+    "edge": 1.55,
+    "dimValue": 0.76,
+    "dimChroma": 0.42,
+    "voltInkContrast": 8.0,
+    "faintValue": 0.55,
+    "faintChroma": 0.7
+  },
+  "translucency": {
+    "chromeInk": 0.48,
+    "groundInk": 0.44,
+    "dimLift": 1.14,
+    "faintLift": 1.2
+  },
+  "overrides": {
+    "Well": "#16161D",
+    "SurfaceHigh": "#363646",
+    "Line": "#54546D",
+    "TextDim": "#C8C093",
+    "TextFaint": "#727169",
+    "VoltInk": "#15232A",
+    "VoltHover": "#9AC5D6",
+    "VoltPress": "#6599AF",
+    "DangerHover": "#EC8290",
+    "DangerPress": "#C25160",
+    "DangerInk": "#FFF5F3",
+    "TranslucentSurface": "#11121A",
+    "TranslucentTextDim": "#DBD2A2",
+    "TranslucentTextFaint": "#8D8A7C"
+  }
+}

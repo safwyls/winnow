@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "id": "rose-pine-dawn",
+  "name": "Rosé Pine Dawn",
+  "reason": "Rosé Pine at first light: warm porcelain chrome, gold selection, and iris reserved for unread updates.",
+  "seeds": {
+    "ground": "#FAF4ED",
+    "surface": "#FFFAF3",
+    "text": "#464261",
+    "flare": "#765D94",
+    "volt": "#EA9D34",
+    "amber": "#D7827E",
+    "azure": "#56949F",
+    "danger": "#B4637A"
+  },
+  "structure": {
+    "elevation": 0.05,
+    "wellDepth": 0.95,
+    "edge": 1.25,
+    "dimValue": 0.47,
+    "dimChroma": 0.8,
+    "voltInkContrast": 8.0,
+    "faintValue": 0.61,
+    "faintChroma": 0.55
+  },
+  "translucency": {
+    "chromeInk": 1.0,
+    "groundInk": 1.0,
+    "dimLift": 1.0,
+    "faintLift": 1.0
+  },
+  "defaults": {
+    "transparency": 0
+  },
+  "overrides": {
+    "Well": "#F2E9E1",
+    "SurfaceRaised": "#F2E9E1",
+    "SurfaceHigh": "#DFDAD9",
+    "Line": "#CECACD",
+    "TextDim": "#5F5B78",
+    "TextFaint": "#9893A5",
+    "VoltInk": "#2A1B08",
+    "VoltHover": "#F0AF50",
+    "VoltPress": "#C98222",
+    "DangerHover": "#C4778D",
+    "DangerPress": "#955066",
+    "DangerInk": "#FFF7F9",
+    "TranslucentSurface": "#FFFFFF",
+    "TranslucentChromeGround": "#FFFFFF",
+    "TranslucentTextDim": "#5F5B78",
+    "TranslucentTextFaint": "#797593"
+  }
+}

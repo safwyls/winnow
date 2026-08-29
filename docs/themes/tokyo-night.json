@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "id": "tokyo-night",
+  "name": "Tokyo Night",
+  "reason": "Tokyo Night's midnight terminal: blue-black chrome, aqua selection, and magenta reserved for unread updates.",
+  "seeds": {
+    "ground": "#1A1B26",
+    "surface": "#24283B",
+    "text": "#C0CAF5",
+    "flare": "#BB9AF7",
+    "volt": "#73DACA",
+    "amber": "#E0AF68",
+    "azure": "#7AA2F7",
+    "danger": "#F7768E"
+  },
+  "structure": {
+    "elevation": 0.05,
+    "wellDepth": 0.55,
+    "edge": 1.55,
+    "dimValue": 0.78,
+    "dimChroma": 0.42,
+    "voltInkContrast": 9.0,
+    "faintValue": 0.57,
+    "faintChroma": 0.7
+  },
+  "translucency": {
+    "chromeInk": 0.48,
+    "groundInk": 0.44,
+    "dimLift": 1.14,
+    "faintLift": 1.2
+  },
+  "overrides": {
+    "Well": "#101014",
+    "SurfaceHigh": "#414868",
+    "Line": "#3B4261",
+    "TextDim": "#A9B1D6",
+    "TextFaint": "#737AA2",
+    "VoltInk": "#10151D",
+    "VoltHover": "#92E2D5",
+    "VoltPress": "#59C5B5",
+    "DangerHover": "#FF8FA3",
+    "DangerPress": "#D85E76",
+    "DangerInk": "#FFF4F6",
+    "TranslucentSurface": "#0F111B",
+    "TranslucentTextDim": "#C0C7E6",
+    "TranslucentTextFaint": "#8E95B8"
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "id": "gruvbox",
+  "name": "Gruvbox",
+  "reason": "Gruvbox's worn-earth room: charcoal-brown chrome, moss selection, and dusty violet reserved for unread updates.",
+  "seeds": {
+    "ground": "#282828",
+    "surface": "#32302F",
+    "text": "#EBDBB2",
+    "flare": "#D386A4",
+    "volt": "#B8BB26",
+    "amber": "#FABD2F",
+    "azure": "#83A598",
+    "danger": "#FB4934"
+  },
+  "structure": {
+    "elevation": 0.05,
+    "wellDepth": 0.55,
+    "edge": 1.55,
+    "dimValue": 0.74,
+    "dimChroma": 0.45,
+    "voltInkContrast": 8.0,
+    "faintValue": 0.58,
+    "faintChroma": 0.72
+  },
+  "translucency": {
+    "chromeInk": 0.48,
+    "groundInk": 0.44,
+    "dimLift": 1.14,
+    "faintLift": 1.2
+  },
+  "overrides": {
+    "Well": "#1D2021",
+    "SurfaceHigh": "#504945",
+    "Line": "#665C54",
+    "TextDim": "#BDAE93",
+    "TextFaint": "#928374",
+    "VoltInk": "#1D2021",
+    "VoltHover": "#C9CC45",
+    "VoltPress": "#989B1E",
+    "DangerHover": "#FC6655",
+    "DangerPress": "#D23C2B",
+    "DangerInk": "#FFF5E8",
+    "TranslucentSurface": "#1A1715",
+    "TranslucentTextDim": "#D2C2A5",
+    "TranslucentTextFaint": "#A99A88"
+  }
+}
