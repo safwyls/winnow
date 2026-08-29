@@ -24,7 +24,7 @@ public sealed class SnapshotSchedulerServiceTests
     private static readonly TimeSpan FailureBound = TimeSpan.FromSeconds(20);
 
     private static SnapshotSchedulerService Scheduler(
-        ISteamSync sync,
+        ILocalLibrarySync sync,
         TimeProvider time,
         TimeSpan? interval = null,
         bool runOnStartup = false,
@@ -53,10 +53,10 @@ public sealed class SnapshotSchedulerServiceTests
         var clock = new SchedulerClock();
         var startedAt = clock.GetUtcNow();
         var observedAt = new ConcurrentQueue<DateTimeOffset>();
-        var sync = new FakeSteamSync((_, _) =>
+        var sync = new FakeLocalLibrarySync((_, _) =>
         {
             observedAt.Enqueue(clock.GetUtcNow());
-            return Task.FromResult(FakeSteamSync.NoChangeReport);
+            return Task.FromResult(FakeLocalLibrarySync.NoChangeReport);
         });
 
         using var service = Scheduler(sync, clock);
@@ -89,10 +89,10 @@ public sealed class SnapshotSchedulerServiceTests
         var clock = new SchedulerClock();
         var startedAt = clock.GetUtcNow();
         var observedAt = new ConcurrentQueue<DateTimeOffset>();
-        var sync = new FakeSteamSync((_, _) =>
+        var sync = new FakeLocalLibrarySync((_, _) =>
         {
             observedAt.Enqueue(clock.GetUtcNow());
-            return Task.FromResult(FakeSteamSync.NoChangeReport);
+            return Task.FromResult(FakeLocalLibrarySync.NoChangeReport);
         });
 
         using var service = Scheduler(sync, clock, runOnStartup: true);
@@ -114,10 +114,10 @@ public sealed class SnapshotSchedulerServiceTests
         var clock = new SchedulerClock();
         var startedAt = clock.GetUtcNow();
         var observedAt = new ConcurrentQueue<DateTimeOffset>();
-        var sync = new FakeSteamSync((_, _) =>
+        var sync = new FakeLocalLibrarySync((_, _) =>
         {
             observedAt.Enqueue(clock.GetUtcNow());
-            return Task.FromResult(FakeSteamSync.NoChangeReport);
+            return Task.FromResult(FakeLocalLibrarySync.NoChangeReport);
         });
 
         using var service = Scheduler(sync, clock);
@@ -155,14 +155,14 @@ public sealed class SnapshotSchedulerServiceTests
     {
         var clock = new SchedulerClock();
         var firstScanGate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var sync = new FakeSteamSync(async (ordinal, ct) =>
+        var sync = new FakeLocalLibrarySync(async (ordinal, ct) =>
         {
             if (ordinal == 1)
             {
                 await firstScanGate.Task.WaitAsync(ct);
             }
 
-            return FakeSteamSync.NoChangeReport;
+            return FakeLocalLibrarySync.NoChangeReport;
         });
 
         using var service = Scheduler(sync, clock);
@@ -205,11 +205,11 @@ public sealed class SnapshotSchedulerServiceTests
     public async Task Stopping_cancels_an_in_flight_scan_and_no_tick_runs_afterwards()
     {
         var clock = new SchedulerClock();
-        var sync = new FakeSteamSync(async (_, ct) =>
+        var sync = new FakeLocalLibrarySync(async (_, ct) =>
         {
             // Cancelled by the stopping token, never by elapsed time.
             await Task.Delay(Timeout.Infinite, ct);
-            return FakeSteamSync.NoChangeReport;
+            return FakeLocalLibrarySync.NoChangeReport;
         });
 
         using var service = Scheduler(sync, clock);
@@ -242,9 +242,9 @@ public sealed class SnapshotSchedulerServiceTests
     public async Task A_failing_tick_costs_one_data_point_not_the_schedule()
     {
         var clock = new SchedulerClock();
-        var sync = new FakeSteamSync((ordinal, _) => ordinal == 1
-            ? Task.FromException<SteamSyncReport>(new IOException("localconfig.vdf is locked"))
-            : Task.FromResult(FakeSteamSync.NoChangeReport));
+        var sync = new FakeLocalLibrarySync((ordinal, _) => ordinal == 1
+            ? Task.FromException<LibrarySyncReport>(new IOException("localconfig.vdf is locked"))
+            : Task.FromResult(FakeLocalLibrarySync.NoChangeReport));
 
         using var service = Scheduler(sync, clock);
         await service.StartAsync(CancellationToken.None);
@@ -267,7 +267,7 @@ public sealed class SnapshotSchedulerServiceTests
     public async Task Disabled_scheduler_never_scans()
     {
         var clock = new SchedulerClock();
-        var sync = new FakeSteamSync();
+        var sync = new FakeLocalLibrarySync();
 
         using var service = Scheduler(sync, clock, enabled: false);
         await service.StartAsync(CancellationToken.None);
@@ -291,7 +291,7 @@ public sealed class SnapshotSchedulerServiceTests
     public async Task A_non_positive_interval_stands_the_scheduler_down_instead_of_taking_the_host_with_it()
     {
         var clock = new SchedulerClock();
-        var sync = new FakeSteamSync();
+        var sync = new FakeLocalLibrarySync();
 
         using var service = Scheduler(sync, clock, interval: TimeSpan.Zero);
         await service.StartAsync(CancellationToken.None);

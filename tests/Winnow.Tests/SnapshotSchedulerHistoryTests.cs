@@ -59,11 +59,11 @@ public sealed class SnapshotSchedulerHistoryTests : IDisposable
     public void Dispose() => _db.Dispose();
 
     /// <summary>Stands in for the Steam scan: the same resolve, off a fake disk.</summary>
-    private async Task<SteamSyncReport> ScanAndResolveAsync(CancellationToken ct)
+    private async Task<LibrarySyncReport> ScanAndResolveAsync(CancellationToken ct)
     {
         var candidates = Volatile.Read(ref _onDisk);
         var result = await _resolver.ResolveAsync(candidates, ct);
-        return new SteamSyncReport(candidates.Count, result, TimeSpan.Zero);
+        return new LibrarySyncReport(candidates.Count, result, TimeSpan.Zero);
     }
 
     /// <summary>Steam's files now say the user has this many minutes on the app.</summary>
@@ -84,7 +84,7 @@ public sealed class SnapshotSchedulerHistoryTests : IDisposable
                 ObservedAt: _clock.GetUtcNow().UtcDateTime),
         });
 
-    private SnapshotSchedulerService Scheduler(FakeSteamSync sync)
+    private SnapshotSchedulerService Scheduler(FakeLocalLibrarySync sync)
         => new(
             sync,
             Options.Create(new SnapshotSchedulerOptions { Interval = Interval }),
@@ -109,7 +109,7 @@ public sealed class SnapshotSchedulerHistoryTests : IDisposable
         var firstSession = new DateTime(2026, 8, 23, 20, 0, 0, DateTimeKind.Utc);
         SteamNowReports(244, firstSession);
 
-        var sync = new FakeSteamSync((_, ct) => ScanAndResolveAsync(ct));
+        var sync = new FakeLocalLibrarySync((_, ct) => ScanAndResolveAsync(ct));
         using var service = Scheduler(sync);
         await service.StartAsync(CancellationToken.None);
         await _clock.TimerCreated.WaitAsync(FailureBound);
@@ -151,7 +151,7 @@ public sealed class SnapshotSchedulerHistoryTests : IDisposable
     {
         SteamNowReports(244, new DateTime(2026, 8, 23, 20, 0, 0, DateTimeKind.Utc));
 
-        var sync = new FakeSteamSync((_, ct) => ScanAndResolveAsync(ct));
+        var sync = new FakeLocalLibrarySync((_, ct) => ScanAndResolveAsync(ct));
         using var service = Scheduler(sync);
         await service.StartAsync(CancellationToken.None);
         await _clock.TimerCreated.WaitAsync(FailureBound);
@@ -192,7 +192,7 @@ public sealed class SnapshotSchedulerHistoryTests : IDisposable
         SteamNowReports(244, new DateTime(2026, 8, 23, 20, 0, 0, DateTimeKind.Utc));
 
         var secondScanReached = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var sync = new FakeSteamSync(async (ordinal, ct) =>
+        var sync = new FakeLocalLibrarySync(async (ordinal, ct) =>
         {
             if (ordinal == 1)
             {
@@ -203,7 +203,7 @@ public sealed class SnapshotSchedulerHistoryTests : IDisposable
             // would be when the user closes the window.
             secondScanReached.TrySetResult();
             await Task.Delay(Timeout.Infinite, ct);
-            return FakeSteamSync.NoChangeReport;
+            return FakeLocalLibrarySync.NoChangeReport;
         });
 
         using var service = Scheduler(sync);

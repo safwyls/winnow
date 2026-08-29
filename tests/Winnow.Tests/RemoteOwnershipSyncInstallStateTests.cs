@@ -12,7 +12,7 @@ namespace Winnow.Tests;
 
 /// <summary>
 /// The regression test for the bug at the level it actually shipped at:
-/// <see cref="SteamSyncService"/> unioning two sources, one that can see the
+/// <see cref="RemoteOwnershipSyncService"/> unioning two sources, one that can see the
 /// local disk (§4.1's appmanifests) and one that cannot (§4.2's
 /// <c>GetOwnedGames</c>). On the live library this produced 946 ownerships with
 /// zero installed, because the web candidates — resolved second purely because
@@ -25,18 +25,18 @@ namespace Winnow.Tests;
 /// <see cref="SteamOwnedGame.ToCandidate"/> projection. Only the HTTP call is
 /// substituted, so none of the write rules are faked away.</para>
 /// </summary>
-public sealed class SteamSyncInstallStateTests : IDisposable
+public sealed class RemoteOwnershipSyncInstallStateTests : IDisposable
 {
     private const string InstalledAppId = "1203620";
     private const string OwnedOnlyAppId = "1244090";
 
     private readonly TempDatabase _db = new();
     private readonly string _steamRoot;
-    private readonly SteamSyncService _sync;
+    private readonly RemoteOwnershipSyncService _sync;
     private readonly ReleaseRepository _releases;
     private readonly OwnershipRepository _ownerships;
 
-    public SteamSyncInstallStateTests()
+    public RemoteOwnershipSyncInstallStateTests()
     {
         _steamRoot = Path.Combine(Path.GetTempPath(), $"winnow-sync-{Guid.NewGuid():N}");
         Directory.CreateDirectory(Path.Combine(_steamRoot, "steamapps"));
@@ -105,18 +105,26 @@ public sealed class SteamSyncInstallStateTests : IDisposable
         _releases = new ReleaseRepository(_db.Factory);
         _ownerships = new OwnershipRepository(_db.Factory);
 
-        _sync = new SteamSyncService(
-            new SteamLibrarySource(steamRoot: _steamRoot),
-            SilentStores.Epic(),
-            SilentStores.Gog(),
-            new ExternalIdResolver(
-                new WorkRepository(_db.Factory),
-                _releases,
-                _ownerships,
-                new PlayRecordRepository(_db.Factory),
-                new PlaytimeSnapshotRepository(_db.Factory),
-                _db.Factory),
-            NullLogger<SteamSyncService>.Instance,
+        var resolver = new ExternalIdResolver(
+            new WorkRepository(_db.Factory),
+            _releases,
+            _ownerships,
+            new PlayRecordRepository(_db.Factory),
+            new PlaytimeSnapshotRepository(_db.Factory),
+            _db.Factory);
+        var gate = new LibrarySyncGate();
+
+        _sync = new RemoteOwnershipSyncService(
+            new LocalLibrarySyncService(
+                new SteamLibrarySource(steamRoot: _steamRoot),
+                SilentStores.Epic(),
+                SilentStores.Gog(),
+                resolver,
+                gate,
+                NullLogger<LocalLibrarySyncService>.Instance),
+            resolver,
+            gate,
+            NullLogger<RemoteOwnershipSyncService>.Instance,
             new OwnedLibraryStub());
     }
 

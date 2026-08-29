@@ -25,6 +25,29 @@ public sealed record ResolveResult(
     int NamesPromoted = 0);
 
 /// <summary>
+/// Whether a pass's playtime figures are the whole truth or a floor that
+/// another source may already have counted past. Controls whether a figure
+/// lower than the newest stored observation is recorded or clamped.
+/// </summary>
+public enum PlaytimeView
+{
+    /// <summary>
+    /// The pass sees the complete playtime for every ownership it reports.
+    /// A lower figure than the stored one is a genuine correction and is
+    /// recorded as a new observation.
+    /// </summary>
+    Complete,
+
+    /// <summary>
+    /// Every figure is a floor from a cumulative counter another source may
+    /// have counted further. A figure below the newest stored one is raised
+    /// to it rather than appended — <see cref="CandidateOwnershipMerge"/>'s
+    /// max rule applied across the pass boundary instead of within it.
+    /// </summary>
+    LowerBound,
+}
+
+/// <summary>
 /// Hard-join resolver (§5.3 step 1): maps <see cref="CandidateOwnership"/>
 /// onto Work/Release/Ownership/PlayRecord by exact (provider, provider_id)
 /// match. A hit updates ownership and appends play observations; a miss
@@ -60,9 +83,19 @@ public sealed class ExternalIdResolver
         _logger = logger ?? NullLogger<ExternalIdResolver>.Instance;
     }
 
+    /// <param name="candidates">The pass's candidates, before merging.</param>
+    /// <param name="ct">Cancellation; a cancelled pass commits nothing.</param>
+    /// <param name="playtime">
+    /// What the pass's playtime figures are worth against what is already
+    /// stored. Both sync jobs pass <see cref="PlaytimeView.LowerBound"/>: every
+    /// store exposes a cumulative counter and no single source sees all of it,
+    /// so a figure that would reduce an ownership's newest observation is a
+    /// blind spot in this pass rather than time the user un-played.
+    /// </param>
     public async Task<ResolveResult> ResolveAsync(
         IReadOnlyCollection<CandidateOwnership> candidates,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        PlaytimeView playtime = PlaytimeView.Complete)
     {
         // Collapse duplicate sources into one observation per ownership.
         var observations = CandidateOwnershipMerge.Coalesce(candidates);
@@ -107,16 +140,39 @@ public sealed class ExternalIdResolver
             // minutes IS an observation (appmanifest LastPlayed with no userdata).
             if (candidate.PlaytimeMinutes is not null || candidate.LastPlayedAt is not null)
             {
-                var minutes = candidate.PlaytimeMinutes ?? 0;
+                // Read once and passed down: the two appenders below need the
+                // same two rows the clamp needs.
+                var latestRecord = await _playRecords.GetLatestAsync(ownershipId, ct);
 
-                if (await AppendPlayRecordIfChangedAsync(ownershipId, minutes, candidate, ct))
+                // A date-only observation has no snapshot to append, so under
+                // Complete this row is not worth a query — only the clamp needs
+                // it unconditionally.
+                var latestSnapshot =
+                    candidate.PlaytimeMinutes is not null || playtime is PlaytimeView.LowerBound
+                        ? await _snapshots.GetLatestAsync(ownershipId, ct)
+                        : null;
+
+                var minutes = candidate.PlaytimeMinutes ?? 0;
+                var lastPlayedAt = candidate.LastPlayedAt;
+
+                if (playtime is PlaytimeView.LowerBound)
+                {
+                    minutes = Math.Max(
+                        minutes,
+                        Math.Max(latestRecord?.PlaytimeMinutes ?? 0, latestSnapshot?.PlaytimeMinutes ?? 0));
+                    lastPlayedAt = Later(lastPlayedAt, latestRecord?.LastPlayedAt);
+                }
+
+                if (await AppendPlayRecordIfChangedAsync(
+                        latestRecord, ownershipId, minutes, lastPlayedAt, candidate, ct))
                 {
                     playRecordsWritten++;
                 }
 
                 // Date-only observations have no playtime to plot.
                 if (candidate.PlaytimeMinutes is not null
-                    && await AppendSnapshotIfChangedAsync(ownershipId, minutes, candidate, ct))
+                    && await AppendSnapshotIfChangedAsync(
+                        latestSnapshot, ownershipId, minutes, candidate, ct))
                 {
                     snapshotsWritten++;
                 }
@@ -211,13 +267,24 @@ public sealed class ExternalIdResolver
             InstallPath: candidate.InstallPath,
             Installed: candidate.Installed), ct);
 
+    /// <summary>Later of two dates; null is "no answer", never "earlier".</summary>
+    private static DateTime? Later(DateTime? first, DateTime? second)
+        => first is null ? second
+            : second is null ? first
+            : first.Value >= second.Value ? first
+            : second;
+
     private async Task<bool> AppendPlayRecordIfChangedAsync(
-        long ownershipId, long minutes, CandidateOwnership candidate, CancellationToken ct)
+        PlayRecord? latest,
+        long ownershipId,
+        long minutes,
+        DateTime? lastPlayedAt,
+        CandidateOwnership candidate,
+        CancellationToken ct)
     {
-        var latest = await _playRecords.GetLatestAsync(ownershipId, ct);
         if (latest is not null
             && latest.PlaytimeMinutes == minutes
-            && latest.LastPlayedAt == candidate.LastPlayedAt)
+            && latest.LastPlayedAt == lastPlayedAt)
         {
             return false;
         }
@@ -226,7 +293,7 @@ public sealed class ExternalIdResolver
         {
             OwnershipId = ownershipId,
             PlaytimeMinutes = minutes,
-            LastPlayedAt = candidate.LastPlayedAt,
+            LastPlayedAt = lastPlayedAt,
             Source = candidate.Source,
             ObservedAt = candidate.ObservedAt,
         }, ct);
@@ -234,10 +301,10 @@ public sealed class ExternalIdResolver
     }
 
     private async Task<bool> AppendSnapshotIfChangedAsync(
-        long ownershipId, long minutes, CandidateOwnership candidate, CancellationToken ct)
+        PlaytimeSnapshot? lastSnapshot, long ownershipId, long minutes,
+        CandidateOwnership candidate, CancellationToken ct)
     {
         // Only compare against the newest snapshot.
-        var lastSnapshot = await _snapshots.GetLatestAsync(ownershipId, ct);
         if (lastSnapshot is not null && lastSnapshot.PlaytimeMinutes == minutes)
         {
             return false;

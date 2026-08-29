@@ -34,7 +34,7 @@ internal sealed class SchedulerClock : FakeTimeProvider
 }
 
 /// <summary>
-/// A stand-in for <see cref="SteamSyncService"/> that records when it was
+/// A stand-in for <see cref="LocalLibrarySyncService"/> that records when it was
 /// called, how many calls were ever in flight at once, and lets a test hold a
 /// call open to simulate a scan that overruns its interval.
 ///
@@ -43,12 +43,12 @@ internal sealed class SchedulerClock : FakeTimeProvider
 /// broken scheduler fails instead of hanging, never a delay the passing path
 /// pays.</para>
 /// </summary>
-internal sealed class FakeSteamSync : ISteamSync
+internal sealed class FakeLocalLibrarySync : ILocalLibrarySync
 {
     /// <summary>Only ever reached when an expected tick never happens.</summary>
     private static readonly TimeSpan FailureBound = TimeSpan.FromSeconds(20);
 
-    private readonly Func<int, CancellationToken, Task<SteamSyncReport>> _body;
+    private readonly Func<int, CancellationToken, Task<LibrarySyncReport>> _body;
     private readonly Channel<int> _starts = Channel.CreateUnbounded<int>();
     private readonly Channel<int> _completions = Channel.CreateUnbounded<int>();
     private readonly TaskCompletionSource _overlapped =
@@ -62,11 +62,11 @@ internal sealed class FakeSteamSync : ISteamSync
     /// Runs in place of the real scan; receives the 1-based call ordinal.
     /// Defaults to an instant "nothing found" pass.
     /// </param>
-    public FakeSteamSync(Func<int, CancellationToken, Task<SteamSyncReport>>? body = null)
+    public FakeLocalLibrarySync(Func<int, CancellationToken, Task<LibrarySyncReport>>? body = null)
         => _body = body ?? ((_, _) => Task.FromResult(NoChangeReport));
 
     /// <summary>What the real service returns for a machine with no Steam install.</summary>
-    public static SteamSyncReport NoChangeReport { get; } =
+    public static LibrarySyncReport NoChangeReport { get; } =
         new(Candidates: 0, Result: null, Elapsed: TimeSpan.Zero);
 
     public int Calls => Volatile.Read(ref _calls);
@@ -77,7 +77,7 @@ internal sealed class FakeSteamSync : ISteamSync
     /// <summary>Completes the instant a second call enters while one is still running.</summary>
     public Task Overlapped => _overlapped.Task;
 
-    public async Task<SteamSyncReport> SyncAsync(CancellationToken ct = default)
+    public async Task<LibrarySyncReport> SyncAsync(CancellationToken ct = default)
     {
         var ordinal = Interlocked.Increment(ref _calls);
         var inFlight = Interlocked.Increment(ref _inFlight);
@@ -116,5 +116,58 @@ internal sealed class FakeSteamSync : ISteamSync
     {
         using var timeout = new CancellationTokenSource(FailureBound);
         return await reader.ReadAsync(timeout.Token);
+    }
+}
+
+/// <summary>
+/// The same recorder for <see cref="IRemoteOwnershipSync"/>, so a test can
+/// prove the snapshot cadence never reaches it and that the backfill's own
+/// schedule cancels cleanly.
+/// </summary>
+internal sealed class FakeRemoteOwnershipSync : IRemoteOwnershipSync
+{
+    private static readonly TimeSpan FailureBound = TimeSpan.FromSeconds(20);
+
+    private readonly Func<int, CancellationToken, Task<LibrarySyncReport>> _body;
+    private readonly Channel<int> _completions = Channel.CreateUnbounded<int>();
+
+    private int _calls;
+
+    public FakeRemoteOwnershipSync(Func<int, CancellationToken, Task<LibrarySyncReport>>? body = null)
+        => _body = body ?? ((_, _) => Task.FromResult(FakeLocalLibrarySync.NoChangeReport));
+
+    public int Calls => Volatile.Read(ref _calls);
+
+    /// <summary>Scans this double was handed instead of taking one itself.</summary>
+    public List<LocalLibraryScan> ReusedScans { get; } = [];
+
+    public async Task<LibrarySyncReport> SyncAsync(CancellationToken ct = default)
+    {
+        var ordinal = Interlocked.Increment(ref _calls);
+        try
+        {
+            return await _body(ordinal, ct);
+        }
+        finally
+        {
+            _completions.Writer.TryWrite(ordinal);
+        }
+    }
+
+    public Task<LibrarySyncReport> SyncAsync(LocalLibraryScan scan, CancellationToken ct = default)
+    {
+        lock (ReusedScans)
+        {
+            ReusedScans.Add(scan);
+        }
+
+        return SyncAsync(ct);
+    }
+
+    /// <summary>Ordinal of the next call to leave <see cref="SyncAsync"/>, thrown or not.</summary>
+    public async Task<int> NextCompletionAsync()
+    {
+        using var timeout = new CancellationTokenSource(FailureBound);
+        return await _completions.Reader.ReadAsync(timeout.Token);
     }
 }

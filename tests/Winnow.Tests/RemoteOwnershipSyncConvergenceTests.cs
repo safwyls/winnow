@@ -29,7 +29,7 @@ namespace Winnow.Tests;
 /// sync that should have been a complete no-op still wrote 7 new rows, every 15
 /// minutes, forever.</para>
 /// </summary>
-public sealed class SteamSyncConvergenceTests : IDisposable
+public sealed class RemoteOwnershipSyncConvergenceTests : IDisposable
 {
     /// <summary>Installed, played, and reported a minute apart by the two sources.</summary>
     private const string DisagreeingAppId = "400";
@@ -42,12 +42,12 @@ public sealed class SteamSyncConvergenceTests : IDisposable
 
     private readonly TempDatabase _db = new();
     private readonly string _steamRoot;
-    private readonly SteamSyncService _sync;
+    private readonly RemoteOwnershipSyncService _sync;
     private readonly ReleaseRepository _releases;
     private readonly OwnershipRepository _ownerships;
     private readonly PlayRecordRepository _playRecords;
 
-    public SteamSyncConvergenceTests()
+    public RemoteOwnershipSyncConvergenceTests()
     {
         _steamRoot = Path.Combine(Path.GetTempPath(), $"winnow-converge-{Guid.NewGuid():N}");
         Directory.CreateDirectory(Path.Combine(_steamRoot, "steamapps"));
@@ -117,18 +117,26 @@ public sealed class SteamSyncConvergenceTests : IDisposable
         _ownerships = new OwnershipRepository(_db.Factory);
         _playRecords = new PlayRecordRepository(_db.Factory);
 
-        _sync = new SteamSyncService(
-            new SteamLibrarySource(steamRoot: _steamRoot),
-            SilentStores.Epic(),
-            SilentStores.Gog(),
-            new ExternalIdResolver(
-                new WorkRepository(_db.Factory),
-                _releases,
-                _ownerships,
-                _playRecords,
-                new PlaytimeSnapshotRepository(_db.Factory),
-                _db.Factory),
-            NullLogger<SteamSyncService>.Instance,
+        var resolver = new ExternalIdResolver(
+            new WorkRepository(_db.Factory),
+            _releases,
+            _ownerships,
+            _playRecords,
+            new PlaytimeSnapshotRepository(_db.Factory),
+            _db.Factory);
+        var gate = new LibrarySyncGate();
+
+        _sync = new RemoteOwnershipSyncService(
+            new LocalLibrarySyncService(
+                new SteamLibrarySource(steamRoot: _steamRoot),
+                SilentStores.Epic(),
+                SilentStores.Gog(),
+                resolver,
+                gate,
+                NullLogger<LocalLibrarySyncService>.Instance),
+            resolver,
+            gate,
+            NullLogger<RemoteOwnershipSyncService>.Instance,
             new OwnedLibraryStub());
     }
 

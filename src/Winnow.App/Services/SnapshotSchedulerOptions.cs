@@ -22,6 +22,6 @@ public sealed class SnapshotSchedulerOptions
     public bool Enabled { get; set; } = true;
 
     /// <summary>Whether to run a sync immediately on start. False by default because
-    /// Program already syncs before the window opens.</summary>
+    /// the background startup pipeline already runs one as the window opens.</summary>
     public bool RunOnStartup { get; set; }
 }

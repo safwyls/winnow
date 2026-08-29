@@ -97,11 +97,18 @@ public static class Program
         // against a fixed or seeded library.
         var writesSuppressed = args.Contains("--no-sync") || args.Contains("--seed-sample");
         builder.Services.Configure<SnapshotSchedulerOptions>(o => o.Enabled = !writesSuppressed);
+        builder.Services.Configure<RemoteOwnershipSchedulerOptions>(o => o.Enabled = !writesSuppressed);
         builder.Services.Configure<SessionWatcherOptions>(o => o.Enabled = !writesSuppressed);
 
         using var host = builder.Build();
         AppHost = host;
-        Task enrichment = Task.CompletedTask;
+
+        // Everything that reads a disk or a socket on the way to a full
+        // library. Held rather than dropped: the finally block cancels it and
+        // waits, because `using var host` disposes the service provider — and
+        // the SQLite connection factory with it — and closing the window two
+        // seconds into the first run is a normal thing to do.
+        Task startup = Task.CompletedTask;
         try
         {
             // Migrations run before ANY reader or writer touches the db —
@@ -154,28 +161,47 @@ public static class Program
             }
             else
 #endif
-            // The M0 library comes from local Steam files only — no network, so
-            // this stays fast enough to precede the window. --no-sync skips it
-            // for UI work against a fixed database.
+            // F04. Nothing below gates the window: the shell opens on whatever
+            // the database already holds and this fills it in behind. --no-sync
+            // skips it for UI work against a fixed database.
             if (!args.Contains("--no-sync"))
             {
-                host.Services.GetRequiredService<Services.SteamSyncService>()
-                    .SyncAsync().GetAwaiter().GetResult();
-
-                // Names for the games the local files could only identify by
-                // appid. This one DOES touch the network, so it must not gate
-                // the window: §7 promises a browsable library immediately with
-                // metadata filling in behind it.
-                //
-                // Held rather than dropped: the finally block cancels it and
-                // waits, because `using var host` disposes the service provider
-                // — and the SQLite connection factory with it — and closing the
-                // window two seconds into the first run is a normal thing to do.
-                enrichment = Task.Run(async () =>
+                // Local sync first: it creates the rows everything else
+                // enriches, and on a first run the grid is empty until it
+                // lands. Then remote backfill, then enrichment. Sequential
+                // because each step reads what the last one wrote — and because
+                // one resolver transaction at a time is the rule the sync gate
+                // exists to keep.
+                startup = Task.Run(async () =>
                 {
                     var services = host.Services;
                     try
                     {
+                        var local = await services.GetRequiredService<ILocalLibrarySync>()
+                            .SyncAsync(Shutdown.Token);
+                        if (local.Candidates > 0)
+                        {
+                            await RefreshLibraryAsync(services);
+                        }
+
+                        // The half that needs a network, handed the scan the
+                        // local pass just paid for so a configured machine walks
+                        // every appmanifest once per launch rather than twice.
+                        // Failure here is a logged warning inside the service,
+                        // never a lost local scan; the scheduler retries on its
+                        // own interval.
+                        var backfill = services.GetRequiredService<IRemoteOwnershipSync>();
+                        var remote = local.Scan is { } scanned
+                            ? await backfill.SyncAsync(scanned, Shutdown.Token)
+                            : await backfill.SyncAsync(Shutdown.Token);
+                        if (remote.Result?.CreatedReleases > 0 || remote.Result?.NamesPromoted > 0)
+                        {
+                            await RefreshLibraryAsync(services);
+                        }
+
+                        // Names for the games the local files could only
+                        // identify by appid. §7 promises a browsable library
+                        // immediately with metadata filling in behind it.
                         var report = await services.GetRequiredService<EnrichmentSyncService>()
                             .EnrichAsync(Shutdown.Token);
 
@@ -216,9 +242,7 @@ public static class Program
                             || poll.AnnouncementsRecorded > 0
                             || poll.BuildPushesRecorded > 0)
                         {
-                            await Dispatcher.UIThread.InvokeAsync(() =>
-                                services.GetRequiredService<LibraryViewModel>()
-                                    .LoadCommand.ExecuteAsync(null));
+                            await RefreshLibraryAsync(services);
                         }
 
                         // MainWindow loads the queue on open, before the sweep
@@ -237,7 +261,7 @@ public static class Program
                     {
                         services.GetRequiredService<ILoggerFactory>()
                             .CreateLogger(typeof(Program))
-                            .LogWarning(ex, "Enrichment failed; titles stay provisional until the next run.");
+                            .LogWarning(ex, "Startup sync failed; the library stays as the last run left it.");
                     }
                 }, Shutdown.Token);
             }
@@ -246,12 +270,15 @@ public static class Program
         }
         finally
         {
-            // Stop enrichment and let it unwind BEFORE the host disposes the
-            // connection factory it is writing through.
+            // Stop the startup pipeline and let it unwind BEFORE host.StopAsync
+            // stops the schedulers and BEFORE `using var host` disposes the
+            // connection factory all three write through. SessionJournalService
+            // drains its pending writes in that disposal, so nothing may still
+            // be cancelling underneath it.
             Shutdown.Cancel();
             try
             {
-                enrichment.Wait(TimeSpan.FromSeconds(5));
+                startup.Wait(TimeSpan.FromSeconds(5));
             }
             catch (AggregateException)
             {
@@ -263,6 +290,16 @@ public static class Program
             AppHost = null;
         }
     }
+
+    /// <summary>
+    /// The refresh seam every background job publishes through: reloading the
+    /// library view model raises its TilesChanged, which the feed already
+    /// consumes. Marshalled to the UI thread, and queued rather than lost when
+    /// the window has not opened yet.
+    /// </summary>
+    private static async Task RefreshLibraryAsync(IServiceProvider services)
+        => await Dispatcher.UIThread.InvokeAsync(() =>
+            services.GetRequiredService<LibraryViewModel>().LoadCommand.ExecuteAsync(null));
 
     // Avalonia configuration; also used by the previewer. Do not remove.
     public static AppBuilder BuildAvaloniaApp()
@@ -341,15 +378,26 @@ public static class Program
         services.AddEpicIngest();
         services.AddGogIngest();
         services.AddSingleton<ExternalIdResolver>();
-        services.AddSingleton<SteamSyncService>();
+
+        // F04/F49. The local scan and the remote entitlement backfill are two
+        // jobs on two schedules, and only the first may appear on a timer the
+        // user is waiting behind: LocalLibrarySyncService's constructor closure
+        // contains no HTTP client, which LocalLibrarySyncContractTests enforces.
+        // The gate is a singleton because it is what stops the two schedules and
+        // the startup pass from opening concurrent resolver transactions.
+        services.AddSingleton<LibrarySyncGate>();
+        services.AddSingleton<LocalLibrarySyncService>();
+        services.AddSingleton<RemoteOwnershipSyncService>();
 
         // M2 (§5 "Snapshot Scheduler", §8): keeps the longitudinal series
         // growing while the app sits in the tray, instead of recording one
         // point per launch. Same instance under both contracts — a separately
-        // constructed SteamSyncService would be a second scanner.
-        services.AddSingleton<ISteamSync>(sp => sp.GetRequiredService<SteamSyncService>());
+        // constructed service would be a second scanner.
+        services.AddSingleton<ILocalLibrarySync>(sp => sp.GetRequiredService<LocalLibrarySyncService>());
+        services.AddSingleton<IRemoteOwnershipSync>(sp => sp.GetRequiredService<RemoteOwnershipSyncService>());
         services.AddSingleton(TimeProvider.System);
         services.AddHostedService<SnapshotSchedulerService>();
+        services.AddHostedService<RemoteOwnershipSchedulerService>();
 
         // M3 (§5.2 mechanism A): the process watcher — the first writer the
         // `sessions` table has ever had. Polls for game starts, takes an OS

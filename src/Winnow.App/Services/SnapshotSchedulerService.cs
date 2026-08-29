@@ -5,13 +5,14 @@ using Microsoft.Extensions.Options;
 namespace Winnow.App.Services;
 
 /// <summary>
-/// Re-runs the local scan-and-resolve on an interval so
+/// Re-runs the local-only scan-and-resolve on an interval so
 /// <c>playtime_snapshots</c> gains points while the user plays rather than
-/// only at launch. Sequential loop with no overlap.
+/// only at launch. No network call in this path. Sequential loop with no
+/// overlap.
 /// </summary>
 public sealed class SnapshotSchedulerService : BackgroundService
 {
-    private readonly ISteamSync _sync;
+    private readonly ILocalLibrarySync _sync;
     private readonly SnapshotSchedulerOptions _options;
     private readonly TimeProvider _timeProvider;
     private readonly ILogger<SnapshotSchedulerService> _logger;
@@ -22,7 +23,7 @@ public sealed class SnapshotSchedulerService : BackgroundService
     /// container falls back to this default when nothing is registered.
     /// </param>
     public SnapshotSchedulerService(
-        ISteamSync sync,
+        ILocalLibrarySync sync,
         IOptions<SnapshotSchedulerOptions> options,
         ILogger<SnapshotSchedulerService> logger,
         TimeProvider? timeProvider = null)
@@ -66,10 +67,9 @@ public sealed class SnapshotSchedulerService : BackgroundService
                 await TickAsync(stoppingToken).ConfigureAwait(false);
             }
 
-            // WaitForNextTickAsync's first tick lands one full interval out.
-            // That is deliberate and is the whole of point 3: Program already
-            // scanned synchronously before the window opened, and a tick at T+0
-            // would re-read byte-identical files seconds later.
+            // The first tick is one full interval out. The background startup
+            // pipeline runs a local sync as soon as the window is up, so a tick
+            // at T+0 would re-read byte-identical files seconds later.
             while (await timer.WaitForNextTickAsync(stoppingToken).ConfigureAwait(false))
             {
                 await TickAsync(stoppingToken).ConfigureAwait(false);

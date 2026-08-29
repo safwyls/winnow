@@ -196,8 +196,14 @@ Tracked so none of it silently becomes permanent:
   `epic/Bluebird` resolve to the same `game_id`; 67/67 Epic titles resolved, 62 carrying
   Steam ids). Not built. This would collapse most of the merge queue automatically via hard
   ids rather than fuzzy title, which is exactly what §5.3 wants.
-- **`SteamSyncService` is misnamed** — it ingests three stores. Rename to
-  `LibrarySyncService` behind an `ILocalLibrarySource` in `Winnow.Core.Ingest`.
+- **`SteamSyncService` — settled 2026-08-28.** Split, not just renamed: the old type
+  awaited the Steam Web API and Epic OAuth behind a "filesystem-only" doc comment, which
+  caused F04 (network calls blocking first paint and repeating on the 15-minute timer).
+  `LocalLibrarySyncService : ILocalLibrarySync` handles the three local scans;
+  `RemoteOwnershipSyncService : IRemoteOwnershipSync` handles entitlement backfill at
+  6 hours. Both live in `Winnow.App.Services`, not `Winnow.Core.Ingest` as originally
+  intended — `LibrarySyncReport` carries `ResolveResult`, and Core cannot reference
+  Resolve. The no-network guarantee is enforced by `LocalLibrarySyncContractTests`.
 - **Session detection is Windows-only in practice.** `GameExecutableIndexBuilder` matches
   `*.exe`, so off Windows the index is empty and nothing is ever recorded — it warns once
   rather than failing silently. Widening the glob is NOT the fix: under Proton the resolved

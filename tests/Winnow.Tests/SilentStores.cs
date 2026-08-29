@@ -5,7 +5,7 @@ namespace Winnow.Tests;
 
 /// <summary>
 /// Epic and GOG sources that are guaranteed to find nothing, for the tests that
-/// exercise the Steam half of <c>SteamSyncService</c> and only need the other two
+/// exercise the Steam half of the sync jobs and only need the other two
 /// stores to stay quiet.
 ///
 /// <para>Not the same thing as leaving them at their defaults. A default
