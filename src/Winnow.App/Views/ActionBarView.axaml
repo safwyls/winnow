@@ -6,6 +6,11 @@
              x:Class="Winnow.App.Views.ActionBarView"
              x:DataType="vm:LibraryViewModel">
 
+    <!-- The strip states the library's active cut (§11.3). It exists because a
+         library that has been cut down and does not admit it is the most expensive
+         confusion this screen can produce: the panel can be closed and the rail
+         scrolled past, and then 41 of 926 games look like the whole hoard. -->
+
     <!-- Strip between command bar and art. Two modes, never both:
          · CUT BAR — shows active filters as chips (list, bucket, panel rules)
            with a total→filtered count. Chips indicate provenance (user vs list).

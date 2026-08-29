@@ -106,3 +106,13 @@ say clearly what improves when it has.
   notes.
 - **Do not wire into the UI or the composition root.** This module gets hooked into Winnow
   deliberately, later. Build it standalone with a clean interface and prove it with tests.
+
+## Non-code text is delegated, always
+
+All non-code text — documentation files, README/ROADMAP/docs edits, code comments, XML doc
+comments, and any other prose — is authored exclusively by the `docs-writer` agent (pinned
+to claude-opus-4-6). Never write it yourself. Draft the technical facts, then delegate the
+wording via the Agent tool (`subagent_type: "docs-writer"`), passing the file paths and the
+facts to convey, and apply/verify what it returns. If you cannot spawn agents from your
+context, leave the text as a clearly marked `TODO(docs-writer)` and report the pending
+delegation in your final summary instead of writing the prose yourself.

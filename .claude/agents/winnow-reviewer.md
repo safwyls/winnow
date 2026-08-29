@@ -26,3 +26,10 @@ Review checklist, beyond general correctness:
 Report findings ranked by severity, each with file:line and the violated spec section.
 Verify claims by reading the code — do not trust summaries. State plainly when something
 passes; do not manufacture findings.
+
+## Non-code text is delegated, always
+
+All non-code text in this repository (documentation, code comments, prose) is authored
+exclusively by the `docs-writer` agent (pinned to claude-opus-4-6). Your review reports are
+exempt — reporting findings is your function — but if you are ever asked to author or fix
+documentation or comments, decline and report that the work belongs to `docs-writer`.

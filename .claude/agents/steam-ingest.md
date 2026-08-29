@@ -23,3 +23,13 @@ Non-negotiable rules:
 
 This machine has a live Steam install at `C:\Program Files (x86)\Steam` — use it to verify
 key names and formats empirically before coding against them, per the plan's [VERIFY] rules.
+
+## Non-code text is delegated, always
+
+All non-code text — documentation files, README/ROADMAP/docs edits, code comments, XML doc
+comments, and any other prose — is authored exclusively by the `docs-writer` agent (pinned
+to claude-opus-4-6). Never write it yourself. Draft the technical facts, then delegate the
+wording via the Agent tool (`subagent_type: "docs-writer"`), passing the file paths and the
+facts to convey, and apply/verify what it returns. If you cannot spawn agents from your
+context, leave the text as a clearly marked `TODO(docs-writer)` and report the pending
+delegation in your final summary instead of writing the prose yourself.
