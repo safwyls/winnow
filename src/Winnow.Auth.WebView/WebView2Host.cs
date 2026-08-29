@@ -13,7 +13,11 @@ namespace Winnow.Auth.WebView;
 public sealed class WebView2Host : NativeControlHost
 {
     private readonly string _userDataFolder;
+    private readonly bool _inPrivate;
     private readonly TaskCompletionSource<CoreWebView2Controller> _ready
+        = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    private readonly TaskCompletionSource<bool> _closed
         = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     private IntPtr _childWindow;
@@ -25,13 +29,42 @@ public sealed class WebView2Host : NativeControlHost
     /// application, and the failure surfaces as an opaque environment-creation
     /// error rather than as a permissions one.
     /// </param>
-    public WebView2Host(string userDataFolder) => _userDataFolder = userDataFolder;
+    /// <param name="inPrivate">
+    /// Create the browser on an off-the-record profile, so that cookies, history
+    /// and cache live only for the life of the controller.
+    ///
+    /// <para>Defaults to <see langword="false"/>, which is the sign-in prompt's
+    /// existing behaviour: an Epic session is deliberately persistent so a user
+    /// who reconnects is not made to sign in again. A caller that needs
+    /// ephemerality asks for it here <em>and</em> hands over a user-data folder
+    /// it is prepared to delete. Private mode is why nothing of consequence is
+    /// written there, and the deletion is why nothing at all is left behind.</para>
+    ///
+    /// <para>If the installed runtime cannot make a private profile, this fails
+    /// the <see cref="Ready"/> task rather than quietly falling back to a
+    /// persistent one.</para>
+    /// </param>
+    public WebView2Host(string userDataFolder, bool inPrivate = false)
+    {
+        _userDataFolder = userDataFolder;
+        _inPrivate = inPrivate;
+    }
 
     /// <summary>
     /// Completes when the browser is attached and usable, or faults when it
     /// cannot be created.
     /// </summary>
     public Task<CoreWebView2Controller> Ready => _ready.Task;
+
+    /// <summary>
+    /// Completes once the controller has been closed and the child window
+    /// destroyed.
+    ///
+    /// <para>The signal a caller needs before deleting the user-data folder:
+    /// until the browser process has let go, the profile's files are locked and
+    /// the delete fails.</para>
+    /// </summary>
+    public Task Closed => _closed.Task;
 
     /// <inheritdoc/>
     protected override IPlatformHandle CreateNativeControlCore(IPlatformHandle parent)
@@ -102,10 +135,12 @@ public sealed class WebView2Host : NativeControlHost
         {
             DestroyWindow(_childWindow);
             _childWindow = IntPtr.Zero;
+            _closed.TrySetResult(true);
             return;
         }
 
         base.DestroyNativeControlCore(control);
+        _closed.TrySetResult(true);
     }
 
     /// <inheritdoc/>
@@ -146,7 +181,9 @@ public sealed class WebView2Host : NativeControlHost
                 userDataFolder: _userDataFolder,
                 options: null);
 
-            var controller = await environment.CreateCoreWebView2ControllerAsync(hwnd);
+            var controller = _inPrivate
+                ? await environment.CreateCoreWebView2ControllerAsync(hwnd, PrivateOptions(environment))
+                : await environment.CreateCoreWebView2ControllerAsync(hwnd);
 
             // The window may have closed while the environment was starting — a
             // second or two on a cold start. Closing a controller nobody will
@@ -174,6 +211,33 @@ public sealed class WebView2Host : NativeControlHost
             // folder, and a browser process that failed to start. All of them are
             // a failed sign-in, never a crash.
             _ready.TrySetException(ex);
+            _closed.TrySetResult(true);
+        }
+    }
+
+    /// <summary>
+    /// Controller options for an off-the-record profile.
+    ///
+    /// <para>Failing loudly is the point. A runtime too old to expose controller
+    /// options would otherwise be served a perfectly working browser that writes
+    /// the session to disk, which is the one outcome a caller asking for private
+    /// mode cannot accept.</para>
+    /// </summary>
+    private static CoreWebView2ControllerOptions PrivateOptions(CoreWebView2Environment environment)
+    {
+        try
+        {
+            var options = environment.CreateCoreWebView2ControllerOptions();
+            options.IsInPrivateModeEnabled = true;
+            return options;
+        }
+        catch (Exception ex) when (ex is NotImplementedException
+            or COMException
+            or PlatformNotSupportedException
+            or MissingMethodException)
+        {
+            throw new NotSupportedException(
+                "This WebView2 runtime cannot open a private browsing session.", ex);
         }
     }
 
