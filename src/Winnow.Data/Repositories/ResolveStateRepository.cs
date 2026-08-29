@@ -19,6 +19,13 @@ public sealed class ResolveStateRepository : IResolveStateRepository
     /// </summary>
     public const string LastSoftMatchSweepKey = "resolve.soft_match.last_sweep_at";
 
+    /// <summary>
+    /// Resume point of a sweep that hit its comparison ceiling. Absent means the
+    /// last sweep covered everything, which is also the correct reading for a
+    /// database that has never been swept.
+    /// </summary>
+    public const string SoftMatchCursorKey = "resolve.soft_match.sweep_cursor";
+
     private readonly ISqliteConnectionFactory _factory;
 
     public ResolveStateRepository(ISqliteConnectionFactory factory) => _factory = factory;
@@ -57,6 +64,42 @@ public sealed class ResolveStateRepository : IResolveStateRepository
                 key = LastSoftMatchSweepKey,
                 value = completedAt.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture),
             },
+            transaction: lease.Transaction,
+            cancellationToken: ct));
+    }
+
+    public async Task<string?> GetSoftMatchCursorAsync(CancellationToken ct = default)
+    {
+        using var lease = _factory.Lease();
+        return await lease.Connection.ExecuteScalarAsync<string?>(new CommandDefinition(
+            "SELECT value FROM settings WHERE key = @key;",
+            new { key = SoftMatchCursorKey },
+            transaction: lease.Transaction,
+            cancellationToken: ct));
+    }
+
+    public async Task SetSoftMatchCursorAsync(string? cursor, CancellationToken ct = default)
+    {
+        using var lease = _factory.Lease();
+
+        // A completed sweep DELETEs rather than storing an empty string, so
+        // "no cursor" has exactly one representation and the next sweep cannot
+        // mistake a blank for a position.
+        if (string.IsNullOrEmpty(cursor))
+        {
+            await lease.Connection.ExecuteAsync(new CommandDefinition(
+                "DELETE FROM settings WHERE key = @key;",
+                new { key = SoftMatchCursorKey },
+                transaction: lease.Transaction,
+                cancellationToken: ct));
+            return;
+        }
+
+        await lease.Connection.ExecuteAsync(new CommandDefinition("""
+            INSERT INTO settings (key, value) VALUES (@key, @value)
+            ON CONFLICT(key) DO UPDATE SET value = excluded.value;
+            """,
+            new { key = SoftMatchCursorKey, value = cursor },
             transaction: lease.Transaction,
             cancellationToken: ct));
     }

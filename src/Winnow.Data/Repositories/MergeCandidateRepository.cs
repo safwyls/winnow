@@ -37,6 +37,22 @@ public sealed class MergeCandidateRepository : IMergeCandidateRepository
         return rows.AsList();
     }
 
+    public async Task<IReadOnlyList<MergeCandidate>> GetAllAsync(CancellationToken ct = default)
+    {
+        using var lease = _factory.Lease();
+        var rows = await lease.Connection.QueryAsync<MergeCandidate>(new CommandDefinition("""
+            SELECT id               AS Id,
+                   left_release_id  AS LeftReleaseId,
+                   right_release_id AS RightReleaseId,
+                   score            AS Score,
+                   signals_json     AS SignalsJson,
+                   status           AS Status
+            FROM merge_candidates
+            ORDER BY id;
+            """, transaction: lease.Transaction, cancellationToken: ct));
+        return rows.AsList();
+    }
+
     public async Task<MergeCandidate?> FindByPairAsync(
         long leftReleaseId, long rightReleaseId, CancellationToken ct = default)
     {

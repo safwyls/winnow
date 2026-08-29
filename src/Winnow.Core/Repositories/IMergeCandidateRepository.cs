@@ -10,6 +10,16 @@ public interface IMergeCandidateRepository
     /// <summary>The confirmation queue: all candidates with status 'pending', highest score first.</summary>
     Task<IReadOnlyList<MergeCandidate>> GetPendingAsync(CancellationToken ct = default);
 
+    /// <summary>
+    /// Every row, whatever its status, in id order. The resolver preloads this
+    /// into a canonical-pair dictionary so a sweep costs ONE query rather than a
+    /// <see cref="FindByPairAsync"/> per compared pair — at the configured
+    /// ceiling that was up to 250,000 round trips inside a single writer
+    /// transaction, which stalls acknowledgements, journal notes and session
+    /// writes for as long as it runs.
+    /// </summary>
+    Task<IReadOnlyList<MergeCandidate>> GetAllAsync(CancellationToken ct = default);
+
     /// <summary>The existing row for a pair of releases in either order, or null. Prevents re-queuing answered pairs.</summary>
     Task<MergeCandidate?> FindByPairAsync(
         long leftReleaseId, long rightReleaseId, CancellationToken ct = default);

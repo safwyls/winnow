@@ -210,6 +210,96 @@ public sealed class LibrarySoftMatchSweepTests
         Assert.Equal(1, report.PairsProposed);
     }
 
+    /// <summary>
+    /// The half of the ceiling that was missing. Three identical releases make
+    /// three pairs; a cap of one means no single pass can see them all. The old
+    /// walk always restarted at the same deterministic prefix, so pair one was
+    /// re-proposed on every launch forever and pairs two and three were never
+    /// compared even once — a permanently starved tail behind a knob documented
+    /// as "safe to re-run".
+    ///
+    /// <para>Each run must therefore reach pairs the last one omitted, and three
+    /// runs must between them ask about all three pairs.</para>
+    /// </summary>
+    [Fact]
+    public async Task A_truncated_sweep_resumes_where_it_stopped_instead_of_restarting()
+    {
+        using var fixture = new SweepFixture(new SoftMatchSweepOptions { MaxComparisons = 1 });
+        await fixture.AddAsync("Hollow Knight", 2017);
+        await fixture.AddAsync("Hollow Knight", 2017);
+        await fixture.AddAsync("Hollow Knight", 2017);
+
+        var first = await fixture.Sweep.SweepAsync();
+        Assert.True(first.Truncated);
+        Assert.Equal(1, first.Outcome.Queued);
+
+        // The pass after a truncated one must examine something new, not
+        // re-examine the pair it already queued.
+        var second = await fixture.Sweep.SweepAsync();
+        Assert.True(second.Truncated);
+        Assert.Equal(1, second.Outcome.Queued);
+        Assert.Equal(0, second.Outcome.AlreadyPending);
+
+        var third = await fixture.Sweep.SweepAsync();
+        Assert.Equal(1, third.Outcome.Queued);
+
+        // All three pairs of the triangle, each asked exactly once.
+        var pending = await fixture.Candidates.GetPendingAsync();
+        Assert.Equal(3, pending.Count);
+        Assert.Equal(
+            3,
+            pending.Select(p => (p.LeftReleaseId, p.RightReleaseId)).Distinct().Count());
+
+        // Nothing was retired along the way: a pair outside this pass's window
+        // is "not reached yet", never "no longer valid".
+        Assert.Equal(0, first.ExcludedWithdrawn + second.ExcludedWithdrawn + third.ExcludedWithdrawn);
+    }
+
+    /// <summary>
+    /// A truncated pass compared a window, not the library, and the empty-state
+    /// copy the merge queue renders is a claim about the library. Stamping
+    /// completion here is how the UI ends up saying "nothing ambiguous" about
+    /// pairs nothing has looked at.
+    /// </summary>
+    [Fact]
+    public async Task A_truncated_sweep_is_not_recorded_as_a_completed_one()
+    {
+        using var fixture = new SweepFixture(new SoftMatchSweepOptions { MaxComparisons = 1 });
+        await fixture.AddAsync("Hollow Knight", 2017);
+        await fixture.AddAsync("Hollow Knight", 2017);
+        await fixture.AddAsync("Hollow Knight", 2017);
+
+        // However many times it runs. A ceiling this low can never cover the
+        // triangle in one pass, and the honest reading of that is "not swept".
+        for (var run = 0; run < 4; run++)
+        {
+            Assert.True((await fixture.Sweep.SweepAsync()).Truncated);
+            Assert.Null(await fixture.ResolveState.GetLastSoftMatchSweepAsync());
+            Assert.NotNull(await fixture.ResolveState.GetSoftMatchCursorAsync());
+        }
+    }
+
+    /// <summary>
+    /// The other side of it: a pass that did cover the library records the
+    /// completion the empty state reads, and drops the resume point so the next
+    /// run starts from the top rather than inheriting a stale position.
+    /// </summary>
+    [Fact]
+    public async Task A_completed_sweep_clears_the_resume_point()
+    {
+        using var fixture = new SweepFixture();
+        await fixture.AddAsync("Hollow Knight", 2017);
+        await fixture.AddAsync("Hollow Knight", 2017);
+        await fixture.AddAsync("Hollow Knight", 2017);
+
+        var report = await fixture.Sweep.SweepAsync();
+
+        Assert.False(report.Truncated);
+        Assert.Equal(3, report.PairsProposed);
+        Assert.NotNull(await fixture.ResolveState.GetLastSoftMatchSweepAsync());
+        Assert.Null(await fixture.ResolveState.GetSoftMatchCursorAsync());
+    }
+
     // ── State the empty screen reads ─────────────────────────────────────────
 
     [Fact]
@@ -353,6 +443,88 @@ public sealed class LibrarySoftMatchSweepTests
         Assert.Equal(
             MergeCandidateStatuses.Rejected,
             (await fixture.Candidates.FindByPairAsync(left, right))!.Status);
+    }
+
+    /// <summary>
+    /// Non-game reclassification was only the first way a queued question can go
+    /// stale. Enrichment rewrites titles too, and a renamed release shares no
+    /// blocking key with its old partner — so the sweep that would have
+    /// re-proposed the pair never generates it again, and the question sits in
+    /// the queue permanently, answerable only by answering it.
+    ///
+    /// <para>The sweep submits only what its current blocking pass produced, so
+    /// nothing here reaches the resolver as a proposal. Reconciliation is what
+    /// notices.</para>
+    /// </summary>
+    [Fact]
+    public async Task A_pending_pair_is_retired_once_a_title_moves_out_of_its_blocking_key()
+    {
+        using var fixture = new SweepFixture();
+        var left = await fixture.AddAsync("Bastion", 2011);
+        var right = await fixture.AddAsync("Bastion", 2011);
+
+        Assert.Equal(1, (await fixture.Sweep.SweepAsync()).Outcome.Queued);
+
+        // Enrichment learns what the second row actually is.
+        await fixture.Releases.UpdateNameAsync(right, "Transistor");
+
+        var report = await fixture.Sweep.SweepAsync();
+
+        Assert.Equal(0, report.PairsProposed);
+        Assert.Equal(1, report.ExcludedWithdrawn);
+        Assert.Empty(await fixture.Candidates.GetPendingAsync());
+    }
+
+    /// <summary>Same rule, same protection: a rename does not erase an answer.</summary>
+    [Fact]
+    public async Task Retiring_a_renamed_pair_never_touches_an_answered_one()
+    {
+        using var fixture = new SweepFixture();
+        var left = await fixture.AddAsync("Bastion", 2011);
+        var right = await fixture.AddAsync("Bastion", 2011);
+
+        await fixture.Sweep.SweepAsync();
+        var answered = Assert.Single(await fixture.Candidates.GetPendingAsync());
+        await fixture.Candidates.SetStatusAsync(answered.Id, MergeCandidateStatuses.Confirmed);
+
+        await fixture.Releases.UpdateNameAsync(right, "Transistor");
+
+        var report = await fixture.Sweep.SweepAsync();
+
+        Assert.Equal(0, report.ExcludedWithdrawn);
+        Assert.Equal(
+            MergeCandidateStatuses.Confirmed,
+            (await fixture.Candidates.FindByPairAsync(left, right))!.Status);
+    }
+
+    /// <summary>
+    /// A pair left over from before the two sides were joined under one work.
+    /// Blocking refuses to emit it (§9 pitfall 5), so it can never be
+    /// re-proposed — which is exactly why it has to be retired rather than
+    /// waited on.
+    /// </summary>
+    [Fact]
+    public async Task A_pending_pair_whose_sides_now_share_a_work_is_retired()
+    {
+        using var fixture = new SweepFixture();
+        var workId = await fixture.Works.InsertAsync(new Work { Name = "Prey", FirstReleaseYear = 2017 });
+        var left = await fixture.AddReleaseAsync(workId, "Prey");
+        var right = await fixture.AddReleaseAsync(workId, "Prey");
+
+        // The row an earlier build queued, before the releases were joined.
+        await fixture.Candidates.InsertAsync(new MergeCandidate
+        {
+            LeftReleaseId = Math.Min(left, right),
+            RightReleaseId = Math.Max(left, right),
+            Score = 0.65,
+            Status = MergeCandidateStatuses.Pending,
+        });
+
+        var report = await fixture.Sweep.SweepAsync();
+
+        Assert.Equal(0, report.PairsProposed);
+        Assert.Equal(1, report.ExcludedWithdrawn);
+        Assert.Empty(await fixture.Candidates.GetPendingAsync());
     }
 
     // ── Fixture ──────────────────────────────────────────────────────────────

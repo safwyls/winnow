@@ -29,7 +29,26 @@ public sealed record ReleaseIdentity
     /// <summary>True when the name is a placeholder (<c>App 1203620</c>). Excluded from matching.</summary>
     public bool NameIsProvisional { get; init; }
 
+    /// <summary>
+    /// <c>works.steam_app_type</c> — Valve's <c>common.type</c> (<c>game</c>, <c>tool</c>,
+    /// <c>music</c>, …), or null when nothing has probed this app yet. Null is the norm.
+    /// </summary>
+    public string? SteamAppType { get; init; }
+
+    /// <summary>
+    /// <c>works.epic_categories</c> — Epic's comma-joined category paths, or null when the
+    /// catalog has not been read. Null is the norm.
+    /// </summary>
+    public string? EpicCategories { get; init; }
+
     /// <summary>Release name, falling back to work name.</summary>
     public string MatchTitle =>
         string.IsNullOrWhiteSpace(ReleaseName) ? WorkName : ReleaseName;
+
+    /// <summary>
+    /// True when either storefront's classification says this row is not a game — a
+    /// dedicated server, an engine build, a marketplace asset pack. Unclassified rows
+    /// (the normal case for a library nothing has probed) are games.
+    /// </summary>
+    public bool IsNonGame => NonGameEntries.IsNonGame(SteamAppType, EpicCategories);
 }
