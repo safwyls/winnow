@@ -224,17 +224,16 @@ public class BucketQueryTests : IAsyncLifetime, IDisposable
     }
 
     /// <summary>
-    /// The refund line, exhaustively. 0/1/119 are Never played — under Steam's
-    /// two-hour window the game could still have been handed back, so it was
-    /// never really played — and 120/121 are Bounced off: committed past the
-    /// point of no return and abandoned anyway.
+    /// The refund line is the boundary between Active and Bounced. Nonzero
+    /// playtime under the floor (1, 119) reads <c>active</c>; at or above it
+    /// (120, 121) reads <c>bounced</c>.
     /// </summary>
     [Theory]
-    [InlineData(1, "never_played")]
-    [InlineData(119, "never_played")]
+    [InlineData(1, "active")]
+    [InlineData(119, "active")]
     [InlineData(120, "bounced")]
     [InlineData(121, "bounced")]
-    public void The_refund_line_separates_never_played_from_bounced(long minutes, string expected)
+    public void The_refund_line_separates_active_from_bounced(long minutes, string expected)
         => Assert.Equal(expected, BucketFor($"refund_{minutes}"));
 
     /// <summary>
@@ -373,13 +372,14 @@ public class BucketQueryTests : IAsyncLifetime, IDisposable
     {
         var repository = new LibraryQueryRepository(_db.Factory);
 
-        // Raise the refund line past 500 and the 500-minute game stops counting
-        // as played at all.
+        // Raising the floor past 500 drops the 500-minute game out of
+        // `bounced` and into the `active` residue: same stored row, different
+        // answer purely from the retuned parameter.
         var raised = await repository
             .GetOwnershipBucketsAsync(Thresholds with { BouncedFloorMinutes = 601 });
 
         Assert.Equal(
-            LibraryBuckets.NeverPlayed,
+            LibraryBuckets.Active,
             Assert.Single(raised, b => b.OwnershipId == _ownershipsByCase["superseded_record"]).Bucket);
 
         // Lower it below 119 and the 119-minute game crosses the other way.

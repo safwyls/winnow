@@ -482,28 +482,31 @@ Computed as queries, not stored columns:
 
 | Bucket | Rule |
 |---|---|
-| Never played | `playtime_minutes < bounced_floor` (zero included) |
+| Never played | Zero minutes AND no last-played date (never opened) |
 | Bounced | `bounced_floor <= playtime_minutes < retired_floor` — **highest-value pile** |
 | Stale but patched | `last_played_at < update_event.occurred_at` by > N months, on a game that was actually opened |
 | Retired | `playtime_minutes >= retired_floor`; excluded from surfacing |
+| Active | Residual: nonzero playtime under `bounced_floor`, or a last-played date beside zero (unknown) minutes |
 | Dead | No viable platform, delisted, or launch-failure flagged |
 
-**The Never played / Bounced boundary is the refund line, not zero.** Default
-`bounced_floor` is 120 minutes because that is Steam's refund window, which makes it the one
-non-arbitrary number available. Under it the purchase was still reversible, so "I never
-played it" is literally true and ninety minutes is the same fact about the user as no
-minutes. At or above it they committed past the point of no return and gave up anyway —
-a different and far more interesting fact, and the one "Bounced off" is naming.
+**Never played means never opened.** Zero minutes *and* no last-played date, nothing else.
+A game with real playtime under the refund line was opened and played; classifying it as
+"Never played" was tried (the refund-line rule, reverted 2026-08-29) and abandoned because
+a game the user demonstrably launched reading as "Never played" was confusing.
 
-**Precedence**, in the order the query tests: never-opened (zero minutes *and* no last-played
-date), retired, stale-but-patched, never played, bounced, active. Two of those matter.
-Retired outranks stale so a 200-hour game is never resurfaced. Stale outranks both playtime
-buckets below it, because Bounced now spans the entire middle of the axis and would
-otherwise swallow "Stale but patched" whole — and because a game with forty minutes on it
-can genuinely be behind on a patch. Only never-opened outranks staleness: it is the single
-case design-system §5.2's "nothing to be behind on" describes. `active` is consequently a
-residue rather than a rail bucket — the only rows that reach it are those with a real
-last-played date beside zero recorded minutes, where the minutes are unknown, not zero.
+`bounced_floor` defaults to 120 minutes (Steam's refund window), which is the floor for
+Bounced. At or above it the user committed past the point of no return and gave up anyway,
+which is the fact "Bounced off" names.
+
+**Precedence**, in the order the query tests: never-played (zero minutes *and* no last-played
+date), retired, stale-but-patched, bounced, active. Two orderings matter. Retired outranks
+stale so a 200-hour game is never resurfaced. Stale outranks bounced, because Bounced spans
+everything between the refund line and the retired floor and would otherwise swallow "Stale
+but patched" whole, and because a game with forty minutes on it can genuinely be behind on a
+patch. Only never-opened outranks staleness: it is the single case design-system §5.2's
+"nothing to be behind on" describes. `active` is consequently a residue rather than a rail
+bucket: nonzero playtime under the refund line, or a last-played date beside zero recorded
+minutes where the minutes are unknown, not zero.
 
 `retired_floor` still cannot be a flat number in the long run. 2h in a roguelike is a real
 trial; 2h in a CRPG is the tutorial. **[VERIFY]** whether a HowLongToBeat data source is

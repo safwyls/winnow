@@ -41,26 +41,24 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
     {
         // Bucket precedence (§6.1), in the order the CASE below tests:
         //
-        //   1. never-opened  — zero minutes AND no last-played date
-        //   2. retired       — at or above the retired floor
+        //   1. never_played     — zero minutes AND no last-played date
+        //   2. retired          — at or above the retired floor
         //   3. stale_but_patched
-        //   4. never_played  — below the refund line
-        //   5. bounced       — refund line up to the retired floor
-        //   6. active        — the residue
-        //
-        // Two of those orderings are load-bearing and neither is obvious.
+        //   4. bounced          — at or above the refund line, below retired
+        //   5. active           — the residue: nonzero playtime under the
+        //                         refund line, or a last-played date beside
+        //                         zero (unknown) minutes
         //
         // Retired outranks stale, as it always has: high-playtime games are
         // excluded from surfacing even when patched.
         //
-        // Stale outranks never_played and bounced, which is NEW and is forced by
-        // the refund-line boundary. Bounced now spans everything between the
-        // refund line and the retired floor, so if it were still tested first it
+        // Stale outranks bounced, because Bounced spans everything between the
+        // refund line and the retired floor, so if it were tested first it
         // would swallow `stale_but_patched` whole and the rail's flagship bucket
         // would be permanently empty. Testing staleness first is also what makes
         // §5.2 true: the badge is bucket membership, and a game with forty
-        // minutes on it CAN be behind on a patch. Only case 1 — the game that
-        // was never opened — has nothing to be behind on, which is why it, and
+        // minutes on it CAN be behind on a patch. Only case 1, the game that
+        // was never opened, has nothing to be behind on, which is why it, and
         // only it, is tested above staleness.
         const string sql = """
             WITH latest_play AS (
@@ -220,15 +218,10 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
                                  OR datetime(mu.occurred_at) >
                                     datetime(lp.last_played_at, '+' || @StaleWindowMonths || ' months'))
                            THEN 'stale_but_patched'
-                       -- Below the refund line the purchase was still reversible,
-                       -- so however many minutes are on the clock, the game was
-                       -- never really played. `> 0` only to leave the unknown-
-                       -- minutes row above to the ELSE.
-                       WHEN lp.playtime_minutes > 0
-                            AND lp.playtime_minutes < @BouncedFloorMinutes
-                           THEN 'never_played'
-                       -- Refund line up to the retired floor, which the retired
-                       -- test above has already carved off.
+                       -- No special case for nonzero playtime under the floor:
+                       -- it falls through to ELSE ('active'). Classifying it
+                       -- as never_played was reverted (2026-08-29) because
+                       -- real playtime reading as "Never played" was confusing.
                        WHEN lp.playtime_minutes >= @BouncedFloorMinutes
                            THEN 'bounced'
                        ELSE 'active'

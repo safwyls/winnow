@@ -273,21 +273,21 @@ public class NonGameFilterTests : IDisposable
     [Fact]
     public async Task Bucket_counts_and_returned_rows_agree_in_both_states()
     {
-        await SeedAsync("Never Played Game", "Game", playtimeMinutes: 10);
+        await SeedAsync("Barely Opened Game", "Game", playtimeMinutes: 10);
         await SeedAsync("Bounced Game", "Game", playtimeMinutes: 300);
         await SeedAsync("Played Out Game", "Game", playtimeMinutes: 9_000);
-        await SeedAsync("Eco Server", "Tool", playtimeMinutes: 10);
+        await SeedAsync("Barely Used Tool", "Tool", playtimeMinutes: 10);
         await SeedAsync("Soundtrack", "Music", playtimeMinutes: 9_000);
 
         var hidden = await QueryAsync(false);
         Assert.Equal(3, hidden.Count);
-        Assert.Equal(1, hidden.Count(r => r.Bucket == LibraryBuckets.NeverPlayed));
+        Assert.Equal(1, hidden.Count(r => r.Bucket == LibraryBuckets.Active));
         Assert.Equal(1, hidden.Count(r => r.Bucket == LibraryBuckets.Bounced));
         Assert.Equal(1, hidden.Count(r => r.Bucket == LibraryBuckets.Retired));
 
         var shown = await QueryAsync(true);
         Assert.Equal(5, shown.Count);
-        Assert.Equal(2, shown.Count(r => r.Bucket == LibraryBuckets.NeverPlayed));
+        Assert.Equal(2, shown.Count(r => r.Bucket == LibraryBuckets.Active));
         Assert.Equal(1, shown.Count(r => r.Bucket == LibraryBuckets.Bounced));
         Assert.Equal(2, shown.Count(r => r.Bucket == LibraryBuckets.Retired));
 
@@ -318,7 +318,9 @@ public class NonGameFilterTests : IDisposable
 
         Assert.Equal(tool, row.OwnershipId);
         Assert.Equal(4, row.PlaytimeMinutes);
-        Assert.Equal(LibraryBuckets.NeverPlayed, row.Bucket);
+        // 4 minutes with a real last-played date: below the refund line but
+        // genuinely opened, so bucketed `active`.
+        Assert.Equal(LibraryBuckets.Active, row.Bucket);
     }
 
     // ── Consolidation is unaffected ──────────────────────────────────────────

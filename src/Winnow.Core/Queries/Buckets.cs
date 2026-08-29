@@ -6,7 +6,7 @@ namespace Winnow.Core.Queries;
 /// </summary>
 public static class LibraryBuckets
 {
-    /// <summary>Playtime below the refund line (<see cref="BucketThresholds.BouncedFloorMinutes"/>), zero included.</summary>
+    /// <summary>Zero minutes and no last-played date: the game was never opened.</summary>
     public const string NeverPlayed = "never_played";
 
     /// <summary>
@@ -17,14 +17,14 @@ public static class LibraryBuckets
 
     /// <summary>
     /// A release update landed more than the stale window after last play.
-    /// Outranks NeverPlayed/Bounced; outranked by Retired.
+    /// Outranks Bounced; outranked by Retired and by the never-opened case.
     /// </summary>
     public const string StaleButPatched = "stale_but_patched";
 
     /// <summary>High playtime; excluded from surfacing.</summary>
     public const string Retired = "retired";
 
-    /// <summary>Residual bucket for rows with a last-played date but zero recorded minutes.</summary>
+    /// <summary>Residual bucket: nonzero playtime under the refund line, or a last-played date beside zero (unknown) minutes.</summary>
     public const string Active = "active";
 }
 
@@ -32,7 +32,7 @@ public static class LibraryBuckets
 /// Tunable thresholds for the derived-bucket query. Deliberately parameters,
 /// not schema: §6.1 requires retuning without migration.
 /// </summary>
-/// <param name="BouncedFloorMinutes">Minutes below this is NeverPlayed; at or above is Bounced. Default 120 (Steam refund line).</param>
+/// <param name="BouncedFloorMinutes">Playtime at or above this is Bounced. Default 120 (Steam refund line).</param>
 /// <param name="RetiredFloorMinutes">Playtime at or above this is Retired.</param>
 /// <param name="StaleWindowMonths">Months after last play before an update marks Stale-but-patched.</param>
 /// <param name="UpdateCorrelationWindowDays">Max days between a build push and announcement to count as one update. Default 7.</param>
