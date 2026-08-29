@@ -21,7 +21,16 @@ public sealed class TempDatabase : IDisposable
         // showed up as roughly one bucket-query test failing per five full-suite
         // runs, a different test each time.
         Factory = new SqliteConnectionFactory(DatabasePath, pooling: false);
-        Initializer = new DatabaseInitializer(Factory);
+
+        // Pre-upgrade backups are a real behaviour (F42), so tests get them —
+        // but into this database's own directory rather than the default
+        // `backups` folder beside it, which here is the shared system temp
+        // directory. Deleted with the database on dispose.
+        BackupDirectory = DatabasePath + "-backups";
+        Initializer = new DatabaseInitializer(Factory)
+        {
+            Backups = DatabaseBackupPolicy.Default with { Directory = BackupDirectory },
+        };
 
         if (migrate)
         {
@@ -30,6 +39,9 @@ public sealed class TempDatabase : IDisposable
     }
 
     public string DatabasePath { get; }
+
+    /// <summary>Where <see cref="Initializer"/> writes its pre-upgrade copies.</summary>
+    public string BackupDirectory { get; }
 
     public SqliteConnectionFactory Factory { get; }
 
@@ -47,6 +59,11 @@ public sealed class TempDatabase : IDisposable
             {
                 File.Delete(path);
             }
+        }
+
+        if (Directory.Exists(BackupDirectory))
+        {
+            Directory.Delete(BackupDirectory, recursive: true);
         }
     }
 }

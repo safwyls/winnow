@@ -42,15 +42,28 @@ public sealed class SqliteConnectionFactory : ISqliteConnectionFactory
     public SqliteConnection Open()
     {
         var connection = new SqliteConnection(ConnectionString);
-        connection.Open();
+        try
+        {
+            connection.Open();
 
-        // WAL is persistent per-database, but issuing it per-connection is
-        // cheap and keeps the guarantee independent of who created the file.
-        // foreign_keys is per-connection; the connection string already set
-        // it, the explicit pragma makes the requirement visible.
-        using var command = connection.CreateCommand();
-        command.CommandText = "PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;";
-        command.ExecuteNonQuery();
+            // WAL is persistent per-database, but issuing it per-connection is
+            // cheap and keeps the guarantee independent of who created the file.
+            // foreign_keys is per-connection; the connection string already set
+            // it, the explicit pragma makes the requirement visible.
+            using var command = connection.CreateCommand();
+            command.CommandText = "PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;";
+            command.ExecuteNonQuery();
+        }
+        catch
+        {
+            // A connection that failed here still owns whatever handle it got
+            // as far as taking — on a corrupt database the pragma throws after
+            // Open() succeeds, and an undisposed connection holds the file open
+            // for the rest of the process, which is fatal to the recovery paths
+            // that are supposed to move or delete it.
+            connection.Dispose();
+            throw;
+        }
 
         return connection;
     }
