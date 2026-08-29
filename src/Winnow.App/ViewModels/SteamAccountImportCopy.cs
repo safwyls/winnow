@@ -11,7 +11,7 @@ public static class SteamAccountImportCopy
     // ══ Header ═════════════════════════════════════════════════════════════
 
     /// <summary>Screen title, rendered in Display L. Sentence case, matching
-    /// "Platforms" and "Appearance".</summary>
+    /// the other settings surface screen titles.</summary>
     public const string Title = "Steam purchases";
 
     /// <summary>
@@ -23,10 +23,10 @@ public static class SteamAccountImportCopy
         "Fills in when you got each game, how you got it, and what you paid. "
         + "Attaches to games already in your library; nothing is added or overwritten.";
 
-    /// <summary>Rail row label. Uppercase, matching STORES and APPEARANCE.</summary>
+    /// <summary>Segment label on the settings surface. Uppercase, matching STORES and APPEARANCE.</summary>
     public const string RailRow = "PURCHASES";
 
-    /// <summary>Rail row tooltip. Same register as the other settings tooltips, no period.</summary>
+    /// <summary>Segment tooltip on the settings surface. Same register as the rail tooltips, no period.</summary>
     public const string RailTooltip =
         "When you got each Steam game, how you got it, and what you paid";
 
@@ -266,10 +266,25 @@ public static class SteamAccountImportCopy
         "Every row was read and none of them filled in a new value. The library "
         + "already had these facts, or nothing matched a game in it.";
 
+    /// <summary>
+    /// Shown under the results table when the reported and found licence counts
+    /// differ. Informational, not a warning: Steam's paginator routinely
+    /// advertises a higher total than the rows it renders, so the difference
+    /// does not indicate missed licences.
+    /// </summary>
+    public const string LicensesCountMismatchNote =
+        "Steam's licences page advertises a total that is larger than the number "
+        + "of rows it renders. The difference is in Steam's own counting, not "
+        + "licences that were missed.";
+
     // ══ Count labels (UPPERCASE, left of a number) ═════════════════════════
 
     /// <summary>Rows read from the licenses page.</summary>
     public const string LabelLicencesFound = "LICENCES FOUND";
+
+    /// <summary>Total advertised by Steam's own paginator, which is larger than
+    /// the number of rows Steam actually renders.</summary>
+    public const string LabelLicencesReported = "LICENCES REPORTED";
 
     /// <summary>Rows read from the purchase history page.</summary>
     public const string LabelPurchasesFound = "PURCHASES FOUND";

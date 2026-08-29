@@ -49,9 +49,31 @@ public sealed record SteamLicensesPageResult
     /// <summary>Whether a next-page link exists in the paginator.</summary>
     public bool HasNextPage { get; init; }
 
-    /// <summary>Whether this document is a partial view of the account, either because a next page exists or because the parsed count falls short of the reported total.</summary>
-    public bool IsTruncated => HasNextPage
-        || (TotalLicensesReported is { } total && Rows.Count + SkippedRows < total);
+    /// <summary>Every table row this document held, whether or not it could be read.</summary>
+    public int RowsSeen => Rows.Count + SkippedRows;
+
+    /// <summary>
+    /// Whether this document is a partial view of the account.
+    ///
+    /// <para>Decided by the paginator's next link alone. Measured 2026-08-29 on
+    /// a real signed-in account: a page whose paginator reads "Showing licenses
+    /// 1-100 of 979" renders 96 rows. Steam's advertised range and total include
+    /// licences it does not render as rows, so a session that walks to the last
+    /// page parses 957 against an advertised 979 and is complete. Comparing the
+    /// two was the rule that declared every finished walk truncated; the
+    /// mismatch is real and is reported by
+    /// <see cref="ReportedTotalDiffersFromRowsSeen"/>, but it is a fact about
+    /// Steam's counting, not evidence that a page is missing.</para>
+    /// </summary>
+    public bool IsTruncated => HasNextPage;
+
+    /// <summary>
+    /// Whether the paginator's advertised total differs from the rows actually
+    /// rendered. Informational: it is true of a complete capture as often as of
+    /// an incomplete one, so nothing may conclude truncation from it.
+    /// </summary>
+    public bool ReportedTotalDiffersFromRowsSeen
+        => TotalLicensesReported is { } total && total != RowsSeen;
 
     /// <summary>No document was provided.</summary>
     public static SteamLicensesPageResult Absent()

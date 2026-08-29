@@ -232,10 +232,39 @@ public static partial class SteamPurchaseHistoryPageParser
             return false;
         }
 
-        // Steam's own script hides this control with jQuery rather than removing
-        // it, so presence alone does not mean there is more to load.
-        var style = button.GetAttribute("style") ?? string.Empty;
-        return !style.Replace(" ", string.Empty, StringComparison.Ordinal)
-            .Contains("display:none", StringComparison.OrdinalIgnoreCase);
+        // Steam's own script hides this control rather than removing it, so
+        // presence alone does not mean there is more to load. The ancestors are
+        // walked as well as the button, because Steam may hide the area around
+        // it (div.load_more_history_area) instead of the button itself. Both
+        // mean there is nothing more to load, but a check on the button alone
+        // misses the second.
+        //
+        // This reads inline style, which is all a static document carries. A
+        // control hidden by a stylesheet rule cannot be detected here at all,
+        // which is why a harvested capture reports completeness from the live
+        // session instead of from this: see SteamPageHarvestResult.
+        for (IElement? element = button; element is not null; element = element.ParentElement)
+        {
+            if (IsHiddenInline(element))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static bool IsHiddenInline(IElement element)
+    {
+        var style = element.GetAttribute("style");
+        if (string.IsNullOrEmpty(style))
+        {
+            return false;
+        }
+
+        var collapsed = style.Replace(" ", string.Empty, StringComparison.Ordinal);
+
+        return collapsed.Contains("display:none", StringComparison.OrdinalIgnoreCase)
+            || collapsed.Contains("visibility:hidden", StringComparison.OrdinalIgnoreCase);
     }
 }

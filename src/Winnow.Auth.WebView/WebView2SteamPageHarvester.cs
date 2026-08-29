@@ -175,11 +175,12 @@ public sealed class WebView2SteamPageHarvester : ISteamAccountPageHarvester
     /// </summary>
     private sealed class RunState
     {
-        public RunState(SteamPageHarvestRequest request, Action<string> say)
+        public RunState(SteamPageHarvestRequest request, Action<string> say, Action<bool> working)
         {
             Request = request;
             Policy = SteamAccountPagePolicy.For(request);
             Say = say;
+            Working = working;
         }
 
         public SteamPageHarvestRequest Request { get; }
@@ -189,6 +190,13 @@ public sealed class WebView2SteamPageHarvester : ISteamAccountPageHarvester
 
         /// <summary>Updates the line of text under the browser. Never given page content.</summary>
         public Action<string> Say { get; }
+
+        /// <summary>
+        /// Raises or lowers the "please wait" banner and, with it, the block on
+        /// input to the browser. True while Winnow is reading; false whenever the
+        /// window is the user's again.
+        /// </summary>
+        public Action<bool> Working { get; }
 
         public Dictionary<SteamAccountPageKind, string> Captured { get; } = new();
 
@@ -255,9 +263,24 @@ public sealed class WebView2SteamPageHarvester : ISteamAccountPageHarvester
             Text = "Starting a private browser session…",
         };
 
-        var window = BuildWindow(host, status);
+        var banner = BuildBanner();
+        var window = BuildWindow(host, banner, status);
         var closed = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var run = new RunState(request, text => status.Text = text);
+
+        var run = new RunState(
+            request,
+            text => status.Text = text,
+            working =>
+            {
+                banner.IsVisible = working;
+
+                // Both, and neither is redundant. IsHitTestVisible stops
+                // Avalonia routing anything into the control; the native call is
+                // what actually stops Windows delivering a click to the browser
+                // window inside it.
+                host.IsHitTestVisible = !working;
+                host.SetInputEnabled(!working);
+            });
 
         window.Closed += (_, _) => closed.TrySetResult(true);
 
@@ -498,6 +521,11 @@ public sealed class WebView2SteamPageHarvester : ISteamAccountPageHarvester
             // the caller cancelled. This handler is effectively async void: it
             // must not throw, whatever happens inside it.
             _log.LogDebug("Could not read the page ({ExceptionType}).", ex.GetType().Name);
+
+            // The read is over, however it ended. Leaving the window blocked
+            // would strand the user in a browser they cannot use or close their
+            // way out of.
+            run.Working(false);
         }
         finally
         {
@@ -518,6 +546,7 @@ public sealed class WebView2SteamPageHarvester : ISteamAccountPageHarvester
     {
         if (IsSignInJourney(current))
         {
+            run.Working(false);
             run.Say("Sign in to Steam. Winnow never sees your password. You are typing it into Steam.");
             return;
         }
@@ -535,11 +564,20 @@ public sealed class WebView2SteamPageHarvester : ISteamAccountPageHarvester
         if (!await IsSignedInAsync(browser))
         {
             run.SawSignedOut = true;
+
+            // The window goes back to being the user's: they have a form to fill
+            // in, and nothing of ours is reading the page.
+            run.Working(false);
             run.Say("Sign in to Steam to continue.");
             return;
         }
 
         run.SignedIn = true;
+
+        // From here until the capture is finished, a click in this window could
+        // navigate the page out from under the read. The banner says so and the
+        // input block enforces it.
+        run.Working(true);
 
         if (kind == SteamAccountPageKind.PurchaseHistory)
         {
@@ -1030,11 +1068,45 @@ public sealed class WebView2SteamPageHarvester : ISteamAccountPageHarvester
     /// Steam login with no explanation is a window nobody should trust. The
     /// status line carries progress and never carries page content.</para>
     /// </summary>
-    private static Window BuildWindow(WebView2Host host, TextBlock status)
+    /// <summary>
+    /// The "please wait" strip, hidden until Winnow starts reading.
+    ///
+    /// <para>It exists because the window is a real browser and looks like one:
+    /// nothing about it says that clicking a link during the read would navigate
+    /// the page out from under the capture. The banner appears at the moment the
+    /// window stops being the user's to drive, next to the input block that
+    /// enforces it, and disappears if the flow goes back to waiting for a
+    /// sign-in.</para>
+    ///
+    /// <para>Docked above the browser rather than drawn over it. A hosted native
+    /// window paints over Avalonia content whatever the z-order says, so an
+    /// overlay would be invisible; this is the same airspace constraint that
+    /// made the sign-in prompt swap its consent panel out rather than reveal a
+    /// browser underneath it.</para>
+    /// </summary>
+    private static Border BuildBanner() => new()
     {
+        Classes = { "harvest-banner" },
+        IsVisible = false,
+        Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.FromRgb(0x2A, 0x21, 0x0E)),
+        Padding = new Thickness(16, 12),
+        Child = new TextBlock
+        {
+            Classes = { "para", "lead" },
+            TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+            Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.FromRgb(0xF2, 0xE4, 0xC8)),
+            Text = "Please wait while Winnow reads your licenses and purchase history. "
+                + "Clicking in this window now would interrupt it.",
+        },
+    };
+
+    private static Window BuildWindow(WebView2Host host, Control banner, TextBlock status)
+    {
+        DockPanel.SetDock(banner, Dock.Top);
         DockPanel.SetDock(status, Dock.Bottom);
 
         var root = new DockPanel { LastChildFill = true };
+        root.Children.Add(banner);
         root.Children.Add(status);
         root.Children.Add(host);
 

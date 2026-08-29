@@ -143,6 +143,30 @@ public sealed class WebView2Host : NativeControlHost
         _closed.TrySetResult(true);
     }
 
+    /// <summary>
+    /// Blocks or restores mouse and keyboard input to the hosted browser.
+    ///
+    /// <para><b>Avalonia's <c>IsHitTestVisible</c> cannot do this.</b> The
+    /// browser lives in a native child window, and Windows delivers input to it
+    /// directly; Avalonia's hit testing never sees those messages and has
+    /// nothing to suppress. Disabling the child window is the level the input
+    /// actually arrives at, and a disabled window's children are disabled with
+    /// it, so this reaches the browser's own windows too.</para>
+    ///
+    /// <para>Best effort by design. A caller uses this to stop a stray click
+    /// navigating away mid-capture; if it does not take, the capture is no worse
+    /// off than it was before.</para>
+    /// </summary>
+    public void SetInputEnabled(bool enabled)
+    {
+        if (!OperatingSystem.IsWindows() || _childWindow == IntPtr.Zero)
+        {
+            return;
+        }
+
+        EnableWindow(_childWindow, enabled);
+    }
+
     /// <inheritdoc/>
     protected override Size ArrangeOverride(Size finalSize)
     {
@@ -268,4 +292,8 @@ public sealed class WebView2Host : NativeControlHost
     [DllImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool MoveWindow(IntPtr hWnd, int x, int y, int nWidth, int nHeight, bool bRepaint);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool EnableWindow(IntPtr hWnd, [MarshalAs(UnmanagedType.Bool)] bool bEnable);
 }

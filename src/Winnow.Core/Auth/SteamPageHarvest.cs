@@ -134,6 +134,30 @@ public sealed record SteamPageHarvestResult
     /// <summary>Whether anything usable came back.</summary>
     public bool HasPages => Pages is { IsEmpty: false };
 
+    /// <summary>
+    /// Whether the licences list was followed to its last page.
+    ///
+    /// <para><b>This is the authoritative answer; it outranks the parser's
+    /// truncation check.</b>
+    /// The session watched the paginator run out in a live DOM. A parser reading
+    /// the captured document afterwards is working from static markup and from
+    /// counts Steam does not honour: a licences page advertising "1-100 of 979"
+    /// renders 96 rows, so a complete walk parses 957 against an advertised 979.
+    /// When this is true the capture is complete, whatever any count
+    /// suggests.</para>
+    /// </summary>
+    public bool LicensesWalkedToEnd => LicensesStoppedBecause == SteamLoadMoreDecision.Exhausted;
+
+    /// <summary>
+    /// Whether the purchase history was loaded until nothing more would load.
+    ///
+    /// <para>Authoritative for the same reason, and the gap is wider here: the
+    /// session decides from the control's rendered geometry, which is the only
+    /// way to see a control hidden by a stylesheet or by an ancestor. A parser
+    /// can only read inline style, not rules applied by a stylesheet.</para>
+    /// </summary>
+    public bool HistoryLoadedToEnd => LoadMoreStoppedBecause == SteamLoadMoreDecision.Exhausted;
+
     /// <summary>Both pages arrived.</summary>
     public static SteamPageHarvestResult Captured(
         SteamAccountPages pages,

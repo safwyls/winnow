@@ -332,6 +332,76 @@ public class SteamAccountImportViewModelTests
     }
 
     /// <summary>
+    /// Steam advertises a licence total larger than the rows it renders — 979
+    /// against 957 on a real account. Both figures go in the table, so they land
+    /// in Plex Mono and line up, and a neutral sentence underneath says the gap
+    /// is Steam's counting. Without it a user reading "979" on Steam concludes
+    /// the import lost twenty-two games.
+    /// </summary>
+    [Fact]
+    public async Task A_licence_total_Steam_does_not_render_is_shown_beside_the_rows_read()
+    {
+        var import = new FakeSteamAccountPageImport
+        {
+            Report = new SteamAccountPageImportReport
+            {
+                LicensesOutcome = SteamAccountPageParseOutcome.Parsed,
+                LicenseRowsParsed = 957,
+                LicensesReportedTotal = 979,
+            },
+        };
+
+        var vm = Create(new FakeSteamPageHarvester
+        {
+            Result = SteamPageHarvestResult.Captured(
+                Captured(), 0, SteamLoadMoreDecision.Exhausted,
+                licensesPagesWalked: 9, licensesStoppedBecause: SteamLoadMoreDecision.Exhausted),
+        }, import);
+
+        await vm.ImportFromSignInCommand.ExecuteAsync(null);
+
+        Assert.True(vm.ShowLicensesCountMismatch);
+        var reported = Assert.Single(
+            vm.Counts, c => c.Label == SteamAccountImportCopy.LabelLicencesReported);
+        Assert.Equal("979", reported.Value);
+        Assert.Equal("957", vm.Counts[0].Value);
+
+        // Information, never a truncation claim: the walk ran to the end.
+        Assert.False(vm.ShowLicensesTruncation);
+    }
+
+    /// <summary>
+    /// Figures that agree say nothing. The row and the sentence exist to explain
+    /// a difference, and a difference of zero is not one.
+    /// </summary>
+    [Fact]
+    public async Task A_licence_total_that_matches_the_rows_read_is_not_restated()
+    {
+        var import = new FakeSteamAccountPageImport
+        {
+            Report = new SteamAccountPageImportReport
+            {
+                LicensesOutcome = SteamAccountPageParseOutcome.Parsed,
+                LicenseRowsParsed = 42,
+                LicensesReportedTotal = 42,
+            },
+        };
+
+        var vm = Create(new FakeSteamPageHarvester
+        {
+            Result = SteamPageHarvestResult.Captured(
+                Captured(), 0, SteamLoadMoreDecision.Exhausted,
+                licensesPagesWalked: 0, licensesStoppedBecause: SteamLoadMoreDecision.Exhausted),
+        }, import);
+
+        await vm.ImportFromSignInCommand.ExecuteAsync(null);
+
+        Assert.False(vm.ShowLicensesCountMismatch);
+        Assert.DoesNotContain(
+            vm.Counts, c => c.Label == SteamAccountImportCopy.LabelLicencesReported);
+    }
+
+    /// <summary>
     /// The skip breakdown is why the numbers do not add up, so it names the
     /// real reasons — and only the ones that actually happened. A table of
     /// zeroes explains nothing and buries the two lines that matter.
@@ -460,14 +530,10 @@ public class SteamAccountImportViewModelTests
     }
 
     /// <summary>
-    /// The regression this test was rewritten for. It previously asserted that
-    /// the embedded route says NOTHING about a truncated document, which
-    /// suppressed the fact along with the remedy: a walk that finished while
-    /// Steam's own page still advertises more rows saw part of the account, and
-    /// a complete-looking result over a partial account is the one dishonest
-    /// thing this screen can do. It now asserts that the fact IS reported and
-    /// that the saved-file remedy — advice this route's user cannot act on — is
-    /// not.
+    /// The embedded route reports truncation, and never in the other route's
+    /// words. The walk did not finish on either page here — that is what makes
+    /// this a truncation at all — so the fact is stated and the saved-file
+    /// remedy, advice this route's user cannot act on, is not.
     /// </summary>
     [Fact]
     public async Task The_sign_in_route_reports_truncation_without_the_saved_file_remedy()
@@ -486,8 +552,8 @@ public class SteamAccountImportViewModelTests
         var vm = Create(new FakeSteamPageHarvester
         {
             Result = SteamPageHarvestResult.Captured(
-                Captured(), 0, SteamLoadMoreDecision.Exhausted,
-                licensesPagesWalked: 3, licensesStoppedBecause: SteamLoadMoreDecision.Exhausted),
+                Captured(), 0, SteamLoadMoreDecision.Stalled,
+                licensesPagesWalked: 3, licensesStoppedBecause: SteamLoadMoreDecision.Stalled),
         }, import);
 
         await vm.ImportFromSignInCommand.ExecuteAsync(null);
@@ -503,6 +569,104 @@ public class SteamAccountImportViewModelTests
         // Never the other route's advice.
         Assert.NotEqual(SteamAccountImportCopy.HistoryTruncatedNotice, vm.HistoryTruncationMessage);
         Assert.NotEqual(SteamAccountImportCopy.LicensesTruncatedNotice, vm.LicensesTruncationMessage);
+    }
+
+    /// <summary>
+    /// The false alarm the harvest agent traced to its root, asserted at the
+    /// screen. Steam's licences paginator advertises a total it does not render
+    /// — 979 claimed against 957 rendered on a real account — so a parser
+    /// comparing the two called every finished walk truncated. The session
+    /// watched the paginator run out in a live DOM, and that witness outranks
+    /// anything read off the captured markup afterwards.
+    ///
+    /// <para>The history's witness is worth as much for a different reason: the
+    /// parser can only see inline style, so a load-more control hidden by a
+    /// stylesheet still looks live to it.</para>
+    /// </summary>
+    [Fact]
+    public async Task A_walk_that_ran_to_the_end_outranks_a_parser_claiming_truncation()
+    {
+        var import = new FakeSteamAccountPageImport
+        {
+            Report = new SteamAccountPageImportReport
+            {
+                HistoryOutcome = SteamAccountPageParseOutcome.Parsed,
+                HistoryTruncated = true,
+                LicensesOutcome = SteamAccountPageParseOutcome.Parsed,
+                LicenseRowsParsed = 957,
+                LicensesReportedTotal = 979,
+                LicensesTruncated = true,
+            },
+        };
+
+        var vm = Create(new FakeSteamPageHarvester
+        {
+            Result = SteamPageHarvestResult.Captured(
+                Captured(), loadMoreClicks: 12, SteamLoadMoreDecision.Exhausted,
+                licensesPagesWalked: 9, licensesStoppedBecause: SteamLoadMoreDecision.Exhausted),
+        }, import);
+
+        await vm.ImportFromSignInCommand.ExecuteAsync(null);
+
+        Assert.True(vm.HasResult);
+        Assert.False(vm.ShowHistoryTruncation);
+        Assert.False(vm.ShowLicensesTruncation);
+    }
+
+    /// <summary>
+    /// The witness is per page. A walk that finished the licences list but
+    /// stalled on the history must silence one notice and leave the other
+    /// standing — suppressing both would be the original bug wearing the fix's
+    /// clothes.
+    /// </summary>
+    [Fact]
+    public async Task A_witness_silences_only_its_own_page()
+    {
+        var import = new FakeSteamAccountPageImport
+        {
+            Report = new SteamAccountPageImportReport
+            {
+                HistoryOutcome = SteamAccountPageParseOutcome.Parsed,
+                HistoryTruncated = true,
+                LicensesOutcome = SteamAccountPageParseOutcome.Parsed,
+                LicensesTruncated = true,
+            },
+        };
+
+        var vm = Create(new FakeSteamPageHarvester
+        {
+            Result = SteamPageHarvestResult.Captured(
+                Captured(), 0, SteamLoadMoreDecision.Stalled,
+                licensesPagesWalked: 9, licensesStoppedBecause: SteamLoadMoreDecision.Exhausted),
+        }, import);
+
+        await vm.ImportFromSignInCommand.ExecuteAsync(null);
+
+        Assert.True(vm.ShowHistoryTruncation);
+        Assert.Equal(SteamAccountImportCopy.SignInHistoryIncompleteNotice, vm.HistoryTruncationMessage);
+        Assert.False(vm.ShowLicensesTruncation);
+    }
+
+    /// <summary>
+    /// A cap is not an end. A walk stopped by Winnow's own ceiling saw part of
+    /// the list whatever the witness would have said, so the ceiling check has
+    /// to come first — reversing the two would silence the one case where the
+    /// user genuinely lost rows.
+    /// </summary>
+    [Fact]
+    public async Task A_ceiling_outranks_the_end_of_walk_witness()
+    {
+        var vm = Create(new FakeSteamPageHarvester
+        {
+            Result = SteamPageHarvestResult.Captured(
+                Captured(), loadMoreClicks: 100, SteamLoadMoreDecision.ReachedCap,
+                licensesPagesWalked: 50, licensesStoppedBecause: SteamLoadMoreDecision.ReachedCap),
+        });
+
+        await vm.ImportFromSignInCommand.ExecuteAsync(null);
+
+        Assert.Equal(SteamAccountImportCopy.SignInHistoryReachedCapNotice, vm.HistoryTruncationMessage);
+        Assert.Equal(SteamAccountImportCopy.SignInLicensesReachedCapNotice, vm.LicensesTruncationMessage);
     }
 
     /// <summary>
@@ -659,6 +823,46 @@ public class SteamAccountImportViewModelTests
         });
 
         Assert.True(vm.ShowLicensesTruncation);
+    }
+
+    /// <summary>
+    /// The heuristic's threshold, pinned at the value that makes it reachable.
+    /// It read 100 — the number Steam's paginator advertises — and a full page
+    /// renders about 96, so it could never fire and every saved page one of a
+    /// paginated list slipped through as a small complete account. 96 rows is
+    /// the measured shape of a full page and must be caught.
+    /// </summary>
+    [Fact]
+    public async Task A_full_saved_licences_page_is_caught_at_the_rendered_row_count()
+    {
+        var vm = await SavedFileRun(new SteamAccountPageImportReport
+        {
+            LicensesOutcome = SteamAccountPageParseOutcome.Parsed,
+            LicenseRowsParsed = 96,
+            LicensesReportedTotal = null,
+            LicensesTruncated = false,
+        });
+
+        Assert.True(vm.ShowLicensesTruncation);
+        Assert.Equal(SteamAccountImportCopy.LicensesTruncatedNotice, vm.LicensesTruncationMessage);
+    }
+
+    /// <summary>
+    /// And the other side of the threshold: a library that genuinely ends well
+    /// short of a page is not accused of being one page of several.
+    /// </summary>
+    [Fact]
+    public async Task A_short_saved_licences_page_is_not_accused_of_paginating()
+    {
+        var vm = await SavedFileRun(new SteamAccountPageImportReport
+        {
+            LicensesOutcome = SteamAccountPageParseOutcome.Parsed,
+            LicenseRowsParsed = 61,
+            LicensesReportedTotal = null,
+            LicensesTruncated = false,
+        });
+
+        Assert.False(vm.ShowLicensesTruncation);
     }
 
     /// <summary>

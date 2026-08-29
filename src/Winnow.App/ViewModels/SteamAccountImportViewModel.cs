@@ -40,11 +40,18 @@ public partial class SteamAccountImportViewModel : ObservableObject
 {
     /// <summary>
     /// How many licence rows one saved page can plausibly hold before the count
-    /// is better explained by pagination than by a small account. Steam's
-    /// licences view pages at 100, so a saved file that stops there and carries
-    /// no "Showing X-Y of Z" paginator is almost certainly page one of several.
+    /// is better explained by pagination than by a small account.
+    ///
+    /// <para><b>90, not 100, and the difference is the whole point.</b> Steam's
+    /// licences view pages at an advertised hundred but renders about 96 of
+    /// them — measured 2026-08-29 against a real account, where a page reading
+    /// "1-100 of 979" held 96 rows. A threshold of 100 could therefore never
+    /// fire, so the heuristic it guards was dead code: every saved page one of a
+    /// paginated list slipped through as a small complete account. The margin
+    /// sits below the real render count and above any plausible library that
+    /// genuinely ends there.</para>
     /// </summary>
-    private const int LicensesPageSizeHint = 100;
+    private const int LicensesPageSizeHint = 90;
 
     private readonly ISteamAccountPageImport _import;
     private readonly ISteamAccountPageFileLoader _loader;
@@ -80,7 +87,7 @@ public partial class SteamAccountImportViewModel : ObservableObject
 
     public string IntroMessage => SteamAccountImportCopy.Intro;
 
-    /// <summary>The rail row's label, in the SETTINGS section beside STORES and APPEARANCE.</summary>
+    /// <summary>The segment label on the settings surface, beside STORES and APPEARANCE.</summary>
     public string RailRow => SteamAccountImportCopy.RailRow;
 
     public string RailTooltip => SteamAccountImportCopy.RailTooltip;
@@ -209,6 +216,21 @@ public partial class SteamAccountImportViewModel : ObservableObject
     public bool ShowNothingApplied => HasResult && _report is { OwnershipsFilled: 0 };
 
     /// <summary>
+    /// Steam's paginator advertised a licence total larger than the rows it
+    /// rendered. Shown as a neutral line under the counts and never as a
+    /// warning: it is true of a complete capture as often as a partial one, so
+    /// nothing may be concluded from it. It is here only because a user reading
+    /// "979" on Steam and a smaller number here would otherwise conclude the
+    /// import lost their games.
+    /// </summary>
+    public bool ShowLicensesCountMismatch =>
+        HasResult
+        && _report is { LicensesParsed: true, LicensesReportedTotal: { } total } report
+        && total != report.LicenseRowsParsed + report.LicenseRowsSkippedByParser;
+
+    public string LicensesCountMismatchMessage => SteamAccountImportCopy.LicensesCountMismatchNote;
+
+    /// <summary>
     /// What this pass could not see of the purchase history, or null when it saw
     /// all of it. One property per page rather than one per route: the FACT of
     /// truncation is reported on both routes, and only the REMEDY differs, so a
@@ -258,6 +280,15 @@ public partial class SteamAccountImportViewModel : ObservableObject
             return SteamAccountImportCopy.SignInHistoryReachedCapNotice;
         }
 
+        // The session watched the control stop offering rows in a live DOM, which
+        // outranks anything the parser reads off the captured markup: the parser
+        // can only see inline style, so a load-more button hidden by a stylesheet
+        // still looks live to it. A walk that ran out is complete.
+        if (harvest?.HistoryLoadedToEnd == true)
+        {
+            return null;
+        }
+
         var stalled = harvest?.LoadMoreStoppedBecause == SteamLoadMoreDecision.Stalled;
         return stalled || report.HistoryTruncated
             ? SteamAccountImportCopy.SignInHistoryIncompleteNotice
@@ -289,6 +320,15 @@ public partial class SteamAccountImportViewModel : ObservableObject
         if (harvest?.LicensesStoppedBecause == SteamLoadMoreDecision.ReachedCap)
         {
             return SteamAccountImportCopy.SignInLicensesReachedCapNotice;
+        }
+
+        // Same precedence, and here it fixes a false alarm rather than a missed
+        // one: Steam's paginator advertises a total it does not render, so a
+        // complete walk parses fewer rows than the page claims. A session that
+        // watched the paginator run out is complete whatever any count says.
+        if (harvest?.LicensesWalkedToEnd == true)
+        {
+            return null;
         }
 
         var stalled = harvest?.LicensesStoppedBecause == SteamLoadMoreDecision.Stalled;
@@ -453,6 +493,15 @@ public partial class SteamAccountImportViewModel : ObservableObject
 
         Counts.Clear();
         Add(Counts, SteamAccountImportCopy.LabelLicencesFound, report.LicenseRowsParsed);
+
+        // Steam's own figure, beside the rows actually read, and only when the
+        // two differ. In the table rather than in the sentence so both numbers
+        // land in Plex Mono and line up under each other (§3).
+        if (report.LicensesReportedTotal is { } reportedLicences
+            && reportedLicences != report.LicenseRowsParsed + report.LicenseRowsSkippedByParser)
+        {
+            Add(Counts, SteamAccountImportCopy.LabelLicencesReported, reportedLicences);
+        }
         Add(Counts, SteamAccountImportCopy.LabelPurchasesFound, report.HistoryRowsParsed);
         Add(Counts, SteamAccountImportCopy.LabelMatched, report.AcquisitionsMatched);
         Add(Counts, SteamAccountImportCopy.LabelPricesMatched, report.PricesMatched);

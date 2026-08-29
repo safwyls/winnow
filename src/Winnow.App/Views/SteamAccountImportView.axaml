@@ -255,6 +255,16 @@
                                    IsVisible="{Binding ShowNothingApplied}"
                                    Text="{Binding NothingAppliedMessage}"/>
 
+                        <!-- Information, not a warning: no attention edge, no
+                             Amber, and the plain dim paragraph ink. Steam
+                             advertises a licence total it does not render, and
+                             saying so is the difference between a user reading
+                             the gap as Steam's arithmetic and reading it as
+                             their missing games. -->
+                        <TextBlock Classes="para"
+                                   IsVisible="{Binding ShowLicensesCountMismatch}"
+                                   Text="{Binding LicensesCountMismatchMessage}"/>
+
                         <!-- ── The honest skip breakdown ──────────────────── -->
                         <StackPanel Spacing="10" IsVisible="{Binding ShowSkipped}">
                             <Border Height="1" Background="{StaticResource Line}"/>
