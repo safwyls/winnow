@@ -606,6 +606,12 @@ its findings:
 - `tests/Winnow.Tests/SteamWeb/SteamSignInProbeTests.cs`
 - The `--steam-signin-probe` guard in `src/Winnow.App/Program.cs`
 
+All four were deleted in TASK-55 stage S3 (2026-08-31); this section is now the
+only surviving record of the run. What was promoted rather than deleted: the mint
+script and the poll into `WebView2SteamSignInSession`, the JWT claim reader into
+`Winnow.Core.Auth.SteamJwtClaims`, and the mint-scope predicate into
+`SteamAccountPagePolicy.AllowsMint`.
+
 **Findings.**
 
 | Question | Answer |
@@ -622,6 +628,60 @@ its findings:
 | ClientGetLastPlayedTimes: status, populated, shape | HTTP 200, `x-eresult: 1`, POPULATED, 277895 bytes. 613 apps, 592 carrying a first-played date. The 592 first-played dates match exactly the 592 `steam_first_played` rows the M5 backfill wrote under key auth. |
 | GetOwnedGames: status, populated, shape | HTTP 200, `x-eresult: 1`, POPULATED, 269707 bytes. 841 games, all carrying names. |
 | GetUserYearInReview: status, populated, shape | HTTP 200, `x-eresult: 1`, POPULATED, 92779 bytes. 2025 year: 43 games, 52 monthly points across 11 distinct months. Echoes account id 49024752. |
+
+---
+
+## 7.2. Refresh-token capture in the shipped sign-in (TASK-55 S3)
+
+**Status: NOT VERIFIED LIVE.** TASK-55 stage S3 promoted the §7.1 probe into the
+shipped `WebView2SteamSignInSession` and implemented refresh-token capture, but no
+live Steam sign-in was performed in that stage. Section 7.1's run remains the only
+live evidence, and it did not attempt a cookie read.
+
+**Mechanism.** The `steamRefresh_steam` cookie is read through
+`CoreWebView2.CookieManager.GetCookiesAsync("https://login.steampowered.com/")`,
+the browser-process cookie API, rather than from any page script. The cookie is
+`httpOnly` and scoped to `login.steampowered.com`, so `document.cookie` cannot see
+it. The mint script is never asked to try; a test
+(`SteamSignInSessionTests.The_mint_script_never_asks_for_a_cookie`) pins that the
+script contains no `document.cookie`. Microsoft documents
+`CoreWebView2CookieManager` as returning cookies irrespective of the `httpOnly`
+flag; that is documentation, not a measurement taken here.
+
+**Three things remain UNKNOWN until a live run, each with a different consequence.**
+
+1. **Whether an off-the-record (InPrivate) WebView2 profile's cookie manager
+   returns the session's in-memory cookies at all.** The shipped session is
+   in-private by construction (amendment condition 1), so if it does not, no
+   refresh token can ever be captured by this route.
+2. **Whether Steam issues `steamRefresh_steam` for this sign-in at all.** It does
+   so only when the user ticks "remember me" on Steam's own login form, and Winnow
+   never scripts that form, so nothing in Winnow can tick it for them. Absence is
+   therefore a normal outcome, not a bug.
+3. **The cookie's exact value shape.** The session code treats it as opaque.
+   `SteamSession` already reads the `steamid64||jwt` form when parsing a refresh
+   expiry and treats an unreadable value as an unknown expiry rather than guessing.
+
+**What the implementation does about not knowing.** It never fakes a capture.
+`SteamSignInResult.RefreshTokenCaptured` is set from what was actually found in
+the jar (a whitespace-only value counts as nothing). The failure to read the jar
+is caught and logged by exception type only. A sign-in with no refresh token still
+succeeds as a working session.
+
+**The consequence S6's renewal design must plan for.** S2 defines a stored
+`SteamSession` as BOTH secrets: `SteamSession.TryCreate` returns null without a
+refresh token, so a sign-in that captures no refresh token currently persists
+nothing at all. The user gets a session that lasts about a day within the running
+process, and unattended scheduled work is unaffected only because it was never
+given the session. If a live run shows the cookie cannot be captured, the choice
+in front of S6 is explicit: relax the session record so the refresh token is
+optional (a short-lived, non-renewable stored session that the health enum can
+already describe), or accept that WebView sign-in is a user-initiated credential
+only and that the Web API key remains the sole unattended one. Neither is decided.
+
+**What would settle it.** One live sign-in with "remember me" ticked, reporting
+only whether a non-empty `steamRefresh_steam` was present. No value, ever, in any
+report or log.
 
 ---
 

@@ -380,21 +380,20 @@ public sealed class StoresViewModelTests
 
     // ── Steam ────────────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// The point of the row: with nothing connected the user is looking at a
+    /// smaller library than they own, and only this screen can tell them.
+    /// </summary>
     [Fact]
-    public async Task Steam_states_what_a_missing_key_costs_and_where_one_goes()
+    public async Task Steam_states_what_connecting_nothing_costs()
     {
         var stores = new StoresViewModel(new FakeStoreConnections { SteamConfigured = false });
         await stores.RefreshCommand.ExecuteAsync(null);
 
         Assert.False(stores.SteamWebApiConfigured);
         Assert.False(stores.SteamStatusIsLive);
-        Assert.Equal("NO WEB API KEY", stores.SteamStatusLabel);
-
-        // The point of the row: the user is looking at a smaller library than
-        // they own, and only this screen can tell them.
-        Assert.Contains("Set an API key", stores.SteamAddsMessage, StringComparison.Ordinal);
-        Assert.True(stores.ShowSteamKeyHint);
-        Assert.Contains("Steam__ApiKey", stores.SteamKeyHintMessage, StringComparison.Ordinal);
+        Assert.Equal(SteamConnectionCopy.StatusNoConnection, stores.SteamStatusLabel);
+        Assert.Equal(SteamConnectionCopy.NothingConnectedCost, stores.SteamConnectionMessage);
     }
 
     [Fact]
@@ -405,8 +404,8 @@ public sealed class StoresViewModelTests
 
         Assert.True(stores.SteamWebApiConfigured);
         Assert.True(stores.SteamStatusIsLive);
-        Assert.Equal("WEB API KEY SET", stores.SteamStatusLabel);
-        Assert.False(stores.ShowSteamKeyHint);
+        Assert.Equal(SteamConnectionCopy.StatusKeySet, stores.SteamStatusLabel);
+        Assert.Equal(SteamConnectionCopy.ConnectedAdds, stores.SteamConnectionMessage);
     }
 
     // ── GOG ──────────────────────────────────────────────────────────────────
@@ -507,7 +506,28 @@ internal sealed class FakeStoreConnections : IStoreConnections
     /// <summary>Held open to keep a sign-in "in progress" for as long as a test needs.</summary>
     public TaskCompletionSource? Gate { get; set; }
 
-    public bool SteamConfigured { get; set; }
+    /// <summary>What the panel will be told exists on the Steam side.</summary>
+    public SteamConnection Steam { get; set; } = SteamConnection.None;
+
+    /// <summary>
+    /// Shorthand for the commonest two shapes: a settings-table key and nothing
+    /// else, or nothing at all. Written as a property so the tests that predate
+    /// the two-method Steam card still read the way they were written.
+    /// </summary>
+    public bool SteamConfigured
+    {
+        get => Steam.HasApiKey;
+        set => Steam = value
+            ? SteamConnection.None with { HasApiKey = true, ApiKeyIsAppManaged = true }
+            : SteamConnection.None;
+    }
+
+    /// <summary>The last key handed to <see cref="SaveSteamApiKeyAsync"/>, and the counts either way.</summary>
+    public string? SavedApiKey { get; private set; }
+
+    public int ApiKeySaves { get; private set; }
+
+    public int ApiKeyClears { get; private set; }
 
     public StoreSession? Session { get; set; }
 
@@ -518,8 +538,56 @@ internal sealed class FakeStoreConnections : IStoreConnections
 
     public int SignOutCalls { get; private set; }
 
-    public ValueTask<bool> IsSteamWebApiConfiguredAsync(CancellationToken ct = default)
-        => ValueTask.FromResult(SteamConfigured);
+    /// <summary>
+    /// When set, the session half of the Steam answer is computed from a real
+    /// session provider, so a sign-in a test just ran is visible to the panel on
+    /// its next refresh. This is the join the real
+    /// <see cref="StoreConnections"/> makes over the credential inventory; the
+    /// key half stays scripted because no test here has a key chain.
+    /// </summary>
+    public Winnow.Enrich.SteamWeb.Credentials.ISteamSessionProvider? Sessions { get; set; }
+
+    public TimeProvider Clock { get; set; } = TimeProvider.System;
+
+    public async ValueTask<bool> IsSteamWebApiConfiguredAsync(CancellationToken ct = default)
+        => (await GetSteamConnectionAsync(ct)).HasUsableCredential;
+
+    public async ValueTask<SteamConnection> GetSteamConnectionAsync(CancellationToken ct = default)
+    {
+        if (Sessions is null)
+        {
+            return Steam;
+        }
+
+        var session = await Sessions.GetAsync(ct);
+
+        return Steam with
+        {
+            HasSession = session is not null,
+            SessionUsable = session?.IsAccessUsable(
+                Clock.GetUtcNow(),
+                Winnow.Enrich.SteamWeb.Credentials.SteamCredential.DefaultSkew) ?? false,
+            SessionExpiresAt = session?.ExpiresAt,
+            SessionAccount = session?.SteamId.Value.ToString(
+                System.Globalization.CultureInfo.InvariantCulture),
+        };
+    }
+
+    public Task SaveSteamApiKeyAsync(string? key, CancellationToken ct = default)
+    {
+        ApiKeySaves++;
+        SavedApiKey = key;
+        Steam = Steam with { HasApiKey = !string.IsNullOrWhiteSpace(key), ApiKeyIsAppManaged = true };
+        return Task.CompletedTask;
+    }
+
+    public Task ClearSteamApiKeyAsync(CancellationToken ct = default)
+    {
+        ApiKeyClears++;
+        SavedApiKey = null;
+        Steam = Steam with { HasApiKey = false, ApiKeyIsAppManaged = false };
+        return Task.CompletedTask;
+    }
 
     public ValueTask<StoreSession?> GetEpicSessionAsync(CancellationToken ct = default)
         => ValueTask.FromResult(Session);

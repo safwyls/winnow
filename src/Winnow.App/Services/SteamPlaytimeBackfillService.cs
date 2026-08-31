@@ -1,7 +1,5 @@
 using System.Diagnostics;
 using System.Globalization;
-using System.Security.Cryptography;
-using System.Text;
 using Winnow.Core.Domain;
 using Winnow.Core.Queries;
 using Winnow.Core.Repositories;
@@ -126,7 +124,7 @@ public sealed class SteamPlaytimeBackfillService : ISteamPlaytimeBackfill
     private readonly LibrarySyncGate _gate;
     private readonly SteamPlaytimeBackfillOptions _options;
     private readonly TimeProvider _clock;
-    private readonly ISteamApiKeyProvider _apiKeys;
+    private readonly ISteamAccountConfirmation _confirmation;
     private readonly ILogger<SteamPlaytimeBackfillService> _logger;
 
     public SteamPlaytimeBackfillService(
@@ -146,9 +144,16 @@ public sealed class SteamPlaytimeBackfillService : ISteamPlaytimeBackfill
         // identity, and a guard that silently disables itself when a
         // registration is missed is not a guard. AddSteamPlaytimeBackfill
         // already documents AddSteamWebApi() as a prerequisite, and that is
-        // what registers this.
+        // what registers this. Read only to build the default confirmation
+        // writer below; every fingerprint decision is that writer's.
         ISteamApiKeyProvider apiKeys,
-        ILogger<SteamPlaytimeBackfillService> logger)
+        ILogger<SteamPlaytimeBackfillService> logger,
+        // Optional, and the default is the real thing rather than a no-op. The
+        // key path is the only caller that predates the shared writer, so an
+        // existing construction site that says nothing about confirmation gets
+        // exactly the behaviour it always had, over the same settings rows the
+        // sign-in path now writes through.
+        ISteamAccountConfirmation? confirmation = null)
     {
         _history = history;
         _releases = releases;
@@ -161,7 +166,7 @@ public sealed class SteamPlaytimeBackfillService : ISteamPlaytimeBackfill
         _gate = gate;
         _options = options;
         _clock = clock;
-        _apiKeys = apiKeys;
+        _confirmation = confirmation ?? new SteamAccountConfirmation(settings, apiKeys);
         _logger = logger;
     }
 
@@ -184,7 +189,12 @@ public sealed class SteamPlaytimeBackfillService : ISteamPlaytimeBackfill
         // has to invalidate the confirmation just as surely as one that was
         // replaced, and the unconfigured path returns without ever looking at an
         // account again.
-        await ReconcileOwnedAccountWithKeyAsync(ct);
+        //
+        // The reconciliation is the shared writer's, not this class's, so a
+        // sign-out invalidates a session-earned confirmation on exactly the same
+        // terms — and a key-earned one survives both, because the credential that
+        // earned it is still here.
+        await _confirmation.ReconcileAsync(ct);
 
         // Checked before anything is read, for the same reason the remote
         // ownership sync checks first: "registered and idle" is the common
@@ -370,6 +380,21 @@ public sealed class SteamPlaytimeBackfillService : ISteamPlaytimeBackfill
         //
         // The remedy is one extra read, only when it is the only thing standing
         // between the user and a working toggle.
+        //
+        // ── KEPT, UNCHANGED, AND ON PURPOSE (TASK-55 S4) ────────────────────
+        //
+        // A signed-in user never needs this: the sign-in writes the account out
+        // of the token's own subject claim the moment the window closes, so the
+        // reference is already set and NeedsDisclosureRefetchAsync's first
+        // condition returns false for one settings read. That makes the refetch a
+        // natural no-op for them rather than something switched off for them, and
+        // SteamAccountIdentityTests pins that it really is one.
+        //
+        // For a key-only user it is still the ONLY route to the fact. Nothing
+        // else in Winnow discloses which account a key belongs to, so removing
+        // this — or gating it on a session that a key-only user will never have —
+        // would put TASK-54's bug straight back for exactly the users TASK-54 was
+        // written for.
         if (!disclosedThisPass && await NeedsDisclosureRefetchAsync(steamId, ct))
         {
             switch (await DiscloseFromCompletedYearAsync(steamId, totals, ct))
@@ -673,18 +698,11 @@ public sealed class SteamPlaytimeBackfillService : ISteamPlaytimeBackfill
             return;
         }
 
-        // The account reference in the same shape the local scan writes
-        // (SteamId.AccountRef — the steam3 account id, the userdata folder
-        // name), so the filter's comparison is a string equality against rows
-        // both sources produced and not a conversion nobody would notice failing.
-        await _settings.SetAsync(SteamOwnedAccount.RefSettingKey, steamId.AccountRef, ct);
-
-        // Stamped with the key that earned it, so a later pass can tell whether
-        // the confirmation still describes the key in force.
-        if (await KeyFingerprintAsync(ct) is { } fingerprint)
-        {
-            await _settings.SetAsync(SteamOwnedAccount.KeyFingerprintSettingKey, fingerprint, ct);
-        }
+        // Through the shared writer, stamped as key-earned so a later pass can
+        // tell whether the confirmation still describes the key in force. The
+        // marker above stays here: it is this job's own bookkeeping about which
+        // years it has imported, not a statement about whose library this is.
+        await _confirmation.ConfirmAsync(steamId, SteamAccountConfirmationSource.WebApiKey, ct);
     }
 
     /// <summary>What one disclosure refetch established.</summary>
@@ -718,11 +736,12 @@ public sealed class SteamPlaytimeBackfillService : ISteamPlaytimeBackfill
     /// </summary>
     private async Task<bool> NeedsDisclosureRefetchAsync(SteamId steamId, CancellationToken ct)
     {
-        if (SteamOwnedAccount.Clean(
-                await _settings.GetAsync(SteamOwnedAccount.RefSettingKey, ct)) is not null)
+        if (await _confirmation.GetConfirmedAccountRefAsync(ct) is not null)
         {
             // Already known. This is the state every launch after the repair is
-            // in, and it costs one settings read to establish.
+            // in, and it costs one settings read to establish — and it is also
+            // the state a signed-in user is in from the moment the sign-in window
+            // closes, which is what makes this whole repair free for them.
             return false;
         }
 
@@ -731,17 +750,16 @@ public sealed class SteamPlaytimeBackfillService : ISteamPlaytimeBackfill
             return false;
         }
 
-        // Matches the key in force, or nothing records which key earned the
-        // confirmation. A MISMATCH cannot occur here: ReconcileOwnedAccountWith
-        // KeyAsync runs at the top of the pass and clears both halves, which is
-        // what stops a new key inheriting the previous owner's identity. The
-        // check is still made rather than assumed, because that ordering is the
-        // whole of the guarantee and a future caller could move it.
-        var recorded = SteamOwnedAccount.Clean(
-            await _settings.GetAsync(SteamOwnedAccount.KeyFingerprintSettingKey, ct));
+        // Matches a credential in force, or nothing records which credential
+        // earned the confirmation. A MISMATCH cannot occur here:
+        // ISteamAccountConfirmation.ReconcileAsync runs at the top of the pass
+        // and clears both halves, which is what stops a new key inheriting the
+        // previous owner's identity. The check is still made rather than assumed,
+        // because that ordering is the whole of the guarantee and a future caller
+        // could move it.
+        var recorded = await _confirmation.GetRecordedFingerprintAsync(ct);
 
-        return recorded is null
-            || string.Equals(recorded, await KeyFingerprintAsync(ct), StringComparison.Ordinal);
+        return recorded is null || await _confirmation.IsInForceAsync(recorded, ct);
     }
 
     /// <summary>
@@ -784,8 +802,7 @@ public sealed class SteamPlaytimeBackfillService : ISteamPlaytimeBackfill
             return DisclosureOutcome.NothingToDiscloseFrom;
         }
 
-        var recorded = SteamOwnedAccount.Clean(
-            await _settings.GetAsync(SteamOwnedAccount.KeyFingerprintSettingKey, ct));
+        var recorded = await _confirmation.GetRecordedFingerprintAsync(ct);
         var cacheTtl = recorded is null ? TimeSpan.Zero : (TimeSpan?)null;
 
         foreach (var year in candidates)
@@ -892,77 +909,11 @@ public sealed class SteamPlaytimeBackfillService : ISteamPlaytimeBackfill
     }
 
     /// <summary>
-    /// Drops the recorded "this is the user's account" when the API key that
-    /// earned it is no longer the key in force.
-    ///
-    /// <para>Without this, pasting a second person's key leaves the first
-    /// person's account id in place, and the visibility filter then hides the
-    /// user's own library in favour of a stranger's — a wrong answer given
-    /// confidently, which is worse than the unfiltered view it replaced. A
-    /// removed key is treated the same way: nothing currently proves the stored
-    /// account is the user's.</para>
-    ///
-    /// <para>Cleared by writing a blank rather than deleting, because
-    /// <see cref="ISettingsRepository"/> has two methods and no remove — the
-    /// same convention the Epic token store already follows. Every reader
-    /// treats blank as never-written.</para>
-    ///
-    /// <para>The confirmation markers themselves are untouched. They record
-    /// that a year was imported for an account, which stays true whoever's key
-    /// is configured now, and re-importing already-imported history is the
-    /// waste this class exists to avoid.</para>
+    /// The completion markers this class writes are untouched by
+    /// reconciliation. They record that a year was imported for an account,
+    /// which stays true whoever's credential is configured now, and re-importing
+    /// already-imported history is the waste this class exists to avoid.
     /// </summary>
-    private async Task ReconcileOwnedAccountWithKeyAsync(CancellationToken ct)
-    {
-        var stored = SteamOwnedAccount.Clean(
-            await _settings.GetAsync(SteamOwnedAccount.RefSettingKey, ct));
-
-        if (stored is null)
-        {
-            // Nothing to invalidate. The next confirmation writes both halves.
-            return;
-        }
-
-        var current = await KeyFingerprintAsync(ct);
-        var recorded = SteamOwnedAccount.Clean(
-            await _settings.GetAsync(SteamOwnedAccount.KeyFingerprintSettingKey, ct));
-
-        if (current is not null && string.Equals(current, recorded, StringComparison.Ordinal))
-        {
-            return;
-        }
-
-        await _settings.SetAsync(SteamOwnedAccount.RefSettingKey, string.Empty, ct);
-        await _settings.SetAsync(SteamOwnedAccount.KeyFingerprintSettingKey, string.Empty, ct);
-
-        _logger.LogInformation(
-            "The Steam Web API key changed, so the account it was confirmed to belong to has been "
-            + "cleared. The account visibility filter is off until the next import re-confirms it.");
-    }
-
-    /// <summary>
-    /// A one-way digest of the configured API key, or null when there is none.
-    ///
-    /// <para><b>Never the key.</b> The only question asked of it is "is this the
-    /// same key as last time", which a digest answers and a stored secret would
-    /// answer no better. It is written to the settings table, which is the same
-    /// file the user's library lives in and is copied by every backup, so
-    /// putting a credential there to solve a change-detection problem would be
-    /// trading a real secret for a convenience.</para>
-    /// </summary>
-    private async Task<string?> KeyFingerprintAsync(CancellationToken ct)
-    {
-        if (await _apiKeys.GetAsync(ct) is not { } key)
-        {
-            // No key configured at all. Distinct from "a key whose fingerprint
-            // could not be taken", which cannot happen: nothing here fails.
-            return null;
-        }
-
-        var digest = SHA256.HashData(Encoding.UTF8.GetBytes(key.Value));
-        return Convert.ToHexStringLower(digest);
-    }
-
     private static string YearMarker(SteamId steamId, int year)
         => string.Create(CultureInfo.InvariantCulture, $"{YearMarkerPrefix}{steamId.Value}.{year}");
 

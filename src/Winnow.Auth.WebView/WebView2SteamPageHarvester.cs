@@ -1,6 +1,4 @@
-using System.Globalization;
 using System.Text;
-using System.Text.Json;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -49,23 +47,8 @@ public sealed class WebView2SteamPageHarvester : ISteamAccountPageHarvester
     /// <summary>How long to wait for the browser to attach before giving up on it.</summary>
     private static readonly TimeSpan BrowserStartTimeout = TimeSpan.FromSeconds(30);
 
-    /// <summary>How long to wait for a load-more click to produce rows before treating it as stalled.</summary>
-    private static readonly TimeSpan LoadMoreGrowthTimeout = TimeSpan.FromSeconds(15);
-
-    /// <summary>How often to re-count rows while waiting for a click to land.</summary>
-    private static readonly TimeSpan LoadMorePollInterval = TimeSpan.FromMilliseconds(250);
-
     /// <summary>How long to give the browser process to let go of its profile before deleting it.</summary>
     private static readonly TimeSpan TeardownTimeout = TimeSpan.FromSeconds(5);
-
-    /// <summary>
-    /// Characters per slice when reading a captured document back out of the page.
-    ///
-    /// <para>A script result crosses WebView2's IPC as one JSON string. An account
-    /// with a decade of purchases produces a document of several megabytes, which
-    /// is enough to make a single return a gamble; 128k characters is not.</para>
-    /// </summary>
-    private const int CaptureChunkChars = 128 * 1024;
 
     /// <summary>
     /// How many times the flow will steer the window itself.
@@ -175,18 +158,23 @@ public sealed class WebView2SteamPageHarvester : ISteamAccountPageHarvester
     /// </summary>
     private sealed class RunState
     {
-        public RunState(SteamPageHarvestRequest request, Action<string> say, Action<bool> working)
+        public RunState(
+            SteamPageHarvestRequest request, ILogger log, Action<string> say, Action<bool> working)
         {
             Request = request;
             Policy = SteamAccountPagePolicy.For(request);
             Say = say;
             Working = working;
+            Reader = new SteamAccountPageReader(Policy, log, say);
         }
 
         public SteamPageHarvestRequest Request { get; }
 
         /// <summary>Every trust decision this run makes.</summary>
         public SteamAccountPagePolicy Policy { get; }
+
+        /// <summary>Drives the list and takes the document. Shared with the sign-in session.</summary>
+        public SteamAccountPageReader Reader { get; }
 
         /// <summary>Updates the line of text under the browser. Never given page content.</summary>
         public Action<string> Say { get; }
@@ -214,15 +202,6 @@ public sealed class WebView2SteamPageHarvester : ISteamAccountPageHarvester
 
         /// <summary>Whether an account page was ever rendered signed out. Separates "nobody signed in" from "capture broke".</summary>
         public bool SawSignedOut { get; set; }
-
-        public int LoadMoreClicks { get; set; }
-
-        public SteamLoadMoreDecision? LoadMoreStop { get; set; }
-
-        /// <summary>Licences pages followed past the first and merged into the captured document.</summary>
-        public int LicensesPagesWalked { get; set; }
-
-        public SteamLoadMoreDecision? LicensesStop { get; set; }
 
         public bool Done => Finished.Task.IsCompleted;
 
@@ -269,6 +248,7 @@ public sealed class WebView2SteamPageHarvester : ISteamAccountPageHarvester
 
         var run = new RunState(
             request,
+            _log,
             text => status.Text = text,
             working =>
             {
@@ -381,7 +361,11 @@ public sealed class WebView2SteamPageHarvester : ISteamAccountPageHarvester
         if (pages.IsComplete)
         {
             return SteamPageHarvestResult.Captured(
-                pages, run.LoadMoreClicks, run.LoadMoreStop, run.LicensesPagesWalked, run.LicensesStop);
+                pages,
+                run.Reader.LoadMoreClicks,
+                run.Reader.LoadMoreStop,
+                run.Reader.LicensesPagesWalked,
+                run.Reader.LicensesStop);
         }
 
         var why = windowClosed
@@ -391,7 +375,12 @@ public sealed class WebView2SteamPageHarvester : ISteamAccountPageHarvester
                 : "one of the two pages could not be read";
 
         return SteamPageHarvestResult.Partial(
-            pages, why, run.LoadMoreClicks, run.LoadMoreStop, run.LicensesPagesWalked, run.LicensesStop);
+            pages,
+            why,
+            run.Reader.LoadMoreClicks,
+            run.Reader.LoadMoreStop,
+            run.Reader.LicensesPagesWalked,
+            run.Reader.LicensesStop);
     }
 
     /// <summary>Wires the navigation gate and the page pipeline onto one browser session.</summary>
@@ -561,7 +550,7 @@ public sealed class WebView2SteamPageHarvester : ISteamAccountPageHarvester
     private async Task HarvestPageAsync(
         CoreWebView2 browser, RunState run, SteamAccountPageKind kind, CancellationToken ct)
     {
-        if (!await IsSignedInAsync(browser))
+        if (!await SteamAccountPageReader.IsSignedInAsync(browser))
         {
             run.SawSignedOut = true;
 
@@ -579,18 +568,7 @@ public sealed class WebView2SteamPageHarvester : ISteamAccountPageHarvester
         // input block enforces it.
         run.Working(true);
 
-        if (kind == SteamAccountPageKind.PurchaseHistory)
-        {
-            run.Say("Loading your purchase history…");
-            await LoadEverythingAsync(browser, run, ct);
-        }
-        else
-        {
-            run.Say("Reading your licenses page…");
-            await GatherLicensesPagesAsync(browser, run, ct);
-        }
-
-        var html = await CaptureAsync(browser, run);
+        var html = await run.Reader.ReadAsync(browser, kind, () => run.Done, ct);
 
         if (html is null)
         {
@@ -643,371 +621,6 @@ public sealed class WebView2SteamPageHarvester : ISteamAccountPageHarvester
         browser.Navigate(SteamAccountPagePolicy.PageUrl(kind).ToString());
     }
 
-    /// <summary>
-    /// Clicks the purchase-history load-more control until the list is exhausted,
-    /// the cap is reached, or a click stops producing rows.
-    /// </summary>
-    private async Task LoadEverythingAsync(CoreWebView2 browser, RunState run, CancellationToken ct)
-    {
-        await TryExecuteAsync(browser, SteamHarvestScripts.DefineHelpers);
-
-        var rowsBefore = -1;
-
-        while (!run.Done && !ct.IsCancellationRequested)
-        {
-            var (present, rows) = await ReadLoadMoreStateAsync(browser);
-            var decision = run.Policy.ClassifyLoadMore(run.LoadMoreClicks, rowsBefore, rows, present);
-
-            if (decision != SteamLoadMoreDecision.Continue)
-            {
-                run.LoadMoreStop = decision;
-                break;
-            }
-
-            rowsBefore = rows;
-
-            if (!await ClickLoadMoreAsync(browser))
-            {
-                run.LoadMoreStop = SteamLoadMoreDecision.Exhausted;
-                break;
-            }
-
-            run.LoadMoreClicks++;
-            run.Say(string.Create(
-                CultureInfo.CurrentCulture,
-                $"Loading your purchase history ({run.LoadMoreClicks} of at most {run.Policy.MaxLoadMoreClicks} pages)…"));
-
-            await WaitForMoreRowsAsync(browser, rowsBefore, ct);
-        }
-
-        _log.LogInformation(
-            "Expanded the Steam purchase history with {Clicks} load-more clicks; stopped because: {Reason}.",
-            run.LoadMoreClicks,
-            run.LoadMoreStop?.ToString() ?? "the session ended");
-    }
-
-    /// <summary>
-    /// Follows the licences paginator, merging each page's rows into the live
-    /// document, until the paginator runs out, the cap is reached or a page
-    /// stops adding rows.
-    ///
-    /// <para>Verified 2026-08-29: the licences page shows a hundred licences at a
-    /// time. Without this, a 979-licence account is captured as 100 licences and
-    /// the parser correctly reports a truncated document, which is an honest
-    /// answer to the wrong question.</para>
-    /// </summary>
-    private async Task GatherLicensesPagesAsync(CoreWebView2 browser, RunState run, CancellationToken ct)
-    {
-        await TryExecuteAsync(browser, SteamHarvestScripts.DefineHelpers);
-        await TryExecuteAsync(browser, SteamHarvestScripts.LicensesWalkHelpers);
-
-        var rowsBefore = -1;
-
-        while (!run.Done && !ct.IsCancellationRequested)
-        {
-            var (hasNext, rows) = await ReadLicensesStateAsync(browser);
-            var decision = run.Policy.ClassifyLicensesPage(run.LicensesPagesWalked, rowsBefore, rows, hasNext);
-
-            if (decision != SteamLoadMoreDecision.Continue)
-            {
-                run.LicensesStop = decision;
-                break;
-            }
-
-            rowsBefore = rows;
-
-            if (!await StartLicensesFetchAsync(browser))
-            {
-                run.LicensesStop = SteamLoadMoreDecision.Exhausted;
-                break;
-            }
-
-            run.LicensesPagesWalked++;
-            run.Say(string.Create(
-                CultureInfo.CurrentCulture,
-                $"Reading your licenses page ({run.LicensesPagesWalked + 1} of at most {run.Policy.MaxLicensesPages + 1})…"));
-
-            await WaitForLicensesFetchAsync(browser, rowsBefore, ct);
-        }
-
-        _log.LogInformation(
-            "Followed the Steam licences paginator for {Pages} further pages; stopped because: {Reason}.",
-            run.LicensesPagesWalked,
-            run.LicensesStop?.ToString() ?? "the session ended");
-    }
-
-    /// <summary>
-    /// Waits for a licences fetch to finish and its rows to land.
-    ///
-    /// <para>Two conditions rather than one: the fetch reporting itself done says
-    /// the network is finished, and the row count says the merge actually
-    /// happened. A fetch that succeeded but merged nothing is caught by the next
-    /// probe as a stall.</para>
-    /// </summary>
-    private static async Task WaitForLicensesFetchAsync(
-        CoreWebView2 browser, int rowsBefore, CancellationToken ct)
-    {
-        var deadline = DateTimeOffset.UtcNow + LoadMoreGrowthTimeout;
-
-        while (DateTimeOffset.UtcNow < deadline && !ct.IsCancellationRequested)
-        {
-            await Task.Delay(LoadMorePollInterval, ct);
-
-            var raw = await TryExecuteAsync(browser, SteamHarvestScripts.LicensesWalkState);
-            var pending = ReadObject(raw) is { } state
-                && state.TryGetProperty("pending", out var flag)
-                && flag.ValueKind == JsonValueKind.True;
-
-            if (pending)
-            {
-                continue;
-            }
-
-            var (_, rows) = await ReadLicensesStateAsync(browser);
-
-            if (rows > rowsBefore)
-            {
-                return;
-            }
-
-            // The fetch is over and produced nothing. Waiting out the rest of the
-            // deadline would only delay the stall the policy is about to declare.
-            return;
-        }
-    }
-
-    /// <summary>Reads whether the licences paginator offers another page, and how many rows are rendered.</summary>
-    private static async Task<(bool HasNext, int Rows)> ReadLicensesStateAsync(CoreWebView2 browser)
-    {
-        var raw = await TryExecuteAsync(browser, SteamHarvestScripts.LicensesPaginatorProbe);
-
-        if (ReadObject(raw) is not { } root)
-        {
-            return (false, 0);
-        }
-
-        var hasNext = root.TryGetProperty("nextUrl", out var next)
-            && next.ValueKind == JsonValueKind.String
-            && !string.IsNullOrWhiteSpace(next.GetString());
-
-        var rows = root.TryGetProperty("rows", out var r) && r.ValueKind == JsonValueKind.Number
-            && r.TryGetInt32(out var count)
-                ? count
-                : 0;
-
-        return (hasNext, rows);
-    }
-
-    private static async Task<bool> StartLicensesFetchAsync(CoreWebView2 browser)
-    {
-        var raw = await TryExecuteAsync(browser, SteamHarvestScripts.FetchNextLicensesPage);
-        return string.Equals(raw?.Trim(), "true", StringComparison.Ordinal);
-    }
-
-    /// <summary>Waits for a click to actually add rows, so the next probe measures a settled page.</summary>
-    private static async Task WaitForMoreRowsAsync(CoreWebView2 browser, int rowsBefore, CancellationToken ct)
-    {
-        var deadline = DateTimeOffset.UtcNow + LoadMoreGrowthTimeout;
-
-        while (DateTimeOffset.UtcNow < deadline && !ct.IsCancellationRequested)
-        {
-            await Task.Delay(LoadMorePollInterval, ct);
-
-            var (_, rows) = await ReadLoadMoreStateAsync(browser);
-
-            if (rows > rowsBefore)
-            {
-                return;
-            }
-        }
-
-        // Falling out is not a failure here. The next probe sees an unchanged row
-        // count and the policy calls it stalled, which is where that judgement
-        // belongs.
-    }
-
-    /// <summary>
-    /// Takes the rendered document out of the page in slices.
-    ///
-    /// <para>An incomplete read is discarded rather than returned. A truncated
-    /// HTML document parses perfectly well and silently omits whatever was cut
-    /// off, which would show up as an account that owns fewer games than it
-    /// does; a wrong answer is worse here than a missing one.</para>
-    /// </summary>
-    private async Task<string?> CaptureAsync(CoreWebView2 browser, RunState run)
-    {
-        var length = await ReadNumberAsync(browser, SteamHarvestScripts.BeginCapture);
-
-        try
-        {
-            if (length is null or <= 0)
-            {
-                return null;
-            }
-
-            var builder = new StringBuilder(length.Value);
-
-            for (var offset = 0; offset < length.Value; offset += CaptureChunkChars)
-            {
-                var slice = await ReadStringAsync(
-                    browser, SteamHarvestScripts.Chunk(offset, CaptureChunkChars));
-
-                if (string.IsNullOrEmpty(slice))
-                {
-                    break;
-                }
-
-                builder.Append(slice);
-            }
-
-            if (builder.Length != length.Value)
-            {
-                _log.LogWarning(
-                    "Read {Read} of {Total} characters from {Origin} before the page changed underneath the "
-                    + "capture.",
-                    builder.Length, length.Value, run.Policy.HarvestOrigin);
-
-                return null;
-            }
-
-            return builder.ToString();
-        }
-        finally
-        {
-            // Leaves no copy of the user's purchase history sitting in a global
-            // the page's own script could reach.
-            await TryExecuteAsync(browser, SteamHarvestScripts.EndCapture);
-        }
-    }
-
-    /// <summary>Asks the page whether it is being rendered for a signed-in account.</summary>
-    private static async Task<bool> IsSignedInAsync(CoreWebView2 browser)
-    {
-        var raw = await TryExecuteAsync(browser, SteamHarvestScripts.SignedInProbe);
-
-        return ReadObject(raw) is { } root
-            && root.TryGetProperty("signedIn", out var signedIn)
-            && signedIn.ValueKind == JsonValueKind.True;
-    }
-
-    /// <summary>Reads whether a load-more control is on the page, and how much is rendered.</summary>
-    private static async Task<(bool Present, int Rows)> ReadLoadMoreStateAsync(CoreWebView2 browser)
-    {
-        var raw = await TryExecuteAsync(browser, SteamHarvestScripts.LoadMoreProbe);
-
-        if (ReadObject(raw) is not { } root)
-        {
-            return (false, 0);
-        }
-
-        var present = root.TryGetProperty("present", out var p) && p.ValueKind == JsonValueKind.True;
-        var rows = root.TryGetProperty("rows", out var r) && r.ValueKind == JsonValueKind.Number
-            && r.TryGetInt32(out var count)
-                ? count
-                : 0;
-
-        return (present, rows);
-    }
-
-    private static async Task<bool> ClickLoadMoreAsync(CoreWebView2 browser)
-    {
-        var raw = await TryExecuteAsync(browser, SteamHarvestScripts.ClickLoadMore);
-        return string.Equals(raw?.Trim(), "true", StringComparison.Ordinal);
-    }
-
-    /// <summary>A script result that is a JSON number.</summary>
-    private static async Task<int?> ReadNumberAsync(CoreWebView2 browser, string script)
-    {
-        var raw = await TryExecuteAsync(browser, script);
-
-        if (raw is null)
-        {
-            return null;
-        }
-
-        try
-        {
-            using var document = JsonDocument.Parse(raw);
-            return document.RootElement.ValueKind == JsonValueKind.Number
-                && document.RootElement.TryGetInt32(out var value)
-                    ? value
-                    : null;
-        }
-        catch (JsonException)
-        {
-            return null;
-        }
-    }
-
-    /// <summary>A script result that is a JSON string.</summary>
-    private static async Task<string?> ReadStringAsync(CoreWebView2 browser, string script)
-    {
-        var raw = await TryExecuteAsync(browser, script);
-
-        if (raw is null)
-        {
-            return null;
-        }
-
-        try
-        {
-            using var document = JsonDocument.Parse(raw);
-            return document.RootElement.ValueKind == JsonValueKind.String
-                ? document.RootElement.GetString()
-                : null;
-        }
-        catch (JsonException)
-        {
-            return null;
-        }
-    }
-
-    /// <summary>
-    /// A script result that is a JSON object, cloned out of the document so the
-    /// element outlives the <c>using</c>.
-    /// </summary>
-    private static JsonElement? ReadObject(string? raw)
-    {
-        if (raw is null)
-        {
-            return null;
-        }
-
-        try
-        {
-            using var document = JsonDocument.Parse(raw);
-            return document.RootElement.ValueKind == JsonValueKind.Object
-                ? document.RootElement.Clone()
-                : null;
-        }
-        catch (JsonException)
-        {
-            return null;
-        }
-    }
-
-    /// <summary>
-    /// Runs a script and returns its raw JSON result, or null when the browser
-    /// went away.
-    ///
-    /// <para>Callers are all in the middle of a page that may navigate, close or
-    /// crash under them, and none of them has anything useful to do about it
-    /// beyond stopping.</para>
-    /// </summary>
-    private static async Task<string?> TryExecuteAsync(CoreWebView2 browser, string script)
-    {
-        try
-        {
-            var result = await browser.ExecuteScriptAsync(script);
-            return string.IsNullOrWhiteSpace(result) ? null : result;
-        }
-        catch (Exception ex) when (ex is InvalidOperationException
-            or ObjectDisposedException
-            or System.Runtime.InteropServices.COMException)
-        {
-            return null;
-        }
-    }
 
     /// <summary>
     /// Whether this address is part of signing in, as opposed to somewhere the

@@ -1,10 +1,10 @@
-using System.Text;
-using System.Text.Json;
+using Winnow.Core.Auth;
 
 namespace Winnow.Enrich.SteamWeb.Credentials;
 
 /// <summary>
-/// What a Steam access token's payload says about itself.
+/// What a Steam access token's payload says about itself, plus the one thing
+/// this module can say that Core cannot: which account the subject names.
 ///
 /// <para><b>Nothing here is validated.</b> No signature check, no issuer check,
 /// no audience check, no expiry check. Steam is the only party that decides
@@ -16,9 +16,13 @@ namespace Winnow.Enrich.SteamWeb.Credentials;
 /// never chosen, and <b>whose</b> account it belongs to, so the signed-in
 /// account can be recorded without a second disclosure call.</para>
 ///
-/// <para>Promoted from the TASK-56 probe, which read the same four claims to
-/// print them. The probe's reader is now a thin call onto this one, so there is
-/// exactly one base64url decoder and one claim vocabulary in the codebase.</para>
+/// <para><b>The decoder itself is <see cref="SteamJwtClaims"/>, in Core, and
+/// this type is a thin projection of it.</b> S3's sign-in session lives in
+/// Winnow.Auth.WebView, which cannot see this assembly and must decode the token
+/// the instant a store page hands it over — so the base64url decoder and the
+/// claim vocabulary moved down to where both callers can reach them. Everything
+/// this type adds is <see cref="SteamId"/>, which needs a Steam-specific parser
+/// Core has no business owning.</para>
 /// </summary>
 /// <param name="Readable">Whether a JSON object payload was decoded at all. False for anything that is not a JWT.</param>
 /// <param name="ExpiresAt">The <c>exp</c> claim, as an absolute instant. Null when absent or not an integer.</param>
@@ -46,118 +50,9 @@ public readonly record struct SteamTokenClaims(
     /// token yields <see cref="Unreadable"/>, which every caller treats as "no
     /// session" rather than as an error.
     /// </summary>
-    public static SteamTokenClaims Read(string? token)
-    {
-        if (string.IsNullOrWhiteSpace(token))
-        {
-            return Unreadable;
-        }
+    public static SteamTokenClaims Read(string? token) => From(SteamJwtClaims.Read(token));
 
-        // Only the payload is touched. The header is not read and the signature
-        // segment is never decoded, because nothing here verifies one.
-        var segments = token.Split('.');
-        if (segments.Length < 2 || DecodePayload(segments[1]) is not { } payload)
-        {
-            return Unreadable;
-        }
-
-        try
-        {
-            using var document = JsonDocument.Parse(payload);
-            var root = document.RootElement;
-
-            if (root.ValueKind != JsonValueKind.Object)
-            {
-                return Unreadable;
-            }
-
-            return new SteamTokenClaims(
-                Readable: true,
-                ExpiresAt: ReadExpiry(root),
-                Subject: ReadString(root, "sub"),
-                Audiences: ReadAudiences(root),
-                Issuer: ReadString(root, "iss"));
-        }
-        catch (JsonException)
-        {
-            return Unreadable;
-        }
-    }
-
-    private static DateTimeOffset? ReadExpiry(JsonElement root)
-        => root.TryGetProperty("exp", out var exp)
-            && exp.ValueKind == JsonValueKind.Number
-            && exp.TryGetInt64(out var seconds)
-                ? DateTimeOffset.FromUnixTimeSeconds(seconds)
-                : null;
-
-    private static string? ReadString(JsonElement root, string name)
-        => root.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String
-            ? value.GetString()
-            : null;
-
-    private static IReadOnlyList<string> ReadAudiences(JsonElement root)
-    {
-        if (!root.TryGetProperty("aud", out var aud))
-        {
-            return [];
-        }
-
-        // Steam sends an array (["web:store"] on a store-minted token, verified
-        // in docs/spikes/steam-web-session-auth.md), but the JWT spec permits a
-        // bare string and a reader that only handled the array would silently
-        // report no audience at all if Valve ever changed shape.
-        if (aud.ValueKind == JsonValueKind.String)
-        {
-            return aud.GetString() is { } single ? [single] : [];
-        }
-
-        if (aud.ValueKind != JsonValueKind.Array)
-        {
-            return [];
-        }
-
-        var values = new List<string>();
-        foreach (var element in aud.EnumerateArray())
-        {
-            if (element.ValueKind == JsonValueKind.String && element.GetString() is { } value)
-            {
-                values.Add(value);
-            }
-        }
-
-        return values;
-    }
-
-    /// <summary>Base64url, which is base64 with two characters swapped and the padding dropped.</summary>
-    private static string? DecodePayload(string segment)
-    {
-        if (segment.Length == 0)
-        {
-            return null;
-        }
-
-        var padded = segment.Replace('-', '+').Replace('_', '/');
-        padded += (padded.Length % 4) switch
-        {
-            2 => "==",
-            3 => "=",
-            0 => string.Empty,
-            _ => null,
-        };
-
-        if (padded.Length % 4 != 0)
-        {
-            return null;
-        }
-
-        try
-        {
-            return Encoding.UTF8.GetString(Convert.FromBase64String(padded));
-        }
-        catch (Exception ex) when (ex is FormatException or DecoderFallbackException)
-        {
-            return null;
-        }
-    }
+    /// <summary>Projects Core's claim set onto this one. The only place the two shapes meet.</summary>
+    public static SteamTokenClaims From(SteamJwtClaims claims) => new(
+        claims.Readable, claims.ExpiresAt, claims.Subject, claims.Audiences, claims.Issuer);
 }

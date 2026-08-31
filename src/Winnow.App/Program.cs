@@ -23,6 +23,7 @@ using Winnow.Recommend;
 using Winnow.Resolve;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -120,24 +121,6 @@ public static class Program
         Task startup = Task.CompletedTask;
         try
         {
-            // TASK-56, and the FIRST thing in this block deliberately: the probe
-            // is throwaway verification scaffolding that must be able to say it
-            // wrote nothing at all, so it returns before DatabaseInitializer has
-            // even run a migration and before host.Start() launches a single
-            // hosted service. It needs Avalonia and nothing else — the browser
-            // lives in a window — so it starts the window system by hand exactly
-            // as --epic-signin does. Delete this with the probe.
-            if (args.Contains(Services.SteamSignInProbeConsole.Argument))
-            {
-                // The report goes to a FILE beside the database, because this
-                // is a WinExe and a console is not something it can count on
-                // having (code review finding F41). The console is the second
-                // copy, not the channel the findings depend on.
-                Environment.ExitCode = Services.SteamSignInProbeConsole
-                    .Run(BuildAvaloniaApp, DataLocation.Root, Shutdown.Token);
-                return;
-            }
-
             // Migrations run before ANY reader or writer touches the db —
             // including hosted services, which host.Start() launches. The
             // scheduler's first tick is an interval away so today's ordering
@@ -588,6 +571,33 @@ public static class Program
         // construction (amendment condition 1), and every run makes its own
         // subdirectory and deletes it, so nothing accumulates.
         services.AddSteamAccountPageHarvester();
+
+        // TASK-55 S3. The embedded Steam sign-in, and the App-layer service that
+        // writes what it mints into the DPAPI-protected session store. Two lines
+        // for the same reason the Epic sign-in is two: the browser project sees
+        // Core alone and the Steam Web module cannot see a browser, so the
+        // composition root is the only place that can join them.
+        //
+        // Registered unconditionally and for the same reason the harvester is:
+        // the session reports itself unavailable at use time, and the Stores
+        // screen (S5) has to be able to say "not on this machine" rather than
+        // silently not offering the option. The profile root is the temp
+        // directory, again because the session is in-private and every run makes
+        // and deletes its own subdirectory.
+        //
+        // SteamSignInService is the ONLY seam a view model may resolve: it is
+        // what keeps ISteamSessionProvider — and with it a live refresh token —
+        // out of a view model's constructor.
+        services.AddSteamWebViewSignIn();
+        services.AddSingleton<SteamSignInService>();
+
+        // TASK-55 S4. The shared account-confirmation writer, in case the
+        // backfill above was not composed: both the key path and the sign-in
+        // path write the owned-account rows through this one object, and a
+        // second writer of the same two rows is how the account filter starts
+        // hiding the wrong library. TryAdd, so whichever registration ran first
+        // wins and both paths get the same instance.
+        services.TryAddSingleton<ISteamAccountConfirmation, SteamAccountConfirmation>();
 
         // The importer, the saved-file loader, and the interface binding the
         // view model resolves. Fill-only and idempotent — it writes to existing

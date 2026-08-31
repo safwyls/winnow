@@ -12,8 +12,10 @@ namespace Winnow.Enrich.SteamWeb;
 public interface ISteamWebApiClient
 {
     /// <summary>
-    /// Whether a user-supplied API key was found. False is the ordinary state
-    /// for a user who has not entered one, not an error.
+    /// Whether any usable Steam credential exists: a user-supplied Web API
+    /// key or a live sign-in session. An expired session does not count
+    /// because nothing can be sent with it. False is the ordinary state
+    /// for an install nobody has configured, not an error.
     /// </summary>
     ValueTask<bool> IsConfiguredAsync(CancellationToken ct = default);
 

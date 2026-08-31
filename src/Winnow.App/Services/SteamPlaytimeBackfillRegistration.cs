@@ -38,6 +38,13 @@ public static class SteamPlaytimeBackfillRegistration
         // pass on SQLite's single writer.
         services.TryAddSingleton<LibrarySyncGate>();
 
+        // The one writer of the owned-account settings rows, shared with the
+        // sign-in path. TryAdd because whichever of the two paths is composed
+        // first registers it and the other must get the SAME one: two instances
+        // would be two writers again, which is the thing the seam exists to
+        // prevent.
+        services.TryAddSingleton<ISteamAccountConfirmation, SteamAccountConfirmation>();
+
         services.TryAddSingleton<SteamPlaytimeBackfillService>();
         services.TryAddSingleton<ISteamPlaytimeBackfill>(
             sp => sp.GetRequiredService<SteamPlaytimeBackfillService>());

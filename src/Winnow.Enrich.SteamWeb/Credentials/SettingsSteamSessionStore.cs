@@ -172,8 +172,13 @@ public sealed class SettingsSteamSessionStore : ISteamSessionStore
         [JsonPropertyName("steamid64")]
         public string SteamId64 { get; init; } = string.Empty;
 
+        // Nullable, and null is an ordinary session rather than a broken one:
+        // a sign-in with no remember-me captures no steamRefresh_steam cookie.
+        // The FIELD is still always emitted — the key set is the closed list an
+        // audit reads, and it must not depend on which kind of session was
+        // stored.
         [JsonPropertyName("refresh_token")]
-        public string RefreshToken { get; init; } = string.Empty;
+        public string? RefreshToken { get; init; }
 
         // Nullable, and stored as null when the refresh token did not decode.
         // Writing a sentinel, or the measured 207 days, would turn "not known"
@@ -210,13 +215,16 @@ public sealed class SettingsSteamSessionStore : ISteamSessionStore
 
         /// <summary>
         /// Null when a required field is missing or the account id does not
-        /// parse. A session missing either token, or naming no account, cannot
+        /// parse. A session with no access token, or naming no account, cannot
         /// be used for anything; returning a half-built one would only move the
         /// failure to the first request.
+        ///
+        /// <para>A blank refresh token is <b>not</b> a missing required field.
+        /// It round-trips as null and yields a session that works and cannot be
+        /// renewed, which is the honest reading of what was stored.</para>
         /// </summary>
         public SteamSession? ToSession()
             => string.IsNullOrWhiteSpace(AccessToken)
-                || string.IsNullOrWhiteSpace(RefreshToken)
                 || !SteamId.TryParse(SteamId64, out var steamId)
                     ? null
                     : new SteamSession(

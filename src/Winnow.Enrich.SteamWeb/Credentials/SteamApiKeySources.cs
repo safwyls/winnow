@@ -18,11 +18,19 @@ public sealed class SettingsTableApiKeySource : ISteamApiKeySource
     /// <summary>Settings key holding the user's Steam Web API key. Namespaced per the §6 convention.</summary>
     public const string ApiKeySetting = "steam.api_key";
 
+    /// <summary>
+    /// The provenance string this source stamps on a key it resolves, exposed as
+    /// a constant because a caller has to be able to tell an app-managed key from
+    /// a developer one without matching a literal. A key from here is the one the
+    /// Stores screen's field owns: it can be replaced and it can be cleared.
+    /// </summary>
+    public const string SourceName = "settings";
+
     private readonly ISettingsRepository _settings;
 
     public SettingsTableApiKeySource(ISettingsRepository settings) => _settings = settings;
 
-    public string Name => "settings";
+    public string Name => SourceName;
 
     public async ValueTask<SteamApiKey?> TryGetAsync(CancellationToken ct = default)
         => SteamApiKey.TryCreate(await _settings.GetAsync(ApiKeySetting, ct), Name);
@@ -45,11 +53,19 @@ public class ConfigurationApiKeySource : ISteamApiKeySource
     /// <summary>Key within <see cref="SectionName"/> (so: <c>Steam:ApiKey</c> / <c>Steam__ApiKey</c>).</summary>
     public const string ApiKeyName = "ApiKey";
 
+    /// <summary>
+    /// The provenance string this source stamps on a key it resolves. A key from
+    /// here lives in the environment or in a file beside the executable, so the
+    /// Stores screen's field cannot remove it and has to say so rather than
+    /// offering a Clear that would appear not to work.
+    /// </summary>
+    public const string SourceName = "configuration";
+
     private readonly IConfiguration? _configuration;
 
     public ConfigurationApiKeySource(IConfiguration? configuration) => _configuration = configuration;
 
-    public string Name => "configuration";
+    public string Name => SourceName;
 
     public virtual ValueTask<SteamApiKey?> TryGetAsync(CancellationToken ct = default)
         => ValueTask.FromResult(

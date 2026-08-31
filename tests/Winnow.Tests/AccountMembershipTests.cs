@@ -208,7 +208,11 @@ public class AccountMembershipTests
         await panel.RefreshCommand.ExecuteAsync(null);
         Assert.False(panel.CanChooseAccountScope);
         Assert.True(panel.ShowAccountScopeBlocked);
-        Assert.Contains("Set a Steam Web API key first", panel.AccountScopeBlockedMessage);
+        // Nothing is connected, so the explanation is the branch that names BOTH
+        // routes — signing in and registering a key each answer the question
+        // this toggle is waiting on.
+        Assert.Equal(
+            SteamConnectionCopy.AccountScopeBlockedNothingConnected, panel.AccountScopeBlockedMessage);
 
         await settings.SetAsync(SteamOwnedAccount.RefSettingKey, Mine);
         await panel.RefreshCommand.ExecuteAsync(null);

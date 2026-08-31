@@ -34,7 +34,8 @@ public enum SteamLoadMoreDecision
 /// machinery the Epic sign-in runs on, and this type adds only what is specific
 /// to harvesting: which origin may be read, and which two paths on it.</para>
 ///
-/// <para><b>Three tiers here, not two.</b></para>
+/// <para><b>Four tiers here, and each one is narrower than the last about a
+/// different question.</b></para>
 ///
 /// <list type="bullet">
 /// <item><description><b>Harvestable</b>: the two exact pages. A script runs in
@@ -42,6 +43,12 @@ public enum SteamLoadMoreDecision
 /// two URLs and nothing widens it. A sibling path on the same host
 /// (<c>/account/</c>, <c>/account/licenses/detail/1</c>) is not one of
 /// them.</description></item>
+/// <item><description><b>Mintable</b>: any store page that is not a sign-in
+/// form, which is where a signed-in <c>webapi_token</c> can be read off
+/// <c>application_config</c>. Wider in address than harvestable and far narrower
+/// in what it takes away: one field, never a document. See
+/// <see cref="AllowsMint"/> for why the store root is in this tier and out of
+/// the one above.</description></item>
 /// <item><description><b>Trusted</b>: the exact HTTPS origin
 /// <c>store.steampowered.com</c>, which is where those two pages live. Derived
 /// from the page URLs by <see cref="AuthFlowPolicy"/> and not extensible: no
@@ -248,6 +255,66 @@ public sealed class SteamAccountPagePolicy
     /// what lets Winnow read it.</para>
     /// </summary>
     public bool AllowsHarvest(Uri? uri) => PageOf(uri) is not null;
+
+    /// <summary>
+    /// Whether a document may be asked for a minted <c>webapi_token</c>, and
+    /// therefore whether the sign-in session may run its one small script in it.
+    ///
+    /// <para><b>A third tier, narrower than trusted and wider than harvestable,
+    /// and it is deliberately neither of them.</b> It is a strict subset of
+    /// <see cref="TrustedOrigins"/>, so a mint can never read a document the
+    /// account-page session would not already have been allowed to navigate to;
+    /// and it is disjoint from <see cref="AllowsHarvest"/> in what it permits the
+    /// caller to take away, because a mint reads one field Valve puts on every
+    /// store page rather than a whole document.</para>
+    ///
+    /// <para>Three clauses, all of them load-bearing. HTTPS and the exact store
+    /// origin, because a token is a bearer credential and the community origin
+    /// would mint one too (spike section 1, route 2) and is still refused: the
+    /// session reads one origin. And not a sign-in-form path, because the pages
+    /// a user types a password into are never scripted and never read, whatever
+    /// tier they are on.</para>
+    ///
+    /// <para><b>The store root is in scope here and out of scope for
+    /// <see cref="AllowsHarvest"/>, and that divergence is the point.</b>
+    /// The harvester treats an empty path as part of signing in, correctly: the
+    /// root is a waypoint in Steam's post-login redirect and it has no interest
+    /// in reading it. The sign-in session's situation is the exact inverse. The
+    /// root is where Steam lands the user after Steam Guard and it carries
+    /// <c>application_config</c>, so it is precisely the document a mint most
+    /// needs. Verified live against the user's own account on 2026-08-30
+    /// (docs/spikes/steam-web-session-auth.md section 7.1): the token came from
+    /// the store root, via <c>application_config/data-store_user_config</c>.
+    /// The first version of the probe copied the harvester's clause across, and
+    /// consequently refused the only page it was ever shown.</para>
+    /// </summary>
+    public bool AllowsMint(Uri? uri)
+        => uri is not null
+            && AuthFlowPolicy.OriginOf(uri) is { } origin
+            && string.Equals(origin, HarvestOrigin, StringComparison.Ordinal)
+            && !IsSignInFormPath(uri);
+
+    /// <summary>
+    /// Whether this address is a page the user types credentials into.
+    ///
+    /// <para>The named paths, and only those, are what keeps the login form out
+    /// of <see cref="AllowsMint"/>. The sign-in form is served from the trusted
+    /// origin: being trusted is what lets the window go somewhere, never what
+    /// lets Winnow read it.</para>
+    /// </summary>
+    public static bool IsSignInFormPath(Uri uri)
+    {
+        ArgumentNullException.ThrowIfNull(uri);
+
+        var path = uri.AbsolutePath.Trim('/').ToLowerInvariant();
+
+        return path.StartsWith("login", StringComparison.Ordinal)
+            || path.StartsWith("join", StringComparison.Ordinal)
+            || path.StartsWith("password", StringComparison.Ordinal)
+            || path.StartsWith("twofactor", StringComparison.Ordinal)
+            || path.StartsWith("mobilelogin", StringComparison.Ordinal)
+            || path.StartsWith("account/security", StringComparison.Ordinal);
+    }
 
     /// <summary>
     /// Whether to click the purchase-history load-more control once more.

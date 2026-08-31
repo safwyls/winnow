@@ -161,7 +161,7 @@ public sealed class SteamSessionStoreTests
 
         Assert.NotNull(stored);
         Assert.DoesNotContain(session.AccessToken, stored, StringComparison.Ordinal);
-        Assert.DoesNotContain(session.RefreshToken, stored, StringComparison.Ordinal);
+        Assert.DoesNotContain(session.RefreshToken!, stored, StringComparison.Ordinal);
 
         // The account id is not a credential, but it identifies a real person.
         Assert.DoesNotContain(SteamSessionFixtures.Subject, stored, StringComparison.Ordinal);
@@ -311,7 +311,7 @@ public sealed class SteamSessionStoreTests
         var text = session.ToString();
 
         Assert.DoesNotContain(session.AccessToken, text, StringComparison.Ordinal);
-        Assert.DoesNotContain(session.RefreshToken, text, StringComparison.Ordinal);
+        Assert.DoesNotContain(session.RefreshToken!, text, StringComparison.Ordinal);
         Assert.Contains("redacted", text, StringComparison.Ordinal);
     }
 

@@ -147,6 +147,15 @@ public sealed class SteamSessionProvider : ISteamSessionProvider
     /// before the token dies. Durability comes last, because a session that is
     /// not persisted still works for this run and saying so is a caveat, not a
     /// fault.</para>
+    ///
+    /// <para><b>The two kinds of session are distinguished here.</b> A session
+    /// holding a refresh token is the renewable kind and passes through
+    /// <see cref="SteamSessionHealth.RenewalDue"/> on its way out, which is the
+    /// state S6 acts on. A token-only session has no such path, so it reads
+    /// <see cref="SteamSessionHealth.Live"/> right up to its expiry and
+    /// <see cref="SteamSessionHealth.Expired"/> after it. Calling that one
+    /// RenewalDue would tell the user a renewal is owed that nothing can ever
+    /// pay, and would hand S6 work it cannot do.</para>
     /// </summary>
     public static SteamSessionHealth Classify(
         SteamSession? session, DateTimeOffset now, TimeSpan? skew = null, TimeSpan? renewalLead = null,
@@ -175,8 +184,10 @@ public sealed class SteamSessionProvider : ISteamSessionProvider
 
         // Either already dead with a refresh token that should replace it, or
         // alive but inside the lead window where renewal ought to happen before
-        // anyone notices. Both are the same instruction to S6.
-        if (!accessUsable || !session.IsAccessUsable(now, expirySkew + lead))
+        // anyone notices. Both are the same instruction to S6 — and both require
+        // a refresh token to act on, which is why the guard is on refreshUsable
+        // rather than on the clock alone.
+        if (refreshUsable && (!accessUsable || !session.IsAccessUsable(now, expirySkew + lead)))
         {
             return SteamSessionHealth.RenewalDue;
         }
@@ -206,11 +217,27 @@ public sealed class SteamSessionProvider : ISteamSessionProvider
         }
 
         _sessionLapsed = true;
-        _log.LogInformation(
-            "The stored Steam session expired on {ExpiresAt:O} and its refresh token lapsed on "
-            + "{RefreshExpiresAt:O}. Steam calls that depend on it are skipped until the user signs in again; "
-            + "a configured Web API key and the local Steam readers are unaffected.",
-            _cached.ExpiresAt,
-            _cached.RefreshExpiresAt);
+
+        // Two different sentences, because they have two different causes and a
+        // support question about either is answered by the wrong one. A
+        // renewable session that reaches here outlived its refresh token; a
+        // token-only session simply reached the end it always had.
+        if (_cached.HasRefreshToken)
+        {
+            _log.LogInformation(
+                "The stored Steam session expired on {ExpiresAt:O} and its refresh token lapsed on "
+                + "{RefreshExpiresAt:O}. Steam calls that depend on it are skipped until the user signs in "
+                + "again; a configured Web API key and the local Steam readers are unaffected.",
+                _cached.ExpiresAt,
+                _cached.RefreshExpiresAt);
+        }
+        else
+        {
+            _log.LogInformation(
+                "The stored Steam session expired on {ExpiresAt:O}. It carried no refresh token, so there "
+                + "was never a way to renew it silently. Steam calls that depend on it are skipped until the "
+                + "user signs in again; a configured Web API key and the local Steam readers are unaffected.",
+                _cached.ExpiresAt);
+        }
     }
 }

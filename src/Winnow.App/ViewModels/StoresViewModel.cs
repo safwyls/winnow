@@ -1,6 +1,9 @@
+using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Winnow.App.Services;
+using Winnow.Core.Auth;
+using Winnow.Enrich.SteamWeb.Credentials;
 
 namespace Winnow.App.ViewModels;
 
@@ -36,17 +39,35 @@ public partial class StoresViewModel : ObservableObject
     private readonly IStoreTitleCounts? _counts;
     private readonly IAccountVisibility? _accountVisibility;
 
+    /// <summary>
+    /// The Steam sign-in, and the ONLY seam this panel resolves for it. It carries
+    /// no token into the view model by construction: <see cref="SteamSignInReport"/>
+    /// has no field for one, and <c>ISteamSessionProvider</c> — which does — stays
+    /// out of this constructor deliberately (TASK-55 S3).
+    /// </summary>
+    private readonly SteamSignInService? _steamSignIn;
+
+    /// <summary>
+    /// The one place a URI leaves the application, used for the single outbound
+    /// link on this screen: Steam's own key registration page.
+    /// </summary>
+    private readonly IUriDispatcher? _uris;
+
     /// <summary>Guards against writing the preference back while it is being read.</summary>
     private bool _loadingAccountScope;
 
     public StoresViewModel(
         IStoreConnections connections,
         IStoreTitleCounts? counts = null,
-        IAccountVisibility? accountVisibility = null)
+        IAccountVisibility? accountVisibility = null,
+        SteamSignInService? steamSignIn = null,
+        IUriDispatcher? uris = null)
     {
         _connections = connections;
         _counts = counts;
         _accountVisibility = accountVisibility;
+        _steamSignIn = steamSignIn;
+        _uris = uris;
     }
 
     /// <summary>
@@ -64,19 +85,64 @@ public partial class StoresViewModel : ObservableObject
     public string Title => "Platforms";
 
     public string IntroMessage =>
-        "Where your library comes from. All three read local files; two can also sign in for more.";
+        "Where your library comes from. All three read local files; Steam and Epic can also connect for more.";
 
     // ══ Steam ═══════════════════════════════════════════════════════════════
+    //
+    // TASK-55 S5. Two peer connection methods, and the screen states plainly what
+    // each one gives and what it gives up. The sign-in is presented first as the
+    // fuller path; the key is a genuine alternative and is never drawn as a
+    // fallback, a disabled control or a smaller card.
+    //
+    // Everything below reads from ONE credential fact — SteamCredentials, the
+    // App-layer projection of the credential inventory — and ONE health value.
+    // There is deliberately no second opinion anywhere in this file about whether
+    // Steam is connected.
 
+    /// <summary>
+    /// What Steam credentials exist right now. One read answers both methods, so
+    /// the two cards cannot disagree about what is configured.
+    /// </summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(
-        nameof(SteamStatusLabel), nameof(SteamStatusIsLive),
-        nameof(SteamAddsMessage), nameof(ShowSteamKeyHint),
-        // The disabled toggle's explanation names the key state, so it has to
-        // be redrawn when that changes — otherwise a user who has just set a key
-        // is still being told to set one.
+        nameof(SteamWebApiConfigured), nameof(SteamHasApiKey), nameof(SteamHasSession),
+        nameof(SteamApiKeyIsAppManaged), nameof(SteamStatusLabel), nameof(SteamStatusIsLive),
+        nameof(SteamStatusNeedsAttention), nameof(SteamConnectionMessage),
+        nameof(SteamApiKeyStatusMessage), nameof(ShowSteamBothCredentials),
+        nameof(SteamSignedInAccountText), nameof(ShowSteamSignedInAccount),
+        nameof(SteamSessionExpiresText), nameof(ShowSteamSessionExpires),
+        nameof(SteamSignInButtonText), nameof(ShowSteamSignedIn), nameof(ShowSteamSignInAction),
+        // The disabled toggle's explanation names which credentials are in force,
+        // so it has to be redrawn when they change — otherwise a user who has
+        // just pasted a key is still being told to get one.
         nameof(AccountScopeBlockedMessage))]
-    public partial bool SteamWebApiConfigured { get; set; }
+    [NotifyCanExecuteChangedFor(nameof(ClearSteamApiKeyCommand))]
+    public partial SteamConnection SteamCredentials { get; set; } = SteamConnection.None;
+
+    /// <summary>
+    /// The stored sign-in session's state, read from the session provider through
+    /// <see cref="SteamSignInService"/> and rendered rather than re-derived.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(
+        nameof(SteamStatusLabel), nameof(SteamStatusIsLive), nameof(SteamStatusNeedsAttention),
+        nameof(SteamSessionHealthMessage), nameof(ShowSteamSessionAttention),
+        nameof(SteamSignInButtonText), nameof(ShowSteamSignedIn), nameof(ShowSteamSignInAction))]
+    public partial SteamSessionHealth SteamSessionState { get; set; } = SteamSessionHealth.NotSignedIn;
+
+    /// <summary>
+    /// Whether Steam's Web API can be reached on the user's behalf at all, by
+    /// either credential. Kept under its original name because it is the same
+    /// question; what changed is that a keyless signed-in user now answers true.
+    /// </summary>
+    public bool SteamWebApiConfigured => SteamCredentials.HasUsableCredential;
+
+    public bool SteamHasApiKey => SteamCredentials.HasApiKey;
+
+    public bool SteamHasSession => SteamCredentials.HasSession;
+
+    /// <summary>Whether the key in force is the one this screen's own field owns.</summary>
+    public bool SteamApiKeyIsAppManaged => SteamCredentials.ApiKeyIsAppManaged;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(SteamCountText), nameof(ShowSteamCount))]
@@ -86,21 +152,248 @@ public partial class StoresViewModel : ObservableObject
 
     public bool ShowSteamCount => SteamTitleCount > 0;
 
-    public string SteamLocalMessage =>
-        "Always on. Reads installed and played games, playtime and last-played dates from Steam's local files.";
+    public string SteamLocalLabel => SteamConnectionCopy.LocalFilesLabel;
 
-    public string SteamStatusLabel => SteamWebApiConfigured ? "WEB API KEY SET" : "NO WEB API KEY";
+    public string SteamLocalMessage => SteamConnectionCopy.LocalFiles;
 
-    public bool SteamStatusIsLive => SteamWebApiConfigured;
+    public string SteamConnectionSectionLabel => SteamConnectionCopy.SectionLabel;
 
-    public string SteamAddsMessage => SteamWebApiConfigured
-        ? "Also reads your full owned list from Steam, including games never installed on this PC."
-        : "Local files only include games installed or played on this PC. Set an API key to see your full library.";
+    public string SteamConnectionIntroMessage => SteamConnectionCopy.SectionIntro;
 
-    public bool ShowSteamKeyHint => !SteamWebApiConfigured;
+    /// <summary>
+    /// What a connection is worth, in the two states it has an answer for: what
+    /// is missing while nothing is connected, and what a connection added.
+    /// </summary>
+    public string SteamConnectionMessage => SteamCredentials.HasAnyCredential
+        ? SteamConnectionCopy.ConnectedAdds
+        : SteamConnectionCopy.NothingConnectedCost;
 
-    public string SteamKeyHintMessage =>
-        "Set Steam__ApiKey as an environment variable, or in appsettings.local.json beside the executable.";
+    // ── The combined status label ────────────────────────────────────────────
+    //
+    // Six states, and the sign-in's problems win over the key's presence: a user
+    // whose sign-in has expired needs to be told that before they are told a key
+    // is set. The sentence under the pill is where the key's continued cover gets
+    // stated, and ShowSteamBothCredentials is what states it.
+
+    public string SteamStatusLabel => SteamSessionState switch
+    {
+        SteamSessionHealth.RenewalDue or SteamSessionHealth.RenewalFailing
+            => SteamConnectionCopy.StatusSignInNeedsRenewing,
+        SteamSessionHealth.Expired => SteamConnectionCopy.StatusSignInExpired,
+        SteamSessionHealth.Live or SteamSessionHealth.NotPersisted => SteamHasApiKey
+            ? SteamConnectionCopy.StatusSignedInAndKeySet
+            : SteamConnectionCopy.StatusSignedIn,
+        _ => SteamHasApiKey
+            ? SteamConnectionCopy.StatusKeySet
+            : SteamConnectionCopy.StatusNoConnection,
+    };
+
+    /// <summary>Volt: something here works right now.</summary>
+    public bool SteamStatusIsLive
+        => SteamSessionState is SteamSessionHealth.Live or SteamSessionHealth.NotPersisted
+            || (SteamSessionState == SteamSessionHealth.NotSignedIn && SteamHasApiKey);
+
+    /// <summary>
+    /// Amber, never Flare. Flare marks unread updates and nothing else, so a
+    /// broken credential borrows the same attention treatment the Epic card uses
+    /// for a lapsed session.
+    /// </summary>
+    public bool SteamStatusNeedsAttention
+        => SteamSessionState is SteamSessionHealth.RenewalFailing or SteamSessionHealth.Expired;
+
+    // ── Session health, all six states ───────────────────────────────────────
+
+    public string SteamSessionHealthMessage => SteamSessionState switch
+    {
+        SteamSessionHealth.Live => SteamConnectionCopy.HealthLive,
+        SteamSessionHealth.RenewalDue => SteamConnectionCopy.HealthRenewalDue,
+        SteamSessionHealth.RenewalFailing => SteamConnectionCopy.HealthRenewalFailing,
+        SteamSessionHealth.Expired => SteamConnectionCopy.HealthExpired,
+        SteamSessionHealth.NotPersisted => SteamConnectionCopy.HealthNotPersisted,
+        _ => SteamConnectionCopy.HealthNotSignedIn,
+    };
+
+    /// <summary>
+    /// Whether the health line wears the Amber edge. A session that cannot be
+    /// renewed and one that has died are both states the user has to act on; a
+    /// session that was never written is one they need to know about before the
+    /// next launch makes it look like a bug.
+    /// </summary>
+    public bool ShowSteamSessionAttention => SteamSessionState
+        is SteamSessionHealth.RenewalFailing
+        or SteamSessionHealth.Expired
+        or SteamSessionHealth.NotPersisted;
+
+    /// <summary>
+    /// Both credentials are held, so the user is told which one does what rather
+    /// than being left to guess. The decision is the user's own (decision note 2):
+    /// scheduled work takes the key because keys do not expire.
+    /// </summary>
+    public bool ShowSteamBothCredentials => SteamHasApiKey && SteamHasSession;
+
+    public string SteamBothCredentialsMessage => SteamConnectionCopy.BothCredentials;
+
+    // ── Method A: sign in ────────────────────────────────────────────────────
+
+    public string SteamSignInHeading => SteamConnectionCopy.SignInHeading;
+
+    public string SteamSignInGivesMessage => SteamConnectionCopy.SignInGives;
+
+    public string SteamSignInCostsMessage => SteamConnectionCopy.SignInCosts;
+
+    public string SteamSignInButtonText => SteamHasSession
+        ? SteamConnectionCopy.SignInAgainButton
+        : SteamConnectionCopy.SignInButton;
+
+    public string SteamSignInCancelButtonText => SteamConnectionCopy.SignInCancelButton;
+
+    public string SteamSignInBusyMessage => SteamConnectionCopy.SignInBusy;
+
+    public string SteamSignInUnavailableMessage => SteamConnectionCopy.SignInUnavailable;
+
+    public string SteamSignedInAsLabel => SteamConnectionCopy.SignedInAsLabel;
+
+    public string SteamSignOutButtonText => SteamConnectionCopy.SignOutButton;
+
+    public string SteamSignOutMessage => SteamConnectionCopy.SignOutExplanation;
+
+    /// <summary>
+    /// Whether an embedded sign-in can run here. Advisory: the button stays live
+    /// either way, because a route drawn as a dead control is a route presented as
+    /// second-class, and the runtime can be installed while this screen is open.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowSteamSignInUnavailable))]
+    public partial bool SteamSignInAvailable { get; set; } = true;
+
+    public bool ShowSteamSignInUnavailable => !SteamSignInAvailable;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowSteamSignInBusy), nameof(ShowSteamSignInAction))]
+    public partial bool IsSigningInToSteam { get; set; }
+
+    public bool ShowSteamSignInBusy => IsSigningInToSteam;
+
+    /// <summary>The signed-in block: the account, the confirmation line and the way out.</summary>
+    public bool ShowSteamSignedIn => SteamHasSession;
+
+    /// <summary>
+    /// Whether the permission control and the sign-in button are offered.
+    ///
+    /// <para>Not simply "there is no session". A session that has expired or
+    /// whose renewal is failing is exactly the state the decision note requires a
+    /// one-click way out of, so the action stays offered there and the button
+    /// renames itself; a session that is working has nothing to press, so it is
+    /// withdrawn rather than sitting there inviting a pointless second window.</para>
+    /// </summary>
+    public bool ShowSteamSignInAction
+        => !IsSigningInToSteam
+            && SteamSessionState is not (SteamSessionHealth.Live or SteamSessionHealth.NotPersisted);
+
+    /// <summary>
+    /// The signed-in account's SteamID64. The only identity the token carries —
+    /// Steam supplies no display name here — and it renders in the data face with
+    /// tabular figures, because it is a number (§8).
+    /// </summary>
+    public string SteamSignedInAccountText => SteamCredentials.SessionAccount ?? string.Empty;
+
+    public bool ShowSteamSignedInAccount => !string.IsNullOrWhiteSpace(SteamCredentials.SessionAccount);
+
+    /// <summary>When the access token dies, in the user's own time zone.</summary>
+    public string SteamSessionExpiresText => SteamCredentials.SessionExpiresAt is { } expiry
+        ? expiry.ToLocalTime().ToString("yyyy-MM-dd HH:mm", CultureInfo.CurrentCulture)
+        : string.Empty;
+
+    public bool ShowSteamSessionExpires => SteamCredentials.SessionExpiresAt is not null;
+
+    /// <summary>
+    /// <b>Acceptance criterion 2.</b> A separate, explicit permission, unticked on
+    /// every install and after every sign-out, and the ONE value that ever reaches
+    /// <see cref="SteamSignInRequest.CapturePurchaseHistory"/>. Declining is a
+    /// complete answer: the sign-in still delivers account identity and playtime
+    /// backfill, and the account pages are then never navigated to at all.
+    /// </summary>
+    [ObservableProperty]
+    public partial bool CapturePurchaseHistory { get; set; }
+
+    public string CapturePurchaseHistoryLabel => SteamConnectionCopy.PurchaseHistoryPermissionLabel;
+
+    public string CapturePurchaseHistoryMessage
+        => SteamConnectionCopy.PurchaseHistoryPermissionExplanation;
+
+    /// <summary>What the last attempt did, stated as a fact. Never wears the Amber edge.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowSteamSignInNotice))]
+    public partial string? SteamSignInNoticeMessage { get; set; }
+
+    public bool ShowSteamSignInNotice => !string.IsNullOrWhiteSpace(SteamSignInNoticeMessage);
+
+    /// <summary>Something went wrong and the sentence says what. Amber, never Flare.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowSteamSignInProblem))]
+    public partial string? SteamSignInProblemMessage { get; set; }
+
+    public bool ShowSteamSignInProblem => !string.IsNullOrWhiteSpace(SteamSignInProblemMessage);
+
+    /// <summary>
+    /// Whether the last sign-in recorded which account is the user's, taken
+    /// straight off <see cref="SteamSignInReport.AccountConfirmed"/> and rendered
+    /// rather than re-derived. Null until a sign-in has been attempted.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(
+        nameof(ShowSteamSignInAccountConfirmed), nameof(SteamSignInAccountConfirmedMessage))]
+    public partial bool? SteamSignInConfirmedAccount { get; set; }
+
+    public bool ShowSteamSignInAccountConfirmed => SteamSignInConfirmedAccount is not null;
+
+    public string SteamSignInAccountConfirmedMessage => SteamSignInConfirmedAccount == true
+        ? SteamConnectionCopy.AccountConfirmed
+        : SteamConnectionCopy.AccountNotConfirmed;
+
+    // ── Method B: the Web API key ────────────────────────────────────────────
+
+    public string SteamApiKeyHeading => SteamConnectionCopy.ApiKeyHeading;
+
+    public string SteamApiKeyGivesMessage => SteamConnectionCopy.ApiKeyGives;
+
+    public string SteamApiKeyCostsMessage => SteamConnectionCopy.ApiKeyCosts;
+
+    public string SteamApiKeyFieldLabel => SteamConnectionCopy.ApiKeyFieldLabel;
+
+    public string SteamApiKeyWatermark => SteamConnectionCopy.ApiKeyWatermark;
+
+    public string SteamApiKeySaveButtonText => SteamConnectionCopy.ApiKeySaveButton;
+
+    public string SteamApiKeyClearButtonText => SteamConnectionCopy.ApiKeyClearButton;
+
+    public string SteamApiKeyGetButtonText => SteamConnectionCopy.ApiKeyGetButton;
+
+    /// <summary>
+    /// Which of the three key states holds: none, one this screen owns, or one
+    /// supplied through the environment that this screen may supersede but cannot
+    /// delete.
+    /// </summary>
+    public string SteamApiKeyStatusMessage => !SteamHasApiKey
+        ? SteamConnectionCopy.ApiKeyNotSet
+        : SteamApiKeyIsAppManaged
+            ? SteamConnectionCopy.ApiKeySet
+            : SteamConnectionCopy.ApiKeyFromEnvironment;
+
+    /// <summary>
+    /// The field's contents. Emptied the instant the key is saved: a bound
+    /// property is the one place a secret would otherwise sit in memory with a
+    /// public getter for the rest of the session.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(SaveSteamApiKeyCommand))]
+    public partial string SteamApiKeyInput { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowSteamApiKeyNotice))]
+    public partial string? SteamApiKeyNoticeMessage { get; set; }
+
+    public bool ShowSteamApiKeyNotice => !string.IsNullOrWhiteSpace(SteamApiKeyNoticeMessage);
 
     // ══ Steam account visibility ════════════════════════════════════════════
     //
@@ -179,16 +472,24 @@ public partial class StoresViewModel : ObservableObject
     public bool ShowAccountScopeBlocked => !SteamAccountConfirmed;
 
     /// <summary>
-    /// Why the toggle is disabled, in the user's terms. Two genuinely different
-    /// states behind one disabled control, and they need different remedies —
-    /// one is "go and get a key", the other is "wait, this fixes itself".
-    /// Collapsing them into a single sentence would send half the users looking
-    /// for a setting that is already correct.
+    /// Why the toggle is disabled, in the user's terms. THREE genuinely different
+    /// states behind one disabled control, and they need different remedies:
+    /// "wait, this fixes itself" for a key-only user, "either method fixes this"
+    /// for a user who has connected nothing, and "sign in again" for the state
+    /// that should not occur.
+    ///
+    /// <para><b>A signed-in user never reads any of them.</b> The sign-in records
+    /// the account from the token's own subject claim before the window has
+    /// finished closing (acceptance criterion 4), so the toggle is already live
+    /// and <see cref="ShowAccountScopeBlocked"/> is false. The signed-in branch
+    /// exists for the one case where that write did not land, and it says so
+    /// rather than repeating advice about a key the user did not choose.</para>
     /// </summary>
-    public string AccountScopeBlockedMessage => SteamWebApiConfigured
-        ? "Your API key is set but Winnow has not confirmed which account it belongs to yet. "
-          + "This happens automatically during the next Steam import."
-        : "Set a Steam Web API key first. Winnow needs it to identify which account is yours.";
+    public string AccountScopeBlockedMessage => SteamHasSession
+        ? SteamConnectionCopy.AccountScopeBlockedSignedIn
+        : SteamHasApiKey
+            ? SteamConnectionCopy.AccountScopeBlockedKeyOnly
+            : SteamConnectionCopy.AccountScopeBlockedNothingConnected;
 
     public bool ShowAccountScopeCaveat => ShowOwnAccountOnly;
 
@@ -329,7 +630,7 @@ public partial class StoresViewModel : ObservableObject
     [RelayCommand]
     private async Task RefreshAsync(CancellationToken ct)
     {
-        SteamWebApiConfigured = await _connections.IsSteamWebApiConfiguredAsync(ct);
+        await RefreshSteamAsync(ct);
 
         if (EpicState != EpicConnection.SigningIn)
         {
@@ -342,6 +643,35 @@ public partial class StoresViewModel : ObservableObject
             EpicTitleCount = byStore.GetValueOrDefault("epic");
             GogTitleCount = byStore.GetValueOrDefault("gog");
         }
+    }
+
+    /// <summary>
+    /// Re-reads everything the Steam card draws: which credentials are held,
+    /// what state the session is in, whether an embedded sign-in can run here,
+    /// and the account-scope answer that depends on all three.
+    ///
+    /// <para>Called after every command that could have changed any of them, so
+    /// the card is never showing the state that held before the button was
+    /// pressed.</para>
+    /// </summary>
+    private async Task RefreshSteamAsync(CancellationToken ct)
+    {
+        SteamCredentials = await _connections.GetSteamConnectionAsync(ct);
+
+        if (_steamSignIn is null)
+        {
+            // A host composed without the sign-in still shows the key method in
+            // full. The sign-in card says it cannot run here rather than
+            // vanishing, because a method that disappears is a method the user
+            // cannot find out about.
+            SteamSessionState = SteamSessionHealth.NotSignedIn;
+            SteamSignInAvailable = false;
+            await RefreshAccountScopeAsync(ct);
+            return;
+        }
+
+        SteamSessionState = await _steamSignIn.GetHealthAsync(ct);
+        SteamSignInAvailable = await _steamSignIn.IsAvailableAsync(ct);
 
         await RefreshAccountScopeAsync(ct);
     }
@@ -405,6 +735,202 @@ public partial class StoresViewModel : ObservableObject
             }
 
             await RefreshAccountScopeAsync(CancellationToken.None);
+        }
+    }
+
+    // ── Steam sign-in ────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Runs one embedded Steam sign-in and renders what came back.
+    ///
+    /// <para><b>This method body is the only place
+    /// <see cref="SteamSignInRequest.ConsentGranted"/> and
+    /// <see cref="SteamSignInRequest.CapturePurchaseHistory"/> are set.</b>
+    /// Pressing the button is the consent, so the mechanism cannot grant itself
+    /// the consent that opens a window; and the capture flag is copied from the
+    /// permission control and from nothing else, which is what makes acceptance
+    /// criterion 2 a property of the code rather than of a convention.</para>
+    ///
+    /// <para>Awaited throughout. A fire-and-forget sign-in would let the panel
+    /// redraw from state the write had not reached yet, which on this screen
+    /// means telling a user they are not signed in immediately after they
+    /// were.</para>
+    /// </summary>
+    [RelayCommand(IncludeCancelCommand = true)]
+    private async Task SignInToSteamAsync(CancellationToken ct)
+    {
+        SteamSignInNoticeMessage = null;
+        SteamSignInProblemMessage = null;
+        SteamSignInConfirmedAccount = null;
+
+        if (_steamSignIn is null)
+        {
+            SteamSignInProblemMessage = SteamConnectionCopy.OutcomeUnavailable;
+            return;
+        }
+
+        IsSigningInToSteam = true;
+        try
+        {
+            var report = await _steamSignIn.SignInAsync(
+                new SteamSignInRequest
+                {
+                    ConsentGranted = true,
+                    CapturePurchaseHistory = CapturePurchaseHistory,
+                },
+                ct);
+
+            ApplySteamSignIn(report);
+        }
+        catch (OperationCanceledException)
+        {
+            // Backing out is deliberate, so it is stated as a fact and never as a
+            // fault — the same posture the Epic card takes.
+            SteamSignInNoticeMessage = SteamConnectionCopy.OutcomeCancelled;
+        }
+        finally
+        {
+            IsSigningInToSteam = false;
+
+            // CancellationToken.None: the panel has to end up truthful even when
+            // the attempt was cancelled, and a cancelled read would leave it
+            // showing the state that held before the window opened.
+            await RefreshSteamAsync(CancellationToken.None);
+        }
+    }
+
+    /// <summary>
+    /// Turns one report into the two sentences the card can show, and renders
+    /// <see cref="SteamSignInReport.AccountConfirmed"/> rather than re-deriving
+    /// it from anything.
+    ///
+    /// <para>The split follows the Epic card and the import screen: a closed
+    /// window and a session nobody signed into are facts and stay neutral; a
+    /// refused identity, a missing token and a broken browser are problems and
+    /// wear the Amber edge.</para>
+    /// </summary>
+    private void ApplySteamSignIn(SteamSignInReport report)
+    {
+        if (report.SignedIn)
+        {
+            SteamSignInNoticeMessage = report.RefreshTokenCaptured
+                ? SteamConnectionCopy.OutcomeSignedIn
+                : SteamConnectionCopy.OutcomeNoRefreshToken;
+
+            // Rendered, not re-derived. The sign-in wrote the owned account from
+            // the token's subject claim, so the visibility toggle is live now
+            // rather than at the next import (acceptance criterion 4).
+            SteamSignInConfirmedAccount = report.AccountConfirmed;
+            if (report.AccountConfirmed)
+            {
+                SteamAccountConfirmed = true;
+            }
+
+            return;
+        }
+
+        switch (report.Outcome)
+        {
+            case SteamSignInOutcome.Cancelled:
+                SteamSignInNoticeMessage = SteamConnectionCopy.OutcomeCancelled;
+                break;
+            case SteamSignInOutcome.NotSignedIn:
+                SteamSignInNoticeMessage = SteamConnectionCopy.OutcomeNotSignedIn;
+                break;
+            case SteamSignInOutcome.NoToken:
+                SteamSignInProblemMessage = SteamConnectionCopy.OutcomeNoToken;
+                break;
+            case SteamSignInOutcome.IdentityMismatch:
+                SteamSignInProblemMessage = SteamConnectionCopy.OutcomeIdentityMismatch;
+                break;
+            case SteamSignInOutcome.Unavailable:
+                SteamSignInProblemMessage = SteamConnectionCopy.OutcomeUnavailable;
+                break;
+            default:
+                SteamSignInProblemMessage = SteamConnectionCopy.OutcomeFailed;
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Ends the Steam session and discards the stored credential.
+    ///
+    /// <para>Awaited, and the panel is re-read afterwards rather than assumed:
+    /// signing out also clears an identity the session earned, so the account
+    /// filter's own state changes and the toggle above has to answer correctly on
+    /// the next draw. The permission control resets with it — a permission
+    /// granted for a session that no longer exists must be asked for again.</para>
+    /// </summary>
+    [RelayCommand]
+    private async Task SignOutOfSteamAsync(CancellationToken ct)
+    {
+        if (_steamSignIn is null)
+        {
+            return;
+        }
+
+        await _steamSignIn.SignOutAsync(ct);
+
+        SteamSignInNoticeMessage = null;
+        SteamSignInProblemMessage = null;
+        SteamSignInConfirmedAccount = null;
+        CapturePurchaseHistory = false;
+
+        await RefreshSteamAsync(ct);
+    }
+
+    // ── The Web API key, in the app ──────────────────────────────────────────
+
+    private bool CanSaveSteamApiKey => !string.IsNullOrWhiteSpace(SteamApiKeyInput);
+
+    /// <summary>
+    /// Stores the pasted key and puts it into force without a restart.
+    ///
+    /// <para>The field is emptied on the way out. It is a bound property with a
+    /// public getter, and there is no reason for a key to stay in one after the
+    /// settings row has it.</para>
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanSaveSteamApiKey))]
+    private async Task SaveSteamApiKeyAsync(CancellationToken ct)
+    {
+        await _connections.SaveSteamApiKeyAsync(SteamApiKeyInput, ct);
+
+        SteamApiKeyInput = string.Empty;
+        SteamApiKeyNoticeMessage = SteamConnectionCopy.ApiKeySaved;
+
+        await RefreshSteamAsync(ct);
+    }
+
+    /// <summary>
+    /// Whether there is a key this screen can actually remove. A key supplied
+    /// through the environment is not one, and the status line says so instead of
+    /// offering a button that would appear not to work.
+    /// </summary>
+    private bool CanClearSteamApiKey => SteamHasApiKey && SteamApiKeyIsAppManaged;
+
+    [RelayCommand(CanExecute = nameof(CanClearSteamApiKey))]
+    private async Task ClearSteamApiKeyAsync(CancellationToken ct)
+    {
+        await _connections.ClearSteamApiKeyAsync(ct);
+
+        SteamApiKeyInput = string.Empty;
+        SteamApiKeyNoticeMessage = SteamConnectionCopy.ApiKeyCleared;
+
+        await RefreshSteamAsync(ct);
+    }
+
+    /// <summary>
+    /// Opens Steam's own key registration page through the shared dispatcher —
+    /// the one place a URI leaves this application. A platform that declines says
+    /// so rather than failing silently.
+    /// </summary>
+    [RelayCommand]
+    private async Task OpenSteamApiKeyPageAsync()
+    {
+        if (_uris is null
+            || !await _uris.OpenAsync(new Uri(SteamConnectionCopy.ApiKeyRegistrationUrl)))
+        {
+            SteamApiKeyNoticeMessage = SteamConnectionCopy.ApiKeyOpenFailed;
         }
     }
 

@@ -17,8 +17,9 @@ namespace Winnow.Enrich.SteamWeb;
 public interface ISteamHistoryClient
 {
     /// <summary>
-    /// Whether a user-supplied API key was found. False is the ordinary state
-    /// for a user who has not entered one, not an error.
+    /// Whether either Steam credential is live: a Web API key or a sign-in
+    /// session whose access token has not expired. False is the ordinary
+    /// state for an unconfigured install, not an error.
     /// </summary>
     ValueTask<bool> IsConfiguredAsync(CancellationToken ct = default);
 

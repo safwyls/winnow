@@ -38,10 +38,10 @@ public enum SteamSessionHealth
     /// <summary>No session is stored. The ordinary state of a fresh install and of every key-only user.</summary>
     NotSignedIn,
 
-    /// <summary>The access token is good and the session is stored encrypted. Nothing to say and nothing to do.</summary>
+    /// <summary>The access token is good and the session is stored encrypted. Nothing to say and nothing to do. A token-only session — one with no refresh token — stays here for its whole life and then goes straight to <see cref="Expired"/>, because there is no renewal for it to be due.</summary>
     Live,
 
-    /// <summary>The access token has expired or is about to, and a refresh token that should be able to replace it is held. Renewal is owed; until S6 lands, nothing pays it.</summary>
+    /// <summary>The access token has expired or is about to, and a refresh token that should be able to replace it is held. Renewal is owed; until S6 lands, nothing pays it. Reached only by a session that actually has a refresh token: reporting it for one that does not would name a remedy nothing can apply.</summary>
     RenewalDue,
 
     /// <summary>Renewal has been attempted and failed. Surfaced promptly, with one-click re-sign-in, per the legibility condition.</summary>
@@ -55,8 +55,8 @@ public enum SteamSessionHealth
 }
 
 /// <summary>
-/// A Steam WebView sign-in session: the two secrets it is permitted to hold and
-/// the bookkeeping renewal needs.
+/// A Steam WebView sign-in session: the secrets it is permitted to hold and the
+/// bookkeeping renewal needs.
 ///
 /// <para><b>What is deliberately absent is the point.</b> Section 4.7's second
 /// amendment permits exactly two secrets at rest: the minted access token and
@@ -65,6 +65,18 @@ public enum SteamSessionHealth
 /// content, and no API key: the key is a different credential with a different
 /// lifetime, and mixing the two into one blob would mean one unreadable blob
 /// costs the user both.</para>
+///
+/// <para><b>Two permitted, one required.</b> The access token alone is a
+/// session; <see cref="RefreshToken"/> is optional. S2 originally demanded both,
+/// which meant a sign-in that captured no <c>steamRefresh_steam</c> cookie —
+/// the ordinary outcome when the user does not tick remember-me on Steam's own
+/// form — persisted nothing and threw away a working day-long access token.
+/// Condition 2 is a ceiling on what may be stored, not a floor on what must be.
+/// The difference is carried honestly rather than hidden: a session with a
+/// refresh token is the renewable kind, and a token-only session is
+/// <see cref="SteamSessionHealth.Live"/> until its token expires and
+/// <see cref="SteamSessionHealth.Expired"/> after, with no silent renewal path
+/// in between.</para>
 ///
 /// <para><see cref="ToString"/> is redacted for the same reason
 /// <c>SteamCredential.ToString</c> is: the compiler-generated record
@@ -79,7 +91,7 @@ public sealed record SteamSession
         IReadOnlyList<string> audience,
         string? issuer,
         SteamId steamId,
-        string refreshToken,
+        string? refreshToken,
         DateTimeOffset? refreshExpiresAt,
         DateTimeOffset mintedAt,
         DateTimeOffset? lastRenewedAt = null,
@@ -87,7 +99,6 @@ public sealed record SteamSession
         SteamSessionRenewalFailure lastFailureKind = SteamSessionRenewalFailure.None)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(accessToken);
-        ArgumentException.ThrowIfNullOrWhiteSpace(refreshToken);
         ArgumentNullException.ThrowIfNull(audience);
 
         AccessToken = accessToken;
@@ -95,7 +106,10 @@ public sealed record SteamSession
         Audience = audience;
         Issuer = issuer;
         SteamId = steamId;
-        RefreshToken = refreshToken;
+
+        // Blank is the same absence as null, so a whitespace cookie value cannot
+        // masquerade as a renewable session anywhere downstream.
+        RefreshToken = string.IsNullOrWhiteSpace(refreshToken) ? null : refreshToken;
         RefreshExpiresAt = refreshExpiresAt;
         MintedAt = mintedAt;
         LastRenewedAt = lastRenewedAt;
@@ -127,8 +141,22 @@ public sealed record SteamSession
     /// </summary>
     public SteamId SteamId { get; }
 
-    /// <summary>The <c>steamRefresh_steam</c> refresh token. The long-lived secret the second amendment was written for; never logged.</summary>
-    public string RefreshToken { get; }
+    /// <summary>
+    /// The <c>steamRefresh_steam</c> refresh token, or null when the sign-in
+    /// captured none. The long-lived secret the second amendment was written
+    /// for; never logged. Null is an ordinary outcome, not a failure — see
+    /// <see cref="HasRefreshToken"/>.
+    /// </summary>
+    public string? RefreshToken { get; }
+
+    /// <summary>
+    /// Whether this session can ever be renewed. False is the token-only
+    /// session: usable, storable, and finished when its access token expires.
+    /// The one fact the Stores screen must not round off, because a user who
+    /// thinks their scheduled syncs are covered and finds out a day later is
+    /// exactly the silent degradation condition 8 forbids.
+    /// </summary>
+    public bool HasRefreshToken => RefreshToken is not null;
 
     /// <summary>
     /// When the refresh token itself lapses, or null when it did not decode.
@@ -152,7 +180,8 @@ public sealed record SteamSession
     public SteamSessionRenewalFailure LastFailureKind { get; }
 
     public override string ToString()
-        => $"SteamSession(account={SteamId}, expires={ExpiresAt:O}, failures={RenewalFailures}, tokens redacted)";
+        => $"SteamSession(account={SteamId}, expires={ExpiresAt:O}, renewable={HasRefreshToken}, "
+            + $"failures={RenewalFailures}, tokens redacted)";
 
     /// <summary>
     /// Whether the access token can still be sent at <paramref name="now"/>,
@@ -161,13 +190,18 @@ public sealed record SteamSession
     public bool IsAccessUsable(DateTimeOffset now, TimeSpan skew) => now + skew < ExpiresAt;
 
     /// <summary>
-    /// Whether the refresh token is worth spending at <paramref name="now"/>. An
-    /// unknown expiry counts as usable: Steam is the authority on whether a
-    /// refresh token is good, and refusing to try one whose lifetime we could not
-    /// read would throw away a working session for lack of a claim.
+    /// Whether the refresh token is worth spending at <paramref name="now"/>.
+    /// False outright when there is none: a session with nothing to renew from
+    /// has no renewal path, and saying otherwise would promise the user a silent
+    /// recovery that cannot happen.
+    ///
+    /// <para>An unknown expiry counts as usable: Steam is the authority on
+    /// whether a refresh token is good, and refusing to try one whose lifetime we
+    /// could not read would throw away a working session for lack of a
+    /// claim.</para>
     /// </summary>
     public bool IsRefreshUsable(DateTimeOffset now, TimeSpan skew)
-        => RefreshExpiresAt is not { } expiry || now + skew < expiry;
+        => HasRefreshToken && (RefreshExpiresAt is not { } expiry || now + skew < expiry);
 
     /// <summary>Copies this session with the renewal bookkeeping reset, for S6's success path.</summary>
     public SteamSession WithRenewedAccess(
@@ -210,10 +244,15 @@ public sealed record SteamSession
     /// names no individual account. A malformed token yields no session rather
     /// than an exception, and a half-built session would only move the failure
     /// to the first request.</para>
+    ///
+    /// <para>A missing <paramref name="refreshToken"/> is <b>not</b> one of those
+    /// cases. It yields a session that works and cannot be renewed, which is a
+    /// state to record and surface rather than a reason to discard a token that
+    /// has a day of life in it.</para>
     /// </summary>
     public static SteamSession? TryCreate(string? accessToken, string? refreshToken, DateTimeOffset mintedAt)
     {
-        if (string.IsNullOrWhiteSpace(accessToken) || string.IsNullOrWhiteSpace(refreshToken))
+        if (string.IsNullOrWhiteSpace(accessToken))
         {
             return null;
         }
@@ -224,14 +263,16 @@ public sealed record SteamSession
             return null;
         }
 
+        var refresh = string.IsNullOrWhiteSpace(refreshToken) ? null : refreshToken.Trim();
+
         return new SteamSession(
             accessToken.Trim(),
             expiresAt,
             claims.Audiences,
             claims.Issuer,
             steamId,
-            refreshToken.Trim(),
-            ReadRefreshExpiry(refreshToken),
+            refresh,
+            refresh is null ? null : ReadRefreshExpiry(refresh),
             mintedAt);
     }
 

@@ -90,21 +90,23 @@ public sealed class SteamTokenClaimsTests
     }
 
     [Fact]
-    public void The_probe_and_the_product_read_the_same_claims()
+    public void The_browser_and_the_product_read_the_same_claims()
     {
-        // The probe's reader was promoted rather than copied, so there is one
-        // base64url decoder and no way for the diagnostic and the real reader to
-        // disagree about a token. S3 deletes the probe; until then this pins it.
+        // One base64url decoder in the codebase, and no way for the two callers
+        // to disagree about a token. The reader moved down to Core in S3 because
+        // the sign-in session decodes a token the moment a store page hands it
+        // over and cannot see this assembly; this pins that the projection above
+        // it does not quietly drop a claim.
         var token = SteamSessionFixtures.AccessToken(new DateTimeOffset(2026, 9, 1, 12, 0, 0, TimeSpan.Zero));
 
-        var probe = Winnow.App.Services.SteamSignInProbeFacts.ReadClaims(token);
+        var browser = Winnow.Core.Auth.SteamJwtClaims.Read(token);
         var product = SteamTokenClaims.Read(token);
 
-        Assert.Equal(product.Readable, probe.Readable);
-        Assert.Equal(product.ExpiresAt, probe.ExpiresAt);
-        Assert.Equal(product.Subject, probe.Subject);
-        Assert.Equal(product.Issuer, probe.Issuer);
-        Assert.Equal(product.Audiences, probe.Audiences);
+        Assert.Equal(product.Readable, browser.Readable);
+        Assert.Equal(product.ExpiresAt, browser.ExpiresAt);
+        Assert.Equal(product.Subject, browser.Subject);
+        Assert.Equal(product.Issuer, browser.Issuer);
+        Assert.Equal(product.Audiences, browser.Audiences);
     }
 }
 
@@ -176,10 +178,183 @@ public sealed class SteamSessionCreationTests
             Now));
     }
 
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void A_missing_refresh_token_still_yields_a_session(string? refreshToken)
+    {
+        // S2 required both secrets, which meant a sign-in that captured no
+        // steamRefresh_steam cookie — the ordinary outcome when the user does not
+        // tick remember-me on Steam's own form — persisted NOTHING and threw away
+        // a working 24-hour access token. §4.7 condition 2 caps what may be
+        // stored at two secrets; it does not require two.
+        var session = SteamSession.TryCreate(
+            SteamSessionFixtures.AccessToken(Now.AddHours(24)), refreshToken, Now);
+
+        Assert.NotNull(session);
+        Assert.False(session.HasRefreshToken);
+        Assert.Null(session.RefreshToken);
+        Assert.Null(session.RefreshExpiresAt);
+
+        // The access token is exactly as usable as any other session's.
+        Assert.True(session.IsAccessUsable(Now, TimeSpan.Zero));
+
+        // And there is no renewal path, ever. Whitespace is not a credential.
+        Assert.False(session.IsRefreshUsable(Now, TimeSpan.Zero));
+    }
+}
+
+/// <summary>
+/// The two kinds of session, told apart honestly.
+///
+/// <para>A session holding a refresh token is the renewable kind S6 will drive.
+/// A token-only session is <see cref="SteamSessionHealth.Live"/> until its token
+/// expires and <see cref="SteamSessionHealth.Expired"/> after, with nothing in
+/// between — because there is no renewal for it to be due, and saying there is
+/// would name a remedy nothing can apply.</para>
+/// </summary>
+public sealed class SteamSessionKindTests
+{
+    private static readonly DateTimeOffset Now = new(2026, 8, 31, 12, 0, 0, TimeSpan.Zero);
+
+    private static SteamSession TokenOnly(TimeSpan? accessLife = null)
+        => SteamSession.TryCreate(
+            SteamSessionFixtures.AccessToken(Now + (accessLife ?? TimeSpan.FromHours(24))),
+            refreshToken: null,
+            Now)!;
+
     [Fact]
-    public void A_missing_refresh_token_yields_no_session()
-        => Assert.Null(SteamSession.TryCreate(
-            SteamSessionFixtures.AccessToken(Now.AddHours(24)), null, Now));
+    public void A_token_only_session_is_live_for_its_whole_life()
+    {
+        var session = TokenOnly();
+
+        Assert.Equal(SteamSessionHealth.Live, SteamSessionProvider.Classify(session, Now));
+
+        // Deep inside the renewal lead window a renewable session would read
+        // RenewalDue. This one has nothing to renew from, so it is still simply
+        // working.
+        Assert.Equal(
+            SteamSessionHealth.Live,
+            SteamSessionProvider.Classify(session, Now.AddHours(23).AddMinutes(30)));
+    }
+
+    [Fact]
+    public void A_token_only_session_goes_straight_to_expired()
+    {
+        Assert.Equal(
+            SteamSessionHealth.Expired,
+            SteamSessionProvider.Classify(TokenOnly(), Now.AddHours(25)));
+    }
+
+    [Fact]
+    public void A_renewable_session_still_passes_through_renewal_due()
+    {
+        // The distinction is a distinction, not a removal: the renewable kind
+        // behaves exactly as it did.
+        var renewable = SteamSessionFixtures.Session(Now);
+
+        Assert.Equal(
+            SteamSessionHealth.RenewalDue,
+            SteamSessionProvider.Classify(renewable, Now.AddHours(23).AddMinutes(30)));
+
+        Assert.Equal(
+            SteamSessionHealth.RenewalDue,
+            SteamSessionProvider.Classify(renewable, Now.AddHours(25)));
+    }
+
+    [Fact]
+    public async Task A_token_only_session_round_trips_through_the_store()
+    {
+        var settings = new InMemorySettingsRepository();
+        var store = new SettingsSteamSessionStore(settings, new SteamSessionFixtures.ReversibleProtector());
+
+        var session = TokenOnly();
+        await store.SaveAsync(session);
+
+        var loaded = await store.LoadAsync();
+
+        Assert.NotNull(loaded);
+        Assert.Equal(session.AccessToken, loaded.AccessToken);
+        Assert.Equal(session.SteamId, loaded.SteamId);
+        Assert.Equal(session.ExpiresAt, loaded.ExpiresAt);
+
+        // Null out, null back. Not an empty string that later reads as a
+        // credential of length zero.
+        Assert.Null(loaded.RefreshToken);
+        Assert.False(loaded.HasRefreshToken);
+    }
+
+    [Fact]
+    public async Task The_stored_shape_of_a_token_only_session_is_the_same_closed_list()
+    {
+        // §4.7 condition 2 again: the key set an audit reads must not depend on
+        // which kind of session was stored, so refresh_token is still emitted —
+        // as null — and no twelfth field appears in its place.
+        var settings = new InMemorySettingsRepository();
+        var protector = new SteamSessionFixtures.ReversibleProtector();
+        var store = new SettingsSteamSessionStore(settings, protector);
+
+        await store.SaveAsync(TokenOnly());
+
+        var json = protector.Unprotect((await settings.GetAsync(SettingsSteamSessionStore.SessionSetting))!)!;
+
+        using var document = System.Text.Json.JsonDocument.Parse(json);
+        var fields = document.RootElement.EnumerateObject().Select(p => p.Name).ToArray();
+
+        Assert.Equal(11, fields.Length);
+        Assert.Contains("refresh_token", fields);
+        Assert.Equal(
+            System.Text.Json.JsonValueKind.Null,
+            document.RootElement.GetProperty("refresh_token").ValueKind);
+
+        foreach (var forbidden in new[] { "steamLoginSecure", "steamRefresh_steam", "sessionid", "<html", "<!DOCTYPE" })
+        {
+            Assert.DoesNotContain(forbidden, json, StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
+    [Fact]
+    public async Task A_stored_session_whose_refresh_token_is_blank_reads_back_as_token_only()
+    {
+        // The shape an S2-era blob written by a build that always wrote a string
+        // would have. Blank is absence, not a zero-length credential.
+        var settings = new InMemorySettingsRepository();
+        var protector = new SteamSessionFixtures.ReversibleProtector();
+
+        var payload = $$"""
+            {"access_token":"{{SteamSessionFixtures.AccessToken(Now.AddHours(24))}}",
+             "expires_at":"{{Now.AddHours(24):O}}","audience":[],"issuer":"steam",
+             "steamid64":"{{SteamSessionFixtures.Subject}}","refresh_token":"",
+             "refresh_expires_at":null,"minted_at":"{{Now:O}}","last_renewed_at":null,
+             "renewal_failures":0,"last_failure_kind":"None"}
+            """;
+
+        await settings.SetAsync(SettingsSteamSessionStore.SessionSetting, protector.Protect(payload)!);
+
+        var loaded = await new SettingsSteamSessionStore(settings, protector).LoadAsync();
+
+        Assert.NotNull(loaded);
+        Assert.False(loaded.HasRefreshToken);
+    }
+
+    [Fact]
+    public async Task The_credential_selector_sends_a_token_only_session()
+    {
+        // The point of relaxing the record: this session reaches the selector at
+        // all. Under S2's rule it was never written and the user's completed
+        // sign-in bought them nothing.
+        using var host = new SteamWebTestHost(
+            SteamWebTestHost.DefaultResponder(), apiKey: null, now: Now);
+
+        await host.Resolve<ISteamSessionProvider>().SaveAsync(TokenOnly());
+
+        var chosen = await host.Resolve<ISteamCredentialProvider>()
+            .GetAsync(SteamCredentialPurpose.UserInitiated);
+
+        Assert.NotNull(chosen);
+        Assert.Equal(SteamCredentialKind.SessionToken, chosen.Kind);
+    }
 }
 
 /// <summary>
@@ -484,7 +659,7 @@ public sealed class SteamSessionRegistrationTests
         var log = host.Logs.AllText;
 
         Assert.DoesNotContain(session.AccessToken, log, StringComparison.Ordinal);
-        Assert.DoesNotContain(session.RefreshToken, log, StringComparison.Ordinal);
+        Assert.DoesNotContain(session.RefreshToken!, log, StringComparison.Ordinal);
         Assert.DoesNotContain(SteamSessionFixtures.Subject, log, StringComparison.Ordinal);
     }
 }
