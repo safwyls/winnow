@@ -12,7 +12,7 @@ milestone: m-2
 dependencies:
   - TASK-2
 priority: medium
-ordinal: 3000
+ordinal: 33000
 ---
 
 ## Description

@@ -10,7 +10,7 @@ labels:
 dependencies:
   - TASK-38
 priority: low
-ordinal: 43000
+ordinal: 70000
 ---
 
 ## Description
