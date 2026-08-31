@@ -46,7 +46,7 @@ public sealed class SteamHistoryClient : ISteamHistoryClient
 
     private readonly HttpClient _http;
     private readonly ISteamWebMetadataCache _cache;
-    private readonly ISteamApiKeyProvider _keys;
+    private readonly ISteamCredentialProvider _credentials;
     private readonly SteamWebOptions _options;
     private readonly TimeProvider _clock;
     private readonly ILogger<SteamHistoryClient> _log;
@@ -54,14 +54,14 @@ public sealed class SteamHistoryClient : ISteamHistoryClient
     public SteamHistoryClient(
         HttpClient http,
         ISteamWebMetadataCache cache,
-        ISteamApiKeyProvider keys,
+        ISteamCredentialProvider credentials,
         SteamWebOptions options,
         TimeProvider clock,
         ILogger<SteamHistoryClient> log)
     {
         _http = http;
         _cache = cache;
-        _keys = keys;
+        _credentials = credentials;
         _options = options;
         _clock = clock;
         _log = log;
@@ -78,10 +78,12 @@ public sealed class SteamHistoryClient : ISteamHistoryClient
         => string.Create(CultureInfo.InvariantCulture, $"yir:{steamId.Value}:{year}");
 
     public async ValueTask<bool> IsConfiguredAsync(CancellationToken ct = default)
-        => await _keys.GetAsync(ct) is not null;
+        => (await _credentials.GetInventoryAsync(ct)).HasUsableCredential;
 
     public async Task<SteamLastPlayedTimes> GetLastPlayedTimesAsync(
-        TimeSpan? cacheTtl = null, CancellationToken ct = default)
+        SteamCredentialPurpose purpose = SteamCredentialPurpose.Unattended,
+        TimeSpan? cacheTtl = null,
+        CancellationToken ct = default)
     {
         var now = _clock.GetUtcNow().UtcDateTime;
         var cutoff = Cutoff(cacheTtl ?? _options.CacheTtl, now);
@@ -93,13 +95,13 @@ public sealed class SteamHistoryClient : ISteamHistoryClient
             return new SteamLastPlayedTimes(Answered: true, fresh, cached.FetchedAt, FromCache: true);
         }
 
-        if (await _keys.GetAsync(ct) is not { } key)
+        if (await _credentials.GetAsync(purpose, ct) is not { } credential)
         {
             _log.LogDebug("Steam Web API not configured; last-played lookup skipped.");
             return SteamLastPlayedTimes.Unanswered(now);
         }
 
-        var uri = LastPlayedTimesPath + "?format=json&key=" + Uri.EscapeDataString(key.Value);
+        var uri = credential.AppendTo(LastPlayedTimesPath + "?format=json");
         var body = await GetBodyAsync(uri, LastPlayedTimesPath, ct);
         var games = SteamHistoryJson.TryReadLastPlayedTimes(body);
         if (games is null)
@@ -128,7 +130,11 @@ public sealed class SteamHistoryClient : ISteamHistoryClient
     }
 
     public async Task<SteamYearInReview> GetYearInReviewAsync(
-        SteamId steamId, int year, TimeSpan? cacheTtl = null, CancellationToken ct = default)
+        SteamId steamId,
+        int year,
+        SteamCredentialPurpose purpose = SteamCredentialPurpose.Unattended,
+        TimeSpan? cacheTtl = null,
+        CancellationToken ct = default)
     {
         var now = _clock.GetUtcNow().UtcDateTime;
         var cacheKey = YearInReviewCacheKey(steamId, year);
@@ -141,17 +147,17 @@ public sealed class SteamHistoryClient : ISteamHistoryClient
             return Build(steamId, year, fresh, cached.FetchedAt, fromCache: true);
         }
 
-        if (await _keys.GetAsync(ct) is not { } key)
+        if (await _credentials.GetAsync(purpose, ct) is not { } credential)
         {
             _log.LogDebug("Steam Web API not configured; Year in Review lookup skipped.");
             return SteamYearInReview.Unanswered(steamId, year, now);
         }
 
-        var uri = YearInReviewPath
+        var uri = credential.AppendTo(
+            YearInReviewPath
             + "?steamid=" + steamId.Value.ToString(CultureInfo.InvariantCulture)
             + "&year=" + year.ToString(CultureInfo.InvariantCulture)
-            + "&format=json"
-            + "&key=" + Uri.EscapeDataString(key.Value);
+            + "&format=json");
 
         var body = await GetBodyAsync(uri, YearInReviewPath, ct);
         var payload = SteamHistoryJson.TryReadYearInReview(body);

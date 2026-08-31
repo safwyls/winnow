@@ -34,7 +34,7 @@ public sealed class SteamWebApiClient : ISteamWebApiClient
 
     private readonly HttpClient _http;
     private readonly ISteamWebMetadataCache _cache;
-    private readonly ISteamApiKeyProvider _keys;
+    private readonly ISteamCredentialProvider _credentials;
     private readonly SteamWebOptions _options;
     private readonly TimeProvider _clock;
     private readonly ILogger<SteamWebApiClient> _log;
@@ -42,14 +42,14 @@ public sealed class SteamWebApiClient : ISteamWebApiClient
     public SteamWebApiClient(
         HttpClient http,
         ISteamWebMetadataCache cache,
-        ISteamApiKeyProvider keys,
+        ISteamCredentialProvider credentials,
         SteamWebOptions options,
         TimeProvider clock,
         ILogger<SteamWebApiClient> log)
     {
         _http = http;
         _cache = cache;
-        _keys = keys;
+        _credentials = credentials;
         _options = options;
         _clock = clock;
         _log = log;
@@ -65,10 +65,13 @@ public sealed class SteamWebApiClient : ISteamWebApiClient
     public static string OwnedGamesCacheKey(SteamId steamId) => "owned:" + steamId.Value.ToString(CultureInfo.InvariantCulture);
 
     public async ValueTask<bool> IsConfiguredAsync(CancellationToken ct = default)
-        => await _keys.GetAsync(ct) is not null;
+        => (await _credentials.GetInventoryAsync(ct)).HasUsableCredential;
 
     public async Task<SteamOwnedLibrary> GetOwnedGamesAsync(
-        SteamId steamId, TimeSpan? cacheTtl = null, CancellationToken ct = default)
+        SteamId steamId,
+        SteamCredentialPurpose purpose = SteamCredentialPurpose.Unattended,
+        TimeSpan? cacheTtl = null,
+        CancellationToken ct = default)
     {
         var now = _clock.GetUtcNow().UtcDateTime;
         var cacheKey = OwnedGamesCacheKey(steamId);
@@ -84,7 +87,7 @@ public sealed class SteamWebApiClient : ISteamWebApiClient
             return new SteamOwnedLibrary(steamId, Succeeded: true, fresh, cached.FetchedAt, FromCache: true);
         }
 
-        if (await _keys.GetAsync(ct) is not { } key)
+        if (await _credentials.GetAsync(purpose, ct) is not { } credential)
         {
             // Not an error, and not a warning: this is simply a user who has not
             // pasted a key into settings. §5.1 — the module declines and the app
@@ -93,7 +96,7 @@ public sealed class SteamWebApiClient : ISteamWebApiClient
             return ServeStale(steamId, entry, now);
         }
 
-        var body = await GetOwnedGamesBodyAsync(key, steamId, ct);
+        var body = await GetOwnedGamesBodyAsync(credential, steamId, ct);
         var games = SteamWebJson.TryReadOwnedGames(body);
         if (games is null)
         {
@@ -133,9 +136,12 @@ public sealed class SteamWebApiClient : ISteamWebApiClient
     }
 
     public async Task<IReadOnlyList<CandidateOwnership>> GetOwnershipCandidatesAsync(
-        SteamId steamId, TimeSpan? cacheTtl = null, CancellationToken ct = default)
+        SteamId steamId,
+        SteamCredentialPurpose purpose = SteamCredentialPurpose.Unattended,
+        TimeSpan? cacheTtl = null,
+        CancellationToken ct = default)
     {
-        var library = await GetOwnedGamesAsync(steamId, cacheTtl, ct);
+        var library = await GetOwnedGamesAsync(steamId, purpose, cacheTtl, ct);
 
         // Stamped now, not at the library's fetch time: on a cache hit the
         // facts may be hours old, but the observation that they are still
@@ -163,7 +169,8 @@ public sealed class SteamWebApiClient : ISteamWebApiClient
     /// request did not produce one — the single place where "Steam said no"
     /// becomes "no data" instead of an exception.
     /// </summary>
-    private async Task<string?> GetOwnedGamesBodyAsync(SteamApiKey key, SteamId steamId, CancellationToken ct)
+    private async Task<string?> GetOwnedGamesBodyAsync(
+        SteamCredential credential, SteamId steamId, CancellationToken ct)
     {
         // §4.2 is emphatic about all three flags, and one of them is a trap:
         // without skip_unvetted_apps=false, apps flagged "Profile Features
@@ -171,17 +178,18 @@ public sealed class SteamWebApiClient : ISteamWebApiClient
         // user's own account: 841 titles with the flag, 834 without it — seven
         // owned games vanish, with no error and no indication in the response.
         //
-        // The key is appended last and the string is used exactly once. It is
-        // never logged, never stored, and never put into an exception message;
-        // see SteamWebRedaction for why even the framework's own request logging
-        // is removed for this client rather than trusted.
-        var uri = GetOwnedGamesPath
+        // The credential is appended last, by the one method allowed to put one
+        // into a URI, and the string is used exactly once. It is never logged,
+        // never stored, and never put into an exception message; see
+        // SteamWebRedaction for why even the framework's own request logging is
+        // removed for this client rather than trusted.
+        var uri = credential.AppendTo(
+            GetOwnedGamesPath
             + "?steamid=" + steamId.Value.ToString(CultureInfo.InvariantCulture)
             + "&include_appinfo=1"
             + "&include_played_free_games=1"
             + "&skip_unvetted_apps=false"
-            + "&format=json"
-            + "&key=" + Uri.EscapeDataString(key.Value);
+            + "&format=json");
 
         try
         {

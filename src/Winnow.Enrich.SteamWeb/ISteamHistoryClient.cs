@@ -1,3 +1,4 @@
+using Winnow.Enrich.SteamWeb.Credentials;
 using Winnow.Enrich.SteamWeb.Model;
 
 namespace Winnow.Enrich.SteamWeb;
@@ -29,10 +30,16 @@ public interface ISteamHistoryClient
     /// identifies the account. That is also why the result is cached under a
     /// key-scoped entry rather than a per-account one.</para>
     /// </summary>
+    /// <param name="purpose">Which credential kind this call should prefer. Defaults to
+    /// <see cref="SteamCredentialPurpose.Unattended"/>, which is what every caller today
+    /// is (background backfill). A caller a person is waiting on passes
+    /// <see cref="SteamCredentialPurpose.UserInitiated"/>.</param>
     /// <param name="cacheTtl">Overrides <see cref="SteamWebOptions.CacheTtl"/>. Zero or less forces a refetch.</param>
     /// <param name="ct">Cancellation. A cancelled call propagates rather than soft-failing.</param>
     Task<SteamLastPlayedTimes> GetLastPlayedTimesAsync(
-        TimeSpan? cacheTtl = null, CancellationToken ct = default);
+        SteamCredentialPurpose purpose = SteamCredentialPurpose.Unattended,
+        TimeSpan? cacheTtl = null,
+        CancellationToken ct = default);
 
     /// <summary>
     /// One year of Steam Replay for one account. Coverage starts at 2022 (the
@@ -40,8 +47,15 @@ public interface ISteamHistoryClient
     /// </summary>
     /// <param name="steamId">The account to ask about.</param>
     /// <param name="year">Calendar year.</param>
+    /// <param name="purpose">Which credential kind this call should prefer. Defaults to
+    /// <see cref="SteamCredentialPurpose.Unattended"/>. A caller a person is waiting on
+    /// passes <see cref="SteamCredentialPurpose.UserInitiated"/>.</param>
     /// <param name="cacheTtl">Overrides <see cref="SteamWebOptions.CacheTtl"/>. Zero or less forces a refetch.</param>
     /// <param name="ct">Cancellation. A cancelled call propagates rather than soft-failing.</param>
     Task<SteamYearInReview> GetYearInReviewAsync(
-        SteamId steamId, int year, TimeSpan? cacheTtl = null, CancellationToken ct = default);
+        SteamId steamId,
+        int year,
+        SteamCredentialPurpose purpose = SteamCredentialPurpose.Unattended,
+        TimeSpan? cacheTtl = null,
+        CancellationToken ct = default);
 }
