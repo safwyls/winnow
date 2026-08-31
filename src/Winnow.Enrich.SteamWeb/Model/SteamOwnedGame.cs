@@ -65,7 +65,19 @@ public sealed record SteamOwnedGame(
             LastPlayedAt: LastPlayedUtc,
             AcquiredAt: null,
             Source: source,
-            ObservedAt: observedAt);
+            ObservedAt: observedAt)
+        {
+            // This endpoint answers for ONE account — the one whose SteamID64 was
+            // asked about — so it makes exactly one membership claim, and a
+            // strong one. It is the only source that can see a licence the
+            // account has never launched, which is what makes it, rather than
+            // localconfig.vdf, the reason the account filter can be trusted:
+            // without it the filter would only ever know about games somebody
+            // had already played.
+            Accounts = string.IsNullOrWhiteSpace(accountRef)
+                ? []
+                : [new CandidateAccount(accountRef, PlaytimeForeverMinutes, LastPlayedUtc)],
+        };
 }
 
 /// <summary>
