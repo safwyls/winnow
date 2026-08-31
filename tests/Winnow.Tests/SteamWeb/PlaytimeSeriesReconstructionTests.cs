@@ -132,6 +132,72 @@ public class PlaytimeSeriesReconstructionTests
         Assert.All(series.Points, p => Assert.True(p.PlaytimeMinutes >= 0));
     }
 
+    /// <summary>
+    /// The unit-width artefact. <c>playtime_forever</c> arrives floored to
+    /// whole minutes; the month arrives in seconds. A game whose whole history
+    /// sits inside one covered month can therefore report up to 59 seconds
+    /// more than the floored anchor can hold. That is a rounding artefact,
+    /// not two Valve systems genuinely disagreeing, and it cost 70 of 141
+    /// series on the live database their floor point (verified 2026-08-29).
+    /// </summary>
+    [Fact]
+    public void A_month_overshooting_the_floored_anchor_by_under_a_minute_floors_instead_of_clamping()
+    {
+        // 5m 40s of play. playtime_forever floors it to 5; the month keeps all 340.
+        var series = PlaytimeSeriesReconstructor.Reconstruct(
+            anchorMinutes: 5, [Month(2024, 1, 340)]);
+
+        Assert.False(series.Clamped);
+
+        // The floor point is back, and it takes the lower value: zero.
+        Assert.Equal(
+            [
+                (new DateTime(2023, 12, 31, 23, 59, 59, DateTimeKind.Utc), 0L),
+                (new DateTime(2024, 1, 31, 23, 59, 59, DateTimeKind.Utc), 5L),
+            ],
+            series.Points.Select(p => (p.ObservedAt, p.PlaytimeMinutes)));
+
+        // The covered months explain the whole total, so nothing precedes
+        // coverage. Zero is a fact here, not the unknown a clamp reports.
+        Assert.Equal(0, series.RemainderMinutes);
+    }
+
+    /// <summary>
+    /// The boundary. A shortfall of 59 seconds is the rounding artefact from
+    /// the anchor's whole-minute floor; 60 seconds is a genuine disagreement
+    /// and still clamps, stopping the walk.
+    /// </summary>
+    [Theory]
+    [InlineData(359, false)]  // 59 seconds over the 300-second anchor
+    [InlineData(360, true)]   // exactly 60: a genuine disagreement
+    public void The_tolerance_stops_at_sixty_seconds(long monthSeconds, bool expectClamped)
+    {
+        var series = PlaytimeSeriesReconstructor.Reconstruct(5, [Month(2024, 1, monthSeconds)]);
+
+        Assert.Equal(expectClamped, series.Clamped);
+        Assert.Equal(expectClamped ? 1 : 2, series.Points.Count);
+    }
+
+    /// <summary>
+    /// Monotonicity across a tolerated shortfall. Flooring the running total
+    /// to zero can only lower what the backward walk emits next, so the
+    /// reversed series is still non-decreasing. If the tolerance broke this
+    /// property the snapshot table's cumulative invariant would be violated.
+    /// </summary>
+    [Fact]
+    public void A_tolerated_shortfall_keeps_the_series_monotonic()
+    {
+        var series = PlaytimeSeriesReconstructor.Reconstruct(
+            105, [Month(2024, 1, 20), Month(2024, 2, 6240), Month(2024, 3, 100)]);
+
+        Assert.False(series.Clamped);
+
+        var minutes = series.Points.Select(p => p.PlaytimeMinutes).ToList();
+        Assert.Equal(minutes, minutes.Order());
+        Assert.All(series.Points, p => Assert.True(p.PlaytimeMinutes >= 0));
+        Assert.Equal(series.Points.Select(p => p.ObservedAt), series.Points.Select(p => p.ObservedAt).Order());
+    }
+
     /// <summary>The degenerate clamp: nothing survives except the anchor's own point.</summary>
     [Fact]
     public void A_zero_anchor_against_claimed_play_keeps_only_the_present()
