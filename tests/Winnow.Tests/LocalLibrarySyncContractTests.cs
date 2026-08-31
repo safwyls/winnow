@@ -55,6 +55,7 @@ public sealed class LocalLibrarySyncContractTests
         services.AddSingleton<IOwnershipRepository, Winnow.Data.Repositories.OwnershipRepository>();
         services.AddSingleton<IPlayRecordRepository, Winnow.Data.Repositories.PlayRecordRepository>();
         services.AddSingleton<IPlaytimeSnapshotRepository, Winnow.Data.Repositories.PlaytimeSnapshotRepository>();
+        services.AddSingleton<IOwnershipAccountRepository, Winnow.Data.Repositories.OwnershipAccountRepository>();
         services.AddSingleton<LibraryFoldersReader>();
         services.AddSingleton<AppManifestReader>();
         services.AddSingleton<LocalConfigReader>();

@@ -123,7 +123,23 @@ public sealed class GogLibrarySource
                     // library — and is deliberately not used.
                     AcquiredAt: winner.PurchasedAtUtc,
                     Source: SourceName,
-                    ObservedAt: observedAt)));
+                    ObservedAt: observedAt)
+                {
+                    // Galaxy's database is per-user, so its account reference and
+                    // its figures already belong to one account and mirroring
+                    // them costs nothing. Nothing reads GOG membership rows today
+                    // — the visibility filter is Steam's, because the account it
+                    // filters to is the one a Steam Web API key identifies — but
+                    // a source that CAN name an account and does not is the kind
+                    // of gap that is discovered later, from the wrong end.
+                    Accounts =
+                    [
+                        new CandidateAccount(
+                            winner.UserId.ToString(CultureInfo.InvariantCulture),
+                            winner.PlaytimeMinutes,
+                            winner.LastPlayedUtc),
+                    ],
+                }));
         }
 
         // Whatever the registry knows that Galaxy did not report. On a

@@ -34,6 +34,13 @@ public sealed class RecommendHarness : IDisposable
         Facets = new FacetRepository(_db.Factory);
         Feedback = new FeedFeedbackRepository(_db.Factory);
 
+        // The account-visibility filter's two halves: the preference and the
+        // per-account rows it is decided from. Both live behind the bucket
+        // query, so the feed inherits the filter without the engine knowing it
+        // exists — which is the property worth a test here.
+        Settings = new SettingsRepository(_db.Factory);
+        OwnershipAccounts = new OwnershipAccountRepository(_db.Factory);
+
         Engine = new RecommendationEngine(
             new LibraryQueryRepository(_db.Factory),
             Releases,
@@ -55,6 +62,12 @@ public sealed class RecommendHarness : IDisposable
 
     /// <summary>The feedback loop's storage — verdicts, surfacings, endorsements (migration 0011).</summary>
     public FeedFeedbackRepository Feedback { get; }
+
+    /// <summary>Stored preferences, including the account scope the bucket query reads.</summary>
+    public SettingsRepository Settings { get; }
+
+    /// <summary>Per-account membership rows (migration 0015).</summary>
+    public OwnershipAccountRepository OwnershipAccounts { get; }
 
     public RecommendationEngine Engine { get; }
 

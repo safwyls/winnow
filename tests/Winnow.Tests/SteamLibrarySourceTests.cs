@@ -295,6 +295,64 @@ public sealed class SteamLibrarySourceTests : IDisposable
         Assert.Equal(SteamFixtures.Epoch(1787400000), voyagers.LastPlayedAt);
     }
 
+    /// <summary>
+    /// …and the un-collapsed answer beside it. <c>AccountRef</c> names only the
+    /// winner, so asking it "does account 12345678 have this?" answers a
+    /// confident no about a game that account has 244 minutes in. The
+    /// per-account list is the honest form of the same observation, and it is
+    /// what the visibility filter is decided from.
+    /// </summary>
+    [Fact]
+    public void Multi_account_playtime_also_records_every_account_that_played()
+    {
+        var voyagers = Assert.Single(
+            new SteamLibrarySource().Scan(_root), c => c.ProviderId == "2686630");
+
+        Assert.Equal(
+            ["12345678", "87654321"],
+            voyagers.Accounts.Select(a => a.AccountRef).Order());
+
+        // Each account's OWN figures, not the machine's collapsed answer.
+        var loser = voyagers.Accounts.Single(a => a.AccountRef == "12345678");
+        Assert.Equal(244, loser.PlaytimeMinutes);
+
+        var winner = voyagers.Accounts.Single(a => a.AccountRef == "87654321");
+        Assert.Equal(500, winner.PlaytimeMinutes);
+        Assert.Equal(SteamFixtures.Epoch(1787400000), winner.LastPlayedAt);
+    }
+
+    [Fact]
+    public void An_installed_game_nobody_played_names_no_account_when_two_are_signed_in()
+    {
+        // Two accounts are signed in on this fixture root and the manifest
+        // cannot say which of them installed it. Guessing would be the
+        // single-winner mistake again, so the candidate names nobody — and the
+        // filter, finding no evidence, leaves the game visible.
+        var seaOfStars = Assert.Single(
+            new SteamLibrarySource().Scan(_root), c => c.ProviderId == "1244090");
+
+        Assert.Empty(seaOfStars.Accounts);
+        Assert.Null(seaOfStars.AccountRef);
+    }
+
+    [Fact]
+    public void A_sole_account_gets_a_never_played_game_attributed_to_it()
+    {
+        // The largest population in most libraries: owned, installed, never
+        // launched. On a one-account machine that account holds it, and an entry
+        // with null figures says exactly that — it holds it, and nobody measured
+        // a session because there was none.
+        Directory.Delete(Path.Combine(_root, "userdata", "87654321"), recursive: true);
+
+        var seaOfStars = Assert.Single(
+            new SteamLibrarySource().Scan(_root), c => c.ProviderId == "1244090");
+
+        var only = Assert.Single(seaOfStars.Accounts);
+        Assert.Equal("12345678", only.AccountRef);
+        Assert.Null(only.PlaytimeMinutes);
+        Assert.Null(only.LastPlayedAt);
+    }
+
     [Fact]
     public void Machine_without_steam_returns_empty_without_throwing()
     {

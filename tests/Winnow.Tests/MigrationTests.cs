@@ -876,4 +876,103 @@ public class MigrationTests
                 VALUES (@ownershipId, 40, '2019-03-04 21:00:00');
                 """, new { ownershipId }));
     }
+
+    /// <summary>
+    /// 0015 seeds the per-account membership table from what the old
+    /// single-winner <c>ownerships.account_ref</c> column held, so an existing
+    /// install has rows before its first sync rather than after it.
+    ///
+    /// <para>The seed's own honesty is the thing under test. It stamps
+    /// <c>source = 'ownerships.account_ref'</c> because a seeded row carries the
+    /// exact ambiguity the table replaces — it names whoever played the game
+    /// most, which on a shared game is routinely not the only owner — and the
+    /// bucket query refuses to hide anything on that evidence alone.</para>
+    /// </summary>
+    [Fact]
+    public void Migration_0015_seeds_memberships_from_the_winning_account_ref()
+    {
+        using var db = new TempDatabase();
+
+        using (var conn = db.Factory.Open())
+        {
+            // Rewind to 0014: drop the table and forget the script ran.
+            conn.Execute("DROP TABLE ownership_accounts;");
+            conn.Execute("DELETE FROM SchemaVersions WHERE ScriptName LIKE '%0015%';");
+
+            var workId = conn.ExecuteScalar<long>(
+                "INSERT INTO works (name) VALUES ('Portal 2') RETURNING id;");
+
+            long Release(string name) => conn.ExecuteScalar<long>(
+                "INSERT INTO releases (work_id, name) VALUES (@workId, @name) RETURNING id;",
+                new { workId, name });
+
+            long Ownership(long releaseId, string store, string? accountRef)
+                => conn.ExecuteScalar<long>("""
+                    INSERT INTO ownerships (release_id, store, account_ref, installed)
+                    VALUES (@releaseId, @store, @accountRef, 1) RETURNING id;
+                    """, new { releaseId, store, accountRef });
+
+            // An attributed ownership with a play history: the newest reading is
+            // the one the seed must carry, by (observed_at, id) like every other
+            // reader of this table.
+            var attributed = Ownership(Release("Attributed"), "steam", "11111");
+            conn.Execute("""
+                INSERT INTO play_records (ownership_id, playtime_minutes, last_played_at, source, observed_at)
+                VALUES (@attributed, 40, '2024-01-01 00:00:00', 'steam_local', '2024-01-02 00:00:00'),
+                       (@attributed, 900, '2026-08-01 00:00:00', 'steam_local', '2026-08-02 00:00:00');
+                """, new { attributed });
+
+            // Attributed, never played: no play record to borrow figures from.
+            var unplayed = Ownership(Release("Unplayed"), "steam", "22222");
+
+            // Unattributed, and a blank that is the same absence as a null.
+            var anonymous = Ownership(Release("Anonymous"), "epic", null);
+            var blank = Ownership(Release("Blank"), "gog", "   ");
+
+            Assert.NotEqual(0, unplayed);
+            Assert.NotEqual(0, anonymous);
+            Assert.NotEqual(0, blank);
+        }
+
+        db.Initializer.Initialize();
+
+        using var after = db.Factory.Open();
+
+        var rows = after.Query<(long OwnershipId, string AccountRef, long? Minutes, string? LastPlayed, string Source, string FirstSeen, string LastSeen)>("""
+            SELECT oa.ownership_id, oa.account_ref, oa.playtime_minutes, oa.last_played_at,
+                   oa.source, oa.first_seen_at, oa.last_seen_at
+            FROM ownership_accounts oa
+            JOIN ownerships o ON o.id = oa.ownership_id
+            ORDER BY oa.account_ref;
+            """).ToList();
+
+        // Two rows: the two ownerships that named an account. A null and a blank
+        // name nobody, and a row about nobody would count as evidence AGAINST
+        // the user in the filter.
+        Assert.Equal(2, rows.Count);
+        Assert.Equal(["11111", "22222"], rows.Select(r => r.AccountRef));
+        Assert.All(rows, r => Assert.Equal("ownerships.account_ref", r.Source));
+
+        // The newest reading, and the observation time that produced it — the
+        // seed states nothing it did not read.
+        var attributedRow = rows[0];
+        Assert.Equal(900, attributedRow.Minutes);
+        Assert.Equal("2026-08-01 00:00:00", attributedRow.LastPlayed);
+        Assert.Equal("2026-08-02 00:00:00", attributedRow.FirstSeen);
+        Assert.Equal(attributedRow.FirstSeen, attributedRow.LastSeen);
+
+        // Never played: the account holds it and nothing measured a session.
+        var unplayedRow = rows[1];
+        Assert.Null(unplayedRow.Minutes);
+        Assert.Null(unplayedRow.LastPlayed);
+        Assert.NotEmpty(unplayedRow.FirstSeen);
+
+        // And the key bites: one row per (ownership, account).
+        Assert.Throws<Microsoft.Data.Sqlite.SqliteException>(() =>
+            after.Execute("""
+                INSERT INTO ownership_accounts (
+                    ownership_id, account_ref, source, first_seen_at, last_seen_at)
+                VALUES (@ownershipId, '11111', 'steam_local', '2026-08-26', '2026-08-26');
+                """, new { ownershipId = attributedRow.OwnershipId }));
+    }
 }

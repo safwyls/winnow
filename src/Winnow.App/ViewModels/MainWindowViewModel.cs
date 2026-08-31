@@ -48,6 +48,16 @@ public partial class MainWindowViewModel : ObservableObject
         Library.IsCurrentScreen = IsLibraryVisible;
         Library.Lists.IsCurrentScreen = IsLibraryVisible;
 
+        // The account-visibility toggle changes which rows the bucket query
+        // returns, so the library and the feed both hold stale answers until
+        // they ask again. Wired here because this is the only type holding the
+        // Stores panel and the two screens the change shows up on.
+        stores.ReloadLibrary = async () =>
+        {
+            await library.LoadCommand.ExecuteAsync(null);
+            await feed.LoadCommand.ExecuteAsync(null);
+        };
+
         // Shares the library's DormancyRamp so the toggle and tiles agree.
         Display = new DisplaySettingsViewModel(
             library.Ramp,

@@ -161,6 +161,50 @@
                             <TextBlock Classes="para" Text="{Binding SteamKeyHintMessage}"/>
                         </Border>
 
+                        <!-- ══ ACCOUNT VISIBILITY ════════════════════════════
+                             Beside the key state because the key is what says
+                             which account is the user's. Disabled until that is
+                             established; the note underneath says which of the
+                             two reasons is in force. -->
+                        <Border Height="1" Background="{StaticResource Line}"/>
+
+                        <StackPanel Spacing="10">
+                            <StackPanel Spacing="5">
+                                <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
+                                           Text="{Binding AccountScopeSectionLabel}"/>
+                                <TextBlock Classes="para" Text="{Binding AccountScopeMessage}"/>
+                            </StackPanel>
+
+                            <ToggleSwitch IsChecked="{Binding ShowOwnAccountOnly}"
+                                          IsEnabled="{Binding CanChooseAccountScope}"
+                                          OnContent="{Binding AccountScopeToggleLabel}"
+                                          OffContent="{Binding AccountScopeToggleLabel}"/>
+
+                            <!-- The cost of the toggle, in the same [DATA]
+                                 [words] split the card header uses for its
+                                 per-store counts: every figure renders in Plex
+                                 Mono tnum (§8), which a control's content face
+                                 is not. Absent at zero. -->
+                            <StackPanel Orientation="Horizontal" Spacing="6"
+                                        IsVisible="{Binding ShowAccountScopeCount}">
+                                <TextBlock Classes="data" FontSize="12"
+                                           Foreground="{StaticResource TextDim}"
+                                           Text="{Binding AccountScopeHiddenCountText}"
+                                           VerticalAlignment="Center"/>
+                                <TextBlock Classes="para"
+                                           Text="{Binding AccountScopeHiddenUnitLabel}"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+
+                            <Border Classes="note" IsVisible="{Binding ShowAccountScopeBlocked}">
+                                <TextBlock Classes="para" Text="{Binding AccountScopeBlockedMessage}"/>
+                            </Border>
+
+                            <Border Classes="note" IsVisible="{Binding ShowAccountScopeCaveat}">
+                                <TextBlock Classes="para" Text="{Binding AccountScopeCaveatMessage}"/>
+                            </Border>
+                        </StackPanel>
+
                     </StackPanel>
                 </Border>
 
