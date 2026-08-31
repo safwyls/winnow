@@ -79,6 +79,7 @@ Two consequences fall out immediately, and both are lucky:
 | Shipping storefront client credentials | **Decided 2026-08-26: ship them built-in** | A sign-in button cannot ask the user for credentials, and there is no version where they supply their own: Epic issues no client that can read a personal library (an EOS portal app is rejected with `invalid_client`), and GOG has no public dev portal for this. So the only alternatives were "embed the launcher credentials" or "the feature does not exist". Heroic, Legendary and the Playnite plugins all embed them. Winnow is the party distributing them and that is a real cost; the realistic failure mode is Epic or GOG rotating a client and sign-in breaking until updated, not bans. The published Epic pair was verified live on 2026-08-26 rather than trusted. |
 | PSN / Xbox (§4.6) | **Unchanged — still excluded** | See the note under M4.5. Epic OAuth is not a precedent for these. |
 | §4.7 no-scraping rule | **Amended 2026-08-28** | M5's saved-HTML importer gains an embedded-WebView peer route: user-present, ephemeral session, two pages only. The manual save-the-pages route remains a first-class equal, not a fallback. Binding conditions below. |
+| §4.7 no-scraping rule | **Amended again 2026-08-30** | Condition 1 of the 2026-08-28 amendment (ephemeral session, cookies never persisted) is superseded: the refresh token is now persisted under DPAPI for unattended renewal. Conditions 2 and 3 narrowed and extended; condition 4 unchanged. Eight binding conditions below. |
 
 ## 4. Phases
 
@@ -213,6 +214,79 @@ honors that spirit. The ecosystem precedent is the same class of risk already ac
 the Epic embedded sign-in (M4.6): Playnite's Steam integration and the Heroic/Legendary
 family both operate this way. ToS exposure is user-driven and low-volume.
 
+### Why §4.7 was amended a second time (2026-08-30)
+
+The first amendment (above) permitted an ephemeral WebView harvest of two Steam account
+pages, with four binding conditions. Condition 1 was categorical: "Cookies are never
+persisted to disk. The profile is torn down after harvest."
+
+TASK-56 (`docs/spikes/steam-web-session-auth.md`) then established that a WebView sign-in
+can mint a `webapi_token`, a JWT usable against all three Steam Web API endpoints Winnow
+depends on (`ClientGetLastPlayedTimes`, `GetOwnedGames`, `GetUserYearInReview`). The token
+resolves the signed-in account exactly via its `sub` claim, and it fails honestly: a bad
+token returns a hard 401, where a bad API key returns a silent 200 with an empty envelope
+(verified 2026-08-30, recorded in the spike's section 2 table). The token lives about a day
+(24h 22m, measured 2026-08-30). Renewing it without the user present requires persisting
+Steam's `steamRefresh_steam` refresh token, roughly 207 days with remember-me, and spending
+it against `/jwt/finalizelogin`.
+
+The decision is to persist that refresh token under DPAPI CurrentUser scope, the same
+protection the Epic refresh token already gets, so that a signed-in user's scheduled syncs
+keep working without a daily re-sign-in. That is exactly what condition 1 was written to
+forbid. Hence a second amendment rather than a quiet reinterpretation.
+
+Condition 1 of the 2026-08-28 amendment is **superseded**. Conditions 2 and 3 are
+**narrowed**: made more specific and extended to cover the new surface. Condition 4 survives
+intact.
+
+Eight conditions make this an amendment rather than a violation, and all eight are binding:
+
+1. **User-present sign-in, ephemeral off-the-record browser.** Unchanged in substance from
+   the first amendment. The user types their password into Steam's own page inside an
+   in-memory, off-the-record WebView profile; Winnow never sees the password; Steam Guard
+   works normally; the profile is torn down afterwards.
+2. **Exactly two secrets at rest.** The minted access token and the refresh token, and
+   nothing else, written as one DPAPI-encrypted blob. No cookie jar. No `steamLoginSecure`.
+   No `sessionid`. No browser profile persisted. No page content. A host that cannot encrypt
+   refuses to store rather than degrading to plaintext; the failure mode of refusing is a
+   sign-in the user repeats after a restart; the failure mode of a plaintext fallback is
+   silent and permanent.
+3. **A closed list of three unattended request kinds.** With nobody watching, Winnow may
+   issue only: the `finalizelogin` call, the `transfer_info` POSTs that call returns, and
+   one token mint. That list is closed. No authenticated HTML page is ever fetched without
+   the user present.
+4. **Reading is bounded by what, not by how much.** With the user present: the two named
+   account pages in full, plus three named fields read from any non-login store document by
+   one fixed script that cannot return arbitrary DOM. The script is fixed at build time; it
+   is not a general query interface.
+5. **Purchase history needs its own permission.** Capturing purchase history during a sign-in
+   requires an explicit, separate prompt. Declining leaves the sign-in fully functional for
+   account identity and playtime backfill.
+6. **Peers, on both axes.** The Web API key and the WebView sign-in are peer connection
+   methods, neither a fallback for the other. And both routes to the account pages, the user
+   saving the pages themselves and the embedded harvest, remain peers, as the first amendment
+   required.
+7. **One parser, one importer, one credential seam.** Sign-in is a credential source, not a
+   second Steam integration. Everything it produces flows into the same parser, the same
+   importer, and the same credential seam the key path already uses.
+8. **Legibility.** A session that cannot renew must say so before it dies. Silent degradation
+   to no-remote-data is a defect, not a graceful fallback. The UI surfaces a failing renewal
+   promptly, offers one-click re-sign-in, and explains that adding an API key makes scheduled
+   syncs unconditionally reliable.
+
+**What this costs, stated plainly.** A refresh token is not as reliable as an API key. It
+can be invalidated by signing in elsewhere; the long lifetime only applies if the user chose
+remember-me; and one contrary community report exists against the `finalizelogin` route
+(node-steam-session issue #56, 2026-05-20, unresolved). That fragility is exactly why
+condition 8 exists: the user must know when their session is dying, and must know that a key
+would not have this problem.
+
+§4.7 exists so Winnow never holds or exfiltrates the user's browser session or impersonates
+their browser. Two named secrets, encrypted at rest, spent only against a closed list of API
+calls, is not a session hijack and is not a browser impersonation. It is the same shape of
+credential the Epic integration already stores, and it is narrower than the cookie jar the
+first amendment's ephemeral profile held in memory.
+
 ### Why that order
 
 **M3 before M8.** The feed's quality is bounded by its input data. Shipping the feed before
@@ -312,6 +386,22 @@ Tracked so none of it silently becomes permanent:
   pass omitted. Candidates: per-transaction averages, per-year averages, percentage
   breakdowns across the spend-by-kind slices, cost per hour played and spend on games never
   launched (both crossing account data with the playtime M5 backfills).
+- **Account-scope filter has two deliberate under-reaches (accepted 2026-08-30).** The
+  Stores-panel toggle narrows the library to a single Steam account via `ownership_accounts`
+  (migration 0015), and the filter propagates through `LibraryQueryRepository` to every
+  surface. Two limits were accepted rather than solved. First, two surfaces still read
+  the ownership-level `playtime_snapshots` series, which has no per-account form: the
+  recommender's episode signal (what the feed scores on) and the details modal's
+  snapshot history (what the playtime chart shows when a tile is opened). For a game
+  two accounts play, both can diverge from what the filtered tile displays. The fix
+  is a yours-versus-household episode distinction, not yet built. Second, the filter hides a game only when at least one
+  non-seed `ownership_accounts` row exists and none names the owned account; a game with no
+  per-account evidence stays visible. Epic and GOG entries pass the filter (it is
+  Steam-scoped), as do any Steam appids no reader has attributed. Erring visible is the
+  decision: hiding a game the user owns is worse than showing one they do not. Migration
+  0015's seed rows are stamped `source = 'ownerships.account_ref'` and excluded from absence
+  evidence because they inherit the single-winner ambiguity the table replaces; the first
+  real sync supplies authoritative rows and the caveat retires itself.
 
 ## 7. The risk
 

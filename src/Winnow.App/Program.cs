@@ -120,6 +120,24 @@ public static class Program
         Task startup = Task.CompletedTask;
         try
         {
+            // TASK-56, and the FIRST thing in this block deliberately: the probe
+            // is throwaway verification scaffolding that must be able to say it
+            // wrote nothing at all, so it returns before DatabaseInitializer has
+            // even run a migration and before host.Start() launches a single
+            // hosted service. It needs Avalonia and nothing else — the browser
+            // lives in a window — so it starts the window system by hand exactly
+            // as --epic-signin does. Delete this with the probe.
+            if (args.Contains(Services.SteamSignInProbeConsole.Argument))
+            {
+                // The report goes to a FILE beside the database, because this
+                // is a WinExe and a console is not something it can count on
+                // having (code review finding F41). The console is the second
+                // copy, not the channel the findings depend on.
+                Environment.ExitCode = Services.SteamSignInProbeConsole
+                    .Run(BuildAvaloniaApp, DataLocation.Root, Shutdown.Token);
+                return;
+            }
+
             // Migrations run before ANY reader or writer touches the db —
             // including hosted services, which host.Start() launches. The
             // scheduler's first tick is an interval away so today's ordering
@@ -362,6 +380,12 @@ public static class Program
         services.AddSingleton<IWorkRepository, WorkRepository>();
         services.AddSingleton<IReleaseRepository, ReleaseRepository>();
         services.AddSingleton<IOwnershipRepository, OwnershipRepository>();
+
+        // The per-account membership rows behind the account visibility filter
+        // (migration 0015). Written by the resolver in the same unit of work as
+        // the ownership they describe; read by the bucket query, which is the
+        // only place the filter is applied.
+        services.AddSingleton<IOwnershipAccountRepository, OwnershipAccountRepository>();
         services.AddSingleton<IPlayRecordRepository, PlayRecordRepository>();
         services.AddSingleton<IPlaytimeSnapshotRepository, PlaytimeSnapshotRepository>();
         services.AddSingleton<ISessionRepository, SessionRepository>();
@@ -541,6 +565,12 @@ public static class Program
         // and its counts would be a different (empty) one.
         services.AddSingleton<IStoreTitleCounts>(
             sp => sp.GetRequiredService<LibraryViewModel>());
+
+        // The account-visibility preference the same panel carries. A seam of
+        // its own rather than more surface on IStoreConnections: that interface
+        // is about connecting to a store, and this is about what to do with what
+        // the connection already found.
+        services.AddSingleton<IAccountVisibility, AccountVisibilityService>();
         services.AddSingleton<StoresViewModel>();
 
         // M5 item 3, and the §4.7 amendment. Two routes to the same two account

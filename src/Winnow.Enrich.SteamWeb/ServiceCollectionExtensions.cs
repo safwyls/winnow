@@ -6,6 +6,7 @@ using Winnow.Enrich.SteamWeb.Storage;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 
 namespace Winnow.Enrich.SteamWeb;
 
@@ -47,6 +48,47 @@ public static class ServiceCollectionExtensions
         services.TryAddEnumerable(
             ServiceDescriptor.Singleton<ISteamApiKeySource, DefaultConfigurationApiKeySource>());
         services.TryAddSingleton<ISteamApiKeyProvider, ChainedSteamApiKeyProvider>();
+
+        // DPAPI on Windows, and an implementation that REFUSES rather than
+        // degrades anywhere else. There is deliberately no plaintext fallback:
+        // section 4.7's second amendment makes "a host that cannot encrypt does
+        // not store" a binding condition, because the refresh token re-mints
+        // access to the Steam account for as long as it lives.
+        if (OperatingSystem.IsWindows())
+        {
+            services.TryAddSingleton<ISteamSecretProtector, DpapiSteamSecretProtector>();
+        }
+        else
+        {
+            services.TryAddSingleton<ISteamSecretProtector, UnavailableSteamSecretProtector>();
+        }
+
+        // ISettingsRepository is resolved with GetService rather than
+        // GetRequiredService even though this method registers one just above:
+        // a host that supplied its own registration order, or a test that
+        // registered neither, gets an in-memory session instead of a container
+        // that throws at startup. Neither is an error.
+        services.TryAddSingleton<ISteamSessionStore>(sp => new SettingsSteamSessionStore(
+            sp.GetService<ISettingsRepository>(),
+            sp.GetRequiredService<ISteamSecretProtector>(),
+            sp.GetService<ILogger<SettingsSteamSessionStore>>()));
+
+        services.TryAddSingleton<ISteamSessionProvider, SteamSessionProvider>();
+
+        // The registration S1 was built to receive. From here the selector sees
+        // sessions; until S3's sign-in writes one, every lookup finds nothing
+        // and the key path behaves exactly as it did before.
+        services.TryAddSingleton<ISteamSessionCredentialSource, SteamSessionCredentialSource>();
+
+        // A factory lambda rather than a constructor registration because the
+        // session source is optional and the container has no way to inject an
+        // optional dependency. Registering an ISteamSessionCredentialSource is
+        // then the whole of what a later stage has to do to give the provider a
+        // session to choose from.
+        services.TryAddSingleton<ISteamCredentialProvider>(sp => new SteamCredentialProvider(
+            sp.GetRequiredService<ISteamApiKeyProvider>(),
+            sp.GetRequiredService<TimeProvider>(),
+            sp.GetService<ISteamSessionCredentialSource>()));
 
         // AddLogger<T> resolves T from the container rather than activating it,
         // so the replacement logger has to be registered before the client is.
