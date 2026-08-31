@@ -3,6 +3,7 @@ using Winnow.Core.Domain;
 using Winnow.Core.Ingest;
 using Winnow.Data.Repositories;
 using Winnow.Enrich.SteamWeb;
+using Winnow.Enrich.SteamWeb.Credentials;
 using Winnow.Enrich.SteamWeb.Model;
 using Winnow.Resolve;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -57,7 +58,8 @@ public sealed class SteamPlaytimeBackfillTests : IDisposable
             _ownerships,
             _playRecords,
             _snapshots,
-            _db.Factory);
+            _db.Factory,
+            new OwnershipAccountRepository(_db.Factory));
     }
 
     public void Dispose() => _db.Dispose();
@@ -397,6 +399,7 @@ public sealed class SteamPlaytimeBackfillTests : IDisposable
             client ?? new HistoryStub(),
             _releases,
             _ownerships,
+            new OwnershipAccountRepository(_db.Factory),
             _playRecords,
             _snapshots,
             _settings,
@@ -404,6 +407,7 @@ public sealed class SteamPlaytimeBackfillTests : IDisposable
             new LibrarySyncGate(),
             new SteamPlaytimeBackfillOptions(),
             _clock,
+            new FakeSteamApiKeyProvider(),
             NullLogger<SteamPlaytimeBackfillService>.Instance);
 
     private async Task<long> OwnershipAsync(string appId)
@@ -468,7 +472,9 @@ public sealed class SteamPlaytimeBackfillTests : IDisposable
             => ValueTask.FromResult(Configured);
 
         public Task<SteamLastPlayedTimes> GetLastPlayedTimesAsync(
-            TimeSpan? cacheTtl = null, CancellationToken ct = default)
+            SteamCredentialPurpose purpose = SteamCredentialPurpose.Unattended,
+            TimeSpan? cacheTtl = null,
+            CancellationToken ct = default)
         {
             AnchorsAsked = true;
             if (!AnchorsAnswer)
@@ -484,7 +490,11 @@ public sealed class SteamPlaytimeBackfillTests : IDisposable
         }
 
         public Task<SteamYearInReview> GetYearInReviewAsync(
-            SteamId steamId, int year, TimeSpan? cacheTtl = null, CancellationToken ct = default)
+            SteamId steamId,
+            int year,
+            SteamCredentialPurpose purpose = SteamCredentialPurpose.Unattended,
+            TimeSpan? cacheTtl = null,
+            CancellationToken ct = default)
         {
             YearsAsked.Add(year);
 

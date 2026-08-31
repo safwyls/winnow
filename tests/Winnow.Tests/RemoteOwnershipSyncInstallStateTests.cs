@@ -2,6 +2,7 @@ using Winnow.App.Services;
 using Winnow.Core.Ingest;
 using Winnow.Data.Repositories;
 using Winnow.Enrich.SteamWeb;
+using Winnow.Enrich.SteamWeb.Credentials;
 using Winnow.Enrich.SteamWeb.Model;
 using Winnow.Ingest.Steam;
 using Winnow.Resolve;
@@ -111,7 +112,8 @@ public sealed class RemoteOwnershipSyncInstallStateTests : IDisposable
             _ownerships,
             new PlayRecordRepository(_db.Factory),
             new PlaytimeSnapshotRepository(_db.Factory),
-            _db.Factory);
+            _db.Factory,
+            new OwnershipAccountRepository(_db.Factory));
         var gate = new LibrarySyncGate();
 
         _sync = new RemoteOwnershipSyncService(
@@ -197,7 +199,10 @@ public sealed class RemoteOwnershipSyncInstallStateTests : IDisposable
             => ValueTask.FromResult(true);
 
         public Task<SteamOwnedLibrary> GetOwnedGamesAsync(
-            SteamId steamId, TimeSpan? cacheTtl = null, CancellationToken ct = default)
+            SteamId steamId,
+            SteamCredentialPurpose purpose = SteamCredentialPurpose.Unattended,
+            TimeSpan? cacheTtl = null,
+            CancellationToken ct = default)
             => Task.FromResult(new SteamOwnedLibrary(
                 steamId,
                 Succeeded: true,
@@ -214,8 +219,11 @@ public sealed class RemoteOwnershipSyncInstallStateTests : IDisposable
                 FromCache: false));
 
         public async Task<IReadOnlyList<CandidateOwnership>> GetOwnershipCandidatesAsync(
-            SteamId steamId, TimeSpan? cacheTtl = null, CancellationToken ct = default)
-            => (await GetOwnedGamesAsync(steamId, cacheTtl, ct))
+            SteamId steamId,
+            SteamCredentialPurpose purpose = SteamCredentialPurpose.Unattended,
+            TimeSpan? cacheTtl = null,
+            CancellationToken ct = default)
+            => (await GetOwnedGamesAsync(steamId, purpose, cacheTtl, ct))
                 .ToCandidates(SteamWebApiClient.SourceName);
     }
 }

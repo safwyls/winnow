@@ -1,8 +1,12 @@
 using System.Diagnostics;
 using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
 using Winnow.Core.Domain;
+using Winnow.Core.Queries;
 using Winnow.Core.Repositories;
 using Winnow.Enrich.SteamWeb;
+using Winnow.Enrich.SteamWeb.Credentials;
 using Winnow.Enrich.SteamWeb.Model;
 using Microsoft.Extensions.Logging;
 
@@ -114,6 +118,7 @@ public sealed class SteamPlaytimeBackfillService : ISteamPlaytimeBackfill
     private readonly ISteamHistoryClient _history;
     private readonly IReleaseRepository _releases;
     private readonly IOwnershipRepository _ownerships;
+    private readonly IOwnershipAccountRepository _ownershipAccounts;
     private readonly IPlayRecordRepository _playRecords;
     private readonly IPlaytimeSnapshotRepository _snapshots;
     private readonly ISettingsRepository _settings;
@@ -121,12 +126,14 @@ public sealed class SteamPlaytimeBackfillService : ISteamPlaytimeBackfill
     private readonly LibrarySyncGate _gate;
     private readonly SteamPlaytimeBackfillOptions _options;
     private readonly TimeProvider _clock;
+    private readonly ISteamApiKeyProvider _apiKeys;
     private readonly ILogger<SteamPlaytimeBackfillService> _logger;
 
     public SteamPlaytimeBackfillService(
         ISteamHistoryClient history,
         IReleaseRepository releases,
         IOwnershipRepository ownerships,
+        IOwnershipAccountRepository ownershipAccounts,
         IPlayRecordRepository playRecords,
         IPlaytimeSnapshotRepository snapshots,
         ISettingsRepository settings,
@@ -134,11 +141,19 @@ public sealed class SteamPlaytimeBackfillService : ISteamPlaytimeBackfill
         LibrarySyncGate gate,
         SteamPlaytimeBackfillOptions options,
         TimeProvider clock,
+        // Required, not optional. The fingerprint is the only thing standing
+        // between a freshly pasted key and the previous owner's account
+        // identity, and a guard that silently disables itself when a
+        // registration is missed is not a guard. AddSteamPlaytimeBackfill
+        // already documents AddSteamWebApi() as a prerequisite, and that is
+        // what registers this.
+        ISteamApiKeyProvider apiKeys,
         ILogger<SteamPlaytimeBackfillService> logger)
     {
         _history = history;
         _releases = releases;
         _ownerships = ownerships;
+        _ownershipAccounts = ownershipAccounts;
         _playRecords = playRecords;
         _snapshots = snapshots;
         _settings = settings;
@@ -146,6 +161,7 @@ public sealed class SteamPlaytimeBackfillService : ISteamPlaytimeBackfill
         _gate = gate;
         _options = options;
         _clock = clock;
+        _apiKeys = apiKeys;
         _logger = logger;
     }
 
@@ -163,6 +179,12 @@ public sealed class SteamPlaytimeBackfillService : ISteamPlaytimeBackfill
         {
             return SteamPlaytimeBackfillReport.Nothing(stopwatch.Elapsed);
         }
+
+        // Before the early return below, deliberately: a key that was REMOVED
+        // has to invalidate the confirmation just as surely as one that was
+        // replaced, and the unconfigured path returns without ever looking at an
+        // account again.
+        await ReconcileOwnedAccountWithKeyAsync(ct);
 
         // Checked before anything is read, for the same reason the remote
         // ownership sync checks first: "registered and idle" is the common
@@ -216,16 +238,33 @@ public sealed class SteamPlaytimeBackfillService : ISteamPlaytimeBackfill
         var accounts = new List<SteamId>();
         var seen = new HashSet<ulong>();
 
+        void Add(string? accountRef)
+        {
+            if (SteamId.TryParse(accountRef, out var steamId) && seen.Add(steamId.Value))
+            {
+                accounts.Add(steamId);
+            }
+        }
+
         foreach (var ownership in await _ownerships.GetAllAsync(ct))
         {
-            if (!string.Equals(ownership.Store, ExternalIdProviders.Steam, StringComparison.Ordinal)
-                || !SteamId.TryParse(ownership.AccountRef, out var steamId)
-                || !seen.Add(steamId.Value))
+            if (string.Equals(ownership.Store, ExternalIdProviders.Steam, StringComparison.Ordinal))
             {
-                continue;
+                Add(ownership.AccountRef);
             }
+        }
 
-            accounts.Add(steamId);
+        // And the accounts that column cannot name. `ownerships.account_ref`
+        // holds the play tuple's winner, so on a shared PC an account that never
+        // out-played the other appears in it nowhere — and if the user's own
+        // account is that one, this pass would never ask Steam about it, never
+        // confirm it, and the visibility toggle would stay disabled forever on
+        // exactly the machine the feature exists for. The membership rows name
+        // every account each reader saw.
+        foreach (var accountRef in await _ownershipAccounts.GetAccountRefsAsync(
+                     ExternalIdProviders.Steam, ct))
+        {
+            Add(accountRef);
         }
 
         return accounts;
@@ -261,6 +300,13 @@ public sealed class SteamPlaytimeBackfillService : ISteamPlaytimeBackfill
         var completed = new List<(int Year, int Games)>();
         var confirmed = await _settings.GetAsync(ConfirmedKey(steamId), ct) is not null;
 
+        // Kept separate from `confirmed`, which a marker written on some earlier
+        // launch can satisfy. Only a disclosure THIS PASS proves the key in
+        // force belongs to this account, and only that may name the account the
+        // visibility filter keeps — otherwise a stale marker would let a
+        // stranger's key inherit the previous owner's identity.
+        var disclosedThisPass = false;
+
         foreach (var year in pending)
         {
             ct.ThrowIfCancellationRequested();
@@ -292,6 +338,7 @@ public sealed class SteamPlaytimeBackfillService : ISteamPlaytimeBackfill
             if (review.AccountId is not null)
             {
                 confirmed = true;
+                disclosedThisPass = true;
             }
 
             foreach (var game in review.Games)
@@ -311,6 +358,40 @@ public sealed class SteamPlaytimeBackfillService : ISteamPlaytimeBackfill
             completed.Add((year, review.Games.Count));
         }
 
+        // ── The disclosure the ordinary path can no longer reach ─────────────
+        //
+        // Every year but the current one is asked about exactly once per install,
+        // so an account that finished its backfill refetches only the current
+        // year — and an uncompiled current-year Replay answers empty, with no
+        // account id in it. Nothing else in Winnow discloses which account the
+        // key belongs to, so on precisely the accounts that HAVE backfilled, the
+        // disclosure could never fire again and the visibility toggle stayed
+        // disabled for good. Found live 2026-08-30.
+        //
+        // The remedy is one extra read, only when it is the only thing standing
+        // between the user and a working toggle.
+        if (!disclosedThisPass && await NeedsDisclosureRefetchAsync(steamId, ct))
+        {
+            switch (await DiscloseFromCompletedYearAsync(steamId, totals, ct))
+            {
+                case DisclosureOutcome.Mismatch:
+                    // Same response as the main loop: the key is somebody
+                    // else's, so this account is abandoned for the pass.
+                    return;
+
+                case DisclosureOutcome.Disclosed:
+                    confirmed = true;
+                    disclosedThisPass = true;
+                    break;
+
+                case DisclosureOutcome.NothingToDiscloseFrom:
+                default:
+                    // No populated year to ask about, or it did not answer. The
+                    // toggle stays disabled and says why; nothing is written.
+                    break;
+            }
+        }
+
         if (!confirmed)
         {
             // Nothing has ever proved the key belongs to this account.
@@ -326,7 +407,7 @@ public sealed class SteamPlaytimeBackfillService : ISteamPlaytimeBackfill
             return;
         }
 
-        await ConfirmAccountAsync(steamId, ct);
+        await ConfirmAccountAsync(steamId, disclosedThisPass, ct);
 
         // The anchor: cumulative playtime as it stands right now. Everything the
         // reconstruction produces is derived by subtraction from these figures,
@@ -565,12 +646,322 @@ public sealed class SteamPlaytimeBackfillService : ISteamPlaytimeBackfill
     /// not played answers empty, leaving a re-run unable to re-derive a
     /// confirmation it had already earned and quietly refusing to import
     /// for the rest of the install's life.</para>
+    ///
+    /// <para>The same moment also answers a question nothing else in Winnow
+    /// can: <b>which of the accounts on this PC is the user's own</b>. Steam
+    /// never states it — the app can only observe that a call made with the
+    /// configured key answered for a particular account, which is exactly what
+    /// has just happened. The account visibility toggle is disabled until this
+    /// runs, because a filter that does not know whose library it is keeping
+    /// would be hiding games at random.</para>
     /// </summary>
-    private async Task ConfirmAccountAsync(SteamId steamId, CancellationToken ct)
-        => await _settings.SetAsync(
+    private async Task ConfirmAccountAsync(
+        SteamId steamId, bool disclosedThisPass, CancellationToken ct)
+    {
+        await _settings.SetAsync(
             ConfirmedKey(steamId),
             _clock.GetUtcNow().UtcDateTime.ToString("O", CultureInfo.InvariantCulture),
             ct);
+
+        if (!disclosedThisPass)
+        {
+            // The marker above was earned on an earlier launch and is enough to
+            // let the import proceed. It is NOT enough to name the user's
+            // account: a key pasted since then has proved nothing, and the
+            // reconciliation that cleared the stored reference must not be
+            // undone by a marker predating the key it is about.
+            return;
+        }
+
+        // The account reference in the same shape the local scan writes
+        // (SteamId.AccountRef — the steam3 account id, the userdata folder
+        // name), so the filter's comparison is a string equality against rows
+        // both sources produced and not a conversion nobody would notice failing.
+        await _settings.SetAsync(SteamOwnedAccount.RefSettingKey, steamId.AccountRef, ct);
+
+        // Stamped with the key that earned it, so a later pass can tell whether
+        // the confirmation still describes the key in force.
+        if (await KeyFingerprintAsync(ct) is { } fingerprint)
+        {
+            await _settings.SetAsync(SteamOwnedAccount.KeyFingerprintSettingKey, fingerprint, ct);
+        }
+    }
+
+    /// <summary>What one disclosure refetch established.</summary>
+    private enum DisclosureOutcome
+    {
+        /// <summary>No populated year to ask about, or the request did not answer.</summary>
+        NothingToDiscloseFrom = 0,
+
+        /// <summary>Steam named the account. The key in force belongs to it.</summary>
+        Disclosed,
+
+        /// <summary>Steam answered for a different account. The key is somebody else's.</summary>
+        Mismatch,
+    }
+
+    /// <summary>
+    /// Whether this pass should spend one read establishing which account the
+    /// key belongs to.
+    ///
+    /// <para>Four conditions, and the point of all four is that this must be a
+    /// repair and never a routine cost. It runs only when the ordinary
+    /// disclosure did not happen (checked by the caller), only when the answer
+    /// is actually missing, only for an account that has already proved itself
+    /// once, and only when the key in force is the one that proof was earned
+    /// with — or when nothing records which key that was.</para>
+    ///
+    /// <para>The confirmed marker is what makes this safe to attempt at all. It
+    /// says a Year in Review has already answered for this account, so there is
+    /// something to re-read; without it there is no reason to think a refetch
+    /// would disclose anything the current year did not.</para>
+    /// </summary>
+    private async Task<bool> NeedsDisclosureRefetchAsync(SteamId steamId, CancellationToken ct)
+    {
+        if (SteamOwnedAccount.Clean(
+                await _settings.GetAsync(SteamOwnedAccount.RefSettingKey, ct)) is not null)
+        {
+            // Already known. This is the state every launch after the repair is
+            // in, and it costs one settings read to establish.
+            return false;
+        }
+
+        if (await _settings.GetAsync(ConfirmedKey(steamId), ct) is null)
+        {
+            return false;
+        }
+
+        // Matches the key in force, or nothing records which key earned the
+        // confirmation. A MISMATCH cannot occur here: ReconcileOwnedAccountWith
+        // KeyAsync runs at the top of the pass and clears both halves, which is
+        // what stops a new key inheriting the previous owner's identity. The
+        // check is still made rather than assumed, because that ordering is the
+        // whole of the guarantee and a future caller could move it.
+        var recorded = SteamOwnedAccount.Clean(
+            await _settings.GetAsync(SteamOwnedAccount.KeyFingerprintSettingKey, ct));
+
+        return recorded is null
+            || string.Equals(recorded, await KeyFingerprintAsync(ct), StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Re-reads one already-imported year purely for the account id in it.
+    ///
+    /// <para><b>Nothing is imported.</b> The year's games are read and dropped,
+    /// no anchor is fetched and no write transaction is opened, so the pass
+    /// writes zero observation rows by construction rather than by relying on
+    /// the full-fact identity indexes to swallow a re-import. The completion
+    /// markers are not touched either: the year was already done and re-reading
+    /// it does not make it more done.</para>
+    ///
+    /// <para><b>Which year.</b> The completion markers record <c>games=N</c> per
+    /// year, so a year that will disclose can be picked rather than guessed:
+    /// newest first, populated years only. The current year is excluded because
+    /// the loop above has just asked about it and it did not disclose — that is
+    /// the whole reason this method is running. Markers an older build wrote
+    /// that cannot be parsed are kept as lower-priority candidates so they still
+    /// have a path, and the attempts are bounded so a run of unanswered years
+    /// cannot turn a repair into a fetch storm.</para>
+    ///
+    /// <para><b>Cache.</b> The ordinary 6-hour client cache is used when the
+    /// stored fingerprint matches the key in force — that is the live case, an
+    /// account whose ref went missing while its key never changed. When nothing
+    /// records which key the cached bodies were fetched with, the read is forced
+    /// fresh: a cached response fetched with a PREVIOUS key would disclose the
+    /// previous account and hand back exactly the identity the fingerprint clear
+    /// had just removed.</para>
+    /// </summary>
+    private async Task<DisclosureOutcome> DiscloseFromCompletedYearAsync(
+        SteamId steamId, Totals totals, CancellationToken ct)
+    {
+        var candidates = await DisclosureCandidateYearsAsync(steamId, ct);
+        if (candidates.Count == 0)
+        {
+            _logger.LogDebug(
+                "No populated Year in Review is recorded for account {Account}, so which account "
+                + "the API key belongs to cannot be established; the visibility toggle stays off.",
+                steamId.AccountId);
+            return DisclosureOutcome.NothingToDiscloseFrom;
+        }
+
+        var recorded = SteamOwnedAccount.Clean(
+            await _settings.GetAsync(SteamOwnedAccount.KeyFingerprintSettingKey, ct));
+        var cacheTtl = recorded is null ? TimeSpan.Zero : (TimeSpan?)null;
+
+        foreach (var year in candidates)
+        {
+            ct.ThrowIfCancellationRequested();
+            totals.YearsFetched++;
+
+            var review = await _history.GetYearInReviewAsync(steamId, year, cacheTtl: cacheTtl, ct: ct);
+
+            if (review.AccountMismatch)
+            {
+                _logger.LogWarning(
+                    "Steam Year in Review answered for a different account than {Account}; "
+                    + "the playtime backfill is skipped for this account until the API key matches.",
+                    steamId.AccountId);
+                return DisclosureOutcome.Mismatch;
+            }
+
+            if (review.AccountId is not null)
+            {
+                _logger.LogInformation(
+                    "Re-read Steam Year in Review {Year} for account {Account} to establish which "
+                    + "account the API key belongs to. Nothing was imported.",
+                    year, steamId.AccountId);
+                return DisclosureOutcome.Disclosed;
+            }
+
+            if (!review.Answered)
+            {
+                totals.YearsFailed++;
+            }
+        }
+
+        return DisclosureOutcome.NothingToDiscloseFrom;
+    }
+
+    /// <summary>
+    /// Years worth re-reading for a disclosure, best first and bounded.
+    ///
+    /// <para>A marker recording <c>games=0</c> is skipped outright: an empty
+    /// Replay is exactly what the current year already answered, and asking
+    /// about a second one would spend a request to be told the same nothing.</para>
+    /// </summary>
+    private async Task<IReadOnlyList<int>> DisclosureCandidateYearsAsync(
+        SteamId steamId, CancellationToken ct)
+    {
+        const int MaxAttempts = 3;
+
+        var populated = new List<int>();
+        var unreadable = new List<int>();
+
+        // Newest first: the most recent year the user actually played is the one
+        // most likely to still be served from cache, and the least surprising to
+        // see in a log.
+        for (var year = _clock.GetUtcNow().UtcDateTime.Year - 1; year >= _options.FirstYear; year--)
+        {
+            if (await _settings.GetAsync(YearMarker(steamId, year), ct) is not { } marker)
+            {
+                // Not imported, so the ordinary path will fetch it next launch
+                // anyway and would disclose then. Nothing to repair here.
+                continue;
+            }
+
+            switch (GamesRecordedIn(marker))
+            {
+                case > 0:
+                    populated.Add(year);
+                    break;
+                case null:
+                    // A marker from a build that wrote a different shape. It may
+                    // still be a populated year; it is simply no longer able to
+                    // say so, so it is tried only after the ones that can.
+                    unreadable.Add(year);
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        return [.. populated.Concat(unreadable).Take(MaxAttempts)];
+    }
+
+    /// <summary>
+    /// The <c>games=N</c> figure out of a completion marker, or null when the
+    /// marker does not carry one. See <see cref="RecordCompletionAsync"/> for
+    /// the shape: <c>{stamp};games={N};written={M}</c>.
+    /// </summary>
+    internal static int? GamesRecordedIn(string marker)
+    {
+        foreach (var field in marker.Split(';', StringSplitOptions.TrimEntries))
+        {
+            if (field.StartsWith("games=", StringComparison.Ordinal)
+                && int.TryParse(
+                    field.AsSpan("games=".Length),
+                    NumberStyles.Integer,
+                    CultureInfo.InvariantCulture,
+                    out var games))
+            {
+                return games;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Drops the recorded "this is the user's account" when the API key that
+    /// earned it is no longer the key in force.
+    ///
+    /// <para>Without this, pasting a second person's key leaves the first
+    /// person's account id in place, and the visibility filter then hides the
+    /// user's own library in favour of a stranger's — a wrong answer given
+    /// confidently, which is worse than the unfiltered view it replaced. A
+    /// removed key is treated the same way: nothing currently proves the stored
+    /// account is the user's.</para>
+    ///
+    /// <para>Cleared by writing a blank rather than deleting, because
+    /// <see cref="ISettingsRepository"/> has two methods and no remove — the
+    /// same convention the Epic token store already follows. Every reader
+    /// treats blank as never-written.</para>
+    ///
+    /// <para>The confirmation markers themselves are untouched. They record
+    /// that a year was imported for an account, which stays true whoever's key
+    /// is configured now, and re-importing already-imported history is the
+    /// waste this class exists to avoid.</para>
+    /// </summary>
+    private async Task ReconcileOwnedAccountWithKeyAsync(CancellationToken ct)
+    {
+        var stored = SteamOwnedAccount.Clean(
+            await _settings.GetAsync(SteamOwnedAccount.RefSettingKey, ct));
+
+        if (stored is null)
+        {
+            // Nothing to invalidate. The next confirmation writes both halves.
+            return;
+        }
+
+        var current = await KeyFingerprintAsync(ct);
+        var recorded = SteamOwnedAccount.Clean(
+            await _settings.GetAsync(SteamOwnedAccount.KeyFingerprintSettingKey, ct));
+
+        if (current is not null && string.Equals(current, recorded, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        await _settings.SetAsync(SteamOwnedAccount.RefSettingKey, string.Empty, ct);
+        await _settings.SetAsync(SteamOwnedAccount.KeyFingerprintSettingKey, string.Empty, ct);
+
+        _logger.LogInformation(
+            "The Steam Web API key changed, so the account it was confirmed to belong to has been "
+            + "cleared. The account visibility filter is off until the next import re-confirms it.");
+    }
+
+    /// <summary>
+    /// A one-way digest of the configured API key, or null when there is none.
+    ///
+    /// <para><b>Never the key.</b> The only question asked of it is "is this the
+    /// same key as last time", which a digest answers and a stored secret would
+    /// answer no better. It is written to the settings table, which is the same
+    /// file the user's library lives in and is copied by every backup, so
+    /// putting a credential there to solve a change-detection problem would be
+    /// trading a real secret for a convenience.</para>
+    /// </summary>
+    private async Task<string?> KeyFingerprintAsync(CancellationToken ct)
+    {
+        if (await _apiKeys.GetAsync(ct) is not { } key)
+        {
+            // No key configured at all. Distinct from "a key whose fingerprint
+            // could not be taken", which cannot happen: nothing here fails.
+            return null;
+        }
+
+        var digest = SHA256.HashData(Encoding.UTF8.GetBytes(key.Value));
+        return Convert.ToHexStringLower(digest);
+    }
 
     private static string YearMarker(SteamId steamId, int year)
         => string.Create(CultureInfo.InvariantCulture, $"{YearMarkerPrefix}{steamId.Value}.{year}");
