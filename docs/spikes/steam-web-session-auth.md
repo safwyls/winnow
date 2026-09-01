@@ -408,9 +408,13 @@ ready.
    2026-08-30.** Sign-in completed on all three runs. The password-plus-Steam-Guard
    path completed on the first two; the third used a route the probe's heuristic did
    not recognise. QR route untested; hCaptcha not presented on any run.
-6. Whether `steamRefresh_steam` is present in that profile after sign-in, and whether
-   `/jwt/finalizelogin` still re-mints from it days later. **Still UNKNOWN; the
-   profile is private and deleted after each run.**
+6. Whether `steamRefresh_steam` is present in the shipped sign-in's off-the-record
+   profile after sign-in, and whether `/jwt/finalizelogin` still re-mints from it
+   days later. **Presence VERIFIED 2026-08-31** in the shipped sign-in; see §7.2.
+   The off-the-record profile's cookie manager returned the `httpOnly` cookie, and
+   Steam issued a refresh token carrying the `renew` audience and a ~210-day
+   lifetime. **Re-minting days later: still UNKNOWN.** Capture alone is not
+   renewal; only S6 spending the token proves the other half.
 7. Whether the JWT half of a WebBrowser `steamLoginSecure` cookie works directly as
    `access_token=`, which would remove the page-scraping mint step entirely. **Still
    UNKNOWN; the probe mints from `application_config`.**
@@ -633,10 +637,20 @@ script and the poll into `WebView2SteamSignInSession`, the JWT claim reader into
 
 ## 7.2. Refresh-token capture in the shipped sign-in (TASK-55 S3)
 
-**Status: NOT VERIFIED LIVE.** TASK-55 stage S3 promoted the §7.1 probe into the
-shipped `WebView2SteamSignInSession` and implemented refresh-token capture, but no
-live Steam sign-in was performed in that stage. Section 7.1's run remains the only
-live evidence, and it did not attempt a cookie read.
+**Status: VERIFIED LIVE 2026-08-31.** A live Steam sign-in was performed through
+the shipped Stores screen on 2026-08-31. The stored `steam.session.v1` blob was
+read out of the live `%LOCALAPPDATA%\Winnow\winnow.db` read-only, and decrypted
+with DPAPI CurrentUser and the `Winnow.Steam.Session.v1` entropy the shipped
+protector uses. The decrypted JSON carried exactly the eleven documented keys
+(matching `SettingsSteamSessionStore.StoredSession`), no more and no fewer. No
+cookie jar, no `steamLoginSecure`, no `sessionid`, no API key appeared in the
+blob; section 4.7's second amendment holds in practice.
+
+**Storage round-trip.** The `steam.session.v1` settings row is 2100 characters
+of base64 ciphertext. It decrypted on the first attempt with the shipped
+protector's own entropy, confirming that the DPAPI round-trip works against a
+real install, not just a test. This is the first live verification of the
+stored-session shape and the encryption path recorded in this document.
 
 **Mechanism.** The `steamRefresh_steam` cookie is read through
 `CoreWebView2.CookieManager.GetCookiesAsync("https://login.steampowered.com/")`,
@@ -648,19 +662,52 @@ script contains no `document.cookie`. Microsoft documents
 `CoreWebView2CookieManager` as returning cookies irrespective of the `httpOnly`
 flag; that is documentation, not a measurement taken here.
 
-**Three things remain UNKNOWN until a live run, each with a different consequence.**
+**Three findings from the live run, answering the three unknowns this section
+previously carried.**
 
-1. **Whether an off-the-record (InPrivate) WebView2 profile's cookie manager
-   returns the session's in-memory cookies at all.** The shipped session is
-   in-private by construction (amendment condition 1), so if it does not, no
-   refresh token can ever be captured by this route.
-2. **Whether Steam issues `steamRefresh_steam` for this sign-in at all.** It does
-   so only when the user ticks "remember me" on Steam's own login form, and Winnow
-   never scripts that form, so nothing in Winnow can tick it for them. Absence is
-   therefore a normal outcome, not a bug.
-3. **The cookie's exact value shape.** The session code treats it as opaque.
-   `SteamSession` already reads the `steamid64||jwt` form when parsing a refresh
-   expiry and treats an unreadable value as an unknown expiry rather than guessing.
+1. **The off-the-record (InPrivate) WebView2 profile's cookie manager DOES return
+   the session's in-memory cookies.** VERIFIED 2026-08-31. `steamRefresh_steam`
+   was present and non-empty in the off-the-record profile after a shipped sign-in.
+   The in-private cookie manager is a viable capture route.
+2. **Steam DID issue `steamRefresh_steam` for this sign-in.** VERIFIED 2026-08-31.
+   The cookie was present with a 502-character value. Whether the user ticked
+   "remember me" or Steam issued it by default was not instrumented; the fact is
+   that an ordinary sign-in through the shipped flow produced a refresh token.
+3. **The cookie's value shape is a bare JWT, not the `steamid64||jwt` form.**
+   VERIFIED 2026-08-31. The captured cookie decoded as three dot-separated segments
+   with a JSON payload. No `steamid64||` prefix was present.
+   `SteamSession.ReadRefreshExpiry` splits on a last `||` and falls back to the
+   whole value when the separator is absent, so it read the expiry correctly, but
+   the fallback branch is the live path and the `steamid64||` branch is unexercised
+   defence. The earlier wording in this section presented `steamid64||jwt` as the
+   expected form; the live capture corrects that.
+
+**Refresh token claim set:** `aud`, `exp`, `iat`, `ip_confirmer`, `ip_subject`,
+`iss`, `jti`, `nbf`, `oat`, `per`, `sub`. The load-bearing values: `iss` =
+`steam`, `sub` = 76561198009290480, `aud` = `["web", "renew", "derive"]`. The
+`renew` audience is the one that matters: the token is minted for renewal, which
+is exactly what S6 needs to spend it on. Lifetime: `iat` 2026-08-31T23:24:47Z,
+`exp` 2027-03-30T08:07:37Z, about 210 days, consistent with the ~207-day figure
+this spike already carries.
+
+**The rest of the stored session, verified against the same blob.** Access token
+present, 513 characters. `expires_at` 2026-09-01T23:48:24Z, about 24.3 hours
+after mint; the ~24 h 22 m lifetime measured in §7.1 holds on a second,
+independent mint. `audience` `["web:store"]`; `issuer` varies per mint (§7.1's
+run recorded a different string), so it is not a constant to match on. `steamid64`
+76561198009290480, read from the access token's own `sub`. `refresh_expires_at`
+2027-03-30T08:07:37Z, populated, so the refresh JWT decoded and no guess was
+substituted. `minted_at` 2026-08-31T23:24:46.97Z. `last_renewed_at` null.
+`renewal_failures` 0. `last_failure_kind` `None`. All as S2 predicts for a
+session nothing has renewed yet. `SteamSessionProvider.Classify` on these facts,
+at the time of the read, returns `Live`: access usable, refresh usable, no
+failures, outside the one-hour renewal lead window, and the host can persist.
+
+**The S4 account confirmation, read from the same database.** `steam.api_key` is
+set (presence confirmed; value never read out). `steam.owned_account_ref` =
+49024752, the 32-bit account id of 76561198009290480. The sign-in wrote an account
+confirmation that agrees with the signed-in account. `steam.owned_account_key` is
+populated (a 64-character fingerprint).
 
 **What the implementation does about not knowing.** It never fakes a capture.
 `SteamSignInResult.RefreshTokenCaptured` is set from what was actually found in
@@ -668,19 +715,182 @@ the jar (a whitespace-only value counts as nothing). The failure to read the jar
 is caught and logged by exception type only. A sign-in with no refresh token still
 succeeds as a working session.
 
-**The consequence S6's renewal design must plan for.** S2 defines a stored
-`SteamSession` as BOTH secrets: `SteamSession.TryCreate` returns null without a
-refresh token, so a sign-in that captures no refresh token currently persists
-nothing at all. The user gets a session that lasts about a day within the running
-process, and unattended scheduled work is unaffected only because it was never
-given the session. If a live run shows the cookie cannot be captured, the choice
-in front of S6 is explicit: relax the session record so the refresh token is
-optional (a short-lived, non-renewable stored session that the health enum can
-already describe), or accept that WebView sign-in is a user-initiated credential
-only and that the Web API key remains the sole unattended one. Neither is decided.
+**The consequence for S6, now that the dilemma is closed.** The earlier version
+of this section recorded that `SteamSession.TryCreate` returned null without a
+refresh token, so a sign-in that captured none persisted nothing, and posed a
+choice between relaxing the session record and accepting a user-initiated-only
+credential. That dilemma is closed. `SteamSession.RefreshToken` is nullable.
+`TryCreate` treats a missing refresh token as an ordinary token-only session
+rather than a failure. `SteamSessionProvider.Classify` carries a token-only
+session as `Live` then `Expired` with no `RenewalDue` in between, because naming
+a renewal path that nothing can pay would be exactly the silent degradation
+condition 8 forbids. The code already handles both kinds of session honestly.
 
-**What would settle it.** One live sign-in with "remember me" ticked, reporting
-only whether a non-empty `steamRefresh_steam` was present. No value, ever, in any
+The live capture means the renewable path is the one an ordinary sign-in actually
+takes. Unattended silent renewal has a real refresh token to spend, with a `renew`
+audience and roughly 210 days of life. S6 is unblocked on its central premise.
+
+**What is still NOT proven.** Capture is not renewal. The live run confirmed that
+a refresh token is captured and stored, but no attempt has been made to spend it.
+Whether `/jwt/finalizelogin` (or whichever renewal endpoint S6 picks) actually
+re-mints an access token from this token days later is the other half of the
+question, and only S6 running the renewal proves it. The contrary data point in
+§1 (node-steam-session issue #56, `AccessDenied` on all refresh routes) remains
+unresolved and should inform S6's error handling.
+
+**What would settle it.** One renewal attempt, days after mint, reporting only
+whether a fresh access token was issued. No value, ever, in any report or log.
+
+---
+
+### 7.3. Silent renewal as implemented (TASK-55 S6)
+
+**Status: NOT VERIFIED LIVE.** No refresh token has ever been spent. Every
+behaviour described below is tested against canned HTTP fixtures only; no live
+API call was made in this stage. The implementation builds, the full test suite
+is green, and the failure classification is exercised across both layers
+(`SteamSessionRenewerTests` for the HTTP exchange, `SteamSessionRenewalTests`
+for the provider's decisions). What is unproven is specifically listed at the
+end of this section.
+
+**The three-request closed list.** Section 4.7's second amendment, condition 3,
+permits exactly three unattended request kinds. All three live as URI constants
+in one file (`SteamSessionRenewer`) so an audit of the closed list reads one
+file:
+
+1. `POST https://login.steampowered.com/jwt/finalizelogin`. The stored
+   `steamRefresh_steam` refresh token travels as the `nonce` form field, never
+   in a URI (a URI reaches the framework's own request logging). A freshly
+   generated `sessionid` is sent as both a form field and a `Cookie` header,
+   because Steam's CSRF check compares the two. The `redir` field is
+   `https://store.steampowered.com/login/`.
+2. The `transfer_info` POSTs that response returns, **narrowed** to entries
+   whose URL is an absolute HTTPS URI on host `store.steampowered.com`. Entries
+   on other hosts (`help.steampowered.com`, `steamcommunity.com`) and on other
+   schemes are ignored rather than requested. Narrowing is what stops a
+   reshaped response body from directing Winnow's traffic. The first entry that
+   returns a `steamLoginSecure` Set-Cookie is accepted; the rest are skipped.
+3. `GET https://store.steampowered.com/pointssummary/ajaxgetasyncconfig`. A
+   JSON endpoint, chosen over scraping an authenticated HTML page precisely so
+   no unattended request ever parses HTML. Returns the fresh `webapi_token`.
+
+No browser is involved at any point.
+
+**Cookies are never persisted and never jarred.** The named HttpClient's
+primary handler is registered with `UseCookies = false` and
+`AllowAutoRedirect = false`. `steamLoginSecure` exists only as a local string
+for the duration of one call; there is no `CookieContainer` in memory and
+nothing to leak. `AllowAutoRedirect = false` means a redirect would be
+refused rather than followed, because a redirect is a request to a host the
+closed list did not name, carrying a cookie the code did not choose to send.
+Nothing about the exchange reaches disk; the only thing that is persisted is
+the same eleven-field session blob, written by `SteamSessionProvider`.
+
+**Failure classification.** The direction of doubt is always toward Transient,
+because being wrong in that direction costs one skipped pass and being wrong
+the other way costs the user their session.
+
+| Signal | Classification | What happens |
+| --- | --- | --- |
+| HTTP 401, 403, 400 at any step | **Rejected** (hard lapse) | Refresh token discarded, session latched off for the process |
+| Valve EResult from the denial set {8 InvalidParam, 10 Denied, 15 AccessDenied, 26 Revoked, 27 Expired} in an `x-eresult` header or `eresult` body field on a 200 | **Rejected** | Same as above |
+| A mint response that states `webapi_token` and leaves it empty | **Rejected** | This is what `pointssummary` returns to a caller it does not consider signed in |
+| Network exception, timeout, 408, 429, every 5xx, unrecognised status, unparseable body, body with no `webapi_token` field, finalize response with no usable transfer target | **Transient** | Session kept, failure count incremented, next pass retries |
+| Session with no refresh token | **NotRenewable** | No request sent |
+
+node-steam-session issue #56 (2026-05-20, unresolved) reports `AccessDenied`
+on every refresh-token route, so a hard rejection is planned for as a live
+possibility rather than as a formality.
+
+**Hard-lapse behaviour.** The refresh token is discarded (memory and disk)
+and the session is latched off for the process, so nothing tries again until
+the user signs in. The session RECORD is kept. Dropping the whole record
+would take the Stores screen from "your sign-in ended, sign in again" to
+"you never connected", and condition 8 makes that distinction load-bearing.
+The result is an ordinary token-only session carrying a recorded failure,
+which `Classify` reads as `RenewalFailing` while the access token is still
+alive and `Expired` afterwards, so the warning lands before the credential
+dies. The persisted key set is unchanged: `refresh_token` is nullable and
+always emitted.
+
+**Three refusals before a renewed token is believed.**
+
+1. It must decode and state an expiry; otherwise transient.
+2. Its `sub` must be the account this session already belongs to; otherwise a
+   renewal could silently re-point the library at somebody else's account.
+3. Its `aud` must set-equal the audience already stored. The audience check is
+   why audience is stored at all: a token minted for an audience the Web API
+   will not accept produces a 401, which triggers a renewal, which mints the
+   same wrong audience again. Lapsing costs one sign-in; looping costs the
+   refresh token and the request budget.
+
+The issuer is deliberately NOT compared: §7.2's live capture records it varying
+per mint (`r:0012_...` on one mint, `r:0018_...` on an earlier one), so
+matching on it would reject every renewal.
+
+**Single-flight and rotation.** `SteamSessionProvider.RenewAsync(staleSession,
+ct)` follows `IEpicTokenProvider.RefreshAsync`'s shape on the same
+`SemaphoreSlim` the provider already holds. If another caller has already
+replaced the session the caller was holding, that replacement is handed back
+and no request is sent. This is a correctness requirement rather than
+politeness: spending a refresh token can invalidate the previous one, so a
+double spend is a self-inflicted sign-out.
+
+A rotated refresh token is stored together with the access token it arrived
+with, in one `SaveAsync` of one blob, so there is no window in which they
+disagree. A null rotated token means "Steam did not replace it", never "you
+now have none".
+
+**Scheduler integration.** The API key drives the unattended 15-minute and
+6-hour passes; the session is the fallback for keyless users.
+`SteamCredentialProvider.GetAsync` returns the key immediately on an
+unattended pass without consulting the session at all: not reading it, not
+renewing it, not waiting on it. A renewal that is in flight, slow or failing
+therefore cannot delay a scheduler tick, because the tick never reaches the
+code that would wait for it. This is a structural guarantee, not a timeout: a
+timeout would be a promise about how long; this is a promise that it does not
+happen. `GetInventoryAsync`, which the Stores screen binds to, is likewise a
+plain non-renewing read, because §5.1 forbids enrichment blocking a
+user-facing path.
+
+**Proactive vs reactive renewal.** Proactive renewal happens when the access
+token is inside its renewal lead (default one hour against a measured ~24 h
+22 m token), which is the same arithmetic `Classify` uses for `RenewalDue`,
+so the state the Stores screen shows and the work the provider does cannot
+disagree. Reactive renewal is exactly one retry on a 401, at the two clients'
+shared send path (`SteamAuthorizedRequest`). A 401 is a clean trigger because
+`SteamWebResilienceHandler` deliberately does not list 401 as transient; it
+retries 429, 408 and 5xx only. A 401 reaching a call site is Steam's verdict
+on the credential rather than a blip. The bound is structural: pass 0 may
+renew, pass 1 may not.
+
+**What is NOT verified live, stated plainly.**
+
+(a) Whether `/jwt/finalizelogin` accepts a `steamRefresh_steam` nonce captured
+this way at all. node-steam-session issue #56 reports `AccessDenied` on every
+refresh route, unresolved, so a hard rejection may be the ordinary outcome.
+
+(b) Whether the `transfer_info` array Valve actually returns has the field
+names and store entry this client reads.
+
+(c) Whether `pointssummary/ajaxgetasyncconfig` mints a token from a
+`steamLoginSecure` obtained this way.
+
+(d) Whether Steam rotates the refresh token on this route, and therefore
+whether the rotation path ever executes.
+
+(e) Whether the EResult codes Valve returns on a refusal are in the denial set
+this client recognises, or arrive as an `x-eresult` header at all. If they
+arrive some other way, a real rejection would be misread as transient and
+retried each pass instead of surfacing.
+
+(f) The real access-token lifetime and audience after a renewal as opposed to
+after a sign-in.
+
+**What would settle it.** The stored session's `last_renewed_at` becoming
+non-null, or `renewal_failures` climbing with a recorded `last_failure_kind`,
+roughly 23 hours after a sign-in. Reporting only whether a fresh token was
+issued and which failure kind was recorded. No token value, ever, in any
 report or log.
 
 ---

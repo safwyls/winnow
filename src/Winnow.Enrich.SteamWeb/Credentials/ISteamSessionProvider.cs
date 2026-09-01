@@ -4,12 +4,12 @@ namespace Winnow.Enrich.SteamWeb.Credentials;
 /// Owns the Steam WebView session in memory: one read of the store, expiry
 /// arithmetic, and the health the Stores screen renders.
 ///
-/// <para><b>It does not renew.</b> Renewal is S6 and lands behind this
-/// interface, not beside it. <see cref="GetAsync"/> already returns a session
-/// whose access token has died, because the UI has to be able to say so and the
-/// <see cref="SteamCredentialSelector"/> already refuses to send one. Until then
-/// a signed-in user has roughly a day of access and a one-click re-sign-in, and
-/// a keyed user is unaffected.</para>
+/// <para>Renewal (S6) lives behind this interface rather than beside it.
+/// <see cref="GetAsync"/> still never renews and never blocks on one: it is
+/// what the Stores screen and the credential inventory read, and both must
+/// answer instantly and must be able to see a dead session in order to say
+/// so. Renewal is asked for explicitly, by <see cref="RenewAsync"/>, and
+/// only where a caller has decided it is willing to wait.</para>
 /// </summary>
 public interface ISteamSessionProvider
 {
@@ -29,4 +29,31 @@ public interface ISteamSessionProvider
 
     /// <summary>Forgets the session, in memory and on disk. The only path that discards a refresh token.</summary>
     Task SignOutAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Whether this session is worth renewing right now: it has a refresh
+    /// token, that token has not lapsed, this process has not already latched
+    /// the session off, a renewer is registered, and the access token is
+    /// inside its renewal lead or already gone. Cheap, pure of IO, and takes
+    /// no lock, so a caller can ask before deciding whether to wait on
+    /// <see cref="RenewAsync"/>.
+    /// </summary>
+    bool IsRenewalDue(SteamSession session);
+
+    /// <summary>
+    /// Spends the refresh token for a fresh access token, single-flight.
+    ///
+    /// <para><paramref name="staleSession"/> is the session the caller was
+    /// holding when it decided a renewal was needed. If somebody else has
+    /// already replaced it, that replacement is handed back and no request is
+    /// sent. That is not politeness: spending a refresh token can invalidate
+    /// the previous one, so a double spend is a self-inflicted sign-out. Same
+    /// contract as <c>IEpicTokenProvider.RefreshAsync</c>, for the same
+    /// reason.</para>
+    ///
+    /// <para>Returns the session that is now current, renewed, unchanged, or
+    /// lapsed, or null when there is none. Never throws for an expected
+    /// failure.</para>
+    /// </summary>
+    Task<SteamSession?> RenewAsync(SteamSession? staleSession, CancellationToken ct = default);
 }

@@ -73,7 +73,18 @@ public static class ServiceCollectionExtensions
             sp.GetRequiredService<ISteamSecretProtector>(),
             sp.GetService<ILogger<SettingsSteamSessionStore>>()));
 
-        services.TryAddSingleton<ISteamSessionProvider, SteamSessionProvider>();
+        // The provider takes the renewer as an optional trailing dependency, so
+        // a host that registers none gets exactly the pre-S6 behaviour: a
+        // session that is read, classified and never renewed. That is also what
+        // every test constructing a provider by hand gets.
+        services.TryAddSingleton<ISteamSessionRenewer, SteamSessionRenewer>();
+
+        services.TryAddSingleton<ISteamSessionProvider>(sp => new SteamSessionProvider(
+            sp.GetRequiredService<ISteamSessionStore>(),
+            sp.GetRequiredService<SteamWebOptions>(),
+            sp.GetRequiredService<TimeProvider>(),
+            sp.GetService<ILogger<SteamSessionProvider>>(),
+            sp.GetService<ISteamSessionRenewer>()));
 
         // The registration S1 was built to receive. From here the selector sees
         // sessions; until S3's sign-in writes one, every lookup finds nothing
@@ -125,6 +136,33 @@ public static class ServiceCollectionExtensions
             {
                 client.BaseAddress = options.BaseAddress;
                 client.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", options.UserAgent);
+            })
+            .RemoveAllLoggers()
+            .AddLogger<RedactingHttpClientLogger>()
+            .AddHttpMessageHandler<SteamWebResilienceHandler>()
+            .AddHttpMessageHandler<SteamWebRateLimitingHandler>();
+
+        // The renewal client. Its own named client, not one of the two typed
+        // ones, for three reasons that are all requirements rather than
+        // preferences: UseCookies=false (no cookie jar on this pipeline, so
+        // steamLoginSecure exists only as a local string inside one call);
+        // AllowAutoRedirect=false (a redirect would be a request to a host
+        // SteamSessionRenewer did not name, carrying a cookie it did not choose
+        // to send); and a different pair of hosts (login. and store.) with form
+        // POSTs rather than bodyless GETs.
+        //
+        // It still gets the same Polly retry and the same shared rate limiter,
+        // so a 429 on the renewal path is backed off by policy rather than by a
+        // Task.Delay at a call site, and Winnow's Steam traffic spends one
+        // budget rather than two.
+        services.AddHttpClient(SteamSessionRenewer.HttpClientName, client =>
+            {
+                client.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", options.UserAgent);
+            })
+            .ConfigurePrimaryHttpMessageHandler(static () => new HttpClientHandler
+            {
+                UseCookies = false,
+                AllowAutoRedirect = false,
             })
             .RemoveAllLoggers()
             .AddLogger<RedactingHttpClientLogger>()

@@ -1,6 +1,5 @@
 using System.Globalization;
 using System.Net;
-using System.Net.Http.Headers;
 using Winnow.Core.Ingest;
 using Winnow.Enrich.SteamWeb.Credentials;
 using Winnow.Enrich.SteamWeb.Http;
@@ -179,60 +178,59 @@ public sealed class SteamWebApiClient : ISteamWebApiClient
         // owned games vanish, with no error and no indication in the response.
         //
         // The credential is appended last, by the one method allowed to put one
-        // into a URI, and the string is used exactly once. It is never logged,
-        // never stored, and never put into an exception message; see
-        // SteamWebRedaction for why even the framework's own request logging is
-        // removed for this client rather than trusted.
-        var uri = credential.AppendTo(
-            GetOwnedGamesPath
-            + "?steamid=" + steamId.Value.ToString(CultureInfo.InvariantCulture)
-            + "&include_appinfo=1"
-            + "&include_played_free_games=1"
-            + "&skip_unvetted_apps=false"
-            + "&format=json");
+        // into a URI. It is never logged, never stored, and never put into an
+        // exception message; see SteamWebRedaction for why even the framework's
+        // own request logging is removed for this client rather than trusted.
+        //
+        // A function of the credential rather than a finished string, because a
+        // 401 can hand back a renewed session token and the credential lives in
+        // the query. SteamAuthorizedRequest owns the one retry that follows.
+        var outcome = await SteamAuthorizedRequest.SendAsync(
+            _http,
+            _credentials,
+            credential,
+            sending => sending.AppendTo(
+                GetOwnedGamesPath
+                + "?steamid=" + steamId.Value.ToString(CultureInfo.InvariantCulture)
+                + "&include_appinfo=1"
+                + "&include_played_free_games=1"
+                + "&skip_unvetted_apps=false"
+                + "&format=json"),
+            ct);
 
-        try
+        if (outcome.Renewed)
         {
-            using var request = new HttpRequestMessage(HttpMethod.Get, uri);
-            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-
-            using var response = await _http.SendAsync(request, ct);
-            if (!response.IsSuccessStatusCode)
-            {
-                // Endpoint constant, not request.RequestUri — that one carries
-                // the key.
-                _log.LogWarning(
-                    response.StatusCode is HttpStatusCode.Forbidden or HttpStatusCode.Unauthorized
-                        ? "Steam {Endpoint} returned {StatusCode}; the configured API key was rejected or is "
-                        + "not entitled to this profile. Steam Web API enrichment is skipped this pass."
-                        : "Steam {Endpoint} returned {StatusCode}; skipping this request.",
-                    GetOwnedGamesPath,
-                    (int)response.StatusCode);
-                return null;
-            }
-
-            return await response.Content.ReadAsStringAsync(ct);
+            _log.LogInformation(
+                "Steam {Endpoint} returned 401; the Steam session was renewed and the request was sent once "
+                + "more. A second refusal is not retried.",
+                GetOwnedGamesPath);
         }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
-        {
-            // The caller asked to stop. That is not an enrichment failure and
-            // must not be swallowed into a silent empty result.
-            throw;
-        }
-        catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException or IOException)
+
+        if (outcome.FailureType is { } failure)
         {
             // Offline, DNS failure, TLS failure, or a timeout the retry policy
             // already exhausted. Enrichment failing is a degraded run, never a
             // crashed one (§5.1).
-            //
-            // Type and message only, never the exception object: a full stack
-            // dump can carry an inner exception that quoted the request URI, and
-            // the request URI carries the key.
             _log.LogWarning(
-                "Steam {Endpoint} request failed ({ExceptionType}); skipping.",
-                GetOwnedGamesPath, ex.GetType().Name);
+                "Steam {Endpoint} request failed ({ExceptionType}); skipping.", GetOwnedGamesPath, failure);
             return null;
         }
+
+        if (outcome.Body is null)
+        {
+            // Endpoint constant, not the request URI — that one carries the
+            // credential.
+            _log.LogWarning(
+                outcome.Status is HttpStatusCode.Forbidden or HttpStatusCode.Unauthorized
+                    ? "Steam {Endpoint} returned {StatusCode}; the credential in force was rejected or is "
+                    + "not entitled to this profile. Steam Web API enrichment is skipped this pass."
+                    : "Steam {Endpoint} returned {StatusCode}; skipping this request.",
+                GetOwnedGamesPath,
+                (int?)outcome.Status ?? 0);
+            return null;
+        }
+
+        return outcome.Body;
     }
 
     private static DateTime Cutoff(TimeSpan ttl, DateTime now)

@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Net;
-using System.Net.Http.Headers;
 using Winnow.Enrich.SteamWeb.Credentials;
+using Winnow.Enrich.SteamWeb.Http;
 using Winnow.Enrich.SteamWeb.Model;
 using Winnow.Enrich.SteamWeb.Storage;
 using Microsoft.Extensions.Logging;
@@ -101,8 +101,11 @@ public sealed class SteamHistoryClient : ISteamHistoryClient
             return SteamLastPlayedTimes.Unanswered(now);
         }
 
-        var uri = credential.AppendTo(LastPlayedTimesPath + "?format=json");
-        var body = await GetBodyAsync(uri, LastPlayedTimesPath, ct);
+        var body = await GetBodyAsync(
+            credential,
+            sending => sending.AppendTo(LastPlayedTimesPath + "?format=json"),
+            LastPlayedTimesPath,
+            ct);
         var games = SteamHistoryJson.TryReadLastPlayedTimes(body);
         if (games is null)
         {
@@ -153,13 +156,15 @@ public sealed class SteamHistoryClient : ISteamHistoryClient
             return SteamYearInReview.Unanswered(steamId, year, now);
         }
 
-        var uri = credential.AppendTo(
-            YearInReviewPath
-            + "?steamid=" + steamId.Value.ToString(CultureInfo.InvariantCulture)
-            + "&year=" + year.ToString(CultureInfo.InvariantCulture)
-            + "&format=json");
-
-        var body = await GetBodyAsync(uri, YearInReviewPath, ct);
+        var body = await GetBodyAsync(
+            credential,
+            sending => sending.AppendTo(
+                YearInReviewPath
+                + "?steamid=" + steamId.Value.ToString(CultureInfo.InvariantCulture)
+                + "&year=" + year.ToString(CultureInfo.InvariantCulture)
+                + "&format=json"),
+            YearInReviewPath,
+            ct);
         var payload = SteamHistoryJson.TryReadYearInReview(body);
         if (payload is not { } parsed)
         {
@@ -233,45 +238,47 @@ public sealed class SteamHistoryClient : ISteamHistoryClient
     /// produce one. The single place where "Steam said no" becomes "no data"
     /// instead of an exception.
     /// </summary>
-    private async Task<string?> GetBodyAsync(string uri, string endpoint, CancellationToken ct)
+    private async Task<string?> GetBodyAsync(
+        SteamCredential credential,
+        Func<SteamCredential, string> buildUri,
+        string endpoint,
+        CancellationToken ct)
     {
-        try
-        {
-            using var request = new HttpRequestMessage(HttpMethod.Get, uri);
-            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        // The URI is built from whichever credential is being sent rather than
+        // once up front, because a 401 can hand back a renewed session token and
+        // the credential travels in the query string. SteamAuthorizedRequest
+        // owns the one retry that follows.
+        var outcome = await SteamAuthorizedRequest.SendAsync(_http, _credentials, credential, buildUri, ct);
 
-            using var response = await _http.SendAsync(request, ct);
-            if (!response.IsSuccessStatusCode)
-            {
-                // The endpoint constant, never request.RequestUri, which
-                // carries the key.
-                _log.LogWarning(
-                    response.StatusCode is HttpStatusCode.Forbidden or HttpStatusCode.Unauthorized
-                        ? "Steam {Endpoint} returned {StatusCode}; the configured API key was rejected or is "
-                        + "not entitled to this data. The backfill retries on a later run."
-                        : "Steam {Endpoint} returned {StatusCode}; skipping this request.",
-                    endpoint,
-                    (int)response.StatusCode);
-                return null;
-            }
+        if (outcome.Renewed)
+        {
+            _log.LogInformation(
+                "Steam {Endpoint} returned 401; the Steam session was renewed and the request was sent once "
+                + "more. A second refusal is not retried.",
+                endpoint);
+        }
 
-            return await response.Content.ReadAsStringAsync(ct);
-        }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        if (outcome.FailureType is { } failure)
         {
-            // The caller asked to stop. Not an enrichment failure, and it must
-            // not be swallowed into a silent empty result.
-            throw;
-        }
-        catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException or IOException)
-        {
-            // Type and message only, never the exception object: a full stack
-            // dump can carry an inner exception that quoted the request URI, and
-            // the request URI carries the key.
             _log.LogWarning(
-                "Steam {Endpoint} request failed ({ExceptionType}); skipping.", endpoint, ex.GetType().Name);
+                "Steam {Endpoint} request failed ({ExceptionType}); skipping.", endpoint, failure);
             return null;
         }
+
+        if (outcome.Body is null)
+        {
+            // The endpoint constant, never the request URI, which carries the
+            // credential.
+            _log.LogWarning(
+                outcome.Status is HttpStatusCode.Forbidden or HttpStatusCode.Unauthorized
+                    ? "Steam {Endpoint} returned {StatusCode}; the credential in force was rejected or is "
+                    + "not entitled to this data. The backfill retries on a later run."
+                    : "Steam {Endpoint} returned {StatusCode}; skipping this request.",
+                endpoint,
+                (int?)outcome.Status ?? 0);
+        }
+
+        return outcome.Body;
     }
 
     private static DateTime Cutoff(TimeSpan ttl, DateTime now)

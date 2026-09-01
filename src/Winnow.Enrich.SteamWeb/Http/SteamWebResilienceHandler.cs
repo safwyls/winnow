@@ -63,14 +63,29 @@ public sealed class SteamWebResilienceHandler : DelegatingHandler
 
     protected override async Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request, CancellationToken cancellationToken)
-        => await _pipeline.ExecuteAsync(
-            // Every request this module sends is a bodyless GET, so the message
-            // is replayable as-is and needs none of the buffer-and-clone dance
-            // the IGDB pipeline does for its text/plain Apicalypse bodies.
-            async (state, token) => await base.SendAsync(state, token),
-            request,
-            cancellationToken);
+    {
+        // S6 put form POSTs on this pipeline (the session renewal exchange),
+        // and a spent content stream cannot be replayed, so the buffer-and-clone
+        // the IGDB pipeline already does is done here too. A GET buffers to null
+        // and clones to an equivalent message, so the two typed API clients see
+        // no change.
+        var body = await SteamRequestReplay.BufferAsync(request, cancellationToken);
 
+        return await _pipeline.ExecuteAsync(
+            async (state, token) =>
+            {
+                var attempt = SteamRequestReplay.Clone(state.Request, state.Body);
+                return await base.SendAsync(attempt, token);
+            },
+            (Request: request, Body: body),
+            cancellationToken);
+    }
+
+    // 401 is deliberately absent. S6 depends on that: an unauthorized answer is
+    // Steam's verdict on the credential rather than a blip, so it must reach the
+    // call site, which renews the session once and re-sends. Retrying it here
+    // would spend the request budget re-asking the same question with the same
+    // dead token.
     private static bool IsTransient(HttpStatusCode status)
         => status is HttpStatusCode.TooManyRequests
             or HttpStatusCode.RequestTimeout

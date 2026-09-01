@@ -30,6 +30,7 @@ public sealed class SteamSessionProvider : ISteamSessionProvider
     private readonly ISteamSessionStore _store;
     private readonly SteamWebOptions _options;
     private readonly TimeProvider _clock;
+    private readonly ISteamSessionRenewer? _renewer;
     private readonly ILogger<SteamSessionProvider> _log;
     private readonly SemaphoreSlim _gate = new(1, 1);
 
@@ -37,19 +38,28 @@ public sealed class SteamSessionProvider : ISteamSessionProvider
     private bool _loadedFromStore;
 
     /// <summary>Latched the first time a hard lapse is observed, so it is diagnosed and logged once rather than per call. S6 also reads it to skip futile renewals.</summary>
-    private bool _sessionLapsed;
+    private volatile bool _sessionLapsed;
 
     public SteamSessionProvider(
         ISteamSessionStore store,
         SteamWebOptions options,
         TimeProvider clock,
-        ILogger<SteamSessionProvider>? log = null)
+        ILogger<SteamSessionProvider>? log = null,
+        ISteamSessionRenewer? renewer = null)
     {
         _store = store;
         _options = options;
         _clock = clock;
         _log = log ?? NullLogger<SteamSessionProvider>.Instance;
+        _renewer = renewer;
     }
+
+    /// <summary>
+    /// How many renewal exchanges this provider actually started. Test hook;
+    /// what single-flight is proved against: two concurrent callers must move
+    /// this by one, not two.
+    /// </summary>
+    public int RenewalsStarted { get; private set; }
 
     public async ValueTask<SteamSession?> GetAsync(CancellationToken ct = default)
     {
@@ -134,6 +144,210 @@ public sealed class SteamSessionProvider : ISteamSessionProvider
             _gate.Release();
         }
     }
+
+    public bool IsRenewalDue(SteamSession session)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+
+        if (_renewer is null || _sessionLapsed || !session.HasRefreshToken)
+        {
+            return false;
+        }
+
+        var now = _clock.GetUtcNow();
+
+        // The same arithmetic Classify uses for RenewalDue, so the state the
+        // Stores screen shows and the work this provider does cannot disagree.
+        return session.IsRefreshUsable(now, _options.SessionExpirySkew)
+            && !session.IsAccessUsable(now, _options.SessionExpirySkew + _options.SessionRenewalLeadTime);
+    }
+
+    public async Task<SteamSession?> RenewAsync(SteamSession? staleSession, CancellationToken ct = default)
+    {
+        await _gate.WaitAsync(ct);
+        try
+        {
+            if (!_loadedFromStore)
+            {
+                _loadedFromStore = true;
+                _cached = await _store.LoadAsync(ct);
+            }
+
+            if (_cached is not { } current)
+            {
+                return null;
+            }
+
+            // Somebody else already replaced the session this caller was holding.
+            // Hand theirs back rather than spending the refresh token again:
+            // spending one can invalidate the previous one, so a double spend is
+            // a self-inflicted sign-out. EpicTokenProvider.RefreshAsync does the
+            // same, for the same reason.
+            if (staleSession is not null
+                && !string.Equals(current.AccessToken, staleSession.AccessToken, StringComparison.Ordinal))
+            {
+                return current;
+            }
+
+            if (_sessionLapsed)
+            {
+                // Latched: Steam has already refused this credential once in this
+                // process. One rejection per pass, then we stop asking.
+                return current;
+            }
+
+            if (_renewer is null || !current.HasRefreshToken)
+            {
+                return current;
+            }
+
+            var now = _clock.GetUtcNow();
+            if (!current.IsRefreshUsable(now, _options.SessionExpirySkew))
+            {
+                // Steam told us when this would lapse and it has. Predictable, so
+                // it is recorded as its own kind rather than as a rejection.
+                return await LapseLockedAsync(current, SteamSessionRenewalFailure.Expired, "it expired", ct);
+            }
+
+            RenewalsStarted++;
+            var outcome = await _renewer.RenewAsync(current, ct);
+
+            return outcome.Status switch
+            {
+                SteamRenewalStatus.Renewed => await AdoptLockedAsync(current, outcome, now, ct),
+                SteamRenewalStatus.Rejected => await LapseLockedAsync(
+                    current, SteamSessionRenewalFailure.Rejected, outcome.Reason, ct),
+                SteamRenewalStatus.NotRenewable => current,
+                _ => await RecordTransientLockedAsync(current, outcome.Reason, ct),
+            };
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    /// <summary>
+    /// Adopts a renewed access token. Caller must hold <see cref="_gate"/>.
+    ///
+    /// <para>Three refusals before the token is believed, each of which would
+    /// otherwise become a loop or a wrong answer: it must decode and state an
+    /// expiry, or there is nothing to store; its subject must be the account
+    /// this session belongs to, so a renewal cannot quietly re-point the
+    /// library at somebody else; and its audience must set-equal the one
+    /// already stored. The audience check is why audience is stored at all: a
+    /// token minted for an audience the API will not accept produces a 401,
+    /// which triggers a renewal, which mints the same wrong audience again.
+    /// Lapsing costs a sign-in; looping costs the refresh token and the
+    /// request budget.</para>
+    ///
+    /// <para>The issuer is deliberately NOT compared: the live evidence
+    /// (spike §7.2) records it varying per mint, so matching on it would
+    /// reject every renewal.</para>
+    ///
+    /// <para>The write is one blob through one <see cref="ISteamSessionStore.SaveAsync"/>,
+    /// so a rotated refresh token and the access token it came with land
+    /// together or not at all.</para>
+    /// </summary>
+    private async Task<SteamSession> AdoptLockedAsync(
+        SteamSession current, SteamRenewalOutcome outcome, DateTimeOffset now, CancellationToken ct)
+    {
+        var claims = SteamTokenClaims.Read(outcome.AccessToken);
+
+        if (!claims.Readable || claims.ExpiresAt is not { } expiresAt)
+        {
+            return await RecordTransientLockedAsync(current, "the renewed token did not decode", ct);
+        }
+
+        if (claims.SteamId is { } account && account != current.SteamId)
+        {
+            return await LapseLockedAsync(
+                current, SteamSessionRenewalFailure.Rejected, "it named a different account", ct);
+        }
+
+        if (!AudienceUnchanged(current.Audience, claims.Audiences))
+        {
+            return await LapseLockedAsync(
+                current, SteamSessionRenewalFailure.Rejected, "its audience changed", ct);
+        }
+
+        var renewed = current.WithRenewedAccess(outcome.AccessToken!, expiresAt, now, outcome.RefreshToken);
+
+        _cached = renewed;
+        await _store.SaveAsync(renewed, ct);
+
+        // Neither token, and not the account: the facts worth having are that a
+        // renewal worked, when the replacement dies, and whether the long-lived
+        // secret on disk is now a different one.
+        _log.LogInformation(
+            "Renewed the Steam session; access token expires {ExpiresAt:O}. Refresh token {Rotation}.",
+            renewed.ExpiresAt,
+            outcome.RefreshToken is null ? "unchanged" : "replaced by Steam and stored");
+
+        return renewed;
+    }
+
+    /// <summary>
+    /// The hard lapse. Caller must hold <see cref="_gate"/>. The refresh token
+    /// is discarded and the session is latched off for this process, so
+    /// nothing tries again until the user signs in. The record itself is kept
+    /// so the screen can say the sign-in ended rather than that it never
+    /// happened; see <see cref="SteamSession.WithLapsedRefresh"/>.
+    /// </summary>
+    private async Task<SteamSession> LapseLockedAsync(
+        SteamSession current, SteamSessionRenewalFailure kind, string reason, CancellationToken ct)
+    {
+        _sessionLapsed = true;
+
+        var lapsed = current.WithLapsedRefresh(kind);
+        _cached = lapsed;
+        await _store.SaveAsync(lapsed, ct);
+
+        _log.LogWarning(
+            "Steam would not renew the stored session ({Reason}). The refresh token has been discarded and "
+            + "the session cannot be renewed again; the user has to sign in to Steam again. Any access token "
+            + "still in hand keeps working until {ExpiresAt:O}, and a configured Web API key and the local "
+            + "Steam readers are unaffected.",
+            reason,
+            lapsed.ExpiresAt);
+
+        return lapsed;
+    }
+
+    /// <summary>
+    /// A transient failure. Caller must hold <see cref="_gate"/>. Nothing is
+    /// cleared and nothing is latched, so the next pass tries again, but the
+    /// count is recorded and persisted, which is what moves the health to
+    /// <see cref="SteamSessionHealth.RenewalFailing"/> while the access token
+    /// is still alive. That is condition 8: the warning has to arrive before
+    /// the credential dies, not with it.
+    /// </summary>
+    private async Task<SteamSession> RecordTransientLockedAsync(
+        SteamSession current, string reason, CancellationToken ct)
+    {
+        var failed = current.WithRenewalFailure(SteamSessionRenewalFailure.Transient);
+        _cached = failed;
+        await _store.SaveAsync(failed, ct);
+
+        _log.LogWarning(
+            "Could not renew the Steam session ({Reason}); this is attempt {Failures} since the last success. "
+            + "The session is kept and the next pass tries again. It expires {ExpiresAt:O}.",
+            reason,
+            failed.RenewalFailures,
+            failed.ExpiresAt);
+
+        return failed;
+    }
+
+    /// <summary>
+    /// Set comparison, order-insensitive and ordinal. An empty stored audience
+    /// compares equal to anything: a session recorded before the claim could
+    /// be read must not be lapsed for a fact nobody has.
+    /// </summary>
+    private static bool AudienceUnchanged(IReadOnlyList<string> stored, IReadOnlyList<string> minted)
+        => stored.Count == 0
+            || (minted.Count > 0 && stored.ToHashSet(StringComparer.Ordinal)
+                .SetEquals(minted));
 
     /// <summary>
     /// Maps a session onto the one value the UI switches on. Pure and total, so

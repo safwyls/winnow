@@ -203,21 +203,36 @@ public sealed record SteamSession
     public bool IsRefreshUsable(DateTimeOffset now, TimeSpan skew)
         => HasRefreshToken && (RefreshExpiresAt is not { } expiry || now + skew < expiry);
 
-    /// <summary>Copies this session with the renewal bookkeeping reset, for S6's success path.</summary>
+    /// <summary>
+    /// Copies this session with the renewal bookkeeping reset, for S6's success
+    /// path.
+    ///
+    /// <para>A null <paramref name="refreshToken"/> means "Steam did not replace
+    /// it", never "there is none now": spending a refresh token can invalidate
+    /// the previous one, and dropping a value Steam did not rotate would be a
+    /// self-inflicted sign-out. When it <i>is</i> replaced, the new token's own
+    /// expiry is read from it rather than carried over, because the old date
+    /// belongs to a token that no longer exists.</para>
+    /// </summary>
     public SteamSession WithRenewedAccess(
         string accessToken, DateTimeOffset expiresAt, DateTimeOffset renewedAt, string? refreshToken = null)
-        => new(
+    {
+        var rotated = string.IsNullOrWhiteSpace(refreshToken) ? null : refreshToken.Trim();
+        var refresh = rotated ?? RefreshToken;
+
+        return new SteamSession(
             accessToken,
             expiresAt,
             Audience,
             Issuer,
             SteamId,
-            refreshToken ?? RefreshToken,
-            RefreshExpiresAt,
+            refresh,
+            rotated is null ? RefreshExpiresAt : ReadRefreshExpiry(rotated),
             MintedAt,
             renewedAt,
             renewalFailures: 0,
             lastFailureKind: SteamSessionRenewalFailure.None);
+    }
 
     /// <summary>Copies this session with one more consecutive failure recorded, for S6's failure path.</summary>
     public SteamSession WithRenewalFailure(SteamSessionRenewalFailure kind)
@@ -229,6 +244,38 @@ public sealed record SteamSession
             SteamId,
             RefreshToken,
             RefreshExpiresAt,
+            MintedAt,
+            LastRenewedAt,
+            RenewalFailures + 1,
+            kind);
+
+    /// <summary>
+    /// Copies this session with the refresh token discarded, for S6's
+    /// hard-lapse path. Steam has refused this token, so it is dropped rather
+    /// than kept: an unspendable long-lived bearer credential at rest is
+    /// exactly what the second amendment's condition 2 is a ceiling against,
+    /// and keeping it would buy one doomed request per pass forever.
+    ///
+    /// <para>What is NOT discarded is the session record itself. Dropping the
+    /// whole record would take the Stores screen from "your sign-in ended,
+    /// sign in again" to "you never connected", and condition 8 makes that
+    /// distinction load-bearing. The result is an ordinary token-only session
+    /// carrying a recorded failure, which
+    /// <see cref="SteamSessionProvider.Classify"/> reads as
+    /// <see cref="SteamSessionHealth.RenewalFailing"/> while the access token
+    /// is still alive and <see cref="SteamSessionHealth.Expired"/> afterwards,
+    /// so the warning lands before the credential dies. The stored key set is
+    /// unchanged: <c>refresh_token</c> is nullable and always emitted.</para>
+    /// </summary>
+    public SteamSession WithLapsedRefresh(SteamSessionRenewalFailure kind)
+        => new(
+            AccessToken,
+            ExpiresAt,
+            Audience,
+            Issuer,
+            SteamId,
+            refreshToken: null,
+            refreshExpiresAt: null,
             MintedAt,
             LastRenewedAt,
             RenewalFailures + 1,
@@ -279,11 +326,16 @@ public sealed record SteamSession
     /// <summary>
     /// The refresh token's own expiry, or null.
     ///
-    /// <para>Steam's cookie values for this family are <c>steamid64||jwt</c>, so
-    /// the JWT is taken from after the separator when one is present and from the
-    /// whole value when it is not. Anything that does not decode gives null,
-    /// which <see cref="IsRefreshUsable"/> treats as usable. A missing claim here
-    /// must not become an assumption.</para>
+    /// <para>Corrected by the live capture of 2026-08-31
+    /// (docs/spikes/steam-web-session-auth.md §7.2). The captured
+    /// <c>steamRefresh_steam</c> value is a bare JWT: three dot-separated
+    /// segments, no <c>steamid64||</c> prefix. The fallback branch below is
+    /// therefore the live path and the separator branch is unexercised defence
+    /// against a shape Steam uses elsewhere in this cookie family. Nothing
+    /// may be built on the separator being present. Anything that does not
+    /// decode gives null, which <see cref="IsRefreshUsable"/> treats as
+    /// usable, because Steam is the authority on whether a refresh token is
+    /// good and a missing claim must not become an assumption.</para>
     /// </summary>
     private static DateTimeOffset? ReadRefreshExpiry(string refreshToken)
     {
