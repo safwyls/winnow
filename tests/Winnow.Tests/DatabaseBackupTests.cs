@@ -289,6 +289,12 @@ public sealed class DatabaseBackupTests
         // one, so undoing it means putting the old shape back, not just dropping
         // what it created: it replaced merge_candidates with a canonical version
         // carrying CHECK (left_release_id < right_release_id).
+        // 0017 adds the undo journal and rebuilds merge_candidates a second
+        // time, to admit the fourth status. Both rebuilds land on the same
+        // pre-0016 shape recreated below, so undoing 0017 is dropping what it
+        // created; merge_undo_rows goes first because it foreign-keys
+        // merge_applications.
+        connection.Execute("DROP TABLE IF EXISTS merge_undo_rows;");
         connection.Execute("DROP TABLE IF EXISTS merge_applications;");
         connection.Execute("DROP TABLE IF EXISTS merge_candidates;");
         connection.Execute("""
@@ -311,7 +317,8 @@ public sealed class DatabaseBackupTests
                OR ScriptName LIKE '%0013%'
                OR ScriptName LIKE '%0014%'
                OR ScriptName LIKE '%0015%'
-               OR ScriptName LIKE '%0016%';
+               OR ScriptName LIKE '%0016%'
+               OR ScriptName LIKE '%0017%';
             """);
     }
 

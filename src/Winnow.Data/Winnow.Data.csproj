@@ -17,6 +17,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- MergeUndoTests compares the journal's table list against the
+         merge executor's cascade tripwire, and both are internal. -->
+    <InternalsVisibleTo Include="Winnow.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Winnow.Core\Winnow.Core.csproj" />
   </ItemGroup>
 

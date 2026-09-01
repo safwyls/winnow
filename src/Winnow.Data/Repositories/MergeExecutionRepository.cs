@@ -291,22 +291,32 @@ public sealed class MergeExecutionRepository : IMergeExecutionRepository
 
     // ── Application ──────────────────────────────────────────────────────────
 
+    // The merge_applications row is written first, with a placeholder summary,
+    // because merge_undo_rows has a hard foreign key to it and every capture
+    // below needs an application id to hang on. summary_json is rewritten with
+    // the real counts at the end. The whole merge is one transaction, so nothing
+    // is ever visible half-written.
     private async Task<MergeOutcome> ApplyPlanAsync(DbLease lease, MergePlan plan, CancellationToken ct)
     {
+        var applicationId = await RecordAsync(lease, plan, ct);
+        var journal = new MergeUndoJournalWriter(lease, applicationId);
+
         var counts = new MergeRepointCounts();
 
         if (plan.AbsorbedWorkId is { } absorbedWorkId)
         {
-            counts = await UnifyWorksAsync(lease, plan.SurvivingWorkId!.Value, absorbedWorkId, counts, ct);
+            counts = await UnifyWorksAsync(
+                lease, journal, plan.SurvivingWorkId!.Value, absorbedWorkId, counts, ct);
         }
 
         if (plan.Mode == MergeMode.ReleaseCollapse)
         {
             counts = await CollapseReleasesAsync(
-                lease, plan.SurvivingReleaseId!.Value, plan.AbsorbedReleaseId!.Value, counts, ct);
+                lease, journal, plan.SurvivingReleaseId!.Value, plan.AbsorbedReleaseId!.Value, counts, ct);
         }
 
-        var applicationId = await RecordAsync(lease, plan, counts, ct);
+        await SummariseAsync(lease, applicationId, counts, ct);
+
         return new MergeOutcome
         {
             Plan = plan,
@@ -317,9 +327,21 @@ public sealed class MergeExecutionRepository : IMergeExecutionRepository
     }
 
     private static async Task<MergeRepointCounts> UnifyWorksAsync(
-        DbLease lease, long survivingWorkId, long absorbedWorkId, MergeRepointCounts counts, CancellationToken ct)
+        DbLease lease,
+        MergeUndoJournalWriter journal,
+        long survivingWorkId,
+        long absorbedWorkId,
+        MergeRepointCounts counts,
+        CancellationToken ct)
     {
         var ids = new { survivingWorkId, absorbedWorkId };
+
+        // Capture the surviving row's prior values for the eight COALESCE-filled
+        // columns and the name/name_is_provisional promotion. One of the two
+        // operations the 0016 audit recorded nothing about at all.
+        await journal.CaptureAsync(
+            MergeUndoJournal.CaptureUpdate(MergeUndoJournal.Works, "a.\"id\" = @survivingWorkId"),
+            ids, ct);
 
         // Fill-only, never overwrite: the same semantics enrichment settled on
         // (F03). The absorbed work's own igdb_id, if it holds a different one,
@@ -352,19 +374,38 @@ public sealed class MergeExecutionRepository : IMergeExecutionRepository
         // Every release of the absorbed work moves, not just the paired one:
         // work membership is already an equivalence assertion, so merging two
         // works is the union of two equivalence classes.
+        await journal.CaptureAsync(
+            MergeUndoJournal.CaptureRepoint(
+                MergeUndoJournal.Releases, "@survivingWorkId", "@absorbedWorkId"),
+            ids, ct);
+
         var releases = await lease.Connection.ExecuteAsync(new CommandDefinition(
             "UPDATE releases SET work_id = @survivingWorkId WHERE work_id = @absorbedWorkId;",
             ids, lease.Transaction, cancellationToken: ct));
 
+        await journal.CaptureAsync(
+            MergeUndoJournal.CaptureRepoint(
+                MergeUndoJournal.WorkFacets, "@survivingWorkId", "@absorbedWorkId"),
+            ids, ct);
+
         var workFacets = await lease.Connection.ExecuteAsync(new CommandDefinition("""
             UPDATE OR IGNORE work_facets SET work_id = @survivingWorkId WHERE work_id = @absorbedWorkId;
             """, ids, lease.Transaction, cancellationToken: ct));
+
+        await journal.CaptureAsync(
+            MergeUndoJournal.CaptureDelete(
+                MergeUndoJournal.WorkFacets, "a.\"work_id\" = @absorbedWorkId"),
+            ids, ct);
 
         var facetDuplicates = await lease.Connection.ExecuteAsync(new CommandDefinition(
             "DELETE FROM work_facets WHERE work_id = @absorbedWorkId;",
             ids, lease.Transaction, cancellationToken: ct));
 
         await AssertDrainedAsync(lease, "works", absorbedWorkId, WorkDependents, ct);
+
+        await journal.CaptureAsync(
+            MergeUndoJournal.CaptureDelete(MergeUndoJournal.Works, "a.\"id\" = @absorbedWorkId"),
+            ids, ct);
 
         await lease.Connection.ExecuteAsync(new CommandDefinition(
             "DELETE FROM works WHERE id = @absorbedWorkId;",
@@ -379,33 +420,65 @@ public sealed class MergeExecutionRepository : IMergeExecutionRepository
     }
 
     private static async Task<MergeRepointCounts> CollapseReleasesAsync(
-        DbLease lease, long survivingReleaseId, long absorbedReleaseId, MergeRepointCounts counts, CancellationToken ct)
+        DbLease lease,
+        MergeUndoJournalWriter journal,
+        long survivingReleaseId,
+        long absorbedReleaseId,
+        MergeRepointCounts counts,
+        CancellationToken ct)
     {
         var ids = new { survivingReleaseId, absorbedReleaseId };
 
         // external_ids is keyed (provider, provider_id); release_id is not in
         // the key, so repointing can never collide. Both sides' store anchors
         // survive on the one release - that is AC #1.
+        await journal.CaptureAsync(
+            MergeUndoJournal.CaptureRepoint(
+                MergeUndoJournal.ExternalIds, "@survivingReleaseId", "@absorbedReleaseId"),
+            ids, ct);
+
         var externalIds = await lease.Connection.ExecuteAsync(new CommandDefinition(
             "UPDATE external_ids SET release_id = @survivingReleaseId WHERE release_id = @absorbedReleaseId;",
             ids, lease.Transaction, cancellationToken: ct));
 
         counts = counts with { ExternalIds = counts.ExternalIds + externalIds };
-        counts = await FoldOwnershipsAsync(lease, survivingReleaseId, absorbedReleaseId, counts, ct);
+        counts = await FoldOwnershipsAsync(
+            lease, journal, survivingReleaseId, absorbedReleaseId, counts, ct);
 
         // Residue here is equivalent by construction: UpdateEventConflictAsync
         // already refused the collapse if any colliding pair disagreed on
         // build_id, title, url or raw_json.
+        await journal.CaptureAsync(
+            MergeUndoJournal.CaptureRepoint(
+                MergeUndoJournal.UpdateEvents, "@survivingReleaseId", "@absorbedReleaseId"),
+            ids, ct);
+
         var updateEvents = await lease.Connection.ExecuteAsync(new CommandDefinition(
             "UPDATE OR IGNORE update_events SET release_id = @survivingReleaseId WHERE release_id = @absorbedReleaseId;",
             ids, lease.Transaction, cancellationToken: ct));
+
+        await journal.CaptureAsync(
+            MergeUndoJournal.CaptureDelete(
+                MergeUndoJournal.UpdateEvents, "a.\"release_id\" = @absorbedReleaseId"),
+            ids, ct);
+
         var updateEventDuplicates = await lease.Connection.ExecuteAsync(new CommandDefinition(
             "DELETE FROM update_events WHERE release_id = @absorbedReleaseId;",
             ids, lease.Transaction, cancellationToken: ct));
 
+        await journal.CaptureAsync(
+            MergeUndoJournal.CaptureRepoint(
+                MergeUndoJournal.UpdateAcknowledgements, "@survivingReleaseId", "@absorbedReleaseId"),
+            ids, ct);
+
         var acknowledgements = await lease.Connection.ExecuteAsync(new CommandDefinition(
             "UPDATE update_acknowledgements SET release_id = @survivingReleaseId WHERE release_id = @absorbedReleaseId;",
             ids, lease.Transaction, cancellationToken: ct));
+
+        await journal.CaptureAsync(
+            MergeUndoJournal.CaptureRepoint(
+                MergeUndoJournal.FeedVerdicts, "@survivingReleaseId", "@absorbedReleaseId"),
+            ids, ct);
 
         var verdicts = await lease.Connection.ExecuteAsync(new CommandDefinition(
             "UPDATE feed_verdicts SET release_id = @survivingReleaseId WHERE release_id = @absorbedReleaseId;",
@@ -415,23 +488,62 @@ public sealed class MergeExecutionRepository : IMergeExecutionRepository
         // collision means the surviving release is already in that list, carries
         // that facet, or was already logged as surfaced that day, so the
         // absorbed row states nothing the survivor does not.
+        //
+        // Three of these four drop rows that carry payload the survivor does not
+        // have: list_items.position, release_facets.rank,
+        // feed_surfacings.shelf_id. The dropped row is redundant as a membership
+        // statement and not redundant as a row, which is why the journal captures
+        // every column of it rather than a count.
+        await journal.CaptureAsync(
+            MergeUndoJournal.CaptureRepoint(
+                MergeUndoJournal.ListItems, "@survivingReleaseId", "@absorbedReleaseId"),
+            ids, ct);
+
         var listItems = await lease.Connection.ExecuteAsync(new CommandDefinition(
             "UPDATE OR IGNORE list_items SET release_id = @survivingReleaseId WHERE release_id = @absorbedReleaseId;",
             ids, lease.Transaction, cancellationToken: ct));
+
+        await journal.CaptureAsync(
+            MergeUndoJournal.CaptureDelete(
+                MergeUndoJournal.ListItems, "a.\"release_id\" = @absorbedReleaseId"),
+            ids, ct);
+
         var listItemDuplicates = await lease.Connection.ExecuteAsync(new CommandDefinition(
             "DELETE FROM list_items WHERE release_id = @absorbedReleaseId;",
             ids, lease.Transaction, cancellationToken: ct));
 
+        await journal.CaptureAsync(
+            MergeUndoJournal.CaptureRepoint(
+                MergeUndoJournal.ReleaseFacets, "@survivingReleaseId", "@absorbedReleaseId"),
+            ids, ct);
+
         var releaseFacets = await lease.Connection.ExecuteAsync(new CommandDefinition(
             "UPDATE OR IGNORE release_facets SET release_id = @survivingReleaseId WHERE release_id = @absorbedReleaseId;",
             ids, lease.Transaction, cancellationToken: ct));
+
+        await journal.CaptureAsync(
+            MergeUndoJournal.CaptureDelete(
+                MergeUndoJournal.ReleaseFacets, "a.\"release_id\" = @absorbedReleaseId"),
+            ids, ct);
+
         var releaseFacetDuplicates = await lease.Connection.ExecuteAsync(new CommandDefinition(
             "DELETE FROM release_facets WHERE release_id = @absorbedReleaseId;",
             ids, lease.Transaction, cancellationToken: ct));
 
+        await journal.CaptureAsync(
+            MergeUndoJournal.CaptureRepoint(
+                MergeUndoJournal.FeedSurfacings, "@survivingReleaseId", "@absorbedReleaseId"),
+            ids, ct);
+
         var surfacings = await lease.Connection.ExecuteAsync(new CommandDefinition(
             "UPDATE OR IGNORE feed_surfacings SET release_id = @survivingReleaseId WHERE release_id = @absorbedReleaseId;",
             ids, lease.Transaction, cancellationToken: ct));
+
+        await journal.CaptureAsync(
+            MergeUndoJournal.CaptureDelete(
+                MergeUndoJournal.FeedSurfacings, "a.\"release_id\" = @absorbedReleaseId"),
+            ids, ct);
+
         var surfacingDuplicates = await lease.Connection.ExecuteAsync(new CommandDefinition(
             "DELETE FROM feed_surfacings WHERE release_id = @absorbedReleaseId;",
             ids, lease.Transaction, cancellationToken: ct));
@@ -453,9 +565,14 @@ public sealed class MergeExecutionRepository : IMergeExecutionRepository
                 + "the surviving-release rule should have made it the survivor. Merge aborted.");
         }
 
-        counts = await RepointMergeCandidatesAsync(lease, survivingReleaseId, absorbedReleaseId, counts, ct);
+        counts = await RepointMergeCandidatesAsync(
+            lease, journal, survivingReleaseId, absorbedReleaseId, counts, ct);
 
         await AssertDrainedAsync(lease, "releases", absorbedReleaseId, ReleaseDependents, ct);
+
+        await journal.CaptureAsync(
+            MergeUndoJournal.CaptureDelete(MergeUndoJournal.Releases, "a.\"id\" = @absorbedReleaseId"),
+            ids, ct);
 
         await lease.Connection.ExecuteAsync(new CommandDefinition(
             "DELETE FROM releases WHERE id = @absorbedReleaseId;",
@@ -476,7 +593,12 @@ public sealed class MergeExecutionRepository : IMergeExecutionRepository
     }
 
     private static async Task<MergeRepointCounts> FoldOwnershipsAsync(
-        DbLease lease, long survivingReleaseId, long absorbedReleaseId, MergeRepointCounts counts, CancellationToken ct)
+        DbLease lease,
+        MergeUndoJournalWriter journal,
+        long survivingReleaseId,
+        long absorbedReleaseId,
+        MergeRepointCounts counts,
+        CancellationToken ct)
     {
         var ids = new { survivingReleaseId, absorbedReleaseId };
 
@@ -497,8 +619,15 @@ public sealed class MergeExecutionRepository : IMergeExecutionRepository
 
         foreach (var fold in collisions)
         {
-            counts = await FoldOwnershipAsync(lease, fold, counts, ct);
+            counts = await FoldOwnershipAsync(lease, journal, fold, counts, ct);
         }
+
+        // Captured after the folds, so it names exactly the ownerships the
+        // statement below moves: the folded ones are already gone.
+        await journal.CaptureAsync(
+            MergeUndoJournal.CaptureRepoint(
+                MergeUndoJournal.Ownerships, "@survivingReleaseId", "@absorbedReleaseId"),
+            ids, ct);
 
         var ownerships = await lease.Connection.ExecuteAsync(new CommandDefinition(
             "UPDATE ownerships SET release_id = @survivingReleaseId WHERE release_id = @absorbedReleaseId;",
@@ -512,29 +641,58 @@ public sealed class MergeExecutionRepository : IMergeExecutionRepository
     }
 
     private static async Task<MergeRepointCounts> FoldOwnershipAsync(
-        DbLease lease, OwnershipFold fold, MergeRepointCounts counts, CancellationToken ct)
+        DbLease lease,
+        MergeUndoJournalWriter journal,
+        OwnershipFold fold,
+        MergeRepointCounts counts,
+        CancellationToken ct)
     {
         // ux_play_records_observation and ux_playtime_snapshots_observation cover
         // every column of their tables except the id, so a row that survives the
         // repoint and then collides is a byte-identical observation already
         // present on the survivor. Dropping it is the same deduplication
         // migration 0013 established, not a lost fact.
+        await journal.CaptureAsync(
+            MergeUndoJournal.CaptureRepoint(MergeUndoJournal.PlayRecords, "@SurvivingId", "@AbsorbedId"),
+            fold, ct);
+
         var playRecords = await lease.Connection.ExecuteAsync(new CommandDefinition(
             "UPDATE OR IGNORE play_records SET ownership_id = @SurvivingId WHERE ownership_id = @AbsorbedId;",
             fold, lease.Transaction, cancellationToken: ct));
+
+        await journal.CaptureAsync(
+            MergeUndoJournal.CaptureDelete(
+                MergeUndoJournal.PlayRecords, "a.\"ownership_id\" = @AbsorbedId"),
+            fold, ct);
+
         var playRecordDuplicates = await lease.Connection.ExecuteAsync(new CommandDefinition(
             "DELETE FROM play_records WHERE ownership_id = @AbsorbedId;",
             fold, lease.Transaction, cancellationToken: ct));
 
+        await journal.CaptureAsync(
+            MergeUndoJournal.CaptureRepoint(
+                MergeUndoJournal.PlaytimeSnapshots, "@SurvivingId", "@AbsorbedId"),
+            fold, ct);
+
         var snapshots = await lease.Connection.ExecuteAsync(new CommandDefinition(
             "UPDATE OR IGNORE playtime_snapshots SET ownership_id = @SurvivingId WHERE ownership_id = @AbsorbedId;",
             fold, lease.Transaction, cancellationToken: ct));
+
+        await journal.CaptureAsync(
+            MergeUndoJournal.CaptureDelete(
+                MergeUndoJournal.PlaytimeSnapshots, "a.\"ownership_id\" = @AbsorbedId"),
+            fold, ct);
+
         var snapshotDuplicates = await lease.Connection.ExecuteAsync(new CommandDefinition(
             "DELETE FROM playtime_snapshots WHERE ownership_id = @AbsorbedId;",
             fold, lease.Transaction, cancellationToken: ct));
 
         // Sessions have no uniqueness constraint, so every one moves, and
         // session_notes ride along on session_id without being touched.
+        await journal.CaptureAsync(
+            MergeUndoJournal.CaptureRepoint(MergeUndoJournal.Sessions, "@SurvivingId", "@AbsorbedId"),
+            fold, ct);
+
         var sessions = await lease.Connection.ExecuteAsync(new CommandDefinition(
             "UPDATE sessions SET ownership_id = @SurvivingId WHERE ownership_id = @AbsorbedId;",
             fold, lease.Transaction, cancellationToken: ct));
@@ -544,6 +702,20 @@ public sealed class MergeExecutionRepository : IMergeExecutionRepository
         // taken whole from whichever row was seen more recently. Recombining them
         // field by field would manufacture an observation no source reported -
         // F10's lesson.
+        //
+        // The second of the two operations the 0016 audit recorded nothing about.
+        // The capture's WHERE is the UPDATE's own: the surviving ownership's rows
+        // that have a counterpart on the absorbed one.
+        await journal.CaptureAsync(
+            MergeUndoJournal.CaptureUpdate(MergeUndoJournal.OwnershipAccounts, """
+                a."ownership_id" = @SurvivingId
+                  AND EXISTS (
+                      SELECT 1 FROM ownership_accounts absorbed
+                      WHERE absorbed."ownership_id" = @AbsorbedId
+                        AND absorbed."account_ref" = a."account_ref")
+                """),
+            fold, ct);
+
         await lease.Connection.ExecuteAsync(new CommandDefinition("""
             UPDATE ownership_accounts AS s
             SET playtime_minutes = CASE WHEN Absorbed.last_seen_at > s.last_seen_at
@@ -559,14 +731,29 @@ public sealed class MergeExecutionRepository : IMergeExecutionRepository
               AND s.account_ref = Absorbed.account_ref;
             """, fold, lease.Transaction, cancellationToken: ct));
 
+        await journal.CaptureAsync(
+            MergeUndoJournal.CaptureRepoint(
+                MergeUndoJournal.OwnershipAccounts, "@SurvivingId", "@AbsorbedId"),
+            fold, ct);
+
         var accounts = await lease.Connection.ExecuteAsync(new CommandDefinition(
             "UPDATE OR IGNORE ownership_accounts SET ownership_id = @SurvivingId WHERE ownership_id = @AbsorbedId;",
             fold, lease.Transaction, cancellationToken: ct));
+
+        await journal.CaptureAsync(
+            MergeUndoJournal.CaptureDelete(
+                MergeUndoJournal.OwnershipAccounts, "a.\"ownership_id\" = @AbsorbedId"),
+            fold, ct);
+
         var accountDuplicates = await lease.Connection.ExecuteAsync(new CommandDefinition(
             "DELETE FROM ownership_accounts WHERE ownership_id = @AbsorbedId;",
             fold, lease.Transaction, cancellationToken: ct));
 
         await AssertDrainedAsync(lease, "ownerships", fold.AbsorbedId, OwnershipDependents, ct);
+
+        await journal.CaptureAsync(
+            MergeUndoJournal.CaptureDelete(MergeUndoJournal.Ownerships, "a.\"id\" = @AbsorbedId"),
+            fold, ct);
 
         await lease.Connection.ExecuteAsync(new CommandDefinition(
             "DELETE FROM ownerships WHERE id = @AbsorbedId;",
@@ -584,13 +771,25 @@ public sealed class MergeExecutionRepository : IMergeExecutionRepository
     }
 
     private static async Task<MergeRepointCounts> RepointMergeCandidatesAsync(
-        DbLease lease, long survivingReleaseId, long absorbedReleaseId, MergeRepointCounts counts, CancellationToken ct)
+        DbLease lease,
+        MergeUndoJournalWriter journal,
+        long survivingReleaseId,
+        long absorbedReleaseId,
+        MergeRepointCounts counts,
+        CancellationToken ct)
     {
         var ids = new { survivingReleaseId, absorbedReleaseId };
 
         // The pair being merged, in either orientation. Its decision is not lost:
         // merge_applications records it, and no sweep can propose it again once
         // one of its releases no longer exists.
+        await journal.CaptureAsync(
+            MergeUndoJournal.CaptureDelete(MergeUndoJournal.MergeCandidates, """
+                (a."left_release_id" = @absorbedReleaseId AND a."right_release_id" = @survivingReleaseId)
+                   OR (a."left_release_id" = @survivingReleaseId AND a."right_release_id" = @absorbedReleaseId)
+                """),
+            ids, ct);
+
         var answered = await lease.Connection.ExecuteAsync(new CommandDefinition("""
             DELETE FROM merge_candidates
             WHERE (left_release_id = @absorbedReleaseId AND right_release_id = @survivingReleaseId)
@@ -602,6 +801,29 @@ public sealed class MergeExecutionRepository : IMergeExecutionRepository
         // being moved is a decision while the sitting row is only a proposal, the
         // proposal gives way: losing a rejection would let a sweep re-ask a
         // question the user has already answered.
+        await journal.CaptureAsync(
+            MergeUndoJournal.CaptureDelete(MergeUndoJournal.MergeCandidates, """
+                a."status" = 'pending'
+                  AND a."id" IN (
+                      SELECT sitting.id
+                      FROM merge_candidates sitting
+                      JOIN merge_candidates moving
+                        ON sitting.left_release_id = MIN(
+                               CASE WHEN moving.left_release_id  = @absorbedReleaseId
+                                    THEN @survivingReleaseId ELSE moving.left_release_id  END,
+                               CASE WHEN moving.right_release_id = @absorbedReleaseId
+                                    THEN @survivingReleaseId ELSE moving.right_release_id END)
+                       AND sitting.right_release_id = MAX(
+                               CASE WHEN moving.left_release_id  = @absorbedReleaseId
+                                    THEN @survivingReleaseId ELSE moving.left_release_id  END,
+                               CASE WHEN moving.right_release_id = @absorbedReleaseId
+                                    THEN @survivingReleaseId ELSE moving.right_release_id END)
+                      WHERE (moving.left_release_id = @absorbedReleaseId
+                          OR moving.right_release_id = @absorbedReleaseId)
+                        AND moving.status <> 'pending')
+                """),
+            ids, ct);
+
         await lease.Connection.ExecuteAsync(new CommandDefinition("""
             DELETE FROM merge_candidates
             WHERE status = 'pending'
@@ -624,6 +846,48 @@ public sealed class MergeExecutionRepository : IMergeExecutionRepository
                     AND moving.status <> 'pending');
             """, ids, lease.Transaction, cancellationToken: ct));
 
+        // The journal records the pre-merge pair whole rather than a substitution
+        // rule, so restoring it is exact. MIN/MAX is applied on the way back
+        // anyway, because an absorbed release restored at a fresh id may sort on
+        // the other side of its partner and 0016's CHECK (left < right) admits
+        // only one orientation.
+        await journal.CaptureAsync("""
+            INSERT INTO merge_undo_rows (application_id, seq, table_name, op, key_json, before_json)
+            SELECT @applicationId,
+                   @seqBase + ROW_NUMBER() OVER (ORDER BY a.id),
+                   'merge_candidates',
+                   'repoint',
+                   json_object(
+                       'left_release_id',  MIN(
+                           CASE WHEN a.left_release_id  = @absorbedReleaseId
+                                THEN @survivingReleaseId ELSE a.left_release_id  END,
+                           CASE WHEN a.right_release_id = @absorbedReleaseId
+                                THEN @survivingReleaseId ELSE a.right_release_id END),
+                       'right_release_id', MAX(
+                           CASE WHEN a.left_release_id  = @absorbedReleaseId
+                                THEN @survivingReleaseId ELSE a.left_release_id  END,
+                           CASE WHEN a.right_release_id = @absorbedReleaseId
+                                THEN @survivingReleaseId ELSE a.right_release_id END)),
+                   json_object(
+                       'left_release_id',  a.left_release_id,
+                       'right_release_id', a.right_release_id)
+            FROM merge_candidates a
+            WHERE (a.left_release_id = @absorbedReleaseId OR a.right_release_id = @absorbedReleaseId)
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM merge_candidates s
+                  WHERE s.left_release_id = MIN(
+                            CASE WHEN a.left_release_id  = @absorbedReleaseId
+                                 THEN @survivingReleaseId ELSE a.left_release_id  END,
+                            CASE WHEN a.right_release_id = @absorbedReleaseId
+                                 THEN @survivingReleaseId ELSE a.right_release_id END)
+                    AND s.right_release_id = MAX(
+                            CASE WHEN a.left_release_id  = @absorbedReleaseId
+                                 THEN @survivingReleaseId ELSE a.left_release_id  END,
+                            CASE WHEN a.right_release_id = @absorbedReleaseId
+                                 THEN @survivingReleaseId ELSE a.right_release_id END));
+            """, ids, ct);
+
         var moved = await lease.Connection.ExecuteAsync(new CommandDefinition("""
             UPDATE OR IGNORE merge_candidates
             SET left_release_id = MIN(
@@ -639,6 +903,13 @@ public sealed class MergeExecutionRepository : IMergeExecutionRepository
             WHERE left_release_id = @absorbedReleaseId
                OR right_release_id = @absorbedReleaseId;
             """, ids, lease.Transaction, cancellationToken: ct));
+
+        await journal.CaptureAsync(
+            MergeUndoJournal.CaptureDelete(MergeUndoJournal.MergeCandidates, """
+                a."left_release_id" = @absorbedReleaseId
+                   OR a."right_release_id" = @absorbedReleaseId
+                """),
+            ids, ct);
 
         var duplicates = await lease.Connection.ExecuteAsync(new CommandDefinition("""
             DELETE FROM merge_candidates
@@ -658,20 +929,19 @@ public sealed class MergeExecutionRepository : IMergeExecutionRepository
         };
     }
 
-    private async Task<long> RecordAsync(
-        DbLease lease, MergePlan plan, MergeRepointCounts counts, CancellationToken ct)
+    private async Task<long> RecordAsync(DbLease lease, MergePlan plan, CancellationToken ct)
     {
         return await lease.Connection.ExecuteScalarAsync<long>(new CommandDefinition("""
             INSERT INTO merge_applications (
                 candidate_id, left_release_id, right_release_id, mode,
                 surviving_work_id, absorbed_work_id,
                 surviving_release_id, absorbed_release_id,
-                applied_at, summary_json)
+                applied_at, summary_json, undo_journal_version)
             VALUES (
                 @CandidateId, @LeftReleaseId, @RightReleaseId, @Mode,
                 @SurvivingWorkId, @AbsorbedWorkId,
                 @SurvivingReleaseId, @AbsorbedReleaseId,
-                @AppliedAt, @SummaryJson)
+                @AppliedAt, @SummaryJson, @UndoJournalVersion)
             RETURNING id;
             """,
             new
@@ -685,6 +955,21 @@ public sealed class MergeExecutionRepository : IMergeExecutionRepository
                 plan.SurvivingReleaseId,
                 plan.AbsorbedReleaseId,
                 AppliedAt = _clock.GetUtcNow().UtcDateTime,
+                SummaryJson = JsonSerializer.Serialize(
+                    new MergeRepointCounts(), MergeJsonContext.Default.MergeRepointCounts),
+                UndoJournalVersion = MergeUndoJournal.Version,
+            },
+            lease.Transaction, cancellationToken: ct));
+    }
+
+    private static async Task SummariseAsync(
+        DbLease lease, long applicationId, MergeRepointCounts counts, CancellationToken ct)
+    {
+        await lease.Connection.ExecuteAsync(new CommandDefinition(
+            "UPDATE merge_applications SET summary_json = @SummaryJson WHERE id = @applicationId;",
+            new
+            {
+                applicationId,
                 SummaryJson = JsonSerializer.Serialize(counts, MergeJsonContext.Default.MergeRepointCounts),
             },
             lease.Transaction, cancellationToken: ct));
@@ -723,6 +1008,20 @@ public sealed class MergeExecutionRepository : IMergeExecutionRepository
                (SELECT COUNT(*) FROM sessions           WHERE ownership_id = @id) AS Sessions,
                (SELECT COUNT(*) FROM ownership_accounts WHERE ownership_id = @id) AS OwnershipAccounts;
         """;
+
+    // The three tripwire statements read as a list of table names, which is the
+    // same inventory the undo journal has to cover.
+    // MergeUndoTests compares the two, so a table added to one and not
+    // the other fails loudly instead of being silently unrecoverable.
+    internal static IReadOnlyList<string> DependentTables { get; } =
+        System.Text.RegularExpressions.Regex
+            .Matches(
+                string.Join('\n', WorkDependents, ReleaseDependents, OwnershipDependents),
+                @"FROM\s+(\w+)")
+            .Select(match => match.Groups[1].Value)
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .ToList();
 
     private static async Task AssertDrainedAsync(
         DbLease lease, string table, long id, string statement, CancellationToken ct)

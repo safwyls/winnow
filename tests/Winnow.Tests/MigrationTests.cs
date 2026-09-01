@@ -36,6 +36,42 @@ public class MigrationTests
         CREATE INDEX ix_merge_candidates_status ON merge_candidates(status);
         """;
 
+    /// <summary>merge_candidates and merge_applications exactly as 0016 left them.</summary>
+    private const string PostCanonicalMergeTables = """
+        CREATE TABLE merge_candidates (
+            id                INTEGER PRIMARY KEY,
+            left_release_id   INTEGER NOT NULL REFERENCES releases(id) ON DELETE CASCADE,
+            right_release_id  INTEGER NOT NULL REFERENCES releases(id) ON DELETE CASCADE,
+            score             REAL NOT NULL CHECK (score >= 0.0 AND score <= 1.0),
+            signals_json      TEXT,
+            status            TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'rejected')),
+            CHECK (left_release_id < right_release_id),
+            UNIQUE (left_release_id, right_release_id)
+        );
+        CREATE INDEX ix_merge_candidates_status ON merge_candidates(status);
+
+        CREATE TABLE merge_applications (
+            id                    INTEGER PRIMARY KEY,
+            candidate_id          INTEGER NOT NULL,
+            left_release_id       INTEGER NOT NULL,
+            right_release_id      INTEGER NOT NULL,
+            mode                  TEXT NOT NULL CHECK (mode IN ('work_only', 'release_collapse')),
+            surviving_work_id     INTEGER NOT NULL,
+            absorbed_work_id      INTEGER,
+            surviving_release_id  INTEGER,
+            absorbed_release_id   INTEGER,
+            applied_at            TEXT NOT NULL,
+            summary_json          TEXT,
+            CHECK (mode <> 'release_collapse'
+                OR (surviving_release_id IS NOT NULL
+                    AND absorbed_release_id IS NOT NULL
+                    AND surviving_release_id <> absorbed_release_id)),
+            CHECK (absorbed_work_id IS NULL OR absorbed_work_id <> surviving_work_id)
+        );
+        CREATE INDEX ix_merge_applications_candidate ON merge_applications(candidate_id);
+        CREATE INDEX ix_merge_applications_absorbed ON merge_applications(absorbed_release_id);
+        """;
+
     [Fact]
     public void Migration_applies_cleanly_to_fresh_temp_file_database()
     {
@@ -1048,5 +1084,118 @@ public class MigrationTests
         Assert.Throws<Microsoft.Data.Sqlite.SqliteException>(() => after.Execute(
             "INSERT INTO merge_candidates (left_release_id, right_release_id, score) VALUES (@c, @a, 0.5);",
             new { a = releaseA, c = releaseC }));
+    }
+
+    [Fact]
+    public void Migration_0017_preserves_every_candidate_and_status()
+    {
+        using var db = new TempDatabase();
+
+        long releaseA;
+        long releaseB;
+        long releaseC;
+        long releaseD;
+        using (var conn = db.Factory.Open())
+        {
+            // Back to the shape 0016 leaves behind: three statuses, no journal.
+            conn.Execute("DROP TABLE merge_undo_rows;");
+            conn.Execute("DROP TABLE merge_applications;");
+            conn.Execute("DROP TABLE merge_candidates;");
+            conn.Execute(PostCanonicalMergeTables);
+            conn.Execute("DELETE FROM SchemaVersions WHERE ScriptName LIKE '%0017%';");
+
+            var workId = conn.ExecuteScalar<long>(
+                "INSERT INTO works (name) VALUES ('Hades') RETURNING id;");
+            releaseA = conn.ExecuteScalar<long>(
+                "INSERT INTO releases (work_id, name) VALUES (@workId, 'A') RETURNING id;", new { workId });
+            releaseB = conn.ExecuteScalar<long>(
+                "INSERT INTO releases (work_id, name) VALUES (@workId, 'B') RETURNING id;", new { workId });
+            releaseC = conn.ExecuteScalar<long>(
+                "INSERT INTO releases (work_id, name) VALUES (@workId, 'C') RETURNING id;", new { workId });
+            releaseD = conn.ExecuteScalar<long>(
+                "INSERT INTO releases (work_id, name) VALUES (@workId, 'D') RETURNING id;", new { workId });
+
+            conn.Execute("""
+                INSERT INTO merge_candidates (
+                    id, left_release_id, right_release_id, score, signals_json, status) VALUES
+                    (11, @a, @b, 0.80, '{"title":1}', 'pending'),
+                    (12, @a, @c, 0.70, NULL,          'rejected'),
+                    (13, @b, @d, 0.95, '{"year":1}',  'confirmed');
+                """, new { a = releaseA, b = releaseB, c = releaseC, d = releaseD });
+        }
+
+        db.Initializer.Initialize();
+
+        using var after = db.Factory.Open();
+
+        var rows = after.Query<(long Id, long Left, long Right, double Score, string? Signals, string Status)>(
+            "SELECT id, left_release_id, right_release_id, score, signals_json, status "
+            + "FROM merge_candidates ORDER BY id;")
+            .ToList();
+
+        // Ids, scores, payloads and statuses all survive the rebuild.
+        Assert.Equal(3, rows.Count);
+        Assert.Equal((11L, releaseA, releaseB, 0.80, "{\"title\":1}", "pending"), rows[0]);
+        Assert.Equal((12L, releaseA, releaseC, 0.70, null, "rejected"), rows[1]);
+        Assert.Equal((13L, releaseB, releaseD, 0.95, "{\"year\":1}", "confirmed"), rows[2]);
+
+        // The fourth status is now admissible, and nothing else is.
+        after.Execute("UPDATE merge_candidates SET status = 'undone' WHERE id = 11;");
+        Assert.Equal("undone", after.ExecuteScalar<string>(
+            "SELECT status FROM merge_candidates WHERE id = 11;"));
+        Assert.Throws<Microsoft.Data.Sqlite.SqliteException>(() => after.Execute(
+            "UPDATE merge_candidates SET status = 'reversed' WHERE id = 11;"));
+
+        // And the journal arrived, with its hard reference to the audit row and
+        // its CHECK on the operation name.
+        Assert.Equal(0, after.ExecuteScalar<long>("SELECT COUNT(*) FROM merge_undo_rows;"));
+        Assert.Throws<Microsoft.Data.Sqlite.SqliteException>(() => after.Execute("""
+            INSERT INTO merge_undo_rows (application_id, seq, table_name, op, key_json, before_json)
+            VALUES (999, 1, 'works', 'delete', '{}', '{}');
+            """));
+
+        var applicationId = after.ExecuteScalar<long>("""
+            INSERT INTO merge_applications (
+                candidate_id, left_release_id, right_release_id, mode,
+                surviving_work_id, applied_at, undo_journal_version)
+            VALUES (1, 1, 2, 'work_only', 1, '2026-08-31 00:00:00', 1)
+            RETURNING id;
+            """);
+
+        Assert.Throws<Microsoft.Data.Sqlite.SqliteException>(() => after.Execute("""
+            INSERT INTO merge_undo_rows (application_id, seq, table_name, op, key_json, before_json)
+            VALUES (@applicationId, 1, 'works', 'sideways', '{}', '{}');
+            """, new { applicationId }));
+
+        // undone_at is NULL while a merge stands, and undo_journal_version is
+        // NULL for every row that predates this migration.
+        Assert.Null(after.ExecuteScalar<string>(
+            "SELECT undone_at FROM merge_applications WHERE id = @applicationId;", new { applicationId }));
+    }
+
+    [Fact]
+    public void The_twice_rebuilt_merge_candidates_still_rejects_self_pairs_and_mirrors()
+    {
+        using var db = new TempDatabase();
+        using var conn = db.Factory.Open();
+
+        var workId = conn.ExecuteScalar<long>(
+            "INSERT INTO works (name) VALUES ('Hades') RETURNING id;");
+        var releaseA = conn.ExecuteScalar<long>(
+            "INSERT INTO releases (work_id, name) VALUES (@workId, 'A') RETURNING id;", new { workId });
+        var releaseB = conn.ExecuteScalar<long>(
+            "INSERT INTO releases (work_id, name) VALUES (@workId, 'B') RETURNING id;", new { workId });
+
+        conn.Execute(
+            "INSERT INTO merge_candidates (left_release_id, right_release_id, score) VALUES (@a, @b, 0.9);",
+            new { a = releaseA, b = releaseB });
+
+        // 0016's two invariants survive 0017's rebuild of the same table.
+        Assert.Throws<Microsoft.Data.Sqlite.SqliteException>(() => conn.Execute(
+            "INSERT INTO merge_candidates (left_release_id, right_release_id, score) VALUES (@a, @a, 0.5);",
+            new { a = releaseA }));
+        Assert.Throws<Microsoft.Data.Sqlite.SqliteException>(() => conn.Execute(
+            "INSERT INTO merge_candidates (left_release_id, right_release_id, score) VALUES (@b, @a, 0.5);",
+            new { a = releaseA, b = releaseB }));
     }
 }

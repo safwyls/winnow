@@ -37,15 +37,22 @@ public sealed class MergeExecutor
 {
     private readonly IMergeCandidateRepository _candidates;
     private readonly IMergeExecutionRepository _merges;
+    private readonly IMergeUndoRepository? _undo;
     private readonly ILogger<MergeExecutor> _logger;
 
+    // The undo repository is optional so the composition root can register it in
+    // the pass that adds the merge history screen without this constructor
+    // changing again. The undo wrappers below say so plainly rather than
+    // throwing a null reference.
     public MergeExecutor(
         IMergeCandidateRepository candidates,
         IMergeExecutionRepository merges,
+        IMergeUndoRepository? undo = null,
         ILogger<MergeExecutor>? logger = null)
     {
         _candidates = candidates;
         _merges = merges;
+        _undo = undo;
         _logger = logger ?? NullLogger<MergeExecutor>.Instance;
     }
 
@@ -113,6 +120,51 @@ public sealed class MergeExecutor
 
         return new MergeExecutionSummary(pending.Count, applied, collapsed, workOnly, skipped);
     }
+
+    // ── Undo ─────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Reads only. The verdict on whether one applied merge can still be
+    /// reversed, and every reason it cannot. The history screen calls this on
+    /// every load and never caches the answer: reversibility depends on every
+    /// merge applied after this one.
+    /// </summary>
+    public async Task<MergeUndoPlan> PreviewUndoAsync(long applicationId, CancellationToken ct = default)
+        => await Undo.PlanUndoAsync(applicationId, ct);
+
+    /// <summary>
+    /// Every applied merge, newest first, each with its reversibility already
+    /// computed.
+    /// </summary>
+    public async Task<IReadOnlyList<MergeUndoPlan>> HistoryAsync(CancellationToken ct = default)
+        => await Undo.ListUndoPlansAsync(ct);
+
+    /// <summary>
+    /// Atomic. Restores the absorbed identity and everything repointed away from
+    /// it, or throws and leaves the database exactly as it was. Never partial.
+    /// Marks the <c>merge_applications</c> row undone and sets the pair to
+    /// status <c>undone</c>, which is terminal, so no sweep re-queues it and no
+    /// batch pass re-applies it; re-merging needs a deliberate re-confirmation.
+    /// </summary>
+    public async Task<MergeUndoResult> UndoAsync(long applicationId, CancellationToken ct = default)
+    {
+        var result = await Undo.UndoAsync(applicationId, ct);
+
+        _logger.LogInformation(
+            "Undid merge application {ApplicationId}: work {Work} and release {Release} restored, "
+            + "{Reinserted} row(s) re-inserted, {Repointed} repointed back, {InPlace} restored in place"
+            + "{Reused}.",
+            applicationId, result.RestoredWorkId, result.RestoredReleaseId,
+            result.RowsReinserted, result.RowsRepointedBack, result.RowsRestoredInPlace,
+            result.IdentityIdsReused ? " (at a fresh id, the original having been reused)" : string.Empty);
+
+        return result;
+    }
+
+    private IMergeUndoRepository Undo
+        => _undo ?? throw new InvalidOperationException(
+            "No IMergeUndoRepository is registered, so merges cannot be reversed. Register "
+            + "Winnow.Data's MergeUndoRepository in the composition root.");
 
     private async Task<MergeRequest> RequestAsync(long candidateId, CancellationToken ct)
     {

@@ -32,6 +32,11 @@ public sealed record SoftMatchRequest(MatchSubject Subject, IReadOnlyList<MatchS
 /// <paramref name="Compared"/>: these pairs were never submitted this pass, which
 /// is exactly why they needed reconciling.
 /// </param>
+/// <param name="PreviouslyUndone">
+/// The pair was merged and the merge was reversed. Terminal, like the other two
+/// answers, and counted apart from them because "merged and unmerged" is a
+/// different fact from "different games".
+/// </param>
 public sealed record SoftMatchOutcome(
     int Compared,
     int Queued,
@@ -42,7 +47,8 @@ public sealed record SoftMatchOutcome(
     int PreviouslyConfirmed,
     int Rescored = 0,
     int Withdrawn = 0,
-    int Retired = 0)
+    int Retired = 0,
+    int PreviouslyUndone = 0)
 {
     public static SoftMatchOutcome Empty { get; } = new(0, 0, 0, 0, 0, 0, 0);
 
@@ -246,6 +252,15 @@ public sealed class SoftMatchResolver
                         case MergeCandidateStatuses.Confirmed:
                             tally.PreviouslyConfirmed++;
                             break;
+                        case MergeCandidateStatuses.Undone:
+                            // Merged and then reversed. Terminal: without this
+                            // arm the row falls through to the default and is
+                            // counted as a pending proposal, which is false.
+                            // Re-merging needs a deliberate re-confirmation.
+                            tally.PreviouslyUndone++;
+                            _logger.LogDebug(
+                                "Pair {Low}/{High} was merged and undone; not re-queueing", low, high);
+                            break;
                         default:
                             tally.AlreadyPending++;
                             break;
@@ -322,7 +337,7 @@ public sealed class SoftMatchResolver
         return new SoftMatchOutcome(
             tally.Compared, tally.Queued, tally.Priority, tally.SkippedBelowFloor,
             tally.AlreadyPending, tally.PreviouslyRejected, tally.PreviouslyConfirmed,
-            tally.Rescored, tally.Withdrawn, tally.Retired);
+            tally.Rescored, tally.Withdrawn, tally.Retired, tally.PreviouslyUndone);
     }
 
     /// <summary>
@@ -442,6 +457,7 @@ public sealed class SoftMatchResolver
         public int AlreadyPending;
         public int PreviouslyRejected;
         public int PreviouslyConfirmed;
+        public int PreviouslyUndone;
         public int Rescored;
         public int Withdrawn;
         public int Retired;

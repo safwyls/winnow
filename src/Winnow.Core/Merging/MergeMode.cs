@@ -46,4 +46,17 @@ public static class MergeModes
         _ => throw new ArgumentOutOfRangeException(
             nameof(mode), mode, "Only an applied merge has a stored mode."),
     };
+
+    /// <summary>
+    /// Reads a stored mode back. The CHECK on <c>merge_applications.mode</c>
+    /// admits only these two values, so anything else is a row written outside
+    /// the schema.
+    /// </summary>
+    public static MergeMode FromStorage(string mode) => mode switch
+    {
+        WorkOnly => MergeMode.WorkOnly,
+        ReleaseCollapse => MergeMode.ReleaseCollapse,
+        _ => throw new ArgumentOutOfRangeException(
+            nameof(mode), mode, "Not a stored merge mode."),
+    };
 }
