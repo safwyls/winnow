@@ -96,7 +96,7 @@ Numbering continues from §8. M0–M2 and M4 are shipped.
 | M3b | Launch + journal prompt | Launching from Winnow records a session; journal prompt opt-in (§9 pitfall 7) | **shipped** — `winnow-wrap` (§5.2 B) deliberately deferred |
 | M8 | The Feed | Recommender surfaced as the app's primary view; every card states its reason in one sentence | **shipped** — no dismiss/snooze yet; nothing remembers yesterday |
 | M5 | Historical playtime backfill (redefined 2026-08-28) | Historical playtime backfills; feed measurably improves on a cold library | **built** — reviewed 2026-08-29, 2,111 tests passing; exit criterion half-proven (backfill tested, feed improvement awaiting live validation with user's key) |
-| M6 | Export (JSON + CSV) | Round-trips through the importer without loss | after M5 |
+| M6 | Export (JSON + CSV) | JSON is complete and re-readable; CSV covers a defined set of views | **deferred** 2026-08-31; exit criterion to be restated |
 | M9 | Install / uninstall management | Install and uninstall delegate to the owning store client and reflect state back | after M6 |
 | M10 | Full-screen mode + gamepad navigation | Whole app navigable on a controller at 10 feet | last |
 
