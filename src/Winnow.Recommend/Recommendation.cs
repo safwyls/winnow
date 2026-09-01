@@ -99,6 +99,15 @@ public sealed record Recommendation
     /// </summary>
     public required string Reason { get; init; }
 
+    /// <summary>
+    /// The same reason as STRUCTURE rather than prose: which signal leads,
+    /// which supports, and the numbers both are entitled to cite. A caller that
+    /// wants to render the reason differently reads this instead of parsing
+    /// <see cref="Reason"/>: the sentence is one rendering of this structure,
+    /// not the source of it, and its wording is free to change.
+    /// </summary>
+    public required RecommendationReason Explanation { get; init; }
+
     /// <summary>Every signal that moved the score, penalties included, for interrogation and tuning.</summary>
     public required IReadOnlyList<SignalContribution> Signals { get; init; }
 }
@@ -116,4 +125,16 @@ public sealed record RecommendationFeed
     /// scored. Lets a caller distinguish "quiet feed" from "empty library".
     /// </summary>
     public required int CandidateCount { get; init; }
+
+    /// <summary>
+    /// Distinct WORKS the candidates collapsed to, before any capacity was
+    /// spent. Two store copies of one game are one candidate, so the collapse
+    /// has to happen before the shortlist or a duplicate eats a slot a distinct
+    /// work needed. The gap between this and <see cref="CandidateCount"/> is
+    /// how much of the library is owned twice.
+    /// </summary>
+    public int WorkCount { get; init; }
+
+    /// <summary>How many works had their per-game history actually read. Diagnostic; never stored.</summary>
+    public int HistoryProbeCount { get; init; }
 }

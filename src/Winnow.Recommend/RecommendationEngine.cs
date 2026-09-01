@@ -5,8 +5,15 @@ namespace Winnow.Recommend;
 
 /// <summary>
 /// Assembles <see cref="CandidateFacts"/> from repositories and hands them to
-/// <see cref="RecommendationScorer"/>. Bulk reads cover Tier-0 signals; history
-/// is probed only for the shortlist and recently-played rows to bound query count.
+/// <see cref="RecommendationScorer"/>. Bulk reads cover Tier-0 signals; per-game
+/// history is read for the score-bound-safe shortlist, and the maturity tier is
+/// measured separately over the whole library.
+///
+/// <para>Those three passes read different rows on purpose. The shortlist is
+/// the rows worth explaining, and the tier is a claim about the library, so
+/// neither may stand in for the other. <see cref="HistoryReader"/> memoises
+/// per-ownership reads for the life of one request, which is what lets the
+/// passes overlap without paying twice.</para>
 /// </summary>
 public sealed class RecommendationEngine : IRecommendationEngine
 {
@@ -17,6 +24,7 @@ public sealed class RecommendationEngine : IRecommendationEngine
     private readonly ISessionRepository _sessions;
     private readonly IUpdateEventRepository _updateEvents;
     private readonly IFacetRepository _facets;
+    private readonly ILibraryHistoryStatsRepository? _historyStats;
 
     public RecommendationEngine(
         ILibraryQueryRepository library,
@@ -25,7 +33,8 @@ public sealed class RecommendationEngine : IRecommendationEngine
         IPlaytimeSnapshotRepository snapshots,
         ISessionRepository sessions,
         IUpdateEventRepository updateEvents,
-        IFacetRepository facets)
+        IFacetRepository facets,
+        ILibraryHistoryStatsRepository? historyStats = null)
     {
         _library = library;
         _releases = releases;
@@ -34,6 +43,7 @@ public sealed class RecommendationEngine : IRecommendationEngine
         _sessions = sessions;
         _updateEvents = updateEvents;
         _facets = facets;
+        _historyStats = historyStats;
     }
 
     /// <summary>Everything both entry points share: the assembled pool and the request's derived seed.</summary>
@@ -47,74 +57,51 @@ public sealed class RecommendationEngine : IRecommendationEngine
     {
         var tuning = request.Tuning;
         var (candidates, bucketRows, seed) = await AssemblePoolAsync(request, ct);
-        // ── Preliminary rank, then probe the shortlist ─────────────────────
-        // The final feed is drawn from the shortlist alone. That is sound
-        // because history can only ADD to a row's score (tried-to-like-it is a
-        // bonus), so a row outside the top 3× cannot be sitting on enough
-        // hidden evidence to reach the top 1× — and the reasons for the rows
-        // the user will actually see get the per-release update detail.
-        double Preliminary(CandidateFacts facts) => RecommendationScorer.Total(
-            RecommendationScorer.Score(facts, request.Thresholds, tuning, request.AsOfUtc, seed));
+        var history = new HistoryReader(_snapshots, _sessions);
 
-        var ranked = candidates
-            .OrderByDescending(Preliminary)
-            .ThenBy(f => f.ReleaseId)
+        IReadOnlyList<SignalContribution> Score(CandidateFacts facts)
+            => RecommendationScorer.Score(facts, request.Thresholds, tuning, request.AsOfUtc, seed);
+
+        // ── Collapse, then rank, then prune ────────────────────────────────
+        // Order matters. Two store copies of one game are ONE recommendation,
+        // so the second copy must never consume shortlist capacity a distinct
+        // work needed (F38) — the collapse happens before any capacity is
+        // spent, and keeps the copy with the highest upper bound so it cannot
+        // discard the one that would have won.
+        var preliminary = candidates
+            .Select(facts => Preliminary(facts, Score))
             .ToList();
+        var works = ScoreBounds.CollapseByWork(preliminary, tuning);
 
-        var shortlistSize = Math.Min(
+        var comfort = Math.Min(
             Math.Max(request.MaxResults, request.MaxResults * 3),
             tuning.HistoryProbeLimit);
-        var shortlist = ranked.Take(shortlistSize).ToList();
-
-        // Tier detection must look where history actually lives: the most
-        // recently played rows, which the feed by design ranks LOWEST. Probing
-        // only the shortlist would examine 60 dormant games and conclude no
-        // history exists while the user racks up sessions elsewhere.
-        var recentProbe = bucketRows
-            .Where(r => r.LastPlayedAt is not null)
-            .OrderByDescending(r => r.LastPlayedAt)
-            .Take(tuning.RecentProbeLimit)
-            .Select(r => r.OwnershipId);
-
-        var probe = await ProbeHistoryAsync(
-            shortlist.Select(f => f.OwnershipId).Concat(recentProbe).Distinct().ToList(), ct);
+        var shortlist = ScoreBounds.SafeShortlist(
+            works, tuning, request.AsOfUtc, request.MaxResults, comfort);
 
         // ── Final scoring over history-enriched facts ──────────────────────
-        var scored = new List<(CandidateFacts Facts, IReadOnlyList<SignalContribution> Signals, double Score)>(shortlist.Count);
-        foreach (var facts in shortlist)
+        var scored = new List<ScoredCandidate>(shortlist.Count);
+        foreach (var candidate in shortlist)
         {
-            var enriched = await EnrichAsync(facts, probe, ct);
-            var signals = RecommendationScorer.Score(
-                enriched, request.Thresholds, tuning, request.AsOfUtc, seed);
-            scored.Add((enriched, signals, RecommendationScorer.Total(signals)));
+            var enriched = await EnrichAsync(candidate.Facts, request, history, ct);
+            var signals = Score(enriched);
+            scored.Add(new ScoredCandidate(enriched, signals, RecommendationScorer.Total(signals)));
         }
 
-        // One feed entry per WORK: two ownerships of one game are one
-        // recommendation, and the better-scoring copy carries it.
         var items = scored
             .OrderByDescending(s => s.Score)
             .ThenBy(s => s.Facts.ReleaseId)
-            .DistinctBy(s => s.Facts.WorkId)
             .Take(request.MaxResults)
-            .Select(s => new Recommendation
-            {
-                OwnershipId = s.Facts.OwnershipId,
-                ReleaseId = s.Facts.ReleaseId,
-                WorkId = s.Facts.WorkId,
-                Title = s.Facts.Title,
-                Store = s.Facts.Store,
-                Bucket = s.Facts.Bucket,
-                Score = s.Score,
-                Reason = ReasonBuilder.Build(s.Facts, s.Signals),
-                Signals = s.Signals,
-            })
+            .Select(s => Present(s, request))
             .ToList();
 
         return new RecommendationFeed
         {
             Items = items,
-            Tier = DetectTier(probe, tuning),
+            Tier = await DetectTierAsync(bucketRows, tuning, history, ct),
             CandidateCount = candidates.Count,
+            WorkCount = works.Count,
+            HistoryProbeCount = shortlist.Count,
         };
     }
 
@@ -123,36 +110,36 @@ public sealed class RecommendationEngine : IRecommendationEngine
     {
         var tuning = request.Tuning;
         var (candidates, bucketRows, seed) = await AssemblePoolAsync(request, ct);
+        var history = new HistoryReader(_snapshots, _sessions);
 
         IReadOnlyList<SignalContribution> Score(CandidateFacts facts)
             => RecommendationScorer.Score(facts, request.Thresholds, tuning, request.AsOfUtc, seed);
 
-        // Preliminary pass over the whole pool — pure and cheap. Each shelf
-        // shortlists its own top slice (overfetched for the diversity caps and
-        // cross-shelf claims), and only the union of those slices is probed
-        // for history. The same monotonicity argument as the flat feed's
-        // shortlist: probing can only ADD to a score, so a row outside a
-        // shelf's top 3× cannot be hiding enough evidence to reach its top 1×.
+        // Same order as the flat feed, and for the same reason: each shelf
+        // holds one entry per WORK, so a duplicate ownership must not occupy a
+        // slot in a shelf's shortlist either.
         var preliminary = candidates
-            .Select(facts => new ScoredCandidate(facts, Score(facts), 0))
-            .Select(s => s with { Score = RecommendationScorer.Total(s.Signals) })
+            .Select(facts => Preliminary(facts, Score))
             .ToList();
+        var works = ScoreBounds.CollapseByWork(preliminary, tuning);
 
         var definitions = ShelfBuilder.Definitions(request.Thresholds, tuning);
         var perShelf = Math.Max(request.MaxPerShelf,
             request.MaxPerShelf * Math.Max(1, tuning.ShelfOverfetchFactor));
 
-        var union = new List<CandidateFacts>();
+        var union = new List<ScoredCandidate>();
         var seen = new HashSet<long>();
         foreach (var definition in definitions)
         {
-            var slice = preliminary
+            var eligible = works
                 .Where(s => ShelfBuilder.IsEligible(definition, s.Facts, s.Signals))
-                .OrderByDescending(s => s.Score)
-                .ThenBy(s => s.Facts.ReleaseId)
-                .Take(perShelf);
+                .ToList();
 
-            foreach (var entry in slice)
+            // Each shelf keeps its own score-bound-safe slice: a candidate is
+            // dropped only when the best it could still become cannot reach
+            // the worst the shelf's last visible entry could become.
+            foreach (var entry in ScoreBounds.SafeShortlist(
+                eligible, tuning, request.AsOfUtc, request.MaxPerShelf, perShelf))
             {
                 if (union.Count >= tuning.ShelfProbeLimit)
                 {
@@ -161,36 +148,54 @@ public sealed class RecommendationEngine : IRecommendationEngine
 
                 if (seen.Add(entry.Facts.OwnershipId))
                 {
-                    union.Add(entry.Facts);
+                    union.Add(entry);
                 }
             }
         }
 
-        // Recently played rows join the probe purely for tier detection —
-        // same reasoning as the flat feed: history physically accrues on the
-        // games being played, which every shelf by design excludes.
-        var recentProbe = bucketRows
-            .Where(r => r.LastPlayedAt is not null)
-            .OrderByDescending(r => r.LastPlayedAt)
-            .Take(tuning.RecentProbeLimit)
-            .Select(r => r.OwnershipId);
-
-        var probe = await ProbeHistoryAsync(
-            union.Select(f => f.OwnershipId).Concat(recentProbe).Distinct().ToList(), ct);
-
         var scored = new List<ScoredCandidate>(union.Count);
-        foreach (var facts in union)
+        foreach (var candidate in union)
         {
-            var enriched = await EnrichAsync(facts, probe, ct);
+            var enriched = await EnrichAsync(candidate.Facts, request, history, ct);
             var signals = Score(enriched);
             scored.Add(new ScoredCandidate(enriched, signals, RecommendationScorer.Total(signals)));
         }
 
         return new ShelfFeed
         {
-            Shelves = ShelfBuilder.Build(definitions, scored, tuning, request.MaxPerShelf),
-            Tier = DetectTier(probe, tuning),
+            Shelves = ShelfBuilder.Build(definitions, scored, request, request.MaxPerShelf),
+            Tier = await DetectTierAsync(bucketRows, tuning, history, ct),
             CandidateCount = candidates.Count,
+            WorkCount = works.Count,
+            HistoryProbeCount = union.Count,
+        };
+    }
+
+    private static ScoredCandidate Preliminary(
+        CandidateFacts facts, Func<CandidateFacts, IReadOnlyList<SignalContribution>> score)
+    {
+        var signals = score(facts);
+        return new ScoredCandidate(facts, signals, RecommendationScorer.Total(signals));
+    }
+
+    /// <summary>One scored candidate as the caller sees it — score, structured reason, rendered sentence.</summary>
+    internal static Recommendation Present(ScoredCandidate candidate, RecommendationRequest request)
+    {
+        var explanation = RecommendationScorer.Explain(
+            candidate.Facts, request.Thresholds, request.Tuning, request.AsOfUtc, candidate.Signals);
+
+        return new Recommendation
+        {
+            OwnershipId = candidate.Facts.OwnershipId,
+            ReleaseId = candidate.Facts.ReleaseId,
+            WorkId = candidate.Facts.WorkId,
+            Title = candidate.Facts.Title,
+            Store = candidate.Facts.Store,
+            Bucket = candidate.Facts.Bucket,
+            Score = candidate.Score,
+            Reason = ReasonBuilder.Build(explanation, request.Tuning),
+            Explanation = explanation,
+            Signals = candidate.Signals,
         };
     }
 
@@ -212,6 +217,7 @@ public sealed class RecommendationEngine : IRecommendationEngine
         // Stores per WORK, over every ownership in the library (not just the
         // candidates): the bought-twice signal is about the work, and the
         // second copy may sit on a row the bucket query filtered from view.
+        // This is also why collapsing duplicates costs the signal nothing.
         var storesByWork = new Dictionary<long, HashSet<string>>();
         foreach (var ownership in ownershipsById.Values)
         {
@@ -322,17 +328,213 @@ public sealed class RecommendationEngine : IRecommendationEngine
         return genres is null ? [] : genres;
     }
 
-    /// <summary>Reads snapshot and session history for the given ownerships, bounded by the caller.</summary>
-    private async Task<HistoryProbe> ProbeHistoryAsync(
-        IReadOnlyList<long> ownershipIds, CancellationToken ct)
+    /// <summary>
+    /// Reads one shortlisted row's own history: return episodes, and — where a
+    /// negative claim depends on it — whether Winnow has ever observed this
+    /// release's update history at all.
+    /// </summary>
+    private async Task<CandidateFacts> EnrichAsync(
+        CandidateFacts facts,
+        RecommendationRequest request,
+        HistoryReader history,
+        CancellationToken ct)
     {
-        var episodes = new Dictionary<long, int>(ownershipIds.Count);
-        var sessionCount = 0;
-        DateTime? firstSession = null, lastSession = null;
-        var anyMultiSnapshot = false;
+        var enriched = facts with { ReturnEpisodes = await history.EpisodesAsync(facts.OwnershipId, ct) };
 
-        foreach (var ownershipId in ownershipIds)
+        var patched = facts.Bucket == LibraryBuckets.StaleButPatched;
+        var maybeDone = RecommendationScorer.HasProbablyDoneShape(
+            facts, request.Tuning, request.AsOfUtc);
+
+        if (!patched && !maybeDone)
         {
+            return enriched;
+        }
+
+        var events = await _updateEvents.GetByReleaseAsync(facts.ReleaseId, ct);
+
+        // Announcements, not build pushes: an announcement has a title a human
+        // can read, the count answers "how much did I miss", and — because
+        // ISteamNews serves a release's whole history rather than a window —
+        // ONE recorded announcement proves Winnow has seen this release's
+        // update history and would have recorded anything later. That proof is
+        // what licenses the probably-done penalty to claim silence (F15);
+        // without it the row simply keeps quiet on the subject.
+        var announcements = events
+            .Where(e => e.Kind == Core.Domain.UpdateEventKinds.Announcement)
+            .OrderBy(e => e.OccurredAt)
+            .ToList();
+
+        if (announcements.Count > 0)
+        {
+            enriched = enriched with { UpdateCoverage = UpdateCoverage.Observed };
+        }
+
+        if (patched)
+        {
+            var since = facts.LastPlayedAt ?? DateTime.MinValue;
+            var newer = announcements.Where(e => e.OccurredAt > since).ToList();
+            if (newer.Count > 0)
+            {
+                enriched = enriched with
+                {
+                    UpdatesSinceLastPlayed = newer.Count,
+                    LatestUpdateTitle = newer[^1].Title,
+                };
+            }
+        }
+
+        return enriched;
+    }
+
+    /// <summary>
+    /// The library's maturity tier, measured over the LIBRARY. The candidate
+    /// shortlist is the worst possible sample for this question (it excludes,
+    /// by design, exactly the games being played) and the recently-played rows
+    /// are the densest in sessions, so neither may stand in for the whole: read
+    /// off those two, a user with a hundred sessions spread across a hundred
+    /// titles read as cold start.
+    ///
+    /// <para>Where a global aggregate is available it is used verbatim.
+    /// Otherwise a uniform draw over every history-bearing ownership is scaled
+    /// back up, and the directly observed count is the floor under the result,
+    /// since a count of rows actually read can never exceed the truth.</para>
+    /// </summary>
+    private async Task<DataTier> DetectTierAsync(
+        IReadOnlyList<Core.Queries.OwnershipBucket> bucketRows,
+        RecommendationTuning tuning,
+        HistoryReader history,
+        CancellationToken ct)
+    {
+        var stats = _historyStats is not null
+            ? await _historyStats.GetAsync(ct)
+            : await EstimateHistoryAsync(bucketRows, tuning, history, ct);
+
+        if (stats.SessionCount >= tuning.Tier2MinSessions
+            && stats.FirstSessionAt is { } first
+            && stats.LastSessionAt is { } last
+            && (last - first).TotalDays >= tuning.Tier2MinSpanDays)
+        {
+            return DataTier.Established;
+        }
+
+        return stats.SessionCount > 0 || stats.OwnershipsWithSnapshotRises > 0
+            ? DataTier.Settling
+            : DataTier.ColdStart;
+    }
+
+    /// <summary>The sampled fallback for <see cref="DetectTierAsync"/>. Unbiased by construction; see the tuning fields.</summary>
+    private static async Task<Core.Queries.LibraryHistoryStats> EstimateHistoryAsync(
+        IReadOnlyList<Core.Queries.OwnershipBucket> bucketRows,
+        RecommendationTuning tuning,
+        HistoryReader history,
+        CancellationToken ct)
+    {
+        // A row with no minutes and no play date cannot hold a session or a
+        // snapshot rise — both imply playtime — so excluding it is exact
+        // stratification, not a bias. It is also most of a real library.
+        var playable = bucketRows
+            .Where(r => r.PlaytimeMinutes > 0 || r.LastPlayedAt is not null)
+            .ToList();
+
+        if (playable.Count == 0)
+        {
+            return Core.Queries.LibraryHistoryStats.Empty;
+        }
+
+        var sampleSize = Math.Clamp(tuning.TierSampleOwnerships, 1, playable.Count);
+        var sample = playable
+            .OrderBy(r => RecommendationScorer.JitterValue(tuning.TierSampleSeed, r.OwnershipId))
+            .ThenBy(r => r.OwnershipId)
+            .Take(sampleSize)
+            .ToList();
+
+        var sampleSessions = 0;
+        var sampleRises = 0;
+        var observedSessions = 0;
+        DateTime? firstSession = null, lastSession = null;
+        var risesSeen = 0;
+
+        async Task ObserveAsync(long ownershipId, bool inSample)
+        {
+            var (episodes, sessions, first, last, hadRise) = await history.ReadAsync(ownershipId, ct);
+            _ = episodes;
+
+            observedSessions += sessions;
+            risesSeen += hadRise ? 1 : 0;
+            if (inSample)
+            {
+                sampleSessions += sessions;
+                sampleRises += hadRise ? 1 : 0;
+            }
+
+            if (first is { } f && (firstSession is null || f < firstSession))
+            {
+                firstSession = f;
+            }
+
+            if (last is { } l && (lastSession is null || l > lastSession))
+            {
+                lastSession = l;
+            }
+        }
+
+        var sampled = new HashSet<long>();
+        foreach (var row in sample)
+        {
+            sampled.Add(row.OwnershipId);
+            await ObserveAsync(row.OwnershipId, inSample: true);
+        }
+
+        // The most recently played rows are where history physically accrues.
+        // They are NOT part of the uniform draw — including them would bias the
+        // scaling — but what they hold is directly observed, and a direct
+        // observation is a floor the estimate may never fall below.
+        foreach (var row in playable
+            .Where(r => r.LastPlayedAt is not null && !sampled.Contains(r.OwnershipId))
+            .OrderByDescending(r => r.LastPlayedAt)
+            .Take(Math.Max(0, tuning.RecentProbeLimit)))
+        {
+            await ObserveAsync(row.OwnershipId, inSample: false);
+        }
+
+        var scale = playable.Count / (double)sampleSize;
+        return new Core.Queries.LibraryHistoryStats
+        {
+            SessionCount = Math.Max(observedSessions, (int)Math.Round(sampleSessions * scale)),
+            FirstSessionAt = firstSession,
+            LastSessionAt = lastSession,
+            OwnershipsWithSnapshotRises = Math.Max(risesSeen, (int)Math.Round(sampleRises * scale)),
+            IsEstimate = true,
+        };
+    }
+
+    /// <summary>
+    /// Per-ownership snapshot and session reads, memoised for the life of one
+    /// request so the tier pass and the candidate pass never pay twice for the
+    /// same row.
+    /// </summary>
+    private sealed class HistoryReader
+    {
+        private readonly IPlaytimeSnapshotRepository _snapshots;
+        private readonly ISessionRepository _sessions;
+        private readonly Dictionary<long, OwnershipHistory> _cache = [];
+
+        public HistoryReader(IPlaytimeSnapshotRepository snapshots, ISessionRepository sessions)
+        {
+            _snapshots = snapshots;
+            _sessions = sessions;
+        }
+
+        public async Task<int> EpisodesAsync(long ownershipId, CancellationToken ct)
+            => (await ReadAsync(ownershipId, ct)).Episodes;
+
+        public async Task<OwnershipHistory> ReadAsync(long ownershipId, CancellationToken ct)
+        {
+            if (_cache.TryGetValue(ownershipId, out var cached))
+            {
+                return cached;
+            }
+
             var snapshots = await _snapshots.GetByOwnershipAsync(ownershipId, ct);
             var sessions = await _sessions.GetByOwnershipAsync(ownershipId, ct);
 
@@ -350,89 +552,34 @@ public sealed class RecommendationEngine : IRecommendationEngine
                 }
             }
 
-            anyMultiSnapshot |= rises > 0;
+            DateTime? first = null, last = null;
+            foreach (var session in sessions)
+            {
+                if (first is null || session.StartedAt < first)
+                {
+                    first = session.StartedAt;
+                }
+
+                if (last is null || session.StartedAt > last)
+                {
+                    last = session.StartedAt;
+                }
+            }
 
             // Sessions are the finer instrument when present; snapshot rises
             // are the coarse fallback. Max, not sum — they are two observations
             // of the same episodes, and adding them would count each twice.
-            episodes[ownershipId] = Math.Max(rises, sessions.Count);
-
-            sessionCount += sessions.Count;
-            foreach (var session in sessions)
-            {
-                if (firstSession is null || session.StartedAt < firstSession)
-                {
-                    firstSession = session.StartedAt;
-                }
-
-                if (lastSession is null || session.StartedAt > lastSession)
-                {
-                    lastSession = session.StartedAt;
-                }
-            }
+            var history = new OwnershipHistory(
+                Math.Max(rises, sessions.Count), sessions.Count, first, last, rises > 0);
+            _cache[ownershipId] = history;
+            return history;
         }
-
-        return new HistoryProbe(episodes, anyMultiSnapshot, sessionCount, firstSession, lastSession);
     }
 
-    /// <summary>Enriches a shortlist row with return episodes and, for stale rows, update detail for the reason text.</summary>
-    private async Task<CandidateFacts> EnrichAsync(
-        CandidateFacts facts, HistoryProbe probe, CancellationToken ct)
-    {
-        var enriched = facts;
-
-        if (probe.EpisodesByOwnership.TryGetValue(facts.OwnershipId, out var episodes))
-        {
-            enriched = enriched with { ReturnEpisodes = episodes };
-        }
-
-        if (facts.Bucket == LibraryBuckets.StaleButPatched)
-        {
-            var events = await _updateEvents.GetByReleaseAsync(facts.ReleaseId, ct);
-
-            // Announcements, not build pushes: an announcement has a title a
-            // human can read, and the count answers "how much did I miss",
-            // which is the question the reason is answering. The build push
-            // already did its job inside the bucket query's correlation.
-            var since = facts.LastPlayedAt ?? DateTime.MinValue;
-            var announcements = events
-                .Where(e => e.Kind == Core.Domain.UpdateEventKinds.Announcement && e.OccurredAt > since)
-                .OrderBy(e => e.OccurredAt)
-                .ToList();
-
-            if (announcements.Count > 0)
-            {
-                enriched = enriched with
-                {
-                    UpdatesSinceLastPlayed = announcements.Count,
-                    LatestUpdateTitle = announcements[^1].Title,
-                };
-            }
-        }
-
-        return enriched;
-    }
-
-    /// <summary>Detects the data tier from the probed rows (bounded sample, biased toward recently played).</summary>
-    private static DataTier DetectTier(HistoryProbe probe, RecommendationTuning tuning)
-    {
-        if (probe.SessionCount >= tuning.Tier2MinSessions
-            && probe.FirstSessionAt is { } first
-            && probe.LastSessionAt is { } last
-            && (last - first).TotalDays >= tuning.Tier2MinSpanDays)
-        {
-            return DataTier.Established;
-        }
-
-        return probe.SessionCount > 0 || probe.AnyMultiSnapshot
-            ? DataTier.Settling
-            : DataTier.ColdStart;
-    }
-
-    private sealed record HistoryProbe(
-        IReadOnlyDictionary<long, int> EpisodesByOwnership,
-        bool AnyMultiSnapshot,
+    private readonly record struct OwnershipHistory(
+        int Episodes,
         int SessionCount,
         DateTime? FirstSessionAt,
-        DateTime? LastSessionAt);
+        DateTime? LastSessionAt,
+        bool HadSnapshotRise);
 }

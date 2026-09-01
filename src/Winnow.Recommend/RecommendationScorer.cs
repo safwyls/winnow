@@ -112,11 +112,15 @@ public static class RecommendationScorer
         // "You were right to drop this": a fair shake of hours, deeply
         // dormant, and — because §6.1 precedence would have put the row in
         // stale_but_patched otherwise — nothing major has changed since.
-        if (facts.Bucket == LibraryBuckets.Bounced
-            && facts.PlaytimeMinutes >= tuning.FairShakeMinutes
-            && dormancyDays is { } dd
-            && dd >= tuning.DeepDormancyYears * 365.25)
+        //
+        // The last clause is only true where Winnow was WATCHING. Update
+        // coverage begins when polling begins, so a release with no observed
+        // announcement history is absence of evidence, not proof of silence:
+        // the penalty is withheld and no sentence claims otherwise (F15).
+        if (HasProbablyDoneShape(facts, tuning, asOfUtc)
+            && facts.UpdateCoverage == UpdateCoverage.Observed)
         {
+            var dd = DormancyDays(facts, asOfUtc) ?? 0.0;
             Add(SignalNames.ProbablyDone, -tuning.PenaltyProbablyDone, 1.0,
                 $"You gave it {Phrases.Duration(facts.PlaytimeMinutes)} and walked away " +
                 $"{Phrases.Age(dd)} ago, and nothing major has changed since — " +
@@ -157,6 +161,149 @@ public static class RecommendationScorer
         return contributions;
     }
 
+    /// <summary>
+    /// Turns the contributions that made a score into the STRUCTURE of its
+    /// explanation: one primary signal, at most one secondary, and the numbers
+    /// both may cite. Returning structure rather than prose is what holds the
+    /// card to one sentence: at most two clauses leave here, so nothing
+    /// downstream has a third to concatenate.
+    ///
+    /// <para>The honesty rules live in the selection, not in the wording. A row
+    /// demoted for being probably-done leads with that; a row demoted for mode
+    /// mismatch or fresh play says so in the supporting clause. A demotion the
+    /// user can see the effect of but not the reason for is an arbitrary
+    /// ranking from their side, which is why the character budget is sized
+    /// above the longest pair these rules can produce rather than left to
+    /// truncate whichever clause came second.</para>
+    /// </summary>
+    public static RecommendationReason Explain(
+        CandidateFacts facts,
+        BucketThresholds thresholds,
+        RecommendationTuning tuning,
+        DateTime asOfUtc,
+        IReadOnlyList<SignalContribution> contributions)
+    {
+        var evidence = new ReasonEvidence
+        {
+            ReleaseId = facts.ReleaseId,
+            Title = facts.Title,
+            Store = facts.Store,
+            PlaytimeMinutes = facts.PlaytimeMinutes,
+            LastPlayedYear = facts.LastPlayedAt?.Year,
+            DormancyDays = DormancyDays(facts, asOfUtc),
+            UpdatesSinceLastPlayed = facts.UpdatesSinceLastPlayed,
+            LatestUpdateTitle = facts.LatestUpdateTitle,
+            ReturnEpisodes = facts.ReturnEpisodes,
+            StoreCount = facts.StoreCount,
+            TasteFacetName = facts.TasteFacetName,
+        };
+
+        var primary = PrimarySignal(facts, thresholds, contributions);
+        return new RecommendationReason
+        {
+            Primary = primary,
+            Secondary = SecondarySignal(facts, primary, contributions),
+            Evidence = evidence,
+        };
+    }
+
+    private static ReasonSignal PrimarySignal(
+        CandidateFacts facts,
+        BucketThresholds thresholds,
+        IReadOnlyList<SignalContribution> contributions)
+    {
+        // A row the model demoted for being finished must lead with that. The
+        // feed is required to be able to say "you were right to drop this".
+        if (Fired(contributions, SignalNames.ProbablyDone))
+        {
+            return ReasonSignal.ProbablyDone;
+        }
+
+        if (facts.Bucket == LibraryBuckets.StaleButPatched)
+        {
+            return ReasonSignal.PatchedSinceYouLeft;
+        }
+
+        if (facts.PlaytimeMinutes <= 0)
+        {
+            return facts.LastPlayedAt is null
+                ? ReasonSignal.NeverOpened
+                : ReasonSignal.LaunchedUnmeasured;
+        }
+
+        return facts.PlaytimeMinutes < Math.Max(1, thresholds.BouncedFloorMinutes)
+            ? ReasonSignal.Sampled
+            : ReasonSignal.Bounced;
+    }
+
+    private static ReasonSignal SecondarySignal(
+        CandidateFacts facts,
+        ReasonSignal primary,
+        IReadOnlyList<SignalContribution> contributions)
+    {
+        // Demotions the user can see the effect of must be stated, or the
+        // ranking is arbitrary from their side.
+        if (facts.ModeMismatch == ModeMismatch.OnlineOnlyForSoloPlayer)
+        {
+            return ReasonSignal.OnlineOnlyMismatch;
+        }
+
+        if (facts.ModeMismatch == ModeMismatch.SoloOnlyForOnlinePlayer)
+        {
+            return ReasonSignal.SoloOnlyMismatch;
+        }
+
+        if (Fired(contributions, SignalNames.RecentlyPlayed))
+        {
+            return ReasonSignal.PlayedRecently;
+        }
+
+        // Otherwise the strongest supporting fact the opening did not already
+        // tell, richest first — dormancy is last because the opening clause
+        // can usually date the game itself.
+        if (Fired(contributions, SignalNames.TriedToLikeIt))
+        {
+            return ReasonSignal.TriedToLikeIt;
+        }
+
+        if (Fired(contributions, SignalNames.TasteAffinity))
+        {
+            return ReasonSignal.TasteMatch;
+        }
+
+        if (Fired(contributions, SignalNames.BoughtTwice))
+        {
+            return ReasonSignal.BoughtTwice;
+        }
+
+        if (Fired(contributions, SignalNames.Installed))
+        {
+            return ReasonSignal.Installed;
+        }
+
+        if (Fired(contributions, SignalNames.Dormancy) && primary != ReasonSignal.ProbablyDone)
+        {
+            return facts.LastPlayedAt is null ? ReasonSignal.UndatedDormancy : ReasonSignal.Dormant;
+        }
+
+        return Fired(contributions, SignalNames.RecentlySurfaced)
+            ? ReasonSignal.ShownRecently
+            : ReasonSignal.None;
+    }
+
+    private static bool Fired(IReadOnlyList<SignalContribution> contributions, string name)
+    {
+        foreach (var contribution in contributions)
+        {
+            if (contribution.Signal == name)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     /// <summary>The score is exactly the sum of its parts — by construction, nothing else.</summary>
     public static double Total(IReadOnlyList<SignalContribution> contributions)
     {
@@ -168,6 +315,22 @@ public static class RecommendationScorer
 
         return total;
     }
+
+    /// <summary>
+    /// Everything the probably-done penalty needs EXCEPT update coverage: a
+    /// fair shake of hours on a bounced row that has been dormant for years.
+    /// Separated from the penalty itself because it is computable from bulk
+    /// facts alone: the engine uses it to decide which rows are worth reading
+    /// update history for, and <see cref="ScoreBounds"/> uses it to bound the
+    /// penalty a probe might still reveal. Shape is not the verdict, and a row
+    /// that has this shape but no observed coverage is never penalised.
+    /// </summary>
+    public static bool HasProbablyDoneShape(
+        CandidateFacts facts, RecommendationTuning tuning, DateTime asOfUtc)
+        => facts.Bucket == LibraryBuckets.Bounced
+            && facts.PlaytimeMinutes >= tuning.FairShakeMinutes
+            && DormancyDays(facts, asOfUtc) is { } days
+            && days >= tuning.DeepDormancyYears * 365.25;
 
     /// <summary>Days since last played, or null when there is no date.</summary>
     private static double? DormancyDays(CandidateFacts facts, DateTime asOfUtc)

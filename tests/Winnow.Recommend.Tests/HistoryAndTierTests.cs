@@ -101,7 +101,12 @@ public class HistoryAndTierTests : IDisposable
         var feed = await _harness.Engine.GetFeedAsync(RecommendHarness.Request());
 
         var item = feed.Items.Single(i => i.ReleaseId == game.ReleaseId);
-        Assert.Contains("2 updates since", item.Reason);
-        Assert.Contains("Season Two", item.Reason);
+        Assert.Equal(ReasonSignal.PatchedSinceYouLeft, item.Explanation.Primary);
+        Assert.Equal(2, item.Explanation.Evidence.UpdatesSinceLastPlayed);
+        Assert.Equal("Season Two", item.Explanation.Evidence.LatestUpdateTitle);
+        Assert.True(
+            item.Reason.Contains("2 updates", StringComparison.Ordinal)
+                || item.Reason.Contains("Season Two", StringComparison.Ordinal),
+            item.Reason);
     }
 }

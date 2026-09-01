@@ -141,8 +141,35 @@ public sealed record RecommendationTuning
     /// <summary>Max shortlist candidates that get per-ownership history probed.</summary>
     public int HistoryProbeLimit { get; init; } = 60;
 
-    /// <summary>Most-recently-played ownerships probed in addition to the shortlist, for tier detection.</summary>
+    /// <summary>Most-recently-played ownerships probed in addition to the tier sample, for tier detection.</summary>
     public int RecentProbeLimit { get; init; } = 25;
+
+    /// <summary>
+    /// Ownerships drawn UNIFORMLY from every row that could hold history, for
+    /// the maturity-tier estimate. The tier is a claim about the LIBRARY, so it
+    /// cannot be read off the candidate shortlist (which excludes exactly the
+    /// games being played) or off the recently-played rows (which are the
+    /// densest in sessions); both are biased, and in opposite directions.
+    /// 120 is roughly a third of the measured library's history-bearing rows,
+    /// enough that the scaling is not carried by a handful of rows, and it
+    /// costs two indexed point reads apiece.
+    /// </summary>
+    public int TierSampleOwnerships { get; init; } = 120;
+
+    /// <summary>Fixed salt for the tier sample's deterministic draw, so one library always samples the same rows.</summary>
+    public int TierSampleSeed { get; init; } = 0x5715_0F5E;
+
+    // ── Explanation ─────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Longest reason sentence a card may carry. One sentence is the contract,
+    /// and 180 is the length at which one sentence stays one sentence: it fits
+    /// the longest primary and secondary the selection rules can pair, quoted
+    /// update title included, so the builder never has to drop a clause the
+    /// honesty rules put there. Lower it and truncation starts deciding what
+    /// the user is told.
+    /// </summary>
+    public int ReasonCharacterBudget { get; init; } = 180;
 
     /// <summary>The defaults above, shared. Records are immutable, so sharing is safe.</summary>
     public static RecommendationTuning Default { get; } = new();

@@ -51,8 +51,13 @@ public class ModeMismatchTests : IDisposable
         var penalty = mmoItem.Signals.Single(s => s.Signal == SignalNames.ModeMismatch);
         Assert.True(penalty.Contribution < 0);
         Assert.Contains("single-player", penalty.Explanation);
-        // The demotion is honest out loud: the reason carries the sentence.
-        Assert.Contains("single-player", mmoItem.Reason);
+        // The demotion is honest out loud: the one sentence still carries it.
+        Assert.Equal(ReasonSignal.OnlineOnlyMismatch, mmoItem.Explanation.Secondary);
+        Assert.NotEqual(
+            ReasonBuilder.Build(
+                mmoItem.Explanation with { Secondary = ReasonSignal.None },
+                RecommendationTuning.Default),
+            mmoItem.Reason);
 
         Assert.DoesNotContain(soloItem.Signals, s => s.Signal == SignalNames.ModeMismatch);
         Assert.True(soloItem.Score > mmoItem.Score);

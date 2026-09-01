@@ -79,6 +79,20 @@ contributes zero and the gap is *visible*, which is the honest way to degrade).
 | **Mode mismatch** (penalty) | 0 | −0.10 | The candidate sits entirely on the wrong side of the single-player/online line for how this user demonstrably plays (93% single-player by committed game count, measured). Fires only under dominance (≥85% share over ≥20 mode-carrying committed games) and only against a candidate that is *exclusively* the other side; co-op without versus is a maybe, not a mistake. Sized to cancel a perfect taste match, not to bury — mode facets can be missing or wrong. |
 | **Shuffle jitter** | 0 | +0.03 max | Deterministic per (seed, release) noise, seeded by the day by default. Big enough to rotate near-ties inside the shelfware pile, small enough to never reorder games a real signal separates. |
 
+### Update coverage: an input, not an assumption
+
+**Update coverage** is a named input (`CandidateFacts.UpdateCoverage`), added because the
+model was reading silence off rows nobody had watched. Winnow polls Steam for update
+signals, and coverage of a release begins when polling of that release begins, so an empty
+update history means one of two indistinguishable things: nothing shipped, or Winnow was
+never watching.
+
+One recorded **announcement** for a release is the proof of coverage, because Steam's news
+endpoint serves a release's whole history rather than a window — one stored announcement
+means Winnow has seen that release's update history and would have recorded anything
+later. Until that proof exists the coverage is `Unknown`, and no negative claim about the
+release may be made by any signal or any sentence.
+
 Signals deliberately **not** scored, and why, are in §7.
 
 ## 4. The model
@@ -94,8 +108,16 @@ score = Σ (weight_s × value_s) − Σ penalties + jitter
   contributions, so a reason can never drift from the arithmetic that ranked the item.
 - Missing evidence contributes 0 and is absent from the breakdown. Nothing is renormalised:
   a Tier-0 library simply produces lower absolute scores, which is true.
-- One feed entry per **work** (best-scoring ownership wins). Two ownerships of one game are
-  one recommendation, not two slots.
+- One feed entry per **work**. Two ownerships of one game are one recommendation, not two
+  slots, and the collapse happens before any shortlist capacity is spent (§4a).
+- **The probably-done penalty requires observed update coverage.** "A fair shake of hours,
+  deeply dormant, and nothing has changed since" is three claims, and only the first two are
+  computable from bulk facts. The third needs proof that Winnow has read the release's
+  announcement history (§3); without it the penalty is withheld entirely and the sentence
+  never claims silence. The earlier code treated an empty update history as proof of quiet,
+  so it demoted rows nobody had ever looked at while telling the user nothing had changed.
+  `RecommendationScorer.HasProbablyDoneShape` is the coverage-free half, kept separate so
+  the engine can decide which rows are worth reading update history for at all.
 
 ### Hard exclusions (never scored, never surfaced)
 
@@ -111,6 +133,42 @@ score = Σ (weight_s × value_s) − Σ penalties + jitter
 4. Works with **provisional names** — unexplainable tiles (6 rows today).
 5. Everything the §6.1 query already dropped upstream: consolidated demos/betas, and
    non-game entries (tools, soundtracks) under the default setting.
+
+## 4a. Shortlist bounding and work collapse
+
+Scoring is cheap; history is not. Sessions and snapshots are read per ownership, so only a
+shortlist gets probed, and the rule choosing that shortlist has to be safe or the ranking is
+a guess dressed as a ranking.
+
+The old rule took a fixed top slice (3× the feed size) and justified it by claiming history
+could only ADD to a score, so a row outside the top 3× could not reach the top 1×. Both
+halves were wrong. History can now also SUBTRACT, because revealing update coverage is what
+lets the probably-done penalty fire (§4). And even the additive case was never bounded: a
+row just outside the slice could hold enough hidden return-episode evidence to leapfrog into
+the results.
+
+`ScoreBounds` bounds both directions per candidate:
+
+- `Upper` = preliminary score + the largest bonus a probe could still reveal.
+- `Lower` = preliminary score − the largest penalty a probe could still reveal.
+
+A candidate is dropped only when its `Upper` cannot reach the `Lower` of the k-th ranked
+candidate. A dropped row provably could not have placed, whatever its history turns out to
+say.
+
+`MaxHiddenBonus` is **exactly** zero for a row with no minutes and no play date, because
+sessions and snapshot rises both imply playtime. That exactness is what keeps the safe
+shortlist cheap rather than merely correct: never-opened shelfware is most of a real library
+and none of it can hold a surprise. Measured on a 200-work library shaped like the real one,
+the safe bound probed **60 works** — the comfort floor — so correctness cost nothing.
+
+**Work collapse happens before any capacity is spent.** One game owned on two stores is two
+ownership rows and one recommendation; collapsing after the shortlist let a duplicate copy
+consume a slot a distinct work needed. The survivor is the copy with the highest `Upper`,
+not the highest preliminary score, so the collapse cannot discard the copy that would have
+won once history was read. The bought-twice signal is unaffected: store counts are computed
+per work over every ownership in the library, before candidates are assembled.
+`RecommendationFeed.WorkCount` reports what the pool collapsed to.
 
 ## 5. Thresholds, and why each is that number
 
@@ -129,7 +187,10 @@ to meet: a number that means something.
 | `SampledBaseValue` / `SampledSpanValue` | 0.50 / 0.20 | 1–119 minutes ramps 0.50→0.70: launching at all shows intent shelfware lacks, but §6.1 says sub-refund-line minutes are still "never played it", so the whole ramp stays strictly below the bounced peak — and the deliberate jump at 120 (0.70→1.00) *is* the refund line's semantics: crossing it is a different fact, not more of the same one. |
 | `TriedToLikeSaturationEpisodes` | 3 | Coming back twice after the first taste is already "trying to like it"; requiring more before full credit would gate the signal on history depth the measured library will not have for months. |
 | `Tier2MinSessions` / `Tier2MinSpanDays` | 50 / 56 | "Months in" made concrete: ~50 sessions across two months is when cadence/seasonality claims stop being anecdotes. |
-| `HistoryProbeLimit` / `RecentProbeLimit` | 60 / 25 | The repository interfaces read history per-ownership, so the engine probes the shortlist (3× a 20-item feed) plus the most recently played rows (where history concentrates — the 5 real multi-snapshot ownerships are all recent) rather than issuing 2,000 queries per feed. |
+| `HistoryProbeLimit` / `RecentProbeLimit` | 60 / 25 | The repository interfaces read history per-ownership, so the engine probes a shortlist rather than issuing 2,000 queries per feed. `HistoryProbeLimit` is now the cap on the shortlist's **comfort floor**, not the shortlist's justification — the shortlist itself is score-bound safe and may exceed the floor when the bound says it must (§4a). 60 is where the measured bound landed anyway. `RecentProbeLimit` is tier detection only: the most recently played rows are where history concentrates (the 5 real multi-snapshot ownerships are all recent), and what they hold is directly observed, so they floor the estimate without entering the uniform draw that would be biased by them. |
+| `TierSampleOwnerships` | 120 | Ownerships drawn uniformly from every row that could hold history, for the sampled tier estimate (§6). Roughly a third of the measured library's history-bearing rows: enough that the scale-up is not carried by a handful of rows, and cheap at two indexed point reads apiece. Only used when no global aggregate is available. |
+| `TierSampleSeed` | `0x5715_0F5E` | Fixed salt for that draw. Deterministic so one library always samples the same rows: a tier that flickered between refreshes because the sample moved would be a worse answer than a slightly stale one, and a fixed seed makes the estimate reproducible when someone disputes it. Not the shuffle seed — the tier must not change because the day did. |
+| `ReasonCharacterBudget` | 180 | Longest reason sentence a card may carry. One sentence is the contract (§6c), and 180 is the length at which one sentence stays one sentence: it fits the longest primary/secondary pair the selection rules can produce, quoted update title included, so the honesty clauses are never truncated away. Lower it and truncation starts deciding what the user is told. |
 | `JitterAmplitude` | 0.03 | Below the smallest deliberate weight gap (0.05), so jitter can only reorder rows no real signal separates. |
 | `PenaltyModeMismatch` | 0.10 | Equal to the taste weight on purpose: a perfect genre match on a game the user will never launch with strangers should net to zero, not to a recommendation. A demotion, never an exclusion — facets can be missing or miscoded, and a demotion is recoverable. |
 | `ModeEvidenceMinGames` | 20 | Committed mode-carrying games before the profile may claim a dominant mode. Below it, a handful of purchases could fake dominance; at 20+ games with an 85% share, chance is off the table. The measured library has 261. |
@@ -159,8 +220,24 @@ Tier is detected from evidence, not from install age, and the answer rides on th
 - **Tier 2 (Established):** ≥50 sessions spanning ≥8 weeks. Enables (future) cadence and
   return-latency work; today it only labels the feed.
 
-Detection is a bounded sample (shortlist ∪ most-recently-played), which is where history
-physically accrues first — an approximation, documented here, cheap by construction.
+**The tier is measured over the library, not over the feed.** It used to be read off the
+candidate shortlist plus 25 recently-played rows and treated as a global total. Both samples
+are biased, in opposite directions: the shortlist excludes by design exactly the games being
+played, and the recently-played rows are the densest in sessions. A user with a hundred
+sessions spread across a hundred titles read as cold start.
+
+Where a global aggregate is available (`ILibraryHistoryStatsRepository`, §9) it is used
+verbatim. Where it is not, the fallback is a deterministic uniform draw of
+`TierSampleOwnerships` rows over every ownership that could hold history, scaled back up to
+the library, with the directly observed count as the floor under the estimate — a count of
+rows actually read can never exceed the truth. Rows with no minutes and no play date are
+excluded from the draw; that is exact stratification rather than bias, since they can hold
+no history at all. `LibraryHistoryStats.IsEstimate` says which of the two answered, and a
+scaled figure may gate behaviour but must never be shown to a user as a total.
+
+What improves when the aggregate query exists: the session count and span become exact
+instead of scaled, `Tier2MinSessions`/`Tier2MinSpanDays` are compared against real totals,
+and the sample's cost (120 ownerships × 2 point reads) leaves every feed.
 
 **The GDPR importer is the cold-start lever** (design doc §5.4): when it lands, it
 backfills `sessions` with `detection_method='import'` and deep playtime history, which
@@ -342,6 +419,98 @@ at.
   the first Winnow-launched session onward; the taste effect is tested end-to-end on
   fixtures.
 
+## 6c. The explanation contract
+
+Every card states its reason in **one sentence**. That is a charter constraint and the
+builder used to break it: it concatenated a lead, a secondary reason, a probably-done
+statement and a mode-mismatch clause into as many as four. The same concatenation was the
+mechanical cause of the sameness complaint — every card was assembled from the same
+fragments in the same order, so ten different histories produced one frame with the nouns
+swapped.
+
+### The split
+
+The scorer now returns **structure**, not prose. `RecommendationScorer.Explain` produces a
+`RecommendationReason`: one primary signal, at most one secondary, and the `ReasonEvidence`
+both may cite, read off the same facts the score was computed from so a sentence cannot
+state a figure the ranking never saw. `ReasonBuilder` renders one bounded sentence from it,
+choosing wording from `ReasonPhrasebook`. What is true and how it reads are separately
+changeable, and a caller wanting its own rendering reads `Recommendation.Explanation`
+rather than parsing the sentence back apart.
+
+`ReasonSignal` is the vocabulary, and every member is a fact about the game rather than a
+phrase:
+
+- **Openings:** patched-since-you-left, bounced, sampled, never-opened, launched-unmeasured,
+  probably-done.
+- **Supports:** tried-to-like-it, taste match, bought twice, installed, dormant,
+  undated dormancy, online-only mismatch, solo-only mismatch, played recently,
+  shown recently — or nothing, which is a legitimate answer.
+
+### Selection, and its honesty rules
+
+The honesty rules live in the selection, not in the wording.
+
+**Primary,** in precedence order: a row demoted for being probably-done leads with that,
+because the feed is required to be able to say "you were right to drop this"; then the
+patched bucket, the headline fact; then the commitment shape (never opened, launched but
+unmeasured, sampled, bounced).
+
+**Secondary,** in precedence order: mode mismatch first, then fresh play. Both are demotions
+whose effect the user can see, and a demotion the user can see the effect of but not the
+reason for is an arbitrary ranking from their side. Then the strongest supporting fact the
+opening did not already tell: tried-to-like-it, taste match, bought twice, installed,
+dormancy, recently shown.
+
+Dormancy sits last because the opening can usually date the game itself, and the builder
+additionally forbids the opening from spending `{year}` or `{age}` when the supporting
+clause is telling the time story. "You put 5 hours in back in 2019, untouched for seven
+years" is one fact told twice, which is the cookie-cutter failure in miniature.
+
+### One sentence, bounded
+
+`ReasonCharacterBudget` (180, §5) is sized above the longest pair the selection rules can
+produce, so the clauses the honesty rules put there are never truncated away. The contract
+test sweeps every producible primary/secondary combination against several evidence shapes —
+including a game that knows everything about itself and one that knows almost nothing — and
+asserts exactly one terminator, inside the budget, with no unfilled tokens.
+
+### Variation, deterministically
+
+Each signal carries several phrasings per clause. The variant is chosen by hashing the
+game's own **release id**, never the shuffle seed, so a reload renders the identical
+sentence while neighbouring cards do not read as siblings, and tomorrow's different hand is
+not also a different wording. A variant whose tokens this game cannot fill truthfully is
+skipped, which is why every list must carry at least one token-free variant; a variant
+citing one of the game's own numbers is preferred over one that would be equally true of any
+game, which is what stops a feed of "it's in your library" cards.
+
+Real output, rendered from the live library:
+
+> You have not seen "Reforged Eden", which arrived after you left, and nobody has opened it in 4 years.
+>
+> 4.3 hours of yours went into this before you drifted off, spread over 5 sittings rather than one.
+>
+> 15 hours in, well past the refund line, then nothing, quiet for 5 years now.
+>
+> A brief look, 22 minutes, and nothing after, untouched for 4 years.
+>
+> This has been waiting since you bought it, and nothing needs downloading first.
+>
+> 43 hours was your answer 7 years ago, and nothing since has argued with it.
+>
+> Something held your attention for 10 hours, then stopped, though 2 days is no time at all to have been away.
+
+### One grammar rule the shape forces
+
+A supporting clause may not open on a bare relative pronoun. Any opening can precede it and
+most of them end on a verb, so ", which you own 2 times over" attached to the wrong word:
+"Something held your attention for 6.7 hours, then stopped, which you own 2 times over."
+Two variants shipped with that fault and were reworded. A participle, an appositive or a
+fresh coordinate clause carries its own footing; a relative pronoun borrows one that may not
+be there. The rule is recorded in the phrasebook's own contract, where the next person
+writing copy will meet it.
+
 ## 7. Deliberately deferred (and where each would plug in)
 
 - **Session-length fit** ("a 60-hour CRPG is not a Tuesday-night suggestion"): needs both
@@ -377,6 +546,8 @@ at.
 | Nagging about correctly-abandoned games | Probably-done penalty with an explanation that *says* "you were probably right"; not-interested set for the user's explicit verdict. |
 | Blank feed on day one | Every load-bearing signal is retroactive; tier detection widens confidence instead of gating output; the shelfware base value keeps the pile ranked rather than empty. |
 | Unexplainable output | Reasons are composed from the same contributions that produced the score; a signal that cannot be explained in one sentence has nowhere to hide in the API shape. |
+| The same frame with the nouns swapped | The scorer returns structure and the builder renders it, so a card is no longer a concatenation of the same fragments in the same order (§6c). Several phrasings per signal, selected from the release id. The contract test masks every number and proper noun and requires ten genuinely different histories to leave at least eight distinct sentence *skeletons* — distinct wording is not enough to pass. |
+| Absence of evidence read as evidence of absence | Update coverage is a named input (§3): an unpolled release is `Unknown`, not quiet, and the probably-done penalty is withheld until one stored announcement proves Winnow has seen the release's history. Same rule elsewhere: `ReturnEpisodes` is null when unprobed and 0 when probed and empty, kept apart so "no evidence" is never reported as "never returned", and the tier's sampled estimate is flagged `IsEstimate` rather than passed off as a count. |
 | Silent history-shape lies | 86400/1970 sentinel handling is upstream (migration 0008, `SteamTime`); null last-played beside real minutes is read as maximally dormant, never as fresh. |
 | Score worship | No stored score column exists; the feed is recomputed per request and the request carries every threshold, so two callers can disagree and both be right. |
 
@@ -389,3 +560,9 @@ feed. The feedback sets now have real storage (§6b): the composition root regis
 `FeedbackSets`, apply, compute, record surfacings, and route the dismiss / snooze / undo
 commands to the repository. The UI affordances themselves (the "not for me" button, the
 inspection list) are the remaining unbuilt piece, owned by the App layer.
+
+`ILibraryHistoryStatsRepository` (`Winnow.Core.Repositories`) has **no `Winnow.Data`
+implementation yet**. The engine takes it as an optional constructor argument and falls
+back to the sampled estimate (§6) when it is absent, so the composition root can register
+one whenever it is written with no change here and no change to the tier's meaning — only
+to its precision.

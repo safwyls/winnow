@@ -375,7 +375,9 @@ public static class Program
         services.AddSingleton<IUpdateEventRepository, UpdateEventRepository>();
         services.AddSingleton<IGameListRepository, GameListRepository>();
         services.AddSingleton<IMergeCandidateRepository, MergeCandidateRepository>();
+        services.AddSingleton<IMergeExecutionRepository, MergeExecutionRepository>();
         services.AddSingleton<ILibraryQueryRepository, LibraryQueryRepository>();
+        services.AddSingleton<ILibraryHistoryStatsRepository, LibraryHistoryStatsRepository>();
         services.AddSingleton<IFacetRepository, FacetRepository>();
         services.AddSingleton<IResolveStateRepository, ResolveStateRepository>();
         services.AddSingleton<ISettingsRepository, SettingsRepository>();
@@ -454,6 +456,7 @@ public static class Program
         // becomes a false claim about the user's library rather than a
         // description of a feature that was never wired.
         services.AddSoftMatching();
+        services.AddMergeExecution();
 
         // Cover art (§5.4). Steam's portrait capsule needs no credentials, so
         // the grid has real art regardless of IGDB configuration; an IGDB cover

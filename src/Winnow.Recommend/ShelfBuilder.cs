@@ -86,9 +86,10 @@ internal static class ShelfBuilder
     public static IReadOnlyList<RecommendationShelf> Build(
         IReadOnlyList<ShelfDefinition> definitions,
         IReadOnlyList<ScoredCandidate> scored,
-        RecommendationTuning tuning,
+        RecommendationRequest request,
         int maxPerShelf)
     {
+        var tuning = request.Tuning;
         var claimedWorks = new HashSet<long>();
         var shelves = new List<RecommendationShelf>(definitions.Count);
 
@@ -100,7 +101,7 @@ internal static class ShelfBuilder
                 .ThenBy(s => s.Facts.ReleaseId)
                 .ToList();
 
-            var items = Fill(pool, claimedWorks, tuning, maxPerShelf);
+            var items = Fill(pool, claimedWorks, request, maxPerShelf);
             if (items.Count > 0)
             {
                 shelves.Add(new RecommendationShelf
@@ -120,9 +121,10 @@ internal static class ShelfBuilder
     private static List<Recommendation> Fill(
         List<ScoredCandidate> pool,
         HashSet<long> claimedWorks,
-        RecommendationTuning tuning,
+        RecommendationRequest request,
         int maxPerShelf)
     {
+        var tuning = request.Tuning;
         var items = new List<Recommendation>(maxPerShelf);
         var franchiseCounts = new Dictionary<string, int>(StringComparer.Ordinal);
         var genreCounts = new Dictionary<long, int>();
@@ -132,18 +134,7 @@ internal static class ShelfBuilder
         void Take(ScoredCandidate candidate)
         {
             var facts = candidate.Facts;
-            items.Add(new Recommendation
-            {
-                OwnershipId = facts.OwnershipId,
-                ReleaseId = facts.ReleaseId,
-                WorkId = facts.WorkId,
-                Title = facts.Title,
-                Store = facts.Store,
-                Bucket = facts.Bucket,
-                Score = candidate.Score,
-                Reason = ReasonBuilder.Build(facts, candidate.Signals),
-                Signals = candidate.Signals,
-            });
+            items.Add(RecommendationEngine.Present(candidate, request));
             claimedWorks.Add(facts.WorkId);
             pickedWorks.Add(facts.WorkId);
             var franchise = Franchise.KeyFor(facts.Title);

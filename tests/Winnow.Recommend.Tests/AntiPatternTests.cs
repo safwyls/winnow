@@ -48,8 +48,12 @@ public class AntiPatternTests : IDisposable
     public async Task A_correctly_abandoned_game_is_demoted_and_the_reason_says_you_were_right()
     {
         var asOf = RecommendHarness.AsOf;
-        // 41 hours, eight years ago, nothing changed since: the fair-shake case.
+        // 41 hours, eight years ago, nothing changed since: the fair-shake
+        // case. The seeded announcement is what makes "nothing changed since"
+        // a FACT rather than a gap in Winnow's coverage (F15) — without it the
+        // model is not entitled to the verdict.
         var done = await _harness.SeedGameAsync("Fair Shake Given", minutes: 2_500, lastPlayed: asOf.AddYears(-8));
+        await _harness.SeedUpdateCoverageAsync(done, asOf.AddYears(-9), "1.0 Release Notes");
         // A modest old bounce — the feed's actual target.
         var modest = await _harness.SeedGameAsync("Modest Old Bounce", minutes: 300, lastPlayed: asOf.AddYears(-8));
 
@@ -61,7 +65,9 @@ public class AntiPatternTests : IDisposable
         Assert.True(modestItem.Score > doneItem.Score,
             "a fair-shake-and-left game must rank below a modest bounce of the same age");
         Assert.Contains(doneItem.Signals, s => s.Signal == SignalNames.ProbablyDone && s.Contribution < 0);
-        Assert.Contains("right to move on", doneItem.Reason);
+        // The verdict leads the sentence: a demoted row with a cheerful reason
+        // would be the model lying about its own arithmetic.
+        Assert.Equal(ReasonSignal.ProbablyDone, doneItem.Explanation.Primary);
     }
 
     [Fact]

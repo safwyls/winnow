@@ -20,6 +20,23 @@ public enum ModeMismatch
 }
 
 /// <summary>
+/// Whether Winnow can prove what did or did not ship for a release. Coverage
+/// of a release begins when polling of that release begins, so an empty update
+/// history means one of two indistinguishable things: nothing shipped, or
+/// nobody was watching. Absence of evidence is not evidence of absence, and
+/// treating it as such is what let the probably-done penalty assert "nothing
+/// has changed since" about rows Winnow had never looked at.
+/// </summary>
+public enum UpdateCoverage
+{
+    /// <summary>Winnow holds no observation of this release's update history. Nothing may be claimed either way.</summary>
+    Unknown = 0,
+
+    /// <summary>Winnow has read this release's announcement history, so silence since a date is a fact.</summary>
+    Observed = 1,
+}
+
+/// <summary>
 /// Everything the scorer may know about one candidate, already read and
 /// flattened. The split matters: <see cref="RecommendationScorer"/> is pure
 /// functions over this record, so every curve and penalty is unit-testable
@@ -97,4 +114,13 @@ public sealed record CandidateFacts
     /// </summary>
     public int? UpdatesSinceLastPlayed { get; init; }
     public string? LatestUpdateTitle { get; init; }
+
+    /// <summary>
+    /// Whether Winnow has ever observed this release's update history. Gates
+    /// every negative claim about nothing having changed: without
+    /// <see cref="Recommend.UpdateCoverage.Observed"/> the probably-done penalty is
+    /// withheld and no sentence claims silence. Defaults to Unknown, so a row
+    /// nobody probed is treated as unwatched rather than quiet.
+    /// </summary>
+    public UpdateCoverage UpdateCoverage { get; init; } = UpdateCoverage.Unknown;
 }

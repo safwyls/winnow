@@ -1,116 +1,225 @@
-using Winnow.Core.Queries;
+using System.Text;
 
 namespace Winnow.Recommend;
 
 /// <summary>
-/// Composes the one-line <see cref="Recommendation.Reason"/> from the same
-/// contributions that produced the score — the prose can cite nothing the
-/// arithmetic didn't use, which is what keeps a reason honest under
-/// interrogation.
+/// Renders a <see cref="RecommendationReason"/> as ONE sentence inside a
+/// character budget. One sentence is the card's contract, and the old builder
+/// broke it: it concatenated a lead, a secondary reason, a probably-done
+/// statement and a mode-mismatch clause into as many as four. That
+/// concatenation was also the mechanical cause of the cookie-cutter feel, since
+/// every card was assembled from the same fragments in the same order.
 ///
-/// <para>The lead sentence is the strongest story the facts support; the
-/// charter's own example — "you put 40 minutes into this in 2023 and it has
-/// had three major patches since" — fuses commitment, dormancy and the patch
-/// signal into one sentence, so the builder does the same for the stale bucket
-/// rather than stapling three explanations together.</para>
+/// <para>The builder now renders exactly two clauses and picks the phrasing of
+/// each from <see cref="ReasonPhrasebook"/> using the game's own release id, so
+/// a reload renders the identical sentence while two cards in one session do
+/// not read as siblings.</para>
 /// </summary>
 internal static class ReasonBuilder
 {
-    public static string Build(
-        CandidateFacts facts,
-        IReadOnlyList<SignalContribution> contributions)
-    {
-        var parts = new List<string>(3) { Lead(facts, contributions) };
+    /// <summary>Tokens a primary clause may not use when the secondary is already telling the time story.</summary>
+    private static readonly string[] TimeTokens = ["year", "age"];
 
-        // One supporting clause: the strongest contributor whose story the
-        // lead didn't already tell. Friction, intent and taste qualify;
-        // commitment/dormancy/patch are the lead's raw material, and jitter
-        // explains rotation, not the game.
-        var secondary = contributions
-            .Where(c => c.Contribution > 0 && c.Signal is
-                SignalNames.Installed or SignalNames.BoughtTwice or
-                SignalNames.TasteAffinity or SignalNames.TriedToLikeIt)
-            .OrderByDescending(c => c.Contribution)
-            .FirstOrDefault();
+    private static readonly string[] NoTokens = [];
+
+    public static string Build(RecommendationReason reason, RecommendationTuning tuning)
+    {
+        var budget = Math.Max(40, tuning.ReasonCharacterBudget);
+        var evidence = reason.Evidence;
+
+        // If the supporting clause is about how long it has been, the opening
+        // must not also date it: "you put 5 hours in back in 2019, untouched
+        // for seven years" is one fact told twice.
+        var forbidden = reason.Secondary is ReasonSignal.Dormant or ReasonSignal.UndatedDormancy
+            or ReasonSignal.PlayedRecently
+            ? TimeTokens
+            : NoTokens;
+
+        // Capitalised after filling, not before: a template is free to open on
+        // a token ("{updates} landed here since…"), which is one more sentence
+        // shape available to the copy.
+        var primary = Capitalise(
+            Render(reason.Primary, ReasonClause.Primary, evidence, forbidden)
+                ?? Render(reason.Primary, ReasonClause.Primary, evidence, NoTokens)
+                ?? ReasonPhrasebook.Fallback);
+
+        var secondary = reason.Secondary == ReasonSignal.None
+            ? null
+            : Render(reason.Secondary, ReasonClause.Secondary, evidence, NoTokens);
+
         if (secondary is not null)
         {
-            parts.Add(secondary.Explanation);
+            var joined = Terminate(primary + secondary);
+            if (joined.Length <= budget)
+            {
+                return joined;
+            }
         }
 
-        // The honesty clause. If probably-done fired, the feed is REQUIRED to
-        // say "you were right to drop this" out loud — a demoted row with a
-        // cheerful reason would be the model lying about its own arithmetic.
-        var probablyDone = contributions.FirstOrDefault(
-            c => c.Signal == SignalNames.ProbablyDone);
-        if (probablyDone is not null)
-        {
-            parts.Add(probablyDone.Explanation);
-        }
-
-        // Same honesty rule for the mode mismatch: a row demoted for being
-        // online-only in a single-player library must say so where it does
-        // surface, or the demotion is arbitrary from the user's side.
-        var modeMismatch = contributions.FirstOrDefault(
-            c => c.Signal == SignalNames.ModeMismatch);
-        if (modeMismatch is not null)
-        {
-            parts.Add(modeMismatch.Explanation);
-        }
-
-        return string.Join(" ", parts);
+        var alone = Terminate(primary);
+        return alone.Length <= budget ? alone : Elide(alone, budget);
     }
 
-    private static string Lead(
-        CandidateFacts facts, IReadOnlyList<SignalContribution> contributions)
+    /// <summary>
+    /// Picks one variant for a signal, deterministically from the release id,
+    /// among those whose tokens this game can actually fill.
+    /// </summary>
+    private static string? Render(
+        ReasonSignal signal, ReasonClause clause, ReasonEvidence evidence, string[] forbidden)
     {
-        // Stale-but-patched: fuse played-when with changed-since.
-        if (facts.Bucket == LibraryBuckets.StaleButPatched)
+        var variants = ReasonPhrasebook.Variants(signal, clause);
+        if (variants.Count == 0)
         {
-            var played = facts.PlaytimeMinutes > 0
-                ? $"You put {Phrases.Duration(facts.PlaytimeMinutes)} into this"
-                : "You opened this";
-            var when = facts.LastPlayedAt is { } lastPlayed ? $" in {lastPlayed.Year}" : " once";
+            return null;
+        }
 
-            string changed;
-            if (facts.UpdatesSinceLastPlayed is { } updates && updates > 0)
+        // Specific over generic. A variant that cites one of this game's own
+        // numbers is always preferred to one that would be equally true of any
+        // game — that preference is what stops a feed of "it's in your library"
+        // cards, and it is why the token-free variant is a fallback rather than
+        // an equal option.
+        List<string>? specific = null;
+        List<string>? generic = null;
+        foreach (var variant in variants)
+        {
+            if (!CanFill(variant, evidence, forbidden))
             {
-                var latest = facts.LatestUpdateTitle is { Length: > 0 } title
-                    ? $", most recently \"{title}\""
-                    : string.Empty;
-                changed = updates == 1
-                    ? $"and it has had an update since{latest}."
-                    : $"and it has had {updates} updates since{latest}.";
+                continue;
+            }
+
+            if (variant.IndexOf('{') >= 0)
+            {
+                (specific ??= []).Add(variant);
             }
             else
             {
-                changed = "and it has had a major update since.";
+                (generic ??= []).Add(variant);
+            }
+        }
+
+        var usable = specific ?? generic;
+        if (usable is null)
+        {
+            return null;
+        }
+
+        // Deterministic per (release, signal, clause): the same game renders
+        // the same sentence on every reload, and neighbouring games in one
+        // feed land on different phrasings.
+        var pick = (int)(Hash(evidence.ReleaseId, (int)signal * 31 + (int)clause)
+            % (ulong)usable.Count);
+        return Fill(usable[pick], evidence);
+    }
+
+    private static bool CanFill(string template, ReasonEvidence evidence, string[] forbidden)
+    {
+        foreach (var token in Tokens(template))
+        {
+            if (Array.IndexOf(forbidden, token) >= 0)
+            {
+                return false;
             }
 
-            return $"{played}{when} {changed}";
+            if (ReasonTokens.Resolve(token, evidence) is null)
+            {
+                return false;
+            }
         }
 
-        // Everything else leads with the commitment sentence, which the scorer
-        // wrote from the same minutes: "never opened…", "you tried it for 40
-        // minutes…", "you put 5.2 hours in…". Dormancy joins it when known —
-        // "then let it go" reads differently at eight years than at eight
-        // weeks.
-        var commitment = contributions.FirstOrDefault(c => c.Signal == SignalNames.Commitment);
-        var dormancy = contributions.FirstOrDefault(c => c.Signal == SignalNames.Dormancy);
+        return true;
+    }
 
-        if (commitment is not null)
+    private static string Fill(string template, ReasonEvidence evidence)
+    {
+        if (template.IndexOf('{') < 0)
         {
-            return dormancy is not null && facts.PlaytimeMinutes > 0 && facts.LastPlayedAt is { } lp
-                ? $"{commitment.Explanation.TrimEnd('.')} — that was {lp.Year}."
-                : commitment.Explanation;
+            return template;
         }
 
-        // A recently-played row that somehow reaches rendering, or a future
-        // shape this builder doesn't know: fall back to something true rather
-        // than something empty. An empty reason is a contract violation.
-        var top = contributions
-            .Where(c => c.Contribution > 0 && c.Signal != SignalNames.Jitter)
-            .OrderByDescending(c => c.Contribution)
-            .FirstOrDefault();
-        return top?.Explanation ?? "In your library, and today's rotation picked it.";
+        var result = new StringBuilder(template.Length + 32);
+        for (var i = 0; i < template.Length; i++)
+        {
+            if (template[i] != '{')
+            {
+                result.Append(template[i]);
+                continue;
+            }
+
+            var close = template.IndexOf('}', i + 1);
+            if (close < 0)
+            {
+                result.Append(template[i]);
+                continue;
+            }
+
+            var token = template[(i + 1)..close];
+            result.Append(ReasonTokens.Resolve(token, evidence) ?? string.Empty);
+            i = close;
+        }
+
+        return result.ToString();
+    }
+
+    private static IEnumerable<string> Tokens(string template)
+    {
+        for (var i = 0; i < template.Length; i++)
+        {
+            if (template[i] != '{')
+            {
+                continue;
+            }
+
+            var close = template.IndexOf('}', i + 1);
+            if (close < 0)
+            {
+                yield break;
+            }
+
+            yield return template[(i + 1)..close];
+            i = close;
+        }
+    }
+
+    /// <summary>First letter up, so a template may open on a token without the copy having to know.</summary>
+    private static string Capitalise(string clause)
+        => clause.Length > 0 && char.IsLower(clause[0])
+            ? char.ToUpperInvariant(clause[0]) + clause[1..]
+            : clause;
+
+    /// <summary>Exactly one terminator, always, whatever the template ended with.</summary>
+    private static string Terminate(string sentence)
+    {
+        var trimmed = sentence.TrimEnd();
+        while (trimmed.Length > 0 && (trimmed[^1] is '.' or ',' or ';' or ' '))
+        {
+            trimmed = trimmed[..^1].TrimEnd();
+        }
+
+        return trimmed.Length == 0 ? ReasonPhrasebook.Fallback + "." : trimmed + ".";
+    }
+
+    /// <summary>Last-resort cut at a word boundary. Should never fire on shipped copy; the budget test proves it.</summary>
+    private static string Elide(string sentence, int budget)
+    {
+        var cut = sentence[..Math.Max(1, budget - 1)];
+        var space = cut.LastIndexOf(' ');
+        if (space > budget / 2)
+        {
+            cut = cut[..space];
+        }
+
+        return cut.TrimEnd(' ', ',', ';', '.', '—', '-') + "…";
+    }
+
+    /// <summary>SplitMix64 over (releaseId, salt) — the same family as the scorer's jitter, and just as reproducible.</summary>
+    private static ulong Hash(long releaseId, int salt)
+    {
+        unchecked
+        {
+            var x = (ulong)releaseId + 0x9E3779B97F4A7C15UL * (ulong)(uint)(salt + 1);
+            x = (x ^ (x >> 30)) * 0xBF58476D1CE4E5B9UL;
+            x = (x ^ (x >> 27)) * 0x94D049BB133111EBUL;
+            return x ^ (x >> 31);
+        }
     }
 }
