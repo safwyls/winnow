@@ -507,6 +507,26 @@ public sealed class MergeUndoRepository : IMergeUndoRepository
                    a.undone_at                             AS UndoneAt,
                    a.undo_journal_version                  AS UndoJournalVersion,
                    a.summary_json                          AS SummaryJson,
+                   (SELECT w.name FROM works w
+                     WHERE w.id = a.surviving_work_id)      AS SurvivingTitle,
+                   -- The absorbed side's name survives nowhere but the journal:
+                   -- the works row is deleted, and for a release collapse the
+                   -- merge_candidates row is cascaded away with the absorbed
+                   -- release. The releases fallback covers a collapse where both
+                   -- entries already shared one work, so no works row was deleted.
+                   COALESCE(
+                       (SELECT json_extract(j.before_json, '$.name')
+                          FROM merge_undo_rows j
+                         WHERE j.application_id = a.id
+                           AND j.table_name = 'works'
+                           AND j.op = 'delete'
+                         LIMIT 1),
+                       (SELECT json_extract(j.before_json, '$.name')
+                          FROM merge_undo_rows j
+                         WHERE j.application_id = a.id
+                           AND j.table_name = 'releases'
+                           AND j.op = 'delete'
+                         LIMIT 1))                          AS AbsorbedTitle,
                    EXISTS (SELECT 1 FROM works w
                             WHERE w.id = a.surviving_work_id)       AS SurvivingWorkExists,
                    (a.surviving_release_id IS NULL
@@ -542,6 +562,8 @@ public sealed class MergeUndoRepository : IMergeUndoRepository
         public DateTime? UndoneAt { get; init; }
         public int? UndoJournalVersion { get; init; }
         public string? SummaryJson { get; init; }
+        public string? SurvivingTitle { get; init; }
+        public string? AbsorbedTitle { get; init; }
         public bool SurvivingWorkExists { get; init; }
         public bool SurvivingReleaseExists { get; init; }
 
@@ -576,9 +598,33 @@ public sealed class MergeUndoRepository : IMergeUndoRepository
             SurvivingReleaseId = SurvivingReleaseId,
             AbsorbedReleaseId = AbsorbedReleaseId,
             AppliedAt = AppliedAt,
+            SurvivingTitle = SurvivingTitle,
+            AbsorbedTitle = AbsorbedTitle,
             UndoneAt = UndoneAt,
             UndoJournalVersion = UndoJournalVersion,
             SummaryJson = SummaryJson,
+            Counts = DecodeCounts(SummaryJson),
         };
+
+        // Decoded here rather than by the caller so the payload's shape stays
+        // inside the assembly that writes it. A summary that cannot be read is
+        // a missing detail view, never a failed history screen.
+        private static MergeRepointCounts? DecodeCounts(string? summaryJson)
+        {
+            if (string.IsNullOrWhiteSpace(summaryJson))
+            {
+                return null;
+            }
+
+            try
+            {
+                return JsonSerializer.Deserialize(
+                    summaryJson, MergeJsonContext.Default.MergeRepointCounts);
+            }
+            catch (JsonException)
+            {
+                return null;
+            }
+        }
     }
 }

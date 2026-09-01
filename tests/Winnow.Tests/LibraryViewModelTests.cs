@@ -1196,7 +1196,11 @@ public sealed class LibraryViewModelTests
                 snapshots: withSnapshots ? Snapshots : null);
 
         public MergeQueueViewModel CreateMergeQueue()
-            => new(new MergeCandidateRepository(_db.Factory), Releases, Works);
+            => new(
+                new MergeCandidateRepository(_db.Factory),
+                Releases,
+                Works,
+                TestMergeExecutor.For(_db));
 
         public IEnumerable<string> Titles(LibraryViewModel library)
             => library.VisibleTiles.Select(t => t.Title);

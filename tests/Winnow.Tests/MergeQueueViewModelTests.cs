@@ -491,7 +491,10 @@ public sealed class MergeQueueViewModelTests
             Releases = new ReleaseRepository(_db.Factory);
             Candidates = new MergeCandidateRepository(_db.Factory);
             ResolveState = new ResolveStateRepository(_db.Factory);
+            Merges = TestMergeExecutor.For(_db);
         }
+
+        public Winnow.Resolve.MergeExecutor Merges { get; }
 
         public IWorkRepository Works { get; }
 
@@ -503,7 +506,10 @@ public sealed class MergeQueueViewModelTests
 
         /// <summary>No cover cache: the queue must compose on procedural art alone.</summary>
         public MergeQueueViewModel CreateViewModel(bool withResolveState = true)
-            => new(Candidates, Releases, Works, null, withResolveState ? ResolveState : null);
+            => new(
+                Candidates, Releases, Works, Merges,
+                null,
+                withResolveState ? ResolveState : null);
 
         public MatchSubject Subject(SeededRelease release)
             => new()

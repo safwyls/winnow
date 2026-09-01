@@ -758,7 +758,11 @@ public sealed class ListsViewModelTests
 
         /// <summary>The shell owns the rail's list command, which is the one that toggles.</summary>
         public MergeQueueViewModel CreateMergeQueue()
-            => new(new MergeCandidateRepository(_db.Factory), Releases, Works);
+            => new(
+                new MergeCandidateRepository(_db.Factory),
+                Releases,
+                Works,
+                TestMergeExecutor.For(_db));
 
         public IEnumerable<string> Titles(LibraryViewModel library)
             => library.VisibleTiles.Select(t => t.Title);

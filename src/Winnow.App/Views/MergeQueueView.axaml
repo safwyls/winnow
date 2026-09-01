@@ -4,9 +4,11 @@
              x:Class="Winnow.App.Views.MergeQueueView"
              x:DataType="vm:MergeQueueViewModel">
 
-    <!-- Merge confirm queue (§6). Two covers side by side with signal diff
-         and two answers: Same game / Different games. All pending pairs on one
-         scrollable page. No Flare on this screen. -->
+    <!-- Same game screen (§6). Three sections on one scrollable page: the
+         review queue, the confirmed pairs waiting to be applied, and the
+         history of applied merges with an undo per row. No Flare anywhere
+         on this screen; Amber carries attention, Volt stays on the primary
+         answer and selection. -->
 
     <UserControl.Resources>
 
@@ -15,9 +17,8 @@
         <DataTemplate x:Key="MergeSideTemplate" DataType="vm:MergeSideViewModel">
             <StackPanel Width="200" Spacing="10">
 
-                <!-- §6: 200x300. The 2:3 portrait capsule the grid uses, at the
-                     density slider's maximum — this is a decision that deserves
-                     the art at full size. -->
+                <!-- §6: 200x300, the density slider's maximum. A merge
+                     decision deserves the art at full size. -->
                 <Border Width="200" Height="300"
                         CornerRadius="{StaticResource RadiusTile}"
                         ClipToBounds="True"
@@ -128,6 +129,17 @@
             <Setter Property="Foreground" Value="{StaticResource VoltInk}"/>
         </Style>
 
+        <!-- A control the plan refuses, or an undo a later merge has taken out
+             of reach. TextDim on the room's own ground, never Flare: Flare marks
+             unread updates and the bucket that counts them, and a disabled
+             button is not an alarm. The reason is always written beside it in
+             words (§8), so the dimming is never the only thing saying so. -->
+        <Style Selector="Button.answer:disabled /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
+        </Style>
+
         <!-- "Different games" is not a cancel and is not destructive: it is the
              other half of the answer, and it carries as much weight. It reads
              quieter only because the queue's job is to shrink. -->
@@ -146,6 +158,53 @@
             <Setter Property="Foreground" Value="{StaticResource Text}"/>
         </Style>
 
+        <!-- ══ The other two sections ═══════════════════════════════════════
+             The apply list and the history share this screen with the queue
+             and reuse its card and its two answer buttons rather than
+             arriving with a visual language of their own. An entry is the
+             lighter card the two lists are made of: 1px rather than the
+             queue card's 2px, because nothing here is selectable and a 2px
+             edge that never changes colour is a border pretending to be a
+             state.
+
+             Nothing on this screen animates, so the reduced-motion setting
+             has nothing to suppress here. -->
+        <Style Selector="Border.entry">
+            <Setter Property="Background" Value="{StaticResource Surface}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusTile}"/>
+            <Setter Property="Padding" Value="18,16"/>
+            <Setter Property="Margin" Value="0,0,0,12"/>
+        </Style>
+
+        <!-- An inset note the entry is making about itself. Well is the app's
+             inset tone (§9). -->
+        <Style Selector="Border.note">
+            <Setter Property="Background" Value="{StaticResource Well}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
+            <Setter Property="Padding" Value="14,12"/>
+        </Style>
+
+        <!-- Amber is §2's attention colour and the one this screen is allowed
+             to reach for. A refusal, a limited collapse and the report of what
+             the last act actually did are all "read this before going on".
+             Amber on the edge only; the text stays legible ink. -->
+        <Style Selector="Border.note.attention">
+            <Setter Property="BorderBrush" Value="{StaticResource Amber}"/>
+        </Style>
+
+        <!-- Section rule and heading: the same 1px Line the header sits on, so
+             the three sections read as three parts of one page rather than
+             three panels. -->
+        <Style Selector="TextBlock.section">
+            <Setter Property="FontFamily" Value="{StaticResource DisplayFont}"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontSize" Value="16"/>
+        </Style>
+
     </UserControl.Styles>
 
     <Grid RowDefinitions="Auto,*" Background="{StaticResource PaneGround}">
@@ -156,6 +215,7 @@
                 Padding="24,20,24,18"
                 BorderBrush="{StaticResource Line}"
                 BorderThickness="0,0,0,1">
+          <StackPanel Spacing="14">
             <Grid ColumnDefinitions="*,Auto">
                 <StackPanel Grid.Column="0" Spacing="7">
                     <TextBlock Classes="display-l" Text="Same game?"/>
@@ -184,16 +244,30 @@
                                VerticalAlignment="Bottom"/>
                 </StackPanel>
             </Grid>
+
+            <!-- ══ What the last act actually did ═══════════════════════════
+                 In the header rather than beside the button that caused it: an
+                 apply or an undo reloads all three lists under the pointer, and
+                 a report the user has to scroll back to find is a report they
+                 do not read. Written from the outcome the engine returned, so
+                 a refusal says so here instead of the screen simply going
+                 quiet. -->
+            <Border Classes="note attention" IsVisible="{Binding HasReport}">
+                <TextBlock Classes="body" FontSize="12" LineHeight="18"
+                           TextWrapping="Wrap"
+                           Text="{Binding ReportMessage}"/>
+            </Border>
+          </StackPanel>
         </Border>
 
-        <!-- ══ The queue — all of it, at once ═══════════════════════════════ -->
+        <!-- ══ The queue, all of it at once ═════════════════════════════════ -->
         <ScrollViewer Grid.Row="1"
                       Name="QueueScroll"
-                      IsVisible="{Binding !ShowEmpty}"
                       HorizontalScrollBarVisibility="Disabled"
                       VerticalScrollBarVisibility="Auto">
+          <StackPanel Margin="24,20,24,24" Spacing="0">
             <ItemsControl Name="CardList"
-                          Margin="24,20,24,24"
+                          IsVisible="{Binding HasPending}"
                           ItemsSource="{Binding Candidates}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate DataType="vm:MergeCandidateViewModel">
@@ -313,20 +387,266 @@
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
-        </ScrollViewer>
 
-        <!-- ══ Empty — the normal, healthy state (§7) ═══════════════════════ -->
-        <Border Grid.Row="1" IsVisible="{Binding ShowEmpty}" Padding="32">
-            <TextBlock Classes="body-l"
-                       MaxWidth="460"
-                       TextWrapping="Wrap"
-                       TextAlignment="Center"
-                       LineHeight="22"
+            <!-- ══ Queue empty, the normal state (§7) ══════════════════════════
+                 Inline rather than a separate full-height pane: with the
+                 apply and history sections below it, an empty queue is one
+                 quiet section of a page, not an empty screen. -->
+            <Border IsVisible="{Binding ShowEmpty}" Padding="0,12,0,28">
+                <TextBlock Classes="body-l"
+                           MaxWidth="460"
+                           TextWrapping="Wrap"
+                           TextAlignment="Center"
+                           LineHeight="22"
+                           Foreground="{StaticResource TextDim}"
+                           HorizontalAlignment="Center"
+                           Text="{Binding EmptyMessage}"/>
+            </Border>
+
+            <!-- ══ Ready to apply ═══════════════════════════════════════════
+                 Answering `Same game` writes a status and nothing else. This
+                 is where that status becomes a merge. The plan is shown
+                 before it runs: which identity survives, how far the merge
+                 goes, and anything holding it back. The user commits to a
+                 specific outcome rather than to a verb. -->
+            <Border Height="1" Background="{StaticResource Line}" Margin="0,4,0,20"/>
+
+            <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,8">
+                <StackPanel Grid.Column="0" Spacing="7">
+                    <TextBlock Classes="section" Text="{Binding ApplyHeading}"/>
+                    <TextBlock Classes="body" FontSize="12" LineHeight="18"
+                               MaxWidth="620" TextWrapping="Wrap"
+                               Foreground="{StaticResource TextDim}"
+                               Text="{Binding ApplyIntro}"/>
+                </StackPanel>
+
+                <!-- The batch path, with the same honesty as the per-pair one:
+                     the tooltip says a pair that cannot be applied safely is
+                     skipped rather than holding the rest back, which is what
+                     ApplyAllConfirmedAsync actually does. -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10"
+                            VerticalAlignment="Top"
+                            IsVisible="{Binding HasOutstanding}">
+                    <TextBlock Classes="data" FontSize="18"
+                               VerticalAlignment="Center"
+                               Text="{Binding OutstandingCountText}"/>
+                    <Button Classes="answer same"
+                            Content="{Binding ApplyAllButtonText}"
+                            AutomationProperties.Name="{Binding ApplyAllButtonText}"
+                            ToolTip.Tip="{Binding ApplyAllTooltip}"
+                            Command="{Binding ApplyAllCommand}"/>
+                </StackPanel>
+            </Grid>
+
+            <ItemsControl Margin="0,12,0,0"
+                          IsVisible="{Binding HasOutstanding}"
+                          ItemsSource="{Binding Outstanding}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="vm:MergeApplyViewModel">
+                        <Border Classes="entry">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <StackPanel Grid.Column="0" Spacing="9" Margin="0,0,20,0">
+
+                                    <!-- EFFECT, or BLOCKED. The label says which
+                                         kind of sentence follows. -->
+                                    <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
+                                               Text="{Binding SectionLabel}"/>
+
+                                    <!-- The preview's whole job: name the
+                                         surviving identity. -->
+                                    <TextBlock Classes="body-l"
+                                               TextWrapping="Wrap" LineHeight="21"
+                                               Text="{Binding SurvivorLine}"/>
+
+                                    <StackPanel Orientation="Horizontal" Spacing="10"
+                                                IsVisible="{Binding HasMode}">
+                                        <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
+                                                   VerticalAlignment="Center"
+                                                   Text="{Binding ModeLabel}"/>
+                                        <TextBlock Classes="body" FontSize="12"
+                                                   TextWrapping="Wrap"
+                                                   Foreground="{StaticResource TextDim}"
+                                                   Text="{Binding ModeText}"/>
+                                    </StackPanel>
+
+                                    <!-- A limited collapse still merges, so it
+                                         is an explanation and not a refusal. -->
+                                    <Border Classes="note" IsVisible="{Binding HasLimitation}">
+                                        <TextBlock Classes="body" FontSize="12" LineHeight="18"
+                                                   TextWrapping="Wrap"
+                                                   Text="{Binding LimitationText}"/>
+                                    </Border>
+
+                                    <!-- A refusal takes the Amber edge, because
+                                         it is the one thing here the user has to
+                                         read before the button makes sense. -->
+                                    <Border Classes="note attention" IsVisible="{Binding IsBlocked}">
+                                        <TextBlock Classes="body" FontSize="12" LineHeight="18"
+                                                   TextWrapping="Wrap"
+                                                   Text="{Binding RefusalText}"/>
+                                    </Border>
+                                </StackPanel>
+
+                                <Button Grid.Column="1"
+                                        Classes="answer same"
+                                        VerticalAlignment="Top"
+                                        Content="{Binding ApplyButtonText}"
+                                        IsEnabled="{Binding CanApply}"
+                                        AutomationProperties.Name="{Binding ApplyAutomationName}"
+                                        Command="{Binding $parent[UserControl].((vm:MergeQueueViewModel)DataContext).ApplyCommand}"
+                                        CommandParameter="{Binding}"/>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <TextBlock Classes="body" FontSize="12" LineHeight="18"
+                       Margin="0,4,0,0"
+                       MaxWidth="520" TextWrapping="Wrap"
                        Foreground="{StaticResource TextDim}"
-                       HorizontalAlignment="Center"
-                       VerticalAlignment="Center"
-                       Text="{Binding EmptyMessage}"/>
-        </Border>
+                       IsVisible="{Binding ShowOutstandingEmpty}"
+                       Text="{Binding ApplyEmptyMessage}"/>
+
+            <!-- ══ Applied merges and undo ══════════════════════════════════
+                 Every row's enabled state is recomputed on every load.
+                 Reversibility depends on every merge applied after a given
+                 one, so it is a fact about the whole log at this instant
+                 and is never cached. -->
+            <Border Height="1" Background="{StaticResource Line}" Margin="0,28,0,20"/>
+
+            <StackPanel Spacing="7" Margin="0,0,0,8">
+                <TextBlock Classes="section" Text="{Binding HistoryHeading}"/>
+                <TextBlock Classes="body" FontSize="12" LineHeight="18"
+                           MaxWidth="620" TextWrapping="Wrap"
+                           Foreground="{StaticResource TextDim}"
+                           Text="{Binding HistoryIntro}"/>
+            </StackPanel>
+
+            <ItemsControl Margin="0,12,0,0"
+                          IsVisible="{Binding HasHistory}"
+                          ItemsSource="{Binding History}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="vm:MergeHistoryRowViewModel">
+                        <Border Classes="entry">
+                            <StackPanel Spacing="10">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <StackPanel Grid.Column="0" Spacing="6" Margin="0,0,20,0">
+
+                                        <!-- The row in user language: which two
+                                             games became one. Counts are one
+                                             disclosure away, never here. -->
+                                        <TextBlock Classes="body-l"
+                                                   TextWrapping="Wrap" LineHeight="21"
+                                                   Text="{Binding Description}"/>
+
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
+                                                       VerticalAlignment="Center"
+                                                       Text="{Binding AppliedAtLabel}"/>
+                                            <TextBlock Classes="data-s"
+                                                       VerticalAlignment="Center"
+                                                       Text="{Binding AppliedAtText}"/>
+
+                                            <!-- Already undone: history with no
+                                                 control at all, and a label
+                                                 rather than a dimmed button. -->
+                                            <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
+                                                       Margin="6,0,0,0"
+                                                       VerticalAlignment="Center"
+                                                       Foreground="{StaticResource Amber}"
+                                                       IsVisible="{Binding IsUndone}"
+                                                       Text="{Binding UndoneLabelText}"/>
+                                            <TextBlock Classes="data-s"
+                                                       VerticalAlignment="Center"
+                                                       IsVisible="{Binding IsUndone}"
+                                                       Text="{Binding UndoneAtText}"/>
+                                        </StackPanel>
+                                    </StackPanel>
+
+                                    <!-- Automation name identifies the merge,
+                                         not the button; a static "Undo" label
+                                         repeated down the list is one target a
+                                         screen reader cannot distinguish. -->
+                                    <Button Grid.Column="1"
+                                            Classes="answer different"
+                                            VerticalAlignment="Top"
+                                            Content="{Binding UndoButtonText}"
+                                            IsEnabled="{Binding CanUndo}"
+                                            IsVisible="{Binding ShowUndoControl}"
+                                            AutomationProperties.Name="{Binding UndoAutomationName}"
+                                            ToolTip.Tip="{Binding UndoTooltip}"
+                                            Command="{Binding $parent[UserControl].((vm:MergeQueueViewModel)DataContext).UndoCommand}"
+                                            CommandParameter="{Binding}"/>
+                                </Grid>
+
+                                <!-- The disabled reason, always in words beside
+                                     the control it disables (§8). Exactly one of
+                                     the four names another merge and offers the
+                                     way through it. -->
+                                <Border Classes="note attention" IsVisible="{Binding IsBlocked}">
+                                    <StackPanel Spacing="10">
+                                        <TextBlock Classes="body" FontSize="12" LineHeight="18"
+                                                   TextWrapping="Wrap"
+                                                   Text="{Binding BlockedText}"/>
+                                        <Button Classes="answer different"
+                                                HorizontalAlignment="Left"
+                                                IsVisible="{Binding HasBlockingMerge}"
+                                                Content="{Binding UndoBlockingButtonText}"
+                                                AutomationProperties.Name="{Binding UndoBlockingAutomationName}"
+                                                Command="{Binding $parent[UserControl].((vm:MergeQueueViewModel)DataContext).UndoBlockingCommand}"
+                                                CommandParameter="{Binding}"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Counts belong in a detail view, so they sit
+                                     behind the same Azure disclosure the
+                                     platform settings use. -->
+                                <StackPanel Spacing="8" IsVisible="{Binding HasCounts}">
+                                    <Button Classes="disclose"
+                                            Content="{Binding CountsToggleText}"
+                                            AutomationProperties.Name="{Binding CountsToggleText}"
+                                            Command="{Binding ToggleCountsCommand}"/>
+
+                                    <StackPanel Spacing="8" IsVisible="{Binding IsCountsOpen}">
+                                        <TextBlock Classes="body" FontSize="12" LineHeight="18"
+                                                   TextWrapping="Wrap"
+                                                   Foreground="{StaticResource TextDim}"
+                                                   Text="{Binding CountsIntro}"/>
+                                        <ItemsControl ItemsSource="{Binding Counts}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate DataType="vm:MergeCountRowViewModel">
+                                                    <Grid ColumnDefinitions="*,72" Margin="0,0,0,4">
+                                                        <TextBlock Grid.Column="0"
+                                                                   Classes="body" FontSize="12"
+                                                                   Foreground="{StaticResource TextDim}"
+                                                                   Text="{Binding Label}"/>
+                                                        <!-- Plex Mono, tabular:
+                                                             counts under counts. -->
+                                                        <TextBlock Grid.Column="1"
+                                                                   Classes="data"
+                                                                   TextAlignment="Right"
+                                                                   Text="{Binding CountText}"/>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <TextBlock Classes="body" FontSize="12" LineHeight="18"
+                       Margin="0,4,0,0"
+                       MaxWidth="520" TextWrapping="Wrap"
+                       Foreground="{StaticResource TextDim}"
+                       IsVisible="{Binding ShowHistoryEmpty}"
+                       Text="{Binding HistoryEmptyMessage}"/>
+          </StackPanel>
+        </ScrollViewer>
 
     </Grid>
 

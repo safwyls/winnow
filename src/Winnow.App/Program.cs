@@ -376,6 +376,14 @@ public static class Program
         services.AddSingleton<IGameListRepository, GameListRepository>();
         services.AddSingleton<IMergeCandidateRepository, MergeCandidateRepository>();
         services.AddSingleton<IMergeExecutionRepository, MergeExecutionRepository>();
+
+        // MergeExecutor takes IMergeUndoRepository as an optional constructor
+        // parameter, so omitting this line does not fail at startup. It fails the
+        // moment the user asks for merge history, with a named
+        // InvalidOperationException from MergeExecutor.Undo. That is the loudest
+        // an optional dependency can be made without holding the whole container
+        // hostage to a screen.
+        services.AddSingleton<IMergeUndoRepository, MergeUndoRepository>();
         services.AddSingleton<ILibraryQueryRepository, LibraryQueryRepository>();
         services.AddSingleton<ILibraryHistoryStatsRepository, LibraryHistoryStatsRepository>();
         services.AddSingleton<IFacetRepository, FacetRepository>();

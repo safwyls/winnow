@@ -27,6 +27,23 @@ public sealed record MergeApplicationRecord
 
     public required DateTime AppliedAt { get; init; }
 
+    /// <summary>
+    /// The surviving work's current name, read live from <c>works</c>. Null when
+    /// the surviving work no longer exists, which is itself a blocker.
+    /// </summary>
+    public string? SurvivingTitle { get; init; }
+
+    /// <summary>
+    /// The absorbed work's name as migration 0017's undo journal recorded it
+    /// before the merge deleted the row. This is the only surviving record of
+    /// that name: the <c>works</c> row is gone, and for a release collapse the
+    /// <c>merge_candidates</c> row that held both titles in its
+    /// <c>signals_json</c> is cascaded away with the absorbed release. Null for
+    /// a merge that predates the journal, which is exactly the set that cannot
+    /// be reversed.
+    /// </summary>
+    public string? AbsorbedTitle { get; init; }
+
     public DateTime? UndoneAt { get; init; }
 
     /// <summary>
@@ -36,6 +53,13 @@ public sealed record MergeApplicationRecord
     public int? UndoJournalVersion { get; init; }
 
     public string? SummaryJson { get; init; }
+
+    /// <summary>
+    /// <see cref="SummaryJson"/> decoded, so a caller outside the data layer can
+    /// show what moved without owning the payload's shape. Null when the row
+    /// carries no summary or one that cannot be read.
+    /// </summary>
+    public MergeRepointCounts? Counts { get; init; }
 }
 
 /// <summary>

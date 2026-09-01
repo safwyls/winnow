@@ -63,6 +63,30 @@ public sealed class MergeExecutor
     public async Task<MergePlan> PreviewAsync(long candidateId, CancellationToken ct = default)
         => await _merges.PlanAsync(await RequestAsync(candidateId, ct), ct);
 
+    /// <summary>
+    /// Reads only. Every confirmed pair not yet applied, each already planned, in
+    /// the order the batch pass would take them. Exists so <c>Winnow.App</c> can
+    /// show that list without naming <see cref="IMergeExecutionRepository"/>: the
+    /// policy stays here (section 5.1).
+    /// </summary>
+    public async Task<IReadOnlyList<MergePlan>> OutstandingAsync(CancellationToken ct = default)
+    {
+        var pending = await _merges.GetConfirmedUnappliedCandidateIdsAsync(ct);
+        if (pending.Count == 0)
+        {
+            return [];
+        }
+
+        var plans = new List<MergePlan>(pending.Count);
+        foreach (var candidateId in pending)
+        {
+            ct.ThrowIfCancellationRequested();
+            plans.Add(await _merges.PlanAsync(await RequestAsync(candidateId, ct), ct));
+        }
+
+        return plans;
+    }
+
     public async Task<MergeOutcome> ApplyAsync(long candidateId, CancellationToken ct = default)
     {
         var outcome = await _merges.ApplyAsync(await RequestAsync(candidateId, ct), ct);

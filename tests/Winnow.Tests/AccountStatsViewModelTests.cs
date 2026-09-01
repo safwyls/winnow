@@ -424,7 +424,8 @@ public sealed class AccountStatsViewModelTests
             new MergeQueueViewModel(
                 new MergeCandidateRepository(db.Factory),
                 new ReleaseRepository(db.Factory),
-                new WorkRepository(db.Factory)),
+                new WorkRepository(db.Factory),
+                TestMergeExecutor.For(db)),
             DetachedStores.Create(),
             DetachedAppearance.Create(),
             DetachedFeed.Create(),
