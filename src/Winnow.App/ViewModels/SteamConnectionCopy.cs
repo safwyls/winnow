@@ -401,4 +401,93 @@ public static class SteamConnectionCopy
     public const string AccountScopeBlockedSignedIn =
         "The sign-in did not record which account is yours. Signing "
         + "in again should resolve this.";
+
+    // ══ TASK-61 — the condensed top level ══════════════════════════════════
+
+    /// <summary>Tooltip on the PLATFORMS segment button. Sentence fragment, no
+    /// trailing period, same register as the Appearance segment tooltip.</summary>
+    public const string SegmentTooltip =
+        "Where your library comes from, what each platform cannot know, and Steam purchase history";
+
+    /// <summary>Terse state phrase for local files. Always available, no setup
+    /// required, so this never changes.</summary>
+    public const string StateLocalAlwaysOn = "Always on";
+
+    /// <summary>Summary line under the WEB API section label when no credential
+    /// is held. States the two-method choice so the user knows both exist before
+    /// opening either.</summary>
+    public const string SectionSummaryNothing = "Nothing connected. You only need one of these.";
+
+    /// <summary>Summary line under the WEB API section label when at least one
+    /// credential is held. Carries the same two-method reminder.</summary>
+    public const string SectionSummaryConnected = "Connected. You only need one of these.";
+
+    /// <summary>Terse state for a live sign-in session. Compressed form of
+    /// <see cref="HealthLive"/>.</summary>
+    public const string StateSignInLive = "Working";
+
+    /// <summary>Terse state for an access token due for renewal. Compressed
+    /// form of <see cref="HealthRenewalDue"/>; must not read as a fault,
+    /// because automatic renewal is the routine steady state.</summary>
+    public const string StateSignInRenewalDue = "Renewing automatically";
+
+    /// <summary>Terse state for a renewal that was attempted and failed.
+    /// Compressed form of <see cref="HealthRenewalFailing"/>. Stays at the top
+    /// level with the Amber treatment (ROADMAP §4.7 condition 8).</summary>
+    public const string StateSignInRenewalFailing = "Renewal failing";
+
+    /// <summary>Terse state for a dead sign-in. Compressed form of
+    /// <see cref="HealthExpired"/>. Stays at the top level with the Amber
+    /// treatment.</summary>
+    public const string StateSignInExpired = "Expired";
+
+    /// <summary>Terse state for a sign-in that works now but was not written to
+    /// disk. Compressed form of <see cref="HealthNotPersisted"/>; will need
+    /// repeating after a restart.</summary>
+    public const string StateSignInNotPersisted = "Working, not saved";
+
+    /// <summary>Terse state when no sign-in session exists. Compressed form of
+    /// <see cref="HealthNotSignedIn"/>; reads as an ordinary state, not a
+    /// fault.</summary>
+    public const string StateSignInNone = "Not signed in";
+
+    /// <summary>Terse state when no API key is stored.</summary>
+    public const string StateApiKeyNotSet = "Not set";
+
+    /// <summary>Terse state when an API key is stored and managed by this
+    /// screen.</summary>
+    public const string StateApiKeySet = "Set";
+
+    /// <summary>Terse state when the API key came from outside Winnow. Carries
+    /// the consequence (cannot be cleared here) because the Clear button beside
+    /// it is disabled and the full explanation is inside the disclosure.</summary>
+    public const string StateApiKeyExternal = "Set outside Winnow, can't be cleared here";
+
+    /// <summary>Label all four disclosure toggles take when open. Read as
+    /// "close this panel".</summary>
+    public const string DisclosureHide = "Hide";
+
+    /// <summary>Disclosure toggle label: opens what local files cover and what
+    /// is missing while nothing is connected.</summary>
+    public const string DisclosureLocalFiles = "What local files cover";
+
+    /// <summary>Disclosure toggle label: opens the two-method comparison and,
+    /// when both credentials are held, which one does the scheduled work.</summary>
+    public const string DisclosureMethods = "Which one should I use?";
+
+    /// <summary>Disclosure toggle label: opens what signing in gives, what it
+    /// costs, the calm health sentence, the identified account, when the token
+    /// expires, the purchase-history permission, and what signing out
+    /// removes.</summary>
+    public const string DisclosureSignIn = "What signing in gives, and what it costs";
+
+    /// <summary>Disclosure toggle label: opens what a key gives, what it costs,
+    /// and the full sentence for whichever key state holds.</summary>
+    public const string DisclosureApiKey = "What a key gives, and what it costs";
+
+    // ══ TASK-59 — the folded purchase import ═══════════════════════════════
+
+    /// <summary>Section label above the two import routes on the Steam card.
+    /// Uppercase, matching LOCAL FILES, WEB API and STEAM ACCOUNTS.</summary>
+    public const string PurchaseSectionLabel = "PURCHASE HISTORY";
 }

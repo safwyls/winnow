@@ -1043,10 +1043,11 @@
                          cut of their library, so it sits BELOW the buckets:
                          everything under the divider above is a subset of ALL
                          GAMES, and this is not a subset of anything. It is not
-                         behind the gear either; PURCHASES there is the act of
-                         importing the pages, and this is the content those
-                         pages produced. Content before configuration, so it
-                         leads the rail's non-cut sections. -->
+                         behind the gear either; the import on the Steam card
+                         there is the act of importing the pages, and this is
+                         the content those pages produced. Content before
+                         configuration, so it leads the rail's non-cut
+                         sections. -->
                     <Border Margin="16,22,16,8"
                             Padding="0,14,0,0"
                             BorderBrush="{StaticResource Line}"
@@ -1691,8 +1692,11 @@
         </Border>
 
         <!-- ══ THE SETTINGS SURFACE ════════════════════════════════════════
-             One pane holding Stores, Purchases and Appearance, opened by
-             the gear at the foot of the rail. The three sections switch
+             One pane holding Platforms and Appearance, opened by the gear at
+             the foot of the rail. Purchases was a third section until TASK-59
+             folded it into the Steam card on Platforms, so that connecting
+             Steam and importing what Steam sold you are one place rather than
+             two overlapping screens. The two sections switch
              through a segmented control that reuses the command bar's
              grid/list toggle grammar (same bordered field, same ChromeRaised
              fill, Volt on the active label), in a 48px header that lines up
@@ -1722,18 +1726,16 @@
                                 ClipToBounds="True"
                                 Height="30">
                             <StackPanel Orientation="Horizontal">
+                                <!-- Bound rather than written in as a literal.
+                                     The label went from STORES to PLATFORMS once
+                                     before and drifted back, because the only
+                                     place it existed was this attribute and no
+                                     test could see it (TASK-60). -->
                                 <Button Classes="seg tab"
                                         Classes.on="{Binding IsStoresVisible}"
                                         Command="{Binding ShowStoresCommand}"
-                                        ToolTip.Tip="What Winnow reads your library from, and what each source can't know">
-                                    <TextBlock Classes="display-s" Text="STORES"/>
-                                </Button>
-                                <Button Classes="seg tab"
-                                        Classes.on="{Binding IsAccountImportVisible}"
-                                        Command="{Binding ShowAccountImportCommand}"
-                                        ToolTip.Tip="{Binding AccountImport.RailTooltip}">
-                                    <TextBlock Classes="display-s"
-                                               Text="{Binding AccountImport.RailRow}"/>
+                                        ToolTip.Tip="{Binding Stores.SegmentTooltip}">
+                                    <TextBlock Classes="display-s" Text="{Binding Stores.SegmentLabel}"/>
                                 </Button>
                                 <Button Classes="seg tab"
                                         Classes.on="{Binding IsAppearanceVisible}"
@@ -1750,9 +1752,6 @@
                     <views:StoresView Name="StoresPanel"
                                       DataContext="{Binding Stores}"
                                       IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsStoresVisible}"/>
-                    <views:SteamAccountImportView Name="AccountImportPanel"
-                                                  DataContext="{Binding AccountImport}"
-                                                  IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsAccountImportVisible}"/>
                     <views:AppearanceView Name="AppearancePanel"
                                           DataContext="{Binding Appearance}"
                                           IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsAppearanceVisible}"/>

@@ -61,14 +61,27 @@ public partial class StoresViewModel : ObservableObject
         IStoreTitleCounts? counts = null,
         IAccountVisibility? accountVisibility = null,
         SteamSignInService? steamSignIn = null,
-        IUriDispatcher? uris = null)
+        IUriDispatcher? uris = null,
+        SteamAccountImportViewModel? accountImport = null)
     {
         _connections = connections;
         _counts = counts;
         _accountVisibility = accountVisibility;
         _steamSignIn = steamSignIn;
         _uris = uris;
+        AccountImport = accountImport;
     }
+
+    /// <summary>
+    /// The purchase/licence import, folded into the Steam card (TASK-59). Null
+    /// in a host that composed the panel alone, which hides the section rather
+    /// than drawing a dead one.
+    /// </summary>
+    public SteamAccountImportViewModel? AccountImport { get; }
+
+    /// <summary>Whether the PURCHASE HISTORY section is drawn. False when no
+    /// import was composed, so the section is absent rather than dead.</summary>
+    public bool ShowPurchaseImport => AccountImport is not null;
 
     /// <summary>
     /// Re-runs the library query and the feed after the account filter changes.
@@ -83,6 +96,15 @@ public partial class StoresViewModel : ObservableObject
     // ══ Rail and header ═════════════════════════════════════════════════════
 
     public string Title => "Platforms";
+
+    /// <summary>
+    /// The segment label for this screen. Bound rather than written into the
+    /// XAML so the rename is a fact a test can read, which is how it drifted
+    /// back to STORES the last time.
+    /// </summary>
+    public string SegmentLabel => "PLATFORMS";
+
+    public string SegmentTooltip => SteamConnectionCopy.SegmentTooltip;
 
     public string IntroMessage =>
         "Where your library comes from. All three read local files; Steam and Epic can also connect for more.";
@@ -108,7 +130,8 @@ public partial class StoresViewModel : ObservableObject
         nameof(SteamWebApiConfigured), nameof(SteamHasApiKey), nameof(SteamHasSession),
         nameof(SteamApiKeyIsAppManaged), nameof(SteamStatusLabel), nameof(SteamStatusIsLive),
         nameof(SteamStatusNeedsAttention), nameof(SteamConnectionMessage),
-        nameof(SteamApiKeyStatusMessage), nameof(ShowSteamBothCredentials),
+        nameof(SteamApiKeyStatusMessage), nameof(SteamApiKeyStateText),
+        nameof(ShowSteamBothCredentials), nameof(SteamConnectionSummaryMessage),
         nameof(SteamSignedInAccountText), nameof(ShowSteamSignedInAccount),
         nameof(SteamSessionExpiresText), nameof(ShowSteamSessionExpires),
         nameof(SteamSignInButtonText), nameof(ShowSteamSignedIn), nameof(ShowSteamSignInAction),
@@ -127,6 +150,7 @@ public partial class StoresViewModel : ObservableObject
     [NotifyPropertyChangedFor(
         nameof(SteamStatusLabel), nameof(SteamStatusIsLive), nameof(SteamStatusNeedsAttention),
         nameof(SteamSessionHealthMessage), nameof(ShowSteamSessionAttention),
+        nameof(SteamSignInStateText), nameof(ShowSteamSessionCalmHealth),
         nameof(SteamSignInButtonText), nameof(ShowSteamSignedIn), nameof(ShowSteamSignInAction))]
     public partial SteamSessionHealth SteamSessionState { get; set; } = SteamSessionHealth.NotSignedIn;
 
@@ -156,9 +180,22 @@ public partial class StoresViewModel : ObservableObject
 
     public string SteamLocalMessage => SteamConnectionCopy.LocalFiles;
 
+    /// <summary>Terse state phrase for local files, beside its heading. The
+    /// full description is in the disclosure.</summary>
+    public string SteamLocalStateText => SteamConnectionCopy.StateLocalAlwaysOn;
+
     public string SteamConnectionSectionLabel => SteamConnectionCopy.SectionLabel;
 
     public string SteamConnectionIntroMessage => SteamConnectionCopy.SectionIntro;
+
+    /// <summary>
+    /// The one line at the top of the WEB API section. The full three-sentence
+    /// introduction (<see cref="SteamConnectionCopy.SectionIntro"/>) is in the
+    /// methods disclosure beside it.
+    /// </summary>
+    public string SteamConnectionSummaryMessage => SteamHasApiKey || SteamHasSession
+        ? SteamConnectionCopy.SectionSummaryConnected
+        : SteamConnectionCopy.SectionSummaryNothing;
 
     /// <summary>
     /// What a connection is worth, in the two states it has an answer for: what
@@ -223,6 +260,30 @@ public partial class StoresViewModel : ObservableObject
         is SteamSessionHealth.RenewalFailing
         or SteamSessionHealth.Expired
         or SteamSessionHealth.NotPersisted;
+
+    /// <summary>
+    /// Whether the health sentence belongs in the sign-in disclosure rather
+    /// than at the top level. A health sentence that is not an attention state
+    /// is detail; the three that ARE attention states stay at the top level
+    /// under <see cref="ShowSteamSessionAttention"/> and are never drawn only
+    /// inside a collapsed panel (ROADMAP §4.7 condition 8).
+    /// </summary>
+    public bool ShowSteamSessionCalmHealth => !ShowSteamSessionAttention;
+
+    /// <summary>
+    /// The sign-in's state as a terse phrase, beside its heading. One value per
+    /// <see cref="SteamSessionHealth"/>, so the terse line never collapses two
+    /// states the full sentences distinguish.
+    /// </summary>
+    public string SteamSignInStateText => SteamSessionState switch
+    {
+        SteamSessionHealth.Live => SteamConnectionCopy.StateSignInLive,
+        SteamSessionHealth.RenewalDue => SteamConnectionCopy.StateSignInRenewalDue,
+        SteamSessionHealth.RenewalFailing => SteamConnectionCopy.StateSignInRenewalFailing,
+        SteamSessionHealth.Expired => SteamConnectionCopy.StateSignInExpired,
+        SteamSessionHealth.NotPersisted => SteamConnectionCopy.StateSignInNotPersisted,
+        _ => SteamConnectionCopy.StateSignInNone,
+    };
 
     /// <summary>
     /// Both credentials are held, so the user is told which one does what rather
@@ -381,6 +442,20 @@ public partial class StoresViewModel : ObservableObject
             : SteamConnectionCopy.ApiKeyFromEnvironment;
 
     /// <summary>
+    /// The API key's state as a terse phrase, beside its heading.
+    ///
+    /// <para>The environment branch is the one terse line that carries a
+    /// consequence rather than only a state: the Clear button beside it is
+    /// disabled, and a disabled control whose reason sits inside a collapsed
+    /// panel reads as a bug. The full sentence is in the disclosure.</para>
+    /// </summary>
+    public string SteamApiKeyStateText => !SteamHasApiKey
+        ? SteamConnectionCopy.StateApiKeyNotSet
+        : SteamApiKeyIsAppManaged
+            ? SteamConnectionCopy.StateApiKeySet
+            : SteamConnectionCopy.StateApiKeyExternal;
+
+    /// <summary>
     /// The field's contents. Emptied the instant the key is saved: a bound
     /// property is the one place a secret would otherwise sit in memory with a
     /// public getter for the rest of the session.
@@ -394,6 +469,75 @@ public partial class StoresViewModel : ObservableObject
     public partial string? SteamApiKeyNoticeMessage { get; set; }
 
     public bool ShowSteamApiKeyNotice => !string.IsNullOrWhiteSpace(SteamApiKeyNoticeMessage);
+
+    // ══ The four disclosures ════════════════════════════════════════════════
+    //
+    // TASK-61. The top level of the Steam card is the method, its state and its
+    // button; everything that explains a method sits under that method's own
+    // toggle. The idiom is the filter panel's "Show all 214" — a Button.linky in
+    // Azure over content bound to IsVisible — and not an Expander, because that
+    // is the progressive disclosure this app already has and because nothing
+    // here animates, so a reduced-motion setting has nothing to suppress.
+    //
+    // Every one of them starts CLOSED and holds only detail. What a user has to
+    // act on is never behind one: a failing renewal, an expired session, a
+    // sign-in this host cannot encrypt, a failed attempt and a missing WebView2
+    // runtime are all drawn at the top level whatever these are set to (§4.7
+    // amendment, condition 8).
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SteamLocalDetailsToggleText))]
+    public partial bool SteamLocalDetailsOpen { get; set; }
+
+    [RelayCommand]
+    private void ToggleSteamLocalDetails() => SteamLocalDetailsOpen = !SteamLocalDetailsOpen;
+
+    public string SteamLocalDetailsToggleText => SteamLocalDetailsOpen
+        ? SteamConnectionCopy.DisclosureHide
+        : SteamConnectionCopy.DisclosureLocalFiles;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SteamMethodsDetailsToggleText))]
+    public partial bool SteamMethodsDetailsOpen { get; set; }
+
+    [RelayCommand]
+    private void ToggleSteamMethodsDetails() => SteamMethodsDetailsOpen = !SteamMethodsDetailsOpen;
+
+    public string SteamMethodsDetailsToggleText => SteamMethodsDetailsOpen
+        ? SteamConnectionCopy.DisclosureHide
+        : SteamConnectionCopy.DisclosureMethods;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SteamSignInDetailsToggleText))]
+    public partial bool SteamSignInDetailsOpen { get; set; }
+
+    [RelayCommand]
+    private void ToggleSteamSignInDetails() => SteamSignInDetailsOpen = !SteamSignInDetailsOpen;
+
+    public string SteamSignInDetailsToggleText => SteamSignInDetailsOpen
+        ? SteamConnectionCopy.DisclosureHide
+        : SteamConnectionCopy.DisclosureSignIn;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SteamApiKeyDetailsToggleText))]
+    public partial bool SteamApiKeyDetailsOpen { get; set; }
+
+    [RelayCommand]
+    private void ToggleSteamApiKeyDetails() => SteamApiKeyDetailsOpen = !SteamApiKeyDetailsOpen;
+
+    public string SteamApiKeyDetailsToggleText => SteamApiKeyDetailsOpen
+        ? SteamConnectionCopy.DisclosureHide
+        : SteamConnectionCopy.DisclosureApiKey;
+
+    // ══ Steam purchase and licence history ══════════════════════════════════
+    //
+    // TASK-59. The import screen's two routes, folded into the card that owns
+    // the Steam connection: one place to connect Steam, one place to import
+    // purchase data. The saved-file route is drawn and enabled whatever the
+    // credential state is, so a user who declines the browser sign-in is never
+    // pushed through it to reach the files they already saved.
+
+    public string SteamPurchaseSectionLabel => SteamConnectionCopy.PurchaseSectionLabel;
 
     // ══ Steam account visibility ════════════════════════════════════════════
     //
@@ -631,6 +775,15 @@ public partial class StoresViewModel : ObservableObject
     private async Task RefreshAsync(CancellationToken ct)
     {
         await RefreshSteamAsync(ct);
+
+        // The folded purchase section needs to know whether the sign-in route
+        // can run here before either button is pressed. This opens no window
+        // and does no IO; it is the same availability check the standalone
+        // screen ran on arrival.
+        if (AccountImport is { } import)
+        {
+            await import.RefreshCommand.ExecuteAsync(null);
+        }
 
         if (EpicState != EpicConnection.SigningIn)
         {

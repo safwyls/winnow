@@ -408,6 +408,109 @@ public sealed class StoresViewModelTests
         Assert.Equal(SteamConnectionCopy.ConnectedAdds, stores.SteamConnectionMessage);
     }
 
+    // ── The settings segment's label (TASK-60) ───────────────────────────────
+
+    /// <summary>
+    /// The rename went in once and was reverted, because the label existed only
+    /// as a literal in a XAML attribute and nothing could read it. It is a
+    /// property now, and this is the thing that reads it.
+    /// </summary>
+    [Fact]
+    public void The_settings_segment_reads_platforms()
+    {
+        var stores = new StoresViewModel(new FakeStoreConnections());
+
+        Assert.Equal("PLATFORMS", stores.SegmentLabel);
+        Assert.Equal("Platforms", stores.Title);
+
+        Assert.DoesNotContain("STORES", stores.SegmentLabel, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("STORES", stores.SegmentTooltip, StringComparison.OrdinalIgnoreCase);
+    }
+
+    // ── The folded purchase import (TASK-59) ─────────────────────────────────
+
+    /// <summary>
+    /// One place to connect Steam and one place to import purchase data. The
+    /// import is a section of this panel now rather than a settings screen
+    /// beside it.
+    /// </summary>
+    [Fact]
+    public void The_purchase_import_is_a_section_of_this_panel()
+    {
+        var import = DetachedAccountImport.Create();
+        var stores = new StoresViewModel(
+            new FakeStoreConnections(), null, null, null, null, import);
+
+        Assert.True(stores.ShowPurchaseImport);
+        Assert.Same(import, stores.AccountImport);
+    }
+
+    /// <summary>
+    /// A host that composed the panel without the import hides the section
+    /// rather than drawing a dead one.
+    /// </summary>
+    [Fact]
+    public void A_panel_composed_without_the_import_draws_no_purchase_section()
+    {
+        var stores = new StoresViewModel(new FakeStoreConnections());
+
+        Assert.False(stores.ShowPurchaseImport);
+        Assert.Null(stores.AccountImport);
+    }
+
+    /// <summary>
+    /// Arriving on this panel asks the embedded browser whether it could run
+    /// here — the question the standalone screen used to ask on arrival, which
+    /// opens no window and does no IO. Without it the folded section would draw
+    /// its default answer instead of this machine's.
+    /// </summary>
+    [Fact]
+    public async Task Refreshing_the_panel_refreshes_the_folded_import()
+    {
+        // No harvester behind it, so the honest answer is "not here" and the
+        // default of true is what a refresh that never ran would leave.
+        var import = DetachedAccountImport.Create();
+        var stores = new StoresViewModel(
+            new FakeStoreConnections(), null, null, null, null, import);
+
+        Assert.True(import.SignInRouteAvailable);
+
+        await stores.RefreshCommand.ExecuteAsync(null);
+
+        Assert.False(import.SignInRouteAvailable);
+        Assert.True(import.ShowSignInUnavailable);
+    }
+
+    /// <summary>
+    /// <b>Acceptance criterion 3.</b> A user who declines the browser sign-in
+    /// still reaches the files they saved themselves. Nothing about the
+    /// saved-file route is gated on a credential, a session or a harvester, so
+    /// the panel in its emptiest state still offers it.
+    /// </summary>
+    [Fact]
+    public async Task The_saved_file_import_is_reachable_with_no_sign_in_and_no_key()
+    {
+        var import = DetachedAccountImport.Create();
+        var stores = new StoresViewModel(
+            new FakeStoreConnections { SteamConfigured = false },
+            null,
+            null,
+            null,
+            null,
+            import);
+
+        await stores.RefreshCommand.ExecuteAsync(null);
+
+        // Nothing is connected, and the embedded route cannot run here.
+        Assert.False(stores.SteamHasSession);
+        Assert.False(stores.SteamHasApiKey);
+        Assert.False(import.SignInRouteAvailable);
+
+        // The saved-file route is offered anyway.
+        Assert.True(stores.ShowPurchaseImport);
+        Assert.True(import.ImportFromSavedPagesCommand.CanExecute(null));
+    }
+
     // ── GOG ──────────────────────────────────────────────────────────────────
 
     /// <summary>

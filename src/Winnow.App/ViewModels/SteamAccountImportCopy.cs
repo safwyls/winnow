@@ -10,25 +10,24 @@ public static class SteamAccountImportCopy
 {
     // ══ Header ═════════════════════════════════════════════════════════════
 
-    /// <summary>Screen title, rendered in Display L. Sentence case, matching
-    /// the other settings surface screen titles.</summary>
-    public const string Title = "Steam purchases";
-
     /// <summary>
-    /// Introduction under the title. Names the three facts this screen fills
-    /// in and states the guarantee that no games are added and existing values
-    /// are left alone.
+    /// The lede under the PURCHASE HISTORY section label on the Steam card.
+    /// Names the three facts the import fills in and states the guarantee: games
+    /// already in the library are annotated, nothing is added or overwritten.
     /// </summary>
     public const string Intro =
         "Fills in when you got each game, how you got it, and what you paid. "
         + "Attaches to games already in your library; nothing is added or overwritten.";
 
-    /// <summary>Segment label on the settings surface. Uppercase, matching STORES and APPEARANCE.</summary>
-    public const string RailRow = "PURCHASES";
+    /// <summary>Closing label on this section's disclosure toggle. The same
+    /// string as <see cref="SteamConnectionCopy.DisclosureHide"/>, because the
+    /// two sit on one card.</summary>
+    public const string DisclosureHide = "Hide";
 
-    /// <summary>Segment tooltip on the settings surface. Same register as the rail tooltips, no period.</summary>
-    public const string RailTooltip =
-        "When you got each Steam game, how you got it, and what you paid";
+    /// <summary>Disclosure toggle label: opens the two hints about saving
+    /// Steam's pages before picking them. Advice for the step before the
+    /// button, which is why it sits behind a toggle.</summary>
+    public const string DisclosureSavedPagesHints = "Before you save the pages";
 
     // ══ Route A — sign in ══════════════════════════════════════════════════
 

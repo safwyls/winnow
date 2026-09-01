@@ -49,15 +49,17 @@ fetching titles and covers. Give it a minute or two.
 **`Patched` grows over the first week.** The update poller spreads its sweep across seven
 days, so a game enters that bucket when its slot comes up.
 
-### Connecting stores
+### Connecting platforms
 
-`SETTINGS › STORES` (the gear at the foot of the rail) shows what each platform contributes.
+`SETTINGS › PLATFORMS` (the gear at the foot of the rail) shows what each platform contributes.
 
 | Platform | From local files | Adds when signed in |
 |---|---|---|
 | Steam | Installed games, playtime, last played | Full owned list *(needs an API key)* |
 | Epic | Owned titles, install state | Playtime and acquisition dates |
 | GOG | Everything Winnow needs | Not needed |
+
+Steam purchase and licence import is in the Steam entry on that screen.
 
 Epic sign-in opens Epic's own page in an embedded browser. A console flow (`--epic-login`)
 is available as an alternative.

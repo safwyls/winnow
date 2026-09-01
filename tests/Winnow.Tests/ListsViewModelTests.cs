@@ -436,7 +436,6 @@ public sealed class ListsViewModelTests
             DetachedStores.Create(),
             DetachedAppearance.Create(),
             DetachedFeed.Create(),
-            DetachedAccountImport.Create(),
             DetachedAccountStats.Create());
         shell.SelectListCommand.Execute(live);
         Assert.Same(live, library.Lists.Open);
@@ -472,7 +471,6 @@ public sealed class ListsViewModelTests
             DetachedStores.Create(),
             DetachedAppearance.Create(),
             DetachedFeed.Create(),
-            DetachedAccountImport.Create(),
             DetachedAccountStats.Create());
 
         shell.SelectListCommand.Execute(live);

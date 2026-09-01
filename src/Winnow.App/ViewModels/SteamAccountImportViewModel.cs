@@ -83,14 +83,13 @@ public partial class SteamAccountImportViewModel : ObservableObject
 
     // ══ Header ══════════════════════════════════════════════════════════════
 
-    public string Title => SteamAccountImportCopy.Title;
-
+    /// <summary>
+    /// The lede under the PURCHASE HISTORY section label. Survives the fold
+    /// into the Steam card because it states the guarantee, attaches to games
+    /// already in the library with nothing added or overwritten, that no other
+    /// line on this card makes.
+    /// </summary>
     public string IntroMessage => SteamAccountImportCopy.Intro;
-
-    /// <summary>The segment label on the settings surface, beside STORES and APPEARANCE.</summary>
-    public string RailRow => SteamAccountImportCopy.RailRow;
-
-    public string RailTooltip => SteamAccountImportCopy.RailTooltip;
 
     // ══ Route A — sign in inside Winnow ═════════════════════════════════════
 
@@ -141,6 +140,27 @@ public partial class SteamAccountImportViewModel : ObservableObject
     public string SavedPagesLicensesHintMessage => SteamAccountImportCopy.SavedPagesLicensesHint;
 
     public string SavedPagesBusyMessage => SteamAccountImportCopy.SavedPagesBusy;
+
+    /// <summary>
+    /// Whether the two saved-page hints are visible, behind the card's
+    /// disclosure idiom.
+    ///
+    /// <para>Only the hints. The route's explanation stays at the top level
+    /// beside the other route's, because the ROADMAP §4.7 condition 3 makes
+    /// those paragraphs the transparency surface a user reads before acting,
+    /// and a peer whose explanation is a click away is no longer an equal
+    /// peer.</para>
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SavedPagesHintsToggleText))]
+    public partial bool SavedPagesHintsOpen { get; set; }
+
+    [RelayCommand]
+    private void ToggleSavedPagesHints() => SavedPagesHintsOpen = !SavedPagesHintsOpen;
+
+    public string SavedPagesHintsToggleText => SavedPagesHintsOpen
+        ? SteamAccountImportCopy.DisclosureHide
+        : SteamAccountImportCopy.DisclosureSavedPagesHints;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsBusy), nameof(ShowSavedPagesBusy))]

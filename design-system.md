@@ -1008,7 +1008,7 @@ provisional choice is visible rather than quietly becoming the standard.
    Used a `Line`/`TextDim` pill; it wants to be a named component in §6.
 
 3. **§6 has no single-row rail section that opens a screen.** REVIEW/`SAME GAME?` works
-   because the row states a question. SOURCES/STORES is mildly redundant and could not be
+   because the row states a question. SOURCES/PLATFORMS is mildly redundant and could not be
    resolved inside the existing pattern.
 
 4. **§7's copy table has no rows for connection state or credential consent.** All of this

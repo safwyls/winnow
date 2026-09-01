@@ -683,6 +683,247 @@ public class SteamConnectionPanelTests
         Assert.Contains("purchase history", SteamConnectionCopy.ApiKeyCosts, StringComparison.OrdinalIgnoreCase);
     }
 
+    // ══ The condensed top level (TASK-61) ═══════════════════════════════════
+    //
+    // The card's top level is now the method, its state and its control; the
+    // depth sits behind four disclosures. These pin the two halves of that: the
+    // top level still answers "what can I do and where am I" in every credential
+    // state, and the one thing a disclosure may never hold is a session the user
+    // has to act on.
+
+    /// <summary>
+    /// All four credential combinations, and in each of them the top level names
+    /// every method's state and offers every method's control. A condensed
+    /// screen that stopped saying what a method's state was would be a smaller
+    /// screen, not a clearer one.
+    /// </summary>
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public async Task Every_credential_combination_shows_each_methods_state_and_control(
+        bool key, bool session)
+    {
+        var panel = await Panel(
+            Credentials(key, session),
+            session ? SteamSessionHealth.Live : SteamSessionHealth.NotSignedIn);
+
+        // Three states, one per method, and none of them blank.
+        Assert.False(string.IsNullOrWhiteSpace(panel.SteamLocalStateText));
+        Assert.False(string.IsNullOrWhiteSpace(panel.SteamSignInStateText));
+        Assert.False(string.IsNullOrWhiteSpace(panel.SteamApiKeyStateText));
+        Assert.False(string.IsNullOrWhiteSpace(panel.SteamStatusLabel));
+        Assert.False(string.IsNullOrWhiteSpace(panel.SteamConnectionSummaryMessage));
+
+        // The sign-in always offers a control: a way out once there is a
+        // session, and a way in until there is one.
+        Assert.Equal(session, panel.ShowSteamSignedIn);
+        Assert.Equal(!session, panel.ShowSteamSignInAction);
+
+        // The key's field is always live, and Clear is offered only when there
+        // is a key this screen owns.
+        Assert.Equal(key, panel.ClearSteamApiKeyCommand.CanExecute(null));
+
+        // The disclosures are shut, and the top level held up anyway.
+        Assert.False(panel.SteamLocalDetailsOpen);
+        Assert.False(panel.SteamMethodsDetailsOpen);
+        Assert.False(panel.SteamSignInDetailsOpen);
+        Assert.False(panel.SteamApiKeyDetailsOpen);
+    }
+
+    /// <summary>
+    /// <b>The §4.7 amendment's condition 8, and the constraint that outranks
+    /// brevity.</b> A session that cannot renew must say so before it dies. All
+    /// three of those states raise the top-level attention treatment with their
+    /// full sentence, with every disclosure shut — and the sentence is NOT one
+    /// of the calm ones the sign-in disclosure carries.
+    /// </summary>
+    [Theory]
+    [InlineData(SteamSessionHealth.RenewalFailing)]
+    [InlineData(SteamSessionHealth.Expired)]
+    [InlineData(SteamSessionHealth.NotPersisted)]
+    public async Task A_session_that_cannot_renew_surfaces_at_the_top_level(
+        SteamSessionHealth health)
+    {
+        var panel = await Panel(Credentials(key: true, session: true), health);
+
+        Assert.False(panel.SteamSignInDetailsOpen);
+
+        // Drawn at the top level with the attention edge, whatever is collapsed.
+        Assert.True(panel.ShowSteamSessionAttention);
+        Assert.False(panel.ShowSteamSessionCalmHealth);
+        Assert.False(string.IsNullOrWhiteSpace(panel.SteamSessionHealthMessage));
+
+        // And a control is at the top level with it, so the warning is never a
+        // dead end. Which one depends on what the state needs: a fresh sign-in
+        // for the two that have stopped working, and — for a session that works
+        // but was never written to disk — the sign-out that ends the one it
+        // has, since there is nothing to repair until the next launch.
+        Assert.True(panel.ShowSteamSignInAction || panel.ShowSteamSignedIn);
+
+        if (health is not SteamSessionHealth.NotPersisted)
+        {
+            Assert.True(panel.ShowSteamSignInAction);
+            Assert.Equal(SteamConnectionCopy.SignInAgainButton, panel.SteamSignInButtonText);
+        }
+    }
+
+    /// <summary>
+    /// The complement, and the actual goal: the three states that are facts
+    /// rather than faults do NOT raise the top-level treatment, and their
+    /// sentences are what the disclosure carries.
+    /// </summary>
+    [Theory]
+    [InlineData(SteamSessionHealth.NotSignedIn)]
+    [InlineData(SteamSessionHealth.Live)]
+    [InlineData(SteamSessionHealth.RenewalDue)]
+    public async Task A_calm_session_keeps_its_sentence_in_the_disclosure(
+        SteamSessionHealth health)
+    {
+        var panel = await Panel(Credentials(key: false, session: true), health);
+
+        Assert.False(panel.ShowSteamSessionAttention);
+        Assert.True(panel.ShowSteamSessionCalmHealth);
+        Assert.False(string.IsNullOrWhiteSpace(panel.SteamSessionHealthMessage));
+    }
+
+    /// <summary>
+    /// Every disclosure starts shut, every one opens, and every one names what
+    /// it holds when shut and how to shut it when open. A toggle whose label did
+    /// not change would leave the user pressing a control with no visible
+    /// effect on it.
+    /// </summary>
+    [Fact]
+    public async Task The_four_disclosures_start_shut_and_open_on_their_own_command()
+    {
+        var panel = await Panel(Credentials(key: true, session: true), SteamSessionHealth.Live);
+
+        (Func<bool> Open, Action Toggle, Func<string> Label)[] disclosures =
+        [
+            (() => panel.SteamLocalDetailsOpen,
+                () => panel.ToggleSteamLocalDetailsCommand.Execute(null),
+                () => panel.SteamLocalDetailsToggleText),
+            (() => panel.SteamMethodsDetailsOpen,
+                () => panel.ToggleSteamMethodsDetailsCommand.Execute(null),
+                () => panel.SteamMethodsDetailsToggleText),
+            (() => panel.SteamSignInDetailsOpen,
+                () => panel.ToggleSteamSignInDetailsCommand.Execute(null),
+                () => panel.SteamSignInDetailsToggleText),
+            (() => panel.SteamApiKeyDetailsOpen,
+                () => panel.ToggleSteamApiKeyDetailsCommand.Execute(null),
+                () => panel.SteamApiKeyDetailsToggleText),
+        ];
+
+        foreach (var (open, toggle, label) in disclosures)
+        {
+            Assert.False(open());
+            var shut = label();
+
+            toggle();
+            Assert.True(open());
+            Assert.NotEqual(shut, label());
+
+            toggle();
+            Assert.False(open());
+            Assert.Equal(shut, label());
+        }
+    }
+
+    /// <summary>
+    /// Nothing was deleted. Every sentence the old top level printed is still a
+    /// value this panel produces; what changed is which of them the card draws
+    /// before you ask. Asserted against the copy constants rather than pasted
+    /// prose, for the reason stated at the top of this file.
+    /// </summary>
+    [Fact]
+    public async Task The_disclosures_still_carry_everything_that_left_the_top_level()
+    {
+        var panel = await Panel(Credentials(key: true, session: true), SteamSessionHealth.Live);
+
+        Assert.Equal(SteamConnectionCopy.LocalFiles, panel.SteamLocalMessage);
+        Assert.Equal(SteamConnectionCopy.ConnectedAdds, panel.SteamConnectionMessage);
+        Assert.Equal(SteamConnectionCopy.SectionIntro, panel.SteamConnectionIntroMessage);
+        Assert.Equal(SteamConnectionCopy.BothCredentials, panel.SteamBothCredentialsMessage);
+        Assert.Equal(SteamConnectionCopy.SignInGives, panel.SteamSignInGivesMessage);
+        Assert.Equal(SteamConnectionCopy.SignInCosts, panel.SteamSignInCostsMessage);
+        Assert.Equal(SteamConnectionCopy.SignOutExplanation, panel.SteamSignOutMessage);
+        Assert.Equal(
+            SteamConnectionCopy.PurchaseHistoryPermissionExplanation,
+            panel.CapturePurchaseHistoryMessage);
+        Assert.Equal(SteamConnectionCopy.ApiKeyGives, panel.SteamApiKeyGivesMessage);
+        Assert.Equal(SteamConnectionCopy.ApiKeyCosts, panel.SteamApiKeyCostsMessage);
+        Assert.Equal(SteamConnectionCopy.ApiKeySet, panel.SteamApiKeyStatusMessage);
+    }
+
+    /// <summary>
+    /// The terse lines are as many as the states they stand for. Collapsing two
+    /// of them would undo at the top level exactly what the six distinct health
+    /// sentences were written to prevent.
+    /// </summary>
+    [Fact]
+    public void The_terse_state_lines_are_one_per_state()
+    {
+        string[] signIn =
+        [
+            SteamConnectionCopy.StateSignInNone,
+            SteamConnectionCopy.StateSignInLive,
+            SteamConnectionCopy.StateSignInRenewalDue,
+            SteamConnectionCopy.StateSignInRenewalFailing,
+            SteamConnectionCopy.StateSignInExpired,
+            SteamConnectionCopy.StateSignInNotPersisted,
+        ];
+        Assert.Equal(signIn.Length, signIn.Distinct(StringComparer.Ordinal).Count());
+
+        string[] key =
+        [
+            SteamConnectionCopy.StateApiKeyNotSet,
+            SteamConnectionCopy.StateApiKeySet,
+            SteamConnectionCopy.StateApiKeyExternal,
+        ];
+        Assert.Equal(key.Length, key.Distinct(StringComparer.Ordinal).Count());
+    }
+
+    /// <summary>
+    /// Every health value has a terse line of its own, taken from the same
+    /// switch the full sentences use, so the two can never disagree about which
+    /// state is showing.
+    /// </summary>
+    [Theory]
+    [InlineData(SteamSessionHealth.NotSignedIn)]
+    [InlineData(SteamSessionHealth.Live)]
+    [InlineData(SteamSessionHealth.RenewalDue)]
+    [InlineData(SteamSessionHealth.RenewalFailing)]
+    [InlineData(SteamSessionHealth.Expired)]
+    [InlineData(SteamSessionHealth.NotPersisted)]
+    public async Task Every_health_state_has_a_terse_line_too(SteamSessionHealth health)
+    {
+        var panel = await Panel(Credentials(key: false, session: true), health);
+
+        Assert.False(string.IsNullOrWhiteSpace(panel.SteamSignInStateText));
+    }
+
+    /// <summary>
+    /// The one terse line that carries a consequence rather than only a state.
+    /// The Clear button beside it is disabled, and a disabled control whose
+    /// reason is inside a collapsed panel reads as a bug — so the top-level line
+    /// says it cannot be cleared here, and the disclosure carries the rest.
+    /// </summary>
+    [Fact]
+    public async Task An_environment_key_says_at_the_top_level_that_it_cannot_be_cleared_here()
+    {
+        var panel = await Panel(
+            SteamConnection.None with { HasApiKey = true, ApiKeyIsAppManaged = false });
+
+        Assert.Equal(SteamConnectionCopy.StateApiKeyExternal, panel.SteamApiKeyStateText);
+        Assert.False(panel.ClearSteamApiKeyCommand.CanExecute(null));
+        Assert.False(panel.SteamApiKeyDetailsOpen);
+
+        // The state line is the one place a user reads this without opening
+        // anything, so it has to say the consequence and not only the state.
+        Assert.Contains("clear", SteamConnectionCopy.StateApiKeyExternal, StringComparison.OrdinalIgnoreCase);
+    }
+
     // ══ Helpers ═════════════════════════════════════════════════════════════
 
     private static SteamConnection Credentials(bool key, bool session) => new(

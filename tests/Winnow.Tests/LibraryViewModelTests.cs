@@ -709,7 +709,6 @@ public sealed class LibraryViewModelTests
             DetachedStores.Create(),
             DetachedAppearance.Create(),
             DetachedFeed.Create(),
-            DetachedAccountImport.Create(),
             DetachedAccountStats.Create())
         {
             IsMergeQueueVisible = true,
@@ -743,7 +742,6 @@ public sealed class LibraryViewModelTests
             DetachedStores.Create(),
             DetachedAppearance.Create(),
             DetachedFeed.Create(),
-            DetachedAccountImport.Create(),
             DetachedAccountStats.Create());
 
         // The landing state, before anything has been clicked.
@@ -789,7 +787,6 @@ public sealed class LibraryViewModelTests
             DetachedStores.Create(),
             DetachedAppearance.Create(),
             DetachedFeed.Create(),
-            DetachedAccountImport.Create(),
             DetachedAccountStats.Create());
 
         // The landing state is the feed, so ALL GAMES is not where you are.
@@ -843,7 +840,6 @@ public sealed class LibraryViewModelTests
             DetachedStores.Create(),
             DetachedAppearance.Create(),
             DetachedFeed.Create(),
-            DetachedAccountImport.Create(),
             DetachedAccountStats.Create());
 
         Assert.False(shell.IsSettingsVisible);

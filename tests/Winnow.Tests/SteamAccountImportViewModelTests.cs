@@ -78,9 +78,13 @@ public class SteamAccountImportViewModelTests
         // Everything short of pressing the button: the availability probe, and
         // reading every string the screen draws.
         await vm.RefreshCommand.ExecuteAsync(null);
-        _ = vm.Title + vm.IntroMessage + vm.RailRow + vm.RailTooltip
+        _ = vm.IntroMessage + vm.SavedPagesHintsToggleText
             + vm.SignInRouteHeading + vm.SignInRouteExplanation + vm.SignInRouteButtonText
-            + vm.SavedPagesRouteHeading + vm.SavedPagesRouteExplanation + vm.SavedPagesHintMessage;
+            + vm.SavedPagesRouteHeading + vm.SavedPagesRouteExplanation + vm.SavedPagesHintMessage
+            + vm.SavedPagesLicensesHintMessage;
+
+        // Opening the one disclosure this section has is reading, not acting.
+        vm.ToggleSavedPagesHintsCommand.Execute(null);
 
         Assert.Empty(harvester.Requests);
 
@@ -1151,7 +1155,7 @@ internal sealed class FakeSteamPageFilePicker : ISteamAccountPageFilePicker
 
 /// <summary>
 /// An import screen for tests that need one only because
-/// <see cref="MainWindowViewModel"/> requires it. No harvester, no picker and a
+/// <see cref="StoresViewModel"/> requires it. No harvester, no picker and a
 /// fake importer, so nothing is read and nothing is written.
 /// </summary>
 internal static class DetachedAccountImport

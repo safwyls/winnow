@@ -143,6 +143,49 @@
         <Setter Property="Foreground" Value="{DynamicResource Text}"/>
     </Style>
 
+    <!-- ══ Disclosure toggle ══════════════════════════════════════════════════
+         TASK-61. The filter panel's "Show all 214" button, promoted here for the
+         same reason the prose styles were: the Platforms screen needed it in two
+         views at once. Azure is the informational ink (§2), which is what a
+         control that reveals an explanation is.
+
+         Nothing about it animates — the content it governs is bound to IsVisible
+         and appears — so a reduced-motion setting has nothing to suppress.
+
+         Focus is a brush swap at CONSTANT thickness on a border that is always
+         there (§10.7): these sit inline in a card whose rows would shuffle
+         sideways if a ring changed the control's size. -->
+    <Style Selector="Button.disclose">
+        <Setter Property="Padding" Value="6,3"/>
+        <Setter Property="MinHeight" Value="0"/>
+        <Setter Property="Margin" Value="-8,0,0,0"/>
+        <Setter Property="CornerRadius" Value="{DynamicResource RadiusControl}"/>
+        <Setter Property="BorderThickness" Value="2"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="HorizontalAlignment" Value="Left"/>
+        <Setter Property="FontFamily" Value="{DynamicResource BodyFont}"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Foreground" Value="{DynamicResource Azure}"/>
+    </Style>
+    <Style Selector="Button.disclose /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="2"/>
+    </Style>
+    <Style Selector="Button.disclose:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource SurfaceRaised}"/>
+        <Setter Property="Foreground" Value="{DynamicResource Text}"/>
+    </Style>
+    <Style Selector="Button.disclose:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource SurfaceRaised}"/>
+        <Setter Property="Foreground" Value="{DynamicResource Text}"/>
+    </Style>
+    <Style Selector="Button.disclose:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="BorderBrush" Value="{DynamicResource Volt}"/>
+    </Style>
+
     <!-- ══ The consent window ═════════════════════════════════════════════════
          Drawn by Winnow.Auth.WebView, which can name these classes and nothing
          else. Three pieces, and the middle one is the screen.

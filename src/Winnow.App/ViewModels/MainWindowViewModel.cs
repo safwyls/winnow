@@ -9,9 +9,13 @@ namespace Winnow.App.ViewModels;
 
 /// <summary>
 /// Window shell: hosts the Feed, library, merge queue, STATS and the settings
-/// surface (Stores, Purchases, Appearance). The rail navigates between the
-/// first four; the gear at its foot opens the settings surface. One screen at
-/// a time.
+/// surface (Platforms, Appearance). The rail navigates between the first four;
+/// the gear at its foot opens the settings surface. One screen at a time.
+///
+/// <para>The settings surface had a third section, Purchases, until TASK-59
+/// folded it into the Steam card on Platforms. This type no longer knows the
+/// import screen exists; <see cref="StoresViewModel"/> owns it now and
+/// refreshes it when the Platforms section opens.</para>
 /// </summary>
 public partial class MainWindowViewModel : ObservableObject
 {
@@ -22,7 +26,6 @@ public partial class MainWindowViewModel : ObservableObject
         StoresViewModel stores,
         AppearanceViewModel appearance,
         FeedViewModel feed,
-        SteamAccountImportViewModel accountImport,
         AccountStatsViewModel accountStats,
         ISettingsRepository? settings = null,
         Services.SessionJournalService? journal = null)
@@ -32,7 +35,6 @@ public partial class MainWindowViewModel : ObservableObject
         Stores = stores;
         Appearance = appearance;
         Feed = feed;
-        AccountImport = accountImport;
         AccountStats = accountStats;
 
         // Floating layout is structural (margins, radii, borders), not colour.
@@ -71,9 +73,9 @@ public partial class MainWindowViewModel : ObservableObject
     }
 
     /// <summary>
-    /// The section the gear reopens on. Stores the first time; after that,
+    /// The section the gear reopens on. Platforms the first time; after that,
     /// whichever section was showing when the user left. Without this the
-    /// gear would always land on Stores, and switching between the library
+    /// gear would always land on Platforms, and switching between the library
     /// and Appearance would cost two clicks instead of one.
     /// </summary>
     private SettingsSection _settingsSection = SettingsSection.Stores;
@@ -81,7 +83,6 @@ public partial class MainWindowViewModel : ObservableObject
     private enum SettingsSection
     {
         Stores,
-        Purchases,
         Appearance,
     }
 
@@ -98,9 +99,6 @@ public partial class MainWindowViewModel : ObservableObject
 
     public AppearanceViewModel Appearance { get; }
 
-    /// <summary>The Steam account-page import screen (ROADMAP M5 item 3).</summary>
-    public SteamAccountImportViewModel AccountImport { get; }
-
     /// <summary>
     /// The STATS screen, what the imported account pages add up to. A reading
     /// of the user's account rather than a cut of their library, which is why
@@ -113,26 +111,17 @@ public partial class MainWindowViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(IsLibraryVisible), nameof(IsFilterPanelVisible))]
     public partial bool IsMergeQueueVisible { get; set; }
 
-    /// <summary>The Stores panel, the settings surface's first section.</summary>
+    /// <summary>The Platforms panel, the settings surface's first section.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(
         nameof(IsLibraryVisible), nameof(IsFilterPanelVisible), nameof(IsSettingsVisible))]
     public partial bool IsStoresVisible { get; set; }
 
-    /// <summary>The Appearance screen, the settings surface's third section.</summary>
+    /// <summary>The Appearance screen, the settings surface's second section.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(
         nameof(IsLibraryVisible), nameof(IsFilterPanelVisible), nameof(IsSettingsVisible))]
     public partial bool IsAppearanceVisible { get; set; }
-
-    /// <summary>
-    /// The Steam account-page import screen, the settings surface's second
-    /// section.
-    /// </summary>
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(
-        nameof(IsLibraryVisible), nameof(IsFilterPanelVisible), nameof(IsSettingsVisible))]
-    public partial bool IsAccountImportVisible { get; set; }
 
     /// <summary>The STATS screen, opened from the rail's ACCOUNT › STATS row.</summary>
     [ObservableProperty]
@@ -148,16 +137,14 @@ public partial class MainWindowViewModel : ObservableObject
     public bool IsFloatingLayout => Appearance.Service.IsFloating;
 
     /// <summary>
-    /// True while any of the three settings sections is up. The XAML binds
-    /// the settings surface's visibility to this, and the gear's lit state
-    /// to it.
+    /// True while either settings section is up. The XAML binds the settings
+    /// surface's visibility to this, and the gear's lit state to it.
     /// </summary>
-    public bool IsSettingsVisible
-        => IsStoresVisible || IsAccountImportVisible || IsAppearanceVisible;
+    public bool IsSettingsVisible => IsStoresVisible || IsAppearanceVisible;
 
     public bool IsLibraryVisible =>
         !IsMergeQueueVisible && !IsStoresVisible && !IsAppearanceVisible
-        && !IsAccountImportVisible && !IsAccountStatsVisible && !IsFeedVisible;
+        && !IsAccountStatsVisible && !IsFeedVisible;
 
     /// <summary>The filter panel is part of the library screen, not of the window.</summary>
     public bool IsFilterPanelVisible => IsLibraryVisible && Library.Filters.IsOpen;
@@ -213,7 +200,7 @@ public partial class MainWindowViewModel : ObservableObject
 
     /// <summary>
     /// The gear at the foot of the rail. Opens the settings surface on
-    /// whichever section was showing last, Stores the first time. Each
+    /// whichever section was showing last, Platforms the first time. Each
     /// section's own command writes <see cref="_settingsSection"/> on the
     /// way in, so the gear remembers without a separate "last visited" flag.
     /// </summary>
@@ -222,10 +209,6 @@ public partial class MainWindowViewModel : ObservableObject
     {
         switch (_settingsSection)
         {
-            case SettingsSection.Purchases:
-                await ShowAccountImportAsync();
-                break;
-
             case SettingsSection.Appearance:
                 ShowAppearance();
                 break;
@@ -249,22 +232,6 @@ public partial class MainWindowViewModel : ObservableObject
     }
 
     /// <summary>
-    /// The settings surface's Purchases section. Async because arriving asks
-    /// the embedded browser whether it could run here, a question that opens
-    /// no window and does no IO, so that the screen can say so before anything
-    /// is pressed. Opening this screen must never start either import route.
-    /// </summary>
-    [RelayCommand]
-    private async Task ShowAccountImportAsync()
-    {
-        _settingsSection = SettingsSection.Purchases;
-        ShowLibraryPane();
-        IsAccountImportVisible = true;
-
-        await AccountImport.RefreshCommand.ExecuteAsync(null);
-    }
-
-    /// <summary>
     /// Toggles the STATS screen; recomputes the figures on open. Every stat is
     /// a query rather than a stored aggregate, and the import screen can change
     /// the answer between two opens, so a cached view would be a stale one.
@@ -284,9 +251,14 @@ public partial class MainWindowViewModel : ObservableObject
     }
 
     /// <summary>
-    /// The settings surface's Stores section. Refreshes store connection
+    /// The settings surface's Platforms section. Refreshes store connection
     /// state on arrival so the screen opens on the truth rather than a
     /// stale cache.
+    ///
+    /// <para>The refresh also checks whether the embedded browser can run here,
+    /// for the purchase import folded into the Steam card. The check opens no
+    /// window and does no IO; arriving on this screen must never start either
+    /// import route.</para>
     /// </summary>
     [RelayCommand]
     private async Task ShowStoresAsync()
@@ -304,7 +276,6 @@ public partial class MainWindowViewModel : ObservableObject
         IsMergeQueueVisible = false;
         IsStoresVisible = false;
         IsAppearanceVisible = false;
-        IsAccountImportVisible = false;
         IsAccountStatsVisible = false;
         IsFeedVisible = false;
 
