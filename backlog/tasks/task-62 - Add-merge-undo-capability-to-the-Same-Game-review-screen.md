@@ -4,7 +4,7 @@ title: Add merge-undo capability to the Same Game review screen
 status: In Progress
 assignee: []
 created_date: '2026-09-01 02:51'
-updated_date: '2026-09-01 04:03'
+updated_date: '2026-09-01 04:31'
 labels:
   - resolve
   - ui
@@ -221,6 +221,31 @@ record away. A journal row is different: it cannot outlive the application it de
 29. SoftMatchResolver gains an explicit undone case and SoftMatchOutcome a trailing
     PreviouslyUndone = 0. Without it an undone pair falls through to default: and is
     counted as 'already pending', which is a false statement about a terminal row.
+
+### UI half (2026-08-31), executed with TASK-64 as one package
+
+The Same Game screen is one screen, so applying (TASK-64) and history/undo (steps 15-19
+above) land together. Refinements to steps 15-19 found while designing:
+
+30. The history row cannot name the absorbed game from anything that exists today. The
+    merge deletes the absorbed works row, and for a release collapse the merge_candidates
+    row that held both titles in signals_json is cascaded away with the absorbed release.
+    The only surviving record of that name is the 0017 journal's works/delete before_json.
+    MergeApplicationRecord therefore gains SurvivingTitle and AbsorbedTitle, filled by two
+    scalar sub-selects in LoadLogAsync. Both nullable: a merge that predates the journal
+    has no absorbed title, which is consistent with its being unreversible anyway.
+31. Step 19's 'merge again' affordance is NOT built in this pass. An undone pair is
+    terminal at status undone and GetPendingAsync does not offer it, so re-merging needs
+    a deliberate re-confirmation the screen does not yet have a place for. The history row
+    states that the pair was merged and unmerged and stops there, which is honest; adding
+    a control that re-confirms is its own decision and its own task.
+32. MergeQueueViewModel takes MergeExecutor as a required constructor parameter rather
+    than an optional one. The whole premise of TASK-64 is that a merge engine nobody
+    resolves is indistinguishable from one that works, so the composition root must fail
+    at startup rather than render a screen with its history section quietly missing.
+33. Reversibility is recomputed by reloading, not by a cache invalidation rule: Apply,
+    ApplyAll and Undo each re-run the same LoadAsync the screen ran on open. There is no
+    code path that keeps a MergeUndoPlan across two loads.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -562,4 +587,52 @@ Winnow.Recommend.Tests 98, Winnow.Covers.Tests 70).
 services.AddSingleton<IMergeUndoRepository, MergeUndoRepository>(). MergeExecutor
 takes it as an optional constructor parameter and its PreviewUndoAsync /
 HistoryAsync / UndoAsync wrappers throw a named error until it is registered.
+
+### UI half landed 2026-08-31, with TASK-64 (not finalized)
+
+Program.cs registers IMergeUndoRepository -> MergeUndoRepository, which is the line the data
+pass left for this half. MergeScreenRegistrationTests pins both directions: the screen
+resolves and loads from a container built the way Program builds it, and a container WITHOUT
+that registration fails by name from MergeExecutor rather than by null reference.
+
+The history list. One entry per merge_applications row, newest first, reading as which two
+games became one and when. Counts are behind the Azure disclosure the platform settings use
+(TASK-61's Button.disclose), never on the row, and only tables that actually moved are
+printed — a table that did not move is not a zero worth showing.
+
+Naming the two games needed a Core/Data addition the plan had not anticipated, recorded as
+plan item 30: MergeApplicationRecord gained SurvivingTitle (read live from works) and
+AbsorbedTitle (json_extract over the journal's works/delete before_json, falling back to
+releases/delete). It also gained Counts, summary_json decoded inside Winnow.Data so the App
+never owns the payload's shape.
+
+Reversibility is recomputed by reloading, and there is no code path that keeps a
+MergeUndoPlan across two loads. The test that proves it uses ONE screen instance: apply the
+first pair, assert the row is reversible, apply the second pair which consumes an identity
+the first produced, and assert the same application id now reports
+LaterMergeConsumedIdentity.
+
+The four disabled reasons, as shipped:
+  1. later merge — 'A later merge (Celeste (Epic) folded into Celeste (2 Sep 2026)) used one
+     of the identities this merge created. Undo that merge first.' The only one with an
+     action: an 'Undo that merge' button beside it, which undoes the blocker and never the
+     row it sits on.
+  2. predates — 'This merge was applied by a build that did not record what it moved, so
+     there is nothing to reverse from.'
+  3. game gone — 'A game this merge touched is no longer in the library. There is nothing
+     left to move back.'
+  4. already undone — 'This merge has already been undone.' The row carries NO control at
+     all: ShowUndoControl is false, an UNDONE label in Amber and the date stand in its place.
+     A dimmed Undo beside an undone merge is a control the user could still try to reach.
+
+Step 19's 'merge again' affordance was deliberately NOT built; recorded as plan item 31. An
+undone pair is terminal at status undone and re-merging needs a deliberate re-confirmation
+that is its own decision and its own task.
+
+No Flare anywhere on the screen. Amber carries attention (a refusal, a limited collapse, the
+report of the last act, the UNDONE label); disabled controls take TextDim on Line. Nothing
+animates, so reduced motion has nothing to suppress here. Automation names name the pair or
+the merge rather than the button, so a screen reader does not hear 'Undo' down the list.
+
+Full suite over all three projects: 2449 + 98 + 70 = 2617 passed, 0 failed, 0 warnings.
 <!-- SECTION:NOTES:END -->
