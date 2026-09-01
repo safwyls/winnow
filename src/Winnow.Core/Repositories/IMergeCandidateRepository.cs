@@ -20,6 +20,8 @@ public interface IMergeCandidateRepository
     /// </summary>
     Task<IReadOnlyList<MergeCandidate>> GetAllAsync(CancellationToken ct = default);
 
+    Task<MergeCandidate?> GetAsync(long id, CancellationToken ct = default);
+
     /// <summary>The existing row for a pair of releases in either order, or null. Prevents re-queuing answered pairs.</summary>
     Task<MergeCandidate?> FindByPairAsync(
         long leftReleaseId, long rightReleaseId, CancellationToken ct = default);

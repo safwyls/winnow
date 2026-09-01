@@ -284,12 +284,34 @@ public sealed class DatabaseBackupTests
         connection.Execute("DROP TABLE IF EXISTS account_transactions;");
         connection.Execute("DROP TABLE IF EXISTS account_licenses;");
         connection.Execute("DROP TABLE IF EXISTS ownership_accounts;");
+
+        // 0016 is the first migration that REBUILDS a table rather than adding
+        // one, so undoing it means putting the old shape back, not just dropping
+        // what it created: it replaced merge_candidates with a canonical version
+        // carrying CHECK (left_release_id < right_release_id).
+        connection.Execute("DROP TABLE IF EXISTS merge_applications;");
+        connection.Execute("DROP TABLE IF EXISTS merge_candidates;");
+        connection.Execute("""
+            CREATE TABLE merge_candidates (
+                id                INTEGER PRIMARY KEY,
+                left_release_id   INTEGER NOT NULL REFERENCES releases(id) ON DELETE CASCADE,
+                right_release_id  INTEGER NOT NULL REFERENCES releases(id) ON DELETE CASCADE,
+                score             REAL NOT NULL CHECK (score >= 0.0 AND score <= 1.0),
+                signals_json      TEXT,
+                status            TEXT NOT NULL DEFAULT 'pending'
+                                  CHECK (status IN ('pending', 'confirmed', 'rejected')),
+                UNIQUE (left_release_id, right_release_id)
+            );
+            """);
+        connection.Execute("CREATE INDEX ix_merge_candidates_status ON merge_candidates(status);");
+
         connection.Execute("""
             DELETE FROM SchemaVersions
             WHERE ScriptName LIKE '%0012%'
                OR ScriptName LIKE '%0013%'
                OR ScriptName LIKE '%0014%'
-               OR ScriptName LIKE '%0015%';
+               OR ScriptName LIKE '%0015%'
+               OR ScriptName LIKE '%0016%';
             """);
     }
 

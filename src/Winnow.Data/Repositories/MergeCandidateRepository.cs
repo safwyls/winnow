@@ -10,14 +10,38 @@ public sealed class MergeCandidateRepository : IMergeCandidateRepository
 
     public MergeCandidateRepository(ISqliteConnectionFactory factory) => _factory = factory;
 
+    /// <summary>
+    /// Canonicalises the pair to (lower id, higher id) here rather than trusting
+    /// the caller to have done it. Migration 0016 makes the same rule a
+    /// <c>CHECK</c> and a <c>UNIQUE</c> key, so a mirror image or a self-pair is
+    /// rejected by the database whichever path reaches it; this method is the
+    /// half that turns a mirror into the canonical row instead of an error.
+    /// </summary>
     public async Task<long> InsertAsync(MergeCandidate candidate, CancellationToken ct = default)
     {
+        ArgumentNullException.ThrowIfNull(candidate);
+
+        if (candidate.LeftReleaseId == candidate.RightReleaseId)
+        {
+            throw new ArgumentException(
+                $"A merge candidate cannot pair release {candidate.LeftReleaseId} with itself.",
+                nameof(candidate));
+        }
+
+        var canonical = candidate.LeftReleaseId < candidate.RightReleaseId
+            ? candidate
+            : candidate with
+            {
+                LeftReleaseId = candidate.RightReleaseId,
+                RightReleaseId = candidate.LeftReleaseId,
+            };
+
         using var lease = _factory.Lease();
         return await lease.Connection.ExecuteScalarAsync<long>(new CommandDefinition("""
             INSERT INTO merge_candidates (left_release_id, right_release_id, score, signals_json, status)
             VALUES (@LeftReleaseId, @RightReleaseId, @Score, @SignalsJson, @Status)
             RETURNING id;
-            """, candidate, transaction: lease.Transaction, cancellationToken: ct));
+            """, canonical, transaction: lease.Transaction, cancellationToken: ct));
     }
 
     public async Task<IReadOnlyList<MergeCandidate>> GetPendingAsync(CancellationToken ct = default)
@@ -51,6 +75,21 @@ public sealed class MergeCandidateRepository : IMergeCandidateRepository
             ORDER BY id;
             """, transaction: lease.Transaction, cancellationToken: ct));
         return rows.AsList();
+    }
+
+    public async Task<MergeCandidate?> GetAsync(long id, CancellationToken ct = default)
+    {
+        using var lease = _factory.Lease();
+        return await lease.Connection.QueryFirstOrDefaultAsync<MergeCandidate>(new CommandDefinition("""
+            SELECT id               AS Id,
+                   left_release_id  AS LeftReleaseId,
+                   right_release_id AS RightReleaseId,
+                   score            AS Score,
+                   signals_json     AS SignalsJson,
+                   status           AS Status
+            FROM merge_candidates
+            WHERE id = @id;
+            """, new { id }, transaction: lease.Transaction, cancellationToken: ct));
     }
 
     public async Task<MergeCandidate?> FindByPairAsync(

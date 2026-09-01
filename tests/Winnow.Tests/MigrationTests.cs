@@ -19,7 +19,22 @@ public class MigrationTests
         "feed_verdicts", "feed_surfacings",
         "update_acknowledgements",
         "account_transactions", "account_licenses",
+        "merge_applications",
     ];
+
+    /// <summary>The <c>merge_candidates</c> shape as 0001 shipped it, mirrors and self-pairs allowed.</summary>
+    private const string PreCanonicalMergeCandidates = """
+        CREATE TABLE merge_candidates (
+            id                INTEGER PRIMARY KEY,
+            left_release_id   INTEGER NOT NULL REFERENCES releases(id) ON DELETE CASCADE,
+            right_release_id  INTEGER NOT NULL REFERENCES releases(id) ON DELETE CASCADE,
+            score             REAL NOT NULL CHECK (score >= 0.0 AND score <= 1.0),
+            signals_json      TEXT,
+            status            TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'rejected')),
+            UNIQUE (left_release_id, right_release_id)
+        );
+        CREATE INDEX ix_merge_candidates_status ON merge_candidates(status);
+        """;
 
     [Fact]
     public void Migration_applies_cleanly_to_fresh_temp_file_database()
@@ -974,5 +989,64 @@ public class MigrationTests
                     ownership_id, account_ref, source, first_seen_at, last_seen_at)
                 VALUES (@ownershipId, '11111', 'steam_local', '2026-08-26', '2026-08-26');
                 """, new { ownershipId = attributedRow.OwnershipId }));
+    }
+
+    [Fact]
+    public void Migration_0016_canonicalises_pairs_and_keeps_terminal_decisions()
+    {
+        // A database created before 0016 could hold a self-pair and both
+        // orientations of one pair; the new CHECK and unique key would fail to
+        // build over them. Simulate that shape, then let 0016 run.
+        using var db = new TempDatabase();
+
+        long releaseA;
+        long releaseB;
+        long releaseC;
+        using (var conn = db.Factory.Open())
+        {
+            conn.Execute("DROP TABLE merge_applications;");
+            conn.Execute("DROP TABLE merge_candidates;");
+            conn.Execute(PreCanonicalMergeCandidates);
+            conn.Execute("DELETE FROM SchemaVersions WHERE ScriptName LIKE '%0016%';");
+
+            var workId = conn.ExecuteScalar<long>(
+                "INSERT INTO works (name) VALUES ('Hades') RETURNING id;");
+            releaseA = conn.ExecuteScalar<long>(
+                "INSERT INTO releases (work_id, name) VALUES (@workId, 'A') RETURNING id;", new { workId });
+            releaseB = conn.ExecuteScalar<long>(
+                "INSERT INTO releases (work_id, name) VALUES (@workId, 'B') RETURNING id;", new { workId });
+            releaseC = conn.ExecuteScalar<long>(
+                "INSERT INTO releases (work_id, name) VALUES (@workId, 'C') RETURNING id;", new { workId });
+
+            conn.Execute("""
+                INSERT INTO merge_candidates (left_release_id, right_release_id, score, status) VALUES
+                    (@a, @a, 0.99, 'pending'),
+                    (@a, @b, 0.80, 'pending'),
+                    (@b, @a, 0.80, 'rejected'),
+                    (@c, @b, 0.70, 'confirmed');
+                """, new { a = releaseA, b = releaseB, c = releaseC });
+        }
+
+        db.Initializer.Initialize();
+
+        using var after = db.Factory.Open();
+
+        var rows = after.Query<(long Left, long Right, string Status)>(
+            "SELECT left_release_id, right_release_id, status FROM merge_candidates ORDER BY left_release_id;")
+            .ToList();
+
+        // The self-pair is gone; the mirrored pair is one row in canonical
+        // orientation, and the user's rejection beat the untouched proposal.
+        Assert.Equal(2, rows.Count);
+        Assert.Equal((Math.Min(releaseA, releaseB), Math.Max(releaseA, releaseB), "rejected"), rows[0]);
+        Assert.Equal((Math.Min(releaseB, releaseC), Math.Max(releaseB, releaseC), "confirmed"), rows[1]);
+
+        // And the constraints now bite, whoever writes.
+        Assert.Throws<Microsoft.Data.Sqlite.SqliteException>(() => after.Execute(
+            "INSERT INTO merge_candidates (left_release_id, right_release_id, score) VALUES (@a, @a, 0.5);",
+            new { a = releaseA }));
+        Assert.Throws<Microsoft.Data.Sqlite.SqliteException>(() => after.Execute(
+            "INSERT INTO merge_candidates (left_release_id, right_release_id, score) VALUES (@c, @a, 0.5);",
+            new { a = releaseA, c = releaseC }));
     }
 }

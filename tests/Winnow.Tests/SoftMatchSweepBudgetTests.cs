@@ -262,6 +262,9 @@ public sealed class SoftMatchSweepBudgetTests
             return _inner.GetPendingAsync(ct);
         }
 
+        public Task<MergeCandidate?> GetAsync(long id, CancellationToken ct = default)
+            => _inner.GetAsync(id, ct);
+
         public Task<MergeCandidate?> FindByPairAsync(
             long leftReleaseId, long rightReleaseId, CancellationToken ct = default)
         {
