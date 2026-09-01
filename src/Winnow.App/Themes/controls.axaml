@@ -143,6 +143,61 @@
         <Setter Property="Foreground" Value="{DynamicResource Text}"/>
     </Style>
 
+    <!-- ══ Segmented toggle ═══════════════════════════════════════════════════
+         Promoted out of MainWindow when the merge screen's REVIEW / HISTORY
+         control became the third caller, for the same reason the disclosure
+         was promoted out of the filter panel: a second copy of these ten
+         selectors would be two grammars drifting apart under one class name.
+
+         `seg` is the glyph form, `seg tab` the worded one. Volt marks the
+         active segment, the same claim the rail's Volt edge makes, so a
+         segment and a rail row must never both be lit for one place.
+
+         ChromeRaised rather than SurfaceRaised: the translucent surface
+         composites downwards over a bright wallpaper, and an opaque step on
+         it would make the lit segment darker than the unlit one (§14.2).
+
+         Nothing here animates, so reduced motion has nothing to suppress. -->
+    <Style Selector="Button.seg">
+        <Setter Property="Padding" Value="10,5"/>
+        <Setter Property="CornerRadius" Value="0"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="VerticalAlignment" Value="Stretch"/>
+    </Style>
+    <Style Selector="Button.seg /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent"/>
+    </Style>
+    <Style Selector="Button.seg:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource SurfaceRaisedGhost}"/>
+    </Style>
+    <Style Selector="Button.seg.on /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource ChromeRaised}"/>
+    </Style>
+    <Style Selector="Button.seg Rectangle">
+        <Setter Property="Fill" Value="{DynamicResource TextDim}"/>
+    </Style>
+    <Style Selector="Button.seg.on Rectangle">
+        <Setter Property="Fill" Value="{DynamicResource Volt}"/>
+    </Style>
+
+    <!-- The same grammar with words instead of glyphs. Padding and alignment
+         differ; the fill rules above are inherited. -->
+    <Style Selector="Button.seg.tab">
+        <Setter Property="Padding" Value="14,0"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="Button.seg.tab TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource TextDim}"/>
+    </Style>
+    <Style Selector="Button.seg.tab:pointerover TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource Text}"/>
+    </Style>
+    <Style Selector="Button.seg.tab.on TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource Volt}"/>
+    </Style>
+
     <!-- ══ Disclosure toggle ══════════════════════════════════════════════════
          TASK-61. The filter panel's "Show all 214" button, promoted here for the
          same reason the prose styles were: the Platforms screen needed it in two

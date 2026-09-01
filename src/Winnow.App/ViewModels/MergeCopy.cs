@@ -1,185 +1,227 @@
 namespace Winnow.App.ViewModels;
 
 /// <summary>
-/// User-facing copy for the "Same game" screen. All strings in one file so the
-/// three-part flow (queue, apply, history) and every honesty caveat can be
-/// reviewed together. The screen asks one question at a time and must never let
-/// a button's label overstate what it does.
+/// User-facing copy for the Same Game screen. All strings in one file so the
+/// review queue, its inline previews, the outcome reports and the history can
+/// be reviewed together. Confirming a pair merges it immediately; every label
+/// must be exact about what pressing it does.
 /// </summary>
 public static class MergeCopy
 {
-    // ══ Queue — the correction ════════════════════════════════════════════
+    // ══ Chrome ════════════════════════════════════════════════════════════
 
-    /// <summary>Replaces the original intro under the screen title. States
-    /// the three-part contract: the queue asks a question, answering records
-    /// the answer, and applying is a separate step below. One compound
-    /// sentence keeps the screen from needing a paragraph.</summary>
+    /// <summary>Small uppercase label at the left of the 48px header,
+    /// beside the segment control.</summary>
+    public const string ScreenLabel = "SAME GAME";
+
+    /// <summary>Uppercase segment label for the review queue.</summary>
+    public const string SegmentReview = "REVIEW";
+
+    /// <summary>Uppercase segment label for the history of applied
+    /// merges.</summary>
+    public const string SegmentHistory = "HISTORY";
+
+    /// <summary>Tooltip on the Review segment.</summary>
+    public const string SegmentReviewTooltip =
+        "Pairs waiting for an answer";
+
+    /// <summary>Tooltip on the History segment.</summary>
+    public const string SegmentHistoryTooltip =
+        "Applied merges and undo";
+
+    // ══ Review — the queue ════════════════════════════════════════════════
+
+    /// <summary>Standing introduction under the screen title. Must
+    /// contain "undone" and must not contain "separate step".</summary>
     public const string QueueIntro =
-        "These pairs might be the same game. Answering records your decision "
-        + "here; applying it to the library is a separate step further down.";
+        "Confirming merges immediately. Merges can be undone.";
 
-    /// <summary>Tooltip on the "Same game" button. The label itself is
-    /// mandated by the copy table (design-system.md section 7) and stays put,
-    /// so the tooltip is where the distinction between recording an answer
-    /// and carrying it out lives. Names the keyboard shortcut.</summary>
+    /// <summary>Tooltip on Same game when mergeable. Must contain
+    /// "merges".</summary>
     public const string SameGameTooltip =
-        "Same game (S) — records your answer. The merge is applied "
-        + "separately in the section below.";
+        "Same game (S) — merges now, undo available";
 
-    /// <summary>Tooltip on "Different games". States the shortcut, the
-    /// permanence, and the consequence. Same register as the existing AXAML
-    /// tooltip it replaces.</summary>
+    /// <summary>Tooltip on Different games. States the shortcut, the
+    /// permanence, and the consequence.</summary>
     public const string DifferentGamesTooltip =
         "Different games (D) — permanent; this pair is never queued again";
 
-    // ══ Applying ══════════════════════════════════════════════════════════
+    // ══ The inline preview ════════════════════════════════════════════════
 
-    /// <summary>Section heading for the confirmed-but-unapplied pairs.
-    /// Display L weight, sentence case. A short noun phrase naming the
-    /// section's purpose.</summary>
-    public const string ApplyHeading = "Ready to apply";
+    /// <summary>Small uppercase label above the outcome block on a
+    /// mergeable pair's card.</summary>
+    public const string OutcomeLabel = "OUTCOME";
 
-    /// <summary>Introduction under the apply heading. States that these are
-    /// answers already given, waiting to be carried out, and that each pair
-    /// previews its effect before anything is written.</summary>
-    public const string ApplyIntro =
-        "These pairs have been answered but not yet applied. Each one shows "
-        + "what it will do before you confirm it.";
+    /// <summary>Which identity the library keeps. <c>{0}</c> surviving
+    /// title, <c>{1}</c> absorbed title.</summary>
+    public const string PreviewSurvivorFormat =
+        "Keeps {0}. {1} folds in.";
 
-    /// <summary>Empty state for the apply section. A direction: tells the
-    /// user where confirmed pairs come from.</summary>
-    public const string ApplyEmpty =
-        "No confirmed pairs are waiting. Answer a pair above and it appears here.";
+    /// <summary>Survivor line when the absorbed side has no title.
+    /// <c>{0}</c> surviving title, <c>{1}</c> release label.</summary>
+    public const string PreviewSurvivorUnnamedFormat =
+        "Keeps {0}. {1} folds in.";
 
-    /// <summary>Small uppercase label above a single pair's preview inside
-    /// the card. Names the preview's purpose.</summary>
-    public const string ApplySectionLabel = "EFFECT";
+    /// <summary>The two entries collapse into one row.</summary>
+    public const string PreviewCollapse =
+        "Entries merge into one.";
 
-    /// <summary>Per-pair apply control. Applies this one pair only. The
-    /// verb is accurate because the button does write to the database, but
-    /// it must not promise more than one pair.</summary>
-    public const string ApplyButton = "Apply this pair";
+    /// <summary>Entries stay separate: different editions.</summary>
+    public const string PreviewWorkOnlyDistinctEditions =
+        "Separate entries, different editions.";
 
-    /// <summary>Batch apply control. The count is rendered separately beside
-    /// it in the data face, so the label carries no number.</summary>
-    public const string ApplyAllButton = "Apply all";
+    /// <summary>Entries stay separate: achievements from different
+    /// stores.</summary>
+    public const string PreviewWorkOnlyAchievements =
+        "Separate entries, achievements would mix.";
 
-    /// <summary>Tooltip on the batch control. States that every listed pair
-    /// is applied in its own transaction and that a pair that cannot be
-    /// applied safely is skipped rather than blocking the rest.</summary>
-    public const string ApplyAllTooltip =
-        "Applies every pair listed here, one transaction each. A pair that "
-        + "cannot be applied safely is skipped, not held back.";
+    /// <summary>Entries stay separate: conflicting update facts.</summary>
+    public const string PreviewWorkOnlyUpdateEvents =
+        "Separate entries, conflicting update records.";
 
-    // ══ The preview ═══════════════════════════════════════════════════════
+    /// <summary>Fallback: entries stay separate, no specific reason.</summary>
+    public const string PreviewWorkOnlyOther =
+        "Separate entries under one game.";
 
-    /// <summary>Format string naming the surviving identity. <c>{0}</c> is
-    /// the surviving title, <c>{1}</c> is the absorbed title. The sentence
-    /// makes the user commit to which identity survives and which is folded
-    /// into it.</summary>
+    // ══ The blocked pair ══════════════════════════════════════════════════
+
+    /// <summary>Small uppercase label above a blocked-pair message or a
+    /// refusal sentence.</summary>
+    public const string BlockedLabel = "BLOCKED";
+
+    /// <summary>The two entries already share one game.</summary>
+    public const string PreviewBlockedAlreadyOneGame =
+        "Already one game. Nothing to merge.";
+
+    /// <summary>The pair no longer exists.</summary>
+    public const string PreviewBlockedNotFound =
+        "Pair no longer on record.";
+
+    /// <summary>What the answer does on a blocked card: files the
+    /// decision, changes nothing.</summary>
+    public const string PreviewBlockedAnswerEffect =
+        "Closes the question. Nothing changes.";
+
+    /// <summary>Tooltip on Same game for a blocked pair. Must not
+    /// contain "merges".</summary>
+    public const string SameGameBlockedTooltip =
+        "Same game (S) — records answer, nothing written";
+
+    // ══ Merge modes and limits ════════════════════════════════════════════
+
+    /// <summary>Survivor line in the leftovers section. <c>{0}</c>
+    /// surviving title, <c>{1}</c> absorbed title.</summary>
     public const string SurvivorLineFormat =
-        "{1} will be folded into {0}.";
+        "{1} folds into {0}.";
 
-    /// <summary>Same job as <see cref="SurvivorLineFormat"/> when the
-    /// absorbed side has no title on record. <c>{0}</c> is the surviving
-    /// title, <c>{1}</c> is a release id already formatted as e.g.
-    /// "release 412".</summary>
+    /// <summary>Survivor line when the absorbed side has no title.
+    /// <c>{0}</c> surviving title, <c>{1}</c> release label.</summary>
     public const string SurvivorLineUnnamedFormat =
-        "An untitled entry, {1}, will be folded into {0}.";
+        "{1} folds into {0}.";
 
-    /// <summary>Plain-language name of
-    /// <see cref="Core.Merging.MergeMode.WorkOnly"/>: the two games become
-    /// one, but the two store entries stay as separate rows under it.
-    /// Sentence fragment, not a full sentence.</summary>
+    /// <summary>Mode name for work-only. Sentence fragment, also the
+    /// <c>{2}</c> placeholder in <see cref="AppliedReportFormat"/>.</summary>
     public const string ModeWorkOnly =
-        "Two games become one, but the two store entries stay as separate rows";
+        "One game, entries stay separate";
 
-    /// <summary>Plain-language name of
-    /// <see cref="Core.Merging.MergeMode.ReleaseCollapse"/>: the two become
-    /// one game and one entry. Sentence fragment.</summary>
+    /// <summary>Mode name for release collapse. Sentence fragment, also
+    /// the <c>{2}</c> placeholder in <see cref="AppliedReportFormat"/>.</summary>
     public const string ModeReleaseCollapse =
-        "Two games become one game and one entry";
+        "One game, one entry";
 
     /// <summary>Small uppercase label beside the mode text.</summary>
     public const string ModeLabel = "MODE";
 
-    // ══ Why a collapse was limited or refused ═════════════════════════════
-
-    /// <summary>Explains why a release collapse was limited to a work-only
-    /// merge: the two sides are different editions. Reads as a reason, not a
-    /// refusal, because the merge still does something.</summary>
+    /// <summary>Collapse limited: different editions.</summary>
     public const string LimitedDistinctEditions =
-        "These are different editions, so the two store entries stay as "
-        + "separate rows under one game.";
+        "Different editions, entries stay separate.";
 
-    /// <summary>Refuses the merge entirely when the two sides are already
-    /// under one game. There is nothing left to do.</summary>
-    public const string RefusedDistinctEditions =
-        "These are different editions and already share one game. There is "
-        + "nothing left to merge.";
-
-    /// <summary>Explains why a release collapse was limited: both sides
-    /// carry achievements, and the achievements table has no store column,
-    /// so two stores' achievement sets under one entry could not be told
-    /// apart afterwards.</summary>
+    /// <summary>Collapse limited: achievements from different stores
+    /// would mix.</summary>
     public const string LimitedAchievementsOnBothSides =
-        "Both sides have achievements, and collapsing them into one entry "
-        + "would mix achievement sets that belong to different stores. The "
-        + "two entries stay separate.";
+        "Both sides have achievements; collapsing would mix them.";
 
-    /// <summary>Refuses when both sides carry achievements and no work-only
-    /// fallback is available.</summary>
-    public const string RefusedAchievementsOnBothSides =
-        "Both sides have achievements that belong to different stores. "
-        + "Collapsing would mix them, and there is no way to keep them "
-        + "apart afterwards.";
-
-    /// <summary>Explains why a release collapse was limited: the two sides
-    /// recorded different facts about the same update at the same moment.
-    /// Collapsing would drop one, and losing a fact is worse than not
-    /// collapsing.</summary>
+    /// <summary>Collapse limited: conflicting update facts.</summary>
     public const string LimitedConflictingUpdateEvents =
-        "The two sides recorded different facts about the same update at "
-        + "the same time. Collapsing would drop one, so the two entries "
-        + "stay separate.";
+        "Conflicting update records; collapsing would lose one.";
 
-    /// <summary>Refuses when conflicting update events block any merge at
-    /// all.</summary>
+    /// <summary>Refused: already one game, different editions.</summary>
+    public const string RefusedDistinctEditions =
+        "Different editions, already one game.";
+
+    /// <summary>Refused: achievements from different stores.</summary>
+    public const string RefusedAchievementsOnBothSides =
+        "Both sides have achievements; collapsing would mix them.";
+
+    /// <summary>Refused: conflicting update facts.</summary>
     public const string RefusedConflictingUpdateEvents =
-        "The two sides recorded different facts about the same update at "
-        + "the same time. Merging would drop one, and losing a fact is "
-        + "worse than not merging.";
+        "Conflicting update records; merging would lose one.";
 
-    /// <summary>The two sides already share one game; nothing left to
-    /// do.</summary>
+    /// <summary>Already one game.</summary>
     public const string RefusedAlreadyApplied =
-        "These two entries already share one game. There is nothing left "
-        + "to merge.";
+        "Already one game. Nothing to merge.";
 
-    /// <summary>The pair has not been answered "Same game", so applying is
-    /// not permitted.</summary>
+    /// <summary>Not yet confirmed.</summary>
     public const string RefusedCandidateNotConfirmed =
-        "This pair has not been confirmed as the same game.";
+        "Pair not confirmed.";
 
-    /// <summary>The pair is no longer on record.</summary>
+    /// <summary>Pair no longer exists.</summary>
     public const string RefusedCandidateNotFound =
-        "This pair is no longer on record.";
+        "Pair no longer on record.";
 
-    /// <summary>Small uppercase label above a refusal sentence.</summary>
-    public const string BlockedLabel = "BLOCKED";
+    // ══ What answering reported ═══════════════════════════════════════════
 
-    // ══ What applying reported ════════════════════════════════════════════
-
-    /// <summary>Past-tense report of a successful apply. <c>{0}</c>
-    /// surviving title, <c>{1}</c> absorbed title, <c>{2}</c> an
-    /// already-formatted phrase naming the mode outcome.</summary>
+    /// <summary>Past-tense report after a successful merge triggered by
+    /// confirming a pair. <c>{0}</c> surviving title, <c>{1}</c>
+    /// absorbed title, <c>{2}</c> an already-formatted sentence fragment
+    /// naming the mode outcome (see <see cref="ModeWorkOnly"/> and
+    /// <see cref="ModeReleaseCollapse"/>). The fragment begins with a
+    /// capital and reads as its own sentence after the period.</summary>
     public const string AppliedReportFormat =
-        "{1} was folded into {0}: {2}.";
+        "Merged {1} into {0}. {2}.";
 
-    /// <summary>Report when applying was refused and nothing was written.
+    /// <summary>Report when a merge was refused and nothing was written.
     /// <c>{0}</c> is the refusal sentence.</summary>
     public const string AppliedNothingFormat =
         "Nothing was changed. {0}";
+
+    /// <summary>Control beside the outcome report. Undoes the merge that
+    /// the report describes. Must not read as a generic undo that could
+    /// apply to anything else on the screen.</summary>
+    public const string ReportUndoButton = "Undo this merge";
+
+    /// <summary>Tooltip on the report's undo control.</summary>
+    public const string ReportUndoTooltip =
+        "Complete reversal or nothing.";
+
+    // ══ History — pending from previous version ═══════════════════════════
+
+    /// <summary>Section heading for pairs confirmed under the previous
+    /// two-step flow where answering and applying were separate. Display
+    /// L weight, sentence case.</summary>
+    public const string ApplyHeading = "Answered, not yet applied";
+
+    /// <summary>Introduction under the apply heading. These pairs
+    /// predate the immediate-merge flow.</summary>
+    public const string ApplyIntro =
+        "Confirmed before merges applied on answer. Not yet written.";
+
+    /// <summary>Small uppercase label above a single pair's effect
+    /// preview in the pending-from-previous-version section.</summary>
+    public const string ApplySectionLabel = "EFFECT";
+
+    /// <summary>Per-pair apply control. Applies this one pair only.
+    /// Must not promise more than one pair.</summary>
+    public const string ApplyButton = "Apply this pair";
+
+    /// <summary>Batch apply control. The count is rendered separately
+    /// beside it in the data face, so the label carries no
+    /// number.</summary>
+    public const string ApplyAllButton = "Apply all";
+
+    /// <summary>Tooltip on the batch apply control.</summary>
+    public const string ApplyAllTooltip =
+        "One transaction each. Unsafe pairs are skipped.";
 
     /// <summary>Batch report. <c>{0}</c> applied count, <c>{1}</c>
     /// considered count, <c>{2}</c> skipped count. Numbers are plain
@@ -192,36 +234,31 @@ public static class MergeCopy
     public const string AppliedBatchNoneFormat =
         "None of the {0} pairs could be applied.";
 
-    // ══ History ═══════════════════════════════════════════════════════════
+    // ══ History — applied merges ══════════════════════════════════════════
 
-    /// <summary>Section heading for the history of applied merges. Display
-    /// L weight, sentence case. A short noun phrase.</summary>
+    /// <summary>Section heading for the list of applied merges. Display
+    /// L weight, sentence case.</summary>
     public const string HistoryHeading = "Applied merges";
 
-    /// <summary>Introduction under the history heading. States what this
-    /// list is and that reversibility is checked live, not cached from the
-    /// time the merge was made.</summary>
+    /// <summary>Introduction under the history heading.</summary>
     public const string HistoryIntro =
-        "Every merge that has been applied, newest first. Reversibility is "
-        + "checked now, not at the time the merge was made.";
+        "Newest first. Reversibility checked live.";
 
-    /// <summary>Empty state for the history section. A direction.</summary>
+    /// <summary>Empty state for the applied-merge list. §7: empty states
+    /// are directions, not moods.</summary>
     public const string HistoryEmpty =
-        "No merge has been applied yet. Confirmed pairs are applied from "
-        + "the section above.";
+        "No merges yet. Confirm a pair in Review.";
 
-    /// <summary>History row describing which two games became one. <c>{0}</c>
-    /// absorbed title, <c>{1}</c> surviving title. Short, this is a row, not
-    /// a paragraph.</summary>
+    /// <summary>History row describing which two games became one.
+    /// <c>{0}</c> absorbed title, <c>{1}</c> surviving title. Short,
+    /// this is a row, not a paragraph.</summary>
     public const string HistoryRowFormat =
         "{0} folded into {1}";
 
-    /// <summary>History row when the absorbed title was never journalled
-    /// (a merge that predates undo support). <c>{0}</c> surviving title.
-    /// Names the survivor and says the other side's name is not on
-    /// record.</summary>
+    /// <summary>History row when the absorbed title was not journalled.
+    /// <c>{0}</c> surviving title.</summary>
     public const string HistoryRowUnnamedFormat =
-        "Something was folded into {0}; the absorbed game's name is not on record";
+        "Unknown folded into {0}";
 
     /// <summary>Small uppercase label before the date on a history
     /// row.</summary>
@@ -233,25 +270,23 @@ public static class MergeCopy
 
     // ══ The counts disclosure ═════════════════════════════════════════════
 
-    /// <summary>Label for the Azure disclosure toggle when collapsed: opens
+    /// <summary>Label for the disclosure toggle when collapsed: opens
     /// the per-table counts.</summary>
     public const string CountsShow = "Show row counts";
 
-    /// <summary>Label for the Azure disclosure toggle when expanded: closes
+    /// <summary>Label for the disclosure toggle when expanded: closes
     /// the per-table counts.</summary>
     public const string CountsHide = "Hide row counts";
 
-    /// <summary>Introduction for the counts panel. States that these are a
-    /// record of what moved.</summary>
+    /// <summary>Introduction for the counts panel.</summary>
     public const string CountsIntro =
-        "How many rows moved when this merge was applied.";
+        "Rows moved by this merge.";
 
-    /// <summary>Shown when this merge recorded no row counts (applied before
-    /// the journal was introduced).</summary>
+    /// <summary>No counts recorded for this merge.</summary>
     public const string CountsUnavailable =
-        "This merge did not record row counts.";
+        "No row counts recorded.";
 
-    // ══ Per-table count labels ═══════════════════════════════════════════
+    // ══ Per-table count labels ════════════════════════════════════════════
 
     /// <summary>Label for the count of store entries moved from the
     /// absorbed game to the surviving one.</summary>
@@ -335,59 +370,82 @@ public static class MergeCopy
 
     // ══ Undo ══════════════════════════════════════════════════════════════
 
-    /// <summary>Per-row undo control.</summary>
+    /// <summary>Per-row undo control in the history list.</summary>
     public const string UndoButton = "Undo";
 
-    /// <summary>Tooltip on the undo control. States the all-or-nothing
-    /// guarantee.</summary>
+    /// <summary>Tooltip on the per-row undo control.</summary>
     public const string UndoTooltip =
-        "Reversal is complete or it does not happen. There is no partial undo.";
+        "Complete reversal or nothing.";
 
-    /// <summary>Disabled reason: a later merge consumed one of this merge's
-    /// identities, and undoing it first is the way through. <c>{0}</c> is
-    /// the blocking merge's own row description, already formatted as e.g.
-    /// "Prey became Prey (2 Sep 2026)". This is the only disabled reason
-    /// with an action the user can take.</summary>
+    /// <summary>Blocked: a later merge depends on this one. <c>{0}</c>
+    /// is the blocking merge's row description.</summary>
     public const string UndoBlockedLaterMergeFormat =
-        "A later merge ({0}) used one of the identities this merge created. "
-        + "Undo that merge first.";
+        "Blocked by a later merge ({0}). Undo it first.";
 
-    /// <summary>Same reason as <see cref="UndoBlockedLaterMergeFormat"/>
-    /// when the blocking merge cannot be named. <c>{0}</c> is a merge
+    /// <summary>Blocked by a later unnamed merge. <c>{0}</c> merge
     /// number.</summary>
     public const string UndoBlockedLaterMergeUnnamedFormat =
-        "A later merge (#{0}) used one of the identities this merge created. "
-        + "Undo that merge first.";
+        "Blocked by a later merge (#{0}). Undo it first.";
 
     /// <summary>Control that jumps to or undoes the blocking merge first.
     /// Must not claim to undo the row it sits on.</summary>
     public const string UndoBlockingButton = "Undo that merge";
 
-    /// <summary>Disabled reason: this merge was applied by a build that
-    /// recorded nothing about which rows moved, so reversal is
-    /// impossible.</summary>
+    /// <summary>No undo journal recorded for this merge.</summary>
     public const string UndoBlockedPredatesUndoSupport =
-        "This merge was applied by a build that did not record what it "
-        + "moved, so there is nothing to reverse from.";
+        "Predates undo support. No record to reverse from.";
 
-    /// <summary>Disabled reason: a game this merge touched is no longer in
-    /// the library, so there is nothing left to move back.</summary>
+    /// <summary>Game no longer in the library.</summary>
     public const string UndoBlockedGameNoLongerExists =
-        "A game this merge touched is no longer in the library. There is "
-        + "nothing left to move back.";
+        "Game no longer in library. Nothing to restore.";
 
-    /// <summary>Informational label: this merge has already been undone.
-    /// The row carries no control.</summary>
+    /// <summary>Already reversed.</summary>
     public const string UndoBlockedAlreadyUndone =
-        "This merge has already been undone.";
+        "Already undone.";
 
-    /// <summary>Past-tense report of a successful undo. <c>{0}</c> restored
-    /// title, <c>{1}</c> row count restored.</summary>
+    /// <summary>Undo report. <c>{0}</c> restored title, <c>{1}</c> row
+    /// count. Must state the pair will not return to the queue; undo
+    /// sets the status to terminal, and nothing else on screen signals
+    /// that.</summary>
     public const string UndoneReportFormat =
-        "{0} was restored. {1} rows moved back.";
+        "{0} restored, {1} rows moved back. The pair will not return to review.";
 
     /// <summary>Report when an undo was refused. <c>{0}</c> the reason.
     /// Nothing was written.</summary>
     public const string UndoRefusedFormat =
         "Nothing was changed. {0}";
+
+    // ══ Automation ════════════════════════════════════════════════════════
+
+    /// <summary>Report when the merge threw and rolled back. Shown in
+    /// the Amber block.</summary>
+    public const string AppliedFailed =
+        "Merge did not complete. Nothing was written.";
+
+    /// <summary>Notice under the empty review state when pairs answered
+    /// under the old flow wait behind History. <c>{0}</c> count.</summary>
+    public const string OutstandingNoticeFormat =
+        "{0} answered pairs not yet applied in History.";
+
+    /// <summary>Blocked-card sentence for a blocker that is not "already
+    /// one game": a pair answered out from under the screen, for instance.
+    /// Asserts nothing about the library's state.</summary>
+    public const string PreviewBlockedNothingToDo =
+        "Nothing to do here.";
+
+    /// <summary>One side of a pair for a screen reader. <c>{0}</c> title,
+    /// <c>{1}</c> release number.</summary>
+    public const string PairAutomationFormat = "{0} {1}";
+
+    /// <summary>Automation name for Same game. <c>{0}</c> left side
+    /// composed by <see cref="PairAutomationFormat"/>, <c>{1}</c> right
+    /// side, <c>{2}</c> the outcome sentence (empty when no plan has
+    /// arrived). Must read correctly with <c>{2}</c> empty.</summary>
+    public const string SameGameAutomationFormat =
+        "Same game: {0} and {1}. {2}";
+
+    /// <summary>Automation name for Different games. <c>{0}</c> left
+    /// side, <c>{1}</c> right side.</summary>
+    public const string DifferentGamesAutomationFormat =
+        "Different games: {0} and {1}";
 }

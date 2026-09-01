@@ -160,7 +160,7 @@ public class MergeApplyViewModelTests
 
         // The list it came from is empty and the history it went to is not.
         Assert.Empty(queue.Outstanding);
-        Assert.True(queue.ShowOutstandingEmpty);
+        Assert.False(queue.HasOutstanding);
         Assert.Single(queue.History);
     }
 
@@ -437,24 +437,39 @@ public class MergeApplyViewModelTests
     // ── The wording the queue itself uses ────────────────────────────────────
 
     /// <summary>
-    /// The button keeps the label the copy table mandates. What changed is that
-    /// nothing around it claims the answer merges anything: recording and
-    /// applying are two acts and the screen now says which one it is doing.
+    /// The button keeps the label the copy table mandates, and everything around
+    /// it now says what the label cannot: pressing it writes to the library. The
+    /// previous build's wording - answering records a decision and a second
+    /// control applies it - would be a lie about this screen.
     /// </summary>
     [Fact]
-    public void Answering_a_pair_no_longer_reads_as_applying_one()
+    public void Answering_a_pair_says_it_merges_now()
     {
         using var db = new TempDatabase();
         var queue = Screen(db);
 
         Assert.Equal(MergeCopy.QueueIntro, queue.IntroMessage);
-        Assert.Equal(MergeCopy.SameGameTooltip, queue.SameGameTooltip);
         Assert.Equal(MergeCopy.DifferentGamesTooltip, queue.DifferentGamesTooltip);
 
         Assert.DoesNotContain(
-            "Nothing merges until you decide", queue.IntroMessage, StringComparison.Ordinal);
-        Assert.Contains("separate", queue.IntroMessage, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("records your answer", queue.SameGameTooltip, StringComparison.OrdinalIgnoreCase);
+            "separate step", queue.IntroMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("undone", queue.IntroMessage, StringComparison.OrdinalIgnoreCase);
+
+        // The mergeable card's tooltip promises a merge; the blocked card's
+        // refuses to, and that difference is this screen's whole honesty budget.
+        var mergeable = new MergePreviewViewModel(
+            new MergePlan { CandidateId = 1, Mode = MergeMode.ReleaseCollapse },
+            "Hollow Knight",
+            "Hollow Knight");
+        Assert.Equal(MergeCopy.SameGameTooltip, mergeable.SameGameTooltip);
+        Assert.Contains("merges", mergeable.SameGameTooltip, StringComparison.OrdinalIgnoreCase);
+
+        var blocked = new MergePreviewViewModel(
+            MergePlan.Nothing(2, MergeBlocker.DistinctEditions),
+            "Hollow Knight",
+            "Hollow Knight");
+        Assert.Equal(MergeCopy.SameGameBlockedTooltip, blocked.SameGameTooltip);
+        Assert.DoesNotContain("merges", blocked.SameGameTooltip, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -465,10 +480,12 @@ public class MergeApplyViewModelTests
 
         await queue.LoadCommand.ExecuteAsync(null);
 
-        Assert.True(queue.ShowOutstandingEmpty);
+        // The leftover section explains itself by being absent: an install that
+        // never saw the two-step flow has nothing to be told about it.
+        Assert.False(queue.HasOutstanding);
+
         Assert.True(queue.ShowHistoryEmpty);
         Assert.False(queue.HasReport);
-        Assert.Equal(MergeCopy.ApplyEmpty, queue.ApplyEmptyMessage);
         Assert.Equal(MergeCopy.HistoryEmpty, queue.HistoryEmptyMessage);
     }
 

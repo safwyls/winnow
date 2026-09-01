@@ -700,6 +700,22 @@ public partial class MainWindow : Window
             return;
         }
 
+        // Escape leaves from either surface; everything else acts on a card,
+        // and a card is only on screen while the review segment is up.
+        // Answering now merges the pair, so an S pressed over the history
+        // list would write to the library on a card the user cannot see.
+        if (e.Key == Key.Escape)
+        {
+            _shell.ShowLibraryCommand.Execute(null);
+            e.Handled = true;
+            return;
+        }
+
+        if (!queue.IsReviewVisible)
+        {
+            return;
+        }
+
         switch (e.Key)
         {
             case Key.Up:
@@ -719,11 +735,6 @@ public partial class MainWindow : Window
 
             case Key.D:
                 queue.DifferentGamesCommand.Execute(queue.SelectedCandidate);
-                e.Handled = true;
-                break;
-
-            case Key.Escape:
-                _shell.ShowLibraryCommand.Execute(null);
                 e.Handled = true;
                 break;
         }

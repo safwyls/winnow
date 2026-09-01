@@ -53,6 +53,18 @@ public sealed class MergeExecutionRepository : IMergeExecutionRepository
         return await BuildPlanAsync(lease, request, ct);
     }
 
+    // The prospective read path. Calls BuildPlanAsync with admitPending: true
+    // and takes no transaction, so it reads a pending or confirmed pair without
+    // writing anything. The review card calls this to state what an answer
+    // would do before the answer is given.
+    public async Task<MergePlan> PreviewAsync(MergeRequest request, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        using var lease = _factory.Lease();
+        return await BuildPlanAsync(lease, request, ct, admitPending: true);
+    }
+
     public async Task<MergeOutcome> ApplyAsync(MergeRequest request, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -96,30 +108,61 @@ public sealed class MergeExecutionRepository : IMergeExecutionRepository
 
     // ── Planning ─────────────────────────────────────────────────────────────
 
+    // The write path's pair statement. The status = 'confirmed' predicate
+    // lives in the SQL, not in a caller's if, so no ordering of C# can make
+    // ApplyAsync merge an unanswered or rejected pair (§5.3).
+    private const string ConfirmedPairSql = """
+        SELECT c.id                AS CandidateId,
+               c.left_release_id   AS LeftId,
+               c.right_release_id  AS RightId,
+               l.work_id           AS LeftWorkId,
+               r.work_id           AS RightWorkId,
+               l.platform          AS LeftPlatform,
+               r.platform          AS RightPlatform,
+               l.edition_note      AS LeftEditionNote,
+               r.edition_note      AS RightEditionNote,
+               l.igdb_version_id   AS LeftIgdbVersionId,
+               r.igdb_version_id   AS RightIgdbVersionId
+        FROM merge_candidates c
+        JOIN releases l ON l.id = c.left_release_id
+        JOIN releases r ON r.id = c.right_release_id
+        WHERE c.id = @CandidateId
+          AND c.status = 'confirmed';
+        """;
+
+    // The read-only pair statement. Admits pending as well as confirmed, so
+    // the review card can state what an answer would do before it is given.
+    // Rejected and undone are terminal and stay out.
+    private const string ProspectivePairSql = """
+        SELECT c.id                AS CandidateId,
+               c.left_release_id   AS LeftId,
+               c.right_release_id  AS RightId,
+               l.work_id           AS LeftWorkId,
+               r.work_id           AS RightWorkId,
+               l.platform          AS LeftPlatform,
+               r.platform          AS RightPlatform,
+               l.edition_note      AS LeftEditionNote,
+               r.edition_note      AS RightEditionNote,
+               l.igdb_version_id   AS LeftIgdbVersionId,
+               r.igdb_version_id   AS RightIgdbVersionId
+        FROM merge_candidates c
+        JOIN releases l ON l.id = c.left_release_id
+        JOIN releases r ON r.id = c.right_release_id
+        WHERE c.id = @CandidateId
+          AND c.status IN ('pending', 'confirmed');
+        """;
+
     private static async Task<MergePlan> BuildPlanAsync(
-        DbLease lease, MergeRequest request, CancellationToken ct)
+        DbLease lease, MergeRequest request, CancellationToken ct, bool admitPending = false)
     {
-        // The `status = 'confirmed'` predicate is in the statement, not in a
-        // caller's if: there is no ordering of C# that can make this merge an
-        // unanswered or rejected pair. Fuzzy matches never auto-merge (5.3).
-        var pair = await lease.Connection.QueryFirstOrDefaultAsync<PairRow>(new CommandDefinition("""
-            SELECT c.id                AS CandidateId,
-                   c.left_release_id   AS LeftId,
-                   c.right_release_id  AS RightId,
-                   l.work_id           AS LeftWorkId,
-                   r.work_id           AS RightWorkId,
-                   l.platform          AS LeftPlatform,
-                   r.platform          AS RightPlatform,
-                   l.edition_note      AS LeftEditionNote,
-                   r.edition_note      AS RightEditionNote,
-                   l.igdb_version_id   AS LeftIgdbVersionId,
-                   r.igdb_version_id   AS RightIgdbVersionId
-            FROM merge_candidates c
-            JOIN releases l ON l.id = c.left_release_id
-            JOIN releases r ON r.id = c.right_release_id
-            WHERE c.id = @CandidateId
-              AND c.status = 'confirmed';
-            """, new { request.CandidateId }, lease.Transaction, cancellationToken: ct));
+        // Two literal SQL constants, never one assembled by string
+        // concatenation. A concatenated predicate could be reached by a
+        // caller passing an unexpected value; the point of the whole
+        // arrangement is that it cannot. admitPending defaults to false,
+        // and both write-path call sites take the default.
+        var pair = await lease.Connection.QueryFirstOrDefaultAsync<PairRow>(new CommandDefinition(
+            admitPending ? ProspectivePairSql : ConfirmedPairSql,
+            new { request.CandidateId }, lease.Transaction, cancellationToken: ct));
 
         if (pair is null)
         {

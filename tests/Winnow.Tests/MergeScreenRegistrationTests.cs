@@ -33,8 +33,11 @@ public sealed class MergeScreenRegistrationTests
         Assert.Empty(screen.Candidates);
         Assert.Empty(screen.Outstanding);
         Assert.Empty(screen.History);
-        Assert.True(screen.ShowOutstandingEmpty);
+        Assert.False(screen.HasOutstanding);
         Assert.True(screen.ShowHistoryEmpty);
+
+        // And it opens on the queue, which is the surface the rail row counts.
+        Assert.True(screen.IsReviewVisible);
     }
 
     [Fact]

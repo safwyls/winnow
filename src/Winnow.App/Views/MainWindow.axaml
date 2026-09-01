@@ -346,54 +346,10 @@
             <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
         </Style>
 
-        <!-- Segmented grid/list toggle. Volt marks the active segment. -->
-        <Style Selector="Button.seg">
-            <Setter Property="Padding" Value="10,5"/>
-            <Setter Property="CornerRadius" Value="0"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="VerticalAlignment" Value="Stretch"/>
-        </Style>
-        <Style Selector="Button.seg /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="Transparent"/>
-        </Style>
-        <Style Selector="Button.seg:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="{StaticResource SurfaceRaisedGhost}"/>
-        </Style>
-        <!-- ChromeRaised rather than SurfaceRaised: the toggle's own fill opens
-             up with the bar now, and an opaque step over a translucent surface
-             composites DOWNWARDS over a bright wallpaper - the lit segment would
-             come out darker than the unlit one. §14.2's veil is the fix, and it
-             is already solved. -->
-        <Style Selector="Button.seg.on /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="{StaticResource ChromeRaised}"/>
-        </Style>
-        <Style Selector="Button.seg Rectangle">
-            <Setter Property="Fill" Value="{StaticResource TextDim}"/>
-        </Style>
-        <Style Selector="Button.seg.on Rectangle">
-            <Setter Property="Fill" Value="{StaticResource Volt}"/>
-        </Style>
-
-        <!-- The command bar's segmented toggle grammar reused with words
-             instead of glyphs, for the settings surface's three sections.
-             Volt marks the section on show, exactly as it marks the active
-             glyph above. Padding and alignment differ; the fill and ink
-             rules are inherited from Button.seg. -->
-        <Style Selector="Button.seg.tab">
-            <Setter Property="Padding" Value="14,0"/>
-            <Setter Property="VerticalContentAlignment" Value="Center"/>
-        </Style>
-        <Style Selector="Button.seg.tab TextBlock">
-            <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
-        </Style>
-        <Style Selector="Button.seg.tab:pointerover TextBlock">
-            <Setter Property="Foreground" Value="{StaticResource Text}"/>
-        </Style>
-        <Style Selector="Button.seg.tab.on TextBlock">
-            <Setter Property="Foreground" Value="{StaticResource Volt}"/>
-        </Style>
+        <!-- Segmented toggle styles live in Themes/controls.axaml. They moved
+             there when the merge screen became a third caller; duplicating the
+             ten selectors here would have been two grammars drifting apart
+             under one class name. -->
 
         <!-- Inert chrome controls (sort / store filter stubs), mock's .ctl. -->
         <Style Selector="Button.ctl">

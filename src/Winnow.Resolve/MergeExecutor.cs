@@ -57,11 +57,15 @@ public sealed class MergeExecutor
     }
 
     /// <summary>
-    /// Reads only. Returns the plan the confirm screen shows before the user
-    /// commits, including the surviving identity and any blocker.
+    /// Reads only. Returns the plan the review card states before the user
+    /// answers. Routes to the repository's prospective read path, which admits
+    /// pending pairs; the write path's SQL refuses them, so before this method
+    /// existed the only answer for a pending pair was
+    /// <see cref="MergeBlocker.CandidateNotConfirmed"/>. The policy stays in
+    /// this class rather than in <c>Winnow.App</c> (section 5.1).
     /// </summary>
     public async Task<MergePlan> PreviewAsync(long candidateId, CancellationToken ct = default)
-        => await _merges.PlanAsync(await RequestAsync(candidateId, ct), ct);
+        => await _merges.PreviewAsync(await RequestAsync(candidateId, ct), ct);
 
     /// <summary>
     /// Reads only. Every confirmed pair not yet applied, each already planned, in

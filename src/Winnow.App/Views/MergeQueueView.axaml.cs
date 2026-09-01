@@ -36,6 +36,22 @@ public partial class MergeQueueView : UserControl
         RequestCovers();
     }
 
+    /// <summary>
+    /// Selection follows focus into the card list. Without this, Tab moves the
+    /// focus ring while the SELECTED pair stays put, so pressing S merges a
+    /// different pair than the ring sits on. When answering only recorded a
+    /// status this was survivable; now that answering writes to the library it
+    /// is not. Selecting on focus keeps one mark on screen instead of two
+    /// competing ones (§8).
+    /// </summary>
+    private void OnCardFocus(object? sender, Avalonia.Input.GotFocusEventArgs e)
+    {
+        if (e.Source is Control { DataContext: MergeCandidateViewModel candidate })
+        {
+            _queue?.Select(candidate);
+        }
+    }
+
     /// <summary>Brings the card at <paramref name="index"/> into view after a keyboard move (§8).</summary>
     public void ScrollIntoView(int index)
     {

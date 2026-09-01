@@ -512,6 +512,60 @@ public class MergeExecutionTests
         Assert.Equal(MergeBlocker.CandidateNotFound, missing.Plan.Blocker);
     }
 
+    /// <summary>
+    /// The prospective read path exists so the review card can state what an
+    /// answer will do before it is given, which means it looks at an unanswered
+    /// pair — the one case <see cref="Only_confirmed_pairs_are_reachable"/>
+    /// forbids for the write path. It has to be provably read-only.
+    /// </summary>
+    [Fact]
+    public async Task Previewing_a_pending_pair_leaves_the_database_untouched()
+    {
+        using var db = new TempDatabase();
+        var seed = Seed(db, leftStore: "steam", rightStore: "epic");
+        var repository = new MergeExecutionRepository(db.Factory);
+
+        using (var conn = db.Factory.Open())
+        {
+            conn.Execute("UPDATE merge_candidates SET status = 'pending' WHERE id = @id;",
+                new { id = seed.CandidateId });
+        }
+
+        var before = Snapshot(db);
+        var plan = await repository.PreviewAsync(new MergeRequest { CandidateId = seed.CandidateId });
+
+        // A real plan, not a refusal — the whole point of the path.
+        Assert.NotEqual(MergeMode.NothingToDo, plan.Mode);
+        Assert.NotEqual(MergeBlocker.CandidateNotConfirmed, plan.Blocker);
+        Assert.Equal(before, Snapshot(db));
+    }
+
+    /// <summary>
+    /// Admitting <c>pending</c> admits exactly that. A rejected or undone row is
+    /// terminal, and a screen that previewed one would be offering an outcome
+    /// for a question already closed.
+    /// </summary>
+    [Fact]
+    public async Task Previewing_a_terminal_pair_refuses_like_the_write_path()
+    {
+        using var db = new TempDatabase();
+        var seed = Seed(db, leftStore: "steam", rightStore: "epic");
+        var repository = new MergeExecutionRepository(db.Factory);
+
+        foreach (var status in new[] { "rejected", "undone" })
+        {
+            using (var conn = db.Factory.Open())
+            {
+                conn.Execute("UPDATE merge_candidates SET status = @status WHERE id = @id;",
+                    new { status, id = seed.CandidateId });
+            }
+
+            var plan = await repository.PreviewAsync(new MergeRequest { CandidateId = seed.CandidateId });
+            Assert.Equal(MergeMode.NothingToDo, plan.Mode);
+            Assert.Equal(MergeBlocker.CandidateNotConfirmed, plan.Blocker);
+        }
+    }
+
     // ── AC #3: the cascade tripwire, and rollback ────────────────────────────
 
     [Fact]

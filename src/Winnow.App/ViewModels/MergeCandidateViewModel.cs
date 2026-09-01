@@ -89,7 +89,7 @@ public partial class MergeCandidateViewModel : ObservableObject
 
     /// <summary>Shown in place of the breakdown when the row carries no recorded evidence.</summary>
     public string NoSignalsMessage =>
-        "No breakdown available. Decide from the covers and titles.";
+        "No breakdown available.";
 
     /// <summary>Keyboard/pointer selection: 2px Volt edge, matching the grid (§8).</summary>
     [ObservableProperty]
@@ -98,6 +98,58 @@ public partial class MergeCandidateViewModel : ObservableObject
     /// <summary>Latched the moment an answer is given, so a double-click cannot write two statuses.</summary>
     [ObservableProperty]
     public partial bool IsDecided { get; set; }
+
+    /// <summary>
+    /// The outcome the two answers commit to, stated on the card above them.
+    /// Observable and rewritten in place after any merge, because a merge can
+    /// change what an answer on a neighbouring pair would do, and a card
+    /// holding a stale promise is the one failure this screen cannot have.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(
+        nameof(HasPreview), nameof(IsPreviewBlocked), nameof(SameGameAutomationName))]
+    public partial MergePreviewViewModel? Preview { get; set; }
+
+    /// <summary>Gates the outcome block's visibility in the markup.</summary>
+    public bool HasPreview => Preview is not null;
+
+    /// <summary>
+    /// Drives the card's Amber edge. A bool of its own rather than a path
+    /// through a nullable in the markup, so the <c>Classes.attention</c>
+    /// binding has a value to read before the first plan arrives.
+    /// </summary>
+    public bool IsPreviewBlocked => Preview?.IsBlocked ?? false;
+
+    // Each answer names the pair by title and release number rather than
+    // repeating the verb, so a column of Same game buttons is not one
+    // indistinguishable target for a screen reader (§8). The release number
+    // is what distinguishes two sides with the same title, which is the
+    // normal case for the pairs this screen shows. A blocked card appends
+    // the effect sentence so the reader announces that nothing is merged.
+    public string SameGameAutomationName => string.Format(
+        CultureInfo.CurrentCulture,
+        MergeCopy.SameGameAutomationFormat,
+        LeftAutomationName,
+        RightAutomationName,
+        Preview is { IsBlocked: true } blocked ? blocked.EffectLine
+            : Preview is { } preview ? preview.SurvivorLine
+            : string.Empty).TrimEnd();
+
+    // Same structure as SameGameAutomationName, without the outcome sentence.
+    public string DifferentGamesAutomationName => string.Format(
+        CultureInfo.CurrentCulture,
+        MergeCopy.DifferentGamesAutomationFormat,
+        LeftAutomationName,
+        RightAutomationName);
+
+    private string LeftAutomationName => string.Format(
+        CultureInfo.CurrentCulture, MergeCopy.PairAutomationFormat, Left.Title, Left.ReleaseText);
+
+    private string RightAutomationName => string.Format(
+        CultureInfo.CurrentCulture, MergeCopy.PairAutomationFormat, Right.Title, Right.ReleaseText);
+
+    /// <summary>Tooltip on "Different games", stating permanence.</summary>
+    public string DifferentGamesTooltip => MergeCopy.DifferentGamesTooltip;
 
     /// <summary>
     /// Builds a card from a stored row. <paramref name="fallbackTitles"/> names

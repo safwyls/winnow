@@ -196,6 +196,16 @@ public partial class MainWindowViewModel : ObservableObject
         var open = !IsMergeQueueVisible;
         ShowLibraryPane();
         IsMergeQueueVisible = open;
+
+        // The rail row carries the pending count, so it means "review these".
+        // Landing on REVIEW even if HISTORY was the last segment open is
+        // deliberate. Contrast with the settings surface, which reopens on its
+        // last section: the gear carries no count and no claim about what is
+        // waiting.
+        if (open)
+        {
+            MergeQueue.IsHistoryVisible = false;
+        }
     }
 
     /// <summary>
