@@ -266,7 +266,7 @@ public partial class MainWindow : Window
             await display.LoadAsync();
         }
 
-        // M8, and LAST on purpose. The scoring pass is ~500ms over a thousand
+        // M8, and LAST on purpose. The scoring pass is ~60 ms over a thousand
         // games (Winnow.App.Services.IFeedService carries the measurement), and
         // it needs the library's tiles to exist before it can build a card —
         // the feed renders the library's own tiles rather than a second

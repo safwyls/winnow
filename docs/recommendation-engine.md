@@ -170,6 +170,20 @@ won once history was read. The bought-twice signal is unaffected: store counts a
 per work over every ownership in the library, before candidates are assembled.
 `RecommendationFeed.WorkCount` reports what the pool collapsed to.
 
+**The shelf pass unions five shortlists, interleaved rank by rank.** Each shelf produces its
+own score-bound-safe shortlist; the union (`RecommendationEngine.ProbeUnion`) admits every
+shelf's best candidate before any shelf's second best, and so on until the probe limit is
+reached. Duplicates are dropped by ownership id, since one ownership can be shortlisted by
+several shelves and is only ever probed once. The previous implementation filled the union
+shelf by shelf in claim order and stopped when the budget ran out. Any flat cap applied in
+claim order has the same failure mode: it deletes whole later shelves instead of trimming
+each shelf's tail. On the real library (990 candidates, 966 works, measured 2026-09-01) the
+first two shelves consumed the entire budget of 150 and the last three were never scored; the
+user saw 2 shelves and 12 items where the design intends 5 and 28. With round-robin, all
+five shelves populate even at a budget of 5. The measured cost of the wider union: 150
+probes 57.5 ms median, 376 probes 60.4 ms median, on a pass that already runs off the UI
+thread inside `Task.Run`.
+
 ## 5. Thresholds, and why each is that number
 
 All live on `RecommendationTuning` with these defaults. The §6.1 refund line
@@ -200,7 +214,7 @@ to meet: a number that means something.
 | `OnTasteMinAffinity` | 0.6 | Floor for the "right up your alley" shelf: the candidate must carry a descriptor at least 60% as loved as the user's most-loved *distinctive* one. Measured: admits a rotating pool of ~200 of 427 never-opened rows. |
 | `ShelfFranchiseCap` | 1 | One franchise entry per shelf, hard, never relaxed — 14 unplayed Infinity Blades is the measured alternative. The rest of a franchise rotates through later days. Grouping key: title before the first colon, slugified, trailing numeral dropped (`Half-Life 2: Deathmatch` → `half_life`). Conservative on purpose: a false split costs a samey shelf; a false merge silently suppresses a valid recommendation. |
 | `ShelfGenreCap` | 4 | Entries sharing one genre per 10-item shelf — below half, so no genre can majority a shelf. Soft: the relaxation pass refills when the eligible pool genuinely is that narrow. |
-| `ShelfOverfetchFactor` / `ShelfProbeLimit` | 3 / 150 | Per-shelf shortlists are 3× the shelf size (slack for caps and cross-shelf claims); the probe union is capped at 150 ownerships — five shelves legitimately probe more than one list does, but never the whole library. |
+| `ShelfOverfetchFactor` / `ShelfProbeLimit` | 3 / 2,000 | Per-shelf shortlists are 3× the shelf size (slack for caps and cross-shelf claims). The probe union is the interleave of those shortlists (rank by rank, not shelf by shelf) capped at 2,000 ownerships. 2,000 is derived from cost, not shelf geometry: the shelf pass costs 46.6 ms median with zero probes (dominated by bulk reads) and 23 microseconds per probe (measured 2026-09-01, 990 candidates, 966 works), so 2,000 probes is where per-row history reading would equal the bulk reads, i.e. where the pass would double. What holds the union well below that on a real library is the score bound (`ScoreBounds.SafeShortlist`), not the cap; on the measured library the natural union is 376 of 966 works and the feed stops changing at ~300. The cap is the backstop for a library where the bound stops discriminating. The previous default of 150 was sized against the per-shelf comfort floors and ignored that the bound legitimately exceeds them; on the real library it starved three of five shelves entirely (§4a). |
 | `PenaltyRecentlyPlayed` | 0.60 | Must dominate: max realistic positive sum ≈ 0.55 for a non-stale row. A game played yesterday cannot crack the feed's top even if it is installed, twice-bought and on-taste. |
 | `PenaltyProbablyDone` | 0.30 | Sized to drop a qualifying row below the bounced midfield but not to zero — it still appears far down the feed, with a reason that says why it is far down. |
 | `PenaltyRecentlySurfaced` | 0.20 | Enough to rotate a shown item behind its unshown near-peers; not enough to bury a strong stale-but-patched hit the user keeps ignoring — if the top item is genuinely the top item, repeating it once or twice is honest. |

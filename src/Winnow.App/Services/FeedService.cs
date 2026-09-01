@@ -9,7 +9,7 @@ namespace Winnow.App.Services;
 /// <summary>
 /// Implements <see cref="IFeedService"/>: translates the recommendation engine's
 /// output into App-layer types, runs scoring off the UI thread (Dapper calls are
-/// synchronous ~500ms), and owns the verdict/surfacing feedback loop (§6b).
+/// synchronous, ~60 ms warm), and owns the verdict/surfacing feedback loop (§6b).
 /// Engine and feedback store are both optional; missing ones degrade gracefully.
 /// </summary>
 public sealed class FeedService : IFeedService

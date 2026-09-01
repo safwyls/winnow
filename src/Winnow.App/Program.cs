@@ -702,7 +702,7 @@ public static class Program
         //
         // FeedService is also where the pass gets off the UI thread: the reads
         // under the engine are synchronous SQLite, so awaiting it from the
-        // dispatcher would run all ~500ms of it there (§5.1 pitfall 3). Since
+        // dispatcher would run all ~60 ms of it there (§5.1 pitfall 3). Since
         // the feedback loop landed it is also the only WRITER on that path —
         // the surfacing log after every pass, and a verdict on every dismiss —
         // and both writes go through the same Task.Run for the same reason.

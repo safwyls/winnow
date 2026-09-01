@@ -123,8 +123,30 @@ public sealed record RecommendationTuning
     /// <summary>Candidates short-listed per shelf as a multiple of shelf size, before diversity passes.</summary>
     public int ShelfOverfetchFactor { get; init; } = 3;
 
-    /// <summary>Hard ceiling on ownerships probed for history across all shelf shortlists combined.</summary>
-    public int ShelfProbeLimit { get; init; } = 150;
+    /// <summary>
+    /// Hard ceiling on ownerships probed for history across all shelf shortlists
+    /// combined. A pathology brake, not a trim: fairness across shelves is the
+    /// interleave's job (<see cref="RecommendationEngine.ProbeUnion"/>), and the
+    /// cap's only remaining job is cost.
+    ///
+    /// 2,000 is derived from cost, not from shelf geometry. Measured on a copy
+    /// of the real library (990 candidates, 966 works, tier Settling,
+    /// measured 2026-09-01): the shelf pass costs 46.6 ms median with zero
+    /// probes (dominated by bulk reads) and 23 microseconds per probe, so
+    /// 2,000 probes is where per-row history reading would cost as much as
+    /// the bulk reads it rides on, i.e. where the pass would double. The
+    /// natural (uncapped) probe union on that library is 376 of 966 works,
+    /// and the feed stops changing at ~300, so at this scale the cap is
+    /// deliberately inert. What holds the union to 376 is the score bound
+    /// (<see cref="ScoreBounds.SafeShortlist"/>), not the cap; the cap is the
+    /// backstop for a library where the bound stops discriminating.
+    ///
+    /// The previous default of 150 was the sum of five per-shelf comfort
+    /// floors and ignored that the bound legitimately exceeds those floors;
+    /// on the real library the first two shelves consumed the entire budget
+    /// and the last three were never scored at all.
+    /// </summary>
+    public int ShelfProbeLimit { get; init; } = 2_000;
 
     // ── Feedback loop windows ───────────────────────────────────────────────
     // Read by FeedbackSets (which turns the stored feedback into a request's

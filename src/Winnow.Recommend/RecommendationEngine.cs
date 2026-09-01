@@ -127,31 +127,21 @@ public sealed class RecommendationEngine : IRecommendationEngine
         var perShelf = Math.Max(request.MaxPerShelf,
             request.MaxPerShelf * Math.Max(1, tuning.ShelfOverfetchFactor));
 
-        var union = new List<ScoredCandidate>();
-        var seen = new HashSet<long>();
+        // Each shelf keeps its own score-bound-safe slice: a candidate is
+        // dropped only when its upper bound cannot reach the lower bound of
+        // the shelf's last visible entry, so no history outcome could place it.
+        var shortlists = new List<IReadOnlyList<ScoredCandidate>>(definitions.Count);
         foreach (var definition in definitions)
         {
             var eligible = works
                 .Where(s => ShelfBuilder.IsEligible(definition, s.Facts, s.Signals))
                 .ToList();
 
-            // Each shelf keeps its own score-bound-safe slice: a candidate is
-            // dropped only when the best it could still become cannot reach
-            // the worst the shelf's last visible entry could become.
-            foreach (var entry in ScoreBounds.SafeShortlist(
-                eligible, tuning, request.AsOfUtc, request.MaxPerShelf, perShelf))
-            {
-                if (union.Count >= tuning.ShelfProbeLimit)
-                {
-                    break;
-                }
-
-                if (seen.Add(entry.Facts.OwnershipId))
-                {
-                    union.Add(entry);
-                }
-            }
+            shortlists.Add(ScoreBounds.SafeShortlist(
+                eligible, tuning, request.AsOfUtc, request.MaxPerShelf, perShelf));
         }
+
+        var union = ProbeUnion(shortlists, tuning.ShelfProbeLimit);
 
         var scored = new List<ScoredCandidate>(union.Count);
         foreach (var candidate in union)
@@ -169,6 +159,58 @@ public sealed class RecommendationEngine : IRecommendationEngine
             WorkCount = works.Count,
             HistoryProbeCount = union.Count,
         };
+    }
+
+    /// <summary>
+    /// Interleaves the per-shelf shortlists rank by rank: every shelf's best
+    /// candidate is admitted before any shelf's second best, and so on until
+    /// the probe limit is reached. Duplicates are dropped by ownership id,
+    /// since one ownership can appear on several shelves and is only ever
+    /// probed once.
+    ///
+    /// <para>The previous implementation filled the union shelf by shelf in
+    /// claim order and stopped when the budget ran out. Any flat cap applied
+    /// in claim order has the same failure mode: it deletes whole later
+    /// shelves instead of trimming each shelf's tail. On the real library
+    /// (990 candidates, measured 2026-09-01) the first two shelves consumed
+    /// the entire budget of 150 and the last three were never scored. Round-
+    /// robin makes a binding budget trim every shelf's tail evenly; it
+    /// cannot zero out a shelf. Measured: with round-robin, all five shelves
+    /// populate even at a budget of 5.</para>
+    /// </summary>
+    internal static List<ScoredCandidate> ProbeUnion(
+        IReadOnlyList<IReadOnlyList<ScoredCandidate>> shortlists, int probeLimit)
+    {
+        var union = new List<ScoredCandidate>();
+        if (probeLimit <= 0 || shortlists.Count == 0)
+        {
+            return union;
+        }
+
+        var seen = new HashSet<long>();
+        var depth = 0;
+        foreach (var shortlist in shortlists)
+        {
+            depth = Math.Max(depth, shortlist.Count);
+        }
+
+        for (var rank = 0; rank < depth && union.Count < probeLimit; rank++)
+        {
+            foreach (var shortlist in shortlists)
+            {
+                if (union.Count >= probeLimit)
+                {
+                    break;
+                }
+
+                if (rank < shortlist.Count && seen.Add(shortlist[rank].Facts.OwnershipId))
+                {
+                    union.Add(shortlist[rank]);
+                }
+            }
+        }
+
+        return union;
     }
 
     private static ScoredCandidate Preliminary(
