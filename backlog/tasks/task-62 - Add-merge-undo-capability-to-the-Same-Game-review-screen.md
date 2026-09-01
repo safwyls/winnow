@@ -4,7 +4,7 @@ title: Add merge-undo capability to the Same Game review screen
 status: In Progress
 assignee: []
 created_date: '2026-09-01 02:51'
-updated_date: '2026-09-01 03:17'
+updated_date: '2026-09-01 04:03'
 labels:
   - resolve
   - ui
@@ -483,4 +483,83 @@ disabled control must not use it.
 34. 0017 applies over a database populated by 0001-0016 carrying `merge_candidates` in
     all three existing statuses and preserves every row and status.
 35. The twice-rebuilt `merge_candidates` still rejects self-pairs and mirror duplicates.
+
+### Data and Resolve pass landed (2026-08-31). No UI — that is the second half.
+
+Scope held to Winnow.Core, Winnow.Data, Winnow.Resolve and tests/Winnow.Tests.
+Winnow.App untouched (concurrent settings work holds it).
+
+**Migration 0017_merge_undo.sql** — merge_candidates rebuilt to admit 'undone';
+undone_at and undo_journal_version on merge_applications; merge_undo_rows
+(application_id FK ON DELETE CASCADE, seq, table_name, op, key_json, before_json,
+UNIQUE (application_id, seq)). DDL as the plan specified.
+
+**Journal shape.** key_json is a full equality predicate, not just an identifier.
+repoint: primary key + repointed column(s) at POST-merge values, before_json the
+pre-merge parent value(s). delete: the key a restore needs free, before_json every
+column. update: primary key, before_json the columns that could have changed.
+Sixteen tables: the fifteen dependents that move, plus works, which is nobody's
+dependent but is filled in place and deleted. achievements and achievement_unlocks
+contribute nothing and are asserted to stay put.
+
+**Executor.** RecordAsync now runs first with a placeholder summary and
+undo_journal_version = 1; SummariseAsync rewrites summary_json at the end. Every
+mutating statement is preceded by a capture carrying that statement's WHERE.
+
+**Gate one** (MergeUndoRepository.PlanUndoAsync / ListUndoPlansAsync): already
+undone, predates undo support, surviving identity gone, later un-undone
+application whose work ids or release ids overlap this one's. Names the blocking
+application so the UI can offer 'undo it first'.
+
+**Gate two** (inside UndoAsync's transaction): every non-superseded repoint row
+still matches its post-merge key; every restore key is free; every in-place row
+still exists; and summary_json's per-table counts, ownerships_folded,
+achievements = 0, and duplicate_rows_dropped all agree with the journal. Any
+mismatch throws and rolls back.
+
+**Undone wiring, all four checks tested.** BuildPlanAsync's status = 'confirmed'
+predicate; GetConfirmedUnappliedCandidateIdsAsync's; SoftMatchResolver gained an
+explicit terminal arm plus SoftMatchOutcome.PreviouslyUndone (without it an undone
+row fell to default: and was counted as pending); and GetPendingAsync does not
+offer it, so re-merging needs a distinct affordance the screen must add.
+
+**Departures from the plan, all with reasons, recorded as plan items 21-29 above.**
+The one that changed behaviour rather than shape: step 7's 'capture the full set
+then the residue' would have journalled a repoint whose key names the SURVIVOR's
+own row. Captures now partition at capture time.
+
+Two further departures found while testing, both real defects the plan did not
+anticipate:
+  * merge_candidates is the one table whose deleted row's key is legitimately
+    occupied at undo time — the executor deletes a pending proposal BECAUSE a
+    decision is moving onto its pair. Gate two exempts a pair this same undo is
+    about to vacate, and the restore reverses merge_candidates repoints before
+    re-inserting merge_candidates deletes.
+  * a repoint reversal must redirect its KEY through the id map, not only the
+    value it writes back. A release repointed by the work unify and then deleted
+    by the collapse is restored possibly at a fresh id; without the redirection
+    it kept the surviving work.
+
+**Tests.** tests/Winnow.Tests/MergeUndoTests.cs — 33 tests covering the plan's
+list: full-database round-trip for collapse and work-only, survivor rows never
+move, both in-place overwrite cases, each payload-carrying dedup case (list
+position, facet rank, shelf id, folded ownership account, play record, snapshot,
+work facet, update event), the collision-heavy composite, all four
+merge_candidates cases including re-canonicalisation and the displaced proposal,
+loop prevention through all four gates, LIFO refusal and its converse, disjoint
+merges in either order, predates-undo, drift abort, id reuse, double undo,
+mid-undo failure, the inventory equality, a column-coverage check against
+pragma_table_info, summary-count drift, and the bucket move-and-move-back.
+Migration tests 34 and 35 added to MigrationTests.
+
+DatabaseBackupTests.Rewind updated for 0017 (drops merge_undo_rows before
+merge_applications; 0017 SchemaVersions row added to the delete).
+
+**Full suite: 2601 passed, 0 failed, 0 warnings** (Winnow.Tests 2433,
+Winnow.Recommend.Tests 98, Winnow.Covers.Tests 70).
+
+**Left for the second half / TASK-64:** Program.cs must register
+services.AddSingleton<IMergeUndoRepository, MergeUndoRepository>(). MergeExecutor
+takes it as an optional constructor parameter and its PreviewUndoAsync /
+HistoryAsync / UndoAsync wrappers throw a named error until it is registered.
 <!-- SECTION:NOTES:END -->
