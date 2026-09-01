@@ -511,6 +511,46 @@ fresh coordinate clause carries its own footing; a relative pronoun borrows one 
 be there. The rule is recorded in the phrasebook's own contract, where the next person
 writing copy will meet it.
 
+### What a card may claim
+
+Two adjacent cards each asserted a superlative about a different game (observed 2026-08-28).
+A superlative is true of at most one game in a library, so two cards asserting it is a plain
+contradiction, and it reads worse than the cookie-cutter phrasing the phrasebook replaced.
+
+The cause is structural, not a typo: the variant is chosen by hashing the release id, per
+card, with no knowledge of what any other card said or of whether the claim holds
+library-wide. Any absolute claim in the phrasebook is therefore a claim the builder will
+eventually make twice.
+
+The rule adopted: a card may only claim what the engine can prove about that game. No rank,
+no maximum, no minimum, no uniqueness, no quantified share of the library.
+
+Two honest fixes were considered. First, reword absolutes into comparatives that hold for
+any qualifying game. This was taken for everything the engine cannot prove. Second, keep an
+absolute and gate it on a verified-unique computed fact. This was rejected for the taste
+clause: the only cheap library-wide proof available is the taste profile's strongest facet,
+which is a property of the facet, not of the game, so two cards carrying that facet would
+still both render the absolute. Uniqueness of the fact does not give uniqueness of the card.
+
+What was kept instead of hedging into mush: the normalised affinity already computed for the
+score now rides in the evidence, and `{strongFacet}` resolves only at or above
+`OnTasteMinAffinity` (0.6, the same bar the On Your Taste shelf uses). That licenses "one
+of your deepest piles", a comparative that is plural-tolerant and true of any facet clearing
+the bar, while a faint match keeps the descriptor's name and loses only the strength claim.
+
+The audit found four offenders across the whole phrasebook, not just the reported clause:
+three TasteMatch secondaries ("where most of your hours already live", "which is your
+deepest pile", "more hours in it than in anything else") and one LaunchedUnmeasured opening
+whose "which is unusual" was a rarity claim, rarity being a count of the rest of the library
+that nothing counts. A fifth, the SoloOnlyMismatch clause saying the user's hours are "all"
+online, overstated a measured 85% dominance share.
+
+The guard: `ReasonHonestyTests` sweeps every variant in the phrasebook against a pattern
+list, and a feed-level test seeds several unplayed games sharing one descriptor, confirms
+the taste clause fires on more than one card, and asserts no card makes a library-wide
+claim. The next variant written with a superlative in it fails the build rather than the
+feed.
+
 ## 7. Deliberately deferred (and where each would plug in)
 
 - **Session-length fit** ("a 60-hour CRPG is not a Tuesday-night suggestion"): needs both

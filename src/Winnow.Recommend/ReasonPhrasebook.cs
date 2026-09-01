@@ -29,7 +29,8 @@ internal enum ReasonClause
 /// footing; a relative pronoun borrows one that may not be
 /// there.</description></item>
 /// <item><description>Tokens are <c>{title} {store} {minutes} {year} {age}
-/// {updates} {updateCount} {updateTitle} {episodes} {stores} {facet}</c>. A
+/// {updates} {updateCount} {updateTitle} {episodes} {stores} {facet}
+/// {strongFacet}</c>. A
 /// variant whose tokens cannot all be resolved for a given game is skipped, so
 /// every list MUST contain at least one variant using no tokens at
 /// all.</description></item>
@@ -37,6 +38,16 @@ internal enum ReasonClause
 /// chosen deterministically from the game's own release id, so the feed is
 /// stable across reloads while two cards in one session do not read as
 /// siblings.</description></item>
+/// <item><description>A variant may only claim what the engine has proved
+/// about that game, never a rank, a maximum, a uniqueness or a quantified
+/// share of the library. The variant is chosen per card with no knowledge
+/// of what any other card said, so an absolute claim can render on two
+/// cards in one screen (observed 2026-08-28: two adjacent cards both
+/// called a descriptor "your deepest pile"). <c>{strongFacet}</c> is the
+/// gated form of <c>{facet}</c>: it resolves only when the descriptor's
+/// weight is at least 60% of the user's single strongest descriptor,
+/// licensing "one of your deepest piles" but not "your deepest
+/// pile".</description></item>
 /// </list>
 /// </summary>
 internal static class ReasonPhrasebook
@@ -88,7 +99,7 @@ internal static class ReasonPhrasebook
             "You opened this in {year}, and no store recorded a minute of it",
             "Launched {age} ago, with zero minutes measured against it",
             "The record shows a launch in {year} and not one minute after it",
-            "There is a launch date here and no playtime at all, which is unusual",
+            "There is a launch date here and not one measured minute to go with it",
         ],
         ReasonSignal.ProbablyDone =>
         [
@@ -111,9 +122,11 @@ internal static class ReasonPhrasebook
         ],
         ReasonSignal.TasteMatch =>
         [
-            ", and {facet} is where most of your hours already live",
-            ", filed under {facet}, which is your deepest pile",
-            ", and you have more hours in {facet} than in anything else",
+            ", and you have real hours in {facet} games",
+            ", filed under {facet}, a corner of your library you actually play",
+            ", sitting in {facet} alongside games you gave real time to",
+            ", and {strongFacet} is one of your deepest piles",
+            ", landing in {strongFacet}, a kind of game you keep coming back to",
             ", and it sits squarely in what you actually play",
         ],
         ReasonSignal.BoughtTwice =>
@@ -152,7 +165,7 @@ internal static class ReasonPhrasebook
         ReasonSignal.SoloOnlyMismatch =>
         [
             ", though it is single-player and you play with people",
-            ", but your hours are all online and this one is not",
+            ", but nearly everything you play is online and this one is not",
             ", though solo games are not where your time goes",
         ],
         ReasonSignal.PlayedRecently =>

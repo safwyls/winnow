@@ -272,6 +272,11 @@ public class ReasonContractTests : IDisposable
             TasteFacetName = "Immersive Sim",
         };
         yield return Rich(5) with { Title = "A Game With A Really Rather Long Name Indeed" };
+
+        // A taste match too faint for the gated strength phrasings: the
+        // supporting clause must still render, one clause shorter than the
+        // shape above rather than not at all.
+        yield return Rich(6) with { TasteAffinity = 0.1 };
     }
 
     private static ReasonEvidence Rich(long releaseId) => new()
@@ -287,5 +292,9 @@ public class ReasonContractTests : IDisposable
         ReturnEpisodes = 6,
         StoreCount = 2,
         TasteFacetName = "Survival",
+
+        // Strong enough for the gated phrasings, so the budget sweep covers
+        // them too — they are the longest the taste clause can get.
+        TasteAffinity = 1.0,
     };
 }

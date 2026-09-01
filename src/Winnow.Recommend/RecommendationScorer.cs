@@ -196,6 +196,7 @@ public static class RecommendationScorer
             ReturnEpisodes = facts.ReturnEpisodes,
             StoreCount = facts.StoreCount,
             TasteFacetName = facts.TasteFacetName,
+            TasteAffinity = facts.TasteAffinity,
         };
 
         var primary = PrimarySignal(facts, thresholds, contributions);

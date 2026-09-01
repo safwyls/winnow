@@ -96,7 +96,13 @@ public sealed record RecommendationTuning
 
     // ── Shelves ─────────────────────────────────────────────────────────────
 
-    /// <summary>Taste-affinity floor for the <see cref="ShelfIds.OnYourTaste"/> shelf (normalised against the profile's peak).</summary>
+    /// <summary>
+    /// Taste-affinity floor, normalised against the profile's peak. Used for
+    /// both <see cref="ShelfIds.OnYourTaste"/> shelf membership and the
+    /// <c>{strongFacet}</c> copy gate in <see cref="ReasonTokens"/>: one
+    /// number, one meaning, deliberately not duplicated into a second
+    /// parameter that could drift.
+    /// </summary>
     public double OnTasteMinAffinity { get; init; } = 0.6;
 
     /// <summary>Prevalence share past which a facet is too generic to count as taste.</summary>

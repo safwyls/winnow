@@ -106,6 +106,17 @@ public sealed record ReasonEvidence
 
     /// <summary>Display name of the descriptor the user's hours concentrate in.</summary>
     public string? TasteFacetName { get; init; }
+
+    /// <summary>
+    /// The matched descriptor's playtime weight divided by the weight of the
+    /// user's single strongest descriptor, landing in [0,1]. Null when the
+    /// library has no taste evidence or this game carries no matched
+    /// descriptor, meaning absent evidence rather than a zero match. The
+    /// scorer already computes this number for the taste-affinity weight;
+    /// carrying it into the evidence lets a phrasing be gated on measured
+    /// strength rather than on a descriptor name being present.
+    /// </summary>
+    public double? TasteAffinity { get; init; }
 }
 
 /// <summary>
@@ -137,8 +148,17 @@ internal static class ReasonTokens
     /// Resolves one template token against the evidence, or null when this
     /// game has no such fact — which is how a variant that cannot be told
     /// truthfully is filtered out rather than rendered with a hole in it.
+    ///
+    /// <para>The null-means-skip mechanism is also the honesty gate.
+    /// <c>{strongFacet}</c> is <c>{facet}</c> with a proof attached: it
+    /// resolves to the same descriptor name only at or above
+    /// <see cref="RecommendationTuning.OnTasteMinAffinity"/>, so a phrasing
+    /// claiming strength is unusable on a game whose match is faint. No new
+    /// query or cross-card bookkeeping was needed; a null return is enough
+    /// to retire the variant.</para>
     /// </summary>
-    public static string? Resolve(string token, ReasonEvidence evidence) => token switch
+    public static string? Resolve(
+        string token, ReasonEvidence evidence, RecommendationTuning tuning) => token switch
     {
         "title" => Blank(evidence.Title),
         "store" => Blank(evidence.Store),
@@ -159,6 +179,10 @@ internal static class ReasonTokens
             ? evidence.StoreCount.ToString(CultureInfo.InvariantCulture)
             : null,
         "facet" => Blank(evidence.TasteFacetName),
+        "strongFacet" => evidence.TasteAffinity is { } affinity
+            && affinity >= tuning.OnTasteMinAffinity
+                ? Blank(evidence.TasteFacetName)
+                : null,
         _ => null,
     };
 

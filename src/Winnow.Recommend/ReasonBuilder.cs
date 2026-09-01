@@ -39,13 +39,13 @@ internal static class ReasonBuilder
         // a token ("{updates} landed here since…"), which is one more sentence
         // shape available to the copy.
         var primary = Capitalise(
-            Render(reason.Primary, ReasonClause.Primary, evidence, forbidden)
-                ?? Render(reason.Primary, ReasonClause.Primary, evidence, NoTokens)
+            Render(reason.Primary, ReasonClause.Primary, evidence, tuning, forbidden)
+                ?? Render(reason.Primary, ReasonClause.Primary, evidence, tuning, NoTokens)
                 ?? ReasonPhrasebook.Fallback);
 
         var secondary = reason.Secondary == ReasonSignal.None
             ? null
-            : Render(reason.Secondary, ReasonClause.Secondary, evidence, NoTokens);
+            : Render(reason.Secondary, ReasonClause.Secondary, evidence, tuning, NoTokens);
 
         if (secondary is not null)
         {
@@ -65,7 +65,11 @@ internal static class ReasonBuilder
     /// among those whose tokens this game can actually fill.
     /// </summary>
     private static string? Render(
-        ReasonSignal signal, ReasonClause clause, ReasonEvidence evidence, string[] forbidden)
+        ReasonSignal signal,
+        ReasonClause clause,
+        ReasonEvidence evidence,
+        RecommendationTuning tuning,
+        string[] forbidden)
     {
         var variants = ReasonPhrasebook.Variants(signal, clause);
         if (variants.Count == 0)
@@ -82,7 +86,7 @@ internal static class ReasonBuilder
         List<string>? generic = null;
         foreach (var variant in variants)
         {
-            if (!CanFill(variant, evidence, forbidden))
+            if (!CanFill(variant, evidence, tuning, forbidden))
             {
                 continue;
             }
@@ -108,10 +112,11 @@ internal static class ReasonBuilder
         // feed land on different phrasings.
         var pick = (int)(Hash(evidence.ReleaseId, (int)signal * 31 + (int)clause)
             % (ulong)usable.Count);
-        return Fill(usable[pick], evidence);
+        return Fill(usable[pick], evidence, tuning);
     }
 
-    private static bool CanFill(string template, ReasonEvidence evidence, string[] forbidden)
+    private static bool CanFill(
+        string template, ReasonEvidence evidence, RecommendationTuning tuning, string[] forbidden)
     {
         foreach (var token in Tokens(template))
         {
@@ -120,7 +125,7 @@ internal static class ReasonBuilder
                 return false;
             }
 
-            if (ReasonTokens.Resolve(token, evidence) is null)
+            if (ReasonTokens.Resolve(token, evidence, tuning) is null)
             {
                 return false;
             }
@@ -129,7 +134,7 @@ internal static class ReasonBuilder
         return true;
     }
 
-    private static string Fill(string template, ReasonEvidence evidence)
+    private static string Fill(string template, ReasonEvidence evidence, RecommendationTuning tuning)
     {
         if (template.IndexOf('{') < 0)
         {
@@ -153,7 +158,7 @@ internal static class ReasonBuilder
             }
 
             var token = template[(i + 1)..close];
-            result.Append(ReasonTokens.Resolve(token, evidence) ?? string.Empty);
+            result.Append(ReasonTokens.Resolve(token, evidence, tuning) ?? string.Empty);
             i = close;
         }
 
