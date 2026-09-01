@@ -627,11 +627,11 @@ script and the poll into `WebView2SteamSignInSession`, the JWT claim reader into
 | Token expiry (delta from now) | 2026-08-31 15:11:55Z; 24h 22m remaining at mint. Consistent with the 2022 "about a day" figure. |
 | Token aud | `web:store` |
 | Token iss | `r:0018_28B7BA66_D69F8` |
-| SteamID64 / steam3 account id | 76561198009290480 / 49024752 |
+| SteamID64 / steam3 account id | 76561198000000001 / 39734273 (sanitized; the live run resolved to the signed-in account) |
 | Page steamid vs token sub | Agree. The page's `steamid` and the token's `sub` are the same value. This settles that a WebView sign-in yields exact account identity at mint time, which is what TASK-53's visibility toggle needs and what TASK-54's disclosure refetch exists to obtain on the API key path. |
 | ClientGetLastPlayedTimes: status, populated, shape | HTTP 200, `x-eresult: 1`, POPULATED, 277895 bytes. 613 apps, 592 carrying a first-played date. The 592 first-played dates match exactly the 592 `steam_first_played` rows the M5 backfill wrote under key auth. |
 | GetOwnedGames: status, populated, shape | HTTP 200, `x-eresult: 1`, POPULATED, 269707 bytes. 841 games, all carrying names. |
-| GetUserYearInReview: status, populated, shape | HTTP 200, `x-eresult: 1`, POPULATED, 92779 bytes. 2025 year: 43 games, 52 monthly points across 11 distinct months. Echoes account id 49024752. |
+| GetUserYearInReview: status, populated, shape | HTTP 200, `x-eresult: 1`, POPULATED, 92779 bytes. 2025 year: 43 games, 52 monthly points across 11 distinct months. Echoes account id 39734273 (sanitized). |
 
 ---
 
@@ -684,7 +684,7 @@ previously carried.**
 
 **Refresh token claim set:** `aud`, `exp`, `iat`, `ip_confirmer`, `ip_subject`,
 `iss`, `jti`, `nbf`, `oat`, `per`, `sub`. The load-bearing values: `iss` =
-`steam`, `sub` = 76561198009290480, `aud` = `["web", "renew", "derive"]`. The
+`steam`, `sub` = 76561198000000001 (sanitized), `aud` = `["web", "renew", "derive"]`. The
 `renew` audience is the one that matters: the token is minted for renewal, which
 is exactly what S6 needs to spend it on. Lifetime: `iat` 2026-08-31T23:24:47Z,
 `exp` 2027-03-30T08:07:37Z, about 210 days, consistent with the ~207-day figure
@@ -695,7 +695,7 @@ present, 513 characters. `expires_at` 2026-09-01T23:48:24Z, about 24.3 hours
 after mint; the ~24 h 22 m lifetime measured in §7.1 holds on a second,
 independent mint. `audience` `["web:store"]`; `issuer` varies per mint (§7.1's
 run recorded a different string), so it is not a constant to match on. `steamid64`
-76561198009290480, read from the access token's own `sub`. `refresh_expires_at`
+76561198000000001 (sanitized), read from the access token's own `sub`. `refresh_expires_at`
 2027-03-30T08:07:37Z, populated, so the refresh JWT decoded and no guess was
 substituted. `minted_at` 2026-08-31T23:24:46.97Z. `last_renewed_at` null.
 `renewal_failures` 0. `last_failure_kind` `None`. All as S2 predicts for a
@@ -705,7 +705,7 @@ failures, outside the one-hour renewal lead window, and the host can persist.
 
 **The S4 account confirmation, read from the same database.** `steam.api_key` is
 set (presence confirmed; value never read out). `steam.owned_account_ref` =
-49024752, the 32-bit account id of 76561198009290480. The sign-in wrote an account
+39734273, the 32-bit account id of 76561198000000001 (sanitized). The sign-in wrote an account
 confirmation that agrees with the signed-in account. `steam.owned_account_key` is
 populated (a 64-character fingerprint).
 
@@ -793,7 +793,7 @@ the other way costs the user their session.
 | Signal | Classification | What happens |
 | --- | --- | --- |
 | HTTP 401, 403, 400 at any step | **Rejected** (hard lapse) | Refresh token discarded, session latched off for the process |
-| Valve EResult from the denial set {8 InvalidParam, 10 Denied, 15 AccessDenied, 26 Revoked, 27 Expired} in an `x-eresult` header or `eresult` body field on a 200 | **Rejected** | Same as above |
+| Valve EResult from the denial set {8 InvalidParam, 10 Denied, 15 AccessDenied, 26 Revoked, 27 Expired} in an `x-eresult` header or `eresult` body field, checked at every step on any 2xx and taking precedence over a body that would otherwise parse | **Rejected** | Same as above. The mint step matters most: a denial arriving there was previously read as transient and retried on every pass forever instead of surfacing |
 | A mint response that states `webapi_token` and leaves it empty | **Rejected** | This is what `pointssummary` returns to a caller it does not consider signed in |
 | Network exception, timeout, 408, 429, every 5xx, unrecognised status, unparseable body, body with no `webapi_token` field, finalize response with no usable transfer target | **Transient** | Session kept, failure count incremented, next pass retries |
 | Session with no refresh token | **NotRenewable** | No request sent |
@@ -813,16 +813,32 @@ alive and `Expired` afterwards, so the warning lands before the credential
 dies. The persisted key set is unchanged: `refresh_token` is nullable and
 always emitted.
 
-**Three refusals before a renewed token is believed.**
+**Two refusals and one adoption before a renewed token is believed.**
 
-1. It must decode and state an expiry; otherwise transient.
+1. It must decode and state an expiry; otherwise transient, since an unreadable
+   body is a shape problem rather than a verdict.
 2. Its `sub` must be the account this session already belongs to; otherwise a
-   renewal could silently re-point the library at somebody else's account.
-3. Its `aud` must set-equal the audience already stored. The audience check is
-   why audience is stored at all: a token minted for an audience the Web API
-   will not accept produces a 401, which triggers a renewal, which mints the
-   same wrong audience again. Lapsing costs one sign-in; looping costs the
-   refresh token and the request budget.
+   renewal could silently re-point the library at somebody else's account. This
+   is the security-critical claim and the real failure the guard exists for.
+3. A changed `aud` with an unchanged `sub` is **adopted**, not refused. The new
+   audience is stored, and the change is logged at warning level naming both
+   audiences (never the token). An absent `aud` claim leaves the stored
+   audience alone; it is a fact nobody has, not a change.
+
+This was a reversal. The audience check was originally a hard lapse, the third
+refusal, on the rationale that a token minted for an audience the Web API will
+not accept produces a 401, which triggers a renewal, which mints the same wrong
+audience again, and looping costs the refresh token and the request budget. The
+full-feature review caught what that would actually cost. A hard lapse discards
+the refresh token unrecoverably. The sign-in token carries `aud ["web:store"]`,
+and nobody has observed what the `pointssummary` renewal route mints. If it
+differs at all, the first renewal would permanently sign out every signed-in
+user, on a guess, with a ~23-hour fuse from the moment anyone signs in. The
+anti-loop intent the refusal was written for survives, because the adoption is
+unconditional rather than retried: it happens once, the stored audience becomes
+the new one, and nothing re-attempts anything. A token Steam will not actually
+accept still fails honestly, as a 401, through the reactive path that renews at
+most once per pass.
 
 The issuer is deliberately NOT compared: §7.2's live capture records it varying
 per mint (`r:0012_...` on one mint, `r:0018_...` on an earlier one), so
@@ -840,6 +856,24 @@ A rotated refresh token is stored together with the access token it arrived
 with, in one `SaveAsync` of one blob, so there is no window in which they
 disagree. A null rotated token means "Steam did not replace it", never "you
 now have none".
+
+**Two locks, and the split is the point.** The provider holds two
+`SemaphoreSlim` locks. A state lock (`_gate`) is taken by every reader and is
+held only for a local settings read or write. A separate renewal lock
+(`_renewalGate`) is the single-flight lock above, and it is the only one held
+across the network: three HTTP requests plus Polly backoff, potentially
+minutes. Before the split, one lock did both jobs, so a reader that missed the
+unlocked fast path (which requires a still-usable access token) waited behind
+the whole exchange. That is reachable: a keyless user with an expired token, an
+unattended pass renewing, and the user opening the Stores screen. §5.1 forbids
+enrichment blocking a user-facing path, and "does not renew" was never the same
+claim as "does not wait". Lock order is strict and one-way (renewal lock then
+state lock), so they cannot deadlock.
+
+What the split buys, stated explicitly: a fresh sign-in can land while an
+exchange is in flight, so the renewal's outcome is dropped rather than written
+over the newer session, and a rejection that arrives after a sign-in does not
+latch off the credential the user just re-earned.
 
 **Scheduler integration.** The API key drives the unattended 15-minute and
 6-hour passes; the session is the fallback for keyless users.
@@ -886,6 +920,10 @@ retried each pass instead of surfacing.
 
 (f) The real access-token lifetime and audience after a renewal as opposed to
 after a sign-in.
+
+(g) What audience this renewal route actually mints. Nobody has observed it.
+The warning log that fires when the minted audience differs from the stored one
+is the thing that will report it the first time a real renewal happens.
 
 **What would settle it.** The stored session's `last_renewed_at` becoming
 non-null, or `renewal_failures` climbing with a recorded `last_failure_kind`,

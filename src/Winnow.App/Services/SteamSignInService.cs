@@ -205,8 +205,10 @@ public sealed class SteamSignInService
     }
 
     /// <summary>
-    /// Forgets the session, in memory and on disk. The only path that discards a
-    /// refresh token, and the sign-out command S5 binds to.
+    /// Forgets the whole session, in memory and on disk, and the sign-out
+    /// command S5 binds to. The hard-lapse path also discards the refresh
+    /// token, but it keeps the session record so the Stores screen can say
+    /// the sign-in ended; sign-out discards everything.
     ///
     /// <para>Reconciliation runs straight afterwards so the account visibility
     /// filter answers correctly on the next read rather than at the next

@@ -598,17 +598,22 @@ public class SteamConnectionPanelTests
     }
 
     /// <summary>
-    /// Renewal is S6 and has not shipped. Copy that told a user their sign-in
-    /// renews itself would be describing a mechanism that does not exist, and
-    /// they would find out by losing a night's sync.
+    /// S6 shipped automatic renewal. The copy must state that renewal is
+    /// automatic, name the caveat that it is untested against live servers,
+    /// and point to the API-key alternative. HealthRenewalDue must not tell
+    /// the user to sign in again, because renewal handles it.
     /// </summary>
     [Fact]
-    public void Nothing_promises_a_renewal_that_has_not_shipped()
+    public void Renewal_copy_states_automatic_renewal_and_names_its_limits()
     {
         Assert.Contains(
-            "no automatic renewal", SteamConnectionCopy.SignInCosts, StringComparison.OrdinalIgnoreCase);
+            "renews it automatically", SteamConnectionCopy.SignInCosts, StringComparison.OrdinalIgnoreCase);
         Assert.Contains(
-            "no automatic renewal", SteamConnectionCopy.HealthRenewalDue, StringComparison.OrdinalIgnoreCase);
+            "may not work", SteamConnectionCopy.SignInCosts, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(
+            "API key", SteamConnectionCopy.SignInCosts, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(
+            "sign in again", SteamConnectionCopy.HealthRenewalDue, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>

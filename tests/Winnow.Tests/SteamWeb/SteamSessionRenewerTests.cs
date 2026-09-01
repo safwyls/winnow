@@ -413,6 +413,75 @@ public sealed class SteamSessionRenewerTests
     }
 
     [Theory]
+    [InlineData(SteamRenewalFixtures.StoreTransferUri)]
+    [InlineData(SteamSessionRenewer.TokenMintUri)]
+    public async Task An_access_denied_on_a_200_is_caught_at_every_step_not_only_the_first(string stage)
+    {
+        // The check used to run only in finalizelogin's did-not-parse branch, so
+        // a denial arriving on the transfer or the mint was read as transient and
+        // retried on every pass forever instead of surfacing. The mint is the
+        // case that matters most: it is the step furthest from the refusal a user
+        // could reason about.
+        var (renewer, handler) = Build((request, _) =>
+        {
+            if (request.Endpoint == stage)
+            {
+                var denied = FakeSteamRenewalHandler.Json(HttpStatusCode.OK, """{"eresult":15}""");
+                return denied;
+            }
+
+            return request.Endpoint switch
+            {
+                SteamSessionRenewer.FinalizeLoginUri => FakeSteamRenewalHandler.Json(
+                    HttpStatusCode.OK,
+                    SteamRenewalFixtures.FinalizeBody(SteamRenewalFixtures.StoreTransferUri)),
+                SteamRenewalFixtures.StoreTransferUri => FakeSteamRenewalHandler.Json(
+                    HttpStatusCode.OK, "{}", "steamLoginSecure=cookie; Path=/"),
+                SteamSessionRenewer.TokenMintUri => FakeSteamRenewalHandler.Json(
+                    HttpStatusCode.OK,
+                    SteamRenewalFixtures.MintBody(SteamRenewalFixtures.AccessToken(Now.AddHours(24)))),
+                _ => FakeSteamRenewalHandler.Json(HttpStatusCode.NotFound, "{}"),
+            };
+        });
+
+        var outcome = await renewer.RenewAsync(SteamRenewalFixtures.RenewableSession(Now));
+
+        Assert.Equal(SteamRenewalStatus.Rejected, outcome.Status);
+
+        // And the exchange stops at the step that refused rather than pressing on.
+        Assert.Equal(stage, handler.Requests[^1].Endpoint);
+    }
+
+    [Fact]
+    public async Task An_access_denied_header_is_caught_on_the_mint_too()
+    {
+        var (renewer, _) = Build((request, _) =>
+        {
+            if (request.Endpoint != SteamSessionRenewer.TokenMintUri)
+            {
+                return request.Endpoint == SteamSessionRenewer.FinalizeLoginUri
+                    ? FakeSteamRenewalHandler.Json(
+                        HttpStatusCode.OK,
+                        SteamRenewalFixtures.FinalizeBody(SteamRenewalFixtures.StoreTransferUri))
+                    : FakeSteamRenewalHandler.Json(
+                        HttpStatusCode.OK, "{}", "steamLoginSecure=cookie; Path=/");
+            }
+
+            var response = FakeSteamRenewalHandler.Json(
+                HttpStatusCode.OK,
+                SteamRenewalFixtures.MintBody(SteamRenewalFixtures.AccessToken(Now.AddHours(24))));
+            response.Headers.TryAddWithoutValidation("x-eresult", "15");
+            return response;
+        });
+
+        // A denial header beats a body that would otherwise have parsed into a
+        // perfectly good token.
+        Assert.Equal(
+            SteamRenewalStatus.Rejected,
+            (await renewer.RenewAsync(SteamRenewalFixtures.RenewableSession(Now))).Status);
+    }
+
+    [Theory]
     [InlineData(HttpStatusCode.ServiceUnavailable)]
     [InlineData(HttpStatusCode.BadGateway)]
     [InlineData(HttpStatusCode.RequestTimeout)]

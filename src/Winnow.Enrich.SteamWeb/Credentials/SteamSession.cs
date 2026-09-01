@@ -7,7 +7,7 @@ namespace Winnow.Enrich.SteamWeb.Credentials;
 /// </summary>
 public enum SteamSessionRenewalFailure
 {
-    /// <summary>Nothing has failed. The state of every session S2 can produce, because S2 never renews.</summary>
+    /// <summary>Nothing has failed. The initial state of every session, and restored by any successful renewal.</summary>
     None,
 
     /// <summary>Offline, a 5xx, a 429 the retry policy could not outlast. The next attempt may well work; nothing is latched and nothing is cleared.</summary>
@@ -30,8 +30,8 @@ public enum SteamSessionRenewalFailure
 /// the user <i>before</i> the credential dies. Silently degrading to
 /// no-remote-data is the failure mode this enum exists to prevent.</para>
 ///
-/// <para>S2 produces every member except <see cref="RenewalFailing"/>: nothing
-/// renews yet, so nothing can fail to.</para>
+/// <para>Every member is reachable in practice. S6 renews, and its transient
+/// and hard failure paths produce <see cref="RenewalFailing"/>.</para>
 /// </summary>
 public enum SteamSessionHealth
 {
@@ -41,7 +41,7 @@ public enum SteamSessionHealth
     /// <summary>The access token is good and the session is stored encrypted. Nothing to say and nothing to do. A token-only session — one with no refresh token — stays here for its whole life and then goes straight to <see cref="Expired"/>, because there is no renewal for it to be due.</summary>
     Live,
 
-    /// <summary>The access token has expired or is about to, and a refresh token that should be able to replace it is held. Renewal is owed; until S6 lands, nothing pays it. Reached only by a session that actually has a refresh token: reporting it for one that does not would name a remedy nothing can apply.</summary>
+    /// <summary>The access token has expired or is about to, and a refresh token that should be able to replace it is held. Reached only by a session that actually has a refresh token: reporting it for one that does not would name a remedy nothing can apply.</summary>
     RenewalDue,
 
     /// <summary>Renewal has been attempted and failed. Surfaced promptly, with one-click re-sign-in, per the legibility condition.</summary>
@@ -170,13 +170,13 @@ public sealed record SteamSession
     /// <summary>When the sign-in that produced this session happened.</summary>
     public DateTimeOffset MintedAt { get; }
 
-    /// <summary>When renewal last replaced the access token, or null if it never has. Always null in S2.</summary>
+    /// <summary>When renewal last replaced the access token, stamped by <see cref="SteamSessionProvider"/> on a successful exchange. Null until the first success.</summary>
     public DateTimeOffset? LastRenewedAt { get; }
 
-    /// <summary>Consecutive failed renewals, reset to zero on success. Always zero in S2.</summary>
+    /// <summary>Consecutive renewal failures, incremented by each attempt and reset to zero by any success. What moves the health to <see cref="SteamSessionHealth.RenewalFailing"/> while the access token is still alive.</summary>
     public int RenewalFailures { get; }
 
-    /// <summary>Why the last renewal failed. Always <see cref="SteamSessionRenewalFailure.None"/> in S2.</summary>
+    /// <summary>Why the last renewal failed. Distinguishes a transient failure the next pass retries from a rejection that latches the session off. Set by <see cref="SteamSessionProvider"/> alongside <see cref="RenewalFailures"/>.</summary>
     public SteamSessionRenewalFailure LastFailureKind { get; }
 
     public override string ToString()
@@ -213,9 +213,20 @@ public sealed record SteamSession
     /// self-inflicted sign-out. When it <i>is</i> replaced, the new token's own
     /// expiry is read from it rather than carried over, because the old date
     /// belongs to a token that no longer exists.</para>
+    ///
+    /// <para>A null <paramref name="audience"/> keeps the stored audience,
+    /// which is the ordinary case. It is supplied only when a renewal minted
+    /// a token claiming a different audience, which
+    /// <see cref="SteamSessionProvider"/> adopts rather than refuses; storing
+    /// the new value is what makes a subsequent change visible instead of
+    /// warning about the same one forever.</para>
     /// </summary>
     public SteamSession WithRenewedAccess(
-        string accessToken, DateTimeOffset expiresAt, DateTimeOffset renewedAt, string? refreshToken = null)
+        string accessToken,
+        DateTimeOffset expiresAt,
+        DateTimeOffset renewedAt,
+        string? refreshToken = null,
+        IReadOnlyList<string>? audience = null)
     {
         var rotated = string.IsNullOrWhiteSpace(refreshToken) ? null : refreshToken.Trim();
         var refresh = rotated ?? RefreshToken;
@@ -223,7 +234,7 @@ public sealed record SteamSession
         return new SteamSession(
             accessToken,
             expiresAt,
-            Audience,
+            audience ?? Audience,
             Issuer,
             SteamId,
             refresh,

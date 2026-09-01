@@ -389,14 +389,15 @@ public sealed class SteamSessionRenewalTests
     }
 
     [Fact]
-    public async Task An_audience_change_lapses_rather_than_looping()
+    public async Task An_audience_change_is_adopted_and_stored_rather_than_lapsing()
     {
-        // Why the audience is stored at all. A token minted for an audience the
-        // Web API will not accept produces a 401, which triggers a renewal, which
-        // mints the same wrong audience again. Lapsing costs one sign-in;
-        // looping costs the refresh token and the request budget.
-        var renewer = new FakeSteamSessionRenewer(SteamRenewalOutcome.Renewed(
-            SteamRenewalFixtures.AccessToken(Now.AddHours(48), audience: "web:community"), null));
+        // This was a hard lapse until the full-feature review priced it. The
+        // sign-in token is aud ["web:store"] and NOBODY has observed what the
+        // pointssummary renewal route mints; if it differs at all, lapsing would
+        // permanently sign out every signed-in user on their FIRST renewal, on a
+        // guess, and discard a refresh token that cannot be recovered.
+        var replacement = SteamRenewalFixtures.AccessToken(Now.AddHours(48), audience: "web:community");
+        var renewer = new FakeSteamSessionRenewer(SteamRenewalOutcome.Renewed(replacement, null));
 
         var (provider, store, clock) = Build(renewer);
 
@@ -406,19 +407,69 @@ public sealed class SteamSessionRenewalTests
         await store.SaveAsync(original);
         clock.Advance(TimeSpan.FromMinutes((23 * 60) + 30));
 
-        var lapsed = await provider.RenewAsync(await provider.GetAsync());
+        var renewed = await provider.RenewAsync(await provider.GetAsync());
 
-        Assert.NotNull(lapsed);
-        Assert.Equal(SteamSessionRenewalFailure.Rejected, lapsed.LastFailureKind);
-        Assert.Null(lapsed.RefreshToken);
+        Assert.NotNull(renewed);
+        Assert.Equal(replacement, renewed.AccessToken);
+        Assert.Equal(0, renewed.RenewalFailures);
+        Assert.Equal(SteamSessionRenewalFailure.None, renewed.LastFailureKind);
 
-        // The wrong-audience token is not adopted, so nothing will send it and
-        // nothing will 401 on it.
-        Assert.Equal(original.AccessToken, lapsed.AccessToken);
+        // The refresh token survives, which is the whole point: an audience the
+        // Web API refuses still fails honestly, as a 401, and a 401 is
+        // recoverable. A discarded refresh token is not.
+        Assert.Equal(original.RefreshToken, renewed.RefreshToken);
+        Assert.Equal(SteamSessionHealth.Live, await provider.GetHealthAsync());
 
-        // And no second attempt: the latch is what turns the loop into a lapse.
-        await provider.RenewAsync(lapsed);
-        Assert.Equal(1, renewer.Calls);
+        // The NEW audience is stored, so a subsequent change is visible rather
+        // than warned about forever against a value nothing uses any more.
+        Assert.Equal(new[] { "web:community" }, renewed.Audience);
+        Assert.Equal(new[] { "web:community" }, (await store.LoadAsync())!.Audience);
+    }
+
+    [Fact]
+    public async Task An_adopted_audience_is_adopted_once_and_does_not_churn()
+    {
+        // The anti-loop intent the old refusal was written for, kept without the
+        // lapse: the adoption is unconditional rather than retried, so the second
+        // renewal at the same audience is an ordinary quiet success.
+        var renewer = new FakeSteamSessionRenewer((_, index) => SteamRenewalOutcome.Renewed(
+            SteamRenewalFixtures.AccessToken(Now.AddHours(48 + index), audience: "web:community"), null));
+
+        var (provider, store, clock) = Build(renewer);
+
+        await store.SaveAsync(SteamRenewalFixtures.RenewableSession(Now));
+        clock.Advance(TimeSpan.FromMinutes((23 * 60) + 30));
+
+        await provider.RenewAsync(await provider.GetAsync());
+
+        clock.Advance(TimeSpan.FromHours(48));
+        var again = await provider.RenewAsync(await provider.GetAsync());
+
+        Assert.Equal(2, renewer.Calls);
+        Assert.Equal(new[] { "web:community" }, again!.Audience);
+        Assert.Equal(0, again.RenewalFailures);
+    }
+
+    [Fact]
+    public async Task A_renewed_token_that_states_no_audience_leaves_the_stored_one_alone()
+    {
+        // An absent claim is a fact nobody has, not a change, and must not blank
+        // the value the next comparison is made against.
+        var renewer = new FakeSteamSessionRenewer(SteamRenewalOutcome.Renewed(
+            SteamSessionFixtures.Jwt($$"""
+                {"iss":"steam","sub":"{{SteamSessionFixtures.Subject}}","exp":{{Now.AddHours(48).ToUnixTimeSeconds()}}}
+                """),
+            null));
+
+        var (provider, store, clock) = Build(renewer);
+
+        await store.SaveAsync(SteamRenewalFixtures.RenewableSession(Now));
+        clock.Advance(TimeSpan.FromMinutes((23 * 60) + 30));
+
+        var renewed = await provider.RenewAsync(await provider.GetAsync());
+
+        Assert.Equal(new[] { "web:store" }, renewed!.Audience);
+        Assert.Equal(0, renewed.RenewalFailures);
     }
 
     [Fact]
@@ -485,6 +536,77 @@ public sealed class SteamSessionRenewalTests
         Assert.Equal(SteamSessionRenewalFailure.Expired, lapsed!.LastFailureKind);
         Assert.Null(lapsed.RefreshToken);
         Assert.Equal(SteamSessionHealth.RenewalFailing, await provider.GetHealthAsync());
+    }
+
+    [Fact]
+    public async Task A_sign_in_that_lands_mid_exchange_is_not_written_over()
+    {
+        // The cost of not holding one lock across the exchange, paid explicitly.
+        // A sign-in can now land while a renewal is in flight; its session is
+        // newer than anything the renewal knows about, so the renewal's outcome
+        // is dropped rather than written over it.
+        var hold = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var renewer = new FakeSteamSessionRenewer(SteamRenewalOutcome.Renewed(
+            SteamRenewalFixtures.AccessToken(Now.AddHours(48)), null))
+        {
+            Hold = hold,
+        };
+
+        var (provider, store, clock) = Build(renewer);
+
+        await store.SaveAsync(SteamRenewalFixtures.RenewableSession(Now));
+        clock.Advance(TimeSpan.FromMinutes((23 * 60) + 30));
+
+        var stale = await provider.GetAsync();
+        var renewal = Task.Run(() => provider.RenewAsync(stale));
+        await renewer.Entered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+
+        // The sign-in completes while the exchange is still open, which is only
+        // possible because the exchange does not hold the state lock.
+        var freshSignIn = SteamRenewalFixtures.RenewableSession(clock.GetUtcNow());
+        await provider.SaveAsync(freshSignIn).WaitAsync(TimeSpan.FromSeconds(10));
+
+        hold.SetResult();
+        var result = await renewal;
+
+        Assert.Equal(freshSignIn.AccessToken, result!.AccessToken);
+        Assert.Equal(freshSignIn.AccessToken, (await store.LoadAsync())!.AccessToken);
+    }
+
+    [Fact]
+    public async Task A_rejection_that_arrives_after_a_fresh_sign_in_does_not_latch_it_off()
+    {
+        // The same race with the worst possible outcome: a rejection landing on
+        // a credential the user has just re-earned. Latching there would switch
+        // off a working sign-in seconds after they made it.
+        var hold = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var renewer = new FakeSteamSessionRenewer(SteamRenewalOutcome.Rejected("finalizelogin returned 403"))
+        {
+            Hold = hold,
+        };
+
+        var (provider, store, clock) = Build(renewer);
+
+        await store.SaveAsync(SteamRenewalFixtures.RenewableSession(Now));
+        clock.Advance(TimeSpan.FromMinutes((23 * 60) + 30));
+
+        var stale = await provider.GetAsync();
+        var renewal = Task.Run(() => provider.RenewAsync(stale));
+        await renewer.Entered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+
+        var freshSignIn = SteamRenewalFixtures.RenewableSession(clock.GetUtcNow());
+        await provider.SaveAsync(freshSignIn).WaitAsync(TimeSpan.FromSeconds(10));
+
+        hold.SetResult();
+        var result = await renewal;
+
+        Assert.Equal(freshSignIn.AccessToken, result!.AccessToken);
+        Assert.Equal(freshSignIn.RefreshToken, result.RefreshToken);
+        Assert.Equal(SteamSessionHealth.Live, await provider.GetHealthAsync());
+
+        // And the latch did not close, so the new session can still renew.
+        Assert.True(provider.IsRenewalDue(
+            SteamRenewalFixtures.RenewableSession(clock.GetUtcNow().AddHours(-23.5))));
     }
 
     [Fact]
@@ -752,6 +874,60 @@ public sealed class SteamSessionRenewalSeamTests
         hold.SetResult();
         await userInitiated;
 
+        Assert.Equal(1, renewer.Calls);
+    }
+
+    [Fact]
+    public async Task The_stores_screen_reads_the_inventory_WHILE_a_renewal_is_held_open()
+    {
+        // The gate split, as a behaviour rather than as a comment. Before it,
+        // one lock served both the in-memory state and the renewal exchange, so
+        // a reader that missed the unlocked fast path — which needs a USABLE
+        // access token, and this one's has expired — waited behind three HTTP
+        // requests and their Polly backoff. Reachable: keyless user, expired
+        // token, unattended pass renewing, user opens the Stores screen. §5.1
+        // forbids that, and "does not renew" was never the same claim as "does
+        // not wait".
+        var hold = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var renewer = new FakeSteamSessionRenewer(SteamRenewalOutcome.Renewed(
+            SteamRenewalFixtures.AccessToken(Now.AddHours(48)), null))
+        {
+            Hold = hold,
+        };
+
+        using var host = new SteamWebTestHost(
+            SteamWebTestHost.DefaultResponder(), apiKey: null, now: Now, renewer: renewer);
+
+        var provider = host.Resolve<ISteamSessionProvider>();
+        await provider.SaveAsync(SteamRenewalFixtures.RenewableSession(Now));
+
+        // Past the access token's own expiry, so every read below takes the
+        // state lock rather than the fast path.
+        host.Clock.Advance(TimeSpan.FromHours(25));
+
+        var credentials = host.Resolve<ISteamCredentialProvider>();
+
+        // Start the renewal and wait until it is provably inside the exchange
+        // and holding the renewal lock. It never completes.
+        var renewal = Task.Run(() => provider.RenewAsync(null));
+        await renewer.Entered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+
+        // Every user-facing read answers while that is still in flight.
+        var inventory = await credentials.GetInventoryAsync()
+            .AsTask().WaitAsync(TimeSpan.FromSeconds(10));
+
+        Assert.True(inventory.HasSession);
+        Assert.False(inventory.SessionUsable);
+
+        var health = await provider.GetHealthAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(10));
+        Assert.Equal(SteamSessionHealth.RenewalDue, health);
+
+        Assert.NotNull(await provider.GetAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(10)));
+
+        // Only now let it finish, so the assertions above cannot have been
+        // satisfied by a renewal that had already completed.
+        hold.SetResult();
+        Assert.NotNull(await renewal);
         Assert.Equal(1, renewer.Calls);
     }
 

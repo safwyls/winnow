@@ -170,24 +170,20 @@ public sealed class SteamSessionRenewer : ISteamSessionRenewer
 
         using var response = await http.SendAsync(request, ct);
 
-        if (Classify(response, "finalizelogin") is { } failure)
+        var (failure, body) = await ClassifyAsync(response, "finalizelogin", ct);
+        if (failure is not null)
         {
             return new FinalizeResult(failure, null, [], null);
         }
 
         var rotated = ReadCookie(response, RefreshCookie);
-        var body = await response.Content.ReadAsStringAsync(ct);
 
         if (!TryReadFinalize(body, out var steamId, out var transfers))
         {
-            // A 200 that is not a finalize response. If Steam said why, and the
-            // reason is one of the denial codes, the refresh token is done;
-            // otherwise this is a shape we do not recognise and the session is
-            // kept.
+            // A 200 that stated no denial and is still not a finalize response.
+            // A shape we do not recognise, so the session is kept.
             return new FinalizeResult(
-                IsDenial(response, body)
-                    ? SteamRenewalOutcome.Rejected("finalizelogin refused the refresh token")
-                    : SteamRenewalOutcome.Transient("finalizelogin returned no transfer targets"),
+                SteamRenewalOutcome.Transient("finalizelogin returned no transfer targets"),
                 null,
                 [],
                 null);
@@ -232,7 +228,8 @@ public sealed class SteamSessionRenewer : ISteamSessionRenewer
 
             using var response = await http.SendAsync(request, ct);
 
-            if (Classify(response, "transfer") is { } failure)
+            var (failure, _) = await ClassifyAsync(response, "transfer", ct);
+            if (failure is not null)
             {
                 return new TransferResult(failure, null, null);
             }
@@ -268,12 +265,11 @@ public sealed class SteamSessionRenewer : ISteamSessionRenewer
 
         using var response = await http.SendAsync(request, ct);
 
-        if (Classify(response, "token mint") is { } failure)
+        var (failure, body) = await ClassifyAsync(response, "token mint", ct);
+        if (failure is not null)
         {
             return new MintResult(failure, null);
         }
-
-        var body = await response.Content.ReadAsStringAsync(ct);
 
         return TryReadMintedToken(body, out var token, out var statedButEmpty) switch
         {
@@ -292,7 +288,33 @@ public sealed class SteamSessionRenewer : ISteamSessionRenewer
     /// cost of being wrong in that direction is one skipped pass and the cost
     /// of being wrong the other way is a sign-out.
     /// </summary>
-    private SteamRenewalOutcome? Classify(HttpResponseMessage response, string stage)
+    /// <summary>
+    /// One place both refusal signals (HTTP status and Valve EResult) are
+    /// read, so no step can be missing one. Returns the failure, if any, and
+    /// the body, so a caller that needs the body does not read it twice.
+    ///
+    /// <para>A 200 is not an acceptance. Valve states a refusal as an
+    /// EResult, in an <c>x-eresult</c> header or an <c>eresult</c> body
+    /// field, and that is checked at every step. A denial arriving on the
+    /// mint was previously read as transient and retried on every pass
+    /// forever instead of surfacing to the user.</para>
+    /// </summary>
+    private async Task<(SteamRenewalOutcome? Failure, string Body)> ClassifyAsync(
+        HttpResponseMessage response, string stage, CancellationToken ct)
+    {
+        if (response.IsSuccessStatusCode)
+        {
+            var succeeded = await response.Content.ReadAsStringAsync(ct);
+
+            return IsDenial(response, succeeded)
+                ? (SteamRenewalOutcome.Rejected(stage + " reported a denial"), succeeded)
+                : (null, succeeded);
+        }
+
+        return (ClassifyStatus(response, stage), string.Empty);
+    }
+
+    private SteamRenewalOutcome? ClassifyStatus(HttpResponseMessage response, string stage)
     {
         if (response.IsSuccessStatusCode)
         {

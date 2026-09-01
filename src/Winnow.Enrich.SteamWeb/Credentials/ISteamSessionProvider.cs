@@ -27,7 +27,7 @@ public interface ISteamSessionProvider
     /// <summary>Adopts a freshly minted session and persists it. S3's sign-in is the only caller.</summary>
     Task SaveAsync(SteamSession session, CancellationToken ct = default);
 
-    /// <summary>Forgets the session, in memory and on disk. The only path that discards a refresh token.</summary>
+    /// <summary>Forgets the whole session, in memory and on disk. The hard-lapse path also discards the refresh token, but keeps the record; sign-out discards everything.</summary>
     Task SignOutAsync(CancellationToken ct = default);
 
     /// <summary>

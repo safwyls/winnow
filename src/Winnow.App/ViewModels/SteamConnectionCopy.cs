@@ -87,14 +87,13 @@ public static class SteamConnectionCopy
     public const string HealthLive = "The sign-in is working.";
 
     /// <summary>
-    /// Session-health line when the access token needs renewing. Names the
-    /// absence of automatic renewal honestly so the user knows why signing
-    /// in again is the remedy.
+    /// Session-health line when the access token is nearing expiry. Neutral
+    /// register; renewal is automatic, so this is the routine steady state
+    /// for any signed-in user.
     /// </summary>
     public const string HealthRenewalDue =
-        "The access token needs renewing before it can be used again. "
-        + "There is no automatic renewal, so signing in again is the "
-        + "fix for now.";
+        "The access token is due for renewal. Winnow renews it "
+        + "automatically in the background.";
 
     /// <summary>
     /// Session-health line when renewal was attempted and failed. Amber
@@ -148,16 +147,17 @@ public static class SteamConnectionCopy
         + "Steam's website.";
 
     /// <summary>
-    /// What the sign-in gives up. States the expiry, the absence of
-    /// automatic renewal, and the impact on scheduled updates without
-    /// hedging. Never promises automatic renewal.
+    /// What the sign-in gives up. States the expiry, that renewal is
+    /// automatic but untested against live servers, and that an API key
+    /// is the unconditionally reliable alternative.
     /// </summary>
     public const string SignInCosts =
-        "The credential lasts about a day. There is no automatic "
-        + "renewal, so it needs repeating when it expires. Signing in "
-        + "to Steam elsewhere can also invalidate it. Scheduled "
-        + "background updates stop until the next sign-in; an API key "
-        + "has no such expiry.";
+        "The credential lasts about a day. Winnow renews it "
+        + "automatically, but renewal has not been tested against "
+        + "Valve's live servers and may not work. Signing in to "
+        + "Steam elsewhere can also invalidate it. If renewal "
+        + "fails, a fresh sign-in is the only fix; an API key does "
+        + "not expire and needs no renewal.";
 
     /// <summary>Button label for a first-time sign-in. Matches the Epic
     /// card's "Sign in to Epic".</summary>

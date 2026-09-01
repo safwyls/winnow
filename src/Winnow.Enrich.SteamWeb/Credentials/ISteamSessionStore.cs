@@ -20,6 +20,6 @@ public interface ISteamSessionStore
     /// <summary>Writes the session, encrypted. A no-op when it cannot be encrypted; the caller keeps working in memory.</summary>
     Task SaveAsync(SteamSession session, CancellationToken ct = default);
 
-    /// <summary>Forgets the stored session. Sign-out, and the only path that discards a refresh token.</summary>
+    /// <summary>Forgets the stored session. Sign-out discards the whole record; the hard-lapse path discards only the refresh token.</summary>
     Task ClearAsync(CancellationToken ct = default);
 }

@@ -61,10 +61,13 @@ public sealed class SteamCredentialProvider : ISteamCredentialProvider
     {
         var key = SteamCredential.FromApiKey(await _keys.GetAsync(ct));
 
-        // Deliberately the non-renewing read. This is what the Stores screen
-        // binds to, and §5.1 forbids enrichment blocking a user-facing path: a
-        // screen that opened a socket to say "a session is registered" would be
-        // exactly that.
+        // The mode below stops this read starting a renewal. What stops it
+        // waiting behind somebody else's is SteamSessionProvider's two-lock
+        // split, where the renewal exchange holds its own lock and readers
+        // hold a state lock that is never held across the network. Both are
+        // needed: a screen that opened a socket to say "a session is
+        // registered" and a screen that sat behind three HTTP requests and
+        // their backoff to say it are equally the blocking §5.1 forbids.
         var session = _session is null
             ? null
             : await _session.TryGetAsync(SteamSessionRenewalMode.None, ct);
