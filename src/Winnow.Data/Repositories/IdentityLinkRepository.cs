@@ -218,6 +218,80 @@ public sealed class IdentityLinkRepository : IIdentityLinkRepository
         return true;
     }
 
+    public async Task<bool> RetractLinkAsync(
+        long childWorkId, string? note = null, CancellationToken ct = default)
+    {
+        using var scope = _factory.Begin();
+        using var lease = _factory.Lease();
+
+        // The act retraction narrowed to one child, not a different mechanism.
+        // The rest of the act stays standing — the user is separating the one
+        // title they noticed, from the place they noticed it, and did not ask
+        // about its siblings. ux_identity_links_live guarantees at most one
+        // live row here, so the singular read is a schema fact.
+        var live = await lease.Connection.QuerySingleOrDefaultAsync<IdentityLink>(
+            new CommandDefinition($"""
+                SELECT {LinkColumns}
+                FROM identity_links l
+                WHERE l.child_work_id = @childWorkId AND l.retracted_at IS NULL;
+                """, new { childWorkId }, lease.Transaction, cancellationToken: ct));
+
+        if (live is null)
+        {
+            // Retracting twice is a no-op rather than an error, exactly as
+            // RetractActAsync is: idempotent undo is the fix for the user's
+            // complaint that undo made a pair permanently unmergeable.
+            return false;
+        }
+
+        var undoActId = await InsertActAsync(lease, IdentityActKinds.Unlink, note, ct);
+        var now = _clock.GetUtcNow().UtcDateTime;
+
+        await lease.Connection.ExecuteAsync(new CommandDefinition("""
+            UPDATE identity_links
+            SET retracted_at = @now, retracted_by_act_id = @undoActId
+            WHERE id = @linkId;
+            """, new { now, undoActId, linkId = live.Id }, lease.Transaction, cancellationToken: ct));
+
+        // The link this one displaced FOR THIS CHILD, restored — the same
+        // promise act retraction makes, kept at the grain of one child. Other
+        // children the same act displaced are left alone, because their links
+        // are still standing and restoring them would put a work under two
+        // parents at once.
+        var displaced = (await lease.Connection.QueryAsync<IdentityLink>(new CommandDefinition($"""
+            SELECT {LinkColumns}
+            FROM identity_links l
+            WHERE l.retracted_by_act_id = @actId AND l.child_work_id = @childWorkId
+            ORDER BY l.id;
+            """,
+            new { actId = live.ActId, childWorkId },
+            lease.Transaction, cancellationToken: ct))).AsList();
+
+        foreach (var prior in displaced)
+        {
+            await lease.Connection.ExecuteAsync(new CommandDefinition("""
+                INSERT INTO identity_links (
+                    act_id, child_work_id, parent_work_id, kind, source, evidence_json, applied_at)
+                VALUES (@undoActId, @childWorkId, @parentWorkId, @kind, @source, @evidenceJson, @now);
+                """,
+                new
+                {
+                    undoActId,
+                    childWorkId = prior.ChildWorkId,
+                    parentWorkId = prior.ParentWorkId,
+                    kind = prior.Kind,
+                    source = prior.Source,
+                    evidenceJson = prior.EvidenceJson,
+                    now,
+                },
+                lease.Transaction,
+                cancellationToken: ct));
+        }
+
+        scope.Commit();
+        return true;
+    }
+
     // ── Validation ───────────────────────────────────────────────────────────
 
     private static List<long> Validate(IdentityLinkRequest request)

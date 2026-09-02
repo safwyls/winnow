@@ -1,5 +1,6 @@
 using Dapper;
 using Winnow.Core.Domain;
+using Winnow.Core.Identity;
 using Winnow.Core.Queries;
 using Winnow.Core.Repositories;
 
@@ -368,9 +369,41 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
                 FROM ownerships o
                 LEFT JOIN latest_play lp ON lp.ownership_id = o.id
                 LEFT JOIN mine        m  ON m.ownership_id = o.id
+            ),
+            same_game AS (
+                -- Identity links (migration 0018), resolved HERE and once, in
+                -- the same pass as demo consolidation.
+                --
+                -- kind is filtered to @SameGameKind, bound from
+                -- IdentityLinkKinds.SameGame, so an expansion_of link can never
+                -- move a count, a playtime, a bucket or a recommendation — the
+                -- user's decision of 2026-08-31 that expansions are titles whose
+                -- playtime does not roll up, made a fact of the query rather
+                -- than a convention.
+                --
+                -- retracted_at IS NULL is the same predicate as
+                -- ux_identity_links_live, so at most one row per child and the
+                -- LEFT JOIN below cannot multiply the result.
+                --
+                -- Depth is one (asserted by IdentityLinkRepository), so one join
+                -- reaches the parent; no recursive CTE is needed.
+                --
+                -- With no links this CTE is empty, every ResolvedWorkId below
+                -- collapses to the work's own id, and the query returns
+                -- byte-identical rows to the ones it returned before links
+                -- existed.
+                SELECT child_work_id, parent_work_id
+                FROM identity_links
+                WHERE retracted_at IS NULL
+                  AND kind = @SameGameKind
             )
             SELECT o.id                                AS OwnershipId,
                    o.release_id                        AS ReleaseId,
+                   w.id                                AS WorkId,
+                   -- Total by construction: COALESCE makes every work resolve,
+                   -- to its parent or to itself, which is the same contract
+                   -- SameGameResolution.Resolve carries in C#.
+                   COALESCE(sg.parent_work_id, w.id)   AS ResolvedWorkId,
                    COALESCE(ep.playtime_minutes, 0)    AS PlaytimeMinutes,
                    ep.last_played_at                   AS LastPlayedAt,
                    -- Demo consolidation reads these three; the SQL itself takes
@@ -438,6 +471,8 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
             -- that puts the user's own figures in front of the household's.
             LEFT JOIN effective_play ep ON ep.ownership_id = o.id
             LEFT JOIN major_update   mu ON mu.release_id = o.release_id
+            -- One LEFT JOIN, at most one row per child by ux_identity_links_live.
+            LEFT JOIN same_game      sg ON sg.child_work_id = w.id
             -- Empty unless the user asked to see one account only. See the CTE
             -- for why "no evidence" is not "not yours".
             WHERE NOT EXISTS (SELECT 1 FROM hidden h WHERE h.ownership_id = o.id)
@@ -458,6 +493,7 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
             OwnedAccountKey = SteamOwnedAccount.RefSettingKey,
             Store = ExternalIdProviders.Steam,
             LegacySeedSource = OwnershipAccountSources.LegacyOwnershipColumn,
+            SameGameKind = IdentityLinkKinds.SameGame,
         }, transaction: lease.Transaction, cancellationToken: ct));
 
         return Consolidate(rows.AsList(), thresholds.ShowNonGameEntries);
@@ -584,6 +620,8 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
             {
                 OwnershipId = row.OwnershipId,
                 ReleaseId = row.ReleaseId,
+                WorkId = row.WorkId,
+                ResolvedWorkId = row.ResolvedWorkId,
                 PlaytimeMinutes = row.PlaytimeMinutes,
                 LastPlayedAt = row.LastPlayedAt,
                 Bucket = row.Bucket,
@@ -606,6 +644,8 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
     {
         public long OwnershipId { get; init; }
         public long ReleaseId { get; init; }
+        public long WorkId { get; init; }
+        public long ResolvedWorkId { get; init; }
         public long PlaytimeMinutes { get; init; }
         public DateTime? LastPlayedAt { get; init; }
         public string Bucket { get; init; } = string.Empty;

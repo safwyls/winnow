@@ -256,18 +256,37 @@ public sealed class RecommendationEngine : IRecommendationEngine
             .ToDictionary(o => o.Id);
         var facetSnapshot = await _facets.GetSnapshotAsync(ct);
 
+        // Resolution is taken from the bucket rows rather than read a second
+        // time — one source, and the feed cannot disagree with the grid about
+        // what one game is. A work the bucket query did not return is absent
+        // from this map and resolves to itself, which is the pre-link answer
+        // and never a wrong one.
+        var resolvedWork = new Dictionary<long, long>();
+        foreach (var row in bucketRows)
+        {
+            resolvedWork[row.WorkId] = row.ResolvedWorkId;
+        }
+
+        long Resolve(long workId) => resolvedWork.GetValueOrDefault(workId, workId);
+
         // Stores per WORK, over every ownership in the library (not just the
         // candidates): the bought-twice signal is about the work, and the
         // second copy may sit on a row the bucket query filtered from view.
         // This is also why collapsing duplicates costs the signal nothing.
+        //
+        // Keyed by the RESOLVED work, because a same-game link is the statement
+        // that these two store entries are one game — which is exactly what the
+        // destructive merge used to say by putting both releases under one work.
+        // Resolving here keeps the signal the merge gave it.
         var storesByWork = new Dictionary<long, HashSet<string>>();
         foreach (var ownership in ownershipsById.Values)
         {
             if (identities.TryGetValue(ownership.ReleaseId, out var identity))
             {
-                if (!storesByWork.TryGetValue(identity.WorkId, out var stores))
+                var work = Resolve(identity.WorkId);
+                if (!storesByWork.TryGetValue(work, out var stores))
                 {
-                    storesByWork[identity.WorkId] = stores = new HashSet<string>(StringComparer.Ordinal);
+                    storesByWork[work] = stores = new HashSet<string>(StringComparer.Ordinal);
                 }
 
                 stores.Add(ownership.Store);
@@ -283,12 +302,18 @@ public sealed class RecommendationEngine : IRecommendationEngine
         // GOG copy resurface the same game tomorrow. The stored fact stays
         // the clicked release; this widening to the work is a query,
         // recomputed per request — exactly the derived/truth split.
+        //
+        // Feed suppression. feed_verdicts is keyed by release, and dismissing
+        // the Steam entry of a linked game must suppress its Epic entry or the
+        // feed offers the same game twice under two store badges. Widening to
+        // the RESOLVED work is what makes one dismissal cover the group.
+        // Nothing is written: the stored fact stays the clicked release.
         var excludedWorks = new HashSet<long>();
         foreach (var releaseId in request.NotInterestedReleaseIds.Concat(request.SnoozedReleaseIds))
         {
             if (identities.TryGetValue(releaseId, out var excluded))
             {
-                excludedWorks.Add(excluded.WorkId);
+                excludedWorks.Add(Resolve(excluded.WorkId));
             }
         }
 
@@ -313,7 +338,7 @@ public sealed class RecommendationEngine : IRecommendationEngine
 
             if (!identities.TryGetValue(row.ReleaseId, out var identity)
                 || identity.NameIsProvisional
-                || excludedWorks.Contains(identity.WorkId))
+                || excludedWorks.Contains(row.ResolvedWorkId))
             {
                 // A tile named "App 1203620" cannot carry an explainable
                 // recommendation; enrichment clears the flag and the game
@@ -335,7 +360,7 @@ public sealed class RecommendationEngine : IRecommendationEngine
                 PlaytimeMinutes = row.PlaytimeMinutes,
                 LastPlayedAt = row.LastPlayedAt,
                 Installed = ownership?.Installed ?? false,
-                StoreCount = storesByWork.TryGetValue(identity.WorkId, out var stores) ? stores.Count : 1,
+                StoreCount = storesByWork.TryGetValue(row.ResolvedWorkId, out var stores) ? stores.Count : 1,
                 TasteAffinity = affinity,
                 TasteFacetName = facetName,
                 RecentlySurfaced = request.RecentlySurfacedReleaseIds.Contains(row.ReleaseId),

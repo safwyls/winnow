@@ -13,6 +13,13 @@ namespace Winnow.Data.Repositories;
 /// hands it back; who it currently contains is a question about the library, and
 /// <see cref="LibraryFilter.Apply"/> answers it over rows the caller already
 /// holds.</para>
+///
+/// <para>Identity links are deliberately NOT resolved here. Adding a game to a
+/// list is an explicit user act on one store entry, and the user picked that
+/// entry. De-duplicating a list by resolved work would remove a row the user
+/// put there by hand. If the grid ever becomes work-grained (TASK-70.6),
+/// display may de-duplicate what it draws; the stored membership still stays
+/// exactly what was added.</para>
 /// </summary>
 public sealed class GameListRepository : IGameListRepository
 {

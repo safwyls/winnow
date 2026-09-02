@@ -365,7 +365,7 @@ public partial class GameTileViewModel : ObservableObject
     /// An em dash rather than "0h" at zero playtime: the list's job is to be
     /// scannable, and a column of zeroes reads as data when it is an absence.
     /// </summary>
-    private static string BuildPlaytimeText(long playtimeMinutes)
+    public static string BuildPlaytimeText(long playtimeMinutes)
         => playtimeMinutes <= 0
             ? "—"
             : playtimeMinutes < 60

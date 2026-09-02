@@ -68,6 +68,27 @@ public sealed record OwnershipBucket
 {
     public required long OwnershipId { get; init; }
     public required long ReleaseId { get; init; }
+
+    /// <summary>
+    /// The work this ownership's release belongs to, unresolved. Kept beside
+    /// <see cref="ResolvedWorkId"/> because enrichment targets the row's own
+    /// work while display targets the resolved one.
+    /// </summary>
+    public required long WorkId { get; init; }
+
+    /// <summary>
+    /// The same-game parent of <see cref="WorkId"/>, or <see cref="WorkId"/>
+    /// itself. Total, never null. Computed by the bucket query in the same
+    /// pass as demo consolidation (migration 0018 <c>identity_links</c>,
+    /// kind <c>same_game</c> only — expansion links are excluded because an
+    /// expansion's playtime does not roll up). With no links this equals
+    /// <see cref="WorkId"/> on every row.
+    /// </summary>
+    public required long ResolvedWorkId { get; init; }
+
+    /// <summary>True when this row's work is linked under another.</summary>
+    public bool IsLinkedChild => ResolvedWorkId != WorkId;
+
     public required long PlaytimeMinutes { get; init; }
     public DateTime? LastPlayedAt { get; init; }
     public required string Bucket { get; init; }

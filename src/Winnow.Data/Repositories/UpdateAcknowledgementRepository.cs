@@ -15,6 +15,13 @@ namespace Winnow.Data.Repositories;
 /// <c>major_update</c> CTE, because design-system.md §5.2 makes the badge
 /// identical to <c>stale_but_patched</c> membership. This repository only
 /// records and reports what the user said.</para>
+///
+/// <para>Identity links are deliberately NOT resolved here. A Steam build
+/// acknowledged is not an Epic build acknowledged — the two stores ship
+/// different builds on different days, so an acknowledgement widened to the
+/// linked group would mark a patch read that the user has not seen and
+/// cannot see. Acknowledgements stay per release, and the identity link
+/// does not reach them.</para>
 /// </summary>
 public sealed class UpdateAcknowledgementRepository : IUpdateAcknowledgementRepository
 {

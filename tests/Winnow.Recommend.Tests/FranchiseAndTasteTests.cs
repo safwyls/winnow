@@ -63,6 +63,10 @@ public class FranchiseAndTasteTests
     {
         OwnershipId = releaseId,
         ReleaseId = releaseId,
+        // Nothing linked: a work resolves to itself, which is the pre-link
+        // answer and the one this fixture is about.
+        WorkId = releaseId,
+        ResolvedWorkId = releaseId,
         PlaytimeMinutes = minutes,
         Bucket = minutes >= 120 ? LibraryBuckets.Bounced : LibraryBuckets.NeverPlayed,
     };

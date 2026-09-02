@@ -437,15 +437,19 @@ public class IdentityLinkTests
         Assert.Equal([expansion], resolution.Expansions.ExpansionsOf(civ));
     }
 
-    // ── Inert ────────────────────────────────────────────────────────────────
+    // ── What a link moves, and what it must not ─────────────────────────────
 
     /// <summary>
-    /// Acceptance criterion #6: a live link does not move a single bucket
-    /// row. The bucket query is the single chokepoint every grid, rail count
-    /// and filter option reads through, so this is the inertness proof.
+    /// TASK-70.2 shipped this as the inertness proof: a live link moved not
+    /// one bucket row, because nothing read a link. TASK-70.4 taught the
+    /// bucket query to resolve, so the claim is now the sharper one it was
+    /// always meant to become: a link moves the RESOLVED WORK ID and nothing
+    /// else. Same rows, same order, same buckets, same playtime, same dates,
+    /// same work ids. Only the child's resolved id changes, which is the one
+    /// column that exists to change.
     /// </summary>
     [Fact]
-    public async Task A_live_link_changes_no_bucket_row()
+    public async Task A_live_link_moves_the_resolved_work_id_and_nothing_else()
     {
         using var db = new TempDatabase();
         var (steamWorkId, _) = Owned(db, "Prey", "steam", playtimeMinutes: 300);
@@ -463,7 +467,16 @@ public class IdentityLinkTests
         });
 
         var after = await buckets.GetOwnershipBucketsAsync(BucketThresholds.Default);
-        Assert.Equal(before, after);
+
+        Assert.Equal(before.Count, after.Count);
+        for (var i = 0; i < before.Count; i++)
+        {
+            Assert.Equal(before[i] with { ResolvedWorkId = 0 }, after[i] with { ResolvedWorkId = 0 });
+        }
+
+        // And the one column that did move, moved exactly where it should.
+        Assert.All(before, row => Assert.Equal(row.WorkId, row.ResolvedWorkId));
+        Assert.All(after, row => Assert.Equal(steamWorkId, row.ResolvedWorkId));
     }
 
     // ── The 0018 repair ──────────────────────────────────────────────────────

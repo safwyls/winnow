@@ -28,6 +28,18 @@ public interface IIdentityLinkRepository
     Task<bool> RetractActAsync(long actId, string? note = null, CancellationToken ct = default);
 
     /// <summary>
+    /// Retracts ONE child's live link, leaving the rest of its act standing.
+    /// This is what "Separate" on the details modal calls, so the user can
+    /// undo the one link they noticed from the place they noticed it. It
+    /// restores the link that this child's link displaced — the same promise
+    /// <see cref="RetractActAsync"/> makes, narrowed to one child. Returns
+    /// false when the child has no live link, which is a no-op rather than
+    /// an error.
+    /// </summary>
+    Task<bool> RetractLinkAsync(
+        long childWorkId, string? note = null, CancellationToken ct = default);
+
+    /// <summary>
     /// Every row for a work, live and retracted, because the table is the
     /// history. Pass null for all works.
     /// </summary>

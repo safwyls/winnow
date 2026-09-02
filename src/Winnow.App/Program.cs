@@ -385,10 +385,15 @@ public static class Program
         // hostage to a screen.
         services.AddSingleton<IMergeUndoRepository, MergeUndoRepository>();
 
-        // Identity links (migration 0018). Registered now, read by nothing yet;
-        // TASK-70.3 onward injects it. Registering it in the stage that adds it
-        // keeps the stage a single reviewable change.
+        // Identity links (migration 0018). Read by the Same Game screen, by the
+        // library's display title and cover, and by the details modal's coverage
+        // section; the bucket query resolves them in SQL without this.
         services.AddSingleton<IIdentityLinkRepository, IdentityLinkRepository>();
+
+        // Per-release achievements (§6.2). The details modal renders one row per
+        // release and never a blended percentage, and this repository offers no
+        // way to produce one.
+        services.AddSingleton<IAchievementQueryRepository, AchievementQueryRepository>();
         services.AddSingleton<ILibraryQueryRepository, LibraryQueryRepository>();
         services.AddSingleton<ILibraryHistoryStatsRepository, LibraryHistoryStatsRepository>();
         services.AddSingleton<IFacetRepository, FacetRepository>();

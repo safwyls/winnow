@@ -382,6 +382,111 @@
                               VerticalScrollBarVisibility="Auto">
                     <StackPanel Spacing="22" Margin="0,18,0,24">
 
+                        <!-- ALSO COVERS. The user's fourth complaint answered:
+                             this game also covers these titles. First in the
+                             band because it is a fact about identity, and it
+                             draws only when there is coverage to draw.
+
+                             Every row carries ONE entry's minutes beside THAT
+                             SAME entry's last-played. The total above them is a
+                             sum across stores - Winnow's own composite, which no
+                             source reports - and it carries its own coherent
+                             date, the latest anywhere in the group. The rows
+                             stay on screen underneath so the composite can be
+                             checked against its parts.
+
+                             Achievements are per release (6.2), on the release's
+                             own row. There is no combined percentage here and no
+                             property that could produce one. -->
+                        <StackPanel IsVisible="{Binding ShowCoverage}">
+                        <StackPanel Spacing="10"
+                                    DataContext="{Binding Coverage}"
+                                    x:DataType="vm:GameCoverageViewModel">
+                            <TextBlock Classes="label" Text="{Binding Heading}"/>
+
+                            <Grid ColumnDefinitions="Auto,Auto,*,Auto" ColumnSpacing="12">
+                                <TextBlock Grid.Column="0" Classes="label" FontSize="10"
+                                           VerticalAlignment="Center"
+                                           Text="{Binding TotalLabel}"/>
+                                <TextBlock Grid.Column="1" Classes="data"
+                                           FontSize="18"
+                                           VerticalAlignment="Center"
+                                           Foreground="{StaticResource Text}"
+                                           Text="{Binding TotalPlaytimeText}"/>
+                                <TextBlock Grid.Column="2" Classes="body" FontSize="12"
+                                           VerticalAlignment="Center"
+                                           TextWrapping="Wrap"
+                                           Foreground="{StaticResource TextDim}"
+                                           Text="{Binding TotalNote}"/>
+                                <TextBlock Grid.Column="3" Classes="data-s"
+                                           VerticalAlignment="Center"
+                                           Text="{Binding TotalLastPlayedText}"/>
+                            </Grid>
+
+                            <ItemsControl ItemsSource="{Binding Rows}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="vm:CoverageRowViewModel">
+                                        <Border BorderBrush="{StaticResource Line}"
+                                                BorderThickness="0,0,0,1"
+                                                Padding="0,9">
+                                            <StackPanel Spacing="4">
+                                                <Grid ColumnDefinitions="52,*,Auto,Auto,Auto"
+                                                      ColumnSpacing="10">
+                                                    <TextBlock Grid.Column="0" Classes="data-s"
+                                                               VerticalAlignment="Center"
+                                                               Text="{Binding StoreBadge}"/>
+                                                    <TextBlock Grid.Column="1" Classes="body"
+                                                               VerticalAlignment="Center"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               Text="{Binding Title}"/>
+                                                    <TextBlock Grid.Column="2" Classes="data-s"
+                                                               VerticalAlignment="Center"
+                                                               Text="{Binding PlaytimeText}"/>
+                                                    <TextBlock Grid.Column="3" Classes="data-s"
+                                                               VerticalAlignment="Center"
+                                                               Text="{Binding LastPlayedText}"/>
+                                                    <Button Grid.Column="4" Classes="quiet"
+                                                            IsVisible="{Binding IsCovered}"
+                                                            AutomationProperties.Name="{Binding SeparateAutomationName}"
+                                                            ToolTip.Tip="{Binding SeparateTooltip}"
+                                                            CommandParameter="{Binding}"
+                                                            Command="{Binding $parent[ItemsControl].((vm:GameCoverageViewModel)DataContext).SeparateCommand}">
+                                                        <TextBlock Classes="body" FontSize="12"
+                                                                   Text="{Binding SeparateLabel}"/>
+                                                    </Button>
+                                                </Grid>
+
+                                                <StackPanel IsVisible="{Binding HasAchievements}">
+                                                <Grid ColumnDefinitions="52,Auto,Auto,*"
+                                                      ColumnSpacing="10"
+                                                      DataContext="{Binding Achievements}"
+                                                      x:DataType="vm:ReleaseAchievementRowViewModel">
+                                                    <TextBlock Grid.Column="1" Classes="label"
+                                                               FontSize="10"
+                                                               VerticalAlignment="Center"
+                                                               Text="{Binding Label}"/>
+                                                    <TextBlock Grid.Column="2" Classes="data-s"
+                                                               VerticalAlignment="Center"
+                                                               Text="{Binding CountText}"/>
+                                                    <TextBlock Grid.Column="3" Classes="data-s"
+                                                               VerticalAlignment="Center"
+                                                               Text="{Binding PercentText}"/>
+                                                </Grid>
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <TextBlock Classes="body" FontSize="11"
+                                       TextWrapping="Wrap"
+                                       Foreground="{StaticResource Amber}"
+                                       IsVisible="{Binding HasProblem}"
+                                       Text="{Binding Problem}"/>
+                        </StackPanel>
+                        </StackPanel>
+
                         <StackPanel Spacing="7">
                             <TextBlock Classes="label" Text="ABOUT"/>
                             <SelectableTextBlock Classes="body copyable"

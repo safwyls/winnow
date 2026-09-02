@@ -48,8 +48,10 @@ public partial class GameDetailsViewModel : ObservableObject
         IReadOnlyList<UpdateEvent>? updateEvents = null,
         DateTime? acknowledgedThrough = null,
         IUpdateFlagService? updateFlags = null,
-        Func<Task>? reloadLibrary = null)
+        Func<Task>? reloadLibrary = null,
+        GameCoverageViewModel? coverage = null)
     {
+        Coverage = coverage;
         Tile = tile;
         BucketLabel = bucketLabel;
         Updates = updates;
@@ -76,6 +78,20 @@ public partial class GameDetailsViewModel : ObservableObject
 
     /// <summary>The tile this describes — title, store, art and the stat strings all come from it.</summary>
     public GameTileViewModel Tile { get; }
+
+    /// <summary>
+    /// The titles this game covers, with the per-store breakdown and the
+    /// per-release achievement rows. Null when nothing has taught this modal
+    /// about links, which renders as no section rather than an empty one —
+    /// the pre-link view exactly.
+    /// </summary>
+    public GameCoverageViewModel? Coverage { get; }
+
+    /// <summary>
+    /// Draws the section only when this game covers another title. A game
+    /// that covers nothing shows what it always showed.
+    /// </summary>
+    public bool ShowCoverage => Coverage is { HasCoverage: true };
 
     // ── Band 1: what is this ────────────────────────────────────────────────
 

@@ -5,6 +5,7 @@ using Winnow.App.Services;
 using Winnow.App.ViewModels.Filters;
 using Winnow.App.ViewModels.Lists;
 using Winnow.Core.Domain;
+using Winnow.Core.Identity;
 using Winnow.Core.Queries;
 using Winnow.Core.Repositories;
 using Winnow.Covers;
@@ -80,8 +81,40 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     /// </summary>
     private readonly Services.GameLaunchService? _launcher;
 
+    /// <summary>
+    /// Identity links (migration 0018). Optional for the reason every seam
+    /// here is optional: with nothing registered every work resolves to
+    /// itself and the library is exactly the pre-link library, which is the
+    /// degradation the whole link model was chosen for.
+    /// </summary>
+    private readonly IIdentityLinkRepository? _identityLinks;
+
+    /// <summary>
+    /// Per-release achievements (§6.2). Optional; absent means the coverage
+    /// rows simply carry no achievement line.
+    /// </summary>
+    private readonly IAchievementQueryRepository? _achievements;
+
     private IReadOnlyList<GameTileViewModel> _allTiles = [];
     private FacetSnapshot _facets = FacetSnapshot.Empty;
+
+    /// <summary>
+    /// One entry per VISIBLE ownership, built in the same pass as the tiles
+    /// so the modal cannot report a figure the grid does not show.
+    /// </summary>
+    private IReadOnlyList<CoverageEntry> _coverage = [];
+
+    /// <summary>
+    /// The live same-game map, read once per load. Expansion links are a
+    /// different type and cannot reach any number from here.
+    /// </summary>
+    private SameGameResolution _resolution = SameGameResolution.Empty;
+
+    /// <summary>
+    /// Every work by id, for the display title and cover of a linked child.
+    /// </summary>
+    private IReadOnlyDictionary<long, Work> _workById = new Dictionary<long, Work>();
+
     private bool _loaded;
 
     /// <summary>
@@ -108,8 +141,12 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         Services.GameLaunchService? launcher = null,
         LaunchStatusViewModel? launchStatus = null,
         JournalPromptViewModel? journal = null,
-        ICoverLeases? leases = null)
+        ICoverLeases? leases = null,
+        IIdentityLinkRepository? identityLinks = null,
+        IAchievementQueryRepository? achievements = null)
     {
+        _identityLinks = identityLinks;
+        _achievements = achievements;
         _libraryQueries = libraryQueries;
         _ownerships = ownerships;
         _releases = releases;
@@ -546,7 +583,19 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         var bucketRows = await _libraryQueries.GetOwnershipBucketsAsync(
             BucketThresholds.Default with { ShowNonGameEntries = ShowNonGameEntries });
         var ownerships = await _ownerships.GetAllAsync();
+
+        // Deliberately unresolved — the same read enrichment uses, and it must
+        // stay unresolved because resolving would starve the child of the
+        // enrichment whose igdb_id is what fills the group. Resolution is
+        // applied BELOW, per row, for display only.
         var works = await _works.GetAllAsync();
+
+        // The live same-game map. Read once, here, beside the bucket query that
+        // resolved on the same fact — the query is the authority for anything
+        // that counts, this snapshot only names what covers what.
+        _resolution = _identityLinks is null
+            ? SameGameResolution.Empty
+            : (await _identityLinks.GetResolutionAsync()).SameGame;
 
         // One read for the whole library, not one per tile. Absent facets are a
         // normal state, not an error: the backfill runs behind a library the
@@ -627,8 +676,23 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             }
         }
 
+        _workById = works.ToDictionary(w => w.Id);
+
+        // The art a linked child borrows: the primary work's own cover, taken
+        // from its lowest release id that has one so the choice is stable across
+        // loads. Built for every work, used only by a child.
+        var coverKeyByWork = new Dictionary<long, CoverKey>();
+        foreach (var releaseId in coverKeyByRelease.Keys.OrderBy(id => id))
+        {
+            if (workByRelease.TryGetValue(releaseId, out var owner))
+            {
+                coverKeyByWork.TryAdd(owner.Id, coverKeyByRelease[releaseId]);
+            }
+        }
+
         var ownershipById = ownerships.ToDictionary(o => o.Id);
         var now = DateTime.UtcNow;
+        var coverage = new List<CoverageEntry>(bucketRows.Count);
 
         EpicLaunchKey? EpicKeyFor(long releaseId)
             => epicCatalogIdByRelease.TryGetValue(releaseId, out var catalogItemId)
@@ -642,10 +706,41 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             var work = workByRelease.GetValueOrDefault(row.ReleaseId);
             var ownership = ownershipById.GetValueOrDefault(row.OwnershipId);
 
+            // `work` above is this row's own work and stays that way; `display`
+            // is the work the user is shown. They differ only on a linked child,
+            // so with nothing linked every tile is byte-identical to the pre-link
+            // tile. Both store entries of one game read as one game while the
+            // grid is still one tile per ownership.
+            var display = row.IsLinkedChild
+                ? _workById.GetValueOrDefault(row.ResolvedWorkId) ?? work
+                : work;
+
+            var ownCoverKey = coverKeyByRelease.TryGetValue(row.ReleaseId, out var own)
+                ? own
+                : (CoverKey?)null;
+
+            // Only a child borrows art. An unlinked row keeps the exact key it
+            // has always had, which is what makes "nothing changes when nothing
+            // is linked" true rather than merely likely.
+            var tileCoverKey = display is not null && work is not null && display.Id != work.Id
+                ? coverKeyByWork.TryGetValue(display.Id, out var primaryKey) ? primaryKey : ownCoverKey
+                : ownCoverKey;
+
+            coverage.Add(new CoverageEntry
+            {
+                OwnershipId = row.OwnershipId,
+                ReleaseId = row.ReleaseId,
+                WorkId = row.WorkId,
+                Title = work?.Name ?? $"Release {row.ReleaseId}",
+                Store = ownership?.Store ?? "?",
+                PlaytimeMinutes = row.PlaytimeMinutes,
+                LastPlayedAt = row.LastPlayedAt,
+            });
+
             var tile = new GameTileViewModel(
                 ownershipId: row.OwnershipId,
                 releaseId: row.ReleaseId,
-                title: work?.Name ?? $"Release {row.ReleaseId}",
+                title: display?.Name ?? $"Release {row.ReleaseId}",
                 store: ownership?.Store ?? "?",
                 bucket: row.Bucket,
                 playtimeMinutes: row.PlaytimeMinutes,
@@ -656,9 +751,9 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
                 // The derived-bucket query already carries it, so the tile
                 // badge is that bucket membership — nothing else earns Flare.
                 hasUnread: row.Bucket == LibraryBuckets.StaleButPatched,
-                coverKey: coverKeyByRelease.TryGetValue(row.ReleaseId, out var coverKey) ? coverKey : null,
+                coverKey: tileCoverKey,
                 covers: _leases,
-                work: work,
+                work: display,
                 ownership: ownership,
                 ramp: Ramp,
                 steamAppId: steamAppIdByRelease.GetValueOrDefault(row.ReleaseId),
@@ -707,6 +802,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         }
 
         _allTiles = tiles;
+        _coverage = coverage;
 
         foreach (var bucket in Buckets)
         {
@@ -825,7 +921,74 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             updates,
             DateTime.UtcNow,
             snapshots: history,
-            covers: _covers);
+            covers: _covers,
+            coverage: await BuildCoverageAsync(target));
+    }
+
+    /// <summary>
+    /// Builds the ALSO COVERS section. Derived from the rows this load
+    /// already read, so it costs no library-wide query and cannot report an
+    /// entry the grid does not show. Achievements are read per release for
+    /// the group's releases and stay per release (§6.2).
+    /// </summary>
+    private async Task<GameCoverageViewModel?> BuildCoverageAsync(GameTileViewModel target)
+    {
+        var entry = _coverage.FirstOrDefault(e => e.OwnershipId == target.OwnershipId);
+        if (entry is null)
+        {
+            return null;
+        }
+
+        var coverage = IdentityCoverage.For(entry.WorkId, _resolution, _coverage);
+
+        var titleByWork = new Dictionary<long, string>();
+        foreach (var row in coverage.OwnEntries.Concat(coverage.CoveredEntries))
+        {
+            if (_workById.TryGetValue(row.WorkId, out var work))
+            {
+                titleByWork[row.WorkId] = work.Name;
+            }
+        }
+
+        var summaries = new Dictionary<long, ReleaseAchievementSummary>();
+        if (_achievements is not null)
+        {
+            var releaseIds = coverage.OwnEntries
+                .Concat(coverage.CoveredEntries)
+                .Select(e => e.ReleaseId)
+                .Distinct()
+                .ToList();
+
+            foreach (var summary in await _achievements.GetSummariesAsync(releaseIds))
+            {
+                summaries[summary.ReleaseId] = summary;
+            }
+        }
+
+        return new GameCoverageViewModel(coverage, titleByWork, summaries, SeparateAsync);
+    }
+
+    /// <summary>
+    /// Retracts one link from the details modal and reloads. The modal is
+    /// reopened on the same ownership so the user sees the result where they
+    /// asked for it. Nothing is deleted — the link row is stamped, so
+    /// linking again is an ordinary act.
+    /// </summary>
+    private async Task SeparateAsync(long childWorkId)
+    {
+        if (_identityLinks is null)
+        {
+            return;
+        }
+
+        await _identityLinks.RetractLinkAsync(childWorkId);
+        await LoadAsync();
+
+        var reopened = _allTiles.FirstOrDefault(t => t.OwnershipId == Details?.Tile.OwnershipId);
+        if (reopened is not null)
+        {
+            await OpenDetailsAsync(reopened);
+        }
     }
 
     [RelayCommand]

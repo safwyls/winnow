@@ -42,6 +42,11 @@ public sealed class RecommendHarness : IDisposable
         Settings = new SettingsRepository(_db.Factory);
         OwnershipAccounts = new OwnershipAccountRepository(_db.Factory);
 
+        // Identity links (migration 0018). The engine does not take this: it
+        // reads the resolved work id off the bucket rows, so the feed and the
+        // grid cannot disagree about what one game is.
+        Links = new IdentityLinkRepository(_db.Factory);
+
         Engine = new RecommendationEngine(
             new LibraryQueryRepository(_db.Factory),
             Releases,
@@ -69,6 +74,9 @@ public sealed class RecommendHarness : IDisposable
 
     /// <summary>Per-account membership rows (migration 0015).</summary>
     public OwnershipAccountRepository OwnershipAccounts { get; }
+
+    /// <summary>Identity links (migration 0018), for the feed-suppression tests.</summary>
+    public IdentityLinkRepository Links { get; }
 
     public RecommendationEngine Engine { get; }
 
