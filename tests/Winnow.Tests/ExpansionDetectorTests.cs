@@ -145,8 +145,16 @@ public sealed class ExpansionDetectorTests
     [Fact]
     public void Two_unrelated_games_sharing_a_first_word_are_not_proposed()
     {
-        var rush = Subject(1, "Rush", year: null, publisher: null);
-        var bros = Subject(2, "Rush Bros", year: null, publisher: null);
+        // Both years KNOWN, which is the shape production actually has;
+        // 947 of the author's 1,033 works carry a first_release_year. This
+        // test used to pass year: null on both sides, the one shape where
+        // the old guard fired, so the suite reported a guard production did
+        // not have while "INSIDE" and "Inside the Backrooms" were being
+        // proposed to a person. Two known years are not evidence of
+        // anything; see ExpansionMetadataGuardTests for the rule that
+        // replaced it.
+        var rush = Subject(1, "Rush", year: 2010, publisher: null);
+        var bros = Subject(2, "Rush Bros", year: 2013, publisher: null);
 
         Assert.False(ExpansionDetector.TryPropose(rush, bros, null, out _, out var reason));
         Assert.Equal(ExpansionRefusalReason.NoCorroboration, reason);

@@ -398,6 +398,28 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
                 FROM identity_links
                 WHERE retracted_at IS NULL
                   AND kind = @SameGameKind
+            ),
+            variant AS (
+                -- Variant links (migration 0021): demos, betas, playtests and
+                -- staging branches under the game they sample. Read here,
+                -- beside same_game, and applied in C# below for the same
+                -- reason demo consolidation is: the rule needs to know which
+                -- rows survive, and the account filter and the non-game filter
+                -- both drop rows after the query.
+                --
+                -- A variant does not count as a title while its parent is
+                -- owned, and DOES count when it is the only thing owned. That
+                -- is DemoConsolidation's read-time rule with a storefront fact
+                -- behind it instead of a title guess, and it keeps the same
+                -- reversibility: the parent leaving the library brings the demo
+                -- straight back on the next read, because nothing was written.
+                --
+                -- Playtime never rolls up. The variant's own hours stay on its
+                -- own row and reach the details modal from there.
+                SELECT child_work_id, parent_work_id
+                FROM identity_links
+                WHERE retracted_at IS NULL
+                  AND kind = @VariantKind
             )
             SELECT o.id                                AS OwnershipId,
                    o.release_id                        AS ReleaseId,
@@ -406,6 +428,7 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
                    -- to its parent or to itself, which is the same contract
                    -- SameGameResolution.Resolve carries in C#.
                    COALESCE(sg.parent_work_id, w.id)   AS ResolvedWorkId,
+                   va.parent_work_id                   AS VariantParentWorkId,
                    COALESCE(ep.playtime_minutes, 0)    AS PlaytimeMinutes,
                    ep.last_played_at                   AS LastPlayedAt,
                    -- Demo consolidation reads these three; the SQL itself takes
@@ -441,6 +464,8 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
             LEFT JOIN major_update   mu ON mu.release_id = o.release_id
             -- One LEFT JOIN, at most one row per child by ux_identity_links_live.
             LEFT JOIN same_game      sg ON sg.child_work_id = w.id
+            -- Same shape and the same guarantee: at most one row per child.
+            LEFT JOIN variant        va ON va.child_work_id = w.id
             -- Empty unless the user asked to see one account only. See the CTE
             -- for why "no evidence" is not "not yours".
             WHERE NOT EXISTS (SELECT 1 FROM hidden h WHERE h.ownership_id = o.id)
@@ -462,6 +487,7 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
             Store = ExternalIdProviders.Steam,
             LegacySeedSource = OwnershipAccountSources.LegacyOwnershipColumn,
             SameGameKind = IdentityLinkKinds.SameGame,
+            VariantKind = IdentityLinkKinds.VariantOf,
         }, transaction: lease.Transaction, cancellationToken: ct));
 
         return Consolidate(rows.AsList(), thresholds);
@@ -542,6 +568,35 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
 
         var consolidated = DemoConsolidation.Consolidate(owned.Values);
 
+        // The stored half of the same rule. A work owned in this result set can
+        // hide its variants; a parent the user does not own hides nothing, so
+        // its demo is the only copy there is and counts as a title in its own
+        // right.
+        var ownedWorkIds = new HashSet<long>();
+        foreach (var row in rows)
+        {
+            ownedWorkIds.Add(row.ResolvedWorkId);
+            ownedWorkIds.Add(row.WorkId);
+        }
+
+        var absorbedByVariantParent = new Dictionary<long, int>();
+        var suppressedVariants = new HashSet<long>();
+        foreach (var row in rows)
+        {
+            if (row.VariantParentWorkId is not { } parent
+                || !ownedWorkIds.Contains(parent)
+                || consolidated.ContainsKey(row.ReleaseId))
+            {
+                continue;
+            }
+
+            if (suppressedVariants.Add(row.ReleaseId))
+            {
+                absorbedByVariantParent[parent] =
+                    absorbedByVariantParent.TryGetValue(parent, out var n) ? n + 1 : 1;
+            }
+        }
+
         var absorbedByBase = new Dictionary<long, int>();
         foreach (var baseReleaseId in consolidated.Values)
         {
@@ -549,10 +604,40 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
                 absorbedByBase.TryGetValue(baseReleaseId, out var n) ? n + 1 : 1;
         }
 
+        // A hidden variant is counted against one of its parent's surviving
+        // store entries, the lowest release id, for the same reason a
+        // consolidated demo is counted against one base release: the number is
+        // "this entry stands in for N you are not being shown", and adding it
+        // to every entry of a game owned on two stores would report one demo
+        // twice.
+        foreach (var (parentWorkId, count) in absorbedByVariantParent)
+        {
+            long? anchor = null;
+            foreach (var row in rows)
+            {
+                if ((row.ResolvedWorkId != parentWorkId && row.WorkId != parentWorkId)
+                    || consolidated.ContainsKey(row.ReleaseId)
+                    || suppressedVariants.Contains(row.ReleaseId))
+                {
+                    continue;
+                }
+
+                if (anchor is null || row.ReleaseId < anchor)
+                {
+                    anchor = row.ReleaseId;
+                }
+            }
+
+            if (anchor is { } releaseId)
+            {
+                absorbedByBase[releaseId] = absorbedByBase.GetValueOrDefault(releaseId) + count;
+            }
+        }
+
         var survivors = new List<BucketRow>(rows.Count);
         foreach (var row in rows)
         {
-            if (consolidated.ContainsKey(row.ReleaseId))
+            if (consolidated.ContainsKey(row.ReleaseId) || suppressedVariants.Contains(row.ReleaseId))
             {
                 // Suppressed from the LIBRARY VIEW only. The ownership, its
                 // play records, its snapshots and its sessions are untouched
@@ -679,6 +764,7 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
         public long ReleaseId { get; init; }
         public long WorkId { get; init; }
         public long ResolvedWorkId { get; init; }
+        public long? VariantParentWorkId { get; init; }
         public long PlaytimeMinutes { get; init; }
         public DateTime? LastPlayedAt { get; init; }
         public DateTime? MajorUpdateAt { get; init; }

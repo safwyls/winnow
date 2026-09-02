@@ -21,7 +21,35 @@ public sealed record ExpansionCandidateWork(
 /// <param name="Work">The proposed expansion.</param>
 /// <param name="Evidence">What the detector observed about this pair.</param>
 public sealed record ExpansionProposalMember(
-    ExpansionCandidateWork Work, ExpansionEvidence Evidence);
+    ExpansionCandidateWork Work, ExpansionEvidence Evidence)
+{
+    /// <summary>
+    /// The kind the affirmative answer writes, one of
+    /// <see cref="IdentityLinkKinds"/>. <c>expansion_of</c> counts as a title
+    /// and does not roll up playtime (the user's decision of 2026-08-31).
+    /// <c>variant_of</c> does not count as a title while its parent is owned,
+    /// counts when it is the only thing owned, and never rolls up playtime,
+    /// though the variant's own hours stay visible on the parent's modal.
+    /// </summary>
+    public string Kind { get; init; } = IdentityLinkKinds.ExpansionOf;
+
+    /// <summary>
+    /// The source's own word for the relation, one of
+    /// <see cref="RelationLabels"/>, or null when nothing named it. A card
+    /// showing "Demo" or "Remaster" or "Standalone expansion" reads this, not
+    /// <see cref="Kind"/>. Three kinds exist (each defined by the numbers it
+    /// changes, costing a table rebuild); labels are vocabulary and cost
+    /// nothing. IGDB has fifteen type names today and will add more.
+    /// </summary>
+    public string? RelationLabel { get; init; }
+
+    /// <summary>
+    /// True when a storefront proposed this pair rather than the title
+    /// heuristic. The distinction matters for confidence, not for authority:
+    /// it is still a proposal the user may refuse.
+    /// </summary>
+    public bool FromMetadata { get; init; }
+}
 
 /// <summary>
 /// One base game and every expansion proposed under it: one card, one act. The
@@ -115,6 +143,7 @@ public sealed class LibraryExpansionScan
         var refusals = await _refusals.GetAllAsync(ct);
 
         var works = BuildWorks(identities, resolution.SameGame, out var excluded);
+        ResolveClaims(works, identities, resolution.SameGame);
 
         var subjects = new List<ExpansionSubject>(works.Count);
         foreach (var work in works.Values)
@@ -147,7 +176,12 @@ public sealed class LibraryExpansionScan
             }
 
             members.Add(new ExpansionProposalMember(
-                works[proposal.ChildWorkId].Card, proposal.Evidence));
+                works[proposal.ChildWorkId].Card, proposal.Evidence)
+            {
+                Kind = proposal.Kind,
+                RelationLabel = proposal.RelationLabel,
+                FromMetadata = proposal.FromMetadata,
+            });
         }
 
         order.Sort();
@@ -193,6 +227,15 @@ public sealed class LibraryExpansionScan
             return false;
         }
 
+        // The same three answers again, at the variant_of kind. A demo already
+        // grouped under the game it samples is an answered question, and
+        // ux_identity_links_live would refuse a second parent for it anyway.
+        if (resolution.Variants.ParentOf(proposal.ChildWorkId) is not null
+            || resolution.Variants.ParentOf(proposal.BaseWorkId) == proposal.ChildWorkId)
+        {
+            return false;
+        }
+
         // Depth one, half one: a work that already has a live parent of any
         // kind cannot take a second one, and ux_identity_links_live would
         // refuse the write. Asking would produce a card whose answer throws.
@@ -230,9 +273,31 @@ public sealed class LibraryExpansionScan
         var works = new Dictionary<long, Candidate>();
         excluded = 0;
 
+        // The rows the library already hides must not be the rows the queue
+        // offers. GetIdentitiesAsync returns every release as stored, and demo
+        // consolidation runs inside the bucket query, so the scan used to ask
+        // about "Civilization V: Demo", "Rust - Staging Branch" and nine more
+        // that the grid has never once shown, under the word "expansion", which
+        // is wrong twice over. Consolidation is defined over OWNED releases,
+        // exactly as LibraryQueryRepository defines it: a base game the user
+        // does not own cannot hide anything, and removing the base game brings
+        // the demo straight back on the next pass.
+        var suppressed = DemoConsolidation.Consolidate(
+            identities
+                .Where(static i => i.IsOwned)
+                .Select(static i => new DemoConsolidationEntry
+                {
+                    ReleaseId = i.ReleaseId,
+                    Title = i.MatchTitle,
+                    NameIsProvisional = i.NameIsProvisional,
+                    FirstReleaseYear = i.FirstReleaseYear,
+                    SteamAppType = i.SteamAppType,
+                }));
+
         foreach (var identity in identities)
         {
-            if (identity.IsNonGame || identity.NameIsProvisional)
+            if (identity.IsNonGame || identity.NameIsProvisional
+                || suppressed.ContainsKey(identity.ReleaseId))
             {
                 excluded++;
                 continue;
@@ -262,6 +327,80 @@ public sealed class LibraryExpansionScan
         }
 
         return built;
+    }
+
+    /// <summary>
+    /// Turns each work's stored storefront facts into a claim, and each
+    /// claim's external parent reference into a work id.
+    ///
+    /// <para>The parent is stored as the storefront named it (a Steam appid or
+    /// an IGDB game id) because that is the fact the source stated; resolving
+    /// it to a work is a query rather than a stored column. A parent the
+    /// library does not hold resolves to nothing, which is not a failure: the
+    /// claim still refutes a heuristic guess that names a different owned work,
+    /// it simply has no pair to propose.</para>
+    ///
+    /// <para>Storefront facts belong to a work's own row, so a same-game group
+    /// takes them from whichever member carries them: linking a Steam entry to
+    /// its Epic twin must not lose the Steam entry's parent pointer.</para>
+    /// </summary>
+    private static void ResolveClaims(
+        Dictionary<long, Candidate> works,
+        IReadOnlyList<ReleaseIdentity> identities,
+        SameGameResolution resolution)
+    {
+        var byAppId = new Dictionary<string, long>(StringComparer.Ordinal);
+        var byIgdbId = new Dictionary<long, long>();
+
+        foreach (var identity in identities)
+        {
+            var workId = resolution.Resolve(identity.WorkId);
+
+            if (identity.SteamAppId is { Length: > 0 } appId)
+            {
+                byAppId.TryAdd(appId, workId);
+            }
+
+            if (identity.IgdbId is { } igdbId and > 0)
+            {
+                byIgdbId.TryAdd(igdbId, workId);
+            }
+        }
+
+        // The facts belong to the work's OWN row, so a same-game group takes
+        // them from whichever member carries them: linking a Steam entry to its
+        // Epic twin must not lose the Steam entry's parent pointer.
+        var facts = new Dictionary<long, StorefrontFacts>();
+        foreach (var identity in identities)
+        {
+            var workId = resolution.Resolve(identity.WorkId);
+            if (identity.StorefrontFacts.IsEmpty || !works.ContainsKey(workId))
+            {
+                continue;
+            }
+
+            facts.TryAdd(workId, identity.StorefrontFacts);
+        }
+
+        foreach (var (workId, observed) in facts)
+        {
+            if (StorefrontRelation.Read(observed) is not { } claim)
+            {
+                continue;
+            }
+
+            long? parentWorkId = null;
+            if (claim.SteamParentAppId is { } appId && byAppId.TryGetValue(appId, out var fromApp))
+            {
+                parentWorkId = fromApp;
+            }
+            else if (claim.IgdbParentId is { } igdbId && byIgdbId.TryGetValue(igdbId, out var fromIgdb))
+            {
+                parentWorkId = fromIgdb;
+            }
+
+            works[workId].Observe(claim, parentWorkId == workId ? null : parentWorkId);
+        }
     }
 
     /// <summary>
@@ -321,5 +460,9 @@ public sealed class LibraryExpansionScan
             Card = new ExpansionCandidateWork(WorkId, title, _releaseIds);
             return true;
         }
+
+        /// <summary>Attaches the storefront's claim about this work, once the parent has been resolved.</summary>
+        public void Observe(StorefrontClaim claim, long? parentWorkId)
+            => Subject = Subject with { Claim = claim, ClaimedParentWorkId = parentWorkId };
     }
 }

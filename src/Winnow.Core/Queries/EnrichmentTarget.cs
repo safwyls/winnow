@@ -43,6 +43,13 @@ public sealed record EnrichmentTarget
     /// <summary>Whether <c>works.epic_categories</c> is already set (migration 0009).</summary>
     public bool HasEpicCategories { get; init; }
 
+    /// <summary>
+    /// Whether <c>works.igdb_game_type</c> is already set (migration 0022).
+    /// False on every work enriched before the relation fields were requested,
+    /// which is what brings them back for one more pass.
+    /// </summary>
+    public bool HasIgdbGameType { get; init; }
+
     /// <summary>The stored title (release name, falling back to work name).</summary>
     public string Title { get; init; } = string.Empty;
 

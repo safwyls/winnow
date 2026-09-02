@@ -1,0 +1,1777 @@
+{
+ "response": {
+  "store_items": [
+   {
+    "item_type": 0,
+    "id": 65900,
+    "success": 1,
+    "visible": true,
+    "name": "Sid Meier's Civilization® V: Demo",
+    "store_url_path": "app/65900/Sid_Meiers_Civilization_V_Demo",
+    "store_url_slug": "Sid_Meiers_Civilization_V_Demo",
+    "appid": 65900,
+    "type": 1,
+    "is_free": true,
+    "related_items": {
+     "parent_appid": 8930
+    },
+    "tagids": [
+     9
+    ],
+    "categories": {},
+    "basic_info": {
+     "publishers": [
+      {
+       "name": "2K",
+       "creator_clan_account_id": 2428135
+      }
+     ],
+     "developers": [
+      {
+       "name": "Firaxis Games",
+       "creator_clan_account_id": 32844624
+      }
+     ]
+    },
+    "tags": [
+     {
+      "tagid": 9,
+      "weight": 10000
+     }
+    ],
+    "assets": {
+     "asset_url_format": "steam/apps/65900/${FILENAME}?t=1572472479",
+     "small_capsule": "capsule_231x87.jpg",
+     "header": "header.jpg",
+     "header_2x": "header.jpg",
+     "library_capsule": "library_600x900.jpg",
+     "library_capsule_2x": "library_600x900_2x.jpg",
+     "library_hero": "library_hero.jpg",
+     "library_hero_2x": "library_hero_2x.jpg",
+     "community_icon": "fbe80c4743e226f0bf65559c91b12953d4446808",
+     "page_background_path": "app/65900?t=1572472479",
+     "last_modified": 1572472479
+    },
+    "release": {
+     "steam_release_date": 1285078140
+    },
+    "platforms": {
+     "windows": true,
+     "vr_support": {},
+     "steam_deck_compat_category": 0,
+     "steam_os_compat_category": 0,
+     "steam_frame_compat_category": 0,
+     "steam_machine_compat_category": 0
+    }
+   },
+   {
+    "item_type": 0,
+    "id": 8930,
+    "success": 1,
+    "visible": true,
+    "name": "Sid Meier's Civilization® V",
+    "store_url_path": "app/8930/Sid_Meiers_Civilization_V",
+    "store_url_slug": "Sid_Meiers_Civilization_V",
+    "appid": 8930,
+    "type": 0,
+    "related_items": {
+     "demo_appid": [
+      65900
+     ],
+     "demos": [
+      {
+       "appid": 65900,
+       "show_above_purchase": false
+      }
+     ]
+    },
+    "tagids": [
+     1741,
+     9,
+     1677,
+     3859,
+     3987,
+     1670,
+     4190,
+     4182,
+     1717,
+     4364,
+     4711,
+     1685,
+     4695,
+     1708,
+     6310,
+     1669,
+     599,
+     1693,
+     1756,
+     25085
+    ],
+    "categories": {
+     "supported_player_categoryids": [
+      2,
+      1
+     ],
+     "feature_categoryids": [
+      22,
+      29,
+      23,
+      42,
+      62
+     ]
+    },
+    "basic_info": {
+     "short_description": "Create, discover, and download new player-created maps, scenarios, interfaces, and more!",
+     "publishers": [
+      {
+       "name": "2K",
+       "creator_clan_account_id": 2428135
+      },
+      {
+       "name": "Aspyr (Mac)",
+       "creator_clan_account_id": 31936442
+      },
+      {
+       "name": "Aspyr (Linux)",
+       "creator_clan_account_id": 31936442
+      }
+     ],
+     "developers": [
+      {
+       "name": "Firaxis Games",
+       "creator_clan_account_id": 32844624
+      },
+      {
+       "name": "Aspyr (Mac)",
+       "creator_clan_account_id": 31936442
+      },
+      {
+       "name": "Aspyr (Linux)",
+       "creator_clan_account_id": 31936442
+      }
+     ],
+     "franchises": [
+      {
+       "name": "Sid Meier's Civilization",
+       "creator_clan_account_id": 33339585
+      }
+     ],
+     "capsule_headline": "#msg_on_sale_now"
+    },
+    "tags": [
+     {
+      "tagid": 1741,
+      "weight": 1638
+     },
+     {
+      "tagid": 9,
+      "weight": 1440
+     },
+     {
+      "tagid": 1677,
+      "weight": 849
+     },
+     {
+      "tagid": 3859,
+      "weight": 796
+     },
+     {
+      "tagid": 3987,
+      "weight": 723
+     },
+     {
+      "tagid": 1670,
+      "weight": 573
+     },
+     {
+      "tagid": 4190,
+      "weight": 560
+     },
+     {
+      "tagid": 4182,
+      "weight": 532
+     },
+     {
+      "tagid": 1717,
+      "weight": 437
+     },
+     {
+      "tagid": 4364,
+      "weight": 353
+     },
+     {
+      "tagid": 4711,
+      "weight": 280
+     },
+     {
+      "tagid": 1685,
+      "weight": 260
+     },
+     {
+      "tagid": 4695,
+      "weight": 247
+     },
+     {
+      "tagid": 1708,
+      "weight": 244
+     },
+     {
+      "tagid": 6310,
+      "weight": 232
+     },
+     {
+      "tagid": 1669,
+      "weight": 212
+     },
+     {
+      "tagid": 599,
+      "weight": 204
+     },
+     {
+      "tagid": 1693,
+      "weight": 157
+     },
+     {
+      "tagid": 1756,
+      "weight": 154
+     },
+     {
+      "tagid": 25085,
+      "weight": 100
+     }
+    ],
+    "assets": {
+     "asset_url_format": "steam/apps/8930/${FILENAME}?t=1724341158",
+     "main_capsule": "capsule_616x353.jpg",
+     "small_capsule": "capsule_231x87.jpg",
+     "header": "header.jpg",
+     "library_capsule": "library_600x900.jpg",
+     "library_capsule_2x": "library_600x900_2x.jpg",
+     "library_hero": "library_hero.jpg",
+     "library_hero_2x": "library_hero_2x.jpg",
+     "community_icon": "fbe80c4743e226f0bf65559c91b12953d4446808",
+     "page_background_path": "app/8930?t=1724341158",
+     "last_modified": 1724341158
+    },
+    "release": {
+     "steam_release_date": 1285077060,
+     "mac_release_date": 1290487140,
+     "linux_release_date": 1402550400
+    },
+    "platforms": {
+     "windows": true,
+     "mac": true,
+     "steamos_linux": true,
+     "vr_support": {},
+     "steam_deck_compat_category": 2,
+     "steam_os_compat_category": 2,
+     "steam_frame_compat_category": 0,
+     "steam_machine_compat_category": 2
+    },
+    "best_purchase_option": {
+     "packageid": 6146,
+     "purchase_option_name": "Sid Meier's Civilization V",
+     "final_price_in_cents": "2999",
+     "formatted_final_price": "$29.99",
+     "user_can_purchase_as_gift": true,
+     "hide_discount_pct_for_compliance": false,
+     "included_game_count": 1,
+     "must_purchase_as_set": false,
+     "package_group": "default",
+     "price_cannot_be_displayed_as_discount": false
+    }
+   },
+   {
+    "item_type": 0,
+    "id": 1875460,
+    "success": 1,
+    "visible": true,
+    "name": "Midnight Ghost Hunt Playtest",
+    "store_url_path": "app/1875460/Midnight_Ghost_Hunt_Playtest",
+    "store_url_slug": "Midnight_Ghost_Hunt_Playtest",
+    "appid": 1875460,
+    "type": 12,
+    "related_items": {
+     "parent_appid": 915810
+    },
+    "categories": {},
+    "basic_info": {},
+    "assets": {
+     "asset_url_format": "steam/apps/1875460/${FILENAME}?t=1643307379",
+     "main_capsule": "capsule_616x353.jpg",
+     "small_capsule": "capsule_231x87.jpg",
+     "header": "header.jpg",
+     "header_2x": "header.jpg",
+     "hero_capsule": "hero_capsule.jpg",
+     "library_capsule": "library_600x900.jpg",
+     "library_capsule_2x": "library_600x900_2x.jpg",
+     "library_hero": "library_hero.jpg",
+     "library_hero_2x": "library_hero_2x.jpg",
+     "community_icon": "8a5d189d042482d800101866b8e4fb4356474713",
+     "page_background_path": "app/1875460?t=1643307379",
+     "last_modified": 1643307379
+    },
+    "release": {
+     "steam_release_date": 1643307375
+    },
+    "platforms": {
+     "windows": true,
+     "vr_support": {},
+     "steam_deck_compat_category": 0,
+     "steam_os_compat_category": 0,
+     "steam_frame_compat_category": 0,
+     "steam_machine_compat_category": 0
+    }
+   },
+   {
+    "item_type": 0,
+    "id": 915810,
+    "success": 1,
+    "visible": true,
+    "name": "Midnight Ghost Hunt",
+    "store_url_path": "app/915810/Midnight_Ghost_Hunt",
+    "store_url_slug": "Midnight_Ghost_Hunt",
+    "appid": 915810,
+    "type": 0,
+    "tagids": [
+     3859,
+     3993,
+     5711,
+     10808,
+     1775,
+     1663,
+     3839,
+     19,
+     1774,
+     6691,
+     492,
+     3942,
+     1667,
+     1719,
+     4175,
+     1708,
+     4191,
+     1685,
+     3814,
+     7481
+    ],
+    "categories": {
+     "supported_player_categoryids": [
+      1,
+      49,
+      36,
+      27
+     ],
+     "feature_categoryids": [
+      22,
+      29,
+      23,
+      62
+     ],
+     "controller_categoryids": [
+      18
+     ]
+    },
+    "basic_info": {
+     "short_description": "The chaotic multiplayer hide-and-seek game. Possess seemingly harmless objects as Ghosts or chase them down as Hunters before the clock strikes midnight!",
+     "publishers": [
+      {
+       "name": "Coffee Stain Publishing",
+       "creator_clan_account_id": 32965813
+      }
+     ],
+     "developers": [
+      {
+       "name": "Vaulted Sky Games",
+       "creator_clan_account_id": 44070722
+      }
+     ],
+     "franchises": [
+      {
+       "name": "Coffee Stain Publishing",
+       "creator_clan_account_id": 32965813
+      }
+     ]
+    },
+    "tags": [
+     {
+      "tagid": 3859,
+      "weight": 662
+     },
+     {
+      "tagid": 3993,
+      "weight": 599
+     },
+     {
+      "tagid": 5711,
+      "weight": 585
+     },
+     {
+      "tagid": 10808,
+      "weight": 555
+     },
+     {
+      "tagid": 1775,
+      "weight": 549
+     },
+     {
+      "tagid": 1663,
+      "weight": 541
+     },
+     {
+      "tagid": 3839,
+      "weight": 539
+     },
+     {
+      "tagid": 19,
+      "weight": 516
+     },
+     {
+      "tagid": 1774,
+      "weight": 501
+     },
+     {
+      "tagid": 6691,
+      "weight": 490
+     },
+     {
+      "tagid": 492,
+      "weight": 486
+     },
+     {
+      "tagid": 3942,
+      "weight": 469
+     },
+     {
+      "tagid": 1667,
+      "weight": 465
+     },
+     {
+      "tagid": 1719,
+      "weight": 453
+     },
+     {
+      "tagid": 4175,
+      "weight": 453
+     },
+     {
+      "tagid": 1708,
+      "weight": 436
+     },
+     {
+      "tagid": 4191,
+      "weight": 434
+     },
+     {
+      "tagid": 1685,
+      "weight": 432
+     },
+     {
+      "tagid": 3814,
+      "weight": 417
+     },
+     {
+      "tagid": 7481,
+      "weight": 407
+     }
+    ],
+    "assets": {
+     "asset_url_format": "steam/apps/915810/${FILENAME}?t=1723598682",
+     "main_capsule": "capsule_616x353.jpg",
+     "small_capsule": "capsule_231x87.jpg",
+     "header": "header.jpg",
+     "hero_capsule": "hero_capsule.jpg",
+     "library_capsule": "library_600x900.jpg",
+     "library_capsule_2x": "library_600x900_2x.jpg",
+     "library_hero": "library_hero.jpg",
+     "library_hero_2x": "library_hero_2x.jpg",
+     "community_icon": "8a5d189d042482d800101866b8e4fb4356474713",
+     "page_background_path": "app/915810?t=1723598682",
+     "last_modified": 1723598682
+    },
+    "release": {
+     "steam_release_date": 1711040635,
+     "original_steam_release_date": 1648742371
+    },
+    "platforms": {
+     "windows": true,
+     "vr_support": {},
+     "steam_deck_compat_category": 1,
+     "steam_os_compat_category": 2,
+     "steam_frame_compat_category": 0,
+     "steam_machine_compat_category": 0
+    },
+    "best_purchase_option": {
+     "packageid": 293984,
+     "purchase_option_name": "Midnight Ghost Hunt",
+     "final_price_in_cents": "1999",
+     "formatted_final_price": "$19.99",
+     "user_can_purchase_as_gift": true,
+     "hide_discount_pct_for_compliance": false,
+     "included_game_count": 1,
+     "must_purchase_as_set": false,
+     "package_group": "default",
+     "price_cannot_be_displayed_as_discount": false
+    }
+   },
+   {
+    "item_type": 0,
+    "id": 100,
+    "success": 1,
+    "visible": true,
+    "name": "Counter-Strike: Condition Zero Deleted Scenes",
+    "store_url_path": "app/100/CounterStrike_Condition_Zero_Deleted_Scenes",
+    "store_url_slug": "CounterStrike_Condition_Zero_Deleted_Scenes",
+    "appid": 100,
+    "type": 14,
+    "related_items": {
+     "parent_appid": 80
+    },
+    "tagids": [
+     19
+    ],
+    "categories": {
+     "feature_categoryids": [
+      62
+     ]
+    },
+    "basic_info": {
+     "publishers": [
+      {
+       "name": "Valve",
+       "creator_clan_account_id": 4
+      }
+     ],
+     "developers": [
+      {
+       "name": "Valve",
+       "creator_clan_account_id": 4
+      }
+     ]
+    },
+    "tags": [
+     {
+      "tagid": 19,
+      "weight": 10000
+     }
+    ],
+    "assets": {
+     "asset_url_format": "steam/apps/100/${FILENAME}?t=1568937647",
+     "small_capsule": "capsule_231x87.jpg",
+     "header": "header.jpg",
+     "header_2x": "header.jpg",
+     "library_capsule": "library_600x900.jpg",
+     "library_capsule_2x": "library_600x900_2x.jpg",
+     "library_hero": "library_hero.jpg",
+     "community_icon": "077b050ef3e89cd84e2c5a575d78d53b54058236",
+     "page_background_path": "app/100?t=1568937647",
+     "last_modified": 1568937647
+    },
+    "release": {},
+    "platforms": {
+     "windows": true,
+     "vr_support": {},
+     "steam_deck_compat_category": 2,
+     "steam_os_compat_category": 2,
+     "steam_frame_compat_category": 0,
+     "steam_machine_compat_category": 2
+    }
+   },
+   {
+    "item_type": 0,
+    "id": 34450,
+    "success": 1,
+    "visible": true,
+    "name": "Sid Meier's Civilization IV: Warlords",
+    "store_url_path": "app/34450/Sid_Meiers_Civilization_IV_Warlords",
+    "store_url_slug": "Sid_Meiers_Civilization_IV_Warlords",
+    "appid": 34450,
+    "type": 14,
+    "related_items": {
+     "parent_appid": 3990
+    },
+    "tagids": [
+     9
+    ],
+    "categories": {
+     "feature_categoryids": [
+      62
+     ]
+    },
+    "basic_info": {
+     "developers": [
+      {
+       "name": "Firaxis Games",
+       "creator_clan_account_id": 32844624
+      }
+     ]
+    },
+    "tags": [
+     {
+      "tagid": 9,
+      "weight": 10000
+     }
+    ],
+    "assets": {
+     "asset_url_format": "steam/apps/34450/${FILENAME}?t=1568916845",
+     "small_capsule": "capsule_231x87.jpg",
+     "header": "header.jpg",
+     "header_2x": "header.jpg",
+     "library_capsule": "library_600x900.jpg",
+     "library_capsule_2x": "library_600x900_2x.jpg",
+     "library_hero": "library_hero.jpg",
+     "library_hero_2x": "library_hero_2x.jpg",
+     "community_icon": "28e3eba4963b092268944d98ff1eda2044bb4ccf",
+     "page_background_path": "app/34450?t=1568916845",
+     "last_modified": 1568916845
+    },
+    "release": {},
+    "platforms": {
+     "windows": true,
+     "vr_support": {},
+     "steam_deck_compat_category": 0,
+     "steam_os_compat_category": 0,
+     "steam_frame_compat_category": 0,
+     "steam_machine_compat_category": 0
+    },
+    "store_url_path_override": "http://store.steampowered.com/app/3990/"
+   },
+   {
+    "item_type": 0,
+    "id": 224580,
+    "success": 1,
+    "visible": true,
+    "name": "Arma II: DayZ Mod",
+    "store_url_path": "app/224580/Arma_II_DayZ_Mod",
+    "store_url_slug": "Arma_II_DayZ_Mod",
+    "appid": 224580,
+    "type": 2,
+    "is_free": true,
+    "related_items": {
+     "parent_appid": 33930
+    },
+    "tagids": [
+     1659,
+     1662,
+     19,
+     599,
+     3859,
+     1695,
+     9,
+     113,
+     1774,
+     21,
+     5348,
+     1663,
+     5900,
+     128,
+     1685,
+     1667,
+     3814,
+     3810,
+     122,
+     1669
+    ],
+    "categories": {
+     "supported_player_categoryids": [
+      1,
+      9
+     ],
+     "feature_categoryids": [
+      62
+     ],
+     "controller_categoryids": [
+      18
+     ]
+    },
+    "basic_info": {
+     "short_description": "Join the scores of desperate survivors in the free Arma 2 DayZ Mod, the award-winning and massively popular persistent multiplayer mod for Arma 2: Combined Operations!",
+     "publishers": [
+      {
+       "name": "Bohemia Interactive",
+       "creator_clan_account_id": 32984825
+      }
+     ],
+     "developers": [
+      {
+       "name": "Bohemia Interactive",
+       "creator_clan_account_id": 32984825
+      }
+     ],
+     "capsule_headline": "Mod for Arma II Now Available!"
+    },
+    "tags": [
+     {
+      "tagid": 1659,
+      "weight": 1346
+     },
+     {
+      "tagid": 1662,
+      "weight": 1133
+     },
+     {
+      "tagid": 19,
+      "weight": 915
+     },
+     {
+      "tagid": 599,
+      "weight": 735
+     },
+     {
+      "tagid": 3859,
+      "weight": 711
+     },
+     {
+      "tagid": 1695,
+      "weight": 671
+     },
+     {
+      "tagid": 9,
+      "weight": 537
+     },
+     {
+      "tagid": 113,
+      "weight": 512
+     },
+     {
+      "tagid": 1774,
+      "weight": 405
+     },
+     {
+      "tagid": 21,
+      "weight": 366
+     },
+     {
+      "tagid": 5348,
+      "weight": 355
+     },
+     {
+      "tagid": 1663,
+      "weight": 326
+     },
+     {
+      "tagid": 5900,
+      "weight": 304
+     },
+     {
+      "tagid": 128,
+      "weight": 266
+     },
+     {
+      "tagid": 1685,
+      "weight": 263
+     },
+     {
+      "tagid": 1667,
+      "weight": 253
+     },
+     {
+      "tagid": 3814,
+      "weight": 244
+     },
+     {
+      "tagid": 3810,
+      "weight": 236
+     },
+     {
+      "tagid": 122,
+      "weight": 215
+     },
+     {
+      "tagid": 1669,
+      "weight": 197
+     }
+    ],
+    "assets": {
+     "asset_url_format": "steam/apps/224580/${FILENAME}?t=1748434954",
+     "main_capsule": "capsule_616x353.jpg",
+     "small_capsule": "capsule_231x87.jpg",
+     "header": "header.jpg",
+     "library_capsule": "library_600x900.jpg",
+     "library_capsule_2x": "library_600x900_2x.jpg",
+     "library_hero": "library_hero.jpg",
+     "community_icon": "53ab951dfb3b53658da80dbb0f9e199215a0ed47",
+     "page_background_path": "app/224580?t=1748434954",
+     "last_modified": 1748434954
+    },
+    "release": {
+     "steam_release_date": 1361440080
+    },
+    "platforms": {
+     "windows": true,
+     "vr_support": {},
+     "steam_deck_compat_category": 2,
+     "steam_os_compat_category": 2,
+     "steam_frame_compat_category": 0,
+     "steam_machine_compat_category": 2
+    }
+   },
+   {
+    "item_type": 0,
+    "id": 400430,
+    "success": 1,
+    "visible": true,
+    "name": "The Vanishing of Ethan Carter Redux",
+    "store_url_path": "app/400430/The_Vanishing_of_Ethan_Carter_Redux",
+    "store_url_slug": "The_Vanishing_of_Ethan_Carter_Redux",
+    "appid": 400430,
+    "type": 4,
+    "related_items": {
+     "parent_appid": 258520
+    },
+    "tagids": [
+     21,
+     492,
+     5900,
+     1742,
+     1667,
+     5613,
+     4166,
+     5716,
+     1664,
+     3834,
+     3839,
+     7432
+    ],
+    "categories": {
+     "supported_player_categoryids": [
+      2
+     ],
+     "feature_categoryids": [
+      22,
+      29,
+      23,
+      62
+     ],
+     "controller_categoryids": [
+      28
+     ]
+    },
+    "basic_info": {
+     "developers": [
+      {
+       "name": "The Astronauts"
+      }
+     ]
+    },
+    "tags": [
+     {
+      "tagid": 21,
+      "weight": 3286
+     },
+     {
+      "tagid": 492,
+      "weight": 3033
+     },
+     {
+      "tagid": 5900,
+      "weight": 674
+     },
+     {
+      "tagid": 1742,
+      "weight": 449
+     },
+     {
+      "tagid": 1667,
+      "weight": 421
+     },
+     {
+      "tagid": 5613,
+      "weight": 421
+     },
+     {
+      "tagid": 4166,
+      "weight": 393
+     },
+     {
+      "tagid": 5716,
+      "weight": 365
+     },
+     {
+      "tagid": 1664,
+      "weight": 337
+     },
+     {
+      "tagid": 3834,
+      "weight": 280
+     },
+     {
+      "tagid": 3839,
+      "weight": 168
+     },
+     {
+      "tagid": 7432,
+      "weight": 168
+     }
+    ],
+    "assets": {
+     "asset_url_format": "steam/apps/400430/${FILENAME}?t=1739195599",
+     "main_capsule": "capsule_616x353.jpg",
+     "small_capsule": "capsule_231x87.jpg",
+     "header": "header.jpg",
+     "page_background": "page_bg_generated_v6b.jpg",
+     "library_capsule": "library_600x900.jpg",
+     "library_capsule_2x": "library_600x900_2x.jpg",
+     "library_hero": "library_hero.jpg",
+     "library_hero_2x": "library_hero_2x.jpg",
+     "community_icon": "1385cf04f3625f1281c964f070cc6eaeb5642cd3",
+     "page_background_path": "app/400430?t=1739195599",
+     "raw_page_background": "page_bg_raw.jpg",
+     "last_modified": 1739195599
+    },
+    "release": {},
+    "platforms": {
+     "windows": true,
+     "vr_support": {},
+     "steam_deck_compat_category": 3,
+     "steam_os_compat_category": 2,
+     "steam_frame_compat_category": 0,
+     "steam_machine_compat_category": 3
+    }
+   },
+   {
+    "item_type": 0,
+    "id": 3900,
+    "success": 1,
+    "visible": true,
+    "name": "Sid Meier's Civilization® IV",
+    "store_url_path": "app/3900/Sid_Meiers_Civilization_IV",
+    "store_url_slug": "Sid_Meiers_Civilization_IV",
+    "appid": 3900,
+    "type": 0,
+    "related_items": {
+     "parent_appid": 3900
+    },
+    "tagids": [
+     9,
+     1741,
+     1677,
+     1670,
+     3987,
+     3859,
+     4182,
+     1669,
+     4364,
+     1693,
+     4190,
+     4711,
+     599,
+     8945,
+     1756,
+     1678,
+     4695,
+     1708,
+     12472,
+     7368
+    ],
+    "categories": {
+     "supported_player_categoryids": [
+      2,
+      1
+     ],
+     "feature_categoryids": [
+      17,
+      62
+     ]
+    },
+    "basic_info": {
+     "publishers": [
+      {
+       "name": "2K",
+       "creator_clan_account_id": 2428135
+      }
+     ],
+     "developers": [
+      {
+       "name": "Firaxis Games",
+       "creator_clan_account_id": 32844624
+      }
+     ],
+     "franchises": [
+      {
+       "name": "Sid Meier's Civilization",
+       "creator_clan_account_id": 33339585
+      }
+     ]
+    },
+    "tags": [
+     {
+      "tagid": 9,
+      "weight": 1743
+     },
+     {
+      "tagid": 1741,
+      "weight": 1258
+     },
+     {
+      "tagid": 1677,
+      "weight": 1045
+     },
+     {
+      "tagid": 1670,
+      "weight": 894
+     },
+     {
+      "tagid": 3987,
+      "weight": 773
+     },
+     {
+      "tagid": 3859,
+      "weight": 663
+     },
+     {
+      "tagid": 4182,
+      "weight": 548
+     },
+     {
+      "tagid": 1669,
+      "weight": 409
+     },
+     {
+      "tagid": 4364,
+      "weight": 386
+     },
+     {
+      "tagid": 1693,
+      "weight": 334
+     },
+     {
+      "tagid": 4190,
+      "weight": 288
+     },
+     {
+      "tagid": 4711,
+      "weight": 248
+     },
+     {
+      "tagid": 599,
+      "weight": 236
+     },
+     {
+      "tagid": 8945,
+      "weight": 236
+     },
+     {
+      "tagid": 1756,
+      "weight": 202
+     },
+     {
+      "tagid": 1678,
+      "weight": 196
+     },
+     {
+      "tagid": 4695,
+      "weight": 173
+     },
+     {
+      "tagid": 1708,
+      "weight": 167
+     },
+     {
+      "tagid": 12472,
+      "weight": 144
+     },
+     {
+      "tagid": 7368,
+      "weight": 46
+     }
+    ],
+    "assets": {
+     "asset_url_format": "steam/apps/3900/${FILENAME}?t=1724341287",
+     "main_capsule": "capsule_616x353.jpg",
+     "small_capsule": "capsule_231x87.jpg",
+     "header": "header.jpg",
+     "library_capsule": "library_600x900.jpg",
+     "library_capsule_2x": "library_600x900_2x.jpg",
+     "library_hero": "library_hero.jpg",
+     "library_hero_2x": "library_hero_2x.jpg",
+     "community_icon": "297dc4f925d412fd0f8fe6f065dff58272e1b481",
+     "page_background_path": "app/3900?t=1724341287",
+     "last_modified": 1724341287
+    },
+    "release": {
+     "steam_release_date": 1161823860,
+     "original_release_date": 1130223600,
+     "mac_release_date": 1273687200
+    },
+    "platforms": {
+     "windows": true,
+     "mac": true,
+     "vr_support": {},
+     "steam_deck_compat_category": 2,
+     "steam_os_compat_category": 2,
+     "steam_frame_compat_category": 0,
+     "steam_machine_compat_category": 2
+    },
+    "best_purchase_option": {
+     "packageid": 4319,
+     "purchase_option_name": "Sid Meier's Civilization IV",
+     "final_price_in_cents": "1999",
+     "formatted_final_price": "$19.99",
+     "user_can_purchase_as_gift": true,
+     "hide_discount_pct_for_compliance": false,
+     "included_game_count": 1,
+     "must_purchase_as_set": false,
+     "package_group": "default",
+     "price_cannot_be_displayed_as_discount": false
+    }
+   },
+   {
+    "item_type": 0,
+    "id": 42910,
+    "success": 1,
+    "visible": true,
+    "name": "Magicka",
+    "store_url_path": "app/42910/Magicka",
+    "store_url_slug": "Magicka",
+    "appid": 42910,
+    "type": 0,
+    "related_items": {
+     "demo_appid": [
+      73050
+     ],
+     "demos": [
+      {
+       "appid": 73050,
+       "show_above_purchase": true
+      }
+     ]
+    },
+    "tagids": [
+     1719,
+     1685,
+     19,
+     1684,
+     4057,
+     3843,
+     3859,
+     122,
+     21,
+     4136,
+     3841,
+     4840,
+     492,
+     7368,
+     4182,
+     4026,
+     4231,
+     5711,
+     1773,
+     9
+    ],
+    "categories": {
+     "supported_player_categoryids": [
+      2,
+      1,
+      9,
+      24
+     ],
+     "feature_categoryids": [
+      22,
+      29,
+      25,
+      41,
+      42,
+      43,
+      44,
+      62
+     ],
+     "controller_categoryids": [
+      28
+     ]
+    },
+    "basic_info": {
+     "short_description": "Magicka is a satirical action-adventure game set in a rich fantasy world based on Norse mythology. The player assumes the role of a wizard from a sacred order tasked with stopping an evil sorcerer who has thrown the world into turmoil, his foul creations besieging the forces of good. \r\n\t\t\t\t\t\tPlayers will be able to combine the elements to cast spells, wreaking havoc and devastation on the minions of darkness. They will also be able to team up with friends and fight their way through the campaign, or test their skills in the magickal arts through other challenging modes. \r\n\t\t\t\t\t\tIn Magicka, up to four players take on a grand adventure to save their world from certain doom using a fully dynamic spell system. The adventure mode takes the players across three different levels, ranging from the lush forests of mountain valleys to the frozen halls of the Mountain King where wits and creative thinking are the keys to victory.",
+     "publishers": [
+      {
+       "name": "Paradox Interactive",
+       "creator_clan_account_id": 6859167
+      }
+     ],
+     "developers": [
+      {
+       "name": "Arrowhead Game Studios",
+       "creator_clan_account_id": 33602140
+      }
+     ],
+     "franchises": [
+      {
+       "name": "Magicka",
+       "creator_clan_account_id": 35274973
+      }
+     ],
+     "capsule_headline": "Play With Your Friends"
+    },
+    "tags": [
+     {
+      "tagid": 1719,
+      "weight": 1183
+     },
+     {
+      "tagid": 1685,
+      "weight": 1044
+     },
+     {
+      "tagid": 19,
+      "weight": 985
+     },
+     {
+      "tagid": 1684,
+      "weight": 779
+     },
+     {
+      "tagid": 4057,
+      "weight": 724
+     },
+     {
+      "tagid": 3843,
+      "weight": 714
+     },
+     {
+      "tagid": 3859,
+      "weight": 702
+     },
+     {
+      "tagid": 122,
+      "weight": 697
+     },
+     {
+      "tagid": 21,
+      "weight": 627
+     },
+     {
+      "tagid": 4136,
+      "weight": 547
+     },
+     {
+      "tagid": 3841,
+      "weight": 397
+     },
+     {
+      "tagid": 4840,
+      "weight": 249
+     },
+     {
+      "tagid": 492,
+      "weight": 227
+     },
+     {
+      "tagid": 7368,
+      "weight": 226
+     },
+     {
+      "tagid": 4182,
+      "weight": 196
+     },
+     {
+      "tagid": 4026,
+      "weight": 194
+     },
+     {
+      "tagid": 4231,
+      "weight": 142
+     },
+     {
+      "tagid": 5711,
+      "weight": 142
+     },
+     {
+      "tagid": 1773,
+      "weight": 115
+     },
+     {
+      "tagid": 9,
+      "weight": 99
+     }
+    ],
+    "assets": {
+     "asset_url_format": "steam/apps/42910/${FILENAME}?t=1726497076",
+     "main_capsule": "capsule_616x353.jpg",
+     "small_capsule": "capsule_231x87.jpg",
+     "header": "header.jpg",
+     "hero_capsule": "hero_capsule.jpg",
+     "library_capsule": "library_600x900.jpg",
+     "library_capsule_2x": "library_600x900_2x.jpg",
+     "library_hero": "library_hero.jpg",
+     "library_hero_2x": "library_hero_2x.jpg",
+     "community_icon": "0eb97d0cd644ee08b1339d2160c7a6adf2ea0a65",
+     "page_background_path": "app/42910?t=1726497076",
+     "last_modified": 1726497076
+    },
+    "release": {
+     "steam_release_date": 1295970660
+    },
+    "platforms": {
+     "windows": true,
+     "vr_support": {},
+     "steam_deck_compat_category": 2,
+     "steam_os_compat_category": 2,
+     "steam_frame_compat_category": 0,
+     "steam_machine_compat_category": 2
+    },
+    "best_purchase_option": {
+     "packageid": 7254,
+     "purchase_option_name": "Magicka",
+     "final_price_in_cents": "999",
+     "formatted_final_price": "$9.99",
+     "user_can_purchase_as_gift": true,
+     "hide_discount_pct_for_compliance": false,
+     "included_game_count": 1,
+     "must_purchase_as_set": false,
+     "package_group": "default",
+     "price_cannot_be_displayed_as_discount": false
+    }
+   },
+   {
+    "item_type": 0,
+    "id": 73050,
+    "success": 1,
+    "visible": true,
+    "name": "Magicka Demo",
+    "store_url_path": "app/73050/Magicka_Demo",
+    "store_url_slug": "Magicka_Demo",
+    "appid": 73050,
+    "type": 1,
+    "related_items": {
+     "parent_appid": 42910
+    },
+    "tagids": [
+     19,
+     122
+    ],
+    "categories": {
+     "supported_player_categoryids": [
+      2,
+      1,
+      9
+     ]
+    },
+    "basic_info": {
+     "short_description": "Magicka is a satirical action-adventure game set in a rich fantasy world. Assume the role of a wizard tasked with stopping an evil sorcerer who has thrown the world into turmoil.",
+     "developers": [
+      {
+       "name": "Arrowhead Game Studios",
+       "creator_clan_account_id": 33602140
+      }
+     ]
+    },
+    "tags": [
+     {
+      "tagid": 19,
+      "weight": 5000
+     },
+     {
+      "tagid": 122,
+      "weight": 5000
+     }
+    ],
+    "assets": {
+     "asset_url_format": "steam/apps/73050/${FILENAME}?t=1447353871",
+     "small_capsule": "capsule_231x87.jpg",
+     "header": "header.jpg",
+     "header_2x": "header.jpg",
+     "library_capsule": "portrait.png",
+     "community_icon": "0eb97d0cd644ee08b1339d2160c7a6adf2ea0a65",
+     "page_background_path": "app/73050?t=1447353871",
+     "last_modified": 1447353871
+    },
+    "release": {
+     "steam_release_date": 1295915940
+    },
+    "platforms": {
+     "windows": true,
+     "vr_support": {},
+     "steam_deck_compat_category": 0,
+     "steam_os_compat_category": 0,
+     "steam_frame_compat_category": 0,
+     "steam_machine_compat_category": 0
+    }
+   },
+   {
+    "item_type": 0,
+    "id": 3107230,
+    "success": 1,
+    "visible": true,
+    "name": "Pantheon: Rise of the Fallen",
+    "store_url_path": "app/3107230/Pantheon_Rise_of_the_Fallen",
+    "store_url_slug": "Pantheon_Rise_of_the_Fallen",
+    "appid": 3107230,
+    "type": 0,
+    "is_early_access": true,
+    "related_items": {
+     "playtests": [
+      {
+       "appid": 4709660,
+       "is_open": true
+      }
+     ]
+    },
+    "tagids": [
+     21,
+     122,
+     1754,
+     4106,
+     128,
+     4191,
+     1684,
+     493,
+     1695,
+     4252,
+     4747,
+     3859,
+     1742,
+     492,
+     3843,
+     6730
+    ],
+    "categories": {
+     "supported_player_categoryids": [
+      1,
+      20,
+      49,
+      36,
+      9,
+      38
+     ],
+     "feature_categoryids": [
+      62
+     ]
+    },
+    "basic_info": {
+     "short_description": "Pantheon: Rise of the Fallen is a deeply social high fantasy MMORPG that challenges its players and rewards effort. Join the denizens of Terminus to uncover the mysteries of a world divided by Celestial loyalty… and betrayal.",
+     "publishers": [
+      {
+       "name": "Visionary Realms"
+      }
+     ],
+     "developers": [
+      {
+       "name": "Visionary Realms"
+      }
+     ]
+    },
+    "tags": [
+     {
+      "tagid": 21,
+      "weight": 1232
+     },
+     {
+      "tagid": 122,
+      "weight": 1138
+     },
+     {
+      "tagid": 1754,
+      "weight": 904
+     },
+     {
+      "tagid": 4106,
+      "weight": 748
+     },
+     {
+      "tagid": 128,
+      "weight": 702
+     },
+     {
+      "tagid": 4191,
+      "weight": 639
+     },
+     {
+      "tagid": 1684,
+      "weight": 639
+     },
+     {
+      "tagid": 493,
+      "weight": 530
+     },
+     {
+      "tagid": 1695,
+      "weight": 530
+     },
+     {
+      "tagid": 4252,
+      "weight": 514
+     },
+     {
+      "tagid": 4747,
+      "weight": 514
+     },
+     {
+      "tagid": 3859,
+      "weight": 452
+     },
+     {
+      "tagid": 1742,
+      "weight": 390
+     },
+     {
+      "tagid": 492,
+      "weight": 390
+     },
+     {
+      "tagid": 3843,
+      "weight": 390
+     },
+     {
+      "tagid": 6730,
+      "weight": 280
+     }
+    ],
+    "assets": {
+     "asset_url_format": "steam/apps/3107230/${FILENAME}?t=1778694658",
+     "main_capsule": "b9d12c86a8985323d7e2021fe20d04cd771e02dd/capsule_616x353.jpg",
+     "main_capsule_2x": "b9d12c86a8985323d7e2021fe20d04cd771e02dd/capsule_616x353_2x.jpg",
+     "small_capsule": "54711732ab0f675de9eaf05145a9cbc4fdedb75d/capsule_231x87.jpg",
+     "small_capsule_2x": "54711732ab0f675de9eaf05145a9cbc4fdedb75d/capsule_231x87_2x.jpg",
+     "header": "d035e24caff895b5816a861361b4acd84990d5f9/header.jpg",
+     "header_2x": "d035e24caff895b5816a861361b4acd84990d5f9/header_2x.jpg",
+     "page_background": "6f6b8f500a934340c0c1fef32e80e5605182058e/page_bg_v6.jpg",
+     "hero_capsule": "ebe83b6a2d9e8528d872588c55b8c7728282c94c/hero_capsule.jpg",
+     "hero_capsule_2x": "ebe83b6a2d9e8528d872588c55b8c7728282c94c/hero_capsule_2x.jpg",
+     "library_capsule": "7aaa9e725638aa1b74e5380c7c69c89ae8c095c9/library_600x900.jpg",
+     "library_hero": "b1a770db949026bf5a5cd1852b3e74be1fc6a94b/library_hero.jpg",
+     "library_hero_2x": "b1a770db949026bf5a5cd1852b3e74be1fc6a94b/library_hero_2x.jpg",
+     "community_icon": "d351df57e0eab56c9376b16b57331d42d481c968",
+     "page_background_path": "app/3107230?t=1778694658",
+     "raw_page_background": "6f6b8f500a934340c0c1fef32e80e5605182058e/page_bg_raw.jpg",
+     "last_modified": 1778694658
+    },
+    "release": {
+     "steam_release_date": 1734105081,
+     "is_early_access": true
+    },
+    "platforms": {
+     "windows": true,
+     "vr_support": {},
+     "steam_deck_compat_category": 1,
+     "steam_os_compat_category": 2,
+     "steam_frame_compat_category": 0,
+     "steam_machine_compat_category": 0
+    },
+    "best_purchase_option": {
+     "packageid": 1103674,
+     "purchase_option_name": "Pantheon: Rise of the Fallen",
+     "final_price_in_cents": "3999",
+     "formatted_final_price": "$39.99",
+     "user_can_purchase_as_gift": true,
+     "hide_discount_pct_for_compliance": false,
+     "included_game_count": 1,
+     "must_purchase_as_set": false,
+     "package_group": "default",
+     "price_cannot_be_displayed_as_discount": false
+    }
+   },
+   {
+    "item_type": 0,
+    "id": 418370,
+    "success": 1,
+    "visible": true,
+    "name": "Resident Evil 7 Biohazard",
+    "store_url_path": "app/418370/Resident_Evil_7_Biohazard",
+    "store_url_slug": "Resident_Evil_7_Biohazard",
+    "appid": 418370,
+    "type": 0,
+    "related_items": {
+     "demo_appid": [
+      530620
+     ],
+     "standalone_demo_appid": [
+      530620
+     ],
+     "demos": [
+      {
+       "appid": 530620,
+       "show_above_purchase": true
+      }
+     ],
+     "standalone_demos": [
+      {
+       "appid": 530620,
+       "show_above_purchase": true
+      }
+     ]
+    },
+    "content_descriptorids": [
+     1,
+     2,
+     5
+    ],
+    "tagids": [
+     1667,
+     3978,
+     3839,
+     4182,
+     21978,
+     4345,
+     4166,
+     1659,
+     1721,
+     19,
+     4667,
+     1662,
+     1664,
+     3859,
+     1742,
+     21,
+     1663,
+     3834,
+     1774,
+     1693
+    ],
+    "categories": {
+     "supported_player_categoryids": [
+      2
+     ],
+     "feature_categoryids": [
+      22,
+      29,
+      23,
+      61,
+      62
+     ],
+     "controller_categoryids": [
+      28
+     ]
+    },
+    "basic_info": {
+     "short_description": "Fear and isolation seep through the walls of an abandoned southern farmhouse. \"7\" marks a new beginning for survival horror with the “Isolated View” of the visceral new first-person perspective. Powered by the RE Engine, horror reaches incredible heights of immersion as players enter a terrifyingly new world of fear as they fight to survive.",
+     "publishers": [
+      {
+       "name": "CAPCOM Co., Ltd."
+      }
+     ],
+     "developers": [
+      {
+       "name": "CAPCOM Co., Ltd."
+      }
+     ],
+     "franchises": [
+      {
+       "name": "Resident Evil",
+       "creator_clan_account_id": 34827950
+      }
+     ]
+    },
+    "tags": [
+     {
+      "tagid": 1667,
+      "weight": 1093
+     },
+     {
+      "tagid": 3978,
+      "weight": 855
+     },
+     {
+      "tagid": 3839,
+      "weight": 724
+     },
+     {
+      "tagid": 4182,
+      "weight": 632
+     },
+     {
+      "tagid": 21978,
+      "weight": 601
+     },
+     {
+      "tagid": 4345,
+      "weight": 598
+     },
+     {
+      "tagid": 4166,
+      "weight": 565
+     },
+     {
+      "tagid": 1659,
+      "weight": 560
+     },
+     {
+      "tagid": 1721,
+      "weight": 530
+     },
+     {
+      "tagid": 19,
+      "weight": 460
+     },
+     {
+      "tagid": 4667,
+      "weight": 445
+     },
+     {
+      "tagid": 1662,
+      "weight": 396
+     },
+     {
+      "tagid": 1664,
+      "weight": 394
+     },
+     {
+      "tagid": 3859,
+      "weight": 387
+     },
+     {
+      "tagid": 1742,
+      "weight": 386
+     },
+     {
+      "tagid": 21,
+      "weight": 369
+     },
+     {
+      "tagid": 1663,
+      "weight": 312
+     },
+     {
+      "tagid": 3834,
+      "weight": 275
+     },
+     {
+      "tagid": 1774,
+      "weight": 266
+     },
+     {
+      "tagid": 1693,
+      "weight": 142
+     }
+    ],
+    "assets": {
+     "asset_url_format": "steam/apps/418370/${FILENAME}?t=1778464947",
+     "main_capsule": "capsule_616x353.jpg",
+     "small_capsule": "capsule_231x87.jpg",
+     "header": "header.jpg",
+     "page_background": "page_bg_generated_v6b.jpg",
+     "library_capsule": "library_600x900.jpg",
+     "library_capsule_2x": "library_600x900_2x.jpg",
+     "library_hero": "library_hero.jpg",
+     "community_icon": "675cd2fbaae3c2a74a0c7e9eea71e969ff90d6bb",
+     "page_background_path": "app/418370?t=1778464947",
+     "raw_page_background": "page_bg_raw.jpg",
+     "last_modified": 1778464947
+    },
+    "release": {
+     "steam_release_date": 1485234000,
+     "original_release_date": 0
+    },
+    "platforms": {
+     "windows": true,
+     "vr_support": {},
+     "steam_deck_compat_category": 3,
+     "steam_os_compat_category": 2,
+     "steam_frame_compat_category": 0,
+     "steam_machine_compat_category": 3
+    },
+    "best_purchase_option": {
+     "packageid": 131416,
+     "purchase_option_name": "RESIDENT EVIL 7",
+     "final_price_in_cents": "1999",
+     "formatted_final_price": "$19.99",
+     "user_can_purchase_as_gift": true,
+     "hide_discount_pct_for_compliance": false,
+     "included_game_count": 1,
+     "must_purchase_as_set": false,
+     "package_group": "default",
+     "price_cannot_be_displayed_as_discount": false
+    }
+   }
+  ]
+ }
+}

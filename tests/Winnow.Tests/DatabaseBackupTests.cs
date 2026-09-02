@@ -48,6 +48,15 @@ public sealed class DatabaseBackupTests
     {
         using var db = new TempDatabase();
 
+        // Seeded AFTER the rewind, not before it. Rewind drops any table
+        // whose CREATE statement differs from the pre-0012 reference and
+        // rebuilds it, so a row inserted into the current shape of `works`
+        // would be dropped with the table the moment a migration past 0011
+        // adds a column, which migration 0022 does. The rows this test is
+        // about are the rows that exist WHEN THE BACKUP IS TAKEN, and that
+        // is what this order says.
+        Rewind(db);
+
         using (var seed = db.Factory.Open())
         {
             var workId = seed.ExecuteScalar<long>(
@@ -56,7 +65,6 @@ public sealed class DatabaseBackupTests
                 "INSERT INTO releases (work_id, name) VALUES (@workId, 'Riven');", new { workId });
         }
 
-        Rewind(db);
         db.Initializer.Initialize();
 
         var backup = Assert.Single(Backups(db));

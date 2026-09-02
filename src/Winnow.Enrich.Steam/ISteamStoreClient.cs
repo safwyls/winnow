@@ -26,6 +26,23 @@ public interface ISteamStoreClient
         IEnumerable<string> appIds, TimeSpan? cacheTtl = null, CancellationToken ct = default);
 
     /// <summary>
+    /// Projects store items out of <c>metadata_cache</c> and touches the
+    /// network on no path, not for a miss, not for a stale row, not for an
+    /// appid absent from the cache entirely. Age is deliberately not consulted:
+    /// the caller is asking what Steam already said, not what Steam says now.
+    ///
+    /// <para>This is what makes the Steam relation sweep free. The
+    /// <c>type</c> and <c>related_items</c> blocks arrive with the query
+    /// <c>BuildGetItemsQuery</c> has always sent, so every body already written
+    /// carries them and re-projecting the cache recovers the parent pointers
+    /// with no new HTTP request. Verified 2026-09-02.</para>
+    /// </summary>
+    /// <param name="appIds">Steam appids as strings. Duplicates and non-numeric entries are dropped.</param>
+    /// <returns>Appid → item, for cached bodies that still project. Cached misses are absent.</returns>
+    Task<IReadOnlyDictionary<string, SteamStoreItem>> GetCachedItemsAsync(
+        IEnumerable<string> appIds, CancellationToken ct = default);
+
+    /// <summary>
     /// The store's tagid → name vocabulary (446 entries when the spike ran), in
     /// one request, cached for <see cref="SteamStoreOptions.TagListCacheTtl"/>.
     ///

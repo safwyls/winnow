@@ -70,6 +70,23 @@ public sealed class IgdbClient : IIgdbClient
     /// <summary>Cache key for a full game record.</summary>
     public static string GameCacheKey(long igdbId) => "game:" + igdbId.ToString(CultureInfo.InvariantCulture);
 
+    /// <summary>
+    /// Shape version of a cached <c>game:</c> payload. Bumping it makes every
+    /// stored entry a miss on the next read, which is how a cache full of
+    /// payloads written before a field existed refetches instead of answering
+    /// with the field silently empty for the rest of the TTL. Version 2 is
+    /// the first to carry <c>game_type</c>, <c>parent_game</c>,
+    /// <c>version_parent</c> and <c>version_title</c>.
+    /// </summary>
+    public const int GamePayloadVersion = 2;
+
+    /// <summary>
+    /// Versioned envelope a game is cached in. An unversioned payload
+    /// (everything written before version 2) fails to match
+    /// <see cref="GamePayloadVersion"/> on read and is refetched.
+    /// </summary>
+    private sealed record GamePayload(int Version, IgdbGame? Game);
+
     public async ValueTask<bool> IsConfiguredAsync(CancellationToken ct = default)
         => await _credentials.GetAsync(ct) is not null;
 
@@ -235,16 +252,44 @@ public sealed class IgdbClient : IIgdbClient
         var cutoff = Cutoff(cacheTtl);
         var pending = new List<long>(wanted.Length);
 
+        // Payloads written under an older version, kept aside. A version
+        // mismatch asks for a refetch but does NOT throw the old answer away:
+        // the machine may have no Twitch credentials and no network, and 1,923
+        // entries that stop deserializing on an offline install would be a worse
+        // bug than a missing field. Anything the refetch does not replace is
+        // served from here.
+        var superseded = new Dictionary<long, IgdbGame>();
+
         foreach (var id in wanted)
         {
             if (cached.TryGetValue(GameCacheKey(id), out var entry) && entry.FetchedAt >= cutoff)
             {
-                if (Deserialize<IgdbGame>(entry.PayloadJson) is { } game)
+                if (entry.PayloadJson is null)
                 {
-                    results.Add(game);
+                    // A cached miss carries no fields, so it cannot be missing
+                    // any: the payload version does not apply to it, and
+                    // re-asking would spend the budget learning the same
+                    // nothing.
+                    continue;
                 }
 
-                continue;
+                if (Deserialize<GamePayload>(entry.PayloadJson) is
+                    { Version: GamePayloadVersion, Game: { } game })
+                {
+                    results.Add(game);
+                    continue;
+                }
+
+                // Either a payload written before this version — every entry in
+                // a cache built without game_type, parent_game and
+                // version_parent is one — or one that no longer projects.
+                // Refetch rather than serve a row whose new fields are silently
+                // empty for the rest of the TTL, and keep the old answer as the
+                // fallback for a refetch that cannot happen.
+                if (Deserialize<IgdbGame>(entry.PayloadJson) is { IgdbId: > 0 } legacy)
+                {
+                    superseded[id] = legacy;
+                }
             }
 
             pending.Add(id);
@@ -252,6 +297,7 @@ public sealed class IgdbClient : IIgdbClient
 
         if (pending.Count == 0 || !await IsConfiguredAsync(ct))
         {
+            results.AddRange(superseded.Values);
             return results;
         }
 
@@ -281,13 +327,22 @@ public sealed class IgdbClient : IIgdbClient
                 if (game is not null)
                 {
                     results.Add(game);
+                    superseded.Remove(id);
                 }
 
                 await _cache.SetAsync(
-                    CacheProvider, GameCacheKey(id), game is null ? null : Serialize(game), fetchedAt, ct);
+                    CacheProvider,
+                    GameCacheKey(id),
+                    game is null ? null : Serialize(new GamePayload(GamePayloadVersion, game)),
+                    fetchedAt,
+                    ct);
             }
         }
 
+        // Whatever the refetch could not replace. An old shape is still a real
+        // answer about a real game; the version only decides whether it is
+        // allowed to be the FIRST answer.
+        results.AddRange(superseded.Values);
         return results;
     }
 

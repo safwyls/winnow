@@ -1205,4 +1205,171 @@ public class MigrationTests
             "INSERT INTO merge_candidates (left_release_id, right_release_id, score) VALUES (@b, @a, 0.5);",
             new { a = releaseA, b = releaseB }));
     }
+    /// <summary>
+    /// Migration 0021 rebuilds identity_links because SQLite cannot ALTER a
+    /// CHECK and variant_of is a third kind. A rebuild that loses a link
+    /// loses a decision a person made, so this asserts the rows, their ids,
+    /// their act ids and their retraction bookkeeping all survive, and that
+    /// the new kind and the restated indexes are really there afterwards.
+    /// </summary>
+    [Fact]
+    public void Migration_0021_admits_variant_of_and_keeps_every_standing_link()
+    {
+        using var db = new TempDatabase();
+
+        long parentWork;
+        long childWork;
+        long thirdWork;
+        using (var conn = db.Factory.Open())
+        {
+            // Back to the shape 0018 leaves behind: two kinds, no label column.
+            conn.Execute("DROP TABLE identity_links;");
+            conn.Execute(PreVariantIdentityLinks);
+            conn.Execute("DELETE FROM SchemaVersions WHERE ScriptName LIKE '%0021%';");
+
+            parentWork = conn.ExecuteScalar<long>(
+                "INSERT INTO works (name) VALUES ('Civilization IV') RETURNING id;");
+            childWork = conn.ExecuteScalar<long>(
+                "INSERT INTO works (name) VALUES ('Beyond the Sword') RETURNING id;");
+            thirdWork = conn.ExecuteScalar<long>(
+                "INSERT INTO works (name) VALUES ('Warlords') RETURNING id;");
+
+            conn.Execute(
+                "INSERT INTO identity_acts (id, kind, performed_at) VALUES "
+                + "(1, 'link', '2026-01-01 00:00:00'), (2, 'unlink', '2026-01-02 00:00:00');");
+
+            conn.Execute("""
+                INSERT INTO identity_links (
+                    id, act_id, child_work_id, parent_work_id, kind, source,
+                    evidence_json, applied_at, retracted_at, retracted_by_act_id) VALUES
+                    (10, 1, @child, @parent, 'expansion_of', 'user',
+                     '{"why":"prefix"}', '2026-01-01 00:00:00', NULL, NULL),
+                    (11, 1, @third, @parent, 'same_game', 'hard_id',
+                     NULL, '2026-01-01 00:00:00', '2026-01-02 00:00:00', 2);
+                """, new { child = childWork, parent = parentWork, third = thirdWork });
+        }
+
+        db.Initializer.Initialize();
+
+        using var after = db.Factory.Open();
+
+        var rows = after.Query<(long Id, long ActId, long Child, long Parent, string Kind,
+                string Source, string? Label, string? Evidence, string? RetractedAt, long? RetractedBy)>("""
+            SELECT id, act_id, child_work_id, parent_work_id, kind, source,
+                   relation_label, evidence_json, retracted_at, retracted_by_act_id
+            FROM identity_links ORDER BY id;
+            """).ToList();
+
+        Assert.Equal(2, rows.Count);
+
+        // The standing link, unchanged but for a label nothing has named yet.
+        Assert.Equal(10L, rows[0].Id);
+        Assert.Equal(1L, rows[0].ActId);
+        Assert.Equal(childWork, rows[0].Child);
+        Assert.Equal(parentWork, rows[0].Parent);
+        Assert.Equal("expansion_of", rows[0].Kind);
+        Assert.Equal("user", rows[0].Source);
+        Assert.Equal("{\"why\":\"prefix\"}", rows[0].Evidence);
+        Assert.Null(rows[0].Label);
+        Assert.Null(rows[0].RetractedAt);
+
+        // The retracted one keeps the act that displaced it, which is what makes
+        // an undo restorable rather than a timestamp heuristic.
+        Assert.Equal("2026-01-02 00:00:00", rows[1].RetractedAt);
+        Assert.Equal(2L, rows[1].RetractedBy);
+
+        // The new kind is admitted, and carries the source's own word...
+        after.Execute("""
+            INSERT INTO identity_links (
+                act_id, child_work_id, parent_work_id, kind, source, relation_label, applied_at)
+            VALUES (1, @child, @parent, 'variant_of', 'user', 'demo', '2026-01-03 00:00:00');
+            """, new { child = parentWork, parent = thirdWork });
+
+        Assert.Equal(
+            "demo",
+            after.ExecuteScalar<string>(
+                "SELECT relation_label FROM identity_links WHERE kind = 'variant_of';"));
+
+        // ...and nothing else is.
+        Assert.Throws<Microsoft.Data.Sqlite.SqliteException>(() => after.Execute("""
+            INSERT INTO identity_links (
+                act_id, child_work_id, parent_work_id, kind, source, applied_at)
+            VALUES (1, @child, @parent, 'sequel_of', 'user', '2026-01-04 00:00:00');
+            """, new { child = thirdWork, parent = childWork }));
+
+        // Every index the rebuild dropped is back, including the partial unique
+        // one that makes "at most one live parent per work" a fact about the
+        // database rather than a convention held by the repository.
+        var indexes = after.Query<string>(
+            "SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = 'identity_links' "
+            + "AND name NOT LIKE 'sqlite_%' ORDER BY name;").ToList();
+
+        Assert.Equal(
+            ["ix_identity_links_act", "ix_identity_links_parent", "ux_identity_links_live"],
+            indexes);
+    }
+
+    /// <summary>
+    /// Migration 0022 adds the storefront relation columns without disturbing a
+    /// row that predates them. Every one of them is NULL, and NULL means "not
+    /// known" rather than "no relation" - the distinction the whole gap-filler
+    /// rule turns on.
+    /// </summary>
+    [Fact]
+    public void Migration_0022_adds_the_relation_columns_and_leaves_old_rows_unknown()
+    {
+        using var db = new TempDatabase();
+        using var conn = db.Factory.Open();
+
+        var workId = conn.ExecuteScalar<long>(
+            "INSERT INTO works (name, steam_app_type) VALUES ('Bastion', 'Game') RETURNING id;");
+
+        var row = conn.QuerySingle<(long? StoreType, string? ParentApp, string? GameType,
+            long? IgdbParent, long? VersionParent)>("""
+            SELECT steam_store_type, steam_parent_app_id, igdb_game_type,
+                   igdb_parent_id, igdb_version_parent_id
+            FROM works WHERE id = @workId;
+            """, new { workId });
+
+        Assert.Null(row.StoreType);
+        Assert.Null(row.ParentApp);
+        Assert.Null(row.GameType);
+        Assert.Null(row.IgdbParent);
+        Assert.Null(row.VersionParent);
+
+        // No CHECK on any of them: the vocabularies belong to Valve and IGDB,
+        // and a constraint would turn a new type into a failed enrichment write.
+        conn.Execute(
+            "UPDATE works SET igdb_game_type = 'a_type_this_build_has_never_seen' WHERE id = @workId;",
+            new { workId });
+
+        Assert.Equal(
+            "a_type_this_build_has_never_seen",
+            conn.ExecuteScalar<string>("SELECT igdb_game_type FROM works WHERE id = @workId;", new { workId }));
+    }
+
+    /// <summary>The identity_links shape migration 0018 leaves behind: two kinds, no label.</summary>
+    private const string PreVariantIdentityLinks = """
+        CREATE TABLE identity_links (
+            id                  INTEGER PRIMARY KEY,
+            act_id              INTEGER NOT NULL REFERENCES identity_acts(id) ON DELETE CASCADE,
+            child_work_id       INTEGER NOT NULL REFERENCES works(id) ON DELETE CASCADE,
+            parent_work_id      INTEGER NOT NULL REFERENCES works(id) ON DELETE CASCADE,
+            kind                TEXT NOT NULL CHECK (kind IN ('same_game', 'expansion_of')),
+            source              TEXT NOT NULL CHECK (source IN ('user', 'hard_id')),
+            evidence_json       TEXT,
+            applied_at          TEXT NOT NULL,
+            retracted_at        TEXT,
+            retracted_by_act_id INTEGER REFERENCES identity_acts(id) ON DELETE SET NULL,
+
+            CHECK (child_work_id <> parent_work_id),
+            CHECK ((retracted_at IS NULL) = (retracted_by_act_id IS NULL))
+        );
+
+        CREATE UNIQUE INDEX ux_identity_links_live
+            ON identity_links(child_work_id) WHERE retracted_at IS NULL;
+        CREATE INDEX ix_identity_links_parent
+            ON identity_links(parent_work_id) WHERE retracted_at IS NULL;
+        CREATE INDEX ix_identity_links_act ON identity_links(act_id);
+        """;
 }

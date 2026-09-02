@@ -105,7 +105,27 @@ public sealed class ReleaseRepository : IReleaseRepository
                    w.publisher           AS Publisher,
                    w.name_is_provisional AS NameIsProvisional,
                    w.steam_app_type      AS SteamAppType,
-                   w.epic_categories     AS EpicCategories
+                   w.epic_categories     AS EpicCategories,
+                   w.igdb_id             AS IgdbId,
+
+                   -- Migration 0022. The storefront's own answer to what this
+                   -- app is and what it is part of, carried on the same row the
+                   -- title arrives on so the relation scan needs no second read.
+                   w.steam_store_type       AS SteamStoreType,
+                   w.steam_parent_app_id    AS SteamParentAppId,
+                   w.igdb_game_type         AS IgdbGameType,
+                   w.igdb_parent_id         AS IgdbParentId,
+                   w.igdb_version_parent_id AS IgdbVersionParentId,
+
+                   -- The Steam appid this release is known by, so a parent
+                   -- appid can be turned into a work without a second query.
+                   (SELECT e.provider_id FROM external_ids e
+                     WHERE e.release_id = r.id AND e.provider = 'steam'
+                     LIMIT 1)                AS SteamAppId,
+
+                   -- EXISTS, not a join: a release owned on two stores must
+                   -- still be one row here, and a join would double it.
+                   EXISTS (SELECT 1 FROM ownerships o WHERE o.release_id = r.id) AS IsOwned
             FROM releases r
             JOIN works w ON w.id = r.work_id
             ORDER BY r.id;

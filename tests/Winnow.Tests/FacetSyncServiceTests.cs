@@ -70,9 +70,14 @@ public sealed class FacetSyncServiceTests : IDisposable
     /// <summary>
     /// The 865 IGDB entries already on the author's disk were written before
     /// <c>game_modes</c> was requested, so they carry none. They must still
-    /// deserialize and still yield their genres — the alternative was a cache
+    /// deserialize and still yield their genres; the alternative was a cache
     /// shape change that would have made every one of them unreadable on a
     /// machine with no Twitch credentials.
+    ///
+    /// <para>Payload versioning (TASK-18) does not repeal that. A version
+    /// mismatch asks for a REFETCH; where no refetch is possible the old answer
+    /// is still served, so the guarantee this test has always made survives the
+    /// version that supersedes the payload.</para>
     /// </summary>
     [Fact]
     public async Task An_older_cached_payload_without_game_modes_still_yields_its_genres()
@@ -80,7 +85,7 @@ public sealed class FacetSyncServiceTests : IDisposable
         await SeedAsync(igdbId: 1, appId: null, name: "Thief II");
 
         using var host = new SyncHost(_db, Now);
-        host.CacheIgdbGame(1, """{"igdb_id": 1, "name": "Thief II", "genres": ["Adventure"]}""");
+        host.CacheIgdbPayload(1, """{"igdb_id": 1, "name": "Thief II", "genres": ["Adventure"]}""");
 
         await host.Service(_libraryQueries, _facets).SyncAsync();
 
@@ -347,8 +352,26 @@ public sealed class FacetSyncServiceTests : IDisposable
                 _steam.Client,
                 NullLogger<FacetSyncService>.Instance);
 
-        /// <summary>Writes the payload shape <see cref="IgdbClient"/> stores for one game.</summary>
+        /// <summary>
+        /// Writes the payload shape <see cref="IgdbClient"/> stores for one
+        /// game under the current version; this is the versioned envelope
+        /// that migration 0022's fields arrived with. The game's own JSON is
+        /// passed in bare and wrapped here, so a test says what it means
+        /// about the game and nothing about the cache's bookkeeping.
+        /// </summary>
         public void CacheIgdbGame(long igdbId, string payloadJson)
+            => CacheIgdbPayload(
+                igdbId,
+                """{"version":"""
+                + IgdbClient.GamePayloadVersion.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                + ",\"game\":" + payloadJson + "}");
+
+        /// <summary>
+        /// Writes a payload verbatim, envelope and all, so a test can seed
+        /// the unversioned shape every entry on the author's disk was written
+        /// under before this change.
+        /// </summary>
+        public void CacheIgdbPayload(long igdbId, string payloadJson)
             => _igdbCache.SetAsync(
                 IgdbClient.CacheProvider,
                 IgdbClient.GameCacheKey(igdbId),

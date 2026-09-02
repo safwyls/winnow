@@ -212,6 +212,44 @@ public sealed class SteamStoreClient : ISteamStoreClient
         return results;
     }
 
+    public async Task<IReadOnlyDictionary<string, SteamStoreItem>> GetCachedItemsAsync(
+        IEnumerable<string> appIds, CancellationToken ct = default)
+    {
+        var wanted = appIds
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Select(id => id.Trim())
+            .Where(IsAppId)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+
+        var results = new Dictionary<string, SteamStoreItem>(StringComparer.Ordinal);
+        if (wanted.Length == 0)
+        {
+            return results;
+        }
+
+        var cached = await _cache.GetManyAsync(CacheProvider, wanted.Select(AppCacheKey), ct);
+
+        foreach (var appId in wanted)
+        {
+            // No cutoff. A stale body is exactly as good an answer about which
+            // appid is this app's parent as a fresh one, and re-asking is the
+            // one thing this method promises not to do.
+            if (cached.TryGetValue(AppCacheKey(appId), out var entry)
+                && entry.PayloadJson is { } payload
+                && SteamStoreJson.TryParseItem(appId, payload) is { } item)
+            {
+                results[appId] = item;
+            }
+        }
+
+        _log.LogDebug(
+            "Projected {Hits} of {Requested} Steam appids from the store cache with no request.",
+            results.Count, wanted.Length);
+
+        return results;
+    }
+
     public async Task<SteamTagVocabulary> GetTagListAsync(
         TimeSpan? cacheTtl = null, CancellationToken ct = default)
     {

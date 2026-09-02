@@ -111,6 +111,69 @@ public sealed class ExpansionGrouping
 }
 
 /// <summary>
+/// The variant half of an identity resolution: demos, betas, playtests and
+/// staging branches under the game they sample.
+///
+/// <para>Like <see cref="ExpansionGrouping"/> it has no Resolve method, because
+/// a variant's playtime must never roll up into its parent: forty minutes of a
+/// demo you never bought is its own fact and belongs on the parent's modal as
+/// itself. Unlike an expansion, a variant does not count as a title while its
+/// parent is owned, and does count when it is the only thing owned, which is
+/// <see cref="Queries.DemoConsolidation"/>'s read-time rule, now with a stored
+/// storefront fact behind it. <see cref="CountsAsTitle"/> is that rule, and it
+/// takes ownership as an argument rather than assuming it, so the answer moves
+/// the moment the parent leaves the library.</para>
+/// </summary>
+public sealed class VariantGrouping
+{
+    private readonly Dictionary<long, long> _parentOf;
+    private readonly Dictionary<long, long[]> _variantsOf;
+
+    internal VariantGrouping(Dictionary<long, long> parentOf, Dictionary<long, long[]> variantsOf)
+    {
+        _parentOf = parentOf;
+        _variantsOf = variantsOf;
+    }
+
+    /// <summary>A grouping with no variant links.</summary>
+    public static VariantGrouping Empty { get; } = new([], []);
+
+    /// <summary>True when no variant links exist.</summary>
+    public bool IsEmpty => _parentOf.Count == 0;
+
+    /// <summary>How many works are grouped as variants.</summary>
+    public int GroupedWorkCount => _parentOf.Count;
+
+    /// <summary>The work this variant samples, or null when it is not a variant.</summary>
+    public long? ParentOf(long workId)
+        => _parentOf.TryGetValue(workId, out var parent) ? parent : null;
+
+    /// <summary>True when <paramref name="workId"/> is linked as a variant of another work.</summary>
+    public bool IsVariant(long workId) => _parentOf.ContainsKey(workId);
+
+    /// <summary>True when <paramref name="workId"/> has at least one variant linked to it.</summary>
+    public bool HasVariants(long workId) => _variantsOf.ContainsKey(workId);
+
+    /// <summary>The variants of <paramref name="workId"/>, sorted by work id. Empty if none.</summary>
+    public IReadOnlyList<long> VariantsOf(long workId)
+        => _variantsOf.TryGetValue(workId, out var variants) ? variants : [];
+
+    /// <summary>
+    /// Whether this work contributes a title to the library count. A work that
+    /// is not a variant always does. A variant does only while its parent is
+    /// not owned; the demo of a game you own is the game you own, and the demo
+    /// of a game you do not own is the only copy you have.
+    /// </summary>
+    /// <param name="workId">The work being counted.</param>
+    /// <param name="isOwned">Answers whether a given work is owned. Called for the parent only.</param>
+    public bool CountsAsTitle(long workId, Func<long, bool> isOwned)
+    {
+        ArgumentNullException.ThrowIfNull(isOwned);
+        return ParentOf(workId) is not { } parent || !isOwned(parent);
+    }
+}
+
+/// <summary>
 /// Immutable snapshot of every live identity link, built from one query.
 /// Splits into <see cref="SameGame"/> and <see cref="Expansions"/> so the two
 /// kinds cannot be confused at the call site. The same-game resolver and the
@@ -120,21 +183,31 @@ public sealed class ExpansionGrouping
 /// </summary>
 public sealed class IdentityResolution
 {
-    private IdentityResolution(SameGameResolution sameGame, ExpansionGrouping expansions)
+    private IdentityResolution(
+        SameGameResolution sameGame, ExpansionGrouping expansions, VariantGrouping variants)
     {
         SameGame = sameGame;
         Expansions = expansions;
+        Variants = variants;
     }
 
     /// <summary>An empty resolution, for the common case where no links exist.</summary>
     public static IdentityResolution Empty { get; } =
-        new(SameGameResolution.Empty, ExpansionGrouping.Empty);
+        new(SameGameResolution.Empty, ExpansionGrouping.Empty, VariantGrouping.Empty);
 
     /// <summary>Same-game links. <see cref="SameGameResolution.Resolve"/> is total.</summary>
     public SameGameResolution SameGame { get; }
 
     /// <summary>Expansion links. <see cref="ExpansionGrouping.BaseOf"/> returns null for non-expansions.</summary>
     public ExpansionGrouping Expansions { get; }
+
+    /// <summary>
+    /// Variant links: demos, betas, playtests and staging branches. A third
+    /// separate type, for the same reason the first two are separate: a caller
+    /// cannot fold a demo's playtime into its parent by accident, because the
+    /// type has no method that would let it.
+    /// </summary>
+    public VariantGrouping Variants { get; }
 
     /// <summary>
     /// Builds a resolution from live links. Throws on a retracted link (a
@@ -152,6 +225,8 @@ public sealed class IdentityResolution
         var sameGameChildren = new Dictionary<long, List<long>>();
         var expansionBase = new Dictionary<long, long>();
         var expansionChildren = new Dictionary<long, List<long>>();
+        var variantParent = new Dictionary<long, long>();
+        var variantChildren = new Dictionary<long, List<long>>();
 
         foreach (var link in liveLinks)
         {
@@ -166,6 +241,7 @@ public sealed class IdentityResolution
             {
                 IdentityLinkKinds.SameGame => (sameGameParent, sameGameChildren),
                 IdentityLinkKinds.ExpansionOf => (expansionBase, expansionChildren),
+                IdentityLinkKinds.VariantOf => (variantParent, variantChildren),
                 _ => throw new ArgumentException(
                     $"Link {link.Id} has unknown kind '{link.Kind}'.", nameof(liveLinks)),
             };
@@ -189,7 +265,8 @@ public sealed class IdentityResolution
 
         return new IdentityResolution(
             new SameGameResolution(sameGameParent, Freeze(sameGameChildren)),
-            new ExpansionGrouping(expansionBase, Freeze(expansionChildren)));
+            new ExpansionGrouping(expansionBase, Freeze(expansionChildren)),
+            new VariantGrouping(variantParent, Freeze(variantChildren)));
     }
 
     private static Dictionary<long, long[]> Freeze(Dictionary<long, List<long>> source)

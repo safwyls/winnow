@@ -79,6 +79,87 @@ internal sealed class IgdbInvolvedCompanyDto
     public IgdbNamedDto? Company { get; init; }
 }
 
+/// <summary>
+/// One <c>game_types</c> row. Its label field is <c>type</c>, not
+/// <c>name</c>; this is the one place IGDB breaks its own naming convention,
+/// and the reason the query asks for <c>game_type.type</c> rather than
+/// <c>game_type.name</c>. Asking for <c>name</c> returns empty rather than
+/// failing loudly.
+/// </summary>
+internal sealed class IgdbGameTypeDto
+{
+    public long Id { get; init; }
+
+    public string? Type { get; init; }
+}
+
+/// <summary>
+/// Reads an Apicalypse reference field that may arrive as a bare id (when
+/// unexpanded) or as an object with an <c>id</c> property (when expanded),
+/// and yields the id either way. Both shapes must be handled because a body
+/// that threw on the wrong one would take a whole batch down with it.
+/// </summary>
+internal sealed class ReferenceIdConverter : JsonConverter<long?>
+{
+    public override long? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        switch (reader.TokenType)
+        {
+            case JsonTokenType.Number:
+                return reader.GetInt64();
+            case JsonTokenType.Null:
+                return null;
+            case JsonTokenType.StartObject:
+                using (var document = JsonDocument.ParseValue(ref reader))
+                {
+                    return document.RootElement.TryGetProperty("id", out var id)
+                           && id.ValueKind == JsonValueKind.Number
+                           && id.TryGetInt64(out var value)
+                        ? value
+                        : null;
+                }
+
+            default:
+                reader.Skip();
+                return null;
+        }
+    }
+
+    public override void Write(Utf8JsonWriter writer, long? value, JsonSerializerOptions options)
+    {
+        if (value is null)
+        {
+            writer.WriteNullValue();
+        }
+        else
+        {
+            writer.WriteNumberValue(value.Value);
+        }
+    }
+}
+
+/// <summary>
+/// Reads <c>game_type</c>, which arrives as an expanded object under the
+/// shipped query and would arrive as a bare id if the expansion were ever
+/// dropped. Both shapes are handled for the same reason
+/// <see cref="ReferenceIdConverter"/> handles both: a deserialization failure
+/// takes the whole batch down.
+/// </summary>
+internal sealed class ExpandableGameTypeConverter : JsonConverter<IgdbGameTypeDto?>
+{
+    public override IgdbGameTypeDto? Read(
+        ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        => reader.TokenType switch
+        {
+            JsonTokenType.Number => new IgdbGameTypeDto { Id = reader.GetInt64() },
+            JsonTokenType.Null => null,
+            _ => JsonSerializer.Deserialize<IgdbGameTypeDto>(ref reader, IgdbJson.Options),
+        };
+
+    public override void Write(Utf8JsonWriter writer, IgdbGameTypeDto? value, JsonSerializerOptions options)
+        => JsonSerializer.Serialize(writer, value, IgdbJson.Options);
+}
+
 internal sealed class IgdbGameDto
 {
     public long Id { get; init; }
@@ -101,6 +182,33 @@ internal sealed class IgdbGameDto
 
     public IReadOnlyList<IgdbInvolvedCompanyDto>? InvolvedCompanies { get; init; }
 
+    /// <summary>
+    /// <c>game_type</c>, the replacement for the deprecated <c>category</c>
+    /// field. Fifteen values today: main_game, dlc_addon, expansion, bundle,
+    /// standalone_expansion, mod, episode, season, remake, remaster,
+    /// expanded_game, port, fork, pack, update. More will be added.
+    /// </summary>
+    [JsonConverter(typeof(ExpandableGameTypeConverter))]
+    public IgdbGameTypeDto? GameType { get; init; }
+
+    /// <summary>
+    /// <c>parent_game</c>: the main game when this entry is DLC, an expansion,
+    /// or part of a bundle. Arrives as a bare id under the shipped query.
+    /// </summary>
+    [JsonConverter(typeof(ReferenceIdConverter))]
+    public long? ParentGame { get; init; }
+
+    /// <summary>
+    /// <c>version_parent</c>: the game this is a version of. A remaster, remake
+    /// or port names its original through this field. Arrives as a bare id
+    /// under the shipped query.
+    /// </summary>
+    [JsonConverter(typeof(ReferenceIdConverter))]
+    public long? VersionParent { get; init; }
+
+    /// <summary><c>version_title</c>, e.g. "Game of the Year Edition". Present only on a version entry.</summary>
+    public string? VersionTitle { get; init; }
+
     internal IgdbGame ToDomain() => new(
         Id,
         Name ?? string.Empty,
@@ -120,6 +228,10 @@ internal sealed class IgdbGameDto
         // months from now should not require knowing that.
         GameModes = Names(this.GameModes),
         PlayerPerspectives = Names(this.PlayerPerspectives),
+        GameType = string.IsNullOrWhiteSpace(this.GameType?.Type) ? null : this.GameType.Type,
+        ParentGameId = ParentGame is > 0 ? ParentGame : null,
+        VersionParentId = VersionParent is > 0 ? VersionParent : null,
+        VersionTitle = string.IsNullOrWhiteSpace(this.VersionTitle) ? null : this.VersionTitle,
     };
 
     private static IReadOnlyList<string> Names(IReadOnlyList<IgdbNamedDto>? items)

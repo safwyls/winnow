@@ -21,6 +21,28 @@ public sealed record ExpansionSubject
 
     /// <summary>Publisher, or null when unknown. Unknown never vetoes; a known mismatch does.</summary>
     public string? Publisher { get; init; }
+
+    /// <summary>
+    /// What the storefronts say about this work's relation to another, or null
+    /// when every source is silent. Silence is the condition the title heuristic
+    /// exists to fill; speech overrides it.
+    /// </summary>
+    public StorefrontClaim? Claim { get; init; }
+
+    /// <summary>
+    /// The work a storefront names as this one's parent, resolved to a work id,
+    /// or null when no source named one or the named parent is not in the
+    /// library. Resolution happens outside Core, which has no IO.
+    /// </summary>
+    public long? ClaimedParentWorkId { get; init; }
+
+    /// <summary>
+    /// True when at least one source has an opinion about this work's relations.
+    /// A plain Steam type 0 with no parent is deliberately not an opinion: Steam
+    /// is documented-silent on expansions, and reading it as speech would mute
+    /// the heuristic over the entire Steam library.
+    /// </summary>
+    public bool MetadataSpeaks => Claim is not null;
 }
 
 /// <summary>
@@ -60,6 +82,29 @@ public sealed record ExpansionProposal
     /// it is what breaks a tie between two bases that both prefix one child.
     /// </summary>
     public required int PrefixTokenCount { get; init; }
+
+    /// <summary>
+    /// The kind the affirmative answer would write, one of
+    /// <see cref="IdentityLinkKinds"/>. expansion_of unless the child's title
+    /// carries a variant marker, in which case variant_of, so even the fallback
+    /// path stops calling a demo an expansion.
+    /// </summary>
+    public required string Kind { get; init; }
+
+    /// <summary>
+    /// The word the card shows, one of <see cref="RelationLabels"/>, or null
+    /// when nothing named the relation. A title-derived proposal can only ever
+    /// name a variant word (demo, beta, playtest); every other label comes from
+    /// a storefront.
+    /// </summary>
+    public string? RelationLabel { get; init; }
+
+    /// <summary>
+    /// True when a storefront made this proposal rather than the title
+    /// heuristic. Metadata proposals may be shown with higher confidence; they
+    /// are still proposals, because only the user's answer writes a link.
+    /// </summary>
+    public bool FromMetadata { get; init; }
 }
 
 /// <summary>
@@ -133,6 +178,24 @@ public enum ExpansionRefusalReason
     /// two games.
     /// </summary>
     NoCorroboration,
+
+    /// <summary>
+    /// A storefront refutes the pair. Either the child has a known parent that
+    /// is a different work from the proposed base, or a source types it a main
+    /// game with no parent at all. On the measured library this alone kills nine
+    /// of the sequel false positives, including DOOM to DOOM Eternal, BioShock
+    /// to BioShock Infinite and INSIDE to Inside the Backrooms.
+    /// </summary>
+    MetadataContradicts,
+
+    /// <summary>
+    /// A storefront has an opinion about one of the two works, so the title
+    /// heuristic does not get a vote. The heuristic is a gap-filler: it proposes
+    /// only where every source is silent, which on the measured library is the
+    /// delisted staging and experimental branch apps and the non-Steam titles
+    /// with no IGDB id.
+    /// </summary>
+    MetadataSpeaks,
 }
 
 /// <summary>
@@ -201,10 +264,58 @@ public static class ExpansionDetector
             rows.Add(new Row(subject, TitleNormalizer.Normalize(subject.Title)));
         }
 
+        var byWorkId = new Dictionary<long, Row>(rows.Count);
+        foreach (var row in rows)
+        {
+            byWorkId[row.Subject.WorkId] = row;
+        }
+
         var best = new Dictionary<long, ExpansionProposal>();
 
+        // ── Pass one: the storefronts ───────────────────────────────────────
+        //
+        // A claim that names a kind and a parent the library actually holds is
+        // a proposal in its own right, and a better one than any title
+        // comparison: Steam is authoritative for demos, betas, playtests and
+        // mods, IGDB for expansions and editions, and between them they answer
+        // 28 of the author's 38 title-derived proposals correctly, including
+        // the five where longest-owned-prefix-wins had picked the wrong parent
+        // outright.
+        //
+        // It is still a proposal. Metadata may propose with high confidence
+        // and only the user's answer writes a link; nothing here auto-merges,
+        // which is the rule the whole identity subsystem is built on.
         foreach (var child in rows)
         {
+            if (child.Subject.Claim is not { Kind: { } kind } claim
+                || kind == IdentityLinkKinds.SameGame
+                || child.Subject.ClaimedParentWorkId is not { } parentWorkId
+                || parentWorkId == child.Subject.WorkId
+                || !byWorkId.TryGetValue(parentWorkId, out var parentRow))
+            {
+                continue;
+            }
+
+            best[child.Subject.WorkId] = new ExpansionProposal
+            {
+                BaseWorkId = parentWorkId,
+                ChildWorkId = child.Subject.WorkId,
+                PrefixTokenCount = parentRow.Title.Tokens.Count,
+                Kind = kind,
+                RelationLabel = claim.Label,
+                FromMetadata = true,
+                Evidence = Observe(parentRow, child),
+            };
+        }
+
+        // ── Pass two: the title heuristic, where the storefronts are silent ──
+        foreach (var child in rows)
+        {
+            if (best.ContainsKey(child.Subject.WorkId))
+            {
+                continue;
+            }
+
             foreach (var candidate in rows)
             {
                 if (!TryPropose(candidate, child, settings, out var proposal, out _)
@@ -320,6 +431,48 @@ public static class ExpansionDetector
             return false;
         }
 
+        // ── THE GAP-FILLER RULE ─────────────────────────────────────────────
+        //
+        // Three guards, in this order, and the order is what makes a refusal
+        // name the right mechanism.
+        //
+        // 1. A source states outright that the child extends nothing. IGDB
+        //    game_type main_game with a null parent_game is that statement, and
+        //    it refutes DOOM -> DOOM Eternal, BioShock -> BioShock Infinite,
+        //    INSIDE -> Inside the Backrooms and six more on the measured
+        //    library without the detector needing to understand any of them.
+        if (child.Subject.Claim is { RefutesExtension: true })
+        {
+            reason = ExpansionRefusalReason.MetadataContradicts;
+            return false;
+        }
+
+        // 2. A source names a parent, and it is not this base. Dishonored:
+        //    Death of the Outsider is a standalone expansion of Dishonored 2,
+        //    not of Dishonored; Counter-Strike: Condition Zero Deleted Scenes
+        //    belongs to Condition Zero, not Counter-Strike; Arma 2: DayZ Mod
+        //    belongs to Operation Arrowhead. Longest-owned-prefix-wins picks the
+        //    wrong parent in every one of those, and the storefront picks the
+        //    right one.
+        if (child.Subject.ClaimedParentWorkId is { } claimedParent
+            && claimedParent != baseGame.Subject.WorkId)
+        {
+            reason = ExpansionRefusalReason.MetadataContradicts;
+            return false;
+        }
+
+        // 3. Anything else a source has an opinion about is not the heuristic's
+        //    to guess at, on EITHER side of the pair. Where a storefront speaks
+        //    the relation is proposed from the storefront, with the storefront's
+        //    own word on it; the heuristic fills the gaps the storefronts leave,
+        //    which on the measured library is the delisted staging and
+        //    experimental branch apps and the non-Steam titles with no IGDB id.
+        if (child.Subject.MetadataSpeaks || baseGame.Subject.MetadataSpeaks)
+        {
+            reason = ExpansionRefusalReason.MetadataSpeaks;
+            return false;
+        }
+
         var basePublisher = TitleNormalizer.NormalizePublisher(baseGame.Subject.Publisher);
         var childPublisher = TitleNormalizer.NormalizePublisher(child.Subject.Publisher);
         bool? publisherAgrees =
@@ -366,21 +519,55 @@ public static class ExpansionDetector
         // The prefix on its own is a coincidence waiting to happen: "Rush" and
         // "Rush Bros" are two games and one is a prefix of the other. Something
         // beyond the prefix has to agree.
+        //
+        // The rule this replaced was satisfied by `yearDelta is not null`,
+        // which means merely that BOTH YEARS ARE KNOWN. 947 of the author's
+        // 1,033 works carry a first_release_year, so on an enriched library the
+        // guard fired for 8.3% of pairs and was a no-op for the rest -- and the
+        // test pinning it passed year: null on both sides, the one shape where
+        // it did fire, so the suite reported a guard production did not have.
+        // INSIDE and Inside the Backrooms, two completely unrelated games, were
+        // proposed under it because both years were known.
+        //
+        // Two known years are not evidence of anything. Corroboration is now
+        // one of two things:
+        //
+        //   * a SEPARATOR BOUNDARY, where the child's raw title splits at a
+        //     colon, dash, pipe or slash whose left side normalises to exactly
+        //     the base core -- "Sid Meier's Civilization IV: Beyond the Sword";
+        //   * or an AGREEING PUBLISHER together with a year gap that is
+        //     actually consistent with an expansion, meaning both years are
+        //     known and the child did not ship first.
+        //
+        // A year pair on its own corroborates nothing, and neither does a
+        // publisher on its own.
+        var yearSupports = yearDelta is >= 0;
         if (options.RequireCorroboration
-            && publisherAgrees != true
-            && yearDelta is null
-            && !separator)
+            && !separator
+            && !(publisherAgrees == true && yearSupports))
         {
             reason = ExpansionRefusalReason.NoCorroboration;
             return false;
         }
 
         reason = ExpansionRefusalReason.None;
+
+        // A title carrying a DemoConsolidation marker is a sample, not a
+        // product. Eleven of the author's 38 proposals were demos, betas,
+        // playtests and staging branches offered under the word "expansion";
+        // the fallback path now names them for what they are even when no
+        // storefront could be asked.
+        var variantLabel = Queries.DemoConsolidation.VariantLabel(child.Subject.Title);
+
         proposal = new ExpansionProposal
         {
             BaseWorkId = baseGame.Subject.WorkId,
             ChildWorkId = child.Subject.WorkId,
             PrefixTokenCount = baseGame.Title.Tokens.Count,
+            Kind = variantLabel is null
+                ? IdentityLinkKinds.ExpansionOf
+                : IdentityLinkKinds.VariantOf,
+            RelationLabel = variantLabel,
             Evidence = new ExpansionEvidence(
                 baseGame.Title.Core,
                 string.Join(' ', suffix),
@@ -390,6 +577,35 @@ public static class ExpansionDetector
         };
 
         return true;
+    }
+
+    /// <summary>
+    /// The same observations the heuristic records, made about a pair a
+    /// storefront proposed. The card shows the numbers whether or not they are
+    /// the reason for the proposal, and a suffix is only reported when the
+    /// child's title really does extend the parent's.
+    /// </summary>
+    private static ExpansionEvidence Observe(Row baseGame, Row child)
+    {
+        var suffix = IsStrictPrefix(baseGame.Title.Tokens, child.Title.Tokens)
+            ? string.Join(' ', child.Title.Tokens.Skip(baseGame.Title.Tokens.Count))
+            : string.Empty;
+
+        var basePublisher = TitleNormalizer.NormalizePublisher(baseGame.Subject.Publisher);
+        var childPublisher = TitleNormalizer.NormalizePublisher(child.Subject.Publisher);
+        bool? publisherAgrees = basePublisher.Length > 0 && childPublisher.Length > 0
+            ? string.Equals(basePublisher, childPublisher, StringComparison.Ordinal)
+            : null;
+
+        var baseYear = baseGame.Subject.ReleaseYear ?? baseGame.Title.ParsedYear;
+        var childYear = child.Subject.ReleaseYear ?? child.Title.ParsedYear;
+
+        return new ExpansionEvidence(
+            baseGame.Title.Core,
+            suffix,
+            publisherAgrees,
+            baseYear is not null && childYear is not null ? childYear.Value - baseYear.Value : null,
+            HasSeparatorBoundary(child.Title.Original, baseGame.Title.Core));
     }
 
     private static bool IsStrictPrefix(IReadOnlyList<string> prefix, IReadOnlyList<string> whole)

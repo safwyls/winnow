@@ -132,6 +132,18 @@ public static class IgdbFixtures
                 new { id = 2, publisher = true, developer = false, company = new { id = 11, name = "Valve" } },
             }
             : null,
+
+        // game_type's label field is `type`, not `name`;
+        // the one place IGDB breaks its own convention, and the reason the
+        // query asks for game_type.type. `category` is deprecated and is
+        // deliberately absent from both the query and this fixture.
+        game_type = includeRelations ? new { id = 0, type = "main_game" } : null,
+
+        // Unexpanded reference fields, which is how Apicalypse returns them
+        // when the query names them without a dotted path: bare ids.
+        parent_game = (long?)null,
+        version_parent = (long?)null,
+        version_title = (string?)null,
     };
 
     private static string? ClauseAfter(string body, string marker)

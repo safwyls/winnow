@@ -25,6 +25,7 @@ public sealed class IdentityLinkRepository : IIdentityLinkRepository
                l.parent_work_id      AS ParentWorkId,
                l.kind                AS Kind,
                l.source              AS Source,
+               l.relation_label      AS RelationLabel,
                l.evidence_json       AS EvidenceJson,
                l.applied_at          AS AppliedAt,
                l.retracted_at        AS RetractedAt,
@@ -124,15 +125,17 @@ public sealed class IdentityLinkRepository : IIdentityLinkRepository
         // back where it was.
         var displaced = await LiveLinksUnderAsync(lease, children, ct);
 
-        // Re-parenting is right for same_game and wrong for expansion_of. A
-        // same-game link says "these are one game", so pulling the group's
-        // other entries onto the new parent keeps one statement true. An
-        // expansion link says "this extends that", and re-parenting an
-        // expansion's own SAME-GAME children onto the base game would move
-        // their playtime into it — the one thing the user's decision of
-        // 2026-08-31 says an expansion link must never do. Refused, not
-        // repaired: the user can separate the entry first and group it after.
-        if (request.Kind == IdentityLinkKinds.ExpansionOf && displaced.Count > 0)
+        // Re-parenting displaced children is right for same_game and wrong for
+        // every other kind. A same-game link says "these are one game", so
+        // pulling the group's other entries onto the new parent keeps one
+        // statement true. An expansion link says "this extends that" and a
+        // variant link says "this samples that"; re-parenting either one's own
+        // same-game children onto the parent would move their playtime into
+        // it, the one thing the user's decision of 2026-08-31 says an
+        // expansion link must never do, and the one thing a demo must never do
+        // to the game it is a demo of. Refused, not repaired: the user can
+        // separate the entry first and group it after.
+        if (request.Kind != IdentityLinkKinds.SameGame && displaced.Count > 0)
         {
             throw new IdentityLinkRefusedException(
                 IdentityLinkRefusal.ExpansionChildIsAlreadyAParent,
@@ -149,10 +152,11 @@ public sealed class IdentityLinkRepository : IIdentityLinkRepository
         // turn six expansions into six same-game links, which folds six
         // playtimes into one and moves numbers the user's decision of
         // 2026-08-31 says must never move.
-        var targets = new List<(long ChildWorkId, string Kind)>(children.Count + displaced.Count);
+        var targets =
+            new List<(long ChildWorkId, string Kind, string? Label)>(children.Count + displaced.Count);
         foreach (var childWorkId in children)
         {
-            targets.Add((childWorkId, request.Kind));
+            targets.Add((childWorkId, request.Kind, request.RelationLabel));
         }
 
         foreach (var link in displaced)
@@ -163,13 +167,13 @@ public sealed class IdentityLinkRepository : IIdentityLinkRepository
                 continue;
             }
 
-            targets.Add((link.ChildWorkId, link.Kind));
+            targets.Add((link.ChildWorkId, link.Kind, link.RelationLabel));
         }
 
-        foreach (var (childWorkId, kind) in targets)
+        foreach (var (childWorkId, kind, label) in targets)
         {
             await RetractLiveLinkAsync(lease, childWorkId, actId, ct);
-            await InsertLinkAsync(lease, actId, request, childWorkId, kind, ct);
+            await InsertLinkAsync(lease, actId, request, childWorkId, kind, label, ct);
         }
 
         scope.Commit();
@@ -225,8 +229,10 @@ public sealed class IdentityLinkRepository : IIdentityLinkRepository
         {
             await lease.Connection.ExecuteAsync(new CommandDefinition("""
                 INSERT INTO identity_links (
-                    act_id, child_work_id, parent_work_id, kind, source, evidence_json, applied_at)
-                VALUES (@undoActId, @childWorkId, @parentWorkId, @kind, @source, @evidenceJson, @now);
+                    act_id, child_work_id, parent_work_id, kind, source,
+                    relation_label, evidence_json, applied_at)
+                VALUES (@undoActId, @childWorkId, @parentWorkId, @kind, @source,
+                        @relationLabel, @evidenceJson, @now);
                 """,
                 new
                 {
@@ -235,6 +241,7 @@ public sealed class IdentityLinkRepository : IIdentityLinkRepository
                     parentWorkId = prior.ParentWorkId,
                     kind = prior.Kind,
                     source = prior.Source,
+                    relationLabel = prior.RelationLabel,
                     evidenceJson = prior.EvidenceJson,
                     now,
                 },
@@ -299,8 +306,10 @@ public sealed class IdentityLinkRepository : IIdentityLinkRepository
         {
             await lease.Connection.ExecuteAsync(new CommandDefinition("""
                 INSERT INTO identity_links (
-                    act_id, child_work_id, parent_work_id, kind, source, evidence_json, applied_at)
-                VALUES (@undoActId, @childWorkId, @parentWorkId, @kind, @source, @evidenceJson, @now);
+                    act_id, child_work_id, parent_work_id, kind, source,
+                    relation_label, evidence_json, applied_at)
+                VALUES (@undoActId, @childWorkId, @parentWorkId, @kind, @source,
+                        @relationLabel, @evidenceJson, @now);
                 """,
                 new
                 {
@@ -309,6 +318,7 @@ public sealed class IdentityLinkRepository : IIdentityLinkRepository
                     parentWorkId = prior.ParentWorkId,
                     kind = prior.Kind,
                     source = prior.Source,
+                    relationLabel = prior.RelationLabel,
                     evidenceJson = prior.EvidenceJson,
                     now,
                 },
@@ -438,11 +448,14 @@ public sealed class IdentityLinkRepository : IIdentityLinkRepository
         IdentityLinkRequest request,
         long childWorkId,
         string kind,
+        string? relationLabel,
         CancellationToken ct)
         => await lease.Connection.ExecuteAsync(new CommandDefinition("""
             INSERT INTO identity_links (
-                act_id, child_work_id, parent_work_id, kind, source, evidence_json, applied_at)
-            VALUES (@actId, @childWorkId, @parentWorkId, @kind, @source, @evidenceJson, @appliedAt);
+                act_id, child_work_id, parent_work_id, kind, source,
+                relation_label, evidence_json, applied_at)
+            VALUES (@actId, @childWorkId, @parentWorkId, @kind, @source,
+                    @relationLabel, @evidenceJson, @appliedAt);
             """,
             new
             {
@@ -451,6 +464,7 @@ public sealed class IdentityLinkRepository : IIdentityLinkRepository
                 parentWorkId = request.ParentWorkId,
                 kind,
                 source = request.Source,
+                relationLabel,
                 evidenceJson = request.EvidenceJson,
                 appliedAt = _clock.GetUtcNow().UtcDateTime,
             },

@@ -5,6 +5,7 @@ using Winnow.Core.Repositories;
 using Winnow.Enrich.Igdb;
 using Winnow.Enrich.Igdb.Model;
 using Winnow.Enrich.Steam;
+using Winnow.Enrich.Steam.Model;
 using Winnow.Enrich.Updates;
 using Winnow.Enrich.Updates.Model;
 using Winnow.Ingest.Epic.Web;
@@ -146,12 +147,13 @@ public sealed class EnrichmentSyncService
             "Enrichment COMPLETE: {Promoted} of {Outstanding} names promoted "
             + "({Igdb} from IGDB, {Steam} from the Steam store, {SteamCmd} from steamcmd.net, "
             + "{EpicCatalog} from Epic's catalog service); "
-            + "{Types} Steam app types read, {EpicTypes} Epic catalog items classified; "
+            + "{Types} Steam app types read, {Parents} storefront parent pointers read, "
+            + "{EpicTypes} Epic catalog items classified; "
             + "{Enriched} of {Targets} works had metadata filled in, in {Elapsed:n1}s. "
             + "Written per store: {Writes}. Routes: {Routes}.",
             run.Promoted, outstandingNames, run.FromIgdb, run.FromSteam, run.FromSteamCmd,
             run.FromEpicCatalog,
-            run.TypesRead, run.EpicClassified, run.EnrichedWorks.Count, targets.Count,
+            run.TypesRead, run.ParentsRead, run.EpicClassified, run.EnrichedWorks.Count, targets.Count,
             stopwatch.Elapsed.TotalSeconds,
             Describe(run.WrittenByProvider),
             run.Routes.Count == 0
@@ -284,14 +286,38 @@ public sealed class EnrichmentSyncService
             .Distinct(StringComparer.Ordinal)
             .ToArray();
 
+        var storeItems = new Dictionary<string, SteamStoreItem>(StringComparer.Ordinal);
+
         if (unnamed.Length > 0)
         {
             foreach (var (appId, item) in await _steamStore.GetItemsAsync(unnamed, ct: ct))
             {
+                storeItems[appId] = item;
                 if (!string.IsNullOrWhiteSpace(item.Name))
                 {
                     titles[new TargetKey(ExternalIdProviders.Steam, appId)] = item.Name;
                 }
+            }
+        }
+
+        // 3a. The relation facts, from the store bodies ALREADY ON DISK.
+        //     `type` and `related_items` arrive with the query
+        //     BuildGetItemsQuery has always sent -- there is no include_ flag
+        //     for either -- so every body the cache holds already carries them
+        //     and this costs no HTTP request at all. That is the whole reason
+        //     the Steam half of TASK-70.10 could ship before the IGDB half:
+        //     the data was already paid for.
+        var relationAppIds = slice
+            .Where(t => t.Provider == ExternalIdProviders.Steam && !storeItems.ContainsKey(t.ProviderId))
+            .Select(t => t.ProviderId)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+
+        if (relationAppIds.Length > 0)
+        {
+            foreach (var (appId, item) in await _steamStore.GetCachedItemsAsync(relationAppIds, ct))
+            {
+                storeItems[appId] = item;
             }
         }
 
@@ -304,8 +330,15 @@ public sealed class EnrichmentSyncService
 
         // 4. steamcmd.net, last. See the class remarks for why it is last and
         //    what it is worth.
-        var steamCmd = await ReadSteamCmdAsync(slice, titles, ct);
+        var storeParents = storeItems
+            .Where(pair => pair.Value.Related.ParentAppId is not null)
+            .Select(pair => pair.Key)
+            .ToHashSet(StringComparer.Ordinal);
+
+        var steamCmd = await ReadSteamCmdAsync(slice, titles, storeParents, ct);
         run.TypesRead += steamCmd.Types.Count;
+        run.ParentsRead += steamCmd.Parents.Count
+                           + storeItems.Values.Count(i => i.Related.ParentAppId is not null);
 
         // 5. Write. Work and release move together, in ONE transaction each:
         //    clearing name_is_provisional is what removes the work from the
@@ -325,7 +358,8 @@ public sealed class EnrichmentSyncService
                 run.AttemptedByProvider.GetValueOrDefault(target.Provider) + 1;
 
             var key = KeyOf(target);
-            var patch = BuildPatch(target, key, titles, matches, games, steamCmd.Types, epic);
+            var patch = BuildPatch(
+                target, key, titles, matches, games, steamCmd.Types, steamCmd.Parents, storeItems, epic);
             if (patch.IsEmpty)
             {
                 continue;
@@ -417,6 +451,9 @@ public sealed class EnrichmentSyncService
 
         public int TypesRead { get; set; }
 
+        /// <summary>Parent pointers read this pass, from both Steam sources (store and PICS mirror) combined.</summary>
+        public int ParentsRead { get; set; }
+
         /// <summary>
         /// Epic catalog items this run learned a classification for. Counted
         /// separately from <see cref="TypesRead"/> because the two come from
@@ -461,9 +498,11 @@ public sealed class EnrichmentSyncService
     private async Task<SteamCmdResult> ReadSteamCmdAsync(
         IReadOnlyList<EnrichmentTarget> targets,
         Dictionary<TargetKey, string> titles,
+        IReadOnlySet<string> storeParents,
         CancellationToken ct)
     {
         var types = new Dictionary<string, string>(StringComparer.Ordinal);
+        var parents = new Dictionary<string, string>(StringComparer.Ordinal);
         var named = new HashSet<string>(StringComparer.Ordinal);
         var asked = new HashSet<string>(StringComparer.Ordinal);
 
@@ -486,9 +525,15 @@ public sealed class EnrichmentSyncService
             }
 
             var needsName = target.NameIsProvisional && !titles.ContainsKey(KeyOf(target));
+            // The type is asked for when the title looks like a variant (the
+            // gate migration 0006 shipped), and also when the store cache
+            // carries a parent pointer with no type to explain it. The second
+            // condition is the point: a storefront fact gated behind the title
+            // heuristic it was meant to replace can never correct it.
             var needsType = !target.HasSteamAppType
                             && !target.NameIsProvisional
-                            && DemoConsolidation.IsVariantTitle(target.Title);
+                            && (DemoConsolidation.IsVariantTitle(target.Title)
+                                || storeParents.Contains(target.ProviderId));
 
             // Everything else gets the free read: answered if some other pass
             // already paid for this appid's body, skipped otherwise.
@@ -519,6 +564,16 @@ public sealed class EnrichmentSyncService
                 types[target.ProviderId] = fetch.Info.Type;
             }
 
+            // common.parent, which this client has always parsed and this
+            // service has always dropped on the floor. It is the appid a demo
+            // or a tool belongs to, and it is the second Steam source for the
+            // parent pointer -- the one that still answers for an app the
+            // store has delisted.
+            if (!string.IsNullOrWhiteSpace(fetch.Info.ParentAppId))
+            {
+                parents[target.ProviderId] = fetch.Info.ParentAppId;
+            }
+
             // Third in line: only offered for appids the first two sources left
             // without a title, and only while the work is still provisional.
             if (needsName && !string.IsNullOrWhiteSpace(fetch.Info.Name))
@@ -528,11 +583,13 @@ public sealed class EnrichmentSyncService
             }
         }
 
-        return new SteamCmdResult(types, named);
+        return new SteamCmdResult(types, parents, named);
     }
 
     private readonly record struct SteamCmdResult(
-        IReadOnlyDictionary<string, string> Types, IReadOnlySet<string> Named);
+        IReadOnlyDictionary<string, string> Types,
+        IReadOnlyDictionary<string, string> Parents,
+        IReadOnlySet<string> Named);
 
     /// <summary>
     /// Step 3b: asks Epic's catalog service about Epic catalog item ids in this
@@ -621,6 +678,8 @@ public sealed class EnrichmentSyncService
         IReadOnlyDictionary<TargetKey, IgdbExternalMatch> matches,
         IReadOnlyDictionary<long, IgdbGame> games,
         IReadOnlyDictionary<string, string> appTypes,
+        IReadOnlyDictionary<string, string> appParents,
+        IReadOnlyDictionary<string, SteamStoreItem> storeItems,
         IReadOnlyDictionary<string, EpicCatalogItemInfo> epicCatalog)
     {
         var match = matches.GetValueOrDefault(key);
@@ -631,6 +690,9 @@ public sealed class EnrichmentSyncService
         // user — is never overwritten, which is the failure that would rename a
         // library back to appids.
         var name = target.NameIsProvisional ? titles.GetValueOrDefault(key) : null;
+
+        var isSteam = key.Provider == ExternalIdProviders.Steam;
+        var storeItem = isSteam ? storeItems.GetValueOrDefault(target.ProviderId) : null;
 
         return new WorkEnrichment(
             target.WorkId,
@@ -663,7 +725,27 @@ public sealed class EnrichmentSyncService
             // repository's COALESCE would enforce regardless.
             EpicCategories: target.HasEpicCategories || key.Provider != ExternalIdProviders.Epic
                 ? null
-                : epicCatalog.GetValueOrDefault(target.ProviderId)?.CategoriesValue);
+                : epicCatalog.GetValueOrDefault(target.ProviderId)?.CategoriesValue)
+        {
+            // Migration 0022. Steam ids only, for the reason SteamAppType
+            // states: both dictionaries are keyed by appid and a GOG product id
+            // is a perfectly good appid string.
+            SteamStoreType = isSteam ? storeItem?.StoreType : null,
+
+            // Two Steam sources for one column. The store's related_items wins
+            // because it is the endpoint that still names a playtest's parent;
+            // the PICS mirror fills in for an app the store has delisted, which
+            // is precisely the population the store cannot answer about.
+            SteamParentAppId = isSteam
+                ? storeItem?.Related.ParentAppId ?? appParents.GetValueOrDefault(target.ProviderId)
+                : null,
+
+            // IGDB's relation fields ride the /games response the publisher
+            // already needed, so they add no request.
+            IgdbGameType = game?.GameType,
+            IgdbParentId = game?.ParentGameId,
+            IgdbVersionParentId = game?.VersionParentId,
+        };
     }
 
     private static string? Prefer(string? first, string? second)

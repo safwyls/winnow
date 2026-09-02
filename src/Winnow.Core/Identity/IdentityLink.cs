@@ -38,11 +38,19 @@ public sealed record IdentityLink
     /// <summary>The work that represents the identity or group.</summary>
     public required long ParentWorkId { get; init; }
 
-    /// <summary>One of <see cref="IdentityLinkKinds"/>: same_game or expansion_of.</summary>
+    /// <summary>One of <see cref="IdentityLinkKinds"/>: same_game, expansion_of or variant_of.</summary>
     public required string Kind { get; init; }
 
     /// <summary>One of <see cref="IdentityLinkSources"/>: user or hard_id.</summary>
     public required string Source { get; init; }
+
+    /// <summary>
+    /// The source's own word for the relation, one of
+    /// <see cref="RelationLabels"/>, or null when nothing named it. Kinds cost
+    /// a table rebuild each and labels cost nothing, so Demo, Playtest, Remaster
+    /// and the rest live here rather than in the CHECK (migration 0021).
+    /// </summary>
+    public string? RelationLabel { get; init; }
 
     /// <summary>Optional JSON evidence blob (e.g. matching external ids).</summary>
     public string? EvidenceJson { get; init; }
@@ -91,6 +99,12 @@ public sealed record IdentityLinkRequest
 
     /// <summary>One of <see cref="IdentityLinkSources"/>. Defaults to user.</summary>
     public string Source { get; init; } = IdentityLinkSources.User;
+
+    /// <summary>
+    /// The source's own word for the relation, one of
+    /// <see cref="RelationLabels"/>, or null when nothing named it.
+    /// </summary>
+    public string? RelationLabel { get; init; }
 
     /// <summary>Optional JSON evidence blob (e.g. the matching external ids that prompted this link).</summary>
     public string? EvidenceJson { get; init; }
