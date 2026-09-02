@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@safwyl'
 created_date: '2026-09-02 12:35'
-updated_date: '2026-09-02 13:08'
+updated_date: '2026-09-02 14:36'
 labels: []
 dependencies: []
 documentation:
@@ -218,73 +218,78 @@ Four stages, each independently shippable.
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-STAGE 1 ONLY — the eight defects. The structural/arrangement proposals and the six product decisions are with the user and are NOT pre-empted; the deletion list beyond four stale comments is untouched because it depends on the card-convergence decision.
+STAGE 2-3-4 (partial), carrying the user's four decisions. Stage 1 shipped separately.
 
-1. Expansion card selection (writes to the library, so first).
-   ExpansionGroupViewModel already carries IsSelected and MergeQueueViewModel already
-   carries SelectExpansion; nothing ever calls it but LoadAsync and RemoveExpansion, so
-   SelectedExpansionGroup is always the first card and G groups that card whatever the
-   user is looking at. Give the surface the merge card's own selection model:
-   - MergeQueueViewModel.MoveExpansionSelection(int delta), mirroring MoveSelection.
-   - MergeQueueView.axaml: name the expansion ItemsControl, add GotFocus, add
-     PointerPressed on the expansion card Border.
-   - MergeQueueView.axaml.cs: OnExpansionCardFocus, OnExpansionCardPressed,
-     ScrollExpansionIntoView(int).
-   - MainWindow.axaml.cs OnMergeQueueKeyDown: Up/Down in the expansions branch.
-   Audit of the rest of that handler: the review branch answers on SelectedGroup and the
-   expansions branch on SelectedExpansionGroup; nothing else in it indexes a list.
+1. CONVERGE THE CARD onto one arrangement (decision 1). Primary capsule 200x300 in a
+   200px left column; every other member a row on the right, at every member count.
+   MergeGroupMemberViewModel gains IsSoleChild, set by MergeGroupViewModel.ApplyCore
+   when Others.Count == 1, and the row varies on it:
+    - sole child: cover 200x300, the four-row diff open (no disclosure), NO checkbox,
+      forced IsIncluded (the two answer buttons carry include/exclude, TASK-70.3);
+    - three or more: 64x96 chip, condensed one-line evidence, disclosure, checkbox.
+   ShowIncludeControl is resurrected with the meaning the pass gives it:
+   !IsPrimary && !IsSoleChild. Deletes the IsPair grid, MergeGroupViewModel.Left/Right/
+   PairEdge/PairHasNoSignals and the duplicated inline signal template (one shared
+   MergeSignalTemplate resource). RequestCovers gives the primary AND the sole child the
+   capsule width; only chips are scaled.
 
-2. Report scoping. Add MergeReportSurface (None/Review/Expansions/History) and
-   ReportSurface alongside ReportMessage, with HasReviewReport / HasExpansionsReport /
-   HasHistoryReport replacing the shared HasReport on the three note blocks. One
-   Report(message, actId) helper stamps the surface that is up. ClearReport() on
-   ShowReview, ShowExpansions, ShowHistoryAsync and at the top of LoadAsync;
-   RetractActAsync reloads FIRST and reports after, so the reload does not eat its own
-   outcome line.
+2. EVIDENCE (decision 2). Keep CONFIDENCE. Delete the contribution column, its three
+   styles, and MergeSignalViewModel.ContributionText / Contribution / IsForMatch /
+   IsAgainstMatch / Signed. Delete BestScoreText and its binding. Delete the visible
+   entry numbers from all four templates and with them MergeSideViewModel.ReleaseText,
+   MergeGroupMemberViewModel.ReleasesText, ExpansionMemberViewModel.ReleasesText.
+   Automation labels are re-derived PROGRESSIVELY from facts already on the row -- title,
+   then stores, then year, then publisher, then a positional last resort -- assigned by
+   the group so two same-titled members are still distinguishable without a database id
+   (design-system 10.5).
 
-3. Unfired-signal contrast. Opacity 0.55 on Grid.signal.unfired composites TextDim to
-   2.78:1 on Surface and 3.00:1 on Well against section 8's 5.04 floor, and any opacity
-   below 1 over a dark field lowers contrast, so opacity cannot be the mark. Drop it and
-   demote the unfired row's VALUE cell from Text to TextDim — the app's own
-   content-to-metadata step — which lands 5.88:1 on Surface and higher on Well. The state
-   stays triple-carried: em-dash value, reason sentence, demoted value ink. Verified with
-   Winnow.App.Themes.Colorimetry, not estimated.
+3. BAND LABEL (decision 3). TOP OF QUEUE binds IsPriority, the matcher's confidence
+   band, not a queue position. docs-writer names it from the facts; the tooltip goes
+   (notes.md bans the blurb). Literal moves into MergeCopy, as do Same game, Different
+   games, CONFIDENCE, TITLES and the roster column labels.
 
-4. Expansion cover sizing. ExpansionGroupViewModel.RequestCovers scales the pack chip by
-   ChipWidth / CoverWidth exactly as MergeGroupViewModel.RequestCovers does, so a 64x96
-   chip stops decoding at 200px width.
+4. HISTORY (decision 4). One chronological log, newest first, retracted acts REMOVED
+   rather than stamped -- this reverses the 'a retracted row stays on screen with the
+   date it was reversed' line in the pass's keep-list, on the user's explicit decision.
+   BuildLinkHistoryAsync filters to live acts; MergeLinkHistoryRowViewModel loses
+   IsLive/RetractedAt/IsRetracted/RetractedLabelText/RetractedAtText/ChildCountText.
+   RETRACT is renamed UNDO everywhere on this screen: copy, tooltips, automation names,
+   commands, view-model members and the comments that explain the control. The
+   repository API (IIdentityLinkRepository.RetractActAsync) and the schema are another
+   layer and keep their names.
 
-5. Rail. Add OutstandingCount / OutstandingCountText / HasOutstanding (review plus
-   expansions); RowOpacity reads HasOutstanding. MainWindow.axaml binds the count and its
-   visibility to the outstanding pair. The row's tooltip currently says 'Pairs that might
-   be the same game', which is both pair-model residue and false about a count that now
-   includes expansion groups: facts to docs-writer for the replacement.
+5. ARRANGEMENT. One centred 840 measure carrying the segment strip's content, each
+   header with its count, the report note, the card list, the empty state and the
+   history list. MaxWidth/HorizontalAlignment come off Border.card so cards fill the
+   column instead of setting it.
 
-6. Two ASCII full stops to middle dots in ExpansionBaseTemplate and
-   ExpansionRosterRowTemplate.
+6. DELETIONS beyond the above: MergeGroupMemberViewModel.IncludeControlText,
+   MergeSideViewModel.NormalizedTitle and HasPublisher,
+   MergeQueueViewModel.DifferentGamesTooltip, MergeLinkHistoryRowViewModel.ChildCountText,
+   the six dead geometry constants (ExpansionGroupViewModel.CoverWidth/CoverHeight,
+   ExpansionMemberViewModel.ChipWidth/ChipHeight, MergeGroupMemberViewModel.ChipHeight,
+   MergeQueueViewModel.CoverHeight), the KEEP note box (its WHY line moves under the
+   primary capsule), the report block written out three times (one shared template), and
+   MergeCopy's empty and duplicated section banners. EffectLine folds into each segment
+   header, since deleting the KEEP box removes its home.
 
-7. Bind MergeEdgeViewModel.SummaryText (which formats MergeCopy.EdgeSummaryFormat) as
-   AutomationProperties.Name on the merge roster's condensed evidence line, so the six
-   unlabelled TextBlocks announce as labelled values.
+7. RELATION LABEL. ExpansionProposalMember.RelationLabel now carries the storefront's
+   own word (demo, beta, playtest, expansion, dlc, remaster, port, mod, superseded...).
+   Thread it to ExpansionMemberViewModel and show it on the row beside the title, so a
+   playtest stops reading as an expansion. Display only; the parent stays fixed by the
+   relation and no survivor chooser appears.
 
-8. Delete exactly the four stale comments the pass names: MergeQueueView.axaml 17-21,
-   the migration-0019 paragraph in MergeQueueViewModel's class summary, the Border.entry
-   'three lists' comment, and OnCardFocus's 'pressing S merges a different pair'. Nothing
-   else on the delete list.
+8. COPY. Every string re-authored by docs-writer with the brevity instruction: the band
+   label, the undo vocabulary, the folded intro lines, the history heading naming both
+   relations, and the new automation formats.
 
-TESTS (scoped first, then the full suite, no commit):
- - a shortcut acts on the focused expansion card, not the first, asserted the way
-   Selection_moves_by_card_and_clamps_at_the_ends and Answering_moves_the_cursor asserts
-   the review equivalent;
- - a report raised on one surface does not render on another, and a segment switch and a
-   reload clear it;
- - the unfired signal's inks clear 5.04:1 via Colorimetry, plus a source guard that the
-   unfired style sets no opacity (the StoreChipLayoutTests XAML-guard pattern);
- - the pack chip asks for a chip-sized cover, against a recording ICoverCache;
- - the rail count and opacity reflect expansions with an empty review queue.
-Build and test via --artifacts-path into the session scratchpad; the user's app holds
-src/Winnow.App/bin. Prose via docs-writer. ExpansionDetector and the enrichment layer are
-another agent's; not touched.
+TESTS (scoped, then full, via --artifacts-path into the session scratchpad; no commit):
+the converged card at two, three and six members; the include control's meaning at two;
+confidence surviving while points and entry numbers are gone; automation names
+distinguishing same-titled members without entry numbers; the renamed band label and its
+absent tooltip; history chronological with retracted rows absent; no user-facing string
+saying retract; the 840 measure covering header, count, report and empty state; the
+deleted members genuinely unreferenced; the relation label on the expansion row.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -398,4 +403,180 @@ Card convergence, CONFIDENCE, contribution points, entry numbers, the HISTORY sp
 QUEUE, the 840 measure's scope, segment counts, virtualization, the Escape ladder, card and
 chip automation names, copy consolidation, `RetractActAsync`'s full rescan, and the rest of
 the dead-member and dead-markup deletions. Stages 2-4 and the six product decisions.
+
+## Stage 2-3-4 (partial) implemented, carrying the user's four decisions - NOT finalized
+
+Structural change, arrangement change, delete list, four decisions, plus the relation
+label the storefront work added since the pass was written. Stage 1's eight defects were
+already in the tree.
+
+### Decision 1 - the two card layouts converged
+One arrangement at every member count: the primary's capsule at 200x300 in a 200px left
+column, every other member a row on the right. What varies is inside the row, and the row
+asks the member:
+ - MergeGroupMemberViewModel.IsSoleChild, set by MergeGroupViewModel.ApplyCore when
+   Others.Count == 1, drives CoverWidth/CoverHeight (200x300 vs 64x96),
+   PlaceholderFontSize/LineHeight, ShowFullEvidence, ShowCondensedEvidence,
+   ShowEvidenceDisclosure, ShowNoEvidenceNote and ShowIncludeControl;
+ - the dead ShowIncludeControl is resurrected as !IsPrimary && !IsSoleChild, which is
+   the meaning the pass proposed for it;
+ - a sole child is forced IsIncluded, because the two answer buttons are its only
+   include control (TASK-70.3's 'NO CHECKBOXES at two members');
+ - CoverWidth is now the single source for the decode width too: RequestCovers passes
+   displayWidthPixels * member.CoverWidth / CoverWidth, so nothing decodes a 600x900
+   source for a 64px chip and the sole child's 200x300 cover is asked for at capsule
+   width.
+Deleted with it: the IsPair grid, the duplicated inline signal template (one shared
+MergeSignalTemplate), MergeGroupViewModel.Left / Right / PairEdge / PairHasNoSignals, and
+the public Ordered (now a private field). Card geometry: the roster still sets the 840
+ceiling (44 + 200 + 28 + 526.0 = 798); a two-member card needs 44 + 200 + 28 + (30 + 200
++ 14 + evidence + 14 + 102.3), about 772 at the evidence line's minimum, so the measured
+ceiling is unchanged and the roster remains the binding density.
+
+### Decision 2 - evidence detail
+CONFIDENCE stays on the card head. Deleted: the contribution column, its three styles,
+MergeSignalViewModel.ContributionText / Contribution / IsForMatch / IsAgainstMatch and
+the Signed() helper; the per-row BestScoreText and the BestScore it read. Entry numbers
+are gone from all four templates, and with them MergeSideViewModel.ReleaseText and both
+ReleasesText forwarders.
+Automation names no longer lean on the entry number. New MergeMemberLabels assigns a
+card's member labels progressively - title, then stores, then year, then publisher, each
+added only while two members would otherwise share a label, with a position ('1 of 3')
+as the last resort. So Prey against Prey on one storefront is told apart by the year the
+row already prints, and no database id reaches a screen reader (design-system 10.5).
+
+### Decision 3 - the band label
+TOP OF QUEUE renamed; the literal and its tooltip are gone from the markup, the label is
+MergeCopy.PriorityBandLabel and docs-writer named it from the facts (it binds IsPriority,
+the matcher's top confidence band, not a queue position). Same pass moved Same game,
+Different games, CONFIDENCE, TITLES, the roster column labels and 'Same game?' into
+MergeCopy; a guard now fails any literal Text/Content/ToolTip.Tip on the screen.
+
+### Decision 4 - history and the undo vocabulary
+BuildLinkHistoryAsync drops any act with no live link, so an undone act LEAVES the log
+rather than staying stamped RETRACTED. This REVERSES the pass's keep-list line 'a
+retracted row staying on screen with the date it was reversed' - recorded here because it
+changes a decision: the user's reason is that the log should show what is in force, and
+undo remains reachable from the report note the moment the act is performed. Order is
+unchanged (newest first, one list, both relations).
+Retract is renamed UNDO across the screen: MergeCopy.UndoButton / UndoTooltip / Undone /
+UndoneAlready / UndoAutomationFormat, MergeQueueViewModel.UndoCommand /
+UndoReportCommand / CanUndoReport / ReportUndoActId / ReportUndo*Text /
+ReportUndoAutomationName / UndoActAsync, MergeLinkHistoryRowViewModel.IsUndoing /
+CanUndo / UndoButtonText / UndoTooltip / UndoAutomationName, and every comment that
+explains the control. The repository API (IIdentityLinkRepository.RetractActAsync) and
+the schema keep their names: another layer, not the interface.
+Deleted with the split: IsLive, RetractedAt, IsRetracted, RetractedLabelText,
+RetractedAtText, ChildCountText, MergeCopy.RetractedLabel.
+
+### Arrangement - one 840 content column
+The measure came off Border.card (it set MaxWidth and HorizontalAlignment alone) and
+became a ':is(Control).measure' style carried by eight columns: the segment strip's
+content, both surface headers with their counts and outcome reports, both card lists,
+both empty states and the history log. The segment strip is included because the user
+named it; its rule still crosses the pane (11.1), only its content aligns with the cards.
+Verified ':is(Control).measure' against current Avalonia docs (styling/style-selector-
+syntax) rather than memory.
+
+### Deletions beyond the above
+MergeGroupMemberViewModel.IncludeControlText and ChipHeight; MergeSideViewModel
+.NormalizedTitle (and its ctor parameter) and HasPublisher (GameDetailsViewModel has its
+own); MergeQueueViewModel.DifferentGamesTooltip and CoverHeight; ExpansionGroupViewModel
+.CoverWidth / CoverHeight / EffectLine; ExpansionMemberViewModel.ChipWidth / ChipHeight;
+MergeGroupViewModel.PrimaryLabel and MergeCopy.PrimaryLabel with the KEEP note box (the
+WHY line moved under the primary's radio, which is now the only place the card says which
+title is kept); the report note block, written out three times, now one shared
+ReportNoteTemplate; MergeCopy's empty 'Merge modes and limits' banner and its duplicated
+'Automation' banner; MergeCopy.LinkEffect and ExpansionCopy.GroupEffect, folded into the
+two segment headers because deleting the KEEP box removed the effect line's home;
+ExpansionCopy.Retracted, which nothing called.
+
+### Relation label
+ExpansionProposalMember.RelationLabel is threaded to ExpansionMemberViewModel
+(RelationText, uppercased, and HasRelation) and drawn top-right on the pack row, so a
+playtest reads PLAYTEST instead of arriving under an EXPANSIONS heading with nothing to
+say otherwise. Display only: the base stays fixed by the relation, no survivor chooser,
+no number moves.
+
+## Copy as shipped, tests and verification
+
+### Copy (all authored by docs-writer with the brevity instruction)
+ - Confidence band, replacing TOP OF QUEUE: **STRONG MATCH**, and its tooltip is gone.
+   Two uppercase words, naming the matcher's band rather than a position.
+ - Review intro, absorbing the per-card effect line: **One tile, a chip per store. Undo
+   any time.**
+ - Expansions intro, absorbing its effect line: **Display only. Hours and counts stay
+   separate. Undo any time.**
+ - History heading, now naming both relations: **Linked and grouped**, under it **Newest
+   first. Undo any time.**
+ - Undo vocabulary: button **Undo**, tooltip **Proposals return to review.**, reports
+   **Undone. Returns to review.** and **Already undone.**, automation **Undo: {0}**.
+ - Segment tooltips: **Groups waiting for an answer** (was 'Pairs waiting for an answer',
+   pair-model residue) and **What you have linked and grouped**.
+ - Card literals moved into MergeCopy unchanged in wording: Same game, Different games,
+   'Same game?', CONFIDENCE, TITLES, TITLE / YEAR / PUBLISHER.
+ - Member labels: '{0} ({1})' with qualifiers joined by ', ' and '{0} of {1}' as the last
+   resort, so a screen reader hears 'Prey (Steam, 2017)' rather than 'Prey Steam #1024'.
+
+### Tests
+Updated: MergeQueueViewModelTests (Left/Right, PairEdge, ReleasesText, the contribution
+assertions, the undo vocabulary, and the history row that used to stay stamped),
+SameGameSurfaceTests (the report note is now one ContentControl template; the roster
+evidence line is found by its automation name), StoreChipLayoutTests (the measure moved
+off Border.card onto the content column), SameGameSignalTests (chip width constant).
+
+New:
+ - A_two_member_card_draws_its_child_at_full_size_with_no_checkbox
+ - Moving_the_primary_at_two_members_moves_the_full_size_row
+ - A_three_member_card_makes_every_child_a_chip_with_an_include_control
+ - A_six_member_card_draws_five_rows_and_six_distinct_names
+ - Every_member_asks_for_the_cover_at_the_size_it_draws
+ - The_card_states_its_confidence_and_the_matchers_band
+ - The_history_log_is_newest_first_and_holds_only_what_stands
+ - An_expansion_row_states_the_relation_in_the_stores_own_word
+ - five MergeMemberLabels cases (title alone, +stores, +year for one title on one store,
+   the positional last resort, and no '#' at any depth)
+ - No_layout_on_the_screen_switches_on_the_member_count
+ - The_evidence_shows_no_arithmetic
+ - No_member_on_the_screen_shows_its_entry_numbers
+ - The_confidence_band_is_named_from_copy_and_carries_no_tooltip
+ - Every_user_facing_string_on_the_screen_comes_from_copy
+ - No_user_facing_string_says_retract
+ - The_expansion_row_draws_the_relations_own_word
+ - Every_member_the_pass_deleted_is_gone (35 members, by reflection)
+ - Every_column_of_the_same_game_screen_takes_the_measure
+ - The_same_game_screen_holds_one_measured_content_column
+
+### Each guard checked against the defect it names
+Reintroduced one at a time, then reverted:
+ - checkbox back at two members -> 2 failures
+ - sole child back to a 64x96 chip -> 2 failures
+ - a copy string reading 'Retract' -> 1 failure
+ - TOP OF QUEUE and its tooltip back in the markup -> 2 failures
+ - the 840 measure back on Border.card alone -> 1 failure
+ - undone acts kept on the history log -> 2 failures
+Entry numbers could not be reintroduced at all: binding ReleasesText fails the build
+(AVLN2000, no such property), which is stronger than the text guard.
+
+### Results, verbatim
+Build: 0 Warning(s), Build succeeded, under TreatWarningsAsErrors.
+    Winnow.Tests           Failed: 0, Passed: 2657, Skipped: 0, Total: 2657
+    Winnow.Covers.Tests    Failed: 0, Passed:   70, Skipped: 0, Total:   70
+    Winnow.Recommend.Tests Failed: 0, Passed:  107, Skipped: 0, Total:  107
+Built and tested via --artifacts-path into the session scratchpad; the running app's
+src/Winnow.App/bin was never touched. Not committed.
+
+### Concluded against, or out of scope
+ - The pass's fallback (keep the symmetric pair layout) was NOT needed. The converged card
+   reads better at two members and the width budget holds: a two-member card needs about
+   772px against the roster's 798, so the roster still sets the measured 840 ceiling.
+ - Others is still ordered by work id. Ordering by evidence (direct edges by score, then
+   indirect) was in the pass's 'reduce repetition' section, not in the four decisions, and
+   it changes which row a user answers first; left for a decision of its own.
+ - Not done, and not asked for in this pass: virtualization of the card lists, counts on
+   the segment tabs, the Escape ladder, AutomationProperties.Name on cards and store
+   chips, unifying HasCompletedSweep with _scannedExpansions, and UndoActAsync's full
+   LoadAsync rescan. AC #11's second clause ('separates acts currently in force from
+   retracted acts') is superseded by decision 4: undone acts leave the log, so everything
+   on it is in force.
 <!-- SECTION:NOTES:END -->
