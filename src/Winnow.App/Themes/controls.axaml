@@ -301,4 +301,54 @@
         <Setter Property="Padding" Value="32,16,32,20"/>
     </Style>
 
+    <!-- ══ STORE CHIPS (TASK-70.6) ═══════════════════════════════════════════
+         The outlined store badge that already stood in the tile's hover
+         overlay, on the back of the card, on a feed card, in the details
+         header and in the list column, promoted to a shared class and drawn
+         one per store. The grid is one tile per game now, so the single badge
+         became a row: a game bought on Steam and on Epic wears both.
+
+         Line edge and TextDim ink, and neither Volt nor Flare. Volt means
+         selection and recency; Flare means one thing only, and a row of pink
+         chips is the fastest way to make the badge on the same tile stop
+         meaning it (§2). A chip states where the game lives, not a state and
+         not an alarm. -->
+    <Style Selector="Border.store-chip">
+        <Setter Property="BorderBrush" Value="{DynamicResource Line}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="3"/>
+        <Setter Property="Padding" Value="5,1"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="Border.store-chip > :is(TextBlock)">
+        <Setter Property="FontFamily" Value="{DynamicResource BodyFont}"/>
+        <Setter Property="FontSize" Value="9"/>
+        <Setter Property="LetterSpacing" Value="0.54"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextDim}"/>
+    </Style>
+
+    <!-- The resting mark on the front of a multi-store tile. One letter,
+         because at the 108px density floor a row of word-chips is wider than
+         the tile; the words arrive on hover, on the back face and in the
+         modal, so nothing the grid encodes is available only as a glyph (§8).
+         Drawn on a TileChipGround field so it stays legible over any cover,
+         and not drawn at all on a single-store tile, which is every tile in
+         a library nothing has been linked in. -->
+    <Style Selector="Border.store-pip">
+        <Setter Property="Background" Value="{DynamicResource TileChipGround}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource Line}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="3"/>
+        <Setter Property="Padding" Value="4,1"/>
+        <Setter Property="MinWidth" Value="16"/>
+    </Style>
+    <Style Selector="Border.store-pip > :is(TextBlock)">
+        <Setter Property="FontFamily" Value="{DynamicResource BodyFont}"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="FontSize" Value="9"/>
+        <Setter Property="LetterSpacing" Value="0.4"/>
+        <Setter Property="TextAlignment" Value="Center"/>
+        <Setter Property="Foreground" Value="{DynamicResource Text}"/>
+    </Style>
+
 </Styles>

@@ -1,4 +1,4 @@
-using Dapper;
+﻿using Dapper;
 using Winnow.Core.Domain;
 using Winnow.Core.Identity;
 using Winnow.Core.Queries;
@@ -73,33 +73,35 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
         var all = await QueryAsync(thresholds, AccountScope.All, ct);
         var own = await QueryAsync(thresholds, AccountScope.Own, ct);
 
-        return Math.Max(0, all.Count - own.Count);
+        // Distinct games, not rows. The grid draws one tile per resolved
+        // work, so the number of tiles that actually disappear is the
+        // difference between two counts of distinct games — a linked pair
+        // whose Steam entry is filtered away loses a store chip and not a
+        // tile, and counting rows would promise a tile back that never left.
+        return Math.Max(0, Games(all) - Games(own));
+
+        static int Games(IReadOnlyList<OwnershipBucket> rows)
+        {
+            var seen = new HashSet<long>();
+            foreach (var row in rows)
+            {
+                seen.Add(row.ResolvedWorkId);
+            }
+
+            return seen.Count;
+        }
     }
 
     private async Task<IReadOnlyList<OwnershipBucket>> QueryAsync(
         BucketThresholds thresholds, string? scopeOverride, CancellationToken ct)
     {
-        // Bucket precedence (§6.1), in the order the CASE below tests:
-        //
-        //   1. never_played     — zero minutes AND no last-played date
-        //   2. retired          — at or above the retired floor
-        //   3. stale_but_patched
-        //   4. bounced          — at or above the refund line, below retired
-        //   5. active           — the residue: nonzero playtime under the
-        //                         refund line, or a last-played date beside
-        //                         zero (unknown) minutes
-        //
-        // Retired outranks stale, as it always has: high-playtime games are
-        // excluded from surfacing even when patched.
-        //
-        // Stale outranks bounced, because Bounced spans everything between the
-        // refund line and the retired floor, so if it were tested first it
-        // would swallow `stale_but_patched` whole and the rail's flagship bucket
-        // would be permanently empty. Testing staleness first is also what makes
-        // §5.2 true: the badge is bucket membership, and a game with forty
-        // minutes on it CAN be behind on a patch. Only case 1, the game that
-        // was never opened, has nothing to be behind on, which is why it, and
-        // only it, is tested above staleness.
+        // Bucket precedence now lives in LibraryBucketRules.Classify rather
+        // than in the CASE this query used to carry. The query still finds
+        // every stored fact the rules read — the latest play record per
+        // ownership, the acknowledgement watermark, the correlated build
+        // push, the account scope — and Consolidate applies the rules on
+        // the way out, at both grains. Buckets are still derived on read
+        // and still never stored.
         const string sql = """
             WITH latest_play AS (
                 -- The newest play record per ownership. observed_at is stored to
@@ -424,45 +426,11 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
                    -- above: NULL is "nobody has read it", which is the state of
                    -- every Epic work named from catcache.bin.
                    w.epic_categories                   AS EpicCategories,
-                   CASE
-                       -- NEVER OPENED: no evidence of play at all — no minutes
-                       -- AND no last-played date. This is the one row §5.2's
-                       -- "an unplayed game has nothing to be behind on" is about,
-                       -- so it is the one row allowed to outrank staleness.
-                       --
-                       -- Zero minutes beside a REAL last-played date is not this.
-                       -- It is a source admitting it did not measure the session:
-                       -- an appmanifest LastPlayed on a machine whose userdata/ is
-                       -- unreadable, where the game was demonstrably launched and
-                       -- the minutes are unknown, not zero. Unknown minutes are
-                       -- neither "never played" nor "bounced" (both of which claim
-                       -- a KNOWN number of minutes), so such a row falls past
-                       -- every playtime test below and is bucketed on staleness
-                       -- alone.
-                       WHEN COALESCE(ep.playtime_minutes, 0) = 0
-                            AND ep.last_played_at IS NULL
-                           THEN 'never_played'
-                       WHEN ep.playtime_minutes >= @RetiredFloorMinutes
-                           THEN 'retired'
-                       -- A NULL last_played_at with real playtime is Steam's
-                       -- 86400 sentinel: played before Steam tracked timestamps
-                       -- (docs/spikes/steam-local-files.md). "Unknown, certainly
-                       -- ancient" is maximally dormant, not active — treating it
-                       -- as active structurally excluded the oldest pile in the
-                       -- library from the one bucket built to resurface it.
-                       WHEN mu.occurred_at IS NOT NULL
-                            AND (ep.last_played_at IS NULL
-                                 OR datetime(mu.occurred_at) >
-                                    datetime(ep.last_played_at, '+' || @StaleWindowMonths || ' months'))
-                           THEN 'stale_but_patched'
-                       -- No special case for nonzero playtime under the floor:
-                       -- it falls through to ELSE ('active'). Classifying it
-                       -- as never_played was reverted (2026-08-29) because
-                       -- real playtime reading as "Never played" was confusing.
-                       WHEN ep.playtime_minutes >= @BouncedFloorMinutes
-                           THEN 'bounced'
-                       ELSE 'active'
-                   END                                 AS Bucket
+                   -- The raw input the rules are applied to, not the verdict.
+                   -- The CASE that stood here now lives in
+                   -- LibraryBucketRules.Classify so it can run at two grains
+                   -- (per row and per game) without two implementations.
+                   mu.occurred_at                      AS MajorUpdateAt
             FROM ownerships o
             JOIN releases            r  ON r.id = o.release_id
             JOIN works               w  ON w.id = r.work_id
@@ -496,7 +464,7 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
             SameGameKind = IdentityLinkKinds.SameGame,
         }, transaction: lease.Transaction, cancellationToken: ct));
 
-        return Consolidate(rows.AsList(), thresholds.ShowNonGameEntries);
+        return Consolidate(rows.AsList(), thresholds);
     }
 
     public async Task<IReadOnlyList<FacetTarget>> GetFacetTargetsAsync(CancellationToken ct = default)
@@ -553,8 +521,10 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
     /// un-hiding is one toggle away.)
     /// </remarks>
     private static IReadOnlyList<OwnershipBucket> Consolidate(
-        List<BucketRow> rows, bool showNonGameEntries)
+        List<BucketRow> rows, BucketThresholds thresholds)
     {
+        var showNonGameEntries = thresholds.ShowNonGameEntries;
+
         // One entry per RELEASE — a release owned on two stores is one game,
         // and normalising its title twice would only produce the same answer.
         var owned = new Dictionary<long, DemoConsolidationEntry>();
@@ -579,7 +549,7 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
                 absorbedByBase.TryGetValue(baseReleaseId, out var n) ? n + 1 : 1;
         }
 
-        var result = new List<OwnershipBucket>(rows.Count);
+        var survivors = new List<BucketRow>(rows.Count);
         foreach (var row in rows)
         {
             if (consolidated.ContainsKey(row.ReleaseId))
@@ -616,6 +586,66 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
                 continue;
             }
 
+            survivors.Add(row);
+        }
+
+        return Fold(survivors, absorbedByBase, thresholds);
+    }
+
+    /// <summary>
+    /// Folds the surviving rows into games (TASK-70.6) and hands every row
+    /// the <see cref="GameGrouping"/> it is one store entry of.
+    ///
+    /// <para>It runs here, after consolidation, and not as a window function
+    /// in the SQL, because the SQL cannot know which rows survive: demo
+    /// consolidation, the non-game filter and the account filter all drop
+    /// rows in C# above. A sum taken in the query would include entries the
+    /// grid does not show, and the details modal — which folds the rows it
+    /// is given, by design — would report a different total for the same
+    /// game. One fold over one set is what stops those two numbers
+    /// disagreeing.</para>
+    ///
+    /// <para>The sum and its date come from
+    /// <see cref="CoveragePlaytime.Across"/>, the same factory the modal
+    /// uses, which has no constructor that can pair a sum with a foreign
+    /// store's date (the F10 hazard). The game's bucket is the shared rules
+    /// re-applied to that sum, not the strongest member's bucket: two entries
+    /// at sixty minutes each are two Active rows and one Bounced game.</para>
+    /// </summary>
+    private static IReadOnlyList<OwnershipBucket> Fold(
+        List<BucketRow> survivors,
+        Dictionary<long, int> absorbedByBase,
+        BucketThresholds thresholds)
+    {
+        var members = new Dictionary<long, List<BucketRow>>();
+        foreach (var row in survivors)
+        {
+            if (!members.TryGetValue(row.ResolvedWorkId, out var list))
+            {
+                members[row.ResolvedWorkId] = list = [];
+            }
+
+            list.Add(row);
+        }
+
+        var games = new Dictionary<long, GameGrouping>(members.Count);
+        foreach (var (resolvedWorkId, rows) in members)
+        {
+            DateTime? update = null;
+            foreach (var row in rows)
+            {
+                if (row.MajorUpdateAt is { } at && (update is null || at > update))
+                {
+                    update = at;
+                }
+            }
+
+            games[resolvedWorkId] = GameGrouping.Of(resolvedWorkId, rows, update, thresholds);
+        }
+
+        var result = new List<OwnershipBucket>(survivors.Count);
+        foreach (var row in survivors)
+        {
             result.Add(new OwnershipBucket
             {
                 OwnershipId = row.OwnershipId,
@@ -624,7 +654,10 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
                 ResolvedWorkId = row.ResolvedWorkId,
                 PlaytimeMinutes = row.PlaytimeMinutes,
                 LastPlayedAt = row.LastPlayedAt,
-                Bucket = row.Bucket,
+                MajorUpdateAt = row.MajorUpdateAt,
+                Bucket = LibraryBucketRules.Classify(
+                    row.PlaytimeMinutes, row.LastPlayedAt, row.MajorUpdateAt, thresholds),
+                Game = games[row.ResolvedWorkId],
 
                 // Never a playtime sum — see OwnershipBucket.ConsolidatedDemoCount.
                 ConsolidatedDemoCount = absorbedByBase.GetValueOrDefault(row.ReleaseId),
@@ -640,7 +673,7 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
     /// projection because they are inputs to a decision this repository has
     /// already made by the time the caller sees a row.
     /// </summary>
-    private sealed record BucketRow
+    private sealed record BucketRow : IPlayedEntry
     {
         public long OwnershipId { get; init; }
         public long ReleaseId { get; init; }
@@ -648,7 +681,7 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
         public long ResolvedWorkId { get; init; }
         public long PlaytimeMinutes { get; init; }
         public DateTime? LastPlayedAt { get; init; }
-        public string Bucket { get; init; } = string.Empty;
+        public DateTime? MajorUpdateAt { get; init; }
         public string? Title { get; init; }
         public bool NameIsProvisional { get; init; }
         public int? FirstReleaseYear { get; init; }

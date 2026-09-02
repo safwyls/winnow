@@ -1,4 +1,4 @@
-using Dapper;
+﻿using Dapper;
 using Microsoft.Data.Sqlite;
 using Winnow.Core.Identity;
 using Winnow.Core.Queries;
@@ -471,12 +471,29 @@ public class IdentityLinkTests
         Assert.Equal(before.Count, after.Count);
         for (var i = 0; i < before.Count; i++)
         {
-            Assert.Equal(before[i] with { ResolvedWorkId = 0 }, after[i] with { ResolvedWorkId = 0 });
+            // Two columns held aside: ResolvedWorkId (TASK-70.4) and Game
+            // (TASK-70.6). The row's own bucket, playtime and date are
+            // untouched by a link; the game they belong to is exactly what
+            // a link changes.
+            Assert.Equal(
+                before[i] with { ResolvedWorkId = 0, Game = null! },
+                after[i] with { ResolvedWorkId = 0, Game = null! });
+
+            // The row's own figures are still the row's own.
+            Assert.Equal(before[i].PlaytimeMinutes, after[i].PlaytimeMinutes);
+            Assert.Equal(before[i].Bucket, after[i].Bucket);
         }
 
         // And the one column that did move, moved exactly where it should.
         Assert.All(before, row => Assert.Equal(row.WorkId, row.ResolvedWorkId));
         Assert.All(after, row => Assert.Equal(steamWorkId, row.ResolvedWorkId));
+
+        // Before the link the two rows are two games; after it they are one,
+        // and the one game's minutes are both rows' minutes.
+        Assert.Equal(2, before.Select(r => r.Game.ResolvedWorkId).Distinct().Count());
+        Assert.Single(after.Select(r => r.Game.ResolvedWorkId).Distinct());
+        Assert.All(after, row => Assert.Equal(340, row.Game.PlaytimeMinutes));
+        Assert.All(after, row => Assert.Equal(2, row.Game.EntryCount));
     }
 
     // ── The 0018 repair ──────────────────────────────────────────────────────

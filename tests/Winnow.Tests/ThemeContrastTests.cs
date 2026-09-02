@@ -291,6 +291,16 @@ public class ThemeContrastTests
                 Assert.Equal(255, t["TileGround"].A);
                 Assert.Equal(theme.Ground, t["TileGround"]);
 
+                // TileChipGround: the store pip's field on the front of a
+                // multi-store tile (TASK-70.6). Deliberately not opaque — a
+                // small mark on cover art, not a panel — but built from the
+                // theme's own Ground, so it darkens with the room and never
+                // samples the desktop.
+                Assert.Equal(theme.Ground.R, t["TileChipGround"].R);
+                Assert.Equal(theme.Ground.G, t["TileChipGround"].G);
+                Assert.Equal(theme.Ground.B, t["TileChipGround"].B);
+                Assert.InRange(t["TileChipGround"].A, 200, 254);
+
                 // Popovers: a flyout is its own popup root and never receives
                 // the window's backdrop, so a translucent fill there would
                 // sample the application instead of the desktop.

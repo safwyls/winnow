@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Time.Testing;
+﻿using Microsoft.Extensions.Time.Testing;
 using Winnow.App.Services;
 using Winnow.App.ViewModels;
 using Winnow.Core.Domain;
@@ -495,16 +495,15 @@ public sealed class UpdateFlagTests
     };
 
     private static GameTileViewModel Tile(DateTime? lastPlayed = null, bool hasUnread = false)
-        => new(
+        => TileFixture.Tile(
+            nowUtc: Now,
             ownershipId: 1,
             releaseId: ReleaseId,
             title: "Empyrion: Galactic Survival",
-            store: "steam",
-            bucket: hasUnread ? "stale_but_patched" : "bounced",
+            bucket: hasUnread ? LibraryBuckets.StaleButPatched : LibraryBuckets.Bounced,
             playtimeMinutes: 600,
             lastPlayedUtc: lastPlayed,
-            nowUtc: Now,
-            hasUnread: hasUnread,
+            majorUpdateAt: hasUnread ? (lastPlayed?.AddMonths(9) ?? Now.AddDays(-1)) : null,
             steamAppId: "383120");
 
     /// <summary>

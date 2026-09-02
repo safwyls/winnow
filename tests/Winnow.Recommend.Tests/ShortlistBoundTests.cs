@@ -1,4 +1,4 @@
-using Winnow.Core.Queries;
+﻿using Winnow.Core.Queries;
 using Xunit;
 
 namespace Winnow.Recommend.Tests;
@@ -89,6 +89,11 @@ public class ShortlistBoundTests : IDisposable
         // Three games owned on two stores each: six ownership rows, three
         // works. Collapsing AFTER the shortlist let those six rows fill six
         // slots; collapsing first spends three.
+        //
+        // Since TASK-70.6 the collapse happens earlier still: the pool itself
+        // is one candidate per game, matching the grid. CandidateCount is the
+        // number of games (4), not the number of ownership rows behind them
+        // (7).
         for (var i = 0; i < 3; i++)
         {
             var twice = await _harness.SeedGameAsync(
@@ -100,7 +105,7 @@ public class ShortlistBoundTests : IDisposable
 
         var feed = await _harness.Engine.GetFeedAsync(RecommendHarness.Request(maxResults: 2));
 
-        Assert.Equal(7, feed.CandidateCount);
+        Assert.Equal(4, feed.CandidateCount);
         Assert.Equal(4, feed.WorkCount);
         Assert.Equal(4, feed.HistoryProbeCount);
         Assert.Equal(feed.WorkCount, feed.HistoryProbeCount);

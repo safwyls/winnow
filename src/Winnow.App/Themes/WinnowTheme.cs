@@ -528,6 +528,10 @@ public sealed record WinnowTheme
             // matter what the field is doing. Construction, not measurement.
             ["TileGround"] = Ground,
 
+            // The resting store pip's field on a multi-store tile: legible over
+            // any capsule, never a second opaque block on the art.
+            ["TileChipGround"] = A(Ground, 0.82),
+
             // ── Derived: a role at N% ──────────────────────────────────────
             ["VoltSelection"] = A(Volt, 0.30),
             ["VoltSelectionSoft"] = A(Volt, 0.24),

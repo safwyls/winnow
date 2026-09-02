@@ -1,4 +1,4 @@
-using Winnow.App.Services;
+﻿using Winnow.App.Services;
 using Winnow.App.ViewModels;
 using Winnow.Core.Queries;
 using Xunit;
@@ -509,16 +509,16 @@ internal sealed class FakeTileSource : IGameTileSource
     public void Reload() => TilesChanged?.Invoke(this, EventArgs.Empty);
 
     public void Add(long ownershipId, string title)
-        => _tiles[ownershipId] = new GameTileViewModel(
+        => _tiles[ownershipId] = TileFixture.Tile(
+            nowUtc: new DateTime(2026, 8, 27, 0, 0, 0, DateTimeKind.Utc),
             ownershipId: ownershipId,
             releaseId: ownershipId,
+            workId: ownershipId,
             title: title,
-            store: "steam",
             bucket: LibraryBuckets.StaleButPatched,
             playtimeMinutes: 168,
             lastPlayedUtc: new DateTime(2021, 6, 1, 0, 0, 0, DateTimeKind.Utc),
-            nowUtc: new DateTime(2026, 8, 27, 0, 0, 0, DateTimeKind.Utc),
-            hasUnread: true);
+            majorUpdateAt: new DateTime(2025, 6, 1, 0, 0, 0, DateTimeKind.Utc));
 
     public GameTileViewModel? TileForOwnership(long ownershipId)
         => _empty ? null : _tiles.GetValueOrDefault(ownershipId);

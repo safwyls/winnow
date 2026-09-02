@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Globalization;
 using Winnow.App.ViewModels;
 using Winnow.Core.Domain;
@@ -26,11 +26,15 @@ public sealed class IdentityReadModelTests
     // ── Nothing linked: nothing moves ───────────────────────────────────────
 
     /// <summary>
-    /// AC #3, and the claim the stage is safe on. The rows the bucket query
-    /// returns are compared field by field, not merely counted.
+    /// Supersedes TASK-70.4's <c>Linking_moves_no_count_and_no_bucket</c>,
+    /// whose AC said linking moved no count. TASK-70.6 ends that on purpose;
+    /// the replacement claim is sharper, not weaker. Linking moves no row and
+    /// no row's own figures, takes exactly one tile off the grid, and leaves
+    /// the per-store counts untouched. The two numbers on screen therefore
+    /// differ by design, and each still answers its own question.
     /// </summary>
     [Fact]
-    public async Task Linking_moves_no_count_and_no_bucket()
+    public async Task Linking_collapses_one_tile_and_leaves_the_store_counts_alone()
     {
         using var fixture = new ReadModelFixture();
         var steam = await fixture.SeedAsync("Prey", minutes: 300, lastPlayed: Now.AddDays(-30));
@@ -41,17 +45,16 @@ public sealed class IdentityReadModelTests
         await library.LoadCommand.ExecuteAsync(null);
 
         var before = await fixture.Queries.GetOwnershipBucketsAsync(BucketThresholds.Default);
-        var bucketsBefore = library.Buckets.ToDictionary(b => b.Key, b => b.Count);
-        var allBefore = library.AllGames.Count;
         var storesBefore = library.TitlesByStore();
+        Assert.Equal(3, library.AllGames.Count);
 
         await fixture.LinkAsync(parent: steam.WorkId, child: epic.WorkId);
 
         await library.LoadCommand.ExecuteAsync(null);
         var after = await fixture.Queries.GetOwnershipBucketsAsync(BucketThresholds.Default);
 
-        // Same rows, same buckets, same playtime, same order. Only the two work
-        // columns differ, and only on the child.
+        // Same ROWS, same per-row buckets, same per-row playtime, same order.
+        // A link moves no stored fact and no row's own figures.
         Assert.Equal(before.Count, after.Count);
         for (var i = 0; i < before.Count; i++)
         {
@@ -63,10 +66,20 @@ public sealed class IdentityReadModelTests
             Assert.Equal(before[i].WorkId, after[i].WorkId);
         }
 
-        Assert.Equal(bucketsBefore, library.Buckets.ToDictionary(b => b.Key, b => b.Count));
-        Assert.Equal(allBefore, library.AllGames.Count);
+        // What TASK-70.6 changes: three ownership rows are now two games.
+        // All Games counts tiles, so it drops by exactly one.
+        Assert.Equal(2, library.AllGames.Count);
+        Assert.Equal(2, library.VisibleTiles.Count);
+
+        // The reading that must not move with it. The per-store counts are
+        // tiles that include that store, so the linked game still counts on
+        // Steam and still counts on Epic — one tile, two platforms, §11.2
+        // intact. The store counts add up to more than All Games by exactly
+        // the number of extra store memberships.
         Assert.Equal(storesBefore, library.TitlesByStore());
-        Assert.Equal(3, library.AllGames.Count);
+        Assert.Equal(2, library.TitlesByStore()["steam"]);
+        Assert.Equal(1, library.TitlesByStore()["epic"]);
+        Assert.Equal(3, library.TitlesByStore().Values.Sum());
     }
 
     /// <summary>
@@ -117,11 +130,14 @@ public sealed class IdentityReadModelTests
     // ── The visible half of the fix ─────────────────────────────────────────
 
     /// <summary>
-    /// AC #2. Two tiles remain, because the grid is still one tile per
-    /// ownership until TASK-70.6, but both read as one game.
+    /// Supersedes TASK-70.4's
+    /// <c>Both_store_entries_of_a_linked_game_take_the_primary_title_and_cover</c>,
+    /// which asserted two tiles remained. After TASK-70.6 there is one tile; it
+    /// takes its title and cover from the primary, wears a chip per store, and
+    /// each entry keeps its own figures.
     /// </summary>
     [Fact]
-    public async Task Both_store_entries_of_a_linked_game_take_the_primary_title_and_cover()
+    public async Task A_linked_pair_is_one_tile_under_the_primary_title_and_cover()
     {
         using var fixture = new ReadModelFixture();
         var steam = await fixture.SeedAsync("Prey", minutes: 300, lastPlayed: Now.AddDays(-30));
@@ -139,16 +155,24 @@ public sealed class IdentityReadModelTests
         await fixture.LinkAsync(parent: steam.WorkId, child: epic.WorkId);
         await library.LoadCommand.ExecuteAsync(null);
 
-        Assert.Equal(2, library.VisibleTiles.Count);
-        Assert.All(library.VisibleTiles, tile => Assert.Equal("Prey", tile.Title));
+        // After TASK-70.6: one tile, under the primary's name and cover,
+        // wearing a chip for each store.
+        var tile = Assert.Single(library.VisibleTiles);
+        Assert.Equal("Prey", tile.Title);
+        Assert.Equal(steamTileBefore.CoverKey, tile.CoverKey);
+        Assert.Equal(["steam", "epic"], tile.Stores);
+        Assert.Equal(["STEAM", "EPIC"], tile.StoreChips);
+        Assert.True(tile.IsMultiStore);
 
-        var epicTile = library.VisibleTiles.Single(t => t.Store == "epic");
-        var steamTile = library.VisibleTiles.Single(t => t.Store == "steam");
-        Assert.Equal(steamTile.CoverKey, epicTile.CoverKey);
+        // The headline sums, and its date is the group's own: the later of the
+        // two, which is the Steam entry's.
+        Assert.Equal(390, tile.PlaytimeMinutes);
+        Assert.Equal(Now.AddDays(-30), tile.LastPlayedUtc);
 
-        // Each entry keeps its own playtime: the grid grain has not changed.
-        Assert.Equal(300, steamTile.PlaytimeMinutes);
-        Assert.Equal(90, epicTile.PlaytimeMinutes);
+        // Each entry still carries its own figures, uncrossed.
+        Assert.Equal(300, tile.Entries.Single(e => e.Store == "steam").PlaytimeMinutes);
+        Assert.Equal(90, tile.Entries.Single(e => e.Store == "epic").PlaytimeMinutes);
+        Assert.Equal(Now.AddDays(-40), tile.Entries.Single(e => e.Store == "epic").LastPlayedAt);
     }
 
     // ── Coverage on the details modal ───────────────────────────────────────

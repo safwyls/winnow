@@ -216,6 +216,15 @@ that closes the loop: notice → context → launch.
 Bottom third of the tile, gradient scrim to `Ground` at 92%. Title in Body L, playtime and
 idle time in Data S. Store badge bottom-left. A single primary action, `Play`, in `Volt`.
 
+> **Store badge became a chip row (TASK-70.6, 2026-09-01).** The store badge is now one chip
+> per store the game is owned on, unchanged for a single-store tile. A multi-store tile
+> additionally carries a compact one-letter-per-store mark at rest on the front, which fades
+> out over 140ms as the overlay rises (exactly as the baked placeholder title already does).
+> The four-fact cap is not breached: the chips are the one "where you own it" fact, drawn once.
+> The resting mark uses initials because the density slider's floor is 108px and a row of
+> word-chips is wider than the tile there. The words are reachable on hover, on the back face,
+> in the modal and in the automation name, satisfying §8's decorative-redundant rule.
+
 Do not show more than four facts. The tile is a decision surface, not a detail view.
 
 ### 5.4 Implementation note — this is the hard part
@@ -730,6 +739,15 @@ Counts are taken **per tile, not per release**: a release owned on two stores is
 two rows in the library and must be two in the count, which is why the panel
 tallies its own sets rather than calling `FacetSnapshot.CountsFor`, whose
 `Distinct()` collapses exactly that pair.
+
+> **Grid grain changed (TASK-70.6, 2026-09-01).** The grid is now one tile per
+> game rather than one per ownership, so a game owned on two stores is one row in
+> the library. The per-tile rule survives and now reads as "tiles that include
+> this store": a twice-owned game still counts under both platform options, and
+> the Platforms screen and the filter panel compute the same relation and
+> therefore agree. The stated consequence is that the per-store figures sum to
+> more than All Games by exactly the number of extra store memberships. The
+> panel still tallies its own sets for the same reason it always did.
 
 ### 11.3 The cut bar
 

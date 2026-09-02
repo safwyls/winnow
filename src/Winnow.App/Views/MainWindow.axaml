@@ -1499,7 +1499,7 @@
                             Background="{StaticResource ChromeSurface}"
                             BorderBrush="{StaticResource Line}"
                             BorderThickness="0,0,0,1">
-                        <Grid ColumnDefinitions="2,18,*,84,104,92,24">
+                        <Grid ColumnDefinitions="2,18,*,112,104,92,24">
                             <Button Grid.Column="2" Classes="colhead"
                                     Command="{Binding Library.SortByTitleCommand}">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
@@ -1562,7 +1562,7 @@
                                 <Border BorderBrush="{StaticResource Line}"
                                         BorderThickness="0,0,0,1"
                                         Height="44">
-                                    <Grid ColumnDefinitions="2,18,*,84,104,92,24">
+                                    <Grid ColumnDefinitions="2,18,*,112,104,92,24">
                                         <!-- 2px Volt selection edge (§6), bound to
                                              the row's own state for the same
                                              name-scope reason as the rail. -->
@@ -1589,11 +1589,31 @@
                                                    TextTrimming="CharacterEllipsis"
                                                    VerticalAlignment="Center"
                                                    Margin="0,0,12,0"/>
-                                        <TextBlock Grid.Column="3"
-                                                   Classes="body" FontSize="11"
-                                                   Foreground="{StaticResource TextDim}"
-                                                   Text="{Binding StoreBadge}"
-                                                   VerticalAlignment="Center"/>
+                                        <!-- The same chip row the grid tile wears,
+                                             because the list is the same rows
+                                             without the art and a row that named
+                                             one store would disagree with the
+                                             tile that names two. The column is
+                                             112px so two chips fit at the widths
+                                             this was measured at. -->
+                                        <ItemsControl Grid.Column="3"
+                                                      ItemsSource="{Binding StoreChips}"
+                                                      ToolTip.Tip="{Binding StoreNames}"
+                                                      VerticalAlignment="Center"
+                                                      Margin="0,0,8,0">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <StackPanel Orientation="Horizontal" Spacing="4"/>
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Classes="store-chip">
+                                                        <TextBlock Text="{Binding}"/>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
                                         <TextBlock Grid.Column="4"
                                                    Classes="data"
                                                    Text="{Binding PlaytimeText}"

@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace Winnow.Core.Queries;
@@ -226,9 +226,9 @@ public sealed record LibraryFilter
 /// One library row's filterable attributes, assembled from bucket query + ownership + facets.
 /// </summary>
 /// <param name="ReleaseId">The release this row is about.</param>
-/// <param name="OwnershipId">The ownership this row is about; a release owned on two stores is two rows.</param>
+/// <param name="OwnershipId">The primary ownership of this game. Since TASK-70.6 the grid is one tile per game, so a game owned on two stores is one row here and names its primary entry; the stores it is owned on are in <paramref name="Stores"/>.</param>
 /// <param name="Bucket">Its derived bucket (<see cref="LibraryBuckets"/>), from the bucket query.</param>
-/// <param name="Store">The store that sold it.</param>
+/// <param name="Stores">Every store this game is owned on. A store cut matches when any of them matches, so a twice-owned game is kept by either store's option and counts under both (§11.2).</param>
 /// <param name="Title">The display title, for <see cref="LibraryFilter.Search"/>.</param>
 /// <param name="Installed">Whether it is installed locally.</param>
 /// <param name="HasUnread">Whether an update landed after the last session.</param>
@@ -239,7 +239,7 @@ public sealed record FilterableRow(
     long ReleaseId,
     long OwnershipId,
     string Bucket,
-    string Store,
+    IReadOnlyList<string> Stores,
     string Title,
     bool Installed,
     bool HasUnread,
@@ -282,7 +282,11 @@ internal sealed class LibraryFilterMatcher
             return false;
         }
 
-        if (_stores is not null && !_stores.Contains(row.Store))
+        // Any store, not one. A game owned on Steam and Epic is one tile
+        // with two chips; asking for one store keeps it, and the option's
+        // count includes it. Otherwise the Platforms screen and the panel
+        // would report different numbers for the same relation (§11.2).
+        if (_stores is not null && !row.Stores.Any(_stores.Contains))
         {
             return false;
         }

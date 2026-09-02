@@ -1,4 +1,4 @@
-using Winnow.Core.Queries;
+﻿using Winnow.Core.Queries;
 using Winnow.Core.Repositories;
 
 namespace Winnow.Recommend;
@@ -318,10 +318,49 @@ public sealed class RecommendationEngine : IRecommendationEngine
         }
 
         // ── Candidate assembly and hard exclusions ─────────────────────────
-        var candidates = new List<CandidateFacts>(bucketRows.Count);
+        //
+        // One candidate per game, not per ownership (TASK-70.6). The grid
+        // draws one tile per resolved work, and a feed that offered the
+        // Steam copy and the Epic copy of one game as two cards would
+        // recommend the same evening twice. The row kept is the primary
+        // work's own entry (lowest ownership id), so the card and the tile
+        // it opens are the same game entry; its facts come from the game
+        // grouping so the two screens cannot disagree about a bucket or a
+        // playtime.
+        var primaryRows = new Dictionary<long, Core.Queries.OwnershipBucket>();
         foreach (var row in bucketRows)
         {
-            if (row.Bucket == LibraryBuckets.Retired)
+            if (!primaryRows.TryGetValue(row.ResolvedWorkId, out var kept)
+                || Precedes(row, kept))
+            {
+                primaryRows[row.ResolvedWorkId] = row;
+            }
+        }
+
+        static bool Precedes(Core.Queries.OwnershipBucket a, Core.Queries.OwnershipBucket b)
+        {
+            var aOwn = a.WorkId == a.ResolvedWorkId ? 0 : 1;
+            var bOwn = b.WorkId == b.ResolvedWorkId ? 0 : 1;
+            if (aOwn != bOwn)
+            {
+                return aOwn < bOwn;
+            }
+
+            return a.WorkId == b.WorkId
+                ? a.OwnershipId < b.OwnershipId
+                : a.WorkId < b.WorkId;
+        }
+
+        var candidates = new List<CandidateFacts>(primaryRows.Count);
+        foreach (var row in bucketRows)
+        {
+            if (!ReferenceEquals(primaryRows[row.ResolvedWorkId], row))
+            {
+                // A second store entry of a game already represented above.
+                continue;
+            }
+
+            if (row.Game.Bucket == LibraryBuckets.Retired)
             {
                 // §6.1 precedence made concrete: the 200-hour game never comes
                 // back, patches notwithstanding. It still testified to the
@@ -356,9 +395,10 @@ public sealed class RecommendationEngine : IRecommendationEngine
                 WorkId = identity.WorkId,
                 Title = identity.MatchTitle,
                 Store = ownership?.Store ?? string.Empty,
-                Bucket = row.Bucket,
-                PlaytimeMinutes = row.PlaytimeMinutes,
-                LastPlayedAt = row.LastPlayedAt,
+                // The GAME's figures, which is what the grid tile shows.
+                Bucket = row.Game.Bucket,
+                PlaytimeMinutes = row.Game.PlaytimeMinutes,
+                LastPlayedAt = row.Game.LastPlayedAt,
                 Installed = ownership?.Installed ?? false,
                 StoreCount = storesByWork.TryGetValue(row.ResolvedWorkId, out var stores) ? stores.Count : 1,
                 TasteAffinity = affinity,

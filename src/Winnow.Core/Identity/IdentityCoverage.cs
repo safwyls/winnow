@@ -1,4 +1,20 @@
-namespace Winnow.Core.Identity;
+﻿namespace Winnow.Core.Identity;
+
+/// <summary>
+/// One entry's own minutes beside that same entry's own last-played, never
+/// crossed. <see cref="CoveragePlaytime.Across"/> folds a sequence of these
+/// into one composite; the interface exists so the library's bucket rows,
+/// the grid's tile entries and the modal's coverage entries all fold through
+/// the same code rather than through separate sums.
+/// </summary>
+public interface IPlayedEntry
+{
+    /// <summary>This entry's own minutes.</summary>
+    long PlaytimeMinutes { get; }
+
+    /// <summary>This entry's own last-played, or null when no date is known.</summary>
+    DateTime? LastPlayedAt { get; }
+}
 
 /// <summary>
 /// One store entry of one game, as the coverage section shows it. Minutes
@@ -7,7 +23,7 @@ namespace Winnow.Core.Identity;
 /// avoided here is that no type in this file ever holds one entry's minutes
 /// beside another entry's date.
 /// </summary>
-public sealed record CoverageEntry
+public sealed record CoverageEntry : IPlayedEntry
 {
     /// <summary>The ownership row this entry is.</summary>
     public required long OwnershipId { get; init; }
@@ -87,7 +103,7 @@ public sealed class CoveragePlaytime
     /// so a sum cannot be paired with a date that was not derived from the
     /// same entries.
     /// </summary>
-    public static CoveragePlaytime Across(IEnumerable<CoverageEntry> entries)
+    public static CoveragePlaytime Across(IEnumerable<IPlayedEntry> entries)
     {
         ArgumentNullException.ThrowIfNull(entries);
 

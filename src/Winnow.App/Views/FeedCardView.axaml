@@ -1,4 +1,4 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+﻿<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Winnow.App.ViewModels"
              x:Class="Winnow.App.Views.FeedCardView"
@@ -253,16 +253,25 @@
                         <!-- The one fact the sentence never states. A name, so it
                              wears the outlined badge the tile's overlay uses
                              rather than a colour. -->
-                        <Border Grid.Column="4"
-                                BorderBrush="{StaticResource Line}"
-                                BorderThickness="1" CornerRadius="3" Padding="5,1"
-                                Margin="8,0,0,0"
-                                VerticalAlignment="Center">
-                            <TextBlock Text="{Binding Tile.StoreBadge}"
-                                       FontFamily="{StaticResource BodyFont}"
-                                       FontSize="9" LetterSpacing="0.54"
-                                       Foreground="{StaticResource TextDim}"/>
-                        </Border>
+                        <!-- One chip per store, like the tile. The feed offers one
+                             card per game since TASK-70.6, so a card that named a
+                             single store would be narrower than the thing it is
+                             offering. -->
+                        <ItemsControl ItemsSource="{Binding Tile.StoreChips}"
+                                      ToolTip.Tip="{Binding Tile.StoreNames}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal" Spacing="4"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Classes="store-chip">
+                                        <TextBlock Text="{Binding}"/>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
                     </Grid>
 
                     <!-- The receipt. Date in Plex Mono, prose in body face. -->

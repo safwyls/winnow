@@ -1,4 +1,4 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+﻿<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Winnow.App.ViewModels"
              xmlns:views="using:Winnow.App.Views"
@@ -229,13 +229,26 @@
                         </StackPanel>
 
                         <StackPanel Orientation="Horizontal" Spacing="8">
-                            <Border BorderBrush="{StaticResource Line}" BorderThickness="1"
-                                    CornerRadius="3" Padding="7,3" VerticalAlignment="Center">
-                                <TextBlock Text="{Binding StoreBadge}"
-                                           FontFamily="{StaticResource BodyFont}"
-                                           FontSize="9" LetterSpacing="0.54"
-                                           Foreground="{StaticResource TextDim}"/>
-                            </Border>
+                            <!-- Every store this game is on. The per-entry rows
+                                 in ALSO COVERS below are the breakdown; this is
+                                 the header saying which platforms the title
+                                 exists on at all. -->
+                            <ItemsControl ItemsSource="{Binding StoreChips}"
+                                          ToolTip.Tip="{Binding StoreNames}"
+                                          VerticalAlignment="Center">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Horizontal" Spacing="6"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Classes="store-chip" Padding="7,3">
+                                            <TextBlock Text="{Binding}"/>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
                             <Border Background="{StaticResource SurfaceRaised}"
                                     CornerRadius="3" Padding="7,3" VerticalAlignment="Center">
                                 <TextBlock Classes="body" FontSize="11"

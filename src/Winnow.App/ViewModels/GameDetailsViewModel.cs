@@ -1,4 +1,4 @@
-using Avalonia.Media;
+﻿using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -120,6 +120,12 @@ public partial class GameDetailsViewModel : ObservableObject
     public bool HasPublisher => Publisher is not null;
 
     public string StoreBadge => Tile.StoreBadge;
+
+    /// <summary>Every store this game is owned on, as chip faces (TASK-70.6).</summary>
+    public IReadOnlyList<string> StoreChips => Tile.StoreChips;
+
+    /// <summary>The same stores in words, for the chip row's tooltip.</summary>
+    public string StoreNames => Tile.StoreNames;
 
     /// <summary>The §7 bucket name this game currently falls in ("Never played").</summary>
     public string BucketLabel { get; }

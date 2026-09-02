@@ -1,5 +1,6 @@
-using Winnow.App.Services;
+﻿using Winnow.App.Services;
 using Winnow.App.ViewModels;
+using Winnow.Core.Queries;
 using Winnow.Core.Domain;
 using Xunit;
 
@@ -482,15 +483,14 @@ public sealed class GameDetailsViewModelTests
         string? summary = null,
         bool nameIsProvisional = false,
         DormancyRamp? ramp = null)
-        => new(
+        => TileFixture.Tile(
+            nowUtc: Now,
             ownershipId: 1,
             releaseId: 1,
             title: title,
-            store: "steam",
-            bucket: "bounced",
+            bucket: LibraryBuckets.Bounced,
             playtimeMinutes: playtimeMinutes,
             lastPlayedUtc: lastPlayed,
-            nowUtc: Now,
             work: new Work
             {
                 Name = title,
