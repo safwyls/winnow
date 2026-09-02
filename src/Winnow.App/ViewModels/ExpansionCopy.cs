@@ -26,11 +26,12 @@ public static class ExpansionCopy
     public const string ScreenQuestion = "Expansion?";
 
     /// <summary>
-    /// Standing introduction under the question. Says the two things a user has
-    /// to know before answering: grouping changes display only, and it can be
-    /// taken back.
+    /// Standing introduction under the question. The one place that says
+    /// the three facts every card used to repeat: grouping is display only,
+    /// hours and counts stay separate, and the act can be undone. A few
+    /// words, not a blurb (notes.md).
     /// </summary>
-    public const string Intro = "Grouping is display only. Retractable.";
+    public const string Intro = "Display only. Hours and counts stay separate. Undo any time.";
 
     /// <summary>
     /// Uppercase label beside the pending count. The unit is a base game, not a
@@ -54,13 +55,6 @@ public static class ExpansionCopy
 
     /// <summary>Uppercase label beside the member count.</summary>
     public const string MemberCountLabel = "PACKS";
-
-    /// <summary>
-    /// What answering commits to. The one sentence that has to be right: hours,
-    /// counts and buckets do not move, so the card states it rather than
-    /// leaving the user to infer it from a screen that has not changed.
-    /// </summary>
-    public const string GroupEffect = "Hours and counts stay separate.";
 
     /// <summary>The affirmative answer. Names the act, not the relation.</summary>
     public const string GroupButton = "Group";
@@ -120,9 +114,6 @@ public static class ExpansionCopy
     /// </summary>
     public const string NothingGrouped = "Nothing grouped, recorded as separate games.";
 
-    /// <summary>Report after a group act was retracted.</summary>
-    public const string Retracted = "Grouping retracted.";
-
     // ══ History ═══════════════════════════════════════════════════════════
 
     /// <summary>
@@ -130,7 +121,7 @@ public static class ExpansionCopy
     /// <c>{1}</c> the base game. It reads "grouped under" and never "linked
     /// under": a same-game link says two entries are one game, an expansion
     /// grouping says one game extends another and moves no number, and a row
-    /// that read the same for both would invite the user to retract the wrong
+    /// that read the same for both would invite the user to undo the wrong
     /// one.
     /// </summary>
     public const string GroupRowFormat = "{0} grouped under {1}";

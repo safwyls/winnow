@@ -94,9 +94,9 @@ public sealed class MergeQueueViewModelTests
         Assert.False(card.IsPair);
         Assert.Equal("3", card.MemberCountText);
 
-        // Every entry is on screen, and the entry numbers are what tells three
-        // members with one title apart.
-        Assert.Equal(3, card.Members.Select(m => m.ReleasesText).Distinct().Count());
+        // Three members with one title still answer to three different names,
+        // without a database id among them.
+        Assert.Equal(3, card.Members.Select(m => m.Label).Distinct().Count());
         Assert.All(card.Members, m => Assert.Equal("Prey", m.Side.Title));
     }
 
@@ -440,8 +440,8 @@ public sealed class MergeQueueViewModelTests
                 Assert.Equal(afterFirst, links);
             }
 
-            Assert.True(queue.CanRetractReport);
-            await queue.RetractReportCommand.ExecuteAsync(null);
+            Assert.True(queue.CanUndoReport);
+            await queue.UndoReportCommand.ExecuteAsync(null);
             Assert.Empty(await fixture.LiveLinksAsync());
         }
 
@@ -471,19 +471,18 @@ public sealed class MergeQueueViewModelTests
 
         await queue.ShowHistoryCommand.ExecuteAsync(null);
         var row = Assert.Single(queue.LinkHistory);
-        Assert.True(row.CanRetract);
-        Assert.False(row.IsRetracted);
+        Assert.True(row.CanUndo);
 
-        await queue.RetractCommand.ExecuteAsync(row);
+        await queue.UndoCommand.ExecuteAsync(row);
 
         Assert.Single(queue.Groups);
         Assert.Equal(MergeCandidateStatuses.Pending, await fixture.StatusOfAsync(id));
-        Assert.Equal(MergeCopy.Retracted, queue.ReportMessage);
+        Assert.Equal(MergeCopy.Undone, queue.ReportMessage);
 
-        // The retracted act stays on the list, with no control on it.
-        var retracted = Assert.Single(queue.LinkHistory);
-        Assert.True(retracted.IsRetracted);
-        Assert.False(retracted.CanRetract);
+        // The undone act LEAVES the list. It used to stay on it, stamped
+        // RETRACTED, which the user chose against: what is on the log is what
+        // is in force.
+        Assert.Empty(queue.LinkHistory);
     }
 
     /// <summary>
@@ -523,7 +522,7 @@ public sealed class MergeQueueViewModelTests
             [(workA, workC), (workB, workC)],
             await fixture.LiveLinksAsync());
 
-        await queue.RetractReportCommand.ExecuteAsync(null);
+        await queue.UndoReportCommand.ExecuteAsync(null);
 
         // One retraction puts every member the act moved back where it was.
         Assert.Equal([(workB, workA)], await fixture.LiveLinksAsync());
@@ -744,8 +743,8 @@ public sealed class MergeQueueViewModelTests
         await queue.LoadCommand.ExecuteAsync(null);
 
         var group = Assert.Single(queue.Groups);
-        var left = group.Left;
-        var right = group.Right;
+        var left = group.Primary;
+        var right = Assert.Single(group.Others);
 
         Assert.Equal(left.Side.Title, right.Side.Title);
         Assert.NotEqual(left.PrimaryAutomationName, right.PrimaryAutomationName);
@@ -797,7 +796,7 @@ public sealed class MergeQueueViewModelTests
         var edge = Assert.Single(card.Edges);
 
         Assert.True(card.IsPair);
-        Assert.Same(edge, card.PairEdge);
+        Assert.Same(edge, Assert.Single(card.Others).Evidence);
 
         // The three diffs §6 names by hand.
         Assert.Equal("0.00", edge.TitleDistanceText);   // 1 - similarity
@@ -813,15 +812,13 @@ public sealed class MergeQueueViewModelTests
         var year = edge.Signals.Single(s => s.Label == "YEAR");
         Assert.True(year.Fired);
         Assert.Equal("Δ1", year.ValueText);
-        Assert.Equal("+0.15", year.ContributionText);
-        Assert.True(year.IsForMatch);
         Assert.Contains("2015 vs 2016", year.Detail, StringComparison.Ordinal);
 
-        // One side is a content bundle: evidence against, and small.
+        // One side is a content bundle. The verdict is the evidence; the signed
+        // points the row used to print were the scorer's arithmetic and nobody
+        // on this screen tunes weights.
         var edition = edge.Signals.Single(s => s.Label == "EDITION");
         Assert.Equal("DIFFERENT", edition.ValueText);
-        Assert.Equal("-0.05", edition.ContributionText);
-        Assert.True(edition.IsAgainstMatch);
     }
 
     /// <summary>
@@ -850,20 +847,18 @@ public sealed class MergeQueueViewModelTests
         var year = edge.Signals.Single(s => s.Label == "YEAR");
         Assert.False(year.Fired);
         Assert.Equal("—", year.ValueText);
-        Assert.Equal(" 0.00", year.ContributionText);
-        Assert.False(year.IsForMatch);
-        Assert.False(year.IsAgainstMatch);
 
         var publisher = edge.Signals.Single(s => s.Label == "PUBLISHER");
         Assert.False(publisher.Fired);
         Assert.Equal("—", publisher.ValueText);
 
-        // Both members still name themselves, and the entry numbers are what
-        // tells two identically titled records apart on screen.
-        Assert.Equal("Prey", card.Left.Side.Title);
-        Assert.Equal("Prey", card.Right.Side.Title);
-        Assert.NotEqual(card.Left.ReleasesText, card.Right.ReleasesText);
-        Assert.NotEqual(card.Left.Label, card.Right.Label);
+        // Both members still name themselves. The entry numbers that used to
+        // tell two identically titled records apart are database ids and are
+        // gone from the screen (§10.5); the automation label still separates
+        // them, now on the facts the row itself draws.
+        Assert.All(card.Members, m => Assert.Equal("Prey", m.Side.Title));
+        Assert.NotEqual(card.Primary.Label, Assert.Single(card.Others).Label);
+        Assert.All(card.Members, m => Assert.DoesNotContain("#", m.Label, StringComparison.Ordinal));
     }
 
     /// <summary>
@@ -896,9 +891,8 @@ public sealed class MergeQueueViewModelTests
         Assert.False(edge.HasSignals);
         Assert.Equal("—", edge.TitleDistanceText);
         Assert.Equal("—", edge.YearDeltaText);
-        Assert.Equal("Bastion", card.Left.Side.Title);
-        Assert.Equal("Bastion", card.Right.Side.Title);
-        Assert.Equal("2011", card.Left.Side.YearText);
+        Assert.All(card.Members, m => Assert.Equal("Bastion", m.Side.Title));
+        Assert.Equal("2011", card.Primary.Side.YearText);
     }
 
     // ── The two surfaces ─────────────────────────────────────────────────────
@@ -928,14 +922,11 @@ public sealed class MergeQueueViewModelTests
 
         var row = Assert.Single(queue.LinkHistory);
         Assert.Equal(2, row.ChildTitles.Count);
-        Assert.Equal("2", row.ChildCountText);
         Assert.Equal("Prey", row.ParentTitle);
-        Assert.True(row.IsLive);
         Assert.NotEqual("—", row.LinkedAtText);
-        Assert.Equal("—", row.RetractedAtText);
 
         // The automation name identifies the group, not the verb.
-        Assert.Contains(row.Description, row.RetractAutomationName, StringComparison.Ordinal);
+        Assert.Contains(row.Description, row.UndoAutomationName, StringComparison.Ordinal);
     }
 
     // ── Empty state (§7) ─────────────────────────────────────────────────────
@@ -1121,7 +1112,7 @@ public sealed class MergeQueueViewModelTests
         Assert.Equal(dropped.WorkId, refusal.ChildWorkId);
 
         Assert.Empty(queue.ExpansionGroups);
-        Assert.NotNull(queue.ReportRetractActId);
+        Assert.NotNull(queue.ReportUndoActId);
 
         await queue.LoadCommand.ExecuteAsync(null);
         Assert.Empty(queue.ExpansionGroups);
@@ -1149,7 +1140,7 @@ public sealed class MergeQueueViewModelTests
 
         Assert.True((await fixture.Links.GetResolutionAsync()).Expansions.IsEmpty);
         Assert.Single(await fixture.ExpansionRefusals.GetAllAsync());
-        Assert.Null(queue.ReportRetractActId);
+        Assert.Null(queue.ReportUndoActId);
         Assert.Empty(queue.ExpansionGroups);
     }
 
@@ -1197,10 +1188,10 @@ public sealed class MergeQueueViewModelTests
         Assert.True(row.IsExpansionAct);
         Assert.Contains("grouped under", row.Description, StringComparison.Ordinal);
         Assert.DoesNotContain("linked under", row.Description, StringComparison.Ordinal);
-        Assert.True(row.CanRetract);
+        Assert.True(row.CanUndo);
 
         // Retracting is ordinary: the proposal comes back.
-        await queue.RetractCommand.ExecuteAsync(row);
+        await queue.UndoCommand.ExecuteAsync(row);
         Assert.Single(queue.ExpansionGroups);
     }
 
@@ -1313,15 +1304,15 @@ public sealed class MergeQueueViewModelTests
         Assert.True(queue.HasReviewReport);
         Assert.False(queue.HasExpansionsReport);
         Assert.False(queue.HasHistoryReport);
-        Assert.True(queue.CanRetractReport);
+        Assert.True(queue.CanUndoReport);
 
-        // Leaving the surface takes its report with it: the Retract button on
-        // that note belongs to an act the next surface did not perform.
+        // Leaving the surface takes its report with it: the Undo button on that
+        // note belongs to an act the next surface did not perform.
         queue.ShowExpansionsCommand.Execute(null);
         Assert.False(queue.HasReport);
         Assert.False(queue.HasReviewReport);
         Assert.False(queue.HasExpansionsReport);
-        Assert.False(queue.CanRetractReport);
+        Assert.False(queue.CanUndoReport);
     }
 
     [Fact]
@@ -1363,7 +1354,7 @@ public sealed class MergeQueueViewModelTests
 
         Assert.False(queue.HasReport);
         Assert.Null(queue.ReportMessage);
-        Assert.False(queue.CanRetractReport);
+        Assert.False(queue.CanUndoReport);
     }
 
     [Fact]
@@ -1382,13 +1373,279 @@ public sealed class MergeQueueViewModelTests
         // Arriving at HISTORY cleared the expansion surface's report.
         Assert.False(queue.HasReport);
 
-        await queue.RetractCommand.ExecuteAsync(Assert.Single(queue.LinkHistory));
+        await queue.UndoCommand.ExecuteAsync(Assert.Single(queue.LinkHistory));
 
         // The reload inside the retraction must not eat the retraction's own
         // outcome line, and the line belongs to HISTORY.
         Assert.True(queue.HasHistoryReport);
         Assert.False(queue.HasReviewReport);
         Assert.False(queue.HasExpansionsReport);
+    }
+
+    // ── One card layout, at every member count ───────────────────────────────
+
+    // The card used to hold two Grids switched on IsPair and two member
+    // templates, one of which served as both a pair side and a roster column:
+    // two designs in one card. There is now one arrangement — the primary's
+    // capsule on the left, every other member a row on the right — and what
+    // varies with the count is inside the row.
+
+    /// <summary>
+    /// Two members: the one child draws its cover at 200x300 with the whole diff
+    /// open and NO include checkbox, because the two answer buttons already carry
+    /// include and exclude (TASK-70.3).
+    /// </summary>
+    [Fact]
+    public async Task A_two_member_card_draws_its_child_at_full_size_with_no_checkbox()
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.QueuePairAsync(
+            new SeedSide("The Witcher 3: Wild Hunt", 2015, "CD PROJEKT RED"),
+            new SeedSide("The Witcher 3: Wild Hunt - Game of the Year Edition", 2016, "CD PROJEKT RED"));
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+
+        var card = Assert.Single(queue.Groups);
+        Assert.Equal(2, card.Members.Count);
+
+        var child = Assert.Single(card.Others);
+        Assert.True(child.IsSoleChild);
+
+        // §6's two covers side by side at 200x300, kept literally.
+        Assert.Equal(MergeQueueViewModel.CoverWidth, card.Primary.CoverWidth);
+        Assert.Equal(MergeQueueViewModel.CoverWidth, child.CoverWidth);
+        Assert.Equal(300, child.CoverHeight);
+
+        // The full diff, open, with no disclosure and no condensed line.
+        Assert.True(child.ShowFullEvidence);
+        Assert.False(child.ShowEvidenceDisclosure);
+        Assert.False(child.ShowCondensedEvidence);
+
+        // The include control means something now, and its meaning is "not at
+        // two members".
+        Assert.False(child.ShowIncludeControl);
+        Assert.False(card.Primary.ShowIncludeControl);
+        Assert.True(child.IsIncluded);
+        Assert.Single(card.IncludedChildWorkIds);
+    }
+
+    /// <summary>
+    /// Moving the primary on a two-member card moves which member is the full
+    /// size row. Nothing about the card's outer geometry changes.
+    /// </summary>
+    [Fact]
+    public async Task Moving_the_primary_at_two_members_moves_the_full_size_row()
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.QueuePairAsync(
+            new SeedSide("The Witcher 3: Wild Hunt", 2015, "CD PROJEKT RED"),
+            new SeedSide("The Witcher 3: Wild Hunt - Game of the Year Edition", 2016, "CD PROJEKT RED"));
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+
+        var card = Assert.Single(queue.Groups);
+        var wasPrimary = card.Primary;
+        var wasChild = Assert.Single(card.Others);
+
+        card.SetPrimary(wasChild.WorkId);
+
+        Assert.Same(wasChild, card.Primary);
+        Assert.Same(wasPrimary, Assert.Single(card.Others));
+        Assert.True(wasPrimary.IsSoleChild);
+        Assert.False(wasChild.IsSoleChild);
+        Assert.False(wasPrimary.ShowIncludeControl);
+        Assert.True(wasPrimary.IsIncluded);
+        Assert.Equal(MergeQueueViewModel.CoverWidth, wasPrimary.CoverWidth);
+    }
+
+    /// <summary>
+    /// Three members: every child is a chip with a condensed line, a disclosure
+    /// and a checkbox. The primary keeps its capsule, so the card's outer
+    /// geometry is the same one the two-member card draws.
+    /// </summary>
+    [Fact]
+    public async Task A_three_member_card_makes_every_child_a_chip_with_an_include_control()
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.QueueTripleAsync();
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+
+        var card = Assert.Single(queue.Groups);
+        Assert.Equal(3, card.Members.Count);
+        Assert.Equal(2, card.Others.Count);
+
+        Assert.Equal(MergeQueueViewModel.CoverWidth, card.Primary.CoverWidth);
+        Assert.False(card.Primary.ShowIncludeControl);
+
+        Assert.All(card.Others, m =>
+        {
+            Assert.False(m.IsSoleChild);
+            Assert.True(m.ShowIncludeControl);
+            Assert.Equal(MergeGroupMemberViewModel.ChipWidth, m.CoverWidth);
+            Assert.Equal(96, m.CoverHeight);
+            Assert.True(m.ShowCondensedEvidence);
+            Assert.False(m.ShowFullEvidence);
+        });
+    }
+
+    /// <summary>
+    /// Six members: the same arrangement, five rows, and six names a screen
+    /// reader can tell apart without a database id between them.
+    /// </summary>
+    [Fact]
+    public async Task A_six_member_card_draws_five_rows_and_six_distinct_names()
+    {
+        using var fixture = new MergeQueueFixture();
+
+        var seeded = new List<SeededRelease>();
+        for (var i = 0; i < 6; i++)
+        {
+            seeded.Add(await fixture.CreateReleaseAsync(
+                new SeedSide("Prey", 2017, "Bethesda Softworks")));
+        }
+
+        for (var i = 1; i < seeded.Count; i++)
+        {
+            await fixture.QueueScoredPairAsync(seeded[i - 1], seeded[i]);
+        }
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+
+        var card = Assert.Single(queue.Groups);
+        Assert.Equal(6, card.Members.Count);
+        Assert.Equal(5, card.Others.Count);
+        Assert.Equal("6", card.MemberCountText);
+
+        Assert.Equal(MergeQueueViewModel.CoverWidth, card.Primary.CoverWidth);
+        Assert.All(card.Others, m => Assert.Equal(MergeGroupMemberViewModel.ChipWidth, m.CoverWidth));
+
+        Assert.Equal(6, card.Members.Select(m => m.Label).Distinct().Count());
+        Assert.All(card.Members, m => Assert.DoesNotContain("#", m.Label, StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// The cover request follows the geometry: the primary and a two-member
+    /// card's one child ask for the capsule's width; a roster chip asks for a
+    /// third of it. Nothing decodes a 600x900 source for a 64px chip.
+    /// </summary>
+    [Fact]
+    public async Task Every_member_asks_for_the_cover_at_the_size_it_draws()
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.QueueTripleAsync();
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+
+        var card = Assert.Single(queue.Groups);
+        Assert.Equal(
+            MergeQueueViewModel.CoverWidth,
+            card.Primary.CoverWidth);
+        Assert.All(
+            card.Others,
+            m => Assert.Equal(MergeGroupMemberViewModel.ChipWidth, m.CoverWidth));
+    }
+
+    // ── Evidence: the figure stays, the arithmetic goes ──────────────────────
+
+    /// <summary>
+    /// Confidence survives the pass — it is what sorts the queue — and so does
+    /// the matcher's band, under a name that says what it is. The signed
+    /// contribution points and the per-row score restatement do not.
+    /// </summary>
+    [Fact]
+    public async Task The_card_states_its_confidence_and_the_matchers_band()
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.QueuePairAsync(
+            new SeedSide("The Witcher 3: Wild Hunt", 2015, "CD PROJEKT RED"),
+            new SeedSide("The Witcher 3: Wild Hunt - Game of the Year Edition", 2016, "CD PROJEKT RED"));
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+
+        var card = Assert.Single(queue.Groups);
+
+        Assert.Equal("0.87", card.ScoreText);
+        Assert.Equal(MergeCopy.ConfidenceLabel, card.ConfidenceLabel);
+
+        // The band, not a queue position: several cards can carry it at once.
+        Assert.True(card.IsPriority);
+        Assert.Equal(MergeCopy.PriorityBandLabel, card.PriorityBandLabel);
+        Assert.DoesNotContain(
+            "QUEUE", card.PriorityBandLabel, StringComparison.OrdinalIgnoreCase);
+    }
+
+    // ── History is one chronological log of what is in force ─────────────────
+
+    /// <summary>
+    /// Newest first, both relations in one list, and an act that has been undone
+    /// is off the list rather than on it struck through. That reverses the
+    /// TASK-70.8 line about a retracted row staying on screen with the date it
+    /// was reversed: the user chose the log that shows what stands.
+    /// </summary>
+    [Fact]
+    public async Task The_history_log_is_newest_first_and_holds_only_what_stands()
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.QueuePairAsync(
+            new SeedSide("Prey", 2017, "Bethesda Softworks"),
+            new SeedSide("Prey", null, null));
+        await fixture.QueuePairAsync(
+            new SeedSide("The Witcher 3: Wild Hunt", 2015, "CD PROJEKT RED"),
+            new SeedSide("The Witcher 3: Wild Hunt - Game of the Year Edition", 2016, "CD PROJEKT RED"));
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+
+        await queue.SameGameCommand.ExecuteAsync(queue.Groups[0]);
+        await queue.SameGameCommand.ExecuteAsync(queue.Groups[0]);
+
+        await queue.ShowHistoryCommand.ExecuteAsync(null);
+
+        Assert.Equal(2, queue.LinkHistory.Count);
+        Assert.True(
+            queue.LinkHistory[0].ActId > queue.LinkHistory[1].ActId,
+            "The log is not newest first.");
+
+        var newest = queue.LinkHistory[0];
+        await queue.UndoCommand.ExecuteAsync(newest);
+
+        var remaining = Assert.Single(queue.LinkHistory);
+        Assert.NotEqual(newest.ActId, remaining.ActId);
+        Assert.True(remaining.CanUndo);
+    }
+
+    // ── The expansion row says what the relation is ──────────────────────────
+
+    /// <summary>
+    /// The row reads the storefront's own word for the relation rather than the
+    /// link kind, which is what stops a playtest reading as an expansion. Three
+    /// kinds exist; the vocabulary is open.
+    /// </summary>
+    [Fact]
+    public void An_expansion_row_states_the_relation_in_the_stores_own_word()
+    {
+        var side = new MergeSideViewModel(1, "Prey Playtest", 2017, "Bethesda Softworks");
+        var evidence = new ExpansionEvidence("prey", "playtest", true, 0, false);
+
+        var named = new ExpansionMemberViewModel(1, side, evidence, RelationLabels.Playtest);
+        Assert.True(named.HasRelation);
+        Assert.Equal("PLAYTEST", named.RelationText);
+
+        var standaloneExpansion = new ExpansionMemberViewModel(
+            1, side, evidence, RelationLabels.StandaloneExpansion);
+        Assert.Equal("STANDALONE EXPANSION", standaloneExpansion.RelationText);
+
+        // Nothing named it: the row draws no relation word rather than guessing.
+        var unnamed = new ExpansionMemberViewModel(1, side, evidence);
+        Assert.False(unnamed.HasRelation);
+        Assert.Equal(string.Empty, unnamed.RelationText);
     }
 
     // ── The rail counts both surfaces ────────────────────────────────────────

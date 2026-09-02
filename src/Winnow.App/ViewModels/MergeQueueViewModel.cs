@@ -24,16 +24,13 @@ namespace Winnow.App.ViewModels;
 /// never separate cards.</para>
 ///
 /// <para>Answering writes a LINK, not a merge. Nothing is deleted, so the
-/// answer is retractable from HISTORY and the same group can be linked,
-/// retracted and linked again any number of times.</para>
+/// answer can be undone from HISTORY, and the same group can be linked,
+/// undone and linked again any number of times.</para>
 /// </summary>
 public partial class MergeQueueViewModel : ObservableObject
 {
     /// <summary>Cover geometry from §6: "two covers side by side at 200×300".</summary>
     public const double CoverWidth = 200;
-
-    /// <summary>2:3 portrait, matching the capsule geometry the grid uses.</summary>
-    public const double CoverHeight = CoverWidth * 1.5;
 
     private readonly IMergeCandidateRepository _candidates;
     private readonly IReleaseRepository _releases;
@@ -121,7 +118,7 @@ public partial class MergeQueueViewModel : ObservableObject
 
     /// <summary>Switches to HISTORY, rebuilding the list from the table.
     /// Recomputed on every arrival because the link log moves whenever a
-    /// group is answered or retracted.</summary>
+    /// group is answered or undone.</summary>
     [RelayCommand]
     private async Task ShowHistoryAsync(CancellationToken ct)
     {
@@ -199,6 +196,9 @@ public partial class MergeQueueViewModel : ObservableObject
     /// <summary>Standing explanation under the screen title.</summary>
     public string IntroMessage => MergeCopy.QueueIntro;
 
+    /// <summary>The question the review surface asks, display L weight.</summary>
+    public string ReviewQuestion => MergeCopy.ScreenQuestion;
+
     // ── The expansion queue ──────────────────────────────────────────────────
 
     /// <summary>
@@ -245,7 +245,7 @@ public partial class MergeQueueViewModel : ObservableObject
     /// <summary>The question this surface asks, display L.</summary>
     public string ExpansionsQuestion => ExpansionCopy.ScreenQuestion;
 
-    /// <summary>Standing explanation under that question: display only, retractable.</summary>
+    /// <summary>Standing explanation under that question.</summary>
     public string ExpansionsIntro => ExpansionCopy.Intro;
 
     /// <summary>Label on the segment showing this surface.</summary>
@@ -257,9 +257,9 @@ public partial class MergeQueueViewModel : ObservableObject
     // ── History: link acts ───────────────────────────────────────────────────
 
     /// <summary>
-    /// Every link act, newest first, each with its retraction. Rebuilt from the
-    /// table on every arrival, because the table is the history and a row's
-    /// standing changes whenever anything is linked or retracted.
+    /// Every link act still in force, newest first. Rebuilt from the table on
+    /// every arrival, because the table is the history and a row's standing
+    /// changes whenever anything is linked or undone.
     /// </summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasLinkHistory), nameof(ShowLinkHistoryEmpty))]
@@ -274,13 +274,13 @@ public partial class MergeQueueViewModel : ObservableObject
     // ── What the last act actually did ───────────────────────────────────────
 
     /// <summary>
-    /// What the last answer, retraction or undo actually did. Written from what
-    /// the engine returned, never from what was asked for.
+    /// What the last answer or undo actually did. Written from what the engine
+    /// returned, never from what was asked for.
     /// </summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(
         nameof(HasReport), nameof(HasReviewReport), nameof(HasExpansionsReport),
-        nameof(HasHistoryReport), nameof(ReportRetractAutomationName))]
+        nameof(HasHistoryReport), nameof(ReportUndoAutomationName))]
     public partial string? ReportMessage { get; set; }
 
     /// <summary>Which surface the standing report belongs to.</summary>
@@ -307,11 +307,12 @@ public partial class MergeQueueViewModel : ObservableObject
     /// returned, so the control is offered only for a write that happened.
     /// </summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(CanRetractReport))]
-    public partial long? ReportRetractActId { get; set; }
+    [NotifyPropertyChangedFor(nameof(CanUndoReport))]
+    public partial long? ReportUndoActId { get; set; }
 
-    /// <summary>True when the report's link can be retracted from where it stands.</summary>
-    public bool CanRetractReport => ReportRetractActId is not null;
+    /// <summary>True when the report's link can be undone from where it
+    /// stands.</summary>
+    public bool CanUndoReport => ReportUndoActId is not null;
 
     // ── Chrome the view binds to ─────────────────────────────────────────────
 
@@ -339,22 +340,20 @@ public partial class MergeQueueViewModel : ObservableObject
     /// <summary>Empty state for the link list.</summary>
     public string LinkHistoryEmptyMessage => MergeCopy.LinkHistoryEmpty;
 
-    /// <summary>Label on the control that retracts the link the report describes.</summary>
-    public string ReportRetractButtonText => MergeCopy.RetractButton;
+    /// <summary>Label on the control that undoes the link the report
+    /// describes.</summary>
+    public string ReportUndoButtonText => MergeCopy.UndoButton;
 
     /// <summary>Tooltip on that control.</summary>
-    public string ReportRetractTooltipText => MergeCopy.RetractTooltip;
+    public string ReportUndoTooltipText => MergeCopy.UndoTooltip;
 
     /// <summary>
-    /// Automation name for the retraction beside a report. Without the verb a
-    /// screen reader announces a button indistinguishable from a statement,
-    /// matching how history rows build their automation names (§8).
+    /// Automation name for the undo beside a report. Without the verb a screen
+    /// reader announces a button indistinguishable from a statement, matching how
+    /// history rows build their automation names (§8).
     /// </summary>
-    public string ReportRetractAutomationName =>
-        string.Create(CultureInfo.CurrentCulture, $"{MergeCopy.RetractButton}. {ReportMessage}");
-
-    /// <summary>Tooltip on "Different games".</summary>
-    public string DifferentGamesTooltip => MergeCopy.DifferentGamesTooltip;
+    public string ReportUndoAutomationName =>
+        string.Create(CultureInfo.CurrentCulture, $"{MergeCopy.UndoButton}. {ReportMessage}");
 
     // ── Loading ──────────────────────────────────────────────────────────────
 
@@ -613,55 +612,55 @@ public partial class MergeQueueViewModel : ObservableObject
         }
     }
 
-    // ── Retracting ───────────────────────────────────────────────────────────
+    // ── Undo ─────────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Retracts the link the report describes. The proposals were never marked
-    /// answered, so they return to the queue as ordinary pending rows on the
-    /// next load, and the same group can be linked again immediately.
+    /// Undoes the link the report describes. The proposals return to the queue
+    /// as ordinary pending rows on the next load, and the same group can be
+    /// linked again immediately.
     /// </summary>
     [RelayCommand]
-    private async Task RetractReportAsync(CancellationToken ct)
+    private async Task UndoReportAsync(CancellationToken ct)
     {
-        if (ReportRetractActId is not { } actId)
+        if (ReportUndoActId is not { } actId)
         {
             return;
         }
 
-        await RetractActAsync(actId, ct);
+        await UndoActAsync(actId, ct);
     }
 
-    /// <summary>Retracts one act from the link history list.</summary>
+    /// <summary>Undoes one act from the history list.</summary>
     [RelayCommand]
-    private async Task RetractAsync(MergeLinkHistoryRowViewModel? row, CancellationToken ct)
+    private async Task UndoAsync(MergeLinkHistoryRowViewModel? row, CancellationToken ct)
     {
-        if (row is null || !row.CanRetract)
+        if (row is null || !row.CanUndo)
         {
             return;
         }
 
-        row.IsRetracting = true;
-        await RetractActAsync(row.ActId, ct);
+        row.IsUndoing = true;
+        await UndoActAsync(row.ActId, ct);
     }
 
-    private async Task RetractActAsync(long actId, CancellationToken ct)
+    private async Task UndoActAsync(long actId, CancellationToken ct)
     {
-        var retracted = await _links.RetractActAsync(actId, null, ct);
+        var undone = await _links.RetractActAsync(actId, null, ct);
 
         // The reload clears the report, so the outcome is stamped after it
         // rather than before, or the screen would go quiet on the one act whose
         // whole point is that it can be undone.
         await LoadAsync(ct);
 
-        Report(retracted ? MergeCopy.Retracted : MergeCopy.RetractedAlready);
+        Report(undone ? MergeCopy.Undone : MergeCopy.UndoneAlready);
     }
 
     /// <summary>Stamps the outcome onto whichever surface is up, so a report
     /// cannot outlive the surface that raised it. Written from what the engine
     /// returned, never from what was asked for.</summary>
     /// <param name="message">The outcome line.</param>
-    /// <param name="actId">The link act it can be retracted from, or null when
-    /// the answer wrote no link.</param>
+    /// <param name="actId">The link act it can be undone from, or null when the
+    /// answer wrote no link.</param>
     private void Report(string message, long? actId = null)
     {
         ReportSurface = IsHistoryVisible
@@ -669,7 +668,7 @@ public partial class MergeQueueViewModel : ObservableObject
             : IsExpansionsVisible
                 ? MergeReportSurface.Expansions
                 : MergeReportSurface.Review;
-        ReportRetractActId = actId;
+        ReportUndoActId = actId;
         ReportMessage = message;
     }
 
@@ -680,7 +679,7 @@ public partial class MergeQueueViewModel : ObservableObject
     {
         ReportMessage = null;
         ReportSurface = MergeReportSurface.None;
-        ReportRetractActId = null;
+        ReportUndoActId = null;
     }
 
     // ── Selection ────────────────────────────────────────────────────────────
@@ -828,7 +827,6 @@ public partial class MergeQueueViewModel : ObservableObject
                     member.WorkId,
                     await DescribeWorkAsync(member.WorkId, member.ReleaseIds, library, ct),
                     member.ReleaseIds,
-                    member.BestScore,
                     member.IsDefaultIncluded));
             }
 
@@ -892,12 +890,10 @@ public partial class MergeQueueViewModel : ObservableObject
         return new MergeSideViewModel(
             releaseId,
             work?.Name ?? library.Titles.GetValueOrDefault(releaseId, string.Empty),
-            null,
             work?.FirstReleaseYear,
             work?.Publisher,
             coverKey,
             _covers,
-            releaseIds,
             stores);
     }
 
@@ -949,7 +945,8 @@ public partial class MergeQueueViewModel : ObservableObject
                     member.Work.WorkId,
                     await DescribeWorkAsync(
                         member.Work.WorkId, member.Work.ReleaseIds, library, ct),
-                    member.Evidence));
+                    member.Evidence,
+                    member.RelationLabel));
             }
 
             cards.Add(new ExpansionGroupViewModel(
@@ -991,7 +988,7 @@ public partial class MergeQueueViewModel : ObservableObject
             return name;
         }
 
-        // Grouped by act, because an act is the unit of undo: one retraction
+        // Grouped by act, because an act is the unit of undo: one undo
         // reverses every link it created, however many that was.
         var byAct = new Dictionary<long, List<IdentityLink>>();
         var order = new List<long>();
@@ -1018,7 +1015,6 @@ public partial class MergeQueueViewModel : ObservableObject
             var parentWorkId = members[0].ParentWorkId;
             var childTitles = new List<string>(members.Count);
             var live = false;
-            DateTime? retractedAt = null;
 
             // An act is an expansion act when EVERY link it wrote is one. The
             // test is "all" rather than "any" because a same-game act can
@@ -1039,14 +1035,17 @@ public partial class MergeQueueViewModel : ObservableObject
                 {
                     live = true;
                 }
-                else if (retractedAt is null || link.RetractedAt > retractedAt)
-                {
-                    retractedAt = link.RetractedAt;
-                }
+            }
+
+            // An act with no live link left has been undone, and an undone act
+            // leaves the list rather than staying on it struck through.
+            if (!live)
+            {
+                continue;
             }
 
             rows.Add(new MergeLinkHistoryRowViewModel(
-                act, await NameOfAsync(parentWorkId), childTitles, live, retractedAt, expansion));
+                act, await NameOfAsync(parentWorkId), childTitles, expansion));
         }
 
         rows.Reverse();

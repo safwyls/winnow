@@ -22,7 +22,7 @@ namespace Winnow.App.ViewModels;
 /// <para>What IS reused is the grammar: the same
 /// <see cref="MergeSideViewModel"/> faces, the 200×300 capsule for the base
 /// beside 64×96 roster chips, include checkboxes for none/some/all, one act,
-/// one retraction.</para>
+/// one undo.</para>
 ///
 /// <para>Grouping is PRESENTATION ONLY. No count, no playtime, no bucket and
 /// no recommendation moves, and the card says so rather than letting the user
@@ -30,12 +30,6 @@ namespace Winnow.App.ViewModels;
 /// </summary>
 public partial class ExpansionGroupViewModel : ObservableObject
 {
-    /// <summary>Base capsule geometry, matching the merge card's.</summary>
-    public const double CoverWidth = MergeQueueViewModel.CoverWidth;
-
-    /// <summary>2:3 portrait, the same capsule geometry the grid uses.</summary>
-    public const double CoverHeight = MergeQueueViewModel.CoverHeight;
-
     /// <summary>Creates a card. A card with no proposed expansion is not a question, so it is refused.</summary>
     /// <param name="baseWorkId">The work the members would be grouped under.</param>
     /// <param name="baseSide">The base game's face, drawn as the 200×300 capsule.</param>
@@ -55,6 +49,12 @@ public partial class ExpansionGroupViewModel : ObservableObject
         BaseWorkId = baseWorkId;
         Base = baseSide;
         Members = members;
+
+        var labels = MergeMemberLabels.For([.. members.Select(member => member.Side)]);
+        for (var i = 0; i < members.Count; i++)
+        {
+            members[i].Label = labels[i];
+        }
     }
 
     /// <summary>The parent of every link this card writes. Fixed by the relation, never chosen.</summary>
@@ -86,9 +86,6 @@ public partial class ExpansionGroupViewModel : ObservableObject
 
     /// <summary>Uppercase label beside the pack count.</summary>
     public string MemberCountLabel => ExpansionCopy.MemberCountLabel;
-
-    /// <summary>The sentence about what grouping does not do. Hours and counts stay put.</summary>
-    public string EffectLine => ExpansionCopy.GroupEffect;
 
     /// <summary>Label on the affirmative answer.</summary>
     public string GroupButtonText => ExpansionCopy.GroupButton;
@@ -166,8 +163,9 @@ public partial class ExpansionGroupViewModel : ObservableObject
     {
         Base.RequestCover(displayWidthPixels);
 
-        var chipWidthPixels =
-            displayWidthPixels * ExpansionMemberViewModel.ChipWidth / CoverWidth;
+        var chipWidthPixels = displayWidthPixels
+            * MergeGroupMemberViewModel.ChipWidth
+            / MergeQueueViewModel.CoverWidth;
 
         foreach (var member in Members)
         {

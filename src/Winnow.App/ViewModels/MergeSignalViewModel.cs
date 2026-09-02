@@ -5,7 +5,10 @@ namespace Winnow.App.ViewModels;
 
 /// <summary>
 /// One row of the signal diff (design-system §6: "signal diff between them —
-/// title distance, year delta, publisher").
+/// title distance, year delta, publisher"). A row shows its label, the
+/// headline value, and the matcher's own sentence. Signed contribution points
+/// were removed; they exposed the scorer's arithmetic, and nobody on this
+/// screen tunes weights.
 ///
 /// <para>Every value here is decoded from the frozen <c>signals_json</c> the
 /// matcher wrote when the pair was queued, never re-scored. That is the whole
@@ -13,28 +16,26 @@ namespace Winnow.App.ViewModels;
 /// drift away from the score they are being asked about after a threshold
 /// tune.</para>
 ///
-/// <para>A signal that did not fire is shown, dimmed, with the reason it could
-/// not be evaluated. Hiding it would let a 0.65 built entirely on an unverified
-/// title look like a 0.65 corroborated by year and publisher, and those are the
-/// two cases the user most needs to tell apart — <i>Prey</i> against
-/// <i>Prey</i>.</para>
+/// <para>A signal that did not fire is shown with the reason it could not be
+/// evaluated; hiding it would let a 0.65 built entirely on an unverified title
+/// look like a 0.65 corroborated by year and publisher, and those are the two
+/// cases the user most needs to tell apart — <i>Prey</i> against
+/// <i>Prey</i>. The unfired row keeps full ink; only the value cell steps
+/// from Text to TextDim, and the state is carried three ways: the em-dash
+/// value, the reason sentence, and that demoted ink.</para>
 /// </summary>
 public sealed class MergeSignalViewModel
 {
     private MergeSignalViewModel(
         string label,
         string valueText,
-        string contributionText,
         string detail,
-        bool fired,
-        double contribution)
+        bool fired)
     {
         Label = label;
         ValueText = valueText;
-        ContributionText = contributionText;
         Detail = detail;
         Fired = fired;
-        Contribution = contribution;
     }
 
     /// <summary>Row label, uppercase — the rail and this screen both use Label style (§3).</summary>
@@ -47,21 +48,10 @@ public sealed class MergeSignalViewModel
     /// </summary>
     public string ValueText { get; }
 
-    /// <summary>Signed points this signal added to the score, e.g. "+0.15".</summary>
-    public string ContributionText { get; }
-
     /// <summary>The matcher's own phrasing, e.g. "2015 vs 2016 (Δ1)".</summary>
     public string Detail { get; }
 
     public bool Fired { get; }
-
-    public double Contribution { get; }
-
-    /// <summary>Evidence for the pair being the same game (Azure — the neutral informational colour).</summary>
-    public bool IsForMatch => Fired && Contribution > 0;
-
-    /// <summary>Evidence against (Amber — attention). Never Flare: Flare is the unread badge, nothing else.</summary>
-    public bool IsAgainstMatch => Fired && Contribution < 0;
 
     /// <summary>
     /// Builds the row for one recorded signal. <paramref name="payload"/> supplies
@@ -110,10 +100,8 @@ public sealed class MergeSignalViewModel
         return new MergeSignalViewModel(
             label.ToUpperInvariant(),
             signal.Fired ? value : Unknown,
-            Signed(signal.Contribution),
             signal.Detail,
-            signal.Fired,
-            signal.Contribution);
+            signal.Fired);
     }
 
     /// <summary>Em dash: "this signal had nothing to say", which is not the same as zero agreement.</summary>
@@ -121,10 +109,4 @@ public sealed class MergeSignalViewModel
 
     private static string Number(double value)
         => value.ToString("0.00", CultureInfo.InvariantCulture);
-
-    // ASCII hyphen, not U+2212: every glyph in Plex Mono is one advance wide, so
-    // the plain minus keeps the column aligned without depending on the face
-    // carrying a tabular-width true minus.
-    private static string Signed(double value)
-        => value.ToString("+0.00;-0.00; 0.00", CultureInfo.InvariantCulture);
 }

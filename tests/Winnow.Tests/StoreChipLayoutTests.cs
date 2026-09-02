@@ -147,15 +147,21 @@ public sealed class StoreChipLayoutTests
     // ══ The Same Game card ═══════════════════════════════════════════════════
 
     // The roster density is the one that sets the ceiling: it needs more
-    // width than the pair layout does, because the roster row has no cover
-    // to compare and carries its evidence on one non-wrapping line instead.
+    // width than a two-member card does, because a roster row carries its
+    // evidence on one non-wrapping line instead of comparing two covers.
+    //
+    // The measure is no longer set on the card. It sat there alone, so on a
+    // wide window the header's right-aligned count stood hundreds of pixels
+    // from the cards it counted; it is now one content column that the header,
+    // the count, the outcome report, the card list, the empty state and the
+    // history log all sit in.
     [Fact]
-    public void The_same_game_card_holds_a_measured_ceiling_and_centres()
+    public void The_same_game_screen_holds_one_measured_content_column()
     {
         var view = Load("src/Winnow.App/Views/MergeQueueView.axaml");
         var style = view
             .Descendants(Avalonia + "Style")
-            .Single(s => s.Attribute("Selector")?.Value == "Border.card");
+            .Single(s => s.Attribute("Selector")?.Value == ":is(Control).measure");
 
         var setters = style
             .Elements(Avalonia + "Setter")
@@ -169,17 +175,70 @@ public sealed class StoreChipLayoutTests
         var maxWidth = double.Parse(setters["MaxWidth"], CultureInfo.InvariantCulture);
         Assert.Equal(CardMaxWidth, maxWidth);
 
-        // The roster is the density that sets the ceiling: it needs more width
-        // than the pair layout does.
+        // The roster is the density that sets the ceiling.
         var roster = CardChrome + CoverColumn + CoverGutter + RosterRowMinimum;
         Assert.True(
             maxWidth >= roster,
-            $"The card is capped at {maxWidth}px and the roster row needs {roster}px.");
+            $"The column is capped at {maxWidth}px and the roster row needs {roster}px.");
+
+        // The card fills the column rather than setting one of its own.
+        var card = view
+            .Descendants(Avalonia + "Style")
+            .Single(s => s.Attribute("Selector")?.Value == "Border.card")
+            .Elements(Avalonia + "Setter")
+            .Select(e => e.Attribute("Property")!.Value)
+            .ToList();
+
+        Assert.DoesNotContain("MaxWidth", card);
+        Assert.DoesNotContain("HorizontalAlignment", card);
     }
 
-    // Both the pair template and the roster template must bind StoreChips.
-    // Placement differs by density (own line vs. leading the metadata line)
-    // but the fact is present at both.
+    // Everything the user reads down the screen takes that column: the segment
+    // strip's content, each surface's header (which carries its count and its
+    // outcome report), each card list, each empty state, and the history log.
+    [Fact]
+    public void Every_column_of_the_same_game_screen_takes_the_measure()
+    {
+        var view = Load("src/Winnow.App/Views/MergeQueueView.axaml");
+
+        var carriers = view
+            .Descendants()
+            .Where(e => e.Attribute("Classes")?.Value.Split(' ').Contains("measure") == true)
+            .ToList();
+
+        Assert.Equal(8, carriers.Count);
+
+        // The count, the outcome report and the empty state are inside it, not
+        // beside it.
+        foreach (var path in new[]
+        {
+            "{Binding PendingCountText}",
+            "{Binding ExpansionCountText}",
+            "{Binding EmptyMessage}",
+            "{Binding ExpansionsEmptyMessage}",
+        })
+        {
+            var element = Assert.Single(
+                view.Descendants(Avalonia + "TextBlock"),
+                t => t.Attribute("Text")?.Value == path);
+            Assert.True(
+                InsideTheMeasure(element),
+                $"{path} is drawn outside the content column.");
+        }
+
+        foreach (var report in view
+            .Descendants(Avalonia + "ContentControl")
+            .Where(c => c.Attribute("IsVisible")?.Value.Contains("Report", StringComparison.Ordinal) == true))
+        {
+            Assert.True(
+                InsideTheMeasure(report),
+                "An outcome report is drawn outside the content column.");
+        }
+    }
+
+    // Both the primary column and the member row must bind StoreChips. Placement
+    // differs (own line vs. leading the metadata line) but the fact is present
+    // at every member of every card.
     [Fact]
     public void Both_same_game_densities_draw_the_store()
     {
@@ -193,6 +252,19 @@ public sealed class StoreChipLayoutTests
 
             Assert.Contains(template.Descendants(), e => Binds("StoreChips")(e));
         }
+    }
+
+    private static bool InsideTheMeasure(XElement element)
+    {
+        for (var node = element.Parent; node is not null; node = node.Parent)
+        {
+            if (node.Attribute("Classes")?.Value.Split(' ').Contains("measure") == true)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     // ══ Loading ══════════════════════════════════════════════════════════════

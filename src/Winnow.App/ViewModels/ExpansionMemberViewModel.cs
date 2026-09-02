@@ -16,18 +16,22 @@ namespace Winnow.App.ViewModels;
 /// </summary>
 public partial class ExpansionMemberViewModel : ObservableObject
 {
-    /// <summary>Roster chip geometry, the same 2:3 portrait the merge roster uses.</summary>
-    public const double ChipWidth = MergeGroupMemberViewModel.ChipWidth;
-
-    /// <summary>2:3 portrait, matching the roster chip.</summary>
-    public const double ChipHeight = MergeGroupMemberViewModel.ChipHeight;
-
     /// <summary>Creates a roster row, checked.</summary>
     /// <param name="workId">The proposed expansion's work id.</param>
-    /// <param name="side">Its face: title, cover, stores, entry numbers.</param>
+    /// <param name="side">Its face: title, cover, stores.</param>
     /// <param name="evidence">What the detector observed about this pair.</param>
+    /// <param name="relationLabel">
+    /// The storefront's own word for the relation — demo, beta, playtest,
+    /// expansion, dlc, standalone expansion, remaster, remake, port, mod,
+    /// superseded, among others — or null when nothing named it. The row
+    /// shows this label rather than the link kind, so a playtest stops
+    /// reading as an expansion.
+    /// </param>
     public ExpansionMemberViewModel(
-        long workId, MergeSideViewModel side, ExpansionEvidence evidence)
+        long workId,
+        MergeSideViewModel side,
+        ExpansionEvidence evidence,
+        string? relationLabel = null)
     {
         ArgumentNullException.ThrowIfNull(side);
         ArgumentNullException.ThrowIfNull(evidence);
@@ -35,6 +39,9 @@ public partial class ExpansionMemberViewModel : ObservableObject
         WorkId = workId;
         Side = side;
         Evidence = evidence;
+        RelationText = string.IsNullOrWhiteSpace(relationLabel)
+            ? string.Empty
+            : relationLabel.Trim().ToUpperInvariant();
 
         // Checked by default, unlike a same-game roster row. A same-game group
         // is a connected component, so an unchecked default guards against the
@@ -53,6 +60,18 @@ public partial class ExpansionMemberViewModel : ObservableObject
 
     /// <summary>What the detector observed about this pair.</summary>
     public ExpansionEvidence Evidence { get; }
+
+    /// <summary>
+    /// The storefront's word for the relation, uppercased for the row, or
+    /// empty when no source named one. Shown instead of the link kind,
+    /// because the vocabulary is open and calling a playtest an expansion
+    /// was the confusion this fixes.
+    /// </summary>
+    public string RelationText { get; }
+
+    /// <summary>False when no source named the relation. The row draws no
+    /// relation label in that case.</summary>
+    public bool HasRelation => RelationText.Length > 0;
 
     /// <summary>Whether this pack joins the act. Checked by default; see the constructor.</summary>
     [ObservableProperty]
@@ -90,7 +109,7 @@ public partial class ExpansionMemberViewModel : ObservableObject
     /// <summary>Uppercase label before the separator verdict.</summary>
     public string SeparatorLabel => ExpansionCopy.SeparatorLabel;
 
-    /// <summary>Label beside the include checkbox, shared with the merge roster.</summary>
+    /// <summary>Label beside the include checkbox.</summary>
     public string IncludeControlText => MergeCopy.IncludeControlLabel;
 
     /// <summary>Store badges for this pack.</summary>
@@ -102,22 +121,15 @@ public partial class ExpansionMemberViewModel : ObservableObject
     /// <summary>False when no ownership row named a store, in which case the label falls back to entry numbers.</summary>
     public bool HasStores => Side.HasStores;
 
-    /// <summary>This pack's store entry numbers.</summary>
-    public string ReleasesText => Side.ReleaseText;
-
     /// <summary>
-    /// The title with its stores and entry numbers, so two members that share a
-    /// title are still distinguishable.
+    /// What a screen reader calls this pack. Assigned by the card through
+    /// <see cref="MergeMemberLabels"/>, which adds stores, year and publisher
+    /// only while two packs would otherwise share a label. No database ids
+    /// (§10.5).
     /// </summary>
-    public string Label => HasStores
-        ? string.Format(
-            CultureInfo.CurrentCulture,
-            MergeCopy.MemberWithStoreAutomationFormat,
-            Side.Title,
-            StoreNames,
-            ReleasesText)
-        : string.Format(
-            CultureInfo.CurrentCulture, MergeCopy.MemberAutomationFormat, Side.Title, ReleasesText);
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IncludeAutomationName))]
+    public partial string Label { get; set; } = string.Empty;
 
     /// <summary>Names the member, never the verb alone (§8).</summary>
     public string IncludeAutomationName => string.Format(

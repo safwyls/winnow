@@ -23,6 +23,7 @@ namespace Winnow.App.ViewModels;
 public partial class MergeGroupViewModel : ObservableObject
 {
     private readonly IReadOnlyList<SurvivorCandidate> _candidates;
+    private readonly IReadOnlyList<MergeGroupMemberViewModel> _ordered;
     private readonly long _ladderPrimaryWorkId;
     private readonly MergeSurvivorReason _ladderReason;
 
@@ -63,7 +64,13 @@ public partial class MergeGroupViewModel : ObservableObject
         // swapping the two covers under the pointer.
         var ordered = new List<MergeGroupMemberViewModel>(members);
         ordered.Sort(static (a, b) => a.WorkId.CompareTo(b.WorkId));
-        Ordered = ordered;
+        _ordered = ordered;
+
+        var labels = MergeMemberLabels.For([.. ordered.Select(member => member.Side)]);
+        for (var i = 0; i < ordered.Count; i++)
+        {
+            ordered[i].Label = labels[i];
+        }
 
         Key = string.Create(CultureInfo.InvariantCulture, $"merge-group-{ordered[0].WorkId}");
         foreach (var member in ordered)
@@ -79,9 +86,6 @@ public partial class MergeGroupViewModel : ObservableObject
 
     /// <summary>Members, primary first.</summary>
     public IReadOnlyList<MergeGroupMemberViewModel> Members { get; private set; }
-
-    /// <summary>Members by work id, which is the order the pair layout draws in.</summary>
-    public IReadOnlyList<MergeGroupMemberViewModel> Ordered { get; }
 
     /// <summary>Every surviving edge inside this component, with its evidence.</summary>
     public IReadOnlyList<MergeEdgeViewModel> Edges { get; }
@@ -101,22 +105,6 @@ public partial class MergeGroupViewModel : ObservableObject
     /// <summary>How many members are in the group, in the data face.</summary>
     public string MemberCountText =>
         Members.Count.ToString("N0", CultureInfo.CurrentCulture);
-
-    /// <summary>Left cover of the pair layout. The lower work id, always.</summary>
-    public MergeGroupMemberViewModel Left => Ordered[0];
-
-    /// <summary>Right cover of the pair layout.</summary>
-    public MergeGroupMemberViewModel Right => Ordered[^1];
-
-    /// <summary>The single edge of a two-member group, or null when there is more than one.</summary>
-    public MergeEdgeViewModel? PairEdge => Edges.Count == 1 ? Edges[0] : null;
-
-    /// <summary>
-    /// True when the pair layout has an edge and that edge carried no recorded
-    /// breakdown. A property rather than a negated path through a nullable in
-    /// the markup, so the roster layout never evaluates it to nothing.
-    /// </summary>
-    public bool PairHasNoSignals => PairEdge is { HasSignals: false };
 
     /// <summary>The member whose title the library keeps.</summary>
     [ObservableProperty]
@@ -158,14 +146,25 @@ public partial class MergeGroupViewModel : ObservableObject
     /// <summary>True when the card should show the reason line.</summary>
     public bool HasPrimaryReason => PrimaryReasonText.Length > 0;
 
-    /// <summary>Small uppercase label above the primary's name.</summary>
-    public string PrimaryLabel => MergeCopy.PrimaryLabel;
-
     /// <summary>Small uppercase label beside the reason phrase.</summary>
     public string PrimaryReasonLabel => MergeCopy.SurvivorReasonLabel;
 
-    /// <summary>What the card promises the answer will do.</summary>
-    public string EffectLine => MergeCopy.LinkEffect;
+    /// <summary>Uppercase label before the matcher's confidence figure.</summary>
+    public string ConfidenceLabel => MergeCopy.ConfidenceLabel;
+
+    /// <summary>Uppercase label beside the member count.</summary>
+    public string MemberCountLabel => MergeCopy.MemberCountLabel;
+
+    /// <summary>The mark shown when the matcher put this group's strongest edge
+    /// in its top confidence band. Several cards carry it at once; it says
+    /// nothing about position.</summary>
+    public string PriorityBandLabel => MergeCopy.PriorityBandLabel;
+
+    /// <summary>Label on the affirmative answer (§7).</summary>
+    public string SameGameButtonText => MergeCopy.SameGameButton;
+
+    /// <summary>Label on the negative answer (§7).</summary>
+    public string DifferentGamesButtonText => MergeCopy.DifferentGamesButton;
 
     /// <summary>Tooltip on Same game.</summary>
     public string SameGameTooltip => MergeCopy.SameGameTooltip;
@@ -296,15 +295,10 @@ public partial class MergeGroupViewModel : ObservableObject
     /// </summary>
     public void RequestCovers(double displayWidthPixels)
     {
-        var chipWidthPixels = IsPair
-            ? displayWidthPixels
-            : displayWidthPixels
-                * MergeGroupMemberViewModel.ChipWidth
-                / MergeQueueViewModel.CoverWidth;
-
         foreach (var member in Members)
         {
-            member.RequestCover(member.IsPrimary ? displayWidthPixels : chipWidthPixels);
+            member.RequestCover(
+                displayWidthPixels * member.CoverWidth / MergeQueueViewModel.CoverWidth);
         }
     }
 
@@ -330,17 +324,18 @@ public partial class MergeGroupViewModel : ObservableObject
         var others = new List<MergeGroupMemberViewModel>();
         var titles = new Dictionary<long, string>(Members.Count);
 
-        foreach (var member in Ordered)
+        foreach (var member in _ordered)
         {
             titles[member.WorkId] = member.Side.Title;
         }
 
-        foreach (var member in Ordered)
+        foreach (var member in _ordered)
         {
             member.IsPrimary = member.WorkId == primaryWorkId;
             if (member.IsPrimary)
             {
                 member.IsIncluded = true;
+                member.IsSoleChild = false;
                 member.Evidence = null;
                 member.ThroughTitle = null;
                 primary = member;
@@ -376,6 +371,18 @@ public partial class MergeGroupViewModel : ObservableObject
                 && titles.TryGetValue(through, out var throughTitle)
                     ? throughTitle
                     : null;
+        }
+
+        // The two-member card draws its one child at 200x300 with the full diff
+        // and no checkbox, so the child must arrive included: the two answer
+        // buttons are the only include control it has.
+        foreach (var member in others)
+        {
+            member.IsSoleChild = others.Count == 1;
+            if (member.IsSoleChild)
+            {
+                member.IsIncluded = true;
+            }
         }
 
         Primary = primary!;

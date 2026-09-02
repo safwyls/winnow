@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Xml.Linq;
+using Winnow.App.ViewModels;
 using Xunit;
 
 namespace Winnow.Tests;
@@ -101,15 +102,27 @@ public sealed class SameGameSurfaceTests
     {
         var view = Load("src/Winnow.App/Views/MergeQueueView.axaml");
 
-        var bound = view
-            .Descendants(Avalonia + "Border")
-            .Select(b => b.Attribute("IsVisible")?.Value)
-            .Where(v => v is not null && v.Contains("Report", StringComparison.Ordinal))
+        var notes = view
+            .Descendants(Avalonia + "ContentControl")
+            .Where(c => c.Attribute("IsVisible")?.Value.Contains("Report", StringComparison.Ordinal) == true)
             .ToList();
+
+        var bound = notes.Select(c => c.Attribute("IsVisible")!.Value).ToList();
 
         Assert.Equal(3, bound.Count);
         Assert.Equal(3, bound.Distinct(StringComparer.Ordinal).Count());
         Assert.DoesNotContain("{Binding HasReport}", bound);
+
+        // One note, shown by whichever surface raised the outcome. It was
+        // written out three times identically.
+        Assert.All(
+            notes,
+            c => Assert.Equal(
+                "{StaticResource ReportNoteTemplate}", c.Attribute("ContentTemplate")?.Value));
+
+        Assert.Single(
+            view.Descendants(Avalonia + "DataTemplate"),
+            t => t.Attribute(Xaml + "Key")?.Value == "ReportNoteTemplate");
     }
 
     // ── The rail reflects both surfaces ══════════════════════════════════════
@@ -166,11 +179,260 @@ public sealed class SameGameSurfaceTests
 
         var evidence = Assert.Single(
             template.Descendants(Avalonia + "StackPanel"),
-            p => p.Attribute("IsVisible")?.Value == "{Binding HasDirectEvidence}");
+            p => p.Attribute("AutomationProperties.Name")?.Value
+                == "{Binding Evidence.SummaryText}");
 
         Assert.Equal(
-            "{Binding Evidence.SummaryText}",
-            evidence.Attribute("AutomationProperties.Name")?.Value);
+            "{Binding ShowCondensedEvidence}", evidence.Attribute("IsVisible")?.Value);
+    }
+
+    // ── One card, one layout ════════════════════════════════════════════════
+
+    // The card held two Grids switched on IsPair and two member templates, one
+    // of which served as both a pair side and a roster column. Nothing on the
+    // screen switches a layout on the member count any more; what varies is
+    // inside the row, and the row asks the member.
+
+    [Fact]
+    public void No_layout_on_the_screen_switches_on_the_member_count()
+    {
+        var view = Load("src/Winnow.App/Views/MergeQueueView.axaml");
+
+        foreach (var element in view.Descendants())
+        {
+            foreach (var attribute in element.Attributes())
+            {
+                Assert.DoesNotContain("IsPair", attribute.Value, StringComparison.Ordinal);
+            }
+        }
+
+        // One member row template, and its cover is sized by the member.
+        var row = Assert.Single(
+            view.Descendants(Avalonia + "DataTemplate"),
+            t => t.Attribute(Xaml + "Key")?.Value == "MergeRosterRowTemplate");
+
+        var cover = Assert.Single(
+            row.Descendants(Avalonia + "Border"),
+            b => b.Attribute("Width")?.Value == "{Binding CoverWidth}");
+        Assert.Equal("{Binding CoverHeight}", cover.Attribute("Height")?.Value);
+
+        // The include control is drawn only when it means something.
+        var checkBox = Assert.Single(row.Descendants(Avalonia + "CheckBox"));
+        Assert.Equal("{Binding ShowIncludeControl}", checkBox.Attribute("IsVisible")?.Value);
+
+        // One signal template, shared by the open diff and the disclosure.
+        Assert.Single(
+            view.Descendants(Avalonia + "DataTemplate"),
+            t => t.Attribute(Xaml + "Key")?.Value == "MergeSignalTemplate");
+    }
+
+    // The scorer's signed points are gone with the column that printed them,
+    // and so is the per-row restatement of the group's own score.
+
+    [Fact]
+    public void The_evidence_shows_no_arithmetic()
+    {
+        var view = Load("src/Winnow.App/Views/MergeQueueView.axaml");
+
+        foreach (var forbidden in new[]
+        {
+            "ContributionText", "IsForMatch", "IsAgainstMatch", "BestScoreText",
+        })
+        {
+            Assert.DoesNotContain(
+                view.Descendants().SelectMany(e => e.Attributes()),
+                a => a.Value.Contains(forbidden, StringComparison.Ordinal));
+        }
+
+        foreach (var selector in new[]
+        {
+            "TextBlock.contribution", "TextBlock.contribution.pos", "TextBlock.contribution.neg",
+        })
+        {
+            Assert.DoesNotContain(
+                view.Descendants(Avalonia + "Style"),
+                s => s.Attribute("Selector")?.Value == selector);
+        }
+
+        // The confidence figure stays: it is what sorts the queue.
+        Assert.Contains(
+            view.Descendants(Avalonia + "TextBlock"),
+            t => t.Attribute("Text")?.Value == "{Binding ScoreText}");
+    }
+
+    // Entry numbers are database ids. §10.5 rejected showing those and the
+    // store chips do the disambiguating job they were doing.
+
+    [Fact]
+    public void No_member_on_the_screen_shows_its_entry_numbers()
+    {
+        var view = Load("src/Winnow.App/Views/MergeQueueView.axaml");
+
+        foreach (var forbidden in new[] { "ReleasesText", "ReleaseText" })
+        {
+            Assert.DoesNotContain(
+                view.Descendants().SelectMany(e => e.Attributes()),
+                a => a.Value.Contains(forbidden, StringComparison.Ordinal));
+        }
+    }
+
+    // ── The matcher's band, named for what it is ═════════════════════════════
+
+    // TOP OF QUEUE was wrong twice: it binds IsPriority, which is the matcher's
+    // top confidence band and not a position, so several cards carry it at once
+    // and the queue is already sorted by score. Its tooltip was the
+    // over-explanatory blurb notes.md asks us to drop.
+
+    [Fact]
+    public void The_confidence_band_is_named_from_copy_and_carries_no_tooltip()
+    {
+        var view = Load("src/Winnow.App/Views/MergeQueueView.axaml");
+
+        var band = Assert.Single(
+            view.Descendants(Avalonia + "TextBlock"),
+            t => t.Attribute("IsVisible")?.Value == "{Binding IsPriority}");
+
+        Assert.Equal("{Binding PriorityBandLabel}", band.Attribute("Text")?.Value);
+        Assert.Null(band.Attribute("ToolTip.Tip"));
+
+        Assert.DoesNotContain(
+            "TOP OF QUEUE",
+            File.ReadAllText(Path("src/Winnow.App/Views/MergeQueueView.axaml")),
+            StringComparison.OrdinalIgnoreCase);
+    }
+
+    // ── Every string comes from the copy file ════════════════════════════════
+
+    [Fact]
+    public void Every_user_facing_string_on_the_screen_comes_from_copy()
+    {
+        var view = Load("src/Winnow.App/Views/MergeQueueView.axaml");
+
+        foreach (var element in view.Descendants())
+        {
+            foreach (var name in new[] { "Text", "Content", "ToolTip.Tip" })
+            {
+                if (element.Attribute(name)?.Value is not { Length: > 0 } value)
+                {
+                    continue;
+                }
+
+                if (value.StartsWith('{') || value == "·")
+                {
+                    continue;
+                }
+
+                Assert.Fail(
+                    $"<{element.Name.LocalName} {name}=\"{value}\"> is a literal. Every "
+                    + "user-facing string on this screen lives in MergeCopy or ExpansionCopy.");
+            }
+        }
+    }
+
+    // ── Undo, not retract ═══════════════════════════════════════════════════
+
+    // "Retract" was engineering vocabulary in the interface. Undo is what a user
+    // calls it, and the rename covers the copy, the tooltips and the automation
+    // names. The repository API keeps its own name: that is another layer.
+
+    [Fact]
+    public void No_user_facing_string_says_retract()
+    {
+        foreach (var copy in new[] { typeof(MergeCopy), typeof(ExpansionCopy) })
+        {
+            foreach (var field in copy.GetFields(BindingFlags.Public | BindingFlags.Static))
+            {
+                if (field.GetValue(null) is not string value)
+                {
+                    continue;
+                }
+
+                Assert.DoesNotContain("retract", value, StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
+        var view = Load("src/Winnow.App/Views/MergeQueueView.axaml");
+        foreach (var attribute in view.Descendants().SelectMany(e => e.Attributes()))
+        {
+            Assert.DoesNotContain("Retract", attribute.Value, StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
+    // ── The expansion row states its relation ═══════════════════════════════
+
+    [Fact]
+    public void The_expansion_row_draws_the_relations_own_word()
+    {
+        var view = Load("src/Winnow.App/Views/MergeQueueView.axaml");
+
+        var row = Assert.Single(
+            view.Descendants(Avalonia + "DataTemplate"),
+            t => t.Attribute(Xaml + "Key")?.Value == "ExpansionRosterRowTemplate");
+
+        var relation = Assert.Single(
+            row.Descendants(Avalonia + "TextBlock"),
+            t => t.Attribute("Text")?.Value == "{Binding RelationText}");
+
+        Assert.Equal("{Binding HasRelation}", relation.Attribute("IsVisible")?.Value);
+    }
+
+    // ── The deleted members are unreferenced ════════════════════════════════
+
+    // The pass named each of these as dead, or the user's decisions retired it.
+    // A member nothing binds and nothing calls is indistinguishable from one
+    // that does not exist, and this screen has carried several of them.
+
+    [Fact]
+    public void Every_member_the_pass_deleted_is_gone()
+    {
+        foreach (var (type, member) in new (Type, string)[]
+        {
+            (typeof(MergeGroupMemberViewModel), "IncludeControlText"),
+            (typeof(MergeGroupMemberViewModel), "BestScoreText"),
+            (typeof(MergeGroupMemberViewModel), "ReleasesText"),
+            (typeof(MergeGroupMemberViewModel), "ChipHeight"),
+            (typeof(MergeSideViewModel), "NormalizedTitle"),
+            (typeof(MergeSideViewModel), "HasPublisher"),
+            (typeof(MergeSideViewModel), "ReleaseText"),
+            (typeof(MergeQueueViewModel), "DifferentGamesTooltip"),
+            (typeof(MergeQueueViewModel), "CoverHeight"),
+            (typeof(MergeGroupViewModel), "Left"),
+            (typeof(MergeGroupViewModel), "Right"),
+            (typeof(MergeGroupViewModel), "Ordered"),
+            (typeof(MergeGroupViewModel), "PairEdge"),
+            (typeof(MergeGroupViewModel), "PairHasNoSignals"),
+            (typeof(MergeGroupViewModel), "EffectLine"),
+            (typeof(MergeGroupViewModel), "PrimaryLabel"),
+            (typeof(MergeLinkHistoryRowViewModel), "ChildCountText"),
+            (typeof(MergeLinkHistoryRowViewModel), "RetractedAtText"),
+            (typeof(MergeSignalViewModel), "ContributionText"),
+            (typeof(MergeSignalViewModel), "Contribution"),
+            (typeof(MergeSignalViewModel), "IsForMatch"),
+            (typeof(MergeSignalViewModel), "IsAgainstMatch"),
+            (typeof(ExpansionGroupViewModel), "CoverWidth"),
+            (typeof(ExpansionGroupViewModel), "CoverHeight"),
+            (typeof(ExpansionGroupViewModel), "EffectLine"),
+            (typeof(ExpansionMemberViewModel), "ChipWidth"),
+            (typeof(ExpansionMemberViewModel), "ChipHeight"),
+            (typeof(ExpansionMemberViewModel), "ReleasesText"),
+        })
+        {
+            Assert.Null(type.GetMember(member).FirstOrDefault());
+        }
+
+        foreach (var (type, member) in new (Type, string)[]
+        {
+            (typeof(MergeCopy), "PrimaryLabel"),
+            (typeof(MergeCopy), "LinkEffect"),
+            (typeof(MergeCopy), "RetractedLabel"),
+            (typeof(MergeCopy), "MemberAutomationFormat"),
+            (typeof(MergeCopy), "MemberWithStoreAutomationFormat"),
+            (typeof(ExpansionCopy), "GroupEffect"),
+            (typeof(ExpansionCopy), "Retracted"),
+        })
+        {
+            Assert.Null(type.GetMember(member).FirstOrDefault());
+        }
     }
 
     // ── Loading ══════════════════════════════════════════════════════════════

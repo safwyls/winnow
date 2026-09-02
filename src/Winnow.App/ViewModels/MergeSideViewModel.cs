@@ -24,27 +24,22 @@ namespace Winnow.App.ViewModels;
 public partial class MergeSideViewModel : ObservableObject
 {
     private readonly ICoverCache? _covers;
-    private readonly IReadOnlyList<long>? _alsoReleaseIds;
 
     public MergeSideViewModel(
         long releaseId,
         string title,
-        string? normalizedTitle = null,
         int? year = null,
         string? publisher = null,
         CoverKey? coverKey = null,
         ICoverCache? covers = null,
-        IReadOnlyList<long>? alsoReleaseIds = null,
         IReadOnlyList<string>? stores = null)
     {
         ReleaseId = releaseId;
         Title = string.IsNullOrWhiteSpace(title) ? $"Release {releaseId}" : title;
-        NormalizedTitle = normalizedTitle ?? string.Empty;
         Year = year;
         Publisher = string.IsNullOrWhiteSpace(publisher) ? null : publisher;
         CoverKey = coverKey;
         _covers = covers;
-        _alsoReleaseIds = alsoReleaseIds;
 
         var ordered = stores is null
             ? []
@@ -85,9 +80,6 @@ public partial class MergeSideViewModel : ObservableObject
 
     public string Title { get; }
 
-    /// <summary>What the matcher actually compared. Shown because "why" is the screen.</summary>
-    public string NormalizedTitle { get; }
-
     public int? Year { get; }
 
     public string? Publisher { get; }
@@ -97,37 +89,7 @@ public partial class MergeSideViewModel : ObservableObject
     /// <summary>Year in Plex Mono, or an em dash when no source has supplied one yet.</summary>
     public string YearText => Year?.ToString(CultureInfo.InvariantCulture) ?? "—";
 
-    /// <summary>
-    /// Every store entry under this member, listed. When two members are both
-    /// called "Prey" the entry numbers are the only thing on screen that
-    /// tells them apart. Lists the primary entry plus any others carried by
-    /// <c>alsoReleaseIds</c>.
-    /// </summary>
-    public string ReleaseText
-    {
-        get
-        {
-            var text = string.Create(CultureInfo.InvariantCulture, $"#{ReleaseId}");
-            if (_alsoReleaseIds is null)
-            {
-                return text;
-            }
-
-            foreach (var id in _alsoReleaseIds)
-            {
-                if (id != ReleaseId)
-                {
-                    text += string.Create(CultureInfo.InvariantCulture, $" #{id}");
-                }
-            }
-
-            return text;
-        }
-    }
-
     public string PublisherText => Publisher ?? "publisher unknown";
-
-    public bool HasPublisher => Publisher is not null;
 
     /// <summary>Procedural stand-in; painted whenever no real cover is loaded.</summary>
     public IBrush PlaceholderBrush { get; }
