@@ -134,6 +134,19 @@ public sealed record RecommendationReason
     /// <summary>One supporting fact the primary did not already tell, or None.</summary>
     public ReasonSignal Secondary { get; init; } = ReasonSignal.None;
 
+    /// <summary>
+    /// Every supporting fact the scorer proved about this card, strongest
+    /// first, with <see cref="Secondary"/> as its head. A shelf caps how
+    /// many of its cards may cite the same fact (see
+    /// <see cref="ShelfReasonLedger"/>), and a card whose strongest fact is
+    /// already spent needs somewhere honest to go. Reaching down this list
+    /// is honest because every entry fired for this card; nothing on it is
+    /// a new claim. When the list runs out the card says less, it never
+    /// borrows. Defaults to empty; a caller that sets only
+    /// <see cref="Secondary"/> gets the original single-fact behaviour.
+    /// </summary>
+    public IReadOnlyList<ReasonSignal> SupportingSignals { get; init; } = [];
+
     /// <summary>The numbers both clauses may cite.</summary>
     public required ReasonEvidence Evidence { get; init; }
 }
@@ -190,10 +203,22 @@ internal static class ReasonTokens
         => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     /// <summary>
-    /// Makes a store-authored update title safe to quote inside one sentence:
-    /// whitespace collapsed, quotes and sentence terminators removed, length
-    /// capped. Without this a title like "Patch 2.0. Read on!" would silently
-    /// break the one-sentence contract.
+    /// Makes a store-authored update title safe to quote inside a feed card's
+    /// single sentence. Quote characters are stripped first so a removed quote
+    /// cannot hide the whitespace that follows a period. Whitespace is then
+    /// collapsed, sentence terminators are removed according to
+    /// <see cref="IsTerminator"/>, and the result is capped at
+    /// <see cref="MaxUpdateTitleChars"/>.
+    ///
+    /// <para>Fixed 2026-09-02 (TASK-74): the original rule replaced every
+    /// <c>.</c> <c>!</c> <c>?</c> <c>;</c> with a space, which destroyed
+    /// version numbers in update titles. Three of six cards on one shelf
+    /// rendered damaged titles ("1 4 10 5 Hotfix Patch Notes") because the
+    /// periods inside version strings were being stripped. The database
+    /// stored the titles correctly; the damage was done here on the way to
+    /// the card. No test caught it because every fixture title was prose
+    /// with no version number. The rule was narrowed rather than dropped;
+    /// see <see cref="IsTerminator"/> for what now qualifies.</para>
     /// </summary>
     public static string? Sanitize(string? title)
     {
@@ -202,28 +227,23 @@ internal static class ReasonTokens
             return null;
         }
 
-        var collapsed = string.Join(' ', title.Split(
+        var unquoted = new System.Text.StringBuilder(title.Length);
+        foreach (var ch in title)
+        {
+            if (ch is not ('"' or '“' or '”'))
+            {
+                unquoted.Append(ch);
+            }
+        }
+
+        var collapsed = string.Join(' ', unquoted.ToString().Split(
             (char[]?)null, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
 
         var cleaned = new System.Text.StringBuilder(collapsed.Length);
-        foreach (var ch in collapsed)
+        for (var i = 0; i < collapsed.Length; i++)
         {
-            switch (ch)
-            {
-                case '"':
-                case '“':
-                case '”':
-                    continue;
-                case '.':
-                case '!':
-                case '?':
-                case ';':
-                    cleaned.Append(' ');
-                    continue;
-                default:
-                    cleaned.Append(ch);
-                    continue;
-            }
+            var ch = collapsed[i];
+            cleaned.Append(IsTerminator(collapsed, i) ? ' ' : ch);
         }
 
         var result = string.Join(' ', cleaned.ToString().Split(
@@ -238,4 +258,44 @@ internal static class ReasonTokens
             ? result
             : result[..MaxUpdateTitleChars].TrimEnd() + "…";
     }
+
+    /// <summary>
+    /// A <c>.</c> <c>!</c> <c>?</c> or <c>;</c> is a terminator only when
+    /// the contiguous run of terminator characters it belongs to ends at
+    /// the end of the string or at whitespace. Everything else survives.
+    ///
+    /// <para>This beats a digit-dot-digit exemption because a period inside
+    /// a version number is never followed by a space. Keying the test on
+    /// what follows the run rather than on what flanks each character
+    /// handles trailing-letter shapes like <c>7.9.1b</c> and <c>2.03.a</c>
+    /// for free. A digit-dot-digit test gets <c>2.03.a</c> wrong because
+    /// the second period sits between a digit and a letter.</para>
+    ///
+    /// <para>The run grouping handles <c>Hotfix!!</c>: both marks belong to
+    /// one run that ends at the end of the string, so both go. Without it
+    /// the first <c>!</c> would survive, being followed by another
+    /// <c>!</c> rather than by whitespace.</para>
+    ///
+    /// <para>This rule and <c>ReasonContractTests.SentenceCount</c> define
+    /// a terminator identically: <c>[.!?]</c> followed by whitespace or
+    /// end-of-string, outside quoted spans. What Sanitize removes is
+    /// exactly what the one-sentence contract would count.</para>
+    /// </summary>
+    private static bool IsTerminator(string collapsed, int index)
+    {
+        if (!IsTerminatorChar(collapsed[index]))
+        {
+            return false;
+        }
+
+        var end = index;
+        while (end < collapsed.Length && IsTerminatorChar(collapsed[end]))
+        {
+            end++;
+        }
+
+        return end == collapsed.Length || char.IsWhiteSpace(collapsed[end]);
+    }
+
+    private static bool IsTerminatorChar(char ch) => ch is '.' or '!' or '?' or ';';
 }

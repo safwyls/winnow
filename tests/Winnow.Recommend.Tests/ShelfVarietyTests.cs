@@ -94,7 +94,8 @@ public class ShelfVarietyTests : IDisposable
     [Fact]
     public void Six_identical_games_on_one_shelf_take_six_phrasings()
     {
-        var ledger = new ReasonVariantLedger();
+        var ledger = new ShelfReasonLedger(
+            ShelfReasonLedger.CapFor(6, RecommendationTuning.Default));
         var rendered = new List<string>();
 
         for (var releaseId = 1L; releaseId <= 6; releaseId++)

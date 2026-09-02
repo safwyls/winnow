@@ -124,6 +124,20 @@ public sealed record RecommendationTuning
     public int ShelfOverfetchFactor { get; init; } = 3;
 
     /// <summary>
+    /// One card in every this-many on a surface may cite the same supporting
+    /// fact. 3 yields a cap of 2 on a 6-card shelf and 6 on a 20-card feed,
+    /// which is under the three-of-six that was photographed on 2026-09-02.
+    /// </summary>
+    public int FactCitationCards { get; init; } = 3;
+
+    /// <summary>
+    /// The derived citation cap never falls below this number, so a short
+    /// surface is not silenced. 2 because two cards making the same claim
+    /// reads as coincidence while three reads as a template.
+    /// </summary>
+    public int FactCitationFloor { get; init; } = 2;
+
+    /// <summary>
     /// Hard ceiling on ownerships probed for history across all shelf shortlists
     /// combined. A pathology brake, not a trim: fairness across shelves is the
     /// interleave's job (<see cref="RecommendationEngine.ProbeUnion"/>), and the

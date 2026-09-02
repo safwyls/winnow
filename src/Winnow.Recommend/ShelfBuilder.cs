@@ -130,7 +130,7 @@ internal static class ShelfBuilder
         // The shelf is the deduplication unit, not the whole feed. Two shelves
         // telling different stories may reuse a phrasing invisibly; two cards
         // side by side on one shelf may not.
-        var ledger = new ReasonVariantLedger();
+        var ledger = new ShelfReasonLedger(ShelfReasonLedger.CapFor(maxPerShelf, tuning));
         var franchiseCounts = new Dictionary<string, int>(StringComparer.Ordinal);
         var genreCounts = new Dictionary<long, int>();
         var genreSkips = new List<ScoredCandidate>();

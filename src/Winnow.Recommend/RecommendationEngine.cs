@@ -91,7 +91,8 @@ public sealed class RecommendationEngine : IRecommendationEngine
         // One ledger per flat feed, same as one ledger per shelf. The flat
         // list is what the user reads in a single scroll, so it is the unit
         // over which a phrasing must not repeat.
-        var flatLedger = new ReasonVariantLedger();
+        var flatLedger = new ShelfReasonLedger(
+            ShelfReasonLedger.CapFor(request.MaxResults, tuning));
         var items = scored
             .OrderByDescending(s => s.Score)
             .ThenBy(s => s.Facts.ReleaseId)
@@ -228,7 +229,7 @@ public sealed class RecommendationEngine : IRecommendationEngine
     internal static Recommendation Present(
         ScoredCandidate candidate,
         RecommendationRequest request,
-        ReasonVariantLedger? ledger = null)
+        ShelfReasonLedger? ledger = null)
     {
         var explanation = RecommendationScorer.Explain(
             candidate.Facts, request.Thresholds, request.Tuning, request.AsOfUtc, candidate.Signals);

@@ -445,9 +445,12 @@ swapped.
 ### The split
 
 The scorer now returns **structure**, not prose. `RecommendationScorer.Explain` produces a
-`RecommendationReason`: one primary signal, at most one secondary, and the `ReasonEvidence`
-both may cite, read off the same facts the score was computed from so a sentence cannot
-state a figure the ranking never saw. `ReasonBuilder` renders one bounded sentence from it,
+`RecommendationReason`: one primary signal, every supporting fact that fired in
+strongest-first precedence order, and the `ReasonEvidence` both clauses may cite, read off
+the same facts the score was computed from so a sentence cannot state a figure the ranking
+never saw. At most one supporting clause is ever rendered; the list exists so a card whose
+strongest fact is already spent on the surface can reach for the next one honestly (see
+"The shelf ledger" below). `ReasonBuilder` renders one bounded sentence from the reason,
 choosing wording from `ReasonPhrasebook`. What is true and how it reads are separately
 changeable, and a caller wanting its own rendering reads `Recommendation.Explanation`
 rather than parsing the sentence back apart.
@@ -472,9 +475,10 @@ unmeasured, sampled, bounced).
 
 **Secondary,** in precedence order: mode mismatch first, then fresh play. Both are demotions
 whose effect the user can see, and a demotion the user can see the effect of but not the
-reason for is an arbitrary ranking from their side. Then the strongest supporting fact the
-opening did not already tell: tried-to-like-it, taste match, bought twice, installed,
-dormancy, recently shown.
+reason for is an arbitrary ranking from their side. Then every supporting fact the opening
+did not already tell, in one list, strongest first: tried-to-like-it, taste match, bought
+twice, installed, dormancy, recently shown. The card takes the first entry the surface has
+not already spent (see "The shelf ledger" below); when the list runs out the card says less.
 
 Dormancy sits last because the opening can usually date the game itself, and the builder
 additionally forbids the opening from spending `{year}` or `{age}` when the supporting
@@ -564,6 +568,108 @@ list, and a feed-level test seeds several unplayed games sharing one descriptor,
 the taste clause fires on more than one card, and asserts no card makes a library-wide
 claim. The next variant written with a superlative in it fails the build rather than the
 feed.
+
+### The shelf ledger (two layers of sameness)
+
+The phrasing of a card is chosen by hashing its release id. Deterministic, per card, and
+blind to its neighbours. Two consequences, found one after the other.
+
+First, the same **variant** could land on two cards of one shelf. Observed 2026-09-02 on
+"Patched while you were away": Stationeers and PEAK both read "This is not the game you
+put down, an update arrived after you left, and you have real hours in [facet] games." The
+fix was `ShelfReasonLedger`, carried down one surface's render, remembering which variant
+of which (signal, clause) has been spoken. The hash still chooses first. A card is moved
+off its own pick only when that pick is taken, and then only to the next unclaimed variant
+in the same list, so the first card on a shelf renders exactly what it rendered before the
+ledger existed and a shelf whose cards already differ is untouched. It also needed more
+variants: a signal with four token-bearing phrasings cannot fill a six-card shelf, and by
+pigeonhole must repeat. A fresh generic variant now beats a repeated specific one, which
+is the single place the specific-over-generic preference yields.
+
+Second, the same **fact** could still repeat when the variants differed. Observed 2026-09-02
+on the same shelf, six cards, real library:
+
+    Stormworks     '...landing in Sandbox, a kind of game you keep coming back to.'
+    Stationeers    '...and you have real hours in Sandbox games.'
+    Project Gorgon '...and Sandbox is one of your deepest piles.'
+
+Three of six named the same facet. Every sentence true, all three variants different, which
+is exactly why the variant ledger missed it: it tracks which variant was used, not which
+fact the variant cites.
+
+The rule adopted, and the reason it is not the obvious one: Sandbox dominating is a real
+property of this library, and suppressing the true fact to manufacture variety would be
+worse than the repetition. No card is given something else to say. Instead, a card whose
+strongest supporting fact is already spent on the surface reaches for its next-strongest,
+and a card with nothing left says less. `RecommendationScorer` now returns every supporting
+fact that fired, in the same strongest-first precedence order it always used, instead of
+discarding the ones the head beat. Reaching down that list is honest because every entry on
+it fired for that card, so nothing there is a new claim.
+
+What counts as the same claim: the taste clause is keyed on the descriptor's **name**,
+because it is the one claim naming something a reader tracks from card to card, so Sandbox
+and Roguelike are two claims and two Sandbox cards are one claim twice. Every other
+supporting fact is keyed on its signal, because the claim there is "it is on your disk" or
+"you own it twice" and the number the clause cites is colour rather than claim.
+
+Exempt, and never withheld: the demotion disclosures (online-only mismatch, solo-only
+mismatch, played recently, shown recently). Those clauses exist to say why a card ranks
+where it does. Withholding one for variety would hide ranking information rather than repeat
+it, which is the opposite failure. They also name no facet, so the facet rule loses nothing
+to the exemption.
+
+The threshold is derived per surface rather than fixed, because a shelf holds 6 cards and
+the flat feed holds 20, and a flat cap of 2 would silence eighteen of twenty.
+`FactCitationCards` (3) means one card in every three may cite a given fact;
+`FactCitationFloor` (2) keeps a short surface from being silenced, and matches the
+judgement that two cards making the same claim reads as coincidence while three reads as a
+template. A shelf of 6 therefore caps at 2, under the three-of-six that was reported.
+
+Measured on the reported shelf, seeded as six patched Sandbox games behind a beloved
+50-hour Sandbox anchor:
+
+    before:  6 of 6 cards named Sandbox
+    after:   2 name Sandbox, 2 fall to the dormancy clause, 2 say less
+
+Determinism survives on the same terms the variant ledger set. The surface is filled in a
+stable order (score, then release id), so the same library renders the same shelf on every
+reload. It is not stable against a card ahead of it changing position, which is the price
+of not repeating and is the right way round: a user notices two identical claims side by
+side and does not notice that a sentence differs from yesterday's.
+
+This is the third layer of one defect. TASK-58 fixed what a variant may claim, TASK-71 the
+variant repeating, TASK-76 the fact repeating. Each fix exposed the next one down, and the
+pattern is that anything chosen per card by a hash will eventually collide on a shelf.
+
+### Quoting a store-authored update title
+
+The patched card quotes the update headline, which is text Winnow did not write, so it is
+sanitised on the way to the card: quotes stripped, whitespace collapsed, length capped,
+sentence terminators removed. Removing terminators was too broad and replaced every `.`
+`!` `?` `;` with a space. Observed in the running app on 2026-09-02, on three of six cards
+on one shelf:
+
+    stored 'Dune: Awakening - 1.4.10.5 Hotfix Patch Notes'  rendered '1 4 10 5 Hotfix Patch Notes'
+    stored 'Game Update 7.9.1b Patch Notes'                 rendered 'Game Update 7 9 1b Patch Notes'
+    stored 'Patch Notes 2.03.a'                             rendered 'Patch Notes 2 03 a'
+
+The database stores every title with its periods intact; the damage was done on the way to
+the card, and it read as though the app could not handle punctuation. No test caught it
+because every fixture update title was prose with no version number in it.
+
+The guard is still needed, so the rule was narrowed rather than dropped: `"Patch 2.0. Read
+on!"` must not become two sentences inside a quoted clause. A terminator character now
+counts as a terminator only when the run of terminator characters it belongs to ends at
+whitespace or at the end of the title.
+
+The reason that beats the obvious digit-dot-digit test is worth recording: a period inside
+a version number is never followed by a space, so keying on what **follows** the period
+rather than what flanks it handles the trailing-letter shapes (`7.9.1b`, `2.03.a`) with no
+special case at all. A digit-dot-digit test gets `2.03.a` wrong, because that second period
+sits between a digit and a letter. `"Patch 2.0. Read on!"` keeps the period inside `2.0`,
+loses the one after it and loses the trailing `!`, rendering `Patch 2.0 Read on`. The rule
+now matches the contract test's own definition of a sentence: `[.!?]` followed by
+whitespace or end of string, outside quoted spans.
 
 ## 7. Deliberately deferred (and where each would plug in)
 

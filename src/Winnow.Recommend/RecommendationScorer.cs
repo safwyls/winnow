@@ -163,10 +163,11 @@ public static class RecommendationScorer
 
     /// <summary>
     /// Turns the contributions that made a score into the STRUCTURE of its
-    /// explanation: one primary signal, at most one secondary, and the numbers
-    /// both may cite. Returning structure rather than prose is what holds the
-    /// card to one sentence: at most two clauses leave here, so nothing
-    /// downstream has a third to concatenate.
+    /// explanation: one primary signal, the supporting facts in strongest-first
+    /// order, and the numbers they may cite. Returning structure rather than
+    /// prose is what holds the card to one sentence: at most one supporting
+    /// clause is ever rendered, so nothing downstream has a third clause to
+    /// concatenate.
     ///
     /// <para>The honesty rules live in the selection, not in the wording. A row
     /// demoted for being probably-done leads with that; a row demoted for mode
@@ -200,10 +201,12 @@ public static class RecommendationScorer
         };
 
         var primary = PrimarySignal(facts, thresholds, contributions);
+        var supporting = SupportingSignals(facts, primary, contributions);
         return new RecommendationReason
         {
             Primary = primary,
-            Secondary = SecondarySignal(facts, primary, contributions),
+            Secondary = supporting.Count > 0 ? supporting[0] : ReasonSignal.None,
+            SupportingSignals = supporting,
             Evidence = evidence,
         };
     }
@@ -237,26 +240,36 @@ public static class RecommendationScorer
             : ReasonSignal.Bounced;
     }
 
-    private static ReasonSignal SecondarySignal(
+    // Returns every supporting fact that fired, in strongest-first order,
+    // rather than only the head. Nothing about which fact is strongest
+    // changed; the list simply stops discarding the ones the head beat, so
+    // a shelf that has already spent the head has somewhere honest to go.
+    // Precedence order: demotion disclosures first (mode mismatch, then
+    // fresh play), then tried-to-like-it, taste match, bought twice,
+    // installed, dormancy, recently shown. Dormancy is late because the
+    // opening clause can usually date the game itself.
+    private static IReadOnlyList<ReasonSignal> SupportingSignals(
         CandidateFacts facts,
         ReasonSignal primary,
         IReadOnlyList<SignalContribution> contributions)
     {
+        var supporting = new List<ReasonSignal>(4);
+
         // Demotions the user can see the effect of must be stated, or the
         // ranking is arbitrary from their side.
         if (facts.ModeMismatch == ModeMismatch.OnlineOnlyForSoloPlayer)
         {
-            return ReasonSignal.OnlineOnlyMismatch;
+            supporting.Add(ReasonSignal.OnlineOnlyMismatch);
         }
 
         if (facts.ModeMismatch == ModeMismatch.SoloOnlyForOnlinePlayer)
         {
-            return ReasonSignal.SoloOnlyMismatch;
+            supporting.Add(ReasonSignal.SoloOnlyMismatch);
         }
 
         if (Fired(contributions, SignalNames.RecentlyPlayed))
         {
-            return ReasonSignal.PlayedRecently;
+            supporting.Add(ReasonSignal.PlayedRecently);
         }
 
         // Otherwise the strongest supporting fact the opening did not already
@@ -264,32 +277,36 @@ public static class RecommendationScorer
         // can usually date the game itself.
         if (Fired(contributions, SignalNames.TriedToLikeIt))
         {
-            return ReasonSignal.TriedToLikeIt;
+            supporting.Add(ReasonSignal.TriedToLikeIt);
         }
 
         if (Fired(contributions, SignalNames.TasteAffinity))
         {
-            return ReasonSignal.TasteMatch;
+            supporting.Add(ReasonSignal.TasteMatch);
         }
 
         if (Fired(contributions, SignalNames.BoughtTwice))
         {
-            return ReasonSignal.BoughtTwice;
+            supporting.Add(ReasonSignal.BoughtTwice);
         }
 
         if (Fired(contributions, SignalNames.Installed))
         {
-            return ReasonSignal.Installed;
+            supporting.Add(ReasonSignal.Installed);
         }
 
         if (Fired(contributions, SignalNames.Dormancy) && primary != ReasonSignal.ProbablyDone)
         {
-            return facts.LastPlayedAt is null ? ReasonSignal.UndatedDormancy : ReasonSignal.Dormant;
+            supporting.Add(
+                facts.LastPlayedAt is null ? ReasonSignal.UndatedDormancy : ReasonSignal.Dormant);
         }
 
-        return Fired(contributions, SignalNames.RecentlySurfaced)
-            ? ReasonSignal.ShownRecently
-            : ReasonSignal.None;
+        if (Fired(contributions, SignalNames.RecentlySurfaced))
+        {
+            supporting.Add(ReasonSignal.ShownRecently);
+        }
+
+        return supporting;
     }
 
     private static bool Fired(IReadOnlyList<SignalContribution> contributions, string name)

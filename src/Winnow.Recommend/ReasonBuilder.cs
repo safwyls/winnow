@@ -13,7 +13,10 @@ namespace Winnow.Recommend;
 /// <para>The builder now renders exactly two clauses and picks the phrasing of
 /// each from <see cref="ReasonPhrasebook"/> using the game's own release id, so
 /// a reload renders the identical sentence while two cards in one session do
-/// not read as siblings.</para>
+/// not read as siblings. The supporting fact is chosen before the opening is
+/// written, because which fact it lands on decides what the opening may not
+/// repeat: the opening may not spend <c>{year}</c> or <c>{age}</c> when
+/// the supporting clause is already telling the time story.</para>
 /// </summary>
 internal static class ReasonBuilder
 {
@@ -25,15 +28,20 @@ internal static class ReasonBuilder
     public static string Build(
         RecommendationReason reason,
         RecommendationTuning tuning,
-        ReasonVariantLedger? ledger = null)
+        ShelfReasonLedger? ledger = null)
     {
         var budget = Math.Max(40, tuning.ReasonCharacterBudget);
         var evidence = reason.Evidence;
 
+        // The supporting clause is chosen before the opening is written,
+        // because which fact it lands on decides what the opening may not
+        // repeat.
+        var (supporting, secondary) = ChooseSupporting(reason, tuning, ledger);
+
         // If the supporting clause is about how long it has been, the opening
         // must not also date it: "you put 5 hours in back in 2019, untouched
         // for seven years" is one fact told twice.
-        var forbidden = reason.Secondary is ReasonSignal.Dormant or ReasonSignal.UndatedDormancy
+        var forbidden = supporting is ReasonSignal.Dormant or ReasonSignal.UndatedDormancy
             or ReasonSignal.PlayedRecently
             ? TimeTokens
             : NoTokens;
@@ -46,21 +54,75 @@ internal static class ReasonBuilder
                 ?? Render(reason.Primary, ReasonClause.Primary, evidence, tuning, NoTokens, ledger)
                 ?? ReasonPhrasebook.Fallback);
 
-        var secondary = reason.Secondary == ReasonSignal.None
-            ? null
-            : Render(reason.Secondary, ReasonClause.Secondary, evidence, tuning, NoTokens, ledger);
-
         if (secondary is not null)
         {
             var joined = Terminate(primary + secondary);
             if (joined.Length <= budget)
             {
+                // Counted only once the card has actually said it, so a clause
+                // the budget dropped cannot silence the next card.
+                ledger?.Cite(supporting, evidence);
                 return joined;
             }
         }
 
         var alone = Terminate(primary);
         return alone.Length <= budget ? alone : Elide(alone, budget);
+    }
+
+    // Walks the card's supporting facts in the scorer's strongest-first
+    // order, skipping any fact the surface has already spent (ledger.CanCite),
+    // and renders the first one admitted. When none is left the return is
+    // (None, null), which means no supporting clause at all: the card says
+    // less rather than repeating. A Secondary of None means the card has no
+    // supporting clause at all, and the early return honours that: it is not
+    // a signal to go looking for a substitute in SupportingSignals. A caller
+    // that deliberately clears Secondary gets silence rather than a fallback.
+    private static (ReasonSignal Signal, string? Text) ChooseSupporting(
+        RecommendationReason reason,
+        RecommendationTuning tuning,
+        ShelfReasonLedger? ledger)
+    {
+        if (reason.Secondary == ReasonSignal.None)
+        {
+            return (ReasonSignal.None, null);
+        }
+
+        foreach (var signal in Supporting(reason))
+        {
+            if (ledger is not null && !ledger.CanCite(signal, reason.Evidence))
+            {
+                continue;
+            }
+
+            var text = Render(
+                signal, ReasonClause.Secondary, reason.Evidence, tuning, NoTokens, ledger);
+            if (text is not null)
+            {
+                return (signal, text);
+            }
+        }
+
+        return (ReasonSignal.None, null);
+    }
+
+    /// <summary>
+    /// Yields <see cref="RecommendationReason.Secondary"/> first, then every
+    /// other entry in <see cref="RecommendationReason.SupportingSignals"/>
+    /// that the head did not already cover, in the scorer's strongest-first
+    /// order. Each one is a fact the scorer proved about this card.
+    /// </summary>
+    private static IEnumerable<ReasonSignal> Supporting(RecommendationReason reason)
+    {
+        yield return reason.Secondary;
+
+        foreach (var signal in reason.SupportingSignals)
+        {
+            if (signal != reason.Secondary && signal != ReasonSignal.None)
+            {
+                yield return signal;
+            }
+        }
     }
 
     /// <summary>
@@ -73,7 +135,7 @@ internal static class ReasonBuilder
         ReasonEvidence evidence,
         RecommendationTuning tuning,
         string[] forbidden,
-        ReasonVariantLedger? ledger)
+        ShelfReasonLedger? ledger)
     {
         var variants = ReasonPhrasebook.Variants(signal, clause);
         if (variants.Count == 0)
@@ -131,9 +193,9 @@ internal static class ReasonBuilder
         // exists to prevent.
         if (ledger is not null)
         {
-            var chosen = ledger.Claim(signal, clause, usable, seed)
+            var chosen = ledger.ClaimVariant(signal, clause, usable, seed)
                 ?? (specific is not null && generic is not null
-                    ? ledger.Claim(signal, clause, generic, seed)
+                    ? ledger.ClaimVariant(signal, clause, generic, seed)
                     : null);
 
             if (chosen is not null)
