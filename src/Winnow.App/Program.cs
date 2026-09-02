@@ -87,8 +87,24 @@ public static class Program
         // be able to find afterwards.
         using (var bootstrapLog = LoggerFactory.Create(b => b.AddSimpleConsole()))
         {
-            DataLocation = WinnowDataLocation.Resolve(
-                bootstrapLog.CreateLogger(typeof(WinnowDataLocation).FullName!));
+            try
+            {
+                // --data-dir, when present, overrides the data directory
+                // before anything else resolves. An unusable path is caught
+                // here and refused loudly: this is a WinExe, so without
+                // AttachConsoleIfNeeded the message goes nowhere, and falling
+                // back onto the real library silently is the failure the flag
+                // exists to prevent.
+                DataLocation = WinnowDataLocation.ResolveFrom(
+                    args, bootstrapLog.CreateLogger(typeof(WinnowDataLocation).FullName!));
+            }
+            catch (DataDirectoryOverrideException refused)
+            {
+                Services.ConsoleAuthPrompt.AttachConsoleIfNeeded();
+                Console.Error.WriteLine(refused.Message);
+                Environment.ExitCode = 2;
+                return;
+            }
         }
 
         // Both flags mean "leave this database alone", so every writer has to
@@ -345,7 +361,7 @@ public static class Program
     /// is the LEGACY directory, which no amount of recomputing a constant would
     /// produce.
     /// </param>
-    private static void ConfigureServices(IServiceCollection services, DataLocation data)
+    internal static void ConfigureServices(IServiceCollection services, DataLocation data)
     {
         // Registered so the app can say where it is reading from, and what the
         // one-time move did, without asking the filesystem a second time.

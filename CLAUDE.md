@@ -69,7 +69,12 @@ decoration; each one is load-bearing for an install that predates the rename:
 - Domain agents live in `.claude/agents/` — delegate work by domain and pass their charter.
 - `Directory.Build.props`: nullable, implicit usings, TreatWarningsAsErrors.
 - Build/test: `dotnet build`, `dotnet test` from repo root. Run: `dotnet run --project
-  src/Winnow.App` (`-- --seed-sample` seeds demo data).
+  src/Winnow.App` (`-- --seed-sample` seeds demo data). For any run where you might click
+  something, pass `-- --data-dir <path>` to redirect the database, sidecars, covers, themes
+  and WebView2 profile to a throwaway directory; clicks write to the real library otherwise
+  (this has already happened). An unusable path is refused at startup with exit code 2; it
+  never falls back silently. Setting `%LOCALAPPDATA%` does not work,
+  `Environment.GetFolderPath` uses the Windows shell API and ignores it.
 - Commits at milestone boundaries; DB lives at `%LOCALAPPDATA%\Winnow\winnow.db`.
 - Never write to any Steam-owned file. Sanitize any new fixture (fake account ids).
 
