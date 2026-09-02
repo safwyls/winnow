@@ -769,6 +769,24 @@
             <Setter Property="BorderBrush" Value="{StaticResource Amber}"/>
         </Style>
 
+        <!-- The count takes the tab's own ink so the label and its number
+             read as one object: TextDim at rest, Text under the pointer,
+             Volt on the lit segment. controls.axaml already states this
+             grammar for the label, but tokens.axaml's .data style is
+             promoted into Application.Styles after controls.axaml and
+             would repaint the number full Text on an unlit tab. A
+             UserControl's own styles evaluate after the application's,
+             so the closer scope wins. -->
+        <Style Selector="Button.seg.tab TextBlock.data">
+            <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
+        </Style>
+        <Style Selector="Button.seg.tab:pointerover TextBlock.data">
+            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+        </Style>
+        <Style Selector="Button.seg.tab.on TextBlock.data">
+            <Setter Property="Foreground" Value="{StaticResource Volt}"/>
+        </Style>
+
         <!-- Section rule and heading on the history surface. -->
         <Style Selector="TextBlock.section">
             <Setter Property="FontFamily" Value="{StaticResource DisplayFont}"/>
@@ -804,12 +822,23 @@
                         Background="{StaticResource ChromeFieldOnGround}"
                         ClipToBounds="True"
                         Height="30">
+                    <!-- Each tab carries its own count beside its label. The
+                         number sits on the control that navigates to that
+                         surface, so it doubles as a reason to switch. A zero
+                         draws nothing: a permanent 0 is noise. -->
                     <StackPanel Orientation="Horizontal">
                         <Button Classes="seg tab"
                                 Classes.on="{Binding IsReviewVisible}"
                                 Command="{Binding ShowReviewCommand}"
+                                AutomationProperties.Name="{Binding ReviewSegmentAutomationName}"
                                 ToolTip.Tip="{Binding ReviewSegmentTooltip}">
-                            <TextBlock Classes="display-s" Text="{Binding ReviewSegmentLabel}"/>
+                            <StackPanel Orientation="Horizontal" Spacing="7"
+                                        VerticalAlignment="Center">
+                                <TextBlock Classes="display-s" Text="{Binding ReviewSegmentLabel}"/>
+                                <TextBlock Classes="data" FontSize="11"
+                                           Text="{Binding PendingCountText}"
+                                           IsVisible="{Binding HasPending}"/>
+                            </StackPanel>
                         </Button>
                         <!-- The third surface. A segment rather than a
                              third kind of card in the review scroll, because
@@ -821,14 +850,28 @@
                         <Button Classes="seg tab"
                                 Classes.on="{Binding IsExpansionsVisible}"
                                 Command="{Binding ShowExpansionsCommand}"
+                                AutomationProperties.Name="{Binding ExpansionsSegmentAutomationName}"
                                 ToolTip.Tip="{Binding ExpansionsSegmentTooltip}">
-                            <TextBlock Classes="display-s" Text="{Binding ExpansionsSegmentLabel}"/>
+                            <StackPanel Orientation="Horizontal" Spacing="7"
+                                        VerticalAlignment="Center">
+                                <TextBlock Classes="display-s" Text="{Binding ExpansionsSegmentLabel}"/>
+                                <TextBlock Classes="data" FontSize="11"
+                                           Text="{Binding ExpansionCountText}"
+                                           IsVisible="{Binding HasExpansions}"/>
+                            </StackPanel>
                         </Button>
                         <Button Classes="seg tab"
                                 Classes.on="{Binding IsHistoryVisible}"
                                 Command="{Binding ShowHistoryCommand}"
+                                AutomationProperties.Name="{Binding HistorySegmentAutomationName}"
                                 ToolTip.Tip="{Binding HistorySegmentTooltip}">
-                            <TextBlock Classes="display-s" Text="{Binding HistorySegmentLabel}"/>
+                            <StackPanel Orientation="Horizontal" Spacing="7"
+                                        VerticalAlignment="Center">
+                                <TextBlock Classes="display-s" Text="{Binding HistorySegmentLabel}"/>
+                                <TextBlock Classes="data" FontSize="11"
+                                           Text="{Binding LinkHistoryCountText}"
+                                           IsVisible="{Binding HasLinkHistory}"/>
+                            </StackPanel>
                         </Button>
                     </StackPanel>
                 </Border>
@@ -845,36 +888,21 @@
                         BorderBrush="{StaticResource Line}"
                         BorderThickness="0,0,0,1">
                   <StackPanel Classes="measure" Spacing="14">
-                    <Grid ColumnDefinitions="*,Auto">
-                        <StackPanel Grid.Column="0" Spacing="7">
-                            <TextBlock Classes="display-l" Text="{Binding ReviewQuestion}"/>
-                            <!-- Stands down when the queue is empty: the empty
-                                 state is the only thing that should be
-                                 speaking then. The line carries what every
-                                 card used to repeat. -->
-                            <TextBlock Classes="body"
-                                       MaxWidth="620"
-                                       TextWrapping="Wrap"
-                                       LineHeight="19"
-                                       IsVisible="{Binding HasPending}"
-                                       Foreground="{StaticResource TextDim}"
-                                       Text="{Binding IntroMessage}"/>
-                        </StackPanel>
-
-                        <!-- Count only while there is something pending: a
-                             permanent zero is noise. -->
-                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8"
-                                    VerticalAlignment="Top"
-                                    IsVisible="{Binding HasPending}">
-                            <TextBlock Classes="data" FontSize="22"
-                                       Text="{Binding PendingCountText}"
-                                       VerticalAlignment="Bottom"/>
-                            <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
-                                       Text="{Binding PendingCountLabel}"
-                                       Margin="0,0,0,3"
-                                       VerticalAlignment="Bottom"/>
-                        </StackPanel>
-                    </Grid>
+                    <!-- No count here; it is on the REVIEW tab. -->
+                    <StackPanel Spacing="7">
+                        <TextBlock Classes="display-l" Text="{Binding ReviewQuestion}"/>
+                        <!-- Stands down when the queue is empty: the empty
+                             state is the only thing that should be
+                             speaking then. The line carries what every
+                             card used to repeat. -->
+                        <TextBlock Classes="body"
+                                   MaxWidth="620"
+                                   TextWrapping="Wrap"
+                                   LineHeight="19"
+                                   IsVisible="{Binding HasPending}"
+                                   Foreground="{StaticResource TextDim}"
+                                   Text="{Binding IntroMessage}"/>
+                    </StackPanel>
 
                     <ContentControl IsVisible="{Binding HasReviewReport}"
                                     Content="{Binding}"
@@ -1043,30 +1071,17 @@
                         BorderBrush="{StaticResource Line}"
                         BorderThickness="0,0,0,1">
                   <StackPanel Classes="measure" Spacing="14">
-                    <Grid ColumnDefinitions="*,Auto">
-                        <StackPanel Grid.Column="0" Spacing="7">
-                            <TextBlock Classes="display-l" Text="{Binding ExpansionsQuestion}"/>
-                            <TextBlock Classes="body"
-                                       MaxWidth="620"
-                                       TextWrapping="Wrap"
-                                       LineHeight="19"
-                                       IsVisible="{Binding HasExpansions}"
-                                       Foreground="{StaticResource TextDim}"
-                                       Text="{Binding ExpansionsIntro}"/>
-                        </StackPanel>
-
-                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8"
-                                    VerticalAlignment="Top"
-                                    IsVisible="{Binding HasExpansions}">
-                            <TextBlock Classes="data" FontSize="22"
-                                       Text="{Binding ExpansionCountText}"
-                                       VerticalAlignment="Bottom"/>
-                            <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
-                                       Text="{Binding ExpansionCountLabel}"
-                                       Margin="0,0,0,3"
-                                       VerticalAlignment="Bottom"/>
-                        </StackPanel>
-                    </Grid>
+                    <!-- No count here; it is on the EXPANSIONS tab. -->
+                    <StackPanel Spacing="7">
+                        <TextBlock Classes="display-l" Text="{Binding ExpansionsQuestion}"/>
+                        <TextBlock Classes="body"
+                                   MaxWidth="620"
+                                   TextWrapping="Wrap"
+                                   LineHeight="19"
+                                   IsVisible="{Binding HasExpansions}"
+                                   Foreground="{StaticResource TextDim}"
+                                   Text="{Binding ExpansionsIntro}"/>
+                    </StackPanel>
 
                     <ContentControl IsVisible="{Binding HasExpansionsReport}"
                                     Content="{Binding}"

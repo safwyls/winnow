@@ -127,19 +127,19 @@ public sealed class SameGameSurfaceTests
 
     // ── The rail reflects both surfaces ══════════════════════════════════════
 
-    // The rail read SAME GAME? 63 while the screen read 45 GROUPS, because
-    // the rail summed review groups and expansion base games under one label.
-    // The header's count is the number the screen actually offers to answer,
-    // so the rail shows that and nothing else.
-    //
-    // Row opacity still follows both surfaces, which is the whole point of
-    // the sum: a library with no review groups and a dozen expansion cards
-    // keeps a lit row rather than a dimmed 0. The count is simply not drawn
-    // when there is no review group to count, so the rail is silent rather
-    // than wrong.
+    // RETARGETED from The_rail_count_is_the_number_the_review_header_shows
+    // (TASK-71). That test pinned the rail to the review count, because the
+    // rail read 63 against a 45 GROUPS header and agreed with neither. The
+    // header count it was measured against no longer exists: the number moved
+    // onto each segment tab, which is also the control that navigates to that
+    // surface. With no single header figure to stand against, the rail is the
+    // screen's own total again — the two answerable tabs added up. The
+    // invariant is the same one TASK-71 was defending, pointed at the
+    // arrangement that replaced it: no number drawn on the screen contradicts
+    // the number drawn on the rail.
 
     [Fact]
-    public void The_rail_count_is_the_number_the_review_header_shows()
+    public void The_rail_count_is_the_answerable_segment_counts_added_up()
     {
         var window = Load("src/Winnow.App/Views/MainWindow.axaml");
 
@@ -147,20 +147,140 @@ public sealed class SameGameSurfaceTests
             window.Descendants(Avalonia + "TextBlock"),
             t => t.Attribute("Text")?.Value.StartsWith("{Binding MergeQueue.", StringComparison.Ordinal) == true);
 
-        Assert.Equal("{Binding MergeQueue.PendingCountText}", count.Attribute("Text")!.Value);
-        Assert.Equal("{Binding MergeQueue.HasPending}", count.Attribute("IsVisible")!.Value);
+        Assert.Equal("{Binding MergeQueue.OutstandingCountText}", count.Attribute("Text")!.Value);
+        Assert.Equal("{Binding MergeQueue.HasOutstanding}", count.Attribute("IsVisible")!.Value);
 
-        // The same property, read off the screen's own header.
-        var view = Load("src/Winnow.App/Views/MergeQueueView.axaml");
-        Assert.Contains(
-            view.Descendants(Avalonia + "TextBlock"),
-            t => t.Attribute("Text")?.Value == "{Binding PendingCountText}");
-
-        // And the row still recedes on the combined count, not on this one.
+        // Opacity follows the same pair, so the row's count and its standing
+        // can never disagree about whether there is work on the screen.
         var row = Assert.Single(
             window.Descendants(Avalonia + "Button"),
             b => b.Attribute("Opacity")?.Value == "{Binding MergeQueue.RowOpacity}");
         Assert.NotNull(row);
+
+        // The two surfaces the rail sums are the two the tabs count.
+        var tabs = SegmentTabs();
+        Assert.Equal("{Binding PendingCountText}", TabCount(tabs[0]).Attribute("Text")?.Value);
+        Assert.Equal("{Binding ExpansionCountText}", TabCount(tabs[1]).Attribute("Text")?.Value);
+
+        // And the rail's tooltip is copy, not a literal, so it is authored
+        // where the rest of this screen's words are.
+        Assert.Equal(
+            "{Binding MergeQueue.RailTooltip}",
+            row.Attribute("ToolTip.Tip")?.Value);
+    }
+
+    // ── A count on every segment ═════════════════════════════════════════════
+
+    // From REVIEW there was no way to see that EXPANSIONS had cards waiting:
+    // only REVIEW carried a count, and it was a 22px number inside the page
+    // header rather than on the control that navigates there.
+
+    [Fact]
+    public void Every_segment_tab_states_its_own_count()
+    {
+        var tabs = SegmentTabs();
+        Assert.Equal(3, tabs.Count);
+
+        var expected = new[]
+        {
+            ("{Binding PendingCountText}", "{Binding HasPending}"),
+            ("{Binding ExpansionCountText}", "{Binding HasExpansions}"),
+            ("{Binding LinkHistoryCountText}", "{Binding HasLinkHistory}"),
+        };
+
+        foreach (var (tab, (text, visible)) in tabs.Zip(expected))
+        {
+            var count = TabCount(tab);
+
+            Assert.Equal(text, count.Attribute("Text")?.Value);
+
+            // A zero draws nothing: a permanent 0 is noise, which is the rule
+            // the page headers used before the number moved here.
+            Assert.Equal(visible, count.Attribute("IsVisible")?.Value);
+
+            // Every number in the app is Plex Mono with tabular figures (§3).
+            // The class carries the face and FontFeatures="tnum"; the tab must
+            // not opt out of it by setting its own family.
+            Assert.Contains(
+                "data",
+                count.Attribute("Classes")!.Value.Split(' '),
+                StringComparer.Ordinal);
+            Assert.Null(count.Attribute("FontFamily"));
+            Assert.Null(count.Attribute("FontFeatures"));
+
+            // The label still leads, in the display face.
+            var label = Assert.Single(
+                tab.Descendants(Avalonia + "TextBlock"),
+                t => t.Attribute("Classes")?.Value == "display-s");
+            Assert.True(
+                label.IsBefore(count),
+                "The count must follow its label, not lead it.");
+
+            // §8: a control holding a bare number has to say what the number
+            // counts, and the units differ per tab (groups, base games, acts).
+            Assert.False(
+                string.IsNullOrEmpty(tab.Attribute("AutomationProperties.Name")?.Value),
+                "A segment tab drawing a bare number carries no automation name, so a "
+                + "screen reader hears a digit with nothing joining it to its label.");
+        }
+    }
+
+    // The number is on the tab now, so the page header must not repeat it. The
+    // pass's own words: this "deletes the large in-header count and places one
+    // number on the control that also navigates to that surface".
+
+    [Fact]
+    public void No_page_header_repeats_a_segment_count()
+    {
+        var view = Load("src/Winnow.App/Views/MergeQueueView.axaml");
+
+        var strip = SegmentStrip(view);
+
+        var stray = view
+            .Descendants(Avalonia + "TextBlock")
+            .Where(t => t.Attribute("Text")?.Value is "{Binding PendingCountText}"
+                or "{Binding ExpansionCountText}" or "{Binding LinkHistoryCountText}")
+            .Where(t => !t.Ancestors().Contains(strip))
+            .ToList();
+
+        Assert.Empty(stray);
+
+        // The labels those headers set beside their counts went with them.
+        foreach (var gone in new[] { "PendingCountLabel", "ExpansionCountLabel" })
+        {
+            Assert.DoesNotContain(
+                view.Descendants().SelectMany(e => e.Attributes()),
+                a => a.Value.Contains(gone, StringComparison.Ordinal));
+        }
+    }
+
+    // controls.axaml states the segment's ink grammar for the tab's label, but
+    // tokens' .data style is promoted into Application.Styles after that
+    // include and would repaint the count full Text on an unlit tab. The screen
+    // states the grammar again in its own styles, which are evaluated later
+    // because they are closer to the control. Someone will read these three as
+    // redundant; they are not.
+
+    [Fact]
+    public void The_segment_count_takes_the_tabs_own_ink()
+    {
+        var view = Load("src/Winnow.App/Views/MergeQueueView.axaml");
+
+        var selectors = view
+            .Descendants(Avalonia + "Style")
+            .Select(s => s.Attribute("Selector")?.Value)
+            .Where(s => s is not null && s.Contains("seg.tab", StringComparison.Ordinal))
+            .ToList();
+
+        foreach (var required in new[]
+        {
+            "Button.seg.tab TextBlock.data",
+            "Button.seg.tab:pointerover TextBlock.data",
+            "Button.seg.tab.on TextBlock.data",
+        })
+        {
+            Assert.Contains(required, selectors);
+        }
     }
 
     // ── Copy and automation names ═══════════════════════════════════════════
@@ -412,6 +532,11 @@ public sealed class SameGameSurfaceTests
             (typeof(MergeSideViewModel), "ReleaseText"),
             (typeof(MergeQueueViewModel), "DifferentGamesTooltip"),
             (typeof(MergeQueueViewModel), "CoverHeight"),
+
+            // The count moved onto the segment tab, which has no room for the
+            // uppercase unit the page header set beside it.
+            (typeof(MergeQueueViewModel), "PendingCountLabel"),
+            (typeof(MergeQueueViewModel), "ExpansionCountLabel"),
             (typeof(MergeGroupViewModel), "Left"),
             (typeof(MergeGroupViewModel), "Right"),
             (typeof(MergeGroupViewModel), "Ordered"),
@@ -443,8 +568,10 @@ public sealed class SameGameSurfaceTests
             (typeof(MergeCopy), "RetractedLabel"),
             (typeof(MergeCopy), "MemberAutomationFormat"),
             (typeof(MergeCopy), "MemberWithStoreAutomationFormat"),
+            (typeof(MergeCopy), "PendingCountLabel"),
             (typeof(ExpansionCopy), "GroupEffect"),
             (typeof(ExpansionCopy), "Retracted"),
+            (typeof(ExpansionCopy), "PendingCountLabel"),
         })
         {
             Assert.Null(type.GetMember(member).FirstOrDefault());
@@ -452,6 +579,28 @@ public sealed class SameGameSurfaceTests
     }
 
     // ── Loading ══════════════════════════════════════════════════════════════
+
+    /// <summary>The three segment tabs, in the order the strip draws them.</summary>
+    private static IReadOnlyList<XElement> SegmentTabs()
+    {
+        var view = Load("src/Winnow.App/Views/MergeQueueView.axaml");
+
+        return SegmentStrip(view)
+            .Elements(Avalonia + "Button")
+            .Where(b => b.Attribute("Classes")?.Value == "seg tab")
+            .ToList();
+    }
+
+    /// <summary>The horizontal strip holding the segment buttons.</summary>
+    private static XElement SegmentStrip(XElement view) => Assert.Single(
+        view.Descendants(Avalonia + "StackPanel"),
+        p => p.Elements(Avalonia + "Button")
+            .Any(b => b.Attribute("Classes")?.Value == "seg tab"));
+
+    /// <summary>The count a segment tab draws beside its label.</summary>
+    private static XElement TabCount(XElement tab) => Assert.Single(
+        tab.Descendants(Avalonia + "TextBlock"),
+        t => t.Attribute("Classes")?.Value.Contains("data", StringComparison.Ordinal) == true);
 
     /// <summary>The expansions arm of OnMergeQueueKeyDown, as source text.</summary>
     private static string ExpansionKeyBranch()

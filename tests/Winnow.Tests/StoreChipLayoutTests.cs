@@ -194,8 +194,9 @@ public sealed class StoreChipLayoutTests
     }
 
     // Everything the user reads down the screen takes that column: the segment
-    // strip's content, each surface's header (which carries its count and its
-    // outcome report), each card list, each empty state, and the history log.
+    // strip's content (which carries the tab counts), each surface's header
+    // (which carries its outcome report), each card list, each empty state,
+    // and the history log.
     [Fact]
     public void Every_column_of_the_same_game_screen_takes_the_measure()
     {

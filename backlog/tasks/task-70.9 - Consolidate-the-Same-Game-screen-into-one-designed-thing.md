@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@safwyl'
 created_date: '2026-09-02 12:35'
-updated_date: '2026-09-02 14:36'
+updated_date: '2026-09-02 17:51'
 labels: []
 dependencies: []
 documentation:
@@ -290,6 +290,60 @@ distinguishing same-titled members without entry numbers; the renamed band label
 absent tooltip; history chronological with retracted rows absent; no user-facing string
 saying retract; the 840 measure covering header, count, report and empty state; the
 deleted members genuinely unreferenced; the relation label on the expansion row.
+
+STAGE 4 (partial) — the segment counts, and the rail scope they settle.
+
+9. COUNTS ON EVERY SEGMENT. Each of the three tabs draws its own count beside its
+   label: REVIEW binds PendingCountText/HasPending, EXPANSIONS binds
+   ExpansionCountText/HasExpansions, HISTORY binds a new LinkHistoryCountText with
+   the existing HasLinkHistory. Number in the 'data' class (IBM Plex Mono,
+   FontFeatures tnum) at 11px, the same treatment the rail already gives a count
+   beside a display-s label. A zero draws nothing, the rule this screen's headers
+   already used ('a permanent zero is noise'). LinkHistory is built by LoadAsync,
+   not only on arrival, so the HISTORY count is populated before the surface is
+   first opened.
+   Ink: controls.axaml's 'Button.seg.tab TextBlock' rules are overridden by
+   tokens' later-added '.data' Foreground, so the count would have rendered full
+   Text white on an unlit tab. Three styles in MergeQueueView's own
+   UserControl.Styles put the count back on the segment grammar (TextDim / Text on
+   hover / Volt when on). Control-level styles beat application-level ones —
+   verified against Avalonia's styling/style-precedence docs, not assumed.
+
+10. DELETE THE IN-HEADER COUNT. Both 22px count blocks go, and with them
+    MergeQueueViewModel.PendingCountLabel / ExpansionCountLabel and
+    MergeCopy.PendingCountLabel / ExpansionCopy.PendingCountLabel. Each header
+    collapses from a two-column Grid to the question and its intro line.
+
+11. THE RAIL COUNTS BOTH SURFACES AGAIN. MainWindow.axaml binds
+    OutstandingCountText/HasOutstanding; Opacity stays on RowOpacity, which
+    already followed the same pair. TASK-71 moved the rail to the review count
+    because 63 stood against a 45 GROUPS header and agreed with neither. Deleting
+    that header count removes the thing it contradicted: the rail names the
+    screen, the tabs name the surfaces, and the rail's number is now the two tab
+    numbers added up. HISTORY is excluded because a log is not outstanding work.
+
+12. THE RAIL TOOLTIP moves into MergeCopy.RailTooltip and is bound rather than
+    written as a literal, so the screen's copy and the rail's description of it
+    live in one file.
+
+13. AUTOMATION NAMES on the three tabs, so a bare number in a control is not what
+    a screen reader hears (§8). One format per tab, authored by docs-writer.
+
+14. RETARGET, NOT DELETE, the TASK-71 rail tests: SameGameSurfaceTests's markup
+    guard and MergeQueueViewModelTests's view-model guard both asserted the rail
+    equals the review count. They are re-pointed at the invariant that replaces
+    it — the rail equals the two segment counts summed, and no number on the
+    screen contradicts it. The_rail_recedes_only_when_both_surfaces_are_empty is
+    unchanged and still correct. New tests cover the three tab bindings, the tnum
+    face, the absence of the in-header count, and the count at zero.
+
+15. COPY. One docs-writer delegation: the three automation formats, the relocated
+    rail tooltip, every new and changed doc comment, and the comments recording
+    why the rail's scope is the screen and the tabs' scope is a surface.
+
+16. VERIFY. Scoped tests, then the full suite, both with --artifacts-path into the
+    session scratchpad. No app run: TASK-72's --data-dir override is not ready and
+    repointing %LOCALAPPDATA% does not isolate the live database. No commit.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -579,4 +633,140 @@ src/Winnow.App/bin was never touched. Not committed.
    LoadAsync rescan. AC #11's second clause ('separates acts currently in force from
    retracted acts') is superseded by decision 4: undone acts leave the log, so everything
    on it is in force.
+
+## Stage 4 (partial): counts on every segment, and the rail's scope — implemented, NOT finalized
+
+Only AC #6. No other stage-4 item shipped: the 840 measure's scope, virtualization, the
+Escape ladder, the history live/retracted split and the card/chip automation names are all
+still open.
+
+### The count is on the tab now, not in the header
+
+Each of the three tabs draws its label then its own number: REVIEW binds
+PendingCountText/HasPending, EXPANSIONS binds ExpansionCountText/HasExpansions, HISTORY
+binds a new LinkHistoryCountText with the existing HasLinkHistory. The number takes the
+`data` class, which carries IBM Plex Mono and FontFeatures=tnum, at 11px — the treatment
+the rail already gives a count beside a display-s label. A zero draws nothing, which is the
+rule the page headers used before the number moved.
+
+Both 22px in-header count blocks are deleted, and each header collapsed from a two-column
+Grid to the question and its intro line. MergeQueueViewModel.PendingCountLabel /
+ExpansionCountLabel and MergeCopy.PendingCountLabel / ExpansionCopy.PendingCountLabel went
+with them; all four are in Every_member_the_pass_deleted_is_gone now.
+
+INK, worth recording because the three styles it needs look redundant and are not.
+controls.axaml's `Button.seg.tab TextBlock` rules already state the segment's ink grammar,
+but App.axaml.cs promotes tokens' TextStyles into Application.Styles AFTER the
+controls.axaml include, so tokens' `.data` Foreground=Text wins and the count would have
+rendered full white on an unlit tab. MergeQueueView restates the grammar in its own
+UserControl.Styles for TextBlock.data. Verified against Avalonia's styling/style-precedence
+docs rather than assumed: a UserControl's styles are evaluated after the application's, so
+the closer scope wins. Guarded by The_segment_count_takes_the_tabs_own_ink.
+
+### The rail counts both surfaces again — the TASK-70.9 / TASK-71 tension, resolved
+
+TASK-71 pointed the rail at PendingCountText because SAME GAME? 63 stood beside a 45 GROUPS
+header and agreed with neither, leaving RowOpacity on the combined count — so the row
+stayed lit with no number at all while only expansion cards waited. Silent rather than
+wrong, and its own notes filed the rest as 70.9 work.
+
+Restored to OutstandingCountText/HasOutstanding, and the reasoning is that deleting the
+in-header count removes the thing the rail contradicted. THE RAIL NAMES THE SCREEN; THE
+TABS NAME THE SURFACES. Different scopes, so no contradiction: the rail's figure is now
+reachable by adding the two answerable tab numbers, which is a relation a reader can check
+on screen rather than a third number appearing from nowhere.
+
+The unit objection TASK-71 raised — that the sum mixes same-game groups with expansion base
+games — does not survive the move. At the rail's grain both are one card, one act, one
+answer: a question waiting for you. The tooltip has said so since stage 1 and now sits over
+a count that means it.
+
+HISTORY is deliberately outside the sum. A log is not outstanding work, so its tab counts
+and the rail does not.
+
+Opacity still binds RowOpacity, which still follows the same pair, so the row's count and
+its standing can no longer disagree about whether there is work on the screen.
+
+### The rail tooltip
+
+Already reworded in stage 1 (`Pairs that might be the same game` became `Groups that might
+be the same game, or expansions of one`), so the pair-model residue the pass flagged was
+gone. What was left was that it sat as a literal in MainWindow.axaml. Moved to
+MergeCopy.RailTooltip and bound, so the screen's copy and the rail's description of it are
+one file. Wording unchanged — it was already right for a count covering both questions.
+
+### DEFECT FOUND AND FIXED while wiring the HISTORY count
+
+SameGameAsync and GroupExpansionsAsync write an act and never rebuilt LinkHistory; only
+LoadAsync and arriving at HISTORY did. With no count on the tab that was invisible. With
+one, the strip would have said an act was recorded — the outcome report note is on screen
+saying so — and that HISTORY holds nothing, until the user opened HISTORY and the number
+caught up. Both act-writing paths now rebuild. Cost is one pass over the act log, which
+holds acts the user performed by hand and does not grow with the library, and it reads no
+candidate, so Answering_reads_nothing_however_long_the_queue_is still holds. Guarded by
+Every_segment_count_follows_its_own_surface.
+
+### Accessibility
+
+A tab now holds a bare number, so each carries an AutomationProperties.Name naming what its
+number counts. docs-writer phrased all three so a count of 1 cannot read against a plural
+noun — `Review, {0} to answer`, `Expansions, {0} to answer`, `History, {0} recorded` —
+which is the TASK-73 class of bug avoided rather than repeated. No pluralization helper was
+needed. The units themselves (groups, base games, acts) stay on the tooltips, which were
+already correct.
+
+### TASK-71 tests retargeted, not deleted
+
+Both asserted the rail equals the review count, which is a behaviour deliberately changed
+here, so both were re-pointed at the invariant that replaces it rather than removed.
+
+- SameGameSurfaceTests.The_rail_count_is_the_number_the_review_header_shows became
+  .The_rail_count_is_the_answerable_segment_counts_added_up. Asserts the rail binds
+  OutstandingCountText/HasOutstanding, that Opacity still binds RowOpacity, that the two
+  answerable tabs bind the two counts the rail sums, and that the tooltip is copy.
+- MergeQueueViewModelTests.The_rail_count_and_the_review_header_are_one_number became
+  .The_rail_count_is_the_two_answerable_segment_counts_added_up. Same fixture (a review
+  group and expansion work waiting at once, the case that made the two numbers differ); now
+  asserts OutstandingCount == PendingCount + ExpansionCount, the three rendered strings,
+  and that history is not in the sum.
+- .The_rail_counts_expansion_work_with_an_empty_review_queue kept, strengthened: the rail
+  now DRAWS 2 where it used to be silent, and the EXPANSIONS tab draws 2 beside it. Its
+  comment about the rail drawing no number was removed because it no longer describes the
+  screen.
+- .The_rail_recedes_only_when_both_surfaces_are_empty unchanged and still correct.
+
+### New tests
+
+SameGameSurfaceTests: Every_segment_tab_states_its_own_count (three tabs, three bindings,
+the visibility gate, the data class with no local FontFamily or FontFeatures opting out of
+tnum, the label leading the number, an automation name on every tab),
+No_page_header_repeats_a_segment_count (no count binding outside the strip; both header
+labels unreferenced), The_segment_count_takes_the_tabs_own_ink.
+
+MergeQueueViewModelTests: Every_segment_count_follows_its_own_surface,
+Every_segment_tab_announces_what_its_number_counts.
+
+Each guard was checked against the defect it names. With the rail pointed back at the
+review count, the HISTORY tab's count removed and the three ink styles deleted, three
+markup guards fail and pass once restored; with the history rebuild removed,
+Every_segment_count_follows_its_own_surface fails.
+
+StoreChipLayoutTests.Every_column_of_the_same_game_screen_takes_the_measure needed no
+change — the counts moved into the segment strip, which already carries the measure — but
+its comment claimed the headers carry the counts and was corrected.
+
+### Verification
+
+dotnet build and dotnet test from the repo root with --artifacts-path outside the tree.
+Build clean under TreatWarningsAsErrors, 0 warnings. Full suite green: Winnow.Covers.Tests
+70, Winnow.Recommend.Tests 115, Winnow.Tests 2,683 — 2,868 passed, 0 failed. Not committed.
+
+The app was NOT run. TASK-72's --data-dir override is not ready, and repointing
+%LOCALAPPDATA% does not isolate the live database (WinnowDataLocation resolves through the
+Windows shell API and ignores the variable). Everything here is verified through markup and
+view-model tests.
+
+NOTE: a `Winnow` app process and a stray `testhost` were observed holding files in the
+shared build output during this work; neither was launched from this task. Both had exited
+before the final build and suite run, which are therefore clean.
 <!-- SECTION:NOTES:END -->

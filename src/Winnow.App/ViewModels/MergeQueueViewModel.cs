@@ -145,7 +145,7 @@ public partial class MergeQueueViewModel : ObservableObject
     [NotifyPropertyChangedFor(
         nameof(PendingCount), nameof(PendingCountText), nameof(HasPending),
         nameof(ShowEmpty), nameof(OutstandingCount), nameof(OutstandingCountText),
-        nameof(HasOutstanding), nameof(RowOpacity))]
+        nameof(HasOutstanding), nameof(RowOpacity), nameof(ReviewSegmentAutomationName))]
     public partial IReadOnlyList<MergeGroupViewModel> Groups { get; set; } = [];
 
     /// <summary>The group the user is currently looking at, or null when the queue is empty.</summary>
@@ -157,9 +157,6 @@ public partial class MergeQueueViewModel : ObservableObject
 
     /// <summary>Plex Mono, tabular, grouped — every number in the app (§3).</summary>
     public string PendingCountText => PendingCount.ToString("N0", CultureInfo.CurrentCulture);
-
-    /// <summary>Uppercase label beside the count.</summary>
-    public string PendingCountLabel => MergeCopy.PendingCountLabel;
 
     /// <summary>True when there are pending groups to review.</summary>
     public bool HasPending => PendingCount > 0;
@@ -211,7 +208,8 @@ public partial class MergeQueueViewModel : ObservableObject
     [NotifyPropertyChangedFor(
         nameof(ExpansionCount), nameof(ExpansionCountText), nameof(HasExpansions),
         nameof(ShowExpansionsEmpty), nameof(OutstandingCount),
-        nameof(OutstandingCountText), nameof(HasOutstanding), nameof(RowOpacity))]
+        nameof(OutstandingCountText), nameof(HasOutstanding), nameof(RowOpacity),
+        nameof(ExpansionsSegmentAutomationName))]
     public partial IReadOnlyList<ExpansionGroupViewModel> ExpansionGroups { get; set; } = [];
 
     /// <summary>The card the keyboard acts on, or null when the surface is empty.</summary>
@@ -224,9 +222,6 @@ public partial class MergeQueueViewModel : ObservableObject
     /// <summary>Plex Mono, tabular, grouped — every number in the app (§3).</summary>
     public string ExpansionCountText =>
         ExpansionCount.ToString("N0", CultureInfo.CurrentCulture);
-
-    /// <summary>Uppercase label beside the count. The unit is a base game, not a pack.</summary>
-    public string ExpansionCountLabel => ExpansionCopy.PendingCountLabel;
 
     /// <summary>True when there are cards to answer.</summary>
     public bool HasExpansions => ExpansionCount > 0;
@@ -262,11 +257,18 @@ public partial class MergeQueueViewModel : ObservableObject
     /// changes whenever anything is linked or undone.
     /// </summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasLinkHistory), nameof(ShowLinkHistoryEmpty))]
+    [NotifyPropertyChangedFor(
+        nameof(HasLinkHistory), nameof(ShowLinkHistoryEmpty),
+        nameof(LinkHistoryCountText), nameof(HistorySegmentAutomationName))]
     public partial IReadOnlyList<MergeLinkHistoryRowViewModel> LinkHistory { get; set; } = [];
 
     /// <summary>True when at least one group has been linked.</summary>
     public bool HasLinkHistory => LinkHistory.Count > 0;
+
+    /// <summary>The history segment's count, formatted N0 in the current
+    /// culture. Rendered in Plex Mono tabular (§3).</summary>
+    public string LinkHistoryCountText =>
+        LinkHistory.Count.ToString("N0", CultureInfo.CurrentCulture);
 
     /// <summary>True once the screen has loaded and nothing has been linked.</summary>
     public bool ShowLinkHistoryEmpty => _loaded && LinkHistory.Count == 0;
@@ -330,6 +332,31 @@ public partial class MergeQueueViewModel : ObservableObject
 
     /// <summary>Tooltip on the history segment.</summary>
     public string HistorySegmentTooltip => MergeCopy.SegmentHistoryTooltip;
+
+    /// <summary>The review tab announced with its count, so a screen reader
+    /// hears what the number counts rather than a bare digit (§8).</summary>
+    public string ReviewSegmentAutomationName =>
+        string.Format(
+            CultureInfo.CurrentCulture, MergeCopy.SegmentReviewAutomationFormat, PendingCount);
+
+    /// <summary>The expansions tab announced with its count (§8).</summary>
+    public string ExpansionsSegmentAutomationName =>
+        string.Format(
+            CultureInfo.CurrentCulture,
+            ExpansionCopy.SegmentExpansionsAutomationFormat,
+            ExpansionCount);
+
+    /// <summary>The history tab announced with its count (§8).</summary>
+    public string HistorySegmentAutomationName =>
+        string.Format(
+            CultureInfo.CurrentCulture,
+            MergeCopy.SegmentHistoryAutomationFormat,
+            LinkHistory.Count);
+
+    /// <summary>The rail row's tooltip. Lives here rather than as a literal
+    /// in MainWindow so the screen's copy and the rail's description of it
+    /// are in one file.</summary>
+    public string RailTooltip => MergeCopy.RailTooltip;
 
     /// <summary>Section heading for the list of link acts.</summary>
     public string LinkHistoryHeading => MergeCopy.LinkHistoryHeading;
@@ -449,6 +476,9 @@ public partial class MergeQueueViewModel : ObservableObject
             actId);
 
         RemoveExpansion(group);
+
+        // Same reason as the review answer rebuild: the act log changed and the HISTORY count must follow.
+        LinkHistory = await BuildLinkHistoryAsync(ct);
     }
 
     /// <summary>
@@ -588,6 +618,14 @@ public partial class MergeQueueViewModel : ObservableObject
             actId);
 
         Remove(group);
+
+        // The HISTORY tab draws its own count; an act just changed the log.
+        // Without this rebuild the strip would simultaneously show the outcome
+        // report and claim HISTORY holds nothing, until the user opened that
+        // tab and the number caught up. Costs one pass over the act log, which
+        // holds only user-performed acts and does not grow with the library.
+        // Reads no candidate, so Answering_reads_nothing_however_long_the_queue_is still holds.
+        LinkHistory = await BuildLinkHistoryAsync(ct);
     }
 
     /// <summary>Rejects every proposal in the group, links nothing, and removes the card.</summary>

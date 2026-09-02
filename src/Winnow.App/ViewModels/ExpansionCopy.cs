@@ -22,6 +22,13 @@ public static class ExpansionCopy
     /// <summary>Tooltip on that segment. Names what the surface holds.</summary>
     public const string SegmentExpansionsTooltip = "Base games and their packs";
 
+    /// <summary>Automation name for the EXPANSIONS tab. <c>{0}</c> is the
+    /// count of base games; one card is one base game, never a pack. The
+    /// tab draws the label and a bare number side by side, so this string
+    /// is the only place a screen reader learns what the number
+    /// counts.</summary>
+    public const string SegmentExpansionsAutomationFormat = "Expansions, {0} to answer";
+
     /// <summary>The question the surface asks, display L.</summary>
     public const string ScreenQuestion = "Expansion?";
 
@@ -32,12 +39,6 @@ public static class ExpansionCopy
     /// words, not a blurb (notes.md).
     /// </summary>
     public const string Intro = "Display only. Hours and counts stay separate. Undo any time.";
-
-    /// <summary>
-    /// Uppercase label beside the pending count. The unit is a base game, not a
-    /// pair and not a pack, because one card is one base game.
-    /// </summary>
-    public const string PendingCountLabel = "BASE GAMES";
 
     /// <summary>Empty state after a scan found nothing. §7: a direction, not a mood.</summary>
     public const string EmptyScanned = "No expansions to review.";

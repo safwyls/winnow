@@ -1752,7 +1752,7 @@ public sealed class MergeQueueViewModelTests
         });
     }
 
-    // ── The rail counts both surfaces ────────────────────────────────────────
+    // ── The rail counts both surfaces, the tabs count one each ───────────────
 
     // The rail counts review plus expansions and recedes only when both are empty.
 
@@ -1778,19 +1778,28 @@ public sealed class MergeQueueViewModelTests
         Assert.True(queue.HasOutstanding);
         Assert.Equal(1.0, queue.RowOpacity);
 
-        // The rail draws no number here, because the number it draws is the
-        // review count and there are no review groups. The row stays lit on
-        // the combined count, which is what keeps the expansion work findable.
+        // The rail draws 2 and the EXPANSIONS tab draws 2. The REVIEW tab draws
+        // nothing at all, which is the case this test exists for: a library
+        // with no same-game groups and expansion cards waiting used to show a
+        // dimmed SAME GAME? 0 with nothing saying that twelve cards were there.
         Assert.False(queue.HasPending);
+        Assert.True(queue.HasExpansions);
+        Assert.Equal("2", queue.ExpansionCountText);
     }
 
-    // The rail read 63 while the screen read 45 GROUPS. The rail was summing
-    // review groups and expansion base games under one label, agreeing with
-    // neither header. The rail now draws the review count, the same property
-    // the review header binds, so the two cannot drift apart.
+    // RETARGETED from The_rail_count_and_the_review_header_are_one_number
+    // (TASK-71). That test pinned the rail to the review count, because the
+    // rail read 63 against a 45 GROUPS header and agreed with neither. The
+    // header count is gone: each segment tab carries its own number now, on the
+    // control that also navigates to that surface. So the rail is the screen's
+    // total again, and this asserts the invariant TASK-71 was actually
+    // defending — that the rail's figure is reachable by adding up what the
+    // screen draws, rather than standing against a number that disagrees.
+    //
+    // HISTORY is deliberately not in the sum: it is a log, not work waiting.
 
     [Fact]
-    public async Task The_rail_count_and_the_review_header_are_one_number()
+    public async Task The_rail_count_is_the_two_answerable_segment_counts_added_up()
     {
         using var fixture = new MergeQueueFixture();
         await fixture.QueuePairAsync(
@@ -1798,7 +1807,7 @@ public sealed class MergeQueueViewModelTests
             new SeedSide("Prey", null, null));
 
         // Expansion work waiting at the same time, which is what used to make
-        // the two numbers differ.
+        // the rail and the review header differ.
         await fixture.CreateReleaseAsync(new SeedSide("Sid Meier's Civilization IV", 2005, "2K"));
         await fixture.CreateReleaseAsync(
             new SeedSide("Sid Meier's Civilization IV: Warlords", 2006, "2K"));
@@ -1808,11 +1817,95 @@ public sealed class MergeQueueViewModelTests
 
         Assert.Equal(1, queue.PendingCount);
         Assert.Equal(1, queue.ExpansionCount);
-        Assert.NotEqual(queue.PendingCount, queue.OutstandingCount);
 
-        // What the rail shows and what the review header shows.
+        // What the rail draws is what the two answerable tabs draw, added up.
+        Assert.Equal(queue.PendingCount + queue.ExpansionCount, queue.OutstandingCount);
+        Assert.Equal("2", queue.OutstandingCountText);
+        Assert.Equal("1", queue.PendingCountText);
+        Assert.Equal("1", queue.ExpansionCountText);
+
+        // The history tab counts too, and is not part of that sum.
+        Assert.Equal(
+            queue.LinkHistory.Count.ToString(CultureInfo.InvariantCulture),
+            queue.LinkHistoryCountText);
+        Assert.Equal(queue.PendingCount + queue.ExpansionCount, queue.OutstandingCount);
+    }
+
+    // The count on a tab moves when its surface does, or a tab goes on saying
+    // there is work after the last card was answered.
+
+    [Fact]
+    public async Task Every_segment_count_follows_its_own_surface()
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.QueuePairAsync(
+            new SeedSide("Prey", 2017, "Bethesda Softworks"),
+            new SeedSide("Prey", null, null));
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+
         Assert.Equal("1", queue.PendingCountText);
         Assert.True(queue.HasPending);
+        Assert.False(queue.HasLinkHistory);
+        Assert.Equal("0", queue.LinkHistoryCountText);
+
+        var raised = new List<string>();
+        queue.PropertyChanged += (_, e) => raised.Add(e.PropertyName ?? string.Empty);
+
+        await queue.SameGameCommand.ExecuteAsync(Assert.Single(queue.Groups));
+
+        // The answer emptied REVIEW and put an act in HISTORY. Both tabs move.
+        Assert.False(queue.HasPending);
+        Assert.True(queue.HasLinkHistory);
+        Assert.Equal("1", queue.LinkHistoryCountText);
+
+        // And the tab bindings were told, or the strip would draw stale numbers.
+        Assert.Contains(nameof(queue.PendingCountText), raised);
+        Assert.Contains(nameof(queue.LinkHistoryCountText), raised);
+        Assert.Contains(nameof(queue.OutstandingCountText), raised);
+    }
+
+    // §8: the tab draws its label and a bare number side by side, so the
+    // automation name is the only place a screen reader learns what the number
+    // counts — and the three tabs count three different things.
+
+    [Fact]
+    public async Task Every_segment_tab_announces_what_its_number_counts()
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.QueuePairAsync(
+            new SeedSide("Prey", 2017, "Bethesda Softworks"),
+            new SeedSide("Prey", null, null));
+        await fixture.CreateReleaseAsync(new SeedSide("Sid Meier's Civilization IV", 2005, "2K"));
+        await fixture.CreateReleaseAsync(
+            new SeedSide("Sid Meier's Civilization IV: Warlords", 2006, "2K"));
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+
+        var names = new[]
+        {
+            queue.ReviewSegmentAutomationName,
+            queue.ExpansionsSegmentAutomationName,
+            queue.HistorySegmentAutomationName,
+        };
+
+        Assert.All(names, name => Assert.False(string.IsNullOrWhiteSpace(name)));
+
+        // Three surfaces, three units. A shared sentence would make the tabs
+        // one target a screen reader cannot tell apart.
+        Assert.Equal(3, names.Distinct(StringComparer.Ordinal).Count());
+
+        // Each names its own count, so the announcement and the digit agree.
+        Assert.Contains(queue.PendingCount.ToString(CultureInfo.InvariantCulture), names[0]);
+        Assert.Contains(queue.ExpansionCount.ToString(CultureInfo.InvariantCulture), names[1]);
+
+        // And none of them says "pair": the unit has been a group since the
+        // pairwise model was retired.
+        Assert.All(
+            names,
+            name => Assert.DoesNotContain("pair", name, StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]

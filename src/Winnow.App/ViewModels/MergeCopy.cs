@@ -34,6 +34,21 @@ public static class MergeCopy
     public const string SegmentHistoryTooltip =
         "What you have linked and grouped";
 
+    /// <summary>Automation name for the REVIEW tab. <c>{0}</c> is the count.
+    /// The tab draws the label and a bare number side by side, so this
+    /// string is the only place a screen reader learns what the number
+    /// counts.</summary>
+    public const string SegmentReviewAutomationFormat = "Review, {0} to answer";
+
+    /// <summary>Automation name for the HISTORY tab. <c>{0}</c> is the count
+    /// of acts still in force. History is a log, not outstanding work.</summary>
+    public const string SegmentHistoryAutomationFormat = "History, {0} recorded";
+
+    /// <summary>Tooltip on the rail's SAME GAME? row. The row counts review
+    /// plus expansions, so the sentence covers both questions.</summary>
+    public const string RailTooltip =
+        "Groups that might be the same game, or expansions of one";
+
     // ══ Review — the queue ════════════════════════════════════════════════
 
     /// <summary>
@@ -146,10 +161,6 @@ public static class MergeCopy
     /// <c>{0}</c> title distance, <c>{1}</c> year delta, <c>{2}</c> publisher
     /// verdict.</summary>
     public const string EdgeSummaryFormat = "Title {0}, year {1}, publisher {2}";
-
-    /// <summary>Uppercase label beside the pending count in the review header.
-    /// The unit is a group of store entries, not a pair.</summary>
-    public const string PendingCountLabel = "GROUPS";
 
     /// <summary>Empty review state after a sweep completed and found nothing.
     /// §7: empty states are directions, not moods.</summary>

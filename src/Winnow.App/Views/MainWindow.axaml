@@ -1030,7 +1030,18 @@
 
                     <!-- ── REVIEW ────────────────────────────────────────
                          Merge confirm queue (§6). Count shown only when
-                         pending; row always visible so the rail never reflows. -->
+                         pending; row always visible so the rail never reflows.
+
+                         The count is review plus expansions, everything on
+                         that screen waiting for an answer. The rail names
+                         the screen; the segment tabs name the surfaces and
+                         carry their own counts, so the rail adds the two
+                         answerable tabs. History is excluded: a log is not
+                         outstanding work. A previous pass (TASK-71) pointed
+                         this row at the review count alone, because its
+                         number stood beside a header count and agreed with
+                         neither. Deleting the header counts is what makes
+                         the sum legitimate. -->
                     <Border Margin="16,22,16,8"
                             Padding="0,14,0,0"
                             BorderBrush="{StaticResource Line}"
@@ -1044,7 +1055,7 @@
                             Classes.selected="{Binding IsMergeQueueVisible}"
                             Opacity="{Binding MergeQueue.RowOpacity}"
                             Command="{Binding ToggleMergeQueueCommand}"
-                            ToolTip.Tip="Groups that might be the same game, or expansions of one">
+                            ToolTip.Tip="{Binding MergeQueue.RailTooltip}">
                         <Grid ColumnDefinitions="2,16,*,Auto,16">
                             <Border Grid.Column="0"
                                     Background="{StaticResource Volt}"
@@ -1057,8 +1068,8 @@
                                        Classes="data"
                                        FontSize="11"
                                        Foreground="{StaticResource TextDim}"
-                                       Text="{Binding MergeQueue.PendingCountText}"
-                                       IsVisible="{Binding MergeQueue.HasPending}"
+                                       Text="{Binding MergeQueue.OutstandingCountText}"
+                                       IsVisible="{Binding MergeQueue.HasOutstanding}"
                                        VerticalAlignment="Center"/>
                         </Grid>
                     </Button>
