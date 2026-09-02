@@ -391,12 +391,14 @@ public static class RecommendationScorer
 /// <summary>Number-to-prose helpers for reason strings. Invariant culture throughout.</summary>
 internal static class Phrases
 {
-    /// <summary>"40 minutes", "5.2 hours", "33 hours".</summary>
+    /// <summary>"a minute", "40 minutes", "5.2 hours", "33 hours".</summary>
     public static string Duration(long minutes)
     {
         if (minutes < 120)
         {
-            return string.Create(CultureInfo.InvariantCulture, $"{minutes} minutes");
+            return minutes == 1
+                ? "a minute"
+                : string.Create(CultureInfo.InvariantCulture, $"{minutes} minutes");
         }
 
         var hours = minutes / 60.0;

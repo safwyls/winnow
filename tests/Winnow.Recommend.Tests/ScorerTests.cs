@@ -256,4 +256,19 @@ public class ScorerTests
         Assert.NotNull(contribution);
         Assert.InRange(contribution.Contribution, 0.0, Tuning.JitterAmplitude);
     }
+
+    // ── Duration phrasing (TASK-73) ──────────────────────────────────────────
+
+    [Fact]
+    public void Duration_renders_one_minute_as_singular_not_a_bare_count_of_one()
+    {
+        Assert.Equal("a minute", Phrases.Duration(1));
+    }
+
+    [Fact]
+    public void Duration_renders_every_other_minute_count_under_the_hours_branch_as_plural()
+    {
+        Assert.Equal("2 minutes", Phrases.Duration(2));
+        Assert.Equal("119 minutes", Phrases.Duration(119));
+    }
 }

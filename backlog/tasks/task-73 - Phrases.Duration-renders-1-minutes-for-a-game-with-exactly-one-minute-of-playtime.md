@@ -3,9 +3,11 @@ id: TASK-73
 title: >-
   Phrases.Duration renders "1 minutes" for a game with exactly one minute of
   playtime
-status: To Do
-assignee: []
+status: Done
+assignee:
+  - '@safwyl'
 created_date: '2026-09-02 15:21'
+updated_date: '2026-09-02 17:35'
 labels: []
 dependencies: []
 ordinal: 100000
@@ -25,7 +27,28 @@ ReasonContractTests.No_variant_puts_a_count_of_one_against_a_plural_noun guards 
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 A release with exactly one minute of playtime renders a singular phrase rather than "1 minutes"
-- [ ] #2 The wording is authored by docs-writer and matches how Age() already handles the singular
-- [ ] #3 The deliberate playtime exclusion in ReasonContractTests.No_variant_puts_a_count_of_one_against_a_plural_noun is removed, so every count token is exercised at one
+- [x] #1 A release with exactly one minute of playtime renders a singular phrase rather than "1 minutes"
+- [x] #2 The wording is authored by docs-writer and matches how Age() already handles the singular
+- [x] #3 The deliberate playtime exclusion in ReasonContractTests.No_variant_puts_a_count_of_one_against_a_plural_noun is removed, so every count token is exercised at one
 <!-- AC:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. In RecommendationScorer.cs, add a minutes==1 branch to Phrases.Duration returning docs-writer-authored singular wording ("a minute"), matching Age()'s a-day/a-month/a-year pattern; update its XML summary example list.
+2. In ReasonContractTests.cs, add PlaytimeMinutes = 1 to the 'one' fixture in No_variant_puts_a_count_of_one_against_a_plural_noun and delete the TASK-73 exclusion comment paragraph.
+3. Add direct ScorerTests.cs coverage: Duration(1) == "a minute", and Duration(2)/Duration(119) stay plural, proving the fix without relying only on the regex-based contract test.
+4. dotnet build and dotnet test (full suite) with --artifacts-path into the scratchpad build dir; confirm zero warnings/errors and all tests green.
+<!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Phrases.Duration now special-cases minutes==1 -> "a minute" (docs-writer-authored, matching Age()'s a-day/a-month/a-year pattern) before the existing "{minutes} minutes" branch; only the <120 branch can ever see a count of one, so no other branch needed a case. XML summary updated to '"a minute", "40 minutes", "5.2 hours", "33 hours".'. ReasonContractTests.No_variant_puts_a_count_of_one_against_a_plural_noun now sets PlaytimeMinutes = 1 on its fixture (removed the TASK-73 exclusion comment). Added ScorerTests.Duration_renders_one_minute_as_singular_not_a_bare_count_of_one and Duration_renders_every_other_minute_count_under_the_hours_branch_as_plural as direct unit coverage. Verified: dotnet build (0 warnings/errors) and dotnet test from repo root, both pointed at the scratchpad --artifacts-path -- full suite green (Winnow.Tests 2664, Winnow.Recommend.Tests 115, Winnow.Covers.Tests 70, all passed); targeted filter on the two TASK-73 tests plus the contract test also passed (3/3).
+<!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Fixed the singular-count defect in Phrases.Duration (src/Winnow.Recommend/RecommendationScorer.cs): minutes==1 now renders "a minute" instead of "1 minutes", following the same pattern Age() already uses for a-day/a-month/a-year (only the <120-minute branch can ever hit a count of one). Wording and the updated XML doc comment were authored by docs-writer, matched against every Bounced/Sampled/ProbablyDone sentence template that carries {minutes}. Removed the deliberate playtime-away-from-one exclusion and its TASK-73 comment in ReasonContractTests.No_variant_puts_a_count_of_one_against_a_plural_noun (now sets PlaytimeMinutes = 1), and added direct ScorerTests coverage for Duration(1)/(2)/(119). Verified via dotnet build and the full dotnet test suite from repo root (--artifacts-path into the scratchpad build dir): 0 warnings/errors, 2664+115+70 tests all passing, including the three TASK-73-relevant tests run in isolation.
+<!-- SECTION:FINAL_SUMMARY:END -->

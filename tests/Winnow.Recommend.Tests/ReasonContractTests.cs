@@ -155,16 +155,12 @@ public class ReasonContractTests : IDisposable
     // {updates} carries its own noun and pluralises itself; {episodes} and
     // {stores} are bare numbers but their resolvers gate at two, so their
     // plural nouns always agree.
-    //
-    // Not covered here: {minutes}, whose Phrases.Duration renders "1 minutes"
-    // at exactly one minute. Same class of defect, older and in the formatter
-    // rather than the copy, tracked separately. Setting playtime to one here
-    // would fail this test for a fault it is not written to find.
     [Fact]
     public void No_variant_puts_a_count_of_one_against_a_plural_noun()
     {
         var one = Rich(1) with
         {
+            PlaytimeMinutes = 1,
             UpdatesSinceLastPlayed = 1,
             ReturnEpisodes = 1,
             StoreCount = 1,
