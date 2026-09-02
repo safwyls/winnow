@@ -7,6 +7,7 @@ using Winnow.Core.Merging;
 using Winnow.Core.Repositories;
 using Winnow.Data;
 using Winnow.Data.Repositories;
+using Winnow.Resolve;
 using Winnow.Resolve.Matching;
 using Microsoft.Data.Sqlite;
 using Xunit;
@@ -1031,6 +1032,178 @@ public sealed class MergeQueueViewModelTests
         Assert.False(queue.ShowEmpty);
     }
 
+    // EXPANSIONS, the screen's third surface.
+    //
+    // The card is a different card from the same-game one, deliberately. A
+    // same-game group is N peers of one game and its KEEP radio asks a real
+    // question; an expansion group is one base plus N packs, and the parent is
+    // fixed by the relation. There is no primary radio on this card and no
+    // property on its member that could produce one.
+    //
+    // These tests hold the answer vocabulary apart too. REVIEW answers Same
+    // game / Different games and this answers Group / Not expansions, which is
+    // why they are two segments rather than two kinds of card in one scroll,
+    // and why the history row says "grouped under" and never "linked under".
+
+    /// <summary>
+    /// The one-to-many relation presented once: one base game, both packs, one
+    /// card. The user asked for exactly this instead of repeated pairwise
+    /// operations.
+    /// </summary>
+    [Fact]
+    public async Task A_base_game_and_its_packs_are_one_card()
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.CreateReleaseAsync(new SeedSide("Sid Meier's Civilization IV", 2005, "2K"));
+        await fixture.CreateReleaseAsync(
+            new SeedSide("Sid Meier's Civilization IV: Warlords", 2006, "2K"));
+        await fixture.CreateReleaseAsync(
+            new SeedSide("Sid Meier's Civilization IV: Beyond the Sword", 2007, "2K"));
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+
+        var card = Assert.Single(queue.ExpansionGroups);
+        Assert.Equal("Sid Meier's Civilization IV", card.BaseTitle);
+        Assert.Equal(2, card.Members.Count);
+
+        // Checked by default: an expansion proposal is one direct claim about
+        // one pair, already corroborated, so there is no transitive closure to
+        // guard against the way a same-game component has.
+        Assert.All(card.Members, m => Assert.True(m.IsIncluded));
+
+        // The evidence is what the title ADDS, not how far two titles are
+        // apart, which is the fact the soft matcher cannot supply.
+        Assert.Contains(card.Members, m => m.SuffixText == "beyond sword");
+        Assert.Contains(card.Members, m => m.SuffixText == "warlords");
+
+        // The queue opens on review; the expansion surface is a segment.
+        Assert.True(queue.IsReviewVisible);
+        Assert.False(queue.IsExpansionsVisible);
+        queue.ShowExpansionsCommand.Execute(null);
+        Assert.True(queue.IsExpansionsVisible);
+        Assert.False(queue.IsReviewVisible);
+    }
+
+    /// <summary>
+    /// None, some or all, in one gesture. The checked pack is grouped, the
+    /// unchecked one is recorded as a separate game, and neither answer comes
+    /// back on the next scan.
+    /// </summary>
+    [Fact]
+    public async Task Taking_some_groups_the_checked_and_records_the_rest()
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.CreateReleaseAsync(new SeedSide("Sid Meier's Civilization IV", 2005, "2K"));
+        await fixture.CreateReleaseAsync(
+            new SeedSide("Sid Meier's Civilization IV: Warlords", 2006, "2K"));
+        await fixture.CreateReleaseAsync(
+            new SeedSide("Sid Meier's Civilization IV: Beyond the Sword", 2007, "2K"));
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+
+        var card = Assert.Single(queue.ExpansionGroups);
+        var dropped = card.Members.Single(m => m.SuffixText == "warlords");
+        var kept = card.Members.Single(m => m.SuffixText == "beyond sword");
+        dropped.IsIncluded = false;
+
+        await queue.GroupExpansionsCommand.ExecuteAsync(card);
+
+        // One link, at the expansion kind, and nothing at the same-game kind.
+        var resolution = await fixture.Links.GetResolutionAsync();
+        Assert.Equal(card.BaseWorkId, resolution.Expansions.BaseOf(kept.WorkId));
+        Assert.Null(resolution.Expansions.BaseOf(dropped.WorkId));
+        Assert.True(resolution.SameGame.IsEmpty);
+
+        // The unchecked one is an answer, not a card that returns.
+        var refusal = Assert.Single(await fixture.ExpansionRefusals.GetAllAsync());
+        Assert.Equal(dropped.WorkId, refusal.ChildWorkId);
+
+        Assert.Empty(queue.ExpansionGroups);
+        Assert.NotNull(queue.ReportRetractActId);
+
+        await queue.LoadCommand.ExecuteAsync(null);
+        Assert.Empty(queue.ExpansionGroups);
+    }
+
+    /// <summary>
+    /// Taking none is the same answer as "not expansions", and it is recorded
+    /// the same way: nothing linked, every pack written down.
+    /// </summary>
+    [Fact]
+    public async Task Taking_none_links_nothing_and_records_every_pack()
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.CreateReleaseAsync(new SeedSide("Sid Meier's Civilization IV", 2005, "2K"));
+        await fixture.CreateReleaseAsync(
+            new SeedSide("Sid Meier's Civilization IV: Warlords", 2006, "2K"));
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+
+        var card = Assert.Single(queue.ExpansionGroups);
+        card.Members[0].IsIncluded = false;
+
+        await queue.GroupExpansionsCommand.ExecuteAsync(card);
+
+        Assert.True((await fixture.Links.GetResolutionAsync()).Expansions.IsEmpty);
+        Assert.Single(await fixture.ExpansionRefusals.GetAllAsync());
+        Assert.Null(queue.ReportRetractActId);
+        Assert.Empty(queue.ExpansionGroups);
+    }
+
+    /// <summary>The negative answer, from its own button.</summary>
+    [Fact]
+    public async Task Not_expansions_records_every_pack_and_links_nothing()
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.CreateReleaseAsync(new SeedSide("Sid Meier's Civilization IV", 2005, "2K"));
+        await fixture.CreateReleaseAsync(
+            new SeedSide("Sid Meier's Civilization IV: Warlords", 2006, "2K"));
+        await fixture.CreateReleaseAsync(
+            new SeedSide("Sid Meier's Civilization IV: Beyond the Sword", 2007, "2K"));
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+
+        await queue.NotExpansionsCommand.ExecuteAsync(Assert.Single(queue.ExpansionGroups));
+
+        Assert.True((await fixture.Links.GetResolutionAsync()).Expansions.IsEmpty);
+        Assert.Equal(2, (await fixture.ExpansionRefusals.GetAllAsync()).Count);
+        Assert.Empty(queue.ExpansionGroups);
+    }
+
+    /// <summary>
+    /// A grouping and a same-game link are different facts, so the history row
+    /// says which one it recorded. A row that read the same for both would
+    /// invite the user to retract the wrong one.
+    /// </summary>
+    [Fact]
+    public async Task The_history_row_says_grouped_rather_than_linked()
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.CreateReleaseAsync(new SeedSide("Sid Meier's Civilization IV", 2005, "2K"));
+        await fixture.CreateReleaseAsync(
+            new SeedSide("Sid Meier's Civilization IV: Warlords", 2006, "2K"));
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+        await queue.GroupExpansionsCommand.ExecuteAsync(Assert.Single(queue.ExpansionGroups));
+
+        await queue.ShowHistoryCommand.ExecuteAsync(null);
+
+        var row = Assert.Single(queue.LinkHistory);
+        Assert.True(row.IsExpansionAct);
+        Assert.Contains("grouped under", row.Description, StringComparison.Ordinal);
+        Assert.DoesNotContain("linked under", row.Description, StringComparison.Ordinal);
+        Assert.True(row.CanRetract);
+
+        // Retracting is ordinary: the proposal comes back.
+        await queue.RetractCommand.ExecuteAsync(row);
+        Assert.Single(queue.ExpansionGroups);
+    }
+
     // ── Fixture ──────────────────────────────────────────────────────────────
 
     private static (long, long) Edge(long a, long b) => a < b ? (a, b) : (b, a);
@@ -1099,6 +1272,7 @@ public sealed class MergeQueueViewModelTests
             ResolveState = new ResolveStateRepository(_db.Factory);
             Links = new IdentityLinkRepository(_db.Factory);
             Ownership = new OwnershipRepository(_db.Factory);
+            ExpansionRefusals = new ExpansionRefusalRepository(_db.Factory);
         }
 
         /// <summary>For the assertions that have to look at the database itself.</summary>
@@ -1116,6 +1290,8 @@ public sealed class MergeQueueViewModelTests
 
         public IOwnershipRepository Ownership { get; }
 
+        public IExpansionRefusalRepository ExpansionRefusals { get; }
+
         public CountingCandidateRepository CountingCandidates() => new(Candidates);
 
         /// <summary>No cover cache: the queue must compose on procedural art alone.</summary>
@@ -1123,6 +1299,8 @@ public sealed class MergeQueueViewModelTests
             bool withResolveState = true, IMergeCandidateRepository? candidates = null)
             => new(
                 candidates ?? Candidates, Releases, Works, Links, Ownership,
+                new LibraryExpansionScan(Releases, Links, ExpansionRefusals),
+                ExpansionRefusals,
                 null,
                 withResolveState ? ResolveState : null);
 

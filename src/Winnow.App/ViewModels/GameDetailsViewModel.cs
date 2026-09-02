@@ -1,4 +1,4 @@
-﻿using Avalonia.Media;
+using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -49,9 +49,11 @@ public partial class GameDetailsViewModel : ObservableObject
         DateTime? acknowledgedThrough = null,
         IUpdateFlagService? updateFlags = null,
         Func<Task>? reloadLibrary = null,
-        GameCoverageViewModel? coverage = null)
+        GameCoverageViewModel? coverage = null,
+        GameExpansionsViewModel? expansions = null)
     {
         Coverage = coverage;
+        Expansions = expansions;
         Tile = tile;
         BucketLabel = bucketLabel;
         Updates = updates;
@@ -92,6 +94,21 @@ public partial class GameDetailsViewModel : ObservableObject
     /// that covers nothing shows what it always showed.
     /// </summary>
     public bool ShowCoverage => Coverage is { HasCoverage: true };
+
+    /// <summary>
+    /// The expansions grouped under this game, and the base
+    /// game it extends if it is itself a pack. A SEPARATE section from
+    /// <see cref="Coverage"/> and never merged with it: a covered title is
+    /// this same game on another store, an expansion is a different product
+    /// with its own hours.
+    /// </summary>
+    public GameExpansionsViewModel? Expansions { get; }
+
+    /// <summary>Drawn only when this game has packs under it. A game with none shows what it always showed.</summary>
+    public bool ShowExpansions => Expansions is { HasExpansions: true };
+
+    /// <summary>Drawn only when this game is itself a pack, so the grouping can be undone from either end.</summary>
+    public bool ShowExtends => Expansions is { HasBase: true };
 
     // ── Band 1: what is this ────────────────────────────────────────────────
 

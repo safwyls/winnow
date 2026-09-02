@@ -3,9 +3,9 @@ using Winnow.Core.Identity;
 namespace Winnow.Core.Repositories;
 
 /// <summary>
-/// Reads and writes identity links (migration 0018). This stage ships INERT:
-/// the repository is registered but nothing reads a link yet, so no query,
-/// screen or count changes behaviour. TASK-70.3 onward injects it.
+/// Reads and writes identity links (migration 0018). The library grid
+/// collapses linked works into one tile; the details modal lists members
+/// under ALSO COVERS.
 /// </summary>
 public interface IIdentityLinkRepository
 {

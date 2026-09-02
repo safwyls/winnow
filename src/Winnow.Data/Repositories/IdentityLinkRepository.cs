@@ -124,24 +124,52 @@ public sealed class IdentityLinkRepository : IIdentityLinkRepository
         // back where it was.
         var displaced = await LiveLinksUnderAsync(lease, children, ct);
 
-        var targets = new List<long>(children.Count + displaced.Count);
+        // Re-parenting is right for same_game and wrong for expansion_of. A
+        // same-game link says "these are one game", so pulling the group's
+        // other entries onto the new parent keeps one statement true. An
+        // expansion link says "this extends that", and re-parenting an
+        // expansion's own SAME-GAME children onto the base game would move
+        // their playtime into it — the one thing the user's decision of
+        // 2026-08-31 says an expansion link must never do. Refused, not
+        // repaired: the user can separate the entry first and group it after.
+        if (request.Kind == IdentityLinkKinds.ExpansionOf && displaced.Count > 0)
+        {
+            throw new IdentityLinkRefusedException(
+                IdentityLinkRefusal.ExpansionChildIsAlreadyAParent,
+                $"Work {displaced[0].ParentWorkId} has links of its own and cannot be "
+                + "grouped as an expansion.");
+        }
+
+        // Each target carries the KIND it must be written back under. The
+        // children the request names take the request's kind. A displaced
+        // grandchild keeps its OWN kind, and that distinction is load-bearing
+        // from TASK-70.5 onward: re-parenting Civilization IV's expansions
+        // because Civilization IV was itself linked to its GOG twin must move
+        // them, not convert them. Writing them under the request's kind would
+        // turn six expansions into six same-game links, which folds six
+        // playtimes into one and moves numbers the user's decision of
+        // 2026-08-31 says must never move.
+        var targets = new List<(long ChildWorkId, string Kind)>(children.Count + displaced.Count);
         foreach (var childWorkId in children)
         {
-            targets.Add(childWorkId);
+            targets.Add((childWorkId, request.Kind));
         }
 
         foreach (var link in displaced)
         {
-            if (link.ChildWorkId != request.ParentWorkId && !targets.Contains(link.ChildWorkId))
+            if (link.ChildWorkId == request.ParentWorkId
+                || targets.Exists(t => t.ChildWorkId == link.ChildWorkId))
             {
-                targets.Add(link.ChildWorkId);
+                continue;
             }
+
+            targets.Add((link.ChildWorkId, link.Kind));
         }
 
-        foreach (var childWorkId in targets)
+        foreach (var (childWorkId, kind) in targets)
         {
             await RetractLiveLinkAsync(lease, childWorkId, actId, ct);
-            await InsertLinkAsync(lease, actId, request, childWorkId, ct);
+            await InsertLinkAsync(lease, actId, request, childWorkId, kind, ct);
         }
 
         scope.Commit();
@@ -409,6 +437,7 @@ public sealed class IdentityLinkRepository : IIdentityLinkRepository
         long actId,
         IdentityLinkRequest request,
         long childWorkId,
+        string kind,
         CancellationToken ct)
         => await lease.Connection.ExecuteAsync(new CommandDefinition("""
             INSERT INTO identity_links (
@@ -420,7 +449,7 @@ public sealed class IdentityLinkRepository : IIdentityLinkRepository
                 actId,
                 childWorkId,
                 parentWorkId = request.ParentWorkId,
-                kind = request.Kind,
+                kind,
                 source = request.Source,
                 evidenceJson = request.EvidenceJson,
                 appliedAt = _clock.GetUtcNow().UtcDateTime,

@@ -1,4 +1,4 @@
-﻿<UserControl xmlns="https://github.com/avaloniaui"
+<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Winnow.App.ViewModels"
              xmlns:views="using:Winnow.App.Views"
@@ -487,6 +487,133 @@
                                                 </Grid>
                                                 </StackPanel>
                                             </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <TextBlock Classes="body" FontSize="11"
+                                       TextWrapping="Wrap"
+                                       Foreground="{StaticResource Amber}"
+                                       IsVisible="{Binding HasProblem}"
+                                       Text="{Binding Problem}"/>
+                        </StackPanel>
+                        </StackPanel>
+
+                        <!-- EXTENDS.
+                             The other end of the relation, on a pack's own
+                             modal. It names the base game and offers the same
+                             retraction, so the grouping can be undone from
+                             either side. The link's child is this game, not
+                             the row, which is why the control retracts the
+                             right link from here. -->
+                        <StackPanel IsVisible="{Binding ShowExtends}">
+                        <StackPanel Spacing="10"
+                                    DataContext="{Binding Expansions}"
+                                    x:DataType="vm:GameExpansionsViewModel">
+                            <TextBlock Classes="label" Text="{Binding ExtendsHeading}"/>
+                            <ContentControl Content="{Binding Extends}">
+                                <ContentControl.ContentTemplate>
+                                    <DataTemplate DataType="vm:ExpansionRowViewModel">
+                                        <Grid ColumnDefinitions="*,Auto,Auto,Auto"
+                                              ColumnSpacing="10">
+                                            <TextBlock Grid.Column="0" Classes="body"
+                                                       VerticalAlignment="Center"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       Text="{Binding Title}"/>
+                                            <TextBlock Grid.Column="1" Classes="data-s"
+                                                       VerticalAlignment="Center"
+                                                       Text="{Binding PlaytimeText}"/>
+                                            <TextBlock Grid.Column="2" Classes="data-s"
+                                                       VerticalAlignment="Center"
+                                                       Text="{Binding LastPlayedText}"/>
+                                            <Button Grid.Column="3" Classes="quiet"
+                                                    AutomationProperties.Name="{Binding UngroupAutomationName}"
+                                                    ToolTip.Tip="{Binding UngroupTooltip}"
+                                                    CommandParameter="{Binding}"
+                                                    Command="{Binding $parent[ContentControl].((vm:GameExpansionsViewModel)DataContext).UngroupCommand}">
+                                                <TextBlock Classes="body" FontSize="12"
+                                                           Text="{Binding UngroupLabel}"/>
+                                            </Button>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ContentControl.ContentTemplate>
+                            </ContentControl>
+                            <TextBlock Classes="body" FontSize="12"
+                                       TextWrapping="Wrap"
+                                       Foreground="{StaticResource TextDim}"
+                                       Text="{Binding ExtendsNote}"/>
+                        </StackPanel>
+                        </StackPanel>
+
+                        <!-- EXPANSIONS.
+                             The same treatment ALSO COVERS uses, with one
+                             deliberate omission: NO TOTAL. Coverage sums
+                             because two store entries are one game being
+                             played; expansions do not, because they are
+                             separate products and a sum of the two is a figure
+                             no source reported about either. Each row carries
+                             its own minutes beside its own last-played, and
+                             nothing here adds two rows together.
+
+                             The two sections are never merged: a covered
+                             title is this same game on another store, an
+                             expansion is a different product. -->
+                        <StackPanel IsVisible="{Binding ShowExpansions}">
+                        <StackPanel Spacing="10"
+                                    DataContext="{Binding Expansions}"
+                                    x:DataType="vm:GameExpansionsViewModel">
+                            <TextBlock Classes="label" Text="{Binding Heading}"/>
+                            <TextBlock Classes="body" FontSize="12"
+                                       TextWrapping="Wrap"
+                                       Foreground="{StaticResource TextDim}"
+                                       Text="{Binding Note}"/>
+
+                            <ItemsControl ItemsSource="{Binding Expansions}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="vm:ExpansionRowViewModel">
+                                        <Border BorderBrush="{StaticResource Line}"
+                                                BorderThickness="0,0,0,1"
+                                                Padding="0,9">
+                                            <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto"
+                                                  ColumnSpacing="10">
+                                                <ItemsControl Grid.Column="0"
+                                                              VerticalAlignment="Center"
+                                                              IsVisible="{Binding HasStores}"
+                                                              ToolTip.Tip="{Binding StoreNames}"
+                                                              ItemsSource="{Binding StoreChips}">
+                                                    <ItemsControl.ItemsPanel>
+                                                        <ItemsPanelTemplate>
+                                                            <StackPanel Orientation="Horizontal" Spacing="4"/>
+                                                        </ItemsPanelTemplate>
+                                                    </ItemsControl.ItemsPanel>
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <Border Classes="store-chip">
+                                                                <TextBlock Text="{Binding}"/>
+                                                            </Border>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                                <TextBlock Grid.Column="1" Classes="body"
+                                                           VerticalAlignment="Center"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           Text="{Binding Title}"/>
+                                                <TextBlock Grid.Column="2" Classes="data-s"
+                                                           VerticalAlignment="Center"
+                                                           Text="{Binding PlaytimeText}"/>
+                                                <TextBlock Grid.Column="3" Classes="data-s"
+                                                           VerticalAlignment="Center"
+                                                           Text="{Binding LastPlayedText}"/>
+                                                <Button Grid.Column="4" Classes="quiet"
+                                                        AutomationProperties.Name="{Binding UngroupAutomationName}"
+                                                        ToolTip.Tip="{Binding UngroupTooltip}"
+                                                        CommandParameter="{Binding}"
+                                                        Command="{Binding $parent[ItemsControl].((vm:GameExpansionsViewModel)DataContext).UngroupCommand}">
+                                                    <TextBlock Classes="body" FontSize="12"
+                                                               Text="{Binding UngroupLabel}"/>
+                                                </Button>
+                                            </Grid>
                                         </Border>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>

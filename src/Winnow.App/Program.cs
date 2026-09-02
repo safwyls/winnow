@@ -381,6 +381,12 @@ public static class Program
         // section; the bucket query resolves them in SQL without this.
         services.AddSingleton<IIdentityLinkRepository, IdentityLinkRepository>();
 
+        // Expansion refusals (migration 0020). Only the negative answer is
+        // stored; the affirmative one is an identity link at kind
+        // expansion_of, and the proposals themselves are derived on every scan
+        // rather than stored.
+        services.AddSingleton<IExpansionRefusalRepository, ExpansionRefusalRepository>();
+
         // Per-release achievements (§6.2). The details modal renders one row per
         // release and never a blended percentage, and this repository offers no
         // way to produce one.

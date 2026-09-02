@@ -2,6 +2,7 @@ using Winnow.App.ViewModels;
 using Winnow.Core.Repositories;
 using Winnow.Data;
 using Winnow.Data.Repositories;
+using Winnow.Resolve;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Xunit;
@@ -33,6 +34,7 @@ public sealed class MergeScreenRegistrationTests
         await screen.LoadCommand.ExecuteAsync(null);
 
         Assert.Empty(screen.Groups);
+        Assert.Empty(screen.ExpansionGroups);
         Assert.Empty(screen.LinkHistory);
         Assert.True(screen.ShowLinkHistoryEmpty);
 
@@ -71,6 +73,12 @@ public sealed class MergeScreenRegistrationTests
         services.AddSingleton<IMergeCandidateRepository, MergeCandidateRepository>();
         services.AddSingleton<IOwnershipRepository, OwnershipRepository>();
         services.AddSingleton<IResolveStateRepository, ResolveStateRepository>();
+
+        // The expansion half of the screen. Required for the same reason the
+        // link repository is: a scan the container cannot build is a segment
+        // that renders an empty list forever.
+        services.AddSingleton<IExpansionRefusalRepository, ExpansionRefusalRepository>();
+        services.AddSoftMatching();
 
         if (withLinks)
         {

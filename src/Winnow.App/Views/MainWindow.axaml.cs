@@ -711,6 +711,29 @@ public partial class MainWindow : Window
             return;
         }
 
+        // The expansion surface has its own two answers, on their own two
+        // keys. G and N rather than S and D, because the question is
+        // different and reusing the review keys would make one gesture mean
+        // "these are one game" on one segment and "this extends that" on
+        // another.
+        if (queue.IsExpansionsVisible)
+        {
+            switch (e.Key)
+            {
+                case Key.G or Key.Enter:
+                    queue.GroupExpansionsCommand.Execute(queue.SelectedExpansionGroup);
+                    e.Handled = true;
+                    break;
+
+                case Key.N:
+                    queue.NotExpansionsCommand.Execute(queue.SelectedExpansionGroup);
+                    e.Handled = true;
+                    break;
+            }
+
+            return;
+        }
+
         if (!queue.IsReviewVisible)
         {
             return;

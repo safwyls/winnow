@@ -1,4 +1,4 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Winnow.App.Services;
@@ -109,6 +109,15 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     /// different type and cannot reach any number from here.
     /// </summary>
     private SameGameResolution _resolution = SameGameResolution.Empty;
+
+    /// <summary>
+    /// The live expansion map, read from the same snapshot.
+    /// A different TYPE from <see cref="_resolution"/>, deliberately:
+    /// <c>ExpansionGrouping</c> has no <c>Resolve</c>, so it cannot be handed
+    /// to anything that computes a count, a bucket, a playtime or a
+    /// recommendation. It reaches the details modal and nothing else.
+    /// </summary>
+    private ExpansionGrouping _expansions = ExpansionGrouping.Empty;
 
     /// <summary>
     /// Every work by id, for the display title and cover of a linked child.
@@ -596,9 +605,17 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         // The live same-game map. Read once, here, beside the bucket query that
         // resolved on the same fact — the query is the authority for anything
         // that counts, this snapshot only names what covers what.
-        _resolution = _identityLinks is null
-            ? SameGameResolution.Empty
-            : (await _identityLinks.GetResolutionAsync()).SameGame;
+        if (_identityLinks is null)
+        {
+            _resolution = SameGameResolution.Empty;
+            _expansions = ExpansionGrouping.Empty;
+        }
+        else
+        {
+            var identity = await _identityLinks.GetResolutionAsync();
+            _resolution = identity.SameGame;
+            _expansions = identity.Expansions;
+        }
 
         // One read for the whole library, not one per tile. Absent facets are a
         // normal state, not an error: the backfill runs behind a library the
@@ -1014,8 +1031,107 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             DateTime.UtcNow,
             snapshots: history,
             covers: _covers,
-            coverage: await BuildCoverageAsync(target));
+            coverage: await BuildCoverageAsync(target),
+            expansions: BuildExpansions(target));
     }
+
+    /// <summary>
+    /// Builds the EXPANSIONS section and the EXTENDS line, or null when this
+    /// game neither has packs nor is one.
+    ///
+    /// <para>Derived from the rows this load already read, exactly as coverage
+    /// is, so a grouping retracted a moment ago stops showing on the very next
+    /// read. Every row carries its OWN minutes beside its OWN last-played, and
+    /// there is deliberately no total: an expansion's hours are the
+    /// expansion's, and adding them to the base game's would produce a figure
+    /// no source reported about either game.</para>
+    /// </summary>
+    private GameExpansionsViewModel? BuildExpansions(GameTileViewModel target)
+    {
+        var entry = _coverage.FirstOrDefault(e => e.OwnershipId == target.OwnershipId);
+        if (entry is null)
+        {
+            return null;
+        }
+
+        // The GAME, not the store entry: expansions hang off the work the
+        // library files this game under, which for a linked pair is the
+        // primary. A same-game child is never an expansion parent, because
+        // depth one refuses it.
+        var gameWorkId = _resolution.Resolve(entry.WorkId);
+
+        var rows = new List<ExpansionRowViewModel>();
+        foreach (var expansionWorkId in _expansions.ExpansionsOf(gameWorkId))
+        {
+            if (RowFor(expansionWorkId, expansionWorkId) is { } row)
+            {
+                rows.Add(row);
+            }
+        }
+
+        // The other end of the same relation. The row's link child is THIS
+        // game, because the link points from the pack at its base.
+        ExpansionRowViewModel? extends = null;
+        if (_expansions.BaseOf(gameWorkId) is { } baseWorkId)
+        {
+            extends = RowFor(baseWorkId, gameWorkId);
+        }
+
+        return rows.Count == 0 && extends is null
+            ? null
+            : new GameExpansionsViewModel(rows, extends, UngroupAsync);
+
+        ExpansionRowViewModel? RowFor(long workId, long childWorkId)
+        {
+            // Every visible entry of that game, its own store entries folded
+            // the way its own tile folds them. This is the game's own figure,
+            // identical to the one the grid shows for it, and it is never
+            // added to the game whose modal is open.
+            var entries = new List<CoverageEntry>();
+            var stores = new List<string>();
+            foreach (var candidate in _coverage)
+            {
+                if (_resolution.Resolve(candidate.WorkId) != workId)
+                {
+                    continue;
+                }
+
+                entries.Add(candidate);
+                if (!stores.Contains(candidate.Store, StringComparer.OrdinalIgnoreCase))
+                {
+                    stores.Add(candidate.Store);
+                }
+            }
+
+            if (entries.Count == 0)
+            {
+                // Owned but filtered out of this load — a hidden non-game, a
+                // consolidated demo, an account the user has scoped away. The
+                // modal must not report a row the grid does not stand behind.
+                return null;
+            }
+
+            var played = CoveragePlaytime.Across(entries);
+
+            return new ExpansionRowViewModel(
+                workId,
+                childWorkId,
+                _workById.TryGetValue(workId, out var work) ? work.Name : entries[0].Title,
+                [.. stores.Select(StoreNaming.Badge)],
+                string.Join(", ", stores.Select(StoreNaming.Label)),
+                played.PlaytimeMinutes,
+                played.LastPlayedAt);
+        }
+    }
+
+    /// <summary>
+    /// Retracts one expansion link from the details modal
+    /// and reloads, reopening the modal on the same entry so the user sees the
+    /// result where they asked for it. The same call the coverage section's
+    /// Separate makes, because a link is a link: nothing is deleted, and
+    /// grouping again is an ordinary act.
+    /// </summary>
+    private Task UngroupAsync(long childWorkId) => SeparateAsync(childWorkId);
 
     /// <summary>
     /// Builds the ALSO COVERS section. Derived from the rows this load

@@ -17,11 +17,13 @@ public partial class MergeLinkHistoryRowViewModel : ObservableObject
         string parentTitle,
         IReadOnlyList<string> childTitles,
         bool isLive,
-        DateTime? retractedAt)
+        DateTime? retractedAt,
+        bool isExpansionAct = false)
     {
         ArgumentNullException.ThrowIfNull(act);
         ArgumentNullException.ThrowIfNull(childTitles);
 
+        IsExpansionAct = isExpansionAct;
         ActId = act.Id;
         PerformedAt = act.PerformedAt;
         ParentTitle = parentTitle;
@@ -53,14 +55,32 @@ public partial class MergeLinkHistoryRowViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(CanRetract))]
     public partial bool IsRetracting { get; set; }
 
+    /// <summary>
+    /// True when every link this act wrote is an expansion. "All" rather than
+    /// "any", because a same-game act can carry expansion links it displaced
+    /// and re-parented, and the row must describe the act the user performed.
+    ///
+    /// <para>The row has to say which of the two relations it recorded,
+    /// because they are different facts: a same-game link says two entries are
+    /// one game, and an expansion link says one game extends another and
+    /// changes no number. A row that read the same for both would invite the
+    /// user to retract the wrong one.</para>
+    /// </summary>
+    public bool IsExpansionAct { get; }
+
     /// <summary>The row in user language: which titles this act grouped.</summary>
-    public string Description => ChildTitles.Count == 1
+    public string Description => IsExpansionAct
         ? string.Format(
-            CultureInfo.CurrentCulture, MergeCopy.LinkRowFormat, ChildTitles[0], ParentTitle)
+            CultureInfo.CurrentCulture,
+            ChildTitles.Count == 1
+                ? ExpansionCopy.GroupRowFormat
+                : ExpansionCopy.GroupRowManyFormat,
+            ChildTitles.Count == 1 ? ChildTitles[0] : ChildTitlesText,
+            ParentTitle)
         : string.Format(
             CultureInfo.CurrentCulture,
-            MergeCopy.LinkRowManyFormat,
-            ChildTitlesText,
+            ChildTitles.Count == 1 ? MergeCopy.LinkRowFormat : MergeCopy.LinkRowManyFormat,
+            ChildTitles.Count == 1 ? ChildTitles[0] : ChildTitlesText,
             ParentTitle);
 
     /// <summary>Every linked title, listed.</summary>
@@ -71,7 +91,8 @@ public partial class MergeLinkHistoryRowViewModel : ObservableObject
         ChildTitles.Count.ToString("N0", CultureInfo.CurrentCulture);
 
     /// <summary>Small uppercase label before the date.</summary>
-    public string LinkedAtLabel => MergeCopy.LinkedAtLabel;
+    public string LinkedAtLabel =>
+        IsExpansionAct ? ExpansionCopy.GroupedAtLabel : MergeCopy.LinkedAtLabel;
 
     /// <summary>When the act was recorded, local, in the data face.</summary>
     public string LinkedAtText => FormatStamp(PerformedAt);

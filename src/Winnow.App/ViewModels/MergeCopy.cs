@@ -4,8 +4,7 @@ namespace Winnow.App.ViewModels;
 /// User-facing copy for the Same Game screen. All strings in one file so the
 /// review queue, group cards, outcome reports and history can be reviewed
 /// together. Answering a group writes a link, not a merge; every label must
-/// be exact about what pressing it does, and honest that the link is
-/// currently inert in the library grid.
+/// be exact about what pressing it does.
 /// </summary>
 public static class MergeCopy
 {
@@ -18,8 +17,7 @@ public static class MergeCopy
     /// <summary>Uppercase segment label for the review queue.</summary>
     public const string SegmentReview = "REVIEW";
 
-    /// <summary>Uppercase segment label for the history of link acts and
-    /// applied merges.</summary>
+    /// <summary>Uppercase segment label for the link history.</summary>
     public const string SegmentHistory = "HISTORY";
 
     /// <summary>Tooltip on the Review segment.</summary>
@@ -28,7 +26,7 @@ public static class MergeCopy
 
     /// <summary>Tooltip on the History segment.</summary>
     public const string SegmentHistoryTooltip =
-        "Links and applied merges";
+        "Games you have linked";
 
     // ══ Review — the queue ════════════════════════════════════════════════
 
@@ -108,9 +106,8 @@ public static class MergeCopy
     /// <summary>Label beside the checkbox that decides whether a member joins.</summary>
     public const string IncludeControlLabel = "Include";
 
-    /// <summary>What answering the card does. Must be honest that the library
-    /// still shows one entry per store until later stages land.</summary>
-    public const string LinkEffect = "Entries still appear separately.";
+    /// <summary>What answering the card does in the library.</summary>
+    public const string LinkEffect = "One tile, a chip per store.";
 
     /// <summary>Names the sibling a member reaches the group through when no
     /// proposal named it and the chosen title together. <c>{0}</c> the sibling's
@@ -141,9 +138,8 @@ public static class MergeCopy
     // ══ What answering reported ════════════════
 
     /// <summary>Report after a group was linked. <c>{0}</c> the title the
-    /// library keeps, <c>{1}</c> how many titles joined it. Must not claim the
-    /// library already looks different, because nothing reads a link yet.</summary>
-    public const string LinkedReportFormat = "Linked {1} under {0}. Still shown separately.";
+    /// library keeps, <c>{1}</c> how many titles joined it.</summary>
+    public const string LinkedReportFormat = "Linked {1} under {0}.";
 
     /// <summary>Report when the answer included no member, so nothing was
     /// linked and the proposals were recorded as different games.</summary>

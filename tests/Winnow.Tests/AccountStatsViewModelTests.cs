@@ -3,6 +3,7 @@ using Winnow.Core.Domain;
 using Winnow.Core.Queries;
 using Winnow.Core.Repositories;
 using Winnow.Data.Repositories;
+using Winnow.Resolve;
 using Xunit;
 
 namespace Winnow.Tests;
@@ -412,6 +413,22 @@ public sealed class AccountStatsViewModelTests
         Assert.True(shell.IsLibraryVisible);
     }
 
+    private static MergeQueueViewModel MergeQueue(TempDatabase db)
+    {
+        var releases = new ReleaseRepository(db.Factory);
+        var links = new IdentityLinkRepository(db.Factory);
+        var refusals = new ExpansionRefusalRepository(db.Factory);
+
+        return new MergeQueueViewModel(
+            new MergeCandidateRepository(db.Factory),
+            releases,
+            new WorkRepository(db.Factory),
+            links,
+            new OwnershipRepository(db.Factory),
+            new LibraryExpansionScan(releases, links, refusals),
+            refusals);
+    }
+
     private static MainWindowViewModel Shell(TempDatabase db, AccountStatsViewModel stats)
         => new(
             new LibraryViewModel(
@@ -421,12 +438,7 @@ public sealed class AccountStatsViewModelTests
                 new WorkRepository(db.Factory),
                 new UpdateEventRepository(db.Factory),
                 covers: null),
-            new MergeQueueViewModel(
-                new MergeCandidateRepository(db.Factory),
-                new ReleaseRepository(db.Factory),
-                new WorkRepository(db.Factory),
-                new IdentityLinkRepository(db.Factory),
-                new OwnershipRepository(db.Factory)),
+            MergeQueue(db),
             DetachedStores.Create(),
             DetachedAppearance.Create(),
             DetachedFeed.Create(),

@@ -5,6 +5,7 @@ using Winnow.Core.Domain;
 using Winnow.Core.Queries;
 using Winnow.Core.Repositories;
 using Winnow.Data.Repositories;
+using Winnow.Resolve;
 using Xunit;
 
 namespace Winnow.Tests;
@@ -758,12 +759,18 @@ public sealed class ListsViewModelTests
 
         /// <summary>The shell owns the rail's list command, which is the one that toggles.</summary>
         public MergeQueueViewModel CreateMergeQueue()
-            => new(
+        {
+            var links = new IdentityLinkRepository(_db.Factory);
+            var refusals = new ExpansionRefusalRepository(_db.Factory);
+            return new MergeQueueViewModel(
                 new MergeCandidateRepository(_db.Factory),
                 Releases,
                 Works,
-                new IdentityLinkRepository(_db.Factory),
-                Ownerships);
+                links,
+                Ownerships,
+                new LibraryExpansionScan(Releases, links, refusals),
+                refusals);
+        }
 
         public IEnumerable<string> Titles(LibraryViewModel library)
             => library.VisibleTiles.Select(t => t.Title);

@@ -5,16 +5,17 @@
              x:DataType="vm:MergeQueueViewModel">
 
     <!-- The Same Game screen. One pane, a 48px header carrying a
-         two-segment control (REVIEW / HISTORY), and two surfaces under it.
+         three-segment control (REVIEW / EXPANSIONS / HISTORY), and three
+         surfaces under it.
 
          REVIEW's unit is a GROUP, not a pair: every store entry that
          resolves to the same game is one card, so answering one member
          cannot leave a sibling card stale. Answering writes a link, which
          is retractable, so no card and no row is ever terminal.
 
-         HISTORY holds three lists, each absent when empty: link acts with
-         their retraction, applied merges with their undo, and pairs
-         confirmed under the old two-step flow that were never applied.
+         HISTORY holds one list: link acts, each retractable. Migration
+         0019 retired the destructive executor and the two merge sections
+         HISTORY used to carry.
 
          No Flare anywhere on this screen: Flare marks only unread updates
          and the bucket that counts them (§2). Amber carries attention,
@@ -272,6 +273,168 @@
                                      IsChecked="{Binding IsPrimary, Mode=TwoWay}"
                                      AutomationProperties.Name="{Binding PrimaryAutomationName}"
                                      Content="{Binding PrimaryControlText}"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </DataTemplate>
+
+
+        <!-- THE BASE GAME on an expansion card.
+             The same 200x300 capsule the merge card gives its chosen title,
+             and deliberately WITHOUT the primary radio. On a same-game card
+             either title could be the one the library keeps, so the radio asks
+             a real question; here the parent is fixed by the relation, and a
+             radio would let someone assert that Civilization IV is an
+             expansion of Beyond the Sword. -->
+        <DataTemplate x:Key="ExpansionBaseTemplate" DataType="vm:MergeSideViewModel">
+            <StackPanel Width="200" Spacing="10">
+                <Border Width="200" Height="300"
+                        CornerRadius="{StaticResource RadiusTile}"
+                        ClipToBounds="True"
+                        BorderThickness="1" BorderBrush="{StaticResource LineSoft}">
+                    <Panel>
+                        <Border Background="{Binding PlaceholderBrush}"
+                                IsVisible="{Binding ShowPlaceholder}">
+                            <TextBlock Text="{Binding Title}"
+                                       FontFamily="{StaticResource DisplayFont}"
+                                       FontWeight="Bold" FontSize="22" LineHeight="24"
+                                       TextWrapping="Wrap"
+                                       Foreground="White"
+                                       VerticalAlignment="Bottom" Margin="16"/>
+                        </Border>
+                        <Image Source="{Binding Cover}" Stretch="UniformToFill"/>
+                    </Panel>
+                </Border>
+
+                <TextBlock Classes="body-l"
+                           Text="{Binding Title}"
+                           TextWrapping="Wrap" MaxLines="2"
+                           TextTrimming="CharacterEllipsis"
+                           LineHeight="19"/>
+
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock Classes="data-s" Text="{Binding YearText}"/>
+                    <TextBlock Classes="data-s" Text="."/>
+                    <TextBlock Classes="data-s" Text="{Binding ReleaseText}"/>
+                </StackPanel>
+
+                <ItemsControl ItemsSource="{Binding StoreChips}"
+                              IsVisible="{Binding HasStores}"
+                              ToolTip.Tip="{Binding StoreNames}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel Orientation="Horizontal" ItemSpacing="4" LineSpacing="4"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Classes="store-chip">
+                                <TextBlock Text="{Binding}"/>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <TextBlock Classes="body" FontSize="12"
+                           Foreground="{StaticResource TextDim}"
+                           Text="{Binding PublisherText}"
+                           TextWrapping="Wrap"/>
+            </StackPanel>
+        </DataTemplate>
+
+        <!-- ONE PROPOSED PACK, in the merge roster's grammar: include
+             checkbox, 64x96 chip, title, and one line of labelled values in
+             the data face. The values differ from the merge roster's because
+             the question does: this shows what the title ADDS to the base,
+             not how far the two titles are apart.
+
+             Rows arrive CHECKED, unlike a same-game roster row. An unchecked
+             same-game default guards against a connected component's closure
+             asserting more than any single proposal did; an expansion
+             proposal is one direct claim about one pair, already
+             corroborated, so there is no closure to guard. -->
+        <DataTemplate x:Key="ExpansionRosterRowTemplate" DataType="vm:ExpansionMemberViewModel">
+            <Border Classes="member">
+                <Grid ColumnDefinitions="Auto,64,*"
+                      RowDefinitions="Auto,Auto">
+
+                    <CheckBox Grid.Row="0" Grid.Column="0" Grid.RowSpan="2"
+                              Classes="member"
+                              Margin="0,0,14,0"
+                              VerticalAlignment="Center"
+                              IsChecked="{Binding IsIncluded, Mode=TwoWay}"
+                              AutomationProperties.Name="{Binding IncludeAutomationName}"
+                              ToolTip.Tip="{Binding IncludeControlText}"/>
+
+                    <Border Grid.Row="0" Grid.Column="1" Grid.RowSpan="2"
+                            Width="64" Height="96"
+                            VerticalAlignment="Top"
+                            CornerRadius="{StaticResource RadiusControl}"
+                            ClipToBounds="True"
+                            BorderThickness="1" BorderBrush="{StaticResource LineSoft}">
+                        <Panel>
+                            <Border Background="{Binding Side.PlaceholderBrush}"
+                                    IsVisible="{Binding Side.ShowPlaceholder}"/>
+                            <Image Source="{Binding Side.Cover}" Stretch="UniformToFill"/>
+                        </Panel>
+                    </Border>
+
+                    <StackPanel Grid.Row="0" Grid.Column="2" Spacing="6" Margin="14,0,0,0">
+                        <TextBlock Classes="body-l"
+                                   Text="{Binding Side.Title}"
+                                   TextWrapping="Wrap" MaxLines="2"
+                                   TextTrimming="CharacterEllipsis"
+                                   LineHeight="19"/>
+
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <ItemsControl ItemsSource="{Binding StoreChips}"
+                                          IsVisible="{Binding HasStores}"
+                                          ToolTip.Tip="{Binding StoreNames}"
+                                          VerticalAlignment="Center">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Horizontal" Spacing="4"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Classes="store-chip">
+                                            <TextBlock Text="{Binding}"/>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <TextBlock Classes="data-s" Text="{Binding Side.YearText}"/>
+                            <TextBlock Classes="data-s" Text="."/>
+                            <TextBlock Classes="data-s" Text="{Binding ReleasesText}"/>
+                        </StackPanel>
+
+                        <!-- The evidence, one line. What the title adds, how
+                             far apart the years are, whether the publishers
+                             agree, and whether the child's own title splits
+                             the base from the pack. -->
+                        <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,2,0,0">
+                            <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
+                                       VerticalAlignment="Center"
+                                       Text="{Binding ExtendsLabel}"/>
+                            <TextBlock Classes="data-s" VerticalAlignment="Center"
+                                       Text="{Binding SuffixText}"/>
+                            <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
+                                       VerticalAlignment="Center"
+                                       Text="{Binding YearLabel}"/>
+                            <TextBlock Classes="data-s" VerticalAlignment="Center"
+                                       Text="{Binding YearDeltaText}"/>
+                            <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
+                                       VerticalAlignment="Center"
+                                       Text="{Binding PublisherLabel}"/>
+                            <TextBlock Classes="data-s" VerticalAlignment="Center"
+                                       Text="{Binding PublisherText}"/>
+                            <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
+                                       VerticalAlignment="Center"
+                                       Text="{Binding SeparatorLabel}"/>
+                            <TextBlock Classes="data-s" VerticalAlignment="Center"
+                                       Text="{Binding SeparatorText}"/>
+                        </StackPanel>
                     </StackPanel>
                 </Grid>
             </Border>
@@ -579,6 +742,19 @@
                                 Command="{Binding ShowReviewCommand}"
                                 ToolTip.Tip="{Binding ReviewSegmentTooltip}">
                             <TextBlock Classes="display-s" Text="{Binding ReviewSegmentLabel}"/>
+                        </Button>
+                        <!-- The third surface. A segment rather than a
+                             third kind of card in the review scroll, because
+                             the two questions take different answers: REVIEW
+                             answers Same game / Different games and this
+                             answers Group / Not expansions, and one column
+                             holding both would give S and D two meanings.
+                             This surface has its own keys, G and N. -->
+                        <Button Classes="seg tab"
+                                Classes.on="{Binding IsExpansionsVisible}"
+                                Command="{Binding ShowExpansionsCommand}"
+                                ToolTip.Tip="{Binding ExpansionsSegmentTooltip}">
+                            <TextBlock Classes="display-s" Text="{Binding ExpansionsSegmentLabel}"/>
                         </Button>
                         <Button Classes="seg tab"
                                 Classes.on="{Binding IsHistoryVisible}"
@@ -889,6 +1065,164 @@
                                        LineHeight="22"
                                        Foreground="{StaticResource TextDim}"
                                        Text="{Binding EmptyMessage}"/>
+                        </StackPanel>
+                    </Border>
+
+                </Panel>
+            </Grid>
+
+            <!-- EXPANSIONS.
+                 The one-to-many relation presented once: a base game and every
+                 pack proposed under it, on one card, applied as one act, with
+                 the user free to take none, some or all. Grouping is
+                 presentation only: no count, no playtime, no bucket and no
+                 recommendation moves, and the card says so rather than
+                 leaving the user to notice that nothing changed. -->
+            <Grid RowDefinitions="Auto,*" IsVisible="{Binding IsExpansionsVisible}">
+
+                <Border Grid.Row="0"
+                        Padding="24,20,24,18"
+                        BorderBrush="{StaticResource Line}"
+                        BorderThickness="0,0,0,1">
+                  <StackPanel Spacing="14">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="7">
+                            <TextBlock Classes="display-l" Text="{Binding ExpansionsQuestion}"/>
+                            <TextBlock Classes="body"
+                                       MaxWidth="620"
+                                       TextWrapping="Wrap"
+                                       LineHeight="19"
+                                       IsVisible="{Binding HasExpansions}"
+                                       Foreground="{StaticResource TextDim}"
+                                       Text="{Binding ExpansionsIntro}"/>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8"
+                                    VerticalAlignment="Top"
+                                    IsVisible="{Binding HasExpansions}">
+                            <TextBlock Classes="data" FontSize="22"
+                                       Text="{Binding ExpansionCountText}"
+                                       VerticalAlignment="Bottom"/>
+                            <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
+                                       Text="{Binding ExpansionCountLabel}"
+                                       Margin="0,0,0,3"
+                                       VerticalAlignment="Bottom"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <Border Classes="note attention" IsVisible="{Binding HasReport}">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Grid.Column="0"
+                                       Classes="body" FontSize="12" LineHeight="18"
+                                       VerticalAlignment="Center"
+                                       Margin="0,0,14,0"
+                                       TextWrapping="Wrap"
+                                       Text="{Binding ReportMessage}"/>
+                            <Button Grid.Column="1"
+                                    Classes="answer different"
+                                    VerticalAlignment="Center"
+                                    IsVisible="{Binding CanRetractReport}"
+                                    Content="{Binding ReportRetractButtonText}"
+                                    AutomationProperties.Name="{Binding ReportRetractAutomationName}"
+                                    ToolTip.Tip="{Binding ReportRetractTooltipText}"
+                                    Command="{Binding RetractReportCommand}"/>
+                        </Grid>
+                    </Border>
+                  </StackPanel>
+                </Border>
+
+                <Panel Grid.Row="1">
+
+                    <ScrollViewer IsVisible="{Binding HasExpansions}"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  VerticalScrollBarVisibility="Auto">
+                      <ItemsControl Margin="24,20,24,24"
+                                    ItemsSource="{Binding ExpansionGroups}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="vm:ExpansionGroupViewModel">
+                                <Border Classes="card"
+                                        Classes.selected="{Binding IsSelected}">
+                                    <Grid RowDefinitions="Auto,Auto,Auto,Auto">
+
+                                        <Grid Grid.Row="0"
+                                              ColumnDefinitions="Auto,*,Auto,Auto"
+                                              Margin="0,0,0,16">
+                                            <TextBlock Grid.Column="0" Classes="label"
+                                                       Text="{Binding BaseLabel}"
+                                                       VerticalAlignment="Bottom"
+                                                       Margin="0,0,10,2"/>
+                                            <TextBlock Grid.Column="1" Classes="body-l"
+                                                       VerticalAlignment="Bottom"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       Text="{Binding BaseTitle}"/>
+                                            <TextBlock Grid.Column="2" Classes="data"
+                                                       FontSize="20"
+                                                       VerticalAlignment="Bottom"
+                                                       Margin="0,0,8,0"
+                                                       Text="{Binding MemberCountText}"/>
+                                            <TextBlock Grid.Column="3" Classes="label"
+                                                       FontSize="10" LetterSpacing="1"
+                                                       VerticalAlignment="Bottom"
+                                                       Margin="0,0,0,2"
+                                                       Text="{Binding MemberCountLabel}"/>
+                                        </Grid>
+
+                                        <Grid Grid.Row="1" ColumnDefinitions="200,*">
+                                            <ContentControl Grid.Column="0"
+                                                            Content="{Binding Base}"
+                                                            ContentTemplate="{StaticResource ExpansionBaseTemplate}"/>
+                                            <ItemsControl Grid.Column="1"
+                                                          Margin="28,0,0,0"
+                                                          ItemsSource="{Binding Members}"
+                                                          ItemTemplate="{StaticResource ExpansionRosterRowTemplate}"/>
+                                        </Grid>
+
+                                        <Border Grid.Row="2" Classes="note" Margin="0,16,0,0">
+                                            <TextBlock Classes="body" FontSize="12"
+                                                       LineHeight="17"
+                                                       TextWrapping="Wrap"
+                                                       Foreground="{StaticResource TextDim}"
+                                                       Text="{Binding EffectLine}"/>
+                                        </Border>
+
+                                        <StackPanel Grid.Row="3"
+                                                    Orientation="Horizontal"
+                                                    Spacing="12"
+                                                    HorizontalAlignment="Center"
+                                                    Margin="0,16,0,0">
+                                            <Button Classes="answer same"
+                                                    Content="{Binding GroupButtonText}"
+                                                    IsEnabled="{Binding !IsDecided}"
+                                                    AutomationProperties.Name="{Binding GroupAutomationName}"
+                                                    ToolTip.Tip="{Binding GroupTooltip}"
+                                                    Command="{Binding $parent[UserControl].((vm:MergeQueueViewModel)DataContext).GroupExpansionsCommand}"
+                                                    CommandParameter="{Binding}"/>
+                                            <Button Classes="answer different"
+                                                    Content="{Binding NotExpansionsButtonText}"
+                                                    IsEnabled="{Binding !IsDecided}"
+                                                    AutomationProperties.Name="{Binding NotExpansionsAutomationName}"
+                                                    ToolTip.Tip="{Binding NotExpansionsTooltip}"
+                                                    Command="{Binding $parent[UserControl].((vm:MergeQueueViewModel)DataContext).NotExpansionsCommand}"
+                                                    CommandParameter="{Binding}"/>
+                                        </StackPanel>
+
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                    </ScrollViewer>
+
+                    <Border IsVisible="{Binding ShowExpansionsEmpty}" Padding="32">
+                        <StackPanel MaxWidth="460" Spacing="12"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center">
+                            <TextBlock Classes="body-l"
+                                       TextWrapping="Wrap"
+                                       TextAlignment="Center"
+                                       LineHeight="22"
+                                       Foreground="{StaticResource TextDim}"
+                                       Text="{Binding ExpansionsEmptyMessage}"/>
                         </StackPanel>
                     </Border>
 

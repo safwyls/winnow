@@ -35,6 +35,21 @@ public enum IdentityLinkRefusal
 
     /// <summary>The act id passed to retraction does not exist.</summary>
     ActNotFound,
+
+    /// <summary>
+    /// An <c>expansion_of</c> act named a child that is itself a live parent.
+    /// Refused rather than repaired.
+    ///
+    /// <para>Depth one normally re-parents the children of a work that is
+    /// becoming a child, inside the same act. That is right for
+    /// <c>same_game</c>, where it keeps one statement true. It is wrong here:
+    /// grouping Beyond the Sword under Civilization IV, when Beyond the Sword
+    /// already holds its GOG twin as one game, would move that twin's
+    /// same-game link onto Civilization IV and fold its playtime in. An
+    /// expansion link must move no number, so the act is refused and the user
+    /// separates the entry first.</para>
+    /// </summary>
+    ExpansionChildIsAlreadyAParent,
 }
 
 /// <summary>

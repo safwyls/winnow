@@ -7,14 +7,15 @@ using Winnow.Core.Merging;
 using Winnow.Core.Repositories;
 using Winnow.Covers;
 using Winnow.Covers.Igdb;
+using Winnow.Resolve;
 using Winnow.Resolve.Matching;
 
 namespace Winnow.App.ViewModels;
 
 /// <summary>
-/// The Same Game screen. One pane with a 48px header and a two-segment
-/// control, REVIEW / HISTORY, in the same grammar the settings surface uses
-/// for PLATFORMS / APPEARANCE.
+/// The Same Game screen. One pane with a 48px header and a three-segment
+/// control, REVIEW / EXPANSIONS / HISTORY, in the same grammar the settings
+/// surface uses for PLATFORMS / APPEARANCE.
 ///
 /// <para>REVIEW's unit is a GROUP, never a pair. Pending proposals are resolved
 /// through the live link map, proposals whose two sides are already one game are
@@ -42,6 +43,8 @@ public partial class MergeQueueViewModel : ObservableObject
     private readonly IWorkRepository _works;
     private readonly IIdentityLinkRepository _links;
     private readonly IOwnershipRepository _ownership;
+    private readonly LibraryExpansionScan _expansions;
+    private readonly IExpansionRefusalRepository _expansionRefusals;
     private readonly ICoverCache? _covers;
     private readonly IResolveStateRepository? _resolveState;
 
@@ -49,6 +52,9 @@ public partial class MergeQueueViewModel : ObservableObject
     private double _coverWidthPixels;
 
     private bool _loaded;
+
+    /// <summary>True once one expansion scan has completed in this session.</summary>
+    private bool _scannedExpansions;
 
     /// <summary>
     /// The link and ownership repositories are required, not optional. A type
@@ -62,6 +68,8 @@ public partial class MergeQueueViewModel : ObservableObject
         IWorkRepository works,
         IIdentityLinkRepository links,
         IOwnershipRepository ownership,
+        LibraryExpansionScan expansions,
+        IExpansionRefusalRepository expansionRefusals,
         ICoverCache? covers = null,
         IResolveStateRepository? resolveState = null)
     {
@@ -70,6 +78,8 @@ public partial class MergeQueueViewModel : ObservableObject
         _works = works;
         _links = links;
         _ownership = ownership;
+        _expansions = expansions;
+        _expansionRefusals = expansionRefusals;
         _covers = covers;
         _resolveState = resolveState;
     }
@@ -86,12 +96,30 @@ public partial class MergeQueueViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(IsReviewVisible))]
     public partial bool IsHistoryVisible { get; set; }
 
+    /// <summary>
+    /// True when the EXPANSIONS surface is up.
+    ///
+    /// <para>A third segment rather than a third kind of card in one scroll,
+    /// and the reason is that the two surfaces ask different questions with
+    /// different answers. REVIEW asks "same game?" and answers Same game /
+    /// Different games; this asks "expansion?" and answers Group / Not
+    /// expansions. Interleaving them would put two answer vocabularies in one
+    /// column and give S and D two meanings.</para>
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsReviewVisible))]
+    public partial bool IsExpansionsVisible { get; set; }
+
     /// <summary>True when the review queue is the visible surface.</summary>
-    public bool IsReviewVisible => !IsHistoryVisible;
+    public bool IsReviewVisible => !IsHistoryVisible && !IsExpansionsVisible;
 
     /// <summary>Switches the segmented control to REVIEW.</summary>
     [RelayCommand]
-    private void ShowReview() => IsHistoryVisible = false;
+    private void ShowReview()
+    {
+        IsHistoryVisible = false;
+        IsExpansionsVisible = false;
+    }
 
     /// <summary>Switches to HISTORY, rebuilding the list from the table.
     /// Recomputed on every arrival because the link log moves whenever a
@@ -99,8 +127,18 @@ public partial class MergeQueueViewModel : ObservableObject
     [RelayCommand]
     private async Task ShowHistoryAsync(CancellationToken ct)
     {
+        IsExpansionsVisible = false;
         IsHistoryVisible = true;
         LinkHistory = await BuildLinkHistoryAsync(ct);
+    }
+
+    /// <summary>Switches the segmented control to EXPANSIONS. The cards were
+    /// built by the last load, so arriving here costs no scan.</summary>
+    [RelayCommand]
+    private void ShowExpansions()
+    {
+        IsHistoryVisible = false;
+        IsExpansionsVisible = true;
     }
 
     // ── The review queue ─────────────────────────────────────────────────────
@@ -146,6 +184,60 @@ public partial class MergeQueueViewModel : ObservableObject
 
     /// <summary>Standing explanation under the screen title.</summary>
     public string IntroMessage => MergeCopy.QueueIntro;
+
+    // ── The expansion queue ──────────────────────────────────────────────────
+
+    /// <summary>
+    /// Base games with expansions proposed under them, one
+    /// card each, base work id ascending. DERIVED on every load rather than
+    /// stored, for the reason §6.1 gives about buckets: the detector's guards
+    /// will be tuned, and a stored proposal computed under an older rule rots.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(
+        nameof(ExpansionCount), nameof(ExpansionCountText), nameof(HasExpansions),
+        nameof(ShowExpansionsEmpty))]
+    public partial IReadOnlyList<ExpansionGroupViewModel> ExpansionGroups { get; set; } = [];
+
+    /// <summary>The card the keyboard acts on, or null when the surface is empty.</summary>
+    [ObservableProperty]
+    public partial ExpansionGroupViewModel? SelectedExpansionGroup { get; set; }
+
+    /// <summary>Number of base games still waiting for an answer.</summary>
+    public int ExpansionCount => ExpansionGroups.Count;
+
+    /// <summary>Plex Mono, tabular, grouped — every number in the app (§3).</summary>
+    public string ExpansionCountText =>
+        ExpansionCount.ToString("N0", CultureInfo.CurrentCulture);
+
+    /// <summary>Uppercase label beside the count. The unit is a base game, not a pack.</summary>
+    public string ExpansionCountLabel => ExpansionCopy.PendingCountLabel;
+
+    /// <summary>True when there are cards to answer.</summary>
+    public bool HasExpansions => ExpansionCount > 0;
+
+    /// <summary>True once the screen has loaded and the expansion surface is empty.</summary>
+    public bool ShowExpansionsEmpty => _loaded && ExpansionCount == 0;
+
+    /// <summary>
+    /// Empty-state message: distinguishes "the scan found nothing" from "the
+    /// scan has not finished yet".
+    /// </summary>
+    public string ExpansionsEmptyMessage => _scannedExpansions
+        ? ExpansionCopy.EmptyScanned
+        : ExpansionCopy.EmptyNotScanned;
+
+    /// <summary>The question this surface asks, display L.</summary>
+    public string ExpansionsQuestion => ExpansionCopy.ScreenQuestion;
+
+    /// <summary>Standing explanation under that question: display only, retractable.</summary>
+    public string ExpansionsIntro => ExpansionCopy.Intro;
+
+    /// <summary>Label on the segment showing this surface.</summary>
+    public string ExpansionsSegmentLabel => ExpansionCopy.SegmentExpansions;
+
+    /// <summary>Tooltip on that segment.</summary>
+    public string ExpansionsSegmentTooltip => ExpansionCopy.SegmentExpansionsTooltip;
 
     // ── History: link acts ───────────────────────────────────────────────────
 
@@ -254,10 +346,149 @@ public partial class MergeQueueViewModel : ObservableObject
 
         _loaded = true;
         Groups = await BuildGroupsAsync(pending, library, resolution, ct);
+        ExpansionGroups = await BuildExpansionGroupsAsync(ct);
         LinkHistory = await BuildLinkHistoryAsync(ct);
 
         Select(Groups.Count > 0 ? Groups[0] : null);
+        SelectExpansion(ExpansionGroups.Count > 0 ? ExpansionGroups[0] : null);
         RequestCovers(_coverWidthPixels);
+    }
+
+    // ── Answering an expansion group ─────────────────────────────────────────
+
+    /// <summary>
+    /// Groups every checked pack under the base game, in one act and one
+    /// transaction, and records a refusal for every pack the user left
+    /// unchecked, so an unchecked pack is an answer rather than a card that
+    /// comes back on the next scan.
+    ///
+    /// <para>The link is written at kind <c>expansion_of</c>, which no query
+    /// that produces a number reads: the bucket query filters on
+    /// <c>same_game</c>, and <c>ExpansionGrouping</c> has no resolver at all.
+    /// So this write changes what the details modal shows and nothing
+    /// else.</para>
+    /// </summary>
+    [RelayCommand]
+    private async Task GroupExpansionsAsync(ExpansionGroupViewModel? group, CancellationToken ct)
+    {
+        if (group is null || group.IsDecided)
+        {
+            return;
+        }
+
+        group.IsDecided = true;
+
+        var children = group.IncludedChildWorkIds;
+        var refused = group.RefusedPairs;
+        var baseTitle = group.BaseTitle;
+
+        ReportRetractActId = null;
+
+        if (children.Count == 0)
+        {
+            // Taking none is the same answer as "not expansions", recorded the
+            // same way. It is the "none" of none, some or all.
+            await _expansionRefusals.RefuseAsync(group.AllPairs, null, ct);
+            ReportMessage = ExpansionCopy.NothingGrouped;
+            RemoveExpansion(group);
+            return;
+        }
+
+        var actId = await _links.LinkAsync(
+            new IdentityLinkRequest
+            {
+                ParentWorkId = group.BaseWorkId,
+                ChildWorkIds = children,
+                Kind = IdentityLinkKinds.ExpansionOf,
+                Source = IdentityLinkSources.User,
+            },
+            ct);
+
+        await _expansionRefusals.RefuseAsync(refused, null, ct);
+
+        ReportRetractActId = actId;
+        ReportMessage = string.Format(
+            CultureInfo.CurrentCulture,
+            ExpansionCopy.GroupedReportFormat,
+            baseTitle,
+            children.Count.ToString("N0", CultureInfo.CurrentCulture));
+
+        RemoveExpansion(group);
+    }
+
+    /// <summary>
+    /// Records every pack on the card as a separate game and removes the card.
+    /// Writes no link, so nothing about the library changes at all.
+    /// </summary>
+    [RelayCommand]
+    private async Task NotExpansionsAsync(ExpansionGroupViewModel? group, CancellationToken ct)
+    {
+        if (group is null || group.IsDecided)
+        {
+            return;
+        }
+
+        group.IsDecided = true;
+        await _expansionRefusals.RefuseAsync(group.AllPairs, null, ct);
+        RemoveExpansion(group);
+    }
+
+    /// <summary>Selection on the expansion surface, shared by pointer and keyboard.</summary>
+    /// <param name="group">The card to select, or null to select nothing.</param>
+    public void SelectExpansion(ExpansionGroupViewModel? group)
+    {
+        if (ReferenceEquals(SelectedExpansionGroup, group))
+        {
+            return;
+        }
+
+        if (SelectedExpansionGroup is { } previous)
+        {
+            previous.IsSelected = false;
+        }
+
+        SelectedExpansionGroup = group;
+        if (group is not null)
+        {
+            group.IsSelected = true;
+        }
+    }
+
+    private void RemoveExpansion(ExpansionGroupViewModel group)
+    {
+        var index = IndexOfExpansion(group);
+
+        var remaining = new List<ExpansionGroupViewModel>(ExpansionGroups.Count);
+        foreach (var existing in ExpansionGroups)
+        {
+            if (!ReferenceEquals(existing, group))
+            {
+                remaining.Add(existing);
+            }
+        }
+
+        ExpansionGroups = remaining;
+        SelectExpansion(remaining.Count == 0
+            ? null
+            : remaining[Math.Clamp(index, 0, remaining.Count - 1)]);
+    }
+
+    private int IndexOfExpansion(ExpansionGroupViewModel? group)
+    {
+        if (group is null)
+        {
+            return -1;
+        }
+
+        for (var i = 0; i < ExpansionGroups.Count; i++)
+        {
+            if (ReferenceEquals(ExpansionGroups[i], group))
+            {
+                return i;
+            }
+        }
+
+        return -1;
     }
 
     // ── Answering ────────────────────────────────────────────────────────────
@@ -440,6 +671,11 @@ public partial class MergeQueueViewModel : ObservableObject
         {
             group.RequestCovers(displayWidthPixels);
         }
+
+        foreach (var group in ExpansionGroups)
+        {
+            group.RequestCovers(displayWidthPixels);
+        }
     }
 
     // ── Rebuilding ───────────────────────────────────────────────────────────
@@ -502,7 +738,7 @@ public partial class MergeQueueViewModel : ObservableObject
             {
                 members.Add(new MergeGroupMemberViewModel(
                     member.WorkId,
-                    await DescribeWorkAsync(member, library, ct),
+                    await DescribeWorkAsync(member.WorkId, member.ReleaseIds, library, ct),
                     member.ReleaseIds,
                     member.BestScore,
                     member.IsDefaultIncluded));
@@ -525,13 +761,16 @@ public partial class MergeQueueViewModel : ObservableObject
     // title is the one the library would keep. The cover key comes from the
     // store entry, because that is where a Steam appid lives.
     private async Task<MergeSideViewModel> DescribeWorkAsync(
-        MergeGroupMember member, LibrarySnapshot library, CancellationToken ct)
+        long workId,
+        IReadOnlyList<long> releaseIds,
+        LibrarySnapshot library,
+        CancellationToken ct)
     {
-        var work = await _works.GetAsync(member.WorkId, ct);
-        var releaseId = member.ReleaseIds.Count > 0 ? member.ReleaseIds[0] : 0;
+        var work = await _works.GetAsync(workId, ct);
+        var releaseId = releaseIds.Count > 0 ? releaseIds[0] : 0;
 
         CoverKey? coverKey = null;
-        foreach (var candidate in member.ReleaseIds)
+        foreach (var candidate in releaseIds)
         {
             if (library.CoverKeys.TryGetValue(candidate, out var key))
             {
@@ -546,7 +785,7 @@ public partial class MergeQueueViewModel : ObservableObject
         }
 
         var stores = new List<string>();
-        foreach (var candidate in member.ReleaseIds)
+        foreach (var candidate in releaseIds)
         {
             if (!library.Stores.TryGetValue(candidate, out var owned))
             {
@@ -570,8 +809,68 @@ public partial class MergeQueueViewModel : ObservableObject
             work?.Publisher,
             coverKey,
             _covers,
-            member.ReleaseIds,
+            releaseIds,
             stores);
+    }
+
+    /// <summary>
+    /// Builds one card per base game from a fresh scan.
+    /// The proposals are re-derived here rather than read from a table, so a
+    /// pack the user just grouped, refused or separated is gone or back on the
+    /// very next load with no reconciliation pass to write.
+    /// </summary>
+    private async Task<IReadOnlyList<ExpansionGroupViewModel>> BuildExpansionGroupsAsync(
+        CancellationToken ct)
+    {
+        var report = await _expansions.ScanAsync(ct);
+
+        _scannedExpansions = true;
+        OnPropertyChanged(nameof(ExpansionsEmptyMessage));
+
+        if (report.Groups.Count == 0)
+        {
+            return [];
+        }
+
+        var releaseIds = new HashSet<long>();
+        foreach (var group in report.Groups)
+        {
+            foreach (var releaseId in group.Base.ReleaseIds)
+            {
+                releaseIds.Add(releaseId);
+            }
+
+            foreach (var member in group.Members)
+            {
+                foreach (var releaseId in member.Work.ReleaseIds)
+                {
+                    releaseIds.Add(releaseId);
+                }
+            }
+        }
+
+        var library = await DescribeAsync(releaseIds, ct);
+
+        var cards = new List<ExpansionGroupViewModel>(report.Groups.Count);
+        foreach (var group in report.Groups)
+        {
+            var members = new List<ExpansionMemberViewModel>(group.Members.Count);
+            foreach (var member in group.Members)
+            {
+                members.Add(new ExpansionMemberViewModel(
+                    member.Work.WorkId,
+                    await DescribeWorkAsync(
+                        member.Work.WorkId, member.Work.ReleaseIds, library, ct),
+                    member.Evidence));
+            }
+
+            cards.Add(new ExpansionGroupViewModel(
+                group.Base.WorkId,
+                await DescribeWorkAsync(group.Base.WorkId, group.Base.ReleaseIds, library, ct),
+                members));
+        }
+
+        return cards;
     }
 
     private async Task<IReadOnlyList<MergeLinkHistoryRowViewModel>> BuildLinkHistoryAsync(
@@ -633,9 +932,21 @@ public partial class MergeQueueViewModel : ObservableObject
             var live = false;
             DateTime? retractedAt = null;
 
+            // An act is an expansion act when EVERY link it wrote is one. The
+            // test is "all" rather than "any" because a same-game act can
+            // carry expansion links it displaced and re-parented, and the row
+            // must describe the act the user performed, not the repair it
+            // happened to include.
+            var expansion = true;
+
             foreach (var link in members)
             {
                 childTitles.Add(await NameOfAsync(link.ChildWorkId));
+                if (link.Kind != IdentityLinkKinds.ExpansionOf)
+                {
+                    expansion = false;
+                }
+
                 if (link.IsLive)
                 {
                     live = true;
@@ -647,7 +958,7 @@ public partial class MergeQueueViewModel : ObservableObject
             }
 
             rows.Add(new MergeLinkHistoryRowViewModel(
-                act, await NameOfAsync(parentWorkId), childTitles, live, retractedAt));
+                act, await NameOfAsync(parentWorkId), childTitles, live, retractedAt, expansion));
         }
 
         rows.Reverse();
