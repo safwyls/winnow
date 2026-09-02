@@ -127,6 +127,8 @@ public partial class MergeApplyViewModel : ObservableObject
         MergeBlocker.DistinctEditions => MergeCopy.RefusedDistinctEditions,
         MergeBlocker.AchievementsOnBothSides => MergeCopy.RefusedAchievementsOnBothSides,
         MergeBlocker.ConflictingUpdateEvents => MergeCopy.RefusedConflictingUpdateEvents,
+        MergeBlocker.PreferredSurvivorNotInPair => MergeCopy.RefusedPreferredSurvivorNotInPair,
+        MergeBlocker.SurvivorCannotHoldIgdbId => MergeCopy.RefusedSurvivorCannotHoldIgdbId,
         _ => MergeCopy.RefusedAlreadyApplied,
     };
 

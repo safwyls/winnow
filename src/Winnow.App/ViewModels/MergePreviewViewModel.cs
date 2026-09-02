@@ -49,15 +49,16 @@ public sealed class MergePreviewViewModel
     public MergeBlocker Blocker => Plan.Blocker;
 
     /// <summary>
-    /// True when the plan can do nothing at all. For a pending pair this means
-    /// the two releases already sit under one work and a collapse blocker
-    /// (different editions, achievements on both sides, or conflicting update
-    /// events) forbids collapsing the two rows as well. Both answers stay
-    /// enabled on purpose: disabling them would strand the pair in the queue
-    /// forever, and the only way out would be "Different games", which would
-    /// record a rejection that is false. An answer that files a decision and
-    /// changes nothing is honest as long as the card says so first; a queue
-    /// that cannot be emptied is not.
+    /// True when the plan can do nothing at all. A pending pair whose two
+    /// releases already sit under one work is now filtered out of
+    /// <c>GetPendingAsync</c> and pruned from the queue at refresh time, so
+    /// this state is unreachable from a review card under normal operation.
+    /// The machinery stays as the honest fallback for a pair answered out
+    /// from under the screen (for instance, by applying a neighbour that
+    /// puts both releases under one work). Both answers stay enabled so
+    /// the pair does not strand in the queue; an answer that files the
+    /// decision and changes nothing is honest as long as the card says so
+    /// first.
     /// </summary>
     public bool IsBlocked => Mode == MergeMode.NothingToDo;
 
@@ -75,6 +76,34 @@ public sealed class MergePreviewViewModel
                 MergeCopy.PreviewSurvivorUnnamedFormat,
                 SurvivingTitle,
                 MergeApplyViewModel.ReleaseLabel(AbsorbedReleaseId));
+
+    /// <summary>
+    /// Which rung of the ladder decided <see cref="MergePlan.SurvivingWorkId"/>.
+    /// The reason arrives as an enum from the plan and is worded here, so the
+    /// repository never builds a sentence.
+    /// </summary>
+    public MergeSurvivorReason SurvivorReason => Plan.SurvivorReason;
+
+    /// <summary>The reason worded for display, or empty when there is nothing to say.</summary>
+    public string SurvivorReasonText => SurvivorReason switch
+    {
+        MergeSurvivorReason.IgdbMatch => MergeCopy.SurvivorReasonIgdbMatch,
+        MergeSurvivorReason.NamedByStore => MergeCopy.SurvivorReasonNamedByStore,
+        MergeSurvivorReason.MostStoreEntries => MergeCopy.SurvivorReasonMostStoreEntries,
+        MergeSurvivorReason.AddedFirst => MergeCopy.SurvivorReasonAddedFirst,
+        MergeSurvivorReason.ChosenByYou => MergeCopy.SurvivorReasonChosenByYou,
+        _ => string.Empty,
+    };
+
+    /// <summary>
+    /// True when the card should show the WHY line. False when the plan is
+    /// blocked (no survivor was chosen) or when the reason is one the UI
+    /// does not word (None, AlreadyOneGame).
+    /// </summary>
+    public bool HasSurvivorReason => !IsBlocked && SurvivorReasonText.Length > 0;
+
+    /// <summary>Small uppercase label rendered beside <see cref="SurvivorReasonText"/>.</summary>
+    public string SurvivorReasonLabel => MergeCopy.SurvivorReasonLabel;
 
     /// <summary>
     /// Line two. What happens to the two store entries, or, on a blocked pair,
@@ -101,13 +130,12 @@ public sealed class MergePreviewViewModel
     public string SameGameTooltip =>
         IsBlocked ? MergeCopy.SameGameBlockedTooltip : MergeCopy.SameGameTooltip;
 
-    // Only the three collapse blockers (DistinctEditions, AchievementsOnBothSides,
-    // ConflictingUpdateEvents) imply the two entries already sit under one work,
-    // and only they may claim so. CandidateNotFound has its own sentence. Every
-    // other blocker, including AlreadyApplied which the planner cannot produce
-    // but the type admits, falls through to a sentence that asserts nothing about
-    // the library's state; asserting "already one game" for a pair answered out
-    // from under the screen would be false.
+    // A pending pair whose two releases already sit under one work is now
+    // filtered out of GetPendingAsync, so PreviewBlockedAlreadyOneGame is
+    // unreachable from a review card. It remains as the fallback for a pair
+    // answered out from under the screen. CandidateNotFound has its own
+    // sentence. Every other blocker falls through to a sentence that asserts
+    // nothing about the library's state.
     private string BlockedLine => Blocker switch
     {
         MergeBlocker.DistinctEditions

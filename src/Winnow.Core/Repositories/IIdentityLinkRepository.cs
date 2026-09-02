@@ -1,0 +1,39 @@
+using Winnow.Core.Identity;
+
+namespace Winnow.Core.Repositories;
+
+/// <summary>
+/// Reads and writes identity links (migration 0018). This stage ships INERT:
+/// the repository is registered but nothing reads a link yet, so no query,
+/// screen or count changes behaviour. TASK-70.3 onward injects it.
+/// </summary>
+public interface IIdentityLinkRepository
+{
+    /// <summary>The live link map as one immutable snapshot, from one query.</summary>
+    Task<IdentityResolution> GetResolutionAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Links a set of children to one parent under one act, in one transaction.
+    /// Re-parents any existing children of a work that is itself becoming a child,
+    /// inside the same act. Returns the act id, which is the handle for undo.
+    /// </summary>
+    Task<long> LinkAsync(IdentityLinkRequest request, CancellationToken ct = default);
+
+    /// <summary>
+    /// Retracts a whole act. Returns false when the act has no live links left
+    /// (already retracted), which is a no-op rather than an error: retracting
+    /// twice is safe because idempotent undo is the fix for the user's complaint
+    /// that undo made a pair permanently unmergeable.
+    /// </summary>
+    Task<bool> RetractActAsync(long actId, string? note = null, CancellationToken ct = default);
+
+    /// <summary>
+    /// Every row for a work, live and retracted, because the table is the
+    /// history. Pass null for all works.
+    /// </summary>
+    Task<IReadOnlyList<IdentityLink>> GetHistoryAsync(
+        long? workId = null, CancellationToken ct = default);
+
+    /// <summary>Every act, ordered by id.</summary>
+    Task<IReadOnlyList<IdentityAct>> GetActsAsync(CancellationToken ct = default);
+}

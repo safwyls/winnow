@@ -12,8 +12,9 @@ namespace Winnow.Tests;
 /// editions preserved as two releases under one work, achievements never blended
 /// across platforms, and idempotency decided from state rather than from the
 /// application log. Also covers the cascade tripwire, the canonicality
-/// constraints F20 asks for, and repointing of merge candidates involving the
-/// absorbed release.
+/// constraints F20 asks for, repointing of merge candidates involving the
+/// absorbed release, and (TASK-70.1) the survivor reason the plan reports and
+/// the survivor-choice contract.
 /// </summary>
 public class MergeExecutionTests
 {
@@ -108,6 +109,157 @@ public class MergeExecutionTests
             "SELECT summary FROM works WHERE id = @id;", new { id = seed.LeftWorkId }));
         Assert.Equal("filled in", after.ExecuteScalar<string>(
             "SELECT publisher FROM works WHERE id = @id;", new { id = seed.LeftWorkId }));
+    }
+
+    // ── The plan says why the survivor won (TASK-70.1) ───────────────────────
+
+    /// <summary>
+    /// The plan carries the reason the survivor was chosen, not just the survivor
+    /// itself. Two unenriched works report <c>AddedFirst</c>; enriching one with
+    /// an igdb_id shifts the reason to <c>IgdbMatch</c>.
+    /// </summary>
+    [Fact]
+    public async Task The_plan_names_the_rung_that_decided_the_survivor()
+    {
+        using var db = new TempDatabase();
+        var seed = Seed(db, leftStore: "steam", rightStore: "epic");
+        var repository = new MergeExecutionRepository(db.Factory);
+
+        // Two unenriched works, one release each: nothing discriminates but the
+        // order they were ingested in, and the plan admits exactly that.
+        var plain = await repository.PreviewAsync(new MergeRequest { CandidateId = seed.CandidateId });
+        Assert.Equal(seed.LeftWorkId, plain.SurvivingWorkId);
+        Assert.Equal(MergeSurvivorReason.AddedFirst, plain.SurvivorReason);
+
+        using (var conn = db.Factory.Open())
+        {
+            conn.Execute(
+                "UPDATE works SET igdb_id = 4242 WHERE id = @id;", new { id = seed.RightWorkId });
+        }
+
+        var enriched = await repository.PreviewAsync(new MergeRequest { CandidateId = seed.CandidateId });
+        Assert.Equal(seed.RightWorkId, enriched.SurvivingWorkId);
+        Assert.Equal(MergeSurvivorReason.IgdbMatch, enriched.SurvivorReason);
+    }
+
+    /// <summary>
+    /// A preferred surviving work overrides the ladder and applies the merge in
+    /// the chosen direction. The plan reports <c>ChosenByYou</c>, the database
+    /// keeps the chosen side, and the other side is gone.
+    /// </summary>
+    [Fact]
+    public async Task A_chosen_survivor_overrides_the_ladder_and_applies_in_that_direction()
+    {
+        using var db = new TempDatabase();
+        var seed = Seed(db, leftStore: "steam", rightStore: "epic");
+
+        // Nothing discriminates the two works, so the ladder would keep the
+        // left one on ingestion order alone. The user picks the right one.
+        var repository = new MergeExecutionRepository(db.Factory);
+        Assert.Equal(
+            MergeSurvivorReason.AddedFirst,
+            (await repository.PreviewAsync(new MergeRequest { CandidateId = seed.CandidateId }))
+                .SurvivorReason);
+
+        var request = new MergeRequest
+        {
+            CandidateId = seed.CandidateId,
+            PreferredSurvivingWorkId = seed.RightWorkId,
+        };
+
+        var plan = await repository.PreviewAsync(request);
+        Assert.Equal(seed.RightWorkId, plan.SurvivingWorkId);
+        Assert.Equal(seed.LeftWorkId, plan.AbsorbedWorkId);
+        Assert.Equal(MergeSurvivorReason.ChosenByYou, plan.SurvivorReason);
+
+        var outcome = await repository.ApplyAsync(request);
+        Assert.True(outcome.Applied);
+        Assert.Equal(seed.RightWorkId, outcome.Plan.SurvivingWorkId);
+
+        using var after = db.Factory.Open();
+        Assert.Equal(seed.RightWorkId, after.ExecuteScalar<long>("SELECT id FROM works;"));
+    }
+
+    /// <summary>
+    /// A preferred work that is neither side of the pair returns
+    /// <see cref="MergeBlocker.PreferredSurvivorNotInPair"/> and writes nothing.
+    /// Falling back to the ladder would merge in a direction the user did not
+    /// ask for.
+    /// </summary>
+    [Fact]
+    public async Task A_chosen_survivor_naming_neither_side_refuses_rather_than_falling_back()
+    {
+        using var db = new TempDatabase();
+        var seed = Seed(db, leftStore: "steam", rightStore: "epic");
+        var repository = new MergeExecutionRepository(db.Factory);
+        var before = Snapshot(db);
+
+        var request = new MergeRequest
+        {
+            CandidateId = seed.CandidateId,
+            PreferredSurvivingWorkId = seed.LeftWorkId + seed.RightWorkId + 1,
+        };
+
+        var plan = await repository.PreviewAsync(request);
+        Assert.Equal(MergeMode.NothingToDo, plan.Mode);
+        Assert.Equal(MergeBlocker.PreferredSurvivorNotInPair, plan.Blocker);
+
+        var outcome = await repository.ApplyAsync(request);
+        Assert.False(outcome.Applied);
+        Assert.Equal(before, Snapshot(db));
+    }
+
+    /// <summary>
+    /// Choosing a survivor that does not hold the <c>igdb_id</c> the other
+    /// side carries returns <see cref="MergeBlocker.SurvivorCannotHoldIgdbId"/>
+    /// and writes nothing. <c>works.igdb_id</c> is UNIQUE, so the COALESCE
+    /// fill would collide with the row about to be deleted. Under the ladder
+    /// alone this is unreachable (rung one keeps the holder); it becomes
+    /// reachable only once a survivor can be chosen. The link model
+    /// (TASK-70.2 onward) does not have the problem at all, because both
+    /// <c>igdb_id</c> values stay on their own rows.
+    /// </summary>
+    [Fact]
+    public async Task A_choice_that_would_strand_the_igdb_match_is_refused_by_the_destructive_merge()
+    {
+        using var db = new TempDatabase();
+        var seed = Seed(db, leftStore: "steam", rightStore: "epic");
+
+        using (var conn = db.Factory.Open())
+        {
+            conn.Execute(
+                "UPDATE works SET igdb_id = 4242 WHERE id = @id;", new { id = seed.LeftWorkId });
+        }
+
+        var repository = new MergeExecutionRepository(db.Factory);
+        var before = Snapshot(db);
+
+        // The right work does not hold an igdb_id; choosing it as the survivor
+        // would strand the left work's igdb_id. The link model (TASK-70.2) does
+        // not have this problem because both rows stay.
+        var plan = await repository.PreviewAsync(new MergeRequest
+        {
+            CandidateId = seed.CandidateId,
+            PreferredSurvivingWorkId = seed.RightWorkId,
+        });
+
+        Assert.Equal(MergeMode.NothingToDo, plan.Mode);
+        Assert.Equal(MergeBlocker.SurvivorCannotHoldIgdbId, plan.Blocker);
+
+        var outcome = await repository.ApplyAsync(new MergeRequest
+        {
+            CandidateId = seed.CandidateId,
+            PreferredSurvivingWorkId = seed.RightWorkId,
+        });
+
+        Assert.False(outcome.Applied);
+        Assert.Equal(before, Snapshot(db));
+
+        // The ladder's own answer still applies, untouched.
+        Assert.Equal(
+            seed.LeftWorkId,
+            (await repository.PreviewAsync(new MergeRequest { CandidateId = seed.CandidateId }))
+                .SurvivingWorkId);
     }
 
     // ── Distinct editions are preserved ──────────────────────────────────────

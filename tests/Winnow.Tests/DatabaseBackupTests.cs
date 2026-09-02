@@ -294,6 +294,11 @@ public sealed class DatabaseBackupTests
         // pre-0016 shape recreated below, so undoing 0017 is dropping what it
         // created; merge_undo_rows goes first because it foreign-keys
         // merge_applications.
+        // 0018 is additive: two new tables and a repair UPDATE. Dropping the
+        // tables is the whole of undoing it; the repair is idempotent.
+        connection.Execute("DROP TABLE IF EXISTS identity_links;");
+        connection.Execute("DROP TABLE IF EXISTS identity_acts;");
+
         connection.Execute("DROP TABLE IF EXISTS merge_undo_rows;");
         connection.Execute("DROP TABLE IF EXISTS merge_applications;");
         connection.Execute("DROP TABLE IF EXISTS merge_candidates;");
@@ -318,7 +323,8 @@ public sealed class DatabaseBackupTests
                OR ScriptName LIKE '%0014%'
                OR ScriptName LIKE '%0015%'
                OR ScriptName LIKE '%0016%'
-               OR ScriptName LIKE '%0017%';
+               OR ScriptName LIKE '%0017%'
+               OR ScriptName LIKE '%0018%';
             """);
     }
 

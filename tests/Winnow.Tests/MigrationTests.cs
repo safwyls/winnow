@@ -20,6 +20,8 @@ public class MigrationTests
         "update_acknowledgements",
         "account_transactions", "account_licenses",
         "merge_applications",
+        "merge_undo_rows",
+        "identity_acts", "identity_links",
     ];
 
     /// <summary>The <c>merge_candidates</c> shape as 0001 shipped it, mirrors and self-pairs allowed.</summary>

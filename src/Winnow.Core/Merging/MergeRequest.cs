@@ -15,4 +15,15 @@ public sealed record MergeRequest
     /// forbids. Defaults to <c>true</c> (let the data decide).
     /// </summary>
     public bool AllowReleaseCollapse { get; init; } = true;
+
+    /// <summary>
+    /// The user's chosen survivor, or null to let the ladder decide. Must name
+    /// one of the pair's two works; a value naming neither is refused
+    /// (<see cref="MergeBlocker.PreferredSurvivorNotInPair"/>), never quietly
+    /// ignored. Unlike <see cref="AllowReleaseCollapse"/>, which is a ceiling
+    /// the repository ANDs with its own verdict, this one genuinely overrides
+    /// the repository's preference about which side wins, because which title
+    /// the library keeps is the user's call, not the data's.
+    /// </summary>
+    public long? PreferredSurvivingWorkId { get; init; }
 }

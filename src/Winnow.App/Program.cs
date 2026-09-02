@@ -384,6 +384,11 @@ public static class Program
         // an optional dependency can be made without holding the whole container
         // hostage to a screen.
         services.AddSingleton<IMergeUndoRepository, MergeUndoRepository>();
+
+        // Identity links (migration 0018). Registered now, read by nothing yet;
+        // TASK-70.3 onward injects it. Registering it in the stage that adds it
+        // keeps the stage a single reviewable change.
+        services.AddSingleton<IIdentityLinkRepository, IdentityLinkRepository>();
         services.AddSingleton<ILibraryQueryRepository, LibraryQueryRepository>();
         services.AddSingleton<ILibraryHistoryStatsRepository, LibraryHistoryStatsRepository>();
         services.AddSingleton<IFacetRepository, FacetRepository>();

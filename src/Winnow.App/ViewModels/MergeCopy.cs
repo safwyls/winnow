@@ -83,6 +83,30 @@ public static class MergeCopy
     public const string PreviewWorkOnlyOther =
         "Separate entries under one game.";
 
+    /// <summary>Small uppercase label rendered beside the reason phrase,
+    /// same treatment as <see cref="OutcomeLabel"/> and
+    /// <see cref="BlockedLabel"/>.</summary>
+    public const string SurvivorReasonLabel = "WHY";
+
+    /// <summary>The survivor holds an IGDB match the other side does not.</summary>
+    public const string SurvivorReasonIgdbMatch = "IGDB match";
+
+    /// <summary>The survivor carries a real title from a store, not a
+    /// placeholder.</summary>
+    public const string SurvivorReasonNamedByStore = "Named by store";
+
+    /// <summary>The survivor already has more store entries hanging off
+    /// it.</summary>
+    public const string SurvivorReasonMostStoreEntries = "Most store entries";
+
+    /// <summary>Nothing else discriminated. The survivor won because it was
+    /// ingested first, and the card says so rather than staying silent.</summary>
+    public const string SurvivorReasonAddedFirst = "Added first";
+
+    /// <summary>The user picked the survivor (TASK-70.3 ships the picker).
+    /// Overrides every rung of the ladder.</summary>
+    public const string SurvivorReasonChosenByYou = "Your choice";
+
     // ══ The blocked pair ══════════════════════════════════════════════════
 
     /// <summary>Small uppercase label above a blocked-pair message or a
@@ -160,6 +184,18 @@ public static class MergeCopy
     /// <summary>Already one game.</summary>
     public const string RefusedAlreadyApplied =
         "Already one game. Nothing to merge.";
+
+    /// <summary>The request named a surviving work that is neither side of
+    /// the pair. Refused so a stale choice never merges in the wrong
+    /// direction.</summary>
+    public const string RefusedPreferredSurvivorNotInPair =
+        "That title is not one of this pair.";
+
+    /// <summary>The absorbed side holds an IGDB match the chosen survivor
+    /// does not. The destructive merge cannot move a UNIQUE column onto a
+    /// row that lacks it.</summary>
+    public const string RefusedSurvivorCannotHoldIgdbId =
+        "The other title holds the IGDB match; merging would lose it.";
 
     /// <summary>Not yet confirmed.</summary>
     public const string RefusedCandidateNotConfirmed =

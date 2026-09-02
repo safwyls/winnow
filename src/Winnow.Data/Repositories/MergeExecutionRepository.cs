@@ -194,7 +194,28 @@ public sealed class MergeExecutionRepository : IMergeExecutionRepository
             """, new { pair.LeftId, pair.RightId }, lease.Transaction, cancellationToken: ct)))
             .ToDictionary(static r => r.Id);
 
-        var (survivingWorkId, absorbedWorkId) = ChooseWork(works[pair.LeftWorkId], works[pair.RightWorkId]);
+        // Same reason the status = 'confirmed' predicate lives in the SQL:
+        // validation on the path both preview and apply share, so no ordering
+        // of C# can merge in a direction the request did not name.
+        if (!SurvivorLadder.NamesOneOf(
+                request.PreferredSurvivingWorkId, pair.LeftWorkId, pair.RightWorkId))
+        {
+            return MergePlan.Nothing(pair.CandidateId, MergeBlocker.PreferredSurvivorNotInPair);
+        }
+
+        var decision = ChooseWork(
+            works[pair.LeftWorkId], works[pair.RightWorkId], request.PreferredSurvivingWorkId);
+        var (survivingWorkId, absorbedWorkId) = (decision.SurvivingWorkId, decision.AbsorbedWorkId);
+
+        // works.igdb_id is UNIQUE, so a COALESCE fill from the absorbed row
+        // would collide with the very row about to be deleted. Unreachable
+        // without a chosen survivor, because rung one always keeps the holder.
+        if (absorbedWorkId is { } absorbed
+            && works[absorbed].IgdbId is not null
+            && works[survivingWorkId].IgdbId is null)
+        {
+            return MergePlan.Nothing(pair.CandidateId, MergeBlocker.SurvivorCannotHoldIgdbId);
+        }
 
         var left = new ReleaseRow(pair.LeftId, pair.LeftIgdbVersionId, evidence[pair.LeftId]);
         var right = new ReleaseRow(pair.RightId, pair.RightIgdbVersionId, evidence[pair.RightId]);
@@ -230,6 +251,7 @@ public sealed class MergeExecutionRepository : IMergeExecutionRepository
             AbsorbedWorkId = absorbedWorkId,
             SurvivingReleaseId = collapses ? survivingReleaseId : null,
             AbsorbedReleaseId = collapses ? absorbedReleaseId : null,
+            SurvivorReason = decision.Reason,
         };
     }
 
@@ -286,31 +308,21 @@ public sealed class MergeExecutionRepository : IMergeExecutionRepository
     // ── Surviving identity ───────────────────────────────────────────────────
 
     /// <summary>
-    /// Picks the surviving work. First test that discriminates wins:
-    /// (1) holds an igdb_id, because <c>works.igdb_id</c> is UNIQUE and therefore
-    /// the one fact that cannot be copied onto the other row, so preferring its
-    /// holder is the only way to keep it;
-    /// (2) name is not provisional;
-    /// (3) more releases already hang off it;
-    /// (4) lowest id (oldest row, stable across re-runs).
-    /// Returns <c>null</c> for the absorbed side when both releases already share
-    /// a work.
+    /// Maps the queried <see cref="WorkRow"/> onto <see cref="SurvivorCandidate"/>
+    /// and delegates to <see cref="SurvivorLadder.Choose"/>. The ladder now lives
+    /// in Core (BCL-only, database-free) so it survives the retirement of this
+    /// executor in TASK-70.7.
     /// </summary>
-    private static (long Surviving, long? Absorbed) ChooseWork(WorkRow a, WorkRow b)
+    private static SurvivorDecision ChooseWork(WorkRow a, WorkRow b, long? preferredWorkId)
+        => SurvivorLadder.Choose(Candidate(a), Candidate(b), preferredWorkId);
+
+    private static SurvivorCandidate Candidate(WorkRow row) => new()
     {
-        if (a.Id == b.Id)
-        {
-            return (a.Id, null);
-        }
-
-        var aWins =
-            (a.IgdbId is not null) != (b.IgdbId is not null) ? a.IgdbId is not null
-            : a.NameIsProvisional != b.NameIsProvisional ? !a.NameIsProvisional
-            : a.ReleaseCount != b.ReleaseCount ? a.ReleaseCount > b.ReleaseCount
-            : a.Id < b.Id;
-
-        return aWins ? (a.Id, b.Id) : (b.Id, a.Id);
-    }
+        WorkId = row.Id,
+        HasIgdbId = row.IgdbId is not null,
+        NameIsProvisional = row.NameIsProvisional,
+        ReleaseCount = row.ReleaseCount,
+    };
 
     /// <summary>
     /// Picks the surviving release. First test that discriminates wins:

@@ -7,7 +7,14 @@ public interface IMergeCandidateRepository
     /// <summary>Inserts a merge candidate (Id ignored) and returns the assigned id.</summary>
     Task<long> InsertAsync(MergeCandidate candidate, CancellationToken ct = default);
 
-    /// <summary>The confirmation queue: all candidates with status 'pending', highest score first.</summary>
+    /// <summary>
+    /// The confirmation queue: pending candidates whose two releases still sit
+    /// under different works, highest score first. A pair whose releases
+    /// already share a work is excluded because the question is closed; the
+    /// row is not deleted and not answered. <see cref="GetAllAsync"/> and
+    /// <see cref="FindByPairAsync"/> still see it, because they are reads
+    /// about the row, not the question.
+    /// </summary>
     Task<IReadOnlyList<MergeCandidate>> GetPendingAsync(CancellationToken ct = default);
 
     /// <summary>

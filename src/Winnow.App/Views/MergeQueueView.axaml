@@ -452,6 +452,24 @@
                                                            LineHeight="19"
                                                            TextWrapping="Wrap"
                                                            Text="{Binding Preview.SurvivorLine}"/>
+                                                <!-- ── Why one title won ──────────
+                                                     The card states not just which
+                                                     title survives but why, including
+                                                     when the only reason is that it
+                                                     was added first. -->
+                                                <StackPanel Orientation="Horizontal"
+                                                            Spacing="7"
+                                                            IsVisible="{Binding Preview.HasSurvivorReason}">
+                                                    <TextBlock Classes="label"
+                                                               FontSize="10" LetterSpacing="1"
+                                                               VerticalAlignment="Center"
+                                                               Text="{Binding Preview.SurvivorReasonLabel}"/>
+                                                    <TextBlock Classes="body" FontSize="12"
+                                                               LineHeight="17"
+                                                               TextWrapping="Wrap"
+                                                               VerticalAlignment="Center"
+                                                               Text="{Binding Preview.SurvivorReasonText}"/>
+                                                </StackPanel>
                                                 <TextBlock Classes="body" FontSize="12"
                                                            LineHeight="17"
                                                            TextWrapping="Wrap"

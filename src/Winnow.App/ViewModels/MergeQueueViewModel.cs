@@ -327,7 +327,10 @@ public partial class MergeQueueViewModel : ObservableObject
         // row's own two columns, so the describe pass above covers them.
         await RefreshPreviewsAsync(cards, titles, workIds, ct);
 
-        Select(cards.Count > 0 ? cards[0] : null);
+        // Candidates, not the local cards list: cards was built before the
+        // prune, so selecting from it could put the cursor on a card that
+        // is no longer on screen.
+        Select(Candidates.Count > 0 ? Candidates[0] : null);
         RequestCovers(_coverWidthPixels);
     }
 
@@ -708,10 +711,25 @@ public partial class MergeQueueViewModel : ObservableObject
         // library. The reference check ensures a stale plan is dropped rather
         // than misattributed.
         var live = new HashSet<MergeCandidateViewModel>(Candidates);
+        // Filtering the pending read handles the load path; this handles the
+        // answer path, where answering one pair can make a neighbouring pair
+        // already-one-game. Together they make acceptance criterion "no BLOCKED
+        // card and no already-one-game message can appear for any pair the queue
+        // shows" true for a whole session, not just at load. The card is dropped
+        // from the screen but its row is NOT answered on the user's behalf; it
+        // stays pending for the sweep to withdraw, because a rejection would
+        // record a decision the user never made.
+        var settled = new List<MergeCandidateViewModel>();
         foreach (var (card, plan) in planned)
         {
             if (!live.Contains(card))
             {
+                continue;
+            }
+
+            if (plan.Mode == MergeMode.NothingToDo)
+            {
+                settled.Add(card);
                 continue;
             }
 
@@ -721,6 +739,11 @@ public partial class MergeQueueViewModel : ObservableObject
                 TitleOf(titles, surviving),
                 absorbed is { } id && titles.TryGetValue(id, out var name) ? name : null,
                 absorbed);
+        }
+
+        foreach (var card in settled)
+        {
+            Remove(card);
         }
     }
 

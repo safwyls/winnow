@@ -51,4 +51,25 @@ public enum MergeBlocker
     /// silently drops a fact is a worse outcome than no merge at all.
     /// </summary>
     ConflictingUpdateEvents,
+
+    /// <summary>
+    /// The request named a surviving work that is neither side of the pair.
+    /// Refused rather than falling back to the ladder, so a stale choice held
+    /// by a UI that has been overtaken by another answer can never merge in
+    /// the wrong direction.
+    /// </summary>
+    PreferredSurvivorNotInPair,
+
+    /// <summary>
+    /// The absorbed work holds an <c>igdb_id</c> the survivor does not.
+    /// <c>works.igdb_id</c> is UNIQUE, so the COALESCE fill in
+    /// <c>UnifyWorksAsync</c> would collide with the very row it is about to
+    /// delete. Under the ladder alone this is unreachable, because rung one
+    /// always keeps the holder; it becomes reachable only once a survivor can
+    /// be chosen. This is a limitation of destroying rows, not of the choice.
+    /// The link model (TASK-70.2 onward) does not have the problem at all,
+    /// because both <c>igdb_id</c> values stay on their own rows and the
+    /// child keeps being enriched.
+    /// </summary>
+    SurvivorCannotHoldIgdbId,
 }

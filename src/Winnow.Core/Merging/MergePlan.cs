@@ -27,6 +27,13 @@ public sealed record MergePlan
 
     public long? AbsorbedReleaseId { get; init; }
 
+    /// <summary>
+    /// Which rung of the ladder decided <see cref="SurvivingWorkId"/>, for
+    /// the card to render. <see cref="MergeSurvivorReason.None"/> on a plan
+    /// that can do nothing.
+    /// </summary>
+    public MergeSurvivorReason SurvivorReason { get; init; } = MergeSurvivorReason.None;
+
     public bool WillCollapseReleases => Mode == MergeMode.ReleaseCollapse;
 
     public bool WillUnifyWorks => Mode != MergeMode.NothingToDo && AbsorbedWorkId is not null;

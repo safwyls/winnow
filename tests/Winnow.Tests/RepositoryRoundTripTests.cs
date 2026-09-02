@@ -512,11 +512,15 @@ public class RepositoryRoundTripTests : IDisposable
     [Fact]
     public async Task Merge_candidates_queue_and_resolve()
     {
-        var (workId, leftReleaseId, _) = await SeedOwnershipAsync();
+        // Two works, because a pair the queue can act on is by definition a
+        // pair whose two releases do not already sit under one work.
+        var (_, leftReleaseId, _) = await SeedOwnershipAsync();
+        var works = new WorkRepository(_db.Factory);
         var releases = new ReleaseRepository(_db.Factory);
+        var otherWorkId = await works.InsertAsync(new Work { Name = "Prey", FirstReleaseYear = 2017 });
         var rightReleaseId = await releases.InsertAsync(new Release
         {
-            WorkId = workId,
+            WorkId = otherWorkId,
             Name = "Prey (2017)",
             Platform = "windows",
         });
@@ -535,6 +539,47 @@ public class RepositoryRoundTripTests : IDisposable
 
         await candidates.SetStatusAsync(id, MergeCandidateStatuses.Rejected);
         Assert.Empty(await candidates.GetPendingAsync());
+    }
+
+    /// <summary>
+    /// A pending pair whose two releases already sit under one work is absent
+    /// from the pending read (the question is closed), but not deleted, not
+    /// answered, and still reachable by every read that is about the row rather
+    /// than the question. The same predicate
+    /// <c>MergeExecutionRepository.GetConfirmedUnappliedCandidateIdsAsync</c>
+    /// already applies to the confirmed read, for the same reason (section 9,
+    /// pitfall 5).
+    /// </summary>
+    [Fact]
+    public async Task Merge_candidates_pending_read_hides_a_pair_that_is_already_one_game()
+    {
+        var (workId, leftReleaseId, _) = await SeedOwnershipAsync();
+        var releases = new ReleaseRepository(_db.Factory);
+        var sameWorkReleaseId = await releases.InsertAsync(new Release
+        {
+            WorkId = workId,
+            Name = "Prey (Gold Edition)",
+            Platform = "windows",
+            EditionNote = "Gold Edition",
+        });
+
+        var candidates = new MergeCandidateRepository(_db.Factory);
+        var id = await candidates.InsertAsync(new MergeCandidate
+        {
+            LeftReleaseId = leftReleaseId,
+            RightReleaseId = sameWorkReleaseId,
+            Score = 0.9,
+        });
+
+        // Absent from the queue…
+        Assert.Empty(await candidates.GetPendingAsync());
+
+        // …but not deleted, not answered, and still reachable by every read
+        // that is about the row rather than about the question.
+        Assert.Equal(id, Assert.Single(await candidates.GetAllAsync()).Id);
+        var byPair = await candidates.FindByPairAsync(leftReleaseId, sameWorkReleaseId);
+        Assert.NotNull(byPair);
+        Assert.Equal(MergeCandidateStatuses.Pending, byPair!.Status);
     }
 
     private async Task<(long WorkId, long ReleaseId, long OwnershipId)> SeedOwnershipAsync()

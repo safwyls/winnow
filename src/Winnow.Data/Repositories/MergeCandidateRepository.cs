@@ -44,19 +44,32 @@ public sealed class MergeCandidateRepository : IMergeCandidateRepository
             """, canonical, transaction: lease.Transaction, cancellationToken: ct));
     }
 
+    // The l.work_id <> r.work_id predicate is the same one
+    // MergeExecutionRepository.GetConfirmedUnappliedCandidateIdsAsync already
+    // applies to the confirmed read, for the same reason: two releases already
+    // under one work are correctly modelled as two releases of one game (§9
+    // pitfall 5), and offering to merge them is offering to collapse Release
+    // into Work. The row is not deleted and not answered: GetAllAsync and
+    // FindByPairAsync still return it, because they are reads about the ROW,
+    // while this one is the read about the QUESTION, and the question is
+    // closed. The sweep's own withdrawal pass (SoftMatchAdmission.CouldPropose,
+    // which already refuses such a pair) is what eventually removes it.
     public async Task<IReadOnlyList<MergeCandidate>> GetPendingAsync(CancellationToken ct = default)
     {
         using var lease = _factory.Lease();
         var rows = await lease.Connection.QueryAsync<MergeCandidate>(new CommandDefinition("""
-            SELECT id               AS Id,
-                   left_release_id  AS LeftReleaseId,
-                   right_release_id AS RightReleaseId,
-                   score            AS Score,
-                   signals_json     AS SignalsJson,
-                   status           AS Status
-            FROM merge_candidates
-            WHERE status = 'pending'
-            ORDER BY score DESC, id;
+            SELECT c.id               AS Id,
+                   c.left_release_id  AS LeftReleaseId,
+                   c.right_release_id AS RightReleaseId,
+                   c.score            AS Score,
+                   c.signals_json     AS SignalsJson,
+                   c.status           AS Status
+            FROM merge_candidates c
+            JOIN releases l ON l.id = c.left_release_id
+            JOIN releases r ON r.id = c.right_release_id
+            WHERE c.status = 'pending'
+              AND l.work_id <> r.work_id
+            ORDER BY c.score DESC, c.id;
             """, transaction: lease.Transaction, cancellationToken: ct));
         return rows.AsList();
     }

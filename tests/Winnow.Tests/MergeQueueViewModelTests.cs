@@ -255,17 +255,18 @@ public sealed class MergeQueueViewModelTests
     }
 
     /// <summary>
-    /// The sharpest case on the screen. A pair whose plan can do nothing states
-    /// that above the answers, and the answer does exactly what the card says:
-    /// it closes the question and writes nothing to the library.
-    ///
-    /// <para>Both answers stay live on purpose. Disabling them would strand the
-    /// pair in the queue with no honest way out — "Different games" would record
-    /// a rejection that is false, because the library already holds the two
-    /// entries under one game.</para>
+    /// A pending pair whose two releases already sit under one work is filtered
+    /// out of <c>GetPendingAsync</c> and never reaches the screen. The row stays
+    /// pending, not rejected, so the sweep's own withdrawal pass
+    /// (<c>SoftMatchAdmission.CouldPropose</c>) is what eventually removes it.
+    /// Before TASK-70.1 this state produced a BLOCKED card reading "Already one
+    /// game. Nothing to merge." The blocked pair was the sharpest case on the
+    /// screen (the test that pinned it was called
+    /// <c>A_blocked_pair_states_the_block_before_the_answer_and_answering_writes_nothing</c>);
+    /// it is now impossible by construction.
     /// </summary>
     [Fact]
-    public async Task A_blocked_pair_states_the_block_before_the_answer_and_answering_writes_nothing()
+    public async Task A_pair_that_is_already_one_game_never_reaches_the_screen()
     {
         using var fixture = new MergeQueueFixture();
         var id = fixture.QueueAlreadyOneGamePair();
@@ -273,42 +274,118 @@ public sealed class MergeQueueViewModelTests
         var queue = fixture.CreateViewModel();
         await queue.LoadCommand.ExecuteAsync(null);
 
-        var card = queue.Candidates[0];
-        var preview = card.Preview!;
-
-        Assert.True(preview.IsBlocked);
-        Assert.True(card.IsPreviewBlocked);
-        Assert.Equal(MergeCopy.BlockedLabel, preview.Label);
-        Assert.Equal(MergeCopy.PreviewBlockedAlreadyOneGame, preview.SurvivorLine);
-
-        // The promise the button is held to.
-        Assert.Equal(MergeCopy.PreviewBlockedAnswerEffect, preview.EffectLine);
-        Assert.Equal(MergeCopy.SameGameBlockedTooltip, preview.SameGameTooltip);
-        // The announcement names both sides and says nothing is merged, so two
-        // blocked cards are not one indistinguishable target (§8).
-        Assert.Contains(preview.EffectLine, card.SameGameAutomationName, StringComparison.Ordinal);
-        Assert.Contains(card.Left.ReleaseText, card.SameGameAutomationName, StringComparison.Ordinal);
-        Assert.Contains(card.Right.ReleaseText, card.SameGameAutomationName, StringComparison.Ordinal);
-
-        await queue.SameGameCommand.ExecuteAsync(card);
-
-        // The question is closed…
         Assert.Empty(queue.Candidates);
-        Assert.Equal(MergeCandidateStatuses.Confirmed, await fixture.StatusOfAsync(id));
+        Assert.Equal(0, queue.PendingCount);
+        Assert.Null(queue.SelectedCandidate);
 
-        // …and nothing was written, which the report says in the same words the
-        // card used.
-        Assert.Equal(
-            string.Format(
-                CultureInfo.CurrentCulture,
-                MergeCopy.AppliedNothingFormat, MergeCopy.RefusedDistinctEditions),
-            queue.ReportMessage);
-        Assert.False(queue.CanUndoReport);
-        Assert.Empty(queue.History);
+        // The row is untouched: unanswered, not rejected, still available to
+        // the sweep's own withdrawal pass.
+        Assert.Equal(MergeCandidateStatuses.Pending, await fixture.StatusOfAsync(id));
+    }
 
-        using var conn = fixture.Factory.Open();
-        Assert.Equal(0, conn.ExecuteScalar<long>("SELECT COUNT(*) FROM merge_applications;"));
-        Assert.Equal(2, conn.ExecuteScalar<long>("SELECT COUNT(*) FROM releases;"));
+    /// <summary>
+    /// Every card on the queue is mergeable, never blocked. The already-one-game
+    /// pair is filtered out; the remaining pairs all produce a plan with a real
+    /// mode and no blocked label. Before TASK-70.1 this invariant did not hold.
+    /// </summary>
+    [Fact]
+    public async Task No_card_the_queue_shows_is_blocked()
+    {
+        using var fixture = new MergeQueueFixture();
+        fixture.QueueAlreadyOneGamePair();
+        await fixture.QueuePairAsync(
+            new SeedSide("Prey", 2017, "Bethesda Softworks"),
+            new SeedSide("Prey", 2017, "Bethesda Softworks"));
+        await fixture.QueuePairAsync(
+            new SeedSide("The Witcher 3: Wild Hunt", 2015, "CD PROJEKT RED"),
+            new SeedSide("The Witcher 3: Wild Hunt - Game of the Year Edition", 2016, "CD PROJEKT RED"));
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+
+        Assert.Equal(2, queue.Candidates.Count);
+        foreach (var card in queue.Candidates)
+        {
+            Assert.NotNull(card.Preview);
+            Assert.False(card.Preview!.IsBlocked);
+            Assert.False(card.IsPreviewBlocked);
+            Assert.NotEqual(MergeCopy.BlockedLabel, card.Preview.Label);
+            Assert.NotEqual(MergeCopy.PreviewBlockedAlreadyOneGame, card.Preview.SurvivorLine);
+        }
+    }
+
+    /// <summary>
+    /// The card says not just which title survives but why, including when the
+    /// only reason is ingestion order. Two unenriched works with one release
+    /// each fall through every rung to <c>AddedFirst</c>, and the card renders
+    /// that honestly rather than leaving the WHY line empty.
+    /// </summary>
+    [Fact]
+    public async Task Every_card_names_the_reason_its_survivor_was_chosen()
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.QueuePairAsync(
+            new SeedSide("Prey", 2017, "Bethesda Softworks"),
+            new SeedSide("Prey", 2017, "Bethesda Softworks"));
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+
+        var preview = queue.Candidates[0].Preview!;
+
+        // Two unenriched works with one release each: the ladder falls through
+        // to ingestion order, and the card says so rather than staying silent.
+        Assert.Equal(MergeSurvivorReason.AddedFirst, preview.SurvivorReason);
+        Assert.Equal(MergeCopy.SurvivorReasonAddedFirst, preview.SurvivorReasonText);
+        Assert.True(preview.HasSurvivorReason);
+    }
+
+    /// <summary>
+    /// Answering one pair can make a neighbouring pair already-one-game. The
+    /// neighbour is dropped from the screen at refresh time rather than shown
+    /// as a BLOCKED card. Its row stays pending, not rejected, because a
+    /// rejection would record a decision the user never made; the sweep
+    /// withdraws it on its own schedule. Three releases on three different
+    /// platforms are seeded so every merge is work-only, which keeps the
+    /// three candidate rows naming the same releases throughout and isolates
+    /// the pruning behaviour from the release-collapse path. Before TASK-70.1
+    /// the already-one-game state was the blocked card the old test called
+    /// "the sharpest case on the screen"; that state is now impossible by
+    /// construction.
+    /// </summary>
+    [Fact]
+    public async Task A_card_that_becomes_one_game_leaves_the_queue_when_its_neighbour_is_answered()
+    {
+        using var fixture = new MergeQueueFixture();
+
+        // Three platforms so every merge is work-only: the releases stay three
+        // rows, which keeps the three candidate rows naming the same releases
+        // throughout and isolates what this test is about.
+        var side = new SeedSide("Prey", 2017, "Bethesda Softworks");
+        var a = await fixture.CreateReleaseAsync(side);
+        var b = await fixture.CreateReleaseAsync(side, "linux");
+        var c = await fixture.CreateReleaseAsync(side, "macos");
+
+        var ab = await fixture.QueueScoredPairAsync(a, b);
+        var ac = await fixture.QueueScoredPairAsync(a, c);
+        var bc = await fixture.QueueScoredPairAsync(b, c);
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+        Assert.Equal(3, queue.PendingCount);
+
+        // Answering (a, b) puts b's release under a's work. (b, c) and (a, c)
+        // are now the same question, and once (a, c) is answered the other is
+        // already one game.
+        await queue.SameGameCommand.ExecuteAsync(
+            queue.Candidates.Single(card => card.Id == ab));
+        await queue.SameGameCommand.ExecuteAsync(
+            queue.Candidates.Single(card => card.Id == ac));
+
+        // Not left on screen as a BLOCKED card, and not answered on the user's
+        // behalf either: the row stays pending for the sweep to withdraw.
+        Assert.Empty(queue.Candidates);
+        Assert.Equal(MergeCandidateStatuses.Pending, await fixture.StatusOfAsync(bc));
     }
 
     /// <summary>
@@ -939,7 +1016,7 @@ public sealed class MergeQueueViewModelTests
 
         private readonly Dictionary<long, (long Left, long Right)> _pairs = [];
 
-        public async Task<SeededRelease> CreateReleaseAsync(SeedSide side)
+        public async Task<SeededRelease> CreateReleaseAsync(SeedSide side, string platform = "windows")
         {
             var workId = await Works.InsertAsync(new Work
             {
@@ -951,7 +1028,7 @@ public sealed class MergeQueueViewModelTests
             {
                 WorkId = workId,
                 Name = side.Title,
-                Platform = "windows",
+                Platform = platform,
             });
 
             await Releases.AddExternalIdAsync(new ExternalId
