@@ -363,6 +363,10 @@
     <SolidColorBrush x:Key="ChromeFieldOnGround" Color="#16282A"/>
     <SolidColorBrush x:Key="ChromeFieldOnSurface" Color="#0F1C1E"/>
     <SolidColorBrush x:Key="TileGround" Color="#0F1C1E"/>
+    <!-- The resting store mark's field on the front of a multi-store tile.
+         Ground at 82% alpha, so the initial stays legible over a bright
+         capsule without becoming a second opaque block on the art. -->
+    <SolidColorBrush x:Key="TileChipGround" Color="#D10F1C1E"/>
 
     <!-- ══ Dormancy ramp ══════════════════════════════════════════════════
          Consumed by the cover renderer. Clamped floor is deliberate: a cover
