@@ -7,7 +7,7 @@ status: In Progress
 assignee:
   - '@claude'
 created_date: '2026-09-02 12:37'
-updated_date: '2026-09-02 13:40'
+updated_date: '2026-09-02 18:04'
 labels: []
 dependencies:
   - TASK-18
@@ -109,6 +109,9 @@ What Steam will NOT give: expansions. Every genuine standalone expansion in the 
 - [ ] #10 The heuristic proposes only where every metadata source (IGDB game_type, Steam store type, steamcmd parent) is silent on both members of the pair
 - [ ] #11 No new HTTP requests are required for the Steam half; the IGDB half adds no requests beyond the existing enrichment pass
 - [ ] #12 Mods are recorded with their source label but not auto-folded; the open question of grouping a mod under its base game is stated, not decided
+- [ ] #13 A remake, remaster or port is never offered on the Expansions surface: metadata naming one of those kinds refutes an expansion proposal the same way main_game with a null parent does
+- [ ] #14 The metadata claim path passes through the same refusal guards as the title heuristic rather than writing straight into the results, so a guard cannot be bypassed by a source naming a kind
+- [ ] #15 No proposal arrives with its checkbox pre-ticked when the relation the metadata names is not the relation the surface is asking about
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -214,4 +217,14 @@ Verbatim results, after the prose pass.
   Baseline before this task was 2747 total; 2812 now, 65 added and none removed.
 
 No commit. Not finalized. The user's app was never touched; every build and test ran through --artifacts-path into the scratchpad, and the live database was read once, read-only, through a copy that has since been deleted. No live API call was made at any point: the Steam evidence came out of the user's own metadata_cache and the IGDB evidence out of the diagnosis. Two view-model surfaces were deliberately left alone for the agents working on the Same Game screen; the card contract they need is ExpansionProposalMember.RelationLabel (string?, one of RelationLabels) beside ExpansionProposalMember.Kind and .FromMetadata.
+
+Verified in the running app on 2026-09-02, first run with migrations 0021/0022 applied to the real library (948 of 1,033 works now carry igdb_game_type, 69 carry igdb_parent_id).
+
+The metadata grounding works and the labels are correct: the Counter-Strike card draws REMAKE on the Counter-Strike: Source row, which is exactly what part two of this task predicted IGDB would say. TASK-71's relation-label fix is confirmed on real data.
+
+What is NOT fixed, and is the user's original complaint: the row is still OFFERED as an expansion of Counter-Strike, with its checkbox pre-ticked and Group as the primary button, under a header reading 'Expansion?'. Correct identification did not change what the surface proposes.
+
+Cause, at src/Winnow.Core/Identity/ExpansionDetector.cs:290. The metadata claim path accepts any Kind except SameGame and writes the proposal directly into best[], bypassing every refusal guard the title-heuristic path runs. RebuildEdition is one of the guards it skips. So metadata naming a kind makes a proposal MORE likely to survive than a title guess, which inverts the intent of demoting the heuristic to gap-filler.
+
+AC #7 does not cover this shape: it refutes a pair where metadata contradicts the parent, or where game_type is main_game with a null parent. A remake has a real parent and a real relation, it is simply not an expansion. AC #8 routes demos and betas to variant_of but says nothing about remake, remaster or port. Three criteria added above to close that gap.
 <!-- SECTION:NOTES:END -->
