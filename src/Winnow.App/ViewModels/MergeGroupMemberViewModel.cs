@@ -119,9 +119,25 @@ public partial class MergeGroupMemberViewModel : ObservableObject
     /// <summary>The store entries this member covers, in the data face.</summary>
     public string ReleasesText => Side.ReleaseText;
 
-    /// <summary>The title with its entry numbers, which is what tells two members with one title apart.</summary>
-    public string Label => string.Format(
-        CultureInfo.CurrentCulture, MergeCopy.MemberAutomationFormat, Side.Title, ReleasesText);
+    /// <summary>Badge text for each store, forwarded from the side. Bound by the chip row at both densities.</summary>
+    public IReadOnlyList<string> StoreChips => Side.StoreChips;
+
+    /// <summary>Display names comma-joined, for the chip row's tooltip and the automation name.</summary>
+    public string StoreNames => Side.StoreNames;
+
+    /// <summary>False when no ownership row named a store; the chip row is hidden and the automation name uses the store-less format.</summary>
+    public bool HasStores => Side.HasStores;
+
+    /// <summary>The title with its store and its entry numbers, which is what tells two members with one title apart.</summary>
+    public string Label => HasStores
+        ? string.Format(
+            CultureInfo.CurrentCulture,
+            MergeCopy.MemberWithStoreAutomationFormat,
+            Side.Title,
+            StoreNames,
+            ReleasesText)
+        : string.Format(
+            CultureInfo.CurrentCulture, MergeCopy.MemberAutomationFormat, Side.Title, ReleasesText);
 
     /// <summary>Label beside this member's primary radio.</summary>
     public string PrimaryControlText => MergeCopy.PrimaryControlLabel;

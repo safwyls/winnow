@@ -762,8 +762,8 @@ public sealed class ListsViewModelTests
                 new MergeCandidateRepository(_db.Factory),
                 Releases,
                 Works,
-                TestMergeExecutor.For(_db),
-                new IdentityLinkRepository(_db.Factory));
+                new IdentityLinkRepository(_db.Factory),
+                Ownerships);
 
         public IEnumerable<string> Titles(LibraryViewModel library)
             => library.VisibleTiles.Select(t => t.Title);

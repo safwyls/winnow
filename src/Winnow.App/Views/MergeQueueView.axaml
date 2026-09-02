@@ -68,6 +68,27 @@
                     <TextBlock Classes="data-s" Text="{Binding ReleasesText}"/>
                 </StackPanel>
 
+                <!-- The store, on its own line under the entry numbers.
+                     Same outlined chip the tiles wear (1px Line, radius 3,
+                     body face 9px, TextDim). The 200px column holds three
+                     chips (123.1px); WrapPanel so it never clips. -->
+                <ItemsControl ItemsSource="{Binding StoreChips}"
+                              IsVisible="{Binding HasStores}"
+                              ToolTip.Tip="{Binding StoreNames}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel Orientation="Horizontal" ItemSpacing="4" LineSpacing="4"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Classes="store-chip">
+                                <TextBlock Text="{Binding}"/>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
                 <TextBlock Classes="body" FontSize="12"
                            Foreground="{StaticResource TextDim}"
                            Text="{Binding Side.PublisherText}"
@@ -130,6 +151,28 @@
                                    LineHeight="19"/>
 
                         <StackPanel Orientation="Horizontal" Spacing="8">
+                            <!-- The store leads the metadata line so that down
+                                 a roster the stores form a column at one
+                                 constant x, which is what you want when the
+                                 question is which of several rows is which
+                                 storefront. -->
+                            <ItemsControl ItemsSource="{Binding StoreChips}"
+                                          IsVisible="{Binding HasStores}"
+                                          ToolTip.Tip="{Binding StoreNames}"
+                                          VerticalAlignment="Center">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Horizontal" Spacing="4"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Classes="store-chip">
+                                            <TextBlock Text="{Binding}"/>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
                             <TextBlock Classes="data-s" Text="{Binding Side.YearText}"/>
                             <TextBlock Classes="data-s" Text="·"/>
                             <TextBlock Classes="data-s" Text="{Binding ReleasesText}"/>
@@ -248,6 +291,15 @@
             <Setter Property="CornerRadius" Value="{StaticResource RadiusTile}"/>
             <Setter Property="Padding" Value="20"/>
             <Setter Property="Margin" Value="0,0,0,16"/>
+            <!-- Measured ceiling. The roster density sets it: card
+                 chrome 44 + cover 200 + gutter 28 + roster row
+                 minimum 526.0 = 798, and 840 clears that with slack
+                 for shaping variance. It sits on §4's 4px grid and
+                 is twice the 420px feed card measure. §13 gap 5's
+                 provisional 720px prose measure does not govern; this
+                 is a two-column comparison, not a paragraph. -->
+            <Setter Property="MaxWidth" Value="840"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
         </Style>
         <Style Selector="Border.card.selected">
             <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
@@ -528,24 +580,11 @@
                                 ToolTip.Tip="{Binding ReviewSegmentTooltip}">
                             <TextBlock Classes="display-s" Text="{Binding ReviewSegmentLabel}"/>
                         </Button>
-                        <!-- Outstanding count of pairs answered under the old flow
-                             and never applied. Rides the History segment because
-                             an empty Review queue beside unapplied leftovers is
-                             the one state that can hide work from the user.
-                             Plex Mono tnum, like every number in the app (§3). -->
                         <Button Classes="seg tab"
                                 Classes.on="{Binding IsHistoryVisible}"
                                 Command="{Binding ShowHistoryCommand}"
                                 ToolTip.Tip="{Binding HistorySegmentTooltip}">
-                            <StackPanel Orientation="Horizontal" Spacing="7">
-                                <TextBlock Classes="display-s"
-                                           VerticalAlignment="Center"
-                                           Text="{Binding HistorySegmentLabel}"/>
-                                <TextBlock Classes="data" FontSize="11"
-                                           VerticalAlignment="Center"
-                                           IsVisible="{Binding HasOutstanding}"
-                                           Text="{Binding OutstandingCountText}"/>
-                            </StackPanel>
+                            <TextBlock Classes="display-s" Text="{Binding HistorySegmentLabel}"/>
                         </Button>
                     </StackPanel>
                 </Border>
@@ -850,32 +889,18 @@
                                        LineHeight="22"
                                        Foreground="{StaticResource TextDim}"
                                        Text="{Binding EmptyMessage}"/>
-                            <!-- Notice that unapplied pairs wait in History.
-                                 Amber because it is the one thing the user must
-                                 read before believing the screen is finished;
-                                 without it an empty Review queue looks complete
-                                 while work sits behind the other segment. -->
-                            <TextBlock Classes="body" FontSize="12"
-                                       TextWrapping="Wrap"
-                                       TextAlignment="Center"
-                                       LineHeight="18"
-                                       Foreground="{StaticResource Amber}"
-                                       IsVisible="{Binding ShowOutstandingNotice}"
-                                       Text="{Binding OutstandingNoticeMessage}"/>
                         </StackPanel>
                     </Border>
 
                 </Panel>
             </Grid>
 
-            <!-- ══ HISTORY — links, applied merges, and the leftovers ═══════
-                 Three lists, in one scroll, each absent when empty. Links and
-                 merges are separate sections rather than one interleaved list
-                 because a retraction and a fifteen-table reversal are
-                 different facts, and interleaving them would need a sentence
-                 per row saying which kind it was. The two merge lists are
-                 finite and shrinking: nothing this build does adds to
-                 either. -->
+            <!-- ══ HISTORY — one list ═══════════════════════════════════
+                 Migration 0019 retired the destructive executor, its undo
+                 journal and the two merge sections HISTORY used to carry.
+                 Every answer this screen records is a link act, and every
+                 link act is retractable, so there is one list and no
+                 second kind of row to distinguish. -->
             <ScrollViewer IsVisible="{Binding IsHistoryVisible}"
                           HorizontalScrollBarVisibility="Disabled"
                           VerticalScrollBarVisibility="Auto">
@@ -894,11 +919,11 @@
                         <Button Grid.Column="1"
                                 Classes="answer different"
                                 VerticalAlignment="Center"
-                                IsVisible="{Binding CanUndoReport}"
-                                Content="{Binding ReportUndoButtonText}"
-                                AutomationProperties.Name="{Binding ReportUndoAutomationName}"
-                                ToolTip.Tip="{Binding ReportUndoTooltipText}"
-                                Command="{Binding UndoReportCommand}"/>
+                                IsVisible="{Binding CanRetractReport}"
+                                Content="{Binding ReportRetractButtonText}"
+                                AutomationProperties.Name="{Binding ReportRetractAutomationName}"
+                                ToolTip.Tip="{Binding ReportRetractTooltipText}"
+                                Command="{Binding RetractReportCommand}"/>
                     </Grid>
                 </Border>
 
@@ -979,232 +1004,6 @@
                            IsVisible="{Binding ShowLinkHistoryEmpty}"
                            Text="{Binding LinkHistoryEmptyMessage}"/>
 
-                <!-- ══ Answered under the previous flow ═════════════════════
-                     Pairs confirmed by a build where answering and applying
-                     were two steps. Nothing this build does adds to this
-                     list, because the queue no longer merges and no longer
-                     writes a confirmed status. The section is absent
-                     altogether on an install that never saw the old flow, and
-                     it does not come back once drained. -->
-                <StackPanel IsVisible="{Binding HasOutstanding}" Spacing="0" Margin="0,24,0,0">
-                    <Border Height="1" Background="{StaticResource Line}" Margin="0,0,0,20"/>
-
-                    <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,8">
-                        <StackPanel Grid.Column="0" Spacing="7">
-                            <TextBlock Classes="section" Text="{Binding ApplyHeading}"/>
-                            <TextBlock Classes="body" FontSize="12" LineHeight="18"
-                                       MaxWidth="620" TextWrapping="Wrap"
-                                       Foreground="{StaticResource TextDim}"
-                                       Text="{Binding ApplyIntro}"/>
-                        </StackPanel>
-
-                        <!-- The batch path, with the same honesty as the
-                             per-pair one: the tooltip says a pair that cannot
-                             be applied safely is skipped rather than holding
-                             the rest back, which is what the engine does. -->
-                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10"
-                                    VerticalAlignment="Top">
-                            <TextBlock Classes="data" FontSize="18"
-                                       VerticalAlignment="Center"
-                                       Text="{Binding OutstandingCountText}"/>
-                            <Button Classes="answer same"
-                                    Content="{Binding ApplyAllButtonText}"
-                                    AutomationProperties.Name="{Binding ApplyAllButtonText}"
-                                    ToolTip.Tip="{Binding ApplyAllTooltip}"
-                                    Command="{Binding ApplyAllCommand}"/>
-                        </StackPanel>
-                    </Grid>
-
-                    <ItemsControl Margin="0,12,0,0"
-                                  ItemsSource="{Binding Outstanding}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate DataType="vm:MergeApplyViewModel">
-                                <Border Classes="entry">
-                                    <Grid ColumnDefinitions="*,Auto">
-                                        <StackPanel Grid.Column="0" Spacing="9" Margin="0,0,20,0">
-
-                                            <!-- EFFECT, or BLOCKED. The label
-                                                 says which kind of sentence
-                                                 follows. -->
-                                            <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
-                                                       Text="{Binding SectionLabel}"/>
-
-                                            <TextBlock Classes="body-l"
-                                                       TextWrapping="Wrap" LineHeight="21"
-                                                       Text="{Binding SurvivorLine}"/>
-
-                                            <StackPanel Orientation="Horizontal" Spacing="10"
-                                                        IsVisible="{Binding HasMode}">
-                                                <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
-                                                           VerticalAlignment="Center"
-                                                           Text="{Binding ModeLabel}"/>
-                                                <TextBlock Classes="body" FontSize="12"
-                                                           TextWrapping="Wrap"
-                                                           Foreground="{StaticResource TextDim}"
-                                                           Text="{Binding ModeText}"/>
-                                            </StackPanel>
-
-                                            <!-- A limited collapse still merges,
-                                                 so it is an explanation and not
-                                                 a refusal. -->
-                                            <Border Classes="note" IsVisible="{Binding HasLimitation}">
-                                                <TextBlock Classes="body" FontSize="12" LineHeight="18"
-                                                           TextWrapping="Wrap"
-                                                           Text="{Binding LimitationText}"/>
-                                            </Border>
-
-                                            <!-- A refusal takes the Amber edge,
-                                                 because it is the one thing here
-                                                 the user has to read before the
-                                                 button makes sense. -->
-                                            <Border Classes="note attention" IsVisible="{Binding IsBlocked}">
-                                                <TextBlock Classes="body" FontSize="12" LineHeight="18"
-                                                           TextWrapping="Wrap"
-                                                           Text="{Binding RefusalText}"/>
-                                            </Border>
-                                        </StackPanel>
-
-                                        <Button Grid.Column="1"
-                                                Classes="answer same"
-                                                VerticalAlignment="Top"
-                                                Content="{Binding ApplyButtonText}"
-                                                IsEnabled="{Binding CanApply}"
-                                                AutomationProperties.Name="{Binding ApplyAutomationName}"
-                                                Command="{Binding $parent[UserControl].((vm:MergeQueueViewModel)DataContext).ApplyCommand}"
-                                                CommandParameter="{Binding}"/>
-                                    </Grid>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </StackPanel>
-
-                <!-- ══ Applied merges and undo ══════════════════════════════
-                     Every row's enabled state is recomputed on every load and
-                     on every arrival at this surface. Reversibility depends on
-                     every merge applied after a given one, so it is a fact
-                     about the whole log at this instant and is never cached.
-                     Absent on an install that never applied one. -->
-                <StackPanel IsVisible="{Binding HasHistory}" Spacing="0" Margin="0,24,0,0">
-                    <Border Height="1" Background="{StaticResource Line}" Margin="0,0,0,20"/>
-
-                    <StackPanel Spacing="7" Margin="0,0,0,8">
-                        <TextBlock Classes="section" Text="{Binding HistoryHeading}"/>
-                        <TextBlock Classes="body" FontSize="12" LineHeight="18"
-                                   MaxWidth="620" TextWrapping="Wrap"
-                                   Foreground="{StaticResource TextDim}"
-                                   Text="{Binding HistoryIntro}"/>
-                    </StackPanel>
-
-                    <ItemsControl Margin="0,12,0,0"
-                                  ItemsSource="{Binding History}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate DataType="vm:MergeHistoryRowViewModel">
-                                <Border Classes="entry">
-                                    <StackPanel Spacing="10">
-                                        <Grid ColumnDefinitions="*,Auto">
-                                            <StackPanel Grid.Column="0" Spacing="6" Margin="0,0,20,0">
-
-                                                <!-- The row in user language:
-                                                     which two games became one.
-                                                     Counts are one disclosure
-                                                     away, never here. -->
-                                                <TextBlock Classes="body-l"
-                                                           TextWrapping="Wrap" LineHeight="21"
-                                                           Text="{Binding Description}"/>
-
-                                                <StackPanel Orientation="Horizontal" Spacing="8">
-                                                    <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
-                                                               VerticalAlignment="Center"
-                                                               Text="{Binding AppliedAtLabel}"/>
-                                                    <TextBlock Classes="data-s"
-                                                               VerticalAlignment="Center"
-                                                               Text="{Binding AppliedAtText}"/>
-
-                                                    <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
-                                                               Margin="6,0,0,0"
-                                                               VerticalAlignment="Center"
-                                                               Foreground="{StaticResource Amber}"
-                                                               IsVisible="{Binding IsUndone}"
-                                                               Text="{Binding UndoneLabelText}"/>
-                                                    <TextBlock Classes="data-s"
-                                                               VerticalAlignment="Center"
-                                                               IsVisible="{Binding IsUndone}"
-                                                               Text="{Binding UndoneAtText}"/>
-                                                </StackPanel>
-                                            </StackPanel>
-
-                                            <Button Grid.Column="1"
-                                                    Classes="answer different"
-                                                    VerticalAlignment="Top"
-                                                    Content="{Binding UndoButtonText}"
-                                                    IsEnabled="{Binding CanUndo}"
-                                                    IsVisible="{Binding ShowUndoControl}"
-                                                    AutomationProperties.Name="{Binding UndoAutomationName}"
-                                                    ToolTip.Tip="{Binding UndoTooltip}"
-                                                    Command="{Binding $parent[UserControl].((vm:MergeQueueViewModel)DataContext).UndoCommand}"
-                                                    CommandParameter="{Binding}"/>
-                                        </Grid>
-
-                                        <!-- The disabled reason, always in words
-                                             beside the control it disables (§8).
-                                             Exactly one of the four names another
-                                             merge and offers the way through it. -->
-                                        <Border Classes="note attention" IsVisible="{Binding IsBlocked}">
-                                            <StackPanel Spacing="10">
-                                                <TextBlock Classes="body" FontSize="12" LineHeight="18"
-                                                           TextWrapping="Wrap"
-                                                           Text="{Binding BlockedText}"/>
-                                                <Button Classes="answer different"
-                                                        HorizontalAlignment="Left"
-                                                        IsVisible="{Binding HasBlockingMerge}"
-                                                        Content="{Binding UndoBlockingButtonText}"
-                                                        AutomationProperties.Name="{Binding UndoBlockingAutomationName}"
-                                                        Command="{Binding $parent[UserControl].((vm:MergeQueueViewModel)DataContext).UndoBlockingCommand}"
-                                                        CommandParameter="{Binding}"/>
-                                            </StackPanel>
-                                        </Border>
-
-                                        <!-- Counts belong in a detail view, so they
-                                             sit behind the same Azure disclosure the
-                                             platform settings use. -->
-                                        <StackPanel Spacing="8" IsVisible="{Binding HasCounts}">
-                                            <Button Classes="disclose"
-                                                    Content="{Binding CountsToggleText}"
-                                                    AutomationProperties.Name="{Binding CountsToggleText}"
-                                                    Command="{Binding ToggleCountsCommand}"/>
-
-                                            <StackPanel Spacing="8" IsVisible="{Binding IsCountsOpen}">
-                                                <TextBlock Classes="body" FontSize="12" LineHeight="18"
-                                                           TextWrapping="Wrap"
-                                                           Foreground="{StaticResource TextDim}"
-                                                           Text="{Binding CountsIntro}"/>
-                                                <ItemsControl ItemsSource="{Binding Counts}">
-                                                    <ItemsControl.ItemTemplate>
-                                                        <DataTemplate DataType="vm:MergeCountRowViewModel">
-                                                            <Grid ColumnDefinitions="*,72" Margin="0,0,0,4">
-                                                                <TextBlock Grid.Column="0"
-                                                                           Classes="body" FontSize="12"
-                                                                           Foreground="{StaticResource TextDim}"
-                                                                           Text="{Binding Label}"/>
-                                                                <!-- Plex Mono, tabular:
-                                                                     counts under counts. -->
-                                                                <TextBlock Grid.Column="1"
-                                                                           Classes="data"
-                                                                           TextAlignment="Right"
-                                                                           Text="{Binding CountText}"/>
-                                                            </Grid>
-                                                        </DataTemplate>
-                                                    </ItemsControl.ItemTemplate>
-                                                </ItemsControl>
-                                            </StackPanel>
-                                        </StackPanel>
-                                    </StackPanel>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </StackPanel>
               </StackPanel>
             </ScrollViewer>
 

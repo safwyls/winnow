@@ -7,11 +7,11 @@ namespace Winnow.App.ViewModels;
 /// <c>Program.ConfigureServices</c> gains one line rather than a list.
 ///
 /// <para>Its required dependencies, <c>IMergeCandidateRepository</c>,
-/// <c>IReleaseRepository</c>, <c>IWorkRepository</c>,
-/// <c>MergeExecutor</c> and <c>IIdentityLinkRepository</c>, are already
-/// registered by the host. Omitting either engine must break the container
-/// at startup rather than render a screen whose answers quietly write
-/// nothing.</para>
+/// <c>IReleaseRepository</c>, <c>IWorkRepository</c> and
+/// <c>IIdentityLinkRepository</c>, are already registered by the host.
+/// The link repository is required, not optional, so omitting it breaks
+/// the container at startup rather than rendering a screen whose answers
+/// quietly write nothing.</para>
 ///
 /// <para><c>ICoverCache</c> is optional; calling <c>AddCoverCache()</c> is
 /// what upgrades the 200x300 covers from the procedural placeholder to real

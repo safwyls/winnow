@@ -53,26 +53,24 @@ public static class UpdateEventKinds
 /// <summary>Valid <see cref="MergeCandidate.Status"/> values (CHECK-constrained in the schema).</summary>
 public static class MergeCandidateStatuses
 {
+    /// <summary>An open question. The grouped review queue reads these.</summary>
     public const string Pending = "pending";
-    public const string Confirmed = "confirmed";
+
+    /// <summary>
+    /// The only terminal status. 'confirmed' and 'undone' were dropped by
+    /// migration 0019 with the destructive merge. A pair is answered
+    /// affirmatively if and only if a live identity link exists between its
+    /// two resolved works, so the affirmative answer has exactly one home
+    /// and is retractable. 'undone' existed only to stop a re-merge loop
+    /// under a model where nothing could be retracted.
+    /// </summary>
     public const string Rejected = "rejected";
 
     /// <summary>
-    /// The pair was merged and the merge was then reversed. Terminal, like
-    /// <see cref="Rejected"/> and <see cref="Confirmed"/>, so no sweep
-    /// re-queues it and no batch pass re-applies it. Distinct from
-    /// <see cref="Rejected"/>: undoing a merge is a complaint about the merge
-    /// (wrong survivor, editions that should stay apart), not a claim that the
-    /// two are different games. Re-merging needs a deliberate re-confirmation.
-    /// </summary>
-    public const string Undone = "undone";
-
-    /// <summary>
     /// Statuses that are an answer rather than a question.
-    /// <c>SoftMatchResolver</c> leaves these alone and the merge planner
-    /// refuses them.
+    /// <c>SoftMatchResolver</c> leaves these alone.
     /// </summary>
-    public static readonly IReadOnlyList<string> Terminal = [Confirmed, Rejected, Undone];
+    public static readonly IReadOnlyList<string> Terminal = [Rejected];
 }
 
 /// <summary>Valid <see cref="Session.DetectionMethod"/> values (CHECK-constrained in the schema).</summary>

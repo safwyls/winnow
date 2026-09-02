@@ -22,7 +22,6 @@ public sealed record SoftMatchRequest(MatchSubject Subject, IReadOnlyList<MatchS
 /// <param name="SkippedBelowFloor">Scored below the queue floor, or vetoed.</param>
 /// <param name="AlreadyPending">A pending row for this pair already existed.</param>
 /// <param name="PreviouslyRejected">User already said "Different games". Terminal.</param>
-/// <param name="PreviouslyConfirmed">User already said "Same game". Terminal.</param>
 /// <param name="Rescored">Pending pairs whose score was refreshed on new metadata.</param>
 /// <param name="Withdrawn">Pending pairs removed because they no longer clear the queue floor.</param>
 /// <param name="Retired">
@@ -32,11 +31,6 @@ public sealed record SoftMatchRequest(MatchSubject Subject, IReadOnlyList<MatchS
 /// <paramref name="Compared"/>: these pairs were never submitted this pass, which
 /// is exactly why they needed reconciling.
 /// </param>
-/// <param name="PreviouslyUndone">
-/// The pair was merged and the merge was reversed. Terminal, like the other two
-/// answers, and counted apart from them because "merged and unmerged" is a
-/// different fact from "different games".
-/// </param>
 public sealed record SoftMatchOutcome(
     int Compared,
     int Queued,
@@ -44,13 +38,11 @@ public sealed record SoftMatchOutcome(
     int SkippedBelowFloor,
     int AlreadyPending,
     int PreviouslyRejected,
-    int PreviouslyConfirmed,
     int Rescored = 0,
     int Withdrawn = 0,
-    int Retired = 0,
-    int PreviouslyUndone = 0)
+    int Retired = 0)
 {
-    public static SoftMatchOutcome Empty { get; } = new(0, 0, 0, 0, 0, 0, 0);
+    public static SoftMatchOutcome Empty { get; } = new(0, 0, 0, 0, 0, 0);
 
     /// <summary>Always zero. Soft matches never auto-merge (§5.3).</summary>
     public int AutoMerged => 0;
@@ -241,29 +233,20 @@ public sealed class SoftMatchResolver
 
                 if (existing is not null)
                 {
-                    // User already answered this pair. Both answers are terminal.
-                    switch (existing.Status)
+                    // After 0019 the only answer is 'rejected'; 'confirmed'
+                    // and 'undone' were retired with the destructive merge.
+                    // The default arm is kept because a row read from a
+                    // database this build has not yet migrated is still a row.
+                    if (string.Equals(
+                            existing.Status, MergeCandidateStatuses.Rejected, StringComparison.Ordinal))
                     {
-                        case MergeCandidateStatuses.Rejected:
-                            tally.PreviouslyRejected++;
-                            _logger.LogDebug(
-                                "Pair {Low}/{High} was rejected by the user; not re-queueing", low, high);
-                            break;
-                        case MergeCandidateStatuses.Confirmed:
-                            tally.PreviouslyConfirmed++;
-                            break;
-                        case MergeCandidateStatuses.Undone:
-                            // Merged and then reversed. Terminal: without this
-                            // arm the row falls through to the default and is
-                            // counted as a pending proposal, which is false.
-                            // Re-merging needs a deliberate re-confirmation.
-                            tally.PreviouslyUndone++;
-                            _logger.LogDebug(
-                                "Pair {Low}/{High} was merged and undone; not re-queueing", low, high);
-                            break;
-                        default:
-                            tally.AlreadyPending++;
-                            break;
+                        tally.PreviouslyRejected++;
+                        _logger.LogDebug(
+                            "Pair {Low}/{High} was rejected by the user; not re-queueing", low, high);
+                    }
+                    else
+                    {
+                        tally.AlreadyPending++;
                     }
 
                     continue;
@@ -328,16 +311,16 @@ public sealed class SoftMatchResolver
             "Soft match: compared {Compared} pairs, queued {Queued} pending ({Priority} priority), "
             + "discarded {BelowFloor} ({Withdrawn} withdrawn from the queue), {AlreadyPending} already "
             + "pending ({Rescored} rescored), {Retired} retired as unproposable, {Rejected} previously "
-            + "rejected, {Confirmed} previously confirmed, in {Batches} write batch(es). Auto-merged 0 "
+            + "rejected, in {Batches} write batch(es). Auto-merged 0 "
             + "— soft matches never auto-merge (§5.3).",
             tally.Compared, tally.Queued, tally.Priority, tally.SkippedBelowFloor, tally.Withdrawn,
             tally.AlreadyPending, tally.Rescored, tally.Retired, tally.PreviouslyRejected,
-            tally.PreviouslyConfirmed, BatchCount(writes.Count));
+            BatchCount(writes.Count));
 
         return new SoftMatchOutcome(
             tally.Compared, tally.Queued, tally.Priority, tally.SkippedBelowFloor,
-            tally.AlreadyPending, tally.PreviouslyRejected, tally.PreviouslyConfirmed,
-            tally.Rescored, tally.Withdrawn, tally.Retired, tally.PreviouslyUndone);
+            tally.AlreadyPending, tally.PreviouslyRejected,
+            tally.Rescored, tally.Withdrawn, tally.Retired);
     }
 
     /// <summary>
@@ -456,8 +439,6 @@ public sealed class SoftMatchResolver
         public int SkippedBelowFloor;
         public int AlreadyPending;
         public int PreviouslyRejected;
-        public int PreviouslyConfirmed;
-        public int PreviouslyUndone;
         public int Rescored;
         public int Withdrawn;
         public int Retired;

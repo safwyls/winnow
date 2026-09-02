@@ -267,6 +267,30 @@ the default experience.
 (title distance, year delta, publisher). Actions are `Same game` / `Different games` — never
 "Merge"/"Cancel", which asks the user to reason about the data model instead of about games.
 
+> **Each member states its store (TASK-70.8, 2026-09-01).** The store is the fact that decides
+> whether a pair is one game on two storefronts, and until now the screen never said it. Every
+> member carries its stores in the same outlined chip the tiles wear (1px `Line`, radius 3, body
+> face 9px, `TextDim`). Placement differs by density because the space does:
+>
+> - **Pair layout** (`MergeMemberTemplate`, a fixed 200px column): the chips take their own
+>   line under the year and entry numbers, in a `WrapPanel` so three chips (123.1px) never clip
+>   at 200px.
+> - **Roster rows** (`MergeRosterRowTemplate`): the chips lead the metadata line, ahead of
+>   year, entries and publisher, so down a roster the stores form a column at one constant x.
+>
+> Members with no ownership row draw no chip row and keep the old two-part automation name.
+>
+> **The card has a maximum width of 840px and is centred.** The number is measured: the roster
+> density sets the ceiling, not the pair. Card chrome 44 + cover 200 + gutter 28 + roster row
+> minimum 526.0 (member chrome 30, checkbox 16 + 14, chip cover 64, two 14px margins, the
+> condensed evidence line at 271.7, and the "Keep this title" radio at 102.3) = 798. 840 clears
+> that with slack for shaping variance, sits on §4's 4px grid, and is twice the 420px feed card
+> measure. The pair layout needs only 750. §13 gap 5's provisional 720px prose measure was
+> read and does not govern: this is a two-column comparison, not a paragraph. Both densities
+> take the one ceiling; the primary keeps its 200×300 capsule at both densities so the card's
+> outer geometry never changes between them. Widths were measured against the bundled OFL faces
+> at the exact sizes, weights, letter-spacing and padding the markup sets.
+
 **Session journal prompt.** 400×220 frameless, bottom-right, `SurfaceRaised`, with the
 game's cover at 60×90 on the left. Title, duration in Data, one text field, 5-dot rating in
 `Volt`. Appears at most once per session, never steals focus.

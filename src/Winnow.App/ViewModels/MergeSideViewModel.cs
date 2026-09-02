@@ -34,7 +34,8 @@ public partial class MergeSideViewModel : ObservableObject
         string? publisher = null,
         CoverKey? coverKey = null,
         ICoverCache? covers = null,
-        IReadOnlyList<long>? alsoReleaseIds = null)
+        IReadOnlyList<long>? alsoReleaseIds = null,
+        IReadOnlyList<string>? stores = null)
     {
         ReleaseId = releaseId;
         Title = string.IsNullOrWhiteSpace(title) ? $"Release {releaseId}" : title;
@@ -45,9 +46,40 @@ public partial class MergeSideViewModel : ObservableObject
         _covers = covers;
         _alsoReleaseIds = alsoReleaseIds;
 
+        var ordered = stores is null
+            ? []
+            : stores
+                .Where(store => !string.IsNullOrWhiteSpace(store))
+                .Select(store => store.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+
+        StoreChips = [.. ordered.Select(StoreNaming.Badge)];
+        StoreNames = string.Join(", ", ordered.Select(StoreNaming.Label));
+
         var (start, end) = PlaceholderArt.VividColors(Title);
         PlaceholderBrush = PlaceholderArt.Gradient(start, end);
     }
+
+    /// <summary>
+    /// Badge text for each store this member is owned on, one chip per store.
+    /// Ordered as the ownership rows arrived; duplicates and blanks removed.
+    /// </summary>
+    public IReadOnlyList<string> StoreChips { get; }
+
+    /// <summary>
+    /// The same stores spelled out as display names, comma-joined. Used for
+    /// the chip row's tooltip and for the automation name that tells two
+    /// identically titled members apart.
+    /// </summary>
+    public string StoreNames { get; }
+
+    /// <summary>
+    /// False when no ownership row names a store for this member, so the chip
+    /// row is not drawn and the automation name falls back to the store-less
+    /// format.
+    /// </summary>
+    public bool HasStores => StoreChips.Count > 0;
 
     public long ReleaseId { get; }
 

@@ -486,7 +486,7 @@ public sealed class LibrarySoftMatchSweepTests
 
         await fixture.Sweep.SweepAsync();
         var answered = Assert.Single(await fixture.Candidates.GetPendingAsync());
-        await fixture.Candidates.SetStatusAsync(answered.Id, MergeCandidateStatuses.Confirmed);
+        await fixture.Candidates.SetStatusAsync(answered.Id, MergeCandidateStatuses.Rejected);
 
         await fixture.Releases.UpdateNameAsync(right, "Transistor");
 
@@ -494,7 +494,7 @@ public sealed class LibrarySoftMatchSweepTests
 
         Assert.Equal(0, report.ExcludedWithdrawn);
         Assert.Equal(
-            MergeCandidateStatuses.Confirmed,
+            MergeCandidateStatuses.Rejected,
             (await fixture.Candidates.FindByPairAsync(left, right))!.Status);
     }
 

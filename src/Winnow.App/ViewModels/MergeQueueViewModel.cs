@@ -7,7 +7,6 @@ using Winnow.Core.Merging;
 using Winnow.Core.Repositories;
 using Winnow.Covers;
 using Winnow.Covers.Igdb;
-using Winnow.Resolve;
 using Winnow.Resolve.Matching;
 
 namespace Winnow.App.ViewModels;
@@ -23,11 +22,12 @@ namespace Winnow.App.ViewModels;
 /// Answering a member therefore cannot leave a sibling card stale: they were
 /// never separate cards.</para>
 ///
-/// <para>Answering writes a LINK, not a merge. Nothing is deleted, so the answer
-/// is retractable from HISTORY and the same group can be linked, retracted and
-/// linked again any number of times. The destructive executor still backs the
-/// two merge sections of HISTORY, which exist for installs that answered under
-/// the previous flow; the review path never reaches it.</para>
+/// <para>Answering writes a LINK, not a merge. Nothing is deleted, so the
+/// answer is retractable from HISTORY and the same group can be linked,
+/// retracted and linked again any number of times. Migration 0019 retired the
+/// destructive executor, its undo journal and the two merge sections HISTORY
+/// used to carry, so a link act is now the only thing this screen writes and
+/// the only thing HISTORY shows.</para>
 /// </summary>
 public partial class MergeQueueViewModel : ObservableObject
 {
@@ -40,8 +40,8 @@ public partial class MergeQueueViewModel : ObservableObject
     private readonly IMergeCandidateRepository _candidates;
     private readonly IReleaseRepository _releases;
     private readonly IWorkRepository _works;
-    private readonly MergeExecutor _merges;
     private readonly IIdentityLinkRepository _links;
+    private readonly IOwnershipRepository _ownership;
     private readonly ICoverCache? _covers;
     private readonly IResolveStateRepository? _resolveState;
 
@@ -50,24 +50,26 @@ public partial class MergeQueueViewModel : ObservableObject
 
     private bool _loaded;
 
-    // Both engines are required, not optional. A type registered in the
-    // container and resolved nowhere is indistinguishable from one that works;
-    // omitting either must break the container at startup rather than render a
-    // screen whose answers quietly write nothing.
+    /// <summary>
+    /// The link and ownership repositories are required, not optional. A type
+    /// registered in the container and resolved nowhere is indistinguishable
+    /// from one that works; omitting either must break the container at startup
+    /// rather than render a screen whose answers quietly write nothing.
+    /// </summary>
     public MergeQueueViewModel(
         IMergeCandidateRepository candidates,
         IReleaseRepository releases,
         IWorkRepository works,
-        MergeExecutor merges,
         IIdentityLinkRepository links,
+        IOwnershipRepository ownership,
         ICoverCache? covers = null,
         IResolveStateRepository? resolveState = null)
     {
         _candidates = candidates;
         _releases = releases;
         _works = works;
-        _merges = merges;
         _links = links;
+        _ownership = ownership;
         _covers = covers;
         _resolveState = resolveState;
     }
@@ -91,15 +93,14 @@ public partial class MergeQueueViewModel : ObservableObject
     [RelayCommand]
     private void ShowReview() => IsHistoryVisible = false;
 
-    // Recomputes on the way in. The link log moves whenever a group is answered
-    // or retracted, and merge reversibility depends on every merge applied after
-    // a given one, so a verdict computed at the last load is a claim about a
-    // database that may since have moved.
+    /// <summary>Switches to HISTORY, rebuilding the list from the table.
+    /// Recomputed on every arrival because the link log moves whenever a
+    /// group is answered or retracted.</summary>
     [RelayCommand]
     private async Task ShowHistoryAsync(CancellationToken ct)
     {
         IsHistoryVisible = true;
-        await RefreshAppliedAsync(ct);
+        LinkHistory = await BuildLinkHistoryAsync(ct);
     }
 
     // ── The review queue ─────────────────────────────────────────────────────
@@ -108,7 +109,7 @@ public partial class MergeQueueViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(
         nameof(PendingCount), nameof(PendingCountText), nameof(HasPending),
-        nameof(ShowEmpty), nameof(RowOpacity), nameof(ShowOutstandingNotice))]
+        nameof(ShowEmpty), nameof(RowOpacity))]
     public partial IReadOnlyList<MergeGroupViewModel> Groups { get; set; } = [];
 
     /// <summary>The group the user is currently looking at, or null when the queue is empty.</summary>
@@ -146,40 +147,6 @@ public partial class MergeQueueViewModel : ObservableObject
     /// <summary>Standing explanation under the screen title.</summary>
     public string IntroMessage => MergeCopy.QueueIntro;
 
-    // ── The pairs answered under the previous two-step flow ──────────────────
-
-    /// <summary>
-    /// Pairs confirmed under the old two-step flow that were never applied.
-    /// Nothing this build does adds to this list, because the review path no
-    /// longer writes <c>confirmed</c> and no longer merges. It exists so an
-    /// install predating the change has somewhere to finish, and it is absent
-    /// altogether once drained.
-    /// </summary>
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(
-        nameof(OutstandingCount), nameof(OutstandingCountText), nameof(HasOutstanding),
-        nameof(ShowOutstandingNotice), nameof(OutstandingNoticeMessage))]
-    public partial IReadOnlyList<MergeApplyViewModel> Outstanding { get; set; } = [];
-
-    /// <summary>Number of confirmed pairs waiting to be applied.</summary>
-    public int OutstandingCount => Outstanding.Count;
-
-    /// <summary>Plex Mono, tabular, grouped — every number in the app (§3).</summary>
-    public string OutstandingCountText => OutstandingCount.ToString("N0", CultureInfo.CurrentCulture);
-
-    /// <summary>True when confirmed pairs are waiting to be applied.</summary>
-    public bool HasOutstanding => OutstandingCount > 0;
-
-    // Two segments can hide work a single scroll could not. An empty queue
-    // beside unapplied leftovers is the one state that reads as finished while
-    // the History segment still has outstanding pairs; the notice prevents a
-    // user from leaving the screen early.
-    public bool ShowOutstandingNotice => ShowEmpty && HasOutstanding;
-
-    // Count rendered inline in the data face (Plex Mono tnum, §3).
-    public string OutstandingNoticeMessage => string.Format(
-        CultureInfo.CurrentCulture, MergeCopy.OutstandingNoticeFormat, OutstandingCountText);
-
     // ── History: link acts ───────────────────────────────────────────────────
 
     /// <summary>
@@ -197,22 +164,6 @@ public partial class MergeQueueViewModel : ObservableObject
     /// <summary>True once the screen has loaded and nothing has been linked.</summary>
     public bool ShowLinkHistoryEmpty => _loaded && LinkHistory.Count == 0;
 
-    // ── History: applied merges ──────────────────────────────────────────────
-
-    /// <summary>
-    /// Every applied merge, newest first, each with its undo verdict. A separate
-    /// list from <see cref="LinkHistory"/> because a retraction and a
-    /// fifteen-table reversal are different facts, and one interleaved list
-    /// would need a sentence per row saying which kind it was. This list is
-    /// finite and shrinking: nothing this build does adds to it.
-    /// </summary>
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasHistory))]
-    public partial IReadOnlyList<MergeHistoryRowViewModel> History { get; set; } = [];
-
-    /// <summary>True when at least one merge has been applied.</summary>
-    public bool HasHistory => History.Count > 0;
-
     // ── What the last act actually did ───────────────────────────────────────
 
     /// <summary>
@@ -220,8 +171,7 @@ public partial class MergeQueueViewModel : ObservableObject
     /// the engine returned, never from what was asked for.
     /// </summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(
-        nameof(HasReport), nameof(ReportUndoAutomationName), nameof(ReportRetractAutomationName))]
+    [NotifyPropertyChangedFor(nameof(HasReport), nameof(ReportRetractAutomationName))]
     public partial string? ReportMessage { get; set; }
 
     /// <summary>True when there is an outcome to display.</summary>
@@ -237,22 +187,6 @@ public partial class MergeQueueViewModel : ObservableObject
 
     /// <summary>True when the report's link can be retracted from where it stands.</summary>
     public bool CanRetractReport => ReportRetractActId is not null;
-
-    /// <summary>
-    /// The merge the report is about, when it can still be reversed. Reachable
-    /// only from the two merge sections of HISTORY; the review path never
-    /// applies a merge.
-    /// </summary>
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(CanUndoReport))]
-    public partial long? ReportUndoApplicationId { get; set; }
-
-    /// <summary>The title the undo would restore, shown on the undo control.</summary>
-    [ObservableProperty]
-    public partial string? ReportUndoTitle { get; set; }
-
-    /// <summary>True when the report's merge can still be reversed.</summary>
-    public bool CanUndoReport => ReportUndoApplicationId is not null;
 
     // ── Chrome the view binds to ─────────────────────────────────────────────
 
@@ -271,18 +205,6 @@ public partial class MergeQueueViewModel : ObservableObject
     /// <summary>Tooltip on the history segment.</summary>
     public string HistorySegmentTooltip => MergeCopy.SegmentHistoryTooltip;
 
-    /// <summary>Section heading for pairs answered before merges applied on confirm.</summary>
-    public string ApplyHeading => MergeCopy.ApplyHeading;
-
-    /// <summary>Introduction under that heading.</summary>
-    public string ApplyIntro => MergeCopy.ApplyIntro;
-
-    /// <summary>Label for the batch apply control.</summary>
-    public string ApplyAllButtonText => MergeCopy.ApplyAllButton;
-
-    /// <summary>Tooltip on the batch apply control.</summary>
-    public string ApplyAllTooltip => MergeCopy.ApplyAllTooltip;
-
     /// <summary>Section heading for the list of link acts.</summary>
     public string LinkHistoryHeading => MergeCopy.LinkHistoryHeading;
 
@@ -292,23 +214,11 @@ public partial class MergeQueueViewModel : ObservableObject
     /// <summary>Empty state for the link list.</summary>
     public string LinkHistoryEmptyMessage => MergeCopy.LinkHistoryEmpty;
 
-    /// <summary>Section heading for the history of applied merges.</summary>
-    public string HistoryHeading => MergeCopy.HistoryHeading;
-
-    /// <summary>Introduction under the history heading.</summary>
-    public string HistoryIntro => MergeCopy.HistoryIntro;
-
     /// <summary>Label on the control that retracts the link the report describes.</summary>
     public string ReportRetractButtonText => MergeCopy.RetractButton;
 
     /// <summary>Tooltip on that control.</summary>
     public string ReportRetractTooltipText => MergeCopy.RetractTooltip;
-
-    /// <summary>Label on the undo control beside a merge outcome report.</summary>
-    public string ReportUndoButtonText => MergeCopy.ReportUndoButton;
-
-    /// <summary>Tooltip on that control.</summary>
-    public string ReportUndoTooltipText => MergeCopy.ReportUndoTooltip;
 
     /// <summary>
     /// Automation name for the retraction beside a report. Without the verb a
@@ -317,10 +227,6 @@ public partial class MergeQueueViewModel : ObservableObject
     /// </summary>
     public string ReportRetractAutomationName =>
         string.Create(CultureInfo.CurrentCulture, $"{MergeCopy.RetractButton}. {ReportMessage}");
-
-    /// <summary>Automation name for the merge undo beside a report.</summary>
-    public string ReportUndoAutomationName =>
-        string.Create(CultureInfo.CurrentCulture, $"{MergeCopy.ReportUndoButton}. {ReportMessage}");
 
     /// <summary>Tooltip on "Different games".</summary>
     public string DifferentGamesTooltip => MergeCopy.DifferentGamesTooltip;
@@ -344,19 +250,10 @@ public partial class MergeQueueViewModel : ObservableObject
             releaseIds.Add(candidate.RightReleaseId);
         }
 
-        var outstanding = await _merges.OutstandingAsync(ct);
-        foreach (var plan in outstanding)
-        {
-            AddIfPresent(releaseIds, plan.LeftReleaseId);
-            AddIfPresent(releaseIds, plan.RightReleaseId);
-        }
-
         var library = await DescribeAsync(releaseIds, ct);
 
         _loaded = true;
         Groups = await BuildGroupsAsync(pending, library, resolution, ct);
-        Outstanding = BuildOutstanding(outstanding, library.Titles, library.WorkOfRelease);
-        History = BuildHistory(await _merges.HistoryAsync(ct));
         LinkHistory = await BuildLinkHistoryAsync(ct);
 
         Select(Groups.Count > 0 ? Groups[0] : null);
@@ -392,8 +289,6 @@ public partial class MergeQueueViewModel : ObservableObject
         var primaryTitle = group.PrimaryTitle;
 
         ReportRetractActId = null;
-        ReportUndoApplicationId = null;
-        ReportUndoTitle = null;
 
         if (children.Count == 0)
         {
@@ -484,147 +379,9 @@ public partial class MergeQueueViewModel : ObservableObject
     private async Task RetractActAsync(long actId, CancellationToken ct)
     {
         ReportRetractActId = null;
-        ReportUndoApplicationId = null;
-        ReportUndoTitle = null;
 
         var retracted = await _links.RetractActAsync(actId, null, ct);
         ReportMessage = retracted ? MergeCopy.Retracted : MergeCopy.RetractedAlready;
-
-        await LoadAsync(ct);
-    }
-
-    // ── Applying the leftovers ───────────────────────────────────────────────
-
-    // Applies one leftover pair and reports the outcome the engine returned. A
-    // refused plan writes nothing and says so; it is never silently dropped.
-    // Reachable only from HISTORY: nothing the review queue does adds to this
-    // list any more.
-    [RelayCommand]
-    private async Task ApplyAsync(MergeApplyViewModel? row, CancellationToken ct)
-    {
-        if (row is null || !row.CanApply)
-        {
-            return;
-        }
-
-        row.IsApplying = true;
-
-        var outcome = await _merges.ApplyAsync(row.Id, ct);
-        ReportRetractActId = null;
-        ReportUndoApplicationId = null;
-        ReportUndoTitle = null;
-        ReportMessage = outcome.Applied
-            ? string.Format(
-                CultureInfo.CurrentCulture,
-                MergeCopy.AppliedReportFormat,
-                row.SurvivingTitle,
-                row.AbsorbedTitle ?? MergeApplyViewModel.ReleaseLabel(row.AbsorbedReleaseId),
-                ModePhrase(outcome.Plan.Mode))
-            : string.Format(
-                CultureInfo.CurrentCulture,
-                MergeCopy.AppliedNothingFormat,
-                MergeApplyViewModel.RefusalFor(outcome.Plan.Blocker));
-
-        if (outcome.Applied
-            && outcome.ApplicationId is { } applicationId
-            && (await _merges.PreviewUndoAsync(applicationId, ct)).Reversible)
-        {
-            ReportUndoApplicationId = applicationId;
-            ReportUndoTitle = row.AbsorbedTitle ?? row.SurvivingTitle;
-        }
-
-        await LoadAsync(ct);
-    }
-
-    // The batch path. Each pair is its own transaction, so one pair that cannot
-    // merge safely is skipped rather than holding the rest back.
-    [RelayCommand]
-    private async Task ApplyAllAsync(CancellationToken ct)
-    {
-        var summary = await _merges.ApplyAllConfirmedAsync(ct);
-
-        ReportRetractActId = null;
-        ReportUndoApplicationId = null;
-        ReportUndoTitle = null;
-        ReportMessage = summary.Applied == 0
-            ? string.Format(
-                CultureInfo.CurrentCulture, MergeCopy.AppliedBatchNoneFormat, summary.Considered)
-            : string.Format(
-                CultureInfo.CurrentCulture,
-                MergeCopy.AppliedBatchFormat,
-                summary.Applied, summary.Considered, summary.Skipped);
-
-        await LoadAsync(ct);
-    }
-
-    // ── Undoing a merge ──────────────────────────────────────────────────────
-
-    // The undo beside a merge report, which is what made applying a leftover
-    // safe. The review path no longer merges, so this is reachable only from
-    // HISTORY.
-    [RelayCommand]
-    private async Task UndoReportAsync(CancellationToken ct)
-    {
-        if (ReportUndoApplicationId is not { } applicationId)
-        {
-            return;
-        }
-
-        await UndoApplicationAsync(applicationId, ReportUndoTitle ?? string.Empty, ct);
-    }
-
-    [RelayCommand]
-    private async Task UndoAsync(MergeHistoryRowViewModel? row, CancellationToken ct)
-    {
-        if (row is null || !row.CanUndo)
-        {
-            return;
-        }
-
-        row.IsUndoing = true;
-        await UndoApplicationAsync(row.ApplicationId, row.AbsorbedTitle ?? row.SurvivingTitle, ct);
-    }
-
-    // The one constructive path out of a disabled undo. The control undoes the
-    // merge that stands in the way, never the row it sits on.
-    [RelayCommand]
-    private async Task UndoBlockingAsync(MergeHistoryRowViewModel? row, CancellationToken ct)
-    {
-        if (row?.BlockingApplicationId is not { } blocking)
-        {
-            return;
-        }
-
-        var target = History.FirstOrDefault(candidate => candidate.ApplicationId == blocking);
-        await UndoApplicationAsync(
-            blocking, target?.AbsorbedTitle ?? target?.SurvivingTitle ?? string.Empty, ct);
-    }
-
-    private async Task UndoApplicationAsync(long applicationId, string restoredTitle, CancellationToken ct)
-    {
-        ReportRetractActId = null;
-        ReportUndoApplicationId = null;
-        ReportUndoTitle = null;
-
-        try
-        {
-            var result = await _merges.UndoAsync(applicationId, ct);
-            ReportMessage = string.Format(
-                CultureInfo.CurrentCulture,
-                MergeCopy.UndoneReportFormat,
-                restoredTitle,
-                result.RowsReinserted + result.RowsRepointedBack + result.RowsRestoredInPlace);
-        }
-        catch (MergeUndoRefusedException refused)
-        {
-            // Gate one. The blocker is the sentence the screen already knows how
-            // to say, so the user reads the same words here as on the row.
-            ReportMessage = string.Format(
-                CultureInfo.CurrentCulture,
-                MergeCopy.UndoRefusedFormat,
-                MergeHistoryRowViewModel.BlockedTextFor(
-                    refused.Blocker, null, refused.Plan?.BlockingApplicationId));
-        }
 
         await LoadAsync(ct);
     }
@@ -788,6 +545,23 @@ public partial class MergeQueueViewModel : ObservableObject
             coverKey = CoverKey.Igdb(imageId);
         }
 
+        var stores = new List<string>();
+        foreach (var candidate in member.ReleaseIds)
+        {
+            if (!library.Stores.TryGetValue(candidate, out var owned))
+            {
+                continue;
+            }
+
+            foreach (var store in owned)
+            {
+                if (!stores.Contains(store, StringComparer.OrdinalIgnoreCase))
+                {
+                    stores.Add(store);
+                }
+            }
+        }
+
         return new MergeSideViewModel(
             releaseId,
             work?.Name ?? library.Titles.GetValueOrDefault(releaseId, string.Empty),
@@ -796,7 +570,8 @@ public partial class MergeQueueViewModel : ObservableObject
             work?.Publisher,
             coverKey,
             _covers,
-            member.ReleaseIds);
+            member.ReleaseIds,
+            stores);
     }
 
     private async Task<IReadOnlyList<MergeLinkHistoryRowViewModel>> BuildLinkHistoryAsync(
@@ -879,127 +654,13 @@ public partial class MergeQueueViewModel : ObservableObject
         return rows;
     }
 
-    // Applied merges and the leftovers are one read: both are facts about what
-    // has been written, and both move whenever anything is.
-    private async Task RefreshAppliedAsync(CancellationToken ct)
-    {
-        var outstanding = await _merges.OutstandingAsync(ct);
-
-        var releaseIds = new HashSet<long>();
-        foreach (var plan in outstanding)
-        {
-            AddIfPresent(releaseIds, plan.LeftReleaseId);
-            AddIfPresent(releaseIds, plan.RightReleaseId);
-        }
-
-        var library = await DescribeAsync(releaseIds, ct);
-
-        Outstanding = BuildOutstanding(outstanding, library.Titles, library.WorkOfRelease);
-        History = BuildHistory(await _merges.HistoryAsync(ct));
-        LinkHistory = await BuildLinkHistoryAsync(ct);
-    }
-
-    private static void AddIfPresent(HashSet<long> ids, long? id)
-    {
-        if (id is { } value)
-        {
-            ids.Add(value);
-        }
-    }
-
-    private static IReadOnlyList<MergeApplyViewModel> BuildOutstanding(
-        IReadOnlyList<MergePlan> plans,
-        IReadOnlyDictionary<long, string> titles,
-        IReadOnlyDictionary<long, long> workIds)
-    {
-        var rows = new List<MergeApplyViewModel>(plans.Count);
-        foreach (var plan in plans)
-        {
-            var (surviving, absorbed) = Sides(plan, workIds);
-            rows.Add(new MergeApplyViewModel(
-                plan,
-                TitleOf(titles, surviving),
-                absorbed is { } id && titles.TryGetValue(id, out var name) ? name : null,
-                absorbed));
-        }
-
-        return rows;
-    }
-
-    // A work-only merge records no surviving release, so the surviving side is
-    // found by asking which of the two releases already sits on the surviving
-    // work.
-    private static (long? Surviving, long? Absorbed) Sides(
-        MergePlan plan, IReadOnlyDictionary<long, long> workIds)
-    {
-        if (plan.SurvivingReleaseId is { } surviving && plan.AbsorbedReleaseId is { } absorbed)
-        {
-            return (surviving, absorbed);
-        }
-
-        if (plan.SurvivingWorkId is { } survivingWorkId)
-        {
-            if (plan.LeftReleaseId is { } left
-                && workIds.TryGetValue(left, out var leftWork)
-                && leftWork == survivingWorkId)
-            {
-                return (left, plan.RightReleaseId);
-            }
-
-            if (plan.RightReleaseId is { } right
-                && workIds.TryGetValue(right, out var rightWork)
-                && rightWork == survivingWorkId)
-            {
-                return (right, plan.LeftReleaseId);
-            }
-        }
-
-        return (plan.LeftReleaseId, plan.RightReleaseId);
-    }
-
-    private static string TitleOf(IReadOnlyDictionary<long, string> titles, long? releaseId)
-        => releaseId is { } id && titles.TryGetValue(id, out var name)
-            ? name
-            : MergeApplyViewModel.ReleaseLabel(releaseId);
-
-    // A blocked row names the merge blocking it, so the descriptions are
-    // collected first and handed to the rows that need them.
-    private static IReadOnlyList<MergeHistoryRowViewModel> BuildHistory(
-        IReadOnlyList<MergeUndoPlan> plans)
-    {
-        var labels = new Dictionary<long, string>(plans.Count);
-        foreach (var plan in plans)
-        {
-            labels[plan.ApplicationId] = new MergeHistoryRowViewModel(plan).BlockingLabel;
-        }
-
-        var rows = new List<MergeHistoryRowViewModel>(plans.Count);
-        foreach (var plan in plans)
-        {
-            rows.Add(new MergeHistoryRowViewModel(
-                plan,
-                plan.BlockingApplicationId is { } blocking
-                    && labels.TryGetValue(blocking, out var label)
-                        ? label
-                        : null));
-        }
-
-        return rows;
-    }
-
-    private static string ModePhrase(MergeMode mode) => mode switch
-    {
-        MergeMode.ReleaseCollapse => MergeCopy.ModeReleaseCollapse,
-        MergeMode.WorkOnly => MergeCopy.ModeWorkOnly,
-        _ => string.Empty,
-    };
-
     /// <summary>What one load read about the releases the queue names.</summary>
     private sealed record LibrarySnapshot(
         Dictionary<long, string> Titles,
         Dictionary<long, CoverKey> CoverKeys,
         Dictionary<long, long> WorkOfRelease,
-        Dictionary<long, SurvivorCandidate> Works);
+        Dictionary<long, SurvivorCandidate> Works,
+        Dictionary<long, IReadOnlyList<string>> Stores);
 
     private async Task<LibrarySnapshot> DescribeAsync(
         IEnumerable<long> releaseIds, CancellationToken ct)
@@ -1008,6 +669,7 @@ public partial class MergeQueueViewModel : ObservableObject
         var coverKeys = new Dictionary<long, CoverKey>();
         var workOfRelease = new Dictionary<long, long>();
         var works = new Dictionary<long, SurvivorCandidate>();
+        var stores = new Dictionary<long, IReadOnlyList<string>>();
 
         foreach (var releaseId in releaseIds)
         {
@@ -1018,6 +680,16 @@ public partial class MergeQueueViewModel : ObservableObject
             }
 
             workOfRelease[releaseId] = release.WorkId;
+
+            // The store is the fact that decides whether a pair is one game
+            // on two storefronts, so it is read from the ownership rows for
+            // every entry the queue names rather than derived from the cover
+            // key or the external-id provider.
+            var owned = await _ownership.GetByReleaseAsync(releaseId, ct);
+            if (owned.Count > 0)
+            {
+                stores[releaseId] = [.. owned.Select(o => o.Store)];
+            }
 
             var work = await _works.GetAsync(release.WorkId, ct);
             titles[releaseId] = work?.Name ?? release.Name;
@@ -1049,7 +721,7 @@ public partial class MergeQueueViewModel : ObservableObject
             }
         }
 
-        return new LibrarySnapshot(titles, coverKeys, workOfRelease, works);
+        return new LibrarySnapshot(titles, coverKeys, workOfRelease, works, stores);
     }
 
     private int IndexOf(MergeGroupViewModel? group)

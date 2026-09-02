@@ -157,27 +157,13 @@ public sealed class IdentityReadInventoryTests
             "The link machinery itself. Resolving inside the thing that defines resolution would "
             + "be circular."),
 
-        new("src/Winnow.Data/Repositories/MergeExecutionRepository.cs", "BuildPlanAsync",
+        new("src/Winnow.Data/Migrations/StandingMergeReplay.cs", "LinkConfirmedPairs",
             Policy.DoNotResolve,
-            "The destructive executor, reachable only from history until TASK-70.7 retires it. It "
-            + "moves stored rows and must see them exactly as stored."),
-
-        new("src/Winnow.Data/Repositories/MergeExecutionRepository.cs", "UnifyWorksAsync",
-            Policy.DoNotResolve, "The destructive executor. See BuildPlanAsync."),
-
-        new("src/Winnow.Data/Repositories/MergeExecutionRepository.cs", "FoldOwnershipAsync",
-            Policy.DoNotResolve, "The destructive executor. See BuildPlanAsync."),
-
-        new("src/Winnow.Data/Repositories/MergeExecutionRepository.cs", "FoldOwnershipsAsync",
-            Policy.DoNotResolve, "The destructive executor. See BuildPlanAsync."),
-
-        new("src/Winnow.Data/Repositories/MergeExecutionRepository.cs", "SummariseAsync",
-            Policy.DoNotResolve, "The destructive executor. See BuildPlanAsync."),
-
-        new("src/Winnow.Data/Repositories/MergeUndoRepository.cs", "LoadLogAsync",
-            Policy.DoNotResolve,
-            "Recovers rows a destructive merge deleted, from the journal. Resolution has nothing "
-            + "to say about a row that is not there."),
+            "The one-shot that runs between migrations 0018 and 0019. It reads the three "
+            + "facts SurvivorLadder tests off every works row so a pair confirmed under the "
+            + "two-step flow can be turned into a link. Resolving here would hand the ladder a "
+            + "parent in place of the work the user actually answered about, and it runs while "
+            + "the link table is being populated, so there is no resolution to read yet."),
 
         new("src/Winnow.App/ViewModels/MergeQueueViewModel.cs", "BuildLinkHistoryAsync",
             Policy.DoNotResolve,

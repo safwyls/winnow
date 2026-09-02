@@ -297,25 +297,6 @@ public sealed class SoftMatchResolverTests : IDisposable
         Assert.Empty(await _candidates.GetPendingAsync());
     }
 
-    /// <summary>Confirmed is terminal as well: a decided pair is not re-litigated.</summary>
-    [Fact]
-    public async Task AConfirmedPairIsNeverReQueued()
-    {
-        var a = await SeedReleaseAsync("Hades");
-        var b = await SeedReleaseAsync("Hades");
-        var request = Request(Subject(a, "Hades", 2020), Subject(b, "Hades", 2020));
-
-        await _resolver.ResolveAsync([request]);
-        var queued = Assert.Single(await _candidates.GetPendingAsync());
-        await _candidates.SetStatusAsync(queued.Id, MergeCandidateStatuses.Confirmed);
-
-        var again = await _resolver.ResolveAsync([request]);
-
-        Assert.Equal(0, again.Queued);
-        Assert.Equal(1, again.PreviouslyConfirmed);
-        Assert.Empty(await _candidates.GetPendingAsync());
-    }
-
     // ── Outcome bookkeeping ─────────────────────────────────────────────────
 
     [Fact]
@@ -344,11 +325,10 @@ public sealed class SoftMatchResolverTests : IDisposable
         Assert.Equal(1, outcome.PreviouslyRejected);
         Assert.Equal(1, outcome.SkippedBelowFloor);
         Assert.Equal(0, outcome.AlreadyPending);
-        Assert.Equal(0, outcome.PreviouslyConfirmed);
         Assert.Equal(
             outcome.Compared,
             outcome.Queued + outcome.SkippedBelowFloor + outcome.AlreadyPending
-                + outcome.PreviouslyRejected + outcome.PreviouslyConfirmed);
+                + outcome.PreviouslyRejected);
     }
 
     [Fact]

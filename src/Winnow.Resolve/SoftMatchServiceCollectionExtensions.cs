@@ -48,17 +48,4 @@ public static class SoftMatchServiceCollectionExtensions
 
         return services;
     }
-
-    /// <summary>
-    /// Registers the merge executor — the half of §5.3 that applies decisions
-    /// the user has already made. Requires <c>IMergeCandidateRepository</c> and
-    /// <c>IMergeExecutionRepository</c> from the data layer.
-    /// </summary>
-    public static IServiceCollection AddMergeExecution(this IServiceCollection services)
-    {
-        ArgumentNullException.ThrowIfNull(services);
-
-        services.TryAddSingleton<MergeExecutor>();
-        return services;
-    }
 }

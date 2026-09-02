@@ -17,8 +17,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- MergeUndoTests compares the journal's table list against the
-         merge executor's cascade tripwire, and both are internal. -->
+    <!-- The migration tests drive StandingMergeReplay directly and
+         DatabaseBackupTests.Rewind reads the embedded migration scripts
+         to derive a pre-0012 schema; both are internal to this assembly. -->
     <InternalsVisibleTo Include="Winnow.Tests" />
   </ItemGroup>
 

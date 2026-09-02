@@ -195,12 +195,14 @@ public sealed class SoftMatchMetadataTests
     }
 
     /// <summary>
-    /// Confirmed is terminal in the other direction too: a pair the user
-    /// accepted is not deleted just because new metadata drops it under the
-    /// queue floor. Withdrawal applies to proposals, never to decisions.
+    /// Withdrawal applies to proposals, never to decisions. A pair the user
+    /// answered is not deleted because new metadata drops it under the queue
+    /// floor. 'rejected' is the only terminal status after migration 0019;
+    /// the affirmative answer is a live identity link, which this table
+    /// does not carry.
     /// </summary>
     [Fact]
-    public async Task A_confirmed_pair_is_never_withdrawn_by_new_metadata()
+    public async Task An_answered_pair_is_never_withdrawn_by_new_metadata()
     {
         using var fixture = new MetadataFixture();
         var left = await fixture.AddAsync("Prey");
@@ -208,7 +210,7 @@ public sealed class SoftMatchMetadataTests
 
         await fixture.Sweep.SweepAsync();
         var queued = Assert.Single(await fixture.Candidates.GetPendingAsync());
-        await fixture.Candidates.SetStatusAsync(queued.Id, MergeCandidateStatuses.Confirmed);
+        await fixture.Candidates.SetStatusAsync(queued.Id, MergeCandidateStatuses.Rejected);
 
         await fixture.EnrichAsync(left, 2006, "2K Games");
         await fixture.EnrichAsync(right, 2017, "Bethesda Softworks");
@@ -219,7 +221,7 @@ public sealed class SoftMatchMetadataTests
 
         var row = await fixture.Candidates.FindByPairAsync(left, right);
         Assert.NotNull(row);
-        Assert.Equal(MergeCandidateStatuses.Confirmed, row.Status);
+        Assert.Equal(MergeCandidateStatuses.Rejected, row.Status);
         Assert.Equal(queued.Score, row.Score);
     }
 

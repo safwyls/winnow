@@ -19,8 +19,6 @@ public class MigrationTests
         "feed_verdicts", "feed_surfacings",
         "update_acknowledgements",
         "account_transactions", "account_licenses",
-        "merge_applications",
-        "merge_undo_rows",
         "identity_acts", "identity_links",
     ];
 
@@ -1042,7 +1040,7 @@ public class MigrationTests
         long releaseC;
         using (var conn = db.Factory.Open())
         {
-            conn.Execute("DROP TABLE merge_applications;");
+            conn.Execute("DROP TABLE IF EXISTS merge_applications;");
             conn.Execute("DROP TABLE merge_candidates;");
             conn.Execute(PreCanonicalMergeCandidates);
             conn.Execute("DELETE FROM SchemaVersions WHERE ScriptName LIKE '%0016%';");
@@ -1100,8 +1098,8 @@ public class MigrationTests
         using (var conn = db.Factory.Open())
         {
             // Back to the shape 0016 leaves behind: three statuses, no journal.
-            conn.Execute("DROP TABLE merge_undo_rows;");
-            conn.Execute("DROP TABLE merge_applications;");
+            conn.Execute("DROP TABLE IF EXISTS merge_undo_rows;");
+            conn.Execute("DROP TABLE IF EXISTS merge_applications;");
             conn.Execute("DROP TABLE merge_candidates;");
             conn.Execute(PostCanonicalMergeTables);
             conn.Execute("DELETE FROM SchemaVersions WHERE ScriptName LIKE '%0017%';");
@@ -1175,8 +1173,14 @@ public class MigrationTests
             "SELECT undone_at FROM merge_applications WHERE id = @applicationId;", new { applicationId }));
     }
 
+    /// <summary>
+    /// merge_candidates has been rebuilt three times: 0016 for canonicality,
+    /// 0017 for the fourth status, 0019 to take the fourth and the third
+    /// away. 0016's two invariants (left &lt; right, unique pair) must
+    /// survive every rebuild, or F20 reopens.
+    /// </summary>
     [Fact]
-    public void The_twice_rebuilt_merge_candidates_still_rejects_self_pairs_and_mirrors()
+    public void The_thrice_rebuilt_merge_candidates_still_rejects_self_pairs_and_mirrors()
     {
         using var db = new TempDatabase();
         using var conn = db.Factory.Open();
@@ -1192,7 +1196,7 @@ public class MigrationTests
             "INSERT INTO merge_candidates (left_release_id, right_release_id, score) VALUES (@a, @b, 0.9);",
             new { a = releaseA, b = releaseB });
 
-        // 0016's two invariants survive 0017's rebuild of the same table.
+        // 0016's two invariants survive 0017's and 0019's rebuilds of the same table.
         Assert.Throws<Microsoft.Data.Sqlite.SqliteException>(() => conn.Execute(
             "INSERT INTO merge_candidates (left_release_id, right_release_id, score) VALUES (@a, @a, 0.5);",
             new { a = releaseA }));

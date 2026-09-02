@@ -499,87 +499,79 @@ public class IdentityLinkTests
     // ── The 0018 repair ──────────────────────────────────────────────────────
 
     /// <summary>
-    /// Acceptance criterion #7: a reversed merge (undone candidate with
-    /// undone_at set on its application) returns to 'pending', while a
-    /// standing merge (confirmed candidate with application still live) is
-    /// left alone.
+    /// Acceptance criterion #7 of TASK-70.2, restated at the end of the
+    /// chain rather than in the middle of it. 0018's repair returns a
+    /// reversed merge to 'pending' and leaves a standing one alone; 0019
+    /// then replays the standing one into a link and narrows the status
+    /// set to pending and rejected.
+    ///
+    /// <para>The 0018 step stopped being separately observable through
+    /// <c>Initialize</c> when 0019 shipped, because 0019 always follows
+    /// it and maps every non-rejected status to 'pending'. What is
+    /// observable, and what the criterion was always about, is that the
+    /// two pairs end in different states: the reversed one an open
+    /// question again with no link, the standing one answered by a live
+    /// link the user can retract, its absorbed game back on its own
+    /// row.</para>
+    ///
+    /// <para>The companion case (an undone candidate carrying both a
+    /// reversed application and a standing one, which 0018's NOT EXISTS
+    /// guard held back) is covered by <see cref="MergeRetirementTests"/>:
+    /// a standing application never survives 0019, so the guard's outcome
+    /// cannot be read afterwards.</para>
     /// </summary>
     [Fact]
-    public void Migration_0018_returns_a_reversed_merge_to_the_queue_and_leaves_a_standing_one_alone()
+    public void A_reversed_merge_returns_to_the_queue_and_a_standing_one_becomes_a_link()
     {
         using var db = new TempDatabase();
+        PreRetirementDatabase.Rewind(db);
 
-        long reversed;
-        long standing;
+        long reversedLeft;
+        long survivor;
+        long absorbed;
         using (var conn = db.Factory.Open())
         {
             RewindPast0018(conn);
 
-            var workId = conn.ExecuteScalar<long>(
-                "INSERT INTO works (name) VALUES ('Prey') RETURNING id;");
-            var releaseIds = new long[4];
-            for (var i = 0; i < releaseIds.Length; i++)
-            {
-                releaseIds[i] = conn.ExecuteScalar<long>(
-                    "INSERT INTO releases (work_id, name) VALUES (@workId, 'Prey') RETURNING id;",
-                    new { workId });
-            }
+            var (reversedWork, reversedA) = PreRetirementDatabase.SeedGame(conn, "Prey");
+            var (_, reversedB) = PreRetirementDatabase.SeedGame(conn, "Prey (GOG)");
+            reversedLeft = Math.Min(reversedA, reversedB);
 
-            reversed = Candidate(conn, releaseIds[0], releaseIds[1], "undone");
-            standing = Candidate(conn, releaseIds[2], releaseIds[3], "confirmed");
+            // Already reversed: the rows are back and the pair is genuinely an
+            // open question again.
+            var reversedId = Candidate(conn, reversedA, reversedB, "undone");
+            Application(
+                conn, reversedId, reversedLeft, Math.Max(reversedA, reversedB),
+                reversedWork, undone: true);
 
-            // The reversed merge's rows are already back; the pair is genuinely
-            // an open question again.
-            Application(conn, reversed, releaseIds[0], releaseIds[1], workId, undone: true);
-            Application(conn, standing, releaseIds[2], releaseIds[3], workId, undone: false);
+            // Still standing: the absorbed game is gone and only the journal
+            // knows where its rows went.
+            long survivorRelease;
+            long absorbedRelease;
+            (survivor, survivorRelease) = PreRetirementDatabase.SeedGame(conn, "Hades");
+            (absorbed, absorbedRelease) = PreRetirementDatabase.SeedGame(conn, "Hades (Epic)");
+            PreRetirementDatabase.SeedCandidate(conn, survivorRelease, absorbedRelease, "confirmed");
+            PreRetirementDatabase.ApplyMergeByHand(
+                conn, survivor, absorbed, survivorRelease, absorbedRelease, journalVersion: 1);
         }
 
         db.Initializer.Initialize();
 
         using var after = db.Factory.Open();
+
         Assert.Equal("pending", after.ExecuteScalar<string>(
-            "SELECT status FROM merge_candidates WHERE id = @reversed;", new { reversed }));
-        Assert.Equal("confirmed", after.ExecuteScalar<string>(
-            "SELECT status FROM merge_candidates WHERE id = @standing;", new { standing }));
-    }
+            "SELECT status FROM merge_candidates WHERE left_release_id = @reversedLeft;",
+            new { reversedLeft }));
 
-    /// <summary>
-    /// Acceptance criterion #7, the defensive guard: a candidate at 'undone'
-    /// that has both a reversed application AND a still-standing one is left
-    /// alone. The pair is not open.
-    /// </summary>
-    [Fact]
-    public void Migration_0018_leaves_an_undone_candidate_whose_merge_still_stands_alone()
-    {
-        using var db = new TempDatabase();
+        // Exactly one live link, and it is the standing merge's.
+        var link = after.QuerySingle<(long Child, long Parent)>(
+            "SELECT child_work_id, parent_work_id FROM identity_links WHERE retracted_at IS NULL;");
+        Assert.Equal(absorbed, link.Child);
+        Assert.Equal(survivor, link.Parent);
 
-        long candidateId;
-        using (var conn = db.Factory.Open())
-        {
-            RewindPast0018(conn);
-
-            var workId = conn.ExecuteScalar<long>(
-                "INSERT INTO works (name) VALUES ('Prey') RETURNING id;");
-            var left = conn.ExecuteScalar<long>(
-                "INSERT INTO releases (work_id, name) VALUES (@workId, 'Prey') RETURNING id;",
-                new { workId });
-            var right = conn.ExecuteScalar<long>(
-                "INSERT INTO releases (work_id, name) VALUES (@workId, 'Prey') RETURNING id;",
-                new { workId });
-
-            candidateId = Candidate(conn, left, right, "undone");
-
-            // Two applications for one pair: one reversed, one still standing.
-            // The pair is not open, so the repair must not touch it.
-            Application(conn, candidateId, left, right, workId, undone: true);
-            Application(conn, candidateId, left, right, workId, undone: false);
-        }
-
-        db.Initializer.Initialize();
-
-        using var after = db.Factory.Open();
-        Assert.Equal("undone", after.ExecuteScalar<string>(
-            "SELECT status FROM merge_candidates WHERE id = @candidateId;", new { candidateId }));
+        // With the absorbed game back on its own row, under its own name.
+        Assert.Equal("Hades (Epic)", after.ExecuteScalar<string>(
+            "SELECT name FROM works WHERE id = @absorbed;", new { absorbed }));
     }
 
     // ── Fixtures ─────────────────────────────────────────────────────────────
@@ -638,7 +630,12 @@ public class IdentityLinkTests
                 undoneAt = undone ? "2026-08-02 00:00:00" : null,
             });
 
-    /// <summary>Puts the database back in its pre-0018 shape so 0018 alone is pending.</summary>
+    /// <summary>
+    /// Puts the database back in its pre-0018 shape. Callers rewind past
+    /// 0019 first, so 0018 and 0019 are both pending and the C# replay
+    /// runs between them, the real upgrade path for an install that never
+    /// saw either.
+    /// </summary>
     private static void RewindPast0018(SqliteConnection conn)
     {
         conn.Execute("DROP TABLE IF EXISTS identity_links;");

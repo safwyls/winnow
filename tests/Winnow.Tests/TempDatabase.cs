@@ -1,28 +1,7 @@
 using Winnow.Data;
-using Winnow.Data.Repositories;
-using Winnow.Resolve;
 using Microsoft.Data.Sqlite;
 
 namespace Winnow.Tests;
-
-/// <summary>
-/// The merge executor over a temp database, wired exactly as
-/// <c>Program.ConfigureServices</c> wires it: candidates, execution and undo,
-/// all three. The undo repository is the one an omission would silently drop
-/// (it is an optional constructor parameter), so a test that builds the
-/// executor by hand and forgets it would pass while the running app throws.
-/// </summary>
-public static class TestMergeExecutor
-{
-    public static MergeExecutor For(TempDatabase db)
-    {
-        ArgumentNullException.ThrowIfNull(db);
-        return new MergeExecutor(
-            new MergeCandidateRepository(db.Factory),
-            new MergeExecutionRepository(db.Factory),
-            new MergeUndoRepository(db.Factory));
-    }
-}
 
 /// <summary>
 /// A migrated, temp-FILE SQLite database (not :memory:), so WAL and DbUp

@@ -2,7 +2,6 @@ using Winnow.App.ViewModels;
 using Winnow.Core.Repositories;
 using Winnow.Data;
 using Winnow.Data.Repositories;
-using Winnow.Resolve;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Xunit;
@@ -10,14 +9,17 @@ using Xunit;
 namespace Winnow.Tests;
 
 /// <summary>
-/// <c>MergeExecutor</c> and <c>IMergeExecutionRepository</c> were registered
-/// in <c>Program</c> and resolved nowhere outside tests, so every confirmed
-/// pair sat unapplied while the engine passed every test it had. A type with
-/// a registration and no caller is indistinguishable from one that works.
-///
-/// <para>These build the container the way <c>Program.ConfigureServices</c>
-/// builds it and then actually resolve the screen and run its load, so the
-/// wiring is exercised rather than asserted about.</para>
+/// Guards the container wiring for the Same Game screen. The original
+/// risk was the opposite: <c>MergeExecutor</c> was registered and resolved
+/// nowhere outside tests, so every confirmed pair sat unapplied while the
+/// engine passed every test it had. That whole engine is gone (migration
+/// 0019). What remains to guard is <c>IIdentityLinkRepository</c>, which
+/// is a required constructor parameter precisely so an omission breaks the
+/// container at startup instead of rendering a screen whose answers
+/// quietly write nothing. These tests build the container the way
+/// <c>Program.ConfigureServices</c> builds it and actually resolve the
+/// screen and run its load, so the wiring is exercised rather than
+/// asserted about.
 /// </summary>
 public sealed class MergeScreenRegistrationTests
 {
@@ -25,55 +27,38 @@ public sealed class MergeScreenRegistrationTests
     public async Task The_screen_resolves_from_the_container_and_loads_every_list()
     {
         using var db = new TempDatabase();
-        using var provider = Build(db, withUndo: true);
+        using var provider = Build(db, withLinks: true);
 
         var screen = provider.GetRequiredService<MergeQueueViewModel>();
         await screen.LoadCommand.ExecuteAsync(null);
 
         Assert.Empty(screen.Groups);
-        Assert.Empty(screen.Outstanding);
-        Assert.Empty(screen.History);
         Assert.Empty(screen.LinkHistory);
-        Assert.False(screen.HasOutstanding);
         Assert.True(screen.ShowLinkHistoryEmpty);
 
         // And it opens on the queue, which is the surface the rail row counts.
         Assert.True(screen.IsReviewVisible);
     }
 
-    [Fact]
-    public async Task The_executor_reaches_the_undo_repository_through_its_optional_parameter()
-    {
-        using var db = new TempDatabase();
-        using var provider = Build(db, withUndo: true);
-
-        // Resolving is not proof; asking for something only the undo repository
-        // can answer is.
-        Assert.Empty(await provider.GetRequiredService<MergeExecutor>().HistoryAsync());
-    }
-
     /// <summary>
-    /// The undo repository is an optional constructor parameter, which is how
-    /// the data pass could land without holding Winnow.App. The cost of that is
-    /// an omission the container cannot catch, so the wrappers must fail by name
-    /// rather than by null reference.
+    /// The link repository is required rather than optional, so leaving
+    /// it out of the composition root is a startup failure naming the
+    /// type, not a screen that loads and writes nothing. This is the
+    /// guard the old optional undo parameter could not offer.
     /// </summary>
     [Fact]
-    public async Task Omitting_the_undo_registration_fails_by_name_rather_than_silently()
+    public void Omitting_the_link_registration_breaks_the_container_by_name()
     {
         using var db = new TempDatabase();
-        using var provider = Build(db, withUndo: false);
+        using var provider = Build(db, withLinks: false);
 
-        var executor = provider.GetRequiredService<MergeExecutor>();
+        var thrown = Assert.Throws<InvalidOperationException>(
+            provider.GetRequiredService<MergeQueueViewModel>);
 
-        var thrown = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => executor.HistoryAsync());
-
-        Assert.Contains("IMergeUndoRepository", thrown.Message, StringComparison.Ordinal);
-        Assert.Contains("MergeUndoRepository", thrown.Message, StringComparison.Ordinal);
+        Assert.Contains("IIdentityLinkRepository", thrown.Message, StringComparison.Ordinal);
     }
 
-    private static ServiceProvider Build(TempDatabase db, bool withUndo)
+    private static ServiceProvider Build(TempDatabase db, bool withLinks)
     {
         var services = new ServiceCollection();
         services.AddLogging(b => b.SetMinimumLevel(LogLevel.Warning));
@@ -84,16 +69,14 @@ public sealed class MergeScreenRegistrationTests
         services.AddSingleton<IWorkRepository, WorkRepository>();
         services.AddSingleton<IReleaseRepository, ReleaseRepository>();
         services.AddSingleton<IMergeCandidateRepository, MergeCandidateRepository>();
-        services.AddSingleton<IMergeExecutionRepository, MergeExecutionRepository>();
+        services.AddSingleton<IOwnershipRepository, OwnershipRepository>();
         services.AddSingleton<IResolveStateRepository, ResolveStateRepository>();
-        services.AddSingleton<IIdentityLinkRepository, IdentityLinkRepository>();
 
-        if (withUndo)
+        if (withLinks)
         {
-            services.AddSingleton<IMergeUndoRepository, MergeUndoRepository>();
+            services.AddSingleton<IIdentityLinkRepository, IdentityLinkRepository>();
         }
 
-        services.AddMergeExecution();
         services.AddMergeQueue();
 
         return services.BuildServiceProvider(validateScopes: true);

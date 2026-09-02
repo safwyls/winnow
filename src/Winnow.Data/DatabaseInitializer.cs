@@ -5,6 +5,7 @@ using DbUp;
 using DbUp.Engine;
 using DbUp.Sqlite.Helpers;
 using Microsoft.Data.Sqlite;
+using Winnow.Data.Migrations;
 
 namespace Winnow.Data;
 
@@ -69,15 +70,7 @@ public sealed class DatabaseInitializer
         var upgrader = Reading(() =>
         {
             RenameLegacyJournalEntries(connection);
-
-            return DeployChanges.To
-                .SqliteDatabase(new SharedConnection(connection))
-                .WithScriptsEmbeddedInAssembly(
-                    Assembly.GetExecutingAssembly(),
-                    name => name.EndsWith(".sql", StringComparison.OrdinalIgnoreCase))
-                .WithTransactionPerScript()
-                .LogToTrace()
-                .Build();
+            return Upgrader(connection, _ => true);
         });
 
         // Asked before the upgrade rather than inferred after it: the backup has
@@ -93,13 +86,24 @@ public sealed class DatabaseInitializer
             Reading(() => Protect(connection, pending));
         }
 
-        var result = upgrader.PerformUpgrade();
-        if (!result.Successful)
+        // 0019 drops the merge undo journal, and the journal has to be
+        // replayed into 0018's identity links before it goes. The replay
+        // is C# because the journal is generic (table_name, op, key_json,
+        // before_json) and SQLite cannot name a table from a value. So
+        // when, and only when, 0019 is pending, the upgrade runs in two
+        // passes with the replay between them. Every other launch,
+        // including every launch after 0019 has been applied once, is the
+        // single pass it has always been.
+        if (pending.Any(script => IsReplayBoundary(script.Name)))
         {
-            throw new InvalidOperationException(
-                $"Database migration failed on script '{result.ErrorScript?.Name}'.",
-                result.Error);
+            Perform(Upgrader(
+                connection,
+                name => StringComparer.Ordinal.Compare(name, ReplayBoundaryScriptName) < 0));
+
+            StandingMergeReplay.Run(connection, TimeProvider.System);
         }
+
+        Perform(upgrader);
 
         if (pending.Count == 0)
         {
@@ -120,6 +124,43 @@ public sealed class DatabaseInitializer
         }
 
         DatabaseBackups.Prune(_connectionFactory.DatabasePath, Backups);
+    }
+
+    /// <summary>The script the replay has to precede: 0019 drops the journal the replay reads.</summary>
+    private const string ReplayBoundary = "0019_retire_destructive_merge.sql";
+
+    /// <summary>
+    /// The boundary's full embedded-resource name, resolved from the
+    /// assembly rather than spelled out. The root namespace has already
+    /// changed once (Hoard to Winnow), so a literal prefix is fragile.
+    /// </summary>
+    private static readonly string ReplayBoundaryScriptName = Assembly
+        .GetExecutingAssembly()
+        .GetManifestResourceNames()
+        .Single(IsReplayBoundary);
+
+    private static bool IsReplayBoundary(string scriptName)
+        => scriptName.EndsWith(ReplayBoundary, StringComparison.Ordinal);
+
+    private static UpgradeEngine Upgrader(SqliteConnection connection, Func<string, bool> include)
+        => DeployChanges.To
+            .SqliteDatabase(new SharedConnection(connection))
+            .WithScriptsEmbeddedInAssembly(
+                Assembly.GetExecutingAssembly(),
+                name => name.EndsWith(".sql", StringComparison.OrdinalIgnoreCase) && include(name))
+            .WithTransactionPerScript()
+            .LogToTrace()
+            .Build();
+
+    private static void Perform(UpgradeEngine upgrader)
+    {
+        var result = upgrader.PerformUpgrade();
+        if (!result.Successful)
+        {
+            throw new InvalidOperationException(
+                $"Database migration failed on script '{result.ErrorScript?.Name}'.",
+                result.Error);
+        }
     }
 
     /// <summary>

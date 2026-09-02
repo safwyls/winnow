@@ -8,6 +8,7 @@ using Winnow.Core.Repositories;
 using Winnow.Data;
 using Winnow.Data.Repositories;
 using Winnow.Resolve.Matching;
+using Microsoft.Data.Sqlite;
 using Xunit;
 
 namespace Winnow.Tests;
@@ -365,11 +366,14 @@ public sealed class MergeQueueViewModelTests
     // ── Nothing is destroyed, and nothing is terminal ────────────────────────
 
     /// <summary>
-    /// The review path writes a link. It must never reach the destructive
-    /// executor, whose rows the later stages of this project still depend on.
+    /// The review path writes a link and destroys nothing. After migration
+    /// 0019 there is no destructive path left to reach, so the assertion
+    /// moved from "no merge was applied" to "the two statuses that made an
+    /// answer terminal are not expressible at all": the merge_candidates
+    /// CHECK constraint refuses them.
     /// </summary>
     [Fact]
-    public async Task The_review_path_applies_no_merge()
+    public async Task The_review_path_destroys_nothing_and_writes_no_terminal_answer()
     {
         using var fixture = new MergeQueueFixture();
         await fixture.QueueTripleAsync();
@@ -379,15 +383,24 @@ public sealed class MergeQueueViewModelTests
         await queue.SameGameCommand.ExecuteAsync(queue.Groups[0]);
 
         using var conn = fixture.Factory.Open();
-        Assert.Equal(0, conn.ExecuteScalar<long>("SELECT COUNT(*) FROM merge_applications;"));
 
         // Every work and every store entry is still there. A link is additive.
         Assert.Equal(3, conn.ExecuteScalar<long>("SELECT COUNT(*) FROM works;"));
         Assert.Equal(3, conn.ExecuteScalar<long>("SELECT COUNT(*) FROM releases;"));
 
-        // And no proposal was ever written confirmed or undone.
-        Assert.Equal(0, conn.ExecuteScalar<long>(
-            "SELECT COUNT(*) FROM merge_candidates WHERE status IN ('confirmed','undone');"));
+        // The destructive executor's tables are gone, not merely unused.
+        Assert.Empty(conn.Query<string>(
+            "SELECT name FROM sqlite_master "
+            + "WHERE name IN ('merge_applications', 'merge_undo_rows');"));
+
+        // And 'confirmed' and 'undone' cannot be written at all.
+        var id = conn.ExecuteScalar<long>("SELECT MIN(id) FROM merge_candidates;");
+        foreach (var status in new[] { "confirmed", "undone" })
+        {
+            Assert.Throws<SqliteException>(() => conn.Execute(
+                "UPDATE merge_candidates SET status = @status WHERE id = @id;",
+                new { status, id }));
+        }
     }
 
     /// <summary>
@@ -665,6 +678,104 @@ public sealed class MergeQueueViewModelTests
         Assert.Null(queue.SelectedGroup);
     }
 
+    // ── The store each member comes from ─────────────────────────────────────
+
+    /// <summary>
+    /// The store is the fact that decides whether a pair is the Steam entry and
+    /// the Epic entry of one game or two different games, so every member must
+    /// carry it.
+    /// </summary>
+    [Fact]
+    public async Task Each_member_carries_the_store_it_is_owned_on()
+    {
+        using var fixture = new MergeQueueFixture();
+        var steam = await fixture.CreateReleaseAsync(new SeedSide("Prey", 2017, "Bethesda Softworks"), store: "steam");
+        var epic = await fixture.CreateReleaseAsync(new SeedSide("Prey", 2017, "Bethesda Softworks"), store: "epic");
+        await fixture.QueueScoredPairAsync(steam, epic);
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+
+        var group = Assert.Single(queue.Groups);
+        Assert.True(group.IsPair);
+
+        var chips = group.Members.Select(m => Assert.Single(m.StoreChips)).OrderBy(c => c, StringComparer.Ordinal);
+        Assert.Equal(["EPIC", "STEAM"], chips);
+        Assert.All(group.Members, m => Assert.True(m.HasStores));
+    }
+
+    /// <summary>
+    /// A member owned on two stores wears a chip for each; the chip row is a
+    /// list, not a single badge.
+    /// </summary>
+    [Fact]
+    public async Task A_member_owned_twice_carries_both_stores()
+    {
+        using var fixture = new MergeQueueFixture();
+        var steam = await fixture.CreateReleaseAsync(new SeedSide("Prey", 2017, "Bethesda Softworks"), store: "steam");
+        var epic = await fixture.CreateReleaseAsync(new SeedSide("Prey", 2017, "Bethesda Softworks"), store: "epic");
+        await fixture.AlsoOwnedOnAsync(steam, "gog");
+        await fixture.QueueScoredPairAsync(steam, epic);
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+
+        var group = Assert.Single(queue.Groups);
+        var twice = group.Members.Single(m => m.StoreChips.Count == 2);
+        Assert.Equal(["STEAM", "GOG"], twice.StoreChips);
+        Assert.Equal("Steam, GOG", twice.StoreNames);
+    }
+
+    /// <summary>
+    /// Two members with one title are told apart by store in every automation
+    /// name, which is what a screen reader reads. Without the store a column
+    /// of radios all called "Keep Prey #1024" would be one target.
+    /// </summary>
+    [Fact]
+    public async Task Automation_names_tell_two_same_titled_members_apart_by_store()
+    {
+        using var fixture = new MergeQueueFixture();
+        var steam = await fixture.CreateReleaseAsync(new SeedSide("Prey", 2017, "Bethesda Softworks"), store: "steam");
+        var epic = await fixture.CreateReleaseAsync(new SeedSide("Prey", 2017, "Bethesda Softworks"), store: "epic");
+        await fixture.QueueScoredPairAsync(steam, epic);
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+
+        var group = Assert.Single(queue.Groups);
+        var left = group.Left;
+        var right = group.Right;
+
+        Assert.Equal(left.Side.Title, right.Side.Title);
+        Assert.NotEqual(left.PrimaryAutomationName, right.PrimaryAutomationName);
+        Assert.NotEqual(left.IncludeAutomationName, right.IncludeAutomationName);
+
+        var names = new[] { left.PrimaryAutomationName, right.PrimaryAutomationName };
+        Assert.Contains(names, n => n.Contains("Steam", StringComparison.Ordinal));
+        Assert.Contains(names, n => n.Contains("Epic", StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// No ownership row means no chip row and no store in the automation name.
+    /// The label falls back to the store-less format so it contains no comma.
+    /// </summary>
+    [Fact]
+    public async Task A_member_with_no_ownership_row_states_no_store()
+    {
+        using var fixture = new MergeQueueFixture();
+        var left = await fixture.CreateReleaseAsync(new SeedSide("Prey", 2017, "Bethesda Softworks"), store: null);
+        var right = await fixture.CreateReleaseAsync(new SeedSide("Prey", null, null), store: null);
+        await fixture.QueueScoredPairAsync(left, right);
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+
+        var group = Assert.Single(queue.Groups);
+        Assert.All(group.Members, m => Assert.False(m.HasStores));
+        Assert.All(group.Members, m => Assert.Empty(m.StoreChips));
+        Assert.All(group.Members, m => Assert.DoesNotContain(",", m.Label, StringComparison.Ordinal));
+    }
+
     // ── The signal breakdown ─────────────────────────────────────────────────
 
     /// <summary>
@@ -824,37 +935,6 @@ public sealed class MergeQueueViewModelTests
 
         // The automation name identifies the group, not the verb.
         Assert.Contains(row.Description, row.RetractAutomationName, StringComparison.Ordinal);
-    }
-
-    /// <summary>
-    /// Pairs confirmed by a build where answering and applying were two steps.
-    /// Nothing this build does adds to that list, and the destructive executor
-    /// behind it must keep working until it is retired.
-    /// </summary>
-    [Fact]
-    public async Task Pairs_confirmed_under_the_previous_flow_wait_on_the_history_surface()
-    {
-        using var fixture = new MergeQueueFixture();
-        var id = await fixture.QueuePairAsync(
-            new SeedSide("Prey", 2017, "Bethesda Softworks"),
-            new SeedSide("Prey", null, null));
-        await fixture.Candidates.SetStatusAsync(id, MergeCandidateStatuses.Confirmed);
-
-        var queue = fixture.CreateViewModel();
-        await queue.LoadCommand.ExecuteAsync(null);
-
-        Assert.Empty(queue.Groups);
-        Assert.True(queue.HasOutstanding);
-        Assert.Equal("1", queue.OutstandingCountText);
-        Assert.True(queue.ShowOutstandingNotice);
-
-        await queue.ApplyCommand.ExecuteAsync(queue.Outstanding[0]);
-
-        Assert.False(queue.HasOutstanding);
-        Assert.Single(queue.History);
-
-        using var conn = fixture.Factory.Open();
-        Assert.Equal(1, conn.ExecuteScalar<long>("SELECT COUNT(*) FROM merge_applications;"));
     }
 
     // ── Empty state (§7) ─────────────────────────────────────────────────────
@@ -1018,10 +1098,8 @@ public sealed class MergeQueueViewModelTests
             Candidates = new MergeCandidateRepository(_db.Factory);
             ResolveState = new ResolveStateRepository(_db.Factory);
             Links = new IdentityLinkRepository(_db.Factory);
-            Merges = TestMergeExecutor.For(_db);
+            Ownership = new OwnershipRepository(_db.Factory);
         }
-
-        public Winnow.Resolve.MergeExecutor Merges { get; }
 
         /// <summary>For the assertions that have to look at the database itself.</summary>
         public SqliteConnectionFactory Factory => _db.Factory;
@@ -1036,13 +1114,15 @@ public sealed class MergeQueueViewModelTests
 
         public IIdentityLinkRepository Links { get; }
 
+        public IOwnershipRepository Ownership { get; }
+
         public CountingCandidateRepository CountingCandidates() => new(Candidates);
 
         /// <summary>No cover cache: the queue must compose on procedural art alone.</summary>
         public MergeQueueViewModel CreateViewModel(
             bool withResolveState = true, IMergeCandidateRepository? candidates = null)
             => new(
-                candidates ?? Candidates, Releases, Works, Merges, Links,
+                candidates ?? Candidates, Releases, Works, Links, Ownership,
                 null,
                 withResolveState ? ResolveState : null);
 
@@ -1202,7 +1282,13 @@ public sealed class MergeQueueViewModelTests
                 "SELECT COUNT(*) FROM identity_acts WHERE kind = 'link';");
         }
 
-        public async Task<SeededRelease> CreateReleaseAsync(SeedSide side, string platform = "windows")
+        /// <summary>A second store for a release the fixture already made.</summary>
+        public Task AlsoOwnedOnAsync(SeededRelease release, string store)
+            => Ownership.UpsertAsync(new OwnershipUpsert(
+                release.ReleaseId, store, null, null, null, null));
+
+        public async Task<SeededRelease> CreateReleaseAsync(
+            SeedSide side, string platform = "windows", string? store = "steam")
         {
             var workId = await Works.InsertAsync(new Work
             {
@@ -1224,6 +1310,12 @@ public sealed class MergeQueueViewModelTests
                 Provider = ExternalIdProviders.Steam,
                 ProviderId = (++_appId).ToString(CultureInfo.InvariantCulture),
             });
+
+            if (store is { Length: > 0 })
+            {
+                await Ownership.UpsertAsync(new OwnershipUpsert(
+                    releaseId, store, null, null, null, null));
+            }
 
             return new SeededRelease(releaseId, side);
         }

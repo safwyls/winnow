@@ -215,13 +215,13 @@
             <DockPanel Grid.Column="2" LastChildFill="True">
 
                 <!-- ══ The action line ═════════════════════════
-                     Pinned to the bottom so rows of cards align. Holds Play,
-                     the two feedback controls, and the store badge. On act,
-                     swaps for a receipt with Undo (same height, no reflow). -->
+                     Pinned to the bottom so rows of cards align. Holds Play
+                     and the two feedback controls. On act, swaps for a
+                     receipt with Undo (same height, no reflow). -->
                 <Panel DockPanel.Dock="Bottom" Margin="0,10,0,0">
 
                     <!-- The unanswered state. -->
-                    <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto"
+                    <Grid ColumnDefinitions="Auto,Auto,Auto,*"
                           IsVisible="{Binding ShowActions}">
 
                         <!-- Play/Install, or hidden if no action can be
@@ -250,28 +250,6 @@
                                 IsVisible="{Binding CanGiveFeedback}"
                                 Command="{Binding NotNowCommand}"/>
 
-                        <!-- The one fact the sentence never states. A name, so it
-                             wears the outlined badge the tile's overlay uses
-                             rather than a colour. -->
-                        <!-- One chip per store, like the tile. The feed offers one
-                             card per game since TASK-70.6, so a card that named a
-                             single store would be narrower than the thing it is
-                             offering. -->
-                        <ItemsControl ItemsSource="{Binding Tile.StoreChips}"
-                                      ToolTip.Tip="{Binding Tile.StoreNames}">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <StackPanel Orientation="Horizontal" Spacing="4"/>
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Border Classes="store-chip">
-                                        <TextBlock Text="{Binding}"/>
-                                    </Border>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
                     </Grid>
 
                     <!-- The receipt. Date in Plex Mono, prose in body face. -->
@@ -318,6 +296,33 @@
                                TextWrapping="Wrap" MaxLines="2"
                                TextTrimming="CharacterEllipsis"
                                Foreground="{StaticResource Text}"/>
+
+                    <!-- Store chips sit under the title, not in the action
+                         line. The TASK-70.6 commit that replaced the single
+                         store Border with an ItemsControl dropped the
+                         Grid.Column, so the chips drew in column 0 on top of
+                         Play/Install. Restoring the column was necessary but
+                         not sufficient: at the 420px minimum card width the
+                         right column is 270px, the action line already needs
+                         235.8px, and one STEAM chip is 44.0px, so the chips
+                         cannot share that line. Moving them here gives them
+                         the full 270px, where three chips measure 123.1px. -->
+                    <ItemsControl ItemsSource="{Binding Tile.StoreChips}"
+                                  ToolTip.Tip="{Binding Tile.StoreNames}"
+                                  HorizontalAlignment="Left">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel Orientation="Horizontal" ItemSpacing="4" LineSpacing="4"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Classes="store-chip">
+                                    <TextBlock Text="{Binding}"/>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
 
                     <!-- THE REASON. Full wrap, no trimming. Inlines built in
                          code-behind so numbers use Plex Mono tnum (§3). -->

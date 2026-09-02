@@ -1,3 +1,4 @@
+using System.Data;
 using Dapper;
 using Winnow.Data;
 using Xunit;
@@ -269,64 +270,164 @@ public sealed class DatabaseBackupTests
 
     /// <summary>
     /// Puts the database back in its pre-0012 shape so that exactly one
-    /// migration is pending: the table 0012 adds is dropped, and the journal
-    /// forgets the script ran.
+    /// migration (0012) is pending.
+    ///
+    /// <para>Derived, not listed. The hand-written drop list this replaces
+    /// broke on four consecutive migrations (0016, 0017, 0018 and 0019 each
+    /// needed a line, each was found by a failing test rather than by anyone
+    /// remembering; TASK-65 exists because of it). The derivation: run the
+    /// embedded scripts up to 0011 into a scratch database, then make the
+    /// live database's schema match that one. Drop what only the live
+    /// database has, recreate anything whose DDL differs, which is how a
+    /// rebuilt table gets its old shape back. A future migration needs no
+    /// line here at all.</para>
+    ///
+    /// <para>A table whose shape changed after 0011 is recreated empty.
+    /// Only a table some migration rebuilt can be in that set, and no
+    /// caller of this helper seeds one.</para>
     /// </summary>
     private static void Rewind(TempDatabase db)
     {
-        // Rewinds to 0011, so everything after it has to be undone here too —
-        // both its journal row and whatever it created, or the re-run fails on
-        // an object that is already there. A new migration adds a line.
         using var connection = db.Factory.Open();
-        connection.Execute("DROP TABLE IF EXISTS update_acknowledgements;");
-        connection.Execute("DROP INDEX IF EXISTS ux_play_records_observation;");
-        connection.Execute("DROP INDEX IF EXISTS ux_playtime_snapshots_observation;");
-        connection.Execute("DROP TABLE IF EXISTS account_transactions;");
-        connection.Execute("DROP TABLE IF EXISTS account_licenses;");
-        connection.Execute("DROP TABLE IF EXISTS ownership_accounts;");
 
-        // 0016 is the first migration that REBUILDS a table rather than adding
-        // one, so undoing it means putting the old shape back, not just dropping
-        // what it created: it replaced merge_candidates with a canonical version
-        // carrying CHECK (left_release_id < right_release_id).
-        // 0017 adds the undo journal and rebuilds merge_candidates a second
-        // time, to admit the fourth status. Both rebuilds land on the same
-        // pre-0016 shape recreated below, so undoing 0017 is dropping what it
-        // created; merge_undo_rows goes first because it foreign-keys
-        // merge_applications.
-        // 0018 is additive: two new tables and a repair UPDATE. Dropping the
-        // tables is the whole of undoing it; the repair is idempotent.
-        connection.Execute("DROP TABLE IF EXISTS identity_links;");
-        connection.Execute("DROP TABLE IF EXISTS identity_acts;");
+        // Off for the duration: the drops below are in no particular order,
+        // and the schema is about to be made whole again anyway.
+        connection.Execute("PRAGMA foreign_keys = OFF;");
 
-        connection.Execute("DROP TABLE IF EXISTS merge_undo_rows;");
-        connection.Execute("DROP TABLE IF EXISTS merge_applications;");
-        connection.Execute("DROP TABLE IF EXISTS merge_candidates;");
-        connection.Execute("""
-            CREATE TABLE merge_candidates (
-                id                INTEGER PRIMARY KEY,
-                left_release_id   INTEGER NOT NULL REFERENCES releases(id) ON DELETE CASCADE,
-                right_release_id  INTEGER NOT NULL REFERENCES releases(id) ON DELETE CASCADE,
-                score             REAL NOT NULL CHECK (score >= 0.0 AND score <= 1.0),
-                signals_json      TEXT,
-                status            TEXT NOT NULL DEFAULT 'pending'
-                                  CHECK (status IN ('pending', 'confirmed', 'rejected')),
-                UNIQUE (left_release_id, right_release_id)
-            );
-            """);
-        connection.Execute("CREATE INDEX ix_merge_candidates_status ON merge_candidates(status);");
+        var reference = ReferenceSchema.Value;
+        var live = SchemaOf(connection);
 
-        connection.Execute("""
-            DELETE FROM SchemaVersions
-            WHERE ScriptName LIKE '%0012%'
-               OR ScriptName LIKE '%0013%'
-               OR ScriptName LIKE '%0014%'
-               OR ScriptName LIKE '%0015%'
-               OR ScriptName LIKE '%0016%'
-               OR ScriptName LIKE '%0017%'
-               OR ScriptName LIKE '%0018%';
-            """);
+        foreach (var table in live.Values.Where(o => o.Type == "table"))
+        {
+            if (!reference.TryGetValue(table.Name, out var want)
+                || !Same(want.Sql, table.Sql))
+            {
+                connection.Execute($"DROP TABLE \"{table.Name}\";");
+            }
+        }
+
+        foreach (var other in live.Values.Where(o => o.Type != "table" && o.Sql is not null))
+        {
+            connection.Execute($"DROP {other.Type.ToUpperInvariant()} IF EXISTS \"{other.Name}\";");
+        }
+
+        // Tables before indexes: an index cannot be created on a table that
+        // is not back yet.
+        var present = SchemaOf(connection);
+        foreach (var want in reference.Values
+            .Where(o => o.Sql is not null)
+            .OrderBy(o => o.Type == "table" ? 0 : 1))
+        {
+            if (!present.ContainsKey(want.Name))
+            {
+                connection.Execute(want.Sql!);
+            }
+        }
+
+        connection.Execute(
+            "DELETE FROM SchemaVersions WHERE ScriptName > @boundary;",
+            new { boundary = RewindBoundary });
+
+        connection.Execute("PRAGMA foreign_keys = ON;");
     }
+
+    /// <summary>
+    /// The last script the rewound database keeps. Ordinal comparison against
+    /// the embedded resource names, which share a namespace prefix, so
+    /// "everything after 0011" is one string comparison rather than a list.
+    /// </summary>
+    private static readonly string RewindBoundary = MigrationScripts
+        .Last(script => string.CompareOrdinal(script.Name, Boundary) < 0)
+        .FullName;
+
+    private const string Boundary = "0012_";
+
+    /// <summary>
+    /// The schema as the scripts up to 0011 leave it, built once in a scratch
+    /// database and thrown away.
+    /// </summary>
+    private static readonly Lazy<IReadOnlyDictionary<string, SchemaObject>> ReferenceSchema =
+        new(BuildReferenceSchema);
+
+    private static IReadOnlyDictionary<string, SchemaObject> BuildReferenceSchema()
+    {
+        var directory = Path.Combine(
+            Path.GetTempPath(), "winnow-schema-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+
+        try
+        {
+            var path = Path.Combine(directory, "reference.db");
+            using var connection = new SqliteConnectionFactory(path, pooling: false).Open();
+
+            foreach (var script in MigrationScripts
+                .Where(script => string.CompareOrdinal(script.Name, Boundary) < 0))
+            {
+                connection.Execute(script.Sql);
+            }
+
+            return SchemaOf(connection);
+        }
+        finally
+        {
+            try
+            {
+                Directory.Delete(directory, recursive: true);
+            }
+            catch (Exception held) when (held is IOException or UnauthorizedAccessException)
+            {
+            }
+        }
+    }
+
+    private static IReadOnlyList<(string FullName, string Name, string Sql)> MigrationScripts
+    {
+        get
+        {
+            var assembly = typeof(DatabaseInitializer).Assembly;
+            const string Prefix = "Winnow.Data.Migrations.";
+
+            return assembly
+                .GetManifestResourceNames()
+                .Where(name => name.EndsWith(".sql", StringComparison.OrdinalIgnoreCase))
+                .OrderBy(name => name, StringComparer.Ordinal)
+                .Select(name =>
+                {
+                    using var stream = assembly.GetManifestResourceStream(name)!;
+                    using var reader = new StreamReader(stream);
+                    return (name, name[Prefix.Length..], reader.ReadToEnd());
+                })
+                .ToList();
+        }
+    }
+
+    private sealed record SchemaObject(string Type, string Name, string? Sql);
+
+    private static IReadOnlyDictionary<string, SchemaObject> SchemaOf(IDbConnection connection)
+        => connection
+            .Query<SchemaObject>("""
+                SELECT type AS Type, name AS Name, sql AS Sql
+                FROM sqlite_master
+                WHERE name NOT LIKE 'sqlite_%'
+                  AND name <> 'SchemaVersions';
+                """)
+            .ToDictionary(o => o.Name, StringComparer.Ordinal);
+
+    /// <summary>
+    /// Whitespace-insensitive DDL comparison. ALTER TABLE ... RENAME TO
+    /// rewrites the stored SQL rather than replaying the script, so a rebuilt
+    /// table's DDL differs from the reference in more than spacing; this only
+    /// has to be tight enough not to call two genuinely identical tables
+    /// different.
+    /// </summary>
+    private static bool Same(string? a, string? b)
+        => string.Equals(Squash(a), Squash(b), StringComparison.Ordinal);
+
+    private static string Squash(string? sql)
+        => sql is null
+            ? string.Empty
+            : string.Join(' ', sql.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries))
+                .Replace("\"", string.Empty, StringComparison.Ordinal);
 
     /// <summary>Overwrites the back half of the file, the way a bad sector would.</summary>
     private static void Damage(string databasePath)

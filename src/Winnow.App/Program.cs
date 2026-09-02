@@ -375,15 +375,6 @@ public static class Program
         services.AddSingleton<IUpdateEventRepository, UpdateEventRepository>();
         services.AddSingleton<IGameListRepository, GameListRepository>();
         services.AddSingleton<IMergeCandidateRepository, MergeCandidateRepository>();
-        services.AddSingleton<IMergeExecutionRepository, MergeExecutionRepository>();
-
-        // MergeExecutor takes IMergeUndoRepository as an optional constructor
-        // parameter, so omitting this line does not fail at startup. It fails the
-        // moment the user asks for merge history, with a named
-        // InvalidOperationException from MergeExecutor.Undo. That is the loudest
-        // an optional dependency can be made without holding the whole container
-        // hostage to a screen.
-        services.AddSingleton<IMergeUndoRepository, MergeUndoRepository>();
 
         // Identity links (migration 0018). Read by the Same Game screen, by the
         // library's display title and cover, and by the details modal's coverage
@@ -474,7 +465,6 @@ public static class Program
         // becomes a false claim about the user's library rather than a
         // description of a feature that was never wired.
         services.AddSoftMatching();
-        services.AddMergeExecution();
 
         // Cover art (§5.4). Steam's portrait capsule needs no credentials, so
         // the grid has real art regardless of IGDB configuration; an IGDB cover
