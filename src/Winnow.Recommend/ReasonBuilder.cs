@@ -22,7 +22,10 @@ internal static class ReasonBuilder
 
     private static readonly string[] NoTokens = [];
 
-    public static string Build(RecommendationReason reason, RecommendationTuning tuning)
+    public static string Build(
+        RecommendationReason reason,
+        RecommendationTuning tuning,
+        ReasonVariantLedger? ledger = null)
     {
         var budget = Math.Max(40, tuning.ReasonCharacterBudget);
         var evidence = reason.Evidence;
@@ -39,13 +42,13 @@ internal static class ReasonBuilder
         // a token ("{updates} landed here since…"), which is one more sentence
         // shape available to the copy.
         var primary = Capitalise(
-            Render(reason.Primary, ReasonClause.Primary, evidence, tuning, forbidden)
-                ?? Render(reason.Primary, ReasonClause.Primary, evidence, tuning, NoTokens)
+            Render(reason.Primary, ReasonClause.Primary, evidence, tuning, forbidden, ledger)
+                ?? Render(reason.Primary, ReasonClause.Primary, evidence, tuning, NoTokens, ledger)
                 ?? ReasonPhrasebook.Fallback);
 
         var secondary = reason.Secondary == ReasonSignal.None
             ? null
-            : Render(reason.Secondary, ReasonClause.Secondary, evidence, tuning, NoTokens);
+            : Render(reason.Secondary, ReasonClause.Secondary, evidence, tuning, NoTokens, ledger);
 
         if (secondary is not null)
         {
@@ -69,7 +72,8 @@ internal static class ReasonBuilder
         ReasonClause clause,
         ReasonEvidence evidence,
         RecommendationTuning tuning,
-        string[] forbidden)
+        string[] forbidden,
+        ReasonVariantLedger? ledger)
     {
         var variants = ReasonPhrasebook.Variants(signal, clause);
         if (variants.Count == 0)
@@ -110,9 +114,35 @@ internal static class ReasonBuilder
         // Deterministic per (release, signal, clause): the same game renders
         // the same sentence on every reload, and neighbouring games in one
         // feed land on different phrasings.
-        var pick = (int)(Hash(evidence.ReleaseId, (int)signal * 31 + (int)clause)
+        var seed = (int)(Hash(evidence.ReleaseId, (int)signal * 31 + (int)clause)
             % (ulong)usable.Count);
-        return Fill(usable[pick], evidence, tuning);
+
+        // The hash alone chooses per card with no knowledge of the shelf, so
+        // two cards can land on the same variant; observed 2026-09-02 on the
+        // patched shelf where Stationeers and PEAK drew the same sentence.
+        // The ledger is the shelf's memory: the hash still chooses first and
+        // a card only moves off its own pick when that pick is already spoken.
+        //
+        // A fresh generic beats a repeated specific, which is the one place
+        // the specific-over-generic preference above yields. A signal can
+        // easily have fewer token-bearing variants than a shelf has slots
+        // (patched-since has four when no update carries a title), so holding
+        // the preference absolutely would force the repetition the ledger
+        // exists to prevent.
+        if (ledger is not null)
+        {
+            var chosen = ledger.Claim(signal, clause, usable, seed)
+                ?? (specific is not null && generic is not null
+                    ? ledger.Claim(signal, clause, generic, seed)
+                    : null);
+
+            if (chosen is not null)
+            {
+                return Fill(chosen, evidence, tuning);
+            }
+        }
+
+        return Fill(usable[seed], evidence, tuning);
     }
 
     private static bool CanFill(

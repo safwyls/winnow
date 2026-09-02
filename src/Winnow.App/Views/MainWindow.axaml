@@ -1057,8 +1057,8 @@
                                        Classes="data"
                                        FontSize="11"
                                        Foreground="{StaticResource TextDim}"
-                                       Text="{Binding MergeQueue.OutstandingCountText}"
-                                       IsVisible="{Binding MergeQueue.HasOutstanding}"
+                                       Text="{Binding MergeQueue.PendingCountText}"
+                                       IsVisible="{Binding MergeQueue.HasPending}"
                                        VerticalAlignment="Center"/>
                         </Grid>
                     </Button>

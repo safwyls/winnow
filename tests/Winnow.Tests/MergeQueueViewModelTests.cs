@@ -922,8 +922,15 @@ public sealed class MergeQueueViewModelTests
 
         var row = Assert.Single(queue.LinkHistory);
         Assert.Equal(2, row.ChildTitles.Count);
-        Assert.Equal("Prey", row.ParentTitle);
         Assert.NotEqual("—", row.LinkedAtText);
+
+        // Three works a storefront describes identically, so the row falls to
+        // the same last resort the card does: each is named, and no two names
+        // are the same. Nothing here is a database id (section 10.5).
+        string[] named = [row.ParentTitle, .. row.ChildTitles];
+        Assert.All(named, name => Assert.StartsWith("Prey", name, StringComparison.Ordinal));
+        Assert.All(named, name => Assert.DoesNotContain("#", name, StringComparison.Ordinal));
+        Assert.Equal(3, named.Distinct(StringComparer.Ordinal).Count());
 
         // The automation name identifies the group, not the verb.
         Assert.Contains(row.Description, row.UndoAutomationName, StringComparison.Ordinal);
@@ -1621,6 +1628,56 @@ public sealed class MergeQueueViewModelTests
         Assert.True(remaining.CanUndo);
     }
 
+    // A history row read "The Stanley Parable linked under The Stanley
+    // Parable", naming two works and describing neither. The cards had already
+    // solved this: MergeMemberLabels adds stores, then year, then publisher,
+    // only while two members share a name. History reads the same ladder
+    // rather than inventing a second scheme, so both surfaces spell a member
+    // the same way.
+
+    [Fact]
+    public async Task A_history_row_tells_two_same_titled_works_apart()
+    {
+        using var fixture = new MergeQueueFixture();
+        var steam = await fixture.CreateReleaseAsync(
+            new SeedSide("The Stanley Parable", 2013, "Galactic Cafe"), store: "steam");
+        var epic = await fixture.CreateReleaseAsync(
+            new SeedSide("The Stanley Parable", 2013, "Galactic Cafe"), store: "epic");
+        await fixture.QueueScoredPairAsync(steam, epic);
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+        await queue.SameGameCommand.ExecuteAsync(queue.Groups[0]);
+
+        await queue.ShowHistoryCommand.ExecuteAsync(null);
+
+        var row = Assert.Single(queue.LinkHistory);
+        Assert.NotEqual(row.ParentTitle, Assert.Single(row.ChildTitles));
+        Assert.Contains("Steam", row.Description, StringComparison.Ordinal);
+        Assert.Contains("Epic", row.Description, StringComparison.Ordinal);
+    }
+
+    // A row whose titles already differ pays nothing: no store is appended to a
+    // name that was never ambiguous.
+
+    [Fact]
+    public async Task A_history_row_of_distinct_titles_carries_no_qualifier()
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.QueuePairAsync(
+            new SeedSide("The Witcher 3: Wild Hunt", 2015, "CD PROJEKT RED"),
+            new SeedSide("The Witcher 3: Wild Hunt - Game of the Year Edition", 2016, "CD PROJEKT RED"));
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+        await queue.SameGameCommand.ExecuteAsync(queue.Groups[0]);
+
+        await queue.ShowHistoryCommand.ExecuteAsync(null);
+
+        var row = Assert.Single(queue.LinkHistory);
+        Assert.DoesNotContain("(Steam", row.Description, StringComparison.Ordinal);
+    }
+
     // ── The expansion row says what the relation is ──────────────────────────
 
     /// <summary>
@@ -1642,10 +1699,57 @@ public sealed class MergeQueueViewModelTests
             1, side, evidence, RelationLabels.StandaloneExpansion);
         Assert.Equal("STANDALONE EXPANSION", standaloneExpansion.RelationText);
 
-        // Nothing named it: the row draws no relation word rather than guessing.
+        // Nothing named it and no kind either: the row draws no relation word
+        // rather than guessing.
         var unnamed = new ExpansionMemberViewModel(1, side, evidence);
         Assert.False(unnamed.HasRelation);
         Assert.Equal(string.Empty, unnamed.RelationText);
+    }
+
+    // Every title-heuristic proposal carries no relation label because no
+    // storefront was asked. That is the ordinary case in a library the
+    // metadata backfill has not reached, and the row drew a blank column for
+    // all of them. The kind now supplies the word from the same vocabulary,
+    // so the row always states what it proposes.
+
+    [Fact]
+    public void An_expansion_row_names_the_kind_when_no_storefront_named_the_relation()
+    {
+        var side = new MergeSideViewModel(1, "Counter-Strike: Source", 2004, "Valve");
+        var evidence = new ExpansionEvidence("counter-strike", "source", true, 4, true);
+
+        var heuristic = new ExpansionMemberViewModel(
+            1, side, evidence, relationLabel: null, kind: IdentityLinkKinds.ExpansionOf);
+
+        Assert.True(heuristic.HasRelation);
+        Assert.Equal("EXPANSION", heuristic.RelationText);
+
+        // A source's own word still wins over the kind's.
+        var named = new ExpansionMemberViewModel(
+            1, side, evidence, RelationLabels.Playtest, IdentityLinkKinds.VariantOf);
+        Assert.Equal("PLAYTEST", named.RelationText);
+    }
+
+    // Every proposal reaching a card carries a kind, so every pack row states a
+    // relation, whether a storefront named one or the title heuristic did not.
+
+    [Fact]
+    public async Task Every_pack_row_states_a_relation()
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.CreateReleaseAsync(new SeedSide("Sid Meier's Civilization IV", 2005, "2K"));
+        await fixture.CreateReleaseAsync(
+            new SeedSide("Sid Meier's Civilization IV: Warlords", 2006, "2K"));
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+
+        var card = Assert.Single(queue.ExpansionGroups);
+        Assert.All(card.Members, member =>
+        {
+            Assert.True(member.HasRelation, $"{member.Side.Title} states no relation.");
+            Assert.NotEqual(string.Empty, member.RelationText);
+        });
     }
 
     // ── The rail counts both surfaces ────────────────────────────────────────
@@ -1673,6 +1777,42 @@ public sealed class MergeQueueViewModelTests
         Assert.Equal("2", queue.OutstandingCountText);
         Assert.True(queue.HasOutstanding);
         Assert.Equal(1.0, queue.RowOpacity);
+
+        // The rail draws no number here, because the number it draws is the
+        // review count and there are no review groups. The row stays lit on
+        // the combined count, which is what keeps the expansion work findable.
+        Assert.False(queue.HasPending);
+    }
+
+    // The rail read 63 while the screen read 45 GROUPS. The rail was summing
+    // review groups and expansion base games under one label, agreeing with
+    // neither header. The rail now draws the review count, the same property
+    // the review header binds, so the two cannot drift apart.
+
+    [Fact]
+    public async Task The_rail_count_and_the_review_header_are_one_number()
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.QueuePairAsync(
+            new SeedSide("Prey", 2017, "Bethesda Softworks"),
+            new SeedSide("Prey", null, null));
+
+        // Expansion work waiting at the same time, which is what used to make
+        // the two numbers differ.
+        await fixture.CreateReleaseAsync(new SeedSide("Sid Meier's Civilization IV", 2005, "2K"));
+        await fixture.CreateReleaseAsync(
+            new SeedSide("Sid Meier's Civilization IV: Warlords", 2006, "2K"));
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+
+        Assert.Equal(1, queue.PendingCount);
+        Assert.Equal(1, queue.ExpansionCount);
+        Assert.NotEqual(queue.PendingCount, queue.OutstandingCount);
+
+        // What the rail shows and what the review header shows.
+        Assert.Equal("1", queue.PendingCountText);
+        Assert.True(queue.HasPending);
     }
 
     [Fact]

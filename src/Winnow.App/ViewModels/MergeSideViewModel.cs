@@ -21,7 +21,7 @@ namespace Winnow.App.ViewModels;
 /// fading one side by how long ago it was played would be a second visual
 /// language answering a question nobody asked.</para>
 /// </summary>
-public partial class MergeSideViewModel : ObservableObject
+public partial class MergeSideViewModel : ObservableObject, IMergeMemberFacts
 {
     private readonly ICoverCache? _covers;
 

@@ -127,10 +127,19 @@ public sealed class SameGameSurfaceTests
 
     // ── The rail reflects both surfaces ══════════════════════════════════════
 
-    // The rail row counts both surfaces.
+    // The rail read SAME GAME? 63 while the screen read 45 GROUPS, because
+    // the rail summed review groups and expansion base games under one label.
+    // The header's count is the number the screen actually offers to answer,
+    // so the rail shows that and nothing else.
+    //
+    // Row opacity still follows both surfaces, which is the whole point of
+    // the sum: a library with no review groups and a dozen expansion cards
+    // keeps a lit row rather than a dimmed 0. The count is simply not drawn
+    // when there is no review group to count, so the rail is silent rather
+    // than wrong.
 
     [Fact]
-    public void The_rail_row_counts_review_and_expansions()
+    public void The_rail_count_is_the_number_the_review_header_shows()
     {
         var window = Load("src/Winnow.App/Views/MainWindow.axaml");
 
@@ -138,9 +147,16 @@ public sealed class SameGameSurfaceTests
             window.Descendants(Avalonia + "TextBlock"),
             t => t.Attribute("Text")?.Value.StartsWith("{Binding MergeQueue.", StringComparison.Ordinal) == true);
 
-        Assert.Equal("{Binding MergeQueue.OutstandingCountText}", count.Attribute("Text")!.Value);
-        Assert.Equal("{Binding MergeQueue.HasOutstanding}", count.Attribute("IsVisible")!.Value);
+        Assert.Equal("{Binding MergeQueue.PendingCountText}", count.Attribute("Text")!.Value);
+        Assert.Equal("{Binding MergeQueue.HasPending}", count.Attribute("IsVisible")!.Value);
 
+        // The same property, read off the screen's own header.
+        var view = Load("src/Winnow.App/Views/MergeQueueView.axaml");
+        Assert.Contains(
+            view.Descendants(Avalonia + "TextBlock"),
+            t => t.Attribute("Text")?.Value == "{Binding PendingCountText}");
+
+        // And the row still recedes on the combined count, not on this one.
         var row = Assert.Single(
             window.Descendants(Avalonia + "Button"),
             b => b.Attribute("Opacity")?.Value == "{Binding MergeQueue.RowOpacity}");

@@ -136,11 +136,58 @@ public class ReasonContractTests : IDisposable
                 },
                 Tuning);
 
+            // The count as a word, not as a substring with a space in front
+            // of it: a variant may open the sentence on the token, and
+            // "3 patches behind the current version" names what landed just as
+            // well as "3 updates landed here" does.
             Assert.True(
                 reason.Contains("Deep Water Update", StringComparison.Ordinal)
-                    || reason.Contains("3 updates", StringComparison.Ordinal)
-                    || reason.Contains(" 3 ", StringComparison.Ordinal),
+                    || Regex.IsMatch(reason, @"\b3\b"),
                 reason);
+        }
+    }
+
+    // A count of one against a plural noun.
+    //
+    // Observed 2026-09-02: a card read "1 patches behind the current version".
+    // The variant hard-coded the plural next to {updateCount}, which resolves
+    // to a bare number, so it broke at the commonest value the token takes.
+    // {updates} carries its own noun and pluralises itself; {episodes} and
+    // {stores} are bare numbers but their resolvers gate at two, so their
+    // plural nouns always agree.
+    //
+    // Not covered here: {minutes}, whose Phrases.Duration renders "1 minutes"
+    // at exactly one minute. Same class of defect, older and in the formatter
+    // rather than the copy, tracked separately. Setting playtime to one here
+    // would fail this test for a fault it is not written to find.
+    [Fact]
+    public void No_variant_puts_a_count_of_one_against_a_plural_noun()
+    {
+        var one = Rich(1) with
+        {
+            UpdatesSinceLastPlayed = 1,
+            ReturnEpisodes = 1,
+            StoreCount = 1,
+        };
+
+        foreach (var primary in Primaries)
+        {
+            foreach (var secondary in Secondaries)
+            {
+                var reason = ReasonBuilder.Build(
+                    new RecommendationReason
+                    {
+                        Primary = primary,
+                        Secondary = secondary,
+                        Evidence = one,
+                    },
+                    Tuning);
+
+                var offender = Regex.Match(reason, @"\b1 (\w+s)\b");
+                Assert.False(
+                    offender.Success,
+                    $"{primary}/{secondary} renders a count of one against \"{offender.Value}\": {reason}");
+            }
         }
     }
 

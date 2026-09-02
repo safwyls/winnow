@@ -423,38 +423,64 @@
                             <TextBlock Classes="data-s" Text="{Binding Side.YearText}"/>
                         </StackPanel>
 
-                        <!-- The evidence, one line. What the title adds, how
-                             far apart the years are, whether the publishers
-                             agree, and whether the child's own title splits
-                             the base from the pack. -->
-                        <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,2,0,0">
-                            <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
-                                       VerticalAlignment="Center"
-                                       Text="{Binding ExtendsLabel}"/>
-                            <TextBlock Classes="data-s" VerticalAlignment="Center"
-                                       Text="{Binding SuffixText}"/>
-                            <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
-                                       VerticalAlignment="Center"
-                                       Text="{Binding YearLabel}"/>
-                            <TextBlock Classes="data-s" VerticalAlignment="Center"
-                                       Text="{Binding YearDeltaText}"/>
-                            <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
-                                       VerticalAlignment="Center"
-                                       Text="{Binding PublisherLabel}"/>
-                            <TextBlock Classes="data-s" VerticalAlignment="Center"
-                                       Text="{Binding PublisherText}"/>
-                            <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
-                                       VerticalAlignment="Center"
-                                       Text="{Binding SeparatorLabel}"/>
-                            <TextBlock Classes="data-s" VerticalAlignment="Center"
-                                       Text="{Binding SeparatorText}"/>
-                        </StackPanel>
+                        <!-- Expansion evidence: suffix, year gap, publisher
+                             match, separator.
+
+                             WrapPanel, not a horizontal StackPanel: StackPanel
+                             measures children with unbounded width in the
+                             stacking direction, so the line ran off the card
+                             the moment a suffix exceeded a few words. Each
+                             label-value pair shares a group so wraps break
+                             between facts, never inside one. The suffix alone
+                             is capped and trimmed because no single group may
+                             exceed the column. -->
+                        <WrapPanel Orientation="Horizontal"
+                                   ItemSpacing="14" LineSpacing="4"
+                                   Margin="0,2,0,0">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
+                                           VerticalAlignment="Center"
+                                           Text="{Binding ExtendsLabel}"/>
+                                <TextBlock Classes="data-s" VerticalAlignment="Center"
+                                           MaxWidth="220"
+                                           TextTrimming="CharacterEllipsis"
+                                           ToolTip.Tip="{Binding SuffixText}"
+                                           Text="{Binding SuffixText}"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
+                                           VerticalAlignment="Center"
+                                           Text="{Binding YearLabel}"/>
+                                <TextBlock Classes="data-s" VerticalAlignment="Center"
+                                           Text="{Binding YearDeltaText}"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
+                                           VerticalAlignment="Center"
+                                           Text="{Binding PublisherLabel}"/>
+                                <TextBlock Classes="data-s" VerticalAlignment="Center"
+                                           Text="{Binding PublisherText}"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
+                                           VerticalAlignment="Center"
+                                           Text="{Binding SeparatorLabel}"/>
+                                <TextBlock Classes="data-s" VerticalAlignment="Center"
+                                           Text="{Binding SeparatorText}"/>
+                            </StackPanel>
+                        </WrapPanel>
                     </StackPanel>
 
-                    <!-- The storefront's own word for what this is. -->
+                    <!-- The storefront's relation word, or the kind's own
+                         word when no storefront named one. Capped and trimmed:
+                         the column is Auto and the vocabulary is open, so a
+                         long word must cost itself, not the evidence beside
+                         it. -->
                     <TextBlock Grid.Row="0" Grid.Column="3" Grid.RowSpan="2"
                                Classes="label" FontSize="10" LetterSpacing="1"
                                Margin="14,2,0,0"
+                               MaxWidth="130"
+                               TextTrimming="CharacterEllipsis"
                                VerticalAlignment="Top"
                                IsVisible="{Binding HasRelation}"
                                Text="{Binding RelationText}"/>

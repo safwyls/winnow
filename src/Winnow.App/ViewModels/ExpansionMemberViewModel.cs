@@ -21,17 +21,24 @@ public partial class ExpansionMemberViewModel : ObservableObject
     /// <param name="side">Its face: title, cover, stores.</param>
     /// <param name="evidence">What the detector observed about this pair.</param>
     /// <param name="relationLabel">
-    /// The storefront's own word for the relation — demo, beta, playtest,
+    /// The storefront's own word for the relation (demo, beta, playtest,
     /// expansion, dlc, standalone expansion, remaster, remake, port, mod,
-    /// superseded, among others — or null when nothing named it. The row
+    /// superseded, among others), or null when nothing named it. The row
     /// shows this label rather than the link kind, so a playtest stops
-    /// reading as an expansion.
+    /// reading as an expansion. When null, <paramref name="kind"/> supplies
+    /// the word if it can.
+    /// </param>
+    /// <param name="kind">
+    /// The link kind (expansion_of, variant_of). Supplies the relation word
+    /// when <paramref name="relationLabel"/> is null and the kind has an
+    /// unambiguous default; see <see cref="Word"/>.
     /// </param>
     public ExpansionMemberViewModel(
         long workId,
         MergeSideViewModel side,
         ExpansionEvidence evidence,
-        string? relationLabel = null)
+        string? relationLabel = null,
+        string? kind = null)
     {
         ArgumentNullException.ThrowIfNull(side);
         ArgumentNullException.ThrowIfNull(evidence);
@@ -39,9 +46,7 @@ public partial class ExpansionMemberViewModel : ObservableObject
         WorkId = workId;
         Side = side;
         Evidence = evidence;
-        RelationText = string.IsNullOrWhiteSpace(relationLabel)
-            ? string.Empty
-            : relationLabel.Trim().ToUpperInvariant();
+        RelationText = Word(relationLabel, kind);
 
         // Checked by default, unlike a same-game roster row. A same-game group
         // is a connected component, so an unchecked default guards against the
@@ -62,15 +67,16 @@ public partial class ExpansionMemberViewModel : ObservableObject
     public ExpansionEvidence Evidence { get; }
 
     /// <summary>
-    /// The storefront's word for the relation, uppercased for the row, or
-    /// empty when no source named one. Shown instead of the link kind,
-    /// because the vocabulary is open and calling a playtest an expansion
-    /// was the confusion this fixes.
+    /// The relation word, uppercased for the row. Empty only when neither a
+    /// source nor the kind supplied one; in practice, expansion_of always
+    /// yields a word through the kind fallback, so every expansion row states
+    /// its relation. Shown instead of the raw link kind because the vocabulary
+    /// is open and calling a playtest an expansion was the confusion this fixes.
     /// </summary>
     public string RelationText { get; }
 
-    /// <summary>False when no source named the relation. The row draws no
-    /// relation label in that case.</summary>
+    /// <summary>False when neither a source nor the kind supplied a relation
+    /// word. The row draws no relation label in that case.</summary>
     public bool HasRelation => RelationText.Length > 0;
 
     /// <summary>Whether this pack joins the act. Checked by default; see the constructor.</summary>
@@ -138,4 +144,25 @@ public partial class ExpansionMemberViewModel : ObservableObject
     /// <summary>Sets the display resolution for cover decoding.</summary>
     /// <param name="displayWidthPixels">Device pixels the chip will occupy.</param>
     public void RequestCover(double displayWidthPixels) => Side.RequestCover(displayWidthPixels);
+
+    // A source's own word wins. When no source named one, the kind supplies
+    // a word from the same vocabulary rather than leaving the row silent.
+    // Before this, every title-heuristic proposal drew a blank column because
+    // ExpansionDetector sets no label on that path.
+    //
+    // variant_of is deliberately left blank when unnamed: the detector only
+    // produces that kind together with the word that earned it (demo, beta,
+    // playtest), so a blank there is a bug elsewhere, and inventing a generic
+    // word would hide it.
+    private static string Word(string? relationLabel, string? kind)
+    {
+        if (!string.IsNullOrWhiteSpace(relationLabel))
+        {
+            return relationLabel.Trim().ToUpperInvariant();
+        }
+
+        return kind == IdentityLinkKinds.ExpansionOf
+            ? RelationLabels.Expansion.ToUpperInvariant()
+            : string.Empty;
+    }
 }

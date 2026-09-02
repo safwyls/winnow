@@ -126,6 +126,11 @@ internal static class ShelfBuilder
     {
         var tuning = request.Tuning;
         var items = new List<Recommendation>(maxPerShelf);
+
+        // The shelf is the deduplication unit, not the whole feed. Two shelves
+        // telling different stories may reuse a phrasing invisibly; two cards
+        // side by side on one shelf may not.
+        var ledger = new ReasonVariantLedger();
         var franchiseCounts = new Dictionary<string, int>(StringComparer.Ordinal);
         var genreCounts = new Dictionary<long, int>();
         var genreSkips = new List<ScoredCandidate>();
@@ -134,7 +139,7 @@ internal static class ShelfBuilder
         void Take(ScoredCandidate candidate)
         {
             var facts = candidate.Facts;
-            items.Add(RecommendationEngine.Present(candidate, request));
+            items.Add(RecommendationEngine.Present(candidate, request, ledger));
             claimedWorks.Add(facts.WorkId);
             pickedWorks.Add(facts.WorkId);
             var franchise = Franchise.KeyFor(facts.Title);

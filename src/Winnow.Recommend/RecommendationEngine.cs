@@ -88,11 +88,15 @@ public sealed class RecommendationEngine : IRecommendationEngine
             scored.Add(new ScoredCandidate(enriched, signals, RecommendationScorer.Total(signals)));
         }
 
+        // One ledger per flat feed, same as one ledger per shelf. The flat
+        // list is what the user reads in a single scroll, so it is the unit
+        // over which a phrasing must not repeat.
+        var flatLedger = new ReasonVariantLedger();
         var items = scored
             .OrderByDescending(s => s.Score)
             .ThenBy(s => s.Facts.ReleaseId)
             .Take(request.MaxResults)
-            .Select(s => Present(s, request))
+            .Select(s => Present(s, request, flatLedger))
             .ToList();
 
         return new RecommendationFeed
@@ -221,7 +225,10 @@ public sealed class RecommendationEngine : IRecommendationEngine
     }
 
     /// <summary>One scored candidate as the caller sees it — score, structured reason, rendered sentence.</summary>
-    internal static Recommendation Present(ScoredCandidate candidate, RecommendationRequest request)
+    internal static Recommendation Present(
+        ScoredCandidate candidate,
+        RecommendationRequest request,
+        ReasonVariantLedger? ledger = null)
     {
         var explanation = RecommendationScorer.Explain(
             candidate.Facts, request.Thresholds, request.Tuning, request.AsOfUtc, candidate.Signals);
@@ -235,7 +242,7 @@ public sealed class RecommendationEngine : IRecommendationEngine
             Store = candidate.Facts.Store,
             Bucket = candidate.Facts.Bucket,
             Score = candidate.Score,
-            Reason = ReasonBuilder.Build(explanation, request.Tuning),
+            Reason = ReasonBuilder.Build(explanation, request.Tuning, ledger),
             Explanation = explanation,
             Signals = candidate.Signals,
         };

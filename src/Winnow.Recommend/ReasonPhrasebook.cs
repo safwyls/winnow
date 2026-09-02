@@ -69,6 +69,11 @@ internal static class ReasonPhrasebook
             "This is not the game you put down, {updates} arrived after you left",
             "The patch notes you have not read start at \"{updateTitle}\"",
             "A major update shipped after you stopped playing",
+            "The developers kept working on this one",
+            "Your last session predates the current version",
+            "{updates} behind the current version",
+            "You are {updates} behind on this one",
+            "Changed since the version you played",
         ],
         ReasonSignal.Bounced =>
         [

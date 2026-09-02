@@ -946,7 +946,8 @@ public partial class MergeQueueViewModel : ObservableObject
                     await DescribeWorkAsync(
                         member.Work.WorkId, member.Work.ReleaseIds, library, ct),
                     member.Evidence,
-                    member.RelationLabel));
+                    member.RelationLabel,
+                    member.Kind));
             }
 
             cards.Add(new ExpansionGroupViewModel(
@@ -974,18 +975,80 @@ public partial class MergeQueueViewModel : ObservableObject
             actById[act.Id] = act;
         }
 
-        var names = new Dictionary<long, string>();
-        async Task<string> NameOfAsync(long workId)
+        // The facts a row needs to name a work, cached per load. Title, year
+        // and publisher come from the work and cost one read. Stores cost a
+        // release read plus an ownership read per work, so they are fetched
+        // lazily, only for acts whose titles collide.
+        var facts = new Dictionary<long, MergeMemberFacts>();
+        async Task<MergeMemberFacts> FactsOfAsync(long workId)
         {
-            if (names.TryGetValue(workId, out var known))
+            if (facts.TryGetValue(workId, out var known))
             {
                 return known;
             }
 
             var work = await _works.GetAsync(workId, ct);
-            var name = work?.Name ?? string.Create(CultureInfo.InvariantCulture, $"#{workId}");
-            names[workId] = name;
-            return name;
+            var title = work?.Name ?? string.Create(CultureInfo.InvariantCulture, $"#{workId}");
+            var row = new MergeMemberFacts(
+                title, string.Empty, work?.FirstReleaseYear, work?.Publisher);
+            facts[workId] = row;
+            return row;
+        }
+
+        var storeNames = new Dictionary<long, string>();
+        async Task<MergeMemberFacts> WithStoresAsync(MergeMemberFacts row, long workId)
+        {
+            if (!storeNames.TryGetValue(workId, out var joined))
+            {
+                var stores = new List<string>();
+                foreach (var release in await _releases.GetByWorkAsync(workId, ct))
+                {
+                    foreach (var owned in await _ownership.GetByReleaseAsync(release.Id, ct))
+                    {
+                        if (!string.IsNullOrWhiteSpace(owned.Store)
+                            && !stores.Contains(owned.Store, StringComparer.OrdinalIgnoreCase))
+                        {
+                            stores.Add(owned.Store.Trim());
+                        }
+                    }
+                }
+
+                // Spelled exactly as a card spells it, through the same
+                // StoreNaming, so the history row and the card that wrote it
+                // read as one voice.
+                joined = string.Join(", ", stores.Select(StoreNaming.Label));
+                storeNames[workId] = joined;
+            }
+
+            return row with { StoreNames = joined };
+        }
+
+        // Progressive disambiguation: the same ladder the cards use. A row
+        // reading "The Stanley Parable linked under The Stanley Parable"
+        // names two works and describes neither. MergeMemberLabels adds
+        // stores, then year, then publisher, only while two members share a
+        // name, so the ordinary row is untouched and pays nothing.
+        async Task<IReadOnlyList<string>> NameApartAsync(IReadOnlyList<long> workIds)
+        {
+            var rows = new List<IMergeMemberFacts>(workIds.Count);
+            foreach (var workId in workIds)
+            {
+                rows.Add(await FactsOfAsync(workId));
+            }
+
+            var titles = new HashSet<string>(StringComparer.CurrentCultureIgnoreCase);
+            var collides = rows.Any(row => !titles.Add(row.Title));
+            if (!collides)
+            {
+                return [.. rows.Select(row => row.Title)];
+            }
+
+            for (var i = 0; i < rows.Count; i++)
+            {
+                rows[i] = await WithStoresAsync((MergeMemberFacts)rows[i], workIds[i]);
+            }
+
+            return MergeMemberLabels.For(rows);
         }
 
         // Grouped by act, because an act is the unit of undo: one undo
@@ -1013,7 +1076,7 @@ public partial class MergeQueueViewModel : ObservableObject
 
             var members = byAct[actId];
             var parentWorkId = members[0].ParentWorkId;
-            var childTitles = new List<string>(members.Count);
+            var childWorkIds = new List<long>(members.Count);
             var live = false;
 
             // An act is an expansion act when EVERY link it wrote is one. The
@@ -1025,7 +1088,7 @@ public partial class MergeQueueViewModel : ObservableObject
 
             foreach (var link in members)
             {
-                childTitles.Add(await NameOfAsync(link.ChildWorkId));
+                childWorkIds.Add(link.ChildWorkId);
                 if (link.Kind != IdentityLinkKinds.ExpansionOf)
                 {
                     expansion = false;
@@ -1044,8 +1107,12 @@ public partial class MergeQueueViewModel : ObservableObject
                 continue;
             }
 
+            // The parent leads, so the ladder separates it from a child that
+            // shares its title — the case that produced the unreadable row.
+            var named = await NameApartAsync([parentWorkId, .. childWorkIds]);
+
             rows.Add(new MergeLinkHistoryRowViewModel(
-                act, await NameOfAsync(parentWorkId), childTitles, expansion));
+                act, named[0], [.. named.Skip(1)], expansion));
         }
 
         rows.Reverse();

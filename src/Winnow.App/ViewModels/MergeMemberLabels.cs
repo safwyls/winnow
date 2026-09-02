@@ -19,7 +19,7 @@ internal static class MergeMemberLabels
     /// Returns a label for each member, index-aligned with
     /// <paramref name="sides"/>. Every label is distinct within the card.
     /// </summary>
-    public static IReadOnlyList<string> For(IReadOnlyList<MergeSideViewModel> sides)
+    public static IReadOnlyList<string> For(IReadOnlyList<IMergeMemberFacts> sides)
     {
         ArgumentNullException.ThrowIfNull(sides);
 
@@ -46,7 +46,7 @@ internal static class MergeMemberLabels
         return numbered;
     }
 
-    private static string Label(MergeSideViewModel side, int depth, int position, int of)
+    private static string Label(IMergeMemberFacts side, int depth, int position, int of)
     {
         var qualifiers = new List<string>(4);
 

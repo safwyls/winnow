@@ -254,6 +254,105 @@ public sealed class StoreChipLayoutTests
         }
     }
 
+    // ══ The expansion roster row ═════════════════════════════════════════════
+
+    /// <summary>Member border 1+1 and padding 14+14.</summary>
+    private const double MemberChrome = 30;
+
+    /// <summary>The include checkbox and the 14px margin after it.</summary>
+    private const double IncludeControl = 16 + 14;
+
+    /// <summary>The pack chip and the 14px margin between it and the text column.</summary>
+    private const double PackChip = 64 + 14;
+
+    // The row read "...PUBLISHER SAME TITL" and clipped at the card edge. A
+    // horizontal StackPanel measures children with unbounded width in the
+    // stacking direction, so no width could ever have made the line fit. The
+    // merge roster is built identically and has never overflowed because its
+    // values are short numbers; this line carries one free-text value, the
+    // suffix.
+    //
+    // A WrapPanel measures each child against the line being placed, so facts
+    // move to a second line instead of off the card. The suffix is also
+    // capped and trimmed, so no single group can exceed the column regardless
+    // of title length, which is the part a wrap alone cannot fix.
+
+    [Fact]
+    public void The_expansion_evidence_wraps_inside_the_card()
+    {
+        var line = ExpansionEvidenceLine();
+
+        Assert.Equal("WrapPanel", line.Name.LocalName);
+
+        // Each label and the value it names travel together, so a wrap breaks
+        // between facts and never leaves "PUBLISHER" on one line and "SAME" on
+        // the next.
+        var groups = line.Elements().ToList();
+        Assert.Equal(4, groups.Count);
+        foreach (var group in groups)
+        {
+            Assert.Equal("StackPanel", group.Name.LocalName);
+            Assert.Equal("Horizontal", group.Attribute("Orientation")?.Value);
+            Assert.Equal(2, group.Elements(Avalonia + "TextBlock").Count());
+        }
+    }
+
+    [Fact]
+    public void The_expansion_suffix_cannot_outgrow_the_column_it_sits_in()
+    {
+        var suffix = Assert.Single(
+            ExpansionEvidenceLine().Descendants(Avalonia + "TextBlock"),
+            t => t.Attribute("Text")?.Value == "{Binding SuffixText}");
+
+        Assert.Equal("CharacterEllipsis", suffix.Attribute("TextTrimming")?.Value);
+
+        var cap = double.Parse(suffix.Attribute("MaxWidth")!.Value, CultureInfo.InvariantCulture);
+
+        // The relation word is the other Auto column competing for the row, so
+        // it is capped too and its cap is charged against the text column here.
+        var relation = Assert.Single(
+            ExpansionRosterRow().Descendants(Avalonia + "TextBlock"),
+            t => t.Attribute("Text")?.Value == "{Binding RelationText}");
+        Assert.Equal("CharacterEllipsis", relation.Attribute("TextTrimming")?.Value);
+        var relationCap =
+            double.Parse(relation.Attribute("MaxWidth")!.Value, CultureInfo.InvariantCulture)
+            + 14;
+
+        var column = CardMaxWidth
+            - CardChrome - MemberChrome - IncludeControl - PackChip - relationCap;
+
+        // The suffix takes at most half of what the row has, which leaves its
+        // own label at least as much again. Every other value on the line is
+        // fixed vocabulary (a signed year, SAME/DIFFERENT, YES/NO).
+        Assert.True(
+            cap <= column / 2,
+            $"The suffix may grow to {cap}px inside a {column}px column, which leaves its "
+            + "EXTENDS BY label less room than the value it names.");
+    }
+
+    private static XElement ExpansionRosterRow()
+    {
+        var view = Load("src/Winnow.App/Views/MergeQueueView.axaml");
+        return view
+            .Descendants(Avalonia + "DataTemplate")
+            .Single(t => t.Attribute(Xaml + "Key")?.Value == "ExpansionRosterRowTemplate");
+    }
+
+    /// <summary>
+    /// The innermost element holding the whole evidence line: several
+    /// ancestors contain it, and the one under test is the one that lays it
+    /// out.
+    /// </summary>
+    private static XElement ExpansionEvidenceLine()
+        => ExpansionRosterRow()
+            .Descendants()
+            .Where(e => e.Descendants(Avalonia + "TextBlock")
+                .Any(t => t.Attribute("Text")?.Value == "{Binding ExtendsLabel}")
+                && e.Descendants(Avalonia + "TextBlock")
+                    .Any(t => t.Attribute("Text")?.Value == "{Binding SeparatorText}"))
+            .OrderBy(e => e.Descendants().Count())
+            .First();
+
     private static bool InsideTheMeasure(XElement element)
     {
         for (var node = element.Parent; node is not null; node = node.Parent)
