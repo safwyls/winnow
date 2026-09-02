@@ -67,7 +67,7 @@ public sealed class ExpansionMetadataGuardTests
     /// <summary>
     /// The same shape with nothing behind it. Without the storefront these pairs
     /// reach the title guards, which is precisely why the heuristic on its own
-    /// could not be trusted with them — and why it now proposes only where
+    /// could not be trusted with them, and why it now proposes only where
     /// every source is silent.
     /// </summary>
     [Fact]
@@ -87,7 +87,7 @@ public sealed class ExpansionMetadataGuardTests
     /// <summary>
     /// The pair the old guard let through. Two completely unrelated games where
     /// one title opens with the other, refused now with no storefront involved
-    /// at all — because two known years are not evidence of anything, and the
+    /// at all, because two known years are not evidence of anything, and the
     /// old rule was satisfied by exactly that.
     /// </summary>
     [Fact]
@@ -149,15 +149,16 @@ public sealed class ExpansionMetadataGuardTests
     /// TitleNormalizer lifts a trailing bare "edition" as a BUNDLE marker
     /// rather than a REBUILD marker, so the rebuild guard never sees these and
     /// the pair proposes as an expansion. IGDB types the first a Remaster and
-    /// the second a Port, and both name a version_parent — so the storefront
-    /// makes the proposal, with the true word on it, and the heuristic stands
-    /// down.
+    /// the second a Port, and both name a version_parent. Naming the relation
+    /// correctly is not permission to offer it here: a rebuild adds nothing to
+    /// group, so the claim refutes the pair and neither path proposes it.
     /// </summary>
     [Theory]
-    [InlineData("The Outer Worlds", "The Outer Worlds: Spacer's Choice Edition", "remaster", RelationLabels.Remaster)]
-    [InlineData("Hellblade: Senua's Sacrifice", "Hellblade: Senua's Sacrifice VR Edition", "port", RelationLabels.Port)]
-    public void A_generic_edition_phrase_is_typed_by_the_storefront_not_guessed(
-        string baseTitle, string childTitle, string gameType, string expectedLabel)
+    [InlineData("The Outer Worlds", "The Outer Worlds: Spacer's Choice Edition", "remaster")]
+    [InlineData("Hellblade: Senua's Sacrifice", "Hellblade: Senua's Sacrifice VR Edition", "port")]
+    [InlineData("Counter-Strike", "Counter-Strike: Source", "remake")]
+    public void A_rebuild_edition_is_refused_however_it_was_typed(
+        string baseTitle, string childTitle, string gameType)
     {
         var baseGame = Subject(1, baseTitle, year: 2019, facts: new StorefrontFacts
         {
@@ -171,17 +172,170 @@ public sealed class ExpansionMetadataGuardTests
             facts: new StorefrontFacts { IgdbGameType = gameType, IgdbVersionParentId = 42 },
             claimedParent: 1);
 
-        // The title heuristic does not get a vote on a pair a storefront has
-        // typed.
+        // The title heuristic is refused, and by the refutation rather than by
+        // the gap-filler rule: the storefront did not merely speak, it said the
+        // relation is not an extension.
         Assert.False(ExpansionDetector.TryPropose(baseGame, edition, null, out _, out var reason));
-        Assert.Equal(ExpansionRefusalReason.MetadataSpeaks, reason);
+        Assert.Equal(ExpansionRefusalReason.MetadataContradicts, reason);
 
-        // And the storefront proposes it itself, with its own word.
-        var proposal = Assert.Single(ExpansionDetector.Detect([baseGame, edition]));
+        // And the storefront pass, which used to write its claim straight into
+        // the results, proposes nothing either.
+        Assert.Empty(ExpansionDetector.Detect([baseGame, edition]));
+    }
+
+    /// <summary>
+    /// The user's original complaint, end to end, on the pair that produced it.
+    /// Verified in the running app on 2026-09-02: the Counter-Strike card drew
+    /// REMAKE on the Counter-Strike: Source row and still offered it as an
+    /// expansion, checkbox pre-ticked, under a header reading "Expansion?". The
+    /// label was right and the question was wrong.
+    /// </summary>
+    [Fact]
+    public void A_remake_is_never_offered_on_the_expansions_surface()
+    {
+        var claim = StorefrontRelation.Read(new StorefrontFacts
+        {
+            IgdbGameType = "remake",
+            IgdbParentId = 4128,
+        });
+
+        Assert.NotNull(claim);
+
+        // The word is still recorded. What changes is that it asks for nothing.
+        Assert.Equal(RelationLabels.Remake, claim.Label);
+        Assert.Null(claim.Kind);
+        Assert.True(claim.RefutesExtension);
+
+        var counterStrike = Subject(1, "Counter-Strike", year: 2000, publisher: "Valve");
+        var source = Subject(
+            2,
+            "Counter-Strike: Source",
+            year: 2004,
+            publisher: "Valve",
+            facts: new StorefrontFacts { IgdbGameType = "remake", IgdbParentId = 4128 },
+            claimedParent: 1);
+
+        Assert.Empty(ExpansionDetector.Detect([counterStrike, source]));
+    }
+
+    /// <summary>
+    /// A rebuild refutes even where its parent is not in the library, because
+    /// the refutation is about what the relation IS and not about which pair is
+    /// on offer. The heuristic would otherwise walk straight back in behind it.
+    /// </summary>
+    [Theory]
+    [InlineData("remake")]
+    [InlineData("remaster")]
+    [InlineData("port")]
+    public void A_rebuild_with_no_owned_parent_still_refutes(string gameType)
+    {
+        var baseGame = Subject(1, "Fixture Game", year: 2015, publisher: "Fixture");
+        var rebuild = Subject(
+            2,
+            "Fixture Game: The Pack",
+            year: 2018,
+            publisher: "Fixture",
+            // Typed, parent named, and the parent is a work nobody owns.
+            facts: new StorefrontFacts { IgdbGameType = gameType, IgdbParentId = 99 });
+
+        Assert.False(ExpansionDetector.TryPropose(baseGame, rebuild, null, out _, out var reason));
+        Assert.Equal(ExpansionRefusalReason.MetadataContradicts, reason);
+        Assert.Empty(ExpansionDetector.Detect([baseGame, rebuild]));
+    }
+
+    // ── The storefront pass goes through the gate, not around it ────────────
+
+    /// <summary>
+    /// The claim path used to write its proposal directly into the results,
+    /// which meant a source naming a kind produced a proposal that had passed
+    /// FEWER checks than a title guess, the inversion of demoting the
+    /// heuristic to a gap-filler. Every guard that is about the RELATION rather
+    /// than about title evidence now refuses both paths alike.
+    /// </summary>
+    [Fact]
+    public void A_storefront_naming_a_kind_cannot_bypass_the_rebuild_guard()
+    {
+        var baseGame = Subject(1, "Fixture Game", year: 2015, publisher: "Fixture");
+
+        // A rebuild marker in the TITLE, on one side only, with a storefront
+        // calling the pair an expansion and naming this base as the parent.
+        var child = Subject(
+            2,
+            "Fixture Game HD",
+            year: 2018,
+            publisher: "Fixture",
+            facts: new StorefrontFacts { IgdbGameType = "expansion", IgdbParentId = 7 },
+            claimedParent: 1);
+
+        Assert.Empty(ExpansionDetector.Detect([baseGame, child]));
+    }
+
+    /// <summary>
+    /// The sequel guard likewise. A suffix that opens on a number names a
+    /// different numbered entry in a series, and a source naming this base as
+    /// the parent does not make Portal 2 an expansion of Portal.
+    /// </summary>
+    [Fact]
+    public void A_storefront_naming_a_kind_cannot_bypass_the_sequel_guard()
+    {
+        var portal = Subject(1, "Portal", year: 2007, publisher: "Valve");
+        var portal2 = Subject(
+            2,
+            "Portal 2",
+            year: 2011,
+            publisher: "Valve",
+            facts: new StorefrontFacts { IgdbGameType = "dlc_addon", IgdbParentId = 7 },
+            claimedParent: 1);
+
+        Assert.Empty(ExpansionDetector.Detect([portal, portal2]));
+    }
+
+    /// <summary>
+    /// A source that names a work as its own parent claims nothing. Two apps in
+    /// the author's cache do exactly this (3900 Civilization IV, 6980 Thief:
+    /// Deadly Shadows); the parse drops them, and the gate refuses them again.
+    /// </summary>
+    [Fact]
+    public void A_storefront_naming_a_work_as_its_own_parent_proposes_nothing()
+    {
+        var self = Subject(
+            1,
+            "Sid Meier's Civilization IV",
+            year: 2005,
+            facts: new StorefrontFacts { IgdbGameType = "expansion", IgdbParentId = 7 },
+            claimedParent: 1);
+
+        Assert.Empty(ExpansionDetector.Detect([self]));
+    }
+
+    /// <summary>
+    /// The guards the gate deliberately does NOT share, shown working. A
+    /// storefront claim does not rest on a prefix match, so refusing it for
+    /// failing a prefix test would throw away the pairs the storefronts get
+    /// right and the heuristic gets wrong: Arma 2: DayZ Mod belongs to
+    /// Operation Arrowhead, whose title it does not begin with.
+    /// </summary>
+    [Fact]
+    public void A_storefront_claim_survives_the_guards_that_only_judge_a_prefix()
+    {
+        var arrowhead = Subject(
+            1, "Arma 2: Operation Arrowhead", year: 2010, publisher: "Bohemia Interactive");
+
+        var dayz = Subject(
+            2,
+            "Arma 2: DayZ Mod",
+            year: 2012,
+            // A publisher that disagrees and a title that is not a prefix of
+            // the base. Both would refuse a title guess, and neither is what
+            // this proposal rests on.
+            publisher: "Dean Hall",
+            facts: new StorefrontFacts { IgdbGameType = "expansion", IgdbParentId = 7 },
+            claimedParent: 1);
+
+        var proposal = Assert.Single(ExpansionDetector.Detect([arrowhead, dayz]));
         Assert.Equal(1, proposal.BaseWorkId);
         Assert.Equal(2, proposal.ChildWorkId);
         Assert.Equal(IdentityLinkKinds.ExpansionOf, proposal.Kind);
-        Assert.Equal(expectedLabel, proposal.RelationLabel);
         Assert.True(proposal.FromMetadata);
     }
 
@@ -246,8 +400,8 @@ public sealed class ExpansionMetadataGuardTests
 
     /// <summary>
     /// A plain Steam type 0 with no parent is NOT speech. Steam is
-    /// documented-silent on expansions — every genuine standalone expansion in
-    /// the measured library is type 0 with no parent appid — so reading it as
+    /// documented-silent on expansions (every genuine standalone expansion in
+    /// the measured library is type 0 with no parent appid), so reading it as
     /// an opinion would mute the heuristic over the whole Steam library.
     /// </summary>
     [Fact]
@@ -266,7 +420,7 @@ public sealed class ExpansionMetadataGuardTests
     /// <summary>
     /// Eleven of the author's 38 proposals were demos, betas, playtests and
     /// staging branches offered under the word "expansion". Even with every
-    /// storefront silent — which for a delisted staging branch they all are —
+    /// storefront silent, which for a delisted staging branch they all are,
     /// the fallback now names them for what they are.
     /// </summary>
     [Theory]
@@ -319,9 +473,6 @@ public sealed class ExpansionMetadataGuardTests
     [InlineData("season", IdentityLinkKinds.ExpansionOf, RelationLabels.Season)]
     [InlineData("pack", IdentityLinkKinds.ExpansionOf, RelationLabels.Pack)]
     [InlineData("expanded_game", IdentityLinkKinds.ExpansionOf, RelationLabels.ExpandedGame)]
-    [InlineData("remaster", IdentityLinkKinds.ExpansionOf, RelationLabels.Remaster)]
-    [InlineData("remake", IdentityLinkKinds.ExpansionOf, RelationLabels.Remake)]
-    [InlineData("port", IdentityLinkKinds.ExpansionOf, RelationLabels.Port)]
     [InlineData("fork", IdentityLinkKinds.ExpansionOf, RelationLabels.Fork)]
     [InlineData("mod", null, RelationLabels.Mod)]
     [InlineData("bundle", null, RelationLabels.Bundle)]
@@ -340,6 +491,119 @@ public sealed class ExpansionMetadataGuardTests
         Assert.Equal(expectedLabel, claim.Label);
         Assert.Equal(1234, claim.IgdbParentId);
         Assert.False(claim.RefutesExtension);
+    }
+
+    /// <summary>
+    /// The rebuild types are the other half of that vocabulary, and they map to
+    /// a label and a REFUTATION. A remake, a remaster and a port are the same
+    /// game built again: they name a real parent and a real relation, and it is
+    /// not an extension, so there is nothing for a surface asking "Expansion?"
+    /// to offer. The word is still recorded, because the word was never the
+    /// problem.
+    /// </summary>
+    [Theory]
+    [InlineData("remake", RelationLabels.Remake)]
+    [InlineData("remaster", RelationLabels.Remaster)]
+    [InlineData("port", RelationLabels.Port)]
+    public void An_igdb_rebuild_type_records_its_word_and_refutes_an_expansion(
+        string gameType, string expectedLabel)
+    {
+        var claim = StorefrontRelation.Read(new StorefrontFacts
+        {
+            IgdbGameType = gameType,
+            IgdbParentId = 1234,
+        });
+
+        Assert.NotNull(claim);
+        Assert.Equal(expectedLabel, claim.Label);
+        Assert.Equal(1234, claim.IgdbParentId);
+
+        // A named parent is not permission to propose. This is the one shape
+        // main_game's refutation does not cover, and it is why AC #7 was not
+        // enough on its own.
+        Assert.Null(claim.Kind);
+        Assert.True(claim.RefutesExtension);
+    }
+
+    /// <summary>
+    /// The type names as IGDB really spells them on the wire. /v4/game_types
+    /// returns the human LABEL, not the documented id: the author's database
+    /// holds "Main Game" 833 times, "Standalone Expansion" 23, "Expanded Game"
+    /// 22 and "DLC" once. The single-word names matched the table by accident
+    /// and every multi-word one fell through to the unknown branch, so
+    /// main_game's refutation had never fired in production and 46 works IGDB
+    /// types as expansions were read as silence. This theory is the shape
+    /// production actually has; the snake_case theory above is the shape the
+    /// documentation has, and both must map.
+    /// </summary>
+    [Theory]
+    [InlineData("Main Game", null, RelationLabels.MainGame)]
+    [InlineData("Standalone Expansion", IdentityLinkKinds.ExpansionOf, RelationLabels.StandaloneExpansion)]
+    [InlineData("Expanded Game", IdentityLinkKinds.ExpansionOf, RelationLabels.ExpandedGame)]
+    [InlineData("DLC", IdentityLinkKinds.ExpansionOf, RelationLabels.Dlc)]
+    [InlineData("Expansion", IdentityLinkKinds.ExpansionOf, RelationLabels.Expansion)]
+    [InlineData("Bundle", null, RelationLabels.Bundle)]
+    [InlineData("Mod", null, RelationLabels.Mod)]
+    [InlineData("Fork", IdentityLinkKinds.ExpansionOf, RelationLabels.Fork)]
+    public void The_wire_spelling_of_a_game_type_maps_the_same_as_its_documented_id(
+        string wireLabel, string? expectedKind, string expectedLabel)
+    {
+        var claim = StorefrontRelation.Read(new StorefrontFacts
+        {
+            IgdbGameType = wireLabel,
+            IgdbParentId = 1234,
+        });
+
+        Assert.NotNull(claim);
+        Assert.Equal(expectedKind, claim.Kind);
+        Assert.Equal(expectedLabel, claim.Label);
+    }
+
+    /// <summary>
+    /// The refutation on the spelling production actually stores. "Main Game"
+    /// with a null parent_game is the guard nine of the measured sequel false
+    /// positives rest on, and until the wire spelling was folded onto the
+    /// documented id it had never once fired against real data.
+    /// </summary>
+    [Fact]
+    public void The_wire_spelling_of_main_game_refutes()
+    {
+        var claim = StorefrontRelation.Read(new StorefrontFacts { IgdbGameType = "Main Game" });
+
+        Assert.NotNull(claim);
+        Assert.True(claim.RefutesExtension);
+        Assert.Null(claim.Kind);
+        Assert.Equal(RelationLabels.MainGame, claim.Label);
+
+        var doom = Subject(1, "DOOM", year: 2016, publisher: null);
+        var eternal = Subject(
+            2, "DOOM Eternal", year: 2020, publisher: null,
+            facts: new StorefrontFacts { IgdbGameType = "Main Game" });
+
+        Assert.False(ExpansionDetector.TryPropose(doom, eternal, null, out _, out var reason));
+        Assert.Equal(ExpansionRefusalReason.MetadataContradicts, reason);
+    }
+
+    /// <summary>
+    /// The rebuild refutation on the wire spelling too, which is the spelling
+    /// the Counter-Strike card was drawing REMAKE from.
+    /// </summary>
+    [Theory]
+    [InlineData("Remake", RelationLabels.Remake)]
+    [InlineData("Remaster", RelationLabels.Remaster)]
+    [InlineData("Port", RelationLabels.Port)]
+    public void The_wire_spelling_of_a_rebuild_type_refutes(string wireLabel, string expectedLabel)
+    {
+        var claim = StorefrontRelation.Read(new StorefrontFacts
+        {
+            IgdbGameType = wireLabel,
+            IgdbParentId = 4128,
+        });
+
+        Assert.NotNull(claim);
+        Assert.Equal(expectedLabel, claim.Label);
+        Assert.Null(claim.Kind);
+        Assert.True(claim.RefutesExtension);
     }
 
     /// <summary>

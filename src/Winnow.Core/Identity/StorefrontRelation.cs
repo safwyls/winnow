@@ -60,16 +60,16 @@ public sealed record StorefrontFacts
 /// <see cref="StorefrontRelation.Read"/>; nothing here writes a link. A claim
 /// with a <see cref="Kind"/> is a proposal the user may still refuse (the
 /// never-auto-merge rule holds); a claim with a null <see cref="Kind"/> records
-/// the source's word without asking for a link, and a
-/// <see cref="RefutesExtension"/> claim asks for nothing at all, it only stops
-/// the title heuristic from guessing.
+/// the source's word without asking for a link; and a
+/// <see cref="RefutesExtension"/> claim forbids any expansion proposal about
+/// this work, whether from a storefront or the title heuristic.
 /// </summary>
 /// <param name="Source">One of <see cref="StorefrontRelationSources"/>.</param>
 /// <param name="Label">One of <see cref="RelationLabels"/> — the source's own word.</param>
 /// <param name="Kind">One of <see cref="IdentityLinkKinds"/>, or null when the label is recorded but no link is claimed.</param>
 /// <param name="SteamParentAppId">The parent as a Steam appid, when the claim came from a Steam source.</param>
 /// <param name="IgdbParentId">The parent as an IGDB game id, when the claim came from IGDB.</param>
-/// <param name="RefutesExtension">True when the source states this work extends nothing — IGDB main_game with no parent.</param>
+/// <param name="RefutesExtension">True when no expansion proposal may be made about this work. Two shapes: a source that says the work extends nothing (IGDB main_game with no parent), and a source that names a relation that is not an extension (IGDB remake, remaster or port, which are the same game built again, adding nothing to group).</param>
 public sealed record StorefrontClaim(
     string Source,
     string Label,
@@ -93,7 +93,17 @@ public sealed record StorefrontClaim(
 /// library is type 0 with no parent appid. IGDB is the reverse: it types
 /// expansions precisely and does not model demos, betas or playtests at all. A
 /// Steam variant claim outranks anything IGDB says, and IGDB decides everything
-/// Steam is silent about.</para>
+/// Steam is silent about. IGDB rebuild types (remake, remaster, port) are
+/// checked before any other IGDB reading: they name a real parent but refute an
+/// expansion proposal, because a rebuild is the same game built again and adds
+/// nothing to group.</para>
+///
+/// <para>IGDB's /v4/game_types endpoint returns the human label ("Main Game",
+/// "Standalone Expansion"), not the documented snake_case id. Measured on the
+/// author's database 2026-09-02: multi-word labels fell through to the unknown
+/// branch, so main_game's refutation had never fired in production. A
+/// <c>Canonical</c> helper folds spaces and hyphens to underscores before
+/// lookup; the dictionaries already ignore case.</para>
 /// </summary>
 public static class StorefrontRelation
 {
@@ -131,19 +141,38 @@ public static class StorefrontRelation
             // and their playtime does not roll up (the user's decision 3 on
             // TASK-70).
             ["dlc_addon"] = (IdentityLinkKinds.ExpansionOf, RelationLabels.Dlc),
+
+            // /v4/game_types returns the label "DLC" for dlc_addon, the one
+            // type whose label is not its documented id with spaces restored.
+            // Both spellings are keys because the docs say one thing and the
+            // wire says another.
+            ["dlc"] = (IdentityLinkKinds.ExpansionOf, RelationLabels.Dlc),
             ["expansion"] = (IdentityLinkKinds.ExpansionOf, RelationLabels.Expansion),
             ["standalone_expansion"] = (IdentityLinkKinds.ExpansionOf, RelationLabels.StandaloneExpansion),
             ["episode"] = (IdentityLinkKinds.ExpansionOf, RelationLabels.Episode),
             ["season"] = (IdentityLinkKinds.ExpansionOf, RelationLabels.Season),
             ["pack"] = (IdentityLinkKinds.ExpansionOf, RelationLabels.Pack),
 
-            // Editions. Numerically identical to expansion_of and semantically
-            // not expansions, so they take that kind and their own label.
+            // Editions that ADD content. expanded_game is a standalone game
+            // built out of a base plus its packs, and fork is the mod question
+            // wearing another word; both still name something the user acquired
+            // on top of the base, so they keep expansion_of and their own label.
             ["expanded_game"] = (IdentityLinkKinds.ExpansionOf, RelationLabels.ExpandedGame),
-            ["remaster"] = (IdentityLinkKinds.ExpansionOf, RelationLabels.Remaster),
-            ["remake"] = (IdentityLinkKinds.ExpansionOf, RelationLabels.Remake),
-            ["port"] = (IdentityLinkKinds.ExpansionOf, RelationLabels.Port),
             ["fork"] = (IdentityLinkKinds.ExpansionOf, RelationLabels.Fork),
+        };
+
+    // Rebuild editions: the same game built again, adding no content to group.
+    // The label is recorded; the claim sets RefutesExtension and a null Kind, so
+    // neither the storefront pass nor the title heuristic may propose the pair.
+    // Verified 2026-09-02: Counter-Strike: Source (remake), The Outer Worlds:
+    // Spacer's Choice Edition (remaster) and Hellblade VR Edition (port) were
+    // all being offered as expansions with the checkbox pre-ticked.
+    private static readonly Dictionary<string, string> IgdbRebuildTypes =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["remake"] = RelationLabels.Remake,
+            ["remaster"] = RelationLabels.Remaster,
+            ["port"] = RelationLabels.Port,
         };
 
     private static readonly Dictionary<string, string> IgdbLabelOnlyTypes =
@@ -231,10 +260,24 @@ public static class StorefrontRelation
         // 4. IGDB, which owns everything above the variant line.
         var igdbParent = facts.IgdbParentId ?? facts.IgdbVersionParentId;
         var igdbType = facts.IgdbGameType?.Trim();
+        var lookup = Canonical(igdbType);
 
         if (!string.IsNullOrEmpty(igdbType))
         {
-            if (IgdbTypes.TryGetValue(igdbType, out var mapped))
+            // Checked before every other IGDB reading because a rebuild has a
+            // real parent and a real relation that is not an extension. A named
+            // parent is not permission to propose an expansion.
+            if (IgdbRebuildTypes.TryGetValue(lookup, out var rebuildLabel))
+            {
+                return new StorefrontClaim(
+                    StorefrontRelationSources.Igdb,
+                    rebuildLabel,
+                    Kind: null,
+                    IgdbParentId: igdbParent,
+                    RefutesExtension: true);
+            }
+
+            if (IgdbTypes.TryGetValue(lookup, out var mapped))
             {
                 return new StorefrontClaim(
                     StorefrontRelationSources.Igdb,
@@ -243,7 +286,7 @@ public static class StorefrontRelation
                     IgdbParentId: igdbParent);
             }
 
-            if (IgdbLabelOnlyTypes.TryGetValue(igdbType, out var label))
+            if (IgdbLabelOnlyTypes.TryGetValue(lookup, out var label))
             {
                 return new StorefrontClaim(
                     StorefrontRelationSources.Igdb,
@@ -252,7 +295,7 @@ public static class StorefrontRelation
                     IgdbParentId: igdbParent);
             }
 
-            if (string.Equals(igdbType, IgdbMainGame, StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(lookup, IgdbMainGame, StringComparison.OrdinalIgnoreCase))
             {
                 // The refutation. A main game with no parent extends nothing,
                 // whatever its title happens to start with.
@@ -320,6 +363,20 @@ public static class StorefrontRelation
         // title heuristic over the entire Steam library.
         return null;
     }
+
+    // /v4/game_types.type returns the human label, not the documented id.
+    // Measured 2026-09-02: stored values are "Main Game" (833), "Standalone
+    // Expansion" (23), "Expanded Game" (22), "Remaster" (20), "Remake" (18),
+    // "Port" (3), "Fork" (1), "DLC" (1), among others. Single-word names
+    // matched the lookup tables by accident; every multi-word one fell through
+    // to the unknown branch, so main_game's refutation had never fired in
+    // production and 46 works IGDB typed as expansions were read as silence.
+    // Spaces and hyphens fold to underscores; the dictionaries already ignore
+    // case. The raw value is kept for the unrecognised branch.
+    private static string Canonical(string? gameType)
+        => string.IsNullOrWhiteSpace(gameType)
+            ? string.Empty
+            : gameType.Trim().Replace(' ', '_').Replace('-', '_');
 
     private static bool IsPicsType(string? picsType, string expected)
         => !string.IsNullOrEmpty(picsType)

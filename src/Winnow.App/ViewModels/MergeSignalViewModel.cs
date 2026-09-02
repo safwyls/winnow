@@ -42,9 +42,9 @@ public sealed class MergeSignalViewModel
     public string Label { get; }
 
     /// <summary>
-    /// The headline number or verdict for this signal, in Plex Mono: the title
-    /// distance, the year delta, SAME/DIFFERENT for publisher. An em dash when
-    /// the signal did not fire.
+    /// The headline number or verdict for this signal, in Plex Mono: Δ-prefixed
+    /// title distance, Δ-prefixed year delta, SAME/DIFFERENT for publisher. An
+    /// em dash when the signal did not fire.
     /// </summary>
     public string ValueText { get; }
 
@@ -67,7 +67,9 @@ public sealed class MergeSignalViewModel
         {
             SoftMatchSignalNames.Title => (
                 "Title",
-                Number(1.0 - payload.TitleSimilarity)),
+                string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"Δ{Number(1.0 - payload.TitleSimilarity)}")),
 
             SoftMatchSignalNames.ReleaseYear => (
                 "Year",

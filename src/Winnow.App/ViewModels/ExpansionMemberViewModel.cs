@@ -7,16 +7,20 @@ namespace Winnow.App.ViewModels;
 /// <summary>
 /// One proposed expansion on an expansion card.
 ///
-/// <para>It has an include checkbox and NO primary
-/// radio, which is the one structural difference from
+/// <para>It has an include checkbox, checked by default only when the relation
+/// is the one the surface asks about (expansion_of), and no primary radio.
+/// That is the one structural difference from
 /// <see cref="MergeGroupMemberViewModel"/>: on a same-game card either title
 /// could be the one the library keeps, so the choice is the user's; here the
 /// parent is determined by the relation itself, and a radio would let someone
-/// assert that Civilization IV is an expansion of Beyond the Sword.</para>
+/// assert that Civilization IV is an expansion of Beyond the Sword. A row
+/// carrying variant_of (demo, beta, playtest) is shown because that is where
+/// the pair was found, but arrives unticked so the primary button cannot
+/// assert a relation the header never asked about.</para>
 /// </summary>
 public partial class ExpansionMemberViewModel : ObservableObject
 {
-    /// <summary>Creates a roster row, checked.</summary>
+    /// <summary>Creates a roster row, checked when the relation is the one the surface asks about.</summary>
     /// <param name="workId">The proposed expansion's work id.</param>
     /// <param name="side">Its face: title, cover, stores.</param>
     /// <param name="evidence">What the detector observed about this pair.</param>
@@ -47,14 +51,17 @@ public partial class ExpansionMemberViewModel : ObservableObject
         Side = side;
         Evidence = evidence;
         RelationText = Word(relationLabel, kind);
+        IsAskedRelation = kind is null || kind == IdentityLinkKinds.ExpansionOf;
 
-        // Checked by default, unlike a same-game roster row. A same-game group
-        // is a connected component, so an unchecked default guards against the
-        // closure asserting more than any single proposal did. An expansion
-        // proposal is one direct claim about one pair, with corroboration
-        // already required before it was made, so there is no closure to
-        // guard and the card asks exactly the question the detector asked.
-        IsIncluded = true;
+        // Checked by default only when the relation is the one the surface
+        // asks about. A same-game group is a connected component, so an
+        // unchecked default guards against the closure asserting more than any
+        // single proposal did; an expansion proposal is one direct claim about
+        // one pair and has no closure to guard. The condition matters because
+        // a variant_of row (demo, beta, playtest) answers a different question
+        // than the one the header asks, and pre-ticking it would make the
+        // primary button assert a relation the header never named.
+        IsIncluded = IsAskedRelation;
     }
 
     /// <summary>The work this row proposes as an expansion. The child of the link a Group writes.</summary>
@@ -79,7 +86,15 @@ public partial class ExpansionMemberViewModel : ObservableObject
     /// word. The row draws no relation label in that case.</summary>
     public bool HasRelation => RelationText.Length > 0;
 
-    /// <summary>Whether this pack joins the act. Checked by default; see the constructor.</summary>
+    /// <summary>
+    /// True when the row's relation is the one the surface asks about
+    /// (expansion_of). False for a variant_of row (demo, beta, playtest),
+    /// which is shown because that is where the pair was found but starts
+    /// unticked because the header's question does not cover it.
+    /// </summary>
+    public bool IsAskedRelation { get; }
+
+    /// <summary>Whether this pack joins the act. Checked by default when <see cref="IsAskedRelation"/> is true; see the constructor.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IncludeAutomationName))]
     public partial bool IsIncluded { get; set; }

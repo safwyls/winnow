@@ -814,11 +814,66 @@ public sealed class MergeQueueViewModelTests
         Assert.Equal("Δ1", year.ValueText);
         Assert.Contains("2015 vs 2016", year.Detail, StringComparison.Ordinal);
 
+        // TITLE prints distance (1 - similarity), not similarity. A bare "0.00"
+        // above a detail line reading "100% similar" contradicts itself; the Δ
+        // prefix marks it as a delta, matching YEAR's own convention.
+        var title = edge.Signals.Single(s => s.Label == "TITLE");
+        Assert.True(title.Fired);
+        Assert.Equal("Δ0.00", title.ValueText);
+        Assert.Contains("100 % similar", title.Detail, StringComparison.Ordinal);
+
         // One side is a content bundle. The verdict is the evidence; the signed
         // points the row used to print were the scorer's arithmetic and nobody
         // on this screen tunes weights.
         var edition = edge.Signals.Single(s => s.Label == "EDITION");
         Assert.Equal("DIFFERENT", edition.ValueText);
+    }
+
+    /// <summary>
+    /// A strong title match and a weak one must read apart from the TITLE row
+    /// alone, without consulting the detail sentence. Both pairs fire the title
+    /// signal and clear the queue floor; the only variable is distance.
+    /// </summary>
+    [Fact]
+    public async Task TITLE_row_tells_a_strong_match_from_a_weak_one_by_itself()
+    {
+        using var fixture = new MergeQueueFixture();
+
+        // Identical core titles, distance zero.
+        await fixture.QueuePairAsync(
+            new SeedSide("The Witcher 3: Wild Hunt", 2015, "CD PROJEKT RED"),
+            new SeedSide("The Witcher 3: Wild Hunt - Game of the Year Edition", 2016, "CD PROJEKT RED"));
+
+        // Related but distinct (trailing word appended). Fires and clears the
+        // queue floor, but distance is well above zero.
+        await fixture.QueuePairAsync(
+            new SeedSide("Aurora Frontier", 2009, "Encore"),
+            new SeedSide("Aurora Frontier Origins", 2009, "Encore"));
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+
+        // Detail sentences quote the normalised (lower-cased) core title.
+        var strong = queue.Groups
+            .Single(g => g.Edges[0].Signals.Any(s => s.Detail.Contains("witcher", StringComparison.Ordinal)))
+            .Edges[0];
+        var weak = queue.Groups
+            .Single(g => g.Edges[0].Signals.Any(s => s.Detail.Contains("aurora", StringComparison.Ordinal)))
+            .Edges[0];
+
+        var strongTitle = strong.Signals.Single(s => s.Label == "TITLE");
+        var weakTitle = weak.Signals.Single(s => s.Label == "TITLE");
+
+        Assert.True(strongTitle.Fired);
+        Assert.True(weakTitle.Fired);
+
+        // Both carry the Δ prefix (consistent with YEAR) and are visibly
+        // different values.
+        Assert.Equal("Δ0.00", strongTitle.ValueText);
+        Assert.Equal("Δ0.27", weakTitle.ValueText);
+        Assert.NotEqual(strongTitle.ValueText, weakTitle.ValueText);
+        Assert.StartsWith("Δ", strongTitle.ValueText, StringComparison.Ordinal);
+        Assert.StartsWith("Δ", weakTitle.ValueText, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -1791,6 +1846,35 @@ public sealed class MergeQueueViewModelTests
         var named = new ExpansionMemberViewModel(
             1, side, evidence, RelationLabels.Playtest, IdentityLinkKinds.VariantOf);
         Assert.Equal("PLAYTEST", named.RelationText);
+    }
+
+    // The card's header asks "Expansion?" and its primary button writes the
+    // kind on the row. A row carrying a relation the header did not ask about
+    // is still shown, because that is where the pair was found, but it does
+    // not arrive already answered.
+
+    [Fact]
+    public void Only_the_relation_the_surface_asks_about_arrives_pre_ticked()
+    {
+        var side = new MergeSideViewModel(1, "Prey Playtest", 2017, "Bethesda Softworks");
+        var evidence = new ExpansionEvidence("prey", "playtest", true, 0, false);
+
+        var expansion = new ExpansionMemberViewModel(
+            1, side, evidence, RelationLabels.StandaloneExpansion, IdentityLinkKinds.ExpansionOf);
+        Assert.True(expansion.IsAskedRelation);
+        Assert.True(expansion.IsIncluded);
+
+        // A playtest is a real proposal and a different question. Pre-ticking
+        // it would make the primary button assert a relation the header never
+        // asked about.
+        var playtest = new ExpansionMemberViewModel(
+            1, side, evidence, RelationLabels.Playtest, IdentityLinkKinds.VariantOf);
+        Assert.False(playtest.IsAskedRelation);
+        Assert.False(playtest.IsIncluded);
+
+        // Unticked is a default, not a lock: the user may still say yes.
+        playtest.IsIncluded = true;
+        Assert.True(playtest.IsIncluded);
     }
 
     // Every proposal reaching a card carries a kind, so every pack row states a

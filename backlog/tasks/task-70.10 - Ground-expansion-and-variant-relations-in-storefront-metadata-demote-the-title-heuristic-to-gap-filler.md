@@ -7,7 +7,7 @@ status: In Progress
 assignee:
   - '@claude'
 created_date: '2026-09-02 12:37'
-updated_date: '2026-09-02 18:04'
+updated_date: '2026-09-02 20:10'
 labels: []
 dependencies:
   - TASK-18
@@ -103,15 +103,15 @@ What Steam will NOT give: expansions. Every genuine standalone expansion in the 
 - [ ] #4 identity_links.kind accepts variant_of alongside same_game and expansion_of
 - [ ] #5 A variant_of link does not count as a title while its parent is owned, counts when it is the only thing owned, and never rolls up playtime
 - [ ] #6 A relation_label or evidence_json entry carries the source's vocabulary word so the card shows the true type without a migration per label
-- [ ] #7 The detector never proposes a pair that metadata contradicts: a known parent pointing to a different work refutes the pair, and game_type main_game with null parent_game refutes it
+- [x] #7 The detector never proposes a pair that metadata contradicts: a known parent pointing to a different work refutes the pair, and game_type main_game with null parent_game refutes it
 - [ ] #8 Demo, beta and playtest proposals surface as variant_of, never expansion_of
 - [ ] #9 The corroboration guard is strengthened beyond "both years are known"; two known years alone no longer satisfy RequireCorroboration
 - [ ] #10 The heuristic proposes only where every metadata source (IGDB game_type, Steam store type, steamcmd parent) is silent on both members of the pair
 - [ ] #11 No new HTTP requests are required for the Steam half; the IGDB half adds no requests beyond the existing enrichment pass
 - [ ] #12 Mods are recorded with their source label but not auto-folded; the open question of grouping a mod under its base game is stated, not decided
-- [ ] #13 A remake, remaster or port is never offered on the Expansions surface: metadata naming one of those kinds refutes an expansion proposal the same way main_game with a null parent does
-- [ ] #14 The metadata claim path passes through the same refusal guards as the title heuristic rather than writing straight into the results, so a guard cannot be bypassed by a source naming a kind
-- [ ] #15 No proposal arrives with its checkbox pre-ticked when the relation the metadata names is not the relation the surface is asking about
+- [x] #13 A remake, remaster or port is never offered on the Expansions surface: metadata naming one of those kinds refutes an expansion proposal the same way main_game with a null parent does
+- [x] #14 The metadata claim path passes through the same refusal guards as the title heuristic rather than writing straight into the results, so a guard cannot be bypassed by a source naming a kind
+- [x] #15 No proposal arrives with its checkbox pre-ticked when the relation the metadata names is not the relation the surface is asking about
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -227,4 +227,81 @@ What is NOT fixed, and is the user's original complaint: the row is still OFFERE
 Cause, at src/Winnow.Core/Identity/ExpansionDetector.cs:290. The metadata claim path accepts any Kind except SameGame and writes the proposal directly into best[], bypassing every refusal guard the title-heuristic path runs. RebuildEdition is one of the guards it skips. So metadata naming a kind makes a proposal MORE likely to survive than a title guess, which inverts the intent of demoting the heuristic to gap-filler.
 
 AC #7 does not cover this shape: it refutes a pair where metadata contradicts the parent, or where game_type is main_game with a null parent. A remake has a real parent and a real relation, it is simply not an expansion. AC #8 routes demos and betas to variant_of but says nothing about remake, remaster or port. Three criteria added above to close that gap.
+
+## The last three criteria (AC #13, #14, #15), and AC #7 with them
+
+The complaint was that correct identification did not change what the surface proposed. Three
+changes, and a fourth found by measuring.
+
+**AC #13 — a rebuild is never offered here.** IGDB `remake`, `remaster` and `port` move out of
+the expansion table in `StorefrontRelation` into `IgdbRebuildTypes`: they keep their label and
+now carry `Kind: null` with `RefutesExtension: true`. A rebuild is the same game built again, so
+there is nothing to group; it refutes even when it names a real parent, which is the shape
+main_game-with-no-parent never covered. `expanded_game` and `fork` deliberately stay
+`expansion_of` — both still name something acquired on top of the base, and `fork` sits beside
+the mod question AC #12 leaves open. Decided, not derived; stated here rather than buried.
+
+**AC #14 — one gate, not two.** `ExpansionDetector.Detect`'s storefront pass wrote straight into
+`best[]`, so a proposal a SOURCE made had passed fewer checks than one a TITLE GUESS made. Both
+paths now run `ExpansionDetector.Refuses`: SameWork, the metadata refutation, a named parent that
+is not this base, RebuildEdition, and SequelOrdinal (conditioned on the titles actually standing
+in a prefix relation). The guards left out are left out for stated reasons in the file:
+EmptyTitle, BaseTooShort, NotAPrefix and NoCorroboration all judge whether a PREFIX MATCH is
+trustworthy, and a storefront claim does not rest on one (Arma 2: DayZ Mod's parent is Operation
+Arrowhead, whose title it does not begin with); MetadataSpeaks is true by construction on that
+path; PublisherMismatch and the two year guards are sanity checks on a guess, and a source that
+names the parent knows more than a year delta does.
+
+**AC #15 — the checkbox.** `ExpansionMemberViewModel` gains `IsAskedRelation` and pre-ticks only
+`expansion_of`. A `variant_of` row is still shown, because that is where the pair was found, and
+arrives unticked so G cannot assert a relation the header never asked about.
+
+**AC #7, found while measuring, and it was dead.** `/v4/game_types.type` returns the HUMAN LABEL,
+not the documented snake_case id. Measured read-only on the live database 2026-09-02:
+`works.igdb_game_type` holds "Main Game" 833, NULL 85, "Standalone Expansion" 23, "Expanded Game"
+22, "Remaster" 20, "Bundle" 19, "Remake" 18, "Mod" 4, "Expansion" 4, "Port" 3, "Fork" 1, "DLC" 1.
+Single-word names matched the lookup tables by accident; every multi-word one fell through to the
+unknown branch. So main_game's refutation had never once fired in production, and 46 works IGDB
+types as expansions were being read as silence. `StorefrontRelation.Canonical` now folds spaces
+and hyphens to underscores before lookup, and `"dlc"` is a key because IGDB's label for
+`dlc_addon` is the bare word "DLC". The raw value still feeds the unrecognised branch. This is the
+same failure the task's own diagnosis names: a suite reporting a guard production did not have.
+
+## Measured on the real library, read-only through a copy, 1,003 works compared
+
+- HEAD:               27 base games, 29 proposals, 22 of them remake/remaster/port pre-ticked as
+                      expansions (Counter-Strike: Source, Black Mesa, Skyrim Special Edition,
+                      BioShock Remastered, Half-Life: Source, XCOM: Enemy Unknown, Darksiders
+                      Warmastered, Day of Defeat: Source, and fourteen more).
+- rebuild guard only:  6 base games,  7 proposals. All 22 rebuilds gone.
+- with the wire-spelling fix: 19 base games, 23 proposals, still ZERO rebuilds, and the genuine
+  expansions this task was written about appear for the first time: Half-Life: Opposing Force and
+  Blue Shift, Don't Starve Together, Prey: Typhon Hunter, Company of Heroes: Opposing Fronts and
+  Tales of Valor, MGSV: Ground Zeroes, Subnautica: Below Zero, Wolfenstein: The Old Blood, Alan
+  Wake's American Nightmare, Jedi Knight: Mysteries of the Sith, and Dishonored: Death of the
+  Outsider under DISHONORED 2, which is the parent the title heuristic got wrong.
+
+Two rows worth a later look, neither caused here: "Alan Wake's American Nightmare" appears twice
+(two unlinked works share the title), and "The Witcher: Enhanced Edition" proposes under a second
+work of the same name, which is a same_game question wearing an Expanded Game label.
+
+## Files and verification
+
+src/Winnow.Core/Identity/StorefrontRelation.cs, ExpansionDetector.cs, IdentityConstants.cs;
+src/Winnow.App/ViewModels/ExpansionMemberViewModel.cs;
+tests/Winnow.Tests/ExpansionMetadataGuardTests.cs, MergeQueueViewModelTests.cs.
+
+Prose by docs-writer, every marker cleared. No migration: the refutation is derived, and no new
+refusal reason was needed (MetadataContradicts covers the rebuild shape).
+
+  dotnet build --artifacts-path <scratchpad> -v q   Build succeeded. 0 Warning(s) 0 Error(s)
+  dotnet test  --artifacts-path <scratchpad>
+    Passed! - Failed: 0, Passed:   70, Total:   70 - Winnow.Covers.Tests.dll
+    Passed! - Failed: 0, Passed:  115, Total:  115 - Winnow.Recommend.Tests.dll
+    Passed! - Failed: 0, Passed: 2712, Total: 2712 - Winnow.Tests.dll
+  Winnow.Tests was 2700 before this slice; +12, none removed.
+
+Build and test ran in a scratch git worktree, because concurrent work in src/Winnow.Recommend
+does not compile in the shared tree; the worktree carried HEAD plus these files. The live database
+was read once, read-only, through a copy that has since been deleted. No live API call. No commit.
 <!-- SECTION:NOTES:END -->

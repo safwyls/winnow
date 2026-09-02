@@ -71,13 +71,13 @@ public static class RelationLabels
     /// <summary>IGDB game_type <c>expanded_game</c>. Numerically identical to expansion_of, semantically an edition.</summary>
     public const string ExpandedGame = "expanded game";
 
-    /// <summary>IGDB game_type <c>remaster</c>. Numerically identical to expansion_of, semantically an edition.</summary>
+    /// <summary>IGDB game_type <c>remaster</c>. Claims no kind and refutes an expansion: a remaster is the same game built again, adding nothing to group.</summary>
     public const string Remaster = "remaster";
 
-    /// <summary>IGDB game_type <c>remake</c>. Numerically identical to expansion_of, semantically an edition.</summary>
+    /// <summary>IGDB game_type <c>remake</c>. Claims no kind and refutes an expansion: a remake is the same game built again, adding nothing to group.</summary>
     public const string Remake = "remake";
 
-    /// <summary>IGDB game_type <c>port</c>. Numerically identical to expansion_of, semantically an edition.</summary>
+    /// <summary>IGDB game_type <c>port</c>. Claims no kind and refutes an expansion: a port is the same game built again, adding nothing to group.</summary>
     public const string Port = "port";
 
     /// <summary>IGDB game_type <c>fork</c>. Numerically identical to expansion_of, semantically an edition.</summary>

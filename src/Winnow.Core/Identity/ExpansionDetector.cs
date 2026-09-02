@@ -180,11 +180,15 @@ public enum ExpansionRefusalReason
     NoCorroboration,
 
     /// <summary>
-    /// A storefront refutes the pair. Either the child has a known parent that
-    /// is a different work from the proposed base, or a source types it a main
-    /// game with no parent at all. On the measured library this alone kills nine
-    /// of the sequel false positives, including DOOM to DOOM Eternal, BioShock
-    /// to BioShock Infinite and INSIDE to Inside the Backrooms.
+    /// A storefront refutes the pair. Three shapes: the child has a known
+    /// parent that is a different work from the proposed base; a source types
+    /// it a main game with no parent at all; or a source types it a rebuild
+    /// (remake, remaster, port), which names a real parent and a real relation
+    /// that is not an extension. On the measured library this alone kills nine
+    /// of the sequel false positives (DOOM to DOOM Eternal, BioShock to
+    /// BioShock Infinite, INSIDE to Inside the Backrooms) and all 22 rebuild
+    /// proposals (Counter-Strike: Source, Skyrim Special Edition, BioShock
+    /// Remastered, among others).
     /// </summary>
     MetadataContradicts,
 
@@ -290,8 +294,16 @@ public static class ExpansionDetector
             if (child.Subject.Claim is not { Kind: { } kind } claim
                 || kind == IdentityLinkKinds.SameGame
                 || child.Subject.ClaimedParentWorkId is not { } parentWorkId
-                || parentWorkId == child.Subject.WorkId
                 || !byWorkId.TryGetValue(parentWorkId, out var parentRow))
+            {
+                continue;
+            }
+
+            // The claim goes through the shared gate. Without this, a source
+            // naming a kind produced a proposal that had passed fewer checks
+            // than a title guess, which is how a remake arrived pre-ticked
+            // under a header reading "Expansion?".
+            if (Refuses(parentRow, child, out _))
             {
                 continue;
             }
@@ -381,9 +393,10 @@ public static class ExpansionDetector
     {
         proposal = null;
 
-        if (baseGame.Subject.WorkId == child.Subject.WorkId)
+        // The shared block, run by the storefront pass as well. Whatever
+        // proposed the pair, these refuse it.
+        if (Refuses(baseGame, child, out reason))
         {
-            reason = ExpansionRefusalReason.SameWork;
             return false;
         }
 
@@ -409,64 +422,18 @@ public static class ExpansionDetector
 
         var suffix = child.Title.Tokens.Skip(baseGame.Title.Tokens.Count).ToArray();
 
-        // THE SEQUEL GUARD, and the single most dangerous false positive this
-        // detector could produce. "Portal" prefixes "Portal 2" and "The
-        // Witcher" prefixes "The Witcher 3: Wild Hunt", and neither is an
-        // expansion of anything. A suffix that OPENS with a number is naming a
-        // different numbered entry in a series, so it is refused outright.
-        // "Half-Life 2: Episode One" survives, because its suffix opens on
-        // "episode" and the number follows.
-        if (IsNumber(suffix[0]))
-        {
-            reason = ExpansionRefusalReason.SequelOrdinal;
-            return false;
-        }
-
-        // A remaster is a separate BUILD of the same game, not an extension of
-        // it (§9 pitfall 5). The soft matcher vetoes on the same disagreement.
-        if (!baseGame.Title.RebuildEditions.SequenceEqual(
-                child.Title.RebuildEditions, StringComparer.Ordinal))
-        {
-            reason = ExpansionRefusalReason.RebuildEdition;
-            return false;
-        }
-
         // ── THE GAP-FILLER RULE ─────────────────────────────────────────────
         //
-        // Three guards, in this order, and the order is what makes a refusal
-        // name the right mechanism.
+        // The two refutations run in Refuses(), above, because they apply to
+        // every proposal whoever made it. What is left here is the rule that
+        // can only apply to a title guess.
         //
-        // 1. A source states outright that the child extends nothing. IGDB
-        //    game_type main_game with a null parent_game is that statement, and
-        //    it refutes DOOM -> DOOM Eternal, BioShock -> BioShock Infinite,
-        //    INSIDE -> Inside the Backrooms and six more on the measured
-        //    library without the detector needing to understand any of them.
-        if (child.Subject.Claim is { RefutesExtension: true })
-        {
-            reason = ExpansionRefusalReason.MetadataContradicts;
-            return false;
-        }
-
-        // 2. A source names a parent, and it is not this base. Dishonored:
-        //    Death of the Outsider is a standalone expansion of Dishonored 2,
-        //    not of Dishonored; Counter-Strike: Condition Zero Deleted Scenes
-        //    belongs to Condition Zero, not Counter-Strike; Arma 2: DayZ Mod
-        //    belongs to Operation Arrowhead. Longest-owned-prefix-wins picks the
-        //    wrong parent in every one of those, and the storefront picks the
-        //    right one.
-        if (child.Subject.ClaimedParentWorkId is { } claimedParent
-            && claimedParent != baseGame.Subject.WorkId)
-        {
-            reason = ExpansionRefusalReason.MetadataContradicts;
-            return false;
-        }
-
-        // 3. Anything else a source has an opinion about is not the heuristic's
-        //    to guess at, on EITHER side of the pair. Where a storefront speaks
-        //    the relation is proposed from the storefront, with the storefront's
-        //    own word on it; the heuristic fills the gaps the storefronts leave,
-        //    which on the measured library is the delisted staging and
-        //    experimental branch apps and the non-Steam titles with no IGDB id.
+        // Anything a source has an opinion about is not the heuristic's to
+        // guess at, on EITHER side of the pair. Where a storefront speaks the
+        // relation is proposed from the storefront, with the storefront's own
+        // word on it; the heuristic fills the gaps the storefronts leave, which
+        // on the measured library is the delisted staging and experimental
+        // branch apps and the non-Steam titles with no IGDB id.
         if (child.Subject.MetadataSpeaks || baseGame.Subject.MetadataSpeaks)
         {
             reason = ExpansionRefusalReason.MetadataSpeaks;
@@ -577,6 +544,91 @@ public static class ExpansionDetector
         };
 
         return true;
+    }
+
+    // The shared gate. Every guard here is about the relation, not the title
+    // evidence, so it holds whoever proposed the pair. Guards deliberately
+    // left out:
+    //
+    //   EmptyTitle, BaseTooShort, NotAPrefix, NoCorroboration -- these judge
+    //   whether a prefix match is trustworthy. A storefront claim does not
+    //   rest on a prefix match (Arma 2: DayZ Mod's parent is Operation
+    //   Arrowhead, which its title does not begin with), so applying them
+    //   would refuse correct claims for failing a test they never took.
+    //
+    //   MetadataSpeaks -- true by construction on the storefront path.
+    //
+    //   PublisherMismatch, ChildPredatesBase, YearGapTooWide -- sanity checks
+    //   on a guess. A source naming the parent outright knows more than a
+    //   year delta does, and regional dates and reissued publishers disagree
+    //   often enough that vetoing on them would cost real pairs.
+    private static bool Refuses(Row baseGame, Row child, out ExpansionRefusalReason reason)
+    {
+        if (baseGame.Subject.WorkId == child.Subject.WorkId)
+        {
+            reason = ExpansionRefusalReason.SameWork;
+            return true;
+        }
+
+        // A source states outright that no expansion proposal may be made about
+        // this child. Two shapes reach here: IGDB main_game with a null
+        // parent_game, which refutes DOOM -> DOOM Eternal, BioShock -> BioShock
+        // Infinite, INSIDE -> Inside the Backrooms and six more on the measured
+        // library; and IGDB remake, remaster or port, which name a real parent
+        // and a real relation that is simply not an extension. Counter-Strike:
+        // Source is the second shape, and it was being offered as an expansion
+        // of Counter-Strike with the checkbox already ticked.
+        if (child.Subject.Claim is { RefutesExtension: true })
+        {
+            reason = ExpansionRefusalReason.MetadataContradicts;
+            return true;
+        }
+
+        // A source names a parent, and it is not this base. Dishonored: Death
+        // of the Outsider is a standalone expansion of Dishonored 2, not of
+        // Dishonored; Counter-Strike: Condition Zero Deleted Scenes belongs to
+        // Condition Zero, not Counter-Strike; Arma 2: DayZ Mod belongs to
+        // Operation Arrowhead. Longest-owned-prefix-wins picks the wrong parent
+        // in every one of those, and the storefront picks the right one. On the
+        // storefront path the base IS the named parent, so this passes by
+        // construction — it is here because the gate is one gate.
+        if (child.Subject.ClaimedParentWorkId is { } claimedParent
+            && claimedParent != baseGame.Subject.WorkId)
+        {
+            reason = ExpansionRefusalReason.MetadataContradicts;
+            return true;
+        }
+
+        // A remaster is a separate BUILD of the same game, not an extension of
+        // it (§9 pitfall 5). The soft matcher vetoes on the same disagreement.
+        // This is the guard the storefront pass used to skip.
+        if (!baseGame.Title.RebuildEditions.SequenceEqual(
+                child.Title.RebuildEditions, StringComparer.Ordinal))
+        {
+            reason = ExpansionRefusalReason.RebuildEdition;
+            return true;
+        }
+
+        // THE SEQUEL GUARD, and the single most dangerous false positive this
+        // detector could produce. "Portal" prefixes "Portal 2" and "The
+        // Witcher" prefixes "The Witcher 3: Wild Hunt", and neither is an
+        // expansion of anything. A suffix that OPENS with a number is naming a
+        // different numbered entry in a series. "Half-Life 2: Episode One"
+        // survives, because its suffix opens on "episode" and the number
+        // follows. It reads as a relation guard rather than an evidence guard
+        // because a numbered sequel is not an expansion however confidently a
+        // source says otherwise; it can only speak where the titles happen to
+        // stand in a prefix relation, and it says nothing about the pairs where
+        // they do not.
+        if (IsStrictPrefix(baseGame.Title.Tokens, child.Title.Tokens)
+            && IsNumber(child.Title.Tokens[baseGame.Title.Tokens.Count]))
+        {
+            reason = ExpansionRefusalReason.SequelOrdinal;
+            return true;
+        }
+
+        reason = ExpansionRefusalReason.None;
+        return false;
     }
 
     /// <summary>
