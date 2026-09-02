@@ -246,6 +246,74 @@ public sealed class SameGameSignalTests
         Assert.Equal(2, labels.Distinct(StringComparer.Ordinal).Count());
     }
 
+    // History's own naming rule, deliberately next to the card ladder it
+    // diverges from so a reader meets the divergence rather than discovering
+    // it. Do not unify these. A card is one question being answered and can
+    // afford four qualifying facts; the history log is a list being scanned,
+    // and "Prey (Steam, 2017, Bethesda Softworks, 1 of 3)" is the run-on
+    // the log exists to avoid. The history rule: the store, once, and only
+    // where it actually separates two lines of one row.
+
+    [Fact]
+    public void A_history_row_of_distinct_titles_is_left_alone()
+    {
+        var labels = MergeHistoryLabels.For(
+            ["Arma 2", "Arma 2: Operation Arrowhead", "Arma 2: Operation Arrowhead Beta"],
+            ["Steam", "Steam", "Steam"]);
+
+        Assert.Equal(
+            ["Arma 2", "Arma 2: Operation Arrowhead", "Arma 2: Operation Arrowhead Beta"],
+            labels);
+    }
+
+    // The child takes the store, and that alone tells the two lines apart, so
+    // the headline keeps the plain game name, which is what the headline is for.
+    [Fact]
+    public void A_child_that_repeats_the_headline_takes_the_store_and_the_headline_does_not()
+    {
+        var labels = MergeHistoryLabels.For(
+            ["The Stanley Parable", "The Stanley Parable"],
+            ["Epic", "Steam"]);
+
+        Assert.Equal(["The Stanley Parable", "The Stanley Parable (Steam)"], labels);
+    }
+
+    [Fact]
+    public void Several_same_titled_children_each_take_their_own_store()
+    {
+        var labels = MergeHistoryLabels.For(
+            ["Prey", "Prey", "Prey"],
+            ["Steam", "Epic", "GOG"]);
+
+        Assert.Equal(["Prey", "Prey (Epic)", "Prey (GOG)"], labels);
+    }
+
+    // The headline is qualified only when a child would still render the
+    // identical string after the children have had their turn. Here the child
+    // has no ownership row, so nothing was added to it.
+    [Fact]
+    public void The_headline_takes_its_store_when_a_child_still_reads_the_same()
+    {
+        var labels = MergeHistoryLabels.For(["Prey", "Prey"], ["Steam", ""]);
+
+        Assert.Equal(["Prey (Steam)", "Prey"], labels);
+    }
+
+    // Where the card ladder would reach for the year, the publisher and then
+    // "1 of 3", history states what it knows and stops. A store that every
+    // same-titled member shares is not a discriminator, and the log does not
+    // print a qualifier that fails to separate anything.
+    [Fact]
+    public void One_store_across_one_title_adds_nothing_at_all()
+    {
+        var labels = MergeHistoryLabels.For(
+            ["Prey", "Prey", "Prey"],
+            ["Steam", "Steam", "Steam"]);
+
+        Assert.Equal(["Prey", "Prey", "Prey"], labels);
+        Assert.All(labels, l => Assert.DoesNotContain("(", l, StringComparison.Ordinal));
+    }
+
     private static MergeSideViewModel Face(
         string title, int? year, string? publisher, string? store)
         => new(1, title, year, publisher, null, null, store is null ? null : [store]);

@@ -5,10 +5,12 @@ using Winnow.Core.Identity;
 namespace Winnow.App.ViewModels;
 
 /// <summary>
-/// One act on the history list: which titles were linked or grouped under
-/// which, and when. The list holds only acts still in force; undoing one
-/// removes its row rather than striking it through. The same group can be
-/// linked, undone and linked again any number of times.
+/// One act on the history list. The consolidated game draws as the row's
+/// headline, the titles consolidated into it as subtext beneath, and the
+/// relation (LINKED or GROUPED) and date on the meta line below. The list
+/// holds only acts still in force; undoing one removes its row rather than
+/// striking it through. The same group can be linked, undone and linked
+/// again any number of times.
 /// </summary>
 public partial class MergeLinkHistoryRowViewModel : ObservableObject
 {
@@ -34,10 +36,11 @@ public partial class MergeLinkHistoryRowViewModel : ObservableObject
     /// <summary>When the act was recorded, in UTC.</summary>
     public DateTime PerformedAt { get; }
 
-    /// <summary>The title the group is known by.</summary>
+    /// <summary>The consolidated game, drawn as the row's headline.</summary>
     public string ParentTitle { get; }
 
-    /// <summary>The titles linked under it, in work id order.</summary>
+    /// <summary>The titles consolidated into it, in work id order, drawn as
+    /// subtext beneath the headline.</summary>
     public IReadOnlyList<string> ChildTitles { get; }
 
     /// <summary>Latched while an undo is in flight, so a double click cannot
@@ -59,23 +62,26 @@ public partial class MergeLinkHistoryRowViewModel : ObservableObject
     /// </summary>
     public bool IsExpansionAct { get; }
 
-    /// <summary>The row in user language: which titles this act grouped.</summary>
-    public string Description => IsExpansionAct
-        ? string.Format(
-            CultureInfo.CurrentCulture,
-            ChildTitles.Count == 1
-                ? ExpansionCopy.GroupRowFormat
-                : ExpansionCopy.GroupRowManyFormat,
-            ChildTitles.Count == 1 ? ChildTitles[0] : ChildTitlesText,
-            ParentTitle)
-        : string.Format(
-            CultureInfo.CurrentCulture,
-            ChildTitles.Count == 1 ? MergeCopy.LinkRowFormat : MergeCopy.LinkRowManyFormat,
-            ChildTitles.Count == 1 ? ChildTitles[0] : ChildTitlesText,
-            ParentTitle);
+    /// <summary>
+    /// Flat sentence for automation, never drawn. The verb ("linked under" /
+    /// "grouped under") survives here because a flat automation string has
+    /// no position to carry the relation; the drawn row states it with a
+    /// headline above its subtext and the LINKED / GROUPED meta label beside
+    /// the date. An encoding must be decorative-redundant (§8), so the spoken
+    /// form names the relation in words.
+    /// </summary>
+    public string SpokenDescription => string.Format(
+        CultureInfo.CurrentCulture,
+        IsExpansionAct ? ExpansionCopy.GroupRowFormat : MergeCopy.LinkRowFormat,
+        ChildTitlesText,
+        ParentTitle);
 
-    /// <summary>Every linked title, listed.</summary>
+    /// <summary>Every linked title, comma-joined for the subtext line.</summary>
     public string ChildTitlesText => string.Join(MergeCopy.MemberSeparator, ChildTitles);
+
+    /// <summary>True when the act names children. Withdraws the subtext line
+    /// when it does not.</summary>
+    public bool HasChildTitles => ChildTitles.Count > 0;
 
     /// <summary>Small uppercase label before the date.</summary>
     public string LinkedAtLabel =>
@@ -99,7 +105,7 @@ public partial class MergeLinkHistoryRowViewModel : ObservableObject
     /// list is one target a screen reader cannot distinguish.
     /// </summary>
     public string UndoAutomationName => string.Format(
-        CultureInfo.CurrentCulture, MergeCopy.UndoAutomationFormat, Description);
+        CultureInfo.CurrentCulture, MergeCopy.UndoAutomationFormat, SpokenDescription);
 
     private static string FormatStamp(DateTime stamp)
         => DateTime.SpecifyKind(stamp, DateTimeKind.Utc)

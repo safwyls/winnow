@@ -1013,80 +1013,78 @@ public partial class MergeQueueViewModel : ObservableObject
             actById[act.Id] = act;
         }
 
-        // The facts a row needs to name a work, cached per load. Title, year
-        // and publisher come from the work and cost one read. Stores cost a
-        // release read plus an ownership read per work, so they are fetched
-        // lazily, only for acts whose titles collide.
-        var facts = new Dictionary<long, MergeMemberFacts>();
-        async Task<MergeMemberFacts> FactsOfAsync(long workId)
+        // Per-load title cache. One work read per member; subsequent references
+        // to the same work id hit the dictionary. Stores are deliberately NOT
+        // read here; see NameApartAsync.
+        var titles = new Dictionary<long, string>();
+        async Task<string> TitleOfAsync(long workId)
         {
-            if (facts.TryGetValue(workId, out var known))
+            if (titles.TryGetValue(workId, out var known))
             {
                 return known;
             }
 
             var work = await _works.GetAsync(workId, ct);
             var title = work?.Name ?? string.Create(CultureInfo.InvariantCulture, $"#{workId}");
-            var row = new MergeMemberFacts(
-                title, string.Empty, work?.FirstReleaseYear, work?.Publisher);
-            facts[workId] = row;
-            return row;
+            titles[workId] = title;
+            return title;
         }
 
         var storeNames = new Dictionary<long, string>();
-        async Task<MergeMemberFacts> WithStoresAsync(MergeMemberFacts row, long workId)
+        async Task<string> StoresOfAsync(long workId)
         {
-            if (!storeNames.TryGetValue(workId, out var joined))
+            if (storeNames.TryGetValue(workId, out var joined))
             {
-                var stores = new List<string>();
-                foreach (var release in await _releases.GetByWorkAsync(workId, ct))
+                return joined;
+            }
+
+            var stores = new List<string>();
+            foreach (var release in await _releases.GetByWorkAsync(workId, ct))
+            {
+                foreach (var owned in await _ownership.GetByReleaseAsync(release.Id, ct))
                 {
-                    foreach (var owned in await _ownership.GetByReleaseAsync(release.Id, ct))
+                    if (!string.IsNullOrWhiteSpace(owned.Store)
+                        && !stores.Contains(owned.Store, StringComparer.OrdinalIgnoreCase))
                     {
-                        if (!string.IsNullOrWhiteSpace(owned.Store)
-                            && !stores.Contains(owned.Store, StringComparer.OrdinalIgnoreCase))
-                        {
-                            stores.Add(owned.Store.Trim());
-                        }
+                        stores.Add(owned.Store.Trim());
                     }
                 }
-
-                // Spelled exactly as a card spells it, through the same
-                // StoreNaming, so the history row and the card that wrote it
-                // read as one voice.
-                joined = string.Join(", ", stores.Select(StoreNaming.Label));
-                storeNames[workId] = joined;
             }
 
-            return row with { StoreNames = joined };
+            // Spelled exactly as a card spells it, through the same
+            // StoreNaming, so the history row and the card that wrote it
+            // read as one voice.
+            joined = string.Join(", ", stores.Select(StoreNaming.Label));
+            storeNames[workId] = joined;
+            return joined;
         }
 
-        // Progressive disambiguation: the same ladder the cards use. A row
-        // reading "The Stanley Parable linked under The Stanley Parable"
-        // names two works and describes neither. MergeMemberLabels adds
-        // stores, then year, then publisher, only while two members share a
-        // name, so the ordinary row is untouched and pays nothing.
+        // History's own, narrowed naming rule, deliberately separate from
+        // MergeMemberLabels' escalating ladder. The store read costs a release
+        // read plus an ownership read per work, so it is paid only when an
+        // act's titles actually collide. The ordinary row (distinct titles)
+        // pays one work read per member and nothing else.
         async Task<IReadOnlyList<string>> NameApartAsync(IReadOnlyList<long> workIds)
         {
-            var rows = new List<IMergeMemberFacts>(workIds.Count);
+            var named = new List<string>(workIds.Count);
             foreach (var workId in workIds)
             {
-                rows.Add(await FactsOfAsync(workId));
+                named.Add(await TitleOfAsync(workId));
             }
 
-            var titles = new HashSet<string>(StringComparer.CurrentCultureIgnoreCase);
-            var collides = rows.Any(row => !titles.Add(row.Title));
-            if (!collides)
+            var seen = new HashSet<string>(StringComparer.CurrentCultureIgnoreCase);
+            if (named.All(seen.Add))
             {
-                return [.. rows.Select(row => row.Title)];
+                return named;
             }
 
-            for (var i = 0; i < rows.Count; i++)
+            var stores = new List<string>(workIds.Count);
+            foreach (var workId in workIds)
             {
-                rows[i] = await WithStoresAsync((MergeMemberFacts)rows[i], workIds[i]);
+                stores.Add(await StoresOfAsync(workId));
             }
 
-            return MergeMemberLabels.For(rows);
+            return MergeHistoryLabels.For(named, stores);
         }
 
         // Grouped by act, because an act is the unit of undo: one undo
@@ -1145,8 +1143,8 @@ public partial class MergeQueueViewModel : ObservableObject
                 continue;
             }
 
-            // The parent leads, so the ladder separates it from a child that
-            // shares its title — the case that produced the unreadable row.
+            // The parent leads the array because MergeHistoryLabels reads
+            // index 0 as the headline.
             var named = await NameApartAsync([parentWorkId, .. childWorkIds]);
 
             rows.Add(new MergeLinkHistoryRowViewModel(

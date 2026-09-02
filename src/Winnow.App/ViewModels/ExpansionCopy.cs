@@ -118,20 +118,16 @@ public static class ExpansionCopy
     // ══ History ═══════════════════════════════════════════════════════════
 
     /// <summary>
-    /// History row for an act that grouped one expansion. <c>{0}</c> the pack,
-    /// <c>{1}</c> the base game. It reads "grouped under" and never "linked
-    /// under": a same-game link says two entries are one game, an expansion
-    /// grouping says one game extends another and moves no number, and a row
-    /// that read the same for both would invite the user to undo the wrong
-    /// one.
+    /// Spoken form of an expansion group act. <c>{0}</c> the comma-joined
+    /// pack titles, <c>{1}</c> the base game. Reads "grouped under", never
+    /// "linked under": a same-game link says two entries are one game, and
+    /// an expansion grouping says one game extends another and moves no
+    /// number. A row that read the same for both would invite the user to
+    /// undo the wrong one. The drawn row now carries this distinction in its
+    /// GROUPED meta label; this format carries it for the spoken form alone
+    /// (the Undo control's automation name).
     /// </summary>
     public const string GroupRowFormat = "{0} grouped under {1}";
-
-    /// <summary>
-    /// The same for several packs. <c>{0}</c> the comma-joined pack titles,
-    /// <c>{1}</c> the base game.
-    /// </summary>
-    public const string GroupRowManyFormat = "{0} grouped under {1}";
 
     /// <summary>
     /// Uppercase label before the date on a group row, where a same-game row

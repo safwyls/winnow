@@ -6,9 +6,10 @@ namespace Winnow.App.ViewModels;
 /// share a label.
 /// </summary>
 /// <remarks>
-/// The ladder was written against <see cref="MergeSideViewModel"/>, which carries
-/// cover art and a decode request the history log does not need. A history row
-/// supplies <see cref="MergeMemberFacts"/>; a card supplies its own side.
+/// <see cref="MergeSideViewModel"/> is now the only implementer. The history
+/// log stopped reading this ladder in TASK-75 and uses its own narrower rule
+/// in <see cref="MergeHistoryLabels"/>. This interface exists so the ladder
+/// is testable against a member's facts rather than against a view.
 /// </remarks>
 internal interface IMergeMemberFacts
 {
@@ -29,26 +30,4 @@ internal interface IMergeMemberFacts
 
     /// <summary>The publisher, or null when no source has supplied one.</summary>
     string? Publisher { get; }
-}
-
-/// <summary>
-/// One member's facts with no view attached, for the history log. Stores are
-/// fetched only when two titles inside one act collide, so the common row
-/// costs one work read.
-/// </summary>
-/// <param name="Title">The title the library shows for this member.</param>
-/// <param name="StoreNames">Store display names, comma-joined. Empty when no ownership row names a store.</param>
-/// <param name="Year">First release year, or null when no source has supplied one.</param>
-/// <param name="Publisher">The publisher, or null when no source has supplied one.</param>
-internal sealed record MergeMemberFacts(
-    string Title,
-    string StoreNames,
-    int? Year,
-    string? Publisher) : IMergeMemberFacts
-{
-    /// <inheritdoc/>
-    public bool HasStores => StoreNames.Length > 0;
-
-    /// <inheritdoc/>
-    public string YearText => Year?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "—";
 }

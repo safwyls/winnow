@@ -203,13 +203,25 @@ public static class MergeCopy
     /// <summary>Empty state for the link list. §7: a direction, not a mood.</summary>
     public const string LinkHistoryEmpty = "Groups you link appear here.";
 
-    /// <summary>Row describing an act that linked one title. <c>{0}</c> the
-    /// linked title, <c>{1}</c> the title the library keeps.</summary>
+    /// <summary>
+    /// Spoken form of a same-game link act. <c>{0}</c> the comma-joined
+    /// linked titles, <c>{1}</c> the title the library keeps. Spoken only:
+    /// it reaches the user through the Undo control's automation name and is
+    /// never drawn. The drawn row uses position (headline plus subtext) to
+    /// carry the relation.
+    /// </summary>
     public const string LinkRowFormat = "{0} linked under {1}";
 
-    /// <summary>Row describing an act that linked several titles. <c>{0}</c>
-    /// the linked titles, <c>{1}</c> the title the library keeps.</summary>
-    public const string LinkRowManyFormat = "{0} linked under {1}";
+    /// <summary>
+    /// History's sole disambiguation format: <c>{0}</c> the title, <c>{1}</c>
+    /// the store names. This is the whole of history's qualifier; it never
+    /// adds year, publisher or position. <see cref="MemberLabelFormat"/> uses
+    /// the same "{0} ({1})" shape but carries an escalating ladder of facts
+    /// through <see cref="MergeMemberLabels"/>. The divergence is deliberate:
+    /// a card is one question being answered, a log is a list being scanned,
+    /// and the log's rule lives in <see cref="MergeHistoryLabels"/>.
+    /// </summary>
+    public const string HistoryQualifierFormat = "{0} ({1})";
 
     /// <summary>Small uppercase label before the date on a link row.</summary>
     public const string LinkedAtLabel = "LINKED";

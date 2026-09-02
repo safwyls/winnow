@@ -1217,9 +1217,20 @@
                             <Border Classes="entry">
                                 <Grid ColumnDefinitions="*,Auto">
                                     <StackPanel Grid.Column="0" Spacing="6" Margin="0,0,20,0">
-                                        <TextBlock Classes="body-l"
-                                                   TextWrapping="Wrap" LineHeight="21"
-                                                   Text="{Binding Description}"/>
+                                        <!-- The consolidated game as headline,
+                                             the children as subtext. Position
+                                             carries the relation; no verb in
+                                             the drawn row. -->
+                                        <StackPanel Spacing="3">
+                                            <TextBlock Classes="body-l"
+                                                       TextWrapping="Wrap" LineHeight="21"
+                                                       Text="{Binding ParentTitle}"/>
+                                            <TextBlock Classes="body" FontSize="12" LineHeight="18"
+                                                       TextWrapping="Wrap"
+                                                       Foreground="{StaticResource TextDim}"
+                                                       IsVisible="{Binding HasChildTitles}"
+                                                       Text="{Binding ChildTitlesText}"/>
+                                        </StackPanel>
 
                                         <StackPanel Orientation="Horizontal" Spacing="8">
                                             <TextBlock Classes="label" FontSize="10" LetterSpacing="1"

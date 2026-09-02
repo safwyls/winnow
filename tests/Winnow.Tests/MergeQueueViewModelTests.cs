@@ -924,16 +924,23 @@ public sealed class MergeQueueViewModelTests
         Assert.Equal(2, row.ChildTitles.Count);
         Assert.NotEqual("—", row.LinkedAtText);
 
-        // Three works a storefront describes identically, so the row falls to
-        // the same last resort the card does: each is named, and no two names
-        // are the same. Nothing here is a database id (section 10.5).
+        // This used to assert three distinct names from the positional last
+        // resort ("Prey (Steam, 2017, Bethesda Softworks, 1 of 3)" and its
+        // siblings). History no longer climbs that ladder: three works one
+        // storefront describes identically have no store that separates them,
+        // so the row states the headline, lists what went under it, and
+        // invents nothing. Nothing here is a database id (design-system §10.5).
         string[] named = [row.ParentTitle, .. row.ChildTitles];
-        Assert.All(named, name => Assert.StartsWith("Prey", name, StringComparison.Ordinal));
+        Assert.All(named, name => Assert.Equal("Prey", name));
         Assert.All(named, name => Assert.DoesNotContain("#", name, StringComparison.Ordinal));
-        Assert.Equal(3, named.Distinct(StringComparer.Ordinal).Count());
+        Assert.DoesNotContain("of 3", row.ChildTitlesText, StringComparison.Ordinal);
+        Assert.DoesNotContain("Bethesda", row.ChildTitlesText, StringComparison.Ordinal);
 
-        // The automation name identifies the group, not the verb.
-        Assert.Contains(row.Description, row.UndoAutomationName, StringComparison.Ordinal);
+        // The drawn row carries the relation by position (headline above
+        // subtext); a flat automation string has no position, so the spoken
+        // form keeps the verb. An encoding must be decorative-redundant (§8).
+        Assert.Contains(row.SpokenDescription, row.UndoAutomationName, StringComparison.Ordinal);
+        Assert.Contains("linked under", row.UndoAutomationName, StringComparison.Ordinal);
     }
 
     // ── Empty state (§7) ─────────────────────────────────────────────────────
@@ -1193,8 +1200,12 @@ public sealed class MergeQueueViewModelTests
 
         var row = Assert.Single(queue.LinkHistory);
         Assert.True(row.IsExpansionAct);
-        Assert.Contains("grouped under", row.Description, StringComparison.Ordinal);
-        Assert.DoesNotContain("linked under", row.Description, StringComparison.Ordinal);
+        Assert.Equal(ExpansionCopy.GroupedAtLabel, row.LinkedAtLabel);
+
+        // The drawn row carries the distinction in its GROUPED meta label;
+        // the spoken form carries it with the verb, for the same reason.
+        Assert.Contains("grouped under", row.SpokenDescription, StringComparison.Ordinal);
+        Assert.DoesNotContain("linked under", row.SpokenDescription, StringComparison.Ordinal);
         Assert.True(row.CanUndo);
 
         // Retracting is ordinary: the proposal comes back.
@@ -1628,12 +1639,14 @@ public sealed class MergeQueueViewModelTests
         Assert.True(remaining.CanUndo);
     }
 
-    // A history row read "The Stanley Parable linked under The Stanley
-    // Parable", naming two works and describing neither. The cards had already
-    // solved this: MergeMemberLabels adds stores, then year, then publisher,
-    // only while two members share a name. History reads the same ladder
-    // rather than inventing a second scheme, so both surfaces spell a member
-    // the same way.
+    // Both tests below were written against the run-on sentence and the card
+    // ladder that fed it. What they protect is unchanged in kind: two works one
+    // title names must still be told apart, and a row of distinct titles must
+    // still pay nothing. The row is now a headline with its consolidated items
+    // beneath it, and the qualifier is narrowed to the store.
+
+    // The headline keeps the plain game name. The child takes the store, which
+    // is enough to separate the two lines, and the rule stops there.
 
     [Fact]
     public async Task A_history_row_tells_two_same_titled_works_apart()
@@ -1652,13 +1665,22 @@ public sealed class MergeQueueViewModelTests
         await queue.ShowHistoryCommand.ExecuteAsync(null);
 
         var row = Assert.Single(queue.LinkHistory);
-        Assert.NotEqual(row.ParentTitle, Assert.Single(row.ChildTitles));
-        Assert.Contains("Steam", row.Description, StringComparison.Ordinal);
-        Assert.Contains("Epic", row.Description, StringComparison.Ordinal);
+        var child = Assert.Single(row.ChildTitles);
+        Assert.NotEqual(row.ParentTitle, child);
+        Assert.Equal("The Stanley Parable", row.ParentTitle);
+        Assert.StartsWith("The Stanley Parable (", child, StringComparison.Ordinal);
+
+        // Store alone, never the ladder: the year and the publisher are the
+        // same on both sides and appear on neither line.
+        string[] lines = [row.ParentTitle, child];
+        Assert.All(lines, line => Assert.DoesNotContain("2013", line, StringComparison.Ordinal));
+        Assert.All(
+            lines, line => Assert.DoesNotContain("Galactic Cafe", line, StringComparison.Ordinal));
+        Assert.All(lines, line => Assert.DoesNotContain(" of ", line, StringComparison.Ordinal));
     }
 
-    // A row whose titles already differ pays nothing: no store is appended to a
-    // name that was never ambiguous.
+    // A row whose titles already differ pays nothing: no store is appended to
+    // a name that was never ambiguous.
 
     [Fact]
     public async Task A_history_row_of_distinct_titles_carries_no_qualifier()
@@ -1675,7 +1697,48 @@ public sealed class MergeQueueViewModelTests
         await queue.ShowHistoryCommand.ExecuteAsync(null);
 
         var row = Assert.Single(queue.LinkHistory);
-        Assert.DoesNotContain("(Steam", row.Description, StringComparison.Ordinal);
+        Assert.DoesNotContain("(", row.ParentTitle, StringComparison.Ordinal);
+        Assert.DoesNotContain("(Steam", row.ChildTitlesText, StringComparison.Ordinal);
+    }
+
+    // ── The row is a headline over the items it consolidated ──────────────────
+
+    /// <summary>
+    /// The consolidated game names the row, the items consolidated into it sit
+    /// beneath it as subtext, every child is listed, and the headline is not
+    /// truncated to make room. Position carries the relation; the drawn row
+    /// uses no verb.
+    /// </summary>
+    [Fact]
+    public async Task A_history_row_is_a_headline_over_the_items_it_consolidated()
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.CreateReleaseAsync(new SeedSide("Arma 2", 2009, "Bohemia Interactive"));
+        await fixture.CreateReleaseAsync(
+            new SeedSide("Arma 2: Operation Arrowhead", 2010, "Bohemia Interactive"));
+        await fixture.CreateReleaseAsync(
+            new SeedSide(
+                "Arma 2: Private Military Company", 2010, "Bohemia Interactive"));
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+        await queue.GroupExpansionsCommand.ExecuteAsync(Assert.Single(queue.ExpansionGroups));
+
+        await queue.ShowHistoryCommand.ExecuteAsync(null);
+
+        var row = Assert.Single(queue.LinkHistory);
+        Assert.Equal("Arma 2", row.ParentTitle);
+        Assert.True(row.HasChildTitles);
+
+        // Every child is listed, and the headline is not truncated to fit them.
+        Assert.Equal(2, row.ChildTitles.Count);
+        Assert.Contains("Arma 2: Operation Arrowhead", row.ChildTitles);
+        Assert.Contains("Arma 2: Private Military Company", row.ChildTitles);
+        Assert.Equal(
+            "Arma 2: Operation Arrowhead, Arma 2: Private Military Company",
+            row.ChildTitlesText);
+        Assert.DoesNotContain("under", row.ParentTitle, StringComparison.Ordinal);
+        Assert.DoesNotContain("under", row.ChildTitlesText, StringComparison.Ordinal);
     }
 
     // ── The expansion row says what the relation is ──────────────────────────
