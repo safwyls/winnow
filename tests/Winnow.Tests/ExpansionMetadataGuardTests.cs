@@ -472,7 +472,6 @@ public sealed class ExpansionMetadataGuardTests
     [InlineData("episode", IdentityLinkKinds.ExpansionOf, RelationLabels.Episode)]
     [InlineData("season", IdentityLinkKinds.ExpansionOf, RelationLabels.Season)]
     [InlineData("pack", IdentityLinkKinds.ExpansionOf, RelationLabels.Pack)]
-    [InlineData("expanded_game", IdentityLinkKinds.ExpansionOf, RelationLabels.ExpandedGame)]
     [InlineData("fork", IdentityLinkKinds.ExpansionOf, RelationLabels.Fork)]
     [InlineData("mod", null, RelationLabels.Mod)]
     [InlineData("bundle", null, RelationLabels.Bundle)]
@@ -494,17 +493,17 @@ public sealed class ExpansionMetadataGuardTests
     }
 
     /// <summary>
-    /// The rebuild types are the other half of that vocabulary, and they map to
-    /// a label and a REFUTATION. A remake, a remaster and a port are the same
-    /// game built again: they name a real parent and a real relation, and it is
-    /// not an extension, so there is nothing for a surface asking "Expansion?"
-    /// to offer. The word is still recorded, because the word was never the
-    /// problem.
+    /// Remake, remaster, port and expanded_game all record a label and refute
+    /// an expansion. The first three refute because a rebuild adds nothing to
+    /// group. expanded_game (2026-09-02) refutes on measured evidence: 22 works
+    /// carry the type, only 5 have an owned base, none is a genuine expansion,
+    /// and same_game is separately refused by the Release-is-not-Work constraint.
     /// </summary>
     [Theory]
     [InlineData("remake", RelationLabels.Remake)]
     [InlineData("remaster", RelationLabels.Remaster)]
     [InlineData("port", RelationLabels.Port)]
+    [InlineData("expanded_game", RelationLabels.ExpandedGame)]
     public void An_igdb_rebuild_type_records_its_word_and_refutes_an_expansion(
         string gameType, string expectedLabel)
     {
@@ -539,7 +538,6 @@ public sealed class ExpansionMetadataGuardTests
     [Theory]
     [InlineData("Main Game", null, RelationLabels.MainGame)]
     [InlineData("Standalone Expansion", IdentityLinkKinds.ExpansionOf, RelationLabels.StandaloneExpansion)]
-    [InlineData("Expanded Game", IdentityLinkKinds.ExpansionOf, RelationLabels.ExpandedGame)]
     [InlineData("DLC", IdentityLinkKinds.ExpansionOf, RelationLabels.Dlc)]
     [InlineData("Expansion", IdentityLinkKinds.ExpansionOf, RelationLabels.Expansion)]
     [InlineData("Bundle", null, RelationLabels.Bundle)]
@@ -592,6 +590,7 @@ public sealed class ExpansionMetadataGuardTests
     [InlineData("Remake", RelationLabels.Remake)]
     [InlineData("Remaster", RelationLabels.Remaster)]
     [InlineData("Port", RelationLabels.Port)]
+    [InlineData("Expanded Game", RelationLabels.ExpandedGame)]
     public void The_wire_spelling_of_a_rebuild_type_refutes(string wireLabel, string expectedLabel)
     {
         var claim = StorefrontRelation.Read(new StorefrontFacts
@@ -604,6 +603,39 @@ public sealed class ExpansionMetadataGuardTests
         Assert.Equal(expectedLabel, claim.Label);
         Assert.Null(claim.Kind);
         Assert.True(claim.RefutesExtension);
+    }
+
+    /// <summary>
+    /// Pins the 2026-09-02 decision on a real measured pair: Ori and the Blind
+    /// Forest: Definitive Edition, one of the five Expanded Game works in the
+    /// library that names an owned base. TryPropose must refuse it exactly as
+    /// it refuses a remake (MetadataContradicts, no proposal), because an
+    /// edition is not something bought on top of a base game. Whether the pair
+    /// is the same game is a separate question this refusal does not answer
+    /// either way.
+    /// </summary>
+    [Fact]
+    public void Expanded_game_refutes_on_a_measured_owned_base_pair()
+    {
+        var claim = StorefrontRelation.Read(new StorefrontFacts
+        {
+            IgdbGameType = "expanded_game",
+            IgdbParentId = 1234,
+        });
+
+        Assert.NotNull(claim);
+        Assert.Equal(RelationLabels.ExpandedGame, claim.Label);
+        Assert.Null(claim.Kind);
+        Assert.True(claim.RefutesExtension);
+
+        var ori = Subject(1, "Ori and the Blind Forest", year: 2015, publisher: "Microsoft Studios");
+        var definitiveEdition = Subject(
+            2, "Ori and the Blind Forest: Definitive Edition", year: 2016, publisher: "Microsoft Studios",
+            facts: new StorefrontFacts { IgdbGameType = "expanded_game", IgdbParentId = 1234 },
+            claimedParent: 1);
+
+        Assert.False(ExpansionDetector.TryPropose(ori, definitiveEdition, null, out _, out var reason));
+        Assert.Equal(ExpansionRefusalReason.MetadataContradicts, reason);
     }
 
     /// <summary>

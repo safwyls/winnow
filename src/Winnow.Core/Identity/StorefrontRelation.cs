@@ -93,10 +93,14 @@ public sealed record StorefrontClaim(
 /// library is type 0 with no parent appid. IGDB is the reverse: it types
 /// expansions precisely and does not model demos, betas or playtests at all. A
 /// Steam variant claim outranks anything IGDB says, and IGDB decides everything
-/// Steam is silent about. IGDB rebuild types (remake, remaster, port) are
-/// checked before any other IGDB reading: they name a real parent but refute an
-/// expansion proposal, because a rebuild is the same game built again and adds
-/// nothing to group.</para>
+/// Steam is silent about. IGDB rebuild types (remake, remaster, port) and
+/// expanded_game are checked before any other IGDB reading: they name a
+/// real parent but refute an expansion proposal. A rebuild is the same game
+/// built again, adding nothing to group. expanded_game refutes on measured
+/// evidence: of 22 works carrying the type, only 5 name an owned base,
+/// none is a genuine expansion (an edition is the base game again, not
+/// something bought on top of it), and the same_game reading is separately
+/// refused by the Release-is-not-Work constraint.</para>
 ///
 /// <para>IGDB's /v4/game_types endpoint returns the human label ("Main Game",
 /// "Standalone Expansion"), not the documented snake_case id. Measured on the
@@ -153,26 +157,47 @@ public static class StorefrontRelation
             ["season"] = (IdentityLinkKinds.ExpansionOf, RelationLabels.Season),
             ["pack"] = (IdentityLinkKinds.ExpansionOf, RelationLabels.Pack),
 
-            // Editions that ADD content. expanded_game is a standalone game
-            // built out of a base plus its packs, and fork is the mod question
-            // wearing another word; both still name something the user acquired
-            // on top of the base, so they keep expansion_of and their own label.
-            ["expanded_game"] = (IdentityLinkKinds.ExpansionOf, RelationLabels.ExpandedGame),
+            // fork names something acquired on top of the base, so it keeps
+            // expansion_of and its own label. It is the mod-grouping question
+            // (TASK-70.10 AC #12) wearing another word, left open deliberately
+            // rather than decided here. Covers one work in the measured
+            // library; expanded_game's 22 moved to IgdbRebuildTypes
+            // (2026-09-02) for different reasons.
             ["fork"] = (IdentityLinkKinds.ExpansionOf, RelationLabels.Fork),
         };
 
-    // Rebuild editions: the same game built again, adding no content to group.
-    // The label is recorded; the claim sets RefutesExtension and a null Kind, so
-    // neither the storefront pass nor the title heuristic may propose the pair.
-    // Verified 2026-09-02: Counter-Strike: Source (remake), The Outer Worlds:
-    // Spacer's Choice Edition (remaster) and Hellblade VR Edition (port) were
-    // all being offered as expansions with the checkbox pre-ticked.
+    // Remake, remaster and port refute because a rebuild is the same game
+    // built again, adding nothing to group. expanded_game (2026-09-02)
+    // refutes for a different reason: on its face an Expanded Game looks
+    // like a real superset (base plus DLC in one standalone product), but
+    // measured against the real library, 22 works carry this type and only
+    // 5 name an owned base (Ori Definitive Edition, Q.U.B.E: Director's
+    // Cut, Guacamelee! Super Turbo Championship Edition, Divinity: Original
+    // Sin Enhanced Edition, The Witcher: Enhanced Edition under a second
+    // work of the same name). None of the five is a genuine expansion: an
+    // edition is not bought on top of a base game, it is the base game
+    // again. Calling the pair the same game is refused by the hard
+    // constraint against collapsing Release into Work, so the pair is
+    // neither expansion_of nor same_game and the code says nothing rather
+    // than say the wrong thing. The Witcher pair is a genuine same_game
+    // question the ordinary soft-match detector already finds on its own
+    // merit; this refusal only stops the Expansions surface from
+    // mislabelling it. fork stays in IgdbTypes beside the mod question
+    // AC #12 leaves open, covering one work, decided separately.
+    // In every case the label is recorded; the claim sets RefutesExtension
+    // and a null Kind, so neither the storefront pass nor the title
+    // heuristic may propose the pair.
+    // Verified 2026-09-02: Counter-Strike: Source (remake), The Outer
+    // Worlds: Spacer's Choice Edition (remaster) and Hellblade VR Edition
+    // (port) were all being offered as expansions with the checkbox
+    // pre-ticked.
     private static readonly Dictionary<string, string> IgdbRebuildTypes =
         new(StringComparer.OrdinalIgnoreCase)
         {
             ["remake"] = RelationLabels.Remake,
             ["remaster"] = RelationLabels.Remaster,
             ["port"] = RelationLabels.Port,
+            ["expanded_game"] = RelationLabels.ExpandedGame,
         };
 
     private static readonly Dictionary<string, string> IgdbLabelOnlyTypes =

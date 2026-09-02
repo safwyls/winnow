@@ -7,7 +7,7 @@ status: In Progress
 assignee:
   - '@claude'
 created_date: '2026-09-02 12:37'
-updated_date: '2026-09-02 20:10'
+updated_date: '2026-09-02 21:00'
 labels: []
 dependencies:
   - TASK-18
@@ -192,6 +192,39 @@ IGDB game_type maps to kind and label; a demo does not count as a title while it
 parent is owned and does when alone; the heuristic proposes nothing where metadata
 speaks. Scoped tests, then the full suite. Build/test via --artifacts-path.
 Prose via docs-writer. No commit.
+
+## expanded_game -> IgdbRebuildTypes (small surgical slice, decision already made)
+1. Copy live winnow.db (+ -wal/-shm) read-only to scratch; build a file-based
+   C# measurement tool (Winnow.Data + Winnow.Resolve) that runs
+   LibraryExpansionScan.ScanAsync over the copy and prints base-game/proposal
+   counts. Run it BEFORE the change (HEAD 1a9bc09) for a baseline, and record
+   the raw proposal list.
+2. Confirm the Witcher pair ("The Witcher: Enhanced Edition" under a second
+   work of the identical title) is a same_game candidate independent of this
+   change: StorefrontRelation is consumed only by LibraryExpansionScan, never
+   by the same-game soft-match sweep, so the ordinary same-game detector's
+   answer cannot move. Verify by inspecting merge_candidates / soft-match
+   output on the copy.
+3. Move "expanded_game" from IgdbTypes to IgdbRebuildTypes in
+   src/Winnow.Core/Identity/StorefrontRelation.cs (currently line 160): keeps
+   RelationLabels.ExpandedGame, gets Kind: null and RefutesExtension: true,
+   same shape as remake/remaster/port. fork stays in IgdbTypes untouched.
+   I make the structural code edit; docs-writer authors the split comment
+   (the shared expanded_game+fork justification at lines 156-159 no longer
+   applies to both), the updated IgdbRebuildTypes block comment, and the
+   class-level summary's "remake, remaster, port" mention.
+4. Update tests/Winnow.Tests/ExpansionMetadataGuardTests.cs: move the
+   "expanded_game" InlineData row out of An_igdb_game_type_maps_to_a_kind_and_a_label
+   and into An_igdb_rebuild_type_records_its_word_and_refutes_an_expansion (and
+   the wire-spelling equivalents), and add one dedicated pinning Fact using a
+   measured real pair (Ori and the Blind Forest / Definitive Edition) showing
+   TryPropose refuses with MetadataContradicts. I write the code (attributes,
+   assertions); docs-writer writes the XML doc comments.
+5. Build and run the full suite via --artifacts-path into the scratchpad.
+6. Re-run the measurement tool AFTER the change on the same db copy; report
+   base-game/proposal counts before/after and confirm all 22 Expanded Game
+   proposals with no genuine expansion are gone while the Witcher same_game
+   candidate is unaffected. Delete the db copy afterward. No commit.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -304,4 +337,45 @@ refusal reason was needed (MetadataContradicts covers the rebuild shape).
 Build and test ran in a scratch git worktree, because concurrent work in src/Winnow.Recommend
 does not compile in the shared tree; the worktree carried HEAD plus these files. The live database
 was read once, read-only, through a copy that has since been deleted. No live API call. No commit.
+
+## expanded_game moved to IgdbRebuildTypes (2026-09-02)
+
+IGDB's `expanded_game` game_type moved from the `IgdbTypes` dictionary to the `IgdbRebuildTypes` dictionary in `StorefrontRelation.cs`. It now carries `Kind: null` and `RefutesExtension: true`, the same shape as remake/remaster/port, while keeping its own label (`RelationLabels.ExpandedGame`, "expanded game").
+
+Reasoning, measured read-only against the real 1,033-work library:
+- 22 works are typed "Expanded Game" by IGDB.
+- Only 5 of those 22 have a base game the user also owns: Ori and the Blind Forest: Definitive Edition, Q.U.B.E: Director's Cut, Guacamelee! Super Turbo Championship Edition, Divinity: Original Sin Enhanced Edition, The Witcher: Enhanced Edition (under a second work of the identical name, a different work id).
+- None of the five is a genuine expansion. An edition is not something bought on top of a base game; it is the base game again. Calling the pair the same game is refused by the hard constraint against collapsing Release into Work (Skyrim SE is not Skyrim), and a Definitive/Enhanced/Director's Cut edition is exactly that shape. The pair is neither expansion_of nor same_game, and the code says nothing rather than say the wrong thing.
+
+## fork deliberately left alone
+
+`fork` stays in `IgdbTypes` with `expansion_of` and its own label. It still names something acquired on top of the base. It rides beside the mod-grouping question TASK-70.10 AC #12 deliberately leaves open, and it covers exactly one work in the measured library, unlike expanded_game's 22. Decided separately, not swept in.
+
+## The Witcher same_game candidacy is unaffected
+
+The Witcher pair (two distinct works, identical title, different stores) is a genuine same_game question. `merge_candidates` already holds a pending row (score 0.70, band "Review") pairing the two Witcher works' releases, produced entirely by the soft-match signal pipeline, which never reads `StorefrontRelation` at all. This change only stops the Expansions surface from mislabelling the same pair as "Expanded Game"; the same_game detector and its row are untouched.
+
+## Measured before/after on the real library
+
+Read-only through a database copy (since deleted). LibraryExpansionScan's admitted proposal set:
+- Before: 19 base games, 23 proposals (including three expanded_game-labelled rows: Guacamelee! Gold Edition <= Guacamelee! Super Turbo Championship Edition; Q.U.B.E. <= Q.U.B.E: Director's Cut; The Witcher: Enhanced Edition <= The Witcher: Enhanced Edition [different work]).
+- After: 16 base games, 20 proposals. Exactly those three gone, nothing else moved.
+
+## Files touched
+
+- `src/Winnow.Core/Identity/StorefrontRelation.cs` -- expanded_game entry moved from IgdbTypes to IgdbRebuildTypes; comments rewritten on fork entry, IgdbRebuildTypes dictionary, and class-level summary.
+- `tests/Winnow.Tests/ExpansionMetadataGuardTests.cs` -- expanded_game InlineData row added to the rebuild theory; new pinning Fact added; doc comments rewritten on both.
+
+## Build and test
+
+Build succeeded, 0 warnings, 0 errors. Full suite green:
+- Winnow.Covers.Tests: 70/70
+- Winnow.Recommend.Tests: 145/145
+- Winnow.Tests: 2713/2713
+
+Baseline was 2927 total across all three projects before this slice. +1 net test (two InlineData rows moved between existing theories with no net count change, plus one new pinning Fact). 2928 total now. All run via `--artifacts-path` into the scratchpad. No commit. Live database never opened or written; read once through a copy since deleted.
+
+## New test
+
+`Expanded_game_refutes_on_a_measured_owned_base_pair` in `ExpansionMetadataGuardTests.cs`. Pins the decision on the Ori and the Blind Forest: Definitive Edition pair, one of the five measured owned-base cases.
 <!-- SECTION:NOTES:END -->
