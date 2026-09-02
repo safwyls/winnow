@@ -156,14 +156,22 @@ public partial class ExpansionGroupViewModel : ObservableObject
         ExpansionCopy.NotExpansionsAutomationFormat,
         string.Join(MergeCopy.MemberSeparator, Members.Select(m => m.Label)));
 
-    /// <summary>Sets the display resolution for cover decoding, base and packs alike.</summary>
-    /// <param name="displayWidthPixels">Device pixels the capsule will occupy.</param>
+    /// <summary>Sets the display resolution for cover decoding. The base draws a
+    /// 200x300 capsule, but each pack chip draws at 64x96, so the pack request is
+    /// scaled by ChipWidth/CoverWidth rather than given the capsule's full width.
+    /// Passing the capsule width to every pack decoded roughly ten times the pixels
+    /// a chip actually draws.</summary>
+    /// <param name="displayWidthPixels">Device pixels the base capsule will occupy.</param>
     public void RequestCovers(double displayWidthPixels)
     {
         Base.RequestCover(displayWidthPixels);
+
+        var chipWidthPixels =
+            displayWidthPixels * ExpansionMemberViewModel.ChipWidth / CoverWidth;
+
         foreach (var member in Members)
         {
-            member.RequestCover(displayWidthPixels);
+            member.RequestCover(chipWidthPixels);
         }
     }
 

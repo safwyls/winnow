@@ -25,10 +25,7 @@ namespace Winnow.App.ViewModels;
 ///
 /// <para>Answering writes a LINK, not a merge. Nothing is deleted, so the
 /// answer is retractable from HISTORY and the same group can be linked,
-/// retracted and linked again any number of times. Migration 0019 retired the
-/// destructive executor, its undo journal and the two merge sections HISTORY
-/// used to carry, so a link act is now the only thing this screen writes and
-/// the only thing HISTORY shows.</para>
+/// retracted and linked again any number of times.</para>
 /// </summary>
 public partial class MergeQueueViewModel : ObservableObject
 {
@@ -117,6 +114,7 @@ public partial class MergeQueueViewModel : ObservableObject
     [RelayCommand]
     private void ShowReview()
     {
+        ClearReport();
         IsHistoryVisible = false;
         IsExpansionsVisible = false;
     }
@@ -127,6 +125,7 @@ public partial class MergeQueueViewModel : ObservableObject
     [RelayCommand]
     private async Task ShowHistoryAsync(CancellationToken ct)
     {
+        ClearReport();
         IsExpansionsVisible = false;
         IsHistoryVisible = true;
         LinkHistory = await BuildLinkHistoryAsync(ct);
@@ -137,6 +136,7 @@ public partial class MergeQueueViewModel : ObservableObject
     [RelayCommand]
     private void ShowExpansions()
     {
+        ClearReport();
         IsHistoryVisible = false;
         IsExpansionsVisible = true;
     }
@@ -147,7 +147,8 @@ public partial class MergeQueueViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(
         nameof(PendingCount), nameof(PendingCountText), nameof(HasPending),
-        nameof(ShowEmpty), nameof(RowOpacity))]
+        nameof(ShowEmpty), nameof(OutstandingCount), nameof(OutstandingCountText),
+        nameof(HasOutstanding), nameof(RowOpacity))]
     public partial IReadOnlyList<MergeGroupViewModel> Groups { get; set; } = [];
 
     /// <summary>The group the user is currently looking at, or null when the queue is empty.</summary>
@@ -166,8 +167,21 @@ public partial class MergeQueueViewModel : ObservableObject
     /// <summary>True when there are pending groups to review.</summary>
     public bool HasPending => PendingCount > 0;
 
-    /// <summary>Dims to 40% when empty so the rail row stays visible but recedes.</summary>
-    public double RowOpacity => HasPending ? 1.0 : 0.4;
+    /// <summary>Review groups plus expansion groups. The rail row counts what is
+    /// waiting on the screen, and the screen holds two questions; counting review
+    /// alone showed a dimmed <c>SAME GAME? 0</c> over a dozen expansion cards.</summary>
+    public int OutstandingCount => PendingCount + ExpansionCount;
+
+    /// <summary>Plex Mono, tabular, grouped, every number in the app (§3).</summary>
+    public string OutstandingCountText =>
+        OutstandingCount.ToString("N0", CultureInfo.CurrentCulture);
+
+    /// <summary>True when either surface has a card waiting.</summary>
+    public bool HasOutstanding => OutstandingCount > 0;
+
+    /// <summary>Dims the rail row to 40% when both surfaces are empty, so the row
+    /// stays visible but recedes.</summary>
+    public double RowOpacity => HasOutstanding ? 1.0 : 0.4;
 
     /// <summary>True once the screen has loaded and the queue is empty.</summary>
     public bool ShowEmpty => _loaded && PendingCount == 0;
@@ -196,7 +210,8 @@ public partial class MergeQueueViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(
         nameof(ExpansionCount), nameof(ExpansionCountText), nameof(HasExpansions),
-        nameof(ShowExpansionsEmpty))]
+        nameof(ShowExpansionsEmpty), nameof(OutstandingCount),
+        nameof(OutstandingCountText), nameof(HasOutstanding), nameof(RowOpacity))]
     public partial IReadOnlyList<ExpansionGroupViewModel> ExpansionGroups { get; set; } = [];
 
     /// <summary>The card the keyboard acts on, or null when the surface is empty.</summary>
@@ -263,11 +278,29 @@ public partial class MergeQueueViewModel : ObservableObject
     /// the engine returned, never from what was asked for.
     /// </summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasReport), nameof(ReportRetractAutomationName))]
+    [NotifyPropertyChangedFor(
+        nameof(HasReport), nameof(HasReviewReport), nameof(HasExpansionsReport),
+        nameof(HasHistoryReport), nameof(ReportRetractAutomationName))]
     public partial string? ReportMessage { get; set; }
+
+    /// <summary>Which surface the standing report belongs to.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(
+        nameof(HasReviewReport), nameof(HasExpansionsReport), nameof(HasHistoryReport))]
+    public partial MergeReportSurface ReportSurface { get; set; }
 
     /// <summary>True when there is an outcome to display.</summary>
     public bool HasReport => !string.IsNullOrEmpty(ReportMessage);
+
+    /// <summary>True when the standing report belongs to the review surface.</summary>
+    public bool HasReviewReport => HasReport && ReportSurface == MergeReportSurface.Review;
+
+    /// <summary>True when the standing report belongs to the expansions surface.</summary>
+    public bool HasExpansionsReport =>
+        HasReport && ReportSurface == MergeReportSurface.Expansions;
+
+    /// <summary>True when the standing report belongs to the history surface.</summary>
+    public bool HasHistoryReport => HasReport && ReportSurface == MergeReportSurface.History;
 
     /// <summary>
     /// The link act the report is about. Set from the act id the repository
@@ -328,6 +361,8 @@ public partial class MergeQueueViewModel : ObservableObject
     [RelayCommand]
     private async Task LoadAsync(CancellationToken ct)
     {
+        ClearReport();
+
         // Must be read before the queue so the empty state knows if the matcher has run.
         HasCompletedSweep = _resolveState is not null
             && await _resolveState.GetLastSoftMatchSweepAsync(ct) is not null;
@@ -382,14 +417,14 @@ public partial class MergeQueueViewModel : ObservableObject
         var refused = group.RefusedPairs;
         var baseTitle = group.BaseTitle;
 
-        ReportRetractActId = null;
+        ClearReport();
 
         if (children.Count == 0)
         {
             // Taking none is the same answer as "not expansions", recorded the
             // same way. It is the "none" of none, some or all.
             await _expansionRefusals.RefuseAsync(group.AllPairs, null, ct);
-            ReportMessage = ExpansionCopy.NothingGrouped;
+            Report(ExpansionCopy.NothingGrouped);
             RemoveExpansion(group);
             return;
         }
@@ -406,12 +441,13 @@ public partial class MergeQueueViewModel : ObservableObject
 
         await _expansionRefusals.RefuseAsync(refused, null, ct);
 
-        ReportRetractActId = actId;
-        ReportMessage = string.Format(
-            CultureInfo.CurrentCulture,
-            ExpansionCopy.GroupedReportFormat,
-            baseTitle,
-            children.Count.ToString("N0", CultureInfo.CurrentCulture));
+        Report(
+            string.Format(
+                CultureInfo.CurrentCulture,
+                ExpansionCopy.GroupedReportFormat,
+                baseTitle,
+                children.Count.ToString("N0", CultureInfo.CurrentCulture)),
+            actId);
 
         RemoveExpansion(group);
     }
@@ -519,7 +555,7 @@ public partial class MergeQueueViewModel : ObservableObject
         var rejected = group.RejectedCandidateIds;
         var primaryTitle = group.PrimaryTitle;
 
-        ReportRetractActId = null;
+        ClearReport();
 
         if (children.Count == 0)
         {
@@ -527,7 +563,7 @@ public partial class MergeQueueViewModel : ObservableObject
             // and it is recorded the same way: no link, and every proposal the
             // answer touched written down.
             await RejectAsync(group.AllCandidateIds, ct);
-            ReportMessage = MergeCopy.NothingLinked;
+            Report(MergeCopy.NothingLinked);
             Remove(group);
             return;
         }
@@ -544,12 +580,13 @@ public partial class MergeQueueViewModel : ObservableObject
 
         await RejectAsync(rejected, ct);
 
-        ReportRetractActId = actId;
-        ReportMessage = string.Format(
-            CultureInfo.CurrentCulture,
-            MergeCopy.LinkedReportFormat,
-            primaryTitle,
-            children.Count.ToString("N0", CultureInfo.CurrentCulture));
+        Report(
+            string.Format(
+                CultureInfo.CurrentCulture,
+                MergeCopy.LinkedReportFormat,
+                primaryTitle,
+                children.Count.ToString("N0", CultureInfo.CurrentCulture)),
+            actId);
 
         Remove(group);
     }
@@ -609,12 +646,41 @@ public partial class MergeQueueViewModel : ObservableObject
 
     private async Task RetractActAsync(long actId, CancellationToken ct)
     {
-        ReportRetractActId = null;
-
         var retracted = await _links.RetractActAsync(actId, null, ct);
-        ReportMessage = retracted ? MergeCopy.Retracted : MergeCopy.RetractedAlready;
 
+        // The reload clears the report, so the outcome is stamped after it
+        // rather than before, or the screen would go quiet on the one act whose
+        // whole point is that it can be undone.
         await LoadAsync(ct);
+
+        Report(retracted ? MergeCopy.Retracted : MergeCopy.RetractedAlready);
+    }
+
+    /// <summary>Stamps the outcome onto whichever surface is up, so a report
+    /// cannot outlive the surface that raised it. Written from what the engine
+    /// returned, never from what was asked for.</summary>
+    /// <param name="message">The outcome line.</param>
+    /// <param name="actId">The link act it can be retracted from, or null when
+    /// the answer wrote no link.</param>
+    private void Report(string message, long? actId = null)
+    {
+        ReportSurface = IsHistoryVisible
+            ? MergeReportSurface.History
+            : IsExpansionsVisible
+                ? MergeReportSurface.Expansions
+                : MergeReportSurface.Review;
+        ReportRetractActId = actId;
+        ReportMessage = message;
+    }
+
+    /// <summary>Drops the standing report. Called on every segment switch and at
+    /// the top of <c>LoadAsync</c>; without it one answer left the Amber note up
+    /// for the rest of the session.</summary>
+    private void ClearReport()
+    {
+        ReportMessage = null;
+        ReportSurface = MergeReportSurface.None;
+        ReportRetractActId = null;
     }
 
     // ── Selection ────────────────────────────────────────────────────────────
@@ -655,6 +721,28 @@ public partial class MergeQueueViewModel : ObservableObject
             ? 0
             : Math.Clamp(current + delta, 0, Groups.Count - 1);
         Select(Groups[next]);
+        return next;
+    }
+
+    /// <summary>
+    /// Keyboard navigation (§8): moves expansion selection by
+    /// <paramref name="delta"/> cards. Returns the new index, or -1 when the
+    /// surface is empty.
+    /// </summary>
+    /// <param name="delta">Cards to move; positive is down, negative is up.</param>
+    /// <returns>The new index, or -1 when there are no expansion cards.</returns>
+    public int MoveExpansionSelection(int delta)
+    {
+        if (ExpansionGroups.Count == 0)
+        {
+            return -1;
+        }
+
+        var current = IndexOfExpansion(SelectedExpansionGroup);
+        var next = current < 0
+            ? 0
+            : Math.Clamp(current + delta, 0, ExpansionGroups.Count - 1);
+        SelectExpansion(ExpansionGroups[next]);
         return next;
     }
 

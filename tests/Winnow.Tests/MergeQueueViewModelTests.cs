@@ -1204,6 +1204,232 @@ public sealed class MergeQueueViewModelTests
         Assert.Single(queue.ExpansionGroups);
     }
 
+    // ── The expansion surface answers the card the user is looking at ────────
+
+    // The expansion surface had no selection input: SelectedExpansionGroup was
+    // whatever the last load set (the first card), so G wrote a link for a card
+    // the user was not looking at. MoveExpansionSelection is what the window's
+    // Up/Down calls, and the shortcut answers SelectedExpansionGroup, never a
+    // list position. Same defect class as the S/D fix on the review queue (TASK-66).
+
+    [Fact]
+    public async Task A_shortcut_answers_the_selected_expansion_card_not_the_first()
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.CreateReleaseAsync(new SeedSide("Sid Meier's Civilization IV", 2005, "2K"));
+        await fixture.CreateReleaseAsync(
+            new SeedSide("Sid Meier's Civilization IV: Warlords", 2006, "2K"));
+        await fixture.CreateReleaseAsync(
+            new SeedSide("The Witcher 3: Wild Hunt", 2015, "CD PROJEKT RED"));
+        await fixture.CreateReleaseAsync(
+            new SeedSide("The Witcher 3: Wild Hunt - Blood and Wine", 2016, "CD PROJEKT RED"));
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+        queue.ShowExpansionsCommand.Execute(null);
+
+        Assert.Equal(2, queue.ExpansionGroups.Count);
+        var first = queue.ExpansionGroups[0];
+        var second = queue.ExpansionGroups[1];
+
+        // What the view does when focus or a pointer lands on the second card.
+        queue.SelectExpansion(second);
+        Assert.Same(second, queue.SelectedExpansionGroup);
+        Assert.True(second.IsSelected);
+        Assert.False(first.IsSelected);
+
+        // What OnMergeQueueKeyDown does on G.
+        await queue.GroupExpansionsCommand.ExecuteAsync(queue.SelectedExpansionGroup);
+
+        var resolution = await fixture.Links.GetResolutionAsync();
+        foreach (var member in second.Members)
+        {
+            Assert.Equal(second.BaseWorkId, resolution.Expansions.BaseOf(member.WorkId));
+        }
+
+        // The card the user was NOT looking at is untouched and still on screen.
+        foreach (var member in first.Members)
+        {
+            Assert.Null(resolution.Expansions.BaseOf(member.WorkId));
+        }
+
+        Assert.Same(first, Assert.Single(queue.ExpansionGroups));
+    }
+
+    [Fact]
+    public async Task Expansion_selection_moves_by_card_and_clamps_at_the_ends()
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.CreateReleaseAsync(new SeedSide("Sid Meier's Civilization IV", 2005, "2K"));
+        await fixture.CreateReleaseAsync(
+            new SeedSide("Sid Meier's Civilization IV: Warlords", 2006, "2K"));
+        await fixture.CreateReleaseAsync(
+            new SeedSide("The Witcher 3: Wild Hunt", 2015, "CD PROJEKT RED"));
+        await fixture.CreateReleaseAsync(
+            new SeedSide("The Witcher 3: Wild Hunt - Blood and Wine", 2016, "CD PROJEKT RED"));
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+
+        Assert.Equal(1, queue.MoveExpansionSelection(1));
+        Assert.Equal(1, queue.MoveExpansionSelection(1));
+        Assert.Equal(0, queue.MoveExpansionSelection(-1));
+        Assert.Equal(0, queue.MoveExpansionSelection(-1));
+        Assert.Same(queue.ExpansionGroups[0], queue.SelectedExpansionGroup);
+    }
+
+    [Fact]
+    public void Moving_expansion_selection_on_an_empty_surface_is_a_no_op()
+    {
+        using var fixture = new MergeQueueFixture();
+        var queue = fixture.CreateViewModel();
+
+        Assert.Equal(-1, queue.MoveExpansionSelection(1));
+        Assert.Null(queue.SelectedExpansionGroup);
+    }
+
+    // ── The outcome report belongs to the surface that raised it ─────────────
+
+    // The report belongs to the surface that raised it, is dropped on a segment
+    // switch and on a reload, and a retraction's own outcome survives the reload
+    // it triggers.
+
+    [Fact]
+    public async Task A_review_report_does_not_render_on_another_surface()
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.QueuePairAsync(
+            new SeedSide("Prey", 2017, "Bethesda Softworks"),
+            new SeedSide("Prey", null, null));
+        await fixture.CreateReleaseAsync(new SeedSide("Sid Meier's Civilization IV", 2005, "2K"));
+        await fixture.CreateReleaseAsync(
+            new SeedSide("Sid Meier's Civilization IV: Warlords", 2006, "2K"));
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+
+        await queue.SameGameCommand.ExecuteAsync(queue.Groups[0]);
+
+        Assert.True(queue.HasReviewReport);
+        Assert.False(queue.HasExpansionsReport);
+        Assert.False(queue.HasHistoryReport);
+        Assert.True(queue.CanRetractReport);
+
+        // Leaving the surface takes its report with it: the Retract button on
+        // that note belongs to an act the next surface did not perform.
+        queue.ShowExpansionsCommand.Execute(null);
+        Assert.False(queue.HasReport);
+        Assert.False(queue.HasReviewReport);
+        Assert.False(queue.HasExpansionsReport);
+        Assert.False(queue.CanRetractReport);
+    }
+
+    [Fact]
+    public async Task An_expansion_report_does_not_render_on_another_surface()
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.CreateReleaseAsync(new SeedSide("Sid Meier's Civilization IV", 2005, "2K"));
+        await fixture.CreateReleaseAsync(
+            new SeedSide("Sid Meier's Civilization IV: Warlords", 2006, "2K"));
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+        queue.ShowExpansionsCommand.Execute(null);
+
+        await queue.GroupExpansionsCommand.ExecuteAsync(Assert.Single(queue.ExpansionGroups));
+
+        Assert.True(queue.HasExpansionsReport);
+        Assert.False(queue.HasReviewReport);
+        Assert.False(queue.HasHistoryReport);
+
+        queue.ShowReviewCommand.Execute(null);
+        Assert.False(queue.HasReport);
+    }
+
+    [Fact]
+    public async Task A_reload_clears_the_report()
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.CreateReleaseAsync(new SeedSide("Sid Meier's Civilization IV", 2005, "2K"));
+        await fixture.CreateReleaseAsync(
+            new SeedSide("Sid Meier's Civilization IV: Warlords", 2006, "2K"));
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+        await queue.GroupExpansionsCommand.ExecuteAsync(Assert.Single(queue.ExpansionGroups));
+        Assert.True(queue.HasReport);
+
+        await queue.LoadCommand.ExecuteAsync(null);
+
+        Assert.False(queue.HasReport);
+        Assert.Null(queue.ReportMessage);
+        Assert.False(queue.CanRetractReport);
+    }
+
+    [Fact]
+    public async Task Retracting_from_history_reports_on_the_history_surface()
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.CreateReleaseAsync(new SeedSide("Sid Meier's Civilization IV", 2005, "2K"));
+        await fixture.CreateReleaseAsync(
+            new SeedSide("Sid Meier's Civilization IV: Warlords", 2006, "2K"));
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+        await queue.GroupExpansionsCommand.ExecuteAsync(Assert.Single(queue.ExpansionGroups));
+        await queue.ShowHistoryCommand.ExecuteAsync(null);
+
+        // Arriving at HISTORY cleared the expansion surface's report.
+        Assert.False(queue.HasReport);
+
+        await queue.RetractCommand.ExecuteAsync(Assert.Single(queue.LinkHistory));
+
+        // The reload inside the retraction must not eat the retraction's own
+        // outcome line, and the line belongs to HISTORY.
+        Assert.True(queue.HasHistoryReport);
+        Assert.False(queue.HasReviewReport);
+        Assert.False(queue.HasExpansionsReport);
+    }
+
+    // ── The rail counts both surfaces ────────────────────────────────────────
+
+    // The rail counts review plus expansions and recedes only when both are empty.
+
+    [Fact]
+    public async Task The_rail_counts_expansion_work_with_an_empty_review_queue()
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.CreateReleaseAsync(new SeedSide("Sid Meier's Civilization IV", 2005, "2K"));
+        await fixture.CreateReleaseAsync(
+            new SeedSide("Sid Meier's Civilization IV: Warlords", 2006, "2K"));
+        await fixture.CreateReleaseAsync(
+            new SeedSide("The Witcher 3: Wild Hunt", 2015, "CD PROJEKT RED"));
+        await fixture.CreateReleaseAsync(
+            new SeedSide("The Witcher 3: Wild Hunt - Blood and Wine", 2016, "CD PROJEKT RED"));
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+
+        Assert.Equal(0, queue.PendingCount);
+        Assert.Equal(2, queue.ExpansionCount);
+        Assert.Equal(2, queue.OutstandingCount);
+        Assert.Equal("2", queue.OutstandingCountText);
+        Assert.True(queue.HasOutstanding);
+        Assert.Equal(1.0, queue.RowOpacity);
+    }
+
+    [Fact]
+    public async Task The_rail_recedes_only_when_both_surfaces_are_empty()
+    {
+        using var fixture = new MergeQueueFixture();
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+
+        Assert.Equal(0, queue.OutstandingCount);
+        Assert.False(queue.HasOutstanding);
+        Assert.Equal(0.4, queue.RowOpacity);
+    }
+
     // ── Fixture ──────────────────────────────────────────────────────────────
 
     private static (long, long) Edge(long a, long b) => a < b ? (a, b) : (b, a);

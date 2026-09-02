@@ -36,19 +36,26 @@ public partial class MergeQueueView : UserControl
         RequestCovers();
     }
 
-    /// <summary>
-    /// Selection follows focus into the card list. Without this, Tab moves the
-    /// focus ring while the SELECTED pair stays put, so pressing S merges a
-    /// different pair than the ring sits on. When answering only recorded a
-    /// status this was survivable; now that answering writes to the library it
-    /// is not. Selecting on focus keeps one mark on screen instead of two
-    /// competing ones (§8).
-    /// </summary>
+    /// <summary>Selection follows focus into the card list. Without this, Tab
+    /// moves the focus ring while the selected group stays put and the shortcut
+    /// answers a card the ring is not on. Answering writes to the library, so
+    /// the two marks must not disagree (§8).</summary>
     private void OnCardFocus(object? sender, Avalonia.Input.GotFocusEventArgs e)
     {
         if (e.Source is Control { DataContext: MergeGroupViewModel group })
         {
             _queue?.Select(group);
+        }
+    }
+
+    /// <summary>Selection follows focus on the expansion surface. Without it the
+    /// surface had no selection input at all, so G grouped the first card whatever
+    /// the user was looking at.</summary>
+    private void OnExpansionCardFocus(object? sender, Avalonia.Input.GotFocusEventArgs e)
+    {
+        if (e.Source is Control { DataContext: ExpansionGroupViewModel group })
+        {
+            _queue?.SelectExpansion(group);
         }
     }
 
@@ -63,11 +70,31 @@ public partial class MergeQueueView : UserControl
         CardList.ContainerFromIndex(index)?.BringIntoView();
     }
 
+    /// <summary>Brings the expansion card at <paramref name="index"/> into view after a keyboard move (§8).</summary>
+    /// <param name="index">The index of the card to scroll to, or -1 to do nothing.</param>
+    public void ScrollExpansionIntoView(int index)
+    {
+        if (index < 0)
+        {
+            return;
+        }
+
+        ExpansionList.ContainerFromIndex(index)?.BringIntoView();
+    }
+
     private void OnCardPressed(object? sender, PointerPressedEventArgs e)
     {
         if (sender is Control { DataContext: MergeGroupViewModel group })
         {
             _queue?.Select(group);
+        }
+    }
+
+    private void OnExpansionCardPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (sender is Control { DataContext: ExpansionGroupViewModel group })
+        {
+            _queue?.SelectExpansion(group);
         }
     }
 

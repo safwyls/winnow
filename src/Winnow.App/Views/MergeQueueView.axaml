@@ -13,9 +13,7 @@
          cannot leave a sibling card stale. Answering writes a link, which
          is retractable, so no card and no row is ever terminal.
 
-         HISTORY holds one list: link acts, each retractable. Migration
-         0019 retired the destructive executor and the two merge sections
-         HISTORY used to carry.
+         HISTORY holds one list: link acts, each retractable.
 
          No Flare anywhere on this screen: Flare marks only unread updates
          and the bucket that counts them (§2). Amber carries attention,
@@ -187,7 +185,8 @@
                              same data face the pair card prints them in, on one
                              line instead of four rows. -->
                         <StackPanel Orientation="Horizontal" Spacing="8"
-                                    IsVisible="{Binding HasDirectEvidence}">
+                                    IsVisible="{Binding HasDirectEvidence}"
+                                    AutomationProperties.Name="{Binding Evidence.SummaryText}">
                             <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
                                        VerticalAlignment="Center" Text="TITLE"/>
                             <TextBlock Classes="data-s" VerticalAlignment="Center"
@@ -314,7 +313,7 @@
 
                 <StackPanel Orientation="Horizontal" Spacing="8">
                     <TextBlock Classes="data-s" Text="{Binding YearText}"/>
-                    <TextBlock Classes="data-s" Text="."/>
+                    <TextBlock Classes="data-s" Text="·"/>
                     <TextBlock Classes="data-s" Text="{Binding ReleaseText}"/>
                 </StackPanel>
 
@@ -405,7 +404,7 @@
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
                             <TextBlock Classes="data-s" Text="{Binding Side.YearText}"/>
-                            <TextBlock Classes="data-s" Text="."/>
+                            <TextBlock Classes="data-s" Text="·"/>
                             <TextBlock Classes="data-s" Text="{Binding ReleasesText}"/>
                         </StackPanel>
 
@@ -479,11 +478,14 @@
             <Setter Property="Margin" Value="0,0,0,10"/>
         </Style>
 
-        <!-- A signal that could not be evaluated is shown, dimmed, with the
-             reason. Hiding it would let "identical title, nothing else known"
-             look like "identical title, year and publisher agree". -->
-        <Style Selector="Grid.signal.unfired">
-            <Setter Property="Opacity" Value="0.55"/>
+        <!-- An unfired signal keeps full ink and steps its VALUE cell from Text
+             down to TextDim, the app's content-to-metadata step. Opacity was the
+             previous mark, but any alpha below 1 on a dark field lowers contrast:
+             TextDim at 0.55 measured 2.79:1 on Surface and 3.01:1 on Well, against
+             §8's 5.04:1 floor. The state stays carried three ways: the em-dash
+             value, the reason sentence, and the demoted ink. -->
+        <Style Selector="Grid.signal.unfired > :is(TextBlock).data">
+            <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
         </Style>
 
         <!-- Evidence colouring. Azure does the informational work and Amber
@@ -666,14 +668,9 @@
             <Setter Property="Foreground" Value="{StaticResource Text}"/>
         </Style>
 
-        <!-- ══ The history surface's lists ══════════════════════════════════
-             An entry is the lighter card the three lists on the history
-             surface are made of: 1px rather than the queue card's 2px,
-             because nothing there is selectable and a 2px edge that never
-             changes colour is a border pretending to be a state.
-
-             Nothing on this screen animates, so the reduced-motion setting
-             has nothing to suppress here. -->
+        <!-- A history entry: lighter than a queue card, 1px border rather than
+             2px, because nothing here is selectable and a 2px edge that never
+             changes colour is a border pretending to be a state. -->
         <Style Selector="Border.entry">
             <Setter Property="Background" Value="{StaticResource Surface}"/>
             <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
@@ -814,7 +811,7 @@
                          so a no-op says so here instead of the screen simply
                          going quiet. The retraction that makes answering safe
                          is on this line, not behind a segment. -->
-                    <Border Classes="note attention" IsVisible="{Binding HasReport}">
+                    <Border Classes="note attention" IsVisible="{Binding HasReviewReport}">
                         <Grid ColumnDefinitions="*,Auto">
                             <TextBlock Grid.Column="0"
                                        Classes="body" FontSize="12" LineHeight="18"
@@ -1110,7 +1107,7 @@
                         </StackPanel>
                     </Grid>
 
-                    <Border Classes="note attention" IsVisible="{Binding HasReport}">
+                    <Border Classes="note attention" IsVisible="{Binding HasExpansionsReport}">
                         <Grid ColumnDefinitions="*,Auto">
                             <TextBlock Grid.Column="0"
                                        Classes="body" FontSize="12" LineHeight="18"
@@ -1136,12 +1133,15 @@
                     <ScrollViewer IsVisible="{Binding HasExpansions}"
                                   HorizontalScrollBarVisibility="Disabled"
                                   VerticalScrollBarVisibility="Auto">
-                      <ItemsControl Margin="24,20,24,24"
+                      <ItemsControl Name="ExpansionList"
+                                    Margin="24,20,24,24"
+                                    GotFocus="OnExpansionCardFocus"
                                     ItemsSource="{Binding ExpansionGroups}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="vm:ExpansionGroupViewModel">
                                 <Border Classes="card"
-                                        Classes.selected="{Binding IsSelected}">
+                                        Classes.selected="{Binding IsSelected}"
+                                        PointerPressed="OnExpansionCardPressed">
                                     <Grid RowDefinitions="Auto,Auto,Auto,Auto">
 
                                         <Grid Grid.Row="0"
@@ -1242,7 +1242,7 @@
 
                 <Border Classes="note attention"
                         Margin="0,0,0,20"
-                        IsVisible="{Binding HasReport}">
+                        IsVisible="{Binding HasHistoryReport}">
                     <Grid ColumnDefinitions="*,Auto">
                         <TextBlock Grid.Column="0"
                                    Classes="body" FontSize="12" LineHeight="18"

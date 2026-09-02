@@ -720,6 +720,16 @@ public partial class MainWindow : Window
         {
             switch (e.Key)
             {
+                case Key.Up:
+                    MergeQueue.ScrollExpansionIntoView(queue.MoveExpansionSelection(-1));
+                    e.Handled = true;
+                    break;
+
+                case Key.Down:
+                    MergeQueue.ScrollExpansionIntoView(queue.MoveExpansionSelection(1));
+                    e.Handled = true;
+                    break;
+
                 case Key.G or Key.Enter:
                     queue.GroupExpansionsCommand.Execute(queue.SelectedExpansionGroup);
                     e.Handled = true;

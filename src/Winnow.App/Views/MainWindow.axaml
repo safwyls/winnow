@@ -1044,7 +1044,7 @@
                             Classes.selected="{Binding IsMergeQueueVisible}"
                             Opacity="{Binding MergeQueue.RowOpacity}"
                             Command="{Binding ToggleMergeQueueCommand}"
-                            ToolTip.Tip="Pairs that might be the same game">
+                            ToolTip.Tip="Groups that might be the same game, or expansions of one">
                         <Grid ColumnDefinitions="2,16,*,Auto,16">
                             <Border Grid.Column="0"
                                     Background="{StaticResource Volt}"
@@ -1057,8 +1057,8 @@
                                        Classes="data"
                                        FontSize="11"
                                        Foreground="{StaticResource TextDim}"
-                                       Text="{Binding MergeQueue.PendingCountText}"
-                                       IsVisible="{Binding MergeQueue.HasPending}"
+                                       Text="{Binding MergeQueue.OutstandingCountText}"
+                                       IsVisible="{Binding MergeQueue.HasOutstanding}"
                                        VerticalAlignment="Center"/>
                         </Grid>
                     </Button>
