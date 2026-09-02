@@ -729,12 +729,12 @@ public partial class MainWindow : Window
                 break;
 
             case Key.S or Key.Enter:
-                queue.SameGameCommand.Execute(queue.SelectedCandidate);
+                queue.SameGameCommand.Execute(queue.SelectedGroup);
                 e.Handled = true;
                 break;
 
             case Key.D:
-                queue.DifferentGamesCommand.Execute(queue.SelectedCandidate);
+                queue.DifferentGamesCommand.Execute(queue.SelectedGroup);
                 e.Handled = true;
                 break;
         }

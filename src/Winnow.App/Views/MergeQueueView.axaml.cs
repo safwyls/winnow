@@ -46,9 +46,9 @@ public partial class MergeQueueView : UserControl
     /// </summary>
     private void OnCardFocus(object? sender, Avalonia.Input.GotFocusEventArgs e)
     {
-        if (e.Source is Control { DataContext: MergeCandidateViewModel candidate })
+        if (e.Source is Control { DataContext: MergeGroupViewModel group })
         {
-            _queue?.Select(candidate);
+            _queue?.Select(group);
         }
     }
 
@@ -65,9 +65,9 @@ public partial class MergeQueueView : UserControl
 
     private void OnCardPressed(object? sender, PointerPressedEventArgs e)
     {
-        if (sender is Control { DataContext: MergeCandidateViewModel candidate })
+        if (sender is Control { DataContext: MergeGroupViewModel group })
         {
-            _queue?.Select(candidate);
+            _queue?.Select(group);
         }
     }
 

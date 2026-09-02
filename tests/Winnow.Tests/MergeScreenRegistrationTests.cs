@@ -22,7 +22,7 @@ namespace Winnow.Tests;
 public sealed class MergeScreenRegistrationTests
 {
     [Fact]
-    public async Task The_screen_resolves_from_the_container_and_loads_all_three_lists()
+    public async Task The_screen_resolves_from_the_container_and_loads_every_list()
     {
         using var db = new TempDatabase();
         using var provider = Build(db, withUndo: true);
@@ -30,11 +30,12 @@ public sealed class MergeScreenRegistrationTests
         var screen = provider.GetRequiredService<MergeQueueViewModel>();
         await screen.LoadCommand.ExecuteAsync(null);
 
-        Assert.Empty(screen.Candidates);
+        Assert.Empty(screen.Groups);
         Assert.Empty(screen.Outstanding);
         Assert.Empty(screen.History);
+        Assert.Empty(screen.LinkHistory);
         Assert.False(screen.HasOutstanding);
-        Assert.True(screen.ShowHistoryEmpty);
+        Assert.True(screen.ShowLinkHistoryEmpty);
 
         // And it opens on the queue, which is the surface the rail row counts.
         Assert.True(screen.IsReviewVisible);
@@ -85,6 +86,7 @@ public sealed class MergeScreenRegistrationTests
         services.AddSingleton<IMergeCandidateRepository, MergeCandidateRepository>();
         services.AddSingleton<IMergeExecutionRepository, MergeExecutionRepository>();
         services.AddSingleton<IResolveStateRepository, ResolveStateRepository>();
+        services.AddSingleton<IIdentityLinkRepository, IdentityLinkRepository>();
 
         if (withUndo)
         {

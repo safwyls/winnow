@@ -9,20 +9,22 @@ using Winnow.Covers;
 namespace Winnow.App.ViewModels;
 
 /// <summary>
-/// One half of a merge-confirm pair: the cover at 200×300 (§6) and the facts
-/// the user needs to tell it from the other half.
+/// One member's visual face: the cover at 200x300 (§6) and the facts the
+/// user needs to tell it from its siblings. Used for both sides of a pair
+/// and for every row in a roster.
 ///
-/// <para>Cover art follows the grid exactly — <see cref="ICoverCache"/> if the
+/// <para>Cover art follows the grid exactly: <see cref="ICoverCache"/> if the
 /// host registered one, and the procedural placeholder underneath as the
 /// fallback, so a game with no capsule shows its title in Bricolage on a
 /// Surface field rather than a hole or a spinner (§7). There is no dormancy
-/// ramp here: the question on this screen is "are these the same game", and
+/// ramp here; the question on this screen is "are these the same game", and
 /// fading one side by how long ago it was played would be a second visual
 /// language answering a question nobody asked.</para>
 /// </summary>
 public partial class MergeSideViewModel : ObservableObject
 {
     private readonly ICoverCache? _covers;
+    private readonly IReadOnlyList<long>? _alsoReleaseIds;
 
     public MergeSideViewModel(
         long releaseId,
@@ -31,7 +33,8 @@ public partial class MergeSideViewModel : ObservableObject
         int? year = null,
         string? publisher = null,
         CoverKey? coverKey = null,
-        ICoverCache? covers = null)
+        ICoverCache? covers = null,
+        IReadOnlyList<long>? alsoReleaseIds = null)
     {
         ReleaseId = releaseId;
         Title = string.IsNullOrWhiteSpace(title) ? $"Release {releaseId}" : title;
@@ -40,6 +43,7 @@ public partial class MergeSideViewModel : ObservableObject
         Publisher = string.IsNullOrWhiteSpace(publisher) ? null : publisher;
         CoverKey = coverKey;
         _covers = covers;
+        _alsoReleaseIds = alsoReleaseIds;
 
         var (start, end) = PlaceholderArt.VividColors(Title);
         PlaceholderBrush = PlaceholderArt.Gradient(start, end);
@@ -62,11 +66,32 @@ public partial class MergeSideViewModel : ObservableObject
     public string YearText => Year?.ToString(CultureInfo.InvariantCulture) ?? "—";
 
     /// <summary>
-    /// The row that names the record itself. A merge is a decision about two
-    /// database rows, and when both sides are called "Prey" the release id is
-    /// the only thing on screen that distinguishes them.
+    /// Every store entry under this member, listed. When two members are both
+    /// called "Prey" the entry numbers are the only thing on screen that
+    /// tells them apart. Lists the primary entry plus any others carried by
+    /// <c>alsoReleaseIds</c>.
     /// </summary>
-    public string ReleaseText => string.Create(CultureInfo.InvariantCulture, $"#{ReleaseId}");
+    public string ReleaseText
+    {
+        get
+        {
+            var text = string.Create(CultureInfo.InvariantCulture, $"#{ReleaseId}");
+            if (_alsoReleaseIds is null)
+            {
+                return text;
+            }
+
+            foreach (var id in _alsoReleaseIds)
+            {
+                if (id != ReleaseId)
+                {
+                    text += string.Create(CultureInfo.InvariantCulture, $" #{id}");
+                }
+            }
+
+            return text;
+        }
+    }
 
     public string PublisherText => Publisher ?? "publisher unknown";
 

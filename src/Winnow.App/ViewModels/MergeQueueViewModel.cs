@@ -2,25 +2,32 @@ using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Winnow.Core.Domain;
+using Winnow.Core.Identity;
 using Winnow.Core.Merging;
 using Winnow.Core.Repositories;
 using Winnow.Covers;
 using Winnow.Covers.Igdb;
 using Winnow.Resolve;
+using Winnow.Resolve.Matching;
 
 namespace Winnow.App.ViewModels;
 
 /// <summary>
 /// The Same Game screen. One pane with a 48px header and a two-segment
 /// control, REVIEW / HISTORY, in the same grammar the settings surface uses
-/// for PLATFORMS / APPEARANCE. REVIEW is the confirm queue and nothing else.
-/// HISTORY holds every already-answered pair: applied merges with their undo,
-/// plus a section of pairs confirmed under the old two-step flow that were
-/// never applied (absent once drained).
+/// for PLATFORMS / APPEARANCE.
 ///
-/// <para>Answering "Same game" now merges the pair where it stands, and undo
-/// is offered on the outcome report. Undo is what makes applying on answer
-/// safe.</para>
+/// <para>REVIEW's unit is a GROUP, never a pair. Pending proposals are resolved
+/// through the live link map, proposals whose two sides are already one game are
+/// dropped, and the connected components of what is left become one card each.
+/// Answering a member therefore cannot leave a sibling card stale: they were
+/// never separate cards.</para>
+///
+/// <para>Answering writes a LINK, not a merge. Nothing is deleted, so the answer
+/// is retractable from HISTORY and the same group can be linked, retracted and
+/// linked again any number of times. The destructive executor still backs the
+/// two merge sections of HISTORY, which exist for installs that answered under
+/// the previous flow; the review path never reaches it.</para>
 /// </summary>
 public partial class MergeQueueViewModel : ObservableObject
 {
@@ -34,6 +41,7 @@ public partial class MergeQueueViewModel : ObservableObject
     private readonly IReleaseRepository _releases;
     private readonly IWorkRepository _works;
     private readonly MergeExecutor _merges;
+    private readonly IIdentityLinkRepository _links;
     private readonly ICoverCache? _covers;
     private readonly IResolveStateRepository? _resolveState;
 
@@ -42,22 +50,16 @@ public partial class MergeQueueViewModel : ObservableObject
 
     private bool _loaded;
 
-    // Cached release-to-work membership. AffectedBy reads this to decide which
-    // cards a merge could have changed, avoiding a database round-trip on the
-    // answer path where repeated keypresses must stay cheap. Updated in place
-    // when a merge moves the absorbed work's releases to the surviving work;
-    // re-querying would reintroduce the cost this cache exists to avoid.
-    private readonly Dictionary<long, long> _workIdOfRelease = [];
-
-    // MergeExecutor is required, not optional. An engine registered in the
+    // Both engines are required, not optional. A type registered in the
     // container and resolved nowhere is indistinguishable from one that works;
-    // omitting it must break the container at startup rather than render a
+    // omitting either must break the container at startup rather than render a
     // screen whose answers quietly write nothing.
     public MergeQueueViewModel(
         IMergeCandidateRepository candidates,
         IReleaseRepository releases,
         IWorkRepository works,
         MergeExecutor merges,
+        IIdentityLinkRepository links,
         ICoverCache? covers = null,
         IResolveStateRepository? resolveState = null)
     {
@@ -65,6 +67,7 @@ public partial class MergeQueueViewModel : ObservableObject
         _releases = releases;
         _works = works;
         _merges = merges;
+        _links = links;
         _covers = covers;
         _resolveState = resolveState;
     }
@@ -88,10 +91,10 @@ public partial class MergeQueueViewModel : ObservableObject
     [RelayCommand]
     private void ShowReview() => IsHistoryVisible = false;
 
-    // Recomputes on the way in. Reversibility depends on every merge applied
-    // after a given one, so a verdict computed at the last load is a claim
-    // about a database that may since have moved. A cached "you can undo
-    // this" becomes a lie the moment a later merge consumes the survivor.
+    // Recomputes on the way in. The link log moves whenever a group is answered
+    // or retracted, and merge reversibility depends on every merge applied after
+    // a given one, so a verdict computed at the last load is a claim about a
+    // database that may since have moved.
     [RelayCommand]
     private async Task ShowHistoryAsync(CancellationToken ct)
     {
@@ -101,24 +104,27 @@ public partial class MergeQueueViewModel : ObservableObject
 
     // ── The review queue ─────────────────────────────────────────────────────
 
-    /// <summary>The pending soft-match pairs, sorted strongest first.</summary>
+    /// <summary>The pending groups, sorted strongest first.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(
         nameof(PendingCount), nameof(PendingCountText), nameof(HasPending),
         nameof(ShowEmpty), nameof(RowOpacity), nameof(ShowOutstandingNotice))]
-    public partial IReadOnlyList<MergeCandidateViewModel> Candidates { get; set; } = [];
+    public partial IReadOnlyList<MergeGroupViewModel> Groups { get; set; } = [];
 
-    /// <summary>The pair the user is currently looking at, or null when the queue is empty.</summary>
+    /// <summary>The group the user is currently looking at, or null when the queue is empty.</summary>
     [ObservableProperty]
-    public partial MergeCandidateViewModel? SelectedCandidate { get; set; }
+    public partial MergeGroupViewModel? SelectedGroup { get; set; }
 
-    /// <summary>Number of pairs still waiting for an answer.</summary>
-    public int PendingCount => Candidates.Count;
+    /// <summary>Number of groups still waiting for an answer.</summary>
+    public int PendingCount => Groups.Count;
 
     /// <summary>Plex Mono, tabular, grouped — every number in the app (§3).</summary>
     public string PendingCountText => PendingCount.ToString("N0", CultureInfo.CurrentCulture);
 
-    /// <summary>True when there are pending candidates to review.</summary>
+    /// <summary>Uppercase label beside the count.</summary>
+    public string PendingCountLabel => MergeCopy.PendingCountLabel;
+
+    /// <summary>True when there are pending groups to review.</summary>
     public bool HasPending => PendingCount > 0;
 
     /// <summary>Dims to 40% when empty so the rail row stays visible but recedes.</summary>
@@ -134,8 +140,8 @@ public partial class MergeQueueViewModel : ObservableObject
 
     /// <summary>Empty-state message: distinguishes "sweep found nothing" from "sweep hasn't run yet".</summary>
     public string EmptyMessage => HasCompletedSweep
-        ? "Nothing to review. No ambiguous pairs found."
-        : "Nothing to review yet. Still comparing your library for duplicates.";
+        ? MergeCopy.EmptySwept
+        : MergeCopy.EmptyNotSwept;
 
     /// <summary>Standing explanation under the screen title.</summary>
     public string IntroMessage => MergeCopy.QueueIntro;
@@ -144,9 +150,10 @@ public partial class MergeQueueViewModel : ObservableObject
 
     /// <summary>
     /// Pairs confirmed under the old two-step flow that were never applied.
-    /// Nothing this build does adds to this list, because answering now
-    /// applies. It exists so an install predating the change has somewhere to
-    /// finish, and it is absent altogether once drained.
+    /// Nothing this build does adds to this list, because the review path no
+    /// longer writes <c>confirmed</c> and no longer merges. It exists so an
+    /// install predating the change has somewhere to finish, and it is absent
+    /// altogether once drained.
     /// </summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(
@@ -173,41 +180,68 @@ public partial class MergeQueueViewModel : ObservableObject
     public string OutstandingNoticeMessage => string.Format(
         CultureInfo.CurrentCulture, MergeCopy.OutstandingNoticeFormat, OutstandingCountText);
 
-    // ── History and undo ─────────────────────────────────────────────────────
+    // ── History: link acts ───────────────────────────────────────────────────
 
     /// <summary>
-    /// Every applied merge, newest first, each with its undo verdict. Rebuilt
-    /// from scratch on every load because reversibility depends on every merge
-    /// applied after a given one; a row's enabled state is a fact about the whole
-    /// log at this instant and is never carried across a load.
+    /// Every link act, newest first, each with its retraction. Rebuilt from the
+    /// table on every arrival, because the table is the history and a row's
+    /// standing changes whenever anything is linked or retracted.
     /// </summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasHistory), nameof(ShowHistoryEmpty))]
+    [NotifyPropertyChangedFor(nameof(HasLinkHistory), nameof(ShowLinkHistoryEmpty))]
+    public partial IReadOnlyList<MergeLinkHistoryRowViewModel> LinkHistory { get; set; } = [];
+
+    /// <summary>True when at least one group has been linked.</summary>
+    public bool HasLinkHistory => LinkHistory.Count > 0;
+
+    /// <summary>True once the screen has loaded and nothing has been linked.</summary>
+    public bool ShowLinkHistoryEmpty => _loaded && LinkHistory.Count == 0;
+
+    // ── History: applied merges ──────────────────────────────────────────────
+
+    /// <summary>
+    /// Every applied merge, newest first, each with its undo verdict. A separate
+    /// list from <see cref="LinkHistory"/> because a retraction and a
+    /// fifteen-table reversal are different facts, and one interleaved list
+    /// would need a sentence per row saying which kind it was. This list is
+    /// finite and shrinking: nothing this build does adds to it.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasHistory))]
     public partial IReadOnlyList<MergeHistoryRowViewModel> History { get; set; } = [];
 
     /// <summary>True when at least one merge has been applied.</summary>
     public bool HasHistory => History.Count > 0;
 
-    /// <summary>True once the screen has loaded and no merges have been applied.</summary>
-    public bool ShowHistoryEmpty => _loaded && History.Count == 0;
-
     // ── What the last act actually did ───────────────────────────────────────
 
     /// <summary>
-    /// What the last answer or undo actually did. Written from the outcome the
-    /// engine returned, never from what was asked for.
+    /// What the last answer, retraction or undo actually did. Written from what
+    /// the engine returned, never from what was asked for.
     /// </summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasReport), nameof(ReportUndoAutomationName))]
+    [NotifyPropertyChangedFor(
+        nameof(HasReport), nameof(ReportUndoAutomationName), nameof(ReportRetractAutomationName))]
     public partial string? ReportMessage { get; set; }
 
     /// <summary>True when there is an outcome to display.</summary>
     public bool HasReport => !string.IsNullOrEmpty(ReportMessage);
 
     /// <summary>
-    /// The merge the report is about, when it can still be reversed. Set from
-    /// the undo plan the engine returns after the apply, never assumed from
-    /// the fact that an apply succeeded.
+    /// The link act the report is about. Set from the act id the repository
+    /// returned, so the control is offered only for a write that happened.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanRetractReport))]
+    public partial long? ReportRetractActId { get; set; }
+
+    /// <summary>True when the report's link can be retracted from where it stands.</summary>
+    public bool CanRetractReport => ReportRetractActId is not null;
+
+    /// <summary>
+    /// The merge the report is about, when it can still be reversed. Reachable
+    /// only from the two merge sections of HISTORY; the review path never
+    /// applies a merge.
     /// </summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanUndoReport))]
@@ -228,7 +262,7 @@ public partial class MergeQueueViewModel : ObservableObject
     /// <summary>Label on the segment showing the review queue.</summary>
     public string ReviewSegmentLabel => MergeCopy.SegmentReview;
 
-    /// <summary>Label on the segment showing applied merges.</summary>
+    /// <summary>Label on the segment showing what has been answered.</summary>
     public string HistorySegmentLabel => MergeCopy.SegmentHistory;
 
     /// <summary>Tooltip on the review segment.</summary>
@@ -249,29 +283,46 @@ public partial class MergeQueueViewModel : ObservableObject
     /// <summary>Tooltip on the batch apply control.</summary>
     public string ApplyAllTooltip => MergeCopy.ApplyAllTooltip;
 
+    /// <summary>Section heading for the list of link acts.</summary>
+    public string LinkHistoryHeading => MergeCopy.LinkHistoryHeading;
+
+    /// <summary>Introduction under that heading.</summary>
+    public string LinkHistoryIntro => MergeCopy.LinkHistoryIntro;
+
+    /// <summary>Empty state for the link list.</summary>
+    public string LinkHistoryEmptyMessage => MergeCopy.LinkHistoryEmpty;
+
     /// <summary>Section heading for the history of applied merges.</summary>
     public string HistoryHeading => MergeCopy.HistoryHeading;
 
     /// <summary>Introduction under the history heading.</summary>
     public string HistoryIntro => MergeCopy.HistoryIntro;
 
-    /// <summary>Empty state for the history section.</summary>
-    public string HistoryEmptyMessage => MergeCopy.HistoryEmpty;
+    /// <summary>Label on the control that retracts the link the report describes.</summary>
+    public string ReportRetractButtonText => MergeCopy.RetractButton;
 
-    /// <summary>Label on the undo control beside the outcome report.</summary>
+    /// <summary>Tooltip on that control.</summary>
+    public string ReportRetractTooltipText => MergeCopy.RetractTooltip;
+
+    /// <summary>Label on the undo control beside a merge outcome report.</summary>
     public string ReportUndoButtonText => MergeCopy.ReportUndoButton;
 
     /// <summary>Tooltip on that control.</summary>
     public string ReportUndoTooltipText => MergeCopy.ReportUndoTooltip;
 
-    // The report sentence names no action on its own, so a screen reader would
-    // announce a button indistinguishable from a statement. Prefixing the verb
-    // makes the target unique, matching how history rows build their automation
-    // names (§8).
+    /// <summary>
+    /// Automation name for the retraction beside a report. Without the verb a
+    /// screen reader announces a button indistinguishable from a statement,
+    /// matching how history rows build their automation names (§8).
+    /// </summary>
+    public string ReportRetractAutomationName =>
+        string.Create(CultureInfo.CurrentCulture, $"{MergeCopy.RetractButton}. {ReportMessage}");
+
+    /// <summary>Automation name for the merge undo beside a report.</summary>
     public string ReportUndoAutomationName =>
         string.Create(CultureInfo.CurrentCulture, $"{MergeCopy.ReportUndoButton}. {ReportMessage}");
 
-    /// <summary>Tooltip on "Different games", stating permanence.</summary>
+    /// <summary>Tooltip on "Different games".</summary>
     public string DifferentGamesTooltip => MergeCopy.DifferentGamesTooltip;
 
     // ── Loading ──────────────────────────────────────────────────────────────
@@ -279,17 +330,12 @@ public partial class MergeQueueViewModel : ObservableObject
     [RelayCommand]
     private async Task LoadAsync(CancellationToken ct)
     {
-        // Must be read before candidates so the empty state knows if the matcher has run.
+        // Must be read before the queue so the empty state knows if the matcher has run.
         HasCompletedSweep = _resolveState is not null
             && await _resolveState.GetLastSoftMatchSweepAsync(ct) is not null;
 
-        // Sort here so review order is owned by this screen, not just the SQL query.
         var pending = await _candidates.GetPendingAsync(ct);
-
-        // Both lists are rebuilt from the engine on every load. Nothing about
-        // a plan or an undo verdict survives a reload.
-        var outstanding = await _merges.OutstandingAsync(ct);
-        var history = await _merges.HistoryAsync(ct);
+        var resolution = await _links.GetResolutionAsync(ct);
 
         var releaseIds = new HashSet<long>();
         foreach (var candidate in pending)
@@ -298,174 +344,161 @@ public partial class MergeQueueViewModel : ObservableObject
             releaseIds.Add(candidate.RightReleaseId);
         }
 
+        var outstanding = await _merges.OutstandingAsync(ct);
         foreach (var plan in outstanding)
         {
             AddIfPresent(releaseIds, plan.LeftReleaseId);
             AddIfPresent(releaseIds, plan.RightReleaseId);
         }
 
-        var (titles, coverKeys, workIds) = await DescribeReleasesAsync(releaseIds, ct);
-
-        var cards = new List<MergeCandidateViewModel>(pending.Count);
-        foreach (var candidate in pending)
-        {
-            cards.Add(MergeCandidateViewModel.Create(candidate, titles, coverKeys, _covers));
-        }
-
-        cards.Sort(static (a, b) =>
-        {
-            var byScore = b.Score.CompareTo(a.Score);
-            return byScore != 0 ? byScore : a.Id.CompareTo(b.Id);
-        });
+        var library = await DescribeAsync(releaseIds, ct);
 
         _loaded = true;
-        Candidates = cards;
-        Outstanding = BuildOutstanding(outstanding, titles, workIds);
-        History = BuildHistory(history);
+        Groups = await BuildGroupsAsync(pending, library, resolution, ct);
+        Outstanding = BuildOutstanding(outstanding, library.Titles, library.WorkOfRelease);
+        History = BuildHistory(await _merges.HistoryAsync(ct));
+        LinkHistory = await BuildLinkHistoryAsync(ct);
 
-        // Titles already fetched: a plan's two release ids are the candidate
-        // row's own two columns, so the describe pass above covers them.
-        await RefreshPreviewsAsync(cards, titles, workIds, ct);
-
-        // Candidates, not the local cards list: cards was built before the
-        // prune, so selecting from it could put the cursor on a card that
-        // is no longer on screen.
-        Select(Candidates.Count > 0 ? Candidates[0] : null);
+        Select(Groups.Count > 0 ? Groups[0] : null);
         RequestCovers(_coverWidthPixels);
     }
 
     // ── Answering ────────────────────────────────────────────────────────────
 
-    // Confirming applies. The status write and the merge are two statements
-    // rather than one transaction, so a crash between them leaves a confirmed
-    // pair nothing has applied, which is exactly the state the history
-    // surface's leftover section exists to finish. The IsDecided latch is set
-    // before the first await so a double click cannot write twice.
+    /// <summary>
+    /// Links every checked member under the chosen primary, in one act and one
+    /// transaction, and records a rejection for every proposal the answer leaves
+    /// outside the link.
+    ///
+    /// <para>Nothing else on screen is re-read. Components are disjoint over
+    /// resolved works, so a link inside one group cannot change another; the
+    /// answered card is removed and no neighbour is replanned. The previous
+    /// screen replanned the whole queue on every answer and froze for about two
+    /// seconds at 200 pending pairs.</para>
+    /// </summary>
     [RelayCommand]
-    private async Task SameGameAsync(MergeCandidateViewModel? candidate, CancellationToken ct)
+    private async Task SameGameAsync(MergeGroupViewModel? group, CancellationToken ct)
     {
-        if (candidate is null || candidate.IsDecided)
+        if (group is null || group.IsDecided)
         {
             return;
         }
 
         // Latch before await to prevent double-writes from rapid clicks.
-        candidate.IsDecided = true;
-        await _candidates.SetStatusAsync(candidate.Id, MergeCandidateStatuses.Confirmed, ct);
+        group.IsDecided = true;
 
-        MergeOutcome outcome;
-        try
-        {
-            outcome = await _merges.ApplyAsync(candidate.Id, ct);
-        }
-        catch (InvalidOperationException)
-        {
-            // The merge repository throws to roll back its transaction; the
-            // cascade tripwire and stranded-achievements check abort this way
-            // because a thrown exception is the one path SQLite guarantees a
-            // full rollback, making the throw the safety contract rather than a
-            // fault. Uncaught, it reaches the UI thread through the relay
-            // command, and this app installs no unhandled-exception handler, so
-            // the window would close over a database that was left intact.
-            // Catching here reports the failure in the same Amber block a
-            // refusal uses, and releases the latch so the pair stays answerable
-            // rather than stranded behind two dead buttons.
-            ReportUndoApplicationId = null;
-            ReportUndoTitle = null;
-            ReportMessage = MergeCopy.AppliedFailed;
-            candidate.IsDecided = false;
+        var children = group.IncludedChildWorkIds;
+        var rejected = group.RejectedCandidateIds;
+        var primaryTitle = group.PrimaryTitle;
 
-            // This is the one answer path that leaves a confirmed pair with
-            // nothing applied, which is exactly the state the HISTORY segment's
-            // leftover section and its count exist to surface. The success path
-            // skips this refresh because it never creates a leftover; skipping
-            // it here too would leave the segment count stale and the pair
-            // invisible until something else reloaded the screen. A rollback
-            // is rare, so the cost this adds is never felt on the path that
-            // matters (the repeated-keypress answer path below).
-            await RefreshAppliedAsync(ct);
-            return;
-        }
-
-        await ReportOutcomeAsync(outcome, candidate.Preview, ct);
-
-        Remove(candidate);
-
-        // After Remove so the answered card is excluded. Before Remove it was
-        // included, planned, and then discarded by RefreshPreviewsAsync's
-        // live-set filter, one wasted database round-trip per answer. Only the
-        // cards whose releases or work the merge touched are returned; replanning
-        // every remaining card froze the UI for ~2 s at 200 pairs (measured),
-        // because Microsoft.Data.Sqlite completes synchronously and this is the
-        // screen worked down with repeated S keypresses. A card none of the
-        // merge's release or work ids reach reads the same rows it read before,
-        // so its plan cannot have changed.
-        var affected = AffectedBy(outcome);
-
-        // History and leftovers live on the other segment and are recomputed
-        // on entry, so the answer path does not rebuild them.
-        await RefreshPreviewsAsync(affected, null, null, ct);
-    }
-
-    /// <summary>Writes <c>rejected</c> (permanent), applies nothing, and removes the pair.</summary>
-    [RelayCommand]
-    private async Task DifferentGamesAsync(MergeCandidateViewModel? candidate, CancellationToken ct)
-    {
-        if (candidate is null || candidate.IsDecided)
-        {
-            return;
-        }
-
-        candidate.IsDecided = true;
-        await _candidates.SetStatusAsync(candidate.Id, MergeCandidateStatuses.Rejected, ct);
-        Remove(candidate);
-    }
-
-    // Verb, mode and refusal come from the outcome the engine returned, not
-    // from what was asked, so a refusal is always surfaced. Titles come from
-    // the preview the card was showing, not re-read from the outcome; a second
-    // describe pass would cost a round-trip on the answer path that must stay
-    // cheap, and the preview was re-planned after every write so it is current
-    // here. The undo control is armed only when the engine confirms the merge
-    // is still reversible.
-    private async Task ReportOutcomeAsync(
-        MergeOutcome outcome, MergePreviewViewModel? preview, CancellationToken ct)
-    {
+        ReportRetractActId = null;
         ReportUndoApplicationId = null;
         ReportUndoTitle = null;
 
-        if (!outcome.Applied)
+        if (children.Count == 0)
         {
-            ReportMessage = string.Format(
-                CultureInfo.CurrentCulture,
-                MergeCopy.AppliedNothingFormat,
-                MergeApplyViewModel.RefusalFor(outcome.Plan.Blocker));
+            // Every member unchecked is the same answer as "different games",
+            // and it is recorded the same way: no link, and every proposal the
+            // answer touched written down.
+            await RejectAsync(group.AllCandidateIds, ct);
+            ReportMessage = MergeCopy.NothingLinked;
+            Remove(group);
             return;
         }
 
-        var surviving = preview?.SurvivingTitle ?? string.Empty;
-        var absorbed = preview?.AbsorbedTitle
-            ?? MergeApplyViewModel.ReleaseLabel(preview?.AbsorbedReleaseId);
+        var actId = await _links.LinkAsync(
+            new IdentityLinkRequest
+            {
+                ParentWorkId = group.Primary.WorkId,
+                ChildWorkIds = children,
+                Kind = IdentityLinkKinds.SameGame,
+                Source = IdentityLinkSources.User,
+            },
+            ct);
 
+        await RejectAsync(rejected, ct);
+
+        ReportRetractActId = actId;
         ReportMessage = string.Format(
             CultureInfo.CurrentCulture,
-            MergeCopy.AppliedReportFormat,
-            surviving,
-            absorbed,
-            ModePhrase(outcome.Plan.Mode));
+            MergeCopy.LinkedReportFormat,
+            primaryTitle,
+            children.Count.ToString("N0", CultureInfo.CurrentCulture));
 
-        if (outcome.ApplicationId is { } applicationId
-            && (await _merges.PreviewUndoAsync(applicationId, ct)).Reversible)
+        Remove(group);
+    }
+
+    /// <summary>Rejects every proposal in the group, links nothing, and removes the card.</summary>
+    [RelayCommand]
+    private async Task DifferentGamesAsync(MergeGroupViewModel? group, CancellationToken ct)
+    {
+        if (group is null || group.IsDecided)
         {
-            ReportUndoApplicationId = applicationId;
-            ReportUndoTitle = absorbed;
+            return;
         }
+
+        group.IsDecided = true;
+        await RejectAsync(group.AllCandidateIds, ct);
+        Remove(group);
+    }
+
+    private async Task RejectAsync(IReadOnlyList<long> candidateIds, CancellationToken ct)
+    {
+        foreach (var candidateId in candidateIds)
+        {
+            await _candidates.SetStatusAsync(candidateId, MergeCandidateStatuses.Rejected, ct);
+        }
+    }
+
+    // ── Retracting ───────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Retracts the link the report describes. The proposals were never marked
+    /// answered, so they return to the queue as ordinary pending rows on the
+    /// next load, and the same group can be linked again immediately.
+    /// </summary>
+    [RelayCommand]
+    private async Task RetractReportAsync(CancellationToken ct)
+    {
+        if (ReportRetractActId is not { } actId)
+        {
+            return;
+        }
+
+        await RetractActAsync(actId, ct);
+    }
+
+    /// <summary>Retracts one act from the link history list.</summary>
+    [RelayCommand]
+    private async Task RetractAsync(MergeLinkHistoryRowViewModel? row, CancellationToken ct)
+    {
+        if (row is null || !row.CanRetract)
+        {
+            return;
+        }
+
+        row.IsRetracting = true;
+        await RetractActAsync(row.ActId, ct);
+    }
+
+    private async Task RetractActAsync(long actId, CancellationToken ct)
+    {
+        ReportRetractActId = null;
+        ReportUndoApplicationId = null;
+        ReportUndoTitle = null;
+
+        var retracted = await _links.RetractActAsync(actId, null, ct);
+        ReportMessage = retracted ? MergeCopy.Retracted : MergeCopy.RetractedAlready;
+
+        await LoadAsync(ct);
     }
 
     // ── Applying the leftovers ───────────────────────────────────────────────
 
     // Applies one leftover pair and reports the outcome the engine returned. A
     // refused plan writes nothing and says so; it is never silently dropped.
+    // Reachable only from HISTORY: nothing the review queue does adds to this
+    // list any more.
     [RelayCommand]
     private async Task ApplyAsync(MergeApplyViewModel? row, CancellationToken ct)
     {
@@ -477,6 +510,7 @@ public partial class MergeQueueViewModel : ObservableObject
         row.IsApplying = true;
 
         var outcome = await _merges.ApplyAsync(row.Id, ct);
+        ReportRetractActId = null;
         ReportUndoApplicationId = null;
         ReportUndoTitle = null;
         ReportMessage = outcome.Applied
@@ -491,6 +525,14 @@ public partial class MergeQueueViewModel : ObservableObject
                 MergeCopy.AppliedNothingFormat,
                 MergeApplyViewModel.RefusalFor(outcome.Plan.Blocker));
 
+        if (outcome.Applied
+            && outcome.ApplicationId is { } applicationId
+            && (await _merges.PreviewUndoAsync(applicationId, ct)).Reversible)
+        {
+            ReportUndoApplicationId = applicationId;
+            ReportUndoTitle = row.AbsorbedTitle ?? row.SurvivingTitle;
+        }
+
         await LoadAsync(ct);
     }
 
@@ -501,6 +543,7 @@ public partial class MergeQueueViewModel : ObservableObject
     {
         var summary = await _merges.ApplyAllConfirmedAsync(ct);
 
+        ReportRetractActId = null;
         ReportUndoApplicationId = null;
         ReportUndoTitle = null;
         ReportMessage = summary.Applied == 0
@@ -514,11 +557,11 @@ public partial class MergeQueueViewModel : ObservableObject
         await LoadAsync(ct);
     }
 
-    // ── Undo ─────────────────────────────────────────────────────────────────
+    // ── Undoing a merge ──────────────────────────────────────────────────────
 
-    // The undo the outcome report offers, which is what makes
-    // answering-applies safe: the merge can be reversed from the same line
-    // that reported it, without navigating to the history surface.
+    // The undo beside a merge report, which is what made applying a leftover
+    // safe. The review path no longer merges, so this is reachable only from
+    // HISTORY.
     [RelayCommand]
     private async Task UndoReportAsync(CancellationToken ct)
     {
@@ -559,6 +602,7 @@ public partial class MergeQueueViewModel : ObservableObject
 
     private async Task UndoApplicationAsync(long applicationId, string restoredTitle, CancellationToken ct)
     {
+        ReportRetractActId = null;
         ReportUndoApplicationId = null;
         ReportUndoTitle = null;
 
@@ -588,22 +632,22 @@ public partial class MergeQueueViewModel : ObservableObject
     // ── Selection ────────────────────────────────────────────────────────────
 
     /// <summary>Selection, shared by pointer and keyboard.</summary>
-    public void Select(MergeCandidateViewModel? candidate)
+    public void Select(MergeGroupViewModel? group)
     {
-        if (ReferenceEquals(SelectedCandidate, candidate))
+        if (ReferenceEquals(SelectedGroup, group))
         {
             return;
         }
 
-        if (SelectedCandidate is { } previous)
+        if (SelectedGroup is { } previous)
         {
             previous.IsSelected = false;
         }
 
-        SelectedCandidate = candidate;
-        if (candidate is not null)
+        SelectedGroup = group;
+        if (group is not null)
         {
-            candidate.IsSelected = true;
+            group.IsSelected = true;
         }
     }
 
@@ -613,16 +657,16 @@ public partial class MergeQueueViewModel : ObservableObject
     /// </summary>
     public int MoveSelection(int delta)
     {
-        if (Candidates.Count == 0)
+        if (Groups.Count == 0)
         {
             return -1;
         }
 
-        var current = IndexOf(SelectedCandidate);
+        var current = IndexOf(SelectedGroup);
         var next = current < 0
             ? 0
-            : Math.Clamp(current + delta, 0, Candidates.Count - 1);
-        Select(Candidates[next]);
+            : Math.Clamp(current + delta, 0, Groups.Count - 1);
+        Select(Groups[next]);
         return next;
     }
 
@@ -635,172 +679,204 @@ public partial class MergeQueueViewModel : ObservableObject
         }
 
         _coverWidthPixels = displayWidthPixels;
-        foreach (var candidate in Candidates)
+        foreach (var group in Groups)
         {
-            candidate.RequestCovers(displayWidthPixels);
+            group.RequestCovers(displayWidthPixels);
         }
     }
 
     // ── Rebuilding ───────────────────────────────────────────────────────────
 
-    // Removes an answered card and leaves the cursor on the pair that slid into
+    // Removes an answered card and leaves the cursor on the group that slid into
     // its place, so the queue can be worked straight down without re-aiming.
-    private void Remove(MergeCandidateViewModel candidate)
+    private void Remove(MergeGroupViewModel group)
     {
-        var index = IndexOf(candidate);
+        var index = IndexOf(group);
 
-        var remaining = new List<MergeCandidateViewModel>(Candidates.Count);
-        foreach (var existing in Candidates)
+        var remaining = new List<MergeGroupViewModel>(Groups.Count);
+        foreach (var existing in Groups)
         {
-            if (!ReferenceEquals(existing, candidate))
+            if (!ReferenceEquals(existing, group))
             {
                 remaining.Add(existing);
             }
         }
 
-        Candidates = remaining;
+        Groups = remaining;
         Select(remaining.Count == 0
             ? null
             : remaining[Math.Clamp(index, 0, remaining.Count - 1)]);
     }
 
-    // Restates every visible card's outcome from the current database. On the
-    // load path the caller passes in titles it has already fetched (a plan's
-    // two release ids are the candidate row's own two columns). After a merge
-    // the caller passes null, and the method fetches from the fresh plans,
-    // because a merge can change which release a neighbouring plan names.
-    private async Task RefreshPreviewsAsync(
-        IReadOnlyList<MergeCandidateViewModel> cards,
-        IReadOnlyDictionary<long, string>? titles,
-        IReadOnlyDictionary<long, long>? workIds,
+    private async Task<IReadOnlyList<MergeGroupViewModel>> BuildGroupsAsync(
+        IReadOnlyList<MergeCandidate> pending,
+        LibrarySnapshot library,
+        IdentityResolution resolution,
         CancellationToken ct)
     {
-        if (cards.Count == 0)
-        {
-            return;
-        }
+        var payloads = new Dictionary<long, SoftMatchSignalsPayload?>(pending.Count);
+        var rows = new Dictionary<long, MergeCandidate>(pending.Count);
+        var proposals = new List<MergeGroupProposal>(pending.Count);
 
-        var planned = new List<(MergeCandidateViewModel Card, MergePlan Plan)>(cards.Count);
-        foreach (var card in cards)
+        foreach (var candidate in pending)
         {
-            planned.Add((card, await _merges.PreviewAsync(card.Id, ct)));
-        }
+            var payload = MergeEdgeViewModel.Parse(candidate);
+            payloads[candidate.Id] = payload;
+            rows[candidate.Id] = candidate;
 
-        if (titles is null || workIds is null)
-        {
-            // From the fresh plans, never from the ids the cards were built
-            // with. A merge can have absorbed one of those releases, and a
-            // lookup against a row that no longer exists would put a release
-            // number where the survivor's name belongs.
-            var releaseIds = new HashSet<long>();
-            foreach (var (_, plan) in planned)
+            proposals.Add(new MergeGroupProposal
             {
-                AddIfPresent(releaseIds, plan.LeftReleaseId);
-                AddIfPresent(releaseIds, plan.RightReleaseId);
+                CandidateId = candidate.Id,
+                LeftReleaseId = candidate.LeftReleaseId,
+                RightReleaseId = candidate.RightReleaseId,
+                Score = candidate.Score,
+                IsPriority = MergeEdgeViewModel.IsPriorityBand(payload),
+            });
+        }
+
+        var groups = MergeGrouping.Build(
+            proposals, library.WorkOfRelease, library.Works, resolution.SameGame);
+
+        var cards = new List<MergeGroupViewModel>(groups.Count);
+        foreach (var group in groups)
+        {
+            var members = new List<MergeGroupMemberViewModel>(group.Members.Count);
+            foreach (var member in group.Members)
+            {
+                members.Add(new MergeGroupMemberViewModel(
+                    member.WorkId,
+                    await DescribeWorkAsync(member, library, ct),
+                    member.ReleaseIds,
+                    member.BestScore,
+                    member.IsDefaultIncluded));
             }
 
-            var described = await DescribeReleasesAsync(releaseIds, ct);
-            titles = described.Titles;
-            workIds = described.WorkIds;
-        }
-
-        // Plans are paired to cards by reference, not by index. An answer on
-        // another card can replace Candidates across the awaits above, so
-        // index pairing would silently assign one card's outcome to its
-        // neighbour, which sits directly over a button that writes to the
-        // library. The reference check ensures a stale plan is dropped rather
-        // than misattributed.
-        var live = new HashSet<MergeCandidateViewModel>(Candidates);
-        // Filtering the pending read handles the load path; this handles the
-        // answer path, where answering one pair can make a neighbouring pair
-        // already-one-game. Together they make acceptance criterion "no BLOCKED
-        // card and no already-one-game message can appear for any pair the queue
-        // shows" true for a whole session, not just at load. The card is dropped
-        // from the screen but its row is NOT answered on the user's behalf; it
-        // stays pending for the sweep to withdraw, because a rejection would
-        // record a decision the user never made.
-        var settled = new List<MergeCandidateViewModel>();
-        foreach (var (card, plan) in planned)
-        {
-            if (!live.Contains(card))
+            var edges = new List<MergeEdgeViewModel>(group.Edges.Count);
+            foreach (var edge in group.Edges)
             {
-                continue;
+                edges.Add(MergeEdgeViewModel.Create(
+                    edge, payloads.GetValueOrDefault(edge.CandidateId)));
             }
 
-            if (plan.Mode == MergeMode.NothingToDo)
-            {
-                settled.Add(card);
-                continue;
-            }
-
-            var (surviving, absorbed) = Sides(plan, workIds);
-            card.Preview = new MergePreviewViewModel(
-                plan,
-                TitleOf(titles, surviving),
-                absorbed is { } id && titles.TryGetValue(id, out var name) ? name : null,
-                absorbed);
+            cards.Add(new MergeGroupViewModel(group, members, edges));
         }
 
-        foreach (var card in settled)
-        {
-            Remove(card);
-        }
+        return cards;
     }
 
-    // Returns only cards whose plan a merge could have changed. A plan reads
-    // two releases and the works they sit on, so a card is reachable when it
-    // names one of the merged releases or when one of its releases sat on the
-    // absorbed work (which just moved to the surviving one). Every other card
-    // reads exactly the rows it read before the merge. Re-planning the whole
-    // queue on every answer froze the UI for ~2s at 200 pending pairs because
-    // Microsoft.Data.Sqlite completes synchronously and this is the path meant
-    // for repeated keypresses.
-    private List<MergeCandidateViewModel> AffectedBy(MergeOutcome outcome)
+    // The member's face comes from the WORK, because a member is a work and its
+    // title is the one the library would keep. The cover key comes from the
+    // store entry, because that is where a Steam appid lives.
+    private async Task<MergeSideViewModel> DescribeWorkAsync(
+        MergeGroupMember member, LibrarySnapshot library, CancellationToken ct)
     {
-        if (!outcome.Applied)
+        var work = await _works.GetAsync(member.WorkId, ct);
+        var releaseId = member.ReleaseIds.Count > 0 ? member.ReleaseIds[0] : 0;
+
+        CoverKey? coverKey = null;
+        foreach (var candidate in member.ReleaseIds)
+        {
+            if (library.CoverKeys.TryGetValue(candidate, out var key))
+            {
+                coverKey = key;
+                break;
+            }
+        }
+
+        if (coverKey is null && IgdbImageUrl.ImageId(work?.CoverUrl) is { Length: > 0 } imageId)
+        {
+            coverKey = CoverKey.Igdb(imageId);
+        }
+
+        return new MergeSideViewModel(
+            releaseId,
+            work?.Name ?? library.Titles.GetValueOrDefault(releaseId, string.Empty),
+            null,
+            work?.FirstReleaseYear,
+            work?.Publisher,
+            coverKey,
+            _covers,
+            member.ReleaseIds);
+    }
+
+    private async Task<IReadOnlyList<MergeLinkHistoryRowViewModel>> BuildLinkHistoryAsync(
+        CancellationToken ct)
+    {
+        var links = await _links.GetHistoryAsync(null, ct);
+        if (links.Count == 0)
         {
             return [];
         }
 
-        var merged = new HashSet<long>();
-        AddIfPresent(merged, outcome.Plan.LeftReleaseId);
-        AddIfPresent(merged, outcome.Plan.RightReleaseId);
-        AddIfPresent(merged, outcome.Plan.SurvivingReleaseId);
-        AddIfPresent(merged, outcome.Plan.AbsorbedReleaseId);
-
-        var absorbedWork = outcome.Plan.AbsorbedWorkId;
-
-        bool Reached(long releaseId)
-            => merged.Contains(releaseId)
-                || (absorbedWork is { } work
-                    && _workIdOfRelease.TryGetValue(releaseId, out var owner)
-                    && owner == work);
-
-        var affected = new List<MergeCandidateViewModel>();
-        foreach (var card in Candidates)
+        var acts = await _links.GetActsAsync(ct);
+        var actById = new Dictionary<long, IdentityAct>(acts.Count);
+        foreach (var act in acts)
         {
-            if (Reached(card.Left.ReleaseId) || Reached(card.Right.ReleaseId))
-            {
-                affected.Add(card);
-            }
+            actById[act.Id] = act;
         }
 
-        // The absorbed work's releases now belong to the surviving work.
-        // Rewriting the cache here keeps the next AffectedBy call correct;
-        // re-querying would reintroduce the database round-trip this cache
-        // exists to avoid.
-        if (absorbedWork is { } absorbed && outcome.Plan.SurvivingWorkId is { } survivor)
+        var names = new Dictionary<long, string>();
+        async Task<string> NameOfAsync(long workId)
         {
-            foreach (var releaseId in _workIdOfRelease.Keys.ToList())
+            if (names.TryGetValue(workId, out var known))
             {
-                if (_workIdOfRelease[releaseId] == absorbed)
+                return known;
+            }
+
+            var work = await _works.GetAsync(workId, ct);
+            var name = work?.Name ?? string.Create(CultureInfo.InvariantCulture, $"#{workId}");
+            names[workId] = name;
+            return name;
+        }
+
+        // Grouped by act, because an act is the unit of undo: one retraction
+        // reverses every link it created, however many that was.
+        var byAct = new Dictionary<long, List<IdentityLink>>();
+        var order = new List<long>();
+        foreach (var link in links)
+        {
+            if (!byAct.TryGetValue(link.ActId, out var list))
+            {
+                byAct[link.ActId] = list = [];
+                order.Add(link.ActId);
+            }
+
+            list.Add(link);
+        }
+
+        var rows = new List<MergeLinkHistoryRowViewModel>(order.Count);
+        foreach (var actId in order)
+        {
+            if (!actById.TryGetValue(actId, out var act))
+            {
+                continue;
+            }
+
+            var members = byAct[actId];
+            var parentWorkId = members[0].ParentWorkId;
+            var childTitles = new List<string>(members.Count);
+            var live = false;
+            DateTime? retractedAt = null;
+
+            foreach (var link in members)
+            {
+                childTitles.Add(await NameOfAsync(link.ChildWorkId));
+                if (link.IsLive)
                 {
-                    _workIdOfRelease[releaseId] = survivor;
+                    live = true;
+                }
+                else if (retractedAt is null || link.RetractedAt > retractedAt)
+                {
+                    retractedAt = link.RetractedAt;
                 }
             }
+
+            rows.Add(new MergeLinkHistoryRowViewModel(
+                act, await NameOfAsync(parentWorkId), childTitles, live, retractedAt));
         }
 
-        return affected;
+        rows.Reverse();
+        return rows;
     }
 
     // Applied merges and the leftovers are one read: both are facts about what
@@ -816,10 +892,11 @@ public partial class MergeQueueViewModel : ObservableObject
             AddIfPresent(releaseIds, plan.RightReleaseId);
         }
 
-        var (titles, _, workIds) = await DescribeReleasesAsync(releaseIds, ct);
+        var library = await DescribeAsync(releaseIds, ct);
 
-        Outstanding = BuildOutstanding(outstanding, titles, workIds);
+        Outstanding = BuildOutstanding(outstanding, library.Titles, library.WorkOfRelease);
         History = BuildHistory(await _merges.HistoryAsync(ct));
+        LinkHistory = await BuildLinkHistoryAsync(ct);
     }
 
     private static void AddIfPresent(HashSet<long> ids, long? id)
@@ -917,14 +994,20 @@ public partial class MergeQueueViewModel : ObservableObject
         _ => string.Empty,
     };
 
-    private async Task<(Dictionary<long, string> Titles,
-                        Dictionary<long, CoverKey> CoverKeys,
-                        Dictionary<long, long> WorkIds)>
-        DescribeReleasesAsync(IEnumerable<long> releaseIds, CancellationToken ct)
+    /// <summary>What one load read about the releases the queue names.</summary>
+    private sealed record LibrarySnapshot(
+        Dictionary<long, string> Titles,
+        Dictionary<long, CoverKey> CoverKeys,
+        Dictionary<long, long> WorkOfRelease,
+        Dictionary<long, SurvivorCandidate> Works);
+
+    private async Task<LibrarySnapshot> DescribeAsync(
+        IEnumerable<long> releaseIds, CancellationToken ct)
     {
         var titles = new Dictionary<long, string>();
         var coverKeys = new Dictionary<long, CoverKey>();
-        var workIds = new Dictionary<long, long>();
+        var workOfRelease = new Dictionary<long, long>();
+        var works = new Dictionary<long, SurvivorCandidate>();
 
         foreach (var releaseId in releaseIds)
         {
@@ -934,12 +1017,24 @@ public partial class MergeQueueViewModel : ObservableObject
                 continue;
             }
 
-            workIds[releaseId] = release.WorkId;
-            _workIdOfRelease[releaseId] = release.WorkId;
+            workOfRelease[releaseId] = release.WorkId;
 
-            // Prefer work name (human title) over release name (edition).
             var work = await _works.GetAsync(release.WorkId, ct);
             titles[releaseId] = work?.Name ?? release.Name;
+
+            if (work is not null && !works.ContainsKey(work.Id))
+            {
+                // The three facts the ladder tests. Release count is the work's
+                // real count, not the count of entries this queue happens to
+                // name, because "most store entries" is a claim about the game.
+                works[work.Id] = new SurvivorCandidate
+                {
+                    WorkId = work.Id,
+                    HasIgdbId = work.IgdbId is not null,
+                    NameIsProvisional = work.NameIsProvisional,
+                    ReleaseCount = (await _releases.GetByWorkAsync(work.Id, ct)).Count,
+                };
+            }
 
             var externalIds = await _releases.GetExternalIdsAsync(releaseId, ct);
             var steam = externalIds.FirstOrDefault(x => x.Provider == ExternalIdProviders.Steam);
@@ -954,19 +1049,19 @@ public partial class MergeQueueViewModel : ObservableObject
             }
         }
 
-        return (titles, coverKeys, workIds);
+        return new LibrarySnapshot(titles, coverKeys, workOfRelease, works);
     }
 
-    private int IndexOf(MergeCandidateViewModel? candidate)
+    private int IndexOf(MergeGroupViewModel? group)
     {
-        if (candidate is null)
+        if (group is null)
         {
             return -1;
         }
 
-        for (var i = 0; i < Candidates.Count; i++)
+        for (var i = 0; i < Groups.Count; i++)
         {
-            if (ReferenceEquals(Candidates[i], candidate))
+            if (ReferenceEquals(Groups[i], group))
             {
                 return i;
             }

@@ -437,13 +437,14 @@ public class MergeApplyViewModelTests
     // ── The wording the queue itself uses ────────────────────────────────────
 
     /// <summary>
-    /// The button keeps the label the copy table mandates, and everything around
-    /// it now says what the label cannot: pressing it writes to the library. The
-    /// previous build's wording - answering records a decision and a second
-    /// control applies it - would be a lie about this screen.
+    /// The buttons keep the labels the copy table mandates, and everything
+    /// around them says what the labels cannot: pressing Same game records a
+    /// link rather than merging, and a link is retractable. The previous
+    /// build's wording - confirming merges immediately - would be a lie about
+    /// this screen.
     /// </summary>
     [Fact]
-    public void Answering_a_pair_says_it_merges_now()
+    public void Answering_a_group_says_it_links_rather_than_merges()
     {
         using var db = new TempDatabase();
         var queue = Screen(db);
@@ -451,25 +452,41 @@ public class MergeApplyViewModelTests
         Assert.Equal(MergeCopy.QueueIntro, queue.IntroMessage);
         Assert.Equal(MergeCopy.DifferentGamesTooltip, queue.DifferentGamesTooltip);
 
-        Assert.DoesNotContain(
-            "separate step", queue.IntroMessage, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("undone", queue.IntroMessage, StringComparison.OrdinalIgnoreCase);
+        // Nothing on the review surface may promise a merge any more, and
+        // nothing may promise the library already looks different: a link is
+        // inert until the read model is taught to resolve it.
+        foreach (var line in new[]
+        {
+            MergeCopy.QueueIntro,
+            MergeCopy.SameGameTooltip,
+            MergeCopy.DifferentGamesTooltip,
+            MergeCopy.LinkEffect,
+        })
+        {
+            Assert.DoesNotContain("merge", line, StringComparison.OrdinalIgnoreCase);
+        }
 
-        // The mergeable card's tooltip promises a merge; the blocked card's
-        // refuses to, and that difference is this screen's whole honesty budget.
-        var mergeable = new MergePreviewViewModel(
-            new MergePlan { CandidateId = 1, Mode = MergeMode.ReleaseCollapse },
-            "Hollow Knight",
-            "Hollow Knight");
-        Assert.Equal(MergeCopy.SameGameTooltip, mergeable.SameGameTooltip);
-        Assert.Contains("merges", mergeable.SameGameTooltip, StringComparison.OrdinalIgnoreCase);
+        // The two keyboard answers still announce their shortcuts.
+        Assert.Contains("(S)", MergeCopy.SameGameTooltip, StringComparison.Ordinal);
+        Assert.Contains("(D)", MergeCopy.DifferentGamesTooltip, StringComparison.Ordinal);
 
-        var blocked = new MergePreviewViewModel(
-            MergePlan.Nothing(2, MergeBlocker.DistinctEditions),
-            "Hollow Knight",
-            "Hollow Knight");
-        Assert.Equal(MergeCopy.SameGameBlockedTooltip, blocked.SameGameTooltip);
-        Assert.DoesNotContain("merges", blocked.SameGameTooltip, StringComparison.OrdinalIgnoreCase);
+        // Every string the group card renders is written, not a placeholder.
+        foreach (var line in new[]
+        {
+            MergeCopy.PendingCountLabel, MergeCopy.PrimaryLabel,
+            MergeCopy.PrimaryControlLabel, MergeCopy.IncludeControlLabel,
+            MergeCopy.LinkEffect, MergeCopy.NoSignals,
+            MergeCopy.EvidenceShow, MergeCopy.EvidenceHide,
+            MergeCopy.EmptySwept, MergeCopy.EmptyNotSwept,
+            MergeCopy.NothingLinked, MergeCopy.Retracted, MergeCopy.RetractedAlready,
+            MergeCopy.LinkHistoryHeading, MergeCopy.LinkHistoryIntro,
+            MergeCopy.LinkHistoryEmpty, MergeCopy.LinkedAtLabel,
+            MergeCopy.RetractedLabel, MergeCopy.RetractButton, MergeCopy.RetractTooltip,
+        })
+        {
+            Assert.DoesNotContain("TODO", line, StringComparison.Ordinal);
+            Assert.NotEmpty(line);
+        }
     }
 
     [Fact]
@@ -480,13 +497,15 @@ public class MergeApplyViewModelTests
 
         await queue.LoadCommand.ExecuteAsync(null);
 
-        // The leftover section explains itself by being absent: an install that
-        // never saw the two-step flow has nothing to be told about it.
+        // Both merge sections explain themselves by being absent: an install
+        // that never saw the two-step flow has nothing to be told about it,
+        // and one that never applied a merge has no history to read.
         Assert.False(queue.HasOutstanding);
+        Assert.False(queue.HasHistory);
 
-        Assert.True(queue.ShowHistoryEmpty);
+        Assert.True(queue.ShowLinkHistoryEmpty);
         Assert.False(queue.HasReport);
-        Assert.Equal(MergeCopy.HistoryEmpty, queue.HistoryEmptyMessage);
+        Assert.Equal(MergeCopy.LinkHistoryEmpty, queue.LinkHistoryEmptyMessage);
     }
 
     // ── Fixture ──────────────────────────────────────────────────────────────
@@ -496,7 +515,8 @@ public class MergeApplyViewModelTests
             new MergeCandidateRepository(db.Factory),
             new ReleaseRepository(db.Factory),
             new WorkRepository(db.Factory),
-            TestMergeExecutor.For(db));
+            TestMergeExecutor.For(db),
+            new IdentityLinkRepository(db.Factory));
 
     private sealed record SeedIds(
         long CandidateId,
