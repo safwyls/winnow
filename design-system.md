@@ -100,7 +100,7 @@ renders at its default light instance and every bold display style comes out wro
 consequently no `wdth` to set; Bricolage's static Bold is `wdth` 100, which is the widest cut
 the face has. `src/Winnow.App/Assets/Fonts/README.md` lists the exact files.
 
-**Every number is Plex Mono with tabular figures** (`FontFeatures="+tnum"`). This is not
+**Every number is Plex Mono with tabular figures** (`FontFeatures="tnum"`). This is not
 optional in list view, where a playtime column that does not align vertically is unreadable
 at scan speed.
 
