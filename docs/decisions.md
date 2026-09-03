@@ -587,3 +587,40 @@ copy with an identical value, so the root file held nothing the app had not adop
 simply 28 keys out of date, all of them the scrollbar and text-style entries.
 
 The root copy is deleted. `src/Winnow.App/Themes/tokens.axaml` is the only token file.
+
+### 2026-09-02 — Charters thinned to what exists nowhere else
+
+The seven `.claude/agents/*.md` charters restated spec rules, and every restatement had
+drifted. `avalonia-ui` taught `Flare #FF5C8A` where the shipping theme seeds `#FF4D93`, and a
+dormancy floor of `0.60` where the spec and the cover pipeline both say `0.68`. `data-layer`
+named the buckets "Never touched / Bounced / Stale-but-patched / Retired / Dead", a vocabulary
+the copy table forbids. `enrichment-api` predated three spikes and named none of what they
+found. `recommendation-engine` cited the M5 GDPR-export importer, which does not exist, and
+forbade wiring the module into the UI, which M8 depends on. `winnow-reviewer` named "the
+project's two authority documents" where four other files named four to six.
+
+A charter now carries a pointer to the document that governs its domain, plus the content that
+exists nowhere else, plus the delegation block. No charter carries a hex value, a threshold or
+an endpoint parameter.
+
+### 2026-09-02 — Spikes stopped being able to override anything
+
+The spikes were described as empirical results that override the specs, which made the specs
+wrong in place and put the current rule in whichever document the reader happened to open. The
+findings are now in the specs (see the fold entry above) and each spike carries one line saying
+it is evidence and naming the section that holds the rule.
+
+Two spikes were also carrying claims about each other. `epic-oauth.md` opened with *"This
+supersedes sections 21–22 of `epic-gog-local-files.md` ... Where the two disagree, this
+document wins"*, which is a precedence claim made inside the evidence layer, the same pattern
+this migration removes. It now states plainly that it probed what the other inferred. And
+`avalonia-dormancy-rendering.md` held its own reversal: a note dated 2026-08-24 said the
+`ItemsRepeater` recommendation was withdrawn while the table further down still made it. The
+table row now says so where a reader meets it.
+
+### 2026-09-02 — The em-dash rule was dropped
+
+The `docs-writer` charter said "**Never use emdashes**, separate ideas with commas, semicolons
+or periods." Every document in the repository uses them heavily, including the ones docs-writer
+authored. The corpus is the fact: the rule was never followed and is removed rather than
+enforced retroactively over the whole corpus.

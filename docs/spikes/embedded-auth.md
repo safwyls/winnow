@@ -1,5 +1,8 @@
 # Spike: embedded-browser sign-in for Epic and GOG
 
+> **Evidence, not a rule.** This document records how something was measured and is
+> never the place to look up what to do. The current rule is in `game-library-design.md` §4.7 and `ROADMAP.md` §4.
+
 Date: 2026-08-26
 Status: **spike only.** Nothing in `src/` was modified, nothing was committed.
 
@@ -658,7 +661,7 @@ got smoother.
    entry inside Winnow is a worse posture than not touching it at all"* — and chose copy-paste
    deliberately. This spike answers the *technical* half of that objection and does not
    dissolve the *posture* half. That reversal should be made consciously, and §1 of
-   `epic-oauth.md` amended to record it rather than left to contradict this document.
+   `epic-oauth.md` corrected to record it rather than left to contradict this document.
 3. **Cloudflare.** `/id/authorize` already challenges non-browser clients. An embedded browser
    with an injected `window.ue` and a spoofed UA is more fingerprintable, not less.
 4. **The credential problem is unchanged and is worse for GOG.** Epic's can stay user-supplied

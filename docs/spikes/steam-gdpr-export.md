@@ -1,5 +1,8 @@
 # Spike: Steam GDPR / account-data export (what it actually contains)
 
+> **Evidence, not a rule.** This document records how something was measured and is
+> never the place to look up what to do. The current rule is in `game-library-design.md` §5.4.
+
 Date: 2026-08-28; updated 2026-08-29
 Verified against: public/primary sources only until 2026-08-28, listed in the Sources
 section. **Two store account pages were obtained and parsed on 2026-08-29:**

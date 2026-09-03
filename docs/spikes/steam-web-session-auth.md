@@ -1,5 +1,8 @@
 # Spike: Steam web session token as an alternative credential
 
+> **Evidence, not a rule.** This document records how something was measured and is
+> never the place to look up what to do. The current rule is in `game-library-design.md` §4.7.
+
 Date: 2026-08-29; updated 2026-08-30 with live probe results
 Evidence: public sources, anonymous probes, and one authenticated live session
 (2026-08-30) inside Winnow's off-the-record WebView2 profile. All URLs and dates are

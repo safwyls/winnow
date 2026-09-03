@@ -1,5 +1,8 @@
 # Spike: Epic OAuth as an authenticated ownership source
 
+> **Evidence, not a rule.** This document records how something was measured and is
+> never the place to look up what to do. The current rule is in `game-library-design.md` §4.8.
+
 Date: 2026-08-26
 Method: live unauthenticated probes from this machine against Epic's production hosts, plus
 source reading at HEAD of `legendary-gl/legendary` (`master` last pushed 2026-08-24) and
@@ -11,10 +14,11 @@ an unauthenticated probe or by source at HEAD, or is explicitly marked UNVERIFIE
 thing that requires a real token to settle is named in section 7, and the implementation
 prints exactly what is needed to settle it.
 
-This supersedes sections 21–22 of `epic-gog-local-files.md`, which reached its conclusions
-from source and community documentation without probing. Where the two disagree, this
-document wins — and section 9 records where they disagree, because one of the disagreements
-matters.
+Sections 21–22 of `epic-gog-local-files.md` reached their conclusions from source and
+community documentation without probing. This spike probed the live endpoints, so where the
+two records differ it is because this one measured what the other inferred; section 9 lists
+the differences, because one of them matters. Neither document states a rule: the rule is in
+`game-library-design.md` §4.8.
 
 ---
 
@@ -43,9 +47,9 @@ interactive login has two viable shapes and neither is credential-free:
 - **Manual copy-paste** (what Legendary falls back to, and what Winnow implements). The user
   signs in on Epic's own page, in their own browser, and pastes back one code.
 
-> **AMENDED 2026-08-26 (M4.6): this rejection was reversed.** The embedded webview
+> **CORRECTED 2026-08-26 (M4.6): this rejection was reversed.** The embedded webview
 > ships. The reasoning, and the half of the objection that survives, are recorded in
-> "AMENDED 2026-08-26: the embedded webview is no longer rejected" at the end of this
+> "CORRECTED 2026-08-26: the embedded webview is no longer rejected" at the end of this
 > section — read that before relying on anything in this bullet.
 
 So there *is* a manual step. What makes it weaker than PSN's is not its absence but three
@@ -63,7 +67,7 @@ weaker version of the second, and does not trip the third.** That is a materiall
 risk profile from PSN, and it is a real difference rather than a rhetorical one — but it is
 not the clean "only the first" the premise assumed.
 
-### AMENDED 2026-08-26: the embedded webview is no longer rejected
+### CORRECTED 2026-08-26: the embedded webview is no longer rejected
 
 The "Rejected" verdict above was reversed by the user after
 `docs/spikes/embedded-auth.md`. Recorded here rather than left to contradict that document,
@@ -243,7 +247,7 @@ requires auth and costs a request per namespace, and `catcache.bin` already has 
 every owned game, locally and for free. So API candidates carry `Title: null`, which the
 ingest contract reads as "this source has no title" and which leaves the local name in charge.
 
-> **AMENDED 2026-08-26. The "not called" half of that was wrong, and it cost the library 29
+> **CORRECTED 2026-08-26. The "not called" half of that was wrong, and it cost the library 29
 > nameless tiles.** See section 14 below. The reasoning above holds for every title
 > `catcache.bin` knows — and silently assumed that is every title the account owns. It is not:
 > this account owns 99 distinct catalog items and the launcher's local catalog covers 70 of
