@@ -1,7 +1,10 @@
 # Migration plan: one source of truth per domain
 
-Status: **plan only.** Nothing outside this file has been edited. Every step below is
-proposed, none is applied.
+Status: **executed 2026-09-02.** This file is now a record of the migration rather than a
+proposal. Steps 0 to 13 and 15 to 17 were applied; step 14 was cancelled by the user, who
+chose to keep `notes.md` as it is, so it sits outside the destination set. Where the shipping
+code disagreed with a disposition below, the code won and the difference is recorded in
+`docs/decisions.md`. Read that file for the outcome; this one is kept for the inventory.
 
 Scope: `README.md`, `CLAUDE.md`, `AGENTS.md`, `ROADMAP.md`, `game-library-design.md`,
 `design-system.md`, `notes.md`, `docs/spikes/`, `.claude/agents/`, `.codex/agents/`.
