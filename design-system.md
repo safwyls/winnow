@@ -266,32 +266,46 @@ This is the power-user view — sortable columns, multi-select, bulk list assign
 the grid cannot do densely lives here, which is how the analytics capability stays available
 without dominating the default experience.
 
-**Merge confirm queue.** Two covers side by side at 200×300, signal diff between them (title
-distance, year delta, publisher). Actions are `Same game` / `Different games` — never
-"Merge"/"Cancel", which asks the user to reason about the data model instead of about games.
+**Merges.** The screen that proposes which library entries are one game and asks the user to
+confirm each proposal and pick which entry becomes the header. The reference is
+`docs/merge_queue_design/README.md`. Three bands: a 56px header (`Merges`, the pending count in
+Data, `Sort ·`, `Accept N exact matches`, and the one filled button, `Merge N selected`); a 40px
+cut bar on `ChromeSurface` with a six-segment kind filter, a cut chip while filtered, and the
+count at the right, `14 → 6` while filtered, the only arrow in the interface; and the queue,
+one scroll of five outlined sections, ACROSS STORES · EDITIONS · EXPANSIONS · PARTS · TEST
+BUILDS, each with the count of its pending cards and a one-sentence blurb.
 
-**Each member states its store.** The store is the fact that decides whether a pair is one
-game on two storefronts. Every member carries its stores in the same outlined chip the tiles
-wear: 1px `Line`, radius 3, body face 9px, `TextDim`. Placement differs by density because the
-space does:
+A proposal card is a composition on `Surface` with a 1px `Line` edge that turns
+`VoltEdgeSoft` while checked: a header grid (checkbox, the header title in Bricolage at 15, the
+unread dot, a confidence word on `SurfaceRaised`, the roll-up line in Data), one 64px candidate
+row per entry (a 2px `Volt` edge and a `ChromeRaised` fill on the header row, `ChromeRaisedHalf`
+under the pointer, a 34×51 cover under the tile gloss with the dormancy ramp, the title in
+Bricolage at 13 followed by HEADER in `Volt`, NESTS UNDER in `TextFaint` or LEFT OUT in
+`TextFaint`, a store chip, playtime and idle time in Data right-aligned, and the 8px unread
+dot), and a reason slot on `SurfaceRaisedFaint` that shows the match's own reason in `TextDim`
+and the hovered row's detail in `Text`. Two controls flank the row: a radio at its head makes
+the row the header, and a checkbox at its end decides whether it joins the roll-up, so a group
+that arrived with one wrong member is answered without refusing the rest. A row left out
+recedes (title in `TextFaint`, cover at 40%) and its proposals with the linked rows are recorded
+as answered no. Neither control is drawn where it would assert nothing: no radio on an
+expansion card, whose base is the header by the shape of the relation, and no checkbox on the
+header. Clicking the row itself opens the game's details, the library's own modal over the
+pane, so the entries can be compared before answering. A row is a work, so an entry already
+owned on two stores is one row wearing two chips. Resolved, the card collapses to a 44px strip:
+`Volt` edge, the header title, `N entries · Nh · nested, nothing deleted`, and `Separate
+again`. The strip stays in place so the list never reflows under the pointer.
 
-- **Pair layout** (`MergeMemberTemplate`, a fixed 200px column): the chips take their own line
-  under the year and entry numbers, in a `WrapPanel` so three chips (123.1px) never clip at
-  200px.
-- **Roster rows** (`MergeRosterRowTemplate`): the chips lead the metadata line, ahead of year,
-  entries and publisher, so down a roster the stores form a column at one constant x.
+Confidence is a word, never a score: EXACT MATCH in `Text`, LIKELY in `TextDim`, WORTH A LOOK in
+`Amber`, the one Amber on the screen. Flare marks only the unread dots. The screen's two
+transitions are the 140ms row-fill restore and the 120ms reason cross-fade. The answers on a
+card are `Same game` / `Different games`. An answer writes a link act and deletes nothing. The
+dock card at bottom-left reports what the last act did, carries Undo, dismisses itself after 7
+seconds, and never takes focus. Past link acts appear as resolved strips in their section, so
+the queue is the retraction surface for every relation and there is no history list.
 
-Members with no ownership row draw no chip row and keep the two-part automation name.
-
-**The card has a maximum width of 840px and is centred.** The roster density sets the ceiling,
-not the pair: card chrome 44 + cover 200 + gutter 28 + roster row minimum 526.0 (member chrome
-30, checkbox 16 + 14, chip cover 64, two 14px margins, the condensed evidence line at 271.7,
-and the "Keep this title" radio at 102.3) = 798. 840 clears that with slack for shaping
-variance, sits on §4's 4px grid, and is twice the 420px feed card measure. The pair layout
-needs only 750. Both densities take the one ceiling, and the primary keeps its 200×300 capsule
-at both, so the card's outer geometry never changes between them. Widths were measured against
-the bundled OFL faces at the exact sizes, weights, letter-spacing and padding the markup sets.
-This is a two-column comparison and not prose, so no reading measure governs it.
+Keyboard: Up and Down walk the candidate rows across every pending card, Space makes the row
+the header, `S`/`Enter` answers Same game, `D` answers Different games, and `Escape` returns to
+the library. The radio and the checkbox are Tab stops of their own.
 
 **Session journal prompt.** 400×220 frameless, bottom-right, `SurfaceRaised`, with the game's
 cover at 60×90 on the left. Title, duration in Data, one text field, 5-dot rating in `Volt`.
@@ -313,7 +327,11 @@ Plain and specific. The app knows something faintly embarrassing about the user 
 | Bucket: unrunnable | `Won't run` | `Dead` |
 | Badge tooltip | `3 updates since you played` | `New content available!` |
 | Journal prompt | `How was that?` | `Rate your session!` |
-| Merge action | `Same game` | `Merge records` |
+| Card answer | `Same game` / `Different games` | `Merge records` / `Cancel` |
+| Merges header | `Merge 3 selected`, `Rolled up under Hades.` | `Confirm identity link` |
+
+`Merge` is the screen's name and its bulk verb. The answer on a card is still `Same game`,
+which asks about games rather than records.
 
 **Empty states are directions, not moods.**
 

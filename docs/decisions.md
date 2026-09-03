@@ -535,6 +535,101 @@ wall is `src/Winnow.App/Views/CoverWall.cs`.
 The stale recommendation sat in the same document as its own reversal, in the layer that was
 supposed to be the evidence.
 
+### 2026-09-02 — The Same Game screen became the Merges queue
+
+`design-system.md` §6 and §7, `AGENTS.md`'s layout notes. The screen was rebuilt to the
+mock in `docs/merge_queue_design/`, whose README is the visual spec. Four conflicts with the
+previous screen were put to the user and decided:
+
+- **The HISTORY surface is retired.** Past link acts appear as resolved strips at the bottom of
+  their section, across sessions, each with `Separate again`. The queue is the retraction
+  surface for every relation, and nothing loses undo.
+- **Escape keeps the app's one rule for it: back to the library.** The mock made Escape answer
+  Different games, a permanent dismissal, and the app's standing rule that Escape always steps
+  back toward the library won. `D` answers Different games.
+- **The header and rail follow the mock's copy.** The rail row is `MERGES`, the title is
+  `Merges`, the primary button is `Merge N selected`. §7 was narrowed from "never Merge" to the
+  answer on a card, which is still `Same game` / `Different games`.
+- **Per-member include checkboxes are gone.** `Same game` nests every row under the header. A
+  member no proposal named with the header is still called out in the reason sentence; a wrong
+  member means `Different games`.
+
+Choices made without a question, because the data model left one answer:
+
+- A row is a work, not a store entry. The link joins works, so an entry already carrying two
+  store entries is one row wearing two chips rather than two rows one of which could be
+  promoted over the other to no effect.
+- Sections: a same-game group whose rows are owned on two or more stores is ACROSS STORES,
+  otherwise EDITIONS; an expansion proposal is TEST BUILDS at kind `variant_of`, PARTS when the
+  storefront's word is an episode or a season, and EXPANSIONS otherwise. A base game's packs are
+  split by section before a card exists, so one card carries one link kind.
+- Confidence: EXACT MATCH is the matcher's top band with identical normalised titles, or an
+  expansion group every member of which a storefront declared; LIKELY is the top band or a
+  corroborated heuristic; WORTH A LOOK is everything below the band. `Accept N exact matches`
+  takes EXACT MATCH cards in ACROSS STORES only.
+- Row thumbnails take the dormancy ramp, as the README asks. The previous screen's capsules
+  did not ("the question is identity, not recency"); at 34×51 the rows read as library rows,
+  and a library row fades.
+- The rail row carries no count and does not recede: a screen is not a cut of anything, and
+  the pending count is on the screen's own header. The row sits with FEED above the rule.
+- `Button.ctl`, the sort flyout and `Border.chip` moved into `Themes/controls.axaml`, because
+  this screen was their second surface.
+
+What §6 used to say, verbatim:
+
+> **Merge confirm queue.** Two covers side by side at 200×300, signal diff between them (title
+> distance, year delta, publisher). Actions are `Same game` / `Different games` — never
+> "Merge"/"Cancel", which asks the user to reason about the data model instead of about games.
+> 
+> **Each member states its store.** The store is the fact that decides whether a pair is one
+> game on two storefronts. Every member carries its stores in the same outlined chip the tiles
+> wear: 1px `Line`, radius 3, body face 9px, `TextDim`. Placement differs by density because the
+> space does:
+> 
+> - **Pair layout** (`MergeMemberTemplate`, a fixed 200px column): the chips take their own line
+>   under the year and entry numbers, in a `WrapPanel` so three chips (123.1px) never clip at
+>   200px.
+> - **Roster rows** (`MergeRosterRowTemplate`): the chips lead the metadata line, ahead of year,
+>   entries and publisher, so down a roster the stores form a column at one constant x.
+> 
+> Members with no ownership row draw no chip row and keep the two-part automation name.
+> 
+> **The card has a maximum width of 840px and is centred.** The roster density sets the ceiling,
+> not the pair: card chrome 44 + cover 200 + gutter 28 + roster row minimum 526.0 (member chrome
+> 30, checkbox 16 + 14, chip cover 64, two 14px margins, the condensed evidence line at 271.7,
+> and the "Keep this title" radio at 102.3) = 798. 840 clears that with slack for shaping
+> variance, sits on §4's 4px grid, and is twice the 420px feed card measure. The pair layout
+> needs only 750. Both densities take the one ceiling, and the primary keeps its 200×300 capsule
+> at both, so the card's outer geometry never changes between them. Widths were measured against
+> the bundled OFL faces at the exact sizes, weights, letter-spacing and padding the markup sets.
+> This is a two-column comparison and not prose, so no reading measure governs it.
+
+What §7's table used to say: `| Merge action | \`Same game\` | \`Merge records\` |`.
+
+### 2026-09-02 — Per-row include restored, and a row opens its details
+
+`design-system.md` §6. Reverses the fourth decision in the entry above ("Per-member include
+checkboxes are gone"), on the user's instruction the same day, after the screen was tried:
+a group that arrives with one wrong member needs answering without refusing the rest, and the
+entries need comparing before the answer is given.
+
+- **Each row carries an include checkbox at its end**, checked by default, on every row but
+  the header. `Same game` links the rows still checked; a row left out has its proposals with
+  the linked rows recorded as answered no (rejected for a same-game group, refused for an
+  expansion group), so it neither comes back on the next sweep nor takes the rest of the card
+  down. A proposal between two left-out rows is left pending, because the user said nothing
+  about it. The dock's Undo reverses the whole answer: the act and the recorded refusals. A
+  card with nothing checked cannot be answered `Same game`; `Different games` is the answer
+  that leaves them all separate.
+- **The header is chosen by a radio at the row's head**, not by clicking the row. The mock
+  promoted on click; that gesture now opens the game's details through the library's own modal,
+  which is drawn over every pane, so the entries can be compared side by side. Space on the
+  focused row still promotes it. No radio is drawn on an expansion card, whose base is the
+  header by the shape of the relation, and no checkbox on the header, which is always in.
+
+The mock in `docs/merge_queue_design/` stays as it was drawn; this entry is where the screen
+departs from it.
+
 ## Corrections made during the source-of-truth migration
 
 ### 2026-09-02 — `CLAUDE.md` and `AGENTS.md` were two copies of one file

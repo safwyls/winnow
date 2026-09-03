@@ -34,25 +34,6 @@ public sealed class StoreChipLayoutTests
     /// <summary>STEAM 44.0 + 4 + EPIC 34.8 + 4 + GOG 36.3.</summary>
     private const double ThreeChips = 123.1;
 
-    /// <summary>Card border 2+2 and padding 20+20.</summary>
-    private const double CardChrome = 44;
-
-    /// <summary>The primary member's capsule (§6).</summary>
-    private const double CoverColumn = 200;
-
-    /// <summary>The gutter between that capsule and the roster.</summary>
-    private const double CoverGutter = 28;
-
-    /// <summary>
-    /// Roster row minimum: member chrome 30, checkbox 16 + 14, chip cover 64,
-    /// two 14px margins, the condensed TITLE/YEAR/PUBLISHER evidence line at
-    /// 271.7 (it does not wrap), and the Keep this title radio at 102.3.
-    /// </summary>
-    private const double RosterRowMinimum = 30 + 16 + 14 + 64 + 14 + 271.7 + 14 + 102.3;
-
-    /// <summary>What the markup sets, and what this file exists to hold.</summary>
-    private const double CardMaxWidth = 840;
-
     // ══ Feed card ════════════════════════════════════════════════════════════
 
     // The TASK-70.6 regression: the chip row replaced a Border that carried
@@ -144,227 +125,30 @@ public sealed class StoreChipLayoutTests
         }
     }
 
-    // ══ The Same Game card ═══════════════════════════════════════════════════
+    // ══ The Merges row ═══════════════════════════════════════════════════════
 
-    // The roster density is the one that sets the ceiling: it needs more
-    // width than a two-member card does, because a roster row carries its
-    // evidence on one non-wrapping line instead of comparing two covers.
-    //
-    // The measure is no longer set on the card. It sat there alone, so on a
-    // wide window the header's right-aligned count stood hundreds of pixels
-    // from the cards it counted; it is now one content column that the header,
-    // the count, the outcome report, the card list, the empty state and the
-    // history log all sit in.
+    // Every candidate row on the Merges screen states its stores: a row is a
+    // work, so an entry owned on two stores is one row wearing two chips, and
+    // the store is the fact that decides whether a pair is one game on two
+    // storefronts.
     [Fact]
-    public void The_same_game_screen_holds_one_measured_content_column()
-    {
-        var view = Load("src/Winnow.App/Views/MergeQueueView.axaml");
-        var style = view
-            .Descendants(Avalonia + "Style")
-            .Single(s => s.Attribute("Selector")?.Value == ":is(Control).measure");
-
-        var setters = style
-            .Elements(Avalonia + "Setter")
-            .ToDictionary(
-                e => e.Attribute("Property")!.Value,
-                e => e.Attribute("Value")?.Value ?? string.Empty,
-                StringComparer.Ordinal);
-
-        Assert.Equal("Center", setters["HorizontalAlignment"]);
-
-        var maxWidth = double.Parse(setters["MaxWidth"], CultureInfo.InvariantCulture);
-        Assert.Equal(CardMaxWidth, maxWidth);
-
-        // The roster is the density that sets the ceiling.
-        var roster = CardChrome + CoverColumn + CoverGutter + RosterRowMinimum;
-        Assert.True(
-            maxWidth >= roster,
-            $"The column is capped at {maxWidth}px and the roster row needs {roster}px.");
-
-        // The card fills the column rather than setting one of its own.
-        var card = view
-            .Descendants(Avalonia + "Style")
-            .Single(s => s.Attribute("Selector")?.Value == "Border.card")
-            .Elements(Avalonia + "Setter")
-            .Select(e => e.Attribute("Property")!.Value)
-            .ToList();
-
-        Assert.DoesNotContain("MaxWidth", card);
-        Assert.DoesNotContain("HorizontalAlignment", card);
-    }
-
-    // Everything the user reads down the screen takes that column: the segment
-    // strip's content (which carries the tab counts), each surface's header
-    // (which carries its outcome report), each card list, each empty state,
-    // and the history log.
-    [Fact]
-    public void Every_column_of_the_same_game_screen_takes_the_measure()
+    public void Every_merges_row_draws_the_store()
     {
         var view = Load("src/Winnow.App/Views/MergeQueueView.axaml");
 
-        var carriers = view
-            .Descendants()
-            .Where(e => e.Attribute("Classes")?.Value.Split(' ').Contains("measure") == true)
-            .ToList();
+        var row = Assert.Single(
+            view.Descendants(Avalonia + "DataTemplate"),
+            t => t.Attribute("DataType")?.Value == "vm:MergeRowViewModel");
 
-        Assert.Equal(8, carriers.Count);
+        var chips = row.Descendants().Single(Binds("StoreChips"));
 
-        // The count, the outcome report and the empty state are inside it, not
-        // beside it.
-        foreach (var path in new[]
-        {
-            "{Binding PendingCountText}",
-            "{Binding ExpansionCountText}",
-            "{Binding EmptyMessage}",
-            "{Binding ExpansionsEmptyMessage}",
-        })
-        {
-            var element = Assert.Single(
-                view.Descendants(Avalonia + "TextBlock"),
-                t => t.Attribute("Text")?.Value == path);
-            Assert.True(
-                InsideTheMeasure(element),
-                $"{path} is drawn outside the content column.");
-        }
-
-        foreach (var report in view
-            .Descendants(Avalonia + "ContentControl")
-            .Where(c => c.Attribute("IsVisible")?.Value.Contains("Report", StringComparison.Ordinal) == true))
-        {
-            Assert.True(
-                InsideTheMeasure(report),
-                "An outcome report is drawn outside the content column.");
-        }
-    }
-
-    // Both the primary column and the member row must bind StoreChips. Placement
-    // differs (own line vs. leading the metadata line) but the fact is present
-    // at every member of every card.
-    [Fact]
-    public void Both_same_game_densities_draw_the_store()
-    {
-        var view = Load("src/Winnow.App/Views/MergeQueueView.axaml");
-
-        foreach (var key in new[] { "MergeMemberTemplate", "MergeRosterRowTemplate" })
-        {
-            var template = view
-                .Descendants(Avalonia + "DataTemplate")
-                .Single(t => t.Attribute(Xaml + "Key")?.Value == key);
-
-            Assert.Contains(template.Descendants(), e => Binds("StoreChips")(e));
-        }
-    }
-
-    // ══ The expansion roster row ═════════════════════════════════════════════
-
-    /// <summary>Member border 1+1 and padding 14+14.</summary>
-    private const double MemberChrome = 30;
-
-    /// <summary>The include checkbox and the 14px margin after it.</summary>
-    private const double IncludeControl = 16 + 14;
-
-    /// <summary>The pack chip and the 14px margin between it and the text column.</summary>
-    private const double PackChip = 64 + 14;
-
-    // The row read "...PUBLISHER SAME TITL" and clipped at the card edge. A
-    // horizontal StackPanel measures children with unbounded width in the
-    // stacking direction, so no width could ever have made the line fit. The
-    // merge roster is built identically and has never overflowed because its
-    // values are short numbers; this line carries one free-text value, the
-    // suffix.
-    //
-    // A WrapPanel measures each child against the line being placed, so facts
-    // move to a second line instead of off the card. The suffix is also
-    // capped and trimmed, so no single group can exceed the column regardless
-    // of title length, which is the part a wrap alone cannot fix.
-
-    [Fact]
-    public void The_expansion_evidence_wraps_inside_the_card()
-    {
-        var line = ExpansionEvidenceLine();
-
-        Assert.Equal("WrapPanel", line.Name.LocalName);
-
-        // Each label and the value it names travel together, so a wrap breaks
-        // between facts and never leaves "PUBLISHER" on one line and "SAME" on
-        // the next.
-        var groups = line.Elements().ToList();
-        Assert.Equal(4, groups.Count);
-        foreach (var group in groups)
-        {
-            Assert.Equal("StackPanel", group.Name.LocalName);
-            Assert.Equal("Horizontal", group.Attribute("Orientation")?.Value);
-            Assert.Equal(2, group.Elements(Avalonia + "TextBlock").Count());
-        }
-    }
-
-    [Fact]
-    public void The_expansion_suffix_cannot_outgrow_the_column_it_sits_in()
-    {
-        var suffix = Assert.Single(
-            ExpansionEvidenceLine().Descendants(Avalonia + "TextBlock"),
-            t => t.Attribute("Text")?.Value == "{Binding SuffixText}");
-
-        Assert.Equal("CharacterEllipsis", suffix.Attribute("TextTrimming")?.Value);
-
-        var cap = double.Parse(suffix.Attribute("MaxWidth")!.Value, CultureInfo.InvariantCulture);
-
-        // The relation word is the other Auto column competing for the row, so
-        // it is capped too and its cap is charged against the text column here.
-        var relation = Assert.Single(
-            ExpansionRosterRow().Descendants(Avalonia + "TextBlock"),
-            t => t.Attribute("Text")?.Value == "{Binding RelationText}");
-        Assert.Equal("CharacterEllipsis", relation.Attribute("TextTrimming")?.Value);
-        var relationCap =
-            double.Parse(relation.Attribute("MaxWidth")!.Value, CultureInfo.InvariantCulture)
-            + 14;
-
-        var column = CardMaxWidth
-            - CardChrome - MemberChrome - IncludeControl - PackChip - relationCap;
-
-        // The suffix takes at most half of what the row has, which leaves its
-        // own label at least as much again. Every other value on the line is
-        // fixed vocabulary (a signed year, SAME/DIFFERENT, YES/NO).
-        Assert.True(
-            cap <= column / 2,
-            $"The suffix may grow to {cap}px inside a {column}px column, which leaves its "
-            + "EXTENDS BY label less room than the value it names.");
-    }
-
-    private static XElement ExpansionRosterRow()
-    {
-        var view = Load("src/Winnow.App/Views/MergeQueueView.axaml");
-        return view
-            .Descendants(Avalonia + "DataTemplate")
-            .Single(t => t.Attribute(Xaml + "Key")?.Value == "ExpansionRosterRowTemplate");
-    }
-
-    /// <summary>
-    /// The innermost element holding the whole evidence line: several
-    /// ancestors contain it, and the one under test is the one that lays it
-    /// out.
-    /// </summary>
-    private static XElement ExpansionEvidenceLine()
-        => ExpansionRosterRow()
-            .Descendants()
-            .Where(e => e.Descendants(Avalonia + "TextBlock")
-                .Any(t => t.Attribute("Text")?.Value == "{Binding ExtendsLabel}")
-                && e.Descendants(Avalonia + "TextBlock")
-                    .Any(t => t.Attribute("Text")?.Value == "{Binding SeparatorText}"))
-            .OrderBy(e => e.Descendants().Count())
-            .First();
-
-    private static bool InsideTheMeasure(XElement element)
-    {
-        for (var node = element.Parent; node is not null; node = node.Parent)
-        {
-            if (node.Attribute("Classes")?.Value.Split(' ').Contains("measure") == true)
-            {
-                return true;
-            }
-        }
-
-        return false;
+        // Three chips (123.1px) must fit the row: the column is Auto and the
+        // title column beside it is the one that gives way.
+        var grid = row.Descendants(Avalonia + "Grid").First();
+        var columns = grid.Attribute("ColumnDefinitions")!.Value.Split(',');
+        var chipColumn = int.Parse(chips.Attribute("Grid.Column")!.Value, CultureInfo.InvariantCulture);
+        Assert.Equal("Auto", columns[chipColumn]);
+        Assert.Contains("*", columns);
     }
 
     // ══ Loading ══════════════════════════════════════════════════════════════

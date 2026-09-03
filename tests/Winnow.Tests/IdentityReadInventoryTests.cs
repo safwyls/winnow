@@ -165,12 +165,6 @@ public sealed class IdentityReadInventoryTests
             + "parent in place of the work the user actually answered about, and it runs while "
             + "the link table is being populated, so there is no resolution to read yet."),
 
-        new("src/Winnow.App/ViewModels/MergeQueueViewModel.cs", "BuildLinkHistoryAsync",
-            Policy.DoNotResolve,
-            "The link history names each work by ITS OWN name. Resolving would print the parent's "
-            + "name on both sides of every row, which is the one place that would make the history "
-            + "unreadable."),
-
         new("src/Winnow.App/Services/EnrichmentSyncService.cs", "EnrichAsync", Policy.DoNotResolve,
             "Enrichment targets the row's own ids. See GetFacetTargetsAsync."),
 

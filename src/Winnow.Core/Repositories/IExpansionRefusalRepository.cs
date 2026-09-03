@@ -32,4 +32,16 @@ public interface IExpansionRefusalRepository
         IReadOnlyList<ExpansionRefusalRequest> pairs,
         string? note = null,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Takes back a refusal, so the next scan may propose the pair again. The
+    /// dock's Undo after a "Different games" is the one caller. Idempotent: a
+    /// pair with no standing refusal is left alone.
+    /// </summary>
+    /// <param name="pairs">The directional pairs to forget. Empty writes nothing.</param>
+    /// <param name="ct">Cancellation.</param>
+    /// <returns>How many refusals were removed.</returns>
+    Task<int> RetractAsync(
+        IReadOnlyList<ExpansionRefusalRequest> pairs,
+        CancellationToken ct = default);
 }

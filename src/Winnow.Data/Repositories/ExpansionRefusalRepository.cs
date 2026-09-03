@@ -85,4 +85,33 @@ public sealed class ExpansionRefusalRepository : IExpansionRefusalRepository
 
         scope.Commit();
     }
+
+    /// <inheritdoc />
+    public async Task<int> RetractAsync(
+        IReadOnlyList<ExpansionRefusalRequest> pairs, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(pairs);
+        if (pairs.Count == 0)
+        {
+            return 0;
+        }
+
+        using var scope = _factory.Begin();
+        using var lease = _factory.Lease();
+
+        var removed = 0;
+        foreach (var pair in pairs)
+        {
+            removed += await lease.Connection.ExecuteAsync(new CommandDefinition("""
+                DELETE FROM expansion_refusals
+                WHERE base_work_id = @baseWorkId AND child_work_id = @childWorkId;
+                """,
+                new { baseWorkId = pair.BaseWorkId, childWorkId = pair.ChildWorkId },
+                lease.Transaction,
+                cancellationToken: ct));
+        }
+
+        scope.Commit();
+        return removed;
+    }
 }

@@ -534,7 +534,7 @@ public partial class GameTileViewModel : ObservableObject
     private static string BuildIdleText(DateTime? lastPlayedUtc, DateTime nowUtc)
         => lastPlayedUtc is { } played ? IdleSpanText(nowUtc - played) : "—";
 
-    private static string IdleSpanText(TimeSpan idle)
+    public static string IdleSpanText(TimeSpan idle)
     {
         var days = Math.Max(0, idle.TotalDays);
         if (days < 30)

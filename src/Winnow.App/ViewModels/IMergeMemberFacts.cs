@@ -6,10 +6,9 @@ namespace Winnow.App.ViewModels;
 /// share a label.
 /// </summary>
 /// <remarks>
-/// <see cref="MergeSideViewModel"/> is now the only implementer. The history
-/// log stopped reading this ladder in TASK-75 and uses its own narrower rule
-/// in <see cref="MergeHistoryLabels"/>. This interface exists so the ladder
-/// is testable against a member's facts rather than against a view.
+/// <see cref="MergeSideViewModel"/> is the only implementer. This interface
+/// exists so the ladder is testable against a row's facts rather than against
+/// a view.
 /// </remarks>
 internal interface IMergeMemberFacts
 {

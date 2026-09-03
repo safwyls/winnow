@@ -3,20 +3,19 @@ using Dapper;
 using Winnow.App.ViewModels;
 using Winnow.Core.Domain;
 using Winnow.Core.Identity;
-using Winnow.Core.Merging;
 using Winnow.Core.Repositories;
 using Winnow.Data;
 using Winnow.Data.Repositories;
 using Winnow.Resolve;
 using Winnow.Resolve.Matching;
-using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.Time.Testing;
 using Xunit;
 
 namespace Winnow.Tests;
 
 /// <summary>
-/// The Same Game screen's view model, whose unit is a GROUP and whose answer is
-/// a LINK.
+/// The Merges screen's view model: one queue of proposal cards in five
+/// sections, whose unit is a CARD and whose answer is a LINK.
 ///
 /// <para>These run against a real migrated SQLite file and the real
 /// repositories, because the facts most worth pinning are all facts about what
@@ -24,55 +23,110 @@ namespace Winnow.Tests;
 /// merge, that a rejected pair never comes back, and that linking, retracting
 /// and linking again leaves the same rows behind every time. No Avalonia
 /// application, dispatcher or rendering is involved; the view model is
-/// constructed directly and every assertion is on its properties.</para>
+/// constructed with an inline poster and a fake clock, and every assertion is
+/// on its properties.</para>
 /// </summary>
 public sealed class MergeQueueViewModelTests
 {
-    // ── Ordering ─────────────────────────────────────────────────────────────
+    private static readonly SeedSide Prey = new("Prey", 2017, "Bethesda Softworks");
+    private static readonly SeedSide PreyUnknown = new("Prey", null, null);
+    private static readonly SeedSide Witcher = new("The Witcher 3: Wild Hunt", 2015, "CD PROJEKT RED");
+    private static readonly SeedSide WitcherGoty =
+        new("The Witcher 3: Wild Hunt - Game of the Year Edition", 2016, "CD PROJEKT RED");
+    private static readonly SeedSide Stanley = new("The Stanley Parable", 2013, "Galactic Cafe");
+    private static readonly SeedSide CivIv = new("Sid Meier's Civilization IV", 2005, "2K");
+    private static readonly SeedSide CivIvWarlords = new("Sid Meier's Civilization IV: Warlords", 2006, "2K");
+    private static readonly SeedSide CivIvBeyond =
+        new("Sid Meier's Civilization IV: Beyond the Sword", 2007, "2K");
+
+    // ── Empty states ─────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task Queue_is_ordered_by_score_descending()
+    public void Before_load_every_section_is_empty_and_nothing_is_loaded()
     {
         using var fixture = new MergeQueueFixture();
+        var queue = fixture.CreateViewModel();
 
-        // Inserted worst-first, so an unordered read would come back backwards.
-        await fixture.QueuePairAsync(
-            new SeedSide("Deus Ex: Human Revolution", 2011, "Square Enix"),
-            new SeedSide("Deus Ex: Human Revolution - Director's Cut", 2013, "Square Enix"));
-        await fixture.QueuePairAsync(
-            new SeedSide("Prey", 2017, "Bethesda Softworks"),
-            new SeedSide("Prey", null, null));
-        await fixture.QueuePairAsync(
-            new SeedSide("The Witcher 3: Wild Hunt", 2015, "CD PROJEKT RED"),
-            new SeedSide("The Witcher 3: Wild Hunt - Game of the Year Edition", 2016, "CD PROJEKT RED"));
+        Assert.False(queue.IsLoaded);
+        Assert.Equal(5, queue.Sections.Count);
+        Assert.Equal(
+            [
+                MergeSectionKind.Stores, MergeSectionKind.Editions, MergeSectionKind.Expansions,
+                MergeSectionKind.Parts, MergeSectionKind.Tests,
+            ],
+            queue.Sections.Select(section => section.Kind));
+        Assert.All(queue.Sections, section => Assert.Empty(section.Cards));
+        Assert.Equal(0, queue.PendingCount);
+    }
+
+    [Fact]
+    public async Task An_empty_load_before_any_sweep_says_the_library_is_still_being_scanned()
+    {
+        using var fixture = new MergeQueueFixture();
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+
+        Assert.True(queue.IsLoaded);
+        Assert.False(queue.HasCompletedSweep);
+        Assert.All(queue.Sections, section => Assert.Empty(section.Cards));
+        Assert.Equal("nothing waiting", queue.PendingLine);
+
+        // Only the same-game sections depend on the matcher; the scan-fed
+        // sections have already been scanned by the time the load returns.
+        Assert.Equal("Still scanning your library.", Section(queue, MergeSectionKind.Stores).EmptyText);
+        Assert.Equal("Still scanning your library.", Section(queue, MergeSectionKind.Editions).EmptyText);
+        Assert.Equal("Nothing left to decide here.", Section(queue, MergeSectionKind.Expansions).EmptyText);
+    }
+
+    [Fact]
+    public async Task An_empty_load_after_a_sweep_says_there_is_nothing_to_decide()
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.ResolveState.SetLastSoftMatchSweepAsync(DateTimeOffset.UtcNow);
 
         var queue = fixture.CreateViewModel();
         await queue.LoadCommand.ExecuteAsync(null);
 
-        Assert.Equal(3, queue.Groups.Count);
-        var scores = queue.Groups.Select(g => g.Score).ToList();
-        Assert.Equal(scores.OrderByDescending(s => s), scores);
+        Assert.True(queue.HasCompletedSweep);
+        Assert.Equal("nothing waiting", queue.PendingLine);
+        Assert.All(
+            queue.Sections,
+            section => Assert.Equal("Nothing left to decide here.", section.EmptyText));
     }
 
+    // ── Sections and confidence ──────────────────────────────────────────────
+
     [Fact]
-    public async Task Strongest_group_is_selected_first()
+    public async Task A_pair_owned_on_two_stores_lands_in_ACROSS_STORES()
     {
         using var fixture = new MergeQueueFixture();
-        await fixture.QueuePairAsync(
-            new SeedSide("Prey", 2017, "Bethesda Softworks"),
-            new SeedSide("Prey", null, null));
-        await fixture.QueuePairAsync(
-            new SeedSide("The Witcher 3: Wild Hunt", 2015, "CD PROJEKT RED"),
-            new SeedSide("The Witcher 3: Wild Hunt - Game of the Year Edition", 2016, "CD PROJEKT RED"));
+        var steam = await fixture.CreateReleaseAsync(Prey, store: "steam");
+        var epic = await fixture.CreateReleaseAsync(Prey, store: "epic");
+        await fixture.QueueScoredPairAsync(steam, epic);
 
         var queue = fixture.CreateViewModel();
         await queue.LoadCommand.ExecuteAsync(null);
 
-        Assert.Same(queue.Groups[0], queue.SelectedGroup);
-        Assert.True(queue.SelectedGroup!.IsSelected);
+        var card = Assert.Single(Section(queue, MergeSectionKind.Stores).Cards);
+        Assert.Equal(MergeSectionKind.Stores, card.Section);
+        Assert.Empty(Section(queue, MergeSectionKind.Editions).Cards);
+        Assert.Equal(1, queue.PendingCount);
+        Assert.Equal("1 proposal · non-destructive", queue.PendingLine);
     }
 
-    // ── One card per group ───────────────────────────────────────────────────
+    [Fact]
+    public async Task A_pair_owned_on_one_store_lands_in_EDITIONS()
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.QueuePairAsync(Witcher, WitcherGoty);
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+
+        var card = Assert.Single(Section(queue, MergeSectionKind.Editions).Cards);
+        Assert.Equal(MergeSectionKind.Editions, card.Section);
+        Assert.Empty(Section(queue, MergeSectionKind.Stores).Cards);
+    }
 
     /// <summary>
     /// The structural answer to the complaint that several proposals name the
@@ -80,353 +134,442 @@ public sealed class MergeQueueViewModelTests
     /// exactly ONE card, so there is no second card left to go stale.
     /// </summary>
     [Fact]
-    public async Task Three_stores_of_one_game_are_one_card()
+    public async Task Three_stores_of_one_game_are_one_card_with_three_rows()
     {
         using var fixture = new MergeQueueFixture();
-        await fixture.QueueTripleAsync();
+        await fixture.QueueCrossStoreTripleAsync();
 
         var queue = fixture.CreateViewModel();
         await queue.LoadCommand.ExecuteAsync(null);
 
-        var card = Assert.Single(queue.Groups);
-        Assert.Equal(3, card.Members.Count);
-        Assert.Equal(3, card.Edges.Count);
-        Assert.False(card.IsPair);
-        Assert.Equal("3", card.MemberCountText);
+        var card = Assert.Single(Section(queue, MergeSectionKind.Stores).Cards);
+        Assert.Equal(3, card.Rows.Count);
+        Assert.Equal(3, card.CandidateIds.Count);
+        Assert.Equal(1, queue.PendingCount);
+        Assert.All(card.Rows, row => Assert.Equal("Prey", row.Title));
 
-        // Three members with one title still answer to three different names,
-        // without a database id among them.
-        Assert.Equal(3, card.Members.Select(m => m.Label).Distinct().Count());
-        Assert.All(card.Members, m => Assert.Equal("Prey", m.Side.Title));
+        // Three rows with one title still answer to three different names.
+        Assert.Equal(3, card.Rows.Select(row => row.Label).Distinct().Count());
+    }
+
+    [Fact]
+    public async Task A_priority_pair_with_identical_titles_is_an_exact_match()
+    {
+        using var fixture = new MergeQueueFixture();
+        var steam = await fixture.CreateReleaseAsync(Prey, store: "steam");
+        var epic = await fixture.CreateReleaseAsync(Prey, store: "epic");
+        await fixture.QueueScoredPairAsync(steam, epic);
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+
+        var card = Assert.Single(Section(queue, MergeSectionKind.Stores).Cards);
+        Assert.Equal(MergeConfidence.Exact, card.Confidence);
+        Assert.Equal("EXACT MATCH", card.ConfidenceLabel);
+        Assert.True(card.IsExact);
+        Assert.StartsWith("Same title on ", card.Reason, StringComparison.Ordinal);
+        Assert.Contains("Same publisher, same year.", card.Reason, StringComparison.Ordinal);
     }
 
     /// <summary>
-    /// One act, one transaction, three-way identity — not three sequential
-    /// pairwise operations each invalidating the next.
+    /// The matcher strips the edition and reports the titles identical, but
+    /// the stores spell them differently, and whether a Game of the Year
+    /// edition is the same game is the user's call. LIKELY says so, and the
+    /// reason names the edition rather than claiming one title.
     /// </summary>
     [Fact]
-    public async Task Approving_a_three_store_group_is_one_act()
+    public async Task A_priority_pair_that_differs_only_by_edition_is_likely_and_says_so()
     {
         using var fixture = new MergeQueueFixture();
-        await fixture.QueueTripleAsync();
+        await fixture.QueuePairAsync(Witcher, WitcherGoty);
 
         var queue = fixture.CreateViewModel();
         await queue.LoadCommand.ExecuteAsync(null);
-        var card = queue.Groups[0];
-        var primary = card.Primary.WorkId;
-        var children = card.Others.Select(m => m.WorkId).Order().ToList();
 
-        await queue.SameGameCommand.ExecuteAsync(card);
-
-        Assert.Empty(queue.Groups);
-        Assert.True(queue.ShowEmpty);
-
-        Assert.Equal(1, fixture.ActCount());
-        Assert.Equal(
-            children.Select(child => (child, primary)),
-            await fixture.LiveLinksAsync());
-
-        // And the queue stays empty across a reload: the proposals now resolve
-        // to one work, so the grouper drops them.
-        await queue.LoadCommand.ExecuteAsync(null);
-        Assert.Empty(queue.Groups);
+        var card = Assert.Single(Section(queue, MergeSectionKind.Editions).Cards);
+        Assert.Equal(MergeConfidence.Likely, card.Confidence);
+        Assert.Equal("LIKELY", card.ConfidenceLabel);
+        Assert.StartsWith(MergeCopy.ReasonSameTitleApartFromEdition, card.Reason, StringComparison.Ordinal);
+        Assert.Contains("a year apart", card.Reason, StringComparison.Ordinal);
     }
 
     /// <summary>
-    /// The complaint this stage answers. Under the pair model, answering one
-    /// proposal left its neighbours blocked; a group has no neighbours to
-    /// stale, because they were never separate cards.
+    /// The Prey (2006) and Prey (2017) guard. Identical titles with nothing
+    /// corroborating them score below the band, and the card says it needs
+    /// reading rather than dressing the pair up as a match.
     /// </summary>
     [Fact]
-    public async Task Answering_a_member_cannot_stale_a_sibling_card()
+    public async Task A_pair_below_the_band_is_worth_a_look()
     {
         using var fixture = new MergeQueueFixture();
-        await fixture.QueueTripleAsync();
-
-        // A second, unrelated group, so "no card went stale" is a claim about a
-        // queue that still has cards in it.
-        await fixture.QueuePairAsync(
-            new SeedSide("The Witcher 3: Wild Hunt", 2015, "CD PROJEKT RED"),
-            new SeedSide("The Witcher 3: Wild Hunt - Game of the Year Edition", 2016, "CD PROJEKT RED"));
+        await fixture.QueuePairAsync(Prey, PreyUnknown);
 
         var queue = fixture.CreateViewModel();
         await queue.LoadCommand.ExecuteAsync(null);
-        Assert.Equal(2, queue.Groups.Count);
 
-        var survivor = queue.Groups.Single(g => g.IsPair);
-        await queue.SameGameCommand.ExecuteAsync(queue.Groups.Single(g => !g.IsPair));
-
-        // The other card is the same object, untouched and still answerable.
-        Assert.Same(survivor, Assert.Single(queue.Groups));
-        Assert.False(survivor.IsDecided);
-
-        await queue.SameGameCommand.ExecuteAsync(survivor);
-        Assert.Empty(queue.Groups);
-        Assert.Equal(2, fixture.ActCount());
-    }
-
-    // ── Including none, some or all ──────────────────────────────────────────
-
-    /// <summary>
-    /// A rejection made inside a group must survive the answer. Without this it
-    /// evaporates and the next sweep proposes the same pair again.
-    /// </summary>
-    [Fact]
-    public async Task An_unchecked_member_records_a_rejection_for_its_edge()
-    {
-        using var fixture = new MergeQueueFixture();
-        await fixture.QueueTripleAsync();
-
-        var queue = fixture.CreateViewModel();
-        await queue.LoadCommand.ExecuteAsync(null);
-        var card = queue.Groups[0];
-
-        var dropped = card.Others[0];
-        var kept = card.Others[1];
-        dropped.IsIncluded = false;
-
-        await queue.SameGameCommand.ExecuteAsync(card);
-
-        // Only the member the user kept was linked.
-        Assert.Equal(
-            [(kept.WorkId, card.Primary.WorkId)],
-            await fixture.LiveLinksAsync());
-
-        // Both edges touching the dropped member are answered "different
-        // games"; the edge between the two included members is not, because
-        // the link is what answers it.
-        var statuses = await fixture.StatusesByEdgeAsync();
-        Assert.Equal(
-            MergeCandidateStatuses.Rejected,
-            statuses[Edge(dropped.WorkId, card.Primary.WorkId)]);
-        Assert.Equal(
-            MergeCandidateStatuses.Rejected,
-            statuses[Edge(dropped.WorkId, kept.WorkId)]);
-        Assert.Equal(
-            MergeCandidateStatuses.Pending,
-            statuses[Edge(kept.WorkId, card.Primary.WorkId)]);
+        var card = Assert.Single(Section(queue, MergeSectionKind.Editions).Cards);
+        Assert.Equal(MergeConfidence.WorthALook, card.Confidence);
+        Assert.Equal("WORTH A LOOK", card.ConfidenceLabel);
+        Assert.True(card.IsWorthALook);
     }
 
     [Fact]
-    public async Task Same_game_with_nothing_checked_links_nothing_and_records_every_edge()
+    public async Task A_forced_review_band_arrives_worth_a_look_whatever_the_titles()
     {
         using var fixture = new MergeQueueFixture();
-        await fixture.QueueTripleAsync();
+        var (left, right) = await fixture.CreatePairAsync(Prey, Prey);
+        await fixture.QueueScoredPairAsync(left, right, SoftMatchBand.Review);
 
         var queue = fixture.CreateViewModel();
         await queue.LoadCommand.ExecuteAsync(null);
-        var card = queue.Groups[0];
-        foreach (var member in card.Others)
+
+        var card = Assert.Single(Section(queue, MergeSectionKind.Editions).Cards);
+        Assert.Equal(MergeConfidence.WorthALook, card.Confidence);
+    }
+
+    // ── The header ───────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task The_header_defaults_to_the_ladders_primary()
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.QueueCrossStoreTripleAsync();
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+
+        var card = Assert.Single(Section(queue, MergeSectionKind.Stores).Cards);
+        Assert.Equal(0, card.HeaderIndex);
+        Assert.Same(card.Rows[0], card.Header);
+        Assert.True(card.Rows[0].IsHeader);
+        Assert.Equal("HEADER", card.Rows[0].HeaderMark);
+        Assert.Equal(card.Rows[0].WorkId, card.ParentWorkId);
+        Assert.Equal(card.Rows[0].Title, card.HeaderTitle);
+        Assert.False(card.IsTouched);
+
+        foreach (var row in card.Rows.Skip(1))
         {
-            member.IsIncluded = false;
+            Assert.False(row.IsHeader);
+            Assert.Equal("NESTS UNDER", row.HeaderMark);
         }
 
-        await queue.SameGameCommand.ExecuteAsync(card);
-
-        Assert.Empty(await fixture.LiveLinksAsync());
-        Assert.Equal(0, fixture.ActCount());
-        Assert.Equal(MergeCopy.NothingLinked, queue.ReportMessage);
-        Assert.All(
-            (await fixture.StatusesByEdgeAsync()).Values,
-            status => Assert.Equal(MergeCandidateStatuses.Rejected, status));
+        Assert.Equal(
+            card.Rows.Skip(1).Select(row => row.WorkId).Order(),
+            card.ChildWorkIds);
     }
 
     [Fact]
-    public async Task Different_games_rejects_every_proposal_in_the_group()
+    public async Task Promoting_a_row_moves_the_header_and_the_direction_of_the_link()
     {
         using var fixture = new MergeQueueFixture();
-        await fixture.QueueTripleAsync();
+        await fixture.QueuePairAsync(Witcher, WitcherGoty);
 
         var queue = fixture.CreateViewModel();
         await queue.LoadCommand.ExecuteAsync(null);
 
-        await queue.DifferentGamesCommand.ExecuteAsync(queue.Groups[0]);
+        var card = Assert.Single(Section(queue, MergeSectionKind.Editions).Cards);
+        var displaced = card.Rows[0];
+        var chosen = card.Rows[1];
+        Assert.True(chosen.CanPromote);
 
-        Assert.Empty(queue.Groups);
-        Assert.Empty(await fixture.LiveLinksAsync());
-        Assert.All(
-            (await fixture.StatusesByEdgeAsync()).Values,
-            status => Assert.Equal(MergeCandidateStatuses.Rejected, status));
-    }
+        card.Promote(chosen);
 
-    /// <summary>
-    /// The Prey (2006) and Prey (2017) guard, end to end. Two members that each
-    /// match a third without matching each other must not arrive as one game.
-    /// </summary>
-    [Fact]
-    public async Task A_below_band_edge_arrives_unchecked()
-    {
-        using var fixture = new MergeQueueFixture();
-        var (a, b, c) = await fixture.CreateTripleAsync();
-        await fixture.QueueScoredPairAsync(a, b);
-        await fixture.QueueScoredPairAsync(a, c);
-        await fixture.QueueScoredPairAsync(b, c, SoftMatchBand.Review);
-
-        var queue = fixture.CreateViewModel();
-        await queue.LoadCommand.ExecuteAsync(null);
-        var card = Assert.Single(queue.Groups);
-
-        Assert.Equal(3, card.Members.Count);
-        Assert.True(card.Primary.IsIncluded);
-
-        // Exactly one of the two others clears the band against everything
-        // already in, so exactly one arrives checked.
-        Assert.Single(card.Others, m => m.IsIncluded);
-        Assert.Single(card.Others, m => !m.IsIncluded);
-    }
-
-    [Fact]
-    public async Task A_member_reachable_only_through_a_sibling_says_so()
-    {
-        using var fixture = new MergeQueueFixture();
-        var (a, b, c) = await fixture.CreateTripleAsync();
-        await fixture.QueueScoredPairAsync(a, b);
-        await fixture.QueueScoredPairAsync(b, c);
-
-        var queue = fixture.CreateViewModel();
-        await queue.LoadCommand.ExecuteAsync(null);
-        var card = Assert.Single(queue.Groups);
-
-        var indirect = card.Others.Single(m => !m.IsIncluded);
-        Assert.True(indirect.IsIndirect);
-        Assert.False(indirect.HasDirectEvidence);
-        Assert.NotEmpty(indirect.IndirectText);
-
-        var direct = card.Others.Single(m => m.IsIncluded);
-        Assert.False(direct.IsIndirect);
-        Assert.True(direct.HasDirectEvidence);
-    }
-
-    // ── Choosing the title the library keeps ─────────────────────────────────
-
-    [Fact]
-    public async Task Every_card_names_the_reason_its_title_was_kept()
-    {
-        using var fixture = new MergeQueueFixture();
-        await fixture.QueuePairAsync(
-            new SeedSide("Prey", 2017, "Bethesda Softworks"),
-            new SeedSide("Prey", null, null));
-
-        var queue = fixture.CreateViewModel();
-        await queue.LoadCommand.ExecuteAsync(null);
-        var card = Assert.Single(queue.Groups);
-
-        Assert.True(card.HasPrimaryReason);
-        Assert.NotEmpty(card.PrimaryReasonText);
-        Assert.Equal(MergeCopy.SurvivorReasonAddedFirst, card.PrimaryReasonText);
-        Assert.True(card.Primary.IsPrimary);
-        Assert.Equal(card.Primary.Side.Title, card.PrimaryTitle);
-    }
-
-    [Fact]
-    public async Task Moving_the_radio_reports_the_user_as_the_reason_and_links_that_way()
-    {
-        using var fixture = new MergeQueueFixture();
-        await fixture.QueuePairAsync(
-            new SeedSide("Prey", 2017, "Bethesda Softworks"),
-            new SeedSide("Prey", null, null));
-
-        var queue = fixture.CreateViewModel();
-        await queue.LoadCommand.ExecuteAsync(null);
-        var card = Assert.Single(queue.Groups);
-
-        var chosen = card.Others[0];
-        var displaced = card.Primary;
-        card.SetPrimary(chosen.WorkId);
-
-        Assert.Equal(MergeSurvivorReason.ChosenByYou, card.PrimaryReason);
-        Assert.Equal(MergeCopy.SurvivorReasonChosenByYou, card.PrimaryReasonText);
-        Assert.Same(chosen, card.Primary);
-
-        // The member that was primary stays in the group rather than dropping
-        // out of it: it was included, and it still is.
-        Assert.True(displaced.IsIncluded);
-        Assert.Same(displaced, Assert.Single(card.Others));
+        Assert.True(card.IsTouched);
+        Assert.Equal(1, card.HeaderIndex);
+        Assert.Same(chosen, card.Header);
+        Assert.True(chosen.IsHeader);
+        Assert.False(displaced.IsHeader);
+        Assert.Equal(chosen.Title, card.HeaderTitle);
+        Assert.Equal(chosen.WorkId, card.ParentWorkId);
+        Assert.Equal([displaced.WorkId], card.ChildWorkIds);
 
         await queue.SameGameCommand.ExecuteAsync(card);
         Assert.Equal([(displaced.WorkId, chosen.WorkId)], await fixture.LiveLinksAsync());
     }
 
     [Fact]
-    public async Task Choosing_a_title_outside_the_group_is_refused()
+    public async Task Promoting_a_row_from_another_card_is_refused()
     {
         using var fixture = new MergeQueueFixture();
-        await fixture.QueuePairAsync(
-            new SeedSide("Prey", 2017, "Bethesda Softworks"),
-            new SeedSide("Prey", null, null));
+        await fixture.QueuePairAsync(Prey, PreyUnknown);
+        await fixture.QueuePairAsync(Witcher, WitcherGoty);
 
         var queue = fixture.CreateViewModel();
         await queue.LoadCommand.ExecuteAsync(null);
-        var card = Assert.Single(queue.Groups);
-        var before = card.Primary.WorkId;
 
-        Assert.Throws<ArgumentOutOfRangeException>(() => card.SetPrimary(9_999));
-        Assert.Equal(before, card.Primary.WorkId);
+        var cards = Section(queue, MergeSectionKind.Editions).Cards;
+        Assert.Equal(2, cards.Count);
+
+        Assert.Throws<ArgumentException>(() => cards[0].Promote(cards[1].Rows[1]));
+        Assert.Equal(0, cards[0].HeaderIndex);
+        Assert.False(cards[0].IsTouched);
     }
 
-    // ── Nothing is destroyed, and nothing is terminal ────────────────────────
-
-    /// <summary>
-    /// The review path writes a link and destroys nothing. After migration
-    /// 0019 there is no destructive path left to reach, so the assertion
-    /// moved from "no merge was applied" to "the two statuses that made an
-    /// answer terminal are not expressible at all": the merge_candidates
-    /// CHECK constraint refuses them.
-    /// </summary>
     [Fact]
-    public async Task The_review_path_destroys_nothing_and_writes_no_terminal_answer()
+    public async Task Rows_on_an_expansion_card_cannot_be_promoted()
     {
         using var fixture = new MergeQueueFixture();
-        await fixture.QueueTripleAsync();
+        await fixture.CreateReleaseAsync(CivIv);
+        await fixture.CreateReleaseAsync(CivIvWarlords);
 
         var queue = fixture.CreateViewModel();
         await queue.LoadCommand.ExecuteAsync(null);
-        await queue.SameGameCommand.ExecuteAsync(queue.Groups[0]);
+
+        var card = Assert.Single(Section(queue, MergeSectionKind.Expansions).Cards);
+        // No radio is drawn on these rows: CanPromote is what hides it.
+        Assert.All(card.Rows, row => Assert.False(row.CanPromote));
+
+        var before = card.Header;
+        card.Promote(card.Rows[1]);
+
+        Assert.Same(before, card.Header);
+        Assert.Equal(0, card.HeaderIndex);
+        Assert.False(card.IsTouched);
+    }
+
+    // ── Same game ────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Same_game_writes_one_act_under_the_header_and_leaves_a_strip_in_place()
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.QueuePairAsync(Witcher, WitcherGoty);
+        await fixture.QueueCrossStoreTripleAsync();
+        await fixture.QueuePairAsync(Prey, PreyUnknown);
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+        Assert.Equal(3, queue.PendingCount);
+
+        var section = Section(queue, MergeSectionKind.Stores);
+        var card = Assert.Single(section.Cards);
+        var parent = card.ParentWorkId;
+        var children = card.ChildWorkIds;
+
+        await queue.SameGameCommand.ExecuteAsync(card);
+
+        // One act, one transaction, three-way identity.
+        Assert.Equal(1, fixture.ActCount());
+        var act = Assert.Single(await fixture.Links.GetActsAsync());
+        Assert.Equal(
+            children.Select(child => (child, parent)),
+            await fixture.LiveLinksAsync());
+
+        // The card became a strip where it stood.
+        Assert.Same(card, Assert.Single(section.Cards));
+        Assert.True(card.IsResolved);
+        Assert.False(card.IsPending);
+        Assert.Equal(act.Id, card.ActId);
+        Assert.Equal(0, section.PendingCount);
+        Assert.Equal(2, queue.PendingCount);
+
+        Assert.True(queue.IsDockOpen);
+        Assert.Equal($"Rolled up under {card.HeaderTitle}.", queue.DockTitle);
+        Assert.Equal("Rolled up under Prey.", queue.DockTitle);
+        Assert.EndsWith("nothing was deleted.", queue.DockNote, StringComparison.Ordinal);
+        Assert.StartsWith("2 entries nested", queue.DockNote, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Answering_twice_writes_only_the_first_answer()
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.QueuePairAsync(Prey, PreyUnknown);
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+        var card = Assert.Single(Section(queue, MergeSectionKind.Editions).Cards);
+
+        await queue.SameGameCommand.ExecuteAsync(card);
+        await queue.SameGameCommand.ExecuteAsync(card);
+        await queue.DifferentGamesCommand.ExecuteAsync(card);
+
+        Assert.Equal(1, fixture.ActCount());
+        Assert.Single(await fixture.LiveLinksAsync());
+        Assert.True(card.IsResolved);
+    }
+
+    /// <summary>
+    /// The review path writes a link and destroys nothing. Every work, every
+    /// store entry and every ownership row is still there afterwards, because
+    /// a link is additive.
+    /// </summary>
+    [Fact]
+    public async Task The_review_path_destroys_nothing()
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.QueueCrossStoreTripleAsync();
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+        await queue.SameGameCommand.ExecuteAsync(Assert.Single(Section(queue, MergeSectionKind.Stores).Cards));
 
         using var conn = fixture.Factory.Open();
-
-        // Every work and every store entry is still there. A link is additive.
         Assert.Equal(3, conn.ExecuteScalar<long>("SELECT COUNT(*) FROM works;"));
         Assert.Equal(3, conn.ExecuteScalar<long>("SELECT COUNT(*) FROM releases;"));
+        Assert.Equal(3, conn.ExecuteScalar<long>("SELECT COUNT(*) FROM ownerships;"));
+        Assert.Equal(2, conn.ExecuteScalar<long>(
+            "SELECT COUNT(*) FROM identity_links WHERE retracted_at IS NULL;"));
+    }
 
-        // The destructive executor's tables are gone, not merely unused.
-        Assert.Empty(conn.Query<string>(
-            "SELECT name FROM sqlite_master "
-            + "WHERE name IN ('merge_applications', 'merge_undo_rows');"));
+    // ── Different games ──────────────────────────────────────────────────────
 
-        // And 'confirmed' and 'undone' cannot be written at all.
-        var id = conn.ExecuteScalar<long>("SELECT MIN(id) FROM merge_candidates;");
-        foreach (var status in new[] { "confirmed", "undone" })
+    [Fact]
+    public async Task Different_games_rejects_every_proposal_on_the_card_and_removes_it()
+    {
+        using var fixture = new MergeQueueFixture();
+        var (a, b, c) = await fixture.CreateTripleAsync();
+        var ids = new[]
         {
-            Assert.Throws<SqliteException>(() => conn.Execute(
-                "UPDATE merge_candidates SET status = @status WHERE id = @id;",
-                new { status, id }));
+            await fixture.QueueScoredPairAsync(a, b),
+            await fixture.QueueScoredPairAsync(a, c),
+            await fixture.QueueScoredPairAsync(b, c),
+        };
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+        var section = Section(queue, MergeSectionKind.Editions);
+        var card = Assert.Single(section.Cards);
+
+        await queue.DifferentGamesCommand.ExecuteAsync(card);
+
+        Assert.Empty(section.Cards);
+        Assert.Equal(0, queue.PendingCount);
+        Assert.Empty(await fixture.LiveLinksAsync());
+        foreach (var id in ids)
+        {
+            Assert.Equal(MergeCandidateStatuses.Rejected, await fixture.StatusOfAsync(id));
+        }
+
+        Assert.True(queue.IsDockOpen);
+        Assert.Equal("Left 1 group alone.", queue.DockTitle);
+    }
+
+    /// <summary>
+    /// Consecutive dismissals share one dock card and one Undo, and Undo puts
+    /// every card back at the index it left from with its proposals pending.
+    /// </summary>
+    [Fact]
+    public async Task Consecutive_dismissals_share_one_dock_and_one_undo_restores_them_in_place()
+    {
+        using var fixture = new MergeQueueFixture();
+        var ids = new[]
+        {
+            await fixture.QueuePairAsync(Prey, PreyUnknown),
+            await fixture.QueuePairAsync(Witcher, WitcherGoty),
+            await fixture.QueuePairAsync(Stanley, Stanley),
+        };
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+        var section = Section(queue, MergeSectionKind.Editions);
+        var original = section.Cards.ToList();
+        Assert.Equal(3, original.Count);
+
+        await queue.DifferentGamesCommand.ExecuteAsync(original[0]);
+        Assert.Equal("Left 1 group alone.", queue.DockTitle);
+
+        await queue.DifferentGamesCommand.ExecuteAsync(original[1]);
+        Assert.Equal("Left 2 groups alone.", queue.DockTitle);
+        Assert.Same(original[2], Assert.Single(section.Cards));
+        Assert.Equal(1, queue.PendingCount);
+
+        var pendingNow = 0;
+        foreach (var id in ids)
+        {
+            pendingNow += await fixture.StatusOfAsync(id) == MergeCandidateStatuses.Pending ? 1 : 0;
+        }
+
+        Assert.Equal(1, pendingNow);
+
+        await queue.UndoCommand.ExecuteAsync(null);
+
+        Assert.Equal(original, section.Cards);
+        Assert.All(section.Cards, card => Assert.True(card.IsPending));
+        Assert.Equal(3, queue.PendingCount);
+        Assert.False(queue.IsDockOpen);
+        foreach (var id in ids)
+        {
+            Assert.Equal(MergeCandidateStatuses.Pending, await fixture.StatusOfAsync(id));
         }
     }
 
-    /// <summary>
-    /// The user's fifth complaint: undo reported success and the pair then read
-    /// as unmergeable. Four cycles must leave exactly what one leaves.
-    /// </summary>
     [Fact]
-    public async Task Link_retract_and_link_again_ends_where_linking_once_ends()
+    public async Task Different_games_on_an_expansion_card_writes_refusals_that_undo_removes()
     {
         using var fixture = new MergeQueueFixture();
-        await fixture.QueuePairAsync(
-            new SeedSide("Prey", 2017, "Bethesda Softworks"),
-            new SeedSide("Prey", null, null));
+        await fixture.CreateReleaseAsync(CivIv);
+        await fixture.CreateReleaseAsync(CivIvWarlords);
+        await fixture.CreateReleaseAsync(CivIvBeyond);
 
         var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+        var section = Section(queue, MergeSectionKind.Expansions);
+        var card = Assert.Single(section.Cards);
+        Assert.Equal(2, card.RefusalPairs.Count);
+
+        await queue.DifferentGamesCommand.ExecuteAsync(card);
+
+        var refusals = await fixture.ExpansionRefusals.GetAllAsync();
+        Assert.Equal(2, refusals.Count);
+        Assert.All(refusals, refusal => Assert.Equal(card.ParentWorkId, refusal.BaseWorkId));
+        Assert.Equal(card.ChildWorkIds, refusals.Select(refusal => refusal.ChildWorkId).Order());
+        Assert.Empty(section.Cards);
+        Assert.Empty(await fixture.LiveLinksAsync());
+
+        await queue.UndoCommand.ExecuteAsync(null);
+
+        Assert.Empty(await fixture.ExpansionRefusals.GetAllAsync());
+        Assert.Same(card, Assert.Single(section.Cards));
+        Assert.True(card.IsPending);
+    }
+
+    // ── Undo and the dock ────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Undo_after_same_game_retracts_the_act_and_closes_the_dock()
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.QueuePairAsync(Prey, PreyUnknown);
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+        var section = Section(queue, MergeSectionKind.Editions);
+        var card = Assert.Single(section.Cards);
+
+        await queue.SameGameCommand.ExecuteAsync(card);
+        Assert.Single(await fixture.LiveLinksAsync());
+        Assert.True(queue.IsDockOpen);
+
+        await queue.UndoCommand.ExecuteAsync(null);
+
+        Assert.Empty(await fixture.LiveLinksAsync());
+        Assert.Same(card, Assert.Single(section.Cards));
+        Assert.True(card.IsPending);
+        Assert.Null(card.ActId);
+        Assert.Equal(1, queue.PendingCount);
+        Assert.False(queue.IsDockOpen);
+    }
+
+    /// <summary>
+    /// The user's fifth complaint on the old screen: undo reported success and
+    /// the pair then read as unmergeable. Four cycles must leave exactly what
+    /// one leaves.
+    /// </summary>
+    [Fact]
+    public async Task Link_undo_and_link_again_ends_where_linking_once_ends()
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.QueuePairAsync(Prey, PreyUnknown);
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+        var card = Assert.Single(Section(queue, MergeSectionKind.Editions).Cards);
 
         IReadOnlyList<(long Child, long Parent)> afterFirst = [];
         for (var cycle = 0; cycle < 4; cycle++)
         {
-            await queue.LoadCommand.ExecuteAsync(null);
-
-            // The card comes back every time. Nothing is terminal.
-            var card = Assert.Single(queue.Groups);
-            Assert.False(card.IsDecided);
-
+            Assert.True(card.IsPending);
             await queue.SameGameCommand.ExecuteAsync(card);
             var links = await fixture.LiveLinksAsync();
 
@@ -440,155 +583,905 @@ public sealed class MergeQueueViewModelTests
                 Assert.Equal(afterFirst, links);
             }
 
-            Assert.True(queue.CanUndoReport);
-            await queue.UndoReportCommand.ExecuteAsync(null);
+            await queue.UndoCommand.ExecuteAsync(null);
             Assert.Empty(await fixture.LiveLinksAsync());
         }
 
-        // One more link, and the state is the state a single link produced.
-        await queue.LoadCommand.ExecuteAsync(null);
-        await queue.SameGameCommand.ExecuteAsync(queue.Groups[0]);
+        await queue.SameGameCommand.ExecuteAsync(card);
         Assert.Equal(afterFirst, await fixture.LiveLinksAsync());
     }
 
     [Fact]
-    public async Task Retracting_returns_the_group_to_the_queue_as_an_ordinary_pending_row()
+    public async Task The_dock_closes_by_itself_after_seven_seconds_and_undo_is_then_gone()
     {
         using var fixture = new MergeQueueFixture();
-        var id = await fixture.QueuePairAsync(
-            new SeedSide("Prey", 2017, "Bethesda Softworks"),
-            new SeedSide("Prey", null, null));
+        await fixture.QueuePairAsync(Prey, PreyUnknown);
 
         var queue = fixture.CreateViewModel();
         await queue.LoadCommand.ExecuteAsync(null);
-        await queue.SameGameCommand.ExecuteAsync(queue.Groups[0]);
+        var card = Assert.Single(Section(queue, MergeSectionKind.Editions).Cards);
 
-        // Linked: the proposal is answered by the link's existence, and the
-        // card is gone.
+        await queue.SameGameCommand.ExecuteAsync(card);
+        Assert.True(queue.IsDockOpen);
+
+        fixture.Clock.Advance(MergeQueueViewModel.DockFor - TimeSpan.FromSeconds(1));
+        Assert.True(queue.IsDockOpen);
+
+        fixture.Clock.Advance(TimeSpan.FromSeconds(2));
+        Assert.False(queue.IsDockOpen);
+
+        // The act stands: Undo after the dock has gone does nothing.
+        await queue.UndoCommand.ExecuteAsync(null);
+        Assert.Single(await fixture.LiveLinksAsync());
+        Assert.True(card.IsResolved);
+    }
+
+    [Fact]
+    public async Task Dismissing_the_dock_closes_it_early_and_forgets_the_undo()
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.QueuePairAsync(Prey, PreyUnknown);
+
+        var queue = fixture.CreateViewModel();
         await queue.LoadCommand.ExecuteAsync(null);
-        Assert.Empty(queue.Groups);
-        Assert.Equal(MergeCandidateStatuses.Pending, await fixture.StatusOfAsync(id));
+        var card = Assert.Single(Section(queue, MergeSectionKind.Editions).Cards);
 
-        await queue.ShowHistoryCommand.ExecuteAsync(null);
-        var row = Assert.Single(queue.LinkHistory);
-        Assert.True(row.CanUndo);
+        await queue.SameGameCommand.ExecuteAsync(card);
+        Assert.True(queue.IsDockOpen);
 
-        await queue.UndoCommand.ExecuteAsync(row);
+        queue.DismissDockCommand.Execute(null);
+        Assert.False(queue.IsDockOpen);
 
-        Assert.Single(queue.Groups);
-        Assert.Equal(MergeCandidateStatuses.Pending, await fixture.StatusOfAsync(id));
-        Assert.Equal(MergeCopy.Undone, queue.ReportMessage);
+        await queue.UndoCommand.ExecuteAsync(null);
+        Assert.Single(await fixture.LiveLinksAsync());
+        Assert.True(card.IsResolved);
 
-        // The undone act LEAVES the list. It used to stay on it, stamped
-        // RETRACTED, which the user chose against: what is on the log is what
-        // is in force.
-        Assert.Empty(queue.LinkHistory);
+        // And the timer that would have closed it is gone too: advancing the
+        // clock past the window changes nothing.
+        fixture.Clock.Advance(MergeQueueViewModel.DockFor + TimeSpan.FromSeconds(1));
+        Assert.False(queue.IsDockOpen);
+    }
+
+    // ── Separate again ───────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Separate_again_on_a_card_answered_this_session_returns_it_to_pending_in_place()
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.QueuePairAsync(Witcher, WitcherGoty);
+        await fixture.QueuePairAsync(Prey, PreyUnknown);
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+        var section = Section(queue, MergeSectionKind.Editions);
+        var original = section.Cards.ToList();
+        var card = original[0];
+
+        await queue.SameGameCommand.ExecuteAsync(card);
+        Assert.True(card.IsResolved);
+        Assert.False(card.IsFromHistory);
+
+        await queue.SeparateCommand.ExecuteAsync(card);
+
+        Assert.True(card.IsPending);
+        Assert.Null(card.ActId);
+        Assert.Empty(await fixture.LiveLinksAsync());
+        Assert.Equal(original, section.Cards);
+        Assert.Equal(2, queue.PendingCount);
+    }
+
+    [Fact]
+    public async Task A_standing_same_game_act_across_two_stores_loads_as_a_strip_in_ACROSS_STORES()
+    {
+        using var fixture = new MergeQueueFixture();
+        var steam = await fixture.CreateReleaseAsync(Prey, store: "steam");
+        var epic = await fixture.CreateReleaseAsync(Prey, store: "epic");
+        await fixture.QueueScoredPairAsync(steam, epic);
+        var actId = await fixture.LinkAsync(steam, epic);
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+
+        var strip = Assert.Single(Section(queue, MergeSectionKind.Stores).Cards);
+        Assert.True(strip.IsResolved);
+        Assert.True(strip.IsFromHistory);
+        Assert.Equal(actId, strip.ActId);
+        Assert.Equal(IdentityLinkKinds.SameGame, strip.LinkKind);
+        Assert.Equal(steam.WorkId, strip.ParentWorkId);
+        Assert.Equal([epic.WorkId], strip.ChildWorkIds);
+
+        // The proposal it answered is not asked again.
+        Assert.Equal(0, queue.PendingCount);
+        Assert.Empty(Section(queue, MergeSectionKind.Editions).Cards);
+    }
+
+    [Fact]
+    public async Task A_standing_same_game_act_on_one_store_loads_as_a_strip_in_EDITIONS()
+    {
+        using var fixture = new MergeQueueFixture();
+        var (left, right) = await fixture.CreatePairAsync(Witcher, WitcherGoty);
+        await fixture.QueueScoredPairAsync(left, right);
+        var actId = await fixture.LinkAsync(left, right);
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+
+        var strip = Assert.Single(Section(queue, MergeSectionKind.Editions).Cards);
+        Assert.True(strip.IsFromHistory);
+        Assert.Equal(actId, strip.ActId);
+        Assert.Empty(Section(queue, MergeSectionKind.Stores).Cards);
+        Assert.Equal(0, queue.PendingCount);
+    }
+
+    [Fact]
+    public async Task A_standing_expansion_act_loads_as_a_strip_in_EXPANSIONS()
+    {
+        using var fixture = new MergeQueueFixture();
+        var baseGame = await fixture.CreateReleaseAsync(CivIv);
+        var pack = await fixture.CreateReleaseAsync(CivIvWarlords);
+        var actId = await fixture.LinkAsync(baseGame, pack, IdentityLinkKinds.ExpansionOf);
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+
+        var strip = Assert.Single(Section(queue, MergeSectionKind.Expansions).Cards);
+        Assert.True(strip.IsResolved);
+        Assert.True(strip.IsFromHistory);
+        Assert.Equal(actId, strip.ActId);
+        Assert.Equal(IdentityLinkKinds.ExpansionOf, strip.LinkKind);
+        Assert.Equal(0, queue.PendingCount);
+    }
+
+    [Fact]
+    public async Task A_standing_variant_act_loads_as_a_strip_in_TEST_BUILDS()
+    {
+        using var fixture = new MergeQueueFixture();
+        var baseGame = await fixture.CreateReleaseAsync(CivIv);
+        var demo = await fixture.CreateReleaseAsync(
+            new SeedSide("Sid Meier's Civilization IV: Warlords Demo", 2006, "2K"));
+        var actId = await fixture.LinkAsync(
+            baseGame, demo, IdentityLinkKinds.VariantOf, RelationLabels.Demo);
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+
+        var strip = Assert.Single(Section(queue, MergeSectionKind.Tests).Cards);
+        Assert.True(strip.IsFromHistory);
+        Assert.Equal(actId, strip.ActId);
+        Assert.Equal(IdentityLinkKinds.VariantOf, strip.LinkKind);
+        Assert.Equal(RelationLabels.Demo, strip.RelationLabel);
+        Assert.Empty(Section(queue, MergeSectionKind.Expansions).Cards);
+        Assert.Equal(0, queue.PendingCount);
     }
 
     /// <summary>
-    /// Retracting an act restores every child it displaced to the parent it had
-    /// immediately before that act, driven from the screen rather than from the
-    /// repository.
+    /// A strip loaded from an earlier session carries no proposal ids, so
+    /// separating it reloads the queue: the act is retracted and the proposals
+    /// it answered are questions again.
     /// </summary>
     [Fact]
-    public async Task Retracting_a_regrouping_restores_each_member_to_its_previous_group()
+    public async Task Separate_again_on_a_strip_from_history_retracts_the_act_and_brings_the_proposal_back()
     {
         using var fixture = new MergeQueueFixture();
-        var (a, b, c) = await fixture.CreateTripleAsync();
-        await fixture.QueueScoredPairAsync(a, b);
+        var steam = await fixture.CreateReleaseAsync(Prey, store: "steam");
+        var epic = await fixture.CreateReleaseAsync(Prey, store: "epic");
+        var id = await fixture.QueueScoredPairAsync(steam, epic);
+        await fixture.LinkAsync(steam, epic);
 
         var queue = fixture.CreateViewModel();
         await queue.LoadCommand.ExecuteAsync(null);
+        var section = Section(queue, MergeSectionKind.Stores);
+        var strip = Assert.Single(section.Cards);
 
-        // First act: b under a.
-        var first = queue.Groups[0];
-        first.SetPrimary(await fixture.WorkOfAsync(a.ReleaseId));
-        await queue.SameGameCommand.ExecuteAsync(first);
+        await queue.SeparateCommand.ExecuteAsync(strip);
 
-        var workA = await fixture.WorkOfAsync(a.ReleaseId);
-        var workB = await fixture.WorkOfAsync(b.ReleaseId);
-        var workC = await fixture.WorkOfAsync(c.ReleaseId);
-        Assert.Equal([(workB, workA)], await fixture.LiveLinksAsync());
+        Assert.Empty(await fixture.LiveLinksAsync());
+        var card = Assert.Single(section.Cards);
+        Assert.True(card.IsPending);
+        Assert.False(card.IsFromHistory);
+        Assert.Equal([id], card.CandidateIds);
+        Assert.Equal(1, queue.PendingCount);
+        Assert.Equal(MergeCandidateStatuses.Pending, await fixture.StatusOfAsync(id));
+    }
 
-        // Second act: a chosen as a child of c, which re-parents b inside the
-        // same act so depth stays at one.
-        await fixture.QueueScoredPairAsync(a, c);
+    [Fact]
+    public async Task Separate_again_on_an_expansion_strip_brings_the_scan_proposal_back()
+    {
+        using var fixture = new MergeQueueFixture();
+        var baseGame = await fixture.CreateReleaseAsync(CivIv);
+        var pack = await fixture.CreateReleaseAsync(CivIvWarlords);
+        await fixture.LinkAsync(baseGame, pack, IdentityLinkKinds.ExpansionOf);
+
+        var queue = fixture.CreateViewModel();
         await queue.LoadCommand.ExecuteAsync(null);
-        var second = queue.Groups[0];
-        second.SetPrimary(workC);
-        await queue.SameGameCommand.ExecuteAsync(second);
+        var section = Section(queue, MergeSectionKind.Expansions);
 
+        await queue.SeparateCommand.ExecuteAsync(Assert.Single(section.Cards));
+
+        Assert.Empty(await fixture.LiveLinksAsync());
+        var card = Assert.Single(section.Cards);
+        Assert.True(card.IsPending);
+        Assert.Equal(IdentityLinkKinds.ExpansionOf, card.LinkKind);
+        Assert.Single(card.RefusalPairs);
+    }
+
+    // ── The header's bulk paths ──────────────────────────────────────────────
+
+    [Fact]
+    public async Task Merge_selected_links_every_checked_card_under_its_own_header_and_one_undo_retracts_them_all()
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.QueuePairAsync(Prey, PreyUnknown);
+        await fixture.QueuePairAsync(Witcher, WitcherGoty);
+        await fixture.QueuePairAsync(Stanley, Stanley);
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+        var section = Section(queue, MergeSectionKind.Editions);
+        var cards = section.Cards.ToList();
+        Assert.Equal(3, cards.Count);
+
+        Assert.Equal("Merge selected", queue.MergeSelectedLabel);
+        Assert.False(queue.CanMergeSelected);
+
+        cards[0].IsSelected = true;
+        cards[2].IsSelected = true;
+        cards[2].Promote(cards[2].Rows[1]);
+
+        Assert.Equal(2, queue.SelectedCount);
+        Assert.Equal("Merge 2 selected", queue.MergeSelectedLabel);
+        Assert.True(queue.CanMergeSelected);
+
+        await queue.MergeSelectedCommand.ExecuteAsync(null);
+
+        Assert.Equal(2, fixture.ActCount());
         Assert.Equal(
-            [(workA, workC), (workB, workC)],
+            new[]
+            {
+                (cards[0].Rows[1].WorkId, cards[0].Rows[0].WorkId),
+                (cards[2].Rows[0].WorkId, cards[2].Rows[1].WorkId),
+            }.OrderBy(link => link.Item1).ThenBy(link => link.Item2),
             await fixture.LiveLinksAsync());
 
-        await queue.UndoReportCommand.ExecuteAsync(null);
+        Assert.True(cards[0].IsResolved);
+        Assert.True(cards[1].IsPending);
+        Assert.True(cards[2].IsResolved);
+        Assert.Equal(1, queue.PendingCount);
+        Assert.Equal(0, queue.SelectedCount);
+        Assert.Equal("Rolled up 2 groups.", queue.DockTitle);
 
-        // One retraction puts every member the act moved back where it was.
-        Assert.Equal([(workB, workA)], await fixture.LiveLinksAsync());
+        await queue.UndoCommand.ExecuteAsync(null);
+
+        Assert.Empty(await fixture.LiveLinksAsync());
+        Assert.All(cards, card => Assert.True(card.IsPending));
+        Assert.Equal(3, queue.PendingCount);
     }
 
     [Fact]
-    public async Task A_proposal_that_is_already_one_game_never_reaches_the_screen()
+    public async Task Accept_exact_links_only_exact_cross_store_cards_and_its_label_counts_live()
     {
         using var fixture = new MergeQueueFixture();
-        fixture.QueueAlreadyOneGamePair();
+
+        // Two exact matches across stores.
+        await fixture.QueueScoredPairAsync(
+            await fixture.CreateReleaseAsync(Prey, store: "steam"),
+            await fixture.CreateReleaseAsync(Prey, store: "epic"));
+        await fixture.QueueScoredPairAsync(
+            await fixture.CreateReleaseAsync(Stanley, store: "steam"),
+            await fixture.CreateReleaseAsync(Stanley, store: "gog"));
+
+        // An exact match on ONE store, and a likely match across stores.
+        // Neither is the safe bulk path.
+        await fixture.QueuePairAsync(Stanley, Stanley);
+        await fixture.QueueScoredPairAsync(
+            await fixture.CreateReleaseAsync(Witcher, store: "steam"),
+            await fixture.CreateReleaseAsync(WitcherGoty, store: "gog"));
 
         var queue = fixture.CreateViewModel();
         await queue.LoadCommand.ExecuteAsync(null);
 
-        Assert.Empty(queue.Groups);
-        Assert.True(queue.ShowEmpty);
+        var stores = Section(queue, MergeSectionKind.Stores);
+        var editions = Section(queue, MergeSectionKind.Editions);
+        Assert.Equal(3, stores.PendingCount);
+        Assert.Equal(1, editions.PendingCount);
+
+        Assert.Equal(2, queue.ExactCount);
+        Assert.Equal("Accept 2 exact matches", queue.AcceptExactLabel);
+        Assert.True(queue.CanAcceptExact);
+
+        await queue.AcceptExactCommand.ExecuteAsync(null);
+
+        Assert.Equal(2, fixture.ActCount());
+        Assert.Equal(2, stores.Cards.Count(card => card.IsResolved && card.IsExact));
+        var stillPending = Assert.Single(stores.Cards, card => card.IsPending);
+        Assert.Equal(MergeConfidence.Likely, stillPending.Confidence);
+        Assert.True(Assert.Single(editions.Cards).IsPending);
+        Assert.Equal(2, queue.PendingCount);
+
+        Assert.Equal(0, queue.ExactCount);
+        Assert.Equal("No exact matches left", queue.AcceptExactLabel);
+        Assert.False(queue.CanAcceptExact);
+        Assert.Equal("Rolled up 2 exact matches.", queue.DockTitle);
+
+        // A second press writes nothing.
+        await queue.AcceptExactCommand.ExecuteAsync(null);
+        Assert.Equal(2, fixture.ActCount());
     }
 
     [Fact]
-    public async Task A_rejected_proposal_stays_rejected_when_the_resolver_runs_again()
+    public async Task The_accept_exact_label_is_singular_at_one()
     {
         using var fixture = new MergeQueueFixture();
-        var id = await fixture.QueuePairAsync(
-            new SeedSide("Prey", 2017, "Bethesda Softworks"),
-            new SeedSide("Prey", null, null));
+        await fixture.QueueScoredPairAsync(
+            await fixture.CreateReleaseAsync(Prey, store: "steam"),
+            await fixture.CreateReleaseAsync(Prey, store: "epic"));
 
         var queue = fixture.CreateViewModel();
         await queue.LoadCommand.ExecuteAsync(null);
-        await queue.DifferentGamesCommand.ExecuteAsync(queue.Groups[0]);
 
-        Assert.Equal(MergeCandidateStatuses.Rejected, await fixture.StatusOfAsync(id));
+        Assert.Equal("Accept 1 exact match", queue.AcceptExactLabel);
+    }
 
+    // ── Sort ─────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Strongest_match_orders_exact_before_likely_before_worth_a_look()
+    {
+        using var fixture = new MergeQueueFixture();
+
+        // Inserted weakest-first, so an unordered read would come back backwards.
+        await fixture.QueuePairAsync(Prey, PreyUnknown);
+        await fixture.QueuePairAsync(Witcher, WitcherGoty);
+        await fixture.QueuePairAsync(Stanley, Stanley);
+
+        var queue = fixture.CreateViewModel();
         await queue.LoadCommand.ExecuteAsync(null);
-        Assert.Empty(queue.Groups);
+
+        Assert.Equal(MergeSort.StrongestMatch, queue.Sort);
+        Assert.Equal(
+            [MergeConfidence.Exact, MergeConfidence.Likely, MergeConfidence.WorthALook],
+            Section(queue, MergeSectionKind.Editions).Cards.Select(card => card.Confidence));
     }
 
     [Fact]
-    public async Task Answering_twice_writes_only_the_first_answer()
+    public async Task Playtime_at_stake_orders_by_summed_minutes_descending()
     {
         using var fixture = new MergeQueueFixture();
-        await fixture.QueuePairAsync(
-            new SeedSide("Prey", 2017, "Bethesda Softworks"),
-            new SeedSide("Prey", null, null));
+        var (preyLeft, preyRight) = await fixture.CreatePairAsync(Prey, PreyUnknown);
+        var (witcherLeft, witcherRight) = await fixture.CreatePairAsync(Witcher, WitcherGoty);
+        var (stanleyLeft, stanleyRight) = await fixture.CreatePairAsync(Stanley, Stanley);
+        await fixture.QueueScoredPairAsync(preyLeft, preyRight);
+        await fixture.QueueScoredPairAsync(witcherLeft, witcherRight);
+        await fixture.QueueScoredPairAsync(stanleyLeft, stanleyRight);
+
+        // Strongest match would put Stanley (exact) first and Prey last;
+        // playtime says the opposite. The Witcher's hours are split across
+        // its two entries, so the card's figure is a sum, not a maximum.
+        await fixture.PlayedAsync(preyLeft, 600, MergeQueueFixture.Now.AddDays(-40));
+        await fixture.PlayedAsync(witcherLeft, 30, MergeQueueFixture.Now.AddDays(-40));
+        await fixture.PlayedAsync(witcherRight, 30, MergeQueueFixture.Now.AddDays(-40));
 
         var queue = fixture.CreateViewModel();
         await queue.LoadCommand.ExecuteAsync(null);
-        var card = queue.Groups[0];
+        var section = Section(queue, MergeSectionKind.Editions);
+        Assert.Equal("The Stanley Parable", section.Cards[0].HeaderTitle);
+
+        var option = queue.SortOptions.Single(o => o.Sort == MergeSort.PlaytimeAtStake);
+        queue.SelectSortCommand.Execute(option);
+
+        Assert.Equal(MergeSort.PlaytimeAtStake, queue.Sort);
+        Assert.Equal([600, 60, 0], section.Cards.Select(card => card.TotalMinutes));
+        Assert.Equal(
+            ["Prey", "The Witcher 3: Wild Hunt", "The Stanley Parable"],
+            section.Cards.Select(card => card.HeaderTitle));
+        Assert.True(option.IsSelected);
+        Assert.False(queue.SortOptions.Single(o => o.Sort == MergeSort.StrongestMatch).IsSelected);
+    }
+
+    [Fact]
+    public async Task Title_orders_by_the_header_title()
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.QueuePairAsync(Witcher, WitcherGoty);
+        await fixture.QueuePairAsync(Stanley, Stanley);
+        await fixture.QueuePairAsync(Prey, PreyUnknown);
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+
+        queue.SelectSortCommand.Execute(queue.SortOptions.Single(option => option.Sort == MergeSort.Title));
+
+        Assert.Equal(
+            ["Prey", "The Stanley Parable", "The Witcher 3: Wild Hunt"],
+            Section(queue, MergeSectionKind.Editions).Cards.Select(card => card.HeaderTitle));
+    }
+
+    [Fact]
+    public async Task Resolved_strips_sit_after_pending_cards_after_a_resort()
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.QueuePairAsync(Witcher, WitcherGoty);
+        await fixture.QueuePairAsync(Stanley, Stanley);
+        await fixture.QueuePairAsync(Prey, PreyUnknown);
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+        var section = Section(queue, MergeSectionKind.Editions);
+
+        // The exact match leads the strongest-match order, and by title it
+        // would lead too ("The Stanley Parable" < "The Witcher 3"); as a strip
+        // it sits last either way.
+        var answered = section.Cards[0];
+        Assert.Equal("The Stanley Parable", answered.HeaderTitle);
+        await queue.SameGameCommand.ExecuteAsync(answered);
+
+        queue.SelectSortCommand.Execute(queue.SortOptions.Single(option => option.Sort == MergeSort.Title));
+
+        Assert.Equal(
+            ["Prey", "The Witcher 3: Wild Hunt", "The Stanley Parable"],
+            section.Cards.Select(card => card.HeaderTitle));
+        Assert.Same(answered, section.Cards[^1]);
+        Assert.True(section.Cards[^1].IsResolved);
+        Assert.All(section.Cards.Take(2), card => Assert.True(card.IsPending));
+    }
+
+    [Fact]
+    public async Task The_sort_label_names_the_current_order()
+    {
+        using var fixture = new MergeQueueFixture();
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+
+        Assert.Equal("Sort · Strongest match", queue.SortLabel);
+
+        queue.SelectSortCommand.Execute(queue.SortOptions.Single(option => option.Sort == MergeSort.PlaytimeAtStake));
+        Assert.Equal("Sort · Playtime at stake", queue.SortLabel);
+
+        queue.SelectSortCommand.Execute(queue.SortOptions.Single(option => option.Sort == MergeSort.Title));
+        Assert.Equal("Sort · Title", queue.SortLabel);
+    }
+
+    // ── The kind filter ──────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Filtering_to_STORES_hides_every_other_section_and_counts_only_what_is_shown()
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.QueueScoredPairAsync(
+            await fixture.CreateReleaseAsync(Prey, store: "steam"),
+            await fixture.CreateReleaseAsync(Prey, store: "epic"));
+        await fixture.QueuePairAsync(Witcher, WitcherGoty);
+        await fixture.QueuePairAsync(Stanley, Stanley);
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+
+        Assert.Null(queue.Kind);
+        Assert.False(queue.IsKindFiltered);
+        Assert.Equal("3", queue.CutCountText);
+        Assert.Equal("3 proposals · non-destructive", queue.PendingLine);
+        Assert.All(queue.Sections, section => Assert.True(section.IsVisible));
+
+        var stores = queue.KindOptions.Single(option => option.Kind == MergeSectionKind.Stores);
+        Assert.Equal("STORES", stores.Label);
+        queue.SelectKindCommand.Execute(stores);
+
+        Assert.Equal(MergeSectionKind.Stores, queue.Kind);
+        Assert.True(queue.IsKindFiltered);
+        Assert.Equal("ACROSS STORES", queue.KindChipLabel);
+        Assert.Equal("3 → 1", queue.CutCountText);
+        Assert.Equal(3, queue.PendingCount);
+        Assert.Equal(1, queue.ShownPendingCount);
+        Assert.Equal("1 proposal · non-destructive", queue.PendingLine);
+        Assert.True(stores.IsSelected);
+        foreach (var section in queue.Sections)
+        {
+            Assert.Equal(section.Kind == MergeSectionKind.Stores, section.IsVisible);
+        }
+
+        queue.ClearKindCommand.Execute(null);
+
+        Assert.Null(queue.Kind);
+        Assert.Equal("3", queue.CutCountText);
+        Assert.Equal("3 proposals · non-destructive", queue.PendingLine);
+        Assert.Equal(string.Empty, queue.KindChipLabel);
+        Assert.All(queue.Sections, section => Assert.True(section.IsVisible));
+        Assert.True(queue.KindOptions[0].IsSelected);
+        Assert.False(stores.IsSelected);
+    }
+
+    // ── Rows read the library's own read model ───────────────────────────────
+
+    [Fact]
+    public async Task A_played_row_reads_its_hours_and_idle_time_from_the_library()
+    {
+        using var fixture = new MergeQueueFixture();
+        var steam = await fixture.CreateReleaseAsync(Prey, store: "steam");
+        var epic = await fixture.CreateReleaseAsync(Prey, store: "epic");
+        await fixture.QueueScoredPairAsync(steam, epic);
+        await fixture.PlayedAsync(steam, 300, MergeQueueFixture.Now.AddDays(-100));
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+
+        var card = Assert.Single(Section(queue, MergeSectionKind.Stores).Cards);
+        var played = card.Rows.Single(row => row.WorkId == steam.WorkId);
+        var unplayed = card.Rows.Single(row => row.WorkId == epic.WorkId);
+
+        Assert.Equal("5h", played.PlaytimeText);
+        Assert.Equal("3mo", played.IdleText);
+        Assert.Equal(300, played.PlaytimeMinutes);
+        Assert.False(played.HasUnread);
+        Assert.Contains("5h", played.DetailText, StringComparison.Ordinal);
+
+        Assert.Equal("0h", unplayed.PlaytimeText);
+        Assert.Equal("never", unplayed.IdleText);
+        Assert.Contains("never opened", unplayed.DetailText, StringComparison.Ordinal);
+
+        Assert.Equal(300, card.TotalMinutes);
+        Assert.StartsWith("5h rolled up · 2 entries", card.RollupText, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task An_unplayed_card_rolls_up_zero_hours()
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.QueuePairAsync(Prey, PreyUnknown);
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+
+        var card = Assert.Single(Section(queue, MergeSectionKind.Editions).Cards);
+        Assert.All(card.Rows, row => Assert.Equal("0h", row.PlaytimeText));
+        Assert.All(card.Rows, row => Assert.Equal("never", row.IdleText));
+        Assert.Equal(0, card.TotalMinutes);
+        Assert.Equal("0h rolled up · 2 entries", card.RollupText);
+        Assert.Equal("2 entries · 0h · nested, nothing deleted", card.ResolvedMeta);
+    }
+
+    [Fact]
+    public async Task A_pack_row_with_no_playtime_shows_an_em_dash_for_both()
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.CreateReleaseAsync(CivIv);
+        await fixture.CreateReleaseAsync(CivIvWarlords);
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+
+        var card = Assert.Single(Section(queue, MergeSectionKind.Expansions).Cards);
+        var pack = Assert.Single(card.Rows, row => row.IsPack);
+        Assert.Equal("—", pack.PlaytimeText);
+        Assert.Equal("—", pack.IdleText);
+        Assert.Contains("no separate playtime recorded", pack.DetailText, StringComparison.Ordinal);
+
+        // The base is a game, and a game never opened says so.
+        var baseRow = card.Rows[0];
+        Assert.False(baseRow.IsPack);
+        Assert.Equal("0h", baseRow.PlaytimeText);
+        Assert.Equal("never", baseRow.IdleText);
+    }
+
+    [Fact]
+    public async Task A_patch_after_the_last_session_marks_the_row_unread_and_the_card_says_so()
+    {
+        using var fixture = new MergeQueueFixture();
+        var steam = await fixture.CreateReleaseAsync(Prey, store: "steam");
+        var epic = await fixture.CreateReleaseAsync(Prey, store: "epic");
+        await fixture.QueueScoredPairAsync(steam, epic);
+        await fixture.PlayedAsync(steam, 300, MergeQueueFixture.Now.AddYears(-2));
+        await fixture.PatchedAsync(steam, MergeQueueFixture.Now.AddDays(-10));
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+
+        var card = Assert.Single(Section(queue, MergeSectionKind.Stores).Cards);
+        var patched = card.Rows.Single(row => row.WorkId == steam.WorkId);
+        var other = card.Rows.Single(row => row.WorkId == epic.WorkId);
+
+        Assert.True(patched.HasUnread);
+        Assert.False(other.HasUnread);
+        Assert.EndsWith("Patched since you played", patched.DetailText, StringComparison.Ordinal);
+
+        Assert.True(card.HasUnread);
+        Assert.Equal(1, card.UnreadCount);
+        Assert.Contains("1 entry patched since you played", card.RollupText, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task The_earliest_ownership_year_appears_in_the_rollup()
+    {
+        using var fixture = new MergeQueueFixture();
+        var steam = await fixture.CreateReleaseAsync(
+            Prey, store: "steam", acquiredAt: new DateTime(2021, 3, 4, 0, 0, 0, DateTimeKind.Utc));
+        var epic = await fixture.CreateReleaseAsync(
+            Prey, store: "epic", acquiredAt: new DateTime(2019, 11, 30, 0, 0, 0, DateTimeKind.Utc));
+        await fixture.QueueScoredPairAsync(steam, epic);
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+
+        var card = Assert.Single(Section(queue, MergeSectionKind.Stores).Cards);
+        Assert.Equal(2019, card.OwnedSinceYear);
+        Assert.Contains("owned since 2019", card.RollupText, StringComparison.Ordinal);
+        Assert.DoesNotContain("2021", card.RollupText, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Each_row_wears_the_stores_it_is_owned_on()
+    {
+        using var fixture = new MergeQueueFixture();
+        var steam = await fixture.CreateReleaseAsync(Prey, store: "steam");
+        var epic = await fixture.CreateReleaseAsync(Prey, store: "epic");
+        await fixture.AlsoOwnedOnAsync(steam, "gog");
+        await fixture.QueueScoredPairAsync(steam, epic);
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+
+        var card = Assert.Single(Section(queue, MergeSectionKind.Stores).Cards);
+        var twice = card.Rows.Single(row => row.WorkId == steam.WorkId);
+        var once = card.Rows.Single(row => row.WorkId == epic.WorkId);
+        Assert.Equal(["STEAM", "GOG"], twice.StoreChips);
+        Assert.Equal(["EPIC"], once.StoreChips);
+        Assert.NotEqual(twice.Label, once.Label);
+    }
+
+    // ── Keyboard ─────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Focus_starts_on_the_first_row_of_the_first_pending_card()
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.QueuePairAsync(Prey, PreyUnknown);
+        await fixture.QueuePairAsync(Witcher, WitcherGoty);
+
+        var queue = fixture.CreateViewModel();
+        Assert.Null(queue.FocusedRow);
+        Assert.Null(queue.FocusedCard);
+
+        await queue.LoadCommand.ExecuteAsync(null);
+
+        var first = Section(queue, MergeSectionKind.Editions).Cards[0];
+        Assert.Same(first.Rows[0], queue.FocusedRow);
+        Assert.Same(first, queue.FocusedCard);
+        Assert.True(first.Rows[0].IsFocused);
+        Assert.True(first.IsFocused);
+        Assert.Same(first, queue.CardOf(first.Rows[1]));
+    }
+
+    [Fact]
+    public async Task Focus_walks_rows_across_cards_and_clamps_at_both_ends()
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.QueuePairAsync(Prey, PreyUnknown);
+        await fixture.QueuePairAsync(Witcher, WitcherGoty);
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+        var cards = Section(queue, MergeSectionKind.Editions).Cards;
+
+        Assert.Same(cards[0].Rows[1], queue.MoveFocus(1));
+        Assert.Same(cards[1].Rows[0], queue.MoveFocus(1));
+        Assert.Same(cards[1], queue.FocusedCard);
+        Assert.False(cards[0].IsFocused);
+        Assert.True(cards[1].IsFocused);
+
+        Assert.Same(cards[1].Rows[1], queue.MoveFocus(1));
+        Assert.Same(cards[1].Rows[1], queue.MoveFocus(1));
+        Assert.Same(cards[1].Rows[1], queue.MoveFocus(10));
+
+        Assert.Same(cards[0].Rows[0], queue.MoveFocus(-3));
+        Assert.Same(cards[0].Rows[0], queue.MoveFocus(-1));
+        Assert.Same(cards[0].Rows[0], queue.FocusedRow);
+    }
+
+    [Fact]
+    public async Task Moving_focus_on_an_empty_queue_returns_nothing()
+    {
+        using var fixture = new MergeQueueFixture();
+        var queue = fixture.CreateViewModel();
+
+        Assert.Null(queue.MoveFocus(1));
+        Assert.Null(queue.FocusedRow);
+
+        await queue.LoadCommand.ExecuteAsync(null);
+
+        Assert.Null(queue.MoveFocus(1));
+        Assert.Null(queue.MoveFocus(-1));
+        Assert.Null(queue.FocusedRow);
+        Assert.Null(queue.FocusedCard);
+    }
+
+    [Fact]
+    public async Task Promote_focused_makes_the_cursors_row_the_header()
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.QueuePairAsync(Witcher, WitcherGoty);
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+        var card = Assert.Single(Section(queue, MergeSectionKind.Editions).Cards);
+
+        queue.MoveFocus(1);
+        queue.PromoteFocused();
+
+        Assert.Same(card.Rows[1], card.Header);
+        Assert.True(card.IsTouched);
+        Assert.Same(card.Rows[1], queue.FocusedRow);
+    }
+
+    [Fact]
+    public async Task Answering_the_focused_card_moves_the_cursor_to_the_card_that_took_its_place()
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.QueuePairAsync(Prey, PreyUnknown);
+        await fixture.QueuePairAsync(Witcher, WitcherGoty);
+        await fixture.QueuePairAsync(Stanley, Stanley);
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+        var cards = Section(queue, MergeSectionKind.Editions).Cards.ToList();
+        Assert.Same(cards[0], queue.FocusedCard);
+
+        await queue.SameGameCommand.ExecuteAsync(queue.FocusedCard);
+        Assert.Same(cards[1].Rows[0], queue.FocusedRow);
+        Assert.Same(cards[1], queue.FocusedCard);
+
+        await queue.DifferentGamesCommand.ExecuteAsync(queue.FocusedCard);
+        Assert.Same(cards[2].Rows[0], queue.FocusedRow);
+        Assert.Same(cards[2], queue.FocusedCard);
+
+        // Nothing left after the last one: the cursor has nowhere to be.
+        await queue.DifferentGamesCommand.ExecuteAsync(queue.FocusedCard);
+        Assert.Null(queue.FocusedRow);
+        Assert.Null(queue.FocusedCard);
+    }
+
+    [Fact]
+    public async Task A_keyboard_move_asks_the_view_to_follow()
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.QueuePairAsync(Prey, PreyUnknown);
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+        var card = Assert.Single(Section(queue, MergeSectionKind.Editions).Cards);
+
+        var requested = new List<MergeRowViewModel>();
+        queue.FocusRequested += requested.Add;
+
+        queue.MoveFocus(1);
+        Assert.Equal([card.Rows[1]], requested);
+
+        // Selection follows the view's own focus without an echo back to it.
+        queue.FocusRow(card.Rows[0]);
+        Assert.Same(card.Rows[0], queue.FocusedRow);
+        Assert.Single(requested);
+    }
+
+    // ── Expansion proposals ──────────────────────────────────────────────────
+
+    /// <summary>
+    /// The one-to-many relation presented once: one base game, both packs, one
+    /// card, and the base is the header by the shape of the relation.
+    /// </summary>
+    [Fact]
+    public async Task A_base_game_and_its_packs_are_one_card()
+    {
+        using var fixture = new MergeQueueFixture();
+        var baseGame = await fixture.CreateReleaseAsync(CivIv);
+        await fixture.CreateReleaseAsync(CivIvWarlords);
+        await fixture.CreateReleaseAsync(CivIvBeyond);
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+
+        var card = Assert.Single(Section(queue, MergeSectionKind.Expansions).Cards);
+        Assert.Equal(MergeSectionKind.Expansions, card.Section);
+        Assert.Equal(3, card.Rows.Count);
+
+        Assert.True(card.Rows[0].IsHeader);
+        Assert.False(card.Rows[0].IsPack);
+        Assert.Equal("Sid Meier's Civilization IV", card.HeaderTitle);
+        Assert.Equal(baseGame.WorkId, card.ParentWorkId);
+        Assert.All(card.Rows.Skip(1), row => Assert.True(row.IsPack));
+        Assert.All(card.Rows.Skip(1), row => Assert.False(row.IsHeader));
+
+        Assert.Equal(IdentityLinkKinds.ExpansionOf, card.LinkKind);
+        Assert.Equal(MergeConfidence.Likely, card.Confidence);
+        Assert.NotEmpty(card.Reason);
+        Assert.Contains("Sid Meier's Civilization IV", card.Reason, StringComparison.Ordinal);
+        Assert.Empty(card.CandidateIds);
+        Assert.Equal(2, card.RefusalPairs.Count);
+        Assert.Equal(1, queue.PendingCount);
+    }
+
+    [Fact]
+    public async Task Same_game_on_an_expansion_card_writes_one_act_of_expansion_links()
+    {
+        using var fixture = new MergeQueueFixture();
+        var baseGame = await fixture.CreateReleaseAsync(CivIv);
+        await fixture.CreateReleaseAsync(CivIvWarlords);
+        await fixture.CreateReleaseAsync(CivIvBeyond);
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+        var card = Assert.Single(Section(queue, MergeSectionKind.Expansions).Cards);
 
         await queue.SameGameCommand.ExecuteAsync(card);
-        await queue.DifferentGamesCommand.ExecuteAsync(card);
 
         Assert.Equal(1, fixture.ActCount());
-        Assert.Single(await fixture.LiveLinksAsync());
+        var links = (await fixture.Links.GetHistoryAsync()).Where(link => link.IsLive).ToList();
+        Assert.Equal(2, links.Count);
+        Assert.All(links, link => Assert.Equal(IdentityLinkKinds.ExpansionOf, link.Kind));
+        Assert.All(links, link => Assert.Equal(baseGame.WorkId, link.ParentWorkId));
+        Assert.Equal(card.ChildWorkIds, links.Select(link => link.ChildWorkId).Order());
+
+        var resolution = await fixture.Links.GetResolutionAsync();
+        Assert.True(resolution.SameGame.IsEmpty);
+        Assert.True(card.IsResolved);
+        Assert.Empty(await fixture.ExpansionRefusals.GetAllAsync());
+
+        // And the scan does not ask again.
+        await queue.LoadCommand.ExecuteAsync(null);
+        Assert.Equal(0, queue.PendingCount);
+        Assert.Single(Section(queue, MergeSectionKind.Expansions).Cards, strip => strip.IsResolved);
+    }
+
+    [Fact]
+    public async Task A_refused_expansion_pair_does_not_come_back_on_the_next_load()
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.CreateReleaseAsync(CivIv);
+        await fixture.CreateReleaseAsync(CivIvWarlords);
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+        await queue.DifferentGamesCommand.ExecuteAsync(
+            Assert.Single(Section(queue, MergeSectionKind.Expansions).Cards));
+
+        Assert.Single(await fixture.ExpansionRefusals.GetAllAsync());
+
+        await queue.LoadCommand.ExecuteAsync(null);
+
+        Assert.Empty(Section(queue, MergeSectionKind.Expansions).Cards);
+        Assert.Equal(0, queue.PendingCount);
+    }
+
+    [Fact]
+    public async Task A_demo_lands_in_TEST_BUILDS_as_a_variant()
+    {
+        using var fixture = new MergeQueueFixture();
+        var baseGame = await fixture.CreateReleaseAsync(CivIv);
+        var demo = await fixture.CreateReleaseAsync(
+            new SeedSide("Sid Meier's Civilization IV: Warlords Demo", 2006, "2K"));
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+
+        var card = Assert.Single(Section(queue, MergeSectionKind.Tests).Cards);
+        Assert.Empty(Section(queue, MergeSectionKind.Expansions).Cards);
+        Assert.Equal(IdentityLinkKinds.VariantOf, card.LinkKind);
+        Assert.Equal(RelationLabels.Demo, card.RelationLabel);
+        Assert.Equal(baseGame.WorkId, card.ParentWorkId);
+        Assert.Equal([demo.WorkId], card.ChildWorkIds);
+        Assert.True(card.Rows[1].IsPack);
+
+        await queue.SameGameCommand.ExecuteAsync(card);
+        var link = Assert.Single(await fixture.Links.GetHistoryAsync(), l => l.IsLive);
+        Assert.Equal(IdentityLinkKinds.VariantOf, link.Kind);
+        Assert.Equal(RelationLabels.Demo, link.RelationLabel);
     }
 
     // ── The answer path reads nothing ────────────────────────────────────────
 
     /// <summary>
     /// A previous build of this screen re-planned every remaining card on every
-    /// answer and froze for about two seconds at 200 pending pairs, because
-    /// Microsoft.Data.Sqlite completes synchronously and this is the surface
-    /// worked down with repeated keypresses.
-    ///
-    /// <para>Groups are disjoint over resolved works, so an answer inside one
-    /// cannot change another and there is nothing to re-plan. That is asserted
-    /// by counting the reads rather than by timing them.</para>
+    /// answer and froze for about two seconds at 200 pending pairs. Cards are
+    /// disjoint over resolved works, so an answer inside one cannot change
+    /// another and there is nothing to re-read. Asserted by counting the reads
+    /// rather than by timing them.
     /// </summary>
     [Fact]
     public async Task Answering_reads_nothing_however_long_the_queue_is()
@@ -604,1478 +1497,242 @@ public sealed class MergeQueueViewModelTests
         var counting = fixture.CountingCandidates();
         var queue = fixture.CreateViewModel(candidates: counting);
         await queue.LoadCommand.ExecuteAsync(null);
+        var section = Section(queue, MergeSectionKind.Editions);
 
-        Assert.Equal(60, queue.Groups.Count);
+        Assert.Equal(60, section.PendingCount);
         Assert.Equal(1, counting.PendingReads);
 
-        var remaining = queue.Groups.Skip(20).ToList();
+        var cards = section.Cards.ToList();
         for (var i = 0; i < 20; i++)
         {
-            await queue.SameGameCommand.ExecuteAsync(queue.Groups[0]);
+            await queue.SameGameCommand.ExecuteAsync(cards[i]);
         }
 
-        // Not one extra read of the queue, and not one status write: every
-        // member was included, so there was no edge left outside the link.
+        // Not one extra read of the queue, and not one status write: a link
+        // answers the proposal by existing.
         Assert.Equal(1, counting.PendingReads);
         Assert.Equal(0, counting.StatusWrites);
-
-        // The cards that are left are the same objects they were: nothing was
-        // rebuilt underneath the user.
-        Assert.Equal(remaining, queue.Groups);
+        Assert.Equal(40, section.PendingCount);
         Assert.Equal(20, fixture.ActCount());
+
+        // The cards that are left are the same objects they were, in the
+        // same places: nothing was rebuilt underneath the user.
+        Assert.Equal(cards, section.Cards);
     }
 
-    // ── Selection ────────────────────────────────────────────────────────────
-
     [Fact]
-    public async Task Answering_moves_the_cursor_to_the_group_that_took_its_place()
+    public async Task A_rejected_proposal_stays_rejected_when_the_resolver_runs_again()
     {
         using var fixture = new MergeQueueFixture();
-        await fixture.QueuePairAsync(
-            new SeedSide("Prey", 2017, "Bethesda Softworks"),
-            new SeedSide("Prey", null, null));
-        await fixture.QueuePairAsync(
-            new SeedSide("The Witcher 3: Wild Hunt", 2015, "CD PROJEKT RED"),
-            new SeedSide("The Witcher 3: Wild Hunt - Game of the Year Edition", 2016, "CD PROJEKT RED"));
+        var id = await fixture.QueuePairAsync(Prey, PreyUnknown);
 
         var queue = fixture.CreateViewModel();
         await queue.LoadCommand.ExecuteAsync(null);
+        await queue.DifferentGamesCommand.ExecuteAsync(
+            Assert.Single(Section(queue, MergeSectionKind.Editions).Cards));
 
-        var second = queue.Groups[1];
-        await queue.DifferentGamesCommand.ExecuteAsync(queue.Groups[0]);
-
-        Assert.Same(second, queue.SelectedGroup);
-        Assert.True(second.IsSelected);
-    }
-
-    [Fact]
-    public async Task Selection_moves_by_card_and_clamps_at_the_ends()
-    {
-        using var fixture = new MergeQueueFixture();
-        await fixture.QueuePairAsync(
-            new SeedSide("Prey", 2017, "Bethesda Softworks"),
-            new SeedSide("Prey", null, null));
-        await fixture.QueuePairAsync(
-            new SeedSide("The Witcher 3: Wild Hunt", 2015, "CD PROJEKT RED"),
-            new SeedSide("The Witcher 3: Wild Hunt - Game of the Year Edition", 2016, "CD PROJEKT RED"));
-
-        var queue = fixture.CreateViewModel();
-        await queue.LoadCommand.ExecuteAsync(null);
-
-        Assert.Equal(1, queue.MoveSelection(1));
-        Assert.Equal(1, queue.MoveSelection(1));
-        Assert.Equal(0, queue.MoveSelection(-1));
-        Assert.Equal(0, queue.MoveSelection(-1));
-    }
-
-    [Fact]
-    public void Moving_selection_on_an_empty_queue_is_a_no_op()
-    {
-        using var fixture = new MergeQueueFixture();
-        var queue = fixture.CreateViewModel();
-
-        Assert.Equal(-1, queue.MoveSelection(1));
-        Assert.Null(queue.SelectedGroup);
-    }
-
-    // ── The store each member comes from ─────────────────────────────────────
-
-    /// <summary>
-    /// The store is the fact that decides whether a pair is the Steam entry and
-    /// the Epic entry of one game or two different games, so every member must
-    /// carry it.
-    /// </summary>
-    [Fact]
-    public async Task Each_member_carries_the_store_it_is_owned_on()
-    {
-        using var fixture = new MergeQueueFixture();
-        var steam = await fixture.CreateReleaseAsync(new SeedSide("Prey", 2017, "Bethesda Softworks"), store: "steam");
-        var epic = await fixture.CreateReleaseAsync(new SeedSide("Prey", 2017, "Bethesda Softworks"), store: "epic");
-        await fixture.QueueScoredPairAsync(steam, epic);
-
-        var queue = fixture.CreateViewModel();
-        await queue.LoadCommand.ExecuteAsync(null);
-
-        var group = Assert.Single(queue.Groups);
-        Assert.True(group.IsPair);
-
-        var chips = group.Members.Select(m => Assert.Single(m.StoreChips)).OrderBy(c => c, StringComparer.Ordinal);
-        Assert.Equal(["EPIC", "STEAM"], chips);
-        Assert.All(group.Members, m => Assert.True(m.HasStores));
-    }
-
-    /// <summary>
-    /// A member owned on two stores wears a chip for each; the chip row is a
-    /// list, not a single badge.
-    /// </summary>
-    [Fact]
-    public async Task A_member_owned_twice_carries_both_stores()
-    {
-        using var fixture = new MergeQueueFixture();
-        var steam = await fixture.CreateReleaseAsync(new SeedSide("Prey", 2017, "Bethesda Softworks"), store: "steam");
-        var epic = await fixture.CreateReleaseAsync(new SeedSide("Prey", 2017, "Bethesda Softworks"), store: "epic");
-        await fixture.AlsoOwnedOnAsync(steam, "gog");
-        await fixture.QueueScoredPairAsync(steam, epic);
-
-        var queue = fixture.CreateViewModel();
-        await queue.LoadCommand.ExecuteAsync(null);
-
-        var group = Assert.Single(queue.Groups);
-        var twice = group.Members.Single(m => m.StoreChips.Count == 2);
-        Assert.Equal(["STEAM", "GOG"], twice.StoreChips);
-        Assert.Equal("Steam, GOG", twice.StoreNames);
-    }
-
-    /// <summary>
-    /// Two members with one title are told apart by store in every automation
-    /// name, which is what a screen reader reads. Without the store a column
-    /// of radios all called "Keep Prey #1024" would be one target.
-    /// </summary>
-    [Fact]
-    public async Task Automation_names_tell_two_same_titled_members_apart_by_store()
-    {
-        using var fixture = new MergeQueueFixture();
-        var steam = await fixture.CreateReleaseAsync(new SeedSide("Prey", 2017, "Bethesda Softworks"), store: "steam");
-        var epic = await fixture.CreateReleaseAsync(new SeedSide("Prey", 2017, "Bethesda Softworks"), store: "epic");
-        await fixture.QueueScoredPairAsync(steam, epic);
-
-        var queue = fixture.CreateViewModel();
-        await queue.LoadCommand.ExecuteAsync(null);
-
-        var group = Assert.Single(queue.Groups);
-        var left = group.Primary;
-        var right = Assert.Single(group.Others);
-
-        Assert.Equal(left.Side.Title, right.Side.Title);
-        Assert.NotEqual(left.PrimaryAutomationName, right.PrimaryAutomationName);
-        Assert.NotEqual(left.IncludeAutomationName, right.IncludeAutomationName);
-
-        var names = new[] { left.PrimaryAutomationName, right.PrimaryAutomationName };
-        Assert.Contains(names, n => n.Contains("Steam", StringComparison.Ordinal));
-        Assert.Contains(names, n => n.Contains("Epic", StringComparison.Ordinal));
-    }
-
-    /// <summary>
-    /// No ownership row means no chip row and no store in the automation name.
-    /// The label falls back to the store-less format so it contains no comma.
-    /// </summary>
-    [Fact]
-    public async Task A_member_with_no_ownership_row_states_no_store()
-    {
-        using var fixture = new MergeQueueFixture();
-        var left = await fixture.CreateReleaseAsync(new SeedSide("Prey", 2017, "Bethesda Softworks"), store: null);
-        var right = await fixture.CreateReleaseAsync(new SeedSide("Prey", null, null), store: null);
-        await fixture.QueueScoredPairAsync(left, right);
-
-        var queue = fixture.CreateViewModel();
-        await queue.LoadCommand.ExecuteAsync(null);
-
-        var group = Assert.Single(queue.Groups);
-        Assert.All(group.Members, m => Assert.False(m.HasStores));
-        Assert.All(group.Members, m => Assert.Empty(m.StoreChips));
-        Assert.All(group.Members, m => Assert.DoesNotContain(",", m.Label, StringComparison.Ordinal));
-    }
-
-    // ── The signal breakdown ─────────────────────────────────────────────────
-
-    /// <summary>
-    /// The breakdown is the product, not diagnostics: it is the only thing on
-    /// screen that answers "why does the app think these are the same game".
-    /// </summary>
-    [Fact]
-    public async Task Signal_breakdown_decodes_from_the_stored_payload()
-    {
-        using var fixture = new MergeQueueFixture();
-        await fixture.QueuePairAsync(
-            new SeedSide("The Witcher 3: Wild Hunt", 2015, "CD PROJEKT RED"),
-            new SeedSide("The Witcher 3: Wild Hunt - Game of the Year Edition", 2016, "CD PROJEKT RED"));
-
-        var queue = fixture.CreateViewModel();
-        await queue.LoadCommand.ExecuteAsync(null);
-        var card = queue.Groups[0];
-        var edge = Assert.Single(card.Edges);
-
-        Assert.True(card.IsPair);
-        Assert.Same(edge, Assert.Single(card.Others).Evidence);
-
-        // The three diffs §6 names by hand.
-        Assert.Equal("0.00", edge.TitleDistanceText);   // 1 - similarity
-        Assert.Equal("Δ1", edge.YearDeltaText);
-        Assert.Equal("SAME", edge.PublisherMatchText);
-        Assert.Equal("0.87", edge.ScoreText);
-        Assert.True(card.IsPriority);
-
-        Assert.Equal(
-            ["TITLE", "YEAR", "PUBLISHER", "COVER", "EDITION"],
-            edge.Signals.Select(s => s.Label));
-
-        var year = edge.Signals.Single(s => s.Label == "YEAR");
-        Assert.True(year.Fired);
-        Assert.Equal("Δ1", year.ValueText);
-        Assert.Contains("2015 vs 2016", year.Detail, StringComparison.Ordinal);
-
-        // TITLE prints distance (1 - similarity), not similarity. A bare "0.00"
-        // above a detail line reading "100% similar" contradicts itself; the Δ
-        // prefix marks it as a delta, matching YEAR's own convention.
-        var title = edge.Signals.Single(s => s.Label == "TITLE");
-        Assert.True(title.Fired);
-        Assert.Equal("Δ0.00", title.ValueText);
-        Assert.Contains("100 % similar", title.Detail, StringComparison.Ordinal);
-
-        // One side is a content bundle. The verdict is the evidence; the signed
-        // points the row used to print were the scorer's arithmetic and nobody
-        // on this screen tunes weights.
-        var edition = edge.Signals.Single(s => s.Label == "EDITION");
-        Assert.Equal("DIFFERENT", edition.ValueText);
-    }
-
-    /// <summary>
-    /// A strong title match and a weak one must read apart from the TITLE row
-    /// alone, without consulting the detail sentence. Both pairs fire the title
-    /// signal and clear the queue floor; the only variable is distance.
-    /// </summary>
-    [Fact]
-    public async Task TITLE_row_tells_a_strong_match_from_a_weak_one_by_itself()
-    {
-        using var fixture = new MergeQueueFixture();
-
-        // Identical core titles, distance zero.
-        await fixture.QueuePairAsync(
-            new SeedSide("The Witcher 3: Wild Hunt", 2015, "CD PROJEKT RED"),
-            new SeedSide("The Witcher 3: Wild Hunt - Game of the Year Edition", 2016, "CD PROJEKT RED"));
-
-        // Related but distinct (trailing word appended). Fires and clears the
-        // queue floor, but distance is well above zero.
-        await fixture.QueuePairAsync(
-            new SeedSide("Aurora Frontier", 2009, "Encore"),
-            new SeedSide("Aurora Frontier Origins", 2009, "Encore"));
-
-        var queue = fixture.CreateViewModel();
-        await queue.LoadCommand.ExecuteAsync(null);
-
-        // Detail sentences quote the normalised (lower-cased) core title.
-        var strong = queue.Groups
-            .Single(g => g.Edges[0].Signals.Any(s => s.Detail.Contains("witcher", StringComparison.Ordinal)))
-            .Edges[0];
-        var weak = queue.Groups
-            .Single(g => g.Edges[0].Signals.Any(s => s.Detail.Contains("aurora", StringComparison.Ordinal)))
-            .Edges[0];
-
-        var strongTitle = strong.Signals.Single(s => s.Label == "TITLE");
-        var weakTitle = weak.Signals.Single(s => s.Label == "TITLE");
-
-        Assert.True(strongTitle.Fired);
-        Assert.True(weakTitle.Fired);
-
-        // Both carry the Δ prefix (consistent with YEAR) and are visibly
-        // different values.
-        Assert.Equal("Δ0.00", strongTitle.ValueText);
-        Assert.Equal("Δ0.27", weakTitle.ValueText);
-        Assert.NotEqual(strongTitle.ValueText, weakTitle.ValueText);
-        Assert.StartsWith("Δ", strongTitle.ValueText, StringComparison.Ordinal);
-        Assert.StartsWith("Δ", weakTitle.ValueText, StringComparison.Ordinal);
-    }
-
-    /// <summary>
-    /// The trap case (§5.3): identical titles, no corroboration. A signal that
-    /// could not be evaluated must read as "we don't know", never as agreement —
-    /// that distinction is the entire difference between Prey and Prey.
-    /// </summary>
-    [Fact]
-    public async Task Signals_that_did_not_fire_read_as_unknown_and_contribute_nothing()
-    {
-        using var fixture = new MergeQueueFixture();
-        await fixture.QueuePairAsync(
-            new SeedSide("Prey", 2017, "Bethesda Softworks"),
-            new SeedSide("Prey", null, null));
-
-        var queue = fixture.CreateViewModel();
-        await queue.LoadCommand.ExecuteAsync(null);
-        var card = queue.Groups[0];
-        var edge = Assert.Single(card.Edges);
-
-        Assert.Equal("0.65", edge.ScoreText);
-        Assert.False(card.IsPriority);
-        Assert.Equal("—", edge.YearDeltaText);
-        Assert.Equal("—", edge.PublisherMatchText);
-
-        var year = edge.Signals.Single(s => s.Label == "YEAR");
-        Assert.False(year.Fired);
-        Assert.Equal("—", year.ValueText);
-
-        var publisher = edge.Signals.Single(s => s.Label == "PUBLISHER");
-        Assert.False(publisher.Fired);
-        Assert.Equal("—", publisher.ValueText);
-
-        // Both members still name themselves. The entry numbers that used to
-        // tell two identically titled records apart are database ids and are
-        // gone from the screen (§10.5); the automation label still separates
-        // them, now on the facts the row itself draws.
-        Assert.All(card.Members, m => Assert.Equal("Prey", m.Side.Title));
-        Assert.NotEqual(card.Primary.Label, Assert.Single(card.Others).Label);
-        Assert.All(card.Members, m => Assert.DoesNotContain("#", m.Label, StringComparison.Ordinal));
-    }
-
-    /// <summary>
-    /// A member is a work, so its face comes from the work row rather than from
-    /// the matcher's frozen payload. That is what makes an unrecorded payload a
-    /// card without a breakdown instead of a card without names.
-    /// </summary>
-    [Fact]
-    public async Task A_proposal_with_no_recorded_payload_still_names_its_members()
-    {
-        using var fixture = new MergeQueueFixture();
-        var (left, right) = await fixture.CreatePairAsync(
-            new SeedSide("Bastion", 2011, "Supergiant Games"),
-            new SeedSide("Bastion", 2011, "Supergiant Games"));
-
-        await fixture.Candidates.InsertAsync(new MergeCandidate
-        {
-            LeftReleaseId = left.ReleaseId,
-            RightReleaseId = right.ReleaseId,
-            Score = 0.9,
-            SignalsJson = null,
-            Status = MergeCandidateStatuses.Pending,
-        });
-
-        var queue = fixture.CreateViewModel();
-        await queue.LoadCommand.ExecuteAsync(null);
-        var card = queue.Groups[0];
-        var edge = Assert.Single(card.Edges);
-
-        Assert.False(edge.HasSignals);
-        Assert.Equal("—", edge.TitleDistanceText);
-        Assert.Equal("—", edge.YearDeltaText);
-        Assert.All(card.Members, m => Assert.Equal("Bastion", m.Side.Title));
-        Assert.Equal("2011", card.Primary.Side.YearText);
-    }
-
-    // ── The two surfaces ─────────────────────────────────────────────────────
-
-    [Fact]
-    public async Task The_screen_opens_on_the_queue()
-    {
-        using var fixture = new MergeQueueFixture();
-        var queue = fixture.CreateViewModel();
-        await queue.LoadCommand.ExecuteAsync(null);
-
-        Assert.True(queue.IsReviewVisible);
-        Assert.False(queue.IsHistoryVisible);
-    }
-
-    [Fact]
-    public async Task The_history_surface_lists_the_link_act_and_names_what_it_grouped()
-    {
-        using var fixture = new MergeQueueFixture();
-        await fixture.QueueTripleAsync();
-
-        var queue = fixture.CreateViewModel();
-        await queue.LoadCommand.ExecuteAsync(null);
-        await queue.SameGameCommand.ExecuteAsync(queue.Groups[0]);
-
-        await queue.ShowHistoryCommand.ExecuteAsync(null);
-
-        var row = Assert.Single(queue.LinkHistory);
-        Assert.Equal(2, row.ChildTitles.Count);
-        Assert.NotEqual("—", row.LinkedAtText);
-
-        // This used to assert three distinct names from the positional last
-        // resort ("Prey (Steam, 2017, Bethesda Softworks, 1 of 3)" and its
-        // siblings). History no longer climbs that ladder: three works one
-        // storefront describes identically have no store that separates them,
-        // so the row states the headline, lists what went under it, and
-        // invents nothing. Nothing here is a database id (design-system §10.5).
-        string[] named = [row.ParentTitle, .. row.ChildTitles];
-        Assert.All(named, name => Assert.Equal("Prey", name));
-        Assert.All(named, name => Assert.DoesNotContain("#", name, StringComparison.Ordinal));
-        Assert.DoesNotContain("of 3", row.ChildTitlesText, StringComparison.Ordinal);
-        Assert.DoesNotContain("Bethesda", row.ChildTitlesText, StringComparison.Ordinal);
-
-        // The drawn row carries the relation by position (headline above
-        // subtext); a flat automation string has no position, so the spoken
-        // form keeps the verb. An encoding must be decorative-redundant (§8).
-        Assert.Contains(row.SpokenDescription, row.UndoAutomationName, StringComparison.Ordinal);
-        Assert.Contains("linked under", row.UndoAutomationName, StringComparison.Ordinal);
-    }
-
-    // ── Empty state (§7) ─────────────────────────────────────────────────────
-
-    [Fact]
-    public void An_unloaded_queue_shows_neither_cards_nor_an_empty_state()
-    {
-        using var fixture = new MergeQueueFixture();
-        var queue = fixture.CreateViewModel();
-
-        Assert.False(queue.ShowEmpty);
-        Assert.False(queue.HasPending);
-        Assert.Empty(queue.Groups);
-    }
-
-    [Fact]
-    public async Task An_empty_queue_before_any_sweep_says_the_comparison_has_not_run()
-    {
-        using var fixture = new MergeQueueFixture();
-        var queue = fixture.CreateViewModel();
-        await queue.LoadCommand.ExecuteAsync(null);
-
-        Assert.False(queue.HasCompletedSweep);
-        Assert.Equal(MergeCopy.EmptyNotSwept, queue.EmptyMessage);
-    }
-
-    [Fact]
-    public async Task An_empty_queue_after_a_sweep_says_the_comparison_found_nothing()
-    {
-        using var fixture = new MergeQueueFixture();
-        await fixture.ResolveState.SetLastSoftMatchSweepAsync(DateTimeOffset.UtcNow);
-
-        var queue = fixture.CreateViewModel();
-        await queue.LoadCommand.ExecuteAsync(null);
-
-        Assert.True(queue.HasCompletedSweep);
-        Assert.Equal(MergeCopy.EmptySwept, queue.EmptyMessage);
-    }
-
-    /// <summary>
-    /// With no state repository in the container the screen cannot know, and
-    /// "cannot know" must read as "has not run". The one thing it must never do
-    /// is announce a clean library on the strength of a query it did not make.
-    /// </summary>
-    [Fact]
-    public async Task Without_a_state_repository_the_weaker_claim_is_the_one_made()
-    {
-        using var fixture = new MergeQueueFixture();
-        await fixture.ResolveState.SetLastSoftMatchSweepAsync(DateTimeOffset.UtcNow);
-
-        var queue = fixture.CreateViewModel(withResolveState: false);
-        await queue.LoadCommand.ExecuteAsync(null);
-
-        Assert.False(queue.HasCompletedSweep);
-        Assert.Equal(MergeCopy.EmptyNotSwept, queue.EmptyMessage);
-    }
-
-    [Fact]
-    public async Task Clearing_the_last_group_returns_the_queue_to_its_empty_state()
-    {
-        using var fixture = new MergeQueueFixture();
-        await fixture.QueuePairAsync(
-            new SeedSide("Prey", 2017, "Bethesda Softworks"),
-            new SeedSide("Prey", null, null));
-
-        var queue = fixture.CreateViewModel();
-        await queue.LoadCommand.ExecuteAsync(null);
-        Assert.True(queue.HasPending);
-        Assert.Equal(1.0, queue.RowOpacity);
-
-        await queue.DifferentGamesCommand.ExecuteAsync(queue.Groups[0]);
-
-        Assert.True(queue.ShowEmpty);
-        Assert.False(queue.HasPending);
-        Assert.Null(queue.SelectedGroup);
-    }
-
-    [Fact]
-    public async Task The_count_is_the_number_of_pending_groups()
-    {
-        using var fixture = new MergeQueueFixture();
-        await fixture.QueueTripleAsync();
-        await fixture.QueuePairAsync(
-            new SeedSide("The Witcher 3: Wild Hunt", 2015, "CD PROJEKT RED"),
-            new SeedSide("The Witcher 3: Wild Hunt - Game of the Year Edition", 2016, "CD PROJEKT RED"));
-
-        var queue = fixture.CreateViewModel();
-        await queue.LoadCommand.ExecuteAsync(null);
-
-        // Four pending rows, two cards.
-        Assert.Equal(2, queue.PendingCount);
-        Assert.Equal("2", queue.PendingCountText);
-        Assert.True(queue.HasPending);
-        Assert.False(queue.ShowEmpty);
-    }
-
-    // EXPANSIONS, the screen's third surface.
-    //
-    // The card is a different card from the same-game one, deliberately. A
-    // same-game group is N peers of one game and its KEEP radio asks a real
-    // question; an expansion group is one base plus N packs, and the parent is
-    // fixed by the relation. There is no primary radio on this card and no
-    // property on its member that could produce one.
-    //
-    // These tests hold the answer vocabulary apart too. REVIEW answers Same
-    // game / Different games and this answers Group / Not expansions, which is
-    // why they are two segments rather than two kinds of card in one scroll,
-    // and why the history row says "grouped under" and never "linked under".
-
-    /// <summary>
-    /// The one-to-many relation presented once: one base game, both packs, one
-    /// card. The user asked for exactly this instead of repeated pairwise
-    /// operations.
-    /// </summary>
-    [Fact]
-    public async Task A_base_game_and_its_packs_are_one_card()
-    {
-        using var fixture = new MergeQueueFixture();
-        await fixture.CreateReleaseAsync(new SeedSide("Sid Meier's Civilization IV", 2005, "2K"));
-        await fixture.CreateReleaseAsync(
-            new SeedSide("Sid Meier's Civilization IV: Warlords", 2006, "2K"));
-        await fixture.CreateReleaseAsync(
-            new SeedSide("Sid Meier's Civilization IV: Beyond the Sword", 2007, "2K"));
-
-        var queue = fixture.CreateViewModel();
-        await queue.LoadCommand.ExecuteAsync(null);
-
-        var card = Assert.Single(queue.ExpansionGroups);
-        Assert.Equal("Sid Meier's Civilization IV", card.BaseTitle);
-        Assert.Equal(2, card.Members.Count);
-
-        // Checked by default: an expansion proposal is one direct claim about
-        // one pair, already corroborated, so there is no transitive closure to
-        // guard against the way a same-game component has.
-        Assert.All(card.Members, m => Assert.True(m.IsIncluded));
-
-        // The evidence is what the title ADDS, not how far two titles are
-        // apart, which is the fact the soft matcher cannot supply.
-        Assert.Contains(card.Members, m => m.SuffixText == "beyond sword");
-        Assert.Contains(card.Members, m => m.SuffixText == "warlords");
-
-        // The queue opens on review; the expansion surface is a segment.
-        Assert.True(queue.IsReviewVisible);
-        Assert.False(queue.IsExpansionsVisible);
-        queue.ShowExpansionsCommand.Execute(null);
-        Assert.True(queue.IsExpansionsVisible);
-        Assert.False(queue.IsReviewVisible);
-    }
-
-    /// <summary>
-    /// None, some or all, in one gesture. The checked pack is grouped, the
-    /// unchecked one is recorded as a separate game, and neither answer comes
-    /// back on the next scan.
-    /// </summary>
-    [Fact]
-    public async Task Taking_some_groups_the_checked_and_records_the_rest()
-    {
-        using var fixture = new MergeQueueFixture();
-        await fixture.CreateReleaseAsync(new SeedSide("Sid Meier's Civilization IV", 2005, "2K"));
-        await fixture.CreateReleaseAsync(
-            new SeedSide("Sid Meier's Civilization IV: Warlords", 2006, "2K"));
-        await fixture.CreateReleaseAsync(
-            new SeedSide("Sid Meier's Civilization IV: Beyond the Sword", 2007, "2K"));
-
-        var queue = fixture.CreateViewModel();
-        await queue.LoadCommand.ExecuteAsync(null);
-
-        var card = Assert.Single(queue.ExpansionGroups);
-        var dropped = card.Members.Single(m => m.SuffixText == "warlords");
-        var kept = card.Members.Single(m => m.SuffixText == "beyond sword");
-        dropped.IsIncluded = false;
-
-        await queue.GroupExpansionsCommand.ExecuteAsync(card);
-
-        // One link, at the expansion kind, and nothing at the same-game kind.
-        var resolution = await fixture.Links.GetResolutionAsync();
-        Assert.Equal(card.BaseWorkId, resolution.Expansions.BaseOf(kept.WorkId));
-        Assert.Null(resolution.Expansions.BaseOf(dropped.WorkId));
-        Assert.True(resolution.SameGame.IsEmpty);
-
-        // The unchecked one is an answer, not a card that returns.
-        var refusal = Assert.Single(await fixture.ExpansionRefusals.GetAllAsync());
-        Assert.Equal(dropped.WorkId, refusal.ChildWorkId);
-
-        Assert.Empty(queue.ExpansionGroups);
-        Assert.NotNull(queue.ReportUndoActId);
+        Assert.Equal(MergeCandidateStatuses.Rejected, await fixture.StatusOfAsync(id));
 
         await queue.LoadCommand.ExecuteAsync(null);
-        Assert.Empty(queue.ExpansionGroups);
-    }
-
-    /// <summary>
-    /// Taking none is the same answer as "not expansions", and it is recorded
-    /// the same way: nothing linked, every pack written down.
-    /// </summary>
-    [Fact]
-    public async Task Taking_none_links_nothing_and_records_every_pack()
-    {
-        using var fixture = new MergeQueueFixture();
-        await fixture.CreateReleaseAsync(new SeedSide("Sid Meier's Civilization IV", 2005, "2K"));
-        await fixture.CreateReleaseAsync(
-            new SeedSide("Sid Meier's Civilization IV: Warlords", 2006, "2K"));
-
-        var queue = fixture.CreateViewModel();
-        await queue.LoadCommand.ExecuteAsync(null);
-
-        var card = Assert.Single(queue.ExpansionGroups);
-        card.Members[0].IsIncluded = false;
-
-        await queue.GroupExpansionsCommand.ExecuteAsync(card);
-
-        Assert.True((await fixture.Links.GetResolutionAsync()).Expansions.IsEmpty);
-        Assert.Single(await fixture.ExpansionRefusals.GetAllAsync());
-        Assert.Null(queue.ReportUndoActId);
-        Assert.Empty(queue.ExpansionGroups);
-    }
-
-    /// <summary>The negative answer, from its own button.</summary>
-    [Fact]
-    public async Task Not_expansions_records_every_pack_and_links_nothing()
-    {
-        using var fixture = new MergeQueueFixture();
-        await fixture.CreateReleaseAsync(new SeedSide("Sid Meier's Civilization IV", 2005, "2K"));
-        await fixture.CreateReleaseAsync(
-            new SeedSide("Sid Meier's Civilization IV: Warlords", 2006, "2K"));
-        await fixture.CreateReleaseAsync(
-            new SeedSide("Sid Meier's Civilization IV: Beyond the Sword", 2007, "2K"));
-
-        var queue = fixture.CreateViewModel();
-        await queue.LoadCommand.ExecuteAsync(null);
-
-        await queue.NotExpansionsCommand.ExecuteAsync(Assert.Single(queue.ExpansionGroups));
-
-        Assert.True((await fixture.Links.GetResolutionAsync()).Expansions.IsEmpty);
-        Assert.Equal(2, (await fixture.ExpansionRefusals.GetAllAsync()).Count);
-        Assert.Empty(queue.ExpansionGroups);
-    }
-
-    /// <summary>
-    /// A grouping and a same-game link are different facts, so the history row
-    /// says which one it recorded. A row that read the same for both would
-    /// invite the user to retract the wrong one.
-    /// </summary>
-    [Fact]
-    public async Task The_history_row_says_grouped_rather_than_linked()
-    {
-        using var fixture = new MergeQueueFixture();
-        await fixture.CreateReleaseAsync(new SeedSide("Sid Meier's Civilization IV", 2005, "2K"));
-        await fixture.CreateReleaseAsync(
-            new SeedSide("Sid Meier's Civilization IV: Warlords", 2006, "2K"));
-
-        var queue = fixture.CreateViewModel();
-        await queue.LoadCommand.ExecuteAsync(null);
-        await queue.GroupExpansionsCommand.ExecuteAsync(Assert.Single(queue.ExpansionGroups));
-
-        await queue.ShowHistoryCommand.ExecuteAsync(null);
-
-        var row = Assert.Single(queue.LinkHistory);
-        Assert.True(row.IsExpansionAct);
-        Assert.Equal(ExpansionCopy.GroupedAtLabel, row.LinkedAtLabel);
-
-        // The drawn row carries the distinction in its GROUPED meta label;
-        // the spoken form carries it with the verb, for the same reason.
-        Assert.Contains("grouped under", row.SpokenDescription, StringComparison.Ordinal);
-        Assert.DoesNotContain("linked under", row.SpokenDescription, StringComparison.Ordinal);
-        Assert.True(row.CanUndo);
-
-        // Retracting is ordinary: the proposal comes back.
-        await queue.UndoCommand.ExecuteAsync(row);
-        Assert.Single(queue.ExpansionGroups);
-    }
-
-    // ── The expansion surface answers the card the user is looking at ────────
-
-    // The expansion surface had no selection input: SelectedExpansionGroup was
-    // whatever the last load set (the first card), so G wrote a link for a card
-    // the user was not looking at. MoveExpansionSelection is what the window's
-    // Up/Down calls, and the shortcut answers SelectedExpansionGroup, never a
-    // list position. Same defect class as the S/D fix on the review queue (TASK-66).
-
-    [Fact]
-    public async Task A_shortcut_answers_the_selected_expansion_card_not_the_first()
-    {
-        using var fixture = new MergeQueueFixture();
-        await fixture.CreateReleaseAsync(new SeedSide("Sid Meier's Civilization IV", 2005, "2K"));
-        await fixture.CreateReleaseAsync(
-            new SeedSide("Sid Meier's Civilization IV: Warlords", 2006, "2K"));
-        await fixture.CreateReleaseAsync(
-            new SeedSide("The Witcher 3: Wild Hunt", 2015, "CD PROJEKT RED"));
-        await fixture.CreateReleaseAsync(
-            new SeedSide("The Witcher 3: Wild Hunt - Blood and Wine", 2016, "CD PROJEKT RED"));
-
-        var queue = fixture.CreateViewModel();
-        await queue.LoadCommand.ExecuteAsync(null);
-        queue.ShowExpansionsCommand.Execute(null);
-
-        Assert.Equal(2, queue.ExpansionGroups.Count);
-        var first = queue.ExpansionGroups[0];
-        var second = queue.ExpansionGroups[1];
-
-        // What the view does when focus or a pointer lands on the second card.
-        queue.SelectExpansion(second);
-        Assert.Same(second, queue.SelectedExpansionGroup);
-        Assert.True(second.IsSelected);
-        Assert.False(first.IsSelected);
-
-        // What OnMergeQueueKeyDown does on G.
-        await queue.GroupExpansionsCommand.ExecuteAsync(queue.SelectedExpansionGroup);
-
-        var resolution = await fixture.Links.GetResolutionAsync();
-        foreach (var member in second.Members)
-        {
-            Assert.Equal(second.BaseWorkId, resolution.Expansions.BaseOf(member.WorkId));
-        }
-
-        // The card the user was NOT looking at is untouched and still on screen.
-        foreach (var member in first.Members)
-        {
-            Assert.Null(resolution.Expansions.BaseOf(member.WorkId));
-        }
-
-        Assert.Same(first, Assert.Single(queue.ExpansionGroups));
-    }
-
-    [Fact]
-    public async Task Expansion_selection_moves_by_card_and_clamps_at_the_ends()
-    {
-        using var fixture = new MergeQueueFixture();
-        await fixture.CreateReleaseAsync(new SeedSide("Sid Meier's Civilization IV", 2005, "2K"));
-        await fixture.CreateReleaseAsync(
-            new SeedSide("Sid Meier's Civilization IV: Warlords", 2006, "2K"));
-        await fixture.CreateReleaseAsync(
-            new SeedSide("The Witcher 3: Wild Hunt", 2015, "CD PROJEKT RED"));
-        await fixture.CreateReleaseAsync(
-            new SeedSide("The Witcher 3: Wild Hunt - Blood and Wine", 2016, "CD PROJEKT RED"));
-
-        var queue = fixture.CreateViewModel();
-        await queue.LoadCommand.ExecuteAsync(null);
-
-        Assert.Equal(1, queue.MoveExpansionSelection(1));
-        Assert.Equal(1, queue.MoveExpansionSelection(1));
-        Assert.Equal(0, queue.MoveExpansionSelection(-1));
-        Assert.Equal(0, queue.MoveExpansionSelection(-1));
-        Assert.Same(queue.ExpansionGroups[0], queue.SelectedExpansionGroup);
-    }
-
-    [Fact]
-    public void Moving_expansion_selection_on_an_empty_surface_is_a_no_op()
-    {
-        using var fixture = new MergeQueueFixture();
-        var queue = fixture.CreateViewModel();
-
-        Assert.Equal(-1, queue.MoveExpansionSelection(1));
-        Assert.Null(queue.SelectedExpansionGroup);
-    }
-
-    // ── The outcome report belongs to the surface that raised it ─────────────
-
-    // The report belongs to the surface that raised it, is dropped on a segment
-    // switch and on a reload, and a retraction's own outcome survives the reload
-    // it triggers.
-
-    [Fact]
-    public async Task A_review_report_does_not_render_on_another_surface()
-    {
-        using var fixture = new MergeQueueFixture();
-        await fixture.QueuePairAsync(
-            new SeedSide("Prey", 2017, "Bethesda Softworks"),
-            new SeedSide("Prey", null, null));
-        await fixture.CreateReleaseAsync(new SeedSide("Sid Meier's Civilization IV", 2005, "2K"));
-        await fixture.CreateReleaseAsync(
-            new SeedSide("Sid Meier's Civilization IV: Warlords", 2006, "2K"));
-
-        var queue = fixture.CreateViewModel();
-        await queue.LoadCommand.ExecuteAsync(null);
-
-        await queue.SameGameCommand.ExecuteAsync(queue.Groups[0]);
-
-        Assert.True(queue.HasReviewReport);
-        Assert.False(queue.HasExpansionsReport);
-        Assert.False(queue.HasHistoryReport);
-        Assert.True(queue.CanUndoReport);
-
-        // Leaving the surface takes its report with it: the Undo button on that
-        // note belongs to an act the next surface did not perform.
-        queue.ShowExpansionsCommand.Execute(null);
-        Assert.False(queue.HasReport);
-        Assert.False(queue.HasReviewReport);
-        Assert.False(queue.HasExpansionsReport);
-        Assert.False(queue.CanUndoReport);
-    }
-
-    [Fact]
-    public async Task An_expansion_report_does_not_render_on_another_surface()
-    {
-        using var fixture = new MergeQueueFixture();
-        await fixture.CreateReleaseAsync(new SeedSide("Sid Meier's Civilization IV", 2005, "2K"));
-        await fixture.CreateReleaseAsync(
-            new SeedSide("Sid Meier's Civilization IV: Warlords", 2006, "2K"));
-
-        var queue = fixture.CreateViewModel();
-        await queue.LoadCommand.ExecuteAsync(null);
-        queue.ShowExpansionsCommand.Execute(null);
-
-        await queue.GroupExpansionsCommand.ExecuteAsync(Assert.Single(queue.ExpansionGroups));
-
-        Assert.True(queue.HasExpansionsReport);
-        Assert.False(queue.HasReviewReport);
-        Assert.False(queue.HasHistoryReport);
-
-        queue.ShowReviewCommand.Execute(null);
-        Assert.False(queue.HasReport);
-    }
-
-    [Fact]
-    public async Task A_reload_clears_the_report()
-    {
-        using var fixture = new MergeQueueFixture();
-        await fixture.CreateReleaseAsync(new SeedSide("Sid Meier's Civilization IV", 2005, "2K"));
-        await fixture.CreateReleaseAsync(
-            new SeedSide("Sid Meier's Civilization IV: Warlords", 2006, "2K"));
-
-        var queue = fixture.CreateViewModel();
-        await queue.LoadCommand.ExecuteAsync(null);
-        await queue.GroupExpansionsCommand.ExecuteAsync(Assert.Single(queue.ExpansionGroups));
-        Assert.True(queue.HasReport);
-
-        await queue.LoadCommand.ExecuteAsync(null);
-
-        Assert.False(queue.HasReport);
-        Assert.Null(queue.ReportMessage);
-        Assert.False(queue.CanUndoReport);
-    }
-
-    [Fact]
-    public async Task Retracting_from_history_reports_on_the_history_surface()
-    {
-        using var fixture = new MergeQueueFixture();
-        await fixture.CreateReleaseAsync(new SeedSide("Sid Meier's Civilization IV", 2005, "2K"));
-        await fixture.CreateReleaseAsync(
-            new SeedSide("Sid Meier's Civilization IV: Warlords", 2006, "2K"));
-
-        var queue = fixture.CreateViewModel();
-        await queue.LoadCommand.ExecuteAsync(null);
-        await queue.GroupExpansionsCommand.ExecuteAsync(Assert.Single(queue.ExpansionGroups));
-        await queue.ShowHistoryCommand.ExecuteAsync(null);
-
-        // Arriving at HISTORY cleared the expansion surface's report.
-        Assert.False(queue.HasReport);
-
-        await queue.UndoCommand.ExecuteAsync(Assert.Single(queue.LinkHistory));
-
-        // The reload inside the retraction must not eat the retraction's own
-        // outcome line, and the line belongs to HISTORY.
-        Assert.True(queue.HasHistoryReport);
-        Assert.False(queue.HasReviewReport);
-        Assert.False(queue.HasExpansionsReport);
-    }
-
-    // ── One card layout, at every member count ───────────────────────────────
-
-    // The card used to hold two Grids switched on IsPair and two member
-    // templates, one of which served as both a pair side and a roster column:
-    // two designs in one card. There is now one arrangement — the primary's
-    // capsule on the left, every other member a row on the right — and what
-    // varies with the count is inside the row.
-
-    /// <summary>
-    /// Two members: the one child draws its cover at 200x300 with the whole diff
-    /// open and NO include checkbox, because the two answer buttons already carry
-    /// include and exclude (TASK-70.3).
-    /// </summary>
-    [Fact]
-    public async Task A_two_member_card_draws_its_child_at_full_size_with_no_checkbox()
-    {
-        using var fixture = new MergeQueueFixture();
-        await fixture.QueuePairAsync(
-            new SeedSide("The Witcher 3: Wild Hunt", 2015, "CD PROJEKT RED"),
-            new SeedSide("The Witcher 3: Wild Hunt - Game of the Year Edition", 2016, "CD PROJEKT RED"));
-
-        var queue = fixture.CreateViewModel();
-        await queue.LoadCommand.ExecuteAsync(null);
-
-        var card = Assert.Single(queue.Groups);
-        Assert.Equal(2, card.Members.Count);
-
-        var child = Assert.Single(card.Others);
-        Assert.True(child.IsSoleChild);
-
-        // §6's two covers side by side at 200x300, kept literally.
-        Assert.Equal(MergeQueueViewModel.CoverWidth, card.Primary.CoverWidth);
-        Assert.Equal(MergeQueueViewModel.CoverWidth, child.CoverWidth);
-        Assert.Equal(300, child.CoverHeight);
-
-        // The full diff, open, with no disclosure and no condensed line.
-        Assert.True(child.ShowFullEvidence);
-        Assert.False(child.ShowEvidenceDisclosure);
-        Assert.False(child.ShowCondensedEvidence);
-
-        // The include control means something now, and its meaning is "not at
-        // two members".
-        Assert.False(child.ShowIncludeControl);
-        Assert.False(card.Primary.ShowIncludeControl);
-        Assert.True(child.IsIncluded);
-        Assert.Single(card.IncludedChildWorkIds);
-    }
-
-    /// <summary>
-    /// Moving the primary on a two-member card moves which member is the full
-    /// size row. Nothing about the card's outer geometry changes.
-    /// </summary>
-    [Fact]
-    public async Task Moving_the_primary_at_two_members_moves_the_full_size_row()
-    {
-        using var fixture = new MergeQueueFixture();
-        await fixture.QueuePairAsync(
-            new SeedSide("The Witcher 3: Wild Hunt", 2015, "CD PROJEKT RED"),
-            new SeedSide("The Witcher 3: Wild Hunt - Game of the Year Edition", 2016, "CD PROJEKT RED"));
-
-        var queue = fixture.CreateViewModel();
-        await queue.LoadCommand.ExecuteAsync(null);
-
-        var card = Assert.Single(queue.Groups);
-        var wasPrimary = card.Primary;
-        var wasChild = Assert.Single(card.Others);
-
-        card.SetPrimary(wasChild.WorkId);
-
-        Assert.Same(wasChild, card.Primary);
-        Assert.Same(wasPrimary, Assert.Single(card.Others));
-        Assert.True(wasPrimary.IsSoleChild);
-        Assert.False(wasChild.IsSoleChild);
-        Assert.False(wasPrimary.ShowIncludeControl);
-        Assert.True(wasPrimary.IsIncluded);
-        Assert.Equal(MergeQueueViewModel.CoverWidth, wasPrimary.CoverWidth);
-    }
-
-    /// <summary>
-    /// Three members: every child is a chip with a condensed line, a disclosure
-    /// and a checkbox. The primary keeps its capsule, so the card's outer
-    /// geometry is the same one the two-member card draws.
-    /// </summary>
-    [Fact]
-    public async Task A_three_member_card_makes_every_child_a_chip_with_an_include_control()
-    {
-        using var fixture = new MergeQueueFixture();
-        await fixture.QueueTripleAsync();
-
-        var queue = fixture.CreateViewModel();
-        await queue.LoadCommand.ExecuteAsync(null);
-
-        var card = Assert.Single(queue.Groups);
-        Assert.Equal(3, card.Members.Count);
-        Assert.Equal(2, card.Others.Count);
-
-        Assert.Equal(MergeQueueViewModel.CoverWidth, card.Primary.CoverWidth);
-        Assert.False(card.Primary.ShowIncludeControl);
-
-        Assert.All(card.Others, m =>
-        {
-            Assert.False(m.IsSoleChild);
-            Assert.True(m.ShowIncludeControl);
-            Assert.Equal(MergeGroupMemberViewModel.ChipWidth, m.CoverWidth);
-            Assert.Equal(96, m.CoverHeight);
-            Assert.True(m.ShowCondensedEvidence);
-            Assert.False(m.ShowFullEvidence);
-        });
-    }
-
-    /// <summary>
-    /// Six members: the same arrangement, five rows, and six names a screen
-    /// reader can tell apart without a database id between them.
-    /// </summary>
-    [Fact]
-    public async Task A_six_member_card_draws_five_rows_and_six_distinct_names()
-    {
-        using var fixture = new MergeQueueFixture();
-
-        var seeded = new List<SeededRelease>();
-        for (var i = 0; i < 6; i++)
-        {
-            seeded.Add(await fixture.CreateReleaseAsync(
-                new SeedSide("Prey", 2017, "Bethesda Softworks")));
-        }
-
-        for (var i = 1; i < seeded.Count; i++)
-        {
-            await fixture.QueueScoredPairAsync(seeded[i - 1], seeded[i]);
-        }
-
-        var queue = fixture.CreateViewModel();
-        await queue.LoadCommand.ExecuteAsync(null);
-
-        var card = Assert.Single(queue.Groups);
-        Assert.Equal(6, card.Members.Count);
-        Assert.Equal(5, card.Others.Count);
-        Assert.Equal("6", card.MemberCountText);
-
-        Assert.Equal(MergeQueueViewModel.CoverWidth, card.Primary.CoverWidth);
-        Assert.All(card.Others, m => Assert.Equal(MergeGroupMemberViewModel.ChipWidth, m.CoverWidth));
-
-        Assert.Equal(6, card.Members.Select(m => m.Label).Distinct().Count());
-        Assert.All(card.Members, m => Assert.DoesNotContain("#", m.Label, StringComparison.Ordinal));
-    }
-
-    /// <summary>
-    /// The cover request follows the geometry: the primary and a two-member
-    /// card's one child ask for the capsule's width; a roster chip asks for a
-    /// third of it. Nothing decodes a 600x900 source for a 64px chip.
-    /// </summary>
-    [Fact]
-    public async Task Every_member_asks_for_the_cover_at_the_size_it_draws()
-    {
-        using var fixture = new MergeQueueFixture();
-        await fixture.QueueTripleAsync();
-
-        var queue = fixture.CreateViewModel();
-        await queue.LoadCommand.ExecuteAsync(null);
-
-        var card = Assert.Single(queue.Groups);
-        Assert.Equal(
-            MergeQueueViewModel.CoverWidth,
-            card.Primary.CoverWidth);
-        Assert.All(
-            card.Others,
-            m => Assert.Equal(MergeGroupMemberViewModel.ChipWidth, m.CoverWidth));
-    }
-
-    // ── Evidence: the figure stays, the arithmetic goes ──────────────────────
-
-    /// <summary>
-    /// Confidence survives the pass — it is what sorts the queue — and so does
-    /// the matcher's band, under a name that says what it is. The signed
-    /// contribution points and the per-row score restatement do not.
-    /// </summary>
-    [Fact]
-    public async Task The_card_states_its_confidence_and_the_matchers_band()
-    {
-        using var fixture = new MergeQueueFixture();
-        await fixture.QueuePairAsync(
-            new SeedSide("The Witcher 3: Wild Hunt", 2015, "CD PROJEKT RED"),
-            new SeedSide("The Witcher 3: Wild Hunt - Game of the Year Edition", 2016, "CD PROJEKT RED"));
-
-        var queue = fixture.CreateViewModel();
-        await queue.LoadCommand.ExecuteAsync(null);
-
-        var card = Assert.Single(queue.Groups);
-
-        Assert.Equal("0.87", card.ScoreText);
-        Assert.Equal(MergeCopy.ConfidenceLabel, card.ConfidenceLabel);
-
-        // The band, not a queue position: several cards can carry it at once.
-        Assert.True(card.IsPriority);
-        Assert.Equal(MergeCopy.PriorityBandLabel, card.PriorityBandLabel);
-        Assert.DoesNotContain(
-            "QUEUE", card.PriorityBandLabel, StringComparison.OrdinalIgnoreCase);
-    }
-
-    // ── History is one chronological log of what is in force ─────────────────
-
-    /// <summary>
-    /// Newest first, both relations in one list, and an act that has been undone
-    /// is off the list rather than on it struck through. That reverses the
-    /// TASK-70.8 line about a retracted row staying on screen with the date it
-    /// was reversed: the user chose the log that shows what stands.
-    /// </summary>
-    [Fact]
-    public async Task The_history_log_is_newest_first_and_holds_only_what_stands()
-    {
-        using var fixture = new MergeQueueFixture();
-        await fixture.QueuePairAsync(
-            new SeedSide("Prey", 2017, "Bethesda Softworks"),
-            new SeedSide("Prey", null, null));
-        await fixture.QueuePairAsync(
-            new SeedSide("The Witcher 3: Wild Hunt", 2015, "CD PROJEKT RED"),
-            new SeedSide("The Witcher 3: Wild Hunt - Game of the Year Edition", 2016, "CD PROJEKT RED"));
-
-        var queue = fixture.CreateViewModel();
-        await queue.LoadCommand.ExecuteAsync(null);
-
-        await queue.SameGameCommand.ExecuteAsync(queue.Groups[0]);
-        await queue.SameGameCommand.ExecuteAsync(queue.Groups[0]);
-
-        await queue.ShowHistoryCommand.ExecuteAsync(null);
-
-        Assert.Equal(2, queue.LinkHistory.Count);
-        Assert.True(
-            queue.LinkHistory[0].ActId > queue.LinkHistory[1].ActId,
-            "The log is not newest first.");
-
-        var newest = queue.LinkHistory[0];
-        await queue.UndoCommand.ExecuteAsync(newest);
-
-        var remaining = Assert.Single(queue.LinkHistory);
-        Assert.NotEqual(newest.ActId, remaining.ActId);
-        Assert.True(remaining.CanUndo);
-    }
-
-    // Both tests below were written against the run-on sentence and the card
-    // ladder that fed it. What they protect is unchanged in kind: two works one
-    // title names must still be told apart, and a row of distinct titles must
-    // still pay nothing. The row is now a headline with its consolidated items
-    // beneath it, and the qualifier is narrowed to the store.
-
-    // The headline keeps the plain game name. The child takes the store, which
-    // is enough to separate the two lines, and the rule stops there.
-
-    [Fact]
-    public async Task A_history_row_tells_two_same_titled_works_apart()
-    {
-        using var fixture = new MergeQueueFixture();
-        var steam = await fixture.CreateReleaseAsync(
-            new SeedSide("The Stanley Parable", 2013, "Galactic Cafe"), store: "steam");
-        var epic = await fixture.CreateReleaseAsync(
-            new SeedSide("The Stanley Parable", 2013, "Galactic Cafe"), store: "epic");
-        await fixture.QueueScoredPairAsync(steam, epic);
-
-        var queue = fixture.CreateViewModel();
-        await queue.LoadCommand.ExecuteAsync(null);
-        await queue.SameGameCommand.ExecuteAsync(queue.Groups[0]);
-
-        await queue.ShowHistoryCommand.ExecuteAsync(null);
-
-        var row = Assert.Single(queue.LinkHistory);
-        var child = Assert.Single(row.ChildTitles);
-        Assert.NotEqual(row.ParentTitle, child);
-        Assert.Equal("The Stanley Parable", row.ParentTitle);
-        Assert.StartsWith("The Stanley Parable (", child, StringComparison.Ordinal);
-
-        // Store alone, never the ladder: the year and the publisher are the
-        // same on both sides and appear on neither line.
-        string[] lines = [row.ParentTitle, child];
-        Assert.All(lines, line => Assert.DoesNotContain("2013", line, StringComparison.Ordinal));
-        Assert.All(
-            lines, line => Assert.DoesNotContain("Galactic Cafe", line, StringComparison.Ordinal));
-        Assert.All(lines, line => Assert.DoesNotContain(" of ", line, StringComparison.Ordinal));
-    }
-
-    // A row whose titles already differ pays nothing: no store is appended to
-    // a name that was never ambiguous.
-
-    [Fact]
-    public async Task A_history_row_of_distinct_titles_carries_no_qualifier()
-    {
-        using var fixture = new MergeQueueFixture();
-        await fixture.QueuePairAsync(
-            new SeedSide("The Witcher 3: Wild Hunt", 2015, "CD PROJEKT RED"),
-            new SeedSide("The Witcher 3: Wild Hunt - Game of the Year Edition", 2016, "CD PROJEKT RED"));
-
-        var queue = fixture.CreateViewModel();
-        await queue.LoadCommand.ExecuteAsync(null);
-        await queue.SameGameCommand.ExecuteAsync(queue.Groups[0]);
-
-        await queue.ShowHistoryCommand.ExecuteAsync(null);
-
-        var row = Assert.Single(queue.LinkHistory);
-        Assert.DoesNotContain("(", row.ParentTitle, StringComparison.Ordinal);
-        Assert.DoesNotContain("(Steam", row.ChildTitlesText, StringComparison.Ordinal);
-    }
-
-    // ── The row is a headline over the items it consolidated ──────────────────
-
-    /// <summary>
-    /// The consolidated game names the row, the items consolidated into it sit
-    /// beneath it as subtext, every child is listed, and the headline is not
-    /// truncated to make room. Position carries the relation; the drawn row
-    /// uses no verb.
-    /// </summary>
-    [Fact]
-    public async Task A_history_row_is_a_headline_over_the_items_it_consolidated()
-    {
-        using var fixture = new MergeQueueFixture();
-        await fixture.CreateReleaseAsync(new SeedSide("Arma 2", 2009, "Bohemia Interactive"));
-        await fixture.CreateReleaseAsync(
-            new SeedSide("Arma 2: Operation Arrowhead", 2010, "Bohemia Interactive"));
-        await fixture.CreateReleaseAsync(
-            new SeedSide(
-                "Arma 2: Private Military Company", 2010, "Bohemia Interactive"));
-
-        var queue = fixture.CreateViewModel();
-        await queue.LoadCommand.ExecuteAsync(null);
-        await queue.GroupExpansionsCommand.ExecuteAsync(Assert.Single(queue.ExpansionGroups));
-
-        await queue.ShowHistoryCommand.ExecuteAsync(null);
-
-        var row = Assert.Single(queue.LinkHistory);
-        Assert.Equal("Arma 2", row.ParentTitle);
-        Assert.True(row.HasChildTitles);
-
-        // Every child is listed, and the headline is not truncated to fit them.
-        Assert.Equal(2, row.ChildTitles.Count);
-        Assert.Contains("Arma 2: Operation Arrowhead", row.ChildTitles);
-        Assert.Contains("Arma 2: Private Military Company", row.ChildTitles);
-        Assert.Equal(
-            "Arma 2: Operation Arrowhead, Arma 2: Private Military Company",
-            row.ChildTitlesText);
-        Assert.DoesNotContain("under", row.ParentTitle, StringComparison.Ordinal);
-        Assert.DoesNotContain("under", row.ChildTitlesText, StringComparison.Ordinal);
-    }
-
-    // ── The expansion row says what the relation is ──────────────────────────
-
-    /// <summary>
-    /// The row reads the storefront's own word for the relation rather than the
-    /// link kind, which is what stops a playtest reading as an expansion. Three
-    /// kinds exist; the vocabulary is open.
-    /// </summary>
-    [Fact]
-    public void An_expansion_row_states_the_relation_in_the_stores_own_word()
-    {
-        var side = new MergeSideViewModel(1, "Prey Playtest", 2017, "Bethesda Softworks");
-        var evidence = new ExpansionEvidence("prey", "playtest", true, 0, false);
-
-        var named = new ExpansionMemberViewModel(1, side, evidence, RelationLabels.Playtest);
-        Assert.True(named.HasRelation);
-        Assert.Equal("PLAYTEST", named.RelationText);
-
-        var standaloneExpansion = new ExpansionMemberViewModel(
-            1, side, evidence, RelationLabels.StandaloneExpansion);
-        Assert.Equal("STANDALONE EXPANSION", standaloneExpansion.RelationText);
-
-        // Nothing named it and no kind either: the row draws no relation word
-        // rather than guessing.
-        var unnamed = new ExpansionMemberViewModel(1, side, evidence);
-        Assert.False(unnamed.HasRelation);
-        Assert.Equal(string.Empty, unnamed.RelationText);
-    }
-
-    // Every title-heuristic proposal carries no relation label because no
-    // storefront was asked. That is the ordinary case in a library the
-    // metadata backfill has not reached, and the row drew a blank column for
-    // all of them. The kind now supplies the word from the same vocabulary,
-    // so the row always states what it proposes.
-
-    [Fact]
-    public void An_expansion_row_names_the_kind_when_no_storefront_named_the_relation()
-    {
-        var side = new MergeSideViewModel(1, "Counter-Strike: Source", 2004, "Valve");
-        var evidence = new ExpansionEvidence("counter-strike", "source", true, 4, true);
-
-        var heuristic = new ExpansionMemberViewModel(
-            1, side, evidence, relationLabel: null, kind: IdentityLinkKinds.ExpansionOf);
-
-        Assert.True(heuristic.HasRelation);
-        Assert.Equal("EXPANSION", heuristic.RelationText);
-
-        // A source's own word still wins over the kind's.
-        var named = new ExpansionMemberViewModel(
-            1, side, evidence, RelationLabels.Playtest, IdentityLinkKinds.VariantOf);
-        Assert.Equal("PLAYTEST", named.RelationText);
-    }
-
-    // The card's header asks "Expansion?" and its primary button writes the
-    // kind on the row. A row carrying a relation the header did not ask about
-    // is still shown, because that is where the pair was found, but it does
-    // not arrive already answered.
-
-    [Fact]
-    public void Only_the_relation_the_surface_asks_about_arrives_pre_ticked()
-    {
-        var side = new MergeSideViewModel(1, "Prey Playtest", 2017, "Bethesda Softworks");
-        var evidence = new ExpansionEvidence("prey", "playtest", true, 0, false);
-
-        var expansion = new ExpansionMemberViewModel(
-            1, side, evidence, RelationLabels.StandaloneExpansion, IdentityLinkKinds.ExpansionOf);
-        Assert.True(expansion.IsAskedRelation);
-        Assert.True(expansion.IsIncluded);
-
-        // A playtest is a real proposal and a different question. Pre-ticking
-        // it would make the primary button assert a relation the header never
-        // asked about.
-        var playtest = new ExpansionMemberViewModel(
-            1, side, evidence, RelationLabels.Playtest, IdentityLinkKinds.VariantOf);
-        Assert.False(playtest.IsAskedRelation);
-        Assert.False(playtest.IsIncluded);
-
-        // Unticked is a default, not a lock: the user may still say yes.
-        playtest.IsIncluded = true;
-        Assert.True(playtest.IsIncluded);
-    }
-
-    // Every proposal reaching a card carries a kind, so every pack row states a
-    // relation, whether a storefront named one or the title heuristic did not.
-
-    [Fact]
-    public async Task Every_pack_row_states_a_relation()
-    {
-        using var fixture = new MergeQueueFixture();
-        await fixture.CreateReleaseAsync(new SeedSide("Sid Meier's Civilization IV", 2005, "2K"));
-        await fixture.CreateReleaseAsync(
-            new SeedSide("Sid Meier's Civilization IV: Warlords", 2006, "2K"));
-
-        var queue = fixture.CreateViewModel();
-        await queue.LoadCommand.ExecuteAsync(null);
-
-        var card = Assert.Single(queue.ExpansionGroups);
-        Assert.All(card.Members, member =>
-        {
-            Assert.True(member.HasRelation, $"{member.Side.Title} states no relation.");
-            Assert.NotEqual(string.Empty, member.RelationText);
-        });
-    }
-
-    // ── The rail counts both surfaces, the tabs count one each ───────────────
-
-    // The rail counts review plus expansions and recedes only when both are empty.
-
-    [Fact]
-    public async Task The_rail_counts_expansion_work_with_an_empty_review_queue()
-    {
-        using var fixture = new MergeQueueFixture();
-        await fixture.CreateReleaseAsync(new SeedSide("Sid Meier's Civilization IV", 2005, "2K"));
-        await fixture.CreateReleaseAsync(
-            new SeedSide("Sid Meier's Civilization IV: Warlords", 2006, "2K"));
-        await fixture.CreateReleaseAsync(
-            new SeedSide("The Witcher 3: Wild Hunt", 2015, "CD PROJEKT RED"));
-        await fixture.CreateReleaseAsync(
-            new SeedSide("The Witcher 3: Wild Hunt - Blood and Wine", 2016, "CD PROJEKT RED"));
-
-        var queue = fixture.CreateViewModel();
-        await queue.LoadCommand.ExecuteAsync(null);
-
+        Assert.All(queue.Sections, section => Assert.Empty(section.Cards));
         Assert.Equal(0, queue.PendingCount);
-        Assert.Equal(2, queue.ExpansionCount);
-        Assert.Equal(2, queue.OutstandingCount);
-        Assert.Equal("2", queue.OutstandingCountText);
-        Assert.True(queue.HasOutstanding);
-        Assert.Equal(1.0, queue.RowOpacity);
-
-        // The rail draws 2 and the EXPANSIONS tab draws 2. The REVIEW tab draws
-        // nothing at all, which is the case this test exists for: a library
-        // with no same-game groups and expansion cards waiting used to show a
-        // dimmed SAME GAME? 0 with nothing saying that twelve cards were there.
-        Assert.False(queue.HasPending);
-        Assert.True(queue.HasExpansions);
-        Assert.Equal("2", queue.ExpansionCountText);
-    }
-
-    // RETARGETED from The_rail_count_and_the_review_header_are_one_number
-    // (TASK-71). That test pinned the rail to the review count, because the
-    // rail read 63 against a 45 GROUPS header and agreed with neither. The
-    // header count is gone: each segment tab carries its own number now, on the
-    // control that also navigates to that surface. So the rail is the screen's
-    // total again, and this asserts the invariant TASK-71 was actually
-    // defending — that the rail's figure is reachable by adding up what the
-    // screen draws, rather than standing against a number that disagrees.
-    //
-    // HISTORY is deliberately not in the sum: it is a log, not work waiting.
-
-    [Fact]
-    public async Task The_rail_count_is_the_two_answerable_segment_counts_added_up()
-    {
-        using var fixture = new MergeQueueFixture();
-        await fixture.QueuePairAsync(
-            new SeedSide("Prey", 2017, "Bethesda Softworks"),
-            new SeedSide("Prey", null, null));
-
-        // Expansion work waiting at the same time, which is what used to make
-        // the rail and the review header differ.
-        await fixture.CreateReleaseAsync(new SeedSide("Sid Meier's Civilization IV", 2005, "2K"));
-        await fixture.CreateReleaseAsync(
-            new SeedSide("Sid Meier's Civilization IV: Warlords", 2006, "2K"));
-
-        var queue = fixture.CreateViewModel();
-        await queue.LoadCommand.ExecuteAsync(null);
-
-        Assert.Equal(1, queue.PendingCount);
-        Assert.Equal(1, queue.ExpansionCount);
-
-        // What the rail draws is what the two answerable tabs draw, added up.
-        Assert.Equal(queue.PendingCount + queue.ExpansionCount, queue.OutstandingCount);
-        Assert.Equal("2", queue.OutstandingCountText);
-        Assert.Equal("1", queue.PendingCountText);
-        Assert.Equal("1", queue.ExpansionCountText);
-
-        // The history tab counts too, and is not part of that sum.
-        Assert.Equal(
-            queue.LinkHistory.Count.ToString(CultureInfo.InvariantCulture),
-            queue.LinkHistoryCountText);
-        Assert.Equal(queue.PendingCount + queue.ExpansionCount, queue.OutstandingCount);
-    }
-
-    // The count on a tab moves when its surface does, or a tab goes on saying
-    // there is work after the last card was answered.
-
-    [Fact]
-    public async Task Every_segment_count_follows_its_own_surface()
-    {
-        using var fixture = new MergeQueueFixture();
-        await fixture.QueuePairAsync(
-            new SeedSide("Prey", 2017, "Bethesda Softworks"),
-            new SeedSide("Prey", null, null));
-
-        var queue = fixture.CreateViewModel();
-        await queue.LoadCommand.ExecuteAsync(null);
-
-        Assert.Equal("1", queue.PendingCountText);
-        Assert.True(queue.HasPending);
-        Assert.False(queue.HasLinkHistory);
-        Assert.Equal("0", queue.LinkHistoryCountText);
-
-        var raised = new List<string>();
-        queue.PropertyChanged += (_, e) => raised.Add(e.PropertyName ?? string.Empty);
-
-        await queue.SameGameCommand.ExecuteAsync(Assert.Single(queue.Groups));
-
-        // The answer emptied REVIEW and put an act in HISTORY. Both tabs move.
-        Assert.False(queue.HasPending);
-        Assert.True(queue.HasLinkHistory);
-        Assert.Equal("1", queue.LinkHistoryCountText);
-
-        // And the tab bindings were told, or the strip would draw stale numbers.
-        Assert.Contains(nameof(queue.PendingCountText), raised);
-        Assert.Contains(nameof(queue.LinkHistoryCountText), raised);
-        Assert.Contains(nameof(queue.OutstandingCountText), raised);
-    }
-
-    // §8: the tab draws its label and a bare number side by side, so the
-    // automation name is the only place a screen reader learns what the number
-    // counts — and the three tabs count three different things.
-
-    [Fact]
-    public async Task Every_segment_tab_announces_what_its_number_counts()
-    {
-        using var fixture = new MergeQueueFixture();
-        await fixture.QueuePairAsync(
-            new SeedSide("Prey", 2017, "Bethesda Softworks"),
-            new SeedSide("Prey", null, null));
-        await fixture.CreateReleaseAsync(new SeedSide("Sid Meier's Civilization IV", 2005, "2K"));
-        await fixture.CreateReleaseAsync(
-            new SeedSide("Sid Meier's Civilization IV: Warlords", 2006, "2K"));
-
-        var queue = fixture.CreateViewModel();
-        await queue.LoadCommand.ExecuteAsync(null);
-
-        var names = new[]
-        {
-            queue.ReviewSegmentAutomationName,
-            queue.ExpansionsSegmentAutomationName,
-            queue.HistorySegmentAutomationName,
-        };
-
-        Assert.All(names, name => Assert.False(string.IsNullOrWhiteSpace(name)));
-
-        // Three surfaces, three units. A shared sentence would make the tabs
-        // one target a screen reader cannot tell apart.
-        Assert.Equal(3, names.Distinct(StringComparer.Ordinal).Count());
-
-        // Each names its own count, so the announcement and the digit agree.
-        Assert.Contains(queue.PendingCount.ToString(CultureInfo.InvariantCulture), names[0]);
-        Assert.Contains(queue.ExpansionCount.ToString(CultureInfo.InvariantCulture), names[1]);
-
-        // And none of them says "pair": the unit has been a group since the
-        // pairwise model was retired.
-        Assert.All(
-            names,
-            name => Assert.DoesNotContain("pair", name, StringComparison.OrdinalIgnoreCase));
-    }
-
-    [Fact]
-    public async Task The_rail_recedes_only_when_both_surfaces_are_empty()
-    {
-        using var fixture = new MergeQueueFixture();
-        var queue = fixture.CreateViewModel();
-        await queue.LoadCommand.ExecuteAsync(null);
-
-        Assert.Equal(0, queue.OutstandingCount);
-        Assert.False(queue.HasOutstanding);
-        Assert.Equal(0.4, queue.RowOpacity);
     }
 
     // ── Fixture ──────────────────────────────────────────────────────────────
 
-    private static (long, long) Edge(long a, long b) => a < b ? (a, b) : (b, a);
+    // ── Who joins, row by row ────────────────────────────────────────────────
+    //
+    // Restored on 2026-09-02 after the screen was tried: a group that arrives
+    // with one wrong member needs answering without refusing the rest. The
+    // radio picks the header; the checkbox picks who joins; the row itself
+    // opens the game's details.
+
+    [Fact]
+    public async Task Setting_a_rows_radio_moves_the_header()
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.QueuePairAsync(Prey, PreyUnknown);
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+        var card = Assert.Single(Section(queue, MergeSectionKind.Editions).Cards);
+        var other = card.Rows[1];
+
+        // The radio writes IsHeader; the card hears it through the row.
+        other.IsHeader = true;
+
+        Assert.Equal(1, card.HeaderIndex);
+        Assert.Same(other, card.Header);
+        Assert.False(card.Rows[0].IsHeader);
+        Assert.True(card.IsTouched);
+        Assert.Equal(card.Key, other.GroupName);
+        Assert.Equal([card.Rows[0].WorkId], card.ChildWorkIds);
+    }
+
+    [Fact]
+    public async Task A_row_left_out_is_not_linked_and_its_proposals_are_recorded()
+    {
+        using var fixture = new MergeQueueFixture();
+        var (a, b, c) = await fixture.CreateTripleAsync();
+        var ab = await fixture.QueueScoredPairAsync(a, b);
+        var ac = await fixture.QueueScoredPairAsync(a, c);
+        var bc = await fixture.QueueScoredPairAsync(b, c);
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+        var section = Section(queue, MergeSectionKind.Editions);
+        var card = Assert.Single(section.Cards);
+        var leftOut = card.Rows.Single(row => row.WorkId == c.WorkId);
+
+        leftOut.IsIncluded = false;
+
+        Assert.Equal("LEFT OUT", leftOut.HeaderMark);
+        Assert.Single(card.ExcludedRows);
+        Assert.DoesNotContain(c.WorkId, card.ChildWorkIds);
+        Assert.Equal([ac, bc], card.RejectedCandidateIds.Order());
+        Assert.Contains("1 left out", card.RollupText, StringComparison.Ordinal);
+        Assert.True(card.CanAnswer);
+
+        await queue.SameGameCommand.ExecuteAsync(card);
+
+        // One link, between the two rows still in; the left-out row's two
+        // proposals recorded as answered no; the one it was not part of is
+        // the one that was linked.
+        var links = await fixture.LiveLinksAsync();
+        var link = Assert.Single(links);
+        Assert.Equal(card.ParentWorkId, link.Parent);
+        Assert.NotEqual(c.WorkId, link.Child);
+        Assert.Equal(MergeCandidateStatuses.Pending, await fixture.StatusOfAsync(ab));
+        Assert.Equal(MergeCandidateStatuses.Rejected, await fixture.StatusOfAsync(ac));
+        Assert.Equal(MergeCandidateStatuses.Rejected, await fixture.StatusOfAsync(bc));
+        Assert.True(card.IsResolved);
+        Assert.Equal("1 nested · 1 left out · nothing was deleted.", queue.DockNote);
+
+        // One Undo reverses the whole answer: the act and the recorded noes.
+        await queue.UndoCommand.ExecuteAsync(null);
+
+        Assert.Empty(await fixture.LiveLinksAsync());
+        Assert.Equal(MergeCandidateStatuses.Pending, await fixture.StatusOfAsync(ac));
+        Assert.Equal(MergeCandidateStatuses.Pending, await fixture.StatusOfAsync(bc));
+        Assert.True(card.IsPending);
+        Assert.False(leftOut.IsIncluded);
+    }
+
+    [Fact]
+    public async Task Same_game_is_refused_while_every_other_row_is_left_out()
+    {
+        using var fixture = new MergeQueueFixture();
+        var id = await fixture.QueuePairAsync(Prey, PreyUnknown);
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+        var card = Assert.Single(Section(queue, MergeSectionKind.Editions).Cards);
+
+        card.Rows[1].IsIncluded = false;
+        Assert.False(card.CanAnswer);
+
+        await queue.SameGameCommand.ExecuteAsync(card);
+
+        Assert.True(card.IsPending);
+        Assert.False(card.IsDecided);
+        Assert.Empty(await fixture.LiveLinksAsync());
+        Assert.Equal(MergeCandidateStatuses.Pending, await fixture.StatusOfAsync(id));
+        Assert.False(queue.IsDockOpen);
+
+        // Bringing the row back re-arms the answer.
+        card.Rows[1].IsIncluded = true;
+        Assert.True(card.CanAnswer);
+    }
+
+    [Fact]
+    public async Task Making_a_left_out_row_the_header_brings_it_back_in()
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.QueuePairAsync(Prey, PreyUnknown);
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+        var card = Assert.Single(Section(queue, MergeSectionKind.Editions).Cards);
+        var row = card.Rows[1];
+
+        row.IsIncluded = false;
+        Assert.False(card.CanAnswer);
+
+        card.Promote(row);
+
+        Assert.True(row.IsHeader);
+        Assert.True(row.IsIncluded);
+        Assert.False(row.CanExclude);
+        Assert.True(card.CanAnswer);
+        Assert.Equal([card.Rows[0].WorkId], card.ChildWorkIds);
+    }
+
+    [Fact]
+    public async Task Leaving_a_pack_out_refuses_only_that_pair()
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.CreateReleaseAsync(CivIv);
+        await fixture.CreateReleaseAsync(CivIvWarlords);
+        await fixture.CreateReleaseAsync(CivIvBeyond);
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+        var section = Section(queue, MergeSectionKind.Expansions);
+        var card = Assert.Single(section.Cards);
+        var leftOut = card.Rows[2];
+
+        leftOut.IsIncluded = false;
+        var refused = Assert.Single(card.RefusedPairs);
+        Assert.Equal(leftOut.WorkId, refused.ChildWorkId);
+
+        await queue.SameGameCommand.ExecuteAsync(card);
+
+        var link = Assert.Single(await fixture.LiveLinksAsync());
+        Assert.Equal(card.Rows[1].WorkId, link.Child);
+        var refusal = Assert.Single(await fixture.ExpansionRefusals.GetAllAsync());
+        Assert.Equal(leftOut.WorkId, refusal.ChildWorkId);
+        Assert.Equal(card.ParentWorkId, refusal.BaseWorkId);
+
+        await queue.UndoCommand.ExecuteAsync(null);
+
+        Assert.Empty(await fixture.LiveLinksAsync());
+        Assert.Empty(await fixture.ExpansionRefusals.GetAllAsync());
+        Assert.True(card.IsPending);
+    }
+
+    [Fact]
+    public async Task A_click_on_a_row_asks_for_its_details_and_takes_the_cursor()
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.QueuePairAsync(Prey, PreyUnknown);
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+        var card = Assert.Single(Section(queue, MergeSectionKind.Editions).Cards);
+        var row = card.Rows[1];
+
+        MergeRowViewModel? asked = null;
+        queue.DetailsRequested += r => asked = r;
+
+        queue.OpenDetailsCommand.Execute(row);
+
+        Assert.Same(row, asked);
+        Assert.Same(row, queue.FocusedRow);
+        Assert.Equal("Open details", row.DetailsTip);
+        Assert.StartsWith("Details of ", row.DetailsAutomationName, StringComparison.Ordinal);
+
+        // Asking for details is not promoting: the header stays put.
+        Assert.Equal(0, card.HeaderIndex);
+    }
+
+    private static MergeSectionViewModel Section(MergeQueueViewModel queue, MergeSectionKind kind)
+        => queue.Sections.Single(section => section.Kind == kind);
 
     /// <summary>A release as a store feed would describe it, before it is scored.</summary>
     private sealed record SeedSide(string Title, int? Year, string? Publisher);
 
-    /// <summary>A seeded release: the row id plus the metadata it was seeded with.</summary>
-    private sealed record SeededRelease(long ReleaseId, SeedSide Side);
+    /// <summary>A seeded release: the row id, its work id, and the metadata it was seeded with.</summary>
+    private sealed record SeededRelease(long ReleaseId, long WorkId, SeedSide Side);
 
     /// <summary>
     /// Counts what the screen asks of the candidate repository, so "the answer
@@ -2123,6 +1780,9 @@ public sealed class MergeQueueViewModelTests
 
     private sealed class MergeQueueFixture : IDisposable
     {
+        /// <summary>The fake clock's now. Every idle span and staleness test is measured from here.</summary>
+        public static readonly DateTime Now = new(2026, 9, 1, 12, 0, 0, DateTimeKind.Utc);
+
         private readonly TempDatabase _db = new();
         private readonly Dictionary<long, (long Left, long Right)> _pairs = [];
         private int _appId = 100000;
@@ -2136,10 +1796,15 @@ public sealed class MergeQueueViewModelTests
             Links = new IdentityLinkRepository(_db.Factory);
             Ownership = new OwnershipRepository(_db.Factory);
             ExpansionRefusals = new ExpansionRefusalRepository(_db.Factory);
+            Plays = new PlayRecordRepository(_db.Factory);
+            Updates = new UpdateEventRepository(_db.Factory);
         }
 
         /// <summary>For the assertions that have to look at the database itself.</summary>
         public SqliteConnectionFactory Factory => _db.Factory;
+
+        /// <summary>The screen's clock: idle spans, the dock timer, and nothing else.</summary>
+        public FakeTimeProvider Clock { get; } = new(new DateTimeOffset(Now));
 
         public IWorkRepository Works { get; }
 
@@ -2155,17 +1820,31 @@ public sealed class MergeQueueViewModelTests
 
         public IExpansionRefusalRepository ExpansionRefusals { get; }
 
+        public IPlayRecordRepository Plays { get; }
+
+        public IUpdateEventRepository Updates { get; }
+
         public CountingCandidateRepository CountingCandidates() => new(Candidates);
 
-        /// <summary>No cover cache: the queue must compose on procedural art alone.</summary>
+        /// <summary>
+        /// No cover cache, the fake clock, and an inline poster so the dock
+        /// timer's callback runs on the test thread.
+        /// </summary>
         public MergeQueueViewModel CreateViewModel(
             bool withResolveState = true, IMergeCandidateRepository? candidates = null)
             => new(
-                candidates ?? Candidates, Releases, Works, Links, Ownership,
+                candidates ?? Candidates,
+                Releases,
+                Works,
+                Links,
+                Ownership,
                 new LibraryExpansionScan(Releases, Links, ExpansionRefusals),
                 ExpansionRefusals,
-                null,
-                withResolveState ? ResolveState : null);
+                new LibraryQueryRepository(_db.Factory),
+                covers: null,
+                resolveState: withResolveState ? ResolveState : null,
+                clock: Clock,
+                post: action => action());
 
         public MatchSubject Subject(SeededRelease release)
             => new()
@@ -2180,26 +1859,25 @@ public sealed class MergeQueueViewModelTests
             SeedSide left, SeedSide right)
             => (await CreateReleaseAsync(left), await CreateReleaseAsync(right));
 
-        /// <summary>One game as three stores list it: three works, three entries.</summary>
+        /// <summary>One game as three entries on one store: three works, three entries.</summary>
         public async Task<(SeededRelease A, SeededRelease B, SeededRelease C)> CreateTripleAsync()
-        {
-            var side = new SeedSide("Prey", 2017, "Bethesda Softworks");
-            return (
-                await CreateReleaseAsync(side),
-                await CreateReleaseAsync(side),
-                await CreateReleaseAsync(side));
-        }
+            => (
+                await CreateReleaseAsync(Prey),
+                await CreateReleaseAsync(Prey),
+                await CreateReleaseAsync(Prey));
 
-        /// <summary>The three pairwise proposals a sweep would write for a triple.</summary>
-        public async Task QueueTripleAsync()
+        /// <summary>One game as three stores list it, and the three proposals a sweep would write.</summary>
+        public async Task QueueCrossStoreTripleAsync()
         {
-            var (a, b, c) = await CreateTripleAsync();
+            var a = await CreateReleaseAsync(Prey, store: "steam");
+            var b = await CreateReleaseAsync(Prey, store: "epic");
+            var c = await CreateReleaseAsync(Prey, store: "gog");
             await QueueScoredPairAsync(a, b);
             await QueueScoredPairAsync(a, c);
             await QueueScoredPairAsync(b, c);
         }
 
-        /// <summary>Creates both releases and queues them, exactly as the resolver would.</summary>
+        /// <summary>Creates both releases on one store and queues them, exactly as the resolver would.</summary>
         public async Task<long> QueuePairAsync(SeedSide left, SeedSide right)
         {
             var (leftRelease, rightRelease) = await CreatePairAsync(left, right);
@@ -2211,7 +1889,7 @@ public sealed class MergeQueueViewModelTests
         /// model is decoding what the resolver actually produces rather than a
         /// hand-written approximation of it. <paramref name="band"/> overrides
         /// only the band, which is the one fact a fixture cannot conjure from
-        /// realistic metadata and which decides what arrives checked.
+        /// realistic metadata.
         /// </summary>
         public async Task<long> QueueScoredPairAsync(
             SeededRelease left, SeededRelease right, SoftMatchBand? band = null)
@@ -2237,36 +1915,19 @@ public sealed class MergeQueueViewModelTests
             return id;
         }
 
-        /// <summary>
-        /// A pending pair whose two releases already sit under one work, in two
-        /// different editions. The question it asks has been answered, so the
-        /// grouper must drop it rather than render a card nothing can act on.
-        /// </summary>
-        public long QueueAlreadyOneGamePair()
-        {
-            using var conn = _db.Factory.Open();
-
-            var workId = conn.ExecuteScalar<long>(
-                "INSERT INTO works (name) VALUES ('Prey') RETURNING id;");
-
-            var left = conn.ExecuteScalar<long>("""
-                INSERT INTO releases (work_id, name, platform)
-                VALUES (@workId, 'Prey', 'windows') RETURNING id;
-                """, new { workId });
-
-            var right = conn.ExecuteScalar<long>("""
-                INSERT INTO releases (work_id, name, platform, edition_note)
-                VALUES (@workId, 'Prey', 'windows', 'Gold Edition') RETURNING id;
-                """, new { workId });
-
-            var id = conn.ExecuteScalar<long>("""
-                INSERT INTO merge_candidates (left_release_id, right_release_id, score, status)
-                VALUES (@left, @right, 0.9, 'pending') RETURNING id;
-                """, new { left, right });
-
-            _pairs[id] = (left, right);
-            return id;
-        }
+        /// <summary>Writes a link act directly, as an earlier session would have. Returns the act id.</summary>
+        public Task<long> LinkAsync(
+            SeededRelease parent,
+            SeededRelease child,
+            string kind = IdentityLinkKinds.SameGame,
+            string? relationLabel = null)
+            => Links.LinkAsync(new IdentityLinkRequest
+            {
+                ParentWorkId = parent.WorkId,
+                ChildWorkIds = [child.WorkId],
+                Kind = kind,
+                RelationLabel = relationLabel,
+            });
 
         /// <summary>
         /// Reads a candidate's status back. <c>FindByPairAsync</c> is the only
@@ -2278,28 +1939,6 @@ public sealed class MergeQueueViewModelTests
             var (left, right) = _pairs[candidateId];
             return (await Candidates.FindByPairAsync(left, right))?.Status;
         }
-
-        /// <summary>Every proposal's status, keyed by the two works it joins.</summary>
-        public async Task<Dictionary<(long, long), string>> StatusesByEdgeAsync()
-        {
-            var statuses = new Dictionary<(long, long), string>();
-            foreach (var (id, pair) in _pairs)
-            {
-                var row = await Candidates.GetAsync(id);
-                if (row is null)
-                {
-                    continue;
-                }
-
-                statuses[Edge(await WorkOfAsync(pair.Left), await WorkOfAsync(pair.Right))] =
-                    row.Status;
-            }
-
-            return statuses;
-        }
-
-        public async Task<long> WorkOfAsync(long releaseId)
-            => (await Releases.GetAsync(releaseId))!.WorkId;
 
         /// <summary>Every live link, as (child, parent), ordered.</summary>
         public async Task<IReadOnlyList<(long Child, long Parent)>> LiveLinksAsync()
@@ -2328,8 +1967,51 @@ public sealed class MergeQueueViewModelTests
             => Ownership.UpsertAsync(new OwnershipUpsert(
                 release.ReleaseId, store, null, null, null, null));
 
+        /// <summary>
+        /// One play record on the release's ownership, the way a Steam scan
+        /// would write it. The bucket query the screen reads folds it into the
+        /// row's hours and idle time.
+        /// </summary>
+        public async Task PlayedAsync(SeededRelease release, long minutes, DateTime? lastPlayed)
+        {
+            var ownership = (await Ownership.GetByReleaseAsync(release.ReleaseId)).First();
+            await Plays.InsertAsync(new PlayRecord
+            {
+                OwnershipId = ownership.Id,
+                PlaytimeMinutes = minutes,
+                LastPlayedAt = lastPlayed,
+                Source = "steam_localconfig",
+                ObservedAt = Now,
+            });
+        }
+
+        /// <summary>
+        /// A build push with an announcement beside it, which is what the
+        /// bucket query counts as one update (§5.2).
+        /// </summary>
+        public async Task PatchedAsync(SeededRelease release, DateTime pushedAt)
+        {
+            await Updates.InsertAsync(new UpdateEvent
+            {
+                ReleaseId = release.ReleaseId,
+                Kind = UpdateEventKinds.BuildPush,
+                OccurredAt = pushedAt,
+                BuildId = "1",
+            });
+            await Updates.InsertAsync(new UpdateEvent
+            {
+                ReleaseId = release.ReleaseId,
+                Kind = UpdateEventKinds.Announcement,
+                OccurredAt = pushedAt.AddDays(1),
+                Title = "Patch notes",
+            });
+        }
+
         public async Task<SeededRelease> CreateReleaseAsync(
-            SeedSide side, string platform = "windows", string? store = "steam")
+            SeedSide side,
+            string platform = "windows",
+            string? store = "steam",
+            DateTime? acquiredAt = null)
         {
             var workId = await Works.InsertAsync(new Work
             {
@@ -2355,10 +2037,10 @@ public sealed class MergeQueueViewModelTests
             if (store is { Length: > 0 })
             {
                 await Ownership.UpsertAsync(new OwnershipUpsert(
-                    releaseId, store, null, null, null, null));
+                    releaseId, store, null, acquiredAt, null, null));
             }
 
-            return new SeededRelease(releaseId, side);
+            return new SeededRelease(releaseId, workId, side);
         }
 
         public void Dispose() => _db.Dispose();

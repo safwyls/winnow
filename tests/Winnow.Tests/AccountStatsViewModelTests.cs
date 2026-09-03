@@ -426,7 +426,8 @@ public sealed class AccountStatsViewModelTests
             links,
             new OwnershipRepository(db.Factory),
             new LibraryExpansionScan(releases, links, refusals),
-            refusals);
+            refusals,
+            new LibraryQueryRepository(db.Factory));
     }
 
     private static MainWindowViewModel Shell(TempDatabase db, AccountStatsViewModel stats)

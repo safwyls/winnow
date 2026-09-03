@@ -986,6 +986,28 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             : bucket;
     });
 
+    /// <summary>
+    /// Opens the detail modal for the tile holding one of
+    /// <paramref name="releaseIds"/>. The Merges screen asks for this when a
+    /// candidate row is clicked, so the entries can be compared before
+    /// answering; the modal is the library's and is drawn over every pane.
+    /// </summary>
+    /// <returns>False when no tile holds any of the releases, in which case nothing opens.</returns>
+    public async Task<bool> OpenDetailsForReleasesAsync(IReadOnlyList<long> releaseIds)
+    {
+        ArgumentNullException.ThrowIfNull(releaseIds);
+
+        var tile = _allTiles.FirstOrDefault(t => releaseIds.Contains(t.ReleaseId))
+            ?? _allTiles.FirstOrDefault(t => t.ReleaseIds.Any(releaseIds.Contains));
+        if (tile is null)
+        {
+            return false;
+        }
+
+        await OpenDetailsAsync(tile);
+        return true;
+    }
+
     /// <summary>Opens the detail modal, loading update events and playtime history.</summary>
     [RelayCommand]
     private async Task OpenDetailsAsync(GameTileViewModel? tile)

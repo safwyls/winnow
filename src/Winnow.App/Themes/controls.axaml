@@ -351,4 +351,127 @@
         <Setter Property="Foreground" Value="{DynamicResource Text}"/>
     </Style>
 
+
+    <!-- ══ Toolbar controls ═══════════════════════════════════════════════════
+         Button.ctl, the sort flyout and its rows. Written for the library's
+         command bar and now also worn by the Merges screen's header. -->
+    <Style Selector="Button.ctl">
+        <Setter Property="Padding" Value="9,5"/>
+        <Setter Property="CornerRadius" Value="{DynamicResource RadiusControl}"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Cursor" Value="Hand"/>
+    </Style>
+    <Style Selector="Button.ctl /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent"/>
+    </Style>
+    <Style Selector="Button.ctl:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource ChromeRaised}"/>
+    </Style>
+    <!-- A toggle in a row of menus: the open panel keeps its button lit, so
+         the control and the column it opened are legibly one thing. -->
+    <Style Selector="Button.ctl.on /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource ChromeRaised}"/>
+    </Style>
+    <Style Selector="Button.ctl.on TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource Text}"/>
+    </Style>
+    <Style Selector="Button.ctl.on Path">
+        <Setter Property="Fill" Value="{DynamicResource Volt}"/>
+    </Style>
+
+    <!-- Sort menu (§4's `sort ▾`). Flyout content lives in its own popup
+         root, which styles itself from this window — so these selectors
+         reach it. -->
+    <Style Selector="FlyoutPresenter.sortmenu">
+        <Setter Property="Background" Value="{DynamicResource SurfaceRaised}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource Line}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="{DynamicResource RadiusControl}"/>
+        <Setter Property="Padding" Value="4"/>
+        <Setter Property="MinWidth" Value="0"/>
+        <Setter Property="MaxWidth" Value="320"/>
+    </Style>
+    <Style Selector="Button.sortitem">
+        <Setter Property="Height" Value="30"/>
+        <Setter Property="Padding" Value="8,0"/>
+        <Setter Property="CornerRadius" Value="{DynamicResource RadiusControl}"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="Cursor" Value="Hand"/>
+    </Style>
+    <Style Selector="Button.sortitem /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent"/>
+    </Style>
+    <Style Selector="Button.sortitem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource GroundVeil}"/>
+    </Style>
+
+    <!-- ══ Cut chip ═══════════════════════════════════════════════════════════
+         Border.chip and its ✕. Written for the action bar's filter chips and
+         now also worn by the Merges screen's kind chip. User-set chips get
+         Volt edges; rules poured in from the open live list get neutral Line
+         edges and TextDim labels (5.04:1 on SurfaceRaised). -->
+    <Style Selector="Border.chip">
+        <Setter Property="Background" Value="{DynamicResource SurfaceRaised}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource VoltEdgeSoft}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="{DynamicResource RadiusControl}"/>
+        <Setter Property="Padding" Value="9,3,5,3"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+
+    <!-- Chip provenance (§12.2). User-set chips get Volt edges; rules
+         poured in from the open live list get neutral Line edges and
+         TextDim labels (5.04:1 on SurfaceRaised). -->
+    <Style Selector="Border.chip.fromlist">
+        <Setter Property="Background" Value="{DynamicResource Surface}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource Line}"/>
+    </Style>
+    <Style Selector="Border.chip.fromlist TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource TextDim}"/>
+    </Style>
+
+    <!-- Open list chip — leads the bar, neutral edge, states its kind. -->
+    <Style Selector="Border.chip.context">
+        <Setter Property="Background" Value="{DynamicResource Surface}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource Line}"/>
+        <Setter Property="Padding" Value="8,3,5,3"/>
+    </Style>
+    <Style Selector="Button.chipx">
+        <Setter Property="Width" Value="18"/>
+        <Setter Property="Height" Value="18"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="CornerRadius" Value="9"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="Button.chipx /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="2"/>
+        <Setter Property="CornerRadius" Value="9"/>
+    </Style>
+    <Style Selector="Button.chipx:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource VoltSelectionSoft}"/>
+    </Style>
+    <Style Selector="Button.chipx:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="BorderBrush" Value="{DynamicResource Volt}"/>
+    </Style>
+    <Style Selector="Button.chipx Path">
+        <Setter Property="Stroke" Value="{DynamicResource TextDim}"/>
+        <Setter Property="StrokeThickness" Value="1.4"/>
+        <Setter Property="StrokeLineCap" Value="Round"/>
+    </Style>
+    <Style Selector="Button.chipx:pointerover Path">
+        <Setter Property="Stroke" Value="{DynamicResource Text}"/>
+    </Style>
+
 </Styles>

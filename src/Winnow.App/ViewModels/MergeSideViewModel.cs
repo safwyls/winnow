@@ -94,17 +94,23 @@ public partial class MergeSideViewModel : ObservableObject, IMergeMemberFacts
     /// <summary>Procedural stand-in; painted whenever no real cover is loaded.</summary>
     public IBrush PlaceholderBrush { get; }
 
+    /// <summary>The vivid cover, or null while the placeholder shows.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowPlaceholder))]
     public partial Bitmap? Cover { get; set; }
 
+    /// <summary>
+    /// The desaturated floor under the vivid layer. Drawn at full opacity with
+    /// the vivid layer's opacity carrying the dormancy ramp, exactly as the
+    /// grid does, so a row's thumbnail fades on the same rule as its tile.
+    /// </summary>
+    [ObservableProperty]
+    public partial Bitmap? CoverFloor { get; set; }
+
+    /// <summary>True until art arrives.</summary>
     public bool ShowPlaceholder => Cover is null;
 
-    /// <summary>
-    /// Fetches the cover at display resolution, off-thread. A miss is a normal
-    /// answer — the placeholder is already on screen, so this is a repaint and
-    /// never a load gate.
-    /// </summary>
+    /// <summary>Asks the cache for the art at the width it will be drawn at, off-thread.</summary>
     public void RequestCover(double displayWidthPixels)
     {
         if (_covers is null || CoverKey is not { } key || Cover is not null)
@@ -114,6 +120,7 @@ public partial class MergeSideViewModel : ObservableObject, IMergeMemberFacts
 
         if (_covers.TryGet(key, displayWidthPixels, out var cached))
         {
+            CoverFloor = cached.Floor;
             Cover = cached.Vivid;
             return;
         }
@@ -129,6 +136,10 @@ public partial class MergeSideViewModel : ObservableObject, IMergeMemberFacts
             return;
         }
 
-        Dispatcher.UIThread.Post(() => Cover = art.Vivid);
+        Dispatcher.UIThread.Post(() =>
+        {
+            CoverFloor = art.Floor;
+            Cover = art.Vivid;
+        });
     }
 }

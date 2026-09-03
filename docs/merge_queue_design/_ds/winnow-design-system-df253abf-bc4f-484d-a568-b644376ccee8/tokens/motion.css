@@ -1,0 +1,34 @@
+/* Motion is scarce and every value is short. The app animates four things:
+   a cover waking up under the pointer, a card turning, a row's fill
+   cross-fading, and one waiting pip. Nothing else moves — panels do not
+   slide, screens do not transition. */
+:root{
+  /* The dormancy cross-fade — the app's signature interaction. */
+  --dur-hover-restore:140ms; /* @kind other */
+  /* Half a card turn; 160ms for the pair. */
+  --dur-flip:80ms; /* @kind other */
+  /* A rail row's background cross-fade. */
+  --dur-fill:120ms; /* @kind other */
+  /* A caption button lighting up. */
+  --dur-caption:100ms; /* @kind other */
+  /* The launch strip's waiting pip — the only loop in the product. */
+  --dur-pulse:1400ms; /* @kind other */
+  /* CubicEaseOut */
+  --ease-out:cubic-bezier(.33,1,.68,1); /* @kind other */
+  /* CubicEaseIn */
+  --ease-in:cubic-bezier(.32,0,.67,0); /* @kind other */
+  /* SineEaseInOut */
+  --ease-pulse:cubic-bezier(.37,0,.63,1); /* @kind other */
+}
+/* Reduced motion snaps rather than fading: an empty transition set, so there
+   is no animation to schedule at all. The dormancy encoding is restated as
+   text on hover and as a sortable column, so nothing is lost. */
+@media (prefers-reduced-motion:reduce){
+  :root{
+    --dur-hover-restore:0ms; /* @kind other */
+    --dur-flip:0ms; /* @kind other */
+    --dur-fill:0ms; /* @kind other */
+    --dur-caption:0ms; /* @kind other */
+    --dur-pulse:0ms; /* @kind other */
+  }
+}

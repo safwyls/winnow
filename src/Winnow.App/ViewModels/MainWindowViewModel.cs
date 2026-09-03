@@ -43,6 +43,11 @@ public partial class MainWindowViewModel : ObservableObject
         // Filter panel visibility depends on both library and filter state.
         Library.Filters.PropertyChanged += OnFiltersChanged;
 
+        // A candidate row on the Merges screen opens the library's own detail
+        // modal, which is drawn over every pane. Wired here because this is
+        // the only type holding both screens.
+        MergeQueue.DetailsRequested += row => _ = Library.OpenDetailsForReleasesAsync(row.ReleaseIds);
+
         // The rail's Volt edge marks one location (§12.2), so the library's
         // bucket and ALL GAMES rows, and an open list's row, must drop the
         // mark while another screen is up. Seeded here because the window
@@ -196,16 +201,6 @@ public partial class MainWindowViewModel : ObservableObject
         var open = !IsMergeQueueVisible;
         ShowLibraryPane();
         IsMergeQueueVisible = open;
-
-        // The rail row carries the pending count, so it means "review these".
-        // Landing on REVIEW even if HISTORY was the last segment open is
-        // deliberate. Contrast with the settings surface, which reopens on its
-        // last section: the gear carries no count and no claim about what is
-        // waiting.
-        if (open)
-        {
-            MergeQueue.IsHistoryVisible = false;
-        }
     }
 
     /// <summary>

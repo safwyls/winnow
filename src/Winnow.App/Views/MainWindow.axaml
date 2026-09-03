@@ -352,60 +352,9 @@
              under one class name. -->
 
         <!-- Inert chrome controls (sort / store filter stubs), mock's .ctl. -->
-        <Style Selector="Button.ctl">
-            <Setter Property="Padding" Value="9,5"/>
-            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Cursor" Value="Hand"/>
-        </Style>
-        <Style Selector="Button.ctl /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="Transparent"/>
-        </Style>
-        <Style Selector="Button.ctl:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="{StaticResource ChromeRaised}"/>
-        </Style>
-        <!-- A toggle in a row of menus: the open panel keeps its button lit, so
-             the control and the column it opened are legibly one thing. -->
-        <Style Selector="Button.ctl.on /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="{StaticResource ChromeRaised}"/>
-        </Style>
-        <Style Selector="Button.ctl.on TextBlock">
-            <Setter Property="Foreground" Value="{StaticResource Text}"/>
-        </Style>
-        <Style Selector="Button.ctl.on Path">
-            <Setter Property="Fill" Value="{StaticResource Volt}"/>
-        </Style>
-
-        <!-- Sort menu (§4's `sort ▾`). Flyout content lives in its own popup
-             root, which styles itself from this window — so these selectors
-             reach it. -->
-        <Style Selector="FlyoutPresenter.sortmenu">
-            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
-            <Setter Property="Padding" Value="4"/>
-            <Setter Property="MinWidth" Value="0"/>
-            <Setter Property="MaxWidth" Value="320"/>
-        </Style>
-        <Style Selector="Button.sortitem">
-            <Setter Property="Height" Value="30"/>
-            <Setter Property="Padding" Value="8,0"/>
-            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="HorizontalAlignment" Value="Stretch"/>
-            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-            <Setter Property="VerticalContentAlignment" Value="Center"/>
-            <Setter Property="Cursor" Value="Hand"/>
-        </Style>
-        <Style Selector="Button.sortitem /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="Transparent"/>
-        </Style>
-        <Style Selector="Button.sortitem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="{StaticResource GroundVeil}"/>
-        </Style>
+        <!-- Button.ctl, the sort flyout and Button.sortitem moved to
+             Themes/controls.axaml the moment the Merges screen became their
+             second surface. -->
 
         <!-- ══ The selection's context menu ════════════════════════════════
              Same presenter treatment as the sort menu, because it is the same
@@ -919,6 +868,25 @@
                         </Grid>
                     </Button>
 
+                    <!-- ── MERGES ─────────────────────────────────────────
+                         The Merges screen (docs/merge_queue_design). A screen
+                         row like FEED, not a cut: no count, no recede. The
+                         pending count is on the screen's own header. -->
+                    <Button Classes="bucket"
+                            Classes.selected="{Binding IsMergeQueueVisible}"
+                            Command="{Binding ToggleMergeQueueCommand}"
+                            ToolTip.Tip="{Binding MergeQueue.RailTooltip}">
+                        <Grid ColumnDefinitions="2,16,*,16">
+                            <Border Grid.Column="0"
+                                    Background="{StaticResource Volt}"
+                                    IsVisible="{Binding IsMergeQueueVisible}"/>
+                            <TextBlock Grid.Column="2"
+                                       Classes="display-s"
+                                       Text="{Binding MergeQueue.RailLabel}"
+                                       VerticalAlignment="Center"/>
+                        </Grid>
+                    </Button>
+
                     <Button Classes="bucket"
                             Classes.selected="{Binding Library.AllGames.IsSelected}"
                             Command="{Binding SelectBucketCommand}"
@@ -1028,51 +996,8 @@
                         </Grid>
                     </Button>
 
-                    <!-- ── REVIEW ────────────────────────────────────────
-                         Merge confirm queue (§6). Count shown only when
-                         pending; row always visible so the rail never reflows.
-
-                         The count is review plus expansions, everything on
-                         that screen waiting for an answer. The rail names
-                         the screen; the segment tabs name the surfaces and
-                         carry their own counts, so the rail adds the two
-                         answerable tabs. History is excluded: a log is not
-                         outstanding work. A previous pass (TASK-71) pointed
-                         this row at the review count alone, because its
-                         number stood beside a header count and agreed with
-                         neither. Deleting the header counts is what makes
-                         the sum legitimate. -->
-                    <Border Margin="16,22,16,8"
-                            Padding="0,14,0,0"
-                            BorderBrush="{StaticResource Line}"
-                            BorderThickness="0,1,0,0">
-                        <TextBlock Classes="label"
-                                   FontSize="10"
-                                   LetterSpacing="1.4"
-                                   Text="REVIEW"/>
-                    </Border>
-                    <Button Classes="bucket"
-                            Classes.selected="{Binding IsMergeQueueVisible}"
-                            Opacity="{Binding MergeQueue.RowOpacity}"
-                            Command="{Binding ToggleMergeQueueCommand}"
-                            ToolTip.Tip="{Binding MergeQueue.RailTooltip}">
-                        <Grid ColumnDefinitions="2,16,*,Auto,16">
-                            <Border Grid.Column="0"
-                                    Background="{StaticResource Volt}"
-                                    IsVisible="{Binding IsMergeQueueVisible}"/>
-                            <TextBlock Grid.Column="2"
-                                       Classes="display-s"
-                                       Text="SAME GAME?"
-                                       VerticalAlignment="Center"/>
-                            <TextBlock Grid.Column="3"
-                                       Classes="data"
-                                       FontSize="11"
-                                       Foreground="{StaticResource TextDim}"
-                                       Text="{Binding MergeQueue.OutstandingCountText}"
-                                       IsVisible="{Binding MergeQueue.HasOutstanding}"
-                                       VerticalAlignment="Center"/>
-                        </Grid>
-                    </Button>
+                    <!-- The MERGES row sits with FEED above the rule: a
+                         screen, not a cut of the library (docs/merge_queue_design). -->
 
                     <!-- ══ LISTS / LIVE LISTS ═══════════════════════════════
                          Two sections distinguished by heading, not by a dot
@@ -1756,6 +1681,42 @@
              nothing when both children are hidden (stays click-through). -->
         <StackPanel HorizontalAlignment="Left" VerticalAlignment="Bottom"
                     Margin="18,0,0,18" Width="352" Spacing="10">
+
+            <!-- ── Merges dock (docs/merge_queue_design) ────────────────────
+                 What the last answer on the Merges screen did, and the one
+                 Undo that reverses it. Dismisses itself after 7s; the ✕
+                 closes it early. Never modal, never focus-stealing. -->
+            <Border Classes="dock" Width="320" HorizontalAlignment="Left"
+                    DataContext="{Binding MergeQueue}"
+                    x:DataType="vm:MergeQueueViewModel"
+                    IsVisible="{Binding IsDockOpen}">
+                <StackPanel Spacing="8">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Classes="body-l"
+                                   FontFamily="{StaticResource DisplayFont}"
+                                   FontWeight="Bold"
+                                   TextWrapping="Wrap"
+                                   VerticalAlignment="Center"
+                                   Text="{Binding DockTitle}"/>
+                        <Button Grid.Column="1" Classes="dockclose"
+                                Content="&#x2715;"
+                                Command="{Binding DismissDockCommand}"
+                                ToolTip.Tip="{Binding DockCloseTip}"/>
+                    </Grid>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Classes="para"
+                                   Margin="0,0,10,0"
+                                   VerticalAlignment="Center"
+                                   Text="{Binding DockNote}"/>
+                        <Button Grid.Column="1" Classes="act quiet"
+                                FontSize="12" Padding="10,3" BorderThickness="1"
+                                VerticalAlignment="Center"
+                                Content="{Binding UndoButtonText}"
+                                ToolTip.Tip="{Binding UndoTooltip}"
+                                Command="{Binding UndoCommand}"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
 
             <!-- ── Journal prompt (§5.2, opt-in per §9 pitfall 7) ───────────
                  Only rendered when the preference is on. -->

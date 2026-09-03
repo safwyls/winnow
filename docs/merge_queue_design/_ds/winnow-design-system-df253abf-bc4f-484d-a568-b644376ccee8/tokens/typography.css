@@ -1,0 +1,43 @@
+/* Three roles, three families. All SIL OFL, bundled — never a system fallback:
+   the display face is load-bearing. Static instances, matching the app's
+   bundled TTFs (Avalonia 11 renders a variable TTF at its default instance). */
+@font-face{font-family:"Bricolage Grotesque";src:url("../assets/fonts/BricolageGrotesque-Bold.ttf") format("truetype");font-weight:700;font-style:normal;font-display:block}
+@font-face{font-family:"Plus Jakarta Sans";src:url("../assets/fonts/PlusJakartaSans-Regular.ttf") format("truetype");font-weight:400;font-style:normal;font-display:block}
+@font-face{font-family:"Plus Jakarta Sans";src:url("../assets/fonts/PlusJakartaSans-Medium.ttf") format("truetype");font-weight:500;font-style:normal;font-display:block}
+@font-face{font-family:"Plus Jakarta Sans";src:url("../assets/fonts/PlusJakartaSans-SemiBold.ttf") format("truetype");font-weight:600;font-style:normal;font-display:block}
+@font-face{font-family:"IBM Plex Mono";src:url("../assets/fonts/IBMPlexMono-Regular.ttf") format("truetype");font-weight:400;font-style:normal;font-display:block}
+@font-face{font-family:"IBM Plex Mono";src:url("../assets/fonts/IBMPlexMono-Medium.ttf") format("truetype");font-weight:500;font-style:normal;font-display:block}
+
+:root{
+  /* Base families */
+  --font-display:"Bricolage Grotesque",sans-serif;
+  --font-body:"Plus Jakarta Sans",system-ui,sans-serif;
+  --font-data:"IBM Plex Mono",ui-monospace,monospace;
+
+  /* Semantic aliases */
+  --type-heading:var(--font-display);   /* bucket names, screen titles, tile titles */
+  --type-ui:var(--font-body);           /* labels, buttons, prose, tooltips */
+  --type-number:var(--font-data);       /* playtime, dates, counts, durations */
+
+  /* Scale — size / line-height pairs, exactly as the app declares them */
+  --text-display-l:22px;   --leading-display-l:26px;
+  --text-display-s:12px;   --leading-display-s:15px;
+  --text-body-l:15px;      --leading-body-l:22px;
+  --text-body:13px;        --leading-body:18px;
+  --text-label:11px;       --leading-label:14px;
+  --text-data:12px;        --leading-data:16px;
+  --text-data-s:10px;      --leading-data-s:12px;
+  /* The reading measure: 12/18, capped at 720px (design-system.md §13 gap 5) */
+  --text-para:12px;        --leading-para:18px;   --measure-para:720px;
+
+  --weight-display:700;
+  --weight-body:400;
+  --weight-body-medium:500;
+  --weight-label:600;
+
+  /* Tracking. Display S and Label are the only tracked styles. */
+  --track-display-s:0.06em;   /* 0.72px at 12px */
+  --track-label:0.04em;       /* 0.44px at 11px */
+  --track-wordmark:1.5px;     /* the caption lockup only */
+  --track-badge:0.54px;       /* the outlined store badge, 9px */
+}

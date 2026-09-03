@@ -33,13 +33,9 @@ public sealed class MergeScreenRegistrationTests
         var screen = provider.GetRequiredService<MergeQueueViewModel>();
         await screen.LoadCommand.ExecuteAsync(null);
 
-        Assert.Empty(screen.Groups);
-        Assert.Empty(screen.ExpansionGroups);
-        Assert.Empty(screen.LinkHistory);
-        Assert.True(screen.ShowLinkHistoryEmpty);
-
-        // And it opens on the queue, which is the surface the rail row counts.
-        Assert.True(screen.IsReviewVisible);
+        Assert.True(screen.IsLoaded);
+        Assert.All(screen.Sections, section => Assert.Empty(section.Cards));
+        Assert.Equal(0, screen.PendingCount);
     }
 
     /// <summary>
@@ -78,6 +74,11 @@ public sealed class MergeScreenRegistrationTests
         // link repository is: a scan the container cannot build is a segment
         // that renders an empty list forever.
         services.AddSingleton<IExpansionRefusalRepository, ExpansionRefusalRepository>();
+
+        // The library read model every row's hours, idle time and unread dot
+        // come from. Required for the same reason: a screen that cannot read
+        // it would draw every row as never opened.
+        services.AddSingleton<ILibraryQueryRepository, LibraryQueryRepository>();
         services.AddSoftMatching();
 
         if (withLinks)

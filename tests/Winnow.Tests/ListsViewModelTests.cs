@@ -769,7 +769,8 @@ public sealed class ListsViewModelTests
                 links,
                 Ownerships,
                 new LibraryExpansionScan(Releases, links, refusals),
-                refusals);
+                refusals,
+                new LibraryQueryRepository(_db.Factory));
         }
 
         public IEnumerable<string> Titles(LibraryViewModel library)

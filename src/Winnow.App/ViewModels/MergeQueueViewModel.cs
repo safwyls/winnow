@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.Input;
 using Winnow.Core.Domain;
 using Winnow.Core.Identity;
 using Winnow.Core.Merging;
+using Winnow.Core.Queries;
 using Winnow.Core.Repositories;
 using Winnow.Covers;
 using Winnow.Covers.Igdb;
@@ -13,24 +14,32 @@ using Winnow.Resolve.Matching;
 namespace Winnow.App.ViewModels;
 
 /// <summary>
-/// The Same Game screen. One pane with a 48px header and a three-segment
-/// control, REVIEW / EXPANSIONS / HISTORY, in the same grammar the settings
-/// surface uses for PLATFORMS / APPEARANCE.
+/// The Merges screen: one queue of proposal cards in five sections, a header
+/// carrying the sort, the safe bulk path and the selection's primary, a cut
+/// bar filtering to one kind, and an ambient dock whose Undo reverses the
+/// last act or the last run of dismissals.
 ///
-/// <para>REVIEW's unit is a GROUP, never a pair. Pending proposals are resolved
-/// through the live link map, proposals whose two sides are already one game are
-/// dropped, and the connected components of what is left become one card each.
-/// Answering a member therefore cannot leave a sibling card stale: they were
-/// never separate cards.</para>
+/// <para>Two product rules drive everything here. Merging is non-destructive:
+/// an answer writes a link act that nests the other rows under the header,
+/// nothing is deleted, and Separate again retracts the act. And the choice is
+/// the user's: Winnow proposes, never auto-merges; Different games is
+/// permanent, a confidence is a word and never a reason to act.</para>
 ///
-/// <para>Answering writes a LINK, not a merge. Nothing is deleted, so the
-/// answer can be undone from HISTORY, and the same group can be linked,
-/// undone and linked again any number of times.</para>
+/// <para>Same-game proposals and expansion proposals arrive through different
+/// contracts (<c>merge_candidates</c> and a scan) and are one kind of card
+/// here. Past link acts arrive as resolved strips in their own section, so
+/// the queue is the retraction surface for every relation and there is no
+/// history list.</para>
 /// </summary>
-public partial class MergeQueueViewModel : ObservableObject
+public partial class MergeQueueViewModel : ObservableObject, IDisposable
 {
-    /// <summary>Cover geometry from §6: "two covers side by side at 200×300".</summary>
-    public const double CoverWidth = 200;
+    /// <summary>The row thumbnail's width in device-independent pixels: 34, a 2:3 portrait at 51 tall.</summary>
+    public const double CoverWidth = 34;
+
+    /// <summary>How long the dock stays up before it dismisses itself.</summary>
+    public static readonly TimeSpan DockFor = TimeSpan.FromSeconds(7);
+
+    private const double ExactTitleFloor = 0.999;
 
     private readonly IMergeCandidateRepository _candidates;
     private readonly IReleaseRepository _releases;
@@ -39,22 +48,27 @@ public partial class MergeQueueViewModel : ObservableObject
     private readonly IOwnershipRepository _ownership;
     private readonly LibraryExpansionScan _expansions;
     private readonly IExpansionRefusalRepository _expansionRefusals;
+    private readonly ILibraryQueryRepository _libraryQueries;
     private readonly ICoverCache? _covers;
     private readonly IResolveStateRepository? _resolveState;
+    private readonly TimeProvider _clock;
+    private readonly Action<Action> _post;
 
-    /// <summary>Display resolution the view last asked for; 0 until it attaches.</summary>
+    private readonly Dictionary<MergeRowViewModel, MergeCardViewModel> _cardOfRow = new(ReferenceEqualityComparer.Instance);
+    private readonly Dictionary<MergeCardViewModel, MergeSectionViewModel> _sectionOfCard = new(ReferenceEqualityComparer.Instance);
+
     private double _coverWidthPixels;
-
     private bool _loaded;
-
-    /// <summary>True once one expansion scan has completed in this session.</summary>
-    private bool _scannedExpansions;
+    private ITimer? _dockTimer;
+    private UndoRun? _run;
+    private bool _disposed;
 
     /// <summary>
-    /// The link and ownership repositories are required, not optional. A type
-    /// registered in the container and resolved nowhere is indistinguishable
-    /// from one that works; omitting either must break the container at startup
-    /// rather than render a screen whose answers quietly write nothing.
+    /// The link, ownership and library-query repositories are required, not
+    /// optional. A type registered in the container and resolved nowhere is
+    /// indistinguishable from one that works; omitting one must break the
+    /// container at startup rather than render a screen whose rows show no
+    /// hours or whose answers quietly write nothing.
     /// </summary>
     public MergeQueueViewModel(
         IMergeCandidateRepository candidates,
@@ -64,8 +78,11 @@ public partial class MergeQueueViewModel : ObservableObject
         IOwnershipRepository ownership,
         LibraryExpansionScan expansions,
         IExpansionRefusalRepository expansionRefusals,
+        ILibraryQueryRepository libraryQueries,
         ICoverCache? covers = null,
-        IResolveStateRepository? resolveState = null)
+        IResolveStateRepository? resolveState = null,
+        TimeProvider? clock = null,
+        Action<Action>? post = null)
     {
         _candidates = candidates;
         _releases = releases;
@@ -74,327 +91,387 @@ public partial class MergeQueueViewModel : ObservableObject
         _ownership = ownership;
         _expansions = expansions;
         _expansionRefusals = expansionRefusals;
+        _libraryQueries = libraryQueries;
         _covers = covers;
         _resolveState = resolveState;
+        _clock = clock ?? TimeProvider.System;
+        _post = post ?? (action => Avalonia.Threading.Dispatcher.UIThread.Post(action));
+
+        Sections =
+        [
+            new MergeSectionViewModel(MergeSectionKind.Stores, MergeCopy.SectionStores, MergeCopy.SectionStoresBlurb),
+            new MergeSectionViewModel(MergeSectionKind.Editions, MergeCopy.SectionEditions, MergeCopy.SectionEditionsBlurb),
+            new MergeSectionViewModel(MergeSectionKind.Expansions, MergeCopy.SectionExpansions, MergeCopy.SectionExpansionsBlurb),
+            new MergeSectionViewModel(MergeSectionKind.Parts, MergeCopy.SectionParts, MergeCopy.SectionPartsBlurb),
+            new MergeSectionViewModel(MergeSectionKind.Tests, MergeCopy.SectionTests, MergeCopy.SectionTestsBlurb),
+        ];
+
+        SortOptions =
+        [
+            new MergeSortOptionViewModel(MergeSort.StrongestMatch, MergeCopy.SortStrongestMatch) { IsSelected = true },
+            new MergeSortOptionViewModel(MergeSort.PlaytimeAtStake, MergeCopy.SortPlaytimeAtStake),
+            new MergeSortOptionViewModel(MergeSort.Title, MergeCopy.SortTitle),
+        ];
+
+        KindOptions =
+        [
+            new MergeKindOptionViewModel(null, MergeCopy.KindAll) { IsSelected = true },
+            new MergeKindOptionViewModel(MergeSectionKind.Stores, MergeCopy.KindStores),
+            new MergeKindOptionViewModel(MergeSectionKind.Editions, MergeCopy.KindEditions),
+            new MergeKindOptionViewModel(MergeSectionKind.Expansions, MergeCopy.KindExpansions),
+            new MergeKindOptionViewModel(MergeSectionKind.Parts, MergeCopy.KindParts),
+            new MergeKindOptionViewModel(MergeSectionKind.Tests, MergeCopy.KindTests),
+        ];
     }
 
-    // ── Which surface is up ──────────────────────────────────────────────────
+    // ── The queue ────────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// The segmented control's state. Review is the default. History is a
-    /// second view of one screen, not a second place in the rail; the rail's
-    /// Volt edge marks exactly one location (§12.2), and a second rail row
-    /// would make the rail answer "where am I" twice for one feature.
-    /// </summary>
+    /// <summary>The five sections, in drawing order. Fixed for the life of the screen.</summary>
+    public IReadOnlyList<MergeSectionViewModel> Sections { get; }
+
+    /// <summary>The sort menu's rows.</summary>
+    public IReadOnlyList<MergeSortOptionViewModel> SortOptions { get; }
+
+    /// <summary>The cut bar's segments.</summary>
+    public IReadOnlyList<MergeKindOptionViewModel> KindOptions { get; }
+
+    /// <summary>The order pending cards take within each section.</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsReviewVisible))]
-    public partial bool IsHistoryVisible { get; set; }
+    [NotifyPropertyChangedFor(nameof(SortLabel), nameof(SortAutomationName))]
+    public partial MergeSort Sort { get; private set; }
 
-    /// <summary>
-    /// True when the EXPANSIONS surface is up.
-    ///
-    /// <para>A third segment rather than a third kind of card in one scroll,
-    /// and the reason is that the two surfaces ask different questions with
-    /// different answers. REVIEW asks "same game?" and answers Same game /
-    /// Different games; this asks "expansion?" and answers Group / Not
-    /// expansions. Interleaving them would put two answer vocabularies in one
-    /// column and give S and D two meanings.</para>
-    /// </summary>
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsReviewVisible))]
-    public partial bool IsExpansionsVisible { get; set; }
-
-    /// <summary>True when the review queue is the visible surface.</summary>
-    public bool IsReviewVisible => !IsHistoryVisible && !IsExpansionsVisible;
-
-    /// <summary>Switches the segmented control to REVIEW.</summary>
-    [RelayCommand]
-    private void ShowReview()
-    {
-        ClearReport();
-        IsHistoryVisible = false;
-        IsExpansionsVisible = false;
-    }
-
-    /// <summary>Switches to HISTORY, rebuilding the list from the table.
-    /// Recomputed on every arrival because the link log moves whenever a
-    /// group is answered or undone.</summary>
-    [RelayCommand]
-    private async Task ShowHistoryAsync(CancellationToken ct)
-    {
-        ClearReport();
-        IsExpansionsVisible = false;
-        IsHistoryVisible = true;
-        LinkHistory = await BuildLinkHistoryAsync(ct);
-    }
-
-    /// <summary>Switches the segmented control to EXPANSIONS. The cards were
-    /// built by the last load, so arriving here costs no scan.</summary>
-    [RelayCommand]
-    private void ShowExpansions()
-    {
-        ClearReport();
-        IsHistoryVisible = false;
-        IsExpansionsVisible = true;
-    }
-
-    // ── The review queue ─────────────────────────────────────────────────────
-
-    /// <summary>The pending groups, sorted strongest first.</summary>
+    /// <summary>The one section shown, or null for all of them.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(
-        nameof(PendingCount), nameof(PendingCountText), nameof(HasPending),
-        nameof(ShowEmpty), nameof(OutstandingCount), nameof(OutstandingCountText),
-        nameof(HasOutstanding), nameof(RowOpacity), nameof(ReviewSegmentAutomationName))]
-    public partial IReadOnlyList<MergeGroupViewModel> Groups { get; set; } = [];
+        nameof(IsKindFiltered), nameof(KindChipLabel), nameof(CutCountText),
+        nameof(ShownPendingCount), nameof(PendingLine), nameof(ExactCount),
+        nameof(AcceptExactLabel), nameof(CanAcceptExact))]
+    public partial MergeSectionKind? Kind { get; private set; }
 
-    /// <summary>The group the user is currently looking at, or null when the queue is empty.</summary>
+    /// <summary>True once one soft-match sweep has completed. False when unknown or unregistered.</summary>
     [ObservableProperty]
-    public partial MergeGroupViewModel? SelectedGroup { get; set; }
-
-    /// <summary>Number of groups still waiting for an answer.</summary>
-    public int PendingCount => Groups.Count;
-
-    /// <summary>Plex Mono, tabular, grouped — every number in the app (§3).</summary>
-    public string PendingCountText => PendingCount.ToString("N0", CultureInfo.CurrentCulture);
-
-    /// <summary>True when there are pending groups to review.</summary>
-    public bool HasPending => PendingCount > 0;
-
-    /// <summary>Review groups plus expansion groups. The rail row counts what is
-    /// waiting on the screen, and the screen holds two questions; counting review
-    /// alone showed a dimmed <c>SAME GAME? 0</c> over a dozen expansion cards.</summary>
-    public int OutstandingCount => PendingCount + ExpansionCount;
-
-    /// <summary>Plex Mono, tabular, grouped, every number in the app (§3).</summary>
-    public string OutstandingCountText =>
-        OutstandingCount.ToString("N0", CultureInfo.CurrentCulture);
-
-    /// <summary>True when either surface has a card waiting.</summary>
-    public bool HasOutstanding => OutstandingCount > 0;
-
-    /// <summary>Dims the rail row to 40% when both surfaces are empty, so the row
-    /// stays visible but recedes.</summary>
-    public double RowOpacity => HasOutstanding ? 1.0 : 0.4;
-
-    /// <summary>True once the screen has loaded and the queue is empty.</summary>
-    public bool ShowEmpty => _loaded && PendingCount == 0;
-
-    /// <summary>True once a soft-match sweep has completed. False when unknown or unregistered.</summary>
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(EmptyMessage))]
     public partial bool HasCompletedSweep { get; set; }
 
-    /// <summary>Empty-state message: distinguishes "sweep found nothing" from "sweep hasn't run yet".</summary>
-    public string EmptyMessage => HasCompletedSweep
-        ? MergeCopy.EmptySwept
-        : MergeCopy.EmptyNotSwept;
+    /// <summary>Cards waiting for an answer, every section counted.</summary>
+    public int PendingCount => Sections.Sum(section => section.PendingCount);
 
-    /// <summary>Standing explanation under the screen title.</summary>
-    public string IntroMessage => MergeCopy.QueueIntro;
+    /// <summary>Cards waiting for an answer in the sections the filter shows.</summary>
+    public int ShownPendingCount => Sections.Where(section => section.IsVisible).Sum(section => section.PendingCount);
 
-    /// <summary>The question the review surface asks, display L weight.</summary>
-    public string ReviewQuestion => MergeCopy.ScreenQuestion;
+    /// <summary>True when anything is waiting.</summary>
+    public bool HasPending => PendingCount > 0;
 
-    // ── The expansion queue ──────────────────────────────────────────────────
+    /// <summary>True once the screen has loaded.</summary>
+    public bool IsLoaded => _loaded;
 
-    /// <summary>
-    /// Base games with expansions proposed under them, one
-    /// card each, base work id ascending. DERIVED on every load rather than
-    /// stored, for the reason §6.1 gives about buckets: the detector's guards
-    /// will be tuned, and a stored proposal computed under an older rule rots.
-    /// </summary>
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(
-        nameof(ExpansionCount), nameof(ExpansionCountText), nameof(HasExpansions),
-        nameof(ShowExpansionsEmpty), nameof(OutstandingCount),
-        nameof(OutstandingCountText), nameof(HasOutstanding), nameof(RowOpacity),
-        nameof(ExpansionsSegmentAutomationName))]
-    public partial IReadOnlyList<ExpansionGroupViewModel> ExpansionGroups { get; set; } = [];
+    /// <summary>The count line beside the title, for the sections shown.</summary>
+    public string PendingLine => ShownPendingCount switch
+    {
+        0 => MergeCopy.NothingWaiting,
+        1 => string.Format(CultureInfo.CurrentCulture, MergeCopy.PendingOneFormat, "1"),
+        var n => string.Format(
+            CultureInfo.CurrentCulture, MergeCopy.PendingManyFormat, n.ToString("N0", CultureInfo.CurrentCulture)),
+    };
 
-    /// <summary>The card the keyboard acts on, or null when the surface is empty.</summary>
-    [ObservableProperty]
-    public partial ExpansionGroupViewModel? SelectedExpansionGroup { get; set; }
+    /// <summary>The count at the right of the cut bar: the pending total, or total → shown while filtered.</summary>
+    public string CutCountText
+    {
+        get
+        {
+            var all = PendingCount.ToString("N0", CultureInfo.CurrentCulture);
+            return Kind is null
+                ? all
+                : string.Format(
+                    CultureInfo.CurrentCulture,
+                    MergeCopy.CutCountFormat,
+                    all,
+                    ShownPendingCount.ToString("N0", CultureInfo.CurrentCulture));
+        }
+    }
 
-    /// <summary>Number of base games still waiting for an answer.</summary>
-    public int ExpansionCount => ExpansionGroups.Count;
+    // ── Sort ─────────────────────────────────────────────────────────────────
 
-    /// <summary>Plex Mono, tabular, grouped — every number in the app (§3).</summary>
-    public string ExpansionCountText =>
-        ExpansionCount.ToString("N0", CultureInfo.CurrentCulture);
+    /// <summary>The sort button's label.</summary>
+    public string SortLabel => string.Format(
+        CultureInfo.CurrentCulture, MergeCopy.SortButtonFormat, LabelOf(Sort));
 
-    /// <summary>True when there are cards to answer.</summary>
-    public bool HasExpansions => ExpansionCount > 0;
+    /// <summary>What a screen reader calls the sort button.</summary>
+    public string SortAutomationName => string.Format(
+        CultureInfo.CurrentCulture, MergeCopy.SortAutomationFormat, LabelOf(Sort));
 
-    /// <summary>True once the screen has loaded and the expansion surface is empty.</summary>
-    public bool ShowExpansionsEmpty => _loaded && ExpansionCount == 0;
+    /// <summary>Tooltip on the sort button.</summary>
+    public string SortTooltip => MergeCopy.SortTooltip;
 
-    /// <summary>
-    /// Empty-state message: distinguishes "the scan found nothing" from "the
-    /// scan has not finished yet".
-    /// </summary>
-    public string ExpansionsEmptyMessage => _scannedExpansions
-        ? ExpansionCopy.EmptyScanned
-        : ExpansionCopy.EmptyNotScanned;
+    /// <summary>Re-orders every section by <paramref name="option"/>.</summary>
+    [RelayCommand]
+    private void SelectSort(MergeSortOptionViewModel? option)
+    {
+        if (option is null)
+        {
+            return;
+        }
 
-    /// <summary>The question this surface asks, display L.</summary>
-    public string ExpansionsQuestion => ExpansionCopy.ScreenQuestion;
+        foreach (var candidate in SortOptions)
+        {
+            candidate.IsSelected = ReferenceEquals(candidate, option);
+        }
 
-    /// <summary>Standing explanation under that question.</summary>
-    public string ExpansionsIntro => ExpansionCopy.Intro;
+        Sort = option.Sort;
+        foreach (var section in Sections)
+        {
+            section.Resort(Sort);
+        }
+    }
 
-    /// <summary>Label on the segment showing this surface.</summary>
-    public string ExpansionsSegmentLabel => ExpansionCopy.SegmentExpansions;
+    private string LabelOf(MergeSort sort) =>
+        SortOptions.First(option => option.Sort == sort).Label;
 
-    /// <summary>Tooltip on that segment.</summary>
-    public string ExpansionsSegmentTooltip => ExpansionCopy.SegmentExpansionsTooltip;
+    // ── Kind filter ──────────────────────────────────────────────────────────
 
-    // ── History: link acts ───────────────────────────────────────────────────
+    /// <summary>True while one section is shown alone.</summary>
+    public bool IsKindFiltered => Kind is not null;
 
-    /// <summary>
-    /// Every link act still in force, newest first. Rebuilt from the table on
-    /// every arrival, because the table is the history and a row's standing
-    /// changes whenever anything is linked or undone.
-    /// </summary>
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(
-        nameof(HasLinkHistory), nameof(ShowLinkHistoryEmpty),
-        nameof(LinkHistoryCountText), nameof(HistorySegmentAutomationName))]
-    public partial IReadOnlyList<MergeLinkHistoryRowViewModel> LinkHistory { get; set; } = [];
+    /// <summary>The cut chip's words: the shown section's full title.</summary>
+    public string KindChipLabel => Kind is { } kind
+        ? Sections.First(section => section.Kind == kind).Title
+        : string.Empty;
 
-    /// <summary>True when at least one group has been linked.</summary>
-    public bool HasLinkHistory => LinkHistory.Count > 0;
+    /// <summary>Tooltip on the cut chip.</summary>
+    public string KindChipTooltip => MergeCopy.KindChipTooltip;
 
-    /// <summary>The history segment's count, formatted N0 in the current
-    /// culture. Rendered in Plex Mono tabular (§3).</summary>
-    public string LinkHistoryCountText =>
-        LinkHistory.Count.ToString("N0", CultureInfo.CurrentCulture);
+    /// <summary>Tooltip on the chip's ✕.</summary>
+    public string KindChipClearTip => MergeCopy.KindChipClearTip;
 
-    /// <summary>True once the screen has loaded and nothing has been linked.</summary>
-    public bool ShowLinkHistoryEmpty => _loaded && LinkHistory.Count == 0;
+    /// <summary>Shows one section, or every section for the ALL segment.</summary>
+    [RelayCommand]
+    private void SelectKind(MergeKindOptionViewModel? option)
+    {
+        if (option is null)
+        {
+            return;
+        }
 
-    // ── What the last act actually did ───────────────────────────────────────
+        foreach (var candidate in KindOptions)
+        {
+            candidate.IsSelected = ReferenceEquals(candidate, option);
+        }
 
-    /// <summary>
-    /// What the last answer or undo actually did. Written from what the engine
-    /// returned, never from what was asked for.
-    /// </summary>
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(
-        nameof(HasReport), nameof(HasReviewReport), nameof(HasExpansionsReport),
-        nameof(HasHistoryReport), nameof(ReportUndoAutomationName))]
-    public partial string? ReportMessage { get; set; }
+        Kind = option.Kind;
+        foreach (var section in Sections)
+        {
+            section.IsVisible = Kind is null || section.Kind == Kind;
+        }
 
-    /// <summary>Which surface the standing report belongs to.</summary>
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(
-        nameof(HasReviewReport), nameof(HasExpansionsReport), nameof(HasHistoryReport))]
-    public partial MergeReportSurface ReportSurface { get; set; }
+        RefreshCounts();
 
-    /// <summary>True when there is an outcome to display.</summary>
-    public bool HasReport => !string.IsNullOrEmpty(ReportMessage);
+        // The cursor must not stay on a card the filter just hid, or S would
+        // answer a card the user cannot see.
+        var rows = VisibleRows();
+        if (FocusedRow is null || !rows.Contains(FocusedRow))
+        {
+            Focus(rows.Count > 0 ? rows[0] : null);
+        }
+    }
 
-    /// <summary>True when the standing report belongs to the review surface.</summary>
-    public bool HasReviewReport => HasReport && ReportSurface == MergeReportSurface.Review;
+    /// <summary>The chip's ✕: back to every section.</summary>
+    [RelayCommand]
+    private void ClearKind() => SelectKind(KindOptions[0]);
 
-    /// <summary>True when the standing report belongs to the expansions surface.</summary>
-    public bool HasExpansionsReport =>
-        HasReport && ReportSurface == MergeReportSurface.Expansions;
+    // ── Header buttons ───────────────────────────────────────────────────────
 
-    /// <summary>True when the standing report belongs to the history surface.</summary>
-    public bool HasHistoryReport => HasReport && ReportSurface == MergeReportSurface.History;
+    /// <summary>Pending EXACT MATCH cards in ACROSS STORES, while that section is shown.</summary>
+    public int ExactCount => ExactCards().Count;
 
-    /// <summary>
-    /// The link act the report is about. Set from the act id the repository
-    /// returned, so the control is offered only for a write that happened.
-    /// </summary>
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(CanUndoReport))]
-    public partial long? ReportUndoActId { get; set; }
+    /// <summary>The bulk accept button's label; counts live.</summary>
+    public string AcceptExactLabel => ExactCount switch
+    {
+        0 => MergeCopy.AcceptExactNone,
+        1 => string.Format(CultureInfo.CurrentCulture, MergeCopy.AcceptExactOneFormat, "1"),
+        var n => string.Format(
+            CultureInfo.CurrentCulture, MergeCopy.AcceptExactFormat, n.ToString("N0", CultureInfo.CurrentCulture)),
+    };
 
-    /// <summary>True when the report's link can be undone from where it
-    /// stands.</summary>
-    public bool CanUndoReport => ReportUndoActId is not null;
+    /// <summary>True while there is an exact cross-store group to accept.</summary>
+    public bool CanAcceptExact => ExactCount > 0;
 
-    // ── Chrome the view binds to ─────────────────────────────────────────────
+    /// <summary>Tooltip on the bulk accept button.</summary>
+    public string AcceptExactTooltip => MergeCopy.AcceptExactTooltip;
 
-    /// <summary>Small uppercase label at the left of the screen's header strip.</summary>
-    public string ScreenLabel => MergeCopy.ScreenLabel;
+    /// <summary>How many pending cards are checked, in every section.</summary>
+    public int SelectedCount => SelectedCards().Count;
 
-    /// <summary>Label on the segment showing the review queue.</summary>
-    public string ReviewSegmentLabel => MergeCopy.SegmentReview;
-
-    /// <summary>Label on the segment showing what has been answered.</summary>
-    public string HistorySegmentLabel => MergeCopy.SegmentHistory;
-
-    /// <summary>Tooltip on the review segment.</summary>
-    public string ReviewSegmentTooltip => MergeCopy.SegmentReviewTooltip;
-
-    /// <summary>Tooltip on the history segment.</summary>
-    public string HistorySegmentTooltip => MergeCopy.SegmentHistoryTooltip;
-
-    /// <summary>The review tab announced with its count, so a screen reader
-    /// hears what the number counts rather than a bare digit (§8).</summary>
-    public string ReviewSegmentAutomationName =>
-        string.Format(
-            CultureInfo.CurrentCulture, MergeCopy.SegmentReviewAutomationFormat, PendingCount);
-
-    /// <summary>The expansions tab announced with its count (§8).</summary>
-    public string ExpansionsSegmentAutomationName =>
-        string.Format(
+    /// <summary>The primary button's label; counts live.</summary>
+    public string MergeSelectedLabel => SelectedCount == 0
+        ? MergeCopy.MergeSelectedNone
+        : string.Format(
             CultureInfo.CurrentCulture,
-            ExpansionCopy.SegmentExpansionsAutomationFormat,
-            ExpansionCount);
+            MergeCopy.MergeSelectedFormat,
+            SelectedCount.ToString("N0", CultureInfo.CurrentCulture));
 
-    /// <summary>The history tab announced with its count (§8).</summary>
-    public string HistorySegmentAutomationName =>
-        string.Format(
-            CultureInfo.CurrentCulture,
-            MergeCopy.SegmentHistoryAutomationFormat,
-            LinkHistory.Count);
+    /// <summary>True while a card is checked.</summary>
+    public bool CanMergeSelected => SelectedCount > 0;
 
-    /// <summary>The rail row's tooltip. Lives here rather than as a literal
-    /// in MainWindow so the screen's copy and the rail's description of it
-    /// are in one file.</summary>
+    /// <summary>Tooltip on the primary button.</summary>
+    public string MergeSelectedTooltip => MergeCopy.MergeSelectedTooltip;
+
+    // ── Copy the view binds to ───────────────────────────────────────────────
+
+    /// <summary>The h1.</summary>
+    public string Title => MergeCopy.Title;
+
+    /// <summary>The rail row's label.</summary>
+    public string RailLabel => MergeCopy.RailLabel;
+
+    /// <summary>The rail row's tooltip.</summary>
     public string RailTooltip => MergeCopy.RailTooltip;
 
-    /// <summary>Section heading for the list of link acts.</summary>
-    public string LinkHistoryHeading => MergeCopy.LinkHistoryHeading;
+    /// <summary>The dock's one control.</summary>
+    public string UndoButtonText => MergeCopy.UndoButton;
 
-    /// <summary>Introduction under that heading.</summary>
-    public string LinkHistoryIntro => MergeCopy.LinkHistoryIntro;
+    /// <summary>Tooltip on Undo.</summary>
+    public string UndoTooltip => MergeCopy.UndoTooltip;
 
-    /// <summary>Empty state for the link list.</summary>
-    public string LinkHistoryEmptyMessage => MergeCopy.LinkHistoryEmpty;
+    /// <summary>Tooltip on the dock's ✕.</summary>
+    public string DockCloseTip => MergeCopy.DockCloseTip;
 
-    /// <summary>Label on the control that undoes the link the report
-    /// describes.</summary>
-    public string ReportUndoButtonText => MergeCopy.UndoButton;
+    /// <summary>Label on every card's affirmative answer.</summary>
+    public string SameGameButtonText => MergeCopy.SameGameButton;
 
-    /// <summary>Tooltip on that control.</summary>
-    public string ReportUndoTooltipText => MergeCopy.UndoTooltip;
+    /// <summary>Label on every card's negative answer.</summary>
+    public string DifferentGamesButtonText => MergeCopy.DifferentGamesButton;
+
+    /// <summary>Tooltip on Same game.</summary>
+    public string SameGameTooltip => MergeCopy.SameGameTooltip;
+
+    /// <summary>Tooltip on Different games.</summary>
+    public string DifferentGamesTooltip => MergeCopy.DifferentGamesTooltip;
+
+    /// <summary>Label on every strip's control.</summary>
+    public string SeparateButtonText => MergeCopy.SeparateButton;
+
+    /// <summary>Tooltip on Separate again.</summary>
+    public string SeparateTooltip => MergeCopy.SeparateTooltip;
+
+    // ── The dock ─────────────────────────────────────────────────────────────
+
+    /// <summary>True while the dock card is up.</summary>
+    [ObservableProperty]
+    public partial bool IsDockOpen { get; private set; }
+
+    /// <summary>The dock's title line.</summary>
+    [ObservableProperty]
+    public partial string DockTitle { get; private set; } = string.Empty;
+
+    /// <summary>The dock's note.</summary>
+    [ObservableProperty]
+    public partial string DockNote { get; private set; } = string.Empty;
+
+    /// <summary>The ✕: closes the dock early. The act stands.</summary>
+    [RelayCommand]
+    private void DismissDock() => CloseDock(forget: true);
 
     /// <summary>
-    /// Automation name for the undo beside a report. Without the verb a screen
-    /// reader announces a button indistinguishable from a statement, matching how
-    /// history rows build their automation names (§8).
+    /// Restores the state the last act or run of dismissals started from:
+    /// retracts every link the run wrote and puts every dismissed card back
+    /// where it was, with its proposals pending again.
     /// </summary>
-    public string ReportUndoAutomationName =>
-        string.Create(CultureInfo.CurrentCulture, $"{MergeCopy.UndoButton}. {ReportMessage}");
+    [RelayCommand]
+    private async Task UndoAsync(CancellationToken ct)
+    {
+        if (_run is not { } run)
+        {
+            return;
+        }
+
+        CloseDock(forget: true);
+
+        foreach (var linked in run.Linked)
+        {
+            await _links.RetractActAsync(linked.ActId, null, ct);
+            foreach (var candidateId in linked.RejectedCandidateIds)
+            {
+                await _candidates.SetStatusAsync(candidateId, MergeCandidateStatuses.Pending, ct);
+            }
+
+            if (linked.RefusedPairs.Count > 0)
+            {
+                await _expansionRefusals.RetractAsync(linked.RefusedPairs, ct);
+            }
+
+            linked.Card.MarkPending();
+            if (_sectionOfCard.TryGetValue(linked.Card, out var section))
+            {
+                section.Refresh();
+            }
+        }
+
+        // Newest dismissal first, so each card lands at the index it left
+        // from with the cards dismissed after it already back in place.
+        for (var i = run.Dismissed.Count - 1; i >= 0; i--)
+        {
+            var (section, card, index) = run.Dismissed[i];
+            foreach (var candidateId in card.CandidateIds)
+            {
+                await _candidates.SetStatusAsync(candidateId, MergeCandidateStatuses.Pending, ct);
+            }
+
+            if (card.RefusalPairs.Count > 0)
+            {
+                await _expansionRefusals.RetractAsync(card.RefusalPairs, ct);
+            }
+
+            card.IsDecided = false;
+            section.Insert(card, index);
+        }
+
+        RefreshCounts();
+        if (run.Linked.Count > 0)
+        {
+            Focus(run.Linked[0].Card.Rows[0]);
+        }
+        else if (run.Dismissed.Count > 0)
+        {
+            Focus(run.Dismissed[0].Card.Rows[0]);
+        }
+    }
+
+    private void ShowDock(UndoRun run, string title, string note)
+    {
+        _run = run;
+        DockTitle = title;
+        DockNote = note;
+        IsDockOpen = true;
+
+        _dockTimer?.Dispose();
+        _dockTimer = _clock.CreateTimer(
+            _ => _post(() => CloseDock(forget: true)), null, DockFor, Timeout.InfiniteTimeSpan);
+    }
+
+    private void CloseDock(bool forget)
+    {
+        _dockTimer?.Dispose();
+        _dockTimer = null;
+        IsDockOpen = false;
+        if (forget)
+        {
+            _run = null;
+        }
+    }
 
     // ── Loading ──────────────────────────────────────────────────────────────
 
     [RelayCommand]
     private async Task LoadAsync(CancellationToken ct)
     {
-        ClearReport();
-
-        // Must be read before the queue so the empty state knows if the matcher has run.
+        // Must be read before the queue so an empty section knows if the matcher has run.
         HasCompletedSweep = _resolveState is not null
             && await _resolveState.GetLastSoftMatchSweepAsync(ct) is not null;
 
         var pending = await _candidates.GetPendingAsync(ct);
         var resolution = await _links.GetResolutionAsync(ct);
+        var scan = await _expansions.ScanAsync(ct);
+        var history = await _links.GetHistoryAsync(null, ct);
+        var acts = await _links.GetActsAsync(ct);
 
         var releaseIds = new HashSet<long>();
         foreach (var candidate in pending)
@@ -403,385 +480,537 @@ public partial class MergeQueueViewModel : ObservableObject
             releaseIds.Add(candidate.RightReleaseId);
         }
 
+        foreach (var group in scan.Groups)
+        {
+            releaseIds.UnionWith(group.Base.ReleaseIds);
+            foreach (var member in group.Members)
+            {
+                releaseIds.UnionWith(member.Work.ReleaseIds);
+            }
+        }
+
+        var standing = StandingActs(history, acts);
+        var releasesOfWork = new Dictionary<long, IReadOnlyList<long>>();
+        foreach (var act in standing)
+        {
+            foreach (var workId in act.WorkIds)
+            {
+                if (!releasesOfWork.ContainsKey(workId))
+                {
+                    var owned = await _releases.GetByWorkAsync(workId, ct);
+                    releasesOfWork[workId] = [.. owned.Select(release => release.Id).Order()];
+                    releaseIds.UnionWith(releasesOfWork[workId]);
+                }
+            }
+        }
+
         var library = await DescribeAsync(releaseIds, ct);
+        var now = _clock.GetUtcNow().UtcDateTime;
+
+        var cards = new List<MergeCardViewModel>();
+        cards.AddRange(await BuildSameGameCardsAsync(pending, library, resolution, now, ct));
+        cards.AddRange(await BuildExpansionCardsAsync(scan, library, now, ct));
+        cards.AddRange(await BuildStandingCardsAsync(standing, releasesOfWork, library, now, ct));
 
         _loaded = true;
-        Groups = await BuildGroupsAsync(pending, library, resolution, ct);
-        ExpansionGroups = await BuildExpansionGroupsAsync(ct);
-        LinkHistory = await BuildLinkHistoryAsync(ct);
+        Place(cards);
 
-        Select(Groups.Count > 0 ? Groups[0] : null);
-        SelectExpansion(ExpansionGroups.Count > 0 ? ExpansionGroups[0] : null);
+        Focus(VisibleRows().FirstOrDefault());
         RequestCovers(_coverWidthPixels);
     }
 
-    // ── Answering an expansion group ─────────────────────────────────────────
-
-    /// <summary>
-    /// Groups every checked pack under the base game, in one act and one
-    /// transaction, and records a refusal for every pack the user left
-    /// unchecked, so an unchecked pack is an answer rather than a card that
-    /// comes back on the next scan.
-    ///
-    /// <para>The link is written at kind <c>expansion_of</c>, which no query
-    /// that produces a number reads: the bucket query filters on
-    /// <c>same_game</c>, and <c>ExpansionGrouping</c> has no resolver at all.
-    /// So this write changes what the details modal shows and nothing
-    /// else.</para>
-    /// </summary>
-    [RelayCommand]
-    private async Task GroupExpansionsAsync(ExpansionGroupViewModel? group, CancellationToken ct)
+    private void Place(IReadOnlyList<MergeCardViewModel> cards)
     {
-        if (group is null || group.IsDecided)
+        foreach (var existing in _sectionOfCard.Keys)
         {
-            return;
+            existing.PropertyChanged -= OnCardChanged;
         }
 
-        group.IsDecided = true;
+        _cardOfRow.Clear();
+        _sectionOfCard.Clear();
 
-        var children = group.IncludedChildWorkIds;
-        var refused = group.RefusedPairs;
-        var baseTitle = group.BaseTitle;
-
-        ClearReport();
-
-        if (children.Count == 0)
+        foreach (var section in Sections)
         {
-            // Taking none is the same answer as "not expansions", recorded the
-            // same way. It is the "none" of none, some or all.
-            await _expansionRefusals.RefuseAsync(group.AllPairs, null, ct);
-            Report(ExpansionCopy.NothingGrouped);
-            RemoveExpansion(group);
-            return;
-        }
-
-        var actId = await _links.LinkAsync(
-            new IdentityLinkRequest
+            var mine = new List<MergeCardViewModel>();
+            foreach (var card in cards)
             {
-                ParentWorkId = group.BaseWorkId,
-                ChildWorkIds = children,
-                Kind = IdentityLinkKinds.ExpansionOf,
-                Source = IdentityLinkSources.User,
-            },
-            ct);
+                if (card.Section != section.Kind)
+                {
+                    continue;
+                }
 
-        await _expansionRefusals.RefuseAsync(refused, null, ct);
-
-        Report(
-            string.Format(
-                CultureInfo.CurrentCulture,
-                ExpansionCopy.GroupedReportFormat,
-                baseTitle,
-                children.Count.ToString("N0", CultureInfo.CurrentCulture)),
-            actId);
-
-        RemoveExpansion(group);
-
-        // Same reason as the review answer rebuild: the act log changed and the HISTORY count must follow.
-        LinkHistory = await BuildLinkHistoryAsync(ct);
-    }
-
-    /// <summary>
-    /// Records every pack on the card as a separate game and removes the card.
-    /// Writes no link, so nothing about the library changes at all.
-    /// </summary>
-    [RelayCommand]
-    private async Task NotExpansionsAsync(ExpansionGroupViewModel? group, CancellationToken ct)
-    {
-        if (group is null || group.IsDecided)
-        {
-            return;
-        }
-
-        group.IsDecided = true;
-        await _expansionRefusals.RefuseAsync(group.AllPairs, null, ct);
-        RemoveExpansion(group);
-    }
-
-    /// <summary>Selection on the expansion surface, shared by pointer and keyboard.</summary>
-    /// <param name="group">The card to select, or null to select nothing.</param>
-    public void SelectExpansion(ExpansionGroupViewModel? group)
-    {
-        if (ReferenceEquals(SelectedExpansionGroup, group))
-        {
-            return;
-        }
-
-        if (SelectedExpansionGroup is { } previous)
-        {
-            previous.IsSelected = false;
-        }
-
-        SelectedExpansionGroup = group;
-        if (group is not null)
-        {
-            group.IsSelected = true;
-        }
-    }
-
-    private void RemoveExpansion(ExpansionGroupViewModel group)
-    {
-        var index = IndexOfExpansion(group);
-
-        var remaining = new List<ExpansionGroupViewModel>(ExpansionGroups.Count);
-        foreach (var existing in ExpansionGroups)
-        {
-            if (!ReferenceEquals(existing, group))
-            {
-                remaining.Add(existing);
+                mine.Add(card);
+                _sectionOfCard[card] = section;
+                card.PropertyChanged += OnCardChanged;
+                foreach (var row in card.Rows)
+                {
+                    _cardOfRow[row] = card;
+                }
             }
+
+            section.Replace(mine, Sort);
+            section.IsVisible = Kind is null || section.Kind == Kind;
+            section.EmptyText = IsSameGameSection(section.Kind) && !HasCompletedSweep
+                ? MergeCopy.SectionNotSwept
+                : MergeCopy.SectionEmpty;
         }
 
-        ExpansionGroups = remaining;
-        SelectExpansion(remaining.Count == 0
-            ? null
-            : remaining[Math.Clamp(index, 0, remaining.Count - 1)]);
+        RefreshCounts();
     }
 
-    private int IndexOfExpansion(ExpansionGroupViewModel? group)
+    private static bool IsSameGameSection(MergeSectionKind kind) =>
+        kind is MergeSectionKind.Stores or MergeSectionKind.Editions;
+
+    private void OnCardChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (group is null)
+        if (e.PropertyName == nameof(MergeCardViewModel.IsSelected))
         {
-            return -1;
+            OnPropertyChanged(nameof(SelectedCount));
+            OnPropertyChanged(nameof(MergeSelectedLabel));
+            OnPropertyChanged(nameof(CanMergeSelected));
+        }
+    }
+
+    private void RefreshCounts()
+    {
+        foreach (var section in Sections)
+        {
+            section.Refresh();
         }
 
-        for (var i = 0; i < ExpansionGroups.Count; i++)
-        {
-            if (ReferenceEquals(ExpansionGroups[i], group))
-            {
-                return i;
-            }
-        }
-
-        return -1;
+        OnPropertyChanged(nameof(PendingCount));
+        OnPropertyChanged(nameof(ShownPendingCount));
+        OnPropertyChanged(nameof(HasPending));
+        OnPropertyChanged(nameof(PendingLine));
+        OnPropertyChanged(nameof(CutCountText));
+        OnPropertyChanged(nameof(ExactCount));
+        OnPropertyChanged(nameof(AcceptExactLabel));
+        OnPropertyChanged(nameof(CanAcceptExact));
+        OnPropertyChanged(nameof(SelectedCount));
+        OnPropertyChanged(nameof(MergeSelectedLabel));
+        OnPropertyChanged(nameof(CanMergeSelected));
     }
 
     // ── Answering ────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Links every checked member under the chosen primary, in one act and one
-    /// transaction, and records a rejection for every proposal the answer leaves
-    /// outside the link.
-    ///
-    /// <para>Nothing else on screen is re-read. Components are disjoint over
-    /// resolved works, so a link inside one group cannot change another; the
-    /// answered card is removed and no neighbour is replanned. The previous
-    /// screen replanned the whole queue on every answer and froze for about two
-    /// seconds at 200 pending pairs.</para>
+    /// Nests every checked row under the header, in one act and one
+    /// transaction, and records the proposals a left-out row had with the
+    /// linked rows as answered no. Nothing else on screen is re-read: a link
+    /// inside one card cannot change another, and the card becomes a strip
+    /// in place.
     /// </summary>
     [RelayCommand]
-    private async Task SameGameAsync(MergeGroupViewModel? group, CancellationToken ct)
+    private async Task SameGameAsync(MergeCardViewModel? card, CancellationToken ct)
     {
-        if (group is null || group.IsDecided)
+        if (card is null || !card.CanAnswer)
         {
             return;
         }
 
-        // Latch before await to prevent double-writes from rapid clicks.
-        group.IsDecided = true;
+        // Latch before the await so a double click cannot write twice.
+        card.IsDecided = true;
+        var linked = await LinkAsync(card, ct);
+        card.MarkResolved(linked.ActId);
 
-        var children = group.IncludedChildWorkIds;
-        var rejected = group.RejectedCandidateIds;
-        var primaryTitle = group.PrimaryTitle;
+        RefreshCounts();
+        AdvanceFocusFrom(card);
 
-        ClearReport();
-
-        if (children.Count == 0)
-        {
-            // Every member unchecked is the same answer as "different games",
-            // and it is recorded the same way: no link, and every proposal the
-            // answer touched written down.
-            await RejectAsync(group.AllCandidateIds, ct);
-            Report(MergeCopy.NothingLinked);
-            Remove(group);
-            return;
-        }
-
-        var actId = await _links.LinkAsync(
-            new IdentityLinkRequest
-            {
-                ParentWorkId = group.Primary.WorkId,
-                ChildWorkIds = children,
-                Kind = IdentityLinkKinds.SameGame,
-                Source = IdentityLinkSources.User,
-            },
-            ct);
-
-        await RejectAsync(rejected, ct);
-
-        Report(
-            string.Format(
-                CultureInfo.CurrentCulture,
-                MergeCopy.LinkedReportFormat,
-                primaryTitle,
-                children.Count.ToString("N0", CultureInfo.CurrentCulture)),
-            actId);
-
-        Remove(group);
-
-        // The HISTORY tab draws its own count; an act just changed the log.
-        // Without this rebuild the strip would simultaneously show the outcome
-        // report and claim HISTORY holds nothing, until the user opened that
-        // tab and the number caught up. Costs one pass over the act log, which
-        // holds only user-performed acts and does not grow with the library.
-        // Reads no candidate, so Answering_reads_nothing_however_long_the_queue_is still holds.
-        LinkHistory = await BuildLinkHistoryAsync(ct);
+        var nested = card.ChildWorkIds.Count;
+        var leftOut = card.ExcludedRows.Count;
+        ShowDock(
+            new UndoRun(UndoKind.Merge, [linked], []),
+            string.Format(CultureInfo.CurrentCulture, MergeCopy.DockRolledUnderFormat, card.HeaderTitle),
+            leftOut > 0
+                ? string.Format(
+                    CultureInfo.CurrentCulture,
+                    MergeCopy.DockNestedLeftOutFormat,
+                    nested.ToString("N0", CultureInfo.CurrentCulture),
+                    leftOut.ToString("N0", CultureInfo.CurrentCulture))
+                : nested == 1
+                    ? MergeCopy.DockNestedOne
+                    : string.Format(
+                        CultureInfo.CurrentCulture,
+                        MergeCopy.DockNestedManyFormat,
+                        nested.ToString("N0", CultureInfo.CurrentCulture)));
     }
 
-    /// <summary>Rejects every proposal in the group, links nothing, and removes the card.</summary>
+    /// <summary>
+    /// A click on a row asks the shell to open the game's details, so the
+    /// entries can be compared before answering. The screen itself knows
+    /// nothing about the modal; the library owns it.
+    /// </summary>
     [RelayCommand]
-    private async Task DifferentGamesAsync(MergeGroupViewModel? group, CancellationToken ct)
+    private void OpenDetails(MergeRowViewModel? row)
     {
-        if (group is null || group.IsDecided)
+        if (row is null)
         {
             return;
         }
 
-        group.IsDecided = true;
-        await RejectAsync(group.AllCandidateIds, ct);
-        Remove(group);
+        Focus(row, announce: false);
+        DetailsRequested?.Invoke(row);
     }
 
-    private async Task RejectAsync(IReadOnlyList<long> candidateIds, CancellationToken ct)
+    /// <summary>Raised when a row asks for the game's details.</summary>
+    public event Action<MergeRowViewModel>? DetailsRequested;
+
+    /// <summary>
+    /// Records every proposal on the card as answered no, and removes the
+    /// card. Consecutive dismissals share one dock card and one Undo.
+    /// </summary>
+    [RelayCommand]
+    private async Task DifferentGamesAsync(MergeCardViewModel? card, CancellationToken ct)
     {
-        foreach (var candidateId in candidateIds)
+        if (card is null || card.IsDecided || card.IsResolved
+            || !_sectionOfCard.TryGetValue(card, out var section))
+        {
+            return;
+        }
+
+        card.IsDecided = true;
+        foreach (var candidateId in card.CandidateIds)
         {
             await _candidates.SetStatusAsync(candidateId, MergeCandidateStatuses.Rejected, ct);
         }
+
+        if (card.RefusalPairs.Count > 0)
+        {
+            await _expansionRefusals.RefuseAsync(card.RefusalPairs, null, ct);
+        }
+
+        var index = section.IndexOf(card);
+        AdvanceFocusFrom(card);
+        section.Remove(card);
+        card.IsSelected = false;
+        RefreshCounts();
+
+        var run = IsDockOpen && _run is { Kind: UndoKind.Dismiss } standing
+            ? standing
+            : new UndoRun(UndoKind.Dismiss, [], []);
+        run.Dismissed.Add((section, card, index));
+
+        ShowDock(
+            run,
+            run.Dismissed.Count == 1
+                ? MergeCopy.DockLeftOneAlone
+                : string.Format(
+                    CultureInfo.CurrentCulture,
+                    MergeCopy.DockLeftAloneFormat,
+                    run.Dismissed.Count.ToString("N0", CultureInfo.CurrentCulture)),
+            MergeCopy.DockStaySeparate);
     }
 
-    // ── Undo ─────────────────────────────────────────────────────────────────
-
     /// <summary>
-    /// Undoes the link the report describes. The proposals return to the queue
-    /// as ordinary pending rows on the next load, and the same group can be
-    /// linked again immediately.
+    /// Retracts the strip's act. A card answered this session returns to a
+    /// question in place; a strip loaded from an earlier session reloads the
+    /// queue, because the proposals it came from are not on the card.
     /// </summary>
     [RelayCommand]
-    private async Task UndoReportAsync(CancellationToken ct)
+    private async Task SeparateAsync(MergeCardViewModel? card, CancellationToken ct)
     {
-        if (ReportUndoActId is not { } actId)
+        if (card is not { IsResolved: true, ActId: { } actId })
         {
             return;
         }
 
-        await UndoActAsync(actId, ct);
+        await _links.RetractActAsync(actId, null, ct);
+
+        if (card.IsFromHistory)
+        {
+            await LoadAsync(ct);
+            return;
+        }
+
+        card.MarkPending();
+        RefreshCounts();
+        Focus(card.Rows[0]);
     }
 
-    /// <summary>Undoes one act from the history list.</summary>
+    /// <summary>Rolls up every checked card, each under the header the user picked.</summary>
     [RelayCommand]
-    private async Task UndoAsync(MergeLinkHistoryRowViewModel? row, CancellationToken ct)
+    private async Task MergeSelectedAsync(CancellationToken ct)
     {
-        if (row is null || !row.CanUndo)
+        var cards = SelectedCards();
+        if (cards.Count == 0)
         {
             return;
         }
 
-        row.IsUndoing = true;
-        await UndoActAsync(row.ActId, ct);
+        var linked = await LinkAllAsync(cards, ct);
+        ShowDock(
+            new UndoRun(UndoKind.Merge, linked, []),
+            linked.Count == 1
+                ? MergeCopy.DockRolledOneGroup
+                : string.Format(
+                    CultureInfo.CurrentCulture,
+                    MergeCopy.DockRolledGroupsFormat,
+                    linked.Count.ToString("N0", CultureInfo.CurrentCulture)),
+            MergeCopy.DockEachKeptHeader);
     }
 
-    private async Task UndoActAsync(long actId, CancellationToken ct)
+    /// <summary>The safe bulk path: EXACT MATCH cards in ACROSS STORES only.</summary>
+    [RelayCommand]
+    private async Task AcceptExactAsync(CancellationToken ct)
     {
-        var undone = await _links.RetractActAsync(actId, null, ct);
-
-        // The reload clears the report, so the outcome is stamped after it
-        // rather than before, or the screen would go quiet on the one act whose
-        // whole point is that it can be undone.
-        await LoadAsync(ct);
-
-        Report(undone ? MergeCopy.Undone : MergeCopy.UndoneAlready);
-    }
-
-    /// <summary>Stamps the outcome onto whichever surface is up, so a report
-    /// cannot outlive the surface that raised it. Written from what the engine
-    /// returned, never from what was asked for.</summary>
-    /// <param name="message">The outcome line.</param>
-    /// <param name="actId">The link act it can be undone from, or null when the
-    /// answer wrote no link.</param>
-    private void Report(string message, long? actId = null)
-    {
-        ReportSurface = IsHistoryVisible
-            ? MergeReportSurface.History
-            : IsExpansionsVisible
-                ? MergeReportSurface.Expansions
-                : MergeReportSurface.Review;
-        ReportUndoActId = actId;
-        ReportMessage = message;
-    }
-
-    /// <summary>Drops the standing report. Called on every segment switch and at
-    /// the top of <c>LoadAsync</c>; without it one answer left the Amber note up
-    /// for the rest of the session.</summary>
-    private void ClearReport()
-    {
-        ReportMessage = null;
-        ReportSurface = MergeReportSurface.None;
-        ReportUndoActId = null;
-    }
-
-    // ── Selection ────────────────────────────────────────────────────────────
-
-    /// <summary>Selection, shared by pointer and keyboard.</summary>
-    public void Select(MergeGroupViewModel? group)
-    {
-        if (ReferenceEquals(SelectedGroup, group))
+        var cards = ExactCards();
+        if (cards.Count == 0)
         {
             return;
         }
 
-        if (SelectedGroup is { } previous)
+        var linked = await LinkAllAsync(cards, ct);
+        ShowDock(
+            new UndoRun(UndoKind.Merge, linked, []),
+            linked.Count == 1
+                ? MergeCopy.DockRolledOneExact
+                : string.Format(
+                    CultureInfo.CurrentCulture,
+                    MergeCopy.DockRolledExactFormat,
+                    linked.Count.ToString("N0", CultureInfo.CurrentCulture)),
+            MergeCopy.DockCrossStoreOnly);
+    }
+
+    private async Task<List<LinkedAct>> LinkAllAsync(
+        IReadOnlyList<MergeCardViewModel> cards, CancellationToken ct)
+    {
+        var linked = new List<LinkedAct>(cards.Count);
+        foreach (var card in cards)
         {
-            previous.IsSelected = false;
+            if (!card.CanAnswer)
+            {
+                continue;
+            }
+
+            card.IsDecided = true;
+            var act = await LinkAsync(card, ct);
+            card.MarkResolved(act.ActId);
+            linked.Add(act);
         }
 
-        SelectedGroup = group;
-        if (group is not null)
+        RefreshCounts();
+        if (linked.Count > 0)
         {
-            group.IsSelected = true;
+            AdvanceFocusFrom(linked[0].Card);
         }
+
+        return linked;
     }
+
+    // The link, then the proposals the answer left outside it. Both are
+    // remembered so one Undo reverses the whole answer.
+    private async Task<LinkedAct> LinkAsync(MergeCardViewModel card, CancellationToken ct)
+    {
+        var actId = await _links.LinkAsync(
+            new IdentityLinkRequest
+            {
+                ParentWorkId = card.ParentWorkId,
+                ChildWorkIds = card.ChildWorkIds,
+                Kind = card.LinkKind,
+                Source = IdentityLinkSources.User,
+                RelationLabel = card.RelationLabel,
+            },
+            ct);
+
+        var rejected = card.RejectedCandidateIds;
+        foreach (var candidateId in rejected)
+        {
+            await _candidates.SetStatusAsync(candidateId, MergeCandidateStatuses.Rejected, ct);
+        }
+
+        var refused = card.RefusedPairs;
+        if (refused.Count > 0)
+        {
+            await _expansionRefusals.RefuseAsync(refused, null, ct);
+        }
+
+        return new LinkedAct(card, actId, rejected, refused);
+    }
+
+    private List<MergeCardViewModel> SelectedCards()
+    {
+        var selected = new List<MergeCardViewModel>();
+        foreach (var section in Sections)
+        {
+            foreach (var card in section.Cards)
+            {
+                if (card.IsPending && card.IsSelected)
+                {
+                    selected.Add(card);
+                }
+            }
+        }
+
+        return selected;
+    }
+
+    private List<MergeCardViewModel> ExactCards()
+    {
+        var exact = new List<MergeCardViewModel>();
+        foreach (var section in Sections)
+        {
+            if (section.Kind != MergeSectionKind.Stores || !section.IsVisible)
+            {
+                continue;
+            }
+
+            foreach (var card in section.Cards)
+            {
+                if (card.IsPending && card.IsExact)
+                {
+                    exact.Add(card);
+                }
+            }
+        }
+
+        return exact;
+    }
+
+    // ── Keyboard ─────────────────────────────────────────────────────────────
+
+    /// <summary>The row the keyboard cursor is on, or null when nothing is pending.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(FocusedCard))]
+    public partial MergeRowViewModel? FocusedRow { get; private set; }
+
+    /// <summary>The card the cursor's row belongs to. S and D act on it.</summary>
+    public MergeCardViewModel? FocusedCard =>
+        FocusedRow is { } row && _cardOfRow.TryGetValue(row, out var card) ? card : null;
 
     /// <summary>
-    /// Keyboard navigation (§8): moves selection by <paramref name="delta"/>
-    /// cards. Returns the new index, or -1 when the queue is empty.
+    /// Raised when the cursor moves for a reason other than the view's own
+    /// focus, so the view can put keyboard focus on the row and scroll it
+    /// into view.
     /// </summary>
-    public int MoveSelection(int delta)
+    public event Action<MergeRowViewModel>? FocusRequested;
+
+    /// <summary>Selection follows focus: the view reports the row that took focus.</summary>
+    public void FocusRow(MergeRowViewModel? row) => Focus(row, announce: false);
+
+    /// <summary>Moves the cursor by <paramref name="delta"/> rows across every visible pending card. Returns the row, or null when nothing is pending.</summary>
+    public MergeRowViewModel? MoveFocus(int delta)
     {
-        if (Groups.Count == 0)
+        var rows = VisibleRows();
+        if (rows.Count == 0)
         {
-            return -1;
+            Focus(null);
+            return null;
         }
 
-        var current = IndexOf(SelectedGroup);
-        var next = current < 0
-            ? 0
-            : Math.Clamp(current + delta, 0, Groups.Count - 1);
-        Select(Groups[next]);
-        return next;
+        var current = FocusedRow is { } focused ? rows.IndexOf(focused) : -1;
+        var next = current < 0 ? 0 : Math.Clamp(current + delta, 0, rows.Count - 1);
+        Focus(rows[next]);
+        return rows[next];
     }
 
-    /// <summary>
-    /// Keyboard navigation (§8): moves expansion selection by
-    /// <paramref name="delta"/> cards. Returns the new index, or -1 when the
-    /// surface is empty.
-    /// </summary>
-    /// <param name="delta">Cards to move; positive is down, negative is up.</param>
-    /// <returns>The new index, or -1 when there are no expansion cards.</returns>
-    public int MoveExpansionSelection(int delta)
+    /// <summary>Space: makes the cursor's row the header.</summary>
+    public void PromoteFocused()
     {
-        if (ExpansionGroups.Count == 0)
+        if (FocusedRow is { } row && FocusedCard is { } card)
         {
-            return -1;
+            card.Promote(row);
+        }
+    }
+
+    /// <summary>Row → card, for the view's pointer handlers.</summary>
+    public MergeCardViewModel? CardOf(MergeRowViewModel row) =>
+        _cardOfRow.TryGetValue(row, out var card) ? card : null;
+
+    private List<MergeRowViewModel> VisibleRows()
+    {
+        var rows = new List<MergeRowViewModel>();
+        foreach (var section in Sections)
+        {
+            if (!section.IsVisible)
+            {
+                continue;
+            }
+
+            foreach (var card in section.Cards)
+            {
+                if (card.IsPending)
+                {
+                    rows.AddRange(card.Rows);
+                }
+            }
         }
 
-        var current = IndexOfExpansion(SelectedExpansionGroup);
-        var next = current < 0
-            ? 0
-            : Math.Clamp(current + delta, 0, ExpansionGroups.Count - 1);
-        SelectExpansion(ExpansionGroups[next]);
-        return next;
+        return rows;
     }
+
+    private void Focus(MergeRowViewModel? row, bool announce = true)
+    {
+        if (ReferenceEquals(FocusedRow, row))
+        {
+            return;
+        }
+
+        if (FocusedRow is { } previous)
+        {
+            previous.IsFocused = false;
+            if (_cardOfRow.TryGetValue(previous, out var previousCard))
+            {
+                previousCard.IsFocused = false;
+            }
+        }
+
+        FocusedRow = row;
+        if (row is null)
+        {
+            return;
+        }
+
+        row.IsFocused = true;
+        if (_cardOfRow.TryGetValue(row, out var card))
+        {
+            card.IsFocused = true;
+        }
+
+        if (announce)
+        {
+            FocusRequested?.Invoke(row);
+        }
+    }
+
+    // Leaves the cursor on the row that takes the answered card's place, so
+    // the queue can be worked straight down without re-aiming.
+    private void AdvanceFocusFrom(MergeCardViewModel card)
+    {
+        if (FocusedCard is null || !ReferenceEquals(FocusedCard, card))
+        {
+            return;
+        }
+
+        var before = VisibleRows();
+        var index = FocusedRow is { } focused ? before.IndexOf(focused) : -1;
+        var after = new List<MergeRowViewModel>(before.Count);
+        foreach (var row in before)
+        {
+            if (!ReferenceEquals(_cardOfRow[row], card))
+            {
+                after.Add(row);
+            }
+        }
+
+        if (after.Count == 0)
+        {
+            Focus(null);
+            return;
+        }
+
+        var headRows = 0;
+        for (var i = 0; i < index && i < before.Count; i++)
+        {
+            if (!ReferenceEquals(_cardOfRow[before[i]], card))
+            {
+                headRows++;
+            }
+        }
+
+        Focus(after[Math.Clamp(headRows, 0, after.Count - 1)]);
+    }
+
+    // ── Covers ───────────────────────────────────────────────────────────────
 
     /// <summary>Sets the display resolution for cover decoding.</summary>
     public void RequestCovers(double displayWidthPixels)
@@ -792,56 +1021,30 @@ public partial class MergeQueueViewModel : ObservableObject
         }
 
         _coverWidthPixels = displayWidthPixels;
-        foreach (var group in Groups)
+        foreach (var section in Sections)
         {
-            group.RequestCovers(displayWidthPixels);
-        }
-
-        foreach (var group in ExpansionGroups)
-        {
-            group.RequestCovers(displayWidthPixels);
-        }
-    }
-
-    // ── Rebuilding ───────────────────────────────────────────────────────────
-
-    // Removes an answered card and leaves the cursor on the group that slid into
-    // its place, so the queue can be worked straight down without re-aiming.
-    private void Remove(MergeGroupViewModel group)
-    {
-        var index = IndexOf(group);
-
-        var remaining = new List<MergeGroupViewModel>(Groups.Count);
-        foreach (var existing in Groups)
-        {
-            if (!ReferenceEquals(existing, group))
+            foreach (var card in section.Cards)
             {
-                remaining.Add(existing);
+                card.RequestCovers(displayWidthPixels);
             }
         }
-
-        Groups = remaining;
-        Select(remaining.Count == 0
-            ? null
-            : remaining[Math.Clamp(index, 0, remaining.Count - 1)]);
     }
 
-    private async Task<IReadOnlyList<MergeGroupViewModel>> BuildGroupsAsync(
+    // ── Building same-game cards ─────────────────────────────────────────────
+
+    private async Task<List<MergeCardViewModel>> BuildSameGameCardsAsync(
         IReadOnlyList<MergeCandidate> pending,
         LibrarySnapshot library,
         IdentityResolution resolution,
+        DateTime now,
         CancellationToken ct)
     {
         var payloads = new Dictionary<long, SoftMatchSignalsPayload?>(pending.Count);
-        var rows = new Dictionary<long, MergeCandidate>(pending.Count);
         var proposals = new List<MergeGroupProposal>(pending.Count);
-
         foreach (var candidate in pending)
         {
             var payload = MergeEdgeViewModel.Parse(candidate);
             payloads[candidate.Id] = payload;
-            rows[candidate.Id] = candidate;
-
             proposals.Add(new MergeGroupProposal
             {
                 CandidateId = candidate.Id,
@@ -855,33 +1058,522 @@ public partial class MergeQueueViewModel : ObservableObject
         var groups = MergeGrouping.Build(
             proposals, library.WorkOfRelease, library.Works, resolution.SameGame);
 
-        var cards = new List<MergeGroupViewModel>(groups.Count);
+        var cards = new List<MergeCardViewModel>(groups.Count);
         foreach (var group in groups)
         {
-            var members = new List<MergeGroupMemberViewModel>(group.Members.Count);
-            foreach (var member in group.Members)
+            // Primary first, then by the strength of each member's best edge:
+            // the rows a user must think about are the weakest, and they end
+            // the list rather than being scattered through it.
+            var ordered = new List<MergeGroupMember>(group.Members);
+            ordered.Sort((a, b) =>
             {
-                members.Add(new MergeGroupMemberViewModel(
+                if (a.WorkId == group.PrimaryWorkId)
+                {
+                    return -1;
+                }
+
+                if (b.WorkId == group.PrimaryWorkId)
+                {
+                    return 1;
+                }
+
+                var byScore = b.BestScore.CompareTo(a.BestScore);
+                return byScore != 0 ? byScore : a.WorkId.CompareTo(b.WorkId);
+            });
+
+            var rows = new List<MergeRowViewModel>(ordered.Count);
+            foreach (var member in ordered)
+            {
+                rows.Add(new MergeRowViewModel(
                     member.WorkId,
                     await DescribeWorkAsync(member.WorkId, member.ReleaseIds, library, ct),
                     member.ReleaseIds,
-                    member.IsDefaultIncluded));
+                    library.FactsOf(member.ReleaseIds),
+                    now,
+                    canPromote: true,
+                    isPack: false));
             }
 
-            var edges = new List<MergeEdgeViewModel>(group.Edges.Count);
+            MergeGroupEdge? strongest = null;
             foreach (var edge in group.Edges)
             {
-                edges.Add(MergeEdgeViewModel.Create(
-                    edge, payloads.GetValueOrDefault(edge.CandidateId)));
+                if (strongest is null || edge.Score > strongest.Score)
+                {
+                    strongest = edge;
+                }
             }
 
-            cards.Add(new MergeGroupViewModel(group, members, edges));
+            var payload = strongest is null ? null : payloads.GetValueOrDefault(strongest.CandidateId);
+            var stores = DistinctStores(rows);
+
+            // EXACT MATCH needs the titles to agree as the stores spell them,
+            // not only after the matcher strips an edition: "The Witcher 3"
+            // against its Game of the Year edition normalises to one title and
+            // is still the user's call, which is what LIKELY says.
+            var sameTitles = SameTitles(rows);
+            var confidence = group.IsPriority && sameTitles && (payload?.TitleSimilarity ?? 0) >= ExactTitleFloor
+                ? MergeConfidence.Exact
+                : group.IsPriority
+                    ? MergeConfidence.Likely
+                    : MergeConfidence.WorthALook;
+
+            cards.Add(new MergeCardViewModel(
+                string.Create(CultureInfo.InvariantCulture, $"merge-card-{ordered.Min(m => m.WorkId)}"),
+                stores.Count >= 2 ? MergeSectionKind.Stores : MergeSectionKind.Editions,
+                confidence,
+                group.Score,
+                SameGameReason(payload, rows, stores, group, sameTitles),
+                rows,
+                headerIndex: 0,
+                IdentityLinkKinds.SameGame,
+                relationLabel: null,
+                group.Edges,
+                refusalPairs: [],
+                standingActId: null));
         }
 
         return cards;
     }
 
-    // The member's face comes from the WORK, because a member is a work and its
+    private static bool SameTitles(IReadOnlyList<MergeRowViewModel> rows)
+    {
+        for (var i = 1; i < rows.Count; i++)
+        {
+            if (!string.Equals(rows[i].Title.Trim(), rows[0].Title.Trim(), StringComparison.CurrentCultureIgnoreCase))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static List<string> DistinctStores(IReadOnlyList<MergeRowViewModel> rows)
+    {
+        var stores = new List<string>();
+        foreach (var row in rows)
+        {
+            foreach (var chip in row.StoreChips)
+            {
+                if (!stores.Contains(chip, StringComparer.OrdinalIgnoreCase))
+                {
+                    stores.Add(chip);
+                }
+            }
+        }
+
+        return stores;
+    }
+
+    // One sentence naming only what the match used. The numbers inside it
+    // are the matcher's own; nothing is re-scored here.
+    private static string SameGameReason(
+        SoftMatchSignalsPayload? payload,
+        IReadOnlyList<MergeRowViewModel> rows,
+        IReadOnlyList<string> stores,
+        MergeGroup group,
+        bool sameTitles)
+    {
+        var sentences = new List<string>(3);
+
+        if (payload is null)
+        {
+            sentences.Add(MergeCopy.ReasonNoBreakdown);
+        }
+        else
+        {
+            if (payload.TitleSimilarity >= ExactTitleFloor && !sameTitles)
+            {
+                sentences.Add(MergeCopy.ReasonSameTitleApartFromEdition);
+            }
+            else if (payload.TitleSimilarity >= ExactTitleFloor)
+            {
+                sentences.Add(stores.Count >= 2
+                    ? string.Format(
+                        CultureInfo.CurrentCulture,
+                        MergeCopy.ReasonSameTitleOnFormat,
+                        JoinStores(stores))
+                    : MergeCopy.ReasonSameTitle);
+            }
+            else
+            {
+                sentences.Add(string.Format(
+                    CultureInfo.CurrentCulture,
+                    MergeCopy.ReasonNameMatchFormat,
+                    payload.TitleSimilarity.ToString("0.00", CultureInfo.InvariantCulture)));
+            }
+
+            var clauses = new List<string>(2);
+            switch (payload.PublisherMatch)
+            {
+                case true:
+                    clauses.Add(MergeCopy.ReasonSamePublisher);
+                    break;
+                case false:
+                    clauses.Add(MergeCopy.ReasonDifferentPublishers);
+                    break;
+            }
+
+            if (payload.YearDelta is { } delta)
+            {
+                var gap = Math.Abs(delta);
+                clauses.Add(gap switch
+                {
+                    0 => MergeCopy.ReasonSameYear,
+                    1 => MergeCopy.ReasonOneYearApart,
+                    _ => string.Format(
+                        CultureInfo.CurrentCulture,
+                        MergeCopy.ReasonYearsApartFormat,
+                        gap.ToString(CultureInfo.InvariantCulture)),
+                });
+            }
+
+            if (clauses.Count > 0)
+            {
+                var clause = string.Join(", ", clauses);
+                sentences.Add(char.ToUpper(clause[0], CultureInfo.CurrentCulture) + clause[1..] + ".");
+            }
+        }
+
+        // A row no proposal named with the header reached the group through
+        // a sibling. Said in words, because it is the guard against Prey
+        // (2006) and Prey (2017) arriving as one game.
+        var titles = new Dictionary<long, string>(rows.Count);
+        foreach (var row in rows)
+        {
+            titles[row.WorkId] = row.Title;
+        }
+
+        foreach (var row in rows)
+        {
+            if (row.WorkId == group.PrimaryWorkId)
+            {
+                continue;
+            }
+
+            MergeGroupEdge? best = null;
+            var direct = false;
+            foreach (var edge in group.Edges)
+            {
+                if (edge.Other(row.WorkId) is not { } neighbour)
+                {
+                    continue;
+                }
+
+                if (neighbour == group.PrimaryWorkId)
+                {
+                    direct = true;
+                    break;
+                }
+
+                if (best is null || edge.Score > best.Score)
+                {
+                    best = edge;
+                }
+            }
+
+            if (!direct && best?.Other(row.WorkId) is { } through
+                && titles.TryGetValue(through, out var throughTitle))
+            {
+                sentences.Add(string.Format(
+                    CultureInfo.CurrentCulture, MergeCopy.ReasonIndirectFormat, row.Title, throughTitle));
+            }
+        }
+
+        return string.Join(" ", sentences);
+    }
+
+    private static string JoinStores(IReadOnlyList<string> stores)
+    {
+        if (stores.Count <= 1)
+        {
+            return stores.Count == 0 ? string.Empty : stores[0];
+        }
+
+        return string.Join(", ", stores.Take(stores.Count - 1)) + " and " + stores[^1];
+    }
+
+    // ── Building expansion cards ─────────────────────────────────────────────
+
+    // A base game's packs are split by section before a card exists, so a
+    // card never mixes expansion_of with variant_of and one link kind per
+    // card holds.
+    private async Task<List<MergeCardViewModel>> BuildExpansionCardsAsync(
+        ExpansionScanReport scan, LibrarySnapshot library, DateTime now, CancellationToken ct)
+    {
+        var cards = new List<MergeCardViewModel>();
+        foreach (var group in scan.Groups)
+        {
+            var bySection = new Dictionary<MergeSectionKind, List<ExpansionProposalMember>>();
+            foreach (var member in group.Members)
+            {
+                var kind = SectionOf(member.Kind, member.RelationLabel);
+                if (!bySection.TryGetValue(kind, out var list))
+                {
+                    bySection[kind] = list = [];
+                }
+
+                list.Add(member);
+            }
+
+            foreach (var (section, members) in bySection)
+            {
+                var rows = new List<MergeRowViewModel>(members.Count + 1)
+                {
+                    new(
+                        group.Base.WorkId,
+                        await DescribeWorkAsync(group.Base.WorkId, group.Base.ReleaseIds, library, ct),
+                        group.Base.ReleaseIds,
+                        library.FactsOf(group.Base.ReleaseIds),
+                        now,
+                        canPromote: false,
+                        isPack: false),
+                };
+
+                var pairs = new List<ExpansionRefusalRequest>(members.Count);
+                string? sharedLabel = null;
+                var labelsAgree = true;
+                var declared = 0;
+                foreach (var member in members)
+                {
+                    rows.Add(new MergeRowViewModel(
+                        member.Work.WorkId,
+                        await DescribeWorkAsync(member.Work.WorkId, member.Work.ReleaseIds, library, ct),
+                        member.Work.ReleaseIds,
+                        library.FactsOf(member.Work.ReleaseIds),
+                        now,
+                        canPromote: false,
+                        isPack: true));
+                    pairs.Add(new ExpansionRefusalRequest(group.Base.WorkId, member.Work.WorkId));
+
+                    if (member.FromMetadata)
+                    {
+                        declared++;
+                    }
+
+                    if (sharedLabel is null)
+                    {
+                        sharedLabel = member.RelationLabel;
+                    }
+                    else if (!string.Equals(sharedLabel, member.RelationLabel, StringComparison.OrdinalIgnoreCase))
+                    {
+                        labelsAgree = false;
+                    }
+                }
+
+                var allDeclared = declared == members.Count;
+                cards.Add(new MergeCardViewModel(
+                    string.Create(CultureInfo.InvariantCulture, $"expansion-card-{section}-{group.Base.WorkId}"),
+                    section,
+                    allDeclared ? MergeConfidence.Exact : MergeConfidence.Likely,
+                    allDeclared ? 1.0 : 0.5 + (0.5 * declared / members.Count),
+                    ExpansionReason(group.Base.Title, members, declared),
+                    rows,
+                    headerIndex: 0,
+                    section == MergeSectionKind.Tests ? IdentityLinkKinds.VariantOf : IdentityLinkKinds.ExpansionOf,
+                    labelsAgree ? sharedLabel : null,
+                    edges: [],
+                    pairs,
+                    standingActId: null));
+            }
+        }
+
+        return cards;
+    }
+
+    private static MergeSectionKind SectionOf(string kind, string? relationLabel)
+    {
+        if (kind == IdentityLinkKinds.VariantOf)
+        {
+            return MergeSectionKind.Tests;
+        }
+
+        return relationLabel is not null
+            && (string.Equals(relationLabel, RelationLabels.Episode, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(relationLabel, RelationLabels.Season, StringComparison.OrdinalIgnoreCase))
+            ? MergeSectionKind.Parts
+            : MergeSectionKind.Expansions;
+    }
+
+    private static string ExpansionReason(
+        string baseTitle, IReadOnlyList<ExpansionProposalMember> members, int declared)
+    {
+        if (declared == members.Count)
+        {
+            return members.Count == 1
+                ? string.Format(
+                    CultureInfo.CurrentCulture,
+                    MergeCopy.ReasonDeclaredOneFormat,
+                    members[0].Work.Title,
+                    baseTitle)
+                : string.Format(
+                    CultureInfo.CurrentCulture,
+                    MergeCopy.ReasonDeclaredManyFormat,
+                    members.Count.ToString("N0", CultureInfo.CurrentCulture),
+                    baseTitle);
+        }
+
+        var opener = members.Count == 1
+            ? string.Format(
+                CultureInfo.CurrentCulture,
+                MergeCopy.ReasonSuffixFormat,
+                members[0].Evidence.Suffix,
+                baseTitle)
+            : string.Format(
+                CultureInfo.CurrentCulture,
+                MergeCopy.ReasonSuffixManyFormat,
+                members.Count.ToString("N0", CultureInfo.CurrentCulture),
+                baseTitle);
+
+        var evidence = members[0].Evidence;
+        var clauses = new List<string>(2);
+        switch (evidence.PublisherAgrees)
+        {
+            case true:
+                clauses.Add(MergeCopy.ReasonSamePublisher);
+                break;
+            case false:
+                clauses.Add(MergeCopy.ReasonDifferentPublishers);
+                break;
+        }
+
+        if (members.Count == 1 && evidence.YearDelta is { } delta)
+        {
+            var gap = Math.Abs(delta);
+            clauses.Add(gap switch
+            {
+                0 => MergeCopy.ReasonSameYear,
+                1 => MergeCopy.ReasonOneYearApart,
+                _ => string.Format(
+                    CultureInfo.CurrentCulture,
+                    MergeCopy.ReasonYearsApartFormat,
+                    gap.ToString(CultureInfo.InvariantCulture)),
+            });
+        }
+
+        if (clauses.Count == 0)
+        {
+            return opener;
+        }
+
+        var clause = string.Join(", ", clauses);
+        return opener + " " + char.ToUpper(clause[0], CultureInfo.CurrentCulture) + clause[1..] + ".";
+    }
+
+    // ── Building strips from standing acts ───────────────────────────────────
+
+    private sealed record StandingAct(
+        IdentityAct Act, long ParentWorkId, IReadOnlyList<IdentityLink> Links)
+    {
+        public IEnumerable<long> WorkIds => Links.Select(link => link.ChildWorkId).Prepend(ParentWorkId);
+    }
+
+    // Grouped by act, because an act is the unit of undo. An act with no live
+    // link left has been undone and is not a strip.
+    private static List<StandingAct> StandingActs(
+        IReadOnlyList<IdentityLink> history, IReadOnlyList<IdentityAct> acts)
+    {
+        var actById = new Dictionary<long, IdentityAct>(acts.Count);
+        foreach (var act in acts)
+        {
+            actById[act.Id] = act;
+        }
+
+        var byAct = new Dictionary<long, List<IdentityLink>>();
+        var order = new List<long>();
+        foreach (var link in history)
+        {
+            if (!link.IsLive)
+            {
+                continue;
+            }
+
+            if (!byAct.TryGetValue(link.ActId, out var list))
+            {
+                byAct[link.ActId] = list = [];
+                order.Add(link.ActId);
+            }
+
+            list.Add(link);
+        }
+
+        var standing = new List<StandingAct>(order.Count);
+        foreach (var actId in order)
+        {
+            if (actById.TryGetValue(actId, out var act))
+            {
+                var links = byAct[actId];
+                standing.Add(new StandingAct(act, links[0].ParentWorkId, links));
+            }
+        }
+
+        // Newest first, so the most recent roll-up sits nearest the questions.
+        standing.Reverse();
+        return standing;
+    }
+
+    private async Task<List<MergeCardViewModel>> BuildStandingCardsAsync(
+        IReadOnlyList<StandingAct> standing,
+        IReadOnlyDictionary<long, IReadOnlyList<long>> releasesOfWork,
+        LibrarySnapshot library,
+        DateTime now,
+        CancellationToken ct)
+    {
+        var cards = new List<MergeCardViewModel>(standing.Count);
+        foreach (var act in standing)
+        {
+            var rows = new List<MergeRowViewModel>(act.Links.Count + 1);
+            foreach (var workId in act.WorkIds)
+            {
+                var releaseIds = releasesOfWork.GetValueOrDefault(workId) ?? [];
+                rows.Add(new MergeRowViewModel(
+                    workId,
+                    await DescribeWorkAsync(workId, releaseIds, library, ct),
+                    releaseIds,
+                    library.FactsOf(releaseIds),
+                    now,
+                    canPromote: false,
+                    isPack: false));
+            }
+
+            if (rows.Count < 2)
+            {
+                continue;
+            }
+
+            var kind = act.Links[0].Kind;
+            var label = act.Links[0].RelationLabel;
+            MergeSectionKind section;
+            if (kind == IdentityLinkKinds.SameGame)
+            {
+                section = DistinctStores(rows).Count >= 2 ? MergeSectionKind.Stores : MergeSectionKind.Editions;
+            }
+            else
+            {
+                section = SectionOf(kind, label);
+            }
+
+            cards.Add(new MergeCardViewModel(
+                string.Create(CultureInfo.InvariantCulture, $"act-{act.Act.Id}"),
+                section,
+                MergeConfidence.Exact,
+                score: 0,
+                reason: string.Empty,
+                rows,
+                headerIndex: 0,
+                kind,
+                label,
+                edges: [],
+                refusalPairs: [],
+                standingActId: act.Act.Id));
+        }
+
+        return cards;
+    }
+
+    // ── The library snapshot ─────────────────────────────────────────────────
+
+    // The row's face comes from the WORK, because a row is a work and its
     // title is the one the library would keep. The cover key comes from the
     // store entry, because that is where a Steam appid lives.
     private async Task<MergeSideViewModel> DescribeWorkAsync(
@@ -935,233 +1627,58 @@ public partial class MergeQueueViewModel : ObservableObject
             stores);
     }
 
-    /// <summary>
-    /// Builds one card per base game from a fresh scan.
-    /// The proposals are re-derived here rather than read from a table, so a
-    /// pack the user just grouped, refused or separated is gone or back on the
-    /// very next load with no reconciliation pass to write.
-    /// </summary>
-    private async Task<IReadOnlyList<ExpansionGroupViewModel>> BuildExpansionGroupsAsync(
-        CancellationToken ct)
-    {
-        var report = await _expansions.ScanAsync(ct);
-
-        _scannedExpansions = true;
-        OnPropertyChanged(nameof(ExpansionsEmptyMessage));
-
-        if (report.Groups.Count == 0)
-        {
-            return [];
-        }
-
-        var releaseIds = new HashSet<long>();
-        foreach (var group in report.Groups)
-        {
-            foreach (var releaseId in group.Base.ReleaseIds)
-            {
-                releaseIds.Add(releaseId);
-            }
-
-            foreach (var member in group.Members)
-            {
-                foreach (var releaseId in member.Work.ReleaseIds)
-                {
-                    releaseIds.Add(releaseId);
-                }
-            }
-        }
-
-        var library = await DescribeAsync(releaseIds, ct);
-
-        var cards = new List<ExpansionGroupViewModel>(report.Groups.Count);
-        foreach (var group in report.Groups)
-        {
-            var members = new List<ExpansionMemberViewModel>(group.Members.Count);
-            foreach (var member in group.Members)
-            {
-                members.Add(new ExpansionMemberViewModel(
-                    member.Work.WorkId,
-                    await DescribeWorkAsync(
-                        member.Work.WorkId, member.Work.ReleaseIds, library, ct),
-                    member.Evidence,
-                    member.RelationLabel,
-                    member.Kind));
-            }
-
-            cards.Add(new ExpansionGroupViewModel(
-                group.Base.WorkId,
-                await DescribeWorkAsync(group.Base.WorkId, group.Base.ReleaseIds, library, ct),
-                members));
-        }
-
-        return cards;
-    }
-
-    private async Task<IReadOnlyList<MergeLinkHistoryRowViewModel>> BuildLinkHistoryAsync(
-        CancellationToken ct)
-    {
-        var links = await _links.GetHistoryAsync(null, ct);
-        if (links.Count == 0)
-        {
-            return [];
-        }
-
-        var acts = await _links.GetActsAsync(ct);
-        var actById = new Dictionary<long, IdentityAct>(acts.Count);
-        foreach (var act in acts)
-        {
-            actById[act.Id] = act;
-        }
-
-        // Per-load title cache. One work read per member; subsequent references
-        // to the same work id hit the dictionary. Stores are deliberately NOT
-        // read here; see NameApartAsync.
-        var titles = new Dictionary<long, string>();
-        async Task<string> TitleOfAsync(long workId)
-        {
-            if (titles.TryGetValue(workId, out var known))
-            {
-                return known;
-            }
-
-            var work = await _works.GetAsync(workId, ct);
-            var title = work?.Name ?? string.Create(CultureInfo.InvariantCulture, $"#{workId}");
-            titles[workId] = title;
-            return title;
-        }
-
-        var storeNames = new Dictionary<long, string>();
-        async Task<string> StoresOfAsync(long workId)
-        {
-            if (storeNames.TryGetValue(workId, out var joined))
-            {
-                return joined;
-            }
-
-            var stores = new List<string>();
-            foreach (var release in await _releases.GetByWorkAsync(workId, ct))
-            {
-                foreach (var owned in await _ownership.GetByReleaseAsync(release.Id, ct))
-                {
-                    if (!string.IsNullOrWhiteSpace(owned.Store)
-                        && !stores.Contains(owned.Store, StringComparer.OrdinalIgnoreCase))
-                    {
-                        stores.Add(owned.Store.Trim());
-                    }
-                }
-            }
-
-            // Spelled exactly as a card spells it, through the same
-            // StoreNaming, so the history row and the card that wrote it
-            // read as one voice.
-            joined = string.Join(", ", stores.Select(StoreNaming.Label));
-            storeNames[workId] = joined;
-            return joined;
-        }
-
-        // History's own, narrowed naming rule, deliberately separate from
-        // MergeMemberLabels' escalating ladder. The store read costs a release
-        // read plus an ownership read per work, so it is paid only when an
-        // act's titles actually collide. The ordinary row (distinct titles)
-        // pays one work read per member and nothing else.
-        async Task<IReadOnlyList<string>> NameApartAsync(IReadOnlyList<long> workIds)
-        {
-            var named = new List<string>(workIds.Count);
-            foreach (var workId in workIds)
-            {
-                named.Add(await TitleOfAsync(workId));
-            }
-
-            var seen = new HashSet<string>(StringComparer.CurrentCultureIgnoreCase);
-            if (named.All(seen.Add))
-            {
-                return named;
-            }
-
-            var stores = new List<string>(workIds.Count);
-            foreach (var workId in workIds)
-            {
-                stores.Add(await StoresOfAsync(workId));
-            }
-
-            return MergeHistoryLabels.For(named, stores);
-        }
-
-        // Grouped by act, because an act is the unit of undo: one undo
-        // reverses every link it created, however many that was.
-        var byAct = new Dictionary<long, List<IdentityLink>>();
-        var order = new List<long>();
-        foreach (var link in links)
-        {
-            if (!byAct.TryGetValue(link.ActId, out var list))
-            {
-                byAct[link.ActId] = list = [];
-                order.Add(link.ActId);
-            }
-
-            list.Add(link);
-        }
-
-        var rows = new List<MergeLinkHistoryRowViewModel>(order.Count);
-        foreach (var actId in order)
-        {
-            if (!actById.TryGetValue(actId, out var act))
-            {
-                continue;
-            }
-
-            var members = byAct[actId];
-            var parentWorkId = members[0].ParentWorkId;
-            var childWorkIds = new List<long>(members.Count);
-            var live = false;
-
-            // An act is an expansion act when EVERY link it wrote is one. The
-            // test is "all" rather than "any" because a same-game act can
-            // carry expansion links it displaced and re-parented, and the row
-            // must describe the act the user performed, not the repair it
-            // happened to include.
-            var expansion = true;
-
-            foreach (var link in members)
-            {
-                childWorkIds.Add(link.ChildWorkId);
-                if (link.Kind != IdentityLinkKinds.ExpansionOf)
-                {
-                    expansion = false;
-                }
-
-                if (link.IsLive)
-                {
-                    live = true;
-                }
-            }
-
-            // An act with no live link left has been undone, and an undone act
-            // leaves the list rather than staying on it struck through.
-            if (!live)
-            {
-                continue;
-            }
-
-            // The parent leads the array because MergeHistoryLabels reads
-            // index 0 as the headline.
-            var named = await NameApartAsync([parentWorkId, .. childWorkIds]);
-
-            rows.Add(new MergeLinkHistoryRowViewModel(
-                act, named[0], [.. named.Skip(1)], expansion));
-        }
-
-        rows.Reverse();
-        return rows;
-    }
-
     /// <summary>What one load read about the releases the queue names.</summary>
     private sealed record LibrarySnapshot(
         Dictionary<long, string> Titles,
         Dictionary<long, CoverKey> CoverKeys,
         Dictionary<long, long> WorkOfRelease,
         Dictionary<long, SurvivorCandidate> Works,
-        Dictionary<long, IReadOnlyList<string>> Stores);
+        Dictionary<long, IReadOnlyList<string>> Stores,
+        Dictionary<long, List<OwnershipBucket>> Played,
+        Dictionary<long, List<Ownership>> Owned)
+    {
+        /// <summary>Folds the read model over a work's releases, the one permitted way.</summary>
+        public MergeRowFacts FactsOf(IReadOnlyList<long> releaseIds)
+        {
+            var entries = new List<OwnershipBucket>();
+            var unread = false;
+            DateTime? acquired = null;
+            var installed = false;
+
+            foreach (var releaseId in releaseIds)
+            {
+                if (Played.TryGetValue(releaseId, out var played))
+                {
+                    entries.AddRange(played);
+                    foreach (var entry in played)
+                    {
+                        unread |= entry.Bucket == LibraryBuckets.StaleButPatched;
+                    }
+                }
+
+                if (Owned.TryGetValue(releaseId, out var owned))
+                {
+                    foreach (var ownership in owned)
+                    {
+                        installed |= ownership.Installed;
+                        if (ownership.AcquiredAt is { } at && (acquired is null || at < acquired))
+                        {
+                            acquired = at;
+                        }
+                    }
+                }
+            }
+
+            if (entries.Count == 0 && acquired is null)
+            {
+                return MergeRowFacts.None;
+            }
+
+            var playtime = CoveragePlaytime.Across(entries);
+            return new MergeRowFacts(
+                playtime.PlaytimeMinutes, playtime.LastPlayedAt, unread, acquired, installed);
+        }
+    }
 
     private async Task<LibrarySnapshot> DescribeAsync(
         IEnumerable<long> releaseIds, CancellationToken ct)
@@ -1171,6 +1688,23 @@ public partial class MergeQueueViewModel : ObservableObject
         var workOfRelease = new Dictionary<long, long>();
         var works = new Dictionary<long, SurvivorCandidate>();
         var stores = new Dictionary<long, IReadOnlyList<string>>();
+        var owned = new Dictionary<long, List<Ownership>>();
+
+        // The read model the grid draws from, so a row's hours, idle time and
+        // unread dot agree with its tile. Read once per load, every entry,
+        // because the queue names releases across the whole library.
+        var played = new Dictionary<long, List<OwnershipBucket>>();
+        var buckets = await _libraryQueries.GetOwnershipBucketsAsync(
+            BucketThresholds.Default with { ShowNonGameEntries = true }, ct);
+        foreach (var bucket in buckets)
+        {
+            if (!played.TryGetValue(bucket.ReleaseId, out var list))
+            {
+                played[bucket.ReleaseId] = list = [];
+            }
+
+            list.Add(bucket);
+        }
 
         foreach (var releaseId in releaseIds)
         {
@@ -1186,10 +1720,11 @@ public partial class MergeQueueViewModel : ObservableObject
             // on two storefronts, so it is read from the ownership rows for
             // every entry the queue names rather than derived from the cover
             // key or the external-id provider.
-            var owned = await _ownership.GetByReleaseAsync(releaseId, ct);
-            if (owned.Count > 0)
+            var ownerships = await _ownership.GetByReleaseAsync(releaseId, ct);
+            if (ownerships.Count > 0)
             {
-                stores[releaseId] = [.. owned.Select(o => o.Store)];
+                stores[releaseId] = [.. ownerships.Select(o => o.Store)];
+                owned[releaseId] = [.. ownerships];
             }
 
             var work = await _works.GetAsync(release.WorkId, ct);
@@ -1222,24 +1757,39 @@ public partial class MergeQueueViewModel : ObservableObject
             }
         }
 
-        return new LibrarySnapshot(titles, coverKeys, workOfRelease, works, stores);
+        return new LibrarySnapshot(titles, coverKeys, workOfRelease, works, stores, played, owned);
     }
 
-    private int IndexOf(MergeGroupViewModel? group)
+    // ── Undo bookkeeping ─────────────────────────────────────────────────────
+
+    private enum UndoKind
     {
-        if (group is null)
+        Merge,
+
+        Dismiss,
+    }
+
+    private sealed record LinkedAct(
+        MergeCardViewModel Card,
+        long ActId,
+        IReadOnlyList<long> RejectedCandidateIds,
+        IReadOnlyList<ExpansionRefusalRequest> RefusedPairs);
+
+    private sealed record UndoRun(
+        UndoKind Kind,
+        List<LinkedAct> Linked,
+        List<(MergeSectionViewModel Section, MergeCardViewModel Card, int Index)> Dismissed);
+
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        if (_disposed)
         {
-            return -1;
+            return;
         }
 
-        for (var i = 0; i < Groups.Count; i++)
-        {
-            if (ReferenceEquals(Groups[i], group))
-            {
-                return i;
-            }
-        }
-
-        return -1;
+        _disposed = true;
+        _dockTimer?.Dispose();
+        _dockTimer = null;
     }
 }

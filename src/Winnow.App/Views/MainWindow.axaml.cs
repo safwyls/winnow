@@ -686,12 +686,13 @@ public partial class MainWindow : Window
 #endif
 
     /// <summary>
-    /// The §8 keyboard floor for the merge confirm queue: arrows walk the
-    /// pairs, <c>S</c>/<c>Enter</c> answers "Same game", <c>D</c> answers
-    /// "Different games", <c>Escape</c> goes back to the library. Both answers
-    /// are one key because the queue's whole job is to be cleared — but they
-    /// are different keys, never one key with a modifier, because "different
-    /// games" is permanent.
+    /// The §8 keyboard floor for the Merges screen: Up and Down walk the
+    /// candidate rows across every pending card, Space makes the row the
+    /// header, <c>S</c>/<c>Enter</c> answers Same game and <c>D</c> answers
+    /// Different games on the card the cursor is on, and <c>Escape</c> keeps
+    /// the app's one rule for it: back to the library. The two answers are
+    /// different keys, never one key with a modifier, because Different games
+    /// is permanent.
     /// </summary>
     private void OnMergeQueueKeyDown(KeyEventArgs e)
     {
@@ -700,74 +701,35 @@ public partial class MainWindow : Window
             return;
         }
 
-        // Escape leaves from either surface; everything else acts on a card,
-        // and a card is only on screen while the review segment is up.
-        // Answering now merges the pair, so an S pressed over the history
-        // list would write to the library on a card the user cannot see.
-        if (e.Key == Key.Escape)
-        {
-            _shell.ShowLibraryCommand.Execute(null);
-            e.Handled = true;
-            return;
-        }
-
-        // The expansion surface has its own two answers, on their own two
-        // keys. G and N rather than S and D, because the question is
-        // different and reusing the review keys would make one gesture mean
-        // "these are one game" on one segment and "this extends that" on
-        // another.
-        if (queue.IsExpansionsVisible)
-        {
-            switch (e.Key)
-            {
-                case Key.Up:
-                    MergeQueue.ScrollExpansionIntoView(queue.MoveExpansionSelection(-1));
-                    e.Handled = true;
-                    break;
-
-                case Key.Down:
-                    MergeQueue.ScrollExpansionIntoView(queue.MoveExpansionSelection(1));
-                    e.Handled = true;
-                    break;
-
-                case Key.G or Key.Enter:
-                    queue.GroupExpansionsCommand.Execute(queue.SelectedExpansionGroup);
-                    e.Handled = true;
-                    break;
-
-                case Key.N:
-                    queue.NotExpansionsCommand.Execute(queue.SelectedExpansionGroup);
-                    e.Handled = true;
-                    break;
-            }
-
-            return;
-        }
-
-        if (!queue.IsReviewVisible)
-        {
-            return;
-        }
-
         switch (e.Key)
         {
+            case Key.Escape:
+                _shell.ShowLibraryCommand.Execute(null);
+                e.Handled = true;
+                break;
+
             case Key.Up:
-                MergeQueue.ScrollIntoView(queue.MoveSelection(-1));
+                queue.MoveFocus(-1);
                 e.Handled = true;
                 break;
 
             case Key.Down:
-                MergeQueue.ScrollIntoView(queue.MoveSelection(1));
+                queue.MoveFocus(1);
+                e.Handled = true;
+                break;
+
+            case Key.Space:
+                queue.PromoteFocused();
                 e.Handled = true;
                 break;
 
             case Key.S or Key.Enter:
-                queue.SameGameCommand.Execute(queue.SelectedGroup);
+                queue.SameGameCommand.Execute(queue.FocusedCard);
                 e.Handled = true;
                 break;
 
             case Key.D:
-                queue.DifferentGamesCommand.Execute(queue.SelectedGroup);
+                queue.DifferentGamesCommand.Execute(queue.FocusedCard);
                 e.Handled = true;
                 break;
         }
