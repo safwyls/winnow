@@ -1,0 +1,31 @@
+# One SHA-256 per shipped migration, over the file with line endings
+# normalised to LF. A migration that has shipped never changes: DbUp keys
+# applied scripts by embedded-resource name, so an edited one will not re-run
+# on a database that already applied it, and the user's schema and this
+# repository's diverge permanently with nothing to say so.
+#
+# Adding a migration appends a line. Editing one fails
+# SchemaDisciplineTests.No_shipped_migration_has_been_edited.
+
+0001_initial.sql                         ea5aa2ae85921812ced47ca8e388702ae90c6929d0e4857bb0753f8b3732f9c4
+0002_provisional_names.sql               b26794e8a0c8153fb0e60966ec66d98e4ab87bd42c9109248bb72f1b230d94be
+0003_ownership_unique_store.sql          83b574fb4265a61179ba4c17a29164884414e952e6c5be481283b14ad187971a
+0004_update_event_url_and_identity.sql   ee09d09e4596fc239f7d986368294826283a72865f68abb69fcdc5785fd1cc35
+0005_work_publisher.sql                  ae8fcccde66803bdc94437888c4c531c8c6ac3bb48186dfeb1bf99808fec3ba5
+0006_work_steam_app_type.sql             3298a2b8a9a105539b57a523d226bb3c7ea4f234cd94ae835e0540b225788876
+0007_facets.sql                          3b3a2dfe9662db132e289f3c31053505b05028463894e5017df08e9c047134b8
+0008_null_placeholder_last_played.sql    3556a32dfd6885f6358613315bf32c69c57cea0ac9914d324ff146f44002b388
+0009_work_epic_categories.sql            3e9845e6074972339b443ffe356ebbef78e4ff4f9916fd0c43797ed182a3a040
+0010_session_attribution.sql             aa790886d67549aaa84cdada27e82cf4cbce668eecc442b7e1d600e8a88c6eba
+0011_feed_feedback.sql                   30ccb32e5d5c6c469f324f1739f4eb2c61326af8b993b50772e4b1a8cddc028c
+0012_update_acknowledgements.sql         f48a79f7582ef636db45037937a22a92c1617c5890f33bf0412906f08f188088
+0013_observation_identity.sql            bd67e082b1f1e8f83a889b6f46ef23794f499fcab1cd885aadd3a56fd81a2d0c
+0014_account_transaction_facts.sql       e2faf465edfb5c9fb77e5b3c8767939acc610bba79390dffbcff13da18ba266a
+0015_ownership_accounts.sql              c0e850ef8e847c7e655e46e4ddca47be86361cf07298a8bedf7ef0c71ec1350f
+0016_merge_canonicality.sql              4daf1114095c1872eec155c48887c3397beafc8be4501ca0b42ea4df09f2ecf5
+0017_merge_undo.sql                      6f9c6b1e78504fdfd16bad2ff69470f3d76c6c76a87fec7dc0e7def01ecb3a00
+0018_identity_links.sql                  3fdf5db1b09a2844cb8fbe9e92671b16603b507d1557d6886c9ad8767c29c570
+0019_retire_destructive_merge.sql        7bef55c51fa1c000499954fe90ca139853ed33b8f2563d6c75cbc1d63991396a
+0020_expansion_refusals.sql              d02c2dd46964d995772743f337911302efe90626876ecf06a1012cdb2964a39b
+0021_identity_link_variants.sql          0950da72c9fe803abb773e59dd271f79cb126d580ac9d9b0a945f25697eb6056
+0022_storefront_relations.sql            feb903f641c42dbdb7ec206d709173c8e7cec0878be91da8cb959eb712a75a4f

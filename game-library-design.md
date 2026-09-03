@@ -388,7 +388,7 @@ graph TB
 | `Winnow.Monitor` | Detect game start and stop, emit sessions | Assume any specific launcher is present |
 | `Winnow.Recommend` | Score and explain | Perform IO beyond repositories; reference anything but `Winnow.Core`; make identity decisions |
 | `Winnow.Auth.WebView` | Host the embedded sign-in | Reference anything but Avalonia and `Winnow.Core` |
-| `Winnow.App` | UI and composition root. Assembly name `Winnow` | Reference an ingest, enrichment or cover type outside the composition root |
+| `Winnow.App` | UI and composition root. Assembly name `Winnow` | Call an ingest reader or an enrichment client. Cover leases are how art reaches a tile and are not covered by this |
 
 **Library sync is split by network dependence.** `LocalLibrarySyncService : ILocalLibrarySync`
 runs the three local scans and reaches no network; `RemoteOwnershipSyncService :

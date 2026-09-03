@@ -161,6 +161,32 @@ public sealed class RepositoryHygieneTests
             $"Directory.Build.props no longer sets <{property}>{value}</{property}>.");
     }
 
+    // ── Backlog files are changed through the CLI ───────────────────────────
+
+    [Fact]
+    public void A_hook_refuses_direct_writes_to_backlog_markdown()
+    {
+        // The Backlog rules are instructions to an agent, and an instruction is
+        // the one thing a test cannot assert was followed. A PreToolUse hook is
+        // the only mechanism that reaches it: editing a task file by hand
+        // desynchronises the metadata, the relationships and the history that
+        // the CLI maintains, and nothing downstream notices.
+        var settings = RepositoryTree.Path(".claude/settings.json");
+
+        Assert.True(
+            File.Exists(settings),
+            ".claude/settings.json is missing. It carries the PreToolUse hook that keeps "
+            + "Backlog files behind the backlog CLI.");
+
+        var text = File.ReadAllText(settings);
+
+        Assert.Contains("PreToolUse", text, StringComparison.Ordinal);
+        Assert.Contains("/backlog/", text, StringComparison.Ordinal);
+        Assert.Contains("permissionDecision", text, StringComparison.Ordinal);
+        Assert.Contains("deny", text, StringComparison.Ordinal);
+        Assert.Contains("backlog CLI", text, StringComparison.Ordinal);
+    }
+
     // ── Captured fixtures carry no real account id ──────────────────────────
 
     /// <summary>

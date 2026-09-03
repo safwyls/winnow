@@ -522,9 +522,10 @@ Beside it, `Store page` and `All patch notes` in `Azure`, and `Open folder` when
 path. The folder goes through the launcher's directory entry point as a path, never a `file:`
 URI.
 
-**Every outbound target is built by `GameLink.Create` and nothing else.** Three schemes are
-allowed — `https`, `http`, `steam` — and everything else is refused, including the ones that
-look harmless: `file:`, `javascript:`, `data:`, anything relative, anything carrying a control
+**Every outbound target is built by `GameLink.Create` and nothing else.** Five schemes are
+allowed — `https`, `http`, `steam`, `com.epicgames.launcher` and `goggalaxy`, the three
+launcher protocols plus the web — and everything else is refused, including the ones that look
+harmless: `file:`, `javascript:`, `data:`, anything relative, anything carrying a control
 character. `update_events.url` is captured from a network response, so it is untrusted input.
 **A target that fails validation is a null link, and a null link renders no button** — never a
 dead one, and never a URL the data did not supply.

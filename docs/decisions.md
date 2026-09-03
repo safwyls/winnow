@@ -624,3 +624,38 @@ The `docs-writer` charter said "**Never use emdashes**, separate ideas with comm
 or periods." Every document in the repository uses them heavily, including the ones docs-writer
 authored. The corpus is the fact: the rule was never followed and is removed rather than
 enforced retroactively over the whole corpus.
+
+### 2026-09-02 — What the enforcement pass could and could not hold
+
+Sixty-four tests now assert rules the documents state. Four notes on where the line fell.
+
+**The documentation check reads only qualified cross-references.** A bare `§6.1` means the
+build spec through most of this corpus and means this file inside the design system. A test
+that guessed which would be noisy or vacuous, so it checks the references that name the
+document they point into, which is the regression that actually happens: renumbering a
+document while another cites it.
+
+**Two boundary checks carry named exceptions rather than a clean absolute**, because the
+shipping code disagreed with the plan's reading of §5.1 and the code was right:
+
+- The account stats view model reads `Winnow.Ingest.Steam.AccountPages` and the Stores view
+  model reads `Winnow.Enrich.SteamWeb.Credentials`. Neither is a reader or a client: one is
+  the shape of a parsed page, one is a set of credential interfaces the composition root
+  wires. Both would sit more honestly in `Winnow.Core`, and the exception list is how that
+  stays visible.
+- `merge_candidates.score` is a stored column matching the derived-value pattern. It is the
+  soft matcher's confidence in one specific pair, recorded at the moment it was queued so a
+  human reviewing the queue can see what the machine thought, and §6's schema declares it.
+  Re-deriving it later would answer a different question, because the matcher will have moved.
+
+**The IL walk was abandoned.** A first attempt read method bodies to ask which *type* reached
+an ingest namespace. A linear scan for token-carrying opcodes over-reads by construction: an
+operand that happens to look like an opcode produces a spurious token. The two rules that
+needed call-site granularity are source scans instead, which also give file and line, and the
+metadata reader keeps only the table reads, which are exact.
+
+**Several rules the plan proposed to enforce were already enforced.** The no-network guarantee
+on the first-paint path is `LocalLibrarySyncContractTests`; the HTTP policy chains and request
+shapes are the per-client resilience and contract tests; the theme walk and the layout token
+parity are `ThemeContrastTests` and `FloatingLayoutTests`. Those were left alone rather than
+duplicated.
