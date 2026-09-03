@@ -1,17 +1,36 @@
-# Winnow — game library manager (Avalonia, .NET 10)
+# Winnow — how work is done in this repository
 
 Local-first desktop app that surfaces forgotten games in large Steam/Epic/GOG libraries
 ("your library has unread mail"). No server, no accounts.
 
+The product, the assembly, the binary and the mascot (a dragon) are all **Winnow**.
+
+## Where to read
+
+One document owns each domain. Read the one that governs what you are about to change; none
+of them defers to another, and none of them outranks another.
+
+| Domain | Document |
+|---|---|
+| How work is done here: naming, layout, build, run, test, commit, delegation, Backlog | `AGENTS.md` (this file) |
+| Product scope, phase order, exit criteria, what is excluded and what is deferred | `ROADMAP.md` |
+| The build spec: architecture, module boundaries, external services, entity resolution, schema, derived buckets, session detection | `game-library-design.md` |
+| The visual spec: palette, type, layout, dormancy, components, copy, accessibility, themes | `design-system.md` |
+| Token values | `src/Winnow.App/Themes/tokens.axaml` |
+| The scoring model: signals, weights, thresholds, cold start, explainability | `docs/recommendation-engine.md` |
+| Where each filter value comes from | `docs/facet-provenance.md` |
+| Orientation for a new reader: what it is, how to install, run and build | `README.md` |
+| Evidence: how something was measured | `docs/spikes/` |
+| Per-domain agent charters | `.claude/agents/` |
+
+If a document is wrong, edit it to the current truth in the same commit as the change that
+made it wrong, and append the sentence it used to say to `docs/decisions.md`. Do not leave a
+correction sitting next to the text it corrects.
+
 ## The name, and the word it is not
 
-The product, the assembly, the binary and the mascot (a dragon) are all **Winnow**. It was
-called Hoard until 2026-08-28.
-
-**"hoard" survives as an English word and must not be replaced.** The premise of the app is
-*winnowing a hoard* — the dragon's pile of a thousand unplayed games — so the common noun is
-load-bearing, not a leftover. Four places use it deliberately and a search-and-replace over
-them is a regression:
+**"hoard" survives as an English word and must not be replaced.** Four places use it
+deliberately and a search-and-replace over them is a regression:
 
 - `design-system.md` §2 "a library about your own hoard", §9 "what a hoard of them looks
   like", §11.3 "look like the whole hoard"
@@ -20,58 +39,59 @@ them is a regression:
 Anything hyphenated or possessive — `Winnow-launched`, `Winnow's own`, `Winnow-owned`, "a
 Winnow theme" — is the product and is already renamed.
 
-**Three compatibility shims exist because the rename crossed the user's data.** None are
-decoration; each one is load-bearing for an install that predates the rename:
+## Compatibility shims that must not be removed
+
+Each one is load-bearing for an install that predates the 2026-08-28 rename.
 
 - `WinnowDataLocation` (`src/Winnow.App/Services/`) moves `%LOCALAPPDATA%\Hoard` to
-  `%LOCALAPPDATA%\Winnow` once, sidecars and subdirectories included, and **falls back to
-  reading the legacy directory in place** if the move cannot be completed. It must never end
-  up pointing at an empty new directory.
+  `%LOCALAPPDATA%\Winnow` once, sidecars and subdirectories included, and falls back to
+  reading the legacy directory in place if the move cannot be completed. It must never end up
+  pointing at an empty new directory.
 - `DatabaseInitializer.RenameLegacyJournalEntries` re-points DbUp's `SchemaVersions` rows
-  from `Hoard.Data.Migrations.*` to `Winnow.Data.Migrations.*`. DbUp keys applied scripts by
-  embedded-resource name, which carries the root namespace, so without this every shipped
-  migration replays against a populated database and `0001` dies on `table works already
-  exists` before the window opens.
-- `WinnowThemes.LegacyDefaultId` maps the stored `appearance.theme = hoard` onto the
-  `winnow` theme, after the catalogue is consulted so an authored theme may still claim the
-  old id.
-
-## Authority documents — read before changing anything they govern
-- `ROADMAP.md` — current scope, phase order and identity. Supersedes the design doc's §8
-  milestones and amends its §1 non-goals; read it BEFORE the design doc so you know which
-  parts of §1 still bind.
-- `game-library-design.md` — the build spec. §4 hard constraints and §5.1 module
-  boundaries are non-negotiable; §9 lists the known failure modes.
-- `design-system.md` + `tokens.axaml` — visual spec. Flare (#FF5C8A) marks ONLY unread
-  updates; all numbers render in IBM Plex Mono `tnum`. Root `tokens.axaml` is the design
-  RECORD; the compiling copy is `src/Winnow.App/Themes/tokens.axaml` — change tokens there.
-  Fonts are static OFL cuts (Avalonia 11 has no variable-axis API); see
-  `src/Winnow.App/Assets/Fonts/README.md`.
-- `docs/spikes/` — empirical verification results that OVERRIDE spec guesses
-  (e.g. exact `localconfig.vdf` key names/units, Avalonia dormancy rendering approach).
+  from `Hoard.Data.Migrations.*` to `Winnow.Data.Migrations.*`.
+- `WinnowThemes.LegacyDefaultId` maps the stored `appearance.theme = hoard` onto the `winnow`
+  theme, after the catalogue is consulted so an authored theme may still claim the old id.
 
 ## Layout
+
 - `src/Winnow.Core` — domain records, repository interfaces, ingest contract. No IO, BCL only.
 - `src/Winnow.Data` — SQLite via Microsoft.Data.Sqlite + Dapper; DbUp migrations as embedded
-  `Migrations/NNNN_*.sql` (append-only, never edit shipped ones). Derived buckets are
-  queries, never stored columns.
-- `src/Winnow.Ingest.Steam` — read-only readers over Steam's local files (ValveKeyValue,
-  never hand-rolled VDF). Emits `CandidateOwnership`; must never write works/releases.
-- `src/Winnow.Resolve` — maps candidates to Work/Release. Hard joins only auto-merge;
-  fuzzy matches queue for user confirmation, never auto-merge.
-- `src/Winnow.App` — Avalonia 11 UI + generic-host composition root (assembly name `Winnow`
-  to match `avares://Winnow/...`). UI reads the DB and raises commands; never calls
-  ingest/enrichment directly.
-- `tests/Winnow.Tests` — xUnit on temp-file SQLite dbs; parser tests use the sanitized
+  `Migrations/NNNN_*.sql`, append-only, never edit shipped ones. Derived buckets are queries,
+  never stored columns.
+- `src/Winnow.Ingest.Steam`, `src/Winnow.Ingest.Epic`, `src/Winnow.Ingest.Gog` — read-only
+  readers over each launcher's local files. Parse VDF with ValveKeyValue, never a hand-rolled
+  parser. Emit `CandidateOwnership`; never write works or releases.
+- `src/Winnow.Resolve` — maps candidates to Work and Release. Hard external-id joins
+  auto-merge; fuzzy matches queue for user confirmation and never auto-merge.
+- `src/Winnow.Enrich.*` — external metadata clients. Rate-limited, cached, soft-failing.
+- `src/Winnow.Covers`, `src/Winnow.Covers.Igdb` — cover fetch and disk cache.
+- `src/Winnow.Monitor` — process watching and session recording.
+- `src/Winnow.Recommend` — the scoring model. No IO beyond repositories; references
+  `Winnow.Core` only.
+- `src/Winnow.Auth.WebView` — embedded sign-in. References Avalonia and `Winnow.Core` only.
+- `src/Winnow.App` — Avalonia 11 UI plus the generic-host composition root. Assembly name is
+  `Winnow`, to match `avares://Winnow/...`. The UI reads the database and raises commands; it
+  never calls ingest or enrichment directly.
+- `tests/Winnow.Tests` — xUnit on temp-file SQLite databases. Parser tests use the sanitized
   real fixtures in `tests/fixtures/steam/`.
 
 ## Conventions
-- Domain agents live in `.Codex/agents/` — delegate work by domain and pass their charter.
-- `Directory.Build.props`: nullable, implicit usings, TreatWarningsAsErrors.
-- Build/test: `dotnet build`, `dotnet test` from repo root. Run: `dotnet run --project
-  src/Winnow.App` (`-- --seed-sample` seeds demo data).
-- Commits at milestone boundaries; DB lives at `%LOCALAPPDATA%\Winnow\winnow.db`.
-- Never write to any Steam-owned file. Sanitize any new fixture (fake account ids).
+
+- Domain agents live in `.claude/agents/`. Delegate work by domain and pass the agent its
+  charter.
+- `Directory.Build.props` sets nullable, implicit usings and `TreatWarningsAsErrors`.
+- Build and test with `dotnet build` and `dotnet test` from the repository root.
+- Run with `dotnet run --project src/Winnow.App`. `-- --seed-sample` seeds demo data.
+- **For any run where you might click something, pass `-- --data-dir <path>`** to redirect the
+  database, sidecars, covers, themes and WebView2 profile to a throwaway directory. Otherwise
+  clicks write to the real library. An unusable path is refused at startup with exit code 2;
+  it never falls back silently. Setting `%LOCALAPPDATA%` does not work, because
+  `Environment.GetFolderPath` uses the Windows shell API and ignores it.
+- If the app is running it holds a lock on the output assemblies. Build to a scratch path
+  instead: `dotnet test -p:BaseOutputPath=C:\Temp\winnow-verify\`.
+- Commit at milestone boundaries. The database lives at `%LOCALAPPDATA%\Winnow\winnow.db`.
+- Never write to any Steam, Epic or GOG file. Copy before reading anything live.
+- Sanitize any new fixture with fake account ids.
 
 <!-- BACKLOG.MD GUIDELINES START -->
 <!-- backlog.md-instructions-version: 1.50.1 -->
