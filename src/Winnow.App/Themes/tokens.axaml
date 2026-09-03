@@ -152,7 +152,7 @@
 
     <!-- ══ The grounds, and the two tiers they fall into ══════════════════
          Which surface may admit the desktop, and how much. This replaces the
-         caption-only Mica rule and resolves design-system.md §13 gap 7.
+         caption-only Mica rule; design-system.md §14.2 is the current rule.
 
          The old rule was reached by a correct measurement and a wrong
          conclusion. TextDim on SurfaceRaised at 85% over white is 3.1:1, under

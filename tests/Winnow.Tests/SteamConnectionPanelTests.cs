@@ -36,8 +36,8 @@ public class SteamConnectionPanelTests
         Assert.Equal(SteamConnectionCopy.NothingConnectedCost, panel.SteamConnectionMessage);
         Assert.Equal(SteamConnectionCopy.HealthNotSignedIn, panel.SteamSessionHealthMessage);
 
-        // §13 gap 2: a connection nobody has made is not an error and must not
-        // wear the error treatment.
+        // A connection nobody has made is not an error and must not wear the
+        // error treatment. TASK-80 is to give that state a named role.
         Assert.False(panel.SteamStatusIsLive);
         Assert.False(panel.SteamStatusNeedsAttention);
         Assert.False(panel.ShowSteamBothCredentials);

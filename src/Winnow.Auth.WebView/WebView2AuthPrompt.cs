@@ -788,11 +788,10 @@ public sealed class WebView2AuthPrompt : IInteractiveAuthPrompt
     /// The reading measure for the notice, and the window width that follows
     /// from it.
     ///
-    /// <para>720 is <c>design-system.md</c> §13 gap 5's provisional answer — the
-    /// system has no reading-measure rule, the Stores panel needed one first and
-    /// settled on 12/18 capped at 720px, and that gap exists precisely so the
-    /// next prose surface does not invent a competing number. This is the next
-    /// prose surface.</para>
+    /// <para>720 is the provisional answer: <c>design-system.md</c> states no
+    /// reading-measure rule, the Stores panel needed one first and settled on
+    /// 12/18 capped at 720px, and it is reused here precisely so the next prose
+    /// surface does not invent a competing number. TASK-82 is to settle it.</para>
     /// </summary>
     private const double NoticeMeasure = 720;
 

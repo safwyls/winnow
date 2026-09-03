@@ -13,9 +13,9 @@
           Button.act           the app's primary/quiet action pair. Written for
                                the Stores panel (§M4.6) and now also worn by the
                                Epic consent window.
-          :is(TextBlock).para  §13 gap 5's provisional reading measure — 12/18 —
-                               which that gap says belongs to the system rather
-                               than to the one file that first needed it.
+          :is(TextBlock).para  the provisional reading measure — 12/18 — pending
+                               TASK-82, which is to state one in the design
+                               system rather than in the file that needed it.
           .consent-*           the consent window's own three pieces.
 
         ══ Why every reference here is {DynamicResource} ══
@@ -122,10 +122,10 @@
 
     <!-- ══ Prose ══════════════════════════════════════════════════════════════
          Paragraph body. 12/18 rather than §3's 13/18 default, capped at 720px by
-         whatever lays it out: §13 gap 5 records that pair as the provisional
-         answer for a reading measure the system does not yet own, and the point
-         of recording it was to stop the next prose surface inventing a second
-         one. TextDim keeps a paragraph part of the room.
+         whatever lays it out. That pair is the provisional answer for a reading
+         measure the design system does not yet own (TASK-82); it is recorded
+         here so the next prose surface does not invent a second one. TextDim
+         keeps a paragraph part of the room.
 
          `:is(TextBlock)` rather than `TextBlock` for tokens.axaml's reason: an
          Avalonia type selector matches the exact type, so a bare selector

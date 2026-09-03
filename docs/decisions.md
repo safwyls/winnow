@@ -352,6 +352,189 @@ figures and the licensability of a HowLongToBeat source. Both are in §9 of the 
 
 ## The visual system
 
+### The palette was a deep indigo-violet, and the violet family is gone
+
+`Ground #16112A`, `Surface #1F1838`, `SurfaceRaised #2C2350`, `Line #3D3168` and
+`TextDim #9B90C4` were an indigo-violet stage, chosen as "arcade-adjacent" before the
+interface had been seen against 600 real Steam capsules. Three things were wrong with it.
+
+Violet sits between teal and hot pink on the wheel, so the chrome read as a *third accent*
+rather than as ground, and both signal colours lost force against it; `Flare` in particular
+looked like a brand colour rather than an alarm. It fought the art: Steam capsules are mostly
+warm and dark, and a violet field pushes them green by simultaneous contrast, which is the one
+thing the cool-shift floor is trying to say on its own. And it had become the default dark-app
+purple, the thing every generated interface reaches for.
+
+**The replacement keeps a hued neutral rather than retreating to grey**: grey would have made
+`Volt` a decoration sitting on top of the chrome instead of the chrome's own colour
+intensified. `Volt` is unchanged. `Flare` moved 6° hotter, `#FF5C8A` to `#FF4D93`, and to full
+saturation, because against a green-teal ground the old rose read as salmon. `Azure` moved 8°
+toward cyan, `#5B9DFF` to `#57A8F0`.
+
+`#FF5C8A` outlived the change in four agent-facing documents, which is how the wrong hex went
+on being taught for months.
+
+### The dormancy brightness floor was 0.60
+
+It was calibrated against procedural placeholder gradients. Against real capsules, which are
+themselves dark, it compounds, and in a library whose default sort opens on its most dormant
+titles the ramp's dynamic range was spent before the first scroll. Per-tile legibility was
+never the problem, so the fix was at the floor rather than the curve: **saturation, not
+brightness, is what carries the dormancy signal.** It is `0.68`.
+
+`0.60` outlived the change in the `avalonia-ui` charter and in the dormancy spike.
+
+### The refund-line premise inside the badge rule
+
+The unread-badge rule used to argue for itself like this: *"'Never-opened' here means zero
+recorded playtime, not the `Never played` bucket. Since that bucket became everything under
+the refund line, the two are no longer the same set."* The premise was false by the time it was
+written down: the refund-line bucket was reverted on 2026-08-29, so `Never played` means never
+opened again and the two sets coincide. The rule the paragraph states is still right; the badge
+must read playtime rather than a bucket name, because a bucket definition can move again.
+
+### The caption's fill, and the three amendments it took to get to two sentences
+
+The rule went through four statements in one section, two of which reversed each other, and a
+reader had to walk all four to learn a two-line rule. It is now stated once per layout in §9.
+The history:
+
+**As first written:** *"`Well` is one step darker than `Ground`, not lighter. Every desktop
+platform puts a lighter caption strip above a darker body, which means the brightest band in
+the window sits directly above the art. Inverting it makes the first inch of the window an
+unlit lip."* The objection was real. The means were wrong: a `Well` caption above a `Surface`
+rail is two chrome tones meeting at a corner, and a visible seam is three tones in the first
+inch of a window whose thesis is that the art is the only thing worth looking at.
+
+**Second:** the caption takes the rail's ink at the rail's alpha, making the chrome one
+continuous bracket. The real claim was never "the caption must be the darkest thing"; it was
+"the caption must not be the *brightest* thing, and the art must be the first thing on screen
+with light in it."
+
+**Third:** under the floating layout the caption takes `Well`, because the caption and the rail
+no longer touch and what is continuous is the ground rather than the panes.
+
+**Fourth:** the caption paints no fill at all in floating, so the caption and every gap are one
+*surface* rather than two that agree, at every position on the slider.
+
+### 2026-08-29 — Mica was chosen over acrylic, and the choice was reversed
+
+Mica was chosen because it samples only the wallpaper: one image, bounded, measurable. Acrylic
+was refused because it samples whatever is behind the window — *"no bound, no measurement, and
+a rail whose legibility changes when the user alt-tabs."*
+
+The premise was right and the conclusion was one generation out of date, for two reasons. **The
+tame backdrop was not a legible backdrop**: Windows composes dark Mica by tinting toward its own
+near-black base so hard that the wallpaper contributes almost nothing. Back-solved from the
+composite behind the chrome on a real machine, the backdrop is `#201F1E` whether the wallpaper
+is orange rock or blue sky, so at the far end of the slider the rail reads as *the chrome went
+grey* rather than as the desktop showing through. And **the bound does not have to come from the
+material**: white bounds every backdrop there is, wallpaper or window, so the palette is measured
+against white across the whole slider and the Appearance screen reports the worst case live.
+The real objection was to shipping a figure nobody could check.
+
+Acrylic became the default and Mica stayed second in the hint list. Both are now a user choice,
+because reading as a tone rather than as a view is a legitimate thing to prefer, and someone who
+wants it should not have to give up transparency to get it.
+
+### 2026-08-30 — The window ran at three tiers and now runs at two
+
+Asked for on aesthetic grounds: *"make the rail and filters panes the same level of opacity as
+the game grid/main pane. Then the background and titlebar should be the same, and somewhere
+between where the background is now and the rail is now."* It re-derived four constants.
+
+What shipped before ran at three levels: the shell at 100% in the gaps and 70% on the caption,
+a **chrome** tier at 70% for the rail and the filter panel, and the wall at 35%. The middle
+tier had no job left to do once the merge queue, Stores, Appearance and the list view moved
+onto the field's ramp on the argument that they are content in the library pane's position
+rather than window furniture. **The rail and the filter panel are content columns by the same
+test**, and nothing about them was chrome except a token name.
+
+`MinChromeAlpha` and `TranslucentSurface` were retired with the tier. The second is left in the
+theme format so that no user theme needs editing; nothing reads it. `ChromeGround` had already
+gone when the command bar moved inside the library pane.
+
+**A second route to the ground's alpha landed within a point and a half.** The request was for a
+value *between* admitting everything and admitting the old chrome's 70%. Transmittances compose
+by multiplying, so the midpoint between two of them is the geometric mean rather than the
+arithmetic one: `√(1.00 × 0.70) = 0.837`, an alpha of `0.163`. The legibility boundary and the
+honest reading of "halfway" agreed, and the more conservative of the two was taken, `0.15`.
+
+### The AA ceiling figures, and the four sets that were live at once
+
+At one point the design system carried four different sets of AA ceiling figures in one file:
+27/30/30/26, a six-row per-surface table, 27/31/30/26, and 30/31/31/31, plus a mapping from the
+captions on the committed screenshots. Only the last is current, and it is the only one the
+document now states.
+
+The two that moved in opposite directions are the same change. A selected rail row used to set
+the mark and now holds to 40 / 54 / 47 / 41, because the rail stopped being the most open
+reading surface in the window. The *reported* ceiling barely moved, because the caption took
+that position on a ground the restructure deliberately opened up. **The mark was never about the
+rail. It is about whichever surface is most open and carries text.**
+
+### The committed appearance screenshots state the three-tier figures
+
+Every `compare--*` sheet in `docs/screenshots/appearance/` was captured before the two-tier
+restructure, and several print numbers on their captions that are now wrong. **They are left as
+they are**: a screenshot is a record of the build that produced it, and re-lettering one is
+worse than saying which figures moved. Read them against this table.
+
+| A sheet says | It is now |
+|---|---|
+| "worst chrome surface" / "a selected rail row" | the **title bar** on the window's ground, in the floating layout |
+| `5.04:1` solid, `2.91:1` at 45% white, `1.01:1` at 100% white *(Winnow)* | `5.04:1`, `2.82:1`, `1.42:1` — the surface changed, not the palette |
+| "past 27% the white figure drops under 4.5:1" *(Winnow)* | **30%** |
+| the AA mark's position on the track | **30 / 31 / 31 / 31**, and taken across both layouts |
+| "the chrome admits 70%, the wall admits half of it" | **the ground admits 85%, a pane admits 35%** |
+| "a field admits half of what the surface around it admits" | **a field admits exactly what the pane around it admits**, by painting nothing |
+| "Chrome only" / "Chrome and the wall" *(the reach choice)* | "The ground and the side panes" / "Everything but the covers" |
+| "the cover wall never opens up at any setting" | it opens with the reach setting, at the pane tier |
+
+**The window itself is the record that is kept current.** The Appearance screen measures the
+running window and reports the worst case live, so a sheet that has gone stale is a picture of
+an old build rather than a claim anybody is still making.
+
+### 2026-08-29 — The command bar moved inside the library pane
+
+It sat flush on the window ground with the caption, on a content-against-chrome line borrowed
+from VS Code. On screen that produced a tall undifferentiated block of chrome in the first inch
+of the window: a caption strip and a control strip in one ink, flush together, above three panes
+that all started somewhere else. The line was drawn in the right place for the reference and the
+wrong place for this window.
+
+**The strongest evidence that the position was wrong** is that the floating layout stopped
+needing to say anything about the bars. It used to repaint them, margin them 8px in to line
+their gutter up with the pane below, and strip their bottom rule because there was a gap under
+them rather than a pane. All three overrides went.
+
+The move also corrected an alpha: the bar used to take the chrome's reach while the wall it sat
+on took the wall's, so with the art field solid and the slider up you got a see-through strip
+glued to the top of a solid field.
+
+### Two themes were withdrawn
+
+Winnow, Cold storage, Nightshift and Phosphor shipped first and differed in **hue and value and
+nothing else**, so they read as four settings of one theme rather than as four themes.
+Nightshift was Winnow with the lights off; Cold storage was Winnow lifted and cooled. Two were
+withdrawn and the replacements separate on temperature, chroma strategy, value structure and
+material.
+
+Nightshift kept its name and changed its argument: what makes it a room of its own is not how
+dark it is but where the contrast lives.
+
+### `ItemsRepeater` was the recommendation, and then was not
+
+The dormancy spike's token-file table recommended `ItemsRepeater` with `UniformGridLayout` for
+the cover grid. A note dated later in the same file reversed it, and the package must not be
+reintroduced. `UniformGridLayout` charges every item in a row for a trailing gutter when it
+computes items-per-line for the scroll anchor but packs rows greedily when it places them, so
+the flush-row geometry made the two disagree by one column at every window width. The cover
+wall is `src/Winnow.App/Views/CoverWall.cs`.
+
+The stale recommendation sat in the same document as its own reversal, in the layer that was
+supposed to be the evidence.
+
 ## Corrections made during the source-of-truth migration
 
 ### 2026-09-02 — `CLAUDE.md` and `AGENTS.md` were two copies of one file

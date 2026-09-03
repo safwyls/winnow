@@ -327,7 +327,7 @@
             <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
         </Style>
         <!-- Focus is a brush swap on a border whose thickness never changes
-             (§10.7, which §13 gap 6 settles in favour of over §8's adorner):
+             (§10.7, which §8 states as the floor for the whole app):
              thickening it would reflow the command bar around it. Against
              white the ring clears AA on the field to 89-100% of the slider,
              against the chrome's own 26-31%, and past a few percent it reads

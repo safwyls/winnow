@@ -306,7 +306,7 @@
 
                              No Flare anywhere. Volt is what works, Amber is what
                              needs attention, TextDim is what nobody has done
-                             yet (§13 gap 2). -->
+                             yet. The role wants a name of its own: TASK-80. -->
                         <StackPanel Spacing="8">
                             <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
                                        Text="{Binding SteamConnectionSectionLabel}"/>
@@ -404,7 +404,7 @@
                             <!-- Text progress: a Volt-edged field saying where to
                                  look, and Cancel. No spinner and nothing that
                                  moves, so a reduced-motion setting has nothing to
-                                 suppress (§13 gap 1). -->
+                                 suppress. §8 gates any animated one: TASK-79. -->
                             <StackPanel Spacing="10" IsVisible="{Binding ShowSteamSignInBusy}">
                                 <Border Classes="note working">
                                     <TextBlock Classes="para lead"
