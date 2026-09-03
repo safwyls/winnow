@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "id": "catppuccin-mocha",
+  "name": "Catppuccin Mocha",
+  "reason": "Catppuccin's soft Mocha room: lavender-black chrome, blue selection, and pink reserved for unread updates.",
+  "seeds": {
+    "ground": "#1E1E2E",
+    "surface": "#292A3C",
+    "text": "#CDD6F4",
+    "flare": "#F5C2E7",
+    "volt": "#89B4FA",
+    "amber": "#FAB387",
+    "azure": "#74C7EC",
+    "danger": "#F38BA8"
+  },
+  "structure": {
+    "elevation": 0.055,
+    "wellDepth": 0.57,
+    "edge": 1.55,
+    "dimValue": 0.78,
+    "dimChroma": 0.42,
+    "voltInkContrast": 9.0,
+    "faintValue": 0.56,
+    "faintChroma": 0.7
+  },
+  "translucency": {
+    "chromeInk": 0.48,
+    "groundInk": 0.44,
+    "dimLift": 1.14,
+    "faintLift": 1.2
+  },
+  "overrides": {
+    "Well": "#11111B",
+    "SurfaceHigh": "#45475A",
+    "Line": "#585B70",
+    "TextDim": "#A6ADC8",
+    "TextFaint": "#7F849C",
+    "VoltInk": "#11111B",
+    "VoltHover": "#A5C8FA",
+    "VoltPress": "#6FA3EE",
+    "DangerHover": "#F5A0B8",
+    "DangerPress": "#D97090",
+    "DangerInk": "#FFF5F7",
+    "TranslucentSurface": "#0E0E18",
+    "TranslucentTextDim": "#BEC5E2",
+    "TranslucentTextFaint": "#9399B2"
+  }
+}

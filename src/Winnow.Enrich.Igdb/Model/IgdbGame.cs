@@ -37,6 +37,32 @@ public sealed record IgdbGame(
     /// backwards-compatibility rule as <see cref="GameModes"/>.
     /// </summary>
     public IReadOnlyList<string> PlayerPerspectives { get; init; } = NoStrings;
+
+    /// <summary>
+    /// The <c>game_types.type</c> label. Fifteen values today: main_game,
+    /// dlc_addon, expansion, bundle, standalone_expansion, mod, episode, season,
+    /// remake, remaster, expanded_game, port, fork, pack, update. Null when
+    /// IGDB gave none, which under the current query means the cached payload
+    /// predates the field (payload version 1).
+    /// </summary>
+    public string? GameType { get; init; }
+
+    /// <summary>IGDB <c>parent_game</c> id. The main game when this is DLC, an expansion, or part of a bundle.</summary>
+    public long? ParentGameId { get; init; }
+
+    /// <summary>IGDB <c>version_parent</c> id. The original game when this is a remaster, remake or port.</summary>
+    public long? VersionParentId { get; init; }
+
+    /// <summary>IGDB <c>version_title</c>, e.g. "Game of the Year Edition". Null when IGDB gave none.</summary>
+    public string? VersionTitle { get; init; }
+
+    /// <summary>
+    /// The single parent IGDB names for this game, whichever field carried it.
+    /// <see cref="ParentGameId"/> wins over <see cref="VersionParentId"/> when
+    /// both are present, because an edition of an expansion belongs under the
+    /// expansion, not under the game the expansion extends.
+    /// </summary>
+    public long? RelationParentId => ParentGameId ?? VersionParentId;
 }
 
 /// <summary>

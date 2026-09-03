@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "id": "monokai",
+  "name": "Monokai",
+  "reason": "Monokai's inked editor room: olive-black chrome, acid-green selection, and hot pink reserved for unread updates.",
+  "seeds": {
+    "ground": "#272822",
+    "surface": "#2F3028",
+    "text": "#F8F8F2",
+    "flare": "#FF5C8A",
+    "volt": "#A6E22E",
+    "amber": "#E6DB74",
+    "azure": "#66D9EF",
+    "danger": "#FD971F"
+  },
+  "structure": {
+    "elevation": 0.05,
+    "wellDepth": 0.5,
+    "edge": 1.5,
+    "dimValue": 0.74,
+    "dimChroma": 0.34,
+    "voltInkContrast": 9.0,
+    "faintValue": 0.56,
+    "faintChroma": 0.62
+  },
+  "translucency": {
+    "chromeInk": 0.48,
+    "groundInk": 0.44,
+    "dimLift": 1.14,
+    "faintLift": 1.2
+  },
+  "overrides": {
+    "Well": "#171812",
+    "SurfaceHigh": "#49483E",
+    "Line": "#5A594D",
+    "TextDim": "#B8B6A5",
+    "TextFaint": "#75715E",
+    "VoltInk": "#18200A",
+    "VoltHover": "#B9EC55",
+    "VoltPress": "#88C01E",
+    "DangerHover": "#FFAB49",
+    "DangerPress": "#D77912",
+    "DangerInk": "#FFF7E8",
+    "TranslucentSurface": "#191811",
+    "TranslucentTextDim": "#CFCCB9",
+    "TranslucentTextFaint": "#918C78"
+  }
+}

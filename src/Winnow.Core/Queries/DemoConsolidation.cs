@@ -97,6 +97,39 @@ public static class DemoConsolidation
                || TryReadMarker(normalized, PrereleaseMarkerPhrases, out _);
     }
 
+    /// <summary>
+    /// Which variant word the title carries, as one of
+    /// <see cref="Identity.RelationLabels"/>, or null when it carries none.
+    /// This is what lets a proposal about "Civilization V: Demo" say Demo
+    /// rather than Expansion. Demo outranks the pre-release markers, matching
+    /// gate one's own precedence; a playtest marker is distinguished from a
+    /// beta marker because a card that says Beta about a playtest is saying
+    /// something Valve did not.
+    /// </summary>
+    public static string? VariantLabel(string? title)
+    {
+        var normalized = TitleNormalizer.Normalize(title);
+        if (TryReadMarker(normalized, DemoMarkerPhrases, out _))
+        {
+            return Identity.RelationLabels.Demo;
+        }
+
+        if (!TryReadMarker(normalized, PrereleaseMarkerPhrases, out _))
+        {
+            return null;
+        }
+
+        foreach (var token in normalized.Tokens)
+        {
+            if (string.Equals(token, "playtest", StringComparison.Ordinal))
+            {
+                return Identity.RelationLabels.Playtest;
+            }
+        }
+
+        return Identity.RelationLabels.Beta;
+    }
+
     /// <summary>Maps each redundant variant release to the owned base that supersedes it.</summary>
     /// <param name="owned">All owned releases. Order does not matter (ties broken by lowest release id).</param>
     public static IReadOnlyDictionary<long, long> Consolidate(

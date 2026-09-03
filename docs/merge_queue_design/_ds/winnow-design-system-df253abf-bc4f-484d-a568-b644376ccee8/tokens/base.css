@@ -1,0 +1,22 @@
+/* Base ground and the type classes the app names. Dark-only for v1. */
+html{color-scheme:dark}
+body{margin:0;background:var(--shell-ground);color:var(--text);font-family:var(--font-body);font-size:var(--text-body);line-height:var(--leading-body);-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}
+
+a{color:var(--azure);text-decoration:none}
+a:hover{color:var(--text);text-decoration:underline}
+
+::selection{background:var(--volt-selection);color:var(--text)}
+
+:focus-visible{outline:var(--focus-ring) solid var(--volt);outline-offset:2px}
+
+.display-l{font-family:var(--font-display);font-weight:700;font-size:var(--text-display-l);line-height:var(--leading-display-l);color:var(--text)}
+.display-s{font-family:var(--font-display);font-weight:700;font-size:var(--text-display-s);line-height:var(--leading-display-s);letter-spacing:var(--track-display-s);text-transform:uppercase;color:var(--text)}
+.body-l{font-family:var(--font-body);font-weight:500;font-size:var(--text-body-l);line-height:var(--leading-body-l);color:var(--text)}
+.body{font-family:var(--font-body);font-weight:400;font-size:var(--text-body);line-height:var(--leading-body);color:var(--text)}
+.label{font-family:var(--font-body);font-weight:600;font-size:var(--text-label);line-height:var(--leading-label);letter-spacing:var(--track-label);text-transform:uppercase;color:var(--text-dim)}
+/* Every number in the app is Plex Mono with tabular figures. Non-negotiable. */
+.data{font-family:var(--font-data);font-size:var(--text-data);line-height:var(--leading-data);font-variant-numeric:tabular-nums;color:var(--text)}
+.data-s{font-family:var(--font-data);font-size:var(--text-data-s);line-height:var(--leading-data-s);font-variant-numeric:tabular-nums;color:var(--text-dim)}
+.para{font-family:var(--font-body);font-size:var(--text-para);line-height:var(--leading-para);max-width:var(--measure-para);color:var(--text-dim)}
+.para.lead{color:var(--text)}

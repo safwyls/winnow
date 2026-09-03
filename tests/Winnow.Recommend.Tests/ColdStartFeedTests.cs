@@ -116,13 +116,24 @@ public class ColdStartFeedTests : IAsyncLifetime, IDisposable
     [Fact]
     public void The_patched_lead_reason_reads_like_the_charter_example()
     {
-        var reason = _feed.Items[0].Reason;
-        // "You put 40 minutes into this in 2023 and it has had an update
-        // since, most recently 'v2.0 Overhaul'." — minutes, year, and the
-        // patch fact fused into one interrogable sentence.
-        Assert.Contains("40 minutes", reason);
-        Assert.Contains("2023", reason);
-        Assert.Contains("v2.0 Overhaul", reason);
+        var item = _feed.Items[0];
+
+        // The charter's example — "you put 40 minutes into this in 2023 and it
+        // has had three major patches since" — is a STRUCTURE, not a fixed
+        // string: the minutes, the year and the patch fact are all on the
+        // record and the sentence is entitled to any of them.
+        Assert.Equal(ReasonSignal.PatchedSinceYouLeft, item.Explanation.Primary);
+        Assert.Equal(40, item.Explanation.Evidence.PlaytimeMinutes);
+        Assert.Equal(2023, item.Explanation.Evidence.LastPlayedYear);
+        Assert.Equal("v2.0 Overhaul", item.Explanation.Evidence.LatestUpdateTitle);
+
+        // And what it does say names what actually happened to this game.
+        var reason = item.Reason;
+        Assert.True(
+            reason.Contains("v2.0 Overhaul", StringComparison.Ordinal)
+                || reason.Contains("update", StringComparison.OrdinalIgnoreCase)
+                || reason.Contains("patch", StringComparison.OrdinalIgnoreCase),
+            reason);
     }
 
     [Fact]

@@ -1,5 +1,6 @@
 using Winnow.Core.Domain;
 using Winnow.Core.Queries;
+using Winnow.Core.Repositories;
 using Winnow.Data.Repositories;
 
 namespace Winnow.Recommend.Tests;
@@ -34,6 +35,18 @@ public sealed class RecommendHarness : IDisposable
         Facets = new FacetRepository(_db.Factory);
         Feedback = new FeedFeedbackRepository(_db.Factory);
 
+        // The account-visibility filter's two halves: the preference and the
+        // per-account rows it is decided from. Both live behind the bucket
+        // query, so the feed inherits the filter without the engine knowing it
+        // exists — which is the property worth a test here.
+        Settings = new SettingsRepository(_db.Factory);
+        OwnershipAccounts = new OwnershipAccountRepository(_db.Factory);
+
+        // Identity links (migration 0018). The engine does not take this: it
+        // reads the resolved work id off the bucket rows, so the feed and the
+        // grid cannot disagree about what one game is.
+        Links = new IdentityLinkRepository(_db.Factory);
+
         Engine = new RecommendationEngine(
             new LibraryQueryRepository(_db.Factory),
             Releases,
@@ -56,7 +69,28 @@ public sealed class RecommendHarness : IDisposable
     /// <summary>The feedback loop's storage — verdicts, surfacings, endorsements (migration 0011).</summary>
     public FeedFeedbackRepository Feedback { get; }
 
+    /// <summary>Stored preferences, including the account scope the bucket query reads.</summary>
+    public SettingsRepository Settings { get; }
+
+    /// <summary>Per-account membership rows (migration 0015).</summary>
+    public OwnershipAccountRepository OwnershipAccounts { get; }
+
+    /// <summary>Identity links (migration 0018), for the feed-suppression tests.</summary>
+    public IdentityLinkRepository Links { get; }
+
     public RecommendationEngine Engine { get; }
+
+    /// <summary>The same engine over the same database, plus a global history aggregate for tier detection.</summary>
+    public RecommendationEngine EngineWith(ILibraryHistoryStatsRepository historyStats)
+        => new(
+            new LibraryQueryRepository(_db.Factory),
+            Releases,
+            Ownerships,
+            Snapshots,
+            Sessions,
+            UpdateEvents,
+            Facets,
+            historyStats);
 
     public void Dispose() => _db.Dispose();
 
@@ -167,6 +201,22 @@ public sealed class RecommendHarness : IDisposable
             Title = title,
         });
     }
+
+    /// <summary>
+    /// One recorded announcement and nothing else: proof that Winnow has read
+    /// this release's update history, WITHOUT the correlated build push that
+    /// would put the row in stale_but_patched. This is what a game whose
+    /// updates are genuinely being watched, and which genuinely has not shipped
+    /// one since, looks like in the database (F15).
+    /// </summary>
+    public Task SeedUpdateCoverageAsync(SeededGame game, DateTime occurredAt, string title = "Launch Notes")
+        => UpdateEvents.InsertAsync(new UpdateEvent
+        {
+            ReleaseId = game.ReleaseId,
+            Kind = UpdateEventKinds.Announcement,
+            OccurredAt = occurredAt,
+            Title = title,
+        });
 
     /// <summary>Appends a snapshot reading — a later, higher one is a "rise", i.e. a play episode.</summary>
     public Task SeedSnapshotAsync(SeededGame game, long minutes, DateTime observedAt)

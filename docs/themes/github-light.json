@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "id": "github-light",
+  "name": "GitHub Light",
+  "reason": "GitHub's clean Primer canvas: cool-white chrome, deep-blue selection, and sponsor pink reserved for unread updates.",
+  "seeds": {
+    "ground": "#F6F8FA",
+    "surface": "#FFFFFF",
+    "text": "#1F2328",
+    "flare": "#BF3989",
+    "volt": "#0550AE",
+    "amber": "#9A6700",
+    "azure": "#0969DA",
+    "danger": "#CF222E"
+  },
+  "structure": {
+    "elevation": 0.05,
+    "wellDepth": 0.96,
+    "edge": 1.25,
+    "dimValue": 0.43,
+    "dimChroma": 0.35,
+    "voltInkContrast": 7.0,
+    "faintValue": 0.6,
+    "faintChroma": 0.25
+  },
+  "translucency": {
+    "chromeInk": 1.0,
+    "groundInk": 1.0,
+    "dimLift": 1.0,
+    "faintLift": 1.0
+  },
+  "defaults": {
+    "transparency": 0
+  },
+  "overrides": {
+    "Well": "#E6EAEF",
+    "SurfaceRaised": "#EFF2F5",
+    "SurfaceHigh": "#E6EAEF",
+    "Line": "#D1D9E0",
+    "TextDim": "#59636E",
+    "TextFaint": "#818B98",
+    "VoltInk": "#FFFFFF",
+    "VoltHover": "#0969DA",
+    "VoltPress": "#033D8B",
+    "DangerHover": "#E13B45",
+    "DangerPress": "#A40E26",
+    "DangerInk": "#FFFFFF",
+    "TranslucentSurface": "#FFFFFF",
+    "TranslucentChromeGround": "#FFFFFF",
+    "TranslucentTextDim": "#59636E",
+    "TranslucentTextFaint": "#6E7781"
+  }
+}

@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Winnow.App.ViewModels"
+             xmlns:views="using:Winnow.App.Views"
              x:Class="Winnow.App.Views.StoresView"
              x:DataType="vm:StoresViewModel">
 
@@ -86,6 +87,115 @@
             <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
         </Style>
 
+        <!-- ══ The API key field ════════════════════════════════════════════
+             Masked, because a Web API key is a bearer credential and this
+             screen is opened in front of other people as often as any other.
+             The focus treatment is a brush swap at constant thickness (§10.7):
+             the field sits in a row with two buttons, and a 1px reflow on focus
+             would shuffle them sideways.
+
+             Not the data face. A key is an opaque token rather than a figure,
+             the mask renders as a run of identical dots either way, and §3's
+             tnum rule exists so columns of NUMBERS line up. -->
+        <Style Selector="TextBox.key">
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="MinHeight" Value="30"/>
+            <Setter Property="Padding" Value="10,0"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
+            <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+            <Setter Property="SelectionBrush" Value="{StaticResource VoltSelection}"/>
+            <Setter Property="CaretBrush" Value="{StaticResource Volt}"/>
+        </Style>
+        <Style Selector="TextBox.key /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="{StaticResource Well}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+        <Style Selector="TextBox.key:pointerover /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="{StaticResource Well}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+        </Style>
+        <Style Selector="TextBox.key:focus /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="{StaticResource Well}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+        </Style>
+        <Style Selector="TextBox.key /template/ TextBlock#PART_Watermark">
+            <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
+        </Style>
+
+        <!-- ══ The permission control ═══════════════════════════════════════
+             Acceptance criterion 2's control, and a REAL CheckBox: it toggles
+             on Space, reports checked/unchecked to a screen reader, and carries
+             its own name. The template is the Display popover's preference box,
+             drawn here rather than inherited from the window so this view styles
+             itself — the same reason the filter panel draws its own.
+
+             Nothing about it animates, so a reduced-motion setting has nothing
+             to suppress: the box fills and the tick appears, both instantly. -->
+        <Style Selector="CheckBox.permission">
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="MinHeight" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Grid ColumnDefinitions="16,10,*" Background="Transparent">
+                        <Border Grid.Column="0" Name="Ring"
+                                Width="22" Height="22" Margin="-3,0,0,0"
+                                CornerRadius="5"
+                                BorderBrush="{StaticResource Volt}"
+                                BorderThickness="2"
+                                IsHitTestVisible="False"
+                                HorizontalAlignment="Left"
+                                VerticalAlignment="Center"/>
+                        <Panel Grid.Column="0" VerticalAlignment="Center">
+                            <Border Name="Box" Width="16" Height="16"
+                                    CornerRadius="3"
+                                    Background="{StaticResource Well}"
+                                    BorderBrush="{StaticResource Line}"
+                                    BorderThickness="1"/>
+                            <Path Name="Tick"
+                                  Data="M 0,3.4 L 2.9,6.3 L 8.2,1"
+                                  Stroke="{StaticResource VoltInk}"
+                                  StrokeThickness="2"
+                                  StrokeLineCap="Round"
+                                  StrokeJoin="Round"
+                                  Width="9" Height="8"
+                                  HorizontalAlignment="Center"
+                                  VerticalAlignment="Center"/>
+                        </Panel>
+                        <ContentPresenter Grid.Column="2"
+                                          Content="{TemplateBinding Content}"
+                                          VerticalAlignment="Center"
+                                          FontFamily="{StaticResource BodyFont}"
+                                          FontSize="{StaticResource BodySize}"
+                                          Foreground="{StaticResource Text}"/>
+                    </Grid>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        <Style Selector="CheckBox.permission /template/ Path#Tick">
+            <Setter Property="Opacity" Value="0"/>
+        </Style>
+        <Style Selector="CheckBox.permission /template/ Border#Ring">
+            <Setter Property="Opacity" Value="0"/>
+        </Style>
+        <Style Selector="CheckBox.permission:focus-visible /template/ Border#Ring">
+            <Setter Property="Opacity" Value="1"/>
+        </Style>
+        <Style Selector="CheckBox.permission:pointerover /template/ Border#Box">
+            <Setter Property="BorderBrush" Value="{StaticResource TextDim}"/>
+        </Style>
+        <Style Selector="CheckBox.permission:checked /template/ Border#Box">
+            <Setter Property="Background" Value="{StaticResource Volt}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+        </Style>
+        <Style Selector="CheckBox.permission:checked /template/ Path#Tick">
+            <Setter Property="Opacity" Value="1"/>
+        </Style>
+
     </UserControl.Styles>
 
     <Grid RowDefinitions="Auto,*" Background="{StaticResource PaneGround}">
@@ -117,8 +227,8 @@
                         Spacing="16">
 
                 <!-- ══ STEAM ════════════════════════════════════════════════
-                     Local files always; Web API key adds owned-but-never-
-                     installed titles. -->
+                     Local files always; either connection method (sign-in
+                     or Web API key) adds owned-but-never-installed titles. -->
                 <Border Classes="card">
                     <StackPanel Spacing="14">
 
@@ -139,27 +249,399 @@
                             </StackPanel>
 
                             <Border Grid.Column="1" Classes="pill"
-                                    Classes.live="{Binding SteamStatusIsLive}">
+                                    Classes.live="{Binding SteamStatusIsLive}"
+                                    Classes.attention="{Binding SteamStatusNeedsAttention}">
                                 <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
                                            Text="{Binding SteamStatusLabel}"/>
                             </Border>
                         </Grid>
 
-                        <StackPanel Spacing="5">
-                            <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
-                                       Text="LOCAL FILES"/>
-                            <TextBlock Classes="para" Text="{Binding SteamLocalMessage}"/>
+                        <!-- ══ LOCAL FILES ══════════════════════════════════
+                             A method like the other two, and read the same way:
+                             its name, its state, and — having no button — its
+                             disclosure. What local files cover, and what is
+                             missing while nothing is connected, are both one
+                             click away. -->
+                        <StackPanel Spacing="8">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
+                                           VerticalAlignment="Center"
+                                           Text="{Binding SteamLocalLabel}"/>
+                                <TextBlock Classes="para lead"
+                                           VerticalAlignment="Center"
+                                           Text="{Binding SteamLocalStateText}"/>
+                            </StackPanel>
+
+                            <Button Classes="disclose"
+                                    Content="{Binding SteamLocalDetailsToggleText}"
+                                    AutomationProperties.Name="{Binding SteamLocalDetailsToggleText}"
+                                    Command="{Binding ToggleSteamLocalDetailsCommand}"/>
+
+                            <StackPanel Spacing="8" IsVisible="{Binding SteamLocalDetailsOpen}">
+                                <TextBlock Classes="para" Text="{Binding SteamLocalMessage}"/>
+                                <TextBlock Classes="para" Text="{Binding SteamConnectionMessage}"/>
+                            </StackPanel>
                         </StackPanel>
 
-                        <StackPanel Spacing="5">
+                        <Border Height="1" Background="{StaticResource Line}"/>
+
+                        <!-- ══ THE TWO CONNECTION METHODS ════════════════════
+                             Sign-in first as the fuller path; the key second as
+                             a genuine alternative. Both get the same heading
+                             weight, the same terse state beside it, the same
+                             primary control and the same disclosure — the peer
+                             grammar the purchase routes below use, laid out down
+                             the card instead of across it because each method
+                             here owns live controls and a state of its own.
+
+                             TASK-61 condensed the TOP level to name, state and
+                             control. What each method gives and costs, how the
+                             permission works, and the calm health sentences all
+                             moved into the disclosures. What did NOT move: a
+                             renewal that is failing, a session that has expired,
+                             one this host could not encrypt, a failed attempt,
+                             and a missing WebView2 runtime. Those are drawn
+                             here, with the Amber edge, whatever the disclosures
+                             are set to (§4.7 amendment, condition 8).
+
+                             No Flare anywhere. Volt is what works, Amber is what
+                             needs attention, TextDim is what nobody has done
+                             yet. The role wants a name of its own: TASK-80. -->
+                        <StackPanel Spacing="8">
                             <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
-                                       Text="STEAM WEB API"/>
-                            <TextBlock Classes="para lead" Text="{Binding SteamAddsMessage}"/>
+                                       Text="{Binding SteamConnectionSectionLabel}"/>
+                            <TextBlock Classes="para lead"
+                                       Text="{Binding SteamConnectionSummaryMessage}"/>
+
+                            <Button Classes="disclose"
+                                    Content="{Binding SteamMethodsDetailsToggleText}"
+                                    AutomationProperties.Name="{Binding SteamMethodsDetailsToggleText}"
+                                    Command="{Binding ToggleSteamMethodsDetailsCommand}"/>
+
+                            <StackPanel Spacing="10" IsVisible="{Binding SteamMethodsDetailsOpen}">
+                                <TextBlock Classes="para" Text="{Binding SteamConnectionIntroMessage}"/>
+
+                                <!-- Both credentials held: the user is told which
+                                     one does what, rather than being left to
+                                     guess why a scheduled sync kept working
+                                     after a sign-in lapsed. -->
+                                <Border Classes="note" IsVisible="{Binding ShowSteamBothCredentials}">
+                                    <TextBlock Classes="para" Text="{Binding SteamBothCredentialsMessage}"/>
+                                </Border>
+                            </StackPanel>
                         </StackPanel>
 
-                        <Border Classes="note" IsVisible="{Binding ShowSteamKeyHint}">
-                            <TextBlock Classes="para" Text="{Binding SteamKeyHintMessage}"/>
-                        </Border>
+                        <!-- ── METHOD 1 — sign in ───────────────────────────── -->
+                        <StackPanel Spacing="12">
+
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <TextBlock Classes="display-l" FontSize="16"
+                                           VerticalAlignment="Center"
+                                           Text="{Binding SteamSignInHeading}"/>
+                                <TextBlock Classes="para lead"
+                                           VerticalAlignment="Center"
+                                           Text="{Binding SteamSignInStateText}"/>
+                            </StackPanel>
+
+                            <!-- CONDITION 8, and the one thing on this card that
+                                 a disclosure may never hold. A renewal that is
+                                 failing, a session that has died and a session
+                                 this host could not encrypt are all states the
+                                 user has to act on before the credential stops
+                                 working, so the full sentence is drawn here with
+                                 the Amber edge and is not reachable only by
+                                 opening a panel. Silent degradation to
+                                 no-remote-data is a defect, not a fallback.
+
+                                 The calm three — working, renewing, never
+                                 signed in — are detail, and their sentences are
+                                 in the disclosure below. -->
+                            <Border Classes="note attention"
+                                    IsVisible="{Binding ShowSteamSessionAttention}">
+                                <TextBlock Classes="para lead"
+                                           Text="{Binding SteamSessionHealthMessage}"/>
+                            </Border>
+
+                            <!-- No WebView2 runtime here. Advisory: the button
+                                 stays live, and the sentence points at the key
+                                 without demoting it. -->
+                            <Border Classes="note attention"
+                                    IsVisible="{Binding ShowSteamSignInUnavailable}">
+                                <TextBlock Classes="para lead"
+                                           Text="{Binding SteamSignInUnavailableMessage}"/>
+                            </Border>
+
+                            <!-- Signed in: the way out. The account it signed in
+                                 as, whether the visibility filter was unlocked
+                                 by it, and what signing out removes are all in
+                                 the disclosure — none of them is a thing to
+                                 act on. -->
+                            <Button Classes="act quiet"
+                                    HorizontalAlignment="Left"
+                                    IsVisible="{Binding ShowSteamSignedIn}"
+                                    Content="{Binding SteamSignOutButtonText}"
+                                    AutomationProperties.Name="{Binding SteamSignOutButtonText}"
+                                    Command="{Binding SignOutOfSteamCommand}"/>
+
+                            <!-- The permission, and the action it gates.
+                                 UNTICKED on every install. The checkbox stays
+                                 here because it is a control; the sentence
+                                 saying that declining is a complete answer is in
+                                 the disclosure (AC2). -->
+                            <StackPanel Spacing="10" IsVisible="{Binding ShowSteamSignInAction}">
+                                <CheckBox Classes="permission"
+                                          Content="{Binding CapturePurchaseHistoryLabel}"
+                                          AutomationProperties.Name="{Binding CapturePurchaseHistoryLabel}"
+                                          IsChecked="{Binding CapturePurchaseHistory, Mode=TwoWay}"/>
+
+                                <Button Classes="act primary"
+                                        HorizontalAlignment="Left"
+                                        Content="{Binding SteamSignInButtonText}"
+                                        AutomationProperties.Name="{Binding SteamSignInButtonText}"
+                                        Command="{Binding SignInToSteamCommand}"/>
+                            </StackPanel>
+
+                            <!-- Text progress: a Volt-edged field saying where to
+                                 look, and Cancel. No spinner and nothing that
+                                 moves, so a reduced-motion setting has nothing to
+                                 suppress. §8 gates any animated one: TASK-79. -->
+                            <StackPanel Spacing="10" IsVisible="{Binding ShowSteamSignInBusy}">
+                                <Border Classes="note working">
+                                    <TextBlock Classes="para lead"
+                                               Text="{Binding SteamSignInBusyMessage}"/>
+                                </Border>
+                                <Button Classes="act quiet"
+                                        HorizontalAlignment="Left"
+                                        Content="{Binding SteamSignInCancelButtonText}"
+                                        AutomationProperties.Name="{Binding SteamSignInCancelButtonText}"
+                                        Command="{Binding SignInToSteamCancelCommand}"/>
+                            </StackPanel>
+
+                            <!-- A closed window and a session nobody signed into
+                                 are facts, so they stay neutral. -->
+                            <Border Classes="note" IsVisible="{Binding ShowSteamSignInNotice}">
+                                <TextBlock Classes="para lead"
+                                           Text="{Binding SteamSignInNoticeMessage}"/>
+                            </Border>
+
+                            <Border Classes="note attention"
+                                    IsVisible="{Binding ShowSteamSignInProblem}">
+                                <StackPanel Spacing="10">
+                                    <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
+                                               Foreground="{StaticResource Amber}"
+                                               Text="LAST ATTEMPT"/>
+                                    <TextBlock Classes="para lead"
+                                               Text="{Binding SteamSignInProblemMessage}"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- ── The sign-in's depth ──────────────────────
+                                 Nothing is deleted; all of it is one click
+                                 away. What signing in gives and costs, the calm
+                                 health sentence, the account it identified, when
+                                 the token dies, what the permission does, and
+                                 what signing out removes. -->
+                            <Button Classes="disclose"
+                                    Content="{Binding SteamSignInDetailsToggleText}"
+                                    AutomationProperties.Name="{Binding SteamSignInDetailsToggleText}"
+                                    Command="{Binding ToggleSteamSignInDetailsCommand}"/>
+
+                            <StackPanel Spacing="10" IsVisible="{Binding SteamSignInDetailsOpen}">
+                                <TextBlock Classes="para" Text="{Binding SteamSignInGivesMessage}"/>
+                                <TextBlock Classes="para" Text="{Binding SteamSignInCostsMessage}"/>
+
+                                <!-- The three states that are facts rather than
+                                     faults. The other three are up at the top
+                                     level and never appear here. -->
+                                <TextBlock Classes="para"
+                                           IsVisible="{Binding ShowSteamSessionCalmHealth}"
+                                           Text="{Binding SteamSessionHealthMessage}"/>
+
+                                <StackPanel Spacing="5" IsVisible="{Binding ShowSteamSignedInAccount}">
+                                    <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
+                                               Text="{Binding SteamSignedInAsLabel}"/>
+                                    <!-- A SteamID64 is a number (§3). -->
+                                    <SelectableTextBlock Classes="data" FontSize="13"
+                                                         FontFeatures="tnum"
+                                                         Foreground="{StaticResource Text}"
+                                                         Text="{Binding SteamSignedInAccountText}"/>
+                                </StackPanel>
+
+                                <!-- The expiry is a number, so it renders in
+                                     Plex Mono with tabular figures (§3, §8). -->
+                                <StackPanel Orientation="Horizontal" Spacing="8"
+                                            IsVisible="{Binding ShowSteamSessionExpires}">
+                                    <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
+                                               VerticalAlignment="Center"
+                                               Text="EXPIRES"/>
+                                    <TextBlock Classes="data" FontSize="12"
+                                               FontFeatures="tnum"
+                                               VerticalAlignment="Center"
+                                               Foreground="{StaticResource TextDim}"
+                                               Text="{Binding SteamSessionExpiresText}"/>
+                                </StackPanel>
+
+                                <TextBlock Classes="para"
+                                           IsVisible="{Binding ShowSteamSignInAccountConfirmed}"
+                                           Text="{Binding SteamSignInAccountConfirmedMessage}"/>
+
+                                <TextBlock Classes="para"
+                                           IsVisible="{Binding ShowSteamSignInAction}"
+                                           Text="{Binding CapturePurchaseHistoryMessage}"/>
+
+                                <TextBlock Classes="para"
+                                           IsVisible="{Binding ShowSteamSignedIn}"
+                                           Text="{Binding SteamSignOutMessage}"/>
+                            </StackPanel>
+
+                        </StackPanel>
+
+                        <!-- ── METHOD 2 — the Web API key ───────────────────── -->
+                        <StackPanel Spacing="12">
+
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <TextBlock Classes="display-l" FontSize="16"
+                                           VerticalAlignment="Center"
+                                           Text="{Binding SteamApiKeyHeading}"/>
+                                <!-- The environment branch of this line says at
+                                     the top level that the key cannot be cleared
+                                     here, because the Clear button beside it is
+                                     disabled and a disabled control whose reason
+                                     is inside a collapsed panel reads as a bug.
+                                     The rest of that sentence — the variable's
+                                     name, that saving here takes precedence — is
+                                     in the disclosure. -->
+                                <TextBlock Classes="para lead"
+                                           VerticalAlignment="Center"
+                                           Text="{Binding SteamApiKeyStateText}"/>
+                            </StackPanel>
+
+                            <StackPanel Spacing="8">
+                                <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
+                                           Text="{Binding SteamApiKeyFieldLabel}"/>
+
+                                <!-- Masked field, Save, Clear. Clear is disabled
+                                     — never hidden — when the key in force came
+                                     from the environment: the status line above
+                                     has already said why. -->
+                                <Grid ColumnDefinitions="*,10,Auto,8,Auto">
+                                    <TextBox Grid.Column="0"
+                                             Classes="key"
+                                             PasswordChar="&#x25CF;"
+                                             Watermark="{Binding SteamApiKeyWatermark}"
+                                             AutomationProperties.Name="{Binding SteamApiKeyFieldLabel}"
+                                             Text="{Binding SteamApiKeyInput, Mode=TwoWay}"/>
+                                    <Button Grid.Column="2"
+                                            Classes="act primary"
+                                            Padding="14,5"
+                                            Content="{Binding SteamApiKeySaveButtonText}"
+                                            AutomationProperties.Name="{Binding SteamApiKeySaveButtonText}"
+                                            Command="{Binding SaveSteamApiKeyCommand}"/>
+                                    <Button Grid.Column="4"
+                                            Classes="act quiet"
+                                            Padding="14,5"
+                                            Content="{Binding SteamApiKeyClearButtonText}"
+                                            AutomationProperties.Name="{Binding SteamApiKeyClearButtonText}"
+                                            Command="{Binding ClearSteamApiKeyCommand}"/>
+                                </Grid>
+
+                                <Button Classes="act quiet"
+                                        HorizontalAlignment="Left"
+                                        Padding="14,5"
+                                        Content="{Binding SteamApiKeyGetButtonText}"
+                                        AutomationProperties.Name="{Binding SteamApiKeyGetButtonText}"
+                                        Command="{Binding OpenSteamApiKeyPageCommand}"/>
+                            </StackPanel>
+
+                            <Border Classes="note" IsVisible="{Binding ShowSteamApiKeyNotice}">
+                                <TextBlock Classes="para lead"
+                                           Text="{Binding SteamApiKeyNoticeMessage}"/>
+                            </Border>
+
+                            <!-- ── The key's depth ──────────────────────────
+                                 What a key gives, what it gives up, and the full
+                                 sentence for whichever of the three key states
+                                 holds. -->
+                            <Button Classes="disclose"
+                                    Content="{Binding SteamApiKeyDetailsToggleText}"
+                                    AutomationProperties.Name="{Binding SteamApiKeyDetailsToggleText}"
+                                    Command="{Binding ToggleSteamApiKeyDetailsCommand}"/>
+
+                            <StackPanel Spacing="10" IsVisible="{Binding SteamApiKeyDetailsOpen}">
+                                <TextBlock Classes="para" Text="{Binding SteamApiKeyGivesMessage}"/>
+                                <TextBlock Classes="para" Text="{Binding SteamApiKeyCostsMessage}"/>
+                                <TextBlock Classes="para" Text="{Binding SteamApiKeyStatusMessage}"/>
+                            </StackPanel>
+
+                        </StackPanel>
+
+                        <!-- ══ PURCHASE AND LICENCE HISTORY ══════════════════
+                             TASK-59. The screen that used to be the settings
+                             surface's PURCHASES segment, folded into the card
+                             that owns the Steam connection: one place to connect
+                             Steam, one place to import purchase data.
+
+                             It is bound to AccountImport and to nothing about
+                             the credential state, so the saved-file route is
+                             reachable by a user who has signed into nothing and
+                             is never behind the sign-in. -->
+                        <Border Height="1" Background="{StaticResource Line}"
+                                IsVisible="{Binding ShowPurchaseImport}"/>
+
+                        <StackPanel Spacing="12" IsVisible="{Binding ShowPurchaseImport}">
+                            <StackPanel Spacing="5">
+                                <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
+                                           Text="{Binding SteamPurchaseSectionLabel}"/>
+                                <TextBlock Classes="para"
+                                           Text="{Binding AccountImport.IntroMessage}"/>
+                            </StackPanel>
+
+                            <views:SteamAccountImportView DataContext="{Binding AccountImport}"/>
+                        </StackPanel>
+
+                        <!-- ══ ACCOUNT VISIBILITY ════════════════════════════
+                             Beside the key state because the key is what says
+                             which account is the user's. Disabled until that is
+                             established; the note underneath says which of the
+                             two reasons is in force. -->
+                        <Border Height="1" Background="{StaticResource Line}"/>
+
+                        <StackPanel Spacing="10">
+                            <StackPanel Spacing="5">
+                                <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
+                                           Text="{Binding AccountScopeSectionLabel}"/>
+                                <TextBlock Classes="para" Text="{Binding AccountScopeMessage}"/>
+                            </StackPanel>
+
+                            <ToggleSwitch IsChecked="{Binding ShowOwnAccountOnly}"
+                                          IsEnabled="{Binding CanChooseAccountScope}"
+                                          OnContent="{Binding AccountScopeToggleLabel}"
+                                          OffContent="{Binding AccountScopeToggleLabel}"/>
+
+                            <!-- The cost of the toggle, in the same [DATA]
+                                 [words] split the card header uses for its
+                                 per-store counts: every figure renders in Plex
+                                 Mono tnum (§8), which a control's content face
+                                 is not. Absent at zero. -->
+                            <StackPanel Orientation="Horizontal" Spacing="6"
+                                        IsVisible="{Binding ShowAccountScopeCount}">
+                                <TextBlock Classes="data" FontSize="12"
+                                           Foreground="{StaticResource TextDim}"
+                                           Text="{Binding AccountScopeHiddenCountText}"
+                                           VerticalAlignment="Center"/>
+                                <TextBlock Classes="para"
+                                           Text="{Binding AccountScopeHiddenUnitLabel}"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+
+                            <Border Classes="note" IsVisible="{Binding ShowAccountScopeBlocked}">
+                                <TextBlock Classes="para" Text="{Binding AccountScopeBlockedMessage}"/>
+                            </Border>
+
+                            <Border Classes="note" IsVisible="{Binding ShowAccountScopeCaveat}">
+                                <TextBlock Classes="para" Text="{Binding AccountScopeCaveatMessage}"/>
+                            </Border>
+                        </StackPanel>
 
                     </StackPanel>
                 </Border>

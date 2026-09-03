@@ -9,48 +9,76 @@ using Winnow.Covers;
 namespace Winnow.App.ViewModels;
 
 /// <summary>
-/// One half of a merge-confirm pair: the cover at 200×300 (§6) and the facts
-/// the user needs to tell it from the other half.
+/// One member's visual face: the cover at 200x300 (§6) and the facts the
+/// user needs to tell it from its siblings. Used for both sides of a pair
+/// and for every row in a roster.
 ///
-/// <para>Cover art follows the grid exactly — <see cref="ICoverCache"/> if the
+/// <para>Cover art follows the grid exactly: <see cref="ICoverCache"/> if the
 /// host registered one, and the procedural placeholder underneath as the
 /// fallback, so a game with no capsule shows its title in Bricolage on a
 /// Surface field rather than a hole or a spinner (§7). There is no dormancy
-/// ramp here: the question on this screen is "are these the same game", and
+/// ramp here; the question on this screen is "are these the same game", and
 /// fading one side by how long ago it was played would be a second visual
 /// language answering a question nobody asked.</para>
 /// </summary>
-public partial class MergeSideViewModel : ObservableObject
+public partial class MergeSideViewModel : ObservableObject, IMergeMemberFacts
 {
     private readonly ICoverCache? _covers;
 
     public MergeSideViewModel(
         long releaseId,
         string title,
-        string? normalizedTitle = null,
         int? year = null,
         string? publisher = null,
         CoverKey? coverKey = null,
-        ICoverCache? covers = null)
+        ICoverCache? covers = null,
+        IReadOnlyList<string>? stores = null)
     {
         ReleaseId = releaseId;
         Title = string.IsNullOrWhiteSpace(title) ? $"Release {releaseId}" : title;
-        NormalizedTitle = normalizedTitle ?? string.Empty;
         Year = year;
         Publisher = string.IsNullOrWhiteSpace(publisher) ? null : publisher;
         CoverKey = coverKey;
         _covers = covers;
 
+        var ordered = stores is null
+            ? []
+            : stores
+                .Where(store => !string.IsNullOrWhiteSpace(store))
+                .Select(store => store.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+
+        StoreChips = [.. ordered.Select(StoreNaming.Badge)];
+        StoreNames = string.Join(", ", ordered.Select(StoreNaming.Label));
+
         var (start, end) = PlaceholderArt.VividColors(Title);
         PlaceholderBrush = PlaceholderArt.Gradient(start, end);
     }
 
+    /// <summary>
+    /// Badge text for each store this member is owned on, one chip per store.
+    /// Ordered as the ownership rows arrived; duplicates and blanks removed.
+    /// </summary>
+    public IReadOnlyList<string> StoreChips { get; }
+
+    /// <summary>
+    /// The same stores spelled out as display names, comma-joined. Used for
+    /// the chip row's tooltip and for the automation name that tells two
+    /// identically titled members apart.
+    /// </summary>
+    public string StoreNames { get; }
+
+    /// <summary>
+    /// False when no ownership row names a store for this member, so the chip
+    /// row is not drawn and the automation name falls back to the store-less
+    /// format.
+    /// </summary>
+    public bool HasStores => StoreChips.Count > 0;
+
     public long ReleaseId { get; }
 
     public string Title { get; }
-
-    /// <summary>What the matcher actually compared. Shown because "why" is the screen.</summary>
-    public string NormalizedTitle { get; }
 
     public int? Year { get; }
 
@@ -61,31 +89,28 @@ public partial class MergeSideViewModel : ObservableObject
     /// <summary>Year in Plex Mono, or an em dash when no source has supplied one yet.</summary>
     public string YearText => Year?.ToString(CultureInfo.InvariantCulture) ?? "—";
 
-    /// <summary>
-    /// The row that names the record itself. A merge is a decision about two
-    /// database rows, and when both sides are called "Prey" the release id is
-    /// the only thing on screen that distinguishes them.
-    /// </summary>
-    public string ReleaseText => string.Create(CultureInfo.InvariantCulture, $"#{ReleaseId}");
-
     public string PublisherText => Publisher ?? "publisher unknown";
-
-    public bool HasPublisher => Publisher is not null;
 
     /// <summary>Procedural stand-in; painted whenever no real cover is loaded.</summary>
     public IBrush PlaceholderBrush { get; }
 
+    /// <summary>The vivid cover, or null while the placeholder shows.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowPlaceholder))]
     public partial Bitmap? Cover { get; set; }
 
+    /// <summary>
+    /// The desaturated floor under the vivid layer. Drawn at full opacity with
+    /// the vivid layer's opacity carrying the dormancy ramp, exactly as the
+    /// grid does, so a row's thumbnail fades on the same rule as its tile.
+    /// </summary>
+    [ObservableProperty]
+    public partial Bitmap? CoverFloor { get; set; }
+
+    /// <summary>True until art arrives.</summary>
     public bool ShowPlaceholder => Cover is null;
 
-    /// <summary>
-    /// Fetches the cover at display resolution, off-thread. A miss is a normal
-    /// answer — the placeholder is already on screen, so this is a repaint and
-    /// never a load gate.
-    /// </summary>
+    /// <summary>Asks the cache for the art at the width it will be drawn at, off-thread.</summary>
     public void RequestCover(double displayWidthPixels)
     {
         if (_covers is null || CoverKey is not { } key || Cover is not null)
@@ -95,6 +120,7 @@ public partial class MergeSideViewModel : ObservableObject
 
         if (_covers.TryGet(key, displayWidthPixels, out var cached))
         {
+            CoverFloor = cached.Floor;
             Cover = cached.Vivid;
             return;
         }
@@ -110,6 +136,10 @@ public partial class MergeSideViewModel : ObservableObject
             return;
         }
 
-        Dispatcher.UIThread.Post(() => Cover = art.Vivid);
+        Dispatcher.UIThread.Post(() =>
+        {
+            CoverFloor = art.Floor;
+            Cover = art.Vivid;
+        });
     }
 }

@@ -18,7 +18,60 @@ public class MigrationTests
         "metadata_cache", "settings",
         "feed_verdicts", "feed_surfacings",
         "update_acknowledgements",
+        "account_transactions", "account_licenses",
+        "identity_acts", "identity_links",
+        "expansion_refusals",
     ];
+
+    /// <summary>The <c>merge_candidates</c> shape as 0001 shipped it, mirrors and self-pairs allowed.</summary>
+    private const string PreCanonicalMergeCandidates = """
+        CREATE TABLE merge_candidates (
+            id                INTEGER PRIMARY KEY,
+            left_release_id   INTEGER NOT NULL REFERENCES releases(id) ON DELETE CASCADE,
+            right_release_id  INTEGER NOT NULL REFERENCES releases(id) ON DELETE CASCADE,
+            score             REAL NOT NULL CHECK (score >= 0.0 AND score <= 1.0),
+            signals_json      TEXT,
+            status            TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'rejected')),
+            UNIQUE (left_release_id, right_release_id)
+        );
+        CREATE INDEX ix_merge_candidates_status ON merge_candidates(status);
+        """;
+
+    /// <summary>merge_candidates and merge_applications exactly as 0016 left them.</summary>
+    private const string PostCanonicalMergeTables = """
+        CREATE TABLE merge_candidates (
+            id                INTEGER PRIMARY KEY,
+            left_release_id   INTEGER NOT NULL REFERENCES releases(id) ON DELETE CASCADE,
+            right_release_id  INTEGER NOT NULL REFERENCES releases(id) ON DELETE CASCADE,
+            score             REAL NOT NULL CHECK (score >= 0.0 AND score <= 1.0),
+            signals_json      TEXT,
+            status            TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'rejected')),
+            CHECK (left_release_id < right_release_id),
+            UNIQUE (left_release_id, right_release_id)
+        );
+        CREATE INDEX ix_merge_candidates_status ON merge_candidates(status);
+
+        CREATE TABLE merge_applications (
+            id                    INTEGER PRIMARY KEY,
+            candidate_id          INTEGER NOT NULL,
+            left_release_id       INTEGER NOT NULL,
+            right_release_id      INTEGER NOT NULL,
+            mode                  TEXT NOT NULL CHECK (mode IN ('work_only', 'release_collapse')),
+            surviving_work_id     INTEGER NOT NULL,
+            absorbed_work_id      INTEGER,
+            surviving_release_id  INTEGER,
+            absorbed_release_id   INTEGER,
+            applied_at            TEXT NOT NULL,
+            summary_json          TEXT,
+            CHECK (mode <> 'release_collapse'
+                OR (surviving_release_id IS NOT NULL
+                    AND absorbed_release_id IS NOT NULL
+                    AND surviving_release_id <> absorbed_release_id)),
+            CHECK (absorbed_work_id IS NULL OR absorbed_work_id <> surviving_work_id)
+        );
+        CREATE INDEX ix_merge_applications_candidate ON merge_applications(candidate_id);
+        CREATE INDEX ix_merge_applications_absorbed ON merge_applications(absorbed_release_id);
+        """;
 
     [Fact]
     public void Migration_applies_cleanly_to_fresh_temp_file_database()
@@ -764,4 +817,559 @@ public class MigrationTests
             conn.Execute(
                 "INSERT INTO releases (work_id, name) VALUES (999999, 'orphan');"));
     }
+
+    /// <summary>
+    /// 0013 gives an observation an identity. Applied on top of the 0012 shape
+    /// with duplicate rows ALREADY on disk — which is the only state that
+    /// matters, because a database that has been running the pre-fix resolver is
+    /// exactly where the duplicates are, and a unique index that cannot be
+    /// created on a populated database is a migration that bricks the app on
+    /// launch.
+    /// </summary>
+    [Fact]
+    public void Migration_0013_dedupes_before_it_constrains_and_keeps_the_canonical_row()
+    {
+        using var db = new TempDatabase();
+
+        long ownershipId;
+        using (var conn = db.Factory.Open())
+        {
+            // Rewind to 0012: drop the indexes and forget the script ran.
+            conn.Execute("DROP INDEX ux_play_records_observation;");
+            conn.Execute("DROP INDEX ux_playtime_snapshots_observation;");
+            conn.Execute("DELETE FROM SchemaVersions WHERE ScriptName LIKE '%0013%';");
+
+            var workId = conn.ExecuteScalar<long>(
+                "INSERT INTO works (name) VALUES ('Portal 2') RETURNING id;");
+            var releaseId = conn.ExecuteScalar<long>(
+                "INSERT INTO releases (work_id, name) VALUES (@workId, 'Portal 2') RETURNING id;",
+                new { workId });
+            ownershipId = conn.ExecuteScalar<long>("""
+                INSERT INTO ownerships (release_id, store, installed)
+                VALUES (@releaseId, 'steam', 1) RETURNING id;
+                """, new { releaseId });
+
+            // What the pre-fix resolver actually wrote: the same stale reading
+            // re-appended on every pass, with a null date — the case a plain
+            // UNIQUE over a nullable column would not catch.
+            for (var i = 0; i < 4; i++)
+            {
+                conn.Execute("""
+                    INSERT INTO play_records (ownership_id, playtime_minutes, last_played_at, source, observed_at)
+                    VALUES (@ownershipId, 40, NULL, 'steam_web_api', '2019-03-04 21:00:00');
+                    """, new { ownershipId });
+            }
+
+            // The same again, this time WITH a date, to prove the dedupe keys on
+            // the whole fact rather than on the address.
+            for (var i = 0; i < 3; i++)
+            {
+                conn.Execute("""
+                    INSERT INTO play_records (ownership_id, playtime_minutes, last_played_at, source, observed_at)
+                    VALUES (@ownershipId, 40, '2019-03-01 10:00:00', 'steam_web_api', '2019-03-04 21:00:00');
+                    """, new { ownershipId });
+            }
+
+            // A genuinely different observation at the same instant: another
+            // reader, disagreeing. It is not a duplicate and must survive.
+            conn.Execute("""
+                INSERT INTO play_records (ownership_id, playtime_minutes, last_played_at, source, observed_at)
+                VALUES (@ownershipId, 900, NULL, 'steam_local', '2019-03-04 21:00:00');
+                """, new { ownershipId });
+
+            for (var i = 0; i < 5; i++)
+            {
+                conn.Execute("""
+                    INSERT INTO playtime_snapshots (ownership_id, playtime_minutes, observed_at)
+                    VALUES (@ownershipId, 40, '2019-03-04 21:00:00');
+                    """, new { ownershipId });
+            }
+        }
+
+        db.Initializer.Initialize();
+
+        using var after = db.Factory.Open();
+
+        // Three distinct facts out of eight rows in, and the survivors are the
+        // lowest ids — the canonical row, not the last one written.
+        var records = after.Query<(long Id, long Minutes, string? LastPlayed, string Source)>("""
+            SELECT id, playtime_minutes, last_played_at, source
+            FROM play_records WHERE ownership_id = @ownershipId ORDER BY id;
+            """, new { ownershipId }).AsList();
+
+        Assert.Equal(3, records.Count);
+        Assert.Equal([1L, 5L, 8L], records.Select(r => r.Id));
+        Assert.Equal([40L, 40L, 900L], records.Select(r => r.Minutes));
+
+        Assert.Equal(1, after.ExecuteScalar<long>(
+            "SELECT COUNT(*) FROM playtime_snapshots WHERE ownership_id = @ownershipId;",
+            new { ownershipId }));
+
+        // Both indexes exist and are unique.
+        foreach (var index in new[] { "ux_play_records_observation", "ux_playtime_snapshots_observation" })
+        {
+            Assert.Equal(1, after.ExecuteScalar<long>("""
+                SELECT COUNT(*) FROM sqlite_master
+                WHERE type = 'index' AND name = @index;
+                """, new { index }));
+        }
+
+        // And they bite: the null-date replay that filled the table is now one
+        // observation, rejected rather than appended.
+        Assert.Throws<Microsoft.Data.Sqlite.SqliteException>(() =>
+            after.Execute("""
+                INSERT INTO play_records (ownership_id, playtime_minutes, last_played_at, source, observed_at)
+                VALUES (@ownershipId, 40, NULL, 'steam_web_api', '2019-03-04 21:00:00');
+                """, new { ownershipId }));
+
+        Assert.Throws<Microsoft.Data.Sqlite.SqliteException>(() =>
+            after.Execute("""
+                INSERT INTO playtime_snapshots (ownership_id, playtime_minutes, observed_at)
+                VALUES (@ownershipId, 40, '2019-03-04 21:00:00');
+                """, new { ownershipId }));
+    }
+
+    /// <summary>
+    /// 0015 seeds the per-account membership table from what the old
+    /// single-winner <c>ownerships.account_ref</c> column held, so an existing
+    /// install has rows before its first sync rather than after it.
+    ///
+    /// <para>The seed's own honesty is the thing under test. It stamps
+    /// <c>source = 'ownerships.account_ref'</c> because a seeded row carries the
+    /// exact ambiguity the table replaces — it names whoever played the game
+    /// most, which on a shared game is routinely not the only owner — and the
+    /// bucket query refuses to hide anything on that evidence alone.</para>
+    /// </summary>
+    [Fact]
+    public void Migration_0015_seeds_memberships_from_the_winning_account_ref()
+    {
+        using var db = new TempDatabase();
+
+        using (var conn = db.Factory.Open())
+        {
+            // Rewind to 0014: drop the table and forget the script ran.
+            conn.Execute("DROP TABLE ownership_accounts;");
+            conn.Execute("DELETE FROM SchemaVersions WHERE ScriptName LIKE '%0015%';");
+
+            var workId = conn.ExecuteScalar<long>(
+                "INSERT INTO works (name) VALUES ('Portal 2') RETURNING id;");
+
+            long Release(string name) => conn.ExecuteScalar<long>(
+                "INSERT INTO releases (work_id, name) VALUES (@workId, @name) RETURNING id;",
+                new { workId, name });
+
+            long Ownership(long releaseId, string store, string? accountRef)
+                => conn.ExecuteScalar<long>("""
+                    INSERT INTO ownerships (release_id, store, account_ref, installed)
+                    VALUES (@releaseId, @store, @accountRef, 1) RETURNING id;
+                    """, new { releaseId, store, accountRef });
+
+            // An attributed ownership with a play history: the newest reading is
+            // the one the seed must carry, by (observed_at, id) like every other
+            // reader of this table.
+            var attributed = Ownership(Release("Attributed"), "steam", "11111");
+            conn.Execute("""
+                INSERT INTO play_records (ownership_id, playtime_minutes, last_played_at, source, observed_at)
+                VALUES (@attributed, 40, '2024-01-01 00:00:00', 'steam_local', '2024-01-02 00:00:00'),
+                       (@attributed, 900, '2026-08-01 00:00:00', 'steam_local', '2026-08-02 00:00:00');
+                """, new { attributed });
+
+            // Attributed, never played: no play record to borrow figures from.
+            var unplayed = Ownership(Release("Unplayed"), "steam", "22222");
+
+            // Unattributed, and a blank that is the same absence as a null.
+            var anonymous = Ownership(Release("Anonymous"), "epic", null);
+            var blank = Ownership(Release("Blank"), "gog", "   ");
+
+            Assert.NotEqual(0, unplayed);
+            Assert.NotEqual(0, anonymous);
+            Assert.NotEqual(0, blank);
+        }
+
+        db.Initializer.Initialize();
+
+        using var after = db.Factory.Open();
+
+        var rows = after.Query<(long OwnershipId, string AccountRef, long? Minutes, string? LastPlayed, string Source, string FirstSeen, string LastSeen)>("""
+            SELECT oa.ownership_id, oa.account_ref, oa.playtime_minutes, oa.last_played_at,
+                   oa.source, oa.first_seen_at, oa.last_seen_at
+            FROM ownership_accounts oa
+            JOIN ownerships o ON o.id = oa.ownership_id
+            ORDER BY oa.account_ref;
+            """).ToList();
+
+        // Two rows: the two ownerships that named an account. A null and a blank
+        // name nobody, and a row about nobody would count as evidence AGAINST
+        // the user in the filter.
+        Assert.Equal(2, rows.Count);
+        Assert.Equal(["11111", "22222"], rows.Select(r => r.AccountRef));
+        Assert.All(rows, r => Assert.Equal("ownerships.account_ref", r.Source));
+
+        // The newest reading, and the observation time that produced it — the
+        // seed states nothing it did not read.
+        var attributedRow = rows[0];
+        Assert.Equal(900, attributedRow.Minutes);
+        Assert.Equal("2026-08-01 00:00:00", attributedRow.LastPlayed);
+        Assert.Equal("2026-08-02 00:00:00", attributedRow.FirstSeen);
+        Assert.Equal(attributedRow.FirstSeen, attributedRow.LastSeen);
+
+        // Never played: the account holds it and nothing measured a session.
+        var unplayedRow = rows[1];
+        Assert.Null(unplayedRow.Minutes);
+        Assert.Null(unplayedRow.LastPlayed);
+        Assert.NotEmpty(unplayedRow.FirstSeen);
+
+        // And the key bites: one row per (ownership, account).
+        Assert.Throws<Microsoft.Data.Sqlite.SqliteException>(() =>
+            after.Execute("""
+                INSERT INTO ownership_accounts (
+                    ownership_id, account_ref, source, first_seen_at, last_seen_at)
+                VALUES (@ownershipId, '11111', 'steam_local', '2026-08-26', '2026-08-26');
+                """, new { ownershipId = attributedRow.OwnershipId }));
+    }
+
+    [Fact]
+    public void Migration_0016_canonicalises_pairs_and_keeps_terminal_decisions()
+    {
+        // A database created before 0016 could hold a self-pair and both
+        // orientations of one pair; the new CHECK and unique key would fail to
+        // build over them. Simulate that shape, then let 0016 run.
+        using var db = new TempDatabase();
+
+        long releaseA;
+        long releaseB;
+        long releaseC;
+        using (var conn = db.Factory.Open())
+        {
+            conn.Execute("DROP TABLE IF EXISTS merge_applications;");
+            conn.Execute("DROP TABLE merge_candidates;");
+            conn.Execute(PreCanonicalMergeCandidates);
+            conn.Execute("DELETE FROM SchemaVersions WHERE ScriptName LIKE '%0016%';");
+
+            var workId = conn.ExecuteScalar<long>(
+                "INSERT INTO works (name) VALUES ('Hades') RETURNING id;");
+            releaseA = conn.ExecuteScalar<long>(
+                "INSERT INTO releases (work_id, name) VALUES (@workId, 'A') RETURNING id;", new { workId });
+            releaseB = conn.ExecuteScalar<long>(
+                "INSERT INTO releases (work_id, name) VALUES (@workId, 'B') RETURNING id;", new { workId });
+            releaseC = conn.ExecuteScalar<long>(
+                "INSERT INTO releases (work_id, name) VALUES (@workId, 'C') RETURNING id;", new { workId });
+
+            conn.Execute("""
+                INSERT INTO merge_candidates (left_release_id, right_release_id, score, status) VALUES
+                    (@a, @a, 0.99, 'pending'),
+                    (@a, @b, 0.80, 'pending'),
+                    (@b, @a, 0.80, 'rejected'),
+                    (@c, @b, 0.70, 'confirmed');
+                """, new { a = releaseA, b = releaseB, c = releaseC });
+        }
+
+        db.Initializer.Initialize();
+
+        using var after = db.Factory.Open();
+
+        var rows = after.Query<(long Left, long Right, string Status)>(
+            "SELECT left_release_id, right_release_id, status FROM merge_candidates ORDER BY left_release_id;")
+            .ToList();
+
+        // The self-pair is gone; the mirrored pair is one row in canonical
+        // orientation, and the user's rejection beat the untouched proposal.
+        Assert.Equal(2, rows.Count);
+        Assert.Equal((Math.Min(releaseA, releaseB), Math.Max(releaseA, releaseB), "rejected"), rows[0]);
+        Assert.Equal((Math.Min(releaseB, releaseC), Math.Max(releaseB, releaseC), "confirmed"), rows[1]);
+
+        // And the constraints now bite, whoever writes.
+        Assert.Throws<Microsoft.Data.Sqlite.SqliteException>(() => after.Execute(
+            "INSERT INTO merge_candidates (left_release_id, right_release_id, score) VALUES (@a, @a, 0.5);",
+            new { a = releaseA }));
+        Assert.Throws<Microsoft.Data.Sqlite.SqliteException>(() => after.Execute(
+            "INSERT INTO merge_candidates (left_release_id, right_release_id, score) VALUES (@c, @a, 0.5);",
+            new { a = releaseA, c = releaseC }));
+    }
+
+    [Fact]
+    public void Migration_0017_preserves_every_candidate_and_status()
+    {
+        using var db = new TempDatabase();
+
+        long releaseA;
+        long releaseB;
+        long releaseC;
+        long releaseD;
+        using (var conn = db.Factory.Open())
+        {
+            // Back to the shape 0016 leaves behind: three statuses, no journal.
+            conn.Execute("DROP TABLE IF EXISTS merge_undo_rows;");
+            conn.Execute("DROP TABLE IF EXISTS merge_applications;");
+            conn.Execute("DROP TABLE merge_candidates;");
+            conn.Execute(PostCanonicalMergeTables);
+            conn.Execute("DELETE FROM SchemaVersions WHERE ScriptName LIKE '%0017%';");
+
+            var workId = conn.ExecuteScalar<long>(
+                "INSERT INTO works (name) VALUES ('Hades') RETURNING id;");
+            releaseA = conn.ExecuteScalar<long>(
+                "INSERT INTO releases (work_id, name) VALUES (@workId, 'A') RETURNING id;", new { workId });
+            releaseB = conn.ExecuteScalar<long>(
+                "INSERT INTO releases (work_id, name) VALUES (@workId, 'B') RETURNING id;", new { workId });
+            releaseC = conn.ExecuteScalar<long>(
+                "INSERT INTO releases (work_id, name) VALUES (@workId, 'C') RETURNING id;", new { workId });
+            releaseD = conn.ExecuteScalar<long>(
+                "INSERT INTO releases (work_id, name) VALUES (@workId, 'D') RETURNING id;", new { workId });
+
+            conn.Execute("""
+                INSERT INTO merge_candidates (
+                    id, left_release_id, right_release_id, score, signals_json, status) VALUES
+                    (11, @a, @b, 0.80, '{"title":1}', 'pending'),
+                    (12, @a, @c, 0.70, NULL,          'rejected'),
+                    (13, @b, @d, 0.95, '{"year":1}',  'confirmed');
+                """, new { a = releaseA, b = releaseB, c = releaseC, d = releaseD });
+        }
+
+        db.Initializer.Initialize();
+
+        using var after = db.Factory.Open();
+
+        var rows = after.Query<(long Id, long Left, long Right, double Score, string? Signals, string Status)>(
+            "SELECT id, left_release_id, right_release_id, score, signals_json, status "
+            + "FROM merge_candidates ORDER BY id;")
+            .ToList();
+
+        // Ids, scores, payloads and statuses all survive the rebuild.
+        Assert.Equal(3, rows.Count);
+        Assert.Equal((11L, releaseA, releaseB, 0.80, "{\"title\":1}", "pending"), rows[0]);
+        Assert.Equal((12L, releaseA, releaseC, 0.70, null, "rejected"), rows[1]);
+        Assert.Equal((13L, releaseB, releaseD, 0.95, "{\"year\":1}", "confirmed"), rows[2]);
+
+        // The fourth status is now admissible, and nothing else is.
+        after.Execute("UPDATE merge_candidates SET status = 'undone' WHERE id = 11;");
+        Assert.Equal("undone", after.ExecuteScalar<string>(
+            "SELECT status FROM merge_candidates WHERE id = 11;"));
+        Assert.Throws<Microsoft.Data.Sqlite.SqliteException>(() => after.Execute(
+            "UPDATE merge_candidates SET status = 'reversed' WHERE id = 11;"));
+
+        // And the journal arrived, with its hard reference to the audit row and
+        // its CHECK on the operation name.
+        Assert.Equal(0, after.ExecuteScalar<long>("SELECT COUNT(*) FROM merge_undo_rows;"));
+        Assert.Throws<Microsoft.Data.Sqlite.SqliteException>(() => after.Execute("""
+            INSERT INTO merge_undo_rows (application_id, seq, table_name, op, key_json, before_json)
+            VALUES (999, 1, 'works', 'delete', '{}', '{}');
+            """));
+
+        var applicationId = after.ExecuteScalar<long>("""
+            INSERT INTO merge_applications (
+                candidate_id, left_release_id, right_release_id, mode,
+                surviving_work_id, applied_at, undo_journal_version)
+            VALUES (1, 1, 2, 'work_only', 1, '2026-08-31 00:00:00', 1)
+            RETURNING id;
+            """);
+
+        Assert.Throws<Microsoft.Data.Sqlite.SqliteException>(() => after.Execute("""
+            INSERT INTO merge_undo_rows (application_id, seq, table_name, op, key_json, before_json)
+            VALUES (@applicationId, 1, 'works', 'sideways', '{}', '{}');
+            """, new { applicationId }));
+
+        // undone_at is NULL while a merge stands, and undo_journal_version is
+        // NULL for every row that predates this migration.
+        Assert.Null(after.ExecuteScalar<string>(
+            "SELECT undone_at FROM merge_applications WHERE id = @applicationId;", new { applicationId }));
+    }
+
+    /// <summary>
+    /// merge_candidates has been rebuilt three times: 0016 for canonicality,
+    /// 0017 for the fourth status, 0019 to take the fourth and the third
+    /// away. 0016's two invariants (left &lt; right, unique pair) must
+    /// survive every rebuild, or F20 reopens.
+    /// </summary>
+    [Fact]
+    public void The_thrice_rebuilt_merge_candidates_still_rejects_self_pairs_and_mirrors()
+    {
+        using var db = new TempDatabase();
+        using var conn = db.Factory.Open();
+
+        var workId = conn.ExecuteScalar<long>(
+            "INSERT INTO works (name) VALUES ('Hades') RETURNING id;");
+        var releaseA = conn.ExecuteScalar<long>(
+            "INSERT INTO releases (work_id, name) VALUES (@workId, 'A') RETURNING id;", new { workId });
+        var releaseB = conn.ExecuteScalar<long>(
+            "INSERT INTO releases (work_id, name) VALUES (@workId, 'B') RETURNING id;", new { workId });
+
+        conn.Execute(
+            "INSERT INTO merge_candidates (left_release_id, right_release_id, score) VALUES (@a, @b, 0.9);",
+            new { a = releaseA, b = releaseB });
+
+        // 0016's two invariants survive 0017's and 0019's rebuilds of the same table.
+        Assert.Throws<Microsoft.Data.Sqlite.SqliteException>(() => conn.Execute(
+            "INSERT INTO merge_candidates (left_release_id, right_release_id, score) VALUES (@a, @a, 0.5);",
+            new { a = releaseA }));
+        Assert.Throws<Microsoft.Data.Sqlite.SqliteException>(() => conn.Execute(
+            "INSERT INTO merge_candidates (left_release_id, right_release_id, score) VALUES (@b, @a, 0.5);",
+            new { a = releaseA, b = releaseB }));
+    }
+    /// <summary>
+    /// Migration 0021 rebuilds identity_links because SQLite cannot ALTER a
+    /// CHECK and variant_of is a third kind. A rebuild that loses a link
+    /// loses a decision a person made, so this asserts the rows, their ids,
+    /// their act ids and their retraction bookkeeping all survive, and that
+    /// the new kind and the restated indexes are really there afterwards.
+    /// </summary>
+    [Fact]
+    public void Migration_0021_admits_variant_of_and_keeps_every_standing_link()
+    {
+        using var db = new TempDatabase();
+
+        long parentWork;
+        long childWork;
+        long thirdWork;
+        using (var conn = db.Factory.Open())
+        {
+            // Back to the shape 0018 leaves behind: two kinds, no label column.
+            conn.Execute("DROP TABLE identity_links;");
+            conn.Execute(PreVariantIdentityLinks);
+            conn.Execute("DELETE FROM SchemaVersions WHERE ScriptName LIKE '%0021%';");
+
+            parentWork = conn.ExecuteScalar<long>(
+                "INSERT INTO works (name) VALUES ('Civilization IV') RETURNING id;");
+            childWork = conn.ExecuteScalar<long>(
+                "INSERT INTO works (name) VALUES ('Beyond the Sword') RETURNING id;");
+            thirdWork = conn.ExecuteScalar<long>(
+                "INSERT INTO works (name) VALUES ('Warlords') RETURNING id;");
+
+            conn.Execute(
+                "INSERT INTO identity_acts (id, kind, performed_at) VALUES "
+                + "(1, 'link', '2026-01-01 00:00:00'), (2, 'unlink', '2026-01-02 00:00:00');");
+
+            conn.Execute("""
+                INSERT INTO identity_links (
+                    id, act_id, child_work_id, parent_work_id, kind, source,
+                    evidence_json, applied_at, retracted_at, retracted_by_act_id) VALUES
+                    (10, 1, @child, @parent, 'expansion_of', 'user',
+                     '{"why":"prefix"}', '2026-01-01 00:00:00', NULL, NULL),
+                    (11, 1, @third, @parent, 'same_game', 'hard_id',
+                     NULL, '2026-01-01 00:00:00', '2026-01-02 00:00:00', 2);
+                """, new { child = childWork, parent = parentWork, third = thirdWork });
+        }
+
+        db.Initializer.Initialize();
+
+        using var after = db.Factory.Open();
+
+        var rows = after.Query<(long Id, long ActId, long Child, long Parent, string Kind,
+                string Source, string? Label, string? Evidence, string? RetractedAt, long? RetractedBy)>("""
+            SELECT id, act_id, child_work_id, parent_work_id, kind, source,
+                   relation_label, evidence_json, retracted_at, retracted_by_act_id
+            FROM identity_links ORDER BY id;
+            """).ToList();
+
+        Assert.Equal(2, rows.Count);
+
+        // The standing link, unchanged but for a label nothing has named yet.
+        Assert.Equal(10L, rows[0].Id);
+        Assert.Equal(1L, rows[0].ActId);
+        Assert.Equal(childWork, rows[0].Child);
+        Assert.Equal(parentWork, rows[0].Parent);
+        Assert.Equal("expansion_of", rows[0].Kind);
+        Assert.Equal("user", rows[0].Source);
+        Assert.Equal("{\"why\":\"prefix\"}", rows[0].Evidence);
+        Assert.Null(rows[0].Label);
+        Assert.Null(rows[0].RetractedAt);
+
+        // The retracted one keeps the act that displaced it, which is what makes
+        // an undo restorable rather than a timestamp heuristic.
+        Assert.Equal("2026-01-02 00:00:00", rows[1].RetractedAt);
+        Assert.Equal(2L, rows[1].RetractedBy);
+
+        // The new kind is admitted, and carries the source's own word...
+        after.Execute("""
+            INSERT INTO identity_links (
+                act_id, child_work_id, parent_work_id, kind, source, relation_label, applied_at)
+            VALUES (1, @child, @parent, 'variant_of', 'user', 'demo', '2026-01-03 00:00:00');
+            """, new { child = parentWork, parent = thirdWork });
+
+        Assert.Equal(
+            "demo",
+            after.ExecuteScalar<string>(
+                "SELECT relation_label FROM identity_links WHERE kind = 'variant_of';"));
+
+        // ...and nothing else is.
+        Assert.Throws<Microsoft.Data.Sqlite.SqliteException>(() => after.Execute("""
+            INSERT INTO identity_links (
+                act_id, child_work_id, parent_work_id, kind, source, applied_at)
+            VALUES (1, @child, @parent, 'sequel_of', 'user', '2026-01-04 00:00:00');
+            """, new { child = thirdWork, parent = childWork }));
+
+        // Every index the rebuild dropped is back, including the partial unique
+        // one that makes "at most one live parent per work" a fact about the
+        // database rather than a convention held by the repository.
+        var indexes = after.Query<string>(
+            "SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = 'identity_links' "
+            + "AND name NOT LIKE 'sqlite_%' ORDER BY name;").ToList();
+
+        Assert.Equal(
+            ["ix_identity_links_act", "ix_identity_links_parent", "ux_identity_links_live"],
+            indexes);
+    }
+
+    /// <summary>
+    /// Migration 0022 adds the storefront relation columns without disturbing a
+    /// row that predates them. Every one of them is NULL, and NULL means "not
+    /// known" rather than "no relation" - the distinction the whole gap-filler
+    /// rule turns on.
+    /// </summary>
+    [Fact]
+    public void Migration_0022_adds_the_relation_columns_and_leaves_old_rows_unknown()
+    {
+        using var db = new TempDatabase();
+        using var conn = db.Factory.Open();
+
+        var workId = conn.ExecuteScalar<long>(
+            "INSERT INTO works (name, steam_app_type) VALUES ('Bastion', 'Game') RETURNING id;");
+
+        var row = conn.QuerySingle<(long? StoreType, string? ParentApp, string? GameType,
+            long? IgdbParent, long? VersionParent)>("""
+            SELECT steam_store_type, steam_parent_app_id, igdb_game_type,
+                   igdb_parent_id, igdb_version_parent_id
+            FROM works WHERE id = @workId;
+            """, new { workId });
+
+        Assert.Null(row.StoreType);
+        Assert.Null(row.ParentApp);
+        Assert.Null(row.GameType);
+        Assert.Null(row.IgdbParent);
+        Assert.Null(row.VersionParent);
+
+        // No CHECK on any of them: the vocabularies belong to Valve and IGDB,
+        // and a constraint would turn a new type into a failed enrichment write.
+        conn.Execute(
+            "UPDATE works SET igdb_game_type = 'a_type_this_build_has_never_seen' WHERE id = @workId;",
+            new { workId });
+
+        Assert.Equal(
+            "a_type_this_build_has_never_seen",
+            conn.ExecuteScalar<string>("SELECT igdb_game_type FROM works WHERE id = @workId;", new { workId }));
+    }
+
+    /// <summary>The identity_links shape migration 0018 leaves behind: two kinds, no label.</summary>
+    private const string PreVariantIdentityLinks = """
+        CREATE TABLE identity_links (
+            id                  INTEGER PRIMARY KEY,
+            act_id              INTEGER NOT NULL REFERENCES identity_acts(id) ON DELETE CASCADE,
+            child_work_id       INTEGER NOT NULL REFERENCES works(id) ON DELETE CASCADE,
+            parent_work_id      INTEGER NOT NULL REFERENCES works(id) ON DELETE CASCADE,
+            kind                TEXT NOT NULL CHECK (kind IN ('same_game', 'expansion_of')),
+            source              TEXT NOT NULL CHECK (source IN ('user', 'hard_id')),
+            evidence_json       TEXT,
+            applied_at          TEXT NOT NULL,
+            retracted_at        TEXT,
+            retracted_by_act_id INTEGER REFERENCES identity_acts(id) ON DELETE SET NULL,
+
+            CHECK (child_work_id <> parent_work_id),
+            CHECK ((retracted_at IS NULL) = (retracted_by_act_id IS NULL))
+        );
+
+        CREATE UNIQUE INDEX ux_identity_links_live
+            ON identity_links(child_work_id) WHERE retracted_at IS NULL;
+        CREATE INDEX ix_identity_links_parent
+            ON identity_links(parent_work_id) WHERE retracted_at IS NULL;
+        CREATE INDEX ix_identity_links_act ON identity_links(act_id);
+        """;
 }

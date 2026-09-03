@@ -1,5 +1,8 @@
 # Spike: Update signals — build push + announcement, and what a 616-game poll costs
 
+> **Evidence, not a rule.** This document records how something was measured and is
+> never the place to look up what to do. The current rule is in `game-library-design.md` §4.5.
+
 Date: 2026-08-23. Resolves the `[VERIFY]` in `game-library-design.md` §4.5. Feeds M2.
 
 **§1, §3 and §5 were verified live** from this machine on 2026-08-23: read-only `GET`s, descriptive

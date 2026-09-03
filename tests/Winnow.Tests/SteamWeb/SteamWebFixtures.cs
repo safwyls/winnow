@@ -52,6 +52,49 @@ public static class SteamWebFixtures
     /// <summary>An account that genuinely owns nothing: an explicit zero count.</summary>
     public const string EmptyLibrary = "{\"response\":{\"game_count\":0}}";
 
+    /// <summary>
+    /// The steam3 account id every M5 fixture is written for, and the SteamID64
+    /// derived from it. Fake, per the fixture README's sanitization rule.
+    /// </summary>
+    public const uint FixtureAccountId = 11111111;
+
+    /// <summary>Cumulative minutes appid 1203620 stands at in the last-played fixture.</summary>
+    public const long EnshroudedAnchorMinutes = 817;
+
+    /// <summary>Cumulative minutes appid 933480 stands at in the last-played fixture.</summary>
+    public const long EnderalAnchorMinutes = 100;
+
+    /// <summary><c>ClientGetLastPlayedTimes</c>, as pinned in <c>tests/fixtures/steam-web/</c>.</summary>
+    public static string LastPlayedTimes() => Fixture("clientgetlastplayedtimes-v1.json");
+
+    /// <summary>Year in Review 2024 — the live envelope, with per-game monthly breakdowns.</summary>
+    public static string YearInReview2024() => Fixture("getuseryearinreview-2024-v1.json");
+
+    /// <summary>Year in Review 2025 — one game, one month, so a two-year merge is testable.</summary>
+    public static string YearInReview2025() => Fixture("getuseryearinreview-2025-v1.json");
+
+    /// <summary>
+    /// Year in Review in the shape the spike's proto describes: months at the
+    /// <c>playtime_stats</c> level, each carrying a per-appid array.
+    /// </summary>
+    public static string YearInReviewProtoMonths() => Fixture("getuseryearinreview-protomonths-v1.json");
+
+    /// <summary>
+    /// The bare envelope. For Year in Review this covers both "the account ran
+    /// no Steam Replay that year" and "not your account", which are
+    /// indistinguishable on the wire.
+    /// </summary>
+    public const string EmptyYearInReview = "{\"response\":{}}";
+
+    /// <summary>A Year in Review for a DIFFERENT account than the one asked about.</summary>
+    public const string ForeignYearInReview =
+        "{\"response\":{\"stats\":{\"account_id\":22222222,\"year\":2024,\"playtime_stats\":{\"games\":"
+        + "[{\"appid\":1203620,\"stats\":{\"total_playtime_seconds\":6000},\"rtime_first_played\":1704067200,"
+        + "\"months\":[{\"rtime_month\":1704067200,\"stats\":{\"total_playtime_seconds\":6000}}]}]}}}}";
+
+    private static string Fixture(string name)
+        => File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "fixtures", "steam-web", name));
+
     /// <summary>One entry, with the optional fields optional exactly as Steam has them.</summary>
     public sealed record OwnedGameFixture(
         long AppId,

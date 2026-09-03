@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "statusMessage": "Checking the Backlog guard",
+            "command": "jq -c 'if ((.tool_input.file_path // \"\") | gsub(\"[\\\\\\\\]\"; \"/\") | (test(\"/backlog/\") and endswith(\".md\"))) then {hookSpecificOutput:{hookEventName:\"PreToolUse\",permissionDecision:\"deny\",permissionDecisionReason:\"Backlog task, draft, document, decision and milestone files are changed through the backlog CLI so metadata, relationships and history stay consistent. See AGENTS.md.\"}} else empty end'"
+          }
+        ]
+      }
+    ]
+  }
+}

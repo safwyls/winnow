@@ -104,6 +104,44 @@ public sealed class OwnershipRepository : IOwnershipRepository
         return rows.AsList();
     }
 
+    public async Task<bool> FillAcquisitionFactsAsync(
+        OwnershipAcquisitionFill fill, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(fill);
+
+        // Fill-only, and the WHERE clause is what makes it so. Every assignment
+        // is COALESCE(stored, incoming), so a column that already holds a value
+        // keeps it — the account pages are one source among several and the
+        // newest reading is not automatically the best one.
+        //
+        // The WHERE clause then requires at least one column to be genuinely
+        // empty AND to have something to put in it. Without it this UPDATE would
+        // report a changed row on every re-run, writing each column back onto
+        // itself, and "did the import do anything" would always answer yes.
+        // With it, a second run over the same pages matches no rows and the
+        // report honestly says nothing was filled.
+        //
+        // price_source moves WITH the price rather than being COALESCEd on its
+        // own: a source label describing a price that came from somewhere else
+        // is worse than no label.
+        using var lease = _factory.Lease();
+        var changed = await lease.Connection.ExecuteAsync(new CommandDefinition("""
+            UPDATE ownerships SET
+                acquired_at      = COALESCE(acquired_at, @AcquiredAt),
+                license_type     = COALESCE(license_type, @LicenseType),
+                price_paid_cents = COALESCE(price_paid_cents, @PricePaidCents),
+                price_source     = CASE WHEN price_paid_cents IS NULL AND @PricePaidCents IS NOT NULL
+                                        THEN @PriceSource
+                                        ELSE price_source END
+            WHERE id = @OwnershipId
+              AND ((acquired_at      IS NULL AND @AcquiredAt     IS NOT NULL)
+                OR (license_type     IS NULL AND @LicenseType    IS NOT NULL)
+                OR (price_paid_cents IS NULL AND @PricePaidCents IS NOT NULL));
+            """, fill, transaction: lease.Transaction, cancellationToken: ct));
+
+        return changed > 0;
+    }
+
     public async Task<IReadOnlyList<Ownership>> GetAllAsync(CancellationToken ct = default)
     {
         using var lease = _factory.Lease();

@@ -4,329 +4,697 @@
              x:Class="Winnow.App.Views.MergeQueueView"
              x:DataType="vm:MergeQueueViewModel">
 
-    <!-- Merge confirm queue (§6). Two covers side by side with signal diff
-         and two answers: Same game / Different games. All pending pairs on one
-         scrollable page. No Flare on this screen. -->
+    <!-- The Merges screen (docs/merge_queue_design). Three bands: a 56px
+         header, a 40px cut bar, and the queue. The queue is one scroll of
+         five sections, one per grouping kind, each holding proposal cards.
 
-    <UserControl.Resources>
+         A card is a composition, not a component: header grid, candidate
+         rows, reason slot. Pending it asks one question and takes one of
+         two answers; resolved it collapses to a strip that stays in place
+         so the list does not reflow under the pointer.
 
-        <!-- One half of a pair. Used twice per card, so it lives here rather
-             than being written out on both sides and drifting. -->
-        <DataTemplate x:Key="MergeSideTemplate" DataType="vm:MergeSideViewModel">
-            <StackPanel Width="200" Spacing="10">
-
-                <!-- §6: 200x300. The 2:3 portrait capsule the grid uses, at the
-                     density slider's maximum — this is a decision that deserves
-                     the art at full size. -->
-                <Border Width="200" Height="300"
-                        CornerRadius="{StaticResource RadiusTile}"
-                        ClipToBounds="True"
-                        BorderThickness="1" BorderBrush="{StaticResource LineSoft}">
-                    <Panel>
-                        <!-- Placeholder (§7): title in Bricolage on a Surface
-                             field. Never a spinner, never a hole. -->
-                        <Border Background="{Binding PlaceholderBrush}"
-                                IsVisible="{Binding ShowPlaceholder}">
-                            <TextBlock Text="{Binding Title}"
-                                       FontFamily="{StaticResource DisplayFont}"
-                                       FontWeight="Bold" FontSize="22" LineHeight="24"
-                                       TextWrapping="Wrap"
-                                       Foreground="White"
-                                       VerticalAlignment="Bottom" Margin="16"/>
-                        </Border>
-
-                        <!-- Real capsule art when the cover cache has it. No
-                             dormancy ramp here: the question is identity, not
-                             recency. -->
-                        <Image Source="{Binding Cover}" Stretch="UniformToFill"/>
-                    </Panel>
-                </Border>
-
-                <TextBlock Classes="body-l"
-                           Text="{Binding Title}"
-                           TextWrapping="Wrap" MaxLines="2"
-                           TextTrimming="CharacterEllipsis"
-                           LineHeight="19"/>
-
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                    <TextBlock Classes="data-s" Text="{Binding YearText}"/>
-                    <TextBlock Classes="data-s" Text="·"/>
-                    <!-- When both sides are called "Prey", the release id is the
-                         only thing on screen that tells the two rows apart. -->
-                    <TextBlock Classes="data-s" Text="{Binding ReleaseText}"/>
-                </StackPanel>
-
-                <TextBlock Classes="body" FontSize="12"
-                           Foreground="{StaticResource TextDim}"
-                           Text="{Binding PublisherText}"
-                           TextWrapping="Wrap"/>
-            </StackPanel>
-        </DataTemplate>
-
-    </UserControl.Resources>
+         Flare means one thing on this screen: the unread dots. Volt carries
+         selection and the promoted header, and is the one filled button.
+         Amber appears once, on WORTH A LOOK. -->
 
     <UserControl.Styles>
 
-        <!-- ══ Candidate card ═══════════════════════════════════════════════
-             Border thickness stays at 2 in both states so selecting a card
-             recolours it instead of reflowing the whole queue under it. -->
+        <!-- ══ Section panel ════════════════════════════════════════════════
+             Outline only, like the feed's shelves: a second opaque layer under
+             the cards would invert the elevation (§14.2). -->
+        <Style Selector="Border.section">
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusPane}"/>
+            <Setter Property="Padding" Value="12"/>
+        </Style>
+        <Style Selector="TextBlock.shelf">
+            <Setter Property="FontFamily" Value="{StaticResource DisplayFont}"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontSize" Value="17"/>
+            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+        </Style>
+
+        <!-- ══ Proposal card ════════════════════════════════════════════════
+             Border thickness stays at 1 in both states so checking a card
+             recolours it instead of reflowing the section under it. -->
         <Style Selector="Border.card">
             <Setter Property="Background" Value="{StaticResource Surface}"/>
             <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
-            <Setter Property="BorderThickness" Value="2"/>
+            <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="CornerRadius" Value="{StaticResource RadiusTile}"/>
-            <Setter Property="Padding" Value="20"/>
-            <Setter Property="Margin" Value="0,0,0,16"/>
+            <Setter Property="ClipToBounds" Value="True"/>
         </Style>
         <Style Selector="Border.card.selected">
-            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource VoltEdgeSoft}"/>
         </Style>
 
-        <!-- A signal that could not be evaluated is shown, dimmed, with the
-             reason. Hiding it would let "identical title, nothing else known"
-             look like "identical title, year and publisher agree". -->
-        <Style Selector="Grid.signal.unfired">
-            <Setter Property="Opacity" Value="0.55"/>
+        <!-- The header title: Bricolage at the body-l size. -->
+        <Style Selector="TextBlock.headline">
+            <Setter Property="FontFamily" Value="{StaticResource DisplayFont}"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontSize" Value="15"/>
+            <Setter Property="LineHeight" Value="22"/>
+            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+            <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
         </Style>
 
-        <!-- Evidence colouring. Azure does the informational work and Amber
-             carries "look at this"; Volt stays on selection and Flare stays on
-             unread updates, where the whole product thesis lives. -->
-        <Style Selector="TextBlock.contribution">
+        <!-- Confidence, a word on a SurfaceRaised fill, told apart by ink
+             only: Text, TextDim, Amber. -->
+        <Style Selector="Border.badge">
+            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
+            <Setter Property="CornerRadius" Value="3"/>
+            <Setter Property="Padding" Value="6,2"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Border.badge > :is(TextBlock)">
+            <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="LetterSpacing" Value="0.4"/>
+            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+        </Style>
+        <Style Selector="Border.badge.likely > :is(TextBlock)">
             <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
         </Style>
-        <Style Selector="TextBlock.contribution.pos">
-            <Setter Property="Foreground" Value="{StaticResource Azure}"/>
-        </Style>
-        <Style Selector="TextBlock.contribution.neg">
+        <Style Selector="Border.badge.look > :is(TextBlock)">
             <Setter Property="Foreground" Value="{StaticResource Amber}"/>
         </Style>
 
-        <!-- ══ The two answers (§6, §7) ═════════════════════════════════════ -->
-        <Style Selector="Button.answer">
-            <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="FontSize" Value="13"/>
-            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
-            <Setter Property="Padding" Value="18,9"/>
-            <Setter Property="BorderThickness" Value="1"/>
+        <!-- ══ Candidate row ════════════════════════════════════════════════
+             Promoted: ChromeRaised. Hovered: ChromeRaisedHalf. Otherwise
+             transparent. The 140ms restore is the screen's one background
+             transition. -->
+        <Style Selector="Border.row">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="{StaticResource LineSoft}"/>
+            <Setter Property="BorderThickness" Value="0,1,0,0"/>
+            <Setter Property="Height" Value="64"/>
+            <Setter Property="Padding" Value="0,0,4,0"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="{StaticResource HoverRestoreDuration}"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Border.row.promotable">
             <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Border.row.hover">
+            <Setter Property="Background" Value="{StaticResource ChromeRaisedHalf}"/>
+        </Style>
+        <Style Selector="Border.row.header">
+            <Setter Property="Background" Value="{StaticResource ChromeRaised}"/>
         </Style>
 
-        <Style Selector="Button.answer.same">
+        <!-- The title: Text when promoted, TextDim otherwise. -->
+        <Style Selector="TextBlock.rowtitle">
+            <Setter Property="FontFamily" Value="{StaticResource DisplayFont}"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
+            <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+        </Style>
+        <Style Selector="Border.row.header TextBlock.rowtitle">
+            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+        </Style>
+
+        <!-- HEADER in Volt on the promoted row, NESTS UNDER in TextFaint on
+             every other. -->
+        <Style Selector="TextBlock.mark">
+            <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
+            <Setter Property="FontWeight" Value="Normal"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="LetterSpacing" Value="0.44"/>
+            <Setter Property="Foreground" Value="{StaticResource TextFaint}"/>
+        </Style>
+        <Style Selector="Border.row.header TextBlock.mark">
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{StaticResource Volt}"/>
+        </Style>
+
+        <!-- ══ Reason slot ══════════════════════════════════════════════════
+             One slot doing two jobs: the reason in TextDim, a hovered row's
+             detail in Text. The 120ms ink cross-fade is the screen's other
+             transition. -->
+        <Style Selector="Border.reason">
+            <Setter Property="Background" Value="{StaticResource SurfaceRaisedFaint}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource LineSoft}"/>
+            <Setter Property="BorderThickness" Value="0,1,0,0"/>
+            <Setter Property="MinHeight" Value="32"/>
+            <Setter Property="Padding" Value="12,6"/>
+        </Style>
+        <Style Selector="Border.reason > :is(TextBlock)">
+            <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Foreground" Duration="0:0:0.120"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Border.reason > :is(TextBlock).bright">
+            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+        </Style>
+
+        <!-- ══ The checkbox ═════════════════════════════════════════════════
+             A real CheckBox, templated rather than restyled: Fluent's own
+             reads a dozen resource keys across six states. The 2px Volt ring
+             is a brush swap, so nothing reflows as focus moves. -->
+        <Style Selector="CheckBox.pick">
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="MinHeight" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Panel Background="Transparent" Width="26" Height="26">
+                        <Border Name="Ring"
+                                Width="24" Height="24"
+                                CornerRadius="{StaticResource RadiusControl}"
+                                BorderBrush="{StaticResource Volt}"
+                                BorderThickness="2"
+                                Opacity="0"
+                                IsHitTestVisible="False"/>
+                        <Panel>
+                            <Border Name="Box" Width="16" Height="16"
+                                    CornerRadius="3"
+                                    Background="{StaticResource ChromeFieldOnSurface}"
+                                    BorderBrush="{StaticResource Line}"
+                                    BorderThickness="1"/>
+                            <Path Name="Tick"
+                                  Data="M 0,3 L 2.6,5.6 L 7.4,0.8"
+                                  Stroke="{StaticResource VoltInk}"
+                                  StrokeThickness="1.8"
+                                  StrokeLineCap="Round"
+                                  StrokeJoin="Round"
+                                  Width="8" Height="7"
+                                  Opacity="0"
+                                  HorizontalAlignment="Center"
+                                  VerticalAlignment="Center"/>
+                        </Panel>
+                    </Panel>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        <Style Selector="CheckBox.pick:focus-visible /template/ Border#Ring">
+            <Setter Property="Opacity" Value="1"/>
+        </Style>
+        <Style Selector="CheckBox.pick:pointerover /template/ Border#Box">
+            <Setter Property="BorderBrush" Value="{StaticResource TextDim}"/>
+        </Style>
+        <Style Selector="CheckBox.pick:checked /template/ Border#Box">
             <Setter Property="Background" Value="{StaticResource Volt}"/>
             <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
-            <Setter Property="Foreground" Value="{StaticResource VoltInk}"/>
         </Style>
-        <Style Selector="Button.answer.same:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="{StaticResource VoltHover}"/>
-            <Setter Property="Foreground" Value="{StaticResource VoltInk}"/>
-        </Style>
-        <Style Selector="Button.answer.same:pressed /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="{StaticResource VoltPress}"/>
-            <Setter Property="Foreground" Value="{StaticResource VoltInk}"/>
+        <Style Selector="CheckBox.pick:checked /template/ Path#Tick">
+            <Setter Property="Opacity" Value="1"/>
         </Style>
 
-        <!-- "Different games" is not a cancel and is not destructive: it is the
-             other half of the answer, and it carries as much weight. It reads
-             quieter only because the queue's job is to shrink. -->
-        <Style Selector="Button.answer.different">
-            <Setter Property="Background" Value="Transparent"/>
+        <!-- The header radio, on the same terms as the checkbox: a real
+             RadioButton, templated, no text. Grouped per card by the card's
+             key, so a choice on one card never unsets another's. -->
+        <Style Selector="RadioButton.pick">
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="MinHeight" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Panel Background="Transparent" Width="26" Height="26">
+                        <Border Name="Ring"
+                                Width="24" Height="24"
+                                CornerRadius="12"
+                                BorderBrush="{StaticResource Volt}"
+                                BorderThickness="2"
+                                Opacity="0"
+                                IsHitTestVisible="False"/>
+                        <Panel>
+                            <Ellipse Name="Dial" Width="16" Height="16"
+                                     Fill="{StaticResource ChromeFieldOnSurface}"
+                                     Stroke="{StaticResource Line}"
+                                     StrokeThickness="1"/>
+                            <Ellipse Name="Dot" Width="7" Height="7"
+                                     Fill="{StaticResource VoltInk}"
+                                     Opacity="0"
+                                     HorizontalAlignment="Center"
+                                     VerticalAlignment="Center"/>
+                        </Panel>
+                    </Panel>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        <Style Selector="RadioButton.pick:focus-visible /template/ Border#Ring">
+            <Setter Property="Opacity" Value="1"/>
+        </Style>
+        <Style Selector="RadioButton.pick:pointerover /template/ Ellipse#Dial">
+            <Setter Property="Stroke" Value="{StaticResource TextDim}"/>
+        </Style>
+        <Style Selector="RadioButton.pick:checked /template/ Ellipse#Dial">
+            <Setter Property="Fill" Value="{StaticResource Volt}"/>
+            <Setter Property="Stroke" Value="{StaticResource Volt}"/>
+        </Style>
+        <Style Selector="RadioButton.pick:checked /template/ Ellipse#Dot">
+            <Setter Property="Opacity" Value="1"/>
+        </Style>
+
+        <!-- A row left out recedes: TextFaint title, the cover at 40%, and
+             the word LEFT OUT where NESTS UNDER was. -->
+        <Style Selector="Border.row.out TextBlock.rowtitle">
+            <Setter Property="Foreground" Value="{StaticResource TextFaint}"/>
+        </Style>
+        <Style Selector="Border.row.out Border.thumb">
+            <Setter Property="Opacity" Value="0.4"/>
+        </Style>
+
+        <!-- ══ Small buttons ════════════════════════════════════════════════
+             The app's action pair at the 26px height the card and strip use. -->
+        <Style Selector="Button.act.sm">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Padding" Value="10,3"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+
+        <!-- The cut bar's segmented field. -->
+        <Style Selector="Border.field">
             <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
-            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
+            <Setter Property="Background" Value="{StaticResource ChromeFieldOnGround}"/>
+            <Setter Property="ClipToBounds" Value="True"/>
+            <Setter Property="Height" Value="26"/>
         </Style>
-        <Style Selector="Button.answer.different:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource TextDim}"/>
-            <Setter Property="Foreground" Value="{StaticResource Text}"/>
-        </Style>
-        <Style Selector="Button.answer.different:pressed /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
-            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+        <Style Selector="Border.field Button.seg.tab">
+            <Setter Property="Padding" Value="12,0"/>
         </Style>
 
     </UserControl.Styles>
 
-    <Grid RowDefinitions="Auto,*" Background="{StaticResource PaneGround}">
+    <Grid RowDefinitions="56,40,*" Background="{StaticResource PaneGround}">
 
-        <!-- ══ Header ═══════════════════════════════════════════════════════
-             The screen title is the question the screen asks. -->
-        <Border Grid.Row="0"
-                Padding="24,20,24,18"
-                BorderBrush="{StaticResource Line}"
-                BorderThickness="0,0,0,1">
-            <Grid ColumnDefinitions="*,Auto">
-                <StackPanel Grid.Column="0" Spacing="7">
-                    <TextBlock Classes="display-l" Text="Same game?"/>
-                    <!-- Stands down when the queue is empty: the empty state is
-                         the only thing that should be speaking then. -->
-                    <TextBlock Classes="body"
-                               MaxWidth="620"
-                               TextWrapping="Wrap"
-                               LineHeight="19"
-                               IsVisible="{Binding HasPending}"
+        <!-- ══ Band 1: header ═══════════════════════════════════════════════ -->
+        <Grid Grid.Row="0" ColumnDefinitions="Auto,Auto,*,Auto,Auto,Auto" Margin="16,0">
+            <TextBlock Grid.Column="0" Classes="display-l"
+                       VerticalAlignment="Center"
+                       Text="{Binding Title}"/>
+            <TextBlock Grid.Column="1" Classes="data"
+                       Margin="12,0,0,0"
+                       VerticalAlignment="Center"
+                       Foreground="{StaticResource TextDim}"
+                       Text="{Binding PendingLine}"/>
+
+            <!-- Sort: a ctl button carrying a flyout. The menu marks the
+                 current order with a 6px Volt dot, as the library's does. -->
+            <Button Grid.Column="3" Name="SortButton" Classes="ctl"
+                    Margin="0,0,12,0"
+                    VerticalAlignment="Center"
+                    ToolTip.Tip="{Binding SortTooltip}"
+                    AutomationProperties.Name="{Binding SortAutomationName}">
+                <StackPanel Orientation="Horizontal" Spacing="7">
+                    <TextBlock Classes="body" FontSize="12"
                                Foreground="{StaticResource TextDim}"
-                               Text="{Binding IntroMessage}"/>
+                               Text="{Binding SortLabel}"/>
+                    <Path Data="M 0,0 L 8,0 L 4,5 Z"
+                          Fill="{StaticResource TextDim}"
+                          VerticalAlignment="Center"/>
                 </StackPanel>
+                <Button.Flyout>
+                    <Flyout Placement="BottomEdgeAlignedRight" FlyoutPresenterClasses="sortmenu">
+                        <ItemsControl ItemsSource="{Binding SortOptions}" MinWidth="176">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="vm:MergeSortOptionViewModel">
+                                    <Button Classes="sortitem" Click="OnSortItemClick">
+                                        <Grid ColumnDefinitions="14,*">
+                                            <Border Width="6" Height="6" CornerRadius="3"
+                                                    HorizontalAlignment="Left"
+                                                    VerticalAlignment="Center"
+                                                    Background="{StaticResource Volt}"
+                                                    IsVisible="{Binding IsSelected}"/>
+                                            <TextBlock Grid.Column="1" Classes="body"
+                                                       VerticalAlignment="Center"
+                                                       Text="{Binding Label}"/>
+                                        </Grid>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Flyout>
+                </Button.Flyout>
+            </Button>
 
-                <!-- Count only while there is something pending: a permanent
-                     zero is noise. -->
-                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8"
-                            VerticalAlignment="Top"
-                            IsVisible="{Binding HasPending}">
-                    <TextBlock Classes="data" FontSize="22"
-                               Text="{Binding PendingCountText}"
-                               VerticalAlignment="Bottom"/>
-                    <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
-                               Text="PAIRS"
-                               Margin="0,0,0,3"
-                               VerticalAlignment="Bottom"/>
-                </StackPanel>
+            <!-- The safe bulk path: cross-store exact matches only. -->
+            <Button Grid.Column="4" Classes="ctl"
+                    Margin="0,0,12,0"
+                    VerticalAlignment="Center"
+                    IsEnabled="{Binding CanAcceptExact}"
+                    ToolTip.Tip="{Binding AcceptExactTooltip}"
+                    Command="{Binding AcceptExactCommand}">
+                <TextBlock Classes="body" FontSize="12"
+                           Foreground="{StaticResource TextDim}"
+                           Text="{Binding AcceptExactLabel}"/>
+            </Button>
+
+            <!-- The selection's primary, the one filled button on the screen. -->
+            <Button Grid.Column="5" Classes="act primary"
+                    FontSize="12" Padding="12,5"
+                    VerticalAlignment="Center"
+                    IsEnabled="{Binding CanMergeSelected}"
+                    ToolTip.Tip="{Binding MergeSelectedTooltip}"
+                    Content="{Binding MergeSelectedLabel}"
+                    Command="{Binding MergeSelectedCommand}"/>
+        </Grid>
+
+        <!-- ══ Band 2: cut bar ══════════════════════════════════════════════ -->
+        <Border Grid.Row="1"
+                Background="{StaticResource ChromeSurface}"
+                BorderBrush="{StaticResource Line}"
+                BorderThickness="0,1,0,1"
+                Padding="16,0">
+            <Grid ColumnDefinitions="Auto,Auto,*,Auto">
+                <Border Grid.Column="0" Classes="field" VerticalAlignment="Center">
+                    <ItemsControl ItemsSource="{Binding KindOptions}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="vm:MergeKindOptionViewModel">
+                                <Button Classes="seg tab"
+                                        Classes.on="{Binding IsSelected}"
+                                        Command="{Binding $parent[UserControl].((vm:MergeQueueViewModel)DataContext).SelectKindCommand}"
+                                        CommandParameter="{Binding}">
+                                    <TextBlock Classes="display-s" Text="{Binding Label}"/>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Border>
+
+                <!-- The cut chip: the shown kind's full name and a ✕ back to ALL. -->
+                <Border Grid.Column="1" Classes="chip"
+                        Margin="8,0,0,0"
+                        IsVisible="{Binding IsKindFiltered}"
+                        ToolTip.Tip="{Binding KindChipTooltip}">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <TextBlock Classes="label" FontSize="10"
+                                   VerticalAlignment="Center"
+                                   Foreground="{StaticResource Text}"
+                                   Text="{Binding KindChipLabel}"/>
+                        <Button Classes="chipx"
+                                Command="{Binding ClearKindCommand}"
+                                ToolTip.Tip="{Binding KindChipClearTip}">
+                            <Path Data="M 0.5,0.5 L 6.5,6.5 M 6.5,0.5 L 0.5,6.5"/>
+                        </Button>
+                    </StackPanel>
+                </Border>
+
+                <TextBlock Grid.Column="3" Classes="data"
+                           VerticalAlignment="Center"
+                           Foreground="{StaticResource TextDim}"
+                           Text="{Binding CutCountText}"/>
             </Grid>
         </Border>
 
-        <!-- ══ The queue — all of it, at once ═══════════════════════════════ -->
-        <ScrollViewer Grid.Row="1"
-                      Name="QueueScroll"
-                      IsVisible="{Binding !ShowEmpty}"
+        <!-- ══ Band 3: the queue ════════════════════════════════════════════
+             Right padding 10 rather than 16: the scrollbar steps in off the
+             pane edge. -->
+        <ScrollViewer Grid.Row="2"
                       HorizontalScrollBarVisibility="Disabled"
-                      VerticalScrollBarVisibility="Auto">
-            <ItemsControl Name="CardList"
-                          Margin="24,20,24,24"
-                          ItemsSource="{Binding Candidates}">
+                      VerticalScrollBarVisibility="Auto"
+                      Padding="16,16,10,24">
+            <ItemsControl ItemsSource="{Binding Sections}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Spacing="16"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
-                    <DataTemplate DataType="vm:MergeCandidateViewModel">
-                        <Border Classes="card"
-                                Classes.selected="{Binding IsSelected}"
-                                PointerPressed="OnCardPressed">
-                            <Grid ColumnDefinitions="200,*,200">
+                    <DataTemplate DataType="vm:MergeSectionViewModel">
+                        <Border Classes="section" IsVisible="{Binding IsVisible}">
+                            <StackPanel Spacing="10">
 
-                                <ContentControl Grid.Column="0"
-                                                Content="{Binding Left}"
-                                                ContentTemplate="{StaticResource MergeSideTemplate}"/>
+                                <StackPanel Spacing="2" Margin="0,0,0,2">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <TextBlock Classes="shelf" Text="{Binding Title}"/>
+                                        <TextBlock Classes="data"
+                                                   VerticalAlignment="Center"
+                                                   Margin="0,2,0,0"
+                                                   Foreground="{StaticResource TextDim}"
+                                                   Text="{Binding PendingCountText}"/>
+                                    </StackPanel>
+                                    <TextBlock Classes="para" MaxWidth="720"
+                                               HorizontalAlignment="Left"
+                                               Text="{Binding Blurb}"/>
+                                </StackPanel>
 
-                                <!-- ── The signal diff (§6). Evidence at top,
-                                     answer pinned to bottom. ────────────── -->
-                                <Grid Grid.Column="1" Margin="28,2,28,0"
-                                      RowDefinitions="Auto,*,Auto">
-
-                                <StackPanel Grid.Row="0" Spacing="14">
-
-                                    <Grid ColumnDefinitions="Auto,*,Auto">
-                                        <TextBlock Grid.Column="0" Classes="label"
-                                                   Text="CONFIDENCE"
-                                                   VerticalAlignment="Bottom"
-                                                   Margin="0,0,0,2"/>
-
-                                        <!-- Top-of-queue label in Azure (§8:
-                                             position alone is not enough). -->
-                                        <TextBlock Grid.Column="1" Classes="label"
-                                                   FontSize="10" LetterSpacing="1"
-                                                   Margin="10,0,0,2"
-                                                   VerticalAlignment="Bottom"
-                                                   Foreground="{StaticResource Azure}"
-                                                   IsVisible="{Binding IsPriority}"
-                                                   Text="TOP OF QUEUE"
-                                                   ToolTip.Tip="The strongest evidence in the queue. Still your call — nothing merges on its own."/>
-
-                                        <TextBlock Grid.Column="2" Classes="data"
-                                                   FontSize="20"
-                                                   Text="{Binding ScoreText}"/>
-                                    </Grid>
-
-                                    <Border Height="1" Background="{StaticResource Line}"/>
-
-                                    <ItemsControl ItemsSource="{Binding Signals}">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate DataType="vm:MergeSignalViewModel">
-                                                <Grid Classes="signal"
-                                                      Classes.unfired="{Binding !Fired}"
-                                                      ColumnDefinitions="*,Auto,58"
-                                                      RowDefinitions="Auto,Auto"
-                                                      Margin="0,0,0,11">
-                                                    <TextBlock Grid.Row="0" Grid.Column="0"
-                                                               Classes="label"
-                                                               Text="{Binding Label}"
-                                                               VerticalAlignment="Center"/>
-                                                    <TextBlock Grid.Row="0" Grid.Column="1"
-                                                               Classes="data"
-                                                               Margin="12,0,0,0"
-                                                               Text="{Binding ValueText}"
-                                                               VerticalAlignment="Center"/>
-                                                    <TextBlock Grid.Row="0" Grid.Column="2"
-                                                               Classes="data contribution"
-                                                               Classes.pos="{Binding IsForMatch}"
-                                                               Classes.neg="{Binding IsAgainstMatch}"
-                                                               TextAlignment="Right"
-                                                               Text="{Binding ContributionText}"
-                                                               VerticalAlignment="Center"/>
-                                                    <!-- The matcher's own words. This is the
-                                                         line that separates Prey from Prey. -->
-                                                    <TextBlock Grid.Row="1" Grid.ColumnSpan="3"
-                                                               Classes="body" FontSize="11"
-                                                               LineHeight="15"
-                                                               Margin="0,3,0,0"
-                                                               Foreground="{StaticResource TextDim}"
-                                                               TextWrapping="Wrap"
-                                                               Text="{Binding Detail}"/>
-                                                </Grid>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-
-                                    <TextBlock Classes="body" FontSize="12"
-                                               IsVisible="{Binding !HasSignals}"
-                                               TextWrapping="Wrap" LineHeight="17"
+                                <!-- Empty: a direction, not a mood (§7). -->
+                                <Border IsVisible="{Binding IsEmpty}" Padding="0,14,0,10">
+                                    <TextBlock Classes="body-l"
+                                               MaxWidth="440"
+                                               TextWrapping="Wrap"
+                                               TextAlignment="Center"
+                                               HorizontalAlignment="Center"
                                                Foreground="{StaticResource TextDim}"
-                                               Text="{Binding NoSignalsMessage}"/>
-                                </StackPanel>
+                                               Text="{Binding EmptyText}"/>
+                                </Border>
 
-                                <!-- ── The answer ─────────────────────────── -->
-                                <StackPanel Grid.Row="2"
-                                            Orientation="Horizontal"
-                                            Spacing="12"
-                                            HorizontalAlignment="Center"
-                                            Margin="0,18,0,0">
-                                    <Button Classes="answer same"
-                                            Content="Same game"
-                                            IsEnabled="{Binding !IsDecided}"
-                                            ToolTip.Tip="Same game (S)"
-                                            Command="{Binding $parent[UserControl].((vm:MergeQueueViewModel)DataContext).SameGameCommand}"
-                                            CommandParameter="{Binding}"/>
-                                    <Button Classes="answer different"
-                                            Content="Different games"
-                                            IsEnabled="{Binding !IsDecided}"
-                                            ToolTip.Tip="Different games (D) — permanent; this pair is never queued again"
-                                            Command="{Binding $parent[UserControl].((vm:MergeQueueViewModel)DataContext).DifferentGamesCommand}"
-                                            CommandParameter="{Binding}"/>
-                                </StackPanel>
+                                <ItemsControl ItemsSource="{Binding Cards}" IsVisible="{Binding HasCards}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Spacing="10"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="vm:MergeCardViewModel">
+                                            <Border Classes="card"
+                                                    Classes.selected="{Binding IsSelected}">
+                                                <StackPanel>
 
-                                </Grid>
+                                                    <!-- ── Resolved: the strip ───────────── -->
+                                                    <Grid IsVisible="{Binding IsResolved}"
+                                                          ColumnDefinitions="2,Auto,Auto,*,Auto"
+                                                          MinHeight="44"
+                                                          Margin="12,8,12,8">
+                                                        <Border Grid.Column="0" Background="{StaticResource Volt}"/>
+                                                        <TextBlock Grid.Column="1" Classes="headline"
+                                                                   Margin="12,0,0,0"
+                                                                   VerticalAlignment="Center"
+                                                                   Text="{Binding HeaderTitle}"/>
+                                                        <TextBlock Grid.Column="2" Classes="data"
+                                                                   Margin="12,0,0,0"
+                                                                   VerticalAlignment="Center"
+                                                                   Foreground="{StaticResource TextDim}"
+                                                                   Text="{Binding ResolvedMeta}"/>
+                                                        <Button Grid.Column="4" Classes="act quiet sm"
+                                                                VerticalAlignment="Center"
+                                                                Content="{Binding $parent[UserControl].((vm:MergeQueueViewModel)DataContext).SeparateButtonText}"
+                                                                ToolTip.Tip="{Binding $parent[UserControl].((vm:MergeQueueViewModel)DataContext).SeparateTooltip}"
+                                                                AutomationProperties.Name="{Binding SeparateAutomationName}"
+                                                                Command="{Binding $parent[UserControl].((vm:MergeQueueViewModel)DataContext).SeparateCommand}"
+                                                                CommandParameter="{Binding}"/>
+                                                    </Grid>
 
-                                <ContentControl Grid.Column="2"
-                                                Content="{Binding Right}"
-                                                ContentTemplate="{StaticResource MergeSideTemplate}"/>
+                                                    <!-- ── Pending: the question ─────────── -->
+                                                    <StackPanel IsVisible="{Binding IsPending}">
 
-                            </Grid>
+                                                        <Grid ColumnDefinitions="26,*,Auto" Margin="12">
+                                                            <CheckBox Grid.Column="0" Classes="pick"
+                                                                      VerticalAlignment="Top"
+                                                                      IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                                                      AutomationProperties.Name="{Binding SelectAutomationName}"/>
+
+                                                            <StackPanel Grid.Column="1" Spacing="2" Margin="12,0,12,0">
+                                                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                                                    <TextBlock Classes="headline"
+                                                                               VerticalAlignment="Center"
+                                                                               Text="{Binding HeaderTitle}"/>
+                                                                    <!-- Flare: unread and nothing else. -->
+                                                                    <Border Width="8" Height="8" CornerRadius="4"
+                                                                            VerticalAlignment="Center"
+                                                                            Background="{StaticResource Flare}"
+                                                                            BoxShadow="{DynamicResource PipGlow}"
+                                                                            IsVisible="{Binding HasUnread}"
+                                                                            ToolTip.Tip="{Binding UnreadTip}"/>
+                                                                    <Border Classes="badge"
+                                                                            Classes.likely="{Binding IsLikely}"
+                                                                            Classes.look="{Binding IsWorthALook}">
+                                                                        <TextBlock Text="{Binding ConfidenceLabel}"/>
+                                                                    </Border>
+                                                                </StackPanel>
+                                                                <TextBlock Classes="data"
+                                                                           Foreground="{StaticResource TextDim}"
+                                                                           TextTrimming="CharacterEllipsis"
+                                                                           Text="{Binding RollupText}"/>
+                                                            </StackPanel>
+
+                                                            <!-- Automation names identify the group,
+                                                                 never the verb alone (§8). -->
+                                                            <StackPanel Grid.Column="2" Orientation="Horizontal"
+                                                                        Spacing="8" Margin="0,2,0,0"
+                                                                        VerticalAlignment="Top">
+                                                                <Button Classes="act primary sm"
+                                                                        Content="{Binding $parent[UserControl].((vm:MergeQueueViewModel)DataContext).SameGameButtonText}"
+                                                                        ToolTip.Tip="{Binding $parent[UserControl].((vm:MergeQueueViewModel)DataContext).SameGameTooltip}"
+                                                                        AutomationProperties.Name="{Binding SameGameAutomationName}"
+                                                                        IsEnabled="{Binding CanAnswer}"
+                                                                        Command="{Binding $parent[UserControl].((vm:MergeQueueViewModel)DataContext).SameGameCommand}"
+                                                                        CommandParameter="{Binding}"/>
+                                                                <Button Classes="act quiet sm"
+                                                                        Content="{Binding $parent[UserControl].((vm:MergeQueueViewModel)DataContext).DifferentGamesButtonText}"
+                                                                        ToolTip.Tip="{Binding $parent[UserControl].((vm:MergeQueueViewModel)DataContext).DifferentGamesTooltip}"
+                                                                        AutomationProperties.Name="{Binding DifferentGamesAutomationName}"
+                                                                        IsEnabled="{Binding !IsDecided}"
+                                                                        Command="{Binding $parent[UserControl].((vm:MergeQueueViewModel)DataContext).DifferentGamesCommand}"
+                                                                        CommandParameter="{Binding}"/>
+                                                            </StackPanel>
+                                                        </Grid>
+
+                                                        <!-- ── Candidate rows ────────────── -->
+                                                        <ItemsControl ItemsSource="{Binding Rows}">
+                                                            <ItemsControl.ItemTemplate>
+                                                                <DataTemplate DataType="vm:MergeRowViewModel">
+                                                                    <Border Classes="row"
+                                                                            Classes.header="{Binding IsHeader}"
+                                                                            Classes.hover="{Binding IsHovered}"
+                                                                            Classes.promotable="{Binding CanPromote}"
+                                                                            Classes.out="{Binding !IsIncluded}"
+                                                                            Focusable="True"
+                                                                            PointerEntered="OnRowEntered"
+                                                                            PointerExited="OnRowExited"
+                                                                            PointerPressed="OnRowPressed"
+                                                                            GotFocus="OnRowFocus"
+                                                                            ToolTip.Tip="{Binding DetailsTip}"
+                                                                            AutomationProperties.Name="{Binding DetailsAutomationName}">
+                                                                        <Grid ColumnDefinitions="2,36,44,*,Auto,94,78,26,36">
+
+                                                                            <!-- The selection edge: Volt on the header only. -->
+                                                                            <Border Grid.Column="0"
+                                                                                    Background="{StaticResource Volt}"
+                                                                                    IsVisible="{Binding IsHeader}"/>
+
+                                                                            <!-- The header radio. Not drawn on an
+                                                                                 expansion card, where the base is the
+                                                                                 header by the shape of the relation. -->
+                                                                            <RadioButton Grid.Column="1" Classes="pick"
+                                                                                         HorizontalAlignment="Center"
+                                                                                         VerticalAlignment="Center"
+                                                                                         IsVisible="{Binding CanPromote}"
+                                                                                         GroupName="{Binding GroupName}"
+                                                                                         IsChecked="{Binding IsHeader, Mode=TwoWay}"
+                                                                                         ToolTip.Tip="{Binding PromoteTip}"
+                                                                                         AutomationProperties.Name="{Binding PromoteAutomationName}"/>
+
+                                                                            <!-- 34x51 cover, two layers under a gloss
+                                                                                 sweep, the vivid layer's opacity
+                                                                                 carrying the dormancy ramp as the
+                                                                                 grid's tiles do. -->
+                                                                            <Border Grid.Column="2" Classes="thumb"
+                                                                                    Width="34" Height="51"
+                                                                                    Margin="0,0,0,0"
+                                                                                    CornerRadius="3"
+                                                                                    ClipToBounds="True"
+                                                                                    VerticalAlignment="Center">
+                                                                                <Panel>
+                                                                                    <Border Background="{Binding Side.PlaceholderBrush}"
+                                                                                            IsVisible="{Binding Side.ShowPlaceholder}"/>
+                                                                                    <Image Source="{Binding Side.CoverFloor}" Stretch="UniformToFill"/>
+                                                                                    <Image Source="{Binding Side.Cover}" Stretch="UniformToFill"
+                                                                                           Opacity="{Binding DormancyAlpha}"/>
+                                                                                    <Border IsHitTestVisible="False">
+                                                                                        <Border.Background>
+                                                                                            <LinearGradientBrush StartPoint="0%,0%" EndPoint="70%,100%">
+                                                                                                <GradientStop Offset="0" Color="#29FFFFFF"/>
+                                                                                                <GradientStop Offset="0.42" Color="#00FFFFFF"/>
+                                                                                            </LinearGradientBrush>
+                                                                                        </Border.Background>
+                                                                                    </Border>
+                                                                                </Panel>
+                                                                            </Border>
+
+                                                                            <StackPanel Grid.Column="3" Orientation="Horizontal"
+                                                                                        Spacing="8" Margin="10,0,0,0"
+                                                                                        VerticalAlignment="Center">
+                                                                                <TextBlock Classes="rowtitle"
+                                                                                           VerticalAlignment="Center"
+                                                                                           Text="{Binding Title}"/>
+                                                                                <TextBlock Classes="mark"
+                                                                                           VerticalAlignment="Center"
+                                                                                           Text="{Binding HeaderMark}"/>
+                                                                            </StackPanel>
+
+                                                                            <ItemsControl Grid.Column="4"
+                                                                                          ItemsSource="{Binding StoreChips}"
+                                                                                          IsVisible="{Binding HasStores}"
+                                                                                          ToolTip.Tip="{Binding StoreNames}"
+                                                                                          Margin="10,0,0,0"
+                                                                                          VerticalAlignment="Center">
+                                                                                <ItemsControl.ItemsPanel>
+                                                                                    <ItemsPanelTemplate>
+                                                                                        <StackPanel Orientation="Horizontal" Spacing="4"/>
+                                                                                    </ItemsPanelTemplate>
+                                                                                </ItemsControl.ItemsPanel>
+                                                                                <ItemsControl.ItemTemplate>
+                                                                                    <DataTemplate>
+                                                                                        <Border Classes="store-chip">
+                                                                                            <TextBlock Text="{Binding}"/>
+                                                                                        </Border>
+                                                                                    </DataTemplate>
+                                                                                </ItemsControl.ItemTemplate>
+                                                                            </ItemsControl>
+
+                                                                            <TextBlock Grid.Column="5" Classes="data"
+                                                                                       TextAlignment="Right"
+                                                                                       VerticalAlignment="Center"
+                                                                                       Text="{Binding PlaytimeText}"/>
+                                                                            <TextBlock Grid.Column="6" Classes="data"
+                                                                                       TextAlignment="Right"
+                                                                                       VerticalAlignment="Center"
+                                                                                       Foreground="{StaticResource TextDim}"
+                                                                                       Text="{Binding IdleText}"/>
+                                                                            <Border Grid.Column="7"
+                                                                                    Width="8" Height="8" CornerRadius="4"
+                                                                                    HorizontalAlignment="Right"
+                                                                                    VerticalAlignment="Center"
+                                                                                    Background="{StaticResource Flare}"
+                                                                                    BoxShadow="{DynamicResource PipGlow}"
+                                                                                    IsVisible="{Binding HasUnread}"
+                                                                                    ToolTip.Tip="{Binding UnreadTip}"/>
+
+                                                                            <!-- Who joins: none, some or all. Not
+                                                                                 offered on the header, which is
+                                                                                 always in. -->
+                                                                            <CheckBox Grid.Column="8" Classes="pick"
+                                                                                      HorizontalAlignment="Center"
+                                                                                      VerticalAlignment="Center"
+                                                                                      IsVisible="{Binding CanExclude}"
+                                                                                      IsChecked="{Binding IsIncluded, Mode=TwoWay}"
+                                                                                      ToolTip.Tip="{Binding IncludeTip}"
+                                                                                      AutomationProperties.Name="{Binding IncludeAutomationName}"/>
+                                                                        </Grid>
+                                                                    </Border>
+                                                                </DataTemplate>
+                                                            </ItemsControl.ItemTemplate>
+                                                        </ItemsControl>
+
+                                                        <!-- ── Reason slot ───────────────── -->
+                                                        <Border Classes="reason">
+                                                            <TextBlock Classes="para"
+                                                                       Classes.bright="{Binding IsDetailFromRow}"
+                                                                       VerticalAlignment="Center"
+                                                                       Text="{Binding DetailText}"/>
+                                                        </Border>
+                                                    </StackPanel>
+
+                                                </StackPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+
+                            </StackPanel>
                         </Border>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
         </ScrollViewer>
-
-        <!-- ══ Empty — the normal, healthy state (§7) ═══════════════════════ -->
-        <Border Grid.Row="1" IsVisible="{Binding ShowEmpty}" Padding="32">
-            <TextBlock Classes="body-l"
-                       MaxWidth="460"
-                       TextWrapping="Wrap"
-                       TextAlignment="Center"
-                       LineHeight="22"
-                       Foreground="{StaticResource TextDim}"
-                       HorizontalAlignment="Center"
-                       VerticalAlignment="Center"
-                       Text="{Binding EmptyMessage}"/>
-        </Border>
 
     </Grid>
 

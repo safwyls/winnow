@@ -38,16 +38,11 @@ public sealed class SqlitePollCandidateSource : IPollCandidateSource
         //  - NEVER-OPENED games are excluded. design-system.md §5.2: "Never on
         //    never-opened games; an unplayed game has nothing to be behind on."
         //
-        //    The test is ZERO PLAYTIME — specifically zero minutes AND no
-        //    last-played date — and deliberately NOT membership of the
-        //    `never_played` bucket, which is a different and much larger set.
-        //    That bucket is everything under the refund line (§6.1), so it holds
-        //    games with up to two hours of genuine play on them. Those can
-        //    absolutely have missed a patch, they are the "bounced off it early"
-        //    pile this whole product exists to resurface, and the bucket query
-        //    tests staleness BEFORE the refund line precisely so they can carry
-        //    the badge. Keying this exclusion on the bucket would poll-exclude
-        //    the population the feature is for.
+        //    The test is ZERO PLAYTIME: zero minutes AND no last-played date.
+        //    This matches the `never_played` bucket exactly (§6.1, revised
+        //    2026-08-29). The condition is stated directly rather than read
+        //    from the bucket, because this query runs independently and must
+        //    not couple to the bucket query's implementation.
         //
         //    Zero minutes beside a real last-played date is not never-opened
         //    either: the game was demonstrably launched on a machine whose

@@ -6,6 +6,7 @@ using Winnow.Enrich.SteamWeb.Storage;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 
 namespace Winnow.Enrich.SteamWeb;
 
@@ -48,6 +49,58 @@ public static class ServiceCollectionExtensions
             ServiceDescriptor.Singleton<ISteamApiKeySource, DefaultConfigurationApiKeySource>());
         services.TryAddSingleton<ISteamApiKeyProvider, ChainedSteamApiKeyProvider>();
 
+        // DPAPI on Windows, and an implementation that REFUSES rather than
+        // degrades anywhere else. There is deliberately no plaintext fallback:
+        // section 4.7's second amendment makes "a host that cannot encrypt does
+        // not store" a binding condition, because the refresh token re-mints
+        // access to the Steam account for as long as it lives.
+        if (OperatingSystem.IsWindows())
+        {
+            services.TryAddSingleton<ISteamSecretProtector, DpapiSteamSecretProtector>();
+        }
+        else
+        {
+            services.TryAddSingleton<ISteamSecretProtector, UnavailableSteamSecretProtector>();
+        }
+
+        // ISettingsRepository is resolved with GetService rather than
+        // GetRequiredService even though this method registers one just above:
+        // a host that supplied its own registration order, or a test that
+        // registered neither, gets an in-memory session instead of a container
+        // that throws at startup. Neither is an error.
+        services.TryAddSingleton<ISteamSessionStore>(sp => new SettingsSteamSessionStore(
+            sp.GetService<ISettingsRepository>(),
+            sp.GetRequiredService<ISteamSecretProtector>(),
+            sp.GetService<ILogger<SettingsSteamSessionStore>>()));
+
+        // The provider takes the renewer as an optional trailing dependency, so
+        // a host that registers none gets exactly the pre-S6 behaviour: a
+        // session that is read, classified and never renewed. That is also what
+        // every test constructing a provider by hand gets.
+        services.TryAddSingleton<ISteamSessionRenewer, SteamSessionRenewer>();
+
+        services.TryAddSingleton<ISteamSessionProvider>(sp => new SteamSessionProvider(
+            sp.GetRequiredService<ISteamSessionStore>(),
+            sp.GetRequiredService<SteamWebOptions>(),
+            sp.GetRequiredService<TimeProvider>(),
+            sp.GetService<ILogger<SteamSessionProvider>>(),
+            sp.GetService<ISteamSessionRenewer>()));
+
+        // The registration S1 was built to receive. From here the selector sees
+        // sessions; until S3's sign-in writes one, every lookup finds nothing
+        // and the key path behaves exactly as it did before.
+        services.TryAddSingleton<ISteamSessionCredentialSource, SteamSessionCredentialSource>();
+
+        // A factory lambda rather than a constructor registration because the
+        // session source is optional and the container has no way to inject an
+        // optional dependency. Registering an ISteamSessionCredentialSource is
+        // then the whole of what a later stage has to do to give the provider a
+        // session to choose from.
+        services.TryAddSingleton<ISteamCredentialProvider>(sp => new SteamCredentialProvider(
+            sp.GetRequiredService<ISteamApiKeyProvider>(),
+            sp.GetRequiredService<TimeProvider>(),
+            sp.GetService<ISteamSessionCredentialSource>()));
+
         // AddLogger<T> resolves T from the container rather than activating it,
         // so the replacement logger has to be registered before the client is.
         services.TryAddSingleton<RedactingHttpClientLogger>();
@@ -62,6 +115,54 @@ public static class ServiceCollectionExtensions
                 // §4.3's rule applied here too: a descriptive User-Agent so Valve
                 // can attribute — and if necessary contact — this traffic.
                 client.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", options.UserAgent);
+            })
+            .RemoveAllLoggers()
+            .AddLogger<RedactingHttpClientLogger>()
+            .AddHttpMessageHandler<SteamWebResilienceHandler>()
+            .AddHttpMessageHandler<SteamWebRateLimitingHandler>();
+
+        // M5's two history endpoints, on an identical pipeline. A second typed
+        // client rather than more methods on the first, because they are a
+        // different job (a background backfill that runs a handful of times
+        // per install, not the per-sync ownership read), and a caller that
+        // only wants one should not be able to reach the other.
+        //
+        // The handlers are separate INSTANCES (both are transient) but the
+        // limiter they close over is the same singleton, so the two clients pace
+        // themselves against one another rather than each staying under a limit
+        // they are jointly over. That is the whole reason SteamWebRateLimiter is
+        // registered as a singleton above and not built inside the handler.
+        services.AddHttpClient<ISteamHistoryClient, SteamHistoryClient>(client =>
+            {
+                client.BaseAddress = options.BaseAddress;
+                client.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", options.UserAgent);
+            })
+            .RemoveAllLoggers()
+            .AddLogger<RedactingHttpClientLogger>()
+            .AddHttpMessageHandler<SteamWebResilienceHandler>()
+            .AddHttpMessageHandler<SteamWebRateLimitingHandler>();
+
+        // The renewal client. Its own named client, not one of the two typed
+        // ones, for three reasons that are all requirements rather than
+        // preferences: UseCookies=false (no cookie jar on this pipeline, so
+        // steamLoginSecure exists only as a local string inside one call);
+        // AllowAutoRedirect=false (a redirect would be a request to a host
+        // SteamSessionRenewer did not name, carrying a cookie it did not choose
+        // to send); and a different pair of hosts (login. and store.) with form
+        // POSTs rather than bodyless GETs.
+        //
+        // It still gets the same Polly retry and the same shared rate limiter,
+        // so a 429 on the renewal path is backed off by policy rather than by a
+        // Task.Delay at a call site, and Winnow's Steam traffic spends one
+        // budget rather than two.
+        services.AddHttpClient(SteamSessionRenewer.HttpClientName, client =>
+            {
+                client.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", options.UserAgent);
+            })
+            .ConfigurePrimaryHttpMessageHandler(static () => new HttpClientHandler
+            {
+                UseCookies = false,
+                AllowAutoRedirect = false,
             })
             .RemoveAllLoggers()
             .AddLogger<RedactingHttpClientLogger>()

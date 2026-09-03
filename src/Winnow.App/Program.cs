@@ -23,6 +23,7 @@ using Winnow.Recommend;
 using Winnow.Resolve;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -86,16 +87,41 @@ public static class Program
         // be able to find afterwards.
         using (var bootstrapLog = LoggerFactory.Create(b => b.AddSimpleConsole()))
         {
-            DataLocation = WinnowDataLocation.Resolve(
-                bootstrapLog.CreateLogger(typeof(WinnowDataLocation).FullName!));
+            try
+            {
+                // --data-dir, when present, overrides the data directory
+                // before anything else resolves. An unusable path is caught
+                // here and refused loudly: this is a WinExe, so without
+                // AttachConsoleIfNeeded the message goes nowhere, and falling
+                // back onto the real library silently is the failure the flag
+                // exists to prevent.
+                DataLocation = WinnowDataLocation.ResolveFrom(
+                    args, bootstrapLog.CreateLogger(typeof(WinnowDataLocation).FullName!));
+            }
+            catch (DataDirectoryOverrideException refused)
+            {
+                Services.ConsoleAuthPrompt.AttachConsoleIfNeeded();
+                Console.Error.WriteLine(refused.Message);
+                Environment.ExitCode = 2;
+                return;
+            }
         }
+
+        // Both flags mean "leave this database alone", so every writer has to
+        // honour them — otherwise rows appear fifteen minutes into UI work
+        // against a fixed or seeded library.
+        var writesSuppressed = args.Contains("--no-sync") || args.Contains("--seed-sample");
+
+        // Registered BEFORE ConfigureServices, not configured after it. The
+        // backfill's options are a plain singleton rather than an IOptions
+        // binding (the same shape SteamWebOptions uses), so the only way to
+        // override them is to win the TryAddSingleton race. A Configure<T>
+        // call would write into an options system nothing reads, silently
+        // leaving the flag off.
+        builder.Services.AddSingleton(new SteamPlaytimeBackfillOptions { Enabled = !writesSuppressed });
 
         ConfigureServices(builder.Services, DataLocation);
 
-        // Both flags mean "leave this database alone", so the scheduler has to
-        // honour them too — otherwise rows appear fifteen minutes into UI work
-        // against a fixed or seeded library.
-        var writesSuppressed = args.Contains("--no-sync") || args.Contains("--seed-sample");
         builder.Services.Configure<SnapshotSchedulerOptions>(o => o.Enabled = !writesSuppressed);
         builder.Services.Configure<RemoteOwnershipSchedulerOptions>(o => o.Enabled = !writesSuppressed);
         builder.Services.Configure<SessionWatcherOptions>(o => o.Enabled = !writesSuppressed);
@@ -195,6 +221,27 @@ public static class Program
                             ? await backfill.SyncAsync(scanned, Shutdown.Token)
                             : await backfill.SyncAsync(Shutdown.Token);
                         if (remote.Result?.CreatedReleases > 0 || remote.Result?.NamesPromoted > 0)
+                        {
+                            await RefreshLibraryAsync(services);
+                        }
+
+                        // M5. After the remote sync and not before it: the
+                        // backfill attaches historical points to ownerships it
+                        // never creates, so the pass that creates them has to
+                        // have run. Completed years are recorded in the settings
+                        // table and never refetched, so on every launch after
+                        // the first this costs one request for the current year
+                        // and one for the cumulative anchor, both cached for
+                        // six hours, so a relaunch costs none at all.
+                        var history = await services.GetRequiredService<ISteamPlaytimeBackfill>()
+                            .BackfillAsync(Shutdown.Token);
+
+                        // Four years of series appearing under a library the UI
+                        // has already loaded moves dormancy and every signal the
+                        // recommender derives from it. Without this the feed
+                        // reads the cold-start library until the next launch,
+                        // which is the exact state M5 exists to end.
+                        if (history.WroteAnything)
                         {
                             await RefreshLibraryAsync(services);
                         }
@@ -314,7 +361,7 @@ public static class Program
     /// is the LEGACY directory, which no amount of recomputing a constant would
     /// produce.
     /// </param>
-    private static void ConfigureServices(IServiceCollection services, DataLocation data)
+    internal static void ConfigureServices(IServiceCollection services, DataLocation data)
     {
         // Registered so the app can say where it is reading from, and what the
         // one-time move did, without asking the filesystem a second time.
@@ -332,16 +379,45 @@ public static class Program
         services.AddSingleton<IWorkRepository, WorkRepository>();
         services.AddSingleton<IReleaseRepository, ReleaseRepository>();
         services.AddSingleton<IOwnershipRepository, OwnershipRepository>();
+
+        // The per-account membership rows behind the account visibility filter
+        // (migration 0015). Written by the resolver in the same unit of work as
+        // the ownership they describe; read by the bucket query, which is the
+        // only place the filter is applied.
+        services.AddSingleton<IOwnershipAccountRepository, OwnershipAccountRepository>();
         services.AddSingleton<IPlayRecordRepository, PlayRecordRepository>();
         services.AddSingleton<IPlaytimeSnapshotRepository, PlaytimeSnapshotRepository>();
         services.AddSingleton<ISessionRepository, SessionRepository>();
         services.AddSingleton<IUpdateEventRepository, UpdateEventRepository>();
         services.AddSingleton<IGameListRepository, GameListRepository>();
         services.AddSingleton<IMergeCandidateRepository, MergeCandidateRepository>();
+
+        // Identity links (migration 0018). Read by the Same Game screen, by the
+        // library's display title and cover, and by the details modal's coverage
+        // section; the bucket query resolves them in SQL without this.
+        services.AddSingleton<IIdentityLinkRepository, IdentityLinkRepository>();
+
+        // Expansion refusals (migration 0020). Only the negative answer is
+        // stored; the affirmative one is an identity link at kind
+        // expansion_of, and the proposals themselves are derived on every scan
+        // rather than stored.
+        services.AddSingleton<IExpansionRefusalRepository, ExpansionRefusalRepository>();
+
+        // Per-release achievements (§6.2). The details modal renders one row per
+        // release and never a blended percentage, and this repository offers no
+        // way to produce one.
+        services.AddSingleton<IAchievementQueryRepository, AchievementQueryRepository>();
         services.AddSingleton<ILibraryQueryRepository, LibraryQueryRepository>();
+        services.AddSingleton<ILibraryHistoryStatsRepository, LibraryHistoryStatsRepository>();
         services.AddSingleton<IFacetRepository, FacetRepository>();
         services.AddSingleton<IResolveStateRepository, ResolveStateRepository>();
         services.AddSingleton<ISettingsRepository, SettingsRepository>();
+
+        // Storage for the account-page facts (migration 0014) and the read-only
+        // stats query over them. The stats repository computes and stores nothing,
+        // so the UI reading it can never see a stale aggregate.
+        services.AddSingleton<IAccountFactRepository, AccountFactRepository>();
+        services.AddSingleton<IAccountStatsRepository, AccountStatsRepository>();
 
         // M8's feedback loop (recommendation-engine.md §6b), over migration
         // 0011. It is registered beside the other repositories rather than with
@@ -447,6 +523,13 @@ public static class Program
         // user-supplied key; unconfigured is a clean no-op.
         services.AddSteamWebApi();
 
+        // M5. Historical playtime out of Steam Replay and ClientGetLastPlayedTimes:
+        // the cold-start fix, and the only source Winnow has for a longitudinal
+        // series on install day. Registered here because it needs both the Steam
+        // Web module above and the App layer's repositories; unconfigured is a
+        // clean no-op, exactly as the ownership backfill is.
+        services.AddSteamPlaytimeBackfill();
+
         // The same idea for Epic, and the same clean no-op when unconfigured.
         // catcache.bin already gives the owned library locally, so this is NOT
         // how Epic ownership is discovered — it is the only route to two facts
@@ -498,7 +581,73 @@ public static class Program
         // and its counts would be a different (empty) one.
         services.AddSingleton<IStoreTitleCounts>(
             sp => sp.GetRequiredService<LibraryViewModel>());
+
+        // The account-visibility preference the same panel carries. A seam of
+        // its own rather than more surface on IStoreConnections: that interface
+        // is about connecting to a store, and this is about what to do with what
+        // the connection already found.
+        services.AddSingleton<IAccountVisibility, AccountVisibilityService>();
         services.AddSingleton<StoresViewModel>();
+
+        // M5 item 3, and the §4.7 amendment. Two routes to the same two account
+        // pages and the same parser, and these are the two lines that wire them.
+        //
+        // The harvester is registered unconditionally: it reports itself
+        // unavailable at use time on a machine with no WebView2 runtime, and the
+        // import screen says so and offers the saved-file route, which reads the
+        // same pages. Registering it behind a platform check would make the
+        // screen's answer depend on how the host was composed rather than on
+        // what the machine can do.
+        //
+        // The profile root is the temp directory rather than the WebView2 folder
+        // beside the database: this session is in-private and in-memory by
+        // construction (amendment condition 1), and every run makes its own
+        // subdirectory and deletes it, so nothing accumulates.
+        services.AddSteamAccountPageHarvester();
+
+        // TASK-55 S3. The embedded Steam sign-in, and the App-layer service that
+        // writes what it mints into the DPAPI-protected session store. Two lines
+        // for the same reason the Epic sign-in is two: the browser project sees
+        // Core alone and the Steam Web module cannot see a browser, so the
+        // composition root is the only place that can join them.
+        //
+        // Registered unconditionally and for the same reason the harvester is:
+        // the session reports itself unavailable at use time, and the Stores
+        // screen (S5) has to be able to say "not on this machine" rather than
+        // silently not offering the option. The profile root is the temp
+        // directory, again because the session is in-private and every run makes
+        // and deletes its own subdirectory.
+        //
+        // SteamSignInService is the ONLY seam a view model may resolve: it is
+        // what keeps ISteamSessionProvider — and with it a live refresh token —
+        // out of a view model's constructor.
+        services.AddSteamWebViewSignIn();
+        services.AddSingleton<SteamSignInService>();
+
+        // TASK-55 S4. The shared account-confirmation writer, in case the
+        // backfill above was not composed: both the key path and the sign-in
+        // path write the owned-account rows through this one object, and a
+        // second writer of the same two rows is how the account filter starts
+        // hiding the wrong library. TryAdd, so whichever registration ran first
+        // wins and both paths get the same instance.
+        services.TryAddSingleton<ISteamAccountConfirmation, SteamAccountConfirmation>();
+
+        // The importer, the saved-file loader, and the interface binding the
+        // view model resolves. Fill-only and idempotent — it writes to existing
+        // ownerships and never creates one (§5.1).
+        services.AddSteamAccountPageImport();
+
+        // The OS file dialog, behind a seam for the same reason IUriDispatcher
+        // is one: the saved-file route has to be testable without a window.
+        services.AddSingleton<ISteamAccountPageFilePicker, TopLevelSteamAccountPageFilePicker>();
+        services.AddSingleton<SteamAccountImportViewModel>();
+
+        // The STATS screen. It reads IAccountStatsRepository (registered above)
+        // and nothing else — no importer, no harvester, no parser — which is
+        // §5.1's rule that the UI reads the database and raises commands. The
+        // screen refreshes on open rather than caching, so a singleton holds no
+        // stale figures; it is one only because the shell is.
+        services.AddSingleton<AccountStatsViewModel>();
 
         // Appearance. The service is a singleton because it owns the ONE live
         // resource dictionary; a second instance would be a second opinion
@@ -575,7 +724,7 @@ public static class Program
         //
         // FeedService is also where the pass gets off the UI thread: the reads
         // under the engine are synchronous SQLite, so awaiting it from the
-        // dispatcher would run all ~500ms of it there (§5.1 pitfall 3). Since
+        // dispatcher would run all ~60 ms of it there (§5.1 pitfall 3). Since
         // the feedback loop landed it is also the only WRITER on that path —
         // the surfacing log after every pass, and a verdict on every dismiss —
         // and both writes go through the same Task.Run for the same reason.

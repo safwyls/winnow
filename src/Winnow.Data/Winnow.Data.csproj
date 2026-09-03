@@ -17,6 +17,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The migration tests drive StandingMergeReplay directly and
+         DatabaseBackupTests.Rewind reads the embedded migration scripts
+         to derive a pre-0012 schema; both are internal to this assembly. -->
+    <InternalsVisibleTo Include="Winnow.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Winnow.Core\Winnow.Core.csproj" />
   </ItemGroup>
 

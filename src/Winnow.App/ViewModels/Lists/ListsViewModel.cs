@@ -35,6 +35,16 @@ public partial class ListsViewModel : ObservableObject
 
     public bool IsLiveListOpen => Open is { IsLive: true };
 
+    /// <summary>
+    /// Whether the library is the screen on show. Mirrors
+    /// <see cref="LibraryViewModel.IsCurrentScreen"/>: while the Feed or
+    /// another screen is up, the open list's row keeps its underlying
+    /// selection (<see cref="Open"/> is untouched) and drops the visible
+    /// mark. Written by the shell whenever IsLibraryVisible changes.
+    /// </summary>
+    [ObservableProperty]
+    public partial bool IsCurrentScreen { get; set; } = true;
+
     public bool HasLists => Lists.Count > 0;
 
     public bool HasLiveLists => LiveLists.Count > 0;
@@ -85,10 +95,7 @@ public partial class ListsViewModel : ObservableObject
 
         // Re-find the open list by id after reload (row objects were replaced).
         Open = openId is { } id ? All.FirstOrDefault(l => l.Id == id) : null;
-        foreach (var list in All)
-        {
-            list.IsSelected = ReferenceEquals(list, Open);
-        }
+        MarkSelection();
 
         RaiseSectionState();
     }
@@ -271,12 +278,23 @@ public partial class ListsViewModel : ObservableObject
     /// <summary>Rail selection. Exactly one row across both sections is ever marked.</summary>
     public void Select(GameListViewModel? list)
     {
+        Open = list;
+        MarkSelection();
+    }
+
+    partial void OnIsCurrentScreenChanged(bool value)
+    {
+        _ = value;
+        MarkSelection();
+    }
+
+    /// <summary>Applies the visible mark, gated on <see cref="IsCurrentScreen"/>; <see cref="Open"/> itself is untouched.</summary>
+    private void MarkSelection()
+    {
         foreach (var candidate in All)
         {
-            candidate.IsSelected = ReferenceEquals(candidate, list);
+            candidate.IsSelected = IsCurrentScreen && ReferenceEquals(candidate, Open);
         }
-
-        Open = list;
     }
 
     private static void Insert(ObservableCollection<GameListViewModel> into, GameListViewModel list)

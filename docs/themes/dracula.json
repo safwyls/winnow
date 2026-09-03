@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "id": "dracula",
+  "name": "Dracula",
+  "reason": "Dracula's violet dusk: quiet blue-black chrome, lavender selection, and pink reserved for unread updates.",
+  "seeds": {
+    "ground": "#282A36",
+    "surface": "#343746",
+    "text": "#F8F8F2",
+    "flare": "#FF79C6",
+    "volt": "#BD93F9",
+    "amber": "#FFB86C",
+    "azure": "#8BE9FD",
+    "danger": "#FF5555"
+  },
+  "structure": {
+    "elevation": 0.05,
+    "wellDepth": 0.5,
+    "edge": 1.46,
+    "dimValue": 0.76,
+    "dimChroma": 0.34,
+    "voltInkContrast": 8.0,
+    "faintValue": 0.58,
+    "faintChroma": 0.66
+  },
+  "translucency": {
+    "chromeInk": 0.48,
+    "groundInk": 0.44,
+    "dimLift": 1.14,
+    "faintLift": 1.2
+  },
+  "overrides": {
+    "Well": "#191A21",
+    "SurfaceHigh": "#44475A",
+    "Line": "#6272A4",
+    "TextDim": "#B9BAC8",
+    "VoltInk": "#100C16",
+    "VoltHover": "#CAA9FA",
+    "VoltPress": "#A77DEB",
+    "DangerHover": "#FF6E6E",
+    "DangerPress": "#D94646",
+    "DangerInk": "#FFF5F5",
+    "TranslucentSurface": "#171821",
+    "TranslucentTextDim": "#D0D0DA",
+    "TranslucentTextFaint": "#9A9DB2"
+  }
+}

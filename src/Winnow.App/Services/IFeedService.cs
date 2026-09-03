@@ -100,9 +100,13 @@ public sealed record FeedVerdictOutcome(bool Saved, DateTime? ExpiresAt)
 }
 
 /// <summary>
-/// App-layer seam for the Feed screen (§5.1). Scoring is expensive (~500 ms) and
-/// runs off the UI thread. Never throws; failures come back as
-/// <see cref="FeedSnapshot"/> with <see cref="FeedSnapshot.Failed"/> set.
+/// App-layer seam for the Feed screen (§5.1). Scoring runs off the UI thread:
+/// measured warm on the real library (990 candidates, 966 works, measured
+/// 2026-09-01) the shelf pass is ~60 ms, dominated by bulk reads rather than
+/// per-row probes, but the reads under it are synchronous SQLite that never
+/// yield, so on the dispatcher the whole pass would block. Never throws;
+/// failures come back as <see cref="FeedSnapshot"/> with
+/// <see cref="FeedSnapshot.Failed"/> set.
 /// </summary>
 public interface IFeedService
 {

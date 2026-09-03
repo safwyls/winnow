@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "id": "silkcircuit",
+  "name": "SilkCircuit",
+  "reason": "SilkCircuit's neon glass: near-black violet chrome, electric-cyan selection, and blazing pink reserved for unread updates.",
+  "seeds": {
+    "ground": "#0A0A0F",
+    "surface": "#12101A",
+    "text": "#E0E0E0",
+    "flare": "#FF6AC1",
+    "volt": "#80FFEA",
+    "amber": "#F1FA8C",
+    "azure": "#E135FF",
+    "danger": "#FF6363"
+  },
+  "structure": {
+    "elevation": 0.07,
+    "wellDepth": 0.5,
+    "edge": 1.75,
+    "dimValue": 0.74,
+    "dimChroma": 0.5,
+    "voltInkContrast": 10.0,
+    "faintValue": 0.56,
+    "faintChroma": 0.8
+  },
+  "translucency": {
+    "chromeInk": 0.42,
+    "groundInk": 0.38,
+    "dimLift": 1.18,
+    "faintLift": 1.25
+  },
+  "overrides": {
+    "Well": "#030306",
+    "SurfaceHigh": "#251D32",
+    "Line": "#44345B",
+    "TextDim": "#B9ADC9",
+    "TextFaint": "#7F7194",
+    "VoltInk": "#061713",
+    "VoltHover": "#A0FFF0",
+    "VoltPress": "#62DDC9",
+    "DangerHover": "#FF8181",
+    "DangerPress": "#D94D4D",
+    "DangerInk": "#FFF3F3",
+    "TranslucentSurface": "#07060B",
+    "TranslucentTextDim": "#D2C5E2",
+    "TranslucentTextFaint": "#9E8CB8"
+  }
+}

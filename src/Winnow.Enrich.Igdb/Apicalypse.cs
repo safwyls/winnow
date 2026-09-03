@@ -100,7 +100,7 @@ public static class Apicalypse
     /// </summary>
     public static string Games(IEnumerable<long> igdbIds, int limit, int offset)
         => $"""
-            fields name,summary,first_release_date,cover.image_id,cover.url,genres.name,themes.name,game_modes.name,player_perspectives.name,involved_companies.publisher,involved_companies.company.name;
+            fields name,summary,first_release_date,cover.image_id,cover.url,genres.name,themes.name,game_modes.name,player_perspectives.name,involved_companies.publisher,involved_companies.company.name,game_type.type,parent_game,version_parent,version_title;
             where id = {NumberList(igdbIds)};
             limit {Clamp(limit).ToString(CultureInfo.InvariantCulture)};
             offset {offset.ToString(CultureInfo.InvariantCulture)};

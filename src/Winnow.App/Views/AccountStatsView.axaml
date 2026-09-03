@@ -1,0 +1,341 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Winnow.App.ViewModels"
+             x:Class="Winnow.App.Views.AccountStatsView"
+             x:DataType="vm:AccountStatsViewModel">
+
+    <!-- The STATS screen: what the captured Steam account pages add up to.
+
+         No new visual language. It is the Stores / Purchases card idiom with one
+         table shape inside it — label left, count in a fixed column, money in a
+         fixed column — so the digits line up down the whole screen and not just
+         within a card. Every number is Plex Mono with tnum (§3). There is no
+         chart: §5 spends this app's one chart budget on the cover wall, and a
+         bar of yearly spend beside it would be a second encoding competing with
+         the art (§11.4 makes the same call about the year histogram).
+
+         NO FLARE ANYWHERE. Flare marks unread updates and the bucket counting
+         them, and nothing on this screen is one. Volt carries the headline
+         figure; TextDim carries every caveat.
+
+         Every money column can be EMPTY, and that is a feature: the view model
+         withholds amounts when the capture mixes currencies, because a blended
+         sum of two currencies is a made-up number. The rows still render their
+         counts. -->
+
+    <UserControl.Styles>
+
+        <!-- ══ Card ═════════════════════════════════════════════════════════
+             Same card as the Stores and Purchases screens. Constant border
+             thickness so a note appearing inside one does not reflow it. -->
+        <Style Selector="Border.card">
+            <Setter Property="Background" Value="{StaticResource Surface}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusTile}"/>
+            <Setter Property="Padding" Value="20"/>
+        </Style>
+
+        <!-- ══ Inset note ═══════════════════════════════════════════════════
+             A note the card is making about itself. Well is the app's inset
+             tone (§9). -->
+        <Style Selector="Border.note">
+            <Setter Property="Background" Value="{StaticResource Well}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
+            <Setter Property="Padding" Value="14,12"/>
+        </Style>
+        <!-- The mixed-currency notice: a condition the reader has to know
+             about before reading a single figure, so it takes the attention
+             edge the other screens give a lapsed session. Amber on the edge
+             only; the text stays legible ink. -->
+        <Style Selector="Border.note.attention">
+            <Setter Property="BorderBrush" Value="{StaticResource Amber}"/>
+        </Style>
+
+        <!-- ══ The table ════════════════════════════════════════════════════
+             Two right-aligned numeric columns at fixed widths. Fixed rather
+             than Auto because the point is that COUNT sits under COUNT and
+             MONEY under MONEY across every card on the screen, not merely
+             within one. -->
+        <Style Selector="TextBlock.count">
+            <Setter Property="FontFamily" Value="{StaticResource DataFont}"/>
+            <Setter Property="FontSize" Value="{StaticResource DataSize}"/>
+            <Setter Property="FontFeatures" Value="tnum"/>
+            <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
+            <Setter Property="TextAlignment" Value="Right"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="TextBlock.amount">
+            <Setter Property="FontFamily" Value="{StaticResource DataFont}"/>
+            <Setter Property="FontSize" Value="{StaticResource DataSize}"/>
+            <Setter Property="FontFeatures" Value="tnum"/>
+            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+            <Setter Property="TextAlignment" Value="Right"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
+        <!-- Column heads over the two numeric columns, so a bare count is not
+             mistaken for money on a screen that is mostly money. -->
+        <Style Selector="TextBlock.colhead">
+            <Setter Property="TextAlignment" Value="Right"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
+    </UserControl.Styles>
+
+    <UserControl.Resources>
+
+        <!-- One row template for every table on the screen. An empty string in
+             either numeric column renders as nothing rather than as a zero:
+             "no figure" and "zero" are different claims. -->
+        <DataTemplate x:Key="StatRow" x:DataType="vm:AccountStatRow">
+            <Grid ColumnDefinitions="*,16,96,16,132" Margin="0,3">
+                <TextBlock Grid.Column="0"
+                           Classes="para"
+                           VerticalAlignment="Center"
+                           TextWrapping="Wrap"
+                           Text="{Binding Label}"/>
+                <TextBlock Grid.Column="2"
+                           Classes="count"
+                           Text="{Binding CountText}"/>
+                <TextBlock Grid.Column="4"
+                           Classes="amount"
+                           Text="{Binding AmountText}"/>
+            </Grid>
+        </DataTemplate>
+
+    </UserControl.Resources>
+
+    <Grid RowDefinitions="Auto,*" Background="{StaticResource PaneGround}">
+
+        <!-- ══ Header ═══════════════════════════════════════════════════════ -->
+        <Border Grid.Row="0"
+                Padding="24,20,24,18"
+                BorderBrush="{StaticResource Line}"
+                BorderThickness="0,0,0,1">
+            <StackPanel Spacing="7">
+                <TextBlock Classes="display-l" Text="{Binding Title}"/>
+                <TextBlock Classes="body"
+                           MaxWidth="700"
+                           HorizontalAlignment="Left"
+                           TextWrapping="Wrap"
+                           LineHeight="19"
+                           Foreground="{StaticResource TextDim}"
+                           Text="{Binding IntroMessage}"/>
+            </StackPanel>
+        </Border>
+
+        <ScrollViewer Grid.Row="1"
+                      HorizontalScrollBarVisibility="Disabled"
+                      VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="24,20,24,28"
+                        MaxWidth="720"
+                        HorizontalAlignment="Left"
+                        Spacing="16">
+
+                <!-- ══ EMPTY ════════════════════════════════════════════════
+                     A direction, not a mood (§7): it names the screen that
+                     produces these facts. Never an empty table of zeroes. -->
+                <Border Classes="card" IsVisible="{Binding !HasFacts}">
+                    <TextBlock Classes="para lead" Text="{Binding EmptyMessage}"/>
+                </Border>
+
+                <!-- Everything below exists only once there is something to
+                     count. One flag, so a partial capture still draws the whole
+                     screen and each card states its own gaps. -->
+                <StackPanel Spacing="16" IsVisible="{Binding HasFacts}">
+
+                    <!-- ══ MIXED CURRENCY ═══════════════════════════════════
+                         Read before any figure, so it is first. While this is
+                         up every amount below is blank by construction — the
+                         view model refuses to format one — and the counts carry
+                         the screen. -->
+                    <Border Classes="note attention" IsVisible="{Binding IsMixedCurrency}">
+                        <StackPanel Spacing="8">
+                            <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
+                                       Foreground="{StaticResource Amber}"
+                                       Text="{Binding MixedCurrencyHeading}"/>
+                            <TextBlock Classes="para lead" Text="{Binding MixedCurrencyMessage}"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- ══ SPEND ════════════════════════════════════════════ -->
+                    <Border Classes="card">
+                        <StackPanel Spacing="14">
+                            <TextBlock Classes="display-l" FontSize="18" Text="{Binding SpendHeading}"/>
+                            <TextBlock Classes="para" Text="{Binding SpendNote}"/>
+
+                            <Grid ColumnDefinitions="*,16,96,16,132">
+                                <TextBlock Grid.Column="2" Classes="label colhead"
+                                           FontSize="10" LetterSpacing="1" Text="TRANSACTIONS"/>
+                                <TextBlock Grid.Column="4" Classes="label colhead"
+                                           FontSize="10" LetterSpacing="1" Text="TOTAL"/>
+                            </Grid>
+
+                            <ItemsControl ItemsSource="{Binding SpendRows}"
+                                          ItemTemplate="{StaticResource StatRow}"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- ══ SPEND BY YEAR ════════════════════════════════════
+                         The undated slice is the last row of the same table
+                         rather than a footnote: it is spend, it is simply not
+                         spend in a year Winnow can name. -->
+                    <Border Classes="card">
+                        <StackPanel Spacing="14">
+                            <TextBlock Classes="display-l" FontSize="18" Text="{Binding YearHeading}"/>
+                            <TextBlock Classes="para" Text="{Binding YearNote}"/>
+                            <ItemsControl ItemsSource="{Binding YearRows}"
+                                          ItemTemplate="{StaticResource StatRow}"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- ══ WHERE THE MONEY WENT ═════════════════════════════ -->
+                    <Border Classes="card">
+                        <StackPanel Spacing="14">
+                            <TextBlock Classes="display-l" FontSize="18" Text="{Binding KindHeading}"/>
+                            <ItemsControl ItemsSource="{Binding KindRows}"
+                                          ItemTemplate="{StaticResource StatRow}"/>
+                            <Border Classes="note">
+                                <TextBlock Classes="para" Text="{Binding GiftsNote}"/>
+                            </Border>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- ══ REFUNDS ══════════════════════════════════════════
+                         Two rows that must not be added, so the note saying so
+                         sits under them rather than in a tooltip. -->
+                    <Border Classes="card">
+                        <StackPanel Spacing="14">
+                            <TextBlock Classes="display-l" FontSize="18" Text="{Binding RefundHeading}"/>
+                            <ItemsControl ItemsSource="{Binding RefundRows}"
+                                          ItemTemplate="{StaticResource StatRow}"/>
+                            <TextBlock Classes="para" Text="{Binding RefundNote}"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- ══ BUNDLES ══════════════════════════════════════════ -->
+                    <Border Classes="card">
+                        <StackPanel Spacing="14">
+                            <TextBlock Classes="display-l" FontSize="18" Text="{Binding BundleHeading}"/>
+                            <ItemsControl ItemsSource="{Binding BundleRows}"
+                                          ItemTemplate="{StaticResource StatRow}"/>
+                            <TextBlock Classes="para" Text="{Binding BundleNote}"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- ══ DISCOUNTS ════════════════════════════════════════
+                         The caveat is the card. It goes in an inset note rather
+                         than a trailing paragraph because a reader who takes
+                         the list-price row for "total saved" has read the
+                         screen backwards. -->
+                    <Border Classes="card">
+                        <StackPanel Spacing="14">
+                            <TextBlock Classes="display-l" FontSize="18" Text="{Binding DiscountHeading}"/>
+                            <ItemsControl ItemsSource="{Binding DiscountRows}"
+                                          ItemTemplate="{StaticResource StatRow}"/>
+                            <Border Classes="note">
+                                <TextBlock Classes="para" Text="{Binding DiscountNote}"/>
+                            </Border>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- ══ BIGGEST SINGLE TRANSACTION ═══════════════════════
+                         Not a table: one fact, its date, and what it covered.
+                         Volt on the figure — it is the one headline on the
+                         screen, and Volt is what this app lights a chosen thing
+                         with. -->
+                    <Border Classes="card" IsVisible="{Binding ShowBiggest}">
+                        <StackPanel Spacing="14">
+                            <TextBlock Classes="display-l" FontSize="18" Text="{Binding BiggestHeading}"/>
+
+                            <StackPanel Orientation="Horizontal" Spacing="14">
+                                <TextBlock Classes="data"
+                                           FontSize="22"
+                                           Foreground="{StaticResource Volt}"
+                                           IsVisible="{Binding ShowBiggestAmount}"
+                                           Text="{Binding BiggestAmountText}"
+                                           VerticalAlignment="Center"/>
+                                <TextBlock Classes="data"
+                                           Foreground="{StaticResource TextDim}"
+                                           Text="{Binding BiggestWhenText}"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+
+                            <TextBlock Classes="body"
+                                       TextWrapping="Wrap"
+                                       Text="{Binding BiggestItemsText}"/>
+
+                            <TextBlock Classes="para" Text="{Binding BiggestNote}"/>
+
+                            <Border Classes="note" IsVisible="{Binding ShowBiggestIsBundle}">
+                                <TextBlock Classes="para" Text="{Binding BiggestIsBundleNote}"/>
+                            </Border>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- ══ WALLET ═══════════════════════════════════════════
+                         Its own card, deliberately below the spend cards and
+                         never inside one. Wallet credit is money that reached
+                         Steam by a different door; adding it to spend would
+                         count the same money twice. -->
+                    <Border Classes="card">
+                        <StackPanel Spacing="14">
+                            <TextBlock Classes="display-l" FontSize="18" Text="{Binding WalletHeading}"/>
+                            <ItemsControl ItemsSource="{Binding WalletRows}"
+                                          ItemTemplate="{StaticResource StatRow}"/>
+                            <Border Classes="note">
+                                <TextBlock Classes="para" Text="{Binding WalletNote}"/>
+                            </Border>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- ══ LICENCES ═════════════════════════════════════════
+                         Counts only. There is no money column here at all,
+                         because a licence row carries no price. -->
+                    <Border Classes="card">
+                        <StackPanel Spacing="14">
+                            <TextBlock Classes="display-l" FontSize="18" Text="{Binding LicenceHeading}"/>
+                            <TextBlock Classes="para" Text="{Binding LicenceNote}"/>
+                            <ItemsControl ItemsSource="{Binding LicenceRows}"
+                                          ItemTemplate="{StaticResource StatRow}"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- ══ CURRENCIES ═══════════════════════════════════════ -->
+                    <Border Classes="card" IsVisible="{Binding ShowCurrencies}">
+                        <StackPanel Spacing="14">
+                            <TextBlock Classes="display-l" FontSize="18" Text="{Binding CurrencyHeading}"/>
+                            <TextBlock Classes="para" Text="{Binding CurrencyNote}"/>
+                            <ItemsControl ItemsSource="{Binding CurrencyRows}"
+                                          ItemTemplate="{StaticResource StatRow}"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- ══ WHAT THIS WAS READ FROM ══════════════════════════
+                         Last, because it is the frame rather than a figure —
+                         but on the same screen, because a number without its
+                         span is a claim about an account rather than about a
+                         capture. -->
+                    <Border Classes="card">
+                        <StackPanel Spacing="14">
+                            <TextBlock Classes="display-l" FontSize="18" Text="{Binding CaptureHeading}"/>
+                            <TextBlock Classes="para" Text="{Binding CaptureNote}"/>
+                            <ItemsControl ItemsSource="{Binding CaptureRows}"
+                                          ItemTemplate="{StaticResource StatRow}"/>
+                            <Border Classes="note">
+                                <TextBlock Classes="para" Text="{Binding ThirdPartyKeysNote}"/>
+                            </Border>
+                        </StackPanel>
+                    </Border>
+
+                </StackPanel>
+
+            </StackPanel>
+        </ScrollViewer>
+
+    </Grid>
+
+</UserControl>

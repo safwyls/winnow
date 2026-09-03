@@ -125,17 +125,44 @@ public sealed class SteamWebTestHost : IDisposable
     /// <summary>Endpoint key as <see cref="RecordedSteamWebRequest.Endpoint"/> reports it.</summary>
     public const string GetOwnedGames = "IPlayerService/GetOwnedGames";
 
+    /// <summary>M5's per-month longitudinal source.</summary>
+    public const string GetUserYearInReview = "ISaleFeatureService/GetUserYearInReview";
+
+    /// <summary>M5's cumulative anchor and first-played source.</summary>
+    public const string ClientGetLastPlayedTimes = "IPlayerService/ClientGetLastPlayedTimes";
+
     private readonly ServiceProvider _services;
 
+    /// <param name="renewalResponder">
+    /// Canned answers for S6's renewal exchange. The default refuses every
+    /// request with a 503, which is offline-safe and classified as transient, so
+    /// a test that renews by accident degrades rather than reaching the network
+    /// — and <see cref="RenewalHandler"/> records the attempt either way, which is
+    /// what lets a test assert that NO renewal happened.
+    /// </param>
+    /// <param name="renewer">
+    /// Replaces the real <see cref="SteamSessionRenewer"/> outright, for tests
+    /// about what the provider does with an outcome rather than about how the
+    /// outcome is obtained. Registered before <c>AddSteamWebApi</c>, so its
+    /// <c>TryAdd</c> defers.
+    /// </param>
     public SteamWebTestHost(
         Func<RecordedSteamWebRequest, int, HttpResponseMessage> responder,
         string? apiKey = "test-api-key",
         Action<SteamWebOptions>? configure = null,
         ISteamWebMetadataCache? cache = null,
         ISettingsRepository? settings = null,
-        DateTimeOffset? now = null)
+        DateTimeOffset? now = null,
+        Func<RecordedRenewalRequest, int, HttpResponseMessage>? renewalResponder = null,
+        ISteamSessionRenewer? renewer = null)
     {
         Handler = new FakeSteamWebHandler(responder);
+        RenewalHandler = new FakeSteamRenewalHandler(
+            renewalResponder
+            ?? ((_, _) => new HttpResponseMessage(HttpStatusCode.ServiceUnavailable)
+            {
+                Content = new StringContent("{}", Encoding.UTF8, "application/json"),
+            }));
         Clock = new SteamWebTestClock(now ?? new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero));
         Cache = cache ?? new InMemorySteamWebMetadataCache();
         Settings = settings ?? new InMemorySettingsRepository();
@@ -161,6 +188,11 @@ public sealed class SteamWebTestHost : IDisposable
         services.AddSingleton(Cache);
         services.AddSingleton(Settings);
 
+        if (renewer is not null)
+        {
+            services.AddSingleton(renewer);
+        }
+
         services.AddSteamWebApi(options =>
         {
             // Keep the backoff schedule and the rate limiter out of the way; the
@@ -174,10 +206,26 @@ public sealed class SteamWebTestHost : IDisposable
         services.AddHttpClient<ISteamWebApiClient, SteamWebApiClient>()
             .ConfigurePrimaryHttpMessageHandler(() => Handler);
 
+        // The same substitution for the history client. One handler instance for
+        // both, so a test can assert on the combined request sequence — which is
+        // the point: the two clients share a rate limiter and are meant to be
+        // countable as one stream of traffic to one host.
+        services.AddHttpClient<ISteamHistoryClient, SteamHistoryClient>()
+            .ConfigurePrimaryHttpMessageHandler(() => Handler);
+
+        // S6's renewal client, on its own fake transport: it talks to two
+        // different hosts and must be countable separately from the API traffic.
+        // Registered last, so this primary handler replaces the real one.
+        services.AddHttpClient(SteamSessionRenewer.HttpClientName)
+            .ConfigurePrimaryHttpMessageHandler(() => RenewalHandler);
+
         _services = services.BuildServiceProvider();
     }
 
     public FakeSteamWebHandler Handler { get; }
+
+    /// <summary>Every request S6's renewal exchange made, canned.</summary>
+    public FakeSteamRenewalHandler RenewalHandler { get; }
 
     public SteamWebTestClock Clock { get; }
 
@@ -188,6 +236,9 @@ public sealed class SteamWebTestHost : IDisposable
     public CapturingLoggerProvider Logs { get; }
 
     public ISteamWebApiClient Client => _services.GetRequiredService<ISteamWebApiClient>();
+
+    /// <summary>M5's history client, on the same fake transport and the same limiter.</summary>
+    public ISteamHistoryClient History => _services.GetRequiredService<ISteamHistoryClient>();
 
     public T Resolve<T>()
         where T : notnull

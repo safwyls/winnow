@@ -55,4 +55,10 @@ public sealed record ShelfFeed
 
     /// <summary>Ownerships that survived the hard exclusions, same meaning as <see cref="RecommendationFeed.CandidateCount"/>.</summary>
     public required int CandidateCount { get; init; }
+
+    /// <inheritdoc cref="RecommendationFeed.WorkCount"/>
+    public int WorkCount { get; init; }
+
+    /// <inheritdoc cref="RecommendationFeed.HistoryProbeCount"/>
+    public int HistoryProbeCount { get; init; }
 }

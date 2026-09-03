@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Globalization;
+using Winnow.Core.Identity;
 using Winnow.Core.Matching;
 using Winnow.Core.Queries;
 using Winnow.Core.Repositories;
@@ -89,14 +90,21 @@ public sealed class LibrarySoftMatchSweep
     private readonly TimeProvider _clock;
     private readonly ILogger<LibrarySoftMatchSweep> _logger;
 
+    // Optional so a host that has not migrated to identity links still sweeps;
+    // absent, every work resolves to itself, which is the pre-link behaviour
+    // exactly.
+    private readonly IIdentityLinkRepository? _links;
+
     public LibrarySoftMatchSweep(
         IReleaseRepository releases,
         SoftMatchResolver resolver,
         IResolveStateRepository state,
         SoftMatchSweepOptions? options = null,
         TimeProvider? clock = null,
-        ILogger<LibrarySoftMatchSweep>? logger = null)
+        ILogger<LibrarySoftMatchSweep>? logger = null,
+        IIdentityLinkRepository? links = null)
     {
+        _links = links;
         _releases = releases;
         _resolver = resolver;
         _state = state;
@@ -126,7 +134,16 @@ public sealed class LibrarySoftMatchSweep
             return SoftMatchSweepReport.Empty with { Elapsed = stopwatch.Elapsed };
         }
 
-        var entries = Admit(identities, out var excluded);
+        // One resolution for the whole pass. Every work id below is the
+        // RESOLVED work, so two releases the user has linked look like one
+        // work to blocking, to CouldPropose and to the retire path: a linked
+        // pair is never proposed again, and any pending row still naming it is
+        // withdrawn by machinery that already existed.
+        var resolution = _links is null
+            ? SameGameResolution.Empty
+            : (await _links.GetResolutionAsync(ct)).SameGame;
+
+        var entries = Admit(identities, resolution, out var excluded);
         var index = BuildIndex(entries);
         var admission = BuildAdmission(entries, index);
 
@@ -170,10 +187,16 @@ public sealed class LibrarySoftMatchSweep
 
     /// <summary>
     /// Turns rows into normalised subjects, dropping the ones there is no point
-    /// matching.
+    /// matching. Each admitted entry's work id is resolved through
+    /// <paramref name="resolution"/>, so two releases the user has linked
+    /// look like one work to blocking and to the retire path.
     /// </summary>
+    /// <param name="resolution">Live same-game links; <see cref="SameGameResolution.Empty"/> when absent.</param>
     /// <param name="excluded">How many rows were dropped, for any reason.</param>
-    private static List<Entry> Admit(IReadOnlyList<ReleaseIdentity> identities, out int excluded)
+    private static List<Entry> Admit(
+        IReadOnlyList<ReleaseIdentity> identities,
+        SameGameResolution resolution,
+        out int excluded)
     {
         var entries = new List<Entry>(identities.Count);
         excluded = 0;
@@ -216,7 +239,7 @@ public sealed class LibrarySoftMatchSweep
                     CoverPerceptualHash = null,
                 },
                 normalized,
-                identity.WorkId));
+                resolution.Resolve(identity.WorkId)));
         }
 
         return entries;

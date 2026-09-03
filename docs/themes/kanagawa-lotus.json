@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "id": "kanagawa-lotus",
+  "name": "Kanagawa Lotus",
+  "reason": "Kanagawa on sunlit parchment: lotus-paper chrome, pale-blue selection, and deep violet reserved for unread updates.",
+  "seeds": {
+    "ground": "#E5DDB0",
+    "surface": "#F2ECBC",
+    "text": "#43436C",
+    "flare": "#624C83",
+    "volt": "#B5CBD2",
+    "amber": "#836F4A",
+    "azure": "#4E8CA2",
+    "danger": "#C84053"
+  },
+  "structure": {
+    "elevation": 0.05,
+    "wellDepth": 0.94,
+    "edge": 1.25,
+    "dimValue": 0.44,
+    "dimChroma": 0.65,
+    "voltInkContrast": 8.0,
+    "faintValue": 0.57,
+    "faintChroma": 0.55
+  },
+  "translucency": {
+    "chromeInk": 1.0,
+    "groundInk": 1.0,
+    "dimLift": 1.0,
+    "faintLift": 1.0
+  },
+  "defaults": {
+    "transparency": 0
+  },
+  "overrides": {
+    "Well": "#D5CEA3",
+    "SurfaceRaised": "#E7DBA0",
+    "SurfaceHigh": "#E4D794",
+    "Line": "#C9CBD1",
+    "TextDim": "#545464",
+    "TextFaint": "#8A8980",
+    "VoltInk": "#29363A",
+    "VoltHover": "#C7D7E0",
+    "VoltPress": "#9FB5C9",
+    "DangerHover": "#D75A6B",
+    "DangerPress": "#A82E40",
+    "DangerInk": "#FFF7F2",
+    "TranslucentSurface": "#FFFDF0",
+    "TranslucentChromeGround": "#FFFDF0",
+    "TranslucentTextDim": "#545464",
+    "TranslucentTextFaint": "#77776E"
+  }
+}

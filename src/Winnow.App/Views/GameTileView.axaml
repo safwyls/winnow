@@ -1,4 +1,4 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+﻿<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Winnow.App.ViewModels"
              x:Class="Winnow.App.Views.GameTileView"
@@ -56,6 +56,26 @@
         </Style>
         <Style Selector="Border#Lift:pointerover TextBlock.art-title">
             <Setter Property="Opacity" Value="0"/>
+        </Style>
+
+        <!-- The resting store mark steps aside for the hover overlay, which
+             carries the same fact in words. Same 140ms as the baked title,
+             and taken away entirely under reduced motion below. -->
+        <Style Selector="ItemsControl#RestingChips">
+            <Setter Property="Opacity" Value="1"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.14" Easing="CubicEaseOut"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Border#Lift:pointerover ItemsControl#RestingChips">
+            <Setter Property="Opacity" Value="0"/>
+        </Style>
+        <Style Selector="Border#Lift.snap ItemsControl#RestingChips">
+            <Setter Property="Transitions">
+                <Transitions/>
+            </Setter>
         </Style>
 
         <!-- The dormancy cross-fade's 140ms restore (§5.1). It lives in a style
@@ -224,6 +244,7 @@
 
     <Border Name="Lift" CornerRadius="{StaticResource RadiusTile}" ClipToBounds="False"
             Background="Transparent"
+            AutomationProperties.Name="{Binding AutomationName}"
             Classes.snap="{Binding SnapDormancy}"
             Classes.flipped="{Binding IsFlipped}">
         <Panel>
@@ -298,6 +319,42 @@
                         </Border.Background>
                     </Border>
 
+                    <!-- The resting store mark, and the only thing on the front
+                         of a tile that TASK-70.6 adds. Drawn only when the game
+                         is owned on more than one store, so a library with
+                         nothing linked gains no pixels at all; one letter per
+                         store, because the density slider goes down to 108px
+                         and a row of word-chips does not fit there. It fades
+                         out as the hover scrim rises, exactly as the
+                         placeholder title does, so the same corner never
+                         carries two versions of one fact.
+
+                         The words are in the tooltip, in the scrim, on the back
+                         face and in the modal, and the automation name says
+                         them too, so this mark is decorative-redundant per §8
+                         rather than the only place the fact exists.
+
+                         Never Flare and never Volt: a chip is where the game
+                         lives, not an alarm and not a selection (§2). -->
+                    <ItemsControl Name="RestingChips"
+                                  ItemsSource="{Binding StoreInitials}"
+                                  IsVisible="{Binding IsMultiStore}"
+                                  HorizontalAlignment="Left" VerticalAlignment="Bottom"
+                                  Margin="8" IsHitTestVisible="False">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" Spacing="3"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Classes="store-pip">
+                                    <TextBlock Text="{Binding}"/>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
                     <!-- Hover overlay: ≤ 4 facts — the tile is a decision surface. -->
                     <Border Name="Scrim" VerticalAlignment="Bottom" Padding="10,24,10,10"
                             Background="{StaticResource TileScrim}">
@@ -317,14 +374,35 @@
                             <Grid ColumnDefinitions="*,Auto">
                                 <TextBlock Grid.Column="0" Classes="data-s"
                                            Text="{Binding StatText}" VerticalAlignment="Center"/>
-                                <Border Grid.Column="1" BorderBrush="{StaticResource Line}"
-                                        BorderThickness="1" CornerRadius="3" Padding="5,1">
-                                    <TextBlock Text="{Binding StoreBadge}"
-                                               FontFamily="{StaticResource BodyFont}"
-                                               FontSize="9" LetterSpacing="0.54"
-                                               Foreground="{StaticResource TextDim}"/>
+                                <!-- Single-store tile: one badge beside the stat, as
+                                     the overlay has always drawn it. -->
+                                <Border Grid.Column="1" Classes="store-chip"
+                                        IsVisible="{Binding !IsMultiStore}">
+                                    <TextBlock Text="{Binding StoreBadge}"/>
                                 </Border>
                             </Grid>
+                            <!-- Multi-store chips sit on their own line. Beside the stat
+                                 they win the Auto column at the 108 px density floor and
+                                 leave playtime with no width, and playtime is the fact the
+                                 overlay exists for. One extra line, only on the rare tile
+                                 that has earned it; still one "where you own it" fact, so
+                                 the four-fact cap (section 5.3) is not breached. -->
+                            <ItemsControl ItemsSource="{Binding StoreChips}"
+                                          IsVisible="{Binding IsMultiStore}"
+                                          ToolTip.Tip="{Binding StoreNames}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel Orientation="Horizontal" ItemSpacing="4" LineSpacing="4"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Classes="store-chip">
+                                            <TextBlock Text="{Binding}"/>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
                             <!-- §5.3's "single primary action, Play, in Volt" has
                                  MOVED TO THE BACK OF THE CARD, and this is the
                                  deviation, recorded rather than silent.
@@ -436,22 +514,34 @@
                                        Text="{Binding LastPlayedText}"/>
                         </Grid>
 
+                        <!-- A year is a number, so it sets in Plex Mono; the stores are
+                             names, so they wear the outlined chip the overlay uses.
+                        
+                             Chips wrap rather than pinning to one line beside the year:
+                             at the density floor two word-chips are wider than the card,
+                             and a chip clipped mid-glyph reads as a rendering fault. -->
                         <Grid ColumnDefinitions="Auto,*" ColumnSpacing="6">
-                            <!-- A year is a number, so it sets in Plex Mono; the
-                                 store is a name, so it wears the same outlined
-                                 badge the hover overlay uses. -->
                             <TextBlock Grid.Column="0" Classes="data-s"
                                        VerticalAlignment="Center"
                                        IsVisible="{Binding HasReleaseYear}"
                                        Text="{Binding ReleaseYearText}"/>
-                            <Border Grid.Column="1" BorderBrush="{StaticResource Line}"
-                                    BorderThickness="1" CornerRadius="3" Padding="5,1"
-                                    HorizontalAlignment="Right">
-                                <TextBlock Text="{Binding StoreBadge}"
-                                           FontFamily="{StaticResource BodyFont}"
-                                           FontSize="9" LetterSpacing="0.54"
-                                           Foreground="{StaticResource TextDim}"/>
-                            </Border>
+                            <ItemsControl Grid.Column="1"
+                                          HorizontalAlignment="Right"
+                                          ItemsSource="{Binding StoreChips}"
+                                          ToolTip.Tip="{Binding StoreNames}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel Orientation="Horizontal" ItemSpacing="4" LineSpacing="4"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Classes="store-chip">
+                                            <TextBlock Text="{Binding}"/>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
                         </Grid>
                     </StackPanel>
 

@@ -106,17 +106,95 @@ public static class StoreSignInMessages
 }
 
 /// <summary>
+/// Which Steam credentials exist, with no secret in it.
+///
+/// <para>The App-layer projection of the credential inventory, in the same
+/// spirit as <see cref="StoreSession"/>: the panel learns what is connected
+/// without learning that a key chain, a session store or an HTTP client exists.
+/// Every field answers a question the screen asks out loud.</para>
+/// </summary>
+/// <param name="HasApiKey">Whether a Web API key is in force, from any source.</param>
+/// <param name="ApiKeyIsAppManaged">
+/// Whether the key in force is the one the Stores screen's own field owns — the
+/// settings-table key. False for a key supplied through <c>Steam__ApiKey</c> or
+/// <c>appsettings.local.json</c>, which the screen can be superseded by but
+/// cannot delete, and must therefore say so rather than offering a Clear that
+/// would appear not to work.
+/// </param>
+/// <param name="HasSession">
+/// Whether a sign-in session is on the books, live or lapsed. Lapsed is
+/// deliberately not absent: "signed in and expired" and "never signed in" need
+/// different sentences.
+/// </param>
+/// <param name="SessionUsable">Whether the session's access token can actually be sent right now.</param>
+/// <param name="SessionExpiresAt">When the session's access token dies, read from the token itself.</param>
+/// <param name="SessionAccount">
+/// The SteamID64 the session belongs to, as an invariant decimal string, or null
+/// when there is no session. The only account-identifying value on this record,
+/// and never a token.
+/// </param>
+public sealed record SteamConnection(
+    bool HasApiKey,
+    bool ApiKeyIsAppManaged,
+    bool HasSession,
+    bool SessionUsable,
+    DateTimeOffset? SessionExpiresAt,
+    string? SessionAccount)
+{
+    /// <summary>The state of an install that has connected nothing.</summary>
+    public static readonly SteamConnection None = new(false, false, false, false, null, null);
+
+    /// <summary>Whether anything is registered, usable or not.</summary>
+    public bool HasAnyCredential => HasApiKey || HasSession;
+
+    /// <summary>Whether a registered credential can actually be sent right now.</summary>
+    public bool HasUsableCredential => HasApiKey || SessionUsable;
+}
+
+/// <summary>
 /// Everything the Stores panel needs to know and to do, expressed without a
 /// single ingest or repository type. Nothing throws; status reads are local only.
 /// </summary>
 public interface IStoreConnections
 {
     /// <summary>
-    /// Whether a Steam Web API key is available. False is the ordinary state of
-    /// an install nobody has configured, not an error — and the panel says what
-    /// it costs rather than treating it as a fault.
+    /// Whether Steam's Web API can be reached on the user's behalf at all —
+    /// <b>by any credential</b>, a Web API key or a live sign-in session.
+    ///
+    /// <para>Answered off the credential inventory rather than off the key chain.
+    /// Reading the key alone was TASK-55 S1's noted gap: a keyless user who has
+    /// signed in has a working credential and was being told they had none, which
+    /// is the "silently degrading" failure the decision note forbids.</para>
+    ///
+    /// <para>False is the ordinary state of an install nobody has configured, not
+    /// an error — the panel says what it costs rather than treating it as a
+    /// fault.</para>
     /// </summary>
     ValueTask<bool> IsSteamWebApiConfiguredAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// What Steam credentials exist, in one read and with no secret in the
+    /// answer. Makes no request.
+    /// </summary>
+    ValueTask<SteamConnection> GetSteamConnectionAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Stores a user-supplied Web API key and puts it into force immediately.
+    ///
+    /// <para>The credential provider is invalidated as part of the write, so the
+    /// next Steam call uses the new key without a restart; a stale memoised key
+    /// outliving the field that replaced it is exactly what makes an in-app input
+    /// read as broken. Blank input clears instead of storing whitespace.</para>
+    /// </summary>
+    Task SaveSteamApiKeyAsync(string? key, CancellationToken ct = default);
+
+    /// <summary>
+    /// Removes the stored Web API key and puts the removal into force
+    /// immediately. A key supplied through configuration is not this method's to
+    /// remove and survives; <see cref="SteamConnection.ApiKeyIsAppManaged"/> is
+    /// what lets the screen say so first.
+    /// </summary>
+    Task ClearSteamApiKeyAsync(CancellationToken ct = default);
 
     /// <summary>
     /// The stored Epic session — live or lapsed — or null when there has never

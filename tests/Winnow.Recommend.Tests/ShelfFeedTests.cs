@@ -69,7 +69,15 @@ public class ShelfFeedTests : IDisposable
         var feed = await GetShelvesAsync();
 
         var item = Assert.Single(Shelf(feed, ShelfIds.PatchedWhileAway)!.Items);
-        Assert.Contains("v2.0 Overhaul", item.Reason);
+        Assert.Equal(ReasonSignal.PatchedSinceYouLeft, item.Explanation.Primary);
+        Assert.Equal("v2.0 Overhaul", item.Explanation.Evidence.LatestUpdateTitle);
+        // Whichever phrasing this game's id selects, the sentence names what
+        // actually landed — the title or how many.
+        Assert.True(
+            item.Reason.Contains("v2.0 Overhaul", StringComparison.Ordinal)
+                || item.Reason.Contains("update", StringComparison.OrdinalIgnoreCase)
+                || item.Reason.Contains("patch", StringComparison.OrdinalIgnoreCase),
+            item.Reason);
     }
 
     [Fact]
@@ -95,6 +103,9 @@ public class ShelfFeedTests : IDisposable
         // model says "you were right to drop this" — so the comeback shelf,
         // whose blurb argues the opposite, must not carry it.
         var done = await _harness.SeedGameAsync("Fair Shake Given", minutes: 3_000, lastPlayed: AsOf.AddYears(-6));
+        // Proven update coverage: "nothing changed since" is a fact here, not
+        // a gap in what Winnow watched (F15).
+        await _harness.SeedUpdateCoverageAsync(done, AsOf.AddYears(-7));
 
         var feed = await GetShelvesAsync();
 

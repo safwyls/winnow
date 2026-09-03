@@ -168,6 +168,8 @@ internal static class SteamStoreJson
             return new SteamStoreItem(appId, name.GetString()!, ReadTags(item))
             {
                 Categories = ReadCategories(item),
+                StoreType = ReadStoreType(item),
+                Related = ReadRelatedItems(item),
             };
         }
         catch (JsonException)
@@ -247,6 +249,114 @@ internal static class SteamStoreJson
         return players.Count == 0 && features.Count == 0 && controllers.Count == 0
             ? SteamStoreCategories.None
             : new SteamStoreCategories(players, features, controllers);
+    }
+
+    /// <summary>
+    /// Reads <c>StoreItem.type</c>, the numeric kind enum. Arrives with the
+    /// query <see cref="BuildGetItemsQuery"/> has always sent, so every cached
+    /// body already carries it. Absent on some items, which is null and not
+    /// zero; zero is a real value meaning game.
+    /// </summary>
+    private static int? ReadStoreType(JsonElement item)
+        => item.TryGetProperty("type", out var type) && TryReadInt64(type) is { } value
+           && value is >= int.MinValue and <= int.MaxValue
+            ? (int)value
+            : null;
+
+    /// <summary>
+    /// Reads <c>related_items</c> per Valve's <c>webui/common.proto</c>
+    /// <c>StoreItem_RelatedItems</c>. Upward pointers (<c>parent_appid</c>,
+    /// <c>dlc_parent_appids</c>) and downward arrays (<c>demos</c>,
+    /// <c>standalone_demos</c>, <c>playtests</c>) both. The demo and playtest
+    /// arrays hold objects carrying appid plus label and show_above_purchase;
+    /// only the appid is taken. The two flat <c>demo_appid</c> /
+    /// <c>standalone_demo_appid</c> arrays the proto also defines are read
+    /// alongside the object arrays, because a body may carry either encoding.
+    /// </summary>
+    private static SteamStoreRelatedItems ReadRelatedItems(JsonElement item)
+    {
+        if (!item.TryGetProperty("related_items", out var related)
+            || related.ValueKind != JsonValueKind.Object)
+        {
+            return SteamStoreRelatedItems.None;
+        }
+
+        // An app that names ITSELF as its parent is saying nothing. Two of the
+        // author's 49 parent pointers are exactly that (appid 3900 Civilization
+        // IV and appid 6980 Thief: Deadly Shadows). Letting a self-reference
+        // through would give those works a storefront opinion about their own
+        // relations, which is the one thing that silences the title heuristic.
+        var ownAppId = item.TryGetProperty("appid", out var own) ? TryReadInt64(own) : null;
+
+        var parent = related.TryGetProperty("parent_appid", out var parentAppId)
+                     && TryReadInt64(parentAppId) is { } id and > 0
+                     && id != ownAppId
+            ? id.ToString(CultureInfo.InvariantCulture)
+            : null;
+
+        var demos = ReadAppIds(related, "demos", "demo_appid");
+        var standaloneDemos = ReadAppIds(related, "standalone_demos", "standalone_demo_appid");
+        var playtests = ReadAppIds(related, "playtests", null);
+        var dlcParents = ReadAppIds(related, null, "dlc_parent_appids");
+
+        return parent is null
+               && demos.Count == 0
+               && standaloneDemos.Count == 0
+               && playtests.Count == 0
+               && dlcParents.Count == 0
+            ? SteamStoreRelatedItems.None
+            : new SteamStoreRelatedItems(parent, demos, standaloneDemos, playtests, dlcParents);
+    }
+
+    /// <summary>
+    /// Reads the union of an object array carrying appid fields and a flat
+    /// array of appid values, either of which may be absent. Order is preserved
+    /// and duplicates are dropped.
+    /// </summary>
+    private static IReadOnlyList<string> ReadAppIds(
+        JsonElement related, string? objectArray, string? flatArray)
+    {
+        List<string>? ids = null;
+
+        if (objectArray is not null
+            && related.TryGetProperty(objectArray, out var objects)
+            && objects.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var element in objects.EnumerateArray())
+            {
+                if (element.ValueKind == JsonValueKind.Object
+                    && element.TryGetProperty("appid", out var appId)
+                    && TryReadInt64(appId) is { } id and > 0)
+                {
+                    Add(ref ids, id);
+                }
+            }
+        }
+
+        if (flatArray is not null
+            && related.TryGetProperty(flatArray, out var flat)
+            && flat.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var element in flat.EnumerateArray())
+            {
+                if (TryReadInt64(element) is { } id and > 0)
+                {
+                    Add(ref ids, id);
+                }
+            }
+        }
+
+        return ids is null ? [] : ids;
+
+        static void Add(ref List<string>? ids, long id)
+        {
+            var text = id.ToString(CultureInfo.InvariantCulture);
+            ids ??= [];
+            if (!ids.Contains(text, StringComparer.Ordinal))
+            {
+                ids.Add(text);
+            }
+        }
     }
 
     private static IReadOnlyList<int> ReadCategoryIds(JsonElement categories, string property)

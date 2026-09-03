@@ -12,6 +12,19 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- The repository root, stamped into the test assembly at build time.
+         IdentityReadInventoryTests scans the source tree, and walking up from
+         the test binary cannot find it: the build runs with an artifacts path
+         while the user holds src/Winnow.App/bin, so the assembly does not sit
+         under the repository at all. MSBuild knows where it is; nothing at run
+         time does. -->
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>RepositoryRoot</_Parameter1>
+      <_Parameter2>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..'))</_Parameter2>
+    </AssemblyAttribute>
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- FakeTimeProvider, for SnapshotSchedulerService: the tick schedule is
          driven by advancing a clock, so a scheduler test costs microseconds
          instead of the intervals it is asserting about. -->
@@ -43,6 +56,9 @@
   <ItemGroup>
     <!-- Sanitized real Steam files (tests/fixtures/steam/README.md) — the reader tests parse these. -->
     <Content Include="..\fixtures\steam\**" LinkBase="fixtures\steam" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Sanitized saved Steam account pages (tests/fixtures/steam-account-pages/README.md) — the
+         licences/purchase-history parser tests parse these. -->
+    <Content Include="..\fixtures\steam-account-pages\**" LinkBase="fixtures\steam-account-pages" CopyToOutputDirectory="PreserveNewest" />
     <!-- Verbatim store-frontend responses (tests/fixtures/steam-store/README.md) — the contract test pins these. -->
     <Content Include="..\fixtures\steam-store\**" LinkBase="fixtures\steam-store" CopyToOutputDirectory="PreserveNewest" />
     <!-- Verbatim update-signal responses (tests/fixtures/update-signals/README.md) — the contract test pins these. -->

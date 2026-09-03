@@ -538,6 +538,11 @@ internal sealed class FakeEngine : IRecommendationEngine
         Bucket = LibraryBuckets.StaleButPatched,
         Score = 0.5,
         Reason = "A reason.",
+        Explanation = new RecommendationReason
+        {
+            Primary = ReasonSignal.PatchedSinceYouLeft,
+            Evidence = new ReasonEvidence { ReleaseId = id, Title = title },
+        },
         Signals = [],
     };
 }

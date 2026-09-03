@@ -53,7 +53,8 @@ public sealed class SnapshotSchedulerHistoryTests : IDisposable
             _ownerships,
             _playRecords,
             _snapshots,
-            _db.Factory);
+            _db.Factory,
+            new OwnershipAccountRepository(_db.Factory));
     }
 
     public void Dispose() => _db.Dispose();

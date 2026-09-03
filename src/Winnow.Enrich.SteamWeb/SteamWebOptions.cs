@@ -55,4 +55,22 @@ public sealed class SteamWebOptions
 
     /// <summary>Sent on every request so Valve can attribute — and if necessary contact — this traffic.</summary>
     public string UserAgent { get; set; } = "Winnow/0.1 (+https://github.com/winnow-app; local game library manager)";
+
+    /// <summary>
+    /// Clock-skew allowance for session-token expiry, matching
+    /// <see cref="Credentials.SteamCredential.DefaultSkew"/>: a token expiring
+    /// inside the next two minutes is treated as already dead, because it would
+    /// very likely die between being chosen and reaching Valve.
+    /// </summary>
+    public TimeSpan SessionExpirySkew { get; set; } = Credentials.SteamCredential.DefaultSkew;
+
+    /// <summary>
+    /// How long before expiry a session is reported as owing a renewal.
+    ///
+    /// <para>One hour against a measured token lifetime of about a day
+    /// (24 h 22 m, 2026-08-30). Long enough that the 15-minute local pass and the
+    /// 6-hour remote pass each get several chances to renew before the token
+    /// dies, and short enough that the state is not permanently on display.</para>
+    /// </summary>
+    public TimeSpan SessionRenewalLeadTime { get; set; } = TimeSpan.FromHours(1);
 }

@@ -110,7 +110,7 @@ public sealed record WinnowTheme
 
     // ── Transparency ────────────────────────────────────────────────────────
     // NOT the opaque tokens with alpha subtracted. That is the thing that
-    // measured 3.1:1 and was refused (§13 gap 7). As the chrome opens up it
+    // measured 3.1:1 and was refused. As a surface opens up it
     // takes a DARKER ink, and the dim ink brightens to pay for what is left, so
     // the whole range is a walk from the opaque token to these — continuous, and
     // exactly the opaque values at slider zero. Measured across the range in
@@ -527,6 +527,10 @@ public sealed record WinnowTheme
             // composites over exactly the ground it was calibrated against no
             // matter what the field is doing. Construction, not measurement.
             ["TileGround"] = Ground,
+
+            // The resting store pip's field on a multi-store tile: legible over
+            // any capsule, never a second opaque block on the art.
+            ["TileChipGround"] = A(Ground, 0.82),
 
             // ── Derived: a role at N% ──────────────────────────────────────
             ["VoltSelection"] = A(Volt, 0.30),

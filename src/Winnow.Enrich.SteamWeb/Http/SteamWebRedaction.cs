@@ -15,8 +15,14 @@ public static class SteamWebRedaction
     /// <summary>
     /// Parameters whose values may be logged: the three §4.2-mandated flags
     /// (whose presence is the thing worth being able to confirm from a log), the
-    /// account being queried, and the response format. Everything else is
-    /// redacted whether or not it is known to be a secret.
+    /// account being queried, the Year in Review year, and the response format.
+    /// Everything else is redacted whether or not it is known to be a secret.
+    ///
+    /// <para>An allowlist rather than a denylist, so a parameter added to a
+    /// future request is redacted by default. That is what makes this safe for
+    /// the M5 history endpoints without having been written for them: only
+    /// <c>year</c> had to be added, and it was added to keep a log line useful,
+    /// not to keep it safe.</para>
     /// </summary>
     public static readonly IReadOnlySet<string> SafeParameters =
         new HashSet<string>(StringComparer.OrdinalIgnoreCase)
@@ -26,6 +32,7 @@ public static class SteamWebRedaction
             "include_played_free_games",
             "skip_unvetted_apps",
             "format",
+            "year",
         };
 
     /// <summary>

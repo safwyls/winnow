@@ -24,32 +24,8 @@
              is for (§2); Flare marks unread updates and nothing else, and a
              row of pink chips would be the fastest way to make the badge stop
              meaning anything. -->
-        <Style Selector="Border.chip">
-            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource VoltEdgeSoft}"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
-            <Setter Property="Padding" Value="9,3,5,3"/>
-            <Setter Property="VerticalAlignment" Value="Center"/>
-        </Style>
-
-        <!-- Chip provenance (§12.2). User-set chips get Volt edges; rules
-             poured in from the open live list get neutral Line edges and
-             TextDim labels (5.04:1 on SurfaceRaised). -->
-        <Style Selector="Border.chip.fromlist">
-            <Setter Property="Background" Value="{StaticResource Surface}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
-        </Style>
-        <Style Selector="Border.chip.fromlist TextBlock">
-            <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
-        </Style>
-
-        <!-- Open list chip — leads the bar, neutral edge, states its kind. -->
-        <Style Selector="Border.chip.context">
-            <Setter Property="Background" Value="{StaticResource Surface}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
-            <Setter Property="Padding" Value="8,3,5,3"/>
-        </Style>
+        <!-- Border.chip and its kinds moved to Themes/controls.axaml the moment
+             the Merges screen's cut chip became their second surface. -->
 
         <!-- Strip button. Focus ring is a brush swap (constant border
              thickness) on PART_ContentPresenter, not TemplateBinding (§10.7). -->
@@ -147,38 +123,7 @@
 
         <!-- The chip's own dismiss. 18px is the smallest square that is still a
              target; the glyph inside it is 7. -->
-        <Style Selector="Button.chipx">
-            <Setter Property="Width" Value="18"/>
-            <Setter Property="Height" Value="18"/>
-            <Setter Property="Padding" Value="0"/>
-            <Setter Property="CornerRadius" Value="9"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="VerticalAlignment" Value="Center"/>
-            <Setter Property="HorizontalContentAlignment" Value="Center"/>
-            <Setter Property="VerticalContentAlignment" Value="Center"/>
-        </Style>
-        <Style Selector="Button.chipx /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderBrush" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="2"/>
-            <Setter Property="CornerRadius" Value="9"/>
-        </Style>
-        <Style Selector="Button.chipx:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="{StaticResource VoltSelectionSoft}"/>
-        </Style>
-        <Style Selector="Button.chipx:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
-        </Style>
-        <Style Selector="Button.chipx Path">
-            <Setter Property="Stroke" Value="{StaticResource TextDim}"/>
-            <Setter Property="StrokeThickness" Value="1.4"/>
-            <Setter Property="StrokeLineCap" Value="Round"/>
-        </Style>
-        <Style Selector="Button.chipx:pointerover Path">
-            <Setter Property="Stroke" Value="{StaticResource Text}"/>
-        </Style>
+        <!-- Button.chipx moved to Themes/controls.axaml with Border.chip. -->
 
         <!-- The prompt's field. Wider and warmer than the panel's find fields:
              this one is where a name is written, not where a list is sieved. -->

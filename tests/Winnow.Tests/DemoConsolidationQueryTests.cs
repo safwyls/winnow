@@ -119,7 +119,9 @@ public class DemoConsolidationQueryTests : IDisposable
         Assert.Equal(2, rows.Count);
         var row = Assert.Single(rows, r => r.OwnershipId == demo.OwnershipId);
         Assert.Equal(30, row.PlaytimeMinutes);
-        Assert.Equal(LibraryBuckets.NeverPlayed, row.Bucket);
+        // 30 minutes with a real last-played date: below the refund line but
+        // genuinely opened, so bucketed `active`.
+        Assert.Equal(LibraryBuckets.Active, row.Bucket);
         Assert.Equal(0, row.ConsolidatedDemoCount);
     }
 
@@ -347,11 +349,10 @@ public class DemoConsolidationQueryTests : IDisposable
 
         Assert.Equal(full.OwnershipId, row.OwnershipId);
 
-        // Bucketed on ITS 45 minutes — under the refund line, so `never_played`.
-        // Had the demo's 9,000 leaked in, this would read "retired": a game the
-        // user has barely opened, filed under "Played out" by a merge nobody
-        // asked for.
-        Assert.Equal(LibraryBuckets.NeverPlayed, row.Bucket);
+        // Bucketed on ITS 45 minutes, not the demo's 9,000. Had the demo's
+        // playtime leaked in, this would read `retired`: a game the user has
+        // barely opened, filed under "Played out" by a merge nobody asked for.
+        Assert.Equal(LibraryBuckets.Active, row.Bucket);
         Assert.Equal(new DateTime(2024, 5, 1, 0, 0, 0, DateTimeKind.Utc), row.LastPlayedAt);
     }
 

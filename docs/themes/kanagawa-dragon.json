@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "id": "kanagawa-dragon",
+  "name": "Kanagawa Dragon",
+  "reason": "Kanagawa's weathered ink wash: charcoal-brown chrome, ash-aqua selection, and muted violet reserved for unread updates.",
+  "seeds": {
+    "ground": "#181616",
+    "surface": "#282727",
+    "text": "#C5C9C5",
+    "flare": "#A292A3",
+    "volt": "#8EA4A2",
+    "amber": "#C4B28A",
+    "azure": "#8BA4B0",
+    "danger": "#C4746E"
+  },
+  "structure": {
+    "elevation": 0.065,
+    "wellDepth": 0.52,
+    "edge": 1.55,
+    "dimValue": 0.68,
+    "dimChroma": 0.32,
+    "voltInkContrast": 7.0,
+    "faintValue": 0.52,
+    "faintChroma": 0.6
+  },
+  "translucency": {
+    "chromeInk": 0.48,
+    "groundInk": 0.44,
+    "dimLift": 1.14,
+    "faintLift": 1.2
+  },
+  "overrides": {
+    "Well": "#0D0C0C",
+    "SurfaceHigh": "#393836",
+    "Line": "#625E5A",
+    "TextDim": "#A6A69C",
+    "TextFaint": "#737C73",
+    "VoltInk": "#0D1110",
+    "VoltHover": "#A5B7B5",
+    "VoltPress": "#748D8B",
+    "DangerHover": "#D08B85",
+    "DangerPress": "#A45C57",
+    "DangerInk": "#FFF5F2",
+    "TranslucentSurface": "#111010",
+    "TranslucentTextDim": "#BDBDB2",
+    "TranslucentTextFaint": "#8D958D"
+  }
+}

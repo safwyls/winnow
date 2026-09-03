@@ -1,3 +1,5 @@
+using Winnow.Core.Identity;
+
 namespace Winnow.Core.Queries;
 
 /// <summary>
@@ -40,6 +42,49 @@ public sealed record ReleaseIdentity
     /// catalog has not been read. Null is the norm.
     /// </summary>
     public string? EpicCategories { get; init; }
+
+    /// <summary>
+    /// True when at least one ownership row points at this release. The
+    /// expansion scan needs it because <see cref="DemoConsolidation"/> is
+    /// defined over owned releases: a base game the user does not own cannot
+    /// hide anything.
+    /// </summary>
+    public bool IsOwned { get; init; }
+
+    /// <summary><c>works.steam_store_type</c> (migration 0022). Valve's numeric <c>StoreItem.type</c>.</summary>
+    public int? SteamStoreType { get; init; }
+
+    /// <summary><c>works.steam_parent_app_id</c> (migration 0022). The appid Steam names as this app's parent.</summary>
+    public string? SteamParentAppId { get; init; }
+
+    /// <summary><c>works.igdb_game_type</c> (migration 0022). The IGDB <c>game_type</c> label.</summary>
+    public string? IgdbGameType { get; init; }
+
+    /// <summary><c>works.igdb_parent_id</c> (migration 0022). IGDB <c>parent_game</c>.</summary>
+    public long? IgdbParentId { get; init; }
+
+    /// <summary><c>works.igdb_version_parent_id</c> (migration 0022). IGDB <c>version_parent</c>.</summary>
+    public long? IgdbVersionParentId { get; init; }
+
+    /// <summary><c>works.igdb_id</c>, so an IGDB parent id can be joined to a work in the library.</summary>
+    public long? IgdbId { get; init; }
+
+    /// <summary>
+    /// The Steam appid this release is known by, or null for a non-Steam
+    /// release. Needed to resolve a parent appid to a work.
+    /// </summary>
+    public string? SteamAppId { get; init; }
+
+    /// <summary>The raw storefront facts assembled from all relation columns on this work.</summary>
+    public StorefrontFacts StorefrontFacts => new()
+    {
+        SteamStoreType = SteamStoreType,
+        SteamParentAppId = SteamParentAppId,
+        SteamAppType = SteamAppType,
+        IgdbGameType = IgdbGameType,
+        IgdbParentId = IgdbParentId,
+        IgdbVersionParentId = IgdbVersionParentId,
+    };
 
     /// <summary>Release name, falling back to work name.</summary>
     public string MatchTitle =>

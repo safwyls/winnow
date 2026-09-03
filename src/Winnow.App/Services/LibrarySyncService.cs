@@ -333,8 +333,25 @@ public sealed class RemoteOwnershipSyncService : IRemoteOwnershipSync
             return [];
         }
 
+        // The union of every account the scan named, not just the ones that won
+        // their candidate's AccountRef.
+        //
+        // That column carries the play tuple's winner, so on a PC with two
+        // accounts an account that never out-played the other appears in it
+        // nowhere at all — and this loop, reading only that column, would never
+        // ask Steam about them. Their owned library would then be invisible to
+        // Winnow, which is exactly the population the account filter has to be
+        // able to see before it can honestly hide anything. The per-account list
+        // names every account each reader saw, so a second user is asked about
+        // on the strength of one game they have played.
+        //
+        // Ordinal-distinct and ordered by first appearance: the same account
+        // reached through two candidates is one account, and a stable order keeps
+        // the request sequence reproducible in a log.
         var accounts = local
-            .Select(c => c.AccountRef)
+            .SelectMany(c => c.Accounts
+                .Select(a => a.AccountRef)
+                .Append(c.AccountRef))
             .Where(a => !string.IsNullOrWhiteSpace(a))
             .Distinct(StringComparer.Ordinal)
             .ToList();

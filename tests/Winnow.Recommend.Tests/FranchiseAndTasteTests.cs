@@ -1,4 +1,4 @@
-using Winnow.Core.Queries;
+﻿using Winnow.Core.Queries;
 using Xunit;
 
 namespace Winnow.Recommend.Tests;
@@ -59,13 +59,25 @@ public class FranchiseAndTasteTests
         };
     }
 
-    private static OwnershipBucket Row(long releaseId, long minutes) => new()
+    private static OwnershipBucket Row(long releaseId, long minutes)
     {
-        OwnershipId = releaseId,
-        ReleaseId = releaseId,
-        PlaytimeMinutes = minutes,
-        Bucket = minutes >= 120 ? LibraryBuckets.Bounced : LibraryBuckets.NeverPlayed,
-    };
+        var row = new OwnershipBucket
+        {
+            OwnershipId = releaseId,
+            ReleaseId = releaseId,
+            // Nothing linked: a work resolves to itself, which is the pre-link
+            // answer and the one this fixture is about.
+            WorkId = releaseId,
+            ResolvedWorkId = releaseId,
+            PlaytimeMinutes = minutes,
+            Bucket = minutes >= 120 ? LibraryBuckets.Bounced : LibraryBuckets.NeverPlayed,
+            Game = null!,
+        };
+
+        // One entry, so the game IS the row and the shared rules put it in the
+        // same bucket the row names.
+        return row with { Game = GameGrouping.Of(releaseId, [row], null, BucketThresholds.Default) };
+    }
 
     [Fact]
     public void A_facet_carried_by_most_of_the_library_stops_counting_as_taste()

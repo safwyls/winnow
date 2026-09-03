@@ -1,5 +1,6 @@
-using System.Globalization;
+﻿using System.Globalization;
 using Winnow.App.ViewModels;
+using Winnow.Core.Queries;
 using Winnow.Core.Domain;
 using Winnow.Core.Repositories;
 using Winnow.Data.Repositories;
@@ -446,15 +447,13 @@ public sealed class TileActionsTests
         string store,
         bool? installed,
         bool withEpicKey = true)
-        => new(
+        => TileFixture.Tile(
+            nowUtc: Now,
             ownershipId: 1,
             releaseId: 1,
             title: "Fez",
             store: store,
-            bucket: "never_played",
-            playtimeMinutes: 0,
-            lastPlayedUtc: null,
-            nowUtc: Now,
+            bucket: LibraryBuckets.NeverPlayed,
             ownership: installed is { } definite
                 ? new Ownership { ReleaseId = 1, Store = store, Installed = definite }
                 : null,

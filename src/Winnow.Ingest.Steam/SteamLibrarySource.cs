@@ -116,6 +116,14 @@ public sealed class SteamLibrarySource
             var accountRef = winnerAccount?.Steam3Id
                 ?? (accounts.Count == 1 ? accounts[0].Steam3Id : null);
 
+            // ...and the un-collapsed answer beside it. The line above can name
+            // only one account, which is right for a playtime figure and wrong
+            // for the question "who has this": a game two people on this PC have
+            // played reports whichever of them played it more, and the other
+            // becomes invisible. Collected once here for both candidate shapes
+            // below.
+            var accountEntries = CollectAccounts(appId, playtimeByAccount, accounts);
+
             if (manifests.TryGetValue(appId, out var entry))
             {
                 // Manifest present: it is authoritative for title and install state.
@@ -144,7 +152,13 @@ public sealed class SteamLibrarySource
                     LastPlayedAt: lastPlayedAt,
                     AcquiredAt: null,
                     Source: SourceName,
-                    ObservedAt: observedAt));
+                    ObservedAt: observedAt)
+                {
+                    // Carried even when the manifest date is unattributed: the
+                    // date belongs to the machine, but whichever accounts
+                    // localconfig.vdf named still hold the game.
+                    Accounts = accountEntries,
+                });
                 installedCount++;
             }
             else
@@ -166,7 +180,10 @@ public sealed class SteamLibrarySource
                     LastPlayedAt: winner?.LastPlayedUtc,
                     AcquiredAt: null,
                     Source: SourceName,
-                    ObservedAt: observedAt));
+                    ObservedAt: observedAt)
+                {
+                    Accounts = accountEntries,
+                });
             }
         }
 
@@ -175,6 +192,56 @@ public sealed class SteamLibrarySource
             + "{PlaytimeOnly} played-but-uninstalled) from {Accounts} account(s) under {Root}",
             candidates.Count, installedCount, candidates.Count - installedCount, accounts.Count, steamRoot);
         return candidates;
+    }
+
+    /// <summary>
+    /// Every account on this PC that this appid can be attributed to, each with
+    /// its OWN figures rather than the machine's collapsed answer.
+    ///
+    /// <para>The ordinary case is one entry per account whose
+    /// <c>localconfig.vdf</c> names the appid. That file records games the
+    /// account has PLAYED, so it is evidence of holding as well as of playing —
+    /// including Family Sharing, where a game played under this login on
+    /// somebody else's licence is still this account's play. The visibility
+    /// filter is about whose account, not whose purchase, so no special case is
+    /// wanted here and none is made.</para>
+    ///
+    /// <para>The exception is the sole-account machine. An appid with a manifest
+    /// on disk and no playtime record anywhere is a game the one account here
+    /// owns and has never launched — the largest population in most libraries,
+    /// and one that would otherwise carry no account evidence at all. It gets an
+    /// entry with null figures: this account holds it, and nobody measured a
+    /// session because there was none. With two or more accounts signed in the
+    /// same appid names nobody, because the manifest cannot say which of them
+    /// installed it, and guessing would be the single-winner mistake again.</para>
+    /// </summary>
+    private static IReadOnlyList<CandidateAccount> CollectAccounts(
+        string appId,
+        List<(SteamAccount Account, IReadOnlyDictionary<string, SteamAppPlaytime> Apps)> playtimeByAccount,
+        IReadOnlyList<SteamAccount> accounts)
+    {
+        List<CandidateAccount>? entries = null;
+
+        foreach (var (account, apps) in playtimeByAccount)
+        {
+            if (!apps.TryGetValue(appId, out var playtime))
+            {
+                continue;
+            }
+
+            entries ??= new List<CandidateAccount>(playtimeByAccount.Count);
+            entries.Add(new CandidateAccount(
+                account.Steam3Id, playtime.PlaytimeMinutes, playtime.LastPlayedUtc));
+        }
+
+        if (entries is not null)
+        {
+            return entries;
+        }
+
+        return accounts.Count == 1
+            ? [new CandidateAccount(accounts[0].Steam3Id, PlaytimeMinutes: null, LastPlayedAt: null)]
+            : [];
     }
 
     /// <summary>Picks the account with the highest playtime for this appid, ties broken by most recent last-played.</summary>

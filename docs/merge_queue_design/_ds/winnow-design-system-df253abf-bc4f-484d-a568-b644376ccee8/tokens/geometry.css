@@ -1,0 +1,45 @@
+/* Radii rank by the size of the object they turn: a pane, a tile, a control. */
+:root{
+  --radius-pane:8px;
+  --radius-tile:6px;
+  --radius-control:4px;
+  --radius-badge:3px;      /* the outlined store badge */
+  --radius-pip:50%;
+
+  /* Window and pane geometry */
+  --title-bar-height:36px;
+  --window-button-width:46px;
+  --rail-width:220px;
+  --filter-panel-width:276px;
+  --command-bar-height:48px;
+  --pane-gap:8px;          /* also exactly the OS resize band */
+  --scrollbar-size:12px;
+  --scrollbar-edge-inset:10px;  /* nothing interactive inside the 8px the OS owns */
+
+  /* Tiles — 2:3 portrait, matching Steam's library_600x900 capsule */
+  --tile-width:148px;
+  --tile-height:222px;
+  --tile-min-width:108px;  /* density slider bounds */
+  --tile-max-width:200px;
+  --tile-aspect:2 / 3; /* @kind other */
+
+  /* Rows and marks */
+  --list-row-height:44px;
+  --rail-row-height:36px;
+  --rail-list-row-height:30px;
+  --badge-size:10px;       /* the unread dot on a tile: 10px art + 2px ring */
+  --pip-size:7px;          /* the rail pip */
+  --selection-edge:2px;    /* the Volt left edge: this is where you are */
+  --focus-ring:2px;
+
+  /* Feed */
+  --feed-card-min-width:420px;
+  --feed-cover-width:108px;
+  --feed-cover-height:162px;
+
+  /* Dormancy ramp (§5.1) — colour-agnostic, consumed by the cover renderer */
+  --dormancy-sat-floor:0.22; /* @kind other */
+  --dormancy-bright-floor:0.68; /* @kind other */
+  --dormancy-hue-shift:-6deg; /* @kind other */
+  --dormancy-full-months:36; /* @kind other */
+}

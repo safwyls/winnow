@@ -380,21 +380,20 @@ public sealed class StoresViewModelTests
 
     // ── Steam ────────────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// The point of the row: with nothing connected the user is looking at a
+    /// smaller library than they own, and only this screen can tell them.
+    /// </summary>
     [Fact]
-    public async Task Steam_states_what_a_missing_key_costs_and_where_one_goes()
+    public async Task Steam_states_what_connecting_nothing_costs()
     {
         var stores = new StoresViewModel(new FakeStoreConnections { SteamConfigured = false });
         await stores.RefreshCommand.ExecuteAsync(null);
 
         Assert.False(stores.SteamWebApiConfigured);
         Assert.False(stores.SteamStatusIsLive);
-        Assert.Equal("NO WEB API KEY", stores.SteamStatusLabel);
-
-        // The point of the row: the user is looking at a smaller library than
-        // they own, and only this screen can tell them.
-        Assert.Contains("Set an API key", stores.SteamAddsMessage, StringComparison.Ordinal);
-        Assert.True(stores.ShowSteamKeyHint);
-        Assert.Contains("Steam__ApiKey", stores.SteamKeyHintMessage, StringComparison.Ordinal);
+        Assert.Equal(SteamConnectionCopy.StatusNoConnection, stores.SteamStatusLabel);
+        Assert.Equal(SteamConnectionCopy.NothingConnectedCost, stores.SteamConnectionMessage);
     }
 
     [Fact]
@@ -405,8 +404,111 @@ public sealed class StoresViewModelTests
 
         Assert.True(stores.SteamWebApiConfigured);
         Assert.True(stores.SteamStatusIsLive);
-        Assert.Equal("WEB API KEY SET", stores.SteamStatusLabel);
-        Assert.False(stores.ShowSteamKeyHint);
+        Assert.Equal(SteamConnectionCopy.StatusKeySet, stores.SteamStatusLabel);
+        Assert.Equal(SteamConnectionCopy.ConnectedAdds, stores.SteamConnectionMessage);
+    }
+
+    // ── The settings segment's label (TASK-60) ───────────────────────────────
+
+    /// <summary>
+    /// The rename went in once and was reverted, because the label existed only
+    /// as a literal in a XAML attribute and nothing could read it. It is a
+    /// property now, and this is the thing that reads it.
+    /// </summary>
+    [Fact]
+    public void The_settings_segment_reads_platforms()
+    {
+        var stores = new StoresViewModel(new FakeStoreConnections());
+
+        Assert.Equal("PLATFORMS", stores.SegmentLabel);
+        Assert.Equal("Platforms", stores.Title);
+
+        Assert.DoesNotContain("STORES", stores.SegmentLabel, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("STORES", stores.SegmentTooltip, StringComparison.OrdinalIgnoreCase);
+    }
+
+    // ── The folded purchase import (TASK-59) ─────────────────────────────────
+
+    /// <summary>
+    /// One place to connect Steam and one place to import purchase data. The
+    /// import is a section of this panel now rather than a settings screen
+    /// beside it.
+    /// </summary>
+    [Fact]
+    public void The_purchase_import_is_a_section_of_this_panel()
+    {
+        var import = DetachedAccountImport.Create();
+        var stores = new StoresViewModel(
+            new FakeStoreConnections(), null, null, null, null, import);
+
+        Assert.True(stores.ShowPurchaseImport);
+        Assert.Same(import, stores.AccountImport);
+    }
+
+    /// <summary>
+    /// A host that composed the panel without the import hides the section
+    /// rather than drawing a dead one.
+    /// </summary>
+    [Fact]
+    public void A_panel_composed_without_the_import_draws_no_purchase_section()
+    {
+        var stores = new StoresViewModel(new FakeStoreConnections());
+
+        Assert.False(stores.ShowPurchaseImport);
+        Assert.Null(stores.AccountImport);
+    }
+
+    /// <summary>
+    /// Arriving on this panel asks the embedded browser whether it could run
+    /// here — the question the standalone screen used to ask on arrival, which
+    /// opens no window and does no IO. Without it the folded section would draw
+    /// its default answer instead of this machine's.
+    /// </summary>
+    [Fact]
+    public async Task Refreshing_the_panel_refreshes_the_folded_import()
+    {
+        // No harvester behind it, so the honest answer is "not here" and the
+        // default of true is what a refresh that never ran would leave.
+        var import = DetachedAccountImport.Create();
+        var stores = new StoresViewModel(
+            new FakeStoreConnections(), null, null, null, null, import);
+
+        Assert.True(import.SignInRouteAvailable);
+
+        await stores.RefreshCommand.ExecuteAsync(null);
+
+        Assert.False(import.SignInRouteAvailable);
+        Assert.True(import.ShowSignInUnavailable);
+    }
+
+    /// <summary>
+    /// <b>Acceptance criterion 3.</b> A user who declines the browser sign-in
+    /// still reaches the files they saved themselves. Nothing about the
+    /// saved-file route is gated on a credential, a session or a harvester, so
+    /// the panel in its emptiest state still offers it.
+    /// </summary>
+    [Fact]
+    public async Task The_saved_file_import_is_reachable_with_no_sign_in_and_no_key()
+    {
+        var import = DetachedAccountImport.Create();
+        var stores = new StoresViewModel(
+            new FakeStoreConnections { SteamConfigured = false },
+            null,
+            null,
+            null,
+            null,
+            import);
+
+        await stores.RefreshCommand.ExecuteAsync(null);
+
+        // Nothing is connected, and the embedded route cannot run here.
+        Assert.False(stores.SteamHasSession);
+        Assert.False(stores.SteamHasApiKey);
+        Assert.False(import.SignInRouteAvailable);
+
+        // The saved-file route is offered anyway.
+        Assert.True(stores.ShowPurchaseImport);
+        Assert.True(import.ImportFromSavedPagesCommand.CanExecute(null));
     }
 
     // ── GOG ──────────────────────────────────────────────────────────────────
@@ -507,7 +609,28 @@ internal sealed class FakeStoreConnections : IStoreConnections
     /// <summary>Held open to keep a sign-in "in progress" for as long as a test needs.</summary>
     public TaskCompletionSource? Gate { get; set; }
 
-    public bool SteamConfigured { get; set; }
+    /// <summary>What the panel will be told exists on the Steam side.</summary>
+    public SteamConnection Steam { get; set; } = SteamConnection.None;
+
+    /// <summary>
+    /// Shorthand for the commonest two shapes: a settings-table key and nothing
+    /// else, or nothing at all. Written as a property so the tests that predate
+    /// the two-method Steam card still read the way they were written.
+    /// </summary>
+    public bool SteamConfigured
+    {
+        get => Steam.HasApiKey;
+        set => Steam = value
+            ? SteamConnection.None with { HasApiKey = true, ApiKeyIsAppManaged = true }
+            : SteamConnection.None;
+    }
+
+    /// <summary>The last key handed to <see cref="SaveSteamApiKeyAsync"/>, and the counts either way.</summary>
+    public string? SavedApiKey { get; private set; }
+
+    public int ApiKeySaves { get; private set; }
+
+    public int ApiKeyClears { get; private set; }
 
     public StoreSession? Session { get; set; }
 
@@ -518,8 +641,56 @@ internal sealed class FakeStoreConnections : IStoreConnections
 
     public int SignOutCalls { get; private set; }
 
-    public ValueTask<bool> IsSteamWebApiConfiguredAsync(CancellationToken ct = default)
-        => ValueTask.FromResult(SteamConfigured);
+    /// <summary>
+    /// When set, the session half of the Steam answer is computed from a real
+    /// session provider, so a sign-in a test just ran is visible to the panel on
+    /// its next refresh. This is the join the real
+    /// <see cref="StoreConnections"/> makes over the credential inventory; the
+    /// key half stays scripted because no test here has a key chain.
+    /// </summary>
+    public Winnow.Enrich.SteamWeb.Credentials.ISteamSessionProvider? Sessions { get; set; }
+
+    public TimeProvider Clock { get; set; } = TimeProvider.System;
+
+    public async ValueTask<bool> IsSteamWebApiConfiguredAsync(CancellationToken ct = default)
+        => (await GetSteamConnectionAsync(ct)).HasUsableCredential;
+
+    public async ValueTask<SteamConnection> GetSteamConnectionAsync(CancellationToken ct = default)
+    {
+        if (Sessions is null)
+        {
+            return Steam;
+        }
+
+        var session = await Sessions.GetAsync(ct);
+
+        return Steam with
+        {
+            HasSession = session is not null,
+            SessionUsable = session?.IsAccessUsable(
+                Clock.GetUtcNow(),
+                Winnow.Enrich.SteamWeb.Credentials.SteamCredential.DefaultSkew) ?? false,
+            SessionExpiresAt = session?.ExpiresAt,
+            SessionAccount = session?.SteamId.Value.ToString(
+                System.Globalization.CultureInfo.InvariantCulture),
+        };
+    }
+
+    public Task SaveSteamApiKeyAsync(string? key, CancellationToken ct = default)
+    {
+        ApiKeySaves++;
+        SavedApiKey = key;
+        Steam = Steam with { HasApiKey = !string.IsNullOrWhiteSpace(key), ApiKeyIsAppManaged = true };
+        return Task.CompletedTask;
+    }
+
+    public Task ClearSteamApiKeyAsync(CancellationToken ct = default)
+    {
+        ApiKeyClears++;
+        SavedApiKey = null;
+        Steam = Steam with { HasApiKey = false, ApiKeyIsAppManaged = false };
+        return Task.CompletedTask;
+    }
 
     public ValueTask<StoreSession?> GetEpicSessionAsync(CancellationToken ct = default)
         => ValueTask.FromResult(Session);

@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/winnow-design-system-df253abf-bc4f-484d-a568-b644376ccee8/tokens/typography.css">
+<link rel="stylesheet" href="_ds/winnow-design-system-df253abf-bc4f-484d-a568-b644376ccee8/tokens/colors.css">
+<link rel="stylesheet" href="_ds/winnow-design-system-df253abf-bc4f-484d-a568-b644376ccee8/tokens/spacing.css">
+<link rel="stylesheet" href="_ds/winnow-design-system-df253abf-bc4f-484d-a568-b644376ccee8/tokens/geometry.css">
+<link rel="stylesheet" href="_ds/winnow-design-system-df253abf-bc4f-484d-a568-b644376ccee8/tokens/motion.css">
+<link rel="stylesheet" href="_ds/winnow-design-system-df253abf-bc4f-484d-a568-b644376ccee8/tokens/base.css">
+<link rel="stylesheet" href="_ds/winnow-design-system-df253abf-bc4f-484d-a568-b644376ccee8/styles.css">
+<script src="_ds/winnow-design-system-df253abf-bc4f-484d-a568-b644376ccee8/_ds_bundle.js"></script>
+<style>
+  body { margin: 0; background: #050D0E; }
+  a { color: var(--text-link); text-decoration: none; }
+  a:hover { color: var(--azure); text-decoration: underline; }
+  @keyframes dockIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+</style>
+</helmet>
+
+<div style="position:relative;width:1280px;height:820px;overflow:hidden;background:var(--shell-ground);border:1px solid var(--line);border-radius:8px;display:grid;grid-template-rows:36px 1fr;font-family:var(--type-ui);color:var(--text)">
+
+  <x-import component-from-global-scope="WinnowDesignSystem_df253a.TitleBar" layout="flush" mark-src="assets/dragon-mark.svg" hint-size="100%,36px"></x-import>
+
+  <div style="display:grid;grid-template-columns:220px 1fr;gap:8px;padding:0 8px 8px;min-height:0">
+
+    <div style="background:var(--chrome-surface);border-radius:var(--radius-pane);padding:8px 0;display:flex;flex-direction:column;gap:2px;overflow:hidden">
+      <x-import component-from-global-scope="WinnowDesignSystem_df253a.RailRow" label="THE LIBRARY" kind="bucket" hint-size="100%,36px"></x-import>
+      <x-import component-from-global-scope="WinnowDesignSystem_df253a.RailRow" label="THE FEED" kind="bucket" hint-size="100%,36px"></x-import>
+      <x-import component-from-global-scope="WinnowDesignSystem_df253a.RailRow" label="MERGES" kind="bucket" state="selected" hint-size="100%,36px"></x-import>
+      <div style="height:1px;background:var(--line);margin:8px 12px"></div>
+      <div style="font-family:var(--type-heading);font-weight:700;font-size:var(--text-display-s);line-height:var(--leading-display-s);letter-spacing:var(--track-display-s);color:var(--text-faint);padding:6px 12px 4px">CUTS</div>
+      <x-import component-from-global-scope="WinnowDesignSystem_df253a.RailRow" label="PATCHED SINCE" kind="bucket" count="37" pip="{{ true }}" hint-size="100%,36px"></x-import>
+      <x-import component-from-global-scope="WinnowDesignSystem_df253a.RailRow" label="NEVER PLAYED" kind="bucket" count="412" hint-size="100%,36px"></x-import>
+      <x-import component-from-global-scope="WinnowDesignSystem_df253a.RailRow" label="BOUNCED OFF" kind="bucket" count="88" hint-size="100%,36px"></x-import>
+      <x-import component-from-global-scope="WinnowDesignSystem_df253a.RailRow" label="PLAYED OUT" kind="bucket" count="61" hint-size="100%,36px"></x-import>
+      <x-import component-from-global-scope="WinnowDesignSystem_df253a.RailRow" label="WON'T RUN" kind="bucket" count="12" hint-size="100%,36px"></x-import>
+      <div style="height:1px;background:var(--line);margin:8px 12px"></div>
+      <div style="font-family:var(--type-heading);font-weight:700;font-size:var(--text-display-s);line-height:var(--leading-display-s);letter-spacing:var(--track-display-s);color:var(--text-faint);padding:6px 12px 4px">LISTS</div>
+      <x-import component-from-global-scope="WinnowDesignSystem_df253a.RailRow" label="Couch co-op night" kind="list" count="14" hint-size="100%,30px"></x-import>
+      <x-import component-from-global-scope="WinnowDesignSystem_df253a.RailRow" label="Finish in 2026" kind="list" count="9" hint-size="100%,30px"></x-import>
+      <x-import component-from-global-scope="WinnowDesignSystem_df253a.RailRow" label="Merged headers" kind="list" count="26" hint-size="100%,30px"></x-import>
+    </div>
+
+    <div style="background:var(--pane-ground);border:1px solid var(--line);border-radius:var(--radius-pane);display:grid;grid-template-rows:auto auto 1fr;min-height:0;overflow:hidden">
+
+      <div style="display:flex;align-items:center;gap:12px;padding:0 16px;height:56px">
+        <h1 style="margin:0;font-family:var(--type-heading);font-weight:700;font-size:var(--text-display-l);line-height:var(--leading-display-l);color:var(--text)">Merges</h1>
+        <span style="font-family:var(--type-number);font-size:var(--text-data);line-height:var(--leading-data);font-variant-numeric:tabular-nums;color:var(--text-dim)">{{ pendingLine }}</span>
+        <span style="flex:1"></span>
+        <span style="position:relative;display:flex">
+          <x-import component-from-global-scope="WinnowDesignSystem_df253a.Button" variant="ctl" size="md" active="{{ sortOpen }}" onClick="{{ onSortToggle }}" hint-size="auto,28px">
+            <span style="display:inline-flex;align-items:center;gap:7px">{{ sortLabel }}<svg width="8" height="5" viewBox="0 0 8 5" aria-hidden="true"><path d="M0 0h8L4 5z" fill="currentColor"></path></svg></span>
+          </x-import>
+          <sc-if value="{{ sortOpen }}" hint-placeholder-val="{{ false }}">
+            <span style="position:absolute;top:34px;right:0;z-index:5">
+              <x-import component-from-global-scope="WinnowDesignSystem_df253a.SortMenu" options="{{ sortOptions }}" value="{{ sort }}" onChange="{{ onSort }}" hint-size="176px,100px"></x-import>
+            </span>
+          </sc-if>
+        </span>
+        <x-import component-from-global-scope="WinnowDesignSystem_df253a.Button" variant="ctl" size="md" onClick="{{ onAcceptExact }}" disabled="{{ noExact }}" hint-size="auto,28px">{{ acceptLabel }}</x-import>
+        <x-import component-from-global-scope="WinnowDesignSystem_df253a.Button" variant="primary" size="md" onClick="{{ onMergeSelected }}" disabled="{{ noSelection }}" hint-size="auto,28px">{{ selectionLabel }}</x-import>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:8px;height:40px;padding:0 16px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--chrome-surface)">
+        <x-import component-from-global-scope="WinnowDesignSystem_df253a.SegmentedToggle" options="{{ kindOptions }}" value="{{ kind }}" onChange="{{ onKind }}" hint-size="380px,26px"></x-import>
+        <sc-if value="{{ kindChipOn }}" hint-placeholder-val="{{ false }}">
+          <x-import component-from-global-scope="WinnowDesignSystem_df253a.CutChip" label="{{ kindChipLabel }}" kind="user" tooltip="You set this — showing one grouping kind" onDismiss="{{ onKindClear }}" hint-size="auto,24px"></x-import>
+        </sc-if>
+        <span style="flex:1"></span>
+        <span style="font-family:var(--type-number);font-size:var(--text-data);font-variant-numeric:tabular-nums;color:var(--text-dim)">{{ cutCount }}</span>
+      </div>
+
+      <div style="overflow-y:auto;padding:16px 10px 24px 16px;display:flex;flex-direction:column;gap:16px;scrollbar-width:thin;scrollbar-color:var(--line) transparent">
+        <sc-for list="{{ sections }}" as="sec" hint-placeholder-count="3">
+          <x-import component-from-global-scope="WinnowDesignSystem_df253a.SectionPanel" title="{{ sec.title }}" count="{{ sec.count }}" blurb="{{ sec.blurb }}" pad="12px" hint-size="100%,240px">
+            <div style="display:flex;flex-direction:column;gap:10px">
+
+              <sc-if value="{{ sec.empty }}" hint-placeholder-val="{{ false }}">
+                <x-import component-from-global-scope="WinnowDesignSystem_df253a.EmptyState" message="{{ sec.emptyText }}" measure="440px" hint-size="100%,64px"></x-import>
+              </sc-if>
+
+              <sc-for list="{{ sec.groups }}" as="g" hint-placeholder-count="2">
+                <div style="border:1px solid {{ g.edge }};border-radius:var(--radius-tile);background:var(--surface);overflow:hidden">
+
+                  <sc-if value="{{ g.resolved }}" hint-placeholder-val="{{ false }}">
+                    <div style="display:flex;align-items:center;gap:12px;min-height:44px;padding:8px 12px">
+                      <span style="width:2px;align-self:stretch;background:var(--volt)"></span>
+                      <span style="font-family:var(--type-heading);font-weight:700;font-size:var(--text-body-l);color:var(--text)">{{ g.headerTitle }}</span>
+                      <span style="font-family:var(--type-number);font-size:var(--text-data);font-variant-numeric:tabular-nums;color:var(--text-dim)">{{ g.resolvedMeta }}</span>
+                      <span style="flex:1"></span>
+                      <x-import component-from-global-scope="WinnowDesignSystem_df253a.Button" variant="quiet" size="sm" onClick="{{ g.onUndoOne }}" hint-size="auto,26px">Separate again</x-import>
+                    </div>
+                  </sc-if>
+
+                  <sc-if value="{{ g.pending }}" hint-placeholder-val="{{ true }}">
+                    <div style="display:grid;grid-template-columns:26px 1fr auto;align-items:flex-start;gap:12px;padding:12px">
+                      <div style="width:26px;overflow:hidden">
+                        <x-import component-from-global-scope="WinnowDesignSystem_df253a.Checkbox" checked="{{ g.selected }}" onChange="{{ g.onSelect }}" hint-size="26px,26px"></x-import>
+                      </div>
+                      <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                        <div style="display:flex;align-items:center;gap:8px">
+                          <span style="font-family:var(--type-heading);font-weight:700;font-size:var(--text-body-l);line-height:var(--leading-body-l);color:var(--text)">{{ g.headerTitle }}</span>
+                          <sc-if value="{{ g.unread }}" hint-placeholder-val="{{ false }}">
+                            <x-import component-from-global-scope="WinnowDesignSystem_df253a.UnreadDot" size="row" tooltip="{{ g.unreadTip }}" hint-size="8px,8px"></x-import>
+                          </sc-if>
+                          <sc-if value="{{ showConfidence }}" hint-placeholder-val="{{ true }}">
+                            <x-import component-from-global-scope="WinnowDesignSystem_df253a.Badge" dc-props="{{ g.confProps }}" hint-size="auto,20px">{{ g.confLabel }}</x-import>
+                          </sc-if>
+                        </div>
+                        <span style="font-family:var(--type-number);font-size:var(--text-data);line-height:var(--leading-data);font-variant-numeric:tabular-nums;color:var(--text-dim)">{{ g.rollup }}</span>
+                      </div>
+                      <div style="display:flex;align-items:center;gap:8px;padding-top:2px">
+                        <x-import component-from-global-scope="WinnowDesignSystem_df253a.Button" variant="primary" size="sm" onClick="{{ g.onMerge }}" hint-size="auto,26px">Same game</x-import>
+                        <x-import component-from-global-scope="WinnowDesignSystem_df253a.Button" variant="quiet" size="sm" onClick="{{ g.onDismiss }}" hint-size="auto,26px">Different games</x-import>
+                      </div>
+                    </div>
+
+                    <sc-for list="{{ g.rows }}" as="r" hint-placeholder-count="2">
+                      <div onClick="{{ r.onPromote }}" onMouseEnter="{{ r.onEnter }}" onMouseLeave="{{ r.onLeave }}" title="Make this the header" style="display:grid;grid-template-columns:2px 34px 1fr auto 84px 68px 14px;align-items:center;gap:10px;height:{{ rowHeight }};padding-right:12px;cursor:pointer;border-top:1px solid var(--line-soft);background:{{ r.bg }};transition:background var(--dur-hover-restore) var(--ease-out)">
+                        <span style="align-self:stretch;background:{{ r.edge }}"></span>
+                        <span style="width:34px;height:51px;border-radius:3px;background-image:var(--tile-gloss),{{ r.cover }}"></span>
+                        <span style="display:flex;align-items:center;gap:8px;min-width:0">
+                          <span style="font-family:var(--type-heading);font-weight:700;font-size:var(--text-body);color:{{ r.ink }};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.title }}</span>
+                          <sc-if value="{{ r.promoted }}" hint-placeholder-val="{{ false }}">
+                            <span style="font-family:var(--type-ui);font-weight:600;font-size:var(--text-label);line-height:var(--leading-label);letter-spacing:var(--track-label);color:var(--volt);white-space:nowrap">HEADER</span>
+                          </sc-if>
+                          <sc-if value="{{ r.nested }}" hint-placeholder-val="{{ false }}">
+                            <span style="font-family:var(--type-ui);font-size:var(--text-label);line-height:var(--leading-label);letter-spacing:var(--track-label);color:var(--text-faint);white-space:nowrap">NESTS UNDER</span>
+                          </sc-if>
+                        </span>
+                        <x-import component-from-global-scope="WinnowDesignSystem_df253a.Badge" variant="outline" hint-size="auto,16px">{{ r.store }}</x-import>
+                        <span style="font-family:var(--type-number);font-size:var(--text-data);font-variant-numeric:tabular-nums;color:var(--text);text-align:right">{{ r.playtime }}</span>
+                        <span style="font-family:var(--type-number);font-size:var(--text-data);font-variant-numeric:tabular-nums;color:var(--text-dim);text-align:right">{{ r.idle }}</span>
+                        <span style="display:flex;justify-content:flex-end">
+                          <sc-if value="{{ r.unread }}" hint-placeholder-val="{{ false }}">
+                            <x-import component-from-global-scope="WinnowDesignSystem_df253a.UnreadDot" size="row" tooltip="{{ r.unreadTip }}" hint-size="8px,8px"></x-import>
+                          </sc-if>
+                        </span>
+                      </div>
+                    </sc-for>
+
+                    <div style="display:flex;align-items:center;min-height:32px;padding:6px 12px;border-top:1px solid var(--line-soft);background:var(--surface-raised-faint);font-size:var(--text-para);line-height:var(--leading-para);color:{{ g.detailInk }};transition:color var(--dur-fill) var(--ease-out)">{{ g.detail }}</div>
+                  </sc-if>
+
+                </div>
+              </sc-for>
+            </div>
+          </x-import>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+
+  <sc-if value="{{ dockOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;left:16px;bottom:16px;animation:dockIn 140ms var(--ease-out)">
+      <x-import component-from-global-scope="WinnowDesignSystem_df253a.DockCard" width="320px" onDismiss="{{ onDockDismiss }}" title="{{ dockTitle }}" hint-size="320px,88px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:var(--text-para);line-height:var(--leading-para);color:var(--text-dim);flex:1">{{ dockNote }}</span>
+          <x-import component-from-global-scope="WinnowDesignSystem_df253a.Button" variant="quiet" size="sm" onClick="{{ onUndo }}" hint-size="auto,26px">Undo</x-import>
+        </div>
+      </x-import>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1280,&quot;height&quot;:820},&quot;showConfidence&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Display&quot;},&quot;rollupTiming&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;inline&quot;,&quot;after-choice&quot;],&quot;default&quot;:&quot;inline&quot;,&quot;tsType&quot;:&quot;'inline' | 'after-choice'&quot;,&quot;section&quot;:&quot;Display&quot;},&quot;rowHeight&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:64,&quot;min&quot;:48,&quot;max&quot;:76,&quot;step&quot;:4,&quot;unit&quot;:&quot;px&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Display&quot;}}">
+class Component extends DCLogic {
+  state = { header: {}, touched: {}, resolved: {}, dismissed: [], selected: [], sort: 'match', kind: 'all', hover: null, dock: null };
+
+  DATA = [
+    { id: 'stores', title: 'ACROSS STORES', blurb: 'The same game bought more than once. Playtime rolls up under whichever copy you keep.', groups: [
+      { id: 'hollow', conf: 'exact', year: 2017, reason: 'Same title, same IGDB id 1583 \u2014 Steam and GOG both call it Hollow Knight.', rows: [
+        { t: 'Hollow Knight', s: 'STEAM', h: 312, i: '8mo', u: true, g: ['#1E4B5A', '#0C2028'], d: 'STEAM \u00b7 312h since 2017 \u00b7 last played 4 Jan 2026 \u00b7 3 updates since' },
+        { t: 'Hollow Knight', s: 'GOG', h: 0, i: 'never', g: ['#3A3F63', '#151A2E'], d: 'GOG \u00b7 never opened \u00b7 installed 12 Nov 2021 \u00b7 1.1 GB on disk' } ] },
+      { id: 'disco', conf: 'likely', year: 2019, reason: 'Titles differ by \u201cThe Final Cut\u201d. Same publisher, same year, 0.91 name match.', rows: [
+        { t: 'Disco Elysium', s: 'STEAM', h: 41, i: '3y', g: ['#5A3A2A', '#231410'], d: 'STEAM \u00b7 41h across 2019\u20132022 \u00b7 last played 8 Aug 2023' },
+        { t: 'Disco Elysium \u2014 The Final Cut', s: 'GOG', h: 12, i: '1y', u: true, g: ['#6B4326', '#2A1A0F'], d: 'GOG \u00b7 12h in 2025 \u00b7 2 updates since you played' },
+        { t: 'Disco Elysium', s: 'EPIC', h: 0, i: 'never', g: ['#2F3540', '#14181D'], d: 'EPIC \u00b7 never opened \u00b7 claimed free 17 Sep 2022 \u00b7 not installed' } ] },
+      { id: 'cyber', conf: 'exact', year: 2020, reason: 'Same title, same IGDB id 1877. Both stores report the same release date.', rows: [
+        { t: 'Cyberpunk 2077', s: 'GOG', h: 88, i: '4mo', u: true, g: ['#C8B824', '#3A3405'], d: 'GOG \u00b7 88h since 2020 \u00b7 last played 2 May 2026 \u00b7 1 update since' },
+        { t: 'Cyberpunk 2077', s: 'STEAM', h: 3, i: '2y', g: ['#8A7F1A', '#251F04'], d: 'STEAM \u00b7 3h in 2024 \u00b7 refund window closed \u00b7 not installed' } ] },
+      { id: 'hades', conf: 'exact', year: 2019, reason: 'Same title, same IGDB id 113112. The Epic copy was claimed free.', rows: [
+        { t: 'Hades', s: 'STEAM', h: 96, i: '1y', g: ['#7A2438', '#2A0C15'], d: 'STEAM \u00b7 96h since 2019 \u00b7 last played 21 Jun 2025' },
+        { t: 'Hades', s: 'EPIC', h: 0, i: 'never', g: ['#4A2030', '#1A0A12'], d: 'EPIC \u00b7 never opened \u00b7 claimed free 19 Dec 2020' } ] },
+      { id: 'breach', conf: 'exact', year: 2018, reason: 'Same title on three stores, same IGDB id 55190.', rows: [
+        { t: 'Into the Breach', s: 'STEAM', h: 22, i: '2y', g: ['#1D4A42', '#0A1A17'], d: 'STEAM \u00b7 22h in 2018 and 2024 \u00b7 last played 3 Feb 2024' },
+        { t: 'Into the Breach', s: 'EPIC', h: 6, i: '3y', g: ['#2A4238', '#0F1A15'], d: 'EPIC \u00b7 6h in 2023 \u00b7 claimed free 25 Feb 2022' },
+        { t: 'Into the Breach', s: 'GOG', h: 0, i: 'never', g: ['#1A3A3A', '#081414'], d: 'GOG \u00b7 never opened \u00b7 bought in a bundle 14 Nov 2019' } ] },
+      { id: 'terraria', conf: 'exact', year: 2013, reason: 'Same title, same IGDB id 1879.', rows: [
+        { t: 'Terraria', s: 'STEAM', h: 148, i: '5y', u: true, g: ['#2E6A3A', '#0D2414'], d: 'STEAM \u00b7 148h across 2013\u20132021 \u00b7 4 updates since you played' },
+        { t: 'Terraria', s: 'GOG', h: 0, i: 'never', g: ['#22502C', '#0A1C10'], d: 'GOG \u00b7 never opened \u00b7 installed once, 2019' } ] } ] },
+
+    { id: 'editions', title: 'EDITIONS', blurb: 'Remasters and re-releases. Winnow cannot tell a re-release from a sequel on its own \u2014 these are yours to call.', groups: [
+      { id: 'darksouls', conf: 'likely', year: 2013, reason: '\u201cRemastered\u201d against \u201cPrepare to Die Edition\u201d. Same series, five years apart.', rows: [
+        { t: 'Dark Souls: Remastered', s: 'STEAM', h: 61, i: '2y', g: ['#4A3A24', '#1A140C'], d: 'STEAM \u00b7 61h since 2018 \u00b7 last played 9 Mar 2024' },
+        { t: 'Dark Souls: Prepare to Die Edition', s: 'STEAM', h: 92, i: '6y', g: ['#33291B', '#120E08'], d: 'STEAM \u00b7 92h across 2013\u20132016 \u00b7 delisted \u00b7 won\u2019t run' } ] },
+      { id: 'masseffect', conf: 'look', year: 2011, reason: 'Three entries share a series name. The Legendary Edition contains the other two, but they also run on their own.', rows: [
+        { t: 'Mass Effect Legendary Edition', s: 'STEAM', h: 24, i: '1y', g: ['#1F3D5A', '#0A1520'], d: 'STEAM \u00b7 24h in 2025 \u00b7 last played 12 Aug 2025' },
+        { t: 'Mass Effect', s: 'STEAM', h: 71, i: '9y', g: ['#2A3348', '#0E1220'], d: 'STEAM \u00b7 71h in 2011 and 2017 \u00b7 saves not shared with Legendary' },
+        { t: 'Mass Effect 2', s: 'STEAM', h: 63, i: '8y', g: ['#3A2A3F', '#150F18'], d: 'STEAM \u00b7 63h in 2012 and 2018 \u00b7 saves not shared with Legendary' } ] },
+      { id: 'witcher', conf: 'likely', year: 2015, reason: '\u201cComplete Edition\u201d added to a title you already own on the same store.', rows: [
+        { t: 'The Witcher 3: Wild Hunt', s: 'GOG', h: 214, i: '3y', g: ['#5A2A24', '#1F0E0B'], d: 'GOG \u00b7 214h across 2015\u20132023 \u00b7 last played 30 Apr 2023' },
+        { t: 'The Witcher 3: Wild Hunt \u2014 Complete Edition', s: 'GOG', h: 9, i: '6mo', u: true, g: ['#6B342B', '#251210'], d: 'GOG \u00b7 9h in 2026 \u00b7 next-gen build \u00b7 2 updates since you played' } ] } ] },
+
+    { id: 'expansions', title: 'EXPANSIONS', blurb: 'Content that needs the base game to run. Nesting these keeps one row per game in the library.', groups: [
+      { id: 'xcom', conf: 'likely', year: 2016, reason: '\u201cWar of the Chosen\u201d is listed as an expansion of XCOM 2 on Steam, but ships as its own launchable entry.', rows: [
+        { t: 'XCOM 2', s: 'STEAM', h: 77, i: '3y', g: ['#243F4A', '#0C1619'], d: 'STEAM \u00b7 77h since 2016 \u00b7 last played 18 Jul 2023' },
+        { t: 'XCOM 2: War of the Chosen', s: 'STEAM', h: 31, i: '2y', u: true, g: ['#3A2E4A', '#140F1A'], d: 'STEAM \u00b7 31h in 2024 \u00b7 1 update since you played' } ] },
+      { id: 'stellaris', conf: 'exact', year: 2016, reason: 'Four entries declare Stellaris as their parent app. None of them launch on their own.', rows: [
+        { t: 'Stellaris', s: 'STEAM', h: 190, i: '7mo', u: true, g: ['#1B2E5A', '#080F20'], d: 'STEAM \u00b7 190h since 2016 \u00b7 last played 2 Feb 2026 \u00b7 6 updates since' },
+        { t: 'Stellaris: Utopia', s: 'STEAM', h: 0, p: '\u2014', i: '\u2014', g: ['#242E48', '#0C0F1A'], d: 'STEAM \u00b7 DLC \u00b7 needs Stellaris \u00b7 bought 6 Apr 2017' },
+        { t: 'Stellaris: Apocalypse', s: 'STEAM', h: 0, p: '\u2014', i: '\u2014', g: ['#2C2A44', '#0F0E18'], d: 'STEAM \u00b7 DLC \u00b7 needs Stellaris \u00b7 bought 22 Feb 2018' },
+        { t: 'Stellaris: Nemesis', s: 'STEAM', h: 0, p: '\u2014', i: '\u2014', g: ['#332844', '#120E18'], d: 'STEAM \u00b7 DLC \u00b7 needs Stellaris \u00b7 bought 15 Apr 2021' } ] },
+      { id: 'newvegas', conf: 'likely', year: 2010, reason: 'Two add-ons name Fallout: New Vegas in their store listing. Their playtime is already counted in the base game.', rows: [
+        { t: 'Fallout: New Vegas', s: 'STEAM', h: 132, i: '5y', g: ['#4A4224', '#18150B'], d: 'STEAM \u00b7 132h across 2010\u20132021 \u00b7 last played 11 Oct 2021' },
+        { t: 'Fallout: New Vegas \u2014 Dead Money', s: 'STEAM', h: 0, p: '\u2014', i: '\u2014', g: ['#3A3520', '#13110A'], d: 'STEAM \u00b7 DLC \u00b7 no separate playtime recorded' },
+        { t: 'Fallout: New Vegas \u2014 Old World Blues', s: 'STEAM', h: 0, p: '\u2014', i: '\u2014', g: ['#443C22', '#16130A'], d: 'STEAM \u00b7 DLC \u00b7 no separate playtime recorded' } ] } ] },
+
+    { id: 'parts', title: 'PARTS', blurb: 'Entries the store lists separately but ships as one release.', groups: [
+      { id: 'lis', conf: 'exact', year: 2015, reason: 'Five Steam entries, one release. Episodes 2\u20135 unlock inside Episode 1 and record no playtime of their own.', rows: [
+        { t: 'Life is Strange \u2014 Episode 1', s: 'STEAM', h: 3, i: '7y', g: ['#2A4A48', '#0D1918'], d: 'STEAM \u00b7 3h in 2019 \u00b7 last played 6 Jan 2019' },
+        { t: 'Life is Strange \u2014 Episode 2', s: 'STEAM', h: 0, p: '\u2014', i: '\u2014', g: ['#2E4C42', '#0E1A16'], d: 'STEAM \u00b7 unlocks inside Episode 1' },
+        { t: 'Life is Strange \u2014 Episode 3', s: 'STEAM', h: 0, p: '\u2014', i: '\u2014', g: ['#334E3E', '#101A14'], d: 'STEAM \u00b7 unlocks inside Episode 1' },
+        { t: 'Life is Strange \u2014 Episode 4', s: 'STEAM', h: 0, p: '\u2014', i: '\u2014', g: ['#37503A', '#111A12'], d: 'STEAM \u00b7 unlocks inside Episode 1' },
+        { t: 'Life is Strange \u2014 Episode 5', s: 'STEAM', h: 0, p: '\u2014', i: '\u2014', g: ['#3C5236', '#131A11'], d: 'STEAM \u00b7 unlocks inside Episode 1' } ] } ] },
+
+    { id: 'tests', title: 'TEST BUILDS', blurb: 'Demos, betas and playtests that shipped as their own entry.', groups: [
+      { id: 'drg', conf: 'likely', year: 2018, reason: '\u201cExperimental Build\u201d shares the base game\u2019s saves and its own store page.', rows: [
+        { t: 'Deep Rock Galactic', s: 'STEAM', h: 64, i: '4mo', u: true, g: ['#4A3A1C', '#18130A'], d: 'STEAM \u00b7 64h since 2018 \u00b7 last played 29 Apr 2026 \u00b7 2 updates since' },
+        { t: 'Deep Rock Galactic Experimental Build', s: 'STEAM', h: 0, i: 'never', g: ['#3A2E18', '#130F08'], d: 'STEAM \u00b7 never opened \u00b7 installed 3 Mar 2025' } ] } ] }
+  ];
+
+  KIND_LABEL = { stores: 'ACROSS STORES', editions: 'EDITIONS', expansions: 'EXPANSIONS', parts: 'PARTS', tests: 'TEST BUILDS' };
+  CONF = { exact: { label: 'EXACT MATCH', ink: 'var(--text)', rank: 0 }, likely: { label: 'LIKELY', ink: 'var(--text-dim)', rank: 1 }, look: { label: 'WORTH A LOOK', ink: 'var(--amber)', rank: 2 } };
+
+  fmt(h) { return h >= 1 ? h + 'h' : '0h'; }
+
+  headerIndex(gid) { return this.state.header[gid] || 0; }
+
+  snapshot() {
+    return { header: Object.assign({}, this.state.header), touched: Object.assign({}, this.state.touched), resolved: Object.assign({}, this.state.resolved), dismissed: this.state.dismissed.slice(), selected: this.state.selected.slice() };
+  }
+
+  showDock(type, title, note, snap) {
+    if (this.timer) clearTimeout(this.timer);
+    this.runSnap = snap;
+    this.setState({ dock: { type: type, title: title, note: note, n: 1 } });
+    this.timer = setTimeout(() => this.setState({ dock: null }), 7000);
+  }
+
+  componentWillUnmount() { if (this.timer) clearTimeout(this.timer); }
+
+  mergeGroups(ids, title, note) {
+    const snap = this.snapshot();
+    const resolved = Object.assign({}, this.state.resolved);
+    ids.forEach((id) => { resolved[id] = true; });
+    this.setState({ resolved: resolved, selected: this.state.selected.filter((s) => ids.indexOf(s) < 0) });
+    this.showDock('merge', title, note, snap);
+  }
+
+  dismissGroup(gid) {
+    const cont = this.state.dock && this.state.dock.type === 'dismiss';
+    const snap = cont ? this.runSnap : this.snapshot();
+    const n = cont ? this.state.dock.n + 1 : 1;
+    this.setState({ dismissed: this.state.dismissed.concat([gid]), selected: this.state.selected.filter((s) => s !== gid) });
+    if (this.timer) clearTimeout(this.timer);
+    this.runSnap = snap;
+    this.setState({ dock: { type: 'dismiss', n: n, title: 'Left ' + n + (n === 1 ? ' group' : ' groups') + ' alone.', note: 'They stay separate in your library. Winnow will not ask again.' } });
+    this.timer = setTimeout(() => this.setState({ dock: null }), 7000);
+  }
+
+  undo() {
+    if (!this.runSnap) return;
+    if (this.timer) clearTimeout(this.timer);
+    this.setState(Object.assign({}, this.runSnap, { dock: null }));
+    this.runSnap = null;
+  }
+
+  renderVals() {
+    const st = this.state;
+    const showConfidence = this.props.showConfidence !== false;
+    const timing = this.props.rollupTiming || 'inline';
+    const rowH = (this.props.rowHeight || 60) + 'px';
+    const kind = st.kind;
+
+    let pending = 0, exactPending = [];
+    const sections = this.DATA.filter((s) => kind === 'all' || kind === s.id).map((sec) => {
+      const hrs = (g) => g.rows.reduce((a, r) => a + r.h, 0);
+      const live = sec.groups.filter((g) => st.dismissed.indexOf(g.id) < 0).sort((a, b) => {
+        if (st.sort === 'stake') return hrs(b) - hrs(a);
+        if (st.sort === 'title') return a.rows[this.headerIndex(a.id)].t.localeCompare(b.rows[this.headerIndex(b.id)].t);
+        return this.CONF[a.conf].rank - this.CONF[b.conf].rank;
+      });
+      const groups = live.map((g) => {
+        const hi = this.headerIndex(g.id);
+        const isResolved = !!st.resolved[g.id];
+        const total = g.rows.reduce((a, r) => a + r.h, 0);
+        const unreadCount = g.rows.filter((r) => r.u).length;
+        if (!isResolved) { pending++; if (g.conf === 'exact' && sec.id === 'stores') exactPending.push(g.id); }
+        const hoverKey = st.hover && st.hover.g === g.id ? st.hover.i : null;
+        const rows = g.rows.map((r, i) => ({
+          key: g.id + i, title: r.t, store: r.s, playtime: r.p || this.fmt(r.h), idle: r.i, unread: !!r.u,
+          unreadTip: 'Patched since you played',
+          promoted: i === hi, nested: i !== hi,
+          ink: i === hi ? 'var(--text)' : 'var(--text-dim)',
+          edge: i === hi ? 'var(--volt)' : 'transparent',
+          cover: 'linear-gradient(155deg,' + r.g[0] + ',' + r.g[1] + ')',
+          bg: i === hi ? 'var(--chrome-raised)' : hoverKey === i ? 'var(--chrome-raised-half)' : 'transparent',
+          onPromote: () => this.setState({ header: Object.assign({}, st.header, { [g.id]: i }), touched: Object.assign({}, st.touched, { [g.id]: true }) }),
+          onEnter: () => this.setState({ hover: { g: g.id, i: i } }),
+          onLeave: () => this.setState({ hover: null })
+        }));
+        const showRoll = timing === 'inline' || st.touched[g.id];
+        const rollBits = [this.fmt(total) + ' rolled up', g.rows.length + ' entries', 'owned since ' + g.year];
+        if (unreadCount) rollBits.push(unreadCount === 1 ? '1 entry patched since you played' : unreadCount + ' entries patched since you played');
+        const hoveredRow = hoverKey === null ? null : g.rows[hoverKey];
+        return {
+          id: g.id, headerTitle: g.rows[hi].t, pending: !isResolved, resolved: isResolved,
+          resolvedMeta: g.rows.length + ' entries \u00b7 ' + this.fmt(total) + ' \u00b7 nested, nothing deleted',
+          rollup: showRoll ? rollBits.join(' \u00b7 ') : 'Pick a header to see the roll-up.',
+          unread: unreadCount > 0, unreadTip: unreadCount + ' of these have been patched since you played',
+          confLabel: this.CONF[g.conf].label,
+          confProps: { variant: 'fill', style: { color: this.CONF[g.conf].ink, fontSize: '10px', letterSpacing: '0.04em', padding: '2px 6px' } },
+          selected: st.selected.indexOf(g.id) >= 0,
+          edge: st.selected.indexOf(g.id) >= 0 ? 'var(--volt-edge-soft)' : 'var(--line)',
+          detail: hoveredRow ? hoveredRow.d : g.reason,
+          detailInk: hoveredRow ? 'var(--text)' : 'var(--text-dim)',
+          rows: rows,
+          onSelect: () => this.setState({ selected: st.selected.indexOf(g.id) >= 0 ? st.selected.filter((s) => s !== g.id) : st.selected.concat([g.id]) }),
+          onMerge: () => this.mergeGroups([g.id], 'Rolled up under ' + g.rows[hi].t + '.', (g.rows.length - 1) + (g.rows.length === 2 ? ' entry nested' : ' entries nested') + ' \u00b7 nothing was deleted.'),
+          onDismiss: () => this.dismissGroup(g.id),
+          onUndoOne: () => { const r = Object.assign({}, st.resolved); delete r[g.id]; this.setState({ resolved: r }); }
+        };
+      });
+      const pendingHere = groups.filter((g) => g.pending).length;
+      return { id: sec.id, title: sec.title, blurb: sec.blurb, count: pendingHere, groups: groups, empty: groups.length === 0, emptyText: 'Nothing left to decide here.' };
+    });
+
+    const sel = st.selected.length;
+    return {
+      sections: sections, showConfidence: showConfidence, rowHeight: rowH,
+      pendingLine: pending === 0 ? 'nothing waiting' : pending + (pending === 1 ? ' proposal' : ' proposals') + ' \u00b7 non-destructive',
+      sort: st.sort, kind: kind,
+      sortOptions: [{ id: 'match', label: 'Strongest match' }, { id: 'stake', label: 'Playtime at stake' }, { id: 'title', label: 'Title' }],
+      kindOptions: [{ id: 'all', label: 'ALL' }, { id: 'stores', label: 'STORES' }, { id: 'editions', label: 'EDITIONS' }, { id: 'expansions', label: 'EXPANSIONS' }, { id: 'parts', label: 'PARTS' }, { id: 'tests', label: 'TESTS' }],
+      sortOpen: !!st.sortOpen,
+      sortLabel: 'Sort \u00b7 ' + ({ match: 'Strongest match', stake: 'Playtime at stake', title: 'Title' })[st.sort],
+      onSortToggle: () => this.setState({ sortOpen: !st.sortOpen }),
+      onSort: (id) => this.setState({ sort: id, sortOpen: false }),
+      onKind: (id) => this.setState({ kind: id }),
+      onKindClear: () => this.setState({ kind: 'all' }),
+      kindChipOn: kind !== 'all', kindChipLabel: this.KIND_LABEL[kind] || '',
+      cutCount: kind === 'all' ? String(pending) : this.totalPending() + ' \u2192 ' + pending,
+      acceptLabel: exactPending.length ? 'Accept ' + exactPending.length + ' exact matches' : 'No exact matches left',
+      noExact: exactPending.length === 0,
+      onAcceptExact: () => this.mergeGroups(exactPending, 'Rolled up ' + exactPending.length + ' exact matches.', 'Cross-store duplicates only \u00b7 nothing was deleted.'),
+      selectionLabel: sel ? 'Merge ' + sel + ' selected' : 'Merge selected',
+      noSelection: sel === 0,
+      onMergeSelected: () => this.mergeGroups(st.selected.slice(), 'Rolled up ' + sel + (sel === 1 ? ' group.' : ' groups.'), 'Each kept the header you picked \u00b7 nothing was deleted.'),
+      dockOpen: !!st.dock, dockTitle: st.dock ? st.dock.title : '', dockNote: st.dock ? st.dock.note : '',
+      onUndo: () => this.undo(),
+      onDockDismiss: () => { if (this.timer) clearTimeout(this.timer); this.setState({ dock: null }); }
+    };
+  }
+
+  totalPending() {
+    let n = 0;
+    this.DATA.forEach((s) => s.groups.forEach((g) => { if (this.state.dismissed.indexOf(g.id) < 0 && !this.state.resolved[g.id]) n++; }));
+    return n;
+  }
+}
+</script>
+</body>
+</html>

@@ -4,6 +4,7 @@ using Winnow.App.ViewModels;
 using Winnow.Core.Domain;
 using Winnow.Core.Repositories;
 using Winnow.Data.Repositories;
+using Winnow.Resolve;
 using Xunit;
 
 namespace Winnow.Tests;
@@ -708,7 +709,8 @@ public sealed class LibraryViewModelTests
             fixture.CreateMergeQueue(),
             DetachedStores.Create(),
             DetachedAppearance.Create(),
-            DetachedFeed.Create())
+            DetachedFeed.Create(),
+            DetachedAccountStats.Create())
         {
             IsMergeQueueVisible = true,
         };
@@ -740,7 +742,8 @@ public sealed class LibraryViewModelTests
             fixture.CreateMergeQueue(),
             DetachedStores.Create(),
             DetachedAppearance.Create(),
-            DetachedFeed.Create());
+            DetachedFeed.Create(),
+            DetachedAccountStats.Create());
 
         // The landing state, before anything has been clicked.
         Assert.True(shell.IsFeedVisible);
@@ -752,14 +755,124 @@ public sealed class LibraryViewModelTests
         Assert.True(shell.IsLibraryVisible);
         Assert.True(library.AllGames.IsSelected);
 
-        // And the rail row toggles back, like every other screen row.
-        shell.ToggleFeedCommand.Execute(null);
+        // And the rail row navigates back, like every other rail row.
+        shell.ShowFeedCommand.Execute(null);
         Assert.True(shell.IsFeedVisible);
         Assert.False(shell.IsLibraryVisible);
 
-        shell.ToggleFeedCommand.Execute(null);
+        // Clicking the row you are already on stays there: the rail marks where
+        // you are, and there is no state below "the feed" to toggle into.
+        shell.ShowFeedCommand.Execute(null);
+        Assert.True(shell.IsFeedVisible);
+        Assert.False(shell.IsLibraryVisible);
+    }
+
+    /// <summary>
+    /// The rail's Volt edge means "this is where you are" (§12.2) and exactly
+    /// one row ever carries it. FEED and ALL GAMES sit in the same section, so
+    /// two lit rows there read as two selections, which is what the Feed's old
+    /// visibility toggle produced on every launch.
+    /// </summary>
+    [Fact]
+    public async Task The_feed_and_all_games_are_never_both_selected()
+    {
+        using var fixture = new LibraryFixture();
+        await fixture.SeedAsync("Anything", minutes: 10, lastPlayed: Now.AddDays(-9));
+
+        var library = fixture.CreateViewModel();
+        await library.LoadCommand.ExecuteAsync(null);
+
+        var shell = new MainWindowViewModel(
+            library,
+            fixture.CreateMergeQueue(),
+            DetachedStores.Create(),
+            DetachedAppearance.Create(),
+            DetachedFeed.Create(),
+            DetachedAccountStats.Create());
+
+        // The landing state is the feed, so ALL GAMES is not where you are.
+        Assert.True(shell.IsFeedVisible);
+        Assert.False(library.AllGames.IsSelected);
+
+        shell.SelectBucketCommand.Execute(library.AllGames);
         Assert.False(shell.IsFeedVisible);
-        Assert.True(shell.IsLibraryVisible);
+        Assert.True(library.AllGames.IsSelected);
+
+        shell.ShowFeedCommand.Execute(null);
+        Assert.True(shell.IsFeedVisible);
+        Assert.False(library.AllGames.IsSelected);
+
+        // A bucket follows the same rule: leaving for the feed drops its
+        // Volt edge while SelectedBucket stays set and the grid stays cut.
+        var bucket = library.Buckets.First();
+        shell.SelectBucketCommand.Execute(bucket);
+        Assert.True(bucket.IsSelected);
+        Assert.False(shell.IsFeedVisible);
+
+        shell.ShowFeedCommand.Execute(null);
+        Assert.True(shell.IsFeedVisible);
+        Assert.False(bucket.IsSelected);
+        Assert.False(library.AllGames.IsSelected);
+        Assert.Same(bucket, library.SelectedBucket);
+
+        // Coming back re-marks the row without the user re-picking it.
+        shell.ShowLibraryCommand.Execute(null);
+        Assert.True(bucket.IsSelected);
+    }
+
+    /// <summary>
+    /// The three settings screens are one surface behind the rail's gear rather
+    /// than three rail rows. The gear opens it, the sections switch between
+    /// themselves without ever landing on nothing, and it reopens on the section
+    /// it was left on.
+    /// </summary>
+    [Fact]
+    public async Task The_gear_opens_the_settings_surface_and_its_sections_switch()
+    {
+        using var fixture = new LibraryFixture();
+        await fixture.SeedAsync("Anything", minutes: 10, lastPlayed: Now.AddDays(-9));
+
+        var library = fixture.CreateViewModel();
+        await library.LoadCommand.ExecuteAsync(null);
+
+        var shell = new MainWindowViewModel(
+            library,
+            fixture.CreateMergeQueue(),
+            DetachedStores.Create(),
+            DetachedAppearance.Create(),
+            DetachedFeed.Create(),
+            DetachedAccountStats.Create());
+
+        Assert.False(shell.IsSettingsVisible);
+
+        // The gear opens on the first section.
+        await shell.ShowSettingsCommand.ExecuteAsync(null);
+        Assert.True(shell.IsSettingsVisible);
+        Assert.True(shell.IsStoresVisible);
+        Assert.False(shell.IsFeedVisible);
+        Assert.False(shell.IsLibraryVisible);
+
+        // One section at a time, and picking the one on show keeps it.
+        shell.ShowAppearanceCommand.Execute(null);
+        Assert.True(shell.IsAppearanceVisible);
+        Assert.False(shell.IsStoresVisible);
+        Assert.True(shell.IsSettingsVisible);
+
+        shell.ShowAppearanceCommand.Execute(null);
+        Assert.True(shell.IsAppearanceVisible);
+        Assert.True(shell.IsSettingsVisible);
+
+        // Leaving is the rail's job, and it takes the whole surface.
+        shell.SelectBucketCommand.Execute(library.AllGames);
+        Assert.False(shell.IsSettingsVisible);
+        Assert.False(shell.IsAppearanceVisible);
+        Assert.True(library.AllGames.IsSelected);
+
+        // And the gear comes back to the section it was left on.
+        await shell.ShowSettingsCommand.ExecuteAsync(null);
+        Assert.True(shell.IsAppearanceVisible);
+        Assert.False(shell.IsStoresVisible);
+        Assert.False(library.AllGames.IsSelected);
     }
 
     /// <summary>
@@ -1084,7 +1197,19 @@ public sealed class LibraryViewModelTests
                 snapshots: withSnapshots ? Snapshots : null);
 
         public MergeQueueViewModel CreateMergeQueue()
-            => new(new MergeCandidateRepository(_db.Factory), Releases, Works);
+        {
+            var links = new IdentityLinkRepository(_db.Factory);
+            var refusals = new ExpansionRefusalRepository(_db.Factory);
+            return new MergeQueueViewModel(
+                new MergeCandidateRepository(_db.Factory),
+                Releases,
+                Works,
+                links,
+                Ownerships,
+                new LibraryExpansionScan(Releases, links, refusals),
+                refusals,
+                new LibraryQueryRepository(_db.Factory));
+        }
 
         public IEnumerable<string> Titles(LibraryViewModel library)
             => library.VisibleTiles.Select(t => t.Title);

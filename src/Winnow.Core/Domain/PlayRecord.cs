@@ -3,7 +3,8 @@ namespace Winnow.Core.Domain;
 /// <summary>
 /// Layer 4 of 4: an observation of cumulative playtime for an
 /// <see cref="Ownership"/>, as reported by a source at a point in time.
-/// Timestamps are UTC.
+/// When the stored figure was carried forward rather than directly observed,
+/// <see cref="PlayRecordSources"/> marks the source. Timestamps are UTC.
 /// </summary>
 public sealed record PlayRecord
 {

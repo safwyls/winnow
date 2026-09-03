@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Winnow.Core.Queries;
@@ -58,8 +58,12 @@ public partial class FilterPanelViewModel : ObservableObject
             t => Ids(t.Facets.FeatureIds));
         Add(new FilterGroupViewModel(ControllerKey, "CONTROLLER", Changed, sortByCount: true),
             t => Ids(t.Facets.ControllerIds));
+        // Every store the tile is owned on, so a game bought twice is
+        // counted under both options and kept by either — the same relation
+        // the Platforms screen counts, which stops the two from printing
+        // different numbers for one question (§11.2).
         Add(new FilterGroupViewModel(StoreKey, "PLATFORM", Changed),
-            t => [t.Store]);
+            t => t.Stores);
         // Two-way cut: unknown install state groups with "not on disk".
         Add(new FilterGroupViewModel(InstalledKey, "ON DISK", Changed),
             t => [t.IsOnDisk ? OnDisk : NotOnDisk]);
@@ -131,7 +135,7 @@ public partial class FilterPanelViewModel : ObservableObject
             .Select(m => (m, ModeLabel(m, snapshot))));
 
         SetOptions(StoreKey, tiles
-            .Select(t => t.Store)
+            .SelectMany(t => t.Stores)
             .Where(s => s.Length > 0)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .Select(s => (s, StoreLabel(s))));
@@ -452,15 +456,11 @@ public partial class FilterPanelViewModel : ObservableObject
         };
     }
 
-    /// <summary>Display name for a store key. Known stores use proper casing (GOG, not Gog); unknown falls back to title case.</summary>
-    private static string StoreLabel(string store) => store.ToLowerInvariant() switch
-    {
-        "" => store,
-        "steam" => "Steam",
-        "gog" => "GOG",
-        "epic" => "Epic",
-        _ => string.Concat(char.ToUpper(store[0], CultureInfo.CurrentCulture), store[1..]),
-    };
+    /// <summary>
+    /// Display name for a store key, from the one vocabulary the chips, the
+    /// list column and the launch messages also read.
+    /// </summary>
+    private static string StoreLabel(string store) => StoreNaming.Label(store);
 
     private static int? ParseYear(string text)
     {

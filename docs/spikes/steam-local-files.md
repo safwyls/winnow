@@ -1,5 +1,8 @@
 # Spike: Steam local file formats — empirical verification
 
+> **Evidence, not a rule.** This document records how something was measured and is
+> never the place to look up what to do. The current rule is in `game-library-design.md` §4.1.
+
 Date: 2026-08-23
 Verified against: live Steam install at `C:\Program Files (x86)\Steam`, Windows 11,
 two accounts present under `userdata\` (steam3 ids sanitized in fixtures).

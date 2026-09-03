@@ -35,6 +35,28 @@ public enum DataMigrationOutcome
     /// <summary>Neither the move nor the copy worked. Nothing was left
     /// half-done; this run reads the legacy directory in place.</summary>
     Failed,
+
+    /// <summary>An explicit <c>--data-dir</c> override was supplied. The
+    /// legacy directory was never read, moved or copied; this run uses
+    /// only the path the caller chose.</summary>
+    Overridden,
+}
+
+/// <summary>The <c>--data-dir</c> override points at a path that cannot
+/// be used as a data directory. Thrown rather than falling back, because
+/// a silent return to the real library is the failure the flag exists
+/// to prevent.</summary>
+public sealed class DataDirectoryOverrideException : Exception
+{
+    public DataDirectoryOverrideException(string message)
+        : base(message)
+    {
+    }
+
+    public DataDirectoryOverrideException(string message, Exception inner)
+        : base(message, inner)
+    {
+    }
 }
 
 /// <summary>Where this run keeps its data, and how it got there.</summary>
@@ -99,6 +121,148 @@ public static class WinnowDataLocation
     /// <c>Winnow</c> so that promoting it is a rename on one volume.
     /// </summary>
     private const string StagingMarker = ".staging-";
+
+    /// <summary>The command-line argument that redirects the data directory
+    /// to a caller-chosen path.</summary>
+    public const string OverrideArgument = "--data-dir";
+
+    /// <summary>An empty file written and immediately deleted to prove the
+    /// directory is writable. <see cref="Directory.CreateDirectory"/> returns
+    /// successfully for a directory that already exists but is read-only, so
+    /// this is the only check that catches that shape. A fixed name so the
+    /// check is testable; it exists for microseconds and is deleted on every
+    /// path through the check.</summary>
+    private const string WriteProbeName = ".winnow-write-probe";
+
+    /// <summary>
+    /// The override path from the command line, or null when the argument is
+    /// absent. Accepts <c>--data-dir &lt;path&gt;</c> and
+    /// <c>--data-dir=&lt;path&gt;</c>, the same two spellings
+    /// <see cref="EpicLoginConsole.CodeFrom"/> accepts. Throws when the
+    /// argument is present without a value: an argument that was typed but
+    /// did not take effect would put this run back on the real library,
+    /// which is the silent failure the flag exists to remove.
+    /// </summary>
+    public static string? OverrideFrom(IReadOnlyList<string> args)
+    {
+        ArgumentNullException.ThrowIfNull(args);
+
+        for (var i = 0; i < args.Count; i++)
+        {
+            if (string.Equals(args[i], OverrideArgument, StringComparison.Ordinal))
+            {
+                var next = i + 1 < args.Count ? args[i + 1] : null;
+                if (string.IsNullOrWhiteSpace(next) || next.StartsWith('-'))
+                {
+                    throw new DataDirectoryOverrideException(
+                        $"{OverrideArgument} requires a directory path, but none was given.");
+                }
+
+                return next;
+            }
+
+            if (args[i].StartsWith(OverrideArgument + "=", StringComparison.Ordinal))
+            {
+                var value = args[i][(OverrideArgument.Length + 1)..];
+                if (string.IsNullOrWhiteSpace(value))
+                {
+                    throw new DataDirectoryOverrideException(
+                        $"{OverrideArgument} requires a directory path, but the value is empty.");
+                }
+
+                return value;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// The data directory for this run. When the command line carries
+    /// <c>--data-dir</c>, the override path is used and no migration is
+    /// considered; otherwise the real paths under <c>%LOCALAPPDATA%</c>
+    /// are resolved and migrated as usual.
+    /// </summary>
+    public static DataLocation ResolveFrom(IReadOnlyList<string> args, ILogger? log = null)
+    {
+        var requested = OverrideFrom(args);
+        return requested is null ? Resolve(log) : ResolveOverride(requested, log);
+    }
+
+    /// <summary>
+    /// An explicitly chosen data directory. No migration is considered and
+    /// the legacy <c>%LOCALAPPDATA%\Hoard</c> directory is never read, moved
+    /// or copied. The directory is created if it does not exist; every way
+    /// the path can be unusable throws <see cref="DataDirectoryOverrideException"/>
+    /// rather than falling back. The existing <see cref="DatabaseIn"/> is
+    /// still called, so an override pointed at a copy of an old Hoard folder
+    /// opens the <c>hoard.db</c> it finds, in place, renaming nothing.
+    ///
+    /// <para><see cref="Directory.CreateDirectory"/> here is a departure from
+    /// the ordinary <see cref="Resolve(ILogger?)"/>: that method creates
+    /// nothing (a test pins it, and <see cref="DatabaseInitializer"/> owns
+    /// the directory). Under an override, creating the directory IS the
+    /// usability check, and it runs before anything opens a database.</para>
+    /// </summary>
+    public static DataLocation ResolveOverride(string requested, ILogger? log = null)
+    {
+        if (string.IsNullOrWhiteSpace(requested))
+        {
+            throw new DataDirectoryOverrideException(
+                $"{OverrideArgument} requires a non-empty directory path.");
+        }
+
+        string root;
+        try
+        {
+            root = Path.GetFullPath(requested);
+        }
+        catch (Exception badPath) when (badPath
+            is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            throw new DataDirectoryOverrideException(
+                $"'{requested}' is not a valid path: {badPath.Message}", badPath);
+        }
+
+        if (File.Exists(root))
+        {
+            throw new DataDirectoryOverrideException(
+                $"'{root}' is an existing file, not a directory.");
+        }
+
+        try
+        {
+            Directory.CreateDirectory(root);
+        }
+        catch (Exception cannotCreate) when (cannotCreate
+            is IOException or UnauthorizedAccessException or NotSupportedException
+                or PathTooLongException)
+        {
+            throw new DataDirectoryOverrideException(
+                $"The directory '{root}' could not be created: {cannotCreate.Message}",
+                cannotCreate);
+        }
+
+        var probe = Path.Combine(root, WriteProbeName);
+        try
+        {
+            File.WriteAllBytes(probe, []);
+            File.Delete(probe);
+        }
+        catch (Exception cannotWrite) when (cannotWrite
+            is IOException or UnauthorizedAccessException or NotSupportedException)
+        {
+            throw new DataDirectoryOverrideException(
+                $"The directory '{root}' exists but cannot be written to: {cannotWrite.Message}",
+                cannotWrite);
+        }
+
+        log?.LogWarning(
+            "Data directory overridden by {Argument}: this run reads and writes {Root}, not your real library.",
+            OverrideArgument, root);
+
+        return new DataLocation(root, DatabaseIn(root), DataMigrationOutcome.Overridden);
+    }
 
     /// <summary>The real paths under <c>%LOCALAPPDATA%</c>.</summary>
     public static DataLocation Resolve(ILogger? log = null)

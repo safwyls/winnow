@@ -170,10 +170,13 @@ public sealed class EpicAccountClient : IEpicAccountClient
         var library = await GetOwnedLibraryAsync(cacheTtl, ct);
         return library.Succeeded
             // ObservedAt is stamped now rather than taken from the library, so a
-            // cache hit does not backdate the observation. The cached FACTS are
-            // hours old; the observation that they are still Winnow's best answer
-            // is current, and play_records.observed_at has to stay monotonic
-            // across syncs.
+            // cache hit does not backdate the observation. The cached facts may
+            // be hours old; the observation that they are still Winnow's best
+            // answer is current. A backdated candidate sorts behind the newest
+            // stored row in LibraryQueryRepository's latest_play CTE (ORDER BY
+            // observed_at DESC, id DESC) and loses that comparison, so the
+            // bucket, dormancy signal and "last played" date the user reads
+            // all keep reporting a stale row.
             ? library.ToCandidates(SourceName, _options.PlaytimeUnit, _clock.GetUtcNow().UtcDateTime)
             : [];
     }

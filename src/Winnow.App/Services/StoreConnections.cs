@@ -1,4 +1,6 @@
-using Winnow.Enrich.SteamWeb;
+using System.Globalization;
+using Winnow.Core.Repositories;
+using Winnow.Enrich.SteamWeb.Credentials;
 using Winnow.Ingest.Epic.Web.Auth;
 
 namespace Winnow.App.Services;
@@ -19,21 +21,107 @@ public sealed class StoreConnections : IStoreConnections
     /// </summary>
     private readonly IEpicTokenStore? _epicSessions;
 
-    private readonly ISteamWebApiClient? _steam;
+    /// <summary>
+    /// The credential inventory — both Steam credentials at once, and the only
+    /// thing this class asks about Steam. Deliberately not
+    /// <c>ISteamWebApiClient</c>: an HTTP client is the wrong object to ask a
+    /// status question of, and its <c>IsConfiguredAsync</c> is a pass-through to
+    /// exactly this inventory anyway.
+    /// </summary>
+    private readonly ISteamCredentialProvider? _steamCredentials;
+
+    /// <summary>Where an in-app Web API key is written. Null in a host with no settings table.</summary>
+    private readonly ISettingsRepository? _settings;
+
+    /// <summary>
+    /// The shared account-confirmation writer, so a key change reconciles the
+    /// recorded account with the credentials actually in force. Optional: absent
+    /// means the confirmation is left alone, which is the pre-S4 behaviour and
+    /// not a failure.
+    /// </summary>
+    private readonly ISteamAccountConfirmation? _confirmation;
 
     public StoreConnections(
         EpicSignInService? epic = null,
         IEpicTokenStore? epicSessions = null,
-        ISteamWebApiClient? steam = null)
+        ISteamCredentialProvider? steamCredentials = null,
+        ISettingsRepository? settings = null,
+        ISteamAccountConfirmation? confirmation = null)
     {
         _epic = epic;
         _epicSessions = epicSessions;
-        _steam = steam;
+        _steamCredentials = steamCredentials;
+        _settings = settings;
+        _confirmation = confirmation;
     }
 
     /// <inheritdoc/>
     public async ValueTask<bool> IsSteamWebApiConfiguredAsync(CancellationToken ct = default)
-        => _steam is not null && await _steam.IsConfiguredAsync(ct);
+        => (await GetSteamConnectionAsync(ct)).HasUsableCredential;
+
+    /// <inheritdoc/>
+    public async ValueTask<SteamConnection> GetSteamConnectionAsync(CancellationToken ct = default)
+    {
+        if (_steamCredentials is null)
+        {
+            return SteamConnection.None;
+        }
+
+        var inventory = await _steamCredentials.GetInventoryAsync(ct);
+
+        return new SteamConnection(
+            inventory.HasApiKey,
+            ApiKeyIsAppManaged: string.Equals(
+                inventory.ApiKeySource, SettingsTableApiKeySource.SourceName, StringComparison.Ordinal),
+            inventory.HasSession,
+            inventory.SessionUsable,
+            inventory.SessionExpiresAt,
+            inventory.SessionAccount?.Value.ToString(CultureInfo.InvariantCulture));
+    }
+
+    /// <inheritdoc/>
+    public Task SaveSteamApiKeyAsync(string? key, CancellationToken ct = default)
+        => WriteSteamApiKeyAsync(key?.Trim() ?? string.Empty, ct);
+
+    /// <inheritdoc/>
+    public Task ClearSteamApiKeyAsync(CancellationToken ct = default)
+        => WriteSteamApiKeyAsync(string.Empty, ct);
+
+    /// <summary>
+    /// The one write path for the settings-table key, so saving and clearing
+    /// cannot drift apart on what has to happen afterwards.
+    ///
+    /// <para>The empty string is the cleared state rather than a deleted row:
+    /// <see cref="ISettingsRepository"/> has no delete, and
+    /// <c>SteamApiKey.TryCreate</c> already treats blank as unset, so an empty
+    /// value and an absent row mean the same thing to every reader.</para>
+    ///
+    /// <para><b>Invalidate, then reconcile, in that order.</b> The key chain
+    /// memoises — it is read on every enrichment call — so nothing sees the new
+    /// key until the cache is dropped, and reconciliation asks which credentials
+    /// are in force, which is a question with the wrong answer until it is.</para>
+    /// </summary>
+    private async Task WriteSteamApiKeyAsync(string value, CancellationToken ct)
+    {
+        if (_settings is null)
+        {
+            return;
+        }
+
+        await _settings.SetAsync(SettingsTableApiKeySource.ApiKeySetting, value, ct);
+
+        _steamCredentials?.Invalidate();
+
+        if (_confirmation is not null)
+        {
+            // A confirmation earned by the key that was just replaced or removed
+            // no longer names a credential in force, and an account filter still
+            // trusting it would hide the wrong library. One earned by a sign-in,
+            // or by an identical key, survives — reconciliation compares against
+            // every credential present, not against a preferred one.
+            await _confirmation.ReconcileAsync(ct);
+        }
+    }
 
     /// <inheritdoc/>
     public async ValueTask<StoreSession?> GetEpicSessionAsync(CancellationToken ct = default)

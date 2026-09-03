@@ -1,0 +1,281 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Winnow.App.ViewModels"
+             x:Class="Winnow.App.Views.SteamAccountImportView"
+             x:DataType="vm:SteamAccountImportViewModel">
+
+    <!-- The purchase and licence import (ROADMAP M5 item 3, and the §4.7
+         amendment's condition 3). Two routes to the same two pages and the same
+         parser, drawn as EQUAL PEERS: the same heading weight, the same
+         paragraph of plain explanation above the button, and the same primary
+         button. Neither is pre-selected and neither is described in terms of the
+         other.
+
+         TASK-59 folded this out of a settings screen of its own and into the
+         Steam card on the Platforms screen, so it is a SECTION now, not a
+         screen: no header, no scroll of its own, and no card of its own. The
+         two routes lie down the card rather than across it — the grammar the
+         Steam card already uses for its two connection methods — because a
+         Surface card nested inside a Surface card reads as a seam, and because
+         at the card's measure two columns would set each explanation at a
+         measure narrower than the provisional reading measure (TASK-82).
+
+         No Flare anywhere. Amber carries problems, the way it does on the rest
+         of this screen and on the consent window; Volt carries the two actions;
+         numbers are Plex Mono with tnum. -->
+
+    <UserControl.Styles>
+
+        <!-- ══ Inset fields ═════════════════════════════════════════════════
+             A note the card is making about itself. Well is the app's inset
+             tone (§9); Amber on the edge only, so the text stays legible ink
+             rather than becoming a coloured paragraph. -->
+        <Style Selector="Border.note">
+            <Setter Property="Background" Value="{StaticResource Well}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
+            <Setter Property="Padding" Value="14,12"/>
+        </Style>
+        <Style Selector="Border.note.attention">
+            <Setter Property="BorderBrush" Value="{StaticResource Amber}"/>
+        </Style>
+        <Style Selector="Border.note.working">
+            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+        </Style>
+
+        <!-- ══ Count row ════════════════════════════════════════════════════
+             Label left, number right in a fixed column so the digits line up
+             down the table without a grid per row disagreeing about width. -->
+        <Style Selector="TextBlock.count">
+            <Setter Property="FontFamily" Value="{StaticResource DataFont}"/>
+            <Setter Property="FontSize" Value="{StaticResource DataSize}"/>
+            <Setter Property="FontFeatures" Value="tnum"/>
+            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+            <Setter Property="TextAlignment" Value="Right"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
+    </UserControl.Styles>
+
+    <StackPanel Spacing="16">
+
+    <!-- ══ THE TWO ROUTES ═══════════════════════════════════════
+         Peers laid down the card. Same heading weight, same
+         explanation slot, same primary button; neither is drawn as
+         the other's fallback (§4.7 amendment, condition 6). -->
+
+    <!-- ── Route A ──────────────────────────────────────────
+         The consent surface: the paragraph is what the user
+         reads, and pressing the button is the consent. The
+         command is the only place ConsentGranted is set. It
+         stays at the top level rather than moving behind the
+         card's disclosure idiom, because condition 3 makes it
+         the thing read BEFORE anything runs. -->
+    <StackPanel Spacing="12">
+        <TextBlock Classes="display-l" FontSize="16"
+                   TextWrapping="Wrap"
+                   Text="{Binding SignInRouteHeading}"/>
+        <TextBlock Classes="para" Text="{Binding SignInRouteExplanation}"/>
+
+        <!-- No WebView2 runtime here. Amber, and the sentence
+             points at the other route without demoting it. -->
+        <Border Classes="note attention"
+                IsVisible="{Binding ShowSignInUnavailable}">
+            <TextBlock Classes="para lead"
+                       Text="{Binding SignInUnavailableMessage}"/>
+        </Border>
+
+        <Button Classes="act primary"
+                HorizontalAlignment="Left"
+                Content="{Binding SignInRouteButtonText}"
+                AutomationProperties.Name="{Binding SignInRouteButtonText}"
+                Command="{Binding ImportFromSignInCommand}"/>
+
+        <!-- Text progress; no animated bar, and nothing that
+             moves under a reduced-motion setting. -->
+        <StackPanel Spacing="10" IsVisible="{Binding ShowSignInBusy}">
+            <Border Classes="note working">
+                <TextBlock Classes="para lead" Text="{Binding SignInBusyMessage}"/>
+            </Border>
+            <Button Classes="act quiet"
+                    Content="Cancel"
+                    HorizontalAlignment="Left"
+                    Command="{Binding ImportFromSignInCancelCommand}"/>
+        </StackPanel>
+    </StackPanel>
+
+    <!-- ── Route B ──────────────────────────────────────────
+         Reachable with no session and no credential of any
+         kind: nothing here is bound to a sign-in state, which
+         is TASK-59's third acceptance criterion held as a fact
+         of the markup rather than as a promise. -->
+    <StackPanel Spacing="12">
+        <TextBlock Classes="display-l" FontSize="16"
+                   TextWrapping="Wrap"
+                   Text="{Binding SavedPagesRouteHeading}"/>
+        <TextBlock Classes="para" Text="{Binding SavedPagesRouteExplanation}"/>
+
+        <Button Classes="act primary"
+                HorizontalAlignment="Left"
+                Content="{Binding SavedPagesRouteButtonText}"
+                AutomationProperties.Name="{Binding SavedPagesRouteButtonText}"
+                Command="{Binding ImportFromSavedPagesCommand}"/>
+
+        <Border Classes="note working" IsVisible="{Binding ShowSavedPagesBusy}">
+            <TextBlock Classes="para lead" Text="{Binding SavedPagesBusyMessage}"/>
+        </Border>
+
+        <!-- The verified reality about both pages, given BEFORE
+             the save rather than as a correction afterwards.
+             Two notes, because the two pages fail differently:
+             history grows on a click the user can make, and
+             licences paginate whatever they do.
+
+             Behind the disclosure because they are advice for
+             the step before this button, not state to act on
+             now — and unlike the explanation above, they are
+             not the consent surface. -->
+        <Button Classes="disclose"
+                Content="{Binding SavedPagesHintsToggleText}"
+                AutomationProperties.Name="{Binding SavedPagesHintsToggleText}"
+                Command="{Binding ToggleSavedPagesHintsCommand}"/>
+
+        <StackPanel Spacing="10" IsVisible="{Binding SavedPagesHintsOpen}">
+            <Border Classes="note">
+                <TextBlock Classes="para" Text="{Binding SavedPagesHintMessage}"/>
+            </Border>
+            <Border Classes="note">
+                <TextBlock Classes="para" Text="{Binding SavedPagesLicensesHintMessage}"/>
+            </Border>
+        </StackPanel>
+    </StackPanel>
+
+    <!-- ══ What happened ════════════════════════════════════════
+         Neutral first. A closed window and an unsigned-in session
+         are facts, so they never wear the attention edge. -->
+    <Border Classes="note" IsVisible="{Binding ShowNotice}">
+        <TextBlock Classes="para lead" Text="{Binding NoticeMessage}"/>
+    </Border>
+
+    <Border Classes="note attention" IsVisible="{Binding ShowProblem}">
+        <StackPanel Spacing="10">
+            <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
+                       Foreground="{StaticResource Amber}"
+                       Text="LAST ATTEMPT"/>
+            <TextBlock Classes="para lead" Text="{Binding ProblemMessage}"/>
+        </StackPanel>
+    </Border>
+
+    <!-- A second file of a page kind already read. Its own sentence,
+         because the likeliest way to make one is saving two pages of
+         the paginated licences list and picking both. -->
+    <Border Classes="note attention" IsVisible="{Binding ShowDuplicatePages}">
+        <TextBlock Classes="para lead" Text="{Binding DuplicatePagesMessage}"/>
+    </Border>
+
+    <!-- ══ The files the last pick offered ══════════════════════ -->
+    <Border Classes="note" IsVisible="{Binding ShowPickedFiles}">
+        <ItemsControl ItemsSource="{Binding PickedFiles}">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:PickedFileRow">
+                    <Grid ColumnDefinitions="*,12,Auto" Margin="0,3">
+                        <TextBlock Grid.Column="0"
+                                   Classes="para"
+                                   TextWrapping="NoWrap"
+                                   TextTrimming="CharacterEllipsis"
+                                   VerticalAlignment="Center"
+                                   Text="{Binding Name}"/>
+                        <TextBlock Grid.Column="2"
+                                   Classes="label" FontSize="10" LetterSpacing="1"
+                                   VerticalAlignment="Center"
+                                   Text="{Binding Outcome}"/>
+                    </Grid>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </Border>
+
+    <!-- ══ The result ═══════════════════════════════════════════
+         Every number Plex Mono, tnum, right-aligned in one column
+         so the table reads down as well as across (§3). -->
+    <Border Classes="note" Padding="16,14" IsVisible="{Binding HasResult}">
+        <StackPanel Spacing="14">
+
+            <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
+                       Text="{Binding ResultHeading}"/>
+
+            <ItemsControl ItemsSource="{Binding Counts}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ImportCountRow">
+                        <Grid ColumnDefinitions="*,16,72" Margin="0,3">
+                            <TextBlock Grid.Column="0"
+                                       Classes="para"
+                                       VerticalAlignment="Center"
+                                       Text="{Binding Label}"/>
+                            <TextBlock Grid.Column="2"
+                                       Classes="count"
+                                       Text="{Binding Value}"/>
+                        </Grid>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <TextBlock Classes="para lead"
+                       IsVisible="{Binding ShowNothingApplied}"
+                       Text="{Binding NothingAppliedMessage}"/>
+
+            <!-- Information, not a warning: no attention edge, no
+                 Amber, and the plain dim paragraph ink. Steam
+                 advertises a licence total it does not render, and
+                 saying so is the difference between a user reading
+                 the gap as Steam's arithmetic and reading it as
+                 their missing games. -->
+            <TextBlock Classes="para"
+                       IsVisible="{Binding ShowLicensesCountMismatch}"
+                       Text="{Binding LicensesCountMismatchMessage}"/>
+
+            <!-- ── The honest skip breakdown ──────────────────── -->
+            <StackPanel Spacing="10" IsVisible="{Binding ShowSkipped}">
+                <Border Height="1" Background="{StaticResource Line}"/>
+                <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
+                           Text="{Binding SkippedHeading}"/>
+                <ItemsControl ItemsSource="{Binding Skipped}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ImportCountRow">
+                            <Grid ColumnDefinitions="*,16,72" Margin="0,3">
+                                <TextBlock Grid.Column="0"
+                                           Classes="para"
+                                           VerticalAlignment="Center"
+                                           Text="{Binding Label}"/>
+                                <TextBlock Grid.Column="2"
+                                           Classes="count"
+                                           Foreground="{StaticResource TextDim}"
+                                           Text="{Binding Value}"/>
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+
+            <!-- ── What this pass could not see ─────────────────
+                 One note per PAGE, not per route. Whichever route
+                 ran, a page the pass saw only part of says so; the
+                 route decides the sentence, never whether there is
+                 one. -->
+            <Border Classes="note attention"
+                    IsVisible="{Binding ShowHistoryTruncation}">
+                <TextBlock Classes="para lead" Text="{Binding HistoryTruncationMessage}"/>
+            </Border>
+
+            <Border Classes="note attention"
+                    IsVisible="{Binding ShowLicensesTruncation}">
+                <TextBlock Classes="para lead" Text="{Binding LicensesTruncationMessage}"/>
+            </Border>
+
+        </StackPanel>
+    </Border>
+
+    </StackPanel>
+
+</UserControl>

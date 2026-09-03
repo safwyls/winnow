@@ -1,5 +1,8 @@
 # Spike: Epic + GOG local file formats — empirical verification
 
+> **Evidence, not a rule.** This document records how something was measured and is
+> never the place to look up what to do. The current rule is in `game-library-design.md` §4.8 and §5.3.
+
 Date: 2026-08-25
 Verified against: live **Epic Games Launcher 20.2.4** (one game installed: Fez) and live
 **GOG Galaxy 2.1.8.30** (client DB schema `user_version = 40`, one game installed: GWENT)
@@ -762,7 +765,7 @@ Work. Nothing here relaxes the ban on fuzzy auto-merge.
 
 ## 21. Epic OAuth — what it costs, from source and docs
 
-> **SUPERSEDED by `docs/spikes/epic-oauth.md` (2026-08-26).** That spike probed the live
+> **Corrected by `docs/spikes/epic-oauth.md` (2026-08-26).** That spike probed the live
 > endpoints rather than reading source alone, and corrects this section on three points:
 > the token lifetimes below (8 h / ~23 days) are **unverified** and must not be hardcoded;
 > the playtime endpoint's lack of a last-played date is now **confirmed by schema** rather
@@ -849,9 +852,10 @@ unrotated credentials is de facto tolerance. The realistic Epic failure mode is
 **breakage, not bans** — legendary ships a remote `webview_killswitch` precisely because
 Epic's login page breaks the flow periodically.
 
-## 22. Verdict: do not build it
+## 22. Verdict as of 2026-08-25: do not build it. Reversed 2026-08-26
 
-> **This verdict was revisited in `docs/spikes/epic-oauth.md` (2026-08-26) and reversed** —
+> **This verdict no longer holds.** It was revisited in `docs/spikes/epic-oauth.md`
+> (2026-08-26) and reversed —
 > not because the reasoning below was wrong, but because the module was subsequently built
 > as an **opt-in** source adding two facts this section did not account for (acquisition
 > dates and playtime) without displacing `catcache.bin` as the ownership source. The core

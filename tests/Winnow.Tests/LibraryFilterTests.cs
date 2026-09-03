@@ -1,4 +1,4 @@
-using Winnow.Core.Queries;
+﻿using Winnow.Core.Queries;
 using Xunit;
 
 namespace Winnow.Tests;
@@ -279,7 +279,7 @@ public class LibraryFilterTests
             releaseId,
             OwnershipId: releaseId,
             bucket,
-            store,
+            Stores: [store],
             title,
             installed,
             hasUnread,

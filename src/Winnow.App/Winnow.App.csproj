@@ -39,6 +39,16 @@
     <AvaloniaResource Include="Assets\**" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- The settings keys the backfill writes its completion markers under, and
+         the parse that reads them back. They are internal because nothing
+         outside this assembly may write them, and a test that reproduced the
+         key format by hand would pass while the product wrote a different one —
+         which is exactly how the TASK-54 disclosure bug would have escaped
+         again. Same reasoning as Winnow.Covers and Winnow.Recommend. -->
+    <InternalsVisibleTo Include="Winnow.Tests" />
+  </ItemGroup>
+
   <!-- Git-ignored local credentials, copied next to the executable so
        Program.cs can load it from AppContext.BaseDirectory. Conditional: the
        file is absent in every clean checkout and its absence is normal. -->

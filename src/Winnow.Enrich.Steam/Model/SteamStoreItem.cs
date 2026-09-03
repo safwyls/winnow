@@ -31,6 +31,92 @@ public sealed record SteamStoreItem(string AppId, string Name, IReadOnlyList<Ste
     /// support). Init property so pre-existing cached bodies still project.
     /// </summary>
     public SteamStoreCategories Categories { get; init; } = SteamStoreCategories.None;
+
+    /// <summary>
+    /// Valve's numeric <c>StoreItem.type</c>. Null when the body carried no type
+    /// field, which is distinct from zero: 0 is a real value meaning game.
+    /// Observed constants live in <see cref="SteamStoreItemTypes"/>. Init property
+    /// so pre-existing cached bodies still project.
+    /// </summary>
+    public int? StoreType { get; init; }
+
+    /// <summary>
+    /// The <c>related_items</c> block from <c>IStoreBrowseService/GetItems</c>.
+    /// Never null; an app with no relations gets
+    /// <see cref="SteamStoreRelatedItems.None"/>. Init property so pre-existing
+    /// cached bodies still project.
+    /// </summary>
+    public SteamStoreRelatedItems Related { get; init; } = SteamStoreRelatedItems.None;
+}
+
+/// <summary>
+/// Valve's numeric <c>StoreItem.type</c> values. Valve publishes no name table
+/// for this enum; every constant here is observed in real store responses and
+/// named from the content it appeared on. Counts measured against a 952-app
+/// Steam library on 2026-09-02.
+/// </summary>
+public static class SteamStoreItemTypes
+{
+    /// <summary>0 = game. 841 of 952 apps in the measured library. The default-looking value is a real classification, not a missing one.</summary>
+    public const int Game = 0;
+
+    /// <summary>1 = demo. 31 in the measured library.</summary>
+    public const int Demo = 1;
+
+    /// <summary>2 = mod. 5 in the measured library.</summary>
+    public const int Mod = 2;
+
+    /// <summary>4 = DLC. 1 in the measured library; most DLC has no separate library entry.</summary>
+    public const int Dlc = 4;
+
+    /// <summary>6 = application (tools, SDKs, dedicated servers). 8 in the measured library.</summary>
+    public const int Application = 6;
+
+    /// <summary>10 = hardware. None in the measured library.</summary>
+    public const int Hardware = 10;
+
+    /// <summary>11 = music. None in the measured library.</summary>
+    public const int Music = 11;
+
+    /// <summary>12 = beta or playtest build. 7 in the measured library.</summary>
+    public const int BetaOrPlaytest = 12;
+
+    /// <summary>
+    /// 14 = retired. 12 in the measured library. Only ever seen on delisted or
+    /// superseded apps, where <c>parent_appid</c> names the app that REPLACED
+    /// this one, not a parent it belongs to. Three of the measured library's
+    /// pairs are the retail-era Civilization IV appids pointing at works with
+    /// the same title.
+    /// </summary>
+    public const int Retired = 14;
+}
+
+/// <summary>
+/// The <c>related_items</c> block, per Valve's <c>webui/common.proto</c>
+/// <c>StoreItem_RelatedItems</c>. Bidirectional: a base game names its own
+/// demos and playtests, a child names its parent. Returned unconditionally
+/// (there is no <c>include_</c> flag for it in the request), so every cached
+/// <c>GetItems</c> body already carries it. Measured in a 952-app cache:
+/// 49 bodies carry <c>parent_appid</c>, 104 <c>demos</c>, 18
+/// <c>standalone_demos</c>, 2 <c>playtests</c>.
+/// </summary>
+public sealed record SteamStoreRelatedItems(
+    string? ParentAppId,
+    IReadOnlyList<string> DemoAppIds,
+    IReadOnlyList<string> StandaloneDemoAppIds,
+    IReadOnlyList<string> PlaytestAppIds,
+    IReadOnlyList<string> DlcParentAppIds)
+{
+    /// <summary>Shared sentinel for an app with no <c>related_items</c> block. Common and normal.</summary>
+    public static readonly SteamStoreRelatedItems None = new(null, [], [], [], []);
+
+    /// <summary>True when no relation of any kind was named, parent or child.</summary>
+    public bool IsEmpty
+        => ParentAppId is null
+           && DemoAppIds.Count == 0
+           && StandaloneDemoAppIds.Count == 0
+           && PlaytestAppIds.Count == 0
+           && DlcParentAppIds.Count == 0;
 }
 
 /// <summary>

@@ -266,7 +266,7 @@ public partial class MainWindow : Window
             await display.LoadAsync();
         }
 
-        // M8, and LAST on purpose. The scoring pass is ~500ms over a thousand
+        // M8, and LAST on purpose. The scoring pass is ~60 ms over a thousand
         // games (Winnow.App.Services.IFeedService carries the measurement), and
         // it needs the library's tiles to exist before it can build a card —
         // the feed renders the library's own tiles rather than a second
@@ -312,7 +312,7 @@ public partial class MainWindow : Window
         // reads its state on the way in, exactly as a real click would.
         if (_shell is not null && Environment.GetCommandLineArgs().Contains("--open-stores"))
         {
-            await _shell.ToggleStoresCommand.ExecuteAsync(null);
+            await _shell.ShowStoresCommand.ExecuteAsync(null);
         }
 
         // §5.1's ramp has to be reviewable in a screenshot on a machine whose
@@ -329,7 +329,7 @@ public partial class MainWindow : Window
         // driving the rail.
         if (_shell is not null && Environment.GetCommandLineArgs().Contains("--open-appearance"))
         {
-            _shell.ToggleAppearanceCommand.Execute(null);
+            _shell.ShowAppearanceCommand.Execute(null);
         }
 
         if (_library is not null && Environment.GetCommandLineArgs().Contains("--open-list"))
@@ -462,12 +462,12 @@ public partial class MainWindow : Window
             return;
         }
 
-        // The Stores panel answers Escape the same way the queue does — give the
-        // library back — and answers nothing else. It has no selection to walk
-        // and no one-key answers, so every other key is left alone rather than
-        // swallowed; a letter typed here belongs to whatever has focus, which on
-        // that screen is a selectable command line.
-        if (_shell is { IsStoresVisible: true })
+        // The settings surface answers Escape the same way the merge queue
+        // does: give the library back. It answers nothing else. It has no
+        // selection to walk and no one-key shortcuts, so every other key
+        // belongs to whatever control has focus, which on Stores is a
+        // selectable command line.
+        if (_shell is { IsSettingsVisible: true })
         {
             if (e.Key == Key.Escape)
             {
@@ -686,12 +686,13 @@ public partial class MainWindow : Window
 #endif
 
     /// <summary>
-    /// The §8 keyboard floor for the merge confirm queue: arrows walk the
-    /// pairs, <c>S</c>/<c>Enter</c> answers "Same game", <c>D</c> answers
-    /// "Different games", <c>Escape</c> goes back to the library. Both answers
-    /// are one key because the queue's whole job is to be cleared — but they
-    /// are different keys, never one key with a modifier, because "different
-    /// games" is permanent.
+    /// The §8 keyboard floor for the Merges screen: Up and Down walk the
+    /// candidate rows across every pending card, Space makes the row the
+    /// header, <c>S</c>/<c>Enter</c> answers Same game and <c>D</c> answers
+    /// Different games on the card the cursor is on, and <c>Escape</c> keeps
+    /// the app's one rule for it: back to the library. The two answers are
+    /// different keys, never one key with a modifier, because Different games
+    /// is permanent.
     /// </summary>
     private void OnMergeQueueKeyDown(KeyEventArgs e)
     {
@@ -702,28 +703,33 @@ public partial class MainWindow : Window
 
         switch (e.Key)
         {
+            case Key.Escape:
+                _shell.ShowLibraryCommand.Execute(null);
+                e.Handled = true;
+                break;
+
             case Key.Up:
-                MergeQueue.ScrollIntoView(queue.MoveSelection(-1));
+                queue.MoveFocus(-1);
                 e.Handled = true;
                 break;
 
             case Key.Down:
-                MergeQueue.ScrollIntoView(queue.MoveSelection(1));
+                queue.MoveFocus(1);
+                e.Handled = true;
+                break;
+
+            case Key.Space:
+                queue.PromoteFocused();
                 e.Handled = true;
                 break;
 
             case Key.S or Key.Enter:
-                queue.SameGameCommand.Execute(queue.SelectedCandidate);
+                queue.SameGameCommand.Execute(queue.FocusedCard);
                 e.Handled = true;
                 break;
 
             case Key.D:
-                queue.DifferentGamesCommand.Execute(queue.SelectedCandidate);
-                e.Handled = true;
-                break;
-
-            case Key.Escape:
-                _shell.ShowLibraryCommand.Execute(null);
+                queue.DifferentGamesCommand.Execute(queue.FocusedCard);
                 e.Handled = true;
                 break;
         }

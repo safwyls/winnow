@@ -24,7 +24,8 @@ public class ScorerTests
         int storeCount = 1,
         bool recentlySurfaced = false,
         int? returnEpisodes = null,
-        double? tasteAffinity = null)
+        double? tasteAffinity = null,
+        UpdateCoverage updateCoverage = UpdateCoverage.Observed)
         => new()
         {
             OwnershipId = releaseId,
@@ -41,6 +42,7 @@ public class ScorerTests
             ReturnEpisodes = returnEpisodes,
             TasteAffinity = tasteAffinity,
             TasteFacetName = tasteAffinity is null ? null : "Survival",
+            UpdateCoverage = updateCoverage,
         };
 
     private static IReadOnlyList<SignalContribution> Score(CandidateFacts facts, int seed = 1)
@@ -181,6 +183,32 @@ public class ScorerTests
         Assert.Null(Find(Score(Facts(LibraryBuckets.StaleButPatched, 2_500, AsOf.AddYears(-8))), SignalNames.ProbablyDone));
     }
 
+    [Fact]
+    public void Probably_done_needs_proven_update_coverage_and_never_claims_silence_without_it()
+    {
+        // F15. Identical rows; the only difference is whether Winnow has ever
+        // read this release's update history. Coverage begins when polling
+        // begins, so an empty update history is absence of evidence — not
+        // proof that nothing shipped — and a penalty resting on that claim
+        // must not fire.
+        var shape = Facts(LibraryBuckets.Bounced, 2_500, AsOf.AddYears(-8));
+        Assert.True(RecommendationScorer.HasProbablyDoneShape(shape, Tuning, AsOf));
+
+        var unwatched = Score(shape with { UpdateCoverage = UpdateCoverage.Unknown });
+        Assert.Null(Find(unwatched, SignalNames.ProbablyDone));
+
+        var watched = Score(shape with { UpdateCoverage = UpdateCoverage.Observed });
+        Assert.NotNull(Find(watched, SignalNames.ProbablyDone));
+
+        // The row is not silently demoted either: without coverage it simply
+        // scores higher, and no sentence anywhere asserts nothing changed.
+        Assert.True(RecommendationScorer.Total(unwatched) > RecommendationScorer.Total(watched));
+        foreach (var contribution in unwatched)
+        {
+            Assert.DoesNotContain("nothing", contribution.Explanation, StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
     // ── The headline ───────────────────────────────────────────────────────
 
     [Fact]
@@ -227,5 +255,20 @@ public class ScorerTests
         var contribution = Find(Score(Facts(LibraryBuckets.NeverPlayed, 0, null)), SignalNames.Jitter);
         Assert.NotNull(contribution);
         Assert.InRange(contribution.Contribution, 0.0, Tuning.JitterAmplitude);
+    }
+
+    // ── Duration phrasing (TASK-73) ──────────────────────────────────────────
+
+    [Fact]
+    public void Duration_renders_one_minute_as_singular_not_a_bare_count_of_one()
+    {
+        Assert.Equal("a minute", Phrases.Duration(1));
+    }
+
+    [Fact]
+    public void Duration_renders_every_other_minute_count_under_the_hours_branch_as_plural()
+    {
+        Assert.Equal("2 minutes", Phrases.Duration(2));
+        Assert.Equal("119 minutes", Phrases.Duration(119));
     }
 }

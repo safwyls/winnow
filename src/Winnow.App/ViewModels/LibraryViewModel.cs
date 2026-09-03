@@ -5,6 +5,7 @@ using Winnow.App.Services;
 using Winnow.App.ViewModels.Filters;
 using Winnow.App.ViewModels.Lists;
 using Winnow.Core.Domain;
+using Winnow.Core.Identity;
 using Winnow.Core.Queries;
 using Winnow.Core.Repositories;
 using Winnow.Covers;
@@ -80,8 +81,49 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     /// </summary>
     private readonly Services.GameLaunchService? _launcher;
 
+    /// <summary>
+    /// Identity links (migration 0018). Optional for the reason every seam
+    /// here is optional: with nothing registered every work resolves to
+    /// itself and the library is exactly the pre-link library, which is the
+    /// degradation the whole link model was chosen for.
+    /// </summary>
+    private readonly IIdentityLinkRepository? _identityLinks;
+
+    /// <summary>
+    /// Per-release achievements (§6.2). Optional; absent means the coverage
+    /// rows simply carry no achievement line.
+    /// </summary>
+    private readonly IAchievementQueryRepository? _achievements;
+
     private IReadOnlyList<GameTileViewModel> _allTiles = [];
     private FacetSnapshot _facets = FacetSnapshot.Empty;
+
+    /// <summary>
+    /// One entry per VISIBLE ownership, built in the same pass as the tiles
+    /// so the modal cannot report a figure the grid does not show.
+    /// </summary>
+    private IReadOnlyList<CoverageEntry> _coverage = [];
+
+    /// <summary>
+    /// The live same-game map, read once per load. Expansion links are a
+    /// different type and cannot reach any number from here.
+    /// </summary>
+    private SameGameResolution _resolution = SameGameResolution.Empty;
+
+    /// <summary>
+    /// The live expansion map, read from the same snapshot.
+    /// A different TYPE from <see cref="_resolution"/>, deliberately:
+    /// <c>ExpansionGrouping</c> has no <c>Resolve</c>, so it cannot be handed
+    /// to anything that computes a count, a bucket, a playtime or a
+    /// recommendation. It reaches the details modal and nothing else.
+    /// </summary>
+    private ExpansionGrouping _expansions = ExpansionGrouping.Empty;
+
+    /// <summary>
+    /// Every work by id, for the display title and cover of a linked child.
+    /// </summary>
+    private IReadOnlyDictionary<long, Work> _workById = new Dictionary<long, Work>();
+
     private bool _loaded;
 
     /// <summary>
@@ -108,8 +150,12 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         Services.GameLaunchService? launcher = null,
         LaunchStatusViewModel? launchStatus = null,
         JournalPromptViewModel? journal = null,
-        ICoverLeases? leases = null)
+        ICoverLeases? leases = null,
+        IIdentityLinkRepository? identityLinks = null,
+        IAchievementQueryRepository? achievements = null)
     {
+        _identityLinks = identityLinks;
+        _achievements = achievements;
         _libraryQueries = libraryQueries;
         _ownerships = ownerships;
         _releases = releases;
@@ -302,7 +348,10 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     {
         foreach (var tile in _allTiles)
         {
-            if (tile.OwnershipId == ownershipId)
+            // Any entry, not just the primary. A collapsed tile stands for
+            // every ownership it folded, and the feed and the journal both
+            // ask by the ownership they happened to record.
+            if (tile.Covers(ownershipId))
             {
                 return tile;
             }
@@ -326,7 +375,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     {
         foreach (var tile in _allTiles)
         {
-            if (tile.ReleaseId == releaseId)
+            if (tile.CoversRelease(releaseId))
             {
                 return tile;
             }
@@ -367,6 +416,16 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
 
     [ObservableProperty]
     public partial BucketViewModel? SelectedBucket { get; set; }
+
+    /// <summary>
+    /// Whether the library is the screen on show. The rail's Volt edge means
+    /// "this is where you are" and exactly one row ever carries it, so while
+    /// the Feed or another screen is up the rows keep their underlying
+    /// selection (<see cref="SelectedBucket"/> is untouched) and drop the
+    /// visible mark. Written by the shell whenever IsLibraryVisible changes.
+    /// </summary>
+    [ObservableProperty]
+    public partial bool IsCurrentScreen { get; set; } = true;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(TileHeight))]
@@ -536,7 +595,27 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         var bucketRows = await _libraryQueries.GetOwnershipBucketsAsync(
             BucketThresholds.Default with { ShowNonGameEntries = ShowNonGameEntries });
         var ownerships = await _ownerships.GetAllAsync();
+
+        // Deliberately unresolved — the same read enrichment uses, and it must
+        // stay unresolved because resolving would starve the child of the
+        // enrichment whose igdb_id is what fills the group. Resolution is
+        // applied BELOW, per row, for display only.
         var works = await _works.GetAllAsync();
+
+        // The live same-game map. Read once, here, beside the bucket query that
+        // resolved on the same fact — the query is the authority for anything
+        // that counts, this snapshot only names what covers what.
+        if (_identityLinks is null)
+        {
+            _resolution = SameGameResolution.Empty;
+            _expansions = ExpansionGrouping.Empty;
+        }
+        else
+        {
+            var identity = await _identityLinks.GetResolutionAsync();
+            _resolution = identity.SameGame;
+            _expansions = identity.Expansions;
+        }
 
         // One read for the whole library, not one per tile. Absent facets are a
         // normal state, not an error: the backfill runs behind a library the
@@ -617,8 +696,23 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             }
         }
 
+        _workById = works.ToDictionary(w => w.Id);
+
+        // The art a linked child borrows: the primary work's own cover, taken
+        // from its lowest release id that has one so the choice is stable across
+        // loads. Built for every work, used only by a child.
+        var coverKeyByWork = new Dictionary<long, CoverKey>();
+        foreach (var releaseId in coverKeyByRelease.Keys.OrderBy(id => id))
+        {
+            if (workByRelease.TryGetValue(releaseId, out var owner))
+            {
+                coverKeyByWork.TryAdd(owner.Id, coverKeyByRelease[releaseId]);
+            }
+        }
+
         var ownershipById = ownerships.ToDictionary(o => o.Id);
         var now = DateTime.UtcNow;
+        var coverage = new List<CoverageEntry>(bucketRows.Count);
 
         EpicLaunchKey? EpicKeyFor(long releaseId)
             => epicCatalogIdByRelease.TryGetValue(releaseId, out var catalogItemId)
@@ -626,38 +720,114 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
                     ? key
                     : null;
 
-        var tiles = new List<GameTileViewModel>(bucketRows.Count);
+        // One tile per resolved work, not one per ownership (TASK-70.6).
+        // The bucket query already resolved same-game links (and only
+        // same-game links, so an expansion cannot collapse anything) and
+        // already folded each game's figures, so all that happens here is
+        // that the rows of one game are gathered in order and handed to one
+        // tile. With nothing linked every group is one row and the grid is
+        // exactly the grid it was.
+        var groups = new Dictionary<long, List<OwnershipBucket>>();
+        var groupOrder = new List<long>();
         foreach (var row in bucketRows)
         {
-            var work = workByRelease.GetValueOrDefault(row.ReleaseId);
-            var ownership = ownershipById.GetValueOrDefault(row.OwnershipId);
+            if (!groups.TryGetValue(row.ResolvedWorkId, out var members))
+            {
+                groups[row.ResolvedWorkId] = members = [];
+                groupOrder.Add(row.ResolvedWorkId);
+            }
+
+            members.Add(row);
+        }
+
+        var tiles = new List<GameTileViewModel>(groupOrder.Count);
+        foreach (var resolvedWorkId in groupOrder)
+        {
+            // The primary work's own entries lead, then the covered titles'
+            // by work and ownership — the same order IdentityCoverage puts
+            // its rows in, so the chips on a tile and the rows in ALSO
+            // COVERS read in the same sequence. The order is total, so the
+            // primary entry and the chip order do not shuffle between loads.
+            var members = groups[resolvedWorkId];
+            members.Sort((a, b) =>
+            {
+                var aOwn = a.WorkId == resolvedWorkId ? 0 : 1;
+                var bOwn = b.WorkId == resolvedWorkId ? 0 : 1;
+                if (aOwn != bOwn)
+                {
+                    return aOwn - bOwn;
+                }
+
+                return a.WorkId == b.WorkId
+                    ? a.OwnershipId.CompareTo(b.OwnershipId)
+                    : a.WorkId.CompareTo(b.WorkId);
+            });
+
+            var primaryRow = members[0];
+
+            // The work the user is SHOWN. On a collapsed tile it is the primary
+            // work, whose name and art both store entries have read since 70.4;
+            // the collapse simply stops drawing the second tile.
+            var display = _workById.GetValueOrDefault(resolvedWorkId)
+                ?? workByRelease.GetValueOrDefault(primaryRow.ReleaseId);
+
+            // The primary entry's own art, which for an unlinked tile is the
+            // exact key it has always had. A group whose primary release has no
+            // key of its own falls back to the primary work's, so a collapsed
+            // tile is never left on a placeholder while one of its members has
+            // a cover.
+            var tileCoverKey = coverKeyByRelease.TryGetValue(primaryRow.ReleaseId, out var own)
+                ? own
+                : coverKeyByWork.TryGetValue(resolvedWorkId, out var primaryKey)
+                    ? primaryKey
+                    : (CoverKey?)null;
+
+            var entries = new List<TileEntry>(members.Count);
+            foreach (var member in members)
+            {
+                var ownership = ownershipById.GetValueOrDefault(member.OwnershipId);
+                var memberWork = workByRelease.GetValueOrDefault(member.ReleaseId);
+
+                entries.Add(TileEntry.For(
+                    ownershipId: member.OwnershipId,
+                    releaseId: member.ReleaseId,
+                    workId: member.WorkId,
+                    store: ownership?.Store ?? "?",
+                    playtimeMinutes: member.PlaytimeMinutes,
+                    lastPlayedAt: member.LastPlayedAt,
+                    ownership: ownership,
+                    steamAppId: steamAppIdByRelease.GetValueOrDefault(member.ReleaseId),
+                    gogProductId: gogProductIdByRelease.GetValueOrDefault(member.ReleaseId),
+                    epicLaunchKey: EpicKeyFor(member.ReleaseId)));
+
+                coverage.Add(new CoverageEntry
+                {
+                    OwnershipId = member.OwnershipId,
+                    ReleaseId = member.ReleaseId,
+                    WorkId = member.WorkId,
+                    Title = memberWork?.Name ?? $"Release {member.ReleaseId}",
+                    Store = ownership?.Store ?? "?",
+                    PlaytimeMinutes = member.PlaytimeMinutes,
+                    LastPlayedAt = member.LastPlayedAt,
+                });
+            }
 
             var tile = new GameTileViewModel(
-                ownershipId: row.OwnershipId,
-                releaseId: row.ReleaseId,
-                title: work?.Name ?? $"Release {row.ReleaseId}",
-                store: ownership?.Store ?? "?",
-                bucket: row.Bucket,
-                playtimeMinutes: row.PlaytimeMinutes,
-                lastPlayedUtc: row.LastPlayedAt,
+                entries: entries,
+                // Playtime, last-played, the bucket and therefore the unread
+                // badge all come off this one object, which the read model
+                // folded with CoveragePlaytime.Across.
+                game: primaryRow.Game,
+                title: display?.Name ?? $"Release {primaryRow.ReleaseId}",
                 nowUtc: now,
-                // The unread badge and the "Patched since" bucket count the
-                // same fact (§5.2): an update landed after the last session.
-                // The derived-bucket query already carries it, so the tile
-                // badge is that bucket membership — nothing else earns Flare.
-                hasUnread: row.Bucket == LibraryBuckets.StaleButPatched,
-                coverKey: coverKeyByRelease.TryGetValue(row.ReleaseId, out var coverKey) ? coverKey : null,
+                coverKey: tileCoverKey,
                 covers: _leases,
-                work: work,
-                ownership: ownership,
+                work: display,
                 ramp: Ramp,
-                steamAppId: steamAppIdByRelease.GetValueOrDefault(row.ReleaseId),
-                gogProductId: gogProductIdByRelease.GetValueOrDefault(row.ReleaseId),
-                epicLaunchKey: EpicKeyFor(row.ReleaseId),
                 // The §7 name, so the back of the card says "Never played" and
                 // not "never_played". Resolved here because the rail owns that
                 // vocabulary and the tile should not hold a second copy of it.
-                bucketLabel: BucketLabelFor(row.Bucket));
+                bucketLabel: BucketLabelFor(primaryRow.Game.Bucket));
 
             // The two commands the back face raises. Wired rather than reached
             // for: §5.1 keeps a tile a projection of the database, so it holds
@@ -673,34 +843,69 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             // one snapshot rather than passed through the constructor: it is a
             // library-wide join, and it is legitimately empty on a database the
             // backfill has not reached yet.
-            var facets = _facets.ByRelease.TryGetValue(row.ReleaseId, out var found)
-                ? found
-                : ReleaseFacets.Empty(row.ReleaseId);
+            //
+            // Unioned across the tile's entries. A genre the Steam entry
+            // carries and the Epic one does not is still true of the game,
+            // and a cut that dropped the tile because the primary happened
+            // to be the unenriched entry would hide a game the panel says
+            // it is showing.
+            var facetIds = new List<long>();
+            var gameModes = new List<string>();
+            foreach (var entry in entries)
+            {
+                var releaseFacets = _facets.ByRelease.TryGetValue(entry.ReleaseId, out var found)
+                    ? found
+                    : ReleaseFacets.Empty(entry.ReleaseId);
 
-            tile.Facets = TileFacets.From(facets, _facets.ById);
+                foreach (var facetId in releaseFacets.FacetIds)
+                {
+                    if (!facetIds.Contains(facetId))
+                    {
+                        facetIds.Add(facetId);
+                    }
+                }
+
+                foreach (var mode in releaseFacets.GameModes)
+                {
+                    if (!gameModes.Contains(mode, StringComparer.Ordinal))
+                    {
+                        gameModes.Add(mode);
+                    }
+                }
+            }
+
+            // One merged row per GAME, split by kind once — the same call a
+            // single-entry tile has always made, over a set that is identical
+            // when there is only one entry.
+            tile.Facets = ViewModels.Filters.TileFacets.From(
+                new ReleaseFacets(tile.ReleaseId, facetIds, gameModes), _facets.ById);
 
             // Build the filterable row once so panel and live lists share one implementation.
             tile.Row = new FilterableRow(
-                ReleaseId: row.ReleaseId,
-                OwnershipId: row.OwnershipId,
-                Bucket: row.Bucket,
-                Store: tile.Store,
+                ReleaseId: tile.ReleaseId,
+                OwnershipId: tile.OwnershipId,
+                Bucket: tile.Bucket,
+                Stores: tile.Stores,
                 Title: tile.Title,
                 // Two-valued: unknown install state counts as not-on-disk for filtering.
                 Installed: tile.IsOnDisk,
                 HasUnread: tile.HasUnread,
                 FirstReleaseYear: tile.ReleaseYear,
-                FacetIds: facets.FacetIds,
-                GameModes: facets.GameModes);
+                FacetIds: facetIds,
+                GameModes: gameModes);
 
             tiles.Add(tile);
         }
 
         _allTiles = tiles;
+        _coverage = coverage;
 
+        // Counted over tiles, on the game's bucket. The rail and the grid
+        // are the same set now, so a bucket count is the number of tiles
+        // the rail would show, not the number of ownership rows behind them.
         foreach (var bucket in Buckets)
         {
-            bucket.Count = bucketRows.Count(r => r.Bucket == bucket.Key);
+            bucket.Count = _allTiles.Count(t => t.Bucket == bucket.Key);
         }
 
         // Rail's "All games" count.
@@ -781,6 +986,28 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             : bucket;
     });
 
+    /// <summary>
+    /// Opens the detail modal for the tile holding one of
+    /// <paramref name="releaseIds"/>. The Merges screen asks for this when a
+    /// candidate row is clicked, so the entries can be compared before
+    /// answering; the modal is the library's and is drawn over every pane.
+    /// </summary>
+    /// <returns>False when no tile holds any of the releases, in which case nothing opens.</returns>
+    public async Task<bool> OpenDetailsForReleasesAsync(IReadOnlyList<long> releaseIds)
+    {
+        ArgumentNullException.ThrowIfNull(releaseIds);
+
+        var tile = _allTiles.FirstOrDefault(t => releaseIds.Contains(t.ReleaseId))
+            ?? _allTiles.FirstOrDefault(t => t.ReleaseIds.Any(releaseIds.Contains));
+        if (tile is null)
+        {
+            return false;
+        }
+
+        await OpenDetailsAsync(tile);
+        return true;
+    }
+
     /// <summary>Opens the detail modal, loading update events and playtime history.</summary>
     [RelayCommand]
     private async Task OpenDetailsAsync(GameTileViewModel? tile)
@@ -796,9 +1023,19 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         // Clear card flip on the way into the modal.
         ClearFlip();
 
-        var events = await _updateEvents.GetByReleaseAsync(target.ReleaseId);
+        // Every entry's updates, not just the primary's. The unread badge
+        // is the game's bucket, computed from the latest patch anywhere in
+        // the group, so a modal that only listed the primary release's
+        // events could show a badge with nothing under it — the Steam copy
+        // patched, the Epic copy primary.
+        var events = new List<Core.Domain.UpdateEvent>();
+        foreach (var releaseId in target.ReleaseIds)
+        {
+            events.AddRange(await _updateEvents.GetByReleaseAsync(releaseId));
+        }
 
-        // Newest first; each row knows whether it landed after last play.
+        // Newest first; each row knows whether it landed after last play -- the
+        // GAME's last play, which is the same date the badge was decided on.
         var updates = events
             .OrderByDescending(e => e.OccurredAt)
             .ThenByDescending(e => e.Id)
@@ -815,7 +1052,173 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             updates,
             DateTime.UtcNow,
             snapshots: history,
-            covers: _covers);
+            covers: _covers,
+            coverage: await BuildCoverageAsync(target),
+            expansions: BuildExpansions(target));
+    }
+
+    /// <summary>
+    /// Builds the EXPANSIONS section and the EXTENDS line, or null when this
+    /// game neither has packs nor is one.
+    ///
+    /// <para>Derived from the rows this load already read, exactly as coverage
+    /// is, so a grouping retracted a moment ago stops showing on the very next
+    /// read. Every row carries its OWN minutes beside its OWN last-played, and
+    /// there is deliberately no total: an expansion's hours are the
+    /// expansion's, and adding them to the base game's would produce a figure
+    /// no source reported about either game.</para>
+    /// </summary>
+    private GameExpansionsViewModel? BuildExpansions(GameTileViewModel target)
+    {
+        var entry = _coverage.FirstOrDefault(e => e.OwnershipId == target.OwnershipId);
+        if (entry is null)
+        {
+            return null;
+        }
+
+        // The GAME, not the store entry: expansions hang off the work the
+        // library files this game under, which for a linked pair is the
+        // primary. A same-game child is never an expansion parent, because
+        // depth one refuses it.
+        var gameWorkId = _resolution.Resolve(entry.WorkId);
+
+        var rows = new List<ExpansionRowViewModel>();
+        foreach (var expansionWorkId in _expansions.ExpansionsOf(gameWorkId))
+        {
+            if (RowFor(expansionWorkId, expansionWorkId) is { } row)
+            {
+                rows.Add(row);
+            }
+        }
+
+        // The other end of the same relation. The row's link child is THIS
+        // game, because the link points from the pack at its base.
+        ExpansionRowViewModel? extends = null;
+        if (_expansions.BaseOf(gameWorkId) is { } baseWorkId)
+        {
+            extends = RowFor(baseWorkId, gameWorkId);
+        }
+
+        return rows.Count == 0 && extends is null
+            ? null
+            : new GameExpansionsViewModel(rows, extends, UngroupAsync);
+
+        ExpansionRowViewModel? RowFor(long workId, long childWorkId)
+        {
+            // Every visible entry of that game, its own store entries folded
+            // the way its own tile folds them. This is the game's own figure,
+            // identical to the one the grid shows for it, and it is never
+            // added to the game whose modal is open.
+            var entries = new List<CoverageEntry>();
+            var stores = new List<string>();
+            foreach (var candidate in _coverage)
+            {
+                if (_resolution.Resolve(candidate.WorkId) != workId)
+                {
+                    continue;
+                }
+
+                entries.Add(candidate);
+                if (!stores.Contains(candidate.Store, StringComparer.OrdinalIgnoreCase))
+                {
+                    stores.Add(candidate.Store);
+                }
+            }
+
+            if (entries.Count == 0)
+            {
+                // Owned but filtered out of this load — a hidden non-game, a
+                // consolidated demo, an account the user has scoped away. The
+                // modal must not report a row the grid does not stand behind.
+                return null;
+            }
+
+            var played = CoveragePlaytime.Across(entries);
+
+            return new ExpansionRowViewModel(
+                workId,
+                childWorkId,
+                _workById.TryGetValue(workId, out var work) ? work.Name : entries[0].Title,
+                [.. stores.Select(StoreNaming.Badge)],
+                string.Join(", ", stores.Select(StoreNaming.Label)),
+                played.PlaytimeMinutes,
+                played.LastPlayedAt);
+        }
+    }
+
+    /// <summary>
+    /// Retracts one expansion link from the details modal
+    /// and reloads, reopening the modal on the same entry so the user sees the
+    /// result where they asked for it. The same call the coverage section's
+    /// Separate makes, because a link is a link: nothing is deleted, and
+    /// grouping again is an ordinary act.
+    /// </summary>
+    private Task UngroupAsync(long childWorkId) => SeparateAsync(childWorkId);
+
+    /// <summary>
+    /// Builds the ALSO COVERS section. Derived from the rows this load
+    /// already read, so it costs no library-wide query and cannot report an
+    /// entry the grid does not show. Achievements are read per release for
+    /// the group's releases and stay per release (§6.2).
+    /// </summary>
+    private async Task<GameCoverageViewModel?> BuildCoverageAsync(GameTileViewModel target)
+    {
+        var entry = _coverage.FirstOrDefault(e => e.OwnershipId == target.OwnershipId);
+        if (entry is null)
+        {
+            return null;
+        }
+
+        var coverage = IdentityCoverage.For(entry.WorkId, _resolution, _coverage);
+
+        var titleByWork = new Dictionary<long, string>();
+        foreach (var row in coverage.OwnEntries.Concat(coverage.CoveredEntries))
+        {
+            if (_workById.TryGetValue(row.WorkId, out var work))
+            {
+                titleByWork[row.WorkId] = work.Name;
+            }
+        }
+
+        var summaries = new Dictionary<long, ReleaseAchievementSummary>();
+        if (_achievements is not null)
+        {
+            var releaseIds = coverage.OwnEntries
+                .Concat(coverage.CoveredEntries)
+                .Select(e => e.ReleaseId)
+                .Distinct()
+                .ToList();
+
+            foreach (var summary in await _achievements.GetSummariesAsync(releaseIds))
+            {
+                summaries[summary.ReleaseId] = summary;
+            }
+        }
+
+        return new GameCoverageViewModel(coverage, titleByWork, summaries, SeparateAsync);
+    }
+
+    /// <summary>
+    /// Retracts one link from the details modal and reloads. The modal is
+    /// reopened on the same ownership so the user sees the result where they
+    /// asked for it. Nothing is deleted — the link row is stamped, so
+    /// linking again is an ordinary act.
+    /// </summary>
+    private async Task SeparateAsync(long childWorkId)
+    {
+        if (_identityLinks is null)
+        {
+            return;
+        }
+
+        await _identityLinks.RetractLinkAsync(childWorkId);
+        await LoadAsync();
+
+        var reopened = _allTiles.FirstOrDefault(t => t.OwnershipId == Details?.Tile.OwnershipId);
+        if (reopened is not null)
+        {
+            await OpenDetailsAsync(reopened);
+        }
     }
 
     [RelayCommand]
@@ -1042,7 +1445,10 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             return;
         }
 
-        await Lists.RemoveFromListAsync(list, SelectedTiles.Select(t => t.ReleaseId));
+        // Every entry of the game leaves, not just the primary. The tile
+        // is the thing the user is looking at; taking one store entry out
+        // would leave the game in the list with nothing on screen to say so.
+        await Lists.RemoveFromListAsync(list, SelectedTiles.SelectMany(t => t.ReleaseIds));
         ApplyFilter();
     }
 
@@ -1060,7 +1466,14 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             return;
         }
 
-        if (await Lists.MoveAsync(list, SelectedTiles[0].ReleaseId, delta))
+        // Move acts on the row the list actually holds, which on a collapsed
+        // tile need not be the primary entry.
+        if (SelectedTiles[0].ReleaseInList(PositionsIn(list)) is not { } releaseId)
+        {
+            return;
+        }
+
+        if (await Lists.MoveAsync(list, releaseId, delta))
         {
             ApplyFilter();
         }
@@ -1074,9 +1487,30 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
 
     /// <summary>Index of the selected title in the open list, or -1. Used to disable move buttons at bounds.</summary>
     private int PositionInOpenList
-        => CanReorderOpenList && Lists.Open is { } list
-            ? list.ReleaseIds.ToList().IndexOf(SelectedTiles[0].ReleaseId)
-            : -1;
+    {
+        get
+        {
+            if (!CanReorderOpenList || Lists.Open is not { } list)
+            {
+                return -1;
+            }
+
+            var at = SelectedTiles[0].PositionIn(PositionsIn(list));
+            return at == int.MaxValue ? -1 : at;
+        }
+    }
+
+    /// <summary>Release id to its stored position in the list, built once per question.</summary>
+    private static Dictionary<long, int> PositionsIn(GameListViewModel list)
+    {
+        var positions = new Dictionary<long, int>(list.ReleaseIds.Count);
+        for (var i = 0; i < list.ReleaseIds.Count; i++)
+        {
+            positions[list.ReleaseIds[i]] = i;
+        }
+
+        return positions;
+    }
 
     public bool CanMoveUpInList => PositionInOpenList > 0;
 
@@ -1258,19 +1692,26 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         ApplyFilter();
     }
 
+    partial void OnIsCurrentScreenChanged(bool value)
+    {
+        _ = value;
+        MarkRailSelection();
+    }
+
     /// <summary>Updates rail selection: one Volt edge for the active location, IsRule for a bucket inside a list.</summary>
     private void MarkRailSelection()
     {
         var inList = Lists.IsListOpen;
+        var here = IsCurrentScreen;
 
         foreach (var bucket in Buckets)
         {
             var current = ReferenceEquals(bucket, SelectedBucket);
-            bucket.IsSelected = current && !inList;
-            bucket.IsRule = current && inList;
+            bucket.IsSelected = here && current && !inList;
+            bucket.IsRule = here && current && inList;
         }
 
-        AllGames.IsSelected = SelectedBucket is null && !inList;
+        AllGames.IsSelected = here && SelectedBucket is null && !inList;
     }
 
     /// <summary>The open live list's saved rules, or null when no live list is open.</summary>
@@ -1294,13 +1735,28 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         ApplyFilter();
     }
 
-    /// <summary>Counts titles per store over all tiles (not just visible). Computed on demand.</summary>
+    /// <summary>
+    /// Titles per store, over all tiles. A tile counts once under every store
+    /// it is owned on, which is §11.2's per-tile rule surviving the change of
+    /// grain: a game bought on Steam and on Epic is genuinely on both
+    /// platforms, so both say so.
+    ///
+    /// <para>This is the same relation the filter panel's PLATFORM option
+    /// counts with nothing else cut — tiles that include the store — so the
+    /// Platforms screen and the panel cannot print different numbers for the
+    /// same question. The consequence, stated rather than discovered: the
+    /// per-store figures add up to more than All Games by exactly the number
+    /// of extra store memberships.</para>
+    /// </summary>
     public IReadOnlyDictionary<string, int> TitlesByStore()
     {
         var counts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         foreach (var tile in _allTiles)
         {
-            counts[tile.Store] = counts.GetValueOrDefault(tile.Store) + 1;
+            foreach (var store in tile.Stores)
+            {
+                counts[store] = counts.GetValueOrDefault(store) + 1;
+            }
         }
 
         return counts;
@@ -1336,7 +1792,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         if (Lists.Open is { IsManual: true } openList)
         {
             var members = openList.ReleaseIds.ToHashSet();
-            query = query.Where(t => members.Contains(t.ReleaseId));
+            query = query.Where(t => t.ReleaseIds.Any(members.Contains));
         }
 
         var search = SearchText.Trim();
@@ -1384,10 +1840,14 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     /// <summary>Recounts list membership for both manual and live lists against the current library.</summary>
     private void RefreshListCounts()
     {
+        // A tile is in a list when any of its store entries is. list_items
+        // stays per release on purpose (adding a game to a list is an act
+        // on the entry the user picked), so de-duplication happens here, on
+        // display, and the stored rows are untouched.
         foreach (var list in Lists.Lists)
         {
             var members = list.ReleaseIds.ToHashSet();
-            list.Count = _allTiles.Count(t => members.Contains(t.ReleaseId));
+            list.Count = _allTiles.Count(t => t.ReleaseIds.Any(members.Contains));
         }
 
         foreach (var list in Lists.LiveLists)
@@ -1485,14 +1945,13 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     private static IEnumerable<GameTileViewModel> OrderByPosition(
         IEnumerable<GameTileViewModel> tiles, GameListViewModel list)
     {
-        var position = new Dictionary<long, int>(list.ReleaseIds.Count);
-        for (var i = 0; i < list.ReleaseIds.Count; i++)
-        {
-            position[list.ReleaseIds[i]] = i;
-        }
+        var position = PositionsIn(list);
 
+        // Position of the game is the earliest position any of its store
+        // entries holds; a collapsed tile whose list row was recorded against
+        // its non-primary entry would otherwise sort to the end.
         return tiles
-            .OrderBy(t => position.TryGetValue(t.ReleaseId, out var at) ? at : int.MaxValue)
+            .OrderBy(t => t.PositionIn(position))
             .ThenBy(t => t.Title, StringComparer.OrdinalIgnoreCase);
     }
 

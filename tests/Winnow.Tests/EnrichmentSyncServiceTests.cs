@@ -398,6 +398,10 @@ public sealed class EnrichmentSyncServiceTests
             Summary = "Still alive.",
             CoverUrl = "https://example.invalid/cover.jpg",
             Publisher = "Valve",
+
+            // Migration 0022: knowing what kind of thing IGDB says this is
+            // became part of being fully enriched.
+            IgdbGameType = "main_game",
         });
 
         fixture.Igdb.Configured = true;
@@ -1479,6 +1483,97 @@ public sealed class EnrichmentSyncServiceTests
         Assert.Equal("Portal 2", await fixture.WorkNameAsync(steam.WorkId));
     }
 
+    // ── Storefront relation facts (TASK-70.10, migration 0022) ─────────────
+
+    /// <summary>
+    /// The relation facts every source already had and the
+    /// pass used to throw away: Valve's numeric store type and related_items
+    /// parent, IGDB's game_type and parent_game, and the steamcmd
+    /// <c>common.parent</c> that SteamCmdBuildInfoClient has always parsed and
+    /// this service always dropped on the floor.
+    /// </summary>
+    [Fact]
+    public async Task The_pass_stores_the_storefront_relation_facts()
+    {
+        using var fixture = new EnrichmentFixture();
+        var demo = await fixture.AddNamedAsync("65900", "Sid Meier's Civilization V: Demo");
+
+        // The store body is ALREADY IN THE CACHE, which is the whole claim of
+        // the Steam half: type and related_items arrive with the query
+        // BuildGetItemsQuery has always sent.
+        fixture.Steam.Cached["65900"] = new SteamStoreItem(
+            "65900", "Sid Meier's Civilization V: Demo", SteamStoreItem.NoTags)
+        {
+            StoreType = SteamStoreItemTypes.Demo,
+            Related = new SteamStoreRelatedItems("8930", [], [], [], []),
+        };
+
+        var report = await fixture.Service.EnrichAsync();
+        Assert.True(report.MetadataFilled > 0);
+
+        var work = await fixture.WorkAsync(demo.WorkId);
+        Assert.Equal(SteamStoreItemTypes.Demo, work.SteamStoreType);
+        Assert.Equal("8930", work.SteamParentAppId);
+
+        // No request was made for it: GetItemsAsync is only ever asked about
+        // appids that still need a NAME, and this work has one.
+        Assert.Empty(fixture.Steam.Asked);
+    }
+
+    /// <summary>
+    /// The second Steam source. steamcmd still answers for an app the store has
+    /// delisted, which is exactly the population the store cannot help with.
+    /// </summary>
+    [Fact]
+    public async Task The_steamcmd_parent_appid_is_stored_rather_than_dropped()
+    {
+        using var fixture = new EnrichmentFixture();
+        var beta = await fixture.AddNamedAsync("696790", "Call of Duty: WWII - PC Open Beta");
+        fixture.SteamCmd.Add("696790", name: null, type: "Beta", parent: "476600");
+
+        await fixture.Service.EnrichAsync();
+
+        var work = await fixture.WorkAsync(beta.WorkId);
+        Assert.Equal("Beta", work.SteamAppType);
+        Assert.Equal("476600", work.SteamParentAppId);
+    }
+
+    /// <summary>
+    /// IGDB's half, through the /games call the pass already makes for the
+    /// publisher. game_type and parent_game land on the work, where the
+    /// detector reads them as a refutation or a proposal.
+    /// </summary>
+    [Fact]
+    public async Task The_igdb_game_type_and_parent_land_on_the_work()
+    {
+        using var fixture = new EnrichmentFixture();
+        var seeded = await fixture.AddNamedAsync("8800", "Sid Meier's Civilization IV: Beyond the Sword");
+
+        fixture.Igdb.Configured = true;
+        fixture.Igdb.Matches["8800"] = new IgdbExternalMatch(
+            "8800", 3333, "Sid Meier's Civilization IV: Beyond the Sword", null, 2007, null);
+        fixture.Igdb.Games[3333] = new IgdbGame(
+            3333,
+            "Sid Meier's Civilization IV: Beyond the Sword",
+            CoverUrl: "https://example.invalid/co.jpg",
+            FirstReleaseYear: 2007,
+            Summary: "The third expansion.",
+            Genres: [],
+            Themes: [],
+            Publishers: ["2K Games"])
+        {
+            GameType = "expansion",
+            ParentGameId = 1111,
+        };
+
+        await fixture.Service.EnrichAsync();
+
+        var work = await fixture.WorkAsync(seeded.WorkId);
+        Assert.Equal("expansion", work.IgdbGameType);
+        Assert.Equal(1111, work.IgdbParentId);
+        Assert.Null(work.IgdbVersionParentId);
+    }
+
     private sealed class EnrichmentFixture : IDisposable
     {
         private readonly TempDatabase _db = new();
@@ -1815,6 +1910,23 @@ public sealed class EnrichmentSyncServiceTests
                 if (Names.TryGetValue(appId, out var name))
                 {
                     items[appId] = new SteamStoreItem(appId, name, SteamStoreItem.NoTags);
+                }
+            }
+
+            return Task.FromResult<IReadOnlyDictionary<string, SteamStoreItem>>(items);
+        }
+
+        public Dictionary<string, SteamStoreItem> Cached { get; } = new(StringComparer.Ordinal);
+
+        public Task<IReadOnlyDictionary<string, SteamStoreItem>> GetCachedItemsAsync(
+            IEnumerable<string> appIds, CancellationToken ct = default)
+        {
+            var items = new Dictionary<string, SteamStoreItem>(StringComparer.Ordinal);
+            foreach (var appId in appIds)
+            {
+                if (Cached.TryGetValue(appId, out var item))
+                {
+                    items[appId] = item;
                 }
             }
 

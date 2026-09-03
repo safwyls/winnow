@@ -1,8 +1,11 @@
 # Spike: Dormancy rendering in Avalonia 11.x
 
+> **Evidence, not a rule.** This document records how something was measured and is
+> never the place to look up what to do. The current rule is in `design-system.md` §5.1 and §5.4.
+
 **Settles:** design-system.md §5.4 [VERIFY]. Researched 2026-08-23 against Avalonia 11.3.x (current stable line).
 
-> **Superseded in part, 2026-08-24 — the ItemsRepeater recommendation only.** The dormancy
+> **Correction, 2026-08-24 — the ItemsRepeater recommendation only.** The dormancy
 > findings below all still hold and the two-layer cross-fade shipped as described. But
 > `ItemsRepeater` was removed from the app: its `UniformGridLayout` computes items-per-line
 > for the scroll anchor as `floor(available / (itemWidth + spacing))`, charging every item
@@ -104,7 +107,7 @@ the transition animates both directions. Never mutate pixels on the UI thread (�
 | `TextBlock.FontFeatures` | Yes — **introduced in 11.1.0** (`TextElement.FontFeaturesProperty`, `FontFeatureCollection`; absent in 11.0.0, present in 11.1.0 source). Syntax: `FontFeatures="+tnum"` (HarfBuzz tags, comma-separated). Any 11.1+ works for `tnum`. |
 | `TextBlock.LetterSpacing` | Yes — **since 11.0.0** (inherited attached `double`, device pixels — convert the `+0.06em` tokens to px at the token's font size). |
 | `ItemsRepeater` in-box? | **No — separate NuGet package `Avalonia.Controls.ItemsRepeater`** since 11.0 ([PR #10112](https://github.com/AvaloniaUI/Avalonia/pull/10112)). |
-| Virtualization guidance | Maintainers plan to **stop supporting ItemsRepeater after 12.0** and consolidate on `ItemsControl`, with a `VirtualizedUniformPanel` planned *before* obsoleting it ([discussion #16829](https://github.com/AvaloniaUI/Avalonia/discussions/16829)). In 11.x today, in-box virtualization is `ItemsControl`/`ListBox` + `VirtualizingStackPanel` — **single-axis only; no in-box virtualizing wrap/uniform grid yet**. For the cover grid: use **ItemsRepeater + UniformGridLayout** for v1 (it's the only virtualizing grid available), isolate it behind one view so a swap to `ItemsControl` + `VirtualizedUniformPanel` (or a row-chunked `VirtualizingStackPanel`, one row VM = N tiles) is cheap. Known ItemsRepeater issues to avoid: don't nest repeaters ([#9427](https://github.com/AvaloniaUI/Avalonia/issues/9427)), don't wrap in `LayoutTransformControl` ([#13875](https://github.com/AvaloniaUI/Avalonia/issues/13875)). |
+| Virtualization guidance | Maintainers plan to **stop supporting ItemsRepeater after 12.0** and consolidate on `ItemsControl`, with a `VirtualizedUniformPanel` planned *before* obsoleting it ([discussion #16829](https://github.com/AvaloniaUI/Avalonia/discussions/16829)). In 11.x today, in-box virtualization is `ItemsControl`/`ListBox` + `VirtualizingStackPanel` — **single-axis only; no in-box virtualizing wrap/uniform grid yet**. For the cover grid this was read as "use ItemsRepeater + UniformGridLayout, it's the only virtualizing grid available" — **and that recommendation was withdrawn on 2026-08-24, see the note at the head of this file.** The cover wall is a purpose-built panel. Known ItemsRepeater issues, recorded because the package is still a tempting answer to this question: don't nest repeaters ([#9427](https://github.com/AvaloniaUI/Avalonia/issues/9427)), don't wrap in `LayoutTransformControl` ([#13875](https://github.com/AvaloniaUI/Avalonia/issues/13875)). |
 
 ## Sources
 

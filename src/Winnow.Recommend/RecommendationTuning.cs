@@ -96,7 +96,13 @@ public sealed record RecommendationTuning
 
     // ── Shelves ─────────────────────────────────────────────────────────────
 
-    /// <summary>Taste-affinity floor for the <see cref="ShelfIds.OnYourTaste"/> shelf (normalised against the profile's peak).</summary>
+    /// <summary>
+    /// Taste-affinity floor, normalised against the profile's peak. Used for
+    /// both <see cref="ShelfIds.OnYourTaste"/> shelf membership and the
+    /// <c>{strongFacet}</c> copy gate in <see cref="ReasonTokens"/>: one
+    /// number, one meaning, deliberately not duplicated into a second
+    /// parameter that could drift.
+    /// </summary>
     public double OnTasteMinAffinity { get; init; } = 0.6;
 
     /// <summary>Prevalence share past which a facet is too generic to count as taste.</summary>
@@ -117,8 +123,44 @@ public sealed record RecommendationTuning
     /// <summary>Candidates short-listed per shelf as a multiple of shelf size, before diversity passes.</summary>
     public int ShelfOverfetchFactor { get; init; } = 3;
 
-    /// <summary>Hard ceiling on ownerships probed for history across all shelf shortlists combined.</summary>
-    public int ShelfProbeLimit { get; init; } = 150;
+    /// <summary>
+    /// One card in every this-many on a surface may cite the same supporting
+    /// fact. 3 yields a cap of 2 on a 6-card shelf and 6 on a 20-card feed,
+    /// which is under the three-of-six that was photographed on 2026-09-02.
+    /// </summary>
+    public int FactCitationCards { get; init; } = 3;
+
+    /// <summary>
+    /// The derived citation cap never falls below this number, so a short
+    /// surface is not silenced. 2 because two cards making the same claim
+    /// reads as coincidence while three reads as a template.
+    /// </summary>
+    public int FactCitationFloor { get; init; } = 2;
+
+    /// <summary>
+    /// Hard ceiling on ownerships probed for history across all shelf shortlists
+    /// combined. A pathology brake, not a trim: fairness across shelves is the
+    /// interleave's job (<see cref="RecommendationEngine.ProbeUnion"/>), and the
+    /// cap's only remaining job is cost.
+    ///
+    /// 2,000 is derived from cost, not from shelf geometry. Measured on a copy
+    /// of the real library (990 candidates, 966 works, tier Settling,
+    /// measured 2026-09-01): the shelf pass costs 46.6 ms median with zero
+    /// probes (dominated by bulk reads) and 23 microseconds per probe, so
+    /// 2,000 probes is where per-row history reading would cost as much as
+    /// the bulk reads it rides on, i.e. where the pass would double. The
+    /// natural (uncapped) probe union on that library is 376 of 966 works,
+    /// and the feed stops changing at ~300, so at this scale the cap is
+    /// deliberately inert. What holds the union to 376 is the score bound
+    /// (<see cref="ScoreBounds.SafeShortlist"/>), not the cap; the cap is the
+    /// backstop for a library where the bound stops discriminating.
+    ///
+    /// The previous default of 150 was the sum of five per-shelf comfort
+    /// floors and ignored that the bound legitimately exceeds those floors;
+    /// on the real library the first two shelves consumed the entire budget
+    /// and the last three were never scored at all.
+    /// </summary>
+    public int ShelfProbeLimit { get; init; } = 2_000;
 
     // ── Feedback loop windows ───────────────────────────────────────────────
     // Read by FeedbackSets (which turns the stored feedback into a request's
@@ -141,8 +183,35 @@ public sealed record RecommendationTuning
     /// <summary>Max shortlist candidates that get per-ownership history probed.</summary>
     public int HistoryProbeLimit { get; init; } = 60;
 
-    /// <summary>Most-recently-played ownerships probed in addition to the shortlist, for tier detection.</summary>
+    /// <summary>Most-recently-played ownerships probed in addition to the tier sample, for tier detection.</summary>
     public int RecentProbeLimit { get; init; } = 25;
+
+    /// <summary>
+    /// Ownerships drawn UNIFORMLY from every row that could hold history, for
+    /// the maturity-tier estimate. The tier is a claim about the LIBRARY, so it
+    /// cannot be read off the candidate shortlist (which excludes exactly the
+    /// games being played) or off the recently-played rows (which are the
+    /// densest in sessions); both are biased, and in opposite directions.
+    /// 120 is roughly a third of the measured library's history-bearing rows,
+    /// enough that the scaling is not carried by a handful of rows, and it
+    /// costs two indexed point reads apiece.
+    /// </summary>
+    public int TierSampleOwnerships { get; init; } = 120;
+
+    /// <summary>Fixed salt for the tier sample's deterministic draw, so one library always samples the same rows.</summary>
+    public int TierSampleSeed { get; init; } = 0x5715_0F5E;
+
+    // ── Explanation ─────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Longest reason sentence a card may carry. One sentence is the contract,
+    /// and 180 is the length at which one sentence stays one sentence: it fits
+    /// the longest primary and secondary the selection rules can pair, quoted
+    /// update title included, so the builder never has to drop a clause the
+    /// honesty rules put there. Lower it and truncation starts deciding what
+    /// the user is told.
+    /// </summary>
+    public int ReasonCharacterBudget { get; init; } = 180;
 
     /// <summary>The defaults above, shared. Records are immutable, so sharing is safe.</summary>
     public static RecommendationTuning Default { get; } = new();

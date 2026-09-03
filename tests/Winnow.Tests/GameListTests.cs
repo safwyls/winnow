@@ -1,4 +1,4 @@
-using Winnow.Core.Domain;
+﻿using Winnow.Core.Domain;
 using Winnow.Core.Queries;
 using Winnow.Data.Repositories;
 using Xunit;
@@ -344,7 +344,7 @@ public class GameListTests : IDisposable
         releaseId,
         OwnershipId: releaseId,
         bucket,
-        Store: "steam",
+        Stores: ["steam"],
         Title: "Fixture " + releaseId,
         Installed: false,
         HasUnread: bucket == LibraryBuckets.StaleButPatched,

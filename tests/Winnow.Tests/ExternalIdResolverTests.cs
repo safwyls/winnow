@@ -31,7 +31,8 @@ public sealed class ExternalIdResolverTests : IDisposable
         _playRecords = new PlayRecordRepository(_db.Factory);
         _snapshots = new PlaytimeSnapshotRepository(_db.Factory);
         _resolver = new ExternalIdResolver(
-            _works, _releases, _ownerships, _playRecords, _snapshots, _db.Factory);
+            _works, _releases, _ownerships, _playRecords, _snapshots, _db.Factory,
+            new OwnershipAccountRepository(_db.Factory));
     }
 
     public void Dispose() => _db.Dispose();
@@ -424,7 +425,8 @@ public sealed class ExternalIdResolverTests : IDisposable
     {
         var failing = new ThrowingReleaseRepository(_releases, failOnProviderId: "1244090");
         var resolver = new ExternalIdResolver(
-            _works, failing, _ownerships, _playRecords, _snapshots, _db.Factory);
+            _works, failing, _ownerships, _playRecords, _snapshots, _db.Factory,
+            new OwnershipAccountRepository(_db.Factory));
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => resolver.ResolveAsync(
         [
@@ -445,7 +447,8 @@ public sealed class ExternalIdResolverTests : IDisposable
     {
         var failing = new ThrowingReleaseRepository(_releases, failOnProviderId: "1203620");
         var crashing = new ExternalIdResolver(
-            _works, failing, _ownerships, _playRecords, _snapshots, _db.Factory);
+            _works, failing, _ownerships, _playRecords, _snapshots, _db.Factory,
+            new OwnershipAccountRepository(_db.Factory));
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => crashing.ResolveAsync(
             [Candidate("1203620", "Elden Ring", 817, Utc(2026, 8, 15), Utc(2026, 8, 23))]));
@@ -722,6 +725,218 @@ public sealed class ExternalIdResolverTests : IDisposable
         Assert.Equal(2, history.Count);
         Assert.Equal(280, history[0].PlaytimeMinutes);
         Assert.Equal(331, history[1].PlaytimeMinutes);
+    }
+
+    // ── The cross-pass sawtooth: one minute of disagreement is not a change ──
+
+    /// <summary>
+    /// The live defect. <c>localconfig.vdf</c> says 280 minutes for Portal
+    /// and <c>GetOwnedGames</c> says 279; the local job and the remote job
+    /// run in separate passes, so each wrote its own figure and the pair
+    /// fabricated a rise and a fall on every cycle. Ownerships 6, 46 and 47
+    /// on the live database carried nine such phantom rises (verified
+    /// 2026-08-29).
+    /// </summary>
+    [Fact]
+    public async Task A_one_minute_disagreement_across_passes_is_absorbed()
+    {
+        var played = Utc(2018, 5, 25, 3, 7, 27);
+
+        await _resolver.ResolveAsync(
+            [Candidate("400", "Portal", 280, played, Utc(2026, 8, 25, 16, 1, 0))],
+            playtime: PlaytimeView.LowerBound);
+
+        var second = await _resolver.ResolveAsync(
+            [WebCandidate("400", "Portal", 279, played, Utc(2026, 8, 25, 16, 16, 0))],
+            playtime: PlaytimeView.LowerBound);
+
+        Assert.Equal(0, second.PlayRecordsWritten);
+        Assert.Equal(0, second.SnapshotsWritten);
+
+        var ownership = await OwnershipOfAsync("400");
+        Assert.Single(await _playRecords.GetByOwnershipAsync(ownership.Id));
+        Assert.Single(await _snapshots.GetByOwnershipAsync(ownership.Id));
+    }
+
+    /// <summary>
+    /// The sawtooth at full cadence: six passes alternating between the local
+    /// and remote jobs the way the scheduler actually runs them. Every pass
+    /// after the first must write nothing, because the underlying facts have
+    /// not changed and the one-minute disagreement is noise.
+    /// </summary>
+    [Fact]
+    public async Task Alternating_sources_write_nothing_after_the_first_pass()
+    {
+        var played = Utc(2018, 5, 25, 3, 7, 27);
+        var observed = Utc(2026, 8, 25, 16, 1, 0);
+
+        var first = await _resolver.ResolveAsync(
+            [Candidate("400", "Portal", 280, played, observed)],
+            playtime: PlaytimeView.LowerBound);
+
+        Assert.Equal(1, first.PlayRecordsWritten);
+        Assert.Equal(1, first.SnapshotsWritten);
+
+        for (var pass = 1; pass <= 6; pass++)
+        {
+            var at = observed.AddMinutes(15 * pass);
+            var result = await _resolver.ResolveAsync(
+                pass % 2 == 1
+                    ? [WebCandidate("400", "Portal", 279, played, at)]
+                    : [Candidate("400", "Portal", 280, played, at)],
+                playtime: PlaytimeView.LowerBound);
+
+            Assert.Equal(0, result.PlayRecordsWritten);
+            Assert.Equal(0, result.SnapshotsWritten);
+        }
+
+        var ownership = await OwnershipOfAsync("400");
+        Assert.Single(await _playRecords.GetByOwnershipAsync(ownership.Id));
+        Assert.Single(await _snapshots.GetByOwnershipAsync(ownership.Id));
+    }
+
+    /// <summary>
+    /// The absorb-versus-record boundary, both directions. 281 is one minute
+    /// above the stored 280 and is absorbed. 282 is two minutes of play and
+    /// is recorded. 279 is one minute below and is absorbed by the band. 278
+    /// is outside the band, so the clamp raises it back to 280 and the row
+    /// is unchanged, writing nothing.
+    /// </summary>
+    [Theory]
+    [InlineData(281, 0, 280)]  // a rise inside the band: absorbed, the stored figure stands
+    [InlineData(282, 1, 282)]  // two minutes is play, and play is recorded
+    [InlineData(279, 0, 280)]  // a fall inside the band: absorbed, nothing written
+    [InlineData(278, 0, 280)]  // outside the band the clamp raises it back to the stored figure
+    public async Task The_band_is_one_minute_wide_in_both_directions(
+        long minutes, int expectedRows, long expectedLatest)
+    {
+        var played = Utc(2018, 5, 25, 3, 7, 27);
+
+        await _resolver.ResolveAsync(
+            [Candidate("400", "Portal", 280, played, Utc(2026, 8, 25, 16, 1, 0))],
+            playtime: PlaytimeView.LowerBound);
+
+        var second = await _resolver.ResolveAsync(
+            [WebCandidate("400", "Portal", minutes, played, Utc(2026, 8, 25, 16, 16, 0))],
+            playtime: PlaytimeView.LowerBound);
+
+        Assert.Equal(expectedRows, second.PlayRecordsWritten);
+        Assert.Equal(expectedRows, second.SnapshotsWritten);
+
+        var ownership = await OwnershipOfAsync("400");
+        var latest = await _playRecords.GetLatestAsync(ownership.Id);
+        Assert.NotNull(latest);
+        Assert.Equal(expectedLatest, latest.PlaytimeMinutes);
+    }
+
+    /// <summary>
+    /// A real session is still a real session. The recommender depends on
+    /// episode signal from play records; absorbing a minute of cross-source
+    /// noise must never absorb an evening of genuine play.
+    /// </summary>
+    [Fact]
+    public async Task Genuine_progress_still_lands_under_the_tolerance()
+    {
+        await _resolver.ResolveAsync(
+            [Candidate("400", "Portal", 280, Utc(2018, 5, 25, 3, 7, 27), Utc(2026, 8, 25, 16, 1, 0))],
+            playtime: PlaytimeView.LowerBound);
+
+        var second = await _resolver.ResolveAsync(
+            [Candidate("400", "Portal", 331, Utc(2026, 8, 25, 15, 30, 0), Utc(2026, 8, 25, 16, 16, 0))],
+            playtime: PlaytimeView.LowerBound);
+
+        Assert.Equal(1, second.PlayRecordsWritten);
+        Assert.Equal(1, second.SnapshotsWritten);
+
+        var ownership = await OwnershipOfAsync("400");
+        var history = await _playRecords.GetByOwnershipAsync(ownership.Id);
+        Assert.Equal([280L, 331L], history.Select(r => r.PlaytimeMinutes));
+    }
+
+    /// <summary>
+    /// The err-low proof. Inside the band the clamp does not raise, so a row
+    /// written for another reason, here a last-played date that genuinely
+    /// moved, carries the lower figure (279) under its own source
+    /// (<c>steam_web_api</c>) rather than the higher one (280) under
+    /// <c>+carried</c>. The snapshot series does not move at all, keeping
+    /// the cumulative invariant intact.
+    /// </summary>
+    [Fact]
+    public async Task Inside_the_band_the_lower_figure_is_kept_rather_than_carried_up()
+    {
+        await _resolver.ResolveAsync(
+            [Candidate("400", "Portal", 280, Utc(2018, 5, 25, 3, 7, 27), Utc(2026, 8, 25, 16, 1, 0))],
+            playtime: PlaytimeView.LowerBound);
+
+        var second = await _resolver.ResolveAsync(
+            [WebCandidate("400", "Portal", 279, Utc(2026, 8, 25, 15, 30, 0), Utc(2026, 8, 25, 16, 16, 0))],
+            playtime: PlaytimeView.LowerBound);
+
+        Assert.Equal(1, second.PlayRecordsWritten);
+        Assert.Equal(0, second.SnapshotsWritten);
+
+        var ownership = await OwnershipOfAsync("400");
+        var latest = await _playRecords.GetLatestAsync(ownership.Id);
+        Assert.NotNull(latest);
+        Assert.Equal(279, latest.PlaytimeMinutes);
+        Assert.Equal("steam_web_api", latest.Source);
+        Assert.Equal(Utc(2026, 8, 25, 15, 30, 0), latest.LastPlayedAt);
+
+        Assert.Equal([280L], (await _snapshots.GetByOwnershipAsync(ownership.Id))
+            .Select(s => s.PlaytimeMinutes));
+    }
+
+    /// <summary>
+    /// Outside the band the clamp is unchanged. A figure two or more minutes
+    /// below the stored one is a blind spot in this pass, not cross-source
+    /// noise; it is raised to the floor and the source is marked
+    /// <c>+carried</c> so downstream code knows the minutes are not the
+    /// source's own report.
+    /// </summary>
+    [Fact]
+    public async Task Outside_the_band_a_lower_figure_is_still_clamped_and_marked_carried()
+    {
+        await _resolver.ResolveAsync(
+            [Candidate("400", "Portal", 280, Utc(2018, 5, 25, 3, 7, 27), Utc(2026, 8, 25, 16, 1, 0))],
+            playtime: PlaytimeView.LowerBound);
+
+        await _resolver.ResolveAsync(
+            [WebCandidate("400", "Portal", 200, Utc(2026, 8, 25, 15, 30, 0), Utc(2026, 8, 25, 16, 16, 0))],
+            playtime: PlaytimeView.LowerBound);
+
+        var ownership = await OwnershipOfAsync("400");
+        var latest = await _playRecords.GetLatestAsync(ownership.Id);
+        Assert.NotNull(latest);
+        Assert.Equal(280, latest.PlaytimeMinutes);
+        Assert.True(PlayRecordSources.IsCarried(latest.Source));
+    }
+
+    /// <summary>
+    /// The tolerance is a <see cref="PlaytimeView.LowerBound"/> rule.
+    /// <see cref="PlaytimeView.Complete"/> means the pass sees the whole
+    /// truth, so a one-minute correction is a genuine correction and is
+    /// recorded as a new observation, byte-for-byte unchanged from before.
+    /// </summary>
+    [Fact]
+    public async Task Complete_records_a_one_minute_correction_as_before()
+    {
+        var played = Utc(2018, 5, 25, 3, 7, 27);
+
+        await _resolver.ResolveAsync(
+            [Candidate("400", "Portal", 280, played, Utc(2026, 8, 25, 16, 1, 0))]);
+
+        var second = await _resolver.ResolveAsync(
+            [WebCandidate("400", "Portal", 279, played, Utc(2026, 8, 25, 16, 16, 0))]);
+
+        Assert.Equal(1, second.PlayRecordsWritten);
+        Assert.Equal(1, second.SnapshotsWritten);
+    }
+
+    private async Task<Ownership> OwnershipOfAsync(string appId)
+    {
+        var release = await _releases.FindByExternalIdAsync("steam", appId);
+        Assert.NotNull(release);
+        return Assert.Single(await _ownerships.GetByReleaseAsync(release.Id));
     }
 
     /// <summary>

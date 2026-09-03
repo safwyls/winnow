@@ -1,6 +1,5 @@
 using System.Globalization;
 using System.Net;
-using System.Net.Http.Headers;
 using Winnow.Core.Ingest;
 using Winnow.Enrich.SteamWeb.Credentials;
 using Winnow.Enrich.SteamWeb.Http;
@@ -34,7 +33,7 @@ public sealed class SteamWebApiClient : ISteamWebApiClient
 
     private readonly HttpClient _http;
     private readonly ISteamWebMetadataCache _cache;
-    private readonly ISteamApiKeyProvider _keys;
+    private readonly ISteamCredentialProvider _credentials;
     private readonly SteamWebOptions _options;
     private readonly TimeProvider _clock;
     private readonly ILogger<SteamWebApiClient> _log;
@@ -42,14 +41,14 @@ public sealed class SteamWebApiClient : ISteamWebApiClient
     public SteamWebApiClient(
         HttpClient http,
         ISteamWebMetadataCache cache,
-        ISteamApiKeyProvider keys,
+        ISteamCredentialProvider credentials,
         SteamWebOptions options,
         TimeProvider clock,
         ILogger<SteamWebApiClient> log)
     {
         _http = http;
         _cache = cache;
-        _keys = keys;
+        _credentials = credentials;
         _options = options;
         _clock = clock;
         _log = log;
@@ -65,10 +64,13 @@ public sealed class SteamWebApiClient : ISteamWebApiClient
     public static string OwnedGamesCacheKey(SteamId steamId) => "owned:" + steamId.Value.ToString(CultureInfo.InvariantCulture);
 
     public async ValueTask<bool> IsConfiguredAsync(CancellationToken ct = default)
-        => await _keys.GetAsync(ct) is not null;
+        => (await _credentials.GetInventoryAsync(ct)).HasUsableCredential;
 
     public async Task<SteamOwnedLibrary> GetOwnedGamesAsync(
-        SteamId steamId, TimeSpan? cacheTtl = null, CancellationToken ct = default)
+        SteamId steamId,
+        SteamCredentialPurpose purpose = SteamCredentialPurpose.Unattended,
+        TimeSpan? cacheTtl = null,
+        CancellationToken ct = default)
     {
         var now = _clock.GetUtcNow().UtcDateTime;
         var cacheKey = OwnedGamesCacheKey(steamId);
@@ -84,7 +86,7 @@ public sealed class SteamWebApiClient : ISteamWebApiClient
             return new SteamOwnedLibrary(steamId, Succeeded: true, fresh, cached.FetchedAt, FromCache: true);
         }
 
-        if (await _keys.GetAsync(ct) is not { } key)
+        if (await _credentials.GetAsync(purpose, ct) is not { } credential)
         {
             // Not an error, and not a warning: this is simply a user who has not
             // pasted a key into settings. §5.1 — the module declines and the app
@@ -93,7 +95,7 @@ public sealed class SteamWebApiClient : ISteamWebApiClient
             return ServeStale(steamId, entry, now);
         }
 
-        var body = await GetOwnedGamesBodyAsync(key, steamId, ct);
+        var body = await GetOwnedGamesBodyAsync(credential, steamId, ct);
         var games = SteamWebJson.TryReadOwnedGames(body);
         if (games is null)
         {
@@ -133,10 +135,21 @@ public sealed class SteamWebApiClient : ISteamWebApiClient
     }
 
     public async Task<IReadOnlyList<CandidateOwnership>> GetOwnershipCandidatesAsync(
-        SteamId steamId, TimeSpan? cacheTtl = null, CancellationToken ct = default)
+        SteamId steamId,
+        SteamCredentialPurpose purpose = SteamCredentialPurpose.Unattended,
+        TimeSpan? cacheTtl = null,
+        CancellationToken ct = default)
     {
-        var library = await GetOwnedGamesAsync(steamId, cacheTtl, ct);
-        return library.Succeeded ? library.ToCandidates(SourceName) : [];
+        var library = await GetOwnedGamesAsync(steamId, purpose, cacheTtl, ct);
+
+        // Stamped now, not at the library's fetch time: on a cache hit the
+        // facts may be hours old, but the observation that they are still
+        // Winnow's best answer is current. A backdated candidate would sit
+        // behind the newest stored row by observed_at and lose the resolver's
+        // latest-record comparison on every subsequent sync.
+        return library.Succeeded
+            ? library.ToCandidates(SourceName, _clock.GetUtcNow().UtcDateTime)
+            : [];
     }
 
     /// <summary>
@@ -155,7 +168,8 @@ public sealed class SteamWebApiClient : ISteamWebApiClient
     /// request did not produce one — the single place where "Steam said no"
     /// becomes "no data" instead of an exception.
     /// </summary>
-    private async Task<string?> GetOwnedGamesBodyAsync(SteamApiKey key, SteamId steamId, CancellationToken ct)
+    private async Task<string?> GetOwnedGamesBodyAsync(
+        SteamCredential credential, SteamId steamId, CancellationToken ct)
     {
         // §4.2 is emphatic about all three flags, and one of them is a trap:
         // without skip_unvetted_apps=false, apps flagged "Profile Features
@@ -163,60 +177,60 @@ public sealed class SteamWebApiClient : ISteamWebApiClient
         // user's own account: 841 titles with the flag, 834 without it — seven
         // owned games vanish, with no error and no indication in the response.
         //
-        // The key is appended last and the string is used exactly once. It is
-        // never logged, never stored, and never put into an exception message;
-        // see SteamWebRedaction for why even the framework's own request logging
-        // is removed for this client rather than trusted.
-        var uri = GetOwnedGamesPath
-            + "?steamid=" + steamId.Value.ToString(CultureInfo.InvariantCulture)
-            + "&include_appinfo=1"
-            + "&include_played_free_games=1"
-            + "&skip_unvetted_apps=false"
-            + "&format=json"
-            + "&key=" + Uri.EscapeDataString(key.Value);
+        // The credential is appended last, by the one method allowed to put one
+        // into a URI. It is never logged, never stored, and never put into an
+        // exception message; see SteamWebRedaction for why even the framework's
+        // own request logging is removed for this client rather than trusted.
+        //
+        // A function of the credential rather than a finished string, because a
+        // 401 can hand back a renewed session token and the credential lives in
+        // the query. SteamAuthorizedRequest owns the one retry that follows.
+        var outcome = await SteamAuthorizedRequest.SendAsync(
+            _http,
+            _credentials,
+            credential,
+            sending => sending.AppendTo(
+                GetOwnedGamesPath
+                + "?steamid=" + steamId.Value.ToString(CultureInfo.InvariantCulture)
+                + "&include_appinfo=1"
+                + "&include_played_free_games=1"
+                + "&skip_unvetted_apps=false"
+                + "&format=json"),
+            ct);
 
-        try
+        if (outcome.Renewed)
         {
-            using var request = new HttpRequestMessage(HttpMethod.Get, uri);
-            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-
-            using var response = await _http.SendAsync(request, ct);
-            if (!response.IsSuccessStatusCode)
-            {
-                // Endpoint constant, not request.RequestUri — that one carries
-                // the key.
-                _log.LogWarning(
-                    response.StatusCode is HttpStatusCode.Forbidden or HttpStatusCode.Unauthorized
-                        ? "Steam {Endpoint} returned {StatusCode}; the configured API key was rejected or is "
-                        + "not entitled to this profile. Steam Web API enrichment is skipped this pass."
-                        : "Steam {Endpoint} returned {StatusCode}; skipping this request.",
-                    GetOwnedGamesPath,
-                    (int)response.StatusCode);
-                return null;
-            }
-
-            return await response.Content.ReadAsStringAsync(ct);
+            _log.LogInformation(
+                "Steam {Endpoint} returned 401; the Steam session was renewed and the request was sent once "
+                + "more. A second refusal is not retried.",
+                GetOwnedGamesPath);
         }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
-        {
-            // The caller asked to stop. That is not an enrichment failure and
-            // must not be swallowed into a silent empty result.
-            throw;
-        }
-        catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException or IOException)
+
+        if (outcome.FailureType is { } failure)
         {
             // Offline, DNS failure, TLS failure, or a timeout the retry policy
             // already exhausted. Enrichment failing is a degraded run, never a
             // crashed one (§5.1).
-            //
-            // Type and message only, never the exception object: a full stack
-            // dump can carry an inner exception that quoted the request URI, and
-            // the request URI carries the key.
             _log.LogWarning(
-                "Steam {Endpoint} request failed ({ExceptionType}); skipping.",
-                GetOwnedGamesPath, ex.GetType().Name);
+                "Steam {Endpoint} request failed ({ExceptionType}); skipping.", GetOwnedGamesPath, failure);
             return null;
         }
+
+        if (outcome.Body is null)
+        {
+            // Endpoint constant, not the request URI — that one carries the
+            // credential.
+            _log.LogWarning(
+                outcome.Status is HttpStatusCode.Forbidden or HttpStatusCode.Unauthorized
+                    ? "Steam {Endpoint} returned {StatusCode}; the credential in force was rejected or is "
+                    + "not entitled to this profile. Steam Web API enrichment is skipped this pass."
+                    : "Steam {Endpoint} returned {StatusCode}; skipping this request.",
+                GetOwnedGamesPath,
+                (int?)outcome.Status ?? 0);
+            return null;
+        }
+
+        return outcome.Body;
     }
 
     private static DateTime Cutoff(TimeSpan ttl, DateTime now)

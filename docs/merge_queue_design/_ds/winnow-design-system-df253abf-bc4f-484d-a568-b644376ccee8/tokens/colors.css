@@ -1,0 +1,81 @@
+/* One dark green-teal ink, stepped six times, plus four signal hues.
+   Not grey and not black: the neutral family has a committed hue, so Volt
+   reads as that same ink turned up to full voltage.
+
+   Discipline: --flare is the rarest colour in the interface. It marks ONLY
+   unread updates (the tile badge, the list-row dot, the `Patched since`
+   bucket pip, the gap rail's marks). The moment it becomes a generic accent
+   the badge stops meaning anything. */
+:root{
+  /* ── Neutral family ── */
+  --well:#050D0E;             /* scrollbar track, modal scrim — one step below ground */
+  --ground:#0F1C1E;           /* window background */
+  --surface:#16282A;          /* rail, panels, list rows, cards */
+  --surface-raised:#1D3437;   /* hover, selection, popovers */
+  --surface-high:#254042;     /* one step past raised: selected menu item, pressed caption */
+  --line:#2B4A4C;             /* dividers, borders, tile outlines */
+  --line-soft:rgba(43,74,76,.6);
+  --text:#F0EDE7;             /* primary — warm off-white */
+  --text-dim:#8FA5A0;         /* labels, metadata — sage, the room's own colour */
+  --text-faint:#5A8286;       /* watermarks, disabled arrows */
+
+  /* ── Signals ── */
+  --flare:#FF4D93;            /* PATCHED SINCE YOU PLAYED. Nothing else. */
+  --flare-soft:rgba(255,77,147,.7);
+  --flare-glow:rgba(255,77,147,.85);
+  --volt:#4DE8C2;             /* active / recent / selected */
+  --volt-ink:#0C2A24;         /* text on a volt fill — 9.9:1 */
+  --volt-hover:#6FEDCE;
+  --volt-press:#3BD1AC;
+  --volt-selection:rgba(77,232,194,.3);
+  --volt-selection-soft:rgba(77,232,194,.24);
+  --volt-edge-soft:rgba(77,232,194,.4);
+  --amber:#FFB63D;            /* attention: high playtime, played out, warnings */
+  --azure:#57A8F0;            /* informational, links, secondary counts */
+  --danger:#E04B45;           /* destructive. Today: window close, delete confirm */
+  --danger-hover:#EF645E;
+  --danger-press:#B33A35;
+  --danger-ink:#FFF2EF;
+
+  /* ── Veils and washes ── */
+  --surface-raised-half:rgba(29,52,55,.5);
+  --surface-raised-ghost:rgba(29,52,55,.12);
+  --surface-raised-faint:rgba(29,52,55,.08);
+  --ground-veil:rgba(15,28,30,.3);
+  --modal-scrim:rgba(5,13,14,.84);
+
+  /* ── Semantic aliases: surfaces ──
+     The window runs at TWO levels, not three: the ground and the caption at
+     one, every pane at the other. */
+  --shell-ground:var(--ground);        /* whole client area, gaps between panes */
+  --caption-fill:var(--surface);       /* the 36px lip — the rail's ink, flush layout */
+  --chrome-surface:var(--surface);     /* rail, filter panel, list column header */
+  --chrome-raised:var(--surface-raised);       /* a rail/panel row selected */
+  --chrome-raised-half:var(--surface-raised-half); /* a rail/panel row hovered */
+  --wall-ground:var(--ground);         /* the field the covers hang in */
+  --pane-ground:var(--ground);         /* merge queue, stores, appearance, list view */
+  --field-on-ground:var(--surface);    /* an input cut into a pane */
+  --field-on-surface:var(--ground);    /* an input cut into the rail or panel */
+  --tile-ground:var(--ground);         /* under a tile's art stack — always opaque */
+
+  /* ── Semantic aliases: ink ── */
+  --text-primary:var(--text);
+  --text-secondary:var(--text-dim);
+  --text-quiet:var(--text-faint);
+  --text-on-accent:var(--volt-ink);
+  --text-link:var(--azure);
+
+  /* ── Composites ── */
+  /* Tile hover scrim (§5.3): soft top edge, ground at 92% across the bottom. */
+  --tile-scrim:linear-gradient(to bottom,rgba(15,28,30,0) 0%,rgba(15,28,30,.92) 35%,rgba(15,28,30,.92) 100%); /* @kind color */
+  /* Gloss sweep over cover art. */
+  --tile-gloss:linear-gradient(150deg,rgba(255,255,255,.16) 0%,rgba(255,255,255,0) 42%); /* @kind color */
+  /* The gap rail (§10.2): last session in Volt, today in Line. */
+  --gap-rail:linear-gradient(to right,var(--volt),var(--line)); /* @kind color */
+  --badge-glow:0 0 10px rgba(255,77,147,.85);
+  --pip-glow:0 0 8px rgba(255,77,147,.7);
+  /* The one permitted drop shadow: a tile lifting under the pointer (§4). */
+  --shadow-tile-hover:0 8px 24px rgba(0,0,0,.55);
+  --shadow-modal:0 18px 48px rgba(0,0,0,.65);
+  --shadow-dock:0 12px 40px rgba(0,0,0,.6);
+}

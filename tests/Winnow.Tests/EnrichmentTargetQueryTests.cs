@@ -104,6 +104,12 @@ public class EnrichmentTargetQueryTests : IDisposable
                 CoverUrl = "https://img/co1.jpg",
                 Publisher = "Revolution Software",
                 SteamAppType = "Game",
+
+                // Migration 0022. A work carrying an igdb_id but no game_type
+                // was enriched before the relation fields were asked for, and
+                // is a target again for exactly one pass. "Fully enriched" now
+                // includes knowing what kind of thing IGDB says this is.
+                IgdbGameType = "main_game",
             });
 
         Assert.Empty(await _works.GetEnrichmentTargetsAsync());

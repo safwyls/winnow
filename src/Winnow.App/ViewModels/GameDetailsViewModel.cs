@@ -48,8 +48,12 @@ public partial class GameDetailsViewModel : ObservableObject
         IReadOnlyList<UpdateEvent>? updateEvents = null,
         DateTime? acknowledgedThrough = null,
         IUpdateFlagService? updateFlags = null,
-        Func<Task>? reloadLibrary = null)
+        Func<Task>? reloadLibrary = null,
+        GameCoverageViewModel? coverage = null,
+        GameExpansionsViewModel? expansions = null)
     {
+        Coverage = coverage;
+        Expansions = expansions;
         Tile = tile;
         BucketLabel = bucketLabel;
         Updates = updates;
@@ -76,6 +80,35 @@ public partial class GameDetailsViewModel : ObservableObject
 
     /// <summary>The tile this describes — title, store, art and the stat strings all come from it.</summary>
     public GameTileViewModel Tile { get; }
+
+    /// <summary>
+    /// The titles this game covers, with the per-store breakdown and the
+    /// per-release achievement rows. Null when nothing has taught this modal
+    /// about links, which renders as no section rather than an empty one —
+    /// the pre-link view exactly.
+    /// </summary>
+    public GameCoverageViewModel? Coverage { get; }
+
+    /// <summary>
+    /// Draws the section only when this game covers another title. A game
+    /// that covers nothing shows what it always showed.
+    /// </summary>
+    public bool ShowCoverage => Coverage is { HasCoverage: true };
+
+    /// <summary>
+    /// The expansions grouped under this game, and the base
+    /// game it extends if it is itself a pack. A SEPARATE section from
+    /// <see cref="Coverage"/> and never merged with it: a covered title is
+    /// this same game on another store, an expansion is a different product
+    /// with its own hours.
+    /// </summary>
+    public GameExpansionsViewModel? Expansions { get; }
+
+    /// <summary>Drawn only when this game has packs under it. A game with none shows what it always showed.</summary>
+    public bool ShowExpansions => Expansions is { HasExpansions: true };
+
+    /// <summary>Drawn only when this game is itself a pack, so the grouping can be undone from either end.</summary>
+    public bool ShowExtends => Expansions is { HasBase: true };
 
     // ── Band 1: what is this ────────────────────────────────────────────────
 
@@ -104,6 +137,12 @@ public partial class GameDetailsViewModel : ObservableObject
     public bool HasPublisher => Publisher is not null;
 
     public string StoreBadge => Tile.StoreBadge;
+
+    /// <summary>Every store this game is owned on, as chip faces (TASK-70.6).</summary>
+    public IReadOnlyList<string> StoreChips => Tile.StoreChips;
+
+    /// <summary>The same stores in words, for the chip row's tooltip.</summary>
+    public string StoreNames => Tile.StoreNames;
 
     /// <summary>The §7 bucket name this game currently falls in ("Never played").</summary>
     public string BucketLabel { get; }

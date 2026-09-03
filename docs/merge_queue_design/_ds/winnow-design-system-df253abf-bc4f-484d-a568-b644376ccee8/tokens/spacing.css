@@ -1,0 +1,19 @@
+/* 4px base unit. The whole app spaces on 4 · 8 · 12 · 16 · 24 · 32 · 48. */
+:root{
+  --space-1:4px;
+  --space-2:8px;
+  --space-3:12px;
+  --space-4:16px;
+  --space-6:24px;
+  --space-8:32px;
+  --space-12:48px;
+
+  /* In-use aliases, taken from the running window */
+  --pad-rail-row:0 16px;      /* bucket and list rows */
+  --pad-pane:20px;            /* command bar / cover wall inset */
+  --pad-screen:24px;          /* prose screens: feed, stores, appearance */
+  --pad-card:14px;            /* feed card, ambient dock */
+  --gap-tile:16px;            /* cover wall gutter */
+  --gap-card:14px;            /* feed grid gutter */
+  --gap-section:24px;         /* between feed sections — outranks card gutter */
+}

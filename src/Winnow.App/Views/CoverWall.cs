@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Specialized;
 using Avalonia;
 using Avalonia.Controls;
@@ -152,18 +152,13 @@ public class CoverWall : Panel
 
         var width = _lastWidth;
         var spacing = Spacing;
-        var minCell = Math.Max(1, MinCellWidth);
 
-        // §4: the slider sets the minimum width, the row then divides the space
-        // evenly and height follows at 2:3. Floor keeps every cell on a whole
-        // pixel, so the arranged rects cannot round up into each other; the
-        // remainder (< Columns px) stays at the right edge and is invisible.
-        Columns = Math.Max(1, (int)Math.Floor((width + spacing) / (minCell + spacing)));
-        _cellWidth = Math.Max(1, Math.Floor((width - ((Columns - 1) * spacing)) / Columns));
-        _cellHeight = Math.Max(1, Math.Floor(_cellWidth * CellAspect));
+        var geometry = GeometryFor(width, MinCellWidth, spacing, CellAspect);
+        Columns = geometry.Columns;
+        _cellWidth = geometry.CellWidth;
+        _cellHeight = geometry.CellHeight;
 
         var count = _items?.Count ?? 0;
-        var rows = (count + Columns - 1) / Columns;
 
         Realize(count);
 
@@ -173,7 +168,42 @@ public class CoverWall : Panel
             container.Measure(cell);
         }
 
-        return new Size(width, rows == 0 ? 0 : (rows * _cellHeight) + ((rows - 1) * spacing));
+        return new Size(width, ExtentFor(count, Columns, _cellHeight, spacing));
+    }
+
+    /// <summary>
+    /// The wall's geometry as a closed form, static so it can be pinned by a
+    /// test without a window. The density slider sets the minimum width; the
+    /// row divides the space evenly; the height follows at 2:3 (§4). Floor
+    /// keeps every cell on a whole pixel so arranged rects cannot round into
+    /// each other; the remainder (under one pixel per column) sits at the
+    /// right edge and is invisible.
+    ///
+    /// <para>A row is charged for the gutters between its cells and never for
+    /// a trailing one, which is the exact disagreement
+    /// <c>UniformGridLayout</c> could not be talked out of and the reason
+    /// this panel exists (§5.4).</para>
+    /// </summary>
+    public static (int Columns, double CellWidth, double CellHeight) GeometryFor(
+        double width, double minCellWidth, double spacing, double aspect)
+    {
+        var minCell = Math.Max(1, minCellWidth);
+        var columns = Math.Max(1, (int)Math.Floor((width + spacing) / (minCell + spacing)));
+        var cellWidth = Math.Max(1, Math.Floor((width - ((columns - 1) * spacing)) / columns));
+
+        return (columns, cellWidth, Math.Max(1, Math.Floor(cellWidth * aspect)));
+    }
+
+    /// <summary>
+    /// The scrolled height for a given number of items. It is a function of
+    /// the count and nothing else; collapsing the grid to one tile per game
+    /// changes the extent and cannot change the arithmetic: fewer items is
+    /// fewer rows.
+    /// </summary>
+    public static double ExtentFor(int count, int columns, double cellHeight, double spacing)
+    {
+        var rows = (count + columns - 1) / Math.Max(1, columns);
+        return rows == 0 ? 0 : (rows * cellHeight) + ((rows - 1) * spacing);
     }
 
     protected override Size ArrangeOverride(Size finalSize)

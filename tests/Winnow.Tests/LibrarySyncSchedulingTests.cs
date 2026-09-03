@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using Winnow.App.Services;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -204,10 +205,14 @@ public sealed class LibrarySyncSchedulingTests
             NullLogger<RemoteOwnershipSchedulerService>.Instance,
             time);
 
-    /// <summary>Walks up from the test binary to the checkout that contains it.</summary>
-    private static string RepositoryRoot()
+    /// <summary>
+    /// Walks up from THIS FILE rather than from the test binary: the output
+    /// directory can be relocated (<c>--artifacts-path</c>), and a source guard
+    /// that silently cannot find its source is worse than no guard.
+    /// </summary>
+    private static string RepositoryRoot([CallerFilePath] string callerPath = "")
     {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        var directory = new DirectoryInfo(Path.GetDirectoryName(callerPath) ?? AppContext.BaseDirectory);
         while (directory is not null)
         {
             if (File.Exists(Path.Combine(directory.FullName, "src", "Winnow.App", "Program.cs")))

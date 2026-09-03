@@ -18,7 +18,12 @@ public sealed class WorkRepository : IWorkRepository
         publisher          AS Publisher,
         steam_app_type     AS SteamAppType,
         epic_categories    AS EpicCategories,
-        name_is_provisional AS NameIsProvisional
+        name_is_provisional AS NameIsProvisional,
+        steam_store_type       AS SteamStoreType,
+        steam_parent_app_id    AS SteamParentAppId,
+        igdb_game_type         AS IgdbGameType,
+        igdb_parent_id         AS IgdbParentId,
+        igdb_version_parent_id AS IgdbVersionParentId
         """;
 
     private readonly ISqliteConnectionFactory _factory;
@@ -29,8 +34,8 @@ public sealed class WorkRepository : IWorkRepository
     {
         using var lease = _factory.Lease();
         return await lease.Connection.ExecuteScalarAsync<long>(new CommandDefinition("""
-            INSERT INTO works (igdb_id, name, sort_name, first_release_year, summary, cover_url, publisher, steam_app_type, epic_categories, name_is_provisional)
-            VALUES (@IgdbId, @Name, @SortName, @FirstReleaseYear, @Summary, @CoverUrl, @Publisher, @SteamAppType, @EpicCategories, @NameIsProvisional)
+            INSERT INTO works (igdb_id, name, sort_name, first_release_year, summary, cover_url, publisher, steam_app_type, epic_categories, name_is_provisional, steam_store_type, steam_parent_app_id, igdb_game_type, igdb_parent_id, igdb_version_parent_id)
+            VALUES (@IgdbId, @Name, @SortName, @FirstReleaseYear, @Summary, @CoverUrl, @Publisher, @SteamAppType, @EpicCategories, @NameIsProvisional, @SteamStoreType, @SteamParentAppId, @IgdbGameType, @IgdbParentId, @IgdbVersionParentId)
             RETURNING id;
             """, work, transaction: lease.Transaction, cancellationToken: ct));
     }
@@ -106,6 +111,7 @@ public sealed class WorkRepository : IWorkRepository
                    (w.publisher          IS NOT NULL) AS HasPublisher,
                    (w.steam_app_type     IS NOT NULL) AS HasSteamAppType,
                    (w.epic_categories    IS NOT NULL) AS HasEpicCategories,
+                   (w.igdb_game_type     IS NOT NULL) AS HasIgdbGameType,
                    COALESCE(NULLIF(TRIM(r.name), ''), w.name) AS Title,
 
                    -- Count of NULL metadata columns (5 = nothing at all).
@@ -126,6 +132,11 @@ public sealed class WorkRepository : IWorkRepository
                OR w.publisher          IS NULL
                -- migration 0006: cheap LIKE prefilter for demo-like titles.
                -- Over-selects; caller applies DemoConsolidation.IsVariantTitle.
+               -- migration 0022: a work that already carries an igdb_id but no
+               -- game_type was enriched before the relation fields were asked
+               -- for. It rides the same batched /games call the pass already
+               -- makes, so it costs no extra request.
+               OR (w.igdb_id IS NOT NULL AND w.igdb_game_type IS NULL)
                OR (w.steam_app_type IS NULL
                    AND (LOWER(COALESCE(NULLIF(TRIM(r.name), ''), w.name)) LIKE '%demo%'
                      OR LOWER(COALESCE(NULLIF(TRIM(r.name), ''), w.name)) LIKE '%beta%'
@@ -136,7 +147,7 @@ public sealed class WorkRepository : IWorkRepository
             )
             SELECT WorkId, ReleaseId, Provider, ProviderId, NameIsProvisional,
                    HasIgdbId, HasFirstReleaseYear, HasSummary, HasCoverUrl,
-                   HasPublisher, HasSteamAppType, HasEpicCategories, Title
+                   HasPublisher, HasSteamAppType, HasEpicCategories, HasIgdbGameType, Title
             FROM (
                 SELECT candidate.*,
 
@@ -200,7 +211,16 @@ public sealed class WorkRepository : IWorkRepository
                 steam_app_type     = COALESCE(steam_app_type,     @SteamAppType),
 
                 -- Migration 0009. Same one-way rule.
-                epic_categories    = COALESCE(epic_categories,    @EpicCategories)
+                epic_categories    = COALESCE(epic_categories,    @EpicCategories),
+
+                -- Migration 0022: the storefront relation facts. Same one-way
+                -- rule, for the same reason -- these are observed facts, and the
+                -- first source to answer is the one that saw the app.
+                steam_store_type       = COALESCE(steam_store_type,       @SteamStoreType),
+                steam_parent_app_id    = COALESCE(steam_parent_app_id,    @SteamParentAppId),
+                igdb_game_type         = COALESCE(igdb_game_type,         @IgdbGameType),
+                igdb_parent_id         = COALESCE(igdb_parent_id,         @IgdbParentId),
+                igdb_version_parent_id = COALESCE(igdb_version_parent_id, @IgdbVersionParentId)
             WHERE id = @WorkId;
             """,
             new
@@ -215,6 +235,11 @@ public sealed class WorkRepository : IWorkRepository
                 Publisher = Trimmed(enrichment.Publisher),
                 SteamAppType = Trimmed(enrichment.SteamAppType),
                 EpicCategories = Trimmed(enrichment.EpicCategories),
+                enrichment.SteamStoreType,
+                SteamParentAppId = Trimmed(enrichment.SteamParentAppId),
+                IgdbGameType = Trimmed(enrichment.IgdbGameType),
+                enrichment.IgdbParentId,
+                enrichment.IgdbVersionParentId,
             },
             transaction: lease.Transaction,
             cancellationToken: ct));

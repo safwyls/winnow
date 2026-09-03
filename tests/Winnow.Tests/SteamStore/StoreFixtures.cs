@@ -37,6 +37,32 @@ internal static class StoreFixtures
     /// <summary>The real <c>IStoreBrowseService/GetItems</c> response, byte for byte.</summary>
     internal static string GetItemsResponse() => File.ReadAllText(PathOf("getitems-v1.json"));
 
+    /// <summary>
+    /// Thirteen store items lifted verbatim out of the
+    /// author's own <c>metadata_cache</c>, chosen to cover every shape the
+    /// <c>related_items</c> block takes: an upward parent pointer on each of the
+    /// five types that carry one (1 demo, 12 playtest, 14 retired, 2 mod, 4
+    /// DLC), the downward <c>demos</c>, <c>standalone_demos</c> and
+    /// <c>playtests</c> arrays, both encodings of the demo pointer, and the
+    /// self-referential parent that two of the author's apps really do carry.
+    ///
+    /// <para>Real bytes, not a hand-written approximation: the whole claim of
+    /// TASK-70.10's Steam half is that these fields are ALREADY on disk, and a
+    /// fixture invented from the proto would prove nothing about that.</para>
+    /// </summary>
+    internal static string RelatedItemsResponse() => File.ReadAllText(PathOf("getitems-related-v1.json"));
+
+    /// <summary>One item's raw JSON out of <see cref="RelatedItemsResponse"/>.</summary>
+    internal static string RelatedItemJson(string appId)
+    {
+        var id = long.Parse(appId, CultureInfo.InvariantCulture);
+        using var document = JsonDocument.Parse(RelatedItemsResponse());
+        return document.RootElement.GetProperty("response").GetProperty("store_items")
+            .EnumerateArray()
+            .Single(item => item.GetProperty("id").GetInt64() == id)
+            .GetRawText();
+    }
+
     /// <summary>The real <c>IStoreService/GetTagList</c> response, byte for byte.</summary>
     internal static string TagListResponse() => File.ReadAllText(PathOf("gettaglist-v1.json"));
 

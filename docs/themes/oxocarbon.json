@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "id": "oxocarbon",
+  "name": "Oxocarbon",
+  "reason": "Oxocarbon's disciplined carbon stack: graphite layers, electric teal selection, and violet reserved for unread updates.",
+  "seeds": {
+    "ground": "#161616",
+    "surface": "#262626",
+    "text": "#F2F4F8",
+    "flare": "#BE95FF",
+    "volt": "#3DDBD9",
+    "amber": "#F1C21B",
+    "azure": "#78A9FF",
+    "danger": "#EE5396"
+  },
+  "structure": {
+    "elevation": 0.07,
+    "wellDepth": 0.5,
+    "edge": 1.65,
+    "dimValue": 0.87,
+    "dimChroma": 0.08,
+    "voltInkContrast": 9.0,
+    "faintValue": 0.66,
+    "faintChroma": 0.05
+  },
+  "translucency": {
+    "chromeInk": 0.46,
+    "groundInk": 0.42,
+    "dimLift": 1.1,
+    "faintLift": 1.18
+  },
+  "overrides": {
+    "Well": "#080808",
+    "SurfaceHigh": "#393939",
+    "Line": "#525252",
+    "TextDim": "#DDE1E6",
+    "TextFaint": "#A8A8A8",
+    "VoltInk": "#071817",
+    "VoltHover": "#65E4E2",
+    "VoltPress": "#2BB9B7",
+    "DangerHover": "#F070AA",
+    "DangerPress": "#C83F7D",
+    "DangerInk": "#FFF4FA",
+    "TranslucentSurface": "#0D0D0D",
+    "TranslucentTextDim": "#EEF0F3",
+    "TranslucentTextFaint": "#C2C2C2"
+  }
+}

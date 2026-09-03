@@ -5,6 +5,7 @@ using Winnow.Core.Domain;
 using Winnow.Core.Queries;
 using Winnow.Core.Repositories;
 using Winnow.Data.Repositories;
+using Winnow.Resolve;
 using Xunit;
 
 namespace Winnow.Tests;
@@ -435,7 +436,8 @@ public sealed class ListsViewModelTests
             fixture.CreateMergeQueue(),
             DetachedStores.Create(),
             DetachedAppearance.Create(),
-            DetachedFeed.Create());
+            DetachedFeed.Create(),
+            DetachedAccountStats.Create());
         shell.SelectListCommand.Execute(live);
         Assert.Same(live, library.Lists.Open);
 
@@ -444,6 +446,53 @@ public sealed class ListsViewModelTests
         Assert.Null(library.Lists.Open);
         Assert.True(library.Filters.ToFilter().IsEmpty);
         Assert.Equal(2, library.VisibleTiles.Count);
+    }
+
+    /// <summary>
+    /// The rail's Volt edge means "this is where you are" (§12.2) and exactly
+    /// one row ever carries it. An open live list's row is no exception: while
+    /// the Feed is up it is not where you are, even though the list is still
+    /// the library's active cut underneath.
+    /// </summary>
+    [Fact]
+    public async Task The_feed_and_an_open_live_list_are_never_both_selected()
+    {
+        using var fixture = new ListFixture();
+        await fixture.SeedAsync("Disco Elysium", genres: ["RPG"]);
+        await fixture.SeedAsync("Hades", genres: ["Action"]);
+
+        var library = await fixture.LoadAsync();
+        fixture.Check(library, FilterPanelViewModel.GenreKey, "RPG");
+        var live = await library.Lists.CreateLiveListAsync("RPGs", library.Filters.ToFilter());
+        library.Filters.ClearCommand.Execute(null);
+
+        var shell = new MainWindowViewModel(
+            library,
+            fixture.CreateMergeQueue(),
+            DetachedStores.Create(),
+            DetachedAppearance.Create(),
+            DetachedFeed.Create(),
+            DetachedAccountStats.Create());
+
+        shell.SelectListCommand.Execute(live);
+        Assert.False(shell.IsFeedVisible);
+        Assert.True(live!.IsSelected);
+        Assert.Equal(["Disco Elysium"], fixture.Titles(library));
+
+        // Leaving for the feed drops the row's Volt edge while the list stays
+        // open underneath — the grid stays cut to it, the row just stops
+        // saying so.
+        shell.ShowFeedCommand.Execute(null);
+        Assert.True(shell.IsFeedVisible);
+        Assert.False(live.IsSelected);
+        Assert.Same(live, library.Lists.Open);
+        Assert.Equal(["Disco Elysium"], fixture.Titles(library));
+
+        // Coming back re-marks the row without the user re-picking the list.
+        shell.ShowLibraryCommand.Execute(null);
+        Assert.False(shell.IsFeedVisible);
+        Assert.True(live.IsSelected);
+        Assert.Same(live, library.Lists.Open);
     }
 
     /// <summary>
@@ -710,7 +759,19 @@ public sealed class ListsViewModelTests
 
         /// <summary>The shell owns the rail's list command, which is the one that toggles.</summary>
         public MergeQueueViewModel CreateMergeQueue()
-            => new(new MergeCandidateRepository(_db.Factory), Releases, Works);
+        {
+            var links = new IdentityLinkRepository(_db.Factory);
+            var refusals = new ExpansionRefusalRepository(_db.Factory);
+            return new MergeQueueViewModel(
+                new MergeCandidateRepository(_db.Factory),
+                Releases,
+                Works,
+                links,
+                Ownerships,
+                new LibraryExpansionScan(Releases, links, refusals),
+                refusals,
+                new LibraryQueryRepository(_db.Factory));
+        }
 
         public IEnumerable<string> Titles(LibraryViewModel library)
             => library.VisibleTiles.Select(t => t.Title);

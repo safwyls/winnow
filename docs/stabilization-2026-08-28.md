@@ -49,7 +49,7 @@ that work; the finding does not get its own milestone.
 | F16 | Impressions recorded when a card is actually shown | Next feed presentation change |
 | F18 | Transactional repository batches — logical batches commit atomically | Next repository write path added or reworked |
 | F09, F20 | Real merge execution; canonicality enforced in the repository, not by callers | After the F06–F08 soft-match packages land |
-| F10, F19 | Coherent candidate coalescing that cannot manufacture a play observation; idempotent out-of-order observations | Next ingest or session-attribution change. Residual from F04/F49 verification: when the cross-pass clamp raises minutes above what a source reported, the appended play record still carries that source's name (e.g. `steam-localconfig` labeled with the web's 900 minutes); nothing reads `play_records.source` on a decision path today, so this is forensic quality only, but it belongs to the F10 fix when that lands |
+| ~~F10~~, ~~F19~~ | Coherent candidate coalescing that cannot manufacture a play observation; idempotent out-of-order observations | Done — closed by M5's observation-identity foundations (migration 0013, coherent-tuple merge). The F04/F49 residual source-label inaccuracy resolved by the same work |
 | F39 | Single-instance enforcement so session and scheduler work is not duplicated | Next startup composition change |
 | F41 | Persistent rolling diagnostics under the data directory, with redaction tests | Next work that needs post-hoc diagnosis of a soft-failed path |
 | F40 (remainder) | Route stored secrets through a platform secret store; migrate plaintext rows on first read | Next credential or settings work |

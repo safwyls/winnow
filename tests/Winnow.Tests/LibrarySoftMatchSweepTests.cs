@@ -1,4 +1,5 @@
 using Winnow.Core.Domain;
+using Winnow.Core.Identity;
 using Winnow.Core.Queries;
 using Winnow.Core.Repositories;
 using Winnow.Data.Repositories;
@@ -485,7 +486,7 @@ public sealed class LibrarySoftMatchSweepTests
 
         await fixture.Sweep.SweepAsync();
         var answered = Assert.Single(await fixture.Candidates.GetPendingAsync());
-        await fixture.Candidates.SetStatusAsync(answered.Id, MergeCandidateStatuses.Confirmed);
+        await fixture.Candidates.SetStatusAsync(answered.Id, MergeCandidateStatuses.Rejected);
 
         await fixture.Releases.UpdateNameAsync(right, "Transistor");
 
@@ -493,7 +494,7 @@ public sealed class LibrarySoftMatchSweepTests
 
         Assert.Equal(0, report.ExcludedWithdrawn);
         Assert.Equal(
-            MergeCandidateStatuses.Confirmed,
+            MergeCandidateStatuses.Rejected,
             (await fixture.Candidates.FindByPairAsync(left, right))!.Status);
     }
 
@@ -527,6 +528,69 @@ public sealed class LibrarySoftMatchSweepTests
         Assert.Empty(await fixture.Candidates.GetPendingAsync());
     }
 
+    /// <summary>
+    /// The whole of the withdrawal machinery, reached through a link instead of
+    /// through a destructive merge. Once the user has said two works are one
+    /// game, the sweep resolves both sides to the same work, blocking refuses to
+    /// emit the pair, and the existing retire path takes the leftover row away
+    /// on its own. No new machinery, and no way for a linked pair to be asked
+    /// about twice.
+    /// </summary>
+    [Fact]
+    public async Task A_pending_pair_whose_works_have_been_linked_is_retired()
+    {
+        using var fixture = new SweepFixture();
+        var left = await fixture.AddAsync("Prey", 2017);
+        var right = await fixture.AddAsync("Prey", 2017);
+
+        // The row this library's own sweep would queue.
+        var first = await fixture.Sweep.SweepAsync();
+        Assert.Equal(1, first.Outcome.Queued);
+        Assert.Single(await fixture.Candidates.GetPendingAsync());
+
+        var leftWork = (await fixture.Releases.GetAsync(left))!.WorkId;
+        var rightWork = (await fixture.Releases.GetAsync(right))!.WorkId;
+        await fixture.Links.LinkAsync(new IdentityLinkRequest
+        {
+            ParentWorkId = leftWork,
+            ChildWorkIds = [rightWork],
+        });
+
+        var second = await fixture.Sweep.SweepAsync();
+
+        Assert.Equal(0, second.PairsProposed);
+        Assert.Equal(1, second.ExcludedWithdrawn);
+        Assert.Empty(await fixture.Candidates.GetPendingAsync());
+    }
+
+    /// <summary>
+    /// And once retracted, the pair is an ordinary proposable pair again. The
+    /// sweep is a living view of the library, not a one-way ratchet.
+    /// </summary>
+    [Fact]
+    public async Task Retracting_a_link_makes_the_pair_proposable_again()
+    {
+        using var fixture = new SweepFixture();
+        var left = await fixture.AddAsync("Prey", 2017);
+        var right = await fixture.AddAsync("Prey", 2017);
+
+        var leftWork = (await fixture.Releases.GetAsync(left))!.WorkId;
+        var rightWork = (await fixture.Releases.GetAsync(right))!.WorkId;
+        var actId = await fixture.Links.LinkAsync(new IdentityLinkRequest
+        {
+            ParentWorkId = leftWork,
+            ChildWorkIds = [rightWork],
+        });
+
+        Assert.Equal(0, (await fixture.Sweep.SweepAsync()).PairsProposed);
+
+        Assert.True(await fixture.Links.RetractActAsync(actId));
+
+        var after = await fixture.Sweep.SweepAsync();
+        Assert.Equal(1, after.PairsProposed);
+        Assert.Single(await fixture.Candidates.GetPendingAsync());
+    }
+
     // ── Fixture ──────────────────────────────────────────────────────────────
 
     private sealed class SweepFixture : IDisposable
@@ -540,12 +604,14 @@ public sealed class LibrarySoftMatchSweepTests
             Releases = new ReleaseRepository(_db.Factory);
             Candidates = new MergeCandidateRepository(_db.Factory);
             ResolveState = new ResolveStateRepository(_db.Factory);
+            Links = new IdentityLinkRepository(_db.Factory);
 
             Sweep = new LibrarySoftMatchSweep(
                 Releases,
                 new SoftMatchResolver(new SoftMatcher(), Candidates, _db.Factory),
                 ResolveState,
-                options);
+                options,
+                links: Links);
         }
 
         public IWorkRepository Works { get; }
@@ -555,6 +621,8 @@ public sealed class LibrarySoftMatchSweepTests
         public IMergeCandidateRepository Candidates { get; }
 
         public IResolveStateRepository ResolveState { get; }
+
+        public IIdentityLinkRepository Links { get; }
 
         public LibrarySoftMatchSweep Sweep { get; }
 

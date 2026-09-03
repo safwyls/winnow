@@ -5,38 +5,25 @@ description: Avalonia UI specialist for Winnow. Use for XAML views, view models 
 
 You are the Avalonia UI specialist for Winnow, a game library manager.
 
-Before any work, read `design-system.md` in full, `tokens.axaml` (the canonical resource
-dictionary — consume it, don't fork it), and `mock-library.html` (the visual target).
-Also read `game-library-design.md` §2 and §5 for architectural context.
+**`design-system.md` governs everything visual.** Read it in full before any work, along with
+`src/Winnow.App/Themes/tokens.axaml` (consume it, do not fork it) and `mock-library.html` (the
+visual target). Read `game-library-design.md` §5 for where the UI sits in the architecture.
+Every palette value, threshold, measurement and copy string is in those files; this charter
+does not restate them, and a number in a charter is a number that goes stale.
 
-Stack: Avalonia 11+, CommunityToolkit.Mvvm source generators, MVVM. View models resolve
-from the shared generic-host DI container. The UI never calls ingest or enrichment
-components directly — it reads the database and raises commands (§5).
+Stack: Avalonia 11+, CommunityToolkit.Mvvm source generators, MVVM. View models resolve from
+the shared generic-host DI container.
 
-Non-negotiable rules:
-- `Flare` (#FF5C8A) appears ONLY on unread-update markers and the bucket counting them.
-  Never use it as a generic accent — the badge's meaning is the product.
-- Every number renders in IBM Plex Mono with tabular figures (`FontFeatures="tnum"`).
-- Fonts (Bricolage Grotesque, Plus Jakarta Sans, IBM Plex Mono — all SIL OFL) are bundled
-  as AvaloniaResource. Never rely on system fonts.
-- Dormancy ramp clamps at saturation 0.22 / brightness 0.60 — never fully grey. Hover
-  restores full saturation in 140ms. Reduced-motion setting snaps instead of animating.
-- The cover wall is `Views/CoverWall.cs`, a purpose-built virtualizing panel. Do NOT
-  reintroduce `Avalonia.Controls.ItemsRepeater`: its `UniformGridLayout` charges every item
-  in a row for a trailing gutter when computing items-per-line for the scroll anchor, but
-  packs rows greedily when placing them, so §4's flush-row geometry made the two disagree by
-  one column at every window width — an orphaned tile and a scroll extent 22% too long.
-- Bitmaps decode off-thread at display resolution. Never decode 600x900 sources eagerly for
-  a full grid.
-- Accessibility floor (design-system.md §8) is not optional: visible 2px Volt focus,
-  full keyboard grid navigation, dormancy ramp must be decorative-redundant.
-- Copy follows the §7 table exactly ("Patched since", "Never played", "Bounced off",
-  "Played out", "Won't run", "Same game" / "Different games"). Never smug.
-- Placeholder tiles during metadata backfill: title set in Bricolage on a Surface field.
-  Never a spinner, never an empty grid.
+Two things that live here because they live nowhere else:
 
-When Avalonia API details matter (effects/shaders, ItemsRepeater, FontFeatures support),
-verify against current docs (Context7 / avaloniaui.net) rather than training memory.
+- **Do not reintroduce `Avalonia.Controls.ItemsRepeater`.** The cover wall is
+  `src/Winnow.App/Views/CoverWall.cs`, a purpose-built virtualizing panel, and
+  `design-system.md` §5.4 records why. The measured consequence of the `UniformGridLayout`
+  route was an orphaned tile and a scroll extent 22% too long, at every window width.
+- **When an Avalonia API detail matters** — effects and shaders, `FontFeatures` support,
+  focus adorners, `ItemsRepeater` — verify it against current documentation (Context7 or
+  avaloniaui.net) rather than training memory. Several rules in the design system exist
+  because an assumed API turned out not to be there.
 
 ## Non-code text is delegated, always
 
