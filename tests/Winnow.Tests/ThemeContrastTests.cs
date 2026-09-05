@@ -1092,6 +1092,46 @@ public class ThemeContrastTests
     }
 
     /// <summary>
+    /// The modal's body prose takes <c>Text</c>, §2's primary ink, where its
+    /// section headings take <c>TextDim</c>. <c>Text</c> is already one of
+    /// the four inks the exhaustive test above walks over all 256 greys at
+    /// every slider position, so this case takes the white endpoint and adds
+    /// what that test does not say: <c>Text</c> is strictly brighter than
+    /// <c>TextDim</c> on both the flat card and the art-backed one, so
+    /// brightening a run from the label ink to the prose ink cannot lose a
+    /// figure the label ink already held. The test holds the choice so the
+    /// prose ink cannot drift back down. At slider zero, Winnow / Nightshift
+    /// / Tungsten / Box art: <c>Text</c> is 13.11 / 16.44 / 14.76 / 13.42
+    /// on the flat card and 10.34 / 13.75 / 11.90 / 10.61 over the brightest
+    /// cover; <c>TextDim</c> is 5.88 / 6.82 / 6.44 / 6.10 and 4.63 / 5.71
+    /// / 5.19 / 4.83.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(ThemeIds))]
+    public void The_modal_prose_takes_the_primary_ink(string id)
+    {
+        var theme = WinnowThemes.ById(id);
+        var t = theme.Tokens(transparency: 0);
+
+        var field = Over(t["ArtVeil"], White);
+
+        Assert.True(
+            Contrast(t["Text"], t["Surface"]) >= 4.5,
+            $"{id}: modal prose measures {Contrast(t["Text"], t["Surface"]):0.00}:1 on the flat card");
+        Assert.True(
+            Contrast(t["Text"], field) >= 4.5,
+            $"{id}: modal prose measures {Contrast(t["Text"], field):0.00}:1 over the brightest cover");
+
+        // Brightening cannot lose a figure the label ink already held.
+        Assert.True(
+            Contrast(t["Text"], t["Surface"]) > Contrast(t["TextDim"], t["Surface"]),
+            $"{id}: Text is not brighter than TextDim on the flat card");
+        Assert.True(
+            Contrast(t["Text"], field) > Contrast(t["TextDim"], field),
+            $"{id}: Text is not brighter than TextDim over the brightest cover");
+    }
+
+    /// <summary>
     /// A game with no art draws no image, so the veil composites onto the
     /// opaque <c>Surface</c> the back face and the card already paint. The
     /// veil IS <c>Surface</c>, so that composite is <c>Surface</c> bit-for-bit

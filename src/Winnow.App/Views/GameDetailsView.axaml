@@ -11,7 +11,15 @@
          Rows appear when their data exists. One popup: the action band's
          menu, which draws its own focus mark because the global adorner
          does not render inside a popup. Everything else is inline in the
-         modal's own tree for the same reason. -->
+         modal's own tree for the same reason.
+
+         Two inks, one line between them. Body prose — a paragraph the
+         user reads, a section blurb, the gap rail's caption — takes
+         Text, §2's primary ink. Labels, metadata, status lines and
+         landed-act confirmations take TextDim. A prose run states no
+         Foreground of its own: the .body type style already gives it
+         Text, so omitting the override IS the correct declaration.
+         Adding a Foreground to a prose TextBlock is the mistake. -->
 
     <UserControl.Styles>
 
@@ -362,7 +370,10 @@
 
                                 <!-- A provisional title is an appid wearing a
                                      title's clothes. Saying so is the difference
-                                     between "still loading" and "broken". -->
+                                     between "still loading" and "broken". It keeps
+                                     TextDim because it reports the state of the
+                                     title above it: a status line in the identity
+                                     block, not prose of the panel. -->
                                 <TextBlock Classes="body" FontSize="12"
                                            LineHeight="17"
                                            TextWrapping="Wrap"
@@ -445,10 +456,15 @@
                                                    Text="today"/>
                                     </Grid>
 
+                                    <!-- Both runs are prose: §10.2 says everything
+                                         the rail draws is restated in words, and
+                                         §8 makes those words the carrier of the
+                                         fact for a user who cannot resolve a 7px
+                                         dot. The carrier of a fact is primary text,
+                                         so both take .body's own Text ink. -->
                                     <TextBlock Classes="body" FontSize="12"
                                                LineHeight="17"
                                                TextWrapping="Wrap"
-                                               Foreground="{StaticResource TextDim}"
                                                Text="{Binding GapCaption}"/>
 
                                     <!-- §1's longitudinal record, at the resolution
@@ -457,24 +473,23 @@
                                     <TextBlock Classes="body" FontSize="12"
                                                LineHeight="17"
                                                TextWrapping="Wrap"
-                                               Foreground="{StaticResource TextDim}"
                                                IsVisible="{Binding HasRecordLine}"
                                                Text="{Binding RecordLine}"/>
                                 </StackPanel>
 
                                 <!-- No date, no rail. Two different absences, and
-                                     the copy keeps them apart. -->
+                                     the copy keeps them apart. Both runs carry
+                                     the fact in words (§10.2, §8), so they take
+                                     .body's own Text ink, the same rule. -->
                                 <StackPanel Grid.Column="1" Spacing="7"
                                             VerticalAlignment="Center"
                                             IsVisible="{Binding LacksGap}">
                                     <TextBlock Classes="body" FontSize="13"
                                                TextWrapping="Wrap"
-                                               Foreground="{StaticResource TextDim}"
                                                Text="{Binding NoGapText}"/>
                                     <TextBlock Classes="body" FontSize="12"
                                                LineHeight="17"
                                                TextWrapping="Wrap"
-                                               Foreground="{StaticResource TextDim}"
                                                IsVisible="{Binding HasRecordLine}"
                                                Text="{Binding RecordLine}"/>
                                 </StackPanel>
@@ -765,6 +780,11 @@
                                     </StackPanel>
                                 </Border>
 
+                                <!-- A second scroll region with a bar of its own,
+                                     so it takes its own InnerScrollGutter; the
+                                     rest band's gutter clears the band's bar, not
+                                     this one. Same mechanism, explained at the
+                                     rest band's ScrollViewer above. -->
                                 <ScrollViewer Classes="inner"
                                               MaxHeight="238"
                                               IsVisible="{Binding HasCandidates}"
@@ -772,7 +792,7 @@
                                               HorizontalScrollBarVisibility="Disabled"
                                               VerticalScrollBarVisibility="Auto">
                                     <ItemsControl ItemsSource="{Binding Candidates}"
-                                                  Margin="0,0,4,0">
+                                                  Margin="{StaticResource InnerScrollGutter}">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate DataType="vm:IgdbCandidateViewModel">
                                                 <Border BorderBrush="{StaticResource Line}"
@@ -1022,7 +1042,6 @@
                                 </ContentControl>
                                 <TextBlock Classes="body" FontSize="12"
                                            TextWrapping="Wrap"
-                                           Foreground="{StaticResource TextDim}"
                                            Text="{Binding ExtendsNote}"/>
                             </StackPanel>
                             </StackPanel>
@@ -1047,7 +1066,6 @@
                                 <TextBlock Classes="label section" Text="{Binding Heading}"/>
                                 <TextBlock Classes="body" FontSize="12"
                                            TextWrapping="Wrap"
-                                           Foreground="{StaticResource TextDim}"
                                            Text="{Binding Note}"/>
 
                                 <ItemsControl ItemsSource="{Binding Expansions}">
@@ -1125,7 +1143,6 @@
                                 <TextBlock Classes="body" FontSize="12"
                                            TextWrapping="Wrap"
                                            LineHeight="18"
-                                           Foreground="{StaticResource TextDim}"
                                            IsVisible="{Binding IsEmpty}"
                                            Text="{Binding EmptyText}"/>
 
@@ -1152,14 +1169,12 @@
                                 <TextBlock Classes="label section" Text="ABOUT"/>
                                 <SelectableTextBlock Classes="body copyable"
                                            Focusable="True"
-                                           Foreground="{StaticResource TextDim}"
                                            LineHeight="20"
                                            TextWrapping="Wrap"
                                            IsVisible="{Binding HasSummary}"
                                            Text="{Binding Summary}"/>
                                 <!-- §7: an empty screen is a direction, not a mood. -->
                                 <TextBlock Classes="body"
-                                           Foreground="{StaticResource TextDim}"
                                            LineHeight="20"
                                            TextWrapping="Wrap"
                                            IsVisible="{Binding ShowEmptyBody}"
@@ -1224,6 +1239,12 @@
                             <!-- "I've read this one": placed under the update list.
                                  Not "Not interested"; that is the feed card's verdict. -->
                             <StackPanel Spacing="8" IsVisible="{Binding ShowFlagControl}">
+
+                                <!-- Each caption is drawn beside its own button
+                                     and repeated verbatim as that button's
+                                     ToolTip.Tip, so it is an annotation on a
+                                     control rather than prose of the panel.
+                                     TextDim, not Text. -->
 
                                 <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12"
                                       IsVisible="{Binding ShowDismissFlag}">
@@ -1302,12 +1323,24 @@
                              identity facts under it scroll. With the IGDB
                              search disclosed, the column would otherwise run
                              past the card's MaxHeight, the same overflow the
-                             right column's star row fixes. -->
+                             right column's star row fixes.
+
+                             The 18px gap between the cover and the facts is
+                             a Margin on the ScrollViewer, not on the content:
+                             a Thickness token cannot be composed with a
+                             second value in XAML, and a Margin on a
+                             ScrollViewer is not the inert Padding case, so
+                             the gap stays fixed as the content scrolls. The
+                             content takes InnerScrollGutter for the same bar
+                             the rest band clears; same mechanism, explained
+                             there. -->
                         <ScrollViewer Grid.Row="1"
                                       Classes="inner"
+                                      Margin="0,18,0,0"
                                       HorizontalScrollBarVisibility="Disabled"
                                       VerticalScrollBarVisibility="Auto">
-                        <StackPanel Spacing="18" Margin="0,18,0,0">
+                        <StackPanel Spacing="18"
+                                    Margin="{StaticResource InnerScrollGutter}">
 
                         <!-- What Steam calls it. Selectable because an appid is a
                              thing people paste into a search box. -->

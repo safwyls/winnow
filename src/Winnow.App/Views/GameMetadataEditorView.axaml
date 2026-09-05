@@ -138,6 +138,15 @@
          the editor closed, so this line sits outside the IsOpen gate below.
          The same arrangement as the IGDB reassignment control's carried
          note. -->
+    <!-- Note is TextDim: it holds a landed-act confirmation ("Name
+         saved.", "About returned to automatic."), the same register as
+         GameIgdbMatchViewModel.Note in the IGDB control above, which
+         holds standing state labels ("Matched by you.") and the same
+         kind of confirmation. Intro, directly below, is prose the user
+         reads once to understand the editor, and takes .body's own Text
+         ink with no Foreground override. The per-row Status and Note
+         lines in the two DataTemplates keep TextDim for the same
+         reason as this one. -->
     <TextBlock Classes="body" FontSize="12"
                Margin="0,18,0,0"
                TextWrapping="Wrap"
@@ -173,7 +182,6 @@
         <TextBlock Classes="body" FontSize="12"
                    TextWrapping="Wrap"
                    LineHeight="17"
-                   Foreground="{StaticResource TextDim}"
                    Text="{Binding Intro}"/>
 
         <TextBlock Classes="body" FontSize="12"

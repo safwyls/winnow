@@ -628,15 +628,22 @@ long content draw past the card and be cut off at the window edge (measured on A
 
 Avalonia's Fluent ScrollViewer draws its scrollbar over the content while auto-hide is on: the
 content presenter is given both spans, so the bar takes no column of its own (verified against
-Avalonia 11.3.20's own theme). Anything in the trailing edge of the right column's rest band —
-the close glyph on each disclosed section's header row (§10.9, §10.10), and the per-row
-Separate, Ungroup and Patch notes buttons — sits under that bar. The rest band's content
-therefore carries a 20px gutter on the right; the token is `InnerScrollGutter`. 20 is 12, the
-width Fluent's track swells to under the pointer, plus 8, §4's own spacing step — the 8 is
-what makes the clearance read as deliberate space rather than as a control that merely stopped
-touching the bar. The gutter is one margin on the band's content rather than one per header, so
-every section the band carries now and every section added later is clear of the bar without
-solving it again. It is not carried by the `ScrollViewer.inner` class: that class is §9.1's
+Avalonia 11.3.20's own theme). Three inner scroll regions in the modal carry the same problem. In the right column's rest
+band, the close glyph on each disclosed section's header row (§10.9, §10.10) and the per-row
+Separate, Ungroup and Patch notes buttons sit under the bar. In the IGDB candidate list
+(§10.9), a bounded region with a bar of its own drawn inside the rest band's content, the
+swelled 12px track covered roughly 8px of each row's assign control behind a 4px content
+margin; its gutter does not double-count against the rest band's, because the two regions
+scroll independently. In the left column, a wrapped ON DISK path could run under its bar. All
+three carry the same 20px right margin on their content; the token is `InnerScrollGutter`. 20
+is 12, the width Fluent's track swells to under the pointer, plus 8, §4's own spacing step —
+the 8 is what makes the clearance read as deliberate space rather than as a control that merely
+stopped touching the bar. In the rest band the gutter is one margin on the band's content
+rather than one per header, so every section the band carries now and every section added later
+is clear of the bar without solving it again. The left column's 18px top margin — the gap
+between the cover and the facts — moved onto the ScrollViewer itself, because a `Thickness`
+token cannot be composed with a second value in XAML and a `Margin` on a ScrollViewer is not
+the inert `Padding` case; the gap no longer scrolls away with the content. It is not carried by the `ScrollViewer.inner` class: that class is §9.1's
 opt-out, saying this scrollbar's edge is a divider of ours rather than the window's, and the
 only property it could set for a gutter is the ScrollViewer's own `Padding`, which
 `ScrollContentPresenter` ignores in measure and in arrange. The cover wall already records the
@@ -715,6 +722,55 @@ A heading at label size is 11px SemiBold, which is not WCAG large text (large te
 14pt bold), so the 4.5:1 bar applies and the 3:1 large-text allowance does not.
 `ThemeContrastTests.The_section_heading_takes_the_quietest_ink_that_still_clears_AA` pins both
 halves per theme.
+
+**The complement: a run in this panel takes `Text` where it is prose and keeps `TextDim` where
+it is a status line, a label on a value, or metadata.** The deciding line is what the run is,
+not where it sits. A paragraph the user reads, a sentence standing in a prose slot, or a blurb
+sitting under a heading is prose. A value label, a status line, a landed-act confirmation, or
+metadata beside a value is not.
+
+Nine runs take `Text`. The gap rail's caption and its longitudinal record line, and the same
+record line in the no-rail branch — §10.2 says everything the rail draws is restated in words
+underneath, and §8's decorative-redundant rule makes those words the carrier of the fact; the
+carrier of a fact is primary text. The no-rail sentence itself ("You've never opened this." /
+"Steam has no date for your last session."), which is the whole of what Band 2 says when there
+is no rail. The EXTENDS blurb ("A separate game, grouped for display.") and the EXPANSIONS
+blurb ("Counted separately. Not added above."), both directly under a section heading — the
+pair that prompted the change. The LISTS empty state ("Select titles in the library and choose
+Add to list on the action bar."), a direction the user acts on (§7). The ABOUT summary — the
+game's own description — and the empty-body line that stands in the same slot ("No description
+yet. Metadata fills in automatically."). The metadata editor's intro ("Each field tracks its
+own source, so editing one leaves the rest alone."). Each dropped its local `Foreground`
+override entirely rather than swapping one token for another, so the ink comes from the `.body`
+type style, which §2 already gives `Text`. A prose run that states no ink of its own is correct
+by default.
+
+Status lines, landed-act confirmations, value labels and metadata keep `TextDim`. The IGDB
+section's note holds either a standing pin label ("Matched by you.") or a confirmation that an
+act landed ("Now using <name>.", "Linked with <name>."); the metadata editor's own note and its
+per-row status lines are the same kind of string. The identity line's year and publisher, the
+bucket and install-state chips, the coverage total's note and the candidate row's platform list
+are metadata. §10.8's no-notes line and §10.9's no-results and id-miss lines are already pinned
+by name elsewhere in this section.
+
+Two runs are genuinely ambiguous and are left `TextDim` on stated reasoning rather than left to
+a future reader's inspection. The provisional-title note ("Name not yet available. Showing the
+app id until metadata loads.") is two sentences the user reads, but it reports the state of the
+value above it and says so in its own copy — "until metadata loads" — which is the shape of a
+status line, and it sits inside the identity block among the metadata that qualifies the title.
+The two flag-control captions ("Removes from Patched. A newer patch puts it back." and "Marked
+read. A newer patch will flag it again.") are each drawn beside their own button and repeated
+verbatim as that button's tooltip, which makes each an annotation on a control rather than
+prose of the panel's own.
+
+`Text` on the flat card and over the brightest cover the art-backed card of §5.5 can carry, at
+slider zero, in the order Winnow / Nightshift / Tungsten / Box art: 13.11 / 16.44 / 14.76 /
+13.42 flat, 10.34 / 13.75 / 11.90 / 10.61 over art. Brightening prose cannot lose a figure
+the label ink already held, in any theme, on either surface. `Text` is already one of the four
+inks §5.5 holds to 4.5:1 and is already walked over all 256 greys at every slider position by
+`ThemeContrastTests.Art_behind_the_back_face_and_the_modal_keeps_text_over_AA`;
+`ThemeContrastTests.The_modal_prose_takes_the_primary_ink` pins the pair per theme so the prose
+ink cannot drift back down.
 
 **The disclosure is `Button.secondary`, not `Button.link`.** `Store page` and `All patch notes`
 are outbound links and draw in `Azure`; the disclosure acts here rather than leaving, so it
@@ -961,7 +1017,8 @@ dormancy ramp is about your own library and none of these candidates is in it ye
 results, so more than three is the normal case for a common title. A row is 68px (the 51px
 cover plus padding and rule), so the region shows three rows and half of a fourth; the cut row
 together with the scrollbar is what says there is more rather than the list ending silently.
-The section's close control is the first Tab stop in the section. Each row's assign control
+The list's content carries `InnerScrollGutter` (§10.1) so the bar does not cover the assign
+controls at the trailing edge. The section's close control is the first Tab stop in the section. Each row's assign control
 follows, and a row reached by Tab is scrolled into view, so focus is never left off screen.
 
 **Six states.** Assigned reloads the library and reopens the modal on the same ownership,

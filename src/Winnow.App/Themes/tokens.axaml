@@ -592,7 +592,8 @@
              The ink is TextDim, §2's labels-and-metadata ink. Stated here
              rather than left to .label's own default so that a section heading
              and the close glyph beside it cannot drift apart if .label is ever
-             retuned for the value labels.
+             retuned for the value labels. The prose between those headings
+             takes .body's own Text ink, stating no Foreground of its own.
 
              The ink below it is not available. §8 says do not dim further, and
              measured: TextFaint is 3.63 / 3.60 / 3.31 / 3.28 across Winnow /
