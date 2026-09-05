@@ -39,6 +39,17 @@ public partial class GameMetadataEditorViewModel : ObservableObject
     /// </summary>
     private readonly Func<string, Task>? _afterArtChange;
 
+    /// <summary>
+    /// Hands a saved text field to the library so the running session
+    /// shows it — the name is the field this exists for. Unlike
+    /// <see cref="_afterArtChange"/> this does not reload: art has to
+    /// reload because the tile's cover key is computed at load, and a
+    /// text save must not reload because that would discard the drafts
+    /// in the other five rows. With no delegate supplied the save is
+    /// exactly what it was.
+    /// </summary>
+    private readonly Func<string, string?, Task>? _afterTextChange;
+
     private readonly long _workId;
 
     private double _scaling = 1;
@@ -50,6 +61,7 @@ public partial class GameMetadataEditorViewModel : ObservableObject
         ICoverCache? covers = null,
         IImageFilePicker? picker = null,
         Func<string, Task>? afterArtChange = null,
+        Func<string, string?, Task>? afterTextChange = null,
         string? note = null)
     {
         ArgumentNullException.ThrowIfNull(service);
@@ -59,6 +71,7 @@ public partial class GameMetadataEditorViewModel : ObservableObject
         _covers = covers;
         _picker = picker;
         _afterArtChange = afterArtChange;
+        _afterTextChange = afterTextChange;
         Note = note;
 
         if (snapshot is not null)
@@ -275,6 +288,21 @@ public partial class GameMetadataEditorViewModel : ObservableObject
 
     /// <summary>Whether an art save triggers a library reload.</summary>
     internal bool ReloadsOnArtChange => _afterArtChange is not null;
+
+    /// <summary>
+    /// Fires the text-change delegate if one was supplied. Called after
+    /// the rows have been refreshed, so the value it carries is the value
+    /// as stored, not the raw draft.
+    /// </summary>
+    internal async Task AfterTextChangeAsync(string field, string? value)
+    {
+        if (_afterTextChange is null)
+        {
+            return;
+        }
+
+        await _afterTextChange(field, value);
+    }
 
     /// <summary>
     /// Builds one row per <see cref="WorkFields.All"/> entry: an art row for
@@ -592,6 +620,8 @@ public sealed partial class MetadataTextRowViewModel : MetadataFieldRowViewModel
         }
 
         await Editor.RefreshAsync(Field, ct);
+        // After the refresh so Value is the stored value, not the raw draft.
+        await Editor.AfterTextChangeAsync(Field, Value);
         Note = GameMetadataEditorCopy.SavedNote(Label);
     }
 

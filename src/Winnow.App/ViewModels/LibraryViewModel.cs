@@ -1349,9 +1349,11 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     /// edit service is registered or the tile resolves to no work id. Uses
     /// the same resolved work id <see cref="BuildIgdbMatchAsync"/> uses,
     /// through <c>GameWorkIdFor</c>, so the editor writes the row the lists,
-    /// expansions and IGDB surfaces all answer for. Nothing is read here:
-    /// the editor loads its own fields on first disclosure, which keeps
-    /// opening the modal the same cost it was before TASK-119.
+    /// expansions and IGDB surfaces all answer for. Wires the text-change
+    /// callback to <see cref="AfterMetadataTextChangeAsync"/>, which is the
+    /// rename path for a name save. Nothing is read here: the editor loads
+    /// its own fields on first disclosure, which keeps opening the modal
+    /// the same cost it was before TASK-119.
     /// </summary>
     private GameMetadataEditorViewModel? BuildMetadataEditor(GameTileViewModel target)
     {
@@ -1369,7 +1371,91 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             covers: _covers,
             picker: _imagePicker,
             afterArtChange: AfterMetadataArtChangeAsync,
+            afterTextChange: (field, value) => AfterMetadataTextChangeAsync(workId, field, value),
             note: note);
+    }
+
+    /// <summary>
+    /// The text-save counterpart to <see cref="AfterMetadataArtChangeAsync"/>
+    /// and pointedly not a reload: a text save must not reload because
+    /// reloading would discard the drafts the user has in the other five
+    /// rows (§10.10). Acts on <c>name</c> alone and only on a non-blank
+    /// value; the other four text fields are not drawn anywhere outside
+    /// the modal, which already refreshed its own rows.
+    /// </summary>
+    private Task AfterMetadataTextChangeAsync(long workId, string field, string? value)
+    {
+        if (!string.Equals(field, WorkFields.Name, StringComparison.Ordinal)
+            || string.IsNullOrWhiteSpace(value))
+        {
+            return Task.CompletedTask;
+        }
+
+        RenameGame(workId, value.Trim());
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Renames every tile whose resolved work id is <paramref name="workId"/>
+    /// — every tile, not the selected one, because a same-game link group
+    /// can put several tiles behind one work. Updates the work cache and
+    /// the coverage entries that work owns, so the ALSO COVERS and
+    /// EXPANSIONS sections built after this read the new name. Coverage
+    /// entries are matched on the work id itself, not the resolved one,
+    /// because a coverage row's title is the name its own work row carries.
+    /// Then raises the open modal's headline and re-runs
+    /// <see cref="ApplyFilter"/>, which re-applies the search cut and the
+    /// sort in one pass.
+    /// </summary>
+    private void RenameGame(long workId, string name)
+    {
+        var renamed = false;
+        foreach (var tile in _allTiles)
+        {
+            if (GameWorkIdFor(tile) != workId || string.Equals(tile.Title, name, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            tile.Rename(name);
+            renamed = true;
+        }
+
+        if (_workById.TryGetValue(workId, out var work)
+            && !string.Equals(work.Name, name, StringComparison.Ordinal))
+        {
+            _workById = new Dictionary<long, Work>(_workById)
+            {
+                [workId] = work with { Name = name, NameIsProvisional = false },
+            };
+        }
+
+        var coverage = new List<CoverageEntry>(_coverage.Count);
+        var touched = false;
+        foreach (var entry in _coverage)
+        {
+            if (entry.WorkId == workId && !string.Equals(entry.Title, name, StringComparison.Ordinal))
+            {
+                coverage.Add(entry with { Title = name });
+                touched = true;
+                continue;
+            }
+
+            coverage.Add(entry);
+        }
+
+        if (touched)
+        {
+            _coverage = coverage;
+        }
+
+        if (!renamed)
+        {
+            return;
+        }
+
+        Details?.NotifyTitleChanged();
+        ApplyFilter();
     }
 
     /// <summary>
@@ -1378,8 +1464,9 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     /// cover key the grid computes at load, so only a reload draws the new
     /// art on the tile. Reopens on the same ownership and carries the
     /// confirmation across, exactly as <see cref="AfterIgdbChangeAsync"/>
-    /// does. Text edits do not come through here: reloading after one would
-    /// discard the drafts the user has in the other five rows.
+    /// does. Text edits take <see cref="AfterMetadataTextChangeAsync"/>
+    /// instead: reloading after one would discard the drafts the user has
+    /// in the other five rows.
     /// </summary>
     private async Task AfterMetadataArtChangeAsync(string note)
     {

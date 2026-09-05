@@ -325,11 +325,65 @@ public sealed class GameMetadataEditorViewModelTests
         Assert.Equal(GameMetadataEditorCopy.LoadFailedText, editor.Problem);
     }
 
+    // ══ The text-save seam ═════════════════════════════════════════════════
+
+    /// <summary>
+    /// The text-save callback fires once, carrying the field key and the value
+    /// as stored rather than the raw draft. The row still draws its own
+    /// confirmation because nothing here reloads — the callback is what lets
+    /// the library rename the live tile in place (design-system §10.10).
+    /// </summary>
+    [Fact]
+    public async Task A_saved_text_field_hands_the_library_the_field_and_its_stored_value()
+    {
+        var handed = new List<(string Field, string? Value)>();
+        var service = FakeService.WithIgdbEverywhere();
+        var editor = Build(service, afterTextChange: (field, value) =>
+        {
+            handed.Add((field, value));
+            return Task.CompletedTask;
+        });
+
+        var name = Row(editor, WorkFields.Name);
+        name.Draft = "Empyrion";
+        await name.SaveCommand.ExecuteAsync(null);
+
+        Assert.Equal([(WorkFields.Name, "Empyrion")], handed);
+        Assert.Equal(GameMetadataEditorCopy.SavedNote(name.Label), name.Note);
+    }
+
+    /// <summary>
+    /// A refused write tells the library nothing and leaves the refusal under
+    /// the field. The callback must not report a rename that did not happen,
+    /// because the library would retitle the tile to a value the database
+    /// refused.
+    /// </summary>
+    [Fact]
+    public async Task A_refused_text_save_hands_the_library_nothing()
+    {
+        var handed = new List<(string Field, string? Value)>();
+        var service = new FakeService { FieldOutcome = WorkFieldEditOutcome.WorkNotFound };
+        var editor = Build(service, afterTextChange: (field, value) =>
+        {
+            handed.Add((field, value));
+            return Task.CompletedTask;
+        });
+
+        var name = Row(editor, WorkFields.Name);
+        name.Draft = "Empyrion";
+        await name.SaveCommand.ExecuteAsync(null);
+
+        Assert.Empty(handed);
+        Assert.True(name.HasProblem);
+    }
+
     // ══ Helpers ════════════════════════════════════════════════════════════
 
     private static GameMetadataEditorViewModel Build(
-        FakeService service, IImageFilePicker? picker = null)
-        => new(service, WorkId, service.Snapshot(), picker: picker);
+        FakeService service,
+        IImageFilePicker? picker = null,
+        Func<string, string?, Task>? afterTextChange = null)
+        => new(service, WorkId, service.Snapshot(), picker: picker, afterTextChange: afterTextChange);
 
     private static MetadataFieldRowViewModel Row(GameMetadataEditorViewModel editor, string field)
         => editor.Rows.Single(r => r.Field == field);

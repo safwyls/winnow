@@ -604,7 +604,7 @@ so `Escape` returns them to exactly the row they were reading.
 │            │         2 updates landed while you were away.    │
 │            │         Checked once, on 23 Aug 2026.            │
 │            │                                                  │
-│            │  [ Install ] [ Store page ] [ All patch notes ]  │  3 GET ME IN
+│            │  [Install] [Store page] [All patch notes] [More] │  3 GET ME IN
 │ STEAM APPID├──────────────────────────────────────────────────┤
 │ 383120     │  ABOUT                                (scrolls)  │  4 THE REST
 │            │  Empyrion – Galactic Survival is a 3D open…      │
@@ -661,9 +661,45 @@ nothing at all.
 uninstalled 60GB game promises something the next hour will not deliver. **No appid means no
 primary action at all, never an inert button.**
 
-Beside it, `Store page` and `All patch notes` in `Azure`, and `Open folder` when there is a
-path. The folder goes through the launcher's directory entry point as a path, never a `file:`
-URI.
+Beside it, `Store page` and `All patch notes` in `Azure`, and the `More` disclosure — four
+controls on the strip. `Open folder`, `Wrong game?`, `Edit details` and `Hide` are folded
+behind the disclosure and drawn in a vertical, left-aligned column directly beneath the strip,
+above the divider that separates Band 3 from the rest band. The `More` control becomes `Close`
+while the list is open; its tooltip is `Folder, corrections and hide`.
+
+**The disclosure is `Button.secondary`, not `Button.link`.** `Store page` and `All patch notes`
+are outbound links and draw in `Azure`; the disclosure acts here rather than leaving, so it
+takes the panel's `Text`-ink treatment. `Button.secondary` and `Button.link` have identical
+geometry, so the choice costs no width.
+
+**The disclosed list is inline, never a flyout** — §10.7's rule and §12.3's standing reason:
+Avalonia's global `FocusAdorner` does not render inside a popup, because a popup is its own
+root and has no adorner layer, so every ring in a menu here would have to be hand-drawn. Each
+folded control keeps the idiom it already had.
+
+**The disclosed list sits above the rest band's scroll region**, not inside it. An action must
+not scroll out from under the control that disclosed it, so the list needs no `BringIntoView`,
+unlike the surfaces §10.9 and §10.10 put in the rest band. Band 3 is the right column's Auto
+row and the rest band is the star row below it; opening the list grows the Auto row by 144px
+and the rest band absorbs it by scrolling — the same structural property §10.1 already relies
+on.
+
+**Vertical is the growth answer.** A further control costs one row of height and no horizontal
+budget, so the strip cannot be pushed back over the column's edge by the next addition.
+
+**What earns a place on the strip.** The band is "GET ME IN". A control belongs on the strip
+only if pressing it moves the user toward playing this game now: the primary action, and the
+outbound links that answer what this is and what changed before launching. Everything else
+joins the disclosure. A new control joins the disclosure by default; putting one on the strip
+requires both that it passes that test and that the strip is re-measured and still fits 420px.
+See `docs/spikes/details-action-band-width.md` for the measurements.
+
+**Keyboard.** Tab order follows declaration order (§10.7): primary action, `Store page`, `All
+patch notes`, `More`, then `Open folder`, `Wrong game?`, `Edit details`, `Hide`. While the
+list is closed those four are not drawn and are therefore not Tab stops — the same disclosure
+contract §10.9 and §10.10 already use.
+
+The folder goes through the launcher's directory entry point as a path, never a `file:` URI.
 
 **Every outbound target is built by `GameLink.Create` and nothing else.** Five schemes are
 allowed — `https`, `http`, `steam`, `com.epicgames.launcher` and `goggalaxy`, the three
@@ -829,11 +865,12 @@ the recourse: search IGDB by title from the modal, pick the right entry, and tha
 pinned so later automatic enrichment passes leave it alone. Clearing the pin returns the game
 to automatic resolution.
 
-**The disclosure is a `Wrong game?` link in the action band (Band 3)**, beside Store page, All
-patch notes, Open folder, Edit details and Hide. The search field and the candidate list draw full width in
-the right column's rest band, the scrolling star row, which is what makes the bounded-scrolling
-behaviour structural rather than arithmetic. Only the Clear control is in the left column, under
-the cover and ON DISK — §10.1's object column, where the identity facts live.
+**The disclosure is a `Wrong game?` link in the action band's overflow list (§10.3)**, folded
+behind the `More` control with `Open folder`, `Edit details` and `Hide`. The search field and
+the candidate list draw full width in the right column's rest band, the scrolling star row,
+which is what makes the bounded-scrolling behaviour structural rather than arithmetic. Only the
+Clear control is in the left column, under the cover and ON DISK — §10.1's object column,
+where the identity facts live.
 
 **Inline, never a flyout.** §10.7's rule, applied again: Avalonia's global `FocusAdorner` does
 not render inside a popup — a popup is its own root and has no adorner layer — so every ring
@@ -879,17 +916,27 @@ written, the control says so in words in a status field. No spinner and no `Tran
 reduced motion has nothing to disable and the surface is identical in both motion settings.
 
 **A live IGDB pin outranks the store capsule for that work.** The cover-key precedence is:
-(1) a live IGDB pin on this work, when the work's `cover_url` yields an IGDB image id;
-(2) the Steam portrait capsule for this release's appid; (3) the image id in the work's
-stored `cover_url`. A user reaching for the wrong-game control is not only saying the metadata
-is wrong, they are saying the storefront art is wrong, so the pin wins. The pin is read off
-the release's own work row, never the resolved work: the pin and the `cover_url` it rewrote
-are columns of the same row, and resolving through the same-game map would pair one work's pin
-with another work's URL. A pinned entry that IGDB gave no cover keeps the store capsule — the
-user is no worse off than before the pin, and a placeholder tells them less than the wrong art.
-Nothing is evicted from the cover cache: a `CoverKey.Igdb` names the artwork asset itself, so
-pinning moves the tile to a key that has never been fetched, and clearing returns it to the
-Steam key whose cached bytes are still the right bytes.
+(0) user-set art, when `works.cover_url` holds a `winnow://user-art/<token>` reference
+(migration 0027, §10.10); (1) a live IGDB pin on this work, when the work's `cover_url`
+yields an IGDB image id; (2) the Steam portrait capsule for this release's appid; (3) the
+image id in the work's stored `cover_url`. Rung 0 outranks the pin because under the
+field-source model the value in `cover_url` *is* the user's — there is nothing for it to
+outrank — and a later metadata fetch replaces that value rather than layering over it. A user
+reaching for the wrong-game control is not only saying the metadata is wrong, they are saying
+the storefront art is wrong, so the pin wins. The ladder is not the grid's alone: both
+surfaces that derive a game's art from a release use it — the library load and the Merges
+queue. The queue previously had its own store-first ladder with neither rung 0 nor rung 1, so
+an imported cover drew on the grid and in the details modal but not in the queue — the same
+failure this paragraph already settled for the store capsule. The queue reads the pin set once
+per load, and reads the pin off the release's own work row, never the resolved work: the pin
+and the `cover_url` it rewrote are columns of the same row, and resolving through the
+same-game map would pair one work's pin with another work's URL. The assignment service is
+optional on the queue: without it rungs 0, 2 and 3 stand and only rung 1 is lost. A pinned
+entry that IGDB gave no cover keeps the store capsule — the user is no worse off than before
+the pin, and a placeholder tells them less than the wrong art. Nothing is evicted from the
+cover cache: a `CoverKey.Igdb` names the artwork asset itself, so pinning moves the tile to a
+key that has never been fetched, and clearing returns it to the Steam key whose cached bytes
+are still the right bytes.
 
 **Clear is drawn only while a pin stands**, read when the modal opens. It sits in the left
 column, under the cover and ON DISK, at the foot of the identity facts and inside that
@@ -942,10 +989,10 @@ The IGDB assignment and the automatic enrichment pass set every field in one go.
 other gesture: setting one field and making the user its source, leaving every other field
 tracking its own.
 
-**The disclosure is an `Edit details` link in the action band (Band 3)**, beside `Wrong game?`,
-in the same link idiom, because it is the same kind of act: correcting what Winnow believes
-about this game. `Wrong game?` answers which game this is; `Edit details` answers what each of
-its values should be. The editor draws full width in the right column's rest band, directly
+**The disclosure is an `Edit details` link in the action band's overflow list (§10.3)**, beside
+`Wrong game?`, in the same link idiom, because it is the same kind of act: correcting what
+Winnow believes about this game. `Wrong game?` answers which game this is; `Edit details`
+answers what each of its values should be. The editor draws full width in the right column's rest band, directly
 under the IGDB reassignment control's own block. The identity question comes first on the
 surface because it is first in fact: assigning an IGDB entry rewrites every field in one pass.
 **Inline, never a flyout** — §10.7's rule applied again, for §10.7's own reason. The rest band
@@ -997,9 +1044,19 @@ for the whole editor: a second write cannot start while one is in flight.
 **Saving art reloads the library and reopens the modal on the same ownership**, carrying its
 confirmation across — the same arrangement §10.9 already describes for an assignment, and for
 the same reason: the stored value becomes a user-art reference, the tile's cover key is
-computed when the library loads, and only a reload draws the new art on the wall. **A text save
-does not reload.** Reloading after one would discard the drafts the user has in the other five
-rows. This asymmetry is deliberate and is the reason the two paths are separate. The carried
+computed when the library loads, and only a reload draws the new art on the wall. **A text save does not reload**, and does not need to: the save hands the library the field
+key and the value as stored, after the editor's own rows refresh. Only `name` is acted on; the
+other three text fields are drawn nowhere outside the modal, which has already refreshed
+itself. The library renames every live tile behind that work — several when a same-game link
+group sits behind one work — and with it the grid tile, the list-view row, the modal headline,
+the tile's filterable row (so search and every live list follow), and any feed card, which
+borrows the same tile instance. The provisional-name badge is cleared, because a name save
+clears `works.name_is_provisional`. The placeholder gradient is recomputed, because it is
+derived from the title. The current sort and filter are re-applied in the same pass, so a
+renamed game takes its new place in the order immediately. Every draft in the other five rows
+survives, the modal stays open on the same ownership, and the editor stays disclosed — which
+is precisely what a reload would have cost. The seam is optional like every other seam on this
+modal: unwired, the save is exactly what it was. The carried
 confirmation is drawn outside the disclosure's own open/closed gate, because reopening leaves
 the editor closed and a confirmation nobody can see is not one.
 
@@ -1007,12 +1064,6 @@ the editor closed and a confirmation nobody can see is not one.
 that resolves to no work id, the link is not drawn at all and the modal is exactly what it was.
 Omitting only the image picker costs the `Choose file` route and leaves the URL route
 untouched.
-
-**The action band is now at its limit.** It carries, at once: the primary action, `Store page`,
-`All patch notes`, `Open folder`, `Wrong game?`, `Edit details` and `Hide` — seven controls in
-a horizontal strip that does not wrap, in a right column between the card's 422px minimum width
-and its 582px maximum. Measured against those widths, the full set overruns the column at every
-card width and the strip clips rather than wrapping. A follow-up decides the remedy.
 
 ---
 
@@ -1896,9 +1947,10 @@ hidden.
 
 Hiding is done from the game, in two places: the library's context menu and the details
 modal's action band. The context menu acts on the whole picked set and names the number once
-there is more than one, exactly as `Add to list` does. The action band places it as a link
-beside `Store page` rather than as a primary, because that band is about getting into the
-game and hiding is the quiet answer beside it.
+there is more than one, exactly as `Add to list` does. The action band folds it behind
+the `More` disclosure (§10.3) rather than placing it on the strip, because that band is about
+getting into the game and hiding is the quiet answer behind it; the context menu remains the
+route that acts on a whole picked set.
 
 **Hiding takes the game and its whole link group**, so hiding a game does not pop its demo
 back into the grid. It deletes nothing: the ownership row stays, and a later ingest of the

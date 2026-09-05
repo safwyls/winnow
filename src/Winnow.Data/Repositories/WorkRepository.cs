@@ -154,6 +154,9 @@ public sealed class WorkRepository : IWorkRepository
                    (w.steam_app_type     IS NOT NULL) AS HasSteamAppType,
                    (w.epic_categories    IS NOT NULL) AS HasEpicCategories,
                    (w.igdb_game_type     IS NOT NULL) AS HasIgdbGameType,
+                   -- Storefront title for the demo-like prefilter below and
+                   -- DemoConsolidation.IsVariantTitle in the caller. Not a
+                   -- display title; does not consult work_field_sources.
                    COALESCE(NULLIF(TRIM(r.name), ''), w.name) AS Title,
 
                    -- Count of NULL metadata columns (5 = nothing at all).

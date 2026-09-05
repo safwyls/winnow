@@ -51,6 +51,14 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
     private readonly ILibraryQueryRepository _libraryQueries;
     private readonly ICoverCache? _covers;
     private readonly IResolveStateRepository? _resolveState;
+
+    /// <summary>
+    /// IGDB pin service. Optional in the way <see cref="ICoverCache"/> and
+    /// <see cref="IResolveStateRepository"/> are: null means no live pins,
+    /// which is the store-first cover ladder this screen had before.
+    /// </summary>
+    private readonly Services.IIgdbAssignmentService? _igdb;
+
     private readonly TimeProvider _clock;
     private readonly Action<Action> _post;
 
@@ -81,6 +89,7 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
         ILibraryQueryRepository libraryQueries,
         ICoverCache? covers = null,
         IResolveStateRepository? resolveState = null,
+        Services.IIgdbAssignmentService? igdb = null,
         TimeProvider? clock = null,
         Action<Action>? post = null)
     {
@@ -94,6 +103,7 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
         _libraryQueries = libraryQueries;
         _covers = covers;
         _resolveState = resolveState;
+        _igdb = igdb;
         _clock = clock ?? TimeProvider.System;
         _post = post ?? (action => Avalonia.Threading.Dispatcher.UIThread.Post(action));
 
@@ -1595,9 +1605,18 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
             }
         }
 
-        if (coverKey is null && IgdbImageUrl.ImageId(work?.CoverUrl) is { Length: > 0 } imageId)
+        // Same order the ladder in DescribeAsync uses, for a work whose
+        // releases the snapshot had no key for.
+        if (coverKey is null)
         {
-            coverKey = CoverKey.Igdb(imageId);
+            if (UserArtRef.Token(work?.CoverUrl) is { Length: > 0 } userArtToken)
+            {
+                coverKey = CoverKey.User(userArtToken);
+            }
+            else if (IgdbImageUrl.ImageId(work?.CoverUrl) is { Length: > 0 } imageId)
+            {
+                coverKey = CoverKey.Igdb(imageId);
+            }
         }
 
         var stores = new List<string>();
@@ -1690,6 +1709,13 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
         var stores = new Dictionary<long, IReadOnlyList<string>>();
         var owned = new Dictionary<long, List<Ownership>>();
 
+        // Every work carrying a live pin, in one read rather than one per
+        // work — the same pattern the library load uses. An empty set is
+        // both a normal answer and what a failed read degrades into.
+        var pinnedWorkIds = _igdb is null
+            ? new HashSet<long>()
+            : await _igdb.GetLivePinnedWorkIdsAsync(ct);
+
         // The read model the grid draws from, so a row's hours, idle time and
         // unread dot agree with its tile. Read once per load, every entry,
         // because the queue names releases across the whole library.
@@ -1746,13 +1772,35 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
 
             var externalIds = await _releases.GetExternalIdsAsync(releaseId, ct);
             var steam = externalIds.FirstOrDefault(x => x.Provider == ExternalIdProviders.Steam);
-            if (steam is not null)
+
+            // Cover-key ladder — the same four rungs the library load
+            // uses (cover-key precedence block in LibraryViewModel.LoadAsync, §10.9):
+            //   0. user-set art
+            //   1. a live IGDB pin on this work
+            //   2. the Steam portrait capsule for this release's appid
+            //   3. the image id in the work's stored cover_url
+            // The pin is read off the release's own work row (fetched
+            // above), never a resolved work, for §10.9's reason.
+            // Rung 3 is the IGDB fallback for the side without a Steam
+            // appid, common in cross-store pairs.
+            var pinnedImageId = work is not null && pinnedWorkIds.Contains(work.Id)
+                ? IgdbImageUrl.ImageId(work.CoverUrl)
+                : null;
+
+            if (UserArtRef.Token(work?.CoverUrl) is { Length: > 0 } userArtToken)
+            {
+                coverKeys[releaseId] = CoverKey.User(userArtToken);
+            }
+            else if (pinnedImageId is { Length: > 0 })
+            {
+                coverKeys[releaseId] = CoverKey.Igdb(pinnedImageId);
+            }
+            else if (steam is not null)
             {
                 coverKeys[releaseId] = CoverKey.Steam(steam.ProviderId);
             }
             else if (IgdbImageUrl.ImageId(work?.CoverUrl) is { Length: > 0 } imageId)
             {
-                // IGDB fallback for the side without a Steam appid (common in cross-store pairs).
                 coverKeys[releaseId] = CoverKey.Igdb(imageId);
             }
         }

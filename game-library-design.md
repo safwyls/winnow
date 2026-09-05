@@ -775,6 +775,18 @@ NULL for each field the user owns, so the existing COALESCE leaves the stored va
 that COALESCE means "already answered, leave it", and the first service to answer keeps the
 field. The write stamps every field it actually filled with the source that supplied it.
 
+**Read-side precedence.** `work_field_sources` answers who last wrote a value; it is not a
+read-time precedence layer. There is nothing for it to outrank: each field has one value in
+one column, and the read is that column. A work's displayed name is `works.name` on every
+surface — the grid tile and the list row, the details modal headline, the feed card, search
+and the title sort, the Merges queue, the hidden-games list and the hand-added list. Two
+queries COALESCE `releases.name` over `works.name` into a `Title` column, and neither is a
+display read: the bucket query in `LibraryQueryRepository`, which never leaves `BucketRow`
+and feeds `DemoConsolidation`; and the enrichment target query in `WorkRepository`, which
+feeds the demo-like prefilter. Both want the storefront's own words so that a user rename
+cannot unfold a demo. Setting a field by hand therefore needs no read-side precedence rule
+and needed no migration.
+
 Only user-visible metadata is tracked. The classification columns — `steam_app_type`,
 `epic_categories`, `steam_store_type`, `steam_parent_app_id`, `igdb_game_type`,
 `igdb_parent_id`, `igdb_version_parent_id` — carry no source row: they are facts about a

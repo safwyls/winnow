@@ -160,6 +160,20 @@ public partial class GameDetailsViewModel : ObservableObject
 
     public string Title => Tile.Title;
 
+    /// <summary>
+    /// Raises change notifications for <see cref="Title"/> and
+    /// <see cref="TitleIsProvisional"/>, which are computed off the tile
+    /// and do not follow from its own notifications. The library calls
+    /// this after renaming the tiles so the headline follows without the
+    /// modal being rebuilt — rebuilding would close the editor and take
+    /// the user's unsaved drafts with it.
+    /// </summary>
+    internal void NotifyTitleChanged()
+    {
+        OnPropertyChanged(nameof(Title));
+        OnPropertyChanged(nameof(TitleIsProvisional));
+    }
+
     /// <summary>True when the title is a raw app id, not a real name.</summary>
     public bool TitleIsProvisional => Tile.NameIsProvisional;
 
@@ -472,6 +486,23 @@ public partial class GameDetailsViewModel : ObservableObject
     public string? SteamAppId => Tile.SteamAppId;
 
     public bool HasSteamAppId => SteamAppId is not null;
+
+    /// <summary>Whether the folded actions in Band 3 are disclosed.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(MoreActionsLabel))]
+    public partial bool MoreActionsOpen { get; set; }
+
+    /// <summary>Face of the disclosure control, which changes with the open state.</summary>
+    public string MoreActionsLabel => MoreActionsOpen
+        ? GameActionBandCopy.CloseLabel
+        : GameActionBandCopy.OpenLabel;
+
+    /// <summary>Tooltip on the disclosure control.</summary>
+    public string MoreActionsTooltip => GameActionBandCopy.OpenTooltip;
+
+    /// <summary>Toggles the disclosed actions open or closed.</summary>
+    [RelayCommand]
+    private void ToggleMoreActions() => MoreActionsOpen = !MoreActionsOpen;
 
     // ── Body ────────────────────────────────────────────────────────────────
 

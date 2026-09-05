@@ -515,6 +515,13 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
                    -- and that must be asked with the SAME normaliser the soft
                    -- matcher uses, so it happens in C# below over the rows this
                    -- join already had to read.
+                   --
+                   -- NOT a display title. This column lands on BucketRow and
+                   -- never reaches OwnershipBucket — no surface reads it. A
+                   -- work's displayed name is works.name, read by IWorkRepository.
+                   -- It prefers releases.name deliberately and does not consult
+                   -- work_field_sources: consolidation matches the storefront's
+                   -- own words, so a user rename cannot unfold a demo.
                    COALESCE(NULLIF(TRIM(r.name), ''), w.name)  AS Title,
                    w.name_is_provisional               AS NameIsProvisional,
                    w.first_release_year                AS FirstReleaseYear,

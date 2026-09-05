@@ -326,7 +326,8 @@ public partial class GameTileViewModel : ObservableObject
     /// <summary>The PRIMARY release. Update events are read for every entry; see LibraryViewModel.</summary>
     public long ReleaseId { get; }
 
-    public string Title { get; }
+    /// <summary>The work's name as the last load or the last <see cref="Rename"/> left it.</summary>
+    public string Title { get; private set; }
 
     /// <summary>The PRIMARY entry's store as stored ("steam"). <see cref="Stores"/> is the whole set.</summary>
     public string Store { get; }
@@ -457,9 +458,10 @@ public partial class GameTileViewModel : ObservableObject
     /// True when the title is a machine-minted stand-in ("App 8510") rather than
     /// a real name — Steam's local files knew the appid and nothing else. The
     /// detail view says so out loud; a placeholder that looks like a title is
-    /// how a user concludes the whole panel is wrong.
+    /// how a user concludes the whole panel is wrong. Cleared by
+    /// <see cref="Rename"/> when the user sets the name.
     /// </summary>
-    public bool NameIsProvisional { get; }
+    public bool NameIsProvisional { get; private set; }
 
     /// <summary>
     /// Resting vivid-layer opacity from the §5.1 ramp: α = (S − 0.22) / 0.78 —
@@ -469,11 +471,17 @@ public partial class GameTileViewModel : ObservableObject
     /// </summary>
     public double DormancyAlpha => _ramp.VividAlphaFor(LastPlayedUtc, _nowUtc);
 
-    /// <summary>Vivid art layer. Placeholder gradient now; display-resolution bitmap later.</summary>
-    public IBrush VividBrush { get; }
+    /// <summary>
+    /// Vivid art layer. Placeholder gradient now; display-resolution bitmap
+    /// later. Recomputed by <see cref="Rename"/> when the title changes.
+    /// </summary>
+    public IBrush VividBrush { get; private set; }
 
-    /// <summary>Floor variant (sat 0.22 / bright 0.60). Pre-computed bitmap variant later.</summary>
-    public IBrush FloorBrush { get; }
+    /// <summary>
+    /// Floor variant (sat 0.22 / bright 0.60). Pre-computed bitmap variant
+    /// later. Recomputed by <see cref="Rename"/>.
+    /// </summary>
+    public IBrush FloorBrush { get; private set; }
 
     /// <summary>Placeholder-title ink on the floor layer, so the title fades with its art.</summary>
     public IBrush FloorTitleBrush { get; }
@@ -555,6 +563,45 @@ public partial class GameTileViewModel : ObservableObject
         OnPropertyChanged(nameof(DormancyAlpha));
         OnPropertyChanged(nameof(DisplayAlpha));
         OnPropertyChanged(nameof(SnapDormancy));
+    }
+
+    /// <summary>
+    /// Applies a name saved in the per-field metadata editor (§10.10)
+    /// without reloading the library. A reload after a text save would
+    /// discard the drafts the user has in the other five rows, so the
+    /// running session updates the tile in place instead.
+    ///
+    /// <para>Ignores a blank title and one equal to the current value.
+    /// Sets <see cref="Title"/>, clears <see cref="NameIsProvisional"/>
+    /// (the repository already cleared the column, so the badge must
+    /// follow), re-points <see cref="Row"/> and recomputes the placeholder
+    /// gradient, which is derived from the title. A feed card borrows this
+    /// instance through <see cref="IGameTileSource"/>, so its notification
+    /// follows without the card being told separately. The private setters
+    /// on Title, NameIsProvisional, VividBrush and FloorBrush make this
+    /// method their only writer: the tile stays a projection of the
+    /// database, not a thing surfaces can edit.</para>
+    /// </summary>
+    internal void Rename(string title)
+    {
+        if (string.IsNullOrWhiteSpace(title) || string.Equals(Title, title, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        Title = title;
+        NameIsProvisional = false;
+        Row = Row with { Title = title };
+
+        var (start, end) = PlaceholderArt.VividColors(title);
+        VividBrush = PlaceholderArt.Gradient(start, end);
+        FloorBrush = PlaceholderArt.Gradient(PlaceholderArt.ToFloor(start), PlaceholderArt.ToFloor(end));
+
+        OnPropertyChanged(nameof(Title));
+        OnPropertyChanged(nameof(AutomationName));
+        OnPropertyChanged(nameof(NameIsProvisional));
+        OnPropertyChanged(nameof(VividBrush));
+        OnPropertyChanged(nameof(FloorBrush));
     }
 
     private static string BuildStatText(long playtimeMinutes, DateTime? lastPlayedUtc, DateTime nowUtc)

@@ -115,8 +115,9 @@
             <Setter Property="Opacity" Value="1"/>
         </Style>
 
-        <!-- Azure is the palette's boring one and does the boring work (§2):
-             every outbound link in the panel, and nothing else. -->
+        <!-- Azure idiom: outbound links and the secondary controls
+             beside them. Button.secondary is the Text-ink idiom for
+             a control that acts on this panel rather than leaving it. -->
         <Style Selector="Button.link">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="1"/>
@@ -478,85 +479,126 @@
                             </Grid>
 
                             <!-- ── Band 3: get me in ──────────────────────────── -->
-                            <StackPanel Orientation="Horizontal" Spacing="10">
-                                <!-- steam://run when it is on disk, steam://install
-                                     when it is not. The button is named for what it
-                                     does, so it cannot promise the wrong thing. -->
-                                <Button Classes="launch"
-                                        Name="LaunchButton"
-                                        IsVisible="{Binding HasPrimaryAction}"
-                                        Content="{Binding PrimaryAction.Label}"
-                                        ToolTip.Tip="{Binding PrimaryAction.Tooltip}"
-                                        Command="{Binding Tile.PrimaryActionCommand}"
-                                        CommandParameter="{Binding Tile}"/>
+                            <!-- A horizontal strip of primary and outbound actions,
+                                 plus a disclosed vertical list of secondary ones.
+                                 The strip sits in the right column's Auto row; opening
+                                 the list grows that row by 144px and the star row
+                                 below absorbs it by scrolling. -->
+                            <StackPanel Spacing="10">
 
-                                <ItemsControl ItemsSource="{Binding Links}">
-                                    <ItemsControl.ItemsPanel>
-                                        <ItemsPanelTemplate>
-                                            <StackPanel Orientation="Horizontal" Spacing="10"/>
-                                        </ItemsPanelTemplate>
-                                    </ItemsControl.ItemsPanel>
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate DataType="vm:GameLink">
-                                            <Button Classes="link"
-                                                    Click="OnLinkPressed"
-                                                    ToolTip.Tip="{Binding Tooltip}">
-                                                <TextBlock Classes="body" FontSize="12"
-                                                           Text="{Binding Label}"/>
-                                            </Button>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <!-- steam://run when it is on disk, steam://install
+                                         when it is not. The button is named for what it
+                                         does, so it cannot promise the wrong thing. -->
+                                    <Button Classes="launch"
+                                            Name="LaunchButton"
+                                            IsVisible="{Binding HasPrimaryAction}"
+                                            Content="{Binding PrimaryAction.Label}"
+                                            ToolTip.Tip="{Binding PrimaryAction.Tooltip}"
+                                            Command="{Binding Tile.PrimaryActionCommand}"
+                                            CommandParameter="{Binding Tile}"/>
 
-                                <!-- Local folder, not a file: URI — GameLink refuses
-                                     that scheme on purpose and the launcher takes a
-                                     DirectoryInfo directly. -->
-                                <Button Classes="link"
-                                        IsVisible="{Binding HasOpenableFolder}"
-                                        Click="OnOpenFolderPressed"
-                                        ToolTip.Tip="{Binding InstallPath}">
-                                    <TextBlock Classes="body" FontSize="12" Text="Open folder"/>
-                                </Button>
+                                    <ItemsControl ItemsSource="{Binding Links}">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <StackPanel Orientation="Horizontal" Spacing="10"/>
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate DataType="vm:GameLink">
+                                                <Button Classes="link"
+                                                        Click="OnLinkPressed"
+                                                        ToolTip.Tip="{Binding Tooltip}">
+                                                    <TextBlock Classes="body" FontSize="12"
+                                                               Text="{Binding Label}"/>
+                                                </Button>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
 
-                                <Button Classes="link"
-                                        Name="WrongGameButton"
-                                        IsVisible="{Binding ShowIgdbMatch}"
-                                        Click="OnWrongGamePressed"
-                                        Command="{Binding IgdbMatch.ToggleCommand}"
-                                        ToolTip.Tip="{Binding IgdbMatch.OpenTooltip}">
-                                    <TextBlock Classes="body" FontSize="12"
-                                               Text="{Binding IgdbMatch.ToggleLabel}"/>
-                                </Button>
+                                    <!-- Disclosure for the folded actions. Secondary
+                                         rather than link: it must not read as a third
+                                         outbound beside Store page and All patch notes.
+                                         The two classes share geometry, so the choice
+                                         costs no width. -->
+                                    <Button Classes="secondary"
+                                            Name="MoreActionsButton"
+                                            Command="{Binding ToggleMoreActionsCommand}"
+                                            ToolTip.Tip="{Binding MoreActionsTooltip}">
+                                        <TextBlock Classes="body" FontSize="12"
+                                                   Text="{Binding MoreActionsLabel}"/>
+                                    </Button>
+                                </StackPanel>
 
-                                <!-- The per-field editor opens from here in the same
-                                     Button.link idiom as Wrong game? beside it: both
-                                     correct what Winnow believes about this game. The
-                                     surface draws in the right column's rest band; the
-                                     disclosure is inline and never a flyout (10.7). -->
-                                <Button Classes="link"
-                                        Name="EditDetailsButton"
-                                        IsVisible="{Binding ShowMetadataEditor}"
-                                        Click="OnEditDetailsPressed"
-                                        Command="{Binding MetadataEditor.ToggleCommand}"
-                                        ToolTip.Tip="{Binding MetadataEditor.OpenTooltip}">
-                                    <TextBlock Classes="body" FontSize="12"
-                                               Text="{Binding MetadataEditor.ToggleLabel}"/>
-                                </Button>
+                                <!-- Inline in the modal's own tree, never a flyout:
+                                     a popup is its own root and has no adorner layer,
+                                     so every ring inside one would need hand-drawing
+                                     (§10.7, §12.3). Not in the rest band's scroll
+                                     region: an action must not scroll out from under
+                                     the control that disclosed it. Vertical: a further
+                                     control costs one row of height and no horizontal
+                                     budget at all. -->
+                                <StackPanel Name="MoreActions"
+                                            Spacing="8"
+                                            IsVisible="{Binding MoreActionsOpen}">
 
-                                <!-- Hide, the modal's half. A link and not a
-                                     primary: this band is about getting into
-                                     the game, and hiding is the quiet answer
-                                     beside it. Bound to the library's own
-                                     command through the window, because the
-                                     library owns the reload. Reversible from
-                                     SETTINGS › LIBRARY; nothing is deleted. -->
-                                <Button Classes="link"
-                                        Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Library.HideGameCommand}"
-                                        CommandParameter="{Binding Tile}"
-                                        ToolTip.Tip="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Library.HideTooltip}">
-                                    <TextBlock Classes="body" FontSize="12"
-                                               Text="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Library.HideDetailsLabel}"/>
-                                </Button>
+                                    <!-- Local folder, not a file: URI — GameLink refuses
+                                         that scheme on purpose and the launcher takes a
+                                         DirectoryInfo directly. -->
+                                    <Button Classes="link"
+                                            HorizontalAlignment="Left"
+                                            IsVisible="{Binding HasOpenableFolder}"
+                                            Click="OnOpenFolderPressed"
+                                            ToolTip.Tip="{Binding InstallPath}">
+                                        <TextBlock Classes="body" FontSize="12" Text="Open folder"/>
+                                    </Button>
+
+                                    <Button Classes="link"
+                                            Name="WrongGameButton"
+                                            HorizontalAlignment="Left"
+                                            IsVisible="{Binding ShowIgdbMatch}"
+                                            Click="OnWrongGamePressed"
+                                            Command="{Binding IgdbMatch.ToggleCommand}"
+                                            ToolTip.Tip="{Binding IgdbMatch.OpenTooltip}">
+                                        <TextBlock Classes="body" FontSize="12"
+                                                   Text="{Binding IgdbMatch.ToggleLabel}"/>
+                                    </Button>
+
+                                    <!-- The per-field editor opens from here in the same
+                                         Button.link idiom as Wrong game? above it: both
+                                         correct what Winnow believes about this game. The
+                                         surface draws in the right column's rest band; the
+                                         disclosure is inline and never a flyout (§10.7). -->
+                                    <Button Classes="link"
+                                            Name="EditDetailsButton"
+                                            HorizontalAlignment="Left"
+                                            IsVisible="{Binding ShowMetadataEditor}"
+                                            Click="OnEditDetailsPressed"
+                                            Command="{Binding MetadataEditor.ToggleCommand}"
+                                            ToolTip.Tip="{Binding MetadataEditor.OpenTooltip}">
+                                        <TextBlock Classes="body" FontSize="12"
+                                                   Text="{Binding MetadataEditor.ToggleLabel}"/>
+                                    </Button>
+
+                                    <!-- Hide, the modal's half. A link and not a
+                                         primary: this band is about getting into
+                                         the game, and hiding is the quiet answer
+                                         behind it, one press past the disclosure.
+                                         Bound to the library's own command through
+                                         the window, because the library owns the
+                                         reload. Reversible from SETTINGS › LIBRARY;
+                                         nothing is deleted. -->
+                                    <Button Classes="link"
+                                            HorizontalAlignment="Left"
+                                            Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Library.HideGameCommand}"
+                                            CommandParameter="{Binding Tile}"
+                                            ToolTip.Tip="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Library.HideTooltip}">
+                                        <TextBlock Classes="body" FontSize="12"
+                                                   Text="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Library.HideDetailsLabel}"/>
+                                    </Button>
+
+                                </StackPanel>
+
                             </StackPanel>
 
                         </StackPanel>

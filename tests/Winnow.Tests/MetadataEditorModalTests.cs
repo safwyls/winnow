@@ -123,6 +123,86 @@ public sealed class MetadataEditorModalTests : IDisposable
     }
 
     /// <summary>
+    /// A name saved in the editor reaches the grid tile, the visible set, the
+    /// modal headline and the tile's filterable row immediately, without
+    /// reloading the library. The modal is the same instance and the editor is
+    /// still open. The two rows the user had half-typed keep their drafts and
+    /// their sources unchanged. A text save deliberately does not reload
+    /// (design-system §10.10) because reloading would discard those drafts;
+    /// this test pins the in-place rename that replaced the reload.
+    /// </summary>
+    [Fact]
+    public async Task A_saved_name_reaches_the_tile_and_the_headline_without_touching_the_drafts()
+    {
+        await SeedAsync();
+
+        var library = await LoadAsync();
+        var tile = Assert.Single(library.VisibleTiles);
+        await library.OpenDetailsCommand.ExecuteAsync(tile);
+
+        var details = library.Details!;
+        var editor = details.MetadataEditor!;
+        await editor.ToggleCommand.ExecuteAsync(null);
+
+        var summary = editor.Rows.Single(r => r.Field == WorkFields.Summary);
+        var publisher = editor.Rows.Single(r => r.Field == WorkFields.Publisher);
+        summary.Draft = "A half-written sentence.";
+        publisher.Draft = "Human Head Studios";
+
+        var name = editor.Rows.Single(r => r.Field == WorkFields.Name);
+        name.Draft = "Prey (2006)";
+        await name.SaveCommand.ExecuteAsync(null);
+
+        Assert.Equal("Prey (2006)", tile.Title);
+        Assert.Equal("Prey (2006)", Assert.Single(library.VisibleTiles).Title);
+        Assert.Equal("Prey (2006)", details.Title);
+        Assert.Equal("Prey (2006)", tile.Row.Title);
+
+        Assert.Same(details, library.Details);
+        Assert.Same(editor, library.Details!.MetadataEditor);
+        Assert.True(editor.IsOpen);
+
+        Assert.Equal("A half-written sentence.", summary.Draft);
+        Assert.Equal("Human Head Studios", publisher.Draft);
+        Assert.Null(summary.Source);
+        Assert.Null(publisher.Source);
+    }
+
+    /// <summary>
+    /// With the title sort selected, renaming a game re-orders the visible set
+    /// immediately rather than leaving the tile in its old position until the
+    /// user touches the sort control. The in-place rename must feed the same
+    /// sort path the library already uses.
+    /// </summary>
+    [Fact]
+    public async Task A_saved_name_moves_the_game_in_the_sort_order()
+    {
+        await SeedAsync("Alpha Protocol");
+        await SeedAsync("Zeno Clash");
+
+        var library = await LoadAsync();
+        library.Sort = LibrarySort.NameAscending;
+
+        Assert.Equal(
+            ["Alpha Protocol", "Zeno Clash"],
+            library.VisibleTiles.Select(t => t.Title));
+
+        var alpha = library.VisibleTiles[0];
+        await library.OpenDetailsCommand.ExecuteAsync(alpha);
+
+        var editor = library.Details!.MetadataEditor!;
+        await editor.ToggleCommand.ExecuteAsync(null);
+
+        var name = editor.Rows.Single(r => r.Field == WorkFields.Name);
+        name.Draft = "Zzz Protocol";
+        await name.SaveCommand.ExecuteAsync(null);
+
+        Assert.Equal(
+            ["Zeno Clash", "Zzz Protocol"],
+            library.VisibleTiles.Select(t => t.Title));
+    }
+
+    /// <summary>
     /// With no edit service registered the modal is exactly the modal it was
     /// before TASK-119 — the degradation every optional seam on this view model
     /// takes.
@@ -176,11 +256,11 @@ public sealed class MetadataEditorModalTests : IDisposable
         return library;
     }
 
-    private async Task<SeededGame> SeedAsync()
+    private async Task<SeededGame> SeedAsync(string name = "Prey")
     {
         var workId = await _works.InsertAsync(new Work
         {
-            Name = "Prey",
+            Name = name,
             FirstReleaseYear = 2006,
             Publisher = "2K Games",
             Summary = "A Cherokee garage mechanic is abducted.",
@@ -189,7 +269,7 @@ public sealed class MetadataEditorModalTests : IDisposable
         var releaseId = await _releases.InsertAsync(new Release
         {
             WorkId = workId,
-            Name = "Prey",
+            Name = name,
             Platform = "windows",
         });
 

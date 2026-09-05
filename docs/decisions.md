@@ -1299,3 +1299,100 @@ The band now carries seven controls — the primary action, `Store page`, `All p
 wrap. At every card width between the column's 422px minimum and 582px maximum, the full set
 overruns the available space and clips. The cost is stated in §10.10 and is not fixed there; a
 follow-up decides the remedy.
+
+### 2026-09-05 — The action band's rarer controls folded behind a disclosure (TASK-123)
+
+`design-system.md` §10.3, §10.9, §10.10, §16.2. The user's decision, in their own words:
+"fold the rarer actions behind a disclosure." Wrapping and a second row were both ruled out.
+
+**The remedy was chosen only after the overrun was measured.** A throwaway headless Avalonia
+project at the app's own 11.3.20, with Skia text shaping and the repository's own Plus Jakarta
+Sans files, put the controls through a real measure and arrange pass. The evidence is in
+`docs/spikes/details-action-band-width.md`. The right column is 420px at the card's `MinWidth`
+700 and 580px at its `MaxWidth` 860 — the figures previously carried in §10.10 and in this file
+(422 and 582) were an estimate that did not subtract the card's own 1px border on each side.
+Control widths: `Play` 67, `Install` 77, `Store page` 88, `All patch notes` 108, `Open folder`
+94, `Wrong game?` 104, `Edit details` 88, `Hide` 51. The old strip, installed set, seven
+controls: 660px — 240px past the 420px column and 80px past the 580px one. The old strip,
+not-installed set, six controls (no `Open folder`): 566px — 146px past the 420px column, but it
+fits the 580px column with 14px to spare. §10.10's claim that the full set overruns at every
+card width was therefore true of the installed set and not true of the other one. The overrun is
+a clip, not a wrap, confirmed by arranging rather than inferred. The new strip measures 357px
+with `Install` and 347px with `Play`, and 361/351 while the disclosure reads `Close` — it fits
+the 420px column with 59 to 73px to spare. The disclosed list measures 104 x 144px for its four
+rows. A fifth row would add 38px of height and nothing at all to the width.
+
+**The disclosure is inline, never a flyout.** §10.7 and §12.3's standing reason: Avalonia's
+global `FocusAdorner` does not render inside a popup, because a popup is its own root and has no
+adorner layer, so every ring in a menu here would have to be hand-drawn.
+
+**The disclosed list sits above the divider, not in the rest band's scroll region.** An action
+must not scroll out from under the control that disclosed it, so the list needs no
+`BringIntoView` at all, unlike the surfaces §10.9 and §10.10 put in the rest band. Band 3 is
+the right column's Auto row and the rest band is the star row below it; opening the list grows
+the Auto row by 144px and the rest band absorbs it by scrolling.
+
+**The list is vertical because vertical is the arrangement that survives the next control.** A
+further control costs one row of height and no horizontal budget, so the strip cannot be pushed
+back over the column's edge by the next addition.
+
+**The disclosure control is `Button.secondary`, not `Button.link`.** `Store page` and `All patch
+notes` are outbound links and draw in `Azure`; the disclosure acts here rather than leaving, so
+it takes the panel's `Text`-ink treatment. Drawing it in `Azure` would make it read as a third
+outbound link sitting beside the other two. The two classes have identical geometry, so the
+choice costs no width.
+
+Why each folded control was folded. `Open folder` is a filesystem errand rather than a route
+into the game. `Wrong game?` and `Edit details` are corrections, which §10.9 and §10.10
+already describe as consequential and rarely reached. `Hide` is a dismissal reached at most
+once per game, and §16.2 already gives it a primary home in the library's context menu. Why
+the two links stayed: §10.1's own diagram names them as the band, and `All patch notes` is a
+route into the product's own loop — §5.2's notice, context, launch.
+
+Superseded text from `design-system.md` §10.3:
+
+> Beside it, `Store page` and `All patch notes` in `Azure`, and `Open folder` when there is a path.
+
+Superseded text from `design-system.md` §10.9:
+
+> **The disclosure is a `Wrong game?` link in the action band (Band 3)**, beside Store page, All patch notes, Open folder, Edit details and Hide.
+
+Superseded text from `design-system.md` §10.10:
+
+> **The disclosure is an `Edit details` link in the action band (Band 3)**, beside `Wrong game?`, in the same link idiom, because it is the same kind of act: correcting what Winnow believes about this game.
+
+> **The action band is now at its limit.** It carries, at once: the primary action, `Store page`, `All patch notes`, `Open folder`, `Wrong game?`, `Edit details` and `Hide` — seven controls in a horizontal strip that does not wrap, in a right column between the card's 422px minimum width and its 582px maximum. Measured against those widths, the full set overruns the column at every card width and the strip clips rather than wrapping. A follow-up decides the remedy.
+
+Superseded text from `design-system.md` §16.2:
+
+> The action band places it as a link beside `Store page` rather than as a primary, because that band is about getting into the game and hiding is the quiet answer beside it.
+
+### 2026-09-05 — The cover-key precedence in §10.9 listed three rungs; the code had four
+
+`design-system.md` §10.9. The paragraph stated a three-rung cover-key precedence: (1) live
+IGDB pin, (2) Steam portrait capsule, (3) stored `cover_url` image id. The code has had a
+fourth rung — rung 0, user-set art via `winnow://user-art/<token>` — since migration 0027
+landed with the per-field metadata editor. The document was behind its own code since that
+work, not since the title-rename fix that prompted this correction.
+
+The paragraph also described the ladder as the library load's alone. The Merges queue now uses
+the same four-rung ladder; it previously had its own store-first ladder carrying neither
+user-art nor the IGDB pin, so an imported cover or a pin that drew correctly on the grid and
+in the details modal did not draw in the queue.
+
+Superseded text from §10.9:
+
+> **A live IGDB pin outranks the store capsule for that work.** The cover-key precedence is: (1) a live IGDB pin on this work, when the work's `cover_url` yields an IGDB image id; (2) the Steam portrait capsule for this release's appid; (3) the image id in the work's stored `cover_url`.
+
+### 2026-09-05 — The text-save paragraph in §10.10 was true but incomplete
+
+`design-system.md` §10.10. The paragraph said a text save does not reload and stated the
+asymmetry with art saves as the reason the two paths are separate. Both claims were correct
+but the paragraph did not say what a text save *does* — the in-place rename of every tile,
+the provisional-badge clear, the gradient recomputation and the re-applied sort. A user set a
+name, saw the library unchanged, and reported the override as not working. The paragraph now
+states what the save does rather than only what it does not do.
+
+Superseded text from §10.10:
+
+> **A text save does not reload.** Reloading after one would discard the drafts the user has in the other five rows. This asymmetry is deliberate and is the reason the two paths are separate.

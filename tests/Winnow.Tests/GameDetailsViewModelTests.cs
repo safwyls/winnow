@@ -509,6 +509,31 @@ public sealed class GameDetailsViewModelTests
         Assert.False(Details(Tile(ramp: new DormancyRamp { ReducedMotion = false })).ReducedMotion);
     }
 
+    [Fact]
+    public void The_action_band_disclosure_starts_closed()
+    {
+        var details = Details(Tile());
+
+        Assert.False(details.MoreActionsOpen);
+        Assert.Equal(GameActionBandCopy.OpenLabel, details.MoreActionsLabel);
+    }
+
+    [Fact]
+    public void Toggling_the_action_band_disclosure_swaps_its_label_both_ways()
+    {
+        var details = Details(Tile());
+
+        details.ToggleMoreActionsCommand.Execute(null);
+
+        Assert.True(details.MoreActionsOpen);
+        Assert.Equal(GameActionBandCopy.CloseLabel, details.MoreActionsLabel);
+
+        details.ToggleMoreActionsCommand.Execute(null);
+
+        Assert.False(details.MoreActionsOpen);
+        Assert.Equal(GameActionBandCopy.OpenLabel, details.MoreActionsLabel);
+    }
+
     // ── Builders ─────────────────────────────────────────────────────────────
 
     private static GameTileViewModel Tile(
