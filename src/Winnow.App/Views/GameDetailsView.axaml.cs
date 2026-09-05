@@ -18,7 +18,25 @@ public partial class GameDetailsView : UserControl
     {
         InitializeComponent();
         WireMenuRows();
+        MetadataEditorView.CloseRequested += OnSectionClosed;
     }
+
+    /// <summary>
+    /// Closing a disclosed section hands focus to the More trigger — the
+    /// control the section was opened from, and the destination Escape and
+    /// an activated row already use (§10.3). The trigger sits in Band 3,
+    /// outside the rest band's scroll region, so it is always on screen
+    /// and focus is never dropped below the fold. Both sections route
+    /// here: the IGDB close button is in this view's own tree and calls
+    /// <see cref="OnSectionClosePressed"/> directly; the editor is a
+    /// separate <see cref="GameMetadataEditorView"/> that raises
+    /// <see cref="GameMetadataEditorView.CloseRequested"/>, wired in the
+    /// constructor.
+    /// </summary>
+    private void OnSectionClosePressed(object? sender, RoutedEventArgs e)
+        => OnSectionClosed(sender, EventArgs.Empty);
+
+    private void OnSectionClosed(object? sender, EventArgs e) => MoreActionsButton.Focus();
 
     /// <summary>
     /// Wires the three action-menu rows that need view work on top of their
@@ -109,36 +127,29 @@ public partial class GameDetailsView : UserControl
     }
 
     /// <summary>
-    /// The same arrangement <see cref="OnWrongGamePressed"/> uses. The
-    /// editor opens in the right column's bounded rest band, below the
-    /// fold, so without <c>BringIntoView</c> the disclosure would appear
-    /// to do nothing. The scroll is posted at Background priority so it
-    /// runs after the command has flipped <c>IsOpen</c> and the surface
-    /// has been laid out; a closing press scrolls nothing.
+    /// The same arrangement <see cref="OnWrongGamePressed"/> uses. The editor
+    /// opens in the right column's bounded rest band, below the fold, so
+    /// without <c>BringIntoView</c> the row would appear to do nothing. The
+    /// scroll is posted at Background priority so it runs after the command
+    /// has set <c>IsOpen</c> and the surface has been laid out. The row only
+    /// ever opens, so the scroll always runs: choosing an already-open row
+    /// brings its section back into view rather than folding it away.
     /// </summary>
     private void OnEditDetailsPressed(object? sender, RoutedEventArgs e)
     {
-        if (DataContext is not GameDetailsViewModel { MetadataEditor: { } editor })
+        if (DataContext is not GameDetailsViewModel { MetadataEditor: not null })
         {
             return;
         }
 
         Dispatcher.UIThread.Post(
-            () =>
-            {
-                if (!editor.IsOpen)
-                {
-                    return;
-                }
-
-                MetadataEditorHost.BringIntoView();
-            },
+            MetadataEditorHost.BringIntoView,
             DispatcherPriority.Background);
     }
 
     private void OnWrongGamePressed(object? sender, RoutedEventArgs e)
     {
-        if (DataContext is not GameDetailsViewModel { IgdbMatch: { } match })
+        if (DataContext is not GameDetailsViewModel { IgdbMatch: not null })
         {
             return;
         }
@@ -146,11 +157,6 @@ public partial class GameDetailsView : UserControl
         Dispatcher.UIThread.Post(
             () =>
             {
-                if (!match.IsOpen)
-                {
-                    return;
-                }
-
                 IgdbMatchDisclosure.BringIntoView();
                 MatchQueryField.Focus();
             },

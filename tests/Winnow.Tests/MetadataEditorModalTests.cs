@@ -64,7 +64,7 @@ public sealed class MetadataEditorModalTests : IDisposable
         Assert.NotNull(editor);
         Assert.True(library.Details!.ShowMetadataEditor);
 
-        await editor.ToggleCommand.ExecuteAsync(null);
+        await editor.OpenCommand.ExecuteAsync(null);
         Assert.True(editor.IsOpen);
         Assert.Equal(WorkFields.All.Count, editor.Rows.Count);
 
@@ -101,7 +101,7 @@ public sealed class MetadataEditorModalTests : IDisposable
         await library.OpenDetailsCommand.ExecuteAsync(Assert.Single(library.VisibleTiles));
 
         var editor = library.Details!.MetadataEditor!;
-        await editor.ToggleCommand.ExecuteAsync(null);
+        await editor.OpenCommand.ExecuteAsync(null);
 
         var publisher = editor.Rows.Single(r => r.Field == WorkFields.Publisher);
         publisher.Draft = "Human Head Studios";
@@ -142,7 +142,7 @@ public sealed class MetadataEditorModalTests : IDisposable
 
         var details = library.Details!;
         var editor = details.MetadataEditor!;
-        await editor.ToggleCommand.ExecuteAsync(null);
+        await editor.OpenCommand.ExecuteAsync(null);
 
         var summary = editor.Rows.Single(r => r.Field == WorkFields.Summary);
         var publisher = editor.Rows.Single(r => r.Field == WorkFields.Publisher);
@@ -191,7 +191,7 @@ public sealed class MetadataEditorModalTests : IDisposable
         await library.OpenDetailsCommand.ExecuteAsync(alpha);
 
         var editor = library.Details!.MetadataEditor!;
-        await editor.ToggleCommand.ExecuteAsync(null);
+        await editor.OpenCommand.ExecuteAsync(null);
 
         var name = editor.Rows.Single(r => r.Field == WorkFields.Name);
         name.Draft = "Zzz Protocol";
@@ -235,7 +235,7 @@ public sealed class MetadataEditorModalTests : IDisposable
         await library.OpenDetailsCommand.ExecuteAsync(Assert.Single(library.VisibleTiles));
 
         var editor = library.Details!.MetadataEditor!;
-        await editor.ToggleCommand.ExecuteAsync(null);
+        await editor.OpenCommand.ExecuteAsync(null);
 
         var art = editor.Rows.OfType<MetadataArtRowViewModel>().ToList();
         Assert.Equal(2, art.Count);

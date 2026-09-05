@@ -543,10 +543,16 @@
                                                       IsVisible="{Binding HasOpenableFolder}"
                                                       ToolTip.Tip="{Binding InstallPath}"/>
 
+                                            <!-- The row keeps one name regardless of
+                                                 whether the section is open — the
+                                                 menu has closed itself by the time
+                                                 the section appears. The section
+                                                 carries its own close control in its
+                                                 header row instead. -->
                                             <MenuItem Name="WrongGameItem"
-                                                      Header="{Binding IgdbMatch.ToggleLabel}"
+                                                      Header="{Binding IgdbMatch.OpenLabel}"
                                                       IsVisible="{Binding ShowIgdbMatch}"
-                                                      Command="{Binding IgdbMatch.ToggleCommand}"
+                                                      Command="{Binding IgdbMatch.OpenCommand}"
                                                       ToolTip.Tip="{Binding IgdbMatch.OpenTooltip}"/>
 
                                             <!-- Beside Wrong game? in the menu: both
@@ -555,9 +561,9 @@
                                                  inline in the right column's rest
                                                  band, not inside the popup. -->
                                             <MenuItem Name="EditDetailsItem"
-                                                      Header="{Binding MetadataEditor.ToggleLabel}"
+                                                      Header="{Binding MetadataEditor.OpenLabel}"
                                                       IsVisible="{Binding ShowMetadataEditor}"
-                                                      Command="{Binding MetadataEditor.ToggleCommand}"
+                                                      Command="{Binding MetadataEditor.OpenCommand}"
                                                       ToolTip.Tip="{Binding MetadataEditor.OpenTooltip}"/>
 
                                             <!-- Hide: behind the menu rather than on
@@ -620,6 +626,32 @@
                                         Spacing="10"
                                         Margin="0,18,0,0"
                                         IsVisible="{Binding IsOpen}">
+
+                                <!-- The section names itself with a heading and
+                                     closes itself with a quiet button carrying
+                                     the same glyph as the modal's own close,
+                                     one level down. The heading exists because
+                                     the menu row that opened the section has
+                                     dismissed itself by the time the content
+                                     appears — without it, nothing on screen
+                                     names the surface. -->
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0"
+                                               Classes="label"
+                                               VerticalAlignment="Center"
+                                               Text="{Binding SectionHeading}"/>
+                                    <Button Grid.Column="1" Classes="quiet"
+                                            Name="MatchCloseButton"
+                                            VerticalAlignment="Top"
+                                            Command="{Binding CloseCommand}"
+                                            Click="OnSectionClosePressed"
+                                            AutomationProperties.Name="{Binding CloseAutomationName}"
+                                            ToolTip.Tip="{Binding CloseTooltip}">
+                                        <TextBlock Classes="body-l"
+                                                   Foreground="{StaticResource TextDim}"
+                                                   Text="&#x00D7;"/>
+                                    </Button>
+                                </Grid>
 
                                 <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
                                     <TextBox Grid.Column="0"
@@ -819,7 +851,8 @@
                              The IGDB block above is wrapped for the same reason. -->
                         <StackPanel Name="MetadataEditorHost"
                                     IsVisible="{Binding ShowMetadataEditor}">
-                            <views:GameMetadataEditorView DataContext="{Binding MetadataEditor}"/>
+                            <views:GameMetadataEditorView Name="MetadataEditorView"
+                                                          DataContext="{Binding MetadataEditor}"/>
                         </StackPanel>
 
                         <StackPanel Spacing="22" Margin="0,18,0,24">

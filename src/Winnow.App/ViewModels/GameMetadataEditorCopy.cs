@@ -6,20 +6,29 @@ namespace Winnow.App.ViewModels;
 
 /// <summary>
 /// User-facing copy for the details modal's per-field metadata editor.
-/// The disclosure opens from an "Edit details" link in the action band
-/// and the field rows draw in the right column's rest band, beside the
-/// IGDB reassignment control.
+/// "Edit details" is a row in the action band's menu; choosing it discloses
+/// the field rows in the right column's rest band, with its own close
+/// control. The editor draws below the IGDB reassignment control's own block.
 /// </summary>
 public static class GameMetadataEditorCopy
 {
-    /// <summary>Face of the disclosure control, at rest.</summary>
+    /// <summary>Face of the menu row that opens the detail editor.</summary>
     public const string OpenLabel = "Edit details";
 
-    /// <summary>Face of the disclosure control while the editor is open.</summary>
-    public const string CloseLabel = "Close";
-
-    /// <summary>Tooltip on the disclosure control.</summary>
+    /// <summary>Tooltip on the menu row that opens the detail editor.</summary>
     public const string OpenTooltip = "Edit each field by hand";
+
+    /// <summary>Heading at the top of the disclosed section, beside its close
+    /// control. Uppercase, matching the modal's other headings.</summary>
+    public const string SectionHeading = "EDIT DETAILS";
+
+    /// <summary>Tooltip on the section's close control. Names this section to
+    /// distinguish it from the modal's own close and the IGDB match section's.</summary>
+    public const string CloseTooltip = "Close editor";
+
+    /// <summary>Accessible name for the section's close button, which has no
+    /// readable text of its own.</summary>
+    public const string CloseAutomationName = "Close detail editor";
 
     /// <summary>One line at the top of the editor: each field tracks its
     /// own source, so a single edit leaves every other field alone.</summary>

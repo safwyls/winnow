@@ -306,12 +306,70 @@ public sealed class GameMetadataEditorViewModelTests
 
         Assert.False(editor.HasRows);
 
-        await editor.ToggleCommand.ExecuteAsync(null);
+        await editor.OpenCommand.ExecuteAsync(null);
 
         Assert.True(editor.IsOpen);
         Assert.Equal(WorkFields.All.Count, editor.Rows.Count);
         Assert.False(editor.HasStatus);
         Assert.False(editor.HasProblem);
+    }
+
+    /// <summary>
+    /// The menu row keeps one label and tooltip whether the section is open
+    /// or closed — the sibling of
+    /// <see cref="GameDetailsViewModelTests.The_action_band_trigger_keeps_one_face"/>,
+    /// one level down.
+    /// </summary>
+    [Fact]
+    public async Task The_menu_row_keeps_one_face()
+    {
+        var editor = new GameMetadataEditorViewModel(FakeService.WithIgdbEverywhere(), WorkId);
+
+        Assert.Equal(GameMetadataEditorCopy.OpenLabel, editor.OpenLabel);
+        Assert.Equal(GameMetadataEditorCopy.OpenTooltip, editor.OpenTooltip);
+
+        await editor.OpenCommand.ExecuteAsync(null);
+
+        Assert.Equal(GameMetadataEditorCopy.OpenLabel, editor.OpenLabel);
+        Assert.Equal(GameMetadataEditorCopy.OpenTooltip, editor.OpenTooltip);
+    }
+
+    /// <summary>
+    /// The section's own close control folds it — the only user route that
+    /// sets <c>IsOpen</c> false.
+    /// </summary>
+    [Fact]
+    public async Task The_section_closes_itself()
+    {
+        var editor = new GameMetadataEditorViewModel(FakeService.WithIgdbEverywhere(), WorkId);
+
+        await editor.OpenCommand.ExecuteAsync(null);
+        editor.CloseCommand.Execute(null);
+
+        Assert.False(editor.IsOpen);
+    }
+
+    /// <summary>
+    /// Choosing an already-open row folds nothing and reloads nothing. The
+    /// drafts the user has typed into the six rows survive a navigational
+    /// re-entry.
+    /// </summary>
+    [Fact]
+    public async Task Choosing_an_open_row_again_keeps_the_section_and_the_drafts_in_it()
+    {
+        var service = FakeService.WithIgdbEverywhere();
+        var editor = new GameMetadataEditorViewModel(service, WorkId);
+
+        await editor.OpenCommand.ExecuteAsync(null);
+
+        var name = Row(editor, WorkFields.Name);
+        name.Draft = "A title the user is part-way through typing";
+
+        await editor.OpenCommand.ExecuteAsync(null);
+
+        Assert.True(editor.IsOpen);
+        Assert.Same(name, Row(editor, WorkFields.Name));
+        Assert.Equal("A title the user is part-way through typing", name.Draft);
     }
 
     [Fact]

@@ -18,11 +18,11 @@ namespace Winnow.App.ViewModels;
 /// (the IGDB assignment control in the same modal) rewrites every field in
 /// one pass.
 ///
-/// <para>Disclosed from an "Edit details" link in the details modal's action
-/// band, beside "Wrong game?", and drawn full width in the right column's
+/// <para>Disclosed from an "Edit details" row in the action band's menu
+/// (§10.3), beside "Wrong game?", and drawn full width in the right column's
 /// rest band under the IGDB reassignment control. Omitting any one optional
 /// constructor argument costs exactly that one capability; with no
-/// IWorkMetadataEditService registered or no resolved work id the link is
+/// IWorkMetadataEditService registered or no resolved work id the row is
 /// not drawn at all.</para>
 /// </summary>
 public partial class GameMetadataEditorViewModel : ObservableObject
@@ -82,7 +82,6 @@ public partial class GameMetadataEditorViewModel : ObservableObject
 
     /// <summary>Whether the editor surface is disclosed.</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ToggleLabel))]
     public partial bool IsOpen { get; set; }
 
     /// <summary>One row per <see cref="WorkFields.All"/> entry, in display order.</summary>
@@ -127,10 +126,20 @@ public partial class GameMetadataEditorViewModel : ObservableObject
 
     public bool HasProblem => Problem is not null;
 
-    public string ToggleLabel
-        => IsOpen ? GameMetadataEditorCopy.CloseLabel : GameMetadataEditorCopy.OpenLabel;
+    /// <summary>
+    /// The menu row's label, constant regardless of whether the section is
+    /// open. The row names an action ("Edit details"), not a state; a toggle
+    /// label that flipped to "Close" said nothing about what it closed.
+    /// </summary>
+    public string OpenLabel => GameMetadataEditorCopy.OpenLabel;
 
     public string OpenTooltip => GameMetadataEditorCopy.OpenTooltip;
+
+    public string SectionHeading => GameMetadataEditorCopy.SectionHeading;
+
+    public string CloseTooltip => GameMetadataEditorCopy.CloseTooltip;
+
+    public string CloseAutomationName => GameMetadataEditorCopy.CloseAutomationName;
 
     public string Intro => GameMetadataEditorCopy.Intro;
 
@@ -150,20 +159,23 @@ public partial class GameMetadataEditorViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Discloses the editor and, on first disclosure only, loads. The editor
-    /// is disclosed inline in the modal's own tree, never a flyout, because
-    /// the global FocusAdorner does not render inside a popup (§10.7).
+    /// One-way open, loading the six field rows on first disclosure only.
+    /// When already open the command returns early — the view turns that
+    /// no-op into a <c>BringIntoView</c> that scrolls the section back into
+    /// the rest band's viewport — so drafts survive and nothing reloads.
+    /// The editor is disclosed inline in the modal's own tree, never a
+    /// flyout, because the global FocusAdorner does not render inside a
+    /// popup (§10.7).
     /// </summary>
     [RelayCommand]
-    private async Task ToggleAsync(CancellationToken ct)
+    private async Task OpenAsync(CancellationToken ct)
     {
-        IsOpen = !IsOpen;
-
-        if (!IsOpen)
+        if (IsOpen)
         {
             return;
         }
 
+        IsOpen = true;
         Problem = null;
 
         if (!HasRows)
@@ -171,6 +183,14 @@ public partial class GameMetadataEditorViewModel : ObservableObject
             await LoadAsync(ct);
         }
     }
+
+    /// <summary>
+    /// Folds the section. This is the only user route that sets
+    /// <see cref="IsOpen"/> false — the close button in the section's header
+    /// row drives it.
+    /// </summary>
+    [RelayCommand]
+    private void Close() => IsOpen = false;
 
     /// <summary>Reads the six field states. The status field is words; there is no spinner.</summary>
     public async Task LoadAsync(CancellationToken ct = default)

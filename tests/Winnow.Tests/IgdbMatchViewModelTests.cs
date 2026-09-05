@@ -332,7 +332,7 @@ public sealed class IgdbMatchViewModelTests
 
         // Opened the way the user opens it, so the disclosure staying open
         // through the refusal and the decline is what the test observes.
-        vm.ToggleCommand.Execute(null);
+        vm.OpenCommand.Execute(null);
         await vm.SearchCommand.ExecuteAsync(null);
         await vm.AssignCommand.ExecuteAsync(vm.Candidates[0]);
         vm.DeclineClaimCommand.Execute(null);
@@ -514,12 +514,75 @@ public sealed class IgdbMatchViewModelTests
         var vm = Build(new FakeAssignmentService());
 
         Assert.False(vm.IsOpen);
-        var closedLabel = vm.ToggleLabel;
 
-        vm.ToggleCommand.Execute(null);
+        vm.OpenCommand.Execute(null);
 
         Assert.True(vm.IsOpen);
-        Assert.NotEqual(closedLabel, vm.ToggleLabel);
+    }
+
+    /// <summary>
+    /// The menu row keeps one label and tooltip whether the section is open
+    /// or closed — the sibling of
+    /// <see cref="GameDetailsViewModelTests.The_action_band_trigger_keeps_one_face"/>,
+    /// one level down.
+    /// </summary>
+    [Fact]
+    public void The_menu_row_keeps_one_face()
+    {
+        var vm = Build(new FakeAssignmentService());
+
+        Assert.Equal(GameIgdbMatchCopy.OpenLabel, vm.OpenLabel);
+        Assert.Equal(GameIgdbMatchCopy.OpenTooltip, vm.OpenTooltip);
+
+        vm.OpenCommand.Execute(null);
+
+        Assert.Equal(GameIgdbMatchCopy.OpenLabel, vm.OpenLabel);
+        Assert.Equal(GameIgdbMatchCopy.OpenTooltip, vm.OpenTooltip);
+    }
+
+    /// <summary>
+    /// The section's own close control folds it — the only user route that
+    /// sets <c>IsOpen</c> false.
+    /// </summary>
+    [Fact]
+    public void The_section_closes_itself()
+    {
+        var vm = Build(new FakeAssignmentService());
+
+        vm.OpenCommand.Execute(null);
+        vm.CloseCommand.Execute(null);
+
+        Assert.False(vm.IsOpen);
+    }
+
+    /// <summary>
+    /// Choosing an already-open row opens nothing and discards nothing. A
+    /// standing same-game offer the user may be part-way through answering
+    /// must survive a navigational re-entry.
+    /// </summary>
+    [Fact]
+    public async Task Choosing_an_open_row_again_keeps_the_section_and_what_stands_in_it()
+    {
+        var vm = Build(
+            new FakeAssignmentService
+            {
+                Results = [Prey2017],
+                Assignment = IgdbAssignmentOutcome.IgdbIdClaimedByAnotherWork,
+                Claimant = Holder,
+            },
+            linkSameGame: _ => Task.FromResult(true));
+
+        vm.OpenCommand.Execute(null);
+        await vm.SearchCommand.ExecuteAsync(null);
+        await vm.AssignCommand.ExecuteAsync(vm.Candidates[0]);
+
+        Assert.True(vm.ShowClaim);
+
+        vm.OpenCommand.Execute(null);
+
+        Assert.True(vm.IsOpen);
+        Assert.True(vm.ShowClaim);
+        Assert.True(vm.HasCandidates);
     }
 
     /// <summary>The search field is pre-filled with the title the library already shows.</summary>

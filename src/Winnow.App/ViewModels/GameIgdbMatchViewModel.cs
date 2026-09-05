@@ -15,8 +15,8 @@ namespace Winnow.App.ViewModels;
 /// entry, or none. Search by title, pick the right one, and pin it so later
 /// enrichment passes leave it alone.
 ///
-/// <para>The disclosure opens from a "Wrong game?" link in the action band
-/// (Band 3) and the search field and candidate list draw full width in the
+/// <para>Disclosed from a "Wrong game?" row in the action band's menu
+/// (§10.3). The search field and candidate list draw full width in the
 /// right column's rest band; Clear alone sits in the left column, under the
 /// identity facts. The search is disclosed inline, in the modal's own tree,
 /// never a flyout (an adorner layer does not exist inside a popup).</para>
@@ -96,7 +96,6 @@ public partial class GameIgdbMatchViewModel : ObservableObject
 
     /// <summary>Whether the search surface is disclosed.</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ToggleLabel))]
     public partial bool IsOpen { get; set; }
 
     /// <summary>The title being searched for. Seeded from the game's own title.</summary>
@@ -221,10 +220,20 @@ public partial class GameIgdbMatchViewModel : ObservableObject
             : null;
     }
 
-    /// <summary>The disclosure control's label, which changes with the open state.</summary>
-    public string ToggleLabel => IsOpen ? GameIgdbMatchCopy.CloseLabel : GameIgdbMatchCopy.OpenLabel;
+    /// <summary>
+    /// The menu row's label, constant regardless of whether the section is
+    /// open. The row names an action ("Wrong game?"), not a state; a toggle
+    /// label that flipped to "Close" said nothing about what it closed.
+    /// </summary>
+    public string OpenLabel => GameIgdbMatchCopy.OpenLabel;
 
     public string OpenTooltip => GameIgdbMatchCopy.OpenTooltip;
+
+    public string SectionHeading => GameIgdbMatchCopy.SectionHeading;
+
+    public string CloseTooltip => GameIgdbMatchCopy.CloseTooltip;
+
+    public string CloseAutomationName => GameIgdbMatchCopy.CloseAutomationName;
 
     public string FieldWatermark => GameIgdbMatchCopy.FieldWatermark;
 
@@ -253,19 +262,37 @@ public partial class GameIgdbMatchViewModel : ObservableObject
         RequestCovers();
     }
 
-    /// <summary>Discloses or folds the search surface.</summary>
+    /// <summary>
+    /// One-way open. When already open the command returns early; the view
+    /// turns that no-op into a <c>BringIntoView</c> that scrolls the section
+    /// back into the rest band's viewport. The refusal and claim are cleared
+    /// only on a real opening — a refusal belongs to the attempt that caused
+    /// it, and a standing same-game offer must survive a navigational
+    /// re-entry so the user can finish answering it.
+    /// </summary>
     [RelayCommand]
-    private void Toggle()
+    private void Open()
     {
-        IsOpen = !IsOpen;
-
-        // A refusal belongs to the attempt that caused it, not to the next one.
         if (IsOpen)
         {
-            Problem = null;
-            Claim = null;
+            return;
         }
+
+        IsOpen = true;
+
+        // A refusal belongs to the attempt that caused it, not to the next one.
+        Problem = null;
+        Claim = null;
     }
+
+    /// <summary>
+    /// Folds the section. This is the only user route that sets
+    /// <see cref="IsOpen"/> false — the close button in the section's header
+    /// row drives it. The two other <c>IsOpen = false</c> sites (a landed
+    /// assignment, a landed same-game link) rebuild the modal entirely.
+    /// </summary>
+    [RelayCommand]
+    private void Close() => IsOpen = false;
 
     private bool CanSearch => !string.IsNullOrWhiteSpace(Query);
 

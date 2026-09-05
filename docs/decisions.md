@@ -1451,3 +1451,47 @@ Superseded text from §12.3:
 Superseded text from §16.2:
 
 > The action band folds it behind the `More` disclosure (§10.3) rather than placing it on the strip, because that band is about getting into the game and hiding is the quiet answer behind it; the context menu remains the route that acts on a whole picked set.
+
+### 2026-09-05 — Menu rows keep one name, and disclosed sections carry their own close control (TASK-126)
+
+`design-system.md` §10.3, §10.9, §10.10. TASK-125 turned the action band's folded actions
+into a `MenuFlyout` and pinned that the trigger keeps one constant face because the menu owns
+its open state. TASK-126 applies the same principle one level down, at the rows that disclose
+sections.
+
+Before, the two menu rows `Wrong game?` and `Edit details` renamed themselves to `Close` while
+the section they disclose was open, and their command toggled. `Close` does not say what it
+closes, dismissing a section the user is looking at meant reopening a menu to reach the row,
+and a label that carries state is defensible on a permanently visible button but not on a menu
+row that is only visible while the menu is open. It is the same reasoning that already fixed
+the `More` trigger itself in TASK-125.
+
+Each disclosed section now carries its own close control — a `×` glyph in the trailing Auto
+column of the section's header row — reusing the modal's own close affordance rather than
+inventing a new idiom. The section also gains a heading (`IGDB MATCH`, `EDIT DETAILS`) because
+the menu row that named the section closes itself as the section appears, so without a heading
+nothing on screen identifies the surface.
+
+Choosing an already-open row no longer toggles it closed. The command is one-way: it scrolls
+the section into view, because both sections open below the fold in the rest band's bounded
+scroll region. For §10.9 the caret returns to the search field. Nothing standing in the section
+is discarded: any same-game offer the user may be part-way through answering, any search
+results, and §10.10's six drafts all survive. The editor does not reload. Closing is the close
+control's job alone.
+
+The close control returns focus to the `More` trigger — the control the section was opened from,
+on the strip outside the rest band's scroll region, so it is always drawn and focus is never
+dropped or left below the fold. The two places §10.9 folds itself on success — a landed
+assignment and a landed same-game link — are unaffected: those reload the library and reopen the
+modal, so focus there belongs to the reopened modal.
+
+§10.3 gained a standing rule stated at the trigger level and referred to from §10.9 and §10.10.
+No existing text in §10.3 was changed.
+
+Superseded text from §10.9:
+
+> Each row's assign control is still a Tab stop, and a row reached by Tab is scrolled into view, so focus is never left off screen.
+
+Superseded text from §10.10:
+
+> The rest band is a bounded scroll region and the editor opens below the fold, so pressing the disclosure scrolls the editor into view.

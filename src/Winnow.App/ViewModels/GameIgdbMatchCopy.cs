@@ -4,21 +4,30 @@ namespace Winnow.App.ViewModels;
 
 /// <summary>
 /// User-facing copy for the details modal's IGDB reassignment control.
-/// The disclosure opens from a "Wrong game?" link in the action band and the
-/// search field and candidate list draw full width in the right column's rest
-/// band; the Clear line is the one part of the control in the left column,
-/// under the cover and ON DISK.
+/// "Wrong game?" is a row in the action band's menu; choosing it discloses
+/// the search field and candidate list in the right column's rest band, with
+/// its own close control. The Clear line is the one part of the control in
+/// the left column, under the cover and ON DISK.
 /// </summary>
 public static class GameIgdbMatchCopy
 {
-    /// <summary>Face of the disclosure control, at rest.</summary>
+    /// <summary>Face of the menu row that opens the IGDB match section.</summary>
     public const string OpenLabel = "Wrong game?";
 
-    /// <summary>Face of the disclosure control while the search surface is open.</summary>
-    public const string CloseLabel = "Close";
-
-    /// <summary>Tooltip on the disclosure control.</summary>
+    /// <summary>Tooltip on the menu row that opens the IGDB match section.</summary>
     public const string OpenTooltip = "Search IGDB for the right entry";
+
+    /// <summary>Heading at the top of the disclosed section, beside its close
+    /// control. Uppercase, matching the modal's other headings.</summary>
+    public const string SectionHeading = "IGDB MATCH";
+
+    /// <summary>Tooltip on the section's close control. Names this section to
+    /// distinguish it from the modal's own close and the detail editor's.</summary>
+    public const string CloseTooltip = "Close IGDB match";
+
+    /// <summary>Accessible name for the section's close button, which has no
+    /// readable text of its own.</summary>
+    public const string CloseAutomationName = "Close IGDB match section";
 
     /// <summary>Watermark in the search field, which takes a title or an IGDB id.</summary>
     public const string FieldWatermark = "Title or IGDB id";

@@ -148,6 +148,28 @@
 
     <StackPanel IsVisible="{Binding IsOpen}" Spacing="10" Margin="0,18,0,0">
 
+        <!-- The section names itself with a heading and closes itself with
+             a quiet button using the modal's close glyph one level down.
+             The trigger that opened the section is a menu row that
+             dismissed itself, so without this heading nothing on screen
+             identifies the surface. -->
+        <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Grid.Column="0"
+                       Classes="label"
+                       VerticalAlignment="Center"
+                       Text="{Binding SectionHeading}"/>
+            <Button Grid.Column="1" Classes="quiet"
+                    VerticalAlignment="Top"
+                    Command="{Binding CloseCommand}"
+                    Click="OnClosePressed"
+                    AutomationProperties.Name="{Binding CloseAutomationName}"
+                    ToolTip.Tip="{Binding CloseTooltip}">
+                <TextBlock Classes="body-l"
+                           Foreground="{StaticResource TextDim}"
+                           Text="&#x00D7;"/>
+            </Button>
+        </Grid>
+
         <TextBlock Classes="body" FontSize="12"
                    TextWrapping="Wrap"
                    LineHeight="17"

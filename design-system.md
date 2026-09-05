@@ -669,6 +669,15 @@ exist, `Hide` when the library handed its command over. A row with nothing behin
 drawn rather than drawn inert. The trigger's face does not change — the menu owns whether it
 is open, so the button always reads `More`. Its tooltip is `Folder, corrections and hide`.
 
+**A row's name does not change with the state of what it opens.** The row opens; the surface
+it opens carries its own close control — a `×` glyph in the trailing Auto column of the
+section's header row, beside a heading that names the section. The close control's tooltip
+names the section; it does not say "(Esc)", because Escape closes the whole modal, not a
+section. Choosing a row whose section is already open scrolls the section into view rather
+than closing it: closing is the close control's job. The close control returns focus to the
+`More` trigger — the control the section was opened from, on the strip outside the rest band's
+scroll region, so it is always drawn.
+
 **The disclosure is `Button.secondary`, not `Button.link`.** `Store page` and `All patch notes`
 are outbound links and draw in `Azure`; the disclosure acts here rather than leaving, so it
 takes the panel's `Text`-ink treatment. `Button.secondary` and `Button.link` have identical
@@ -878,6 +887,17 @@ right column's rest band, the scrolling star row, which is what makes the bounde
 behaviour structural rather than arithmetic. Only the Clear control is in the left column,
 under the cover and ON DISK — §10.1's object column, where the identity facts live.
 
+**The section carries an `IGDB MATCH` heading and its own close control** (§10.3's rule). The
+`×` glyph sits in the trailing Auto column of the header row, beside the heading; its tooltip
+is `Close IGDB match`. The heading names the surface: the menu row that opened it closes
+itself as the section appears, so nothing else on screen would identify it. Choosing the row
+while the section is already open scrolls it into view and puts the caret back in the search
+field; nothing standing in the section is discarded — a same-game offer the user may be
+part-way through answering, and any search results, survive. The two places the section folds
+itself on success — a landed assignment and a landed same-game link — are unaffected: those
+reload the library and reopen the modal, so focus belongs to the reopened modal, not to the
+trigger.
+
 **The surface is inline, never a flyout.** The search field and the candidate list draw in
 the modal's own tree, not inside the menu that opens them. §10.7's rule, applied again: these
 are surfaces to read and type in, and a hand-drawn ring per control would be the whole cost
@@ -903,8 +923,8 @@ dormancy ramp is about your own library and none of these candidates is in it ye
 results, so more than three is the normal case for a common title. A row is 68px (the 51px
 cover plus padding and rule), so the region shows three rows and half of a fourth; the cut row
 together with the scrollbar is what says there is more rather than the list ending silently.
-Each row's assign control is still a Tab stop, and a row reached by Tab is scrolled into view,
-so focus is never left off screen.
+The section's close control is the first Tab stop in the section. Each row's assign control
+follows, and a row reached by Tab is scrolled into view, so focus is never left off screen.
 
 **Six states.** Assigned reloads the library and reopens the modal on the same ownership,
 carrying its confirmation across, so the user sees the corrected cover, title, year and
@@ -1002,10 +1022,16 @@ answers which game this is; `Edit details` answers what each of its values shoul
 under the IGDB reassignment control's own block. The identity question comes first on the
 surface because it is first in fact: assigning an IGDB entry rewrites every field in one pass.
 **Inline, never a flyout** — §10.7's rule applied again, for §10.7's own reason. The rest band
-is a bounded scroll region and the editor opens below the fold, so pressing the disclosure
-scrolls the editor into view. Nothing of this control is in the left column. §10.9 puts only
+is a bounded scroll region and the editor opens below the fold; the scroll that brings it into
+view runs whether the editor was just opened or was already open, so choosing the row again is
+a way back to the section rather than a way to lose it. Drafts in all six rows survive, and
+the editor does not reload. Nothing of this control is in the left column. §10.9 puts only
 Clear there, under the cover and ON DISK, and six labelled rows with previews and per-field
 buttons do not fit 200px.
+
+**The section carries an `EDIT DETAILS` heading and its own close control** (§10.3's rule).
+The `×` glyph sits in the trailing Auto column of the header row, beside the heading; its
+tooltip is `Close editor`. The close control is the first Tab stop in the section.
 
 **Each field carries its own source, and that source is the single answer to where the value
 came from.** There is no override layer stacked over an automatic value. A metadata fetch
