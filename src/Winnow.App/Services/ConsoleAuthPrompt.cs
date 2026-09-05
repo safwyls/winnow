@@ -132,8 +132,19 @@ public sealed class ConsoleAuthPrompt : IInteractiveAuthPrompt
         }
     }
 
-    /// <summary>Whether there is anywhere to prompt. Redirected streams count as available.</summary>
-    private static bool HasConsole()
+    /// <summary>
+    /// Whether there is anywhere to prompt. Called only from this class
+    /// (<see cref="IsAvailableAsync"/> and <see cref="RequestCodeAsync"/>).
+    /// Internal so <see cref="StartupAlert"/> can reach <see
+    /// cref="AttachConsoleIfNeeded"/>, which shares the visibility.
+    ///
+    /// <para>Treats a redirected stream as available, but a WinExe launched
+    /// from Explorer has a NULL standard handle that .NET reports as
+    /// redirected, so this answers "yes" in exactly the launch that has no
+    /// console. TASK-57 owns correcting that and the sign-in flows that
+    /// trust it.</para>
+    /// </summary>
+    internal static bool HasConsole()
     {
         if (Console.IsInputRedirected || Console.IsOutputRedirected)
         {

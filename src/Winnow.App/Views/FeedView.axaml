@@ -31,7 +31,7 @@
 
     </UserControl.Styles>
 
-    <Grid RowDefinitions="Auto,*" Background="{StaticResource PaneGround}">
+    <Grid RowDefinitions="Auto,*">
 
         <!-- ══ Header ═══════════════════════════════════════════════════════
              Full-bleed rule distinguishes this from section headers. Count

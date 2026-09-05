@@ -1,10 +1,10 @@
 ---
 id: TASK-62
 title: Add merge-undo capability to the Same Game review screen
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-09-01 02:51'
-updated_date: '2026-09-01 04:31'
+updated_date: '2026-09-03 16:39'
 labels:
   - resolve
   - ui
@@ -636,3 +636,9 @@ the merge rather than the button, so a screen reader does not hear 'Undo' down t
 
 Full suite over all three projects: 2449 + 98 + 70 = 2617 passed, 0 failed, 0 warnings.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Superseded, not delivered as specified. This task investigated the 0017 merge-undo journal and recommended richer auditing for the destructive merge path. That path no longer exists: TASK-70.7 (commit 798a42d) retired the merge executor and its undo journal, adding migration 0019_retire_destructive_merge.sql. Undo is now provided by the Merges queue delivered in TASK-83 (commit 05e97df) as the ambient dock Undo and the Separate again control on resolved strips, which need no journal because identity links are non-destructive by construction. Acceptance criteria are left unchecked deliberately: they specify undo over a destructive merge that the codebase no longer performs. The investigation findings in the implementation notes remain the record of what the old merge destroyed.
+<!-- SECTION:FINAL_SUMMARY:END -->

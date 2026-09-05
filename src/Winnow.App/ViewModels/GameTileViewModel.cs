@@ -117,7 +117,7 @@ public partial class GameTileViewModel : ObservableObject
         PlaytimeMinutes = game.PlaytimeMinutes;
         LastPlayedUtc = game.LastPlayedAt;
 
-        // The unread badge and the "Patched since" bucket count the same fact
+        // The unread badge and the "Patched" bucket count the same fact
         // (§5.2), so the tile derives one from the other rather than being told
         // both and risking disagreement.
         HasUnread = game.Bucket == LibraryBuckets.StaleButPatched;
@@ -186,14 +186,65 @@ public partial class GameTileViewModel : ObservableObject
     public bool IsMultiStore => Stores.Count > 1;
 
     /// <summary>
+    /// How many expansions were folded into this tile (TASK-70.5 AC6). Zero
+    /// whenever the grouping preference is off, which is its default, so an
+    /// ordinary library never draws anything for it.
+    /// </summary>
+    public int GroupedExpansionCount { get; set; }
+
+    /// <summary>True when at least one expansion was folded into this tile.</summary>
+    public bool HasGroupedExpansions => GroupedExpansionCount > 0;
+
+    /// <summary>
+    /// True when a folded expansion has never been played. The fold takes the
+    /// expansion's own tile away, and with it its place on the Never played
+    /// rail, so the fact has to survive somewhere: "you played two hundred
+    /// hours of this and never opened the expansion" is the premise of the
+    /// app, not a detail. Never set while the grouping preference is off,
+    /// because nothing is folded then.
+    /// </summary>
+    public bool HasUnplayedExpansion { get; set; }
+
+    /// <summary>
     /// What a screen reader is told. A collapsed tile names its stores in
     /// words, because the resting mark is initials and §8 requires anything
     /// the grid encodes to be available as text. A single-store tile is just
     /// the title.
     /// </summary>
-    public string AutomationName => IsMultiStore
-        ? $"{Title}. Owned on {StoreNames}."
-        : Title;
+    public string AutomationName
+    {
+        get
+        {
+            var name = IsMultiStore ? $"{Title}. Owned on {StoreNames}." : Title;
+            return HasGroupedExpansions ? $"{name} {ExpansionMarkText}" : name;
+        }
+    }
+
+    /// <summary>
+    /// The resting mark's face when expansions are folded here: a plus and a
+    /// count, in the same pip the store initials use. It is a count and not a
+    /// word for the reason the store mark is initials — the density floor is
+    /// 108px. The words are in <see cref="ExpansionMarkText"/>, which reaches
+    /// the tooltip and the automation name, so the mark is
+    /// decorative-redundant per §8 rather than the only place the fact lives.
+    /// </summary>
+    public string ExpansionMarkFace => $"+{GroupedExpansionCount}";
+
+    /// <summary>
+    /// The folded packs in words. Says the unplayed part out loud, because
+    /// that is the fact the fold took off the Never played rail and the whole
+    /// reason the mark exists.
+    /// </summary>
+    public string ExpansionMarkText
+    {
+        get
+        {
+            var packs = GroupedExpansionCount == 1 ? "1 expansion" : $"{GroupedExpansionCount} expansions";
+            return HasUnplayedExpansion
+                ? $"Includes {packs}, one of them never played."
+                : $"Includes {packs}.";
+        }
+    }
 
     /// <summary>Every ownership this tile stands for.</summary>
     public IEnumerable<long> OwnershipIds => Entries.Select(static e => e.OwnershipId);

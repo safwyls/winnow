@@ -346,6 +346,235 @@ public sealed class IgdbClient : IIgdbClient
         return results;
     }
 
+    /// <summary>
+    /// Cache key for an age-rating lookup. Own namespace, separate from
+    /// <see cref="GameCacheKey"/>, so a deprecated-field 400 cannot invalidate
+    /// the metadata cache.
+    /// </summary>
+    public static string AgeRatingsCacheKey(long igdbId)
+        => "maturity:" + igdbId.ToString(CultureInfo.InvariantCulture);
+
+    /// <summary>
+    /// Shape version of a cached <c>maturity:</c> payload. Version 1 is the
+    /// first and only shape so far. Bumping it makes every stored entry a miss
+    /// on the next read, the same mechanism <see cref="GamePayloadVersion"/>
+    /// uses.
+    /// </summary>
+    public const int AgeRatingsPayloadVersion = 1;
+
+    private sealed record AgeRatingsPayload(int Version, IReadOnlyList<string>? Ratings);
+
+    public async Task<IReadOnlyDictionary<long, IgdbAgeRatings>> GetAgeRatingsAsync(
+        IEnumerable<long> igdbIds, TimeSpan? cacheTtl = null, CancellationToken ct = default)
+    {
+        var wanted = igdbIds.Where(id => id > 0).Distinct().ToArray();
+        var results = new Dictionary<long, IgdbAgeRatings>();
+        if (wanted.Length == 0)
+        {
+            return results;
+        }
+
+        var cached = await _cache.GetManyAsync(CacheProvider, wanted.Select(AgeRatingsCacheKey), ct);
+        var cutoff = Cutoff(cacheTtl);
+        var pending = new List<long>(wanted.Length);
+
+        foreach (var id in wanted)
+        {
+            if (cached.TryGetValue(AgeRatingsCacheKey(id), out var entry) && entry.FetchedAt >= cutoff)
+            {
+                if (entry.PayloadJson is null)
+                {
+                    // A cached miss: IGDB answered and has no age rating for
+                    // this game. Re-asking every run would spend the 4 req/s
+                    // budget learning the same nothing.
+                    continue;
+                }
+
+                if (Deserialize<AgeRatingsPayload>(entry.PayloadJson) is
+                    { Version: AgeRatingsPayloadVersion, Ratings: { Count: > 0 } ratings })
+                {
+                    results[id] = new IgdbAgeRatings(id, ratings);
+                    continue;
+                }
+            }
+
+            pending.Add(id);
+        }
+
+        if (pending.Count == 0 || !await IsConfiguredAsync(ct))
+        {
+            return results;
+        }
+
+        var fetchedAt = _clock.GetUtcNow().UtcDateTime;
+        foreach (var batch in pending.Chunk(BatchSize))
+        {
+            var page = await FetchAllAsync<IgdbAgeRatingsGameDto>(
+                "games", (limit, offset) => Apicalypse.AgeRatings(batch, limit, offset), ct);
+
+            if (!page.Succeeded)
+            {
+                // The query names deprecated fields. When IGDB rejects it
+                // — the 400 a removed field would cause — re-ask with only
+                // the current reference fields rather than losing the batch.
+                page = await FetchAllAsync<IgdbAgeRatingsGameDto>(
+                    "games",
+                    (limit, offset) => Apicalypse.AgeRatingsWithoutDeprecatedFields(batch, limit, offset),
+                    ct);
+            }
+
+            if (!page.Succeeded)
+            {
+                continue;
+            }
+
+            var found = new Dictionary<long, IReadOnlyList<string>>();
+            foreach (var dto in page.Items)
+            {
+                if (dto.Id > 0 && RatingTokens(dto) is { Count: > 0 } tokens)
+                {
+                    found[dto.Id] = tokens;
+                }
+            }
+
+            foreach (var id in batch)
+            {
+                var tokens = found.GetValueOrDefault(id);
+                if (tokens is { Count: > 0 })
+                {
+                    results[id] = new IgdbAgeRatings(id, tokens);
+                }
+
+                await _cache.SetAsync(
+                    CacheProvider,
+                    AgeRatingsCacheKey(id),
+                    tokens is null ? null : Serialize(new AgeRatingsPayload(AgeRatingsPayloadVersion, tokens)),
+                    fetchedAt,
+                    ct);
+            }
+        }
+
+        return results;
+    }
+
+    /// <summary>
+    /// Maps one game's age-rating rows into distinct <c>board:tier</c> tokens.
+    /// Three readings are tried per row in descending order of how firmly the
+    /// value is established: the published rating enum, then the organization
+    /// name and rating-category label, then the published category enum paired
+    /// with that label. A row none of the three can name yields no token, so
+    /// it cannot manufacture a row.
+    /// </summary>
+    private static IReadOnlyList<string> RatingTokens(IgdbAgeRatingsGameDto dto)
+    {
+        if (dto.AgeRatings is not { Count: > 0 } rows)
+        {
+            return [];
+        }
+
+        var tokens = new List<string>();
+        foreach (var row in rows)
+        {
+            var token = IgdbAgeRatingTokens.FromLegacyRating(row.Rating)
+                        ?? IgdbAgeRatingTokens.FromLabels(row.Organization?.Name, row.RatingCategory?.Rating)
+                        ?? IgdbAgeRatingTokens.FromLegacyOrganization(row.Category, row.RatingCategory?.Rating);
+
+            if (token is not null && !tokens.Contains(token, StringComparer.OrdinalIgnoreCase))
+            {
+                tokens.Add(token);
+            }
+        }
+
+        return tokens;
+    }
+
+    /// <summary>
+    /// Cache key for a search result set. The term is lower-cased so a
+    /// repeat with different casing is a hit, and the limit is in the key
+    /// because a 5-result answer must not be served to a caller asking
+    /// for 20.
+    /// </summary>
+    public static string SearchCacheKey(string term, int limit)
+        => "search:" + limit.ToString(CultureInfo.InvariantCulture) + ":" + term.ToLowerInvariant();
+
+    /// <summary>
+    /// Shape version of a cached <c>search:</c> payload. The same
+    /// bump-to-invalidate mechanism <see cref="GamePayloadVersion"/> and
+    /// <see cref="AgeRatingsPayloadVersion"/> use. Version 1 is the
+    /// first shape.
+    /// </summary>
+    public const int SearchPayloadVersion = 1;
+
+    /// <summary>Versioned envelope a search result set is cached in.</summary>
+    private sealed record SearchPayload(int Version, IReadOnlyList<IgdbSearchResult>? Results);
+
+    public async Task<IReadOnlyList<IgdbSearchResult>> SearchGamesAsync(
+        string title, int limit = 0, TimeSpan? cacheTtl = null, CancellationToken ct = default)
+    {
+        var term = Apicalypse.SearchTerm(title);
+        if (term is null)
+        {
+            return [];
+        }
+
+        var wanted = Math.Clamp(
+            limit > 0 ? limit : _options.SearchResultLimit, 1, Apicalypse.MaxLimit);
+        var key = SearchCacheKey(term, wanted);
+
+        var cached = await _cache.GetAsync(CacheProvider, key, ct);
+        if (cached is { } entry && entry.FetchedAt >= Cutoff(cacheTtl ?? _options.SearchCacheTtl))
+        {
+            if (entry.PayloadJson is null)
+            {
+                return [];
+            }
+
+            if (Deserialize<SearchPayload>(entry.PayloadJson) is
+                { Version: SearchPayloadVersion, Results: { } hits })
+            {
+                return hits;
+            }
+        }
+
+        if (!await IsConfiguredAsync(ct))
+        {
+            return [];
+        }
+
+        // PostAsync directly, not FetchAllAsync: FetchAllAsync follows
+        // offset pages until a page comes back short. A search deliberately
+        // wants the top N by relevance, and paging the tail would spend the
+        // 4 req/s budget walking results nobody asked for.
+        var page = await PostAsync<IgdbSearchGameDto>(
+            "games", Apicalypse.SearchGames(term, wanted), ct);
+
+        if (!page.Succeeded)
+        {
+            // A failed request is NOT cached: a 400 or a dropped connection
+            // would otherwise record "IGDB knows nothing by that name" for
+            // a whole TTL.
+            return [];
+        }
+
+        // An empty result IS cached: IGDB answered, and "no such title"
+        // is a real answer worth keeping for the search TTL.
+        var results = page.Items
+            .Select(dto => dto.ToDomain())
+            .Where(result => result is not null)
+            .Select(result => result!)
+            .Take(wanted)
+            .ToArray();
+
+        await _cache.SetAsync(
+            CacheProvider,
+            key,
+            Serialize(new SearchPayload(SearchPayloadVersion, results)),
+            _clock.GetUtcNow().UtcDateTime,
+            ct);
+
+        return results;
+    }
+
     private int BatchSize => Math.Clamp(_options.BatchSize, 1, Apicalypse.MaxLimit);
 
     private DateTime Cutoff(TimeSpan? cacheTtl)

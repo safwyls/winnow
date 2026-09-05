@@ -1,3 +1,5 @@
+using Winnow.Enrich.SteamWeb.Credentials;
+
 namespace Winnow.App.Services;
 
 /// <summary>
@@ -185,8 +187,12 @@ public interface IStoreConnections
     /// next Steam call uses the new key without a restart; a stale memoised key
     /// outliving the field that replaced it is exactly what makes an in-app input
     /// read as broken. Blank input clears instead of storing whitespace.</para>
+    ///
+    /// <para>Refused, not silently dropped, on a host that cannot encrypt at rest:
+    /// §4.7's second amendment forbids a plaintext row, so the panel says the
+    /// key was not stored and why, rather than telling the user it was.</para>
     /// </summary>
-    Task SaveSteamApiKeyAsync(string? key, CancellationToken ct = default);
+    Task<SteamApiKeySaveOutcome> SaveSteamApiKeyAsync(string? key, CancellationToken ct = default);
 
     /// <summary>
     /// Removes the stored Web API key and puts the removal into force

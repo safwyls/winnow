@@ -57,4 +57,35 @@ public interface IIgdbClient
     /// </summary>
     Task<IReadOnlyList<IgdbGame>> GetGamesAsync(
         IEnumerable<long> igdbIds, TimeSpan? cacheTtl = null, CancellationToken ct = default);
+
+    /// <summary>
+    /// Age-rating tokens for known IGDB ids. Rides its own Apicalypse query
+    /// against <c>games</c> and its own cache namespace (<c>maturity:&lt;igdbId&gt;</c>),
+    /// never the shared <see cref="GetGamesAsync"/> query, because the query
+    /// names deprecated fields and a field IGDB finally removes would 400 the
+    /// whole body — on the shared query that single 400 would cost name, cover
+    /// art, genres, themes, game modes, perspectives and publisher for the
+    /// entire library.
+    ///
+    /// <para>Returns only ids IGDB reported at least one mappable rating for.
+    /// A game with no age ratings, or only ratings this client cannot name,
+    /// is absent rather than present-and-empty.</para>
+    /// </summary>
+    Task<IReadOnlyDictionary<long, IgdbAgeRatings>> GetAgeRatingsAsync(
+        IEnumerable<long> igdbIds, TimeSpan? cacheTtl = null, CancellationToken ct = default);
+
+    /// <summary>
+    /// Searches IGDB by title using the <c>search "…"</c> clause on the
+    /// <c>games</c> endpoint. Rides its own query body and its own cache
+    /// namespace (<c>search:</c>), never the shared
+    /// <see cref="GetGamesAsync"/> query, because the query carries
+    /// user-typed free text and a 400 on it must cost only the search.
+    ///
+    /// <para>A <paramref name="limit"/> of 0 means "use
+    /// <see cref="IgdbOptions.SearchResultLimit"/>". An empty list is
+    /// returned for a blank term, for an unconfigured client, and for a
+    /// failed request; none of those three is an error.</para>
+    /// </summary>
+    Task<IReadOnlyList<IgdbSearchResult>> SearchGamesAsync(
+        string title, int limit = 0, TimeSpan? cacheTtl = null, CancellationToken ct = default);
 }

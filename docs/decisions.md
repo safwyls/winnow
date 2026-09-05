@@ -754,3 +754,332 @@ on the first-paint path is `LocalLibrarySyncContractTests`; the HTTP policy chai
 shapes are the per-client resilience and contract tests; the theme walk and the layout token
 parity are `ThemeContrastTests` and `FloatingLayoutTests`. Those were left alone rather than
 duplicated.
+
+## The library grid's expansion-grouping preference
+
+Taken with the user on 2026-09-03, closing the last acceptance criterion of the expansion
+relation work. The criterion had been left unbuilt because the stage that introduced it also
+required an expansion link to move no tile count, and the two read as contradictory.
+
+**They are not contradictory, because the preference is off by default.** With it off an
+expansion link still changes no count, no playtime, no bucket and no recommendation, which is
+the whole of what `expansion_of` promises. Turning it on is a presentation choice about the
+grid, made by the user, and nothing about the link itself changes.
+
+**When it is on, the pack folds into its base game's tile and the counts follow it.** The
+alternative considered was drawing the pack attached to its base while still counting it as its
+own title. That was rejected because the counting rule is stated per tile: a game that has no
+tile cannot go on counting as one without the rail and the grid disagreeing about what the
+library holds. Playtime is the exception and never rolls up — thirty hours of a base game and
+none of its expansion are two facts, and their sum is a number no source reported about either.
+
+**The base tile carries a mark when a folded pack has never been played.** Folding takes the
+pack's tile away and with it its place on the Never played rail, and "you played this for two
+hundred hours and never opened the expansion" is the recommendation the app exists to make. The
+mark is a count in the same pip the multi-store mark uses, and the words are in the tooltip and
+the automation name.
+
+**It is applied above the shared bucket query, not inside it.** The recommender reads the same
+repository the grid does, so folding down there would have taken an unplayed expansion out of
+the feed at the same moment it left the grid — the opposite of the reason the mark exists. The
+fold is applied where the tiles are built, and the rows the recommender consumes are untouched.
+
+### 2026-09-03 — What the documents used to say about credentials at rest
+
+TASK-78 closed the last plaintext gap, and three documents said something they no longer do.
+Their superseded sentences, verbatim:
+
+`README.md` used to say, under "Where your data lives":
+
+> Credential protection is uneven today. Epic refresh tokens and Steam session tokens are
+> encrypted at rest with DPAPI (`CurrentUser` scope). Steam Web API keys and IGDB client secrets
+> are still plaintext rows in the local database, so anyone with access to `winnow.db` can read
+> those two. Fixing that is TASK-78 in the backlog.
+
+`game-library-design.md` §4.7's second condition used to end:
+
+> The same standard is intended for every secret Winnow keeps; the Steam Web API key and the
+> IGDB client secret do not meet it yet and are tracked as debt in `ROADMAP.md` §6.
+
+`ROADMAP.md` §5's debt table used to carry the row:
+
+> The Steam Web API key and the IGDB client secret are still plaintext at rest | TASK-78
+
+**Why the change, beyond the fact it names.** The Steam Web API key and the IGDB client secret
+were written raw to the `settings` table, and the cached Twitch access token with them, while
+the Epic and Steam session stores already refused to persist anything unencrypted. The
+documentation overpromising ("credentials use DPAPI") was its own defect: the privacy story is
+part of the product. All five stored credentials are now DPAPI-encrypted under CurrentUser
+scope with versioned per-credential entropy, plaintext rows from pre-protection installs are
+migrated on first read and left empty, and a host that cannot encrypt refuses to store rather
+than degrading to the clear — the standard §4.7's second amendment already bound the sessions
+to. One distinction was drawn while doing it, and is recorded in §4.7: refusing never destroys
+what a user typed, so legacy user-supplied rows are left as they were on a host that cannot
+encrypt, while machine-minted rows — the token — are emptied, because a mint is free and a
+bearer credential in the clear is not.
+
+### 2026-09-03 — Shelf capacity in the scoring spec was stale in two places
+
+`docs/recommendation-engine.md` §5's tuning table and §6a's shelf rules list both described a
+ten-item shelf and a genre cap of 4. A shelf has shown six cards since the sections started
+wrapping (`FeedService.VisiblePerShelf` = 6), and the genre cap moved from 4 to 3 in the same
+change to preserve the property that no genre may take a majority. Both were corrected.
+
+The superseded text, verbatim:
+
+§5, `ShelfGenreCap` row: "Entries sharing one genre per 10-item shelf — below half, so no
+genre can majority a shelf."
+
+§6a, "Shelves own their stories" bullet: "a patched game that missed the patched shelf's ten
+slots waits for that shelf's rotation rather than leaking its (stronger) patch story onto a
+rail telling a different one."
+
+### 2026-09-04 — The scoring spec's status line and §9 said the UI was unbuilt
+
+`docs/recommendation-engine.md`. The status line said "the loop's UI affordances are not
+yet wired (the App layer owns them; the contract is in §6b)." §9's heading read "Wiring it
+in later (not now)", and its text ended "The UI affordances themselves (the 'not for me'
+button, the inspection list) are the remaining unbuilt piece, owned by the App layer." The
+feed screen, its verdict buttons, the history screen, the undo and the receipt countdown
+are built and shipped; the three statements were stale.
+
+### 2026-09-04 — "Patched since" became "Patched"
+
+`design-system.md` §6, §7, §10.1, §11, §12; `README.md`. The old label was an unfinished
+sentence. The bucket id `stale_but_patched` is untouched; this is a label change only.
+
+### 2026-09-04 — "Bounced off" became "Started"
+
+`design-system.md` §7, §12; `game-library-design.md` §6.1; `README.md`. The bucket's rule is
+purely a playtime band: at or above `bounced_floor` (120 minutes) and below `retired_floor`.
+It says nothing about recency, so the bucket also holds games in active play. "Bounced off"
+claimed the user gave up, which is false for part of the set.
+
+The label was changed to fit the rule rather than the rule narrowed to fit the label, for three
+reasons. The 120-minute refund floor is a deliberate, documented threshold rather than an
+accident. Narrowing the rule would mean adding a recency term to a bucket family whose whole
+point is that they are playtime bands computed as queries. And the bucket's precedence
+relationship with stale-but-patched is stated in terms of that span.
+
+The bucket id `bounced` is untouched; this is a label change only.
+
+Superseded text from `game-library-design.md` §6.1:
+
+> At or above it the user committed past the point of no return and gave up anyway, which is
+> the fact "Bounced off" names.
+
+Superseded text from `README.md`:
+
+> *Bounced off* means you got past Steam's two-hour refund window and stopped anyway.
+
+### 2026-09-04 — The transparency block stopped printing measurements (TASK-96)
+
+`design-system.md` §14.2, §14.3, §14.6. The Appearance screen's TRANSPARENCY card used to
+carry standing readouts: an AA tick on the slider track, two live contrast ratios against a
+dark and a white desktop, the Mica composite hex, two admittance percentages, a
+gaps-and-title-bar section, and a paragraph on how input fields paint no fill. All of that was
+design-document material rendered as UI. A user tuning a slider needs the slider, the two
+qualifiers (backdrop and reach), and a warning only when the setting they are holding actually
+hurts legibility — not a permanent measurement panel.
+
+The measurements were not lost. They stay in §14.3 and §14.6 and are asserted by
+`ThemeContrastTests` and `FloatingLayoutTests`. Five sentences in `design-system.md` described
+the screen printing figures it no longer prints, and were rewritten to the current truth.
+
+Superseded text from §14.2:
+
+> A second element declaring `ShellGround` would put every figure the Appearance screen prints
+> out by the same factor, and nothing else would catch it.
+
+Superseded text from §14.3 "What fixes the ground":
+
+> `0.15` is the round step past the boundary, it buys 1 to 5 points on top, and it states as a
+> pair of numbers the Appearance screen prints: **the ground admits 85%, a pane admits 35%.**
+
+Superseded text from §14.3 "What it measures":
+
+> **The range past the mark is a choice the user is allowed to make.** Being protected from it
+> is not a service, and being ambushed by it is not either — so the Appearance screen draws the
+> mark on the track and reports **both** numbers live, in Plex Mono `tnum`, with the worst-case
+> figure turning `Amber` and naming the line it crossed once it does. `Amber` and not `Danger`:
+> §2 gives `Amber` attention and `Danger` the one destructive act, and a setting chosen with
+> the number in front of you is neither an error nor something to be undone for you.
+
+Superseded text from §14.6 "Acrylic or Mica":
+
+> That table *is* the argument for offering both, and a condensed form of it is on the
+> Appearance screen beside the choice.
+
+Superseded text from §14.6 "The field may open up; the tiles may not":
+
+> **The Appearance screen prints both numbers** — how much of the window's ground is desktop,
+> and how much of a pane — in Plex Mono `tnum`, so the relation is visible rather than
+> asserted. It is a ratio and not a second slider on purpose: two percentages on one screen
+> that mean different things is a worse screen than one quantity with a stated relation.
+
+### 2026-09-04 — The list view now carries cover art
+
+`design-system.md` §6. The list view's opening sentence used to read:
+
+> Same data, no art dependency: title, store, playtime, idle, unread dot.
+
+A library is recognised by its covers; a list of titles alone is a spreadsheet. Every row now
+shows a 24x36 cover from the same cache and the same dormancy ramp the wall tile uses.
+
+Two judgements the change rests on. The cover takes the resting ramp (`DormancyAlpha`) rather
+than the hover-restored one (`DisplayAlpha`): the list's hover affordance is the row's
+`ChromeRaisedHalf` veil, and a cover that also woke under the pointer would be a second hover
+language on one row. A game with no cover gets the grid's placeholder gradient pair, but not
+the placeholder's baked Bricolage title: at 24px wide no title is legible, and the row already
+names the game in Display type beside the art.
+
+### 2026-09-04 — The indeterminate-progress rule (TASK-79)
+
+`design-system.md` §8. Winnow states; it does not spin. When the interface cannot state a
+real proportion it says what it is doing and what it is waiting for, in words, in a status
+field, and offers Cancel when there is one. The rule ratifies the pattern the Stores panel
+already ships and generalises the first-run placeholder rule §7 already states.
+
+Because the indicator is words, reduced motion has nothing to disable and the surface is the
+same in both motion settings. An accessibility floor with no branch in it cannot be got
+wrong, and that is the argument for the rule rather than a side effect of it.
+
+Motion may be added to a status field but may never replace one, under four conditions:
+(a) the words are the indicator and the motion is decoration over them; (b) at most one
+moving element on a screen; (c) it is removed entirely under reduced motion, leaving the
+words, by a style and never by a local `Transitions` value; (d) it is never the only thing
+saying that work is happening.
+
+Superseded text from §8:
+
+> There is no rule yet for an indeterminate indicator, and none may ship before there is:
+> TASK-79.
+
+### 2026-09-04 — The settings surface now has three sections
+
+`design-system.md` §15.1 and new §16. The gear at the foot of the rail held two settings
+screens, PLATFORMS and APPEARANCE. It now holds three: PLATFORMS, LIBRARY, APPEARANCE. The
+new LIBRARY section answers what is in the library and holds EXPLICIT CONTENT, HIDDEN GAMES
+and ADDED BY HAND.
+
+It is not under APPEARANCE, which is material and layout. It is not under PLATFORMS, which is
+about connecting to a store. What decides the content of the library once it has been
+connected is its own question.
+
+Superseded text from §15.1's floating-layout table:
+
+> **Merge queue · Stores · Appearance**
+
+### 2026-09-04 — Two destructive acts, not one
+
+`design-system.md` §2, §12.3, §14.3. Deleting a list was the application's only destructive
+act. Deleting a hand-added game is a second one: it removes the ownership, then the release
+when no other ownership hangs off it, then the work when it has no releases left. It asks
+first and the question names what survives, which is §12.3's own rule applied a second time.
+`Danger` is on its confirm button and on nothing else on that screen.
+
+Superseded text from §2's palette table, the `Danger` row:
+
+> Destructive affordance: the window close button's hover fill, and the confirm button on the one destructive act in the application (§12.3)
+
+Superseded text from §12.3:
+
+> It is the only destructive act in the application, and `Danger` appears on its confirm button and nowhere else on the strip.
+
+Superseded text from §14.3:
+
+> `Amber` and not `Danger`: §2 gives `Amber` attention and `Danger` the one destructive act, and a setting chosen with the warning in front of you is neither an error nor something to be undone for you.
+
+### 2026-09-04 — The details modal is a third surface for list membership
+
+`design-system.md` §12.3. The paragraph that described `Add to list` said it was "one control
+for both views" and stopped there. The details modal now offers a per-list checkbox — a
+different control answering a different question (which lists already hold this game, resolved
+through `same_game` links). The paragraph was extended rather than replaced: the action bar's
+button remains the one bulk control for the grid and the list view; the modal's ticks are
+stated as the third surface they are.
+
+Superseded text from §12.3:
+
+> **`Add to list` is one control for both views.** The grid selects one tile, the list view selects many, and the button reads whichever is in force, naming the number once there is more than one. The picked set is derived from the selection in the view model rather than in the pointer handler, so arrowing across the wall arms it exactly as clicking does.
+
+### 2026-09-04 — On-screen copy shortened to short phrases (TASK-95)
+
+`design-system.md` §7 and §10.4; `game-library-design.md` §4.7 and §6.4. Explanatory
+paragraphs throughout the interface were replaced with short phrases. §7 now states the
+length rule: an explanation on screen is a short phrase, and only a closed list of contexts
+may run longer. §4.7 gained the account-stats rules that governed the paragraphs being cut.
+§6.4 gained the non-game filter's absence rule, previously stated in the Display preferences
+flyout: a row whose type no store has stated is not a non-game entry and stays visible
+either way.
+
+Superseded text from §10.4's copy table, the "No summary yet" row:
+
+> `No description yet. Winnow fills the year, publisher and summary in from IGDB as it works through your library.`
+
+### 2026-09-04 — Two copy drifts in design-system.md corrected to match the shipped strings
+
+Pre-existing drifts found during the TASK-95 copy sweep and corrected separately because they
+were outside that task's criteria.
+
+Superseded text from §7's empty-state bullet for Never played:
+
+> *"You've played everything you own. Genuinely rare."*
+
+The shipped string in `LibraryViewModel.cs` is "You've played everything you own past the
+refund window. Genuinely rare."
+
+Superseded text from §10.4's copy table, the "Provisional title" row:
+
+> `Steam's local files gave an id and no name.`
+
+The shipped string in `GameDetailsViewModel.ProvisionalNote` is "Name not yet available.
+Showing the app id until metadata loads."
+
+### 2026-09-04 — The explicit-content gate narrowed from 18+ to adults-only (TASK-101)
+
+`game-library-design.md` §6.4; `design-system.md` §16.1. The explicit-content filter was
+hiding games rated 18 for violence. IGDB returns every board for a work, so GTA V, Doom
+Eternal, The Witcher 3 and Cyberpunk 2077 each arrived carrying `pegi:18` and were hidden
+even though the intent was to filter adult/hentai/sex games, not mature-rated ones. The
+user reported the problem and the gate was narrowed: explicit now means the `AdultsOnly`
+tier only (`esrb:ao`, `acb:x18`, `adult_only_sexual_content`). The broad 18+ board ratings
+sit at `Restricted18` on the new `MaturityTier` scale and are not explicit. The scale is
+ordered and exists for TASK-103's rating-cap filter.
+
+Superseded text from §6.4:
+
+> Explicit when any rating token is in the adults-only tier (`esrb:ao`, `pegi:18`, `usk:18`, `cero:z`, `acb:r18`, `acb:x18`, `classind:18`, `grac:18`) or any descriptor token is `adult_only_sexual_content`. ESRB M and PEGI 16 are not explicit: this is an 18+ gate, not a maturity gate.
+
+Superseded text from §16.1:
+
+> Off, works whose stored maturity evidence reads as 18+ are dropped from the grid, the list view, the feed and every bucket count — one clause in the shared bucket query all four read.
+
+### 2026-09-04 — The IGDB override control moved from ABOUT to the left column, and the candidate list gained a scroll bound (TASK-102, TASK-105)
+
+`design-system.md` §10.1, §10.9. Two user-reported defects on the details modal's IGDB
+override control.
+
+**The placement rule was reversed by the user.** §10.9 placed the control as the footer of the
+ABOUT section, on the reasoning that ABOUT is the IGDB record in prose and the correction sits
+under the answer it corrects. The user tried it there and asked for it in the left column
+instead, under the cover and ON DISK. The new placement follows the column's own rule: left is
+the object — its art, its store id, its install path — and which game this IS is an identity
+fact that sits with them. The superseded text, verbatim:
+
+> **It is the footer of the ABOUT section, not a section of its own.** The modal already stacks ALSO COVERS, EXTENDS, EXPANSIONS, LISTS, ABOUT and the update list; a seventh panel is how the modal becomes a stack of panels. ABOUT is the IGDB record in prose, and the year, publisher and cover above it came from the same record, so the correction sits under the answer it corrects. At rest it is one quiet line and the modal grows by one row.
+
+**The candidate list was unbounded and ran past the card.** IGDB search returns up to 20
+results, so more than three is the normal case for a common title, and the user hit the overflow
+while the control was still in the ABOUT footer, in the right column. Width was never the
+problem; height was. The list drew every result at its full height, the rest band it sat in was
+an Auto row, so the ScrollViewer in that row was measured against infinity and never scrolled,
+and a Border does not clip, so the list was drawn past the bottom of the card and cut off at the
+window edge. The candidates past the cut could not be seen or reached. The move to the left
+column is a separate change (TASK-102) that landed in the same commit; it did not cause the
+overflow and does not fix it. The fix is a scroll region of at most 208px, bounded by a star row
+so the ScrollViewer has a finite constraint.
+
+**§10.1 gained a general rule about the modal's scroll regions.** Each column's lower part sits
+in a star row and scrolls inside whatever height the card has. The rule is stated there because
+it applies to both columns, not only to this control.

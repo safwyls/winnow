@@ -3,11 +3,11 @@ id: TASK-70.7
 title: >-
   Replay standing merges into links, then retire the destructive executor and
   the undo journal
-status: In Progress
+status: Done
 assignee:
   - '@claude'
 created_date: '2026-09-02 00:15'
-updated_date: '2026-09-02 04:44'
+updated_date: '2026-09-03 16:46'
 labels: []
 dependencies:
   - TASK-70.3
@@ -35,13 +35,13 @@ The migration file must carry the whole path in its own header, because an insta
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 A merge still standing with an undo journal is replayed into a restored work plus a live identity link, preserving the decision and recovering every row
-- [ ] #2 A merge already undone needs no migration work beyond dropping the log
-- [ ] #3 A standing merge with no undo journal fails the migration loudly, naming the application, rather than silently proceeding
-- [ ] #4 merge_applications, merge_undo_rows and the undone columns are dropped, and the destructive executor, undo repository, journal and their tests are deleted
-- [ ] #5 The 0016 canonical-pair CHECK and UNIQUE survive, so F20 stays closed
-- [ ] #6 The migration file documents the whole path in its own header
-- [ ] #7 Every acceptance criterion on the parent task still passes after the deletion
+- [x] #1 A merge still standing with an undo journal is replayed into a restored work plus a live identity link, preserving the decision and recovering every row
+- [x] #2 A merge already undone needs no migration work beyond dropping the log
+- [x] #3 A standing merge with no undo journal fails the migration loudly, naming the application, rather than silently proceeding
+- [x] #4 merge_applications, merge_undo_rows and the undone columns are dropped, and the destructive executor, undo repository, journal and their tests are deleted
+- [x] #5 The 0016 canonical-pair CHECK and UNIQUE survive, so F20 stays closed
+- [x] #6 The migration file documents the whole path in its own header
+- [x] #7 Every acceptance criterion on the parent task still passes after the deletion
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -108,3 +108,9 @@ Build: 0 Warning(s), 0 Error(s) under TreatWarningsAsErrors. Winnow.Tests moves 
 
 NOT FINALIZED: acceptance criteria not checked, no final summary, status left In Progress, nothing committed.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Replayed standing merges into links, then retired the destructive executor and the undo journal. Landed in commit 798a42d. Verified against migration 0019_retire_destructive_merge.sql, Migrations/StandingMergeReplay.cs and MergeRetirementTests, in a scoped run of 100 tests, all passing. AC1: A_standing_merge_with_a_journal_becomes_a_restored_work_and_a_live_link. AC2: An_already_undone_merge_needs_nothing_but_its_candidate_reset. AC3: A_standing_merge_without_a_journal_fails_the_migration_by_name, backed in SQL by the refuse_to_retire_a_standing_merge tripwire table dropped at line 68. AC4: the script drops merge_undo_rows and merge_applications and rebuilds merge_candidates with status narrowed to pending and rejected; MergeExecutor.cs and MergeExecutionRepository.cs are absent from the tree, and The_narrowed_status_set_refuses_the_two_that_went_with_the_merge pins the narrowing. AC5: the rebuilt merge_candidates keeps CHECK (left_release_id < right_release_id) and UNIQUE (left_release_id, right_release_id), so the 0016 canonical pair guarantee and F20 survive the rebuild. AC6: the file header documents the whole path, naming the two-pass upgrade, the C# replay between 0018 and 0019, the three replay cases and why the status set narrows. AC7: the parent task criteria still pass after the deletion, and the full suite is green apart from two repository-hygiene tests failing only on stale git worktree copies.
+<!-- SECTION:FINAL_SUMMARY:END -->

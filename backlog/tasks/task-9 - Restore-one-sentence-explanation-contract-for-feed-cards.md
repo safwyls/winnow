@@ -1,11 +1,11 @@
 ---
 id: TASK-9
 title: Restore one-sentence explanation contract for feed cards
-status: In Progress
+status: Done
 assignee:
   - '@claude'
 created_date: '2026-08-29 21:52'
-updated_date: '2026-09-01 02:14'
+updated_date: '2026-09-03 16:43'
 labels:
   - recommend
   - ui
@@ -23,8 +23,8 @@ Feed cards must state their recommendation reason in one sentence. The contract 
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Every feed card carries a one-sentence explanation
-- [ ] #2 No explanation exceeds one sentence
+- [x] #1 Every feed card carries a one-sentence explanation
+- [x] #2 No explanation exceeds one sentence
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -74,3 +74,9 @@ Known residual: never-opened has five phrasings and the hash is uniform over the
 
 Winnow.Recommend.Tests 92/92 green. Full suite: Winnow.Covers.Tests 70/70, Winnow.Tests 2369/2370 with the one failure belonging to TASK-5's migration 0016 (see TASK-8 notes).
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Restored the one-sentence explanation contract for feed cards. Landed in commit df38ef9. Verified by a scoped run of ReasonContractTests, ReasonHonestyTests and UpdateTitleSanitizeTests: 33 of 33 passed, and Winnow.Recommend.Tests passes 145 of 145 overall. AC1 and AC2 are both carried by ReasonContractTests.Every_producible_combination_renders_exactly_one_sentence_inside_the_budget, which enumerates every producible combination rather than sampling, supported by Every_phrasing_is_one_clause_and_every_list_has_a_fallback and by UpdateTitleSanitizeTests.A_quoted_title_never_breaks_the_one_sentence_contract, which pins the case where stored update titles could otherwise inject sentence breaks. The residual recorded in the implementation notes still stands and is not a criterion: never-opened has five phrasings drawn by a uniform hash, so ten cards from five buckets can show as few as three distinct lines; the test floors it at three and more variants is the lever if it reads repetitive on the real library.
+<!-- SECTION:FINAL_SUMMARY:END -->

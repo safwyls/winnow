@@ -226,7 +226,7 @@ public sealed class ListsViewModelTests
 
         // The suggestion is the rules read out, and the rail's bucket is part of
         // them — the panel and the rail are one filter.
-        Assert.Equal("Bounced off · RPG", library.Prompt.Text);
+        Assert.Equal("Started · RPG", library.Prompt.Text);
 
         library.Prompt.Text = "Unfinished RPGs";
         await library.Prompt.ConfirmCommand.ExecuteAsync(null);
@@ -375,7 +375,7 @@ public sealed class ListsViewModelTests
         Assert.Same(bounced, library.SelectedBucket);
         Assert.True(library.Filters.ToFilter().IsEmpty);
         Assert.Equal(string.Empty, library.SearchText);
-        Assert.Equal(["Bounced off"], library.CutChips.Select(c => c.Label));
+        Assert.Equal(["Started"], library.CutChips.Select(c => c.Label));
         Assert.Equal(["Disco Elysium", "Hades"], fixture.Titles(library).Order());
 
         // One Volt edge in the rail, on the row the user clicked.
@@ -437,7 +437,8 @@ public sealed class ListsViewModelTests
             DetachedStores.Create(),
             DetachedAppearance.Create(),
             DetachedFeed.Create(),
-            DetachedAccountStats.Create());
+            DetachedAccountStats.Create(),
+            new LibrarySettingsViewModel());
         shell.SelectListCommand.Execute(live);
         Assert.Same(live, library.Lists.Open);
 
@@ -472,7 +473,8 @@ public sealed class ListsViewModelTests
             DetachedStores.Create(),
             DetachedAppearance.Create(),
             DetachedFeed.Create(),
-            DetachedAccountStats.Create());
+            DetachedAccountStats.Create(),
+            new LibrarySettingsViewModel());
 
         shell.SelectListCommand.Execute(live);
         Assert.False(shell.IsFeedVisible);
@@ -711,6 +713,77 @@ public sealed class ListsViewModelTests
         library.SelectedTiles = [.. library.VisibleTiles];
 
         Assert.Equal("Add 2 to list", library.AddToListLabel);
+    }
+
+    // ── The details modal's add-to-list (TASK-92) ───────────────────────────
+    //
+    // The modal is a third surface for list membership, distinct from the
+    // action bar's button: it shows one game, ticks per list, and resolves
+    // membership through same_game identity links in SQL so the answer is
+    // for the game, not the store entry.
+
+    [Fact]
+    public async Task The_modal_ticks_the_lists_that_already_hold_this_game()
+    {
+        using var fixture = new ListFixture();
+        var hades = await fixture.SeedAsync("Hades");
+        await fixture.SeedAsync("Celeste");
+
+        var library = await fixture.LoadAsync();
+        await library.Lists.CreateListAsync("Finish these first", [hades]);
+        await library.Lists.CreateListAsync("Couch co-op night", []);
+
+        var tile = library.VisibleTiles.Single(t => t.Title == "Hades");
+        await library.OpenDetailsCommand.ExecuteAsync(tile);
+
+        var rows = library.Details!.Lists!.Rows;
+        Assert.True(library.Details.ShowLists);
+        Assert.True(rows.Single(r => r.Name == "Finish these first").IsMember);
+        Assert.False(rows.Single(r => r.Name == "Couch co-op night").IsMember);
+    }
+
+    /// <summary>
+    /// A live list holds a rule and finds its own members, so there is
+    /// nothing to tick. The modal offers hand-built lists only.
+    /// </summary>
+    [Fact]
+    public async Task A_live_list_is_not_offered_in_the_modal()
+    {
+        using var fixture = new ListFixture();
+        await fixture.SeedAsync("Hades");
+
+        var library = await fixture.LoadAsync();
+        await library.Lists.CreateLiveListAsync("Unplayed", LibraryFilter.Empty);
+
+        await library.OpenDetailsCommand.ExecuteAsync(library.VisibleTiles.Single());
+
+        Assert.True(library.Details!.Lists!.IsEmpty);
+        Assert.NotEmpty(library.Details.Lists.EmptyText);
+    }
+
+    [Fact]
+    public async Task Ticking_a_row_puts_the_game_in_the_list_and_unticking_takes_it_out()
+    {
+        using var fixture = new ListFixture();
+        var hades = await fixture.SeedAsync("Hades");
+
+        var library = await fixture.LoadAsync();
+        var list = await library.Lists.CreateListAsync("Finish these first", []);
+
+        await library.OpenDetailsCommand.ExecuteAsync(library.VisibleTiles.Single());
+        var row = library.Details!.Lists!.Rows.Single();
+
+        row.IsMember = true;
+        await row.Pending;
+
+        Assert.Contains(hades, (await fixture.GameLists.GetItemsAsync(list!.Id)).Select(i => i.ReleaseId));
+        Assert.Equal(1, list.Count);
+
+        row.IsMember = false;
+        await row.Pending;
+
+        Assert.Empty(await fixture.GameLists.GetItemsAsync(list.Id));
+        Assert.Equal(0, list.Count);
     }
 
     private sealed class ListFixture : IDisposable

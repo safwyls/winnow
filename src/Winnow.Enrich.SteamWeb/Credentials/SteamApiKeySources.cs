@@ -1,21 +1,25 @@
-using Winnow.Core.Repositories;
 using Microsoft.Extensions.Configuration;
 
 namespace Winnow.Enrich.SteamWeb.Credentials;
 
 /// <summary>
-/// The <c>settings</c> table — the product path. §4.2: keys are user-supplied
-/// and stored locally, so the app's own settings screen writes here and this is
-/// the first source consulted.
+/// The stored key — the product path. §4.2: keys are user-supplied and stored
+/// locally, so the app's own settings screen writes there and this is the first
+/// source consulted.
 ///
-/// <para>Reads through <see cref="ISettingsRepository"/>, the shared §6 key/value
-/// contract, rather than a private store of its own — the key is a user
-/// preference like any other, and one more per-module settings abstraction would
-/// buy nothing.</para>
+/// <para>Reads through <see cref="ISteamApiKeyStore"/>, the one owner of the key
+/// at rest, so that what this source resolves is what the screen saved: a key
+/// that was protected on write is decrypted on read, and the pre-protection
+/// plaintext row is migrated and emptied on the first read here. The key stopped
+/// being a plain preference when it stopped being storable in the clear.</para>
 /// </summary>
 public sealed class SettingsTableApiKeySource : ISteamApiKeySource
 {
-    /// <summary>Settings key holding the user's Steam Web API key. Namespaced per the §6 convention.</summary>
+    /// <summary>
+    /// Settings key that held the key in the clear before protected storage
+    /// existed. Kept as a constant because <see cref="SettingsSteamApiKeyStore"/>
+    /// migrates it and empties it; nothing writes a value here any more.
+    /// </summary>
     public const string ApiKeySetting = "steam.api_key";
 
     /// <summary>
@@ -26,14 +30,14 @@ public sealed class SettingsTableApiKeySource : ISteamApiKeySource
     /// </summary>
     public const string SourceName = "settings";
 
-    private readonly ISettingsRepository _settings;
+    private readonly ISteamApiKeyStore _store;
 
-    public SettingsTableApiKeySource(ISettingsRepository settings) => _settings = settings;
+    public SettingsTableApiKeySource(ISteamApiKeyStore store) => _store = store;
 
     public string Name => SourceName;
 
     public async ValueTask<SteamApiKey?> TryGetAsync(CancellationToken ct = default)
-        => SteamApiKey.TryCreate(await _settings.GetAsync(ApiKeySetting, ct), Name);
+        => SteamApiKey.TryCreate(await _store.GetAsync(ct), Name);
 }
 
 /// <summary>

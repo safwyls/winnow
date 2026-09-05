@@ -201,6 +201,10 @@ stored locally.
   catalog-id lookup returns nothing.
 - **`game_versions` exposes release editions** (Skyrim, Special Edition, Anniversary). This is
   the abstraction the Release layer needs. Do not reinvent it.
+- A title search is the `search "…"` clause on the same `games` endpoint. It rides its own
+  query body and its own cache namespace rather than widening the shared metadata query, so a
+  400 costs the search alone. The term is user-typed free text, sanitized into the quoted
+  clause rather than rejected.
 - The IGDB response cache has no `payload_version`. Adding a field to the cached shape yields
   empty results for 30 days rather than refetching. Bump a version field before changing the
   shape.
@@ -252,8 +256,13 @@ Eight conditions bind, and all eight are binding:
    `sessionid`, no persisted browser profile, no page content. **A host that cannot encrypt
    refuses to store rather than degrading to plaintext.** Refusing costs the user a sign-in
    they repeat after a restart; a plaintext fallback fails silently and permanently. The same
-   standard is intended for every secret Winnow keeps; the Steam Web API key and the IGDB
-   client secret do not meet it yet and are tracked as debt in `ROADMAP.md` §6.
+   standard binds every secret Winnow keeps: the Steam Web API key, the IGDB client secret
+   and the cached Twitch access token are each stored DPAPI-encrypted under their own
+   versioned entropy, are migrated out of any plaintext row a pre-protection install left,
+   and refuse on a host that cannot encrypt rather than saving a readable row. The one
+   distinction: refusing never destroys what a user typed (the legacy rows are left as they
+   were), while machine-minted rows — the token — are emptied, because a mint is free and a
+   bearer credential in the clear is not.
 3. **A closed list of three unattended request kinds.** With nobody watching, Winnow may issue
    only the `finalizelogin` call, the `transfer_info` POSTs that call returns, and one token
    mint. No authenticated HTML page is ever fetched without the user present.
@@ -282,6 +291,41 @@ where a bad API key returns a silent 200 with an empty envelope.
 data underdetermines it: bundles appear as a single line item for N games, and third-party
 keys from Humble, Fanatical and the rest never appear in Steam's spending data at all, which
 is exactly the population with large libraries and unplayed piles.
+
+#### Rules governing the account-stats figures
+
+Every figure on the account-stats screen is computed from the captured pages, never from the
+account's lifetime. The rules that follow govern what may be shown and what must be withheld.
+
+- When a capture holds more than one currency, or transactions with no currency symbol,
+  money totals are withheld and only counts are shown. Amounts are stored exactly as the page
+  displayed them; nothing is converted or added across currencies.
+- Wallet top-ups are not spend. Money reaches Steam either as a direct payment or as a
+  top-up that later pays for products, and counting both would count the same money twice.
+  Wallet credit is reported as its own fact and never as part of spend. What a redeemed code
+  cost is not on the page.
+- A bundle's total price is a real fact; the per-game split is not. Dividing by item count
+  and weighting by market price are both defensible and both wrong, so no per-game price is
+  computed or shown.
+- Only rows that rendered a discount carry a list price, and most purchases carry none. The
+  discount figure is the difference on those rows and is never a total-savings figure.
+- The biggest transaction is the largest single transaction by price, not the most ever paid
+  for one game; a bundle is one transaction covering several items.
+- A refund and the purchase it reverses are two different rows, and a capture may hold either
+  or both. The two figures are reported side by side and are never added together; reversal
+  rows are never subtracted twice.
+- Licence counts count packages, not games — a package can be a bundle, a DLC or a
+  cosmetic — so a licence count is not a library size. The breakdown uses the licences page's
+  own acquisition vocabulary, and unrecognised methods are counted, never guessed.
+- The year comes from the date the page displayed, at day resolution. Rows the parser could
+  not date are listed separately and never guessed into a year.
+- A gift's recipient is recorded as having existed, never identified: no name, persona or
+  profile link is read from the page.
+- Steam's licences paginator advertises a total larger than the rows it renders; the
+  difference is Steam's own counting, not missed licences.
+- Either account page can be imported on its own; each carries different facts and both
+  together give a fuller result. The sign-in route walks every page of both lists
+  automatically; a hand-saved file holds only the page that was on screen.
 
 ### 4.8 Epic and GOG local files
 
@@ -519,10 +563,13 @@ external_ids(release_id FK, provider, provider_id, PRIMARY KEY(provider, provide
 -- Ownership and play
 ownerships(id, release_id FK, store, account_ref, acquired_at,
            license_type, price_paid_cents, price_source, install_path, installed BOOL)
+  -- store ∈ {steam, gog, epic, manual}
 play_records(ownership_id FK, playtime_minutes, last_played_at, source, observed_at)
 playtime_snapshots(id, ownership_id FK, playtime_minutes, observed_at)  -- longitudinal
 sessions(id, ownership_id FK, started_at, ended_at, duration_s, detection_method)
 session_notes(session_id FK, note TEXT, rating INT)
+manual_entries(ownership_id PK FK ownerships ON DELETE CASCADE,
+              executable_path, platform_label, added_at, updated_at)
 
 -- Achievements: per-release, never merged across platforms
 achievements(release_id FK, provider_key, name, description, hidden, global_pct)
@@ -535,6 +582,12 @@ update_events(id, release_id FK, kind, build_id, occurred_at, title, url, raw_js
 -- User organisation
 lists(id, name, description, is_smart, filter_json)
 list_items(list_id FK, release_id FK, position)
+hidden_games(id, work_id FK works ON DELETE CASCADE, hidden_at, unhidden_at)
+  -- partial unique: ux_hidden_games_live ON hidden_games(work_id) WHERE unhidden_at IS NULL
+
+-- Maturity evidence
+work_maturity(work_id FK works ON DELETE CASCADE, source, ratings, descriptors,
+              observed_at, PRIMARY KEY(work_id, source))
 
 -- Resolution
 merge_candidates(id, left_release_id, right_release_id, score, signals_json, status)
@@ -561,9 +614,8 @@ settings(key, value)
 **Never played means never opened.** Zero minutes *and* no last-played date, nothing else. A
 game with real playtime under the refund line was opened and played.
 
-`bounced_floor` defaults to **120 minutes**, Steam's refund window. At or above it the user
-committed past the point of no return and gave up anyway, which is the fact "Bounced off"
-names.
+`bounced_floor` defaults to **120 minutes**, Steam's refund window. At or above it the money
+is spent for good, and the label `Started` names the band between that line and `retired_floor`.
 
 **Precedence**, in the order the query tests: never-played, retired, stale-but-patched,
 bounced, active. Retired outranks stale so a 200-hour game is never resurfaced. Stale outranks
@@ -604,6 +656,82 @@ The filter is Steam-scoped: Epic and GOG entries pass it, as do any Steam appids
 attributed. `playtime_snapshots` has no per-account form, so the recommender's episode signal
 and the details modal's snapshot history both read the ownership-level series and can diverge
 from a filtered tile for a game two accounts play.
+
+### 6.4 Hidden games, maturity evidence, hand-added entries and user-pinned IGDB mappings
+
+Four tables added by migrations 0023-0026. Each is designed so that an ingest pass cannot
+write, delete or overwrite it.
+
+**Hidden games.** `hidden_games` records a persisted, reversible "never show me this game"
+at the work grain, because the grid draws one tile per resolved work. Append-and-stamp:
+unhiding stamps `unhidden_at` rather than deleting, so the row is the history and re-hiding
+is a fresh insert. The exclusion is applied in exactly one place, the derived-bucket query,
+which tests three work ids per row: the row's own work, its live `same_game` parent and its
+`variant_of` parent. Hiding a game takes its whole link group with it, and stops its demo
+appearing when the parent disappears. Because the filter is in the bucket query, the grid,
+the list view, the feed, the rail counts, the filter chips and the recommender all agree
+without any of them learning that hiding exists. The table survives re-ingest structurally:
+no ingest path writes `hidden_games`, the resolver joins only on an exact
+`(provider, provider_id)` external id, and no runtime path deletes a `works` row.
+
+**Maturity evidence.** `work_maturity` stores rating and descriptor tokens verbatim, one
+row per (work, source), so IGDB and the Steam store each keep their own reading. `ratings`
+and `descriptors` are comma-joined tokens, the same treatment `works.epic_categories` gets.
+There is deliberately no stored verdict: whether a work is explicit is decided at read time
+by `MaturityRules.IsExplicit`, exactly as `NonGameEntries` decides non-game-ness over rows
+the bucket query returns. Explicit when any token reaches `AdultsOnly` on the `MaturityTier` scale
+(`Winnow.Core.Queries`): the rating codes `esrb:ao` and `acb:x18`, and the descriptor
+`adult_only_sexual_content`. The broad 18+ board ratings — `pegi:18`, `usk:18`, `cero:z`,
+`acb:r18`, `classind:18`, `grac:18` — sit at `Restricted18`, one tier below, and are not
+explicit: IGDB returns every board for a work, so a game rated PEGI 18 for violence was
+hidden under the old rule and is not now. The full scale is `Unrated`, `Everyone`,
+`Preteen`, `Teen`, `Mature`, `Restricted18`, `AdultsOnly`, ascending, anchored on the
+minimum age each board states. `Unrated` is inside every cap and is never explicit.
+`MaturityRules.ExplicitTier` is `AdultsOnly`, pinned by
+`ExplicitContentTests.The_explicit_set_is_exactly_the_adults_only_signals`. The tier scale
+is the input TASK-103's rating-cap filter consumes, which is why the tiers are kept rather
+than reduced to a boolean. Retuning the vocabulary was a code change, not a migration —
+tokens are stored verbatim and the verdict is taken at read time, exactly the payoff
+0024's no-stored-verdict design was built for. Migration 0024's header comment still
+enumerates the old eight-code list; migrations are append-only, so `MaturityTiers` and
+`MaturityRules` in `Winnow.Core.Queries` are the authority on the current vocabulary.
+**A work with no maturity row is never explicit.**
+Absence of data is not a rating; hiding a game because nobody has looked it up yet is the
+failure to avoid. **The same rule governs `NonGameEntries`: a row whose type no store has
+stated is not a non-game entry and stays visible either way.** There is no CHECK on
+`source` on purpose: migration 0021 had to rebuild
+`identity_links` to widen a CHECK, and a closed list in DDL pays that cost on every new
+source. The preference is `BucketThresholds.ShowExplicitContent`, settings key
+`library.show_explicit_content`, default false. The filter drops the whole resolved game,
+not one entry, and takes the game's variants with it.
+
+**Hand-added entries.** A hand-added game is an ordinary work + release + ownership whose
+`ownerships.store` is `manual` and whose `manual_entries` row exists. That row's presence is
+the origin marker — one mechanism, not two, and a table no ingest path writes. The guarantee
+that an ingest pass never deletes or overwrites a hand-added entry rests on facts that were
+already true: `OwnershipRepository.UpsertAsync` conflicts on `(release_id, store)` and no
+reader emits the store `manual`; the work is created with `name_is_provisional = 0`, and the
+resolver's name promotion fires only while that flag is set while the enrichment patch is
+fill-only; and nothing in the runtime deletes a `works`, `releases` or `ownerships` row.
+Session monitoring needs no change: `GameExecutableIndexBuilder` reads
+`ownerships.installed` and `install_path`, so naming an executable stores its directory and
+sets `installed = 1`. Deleting a hand-added entry removes the ownership, then the release
+only when no other ownership hangs off it, then the work only when it has no releases left.
+
+**User-pinned IGDB mappings.** `work_igdb_pins` (migration 0026) records a user-chosen
+work-to-IGDB mapping in the same append-and-stamp shape: pinning inserts a row, clearing
+stamps `cleared_at`, and re-pinning stamps the old row before inserting a fresh one. A
+partial unique index allows at most one live pin per work. The pin removes the work from the
+enrichment target query rather than merely refusing the write, so the automatic pass never
+even asks IGDB about it. Clearing the pin returns the work to automatic resolution; the
+metadata the pin wrote stays in place, and the next pass fills what is empty.
+
+**List membership resolution.** `lists` and `list_items` already existed. Membership stays
+stored per release — adding a game to a list is an explicit act on the entry the user
+picked — and is now resolved per read: a list contains a game when any release of any work
+in that game's live `same_game` group is a member. `kind` is `same_game` only, so an
+expansion's membership is its own. Membership survives a link because the link model never
+deletes or repoints a `list_items` row, and the read follows the resolved game.
 
 ## 7. Export
 

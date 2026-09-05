@@ -525,7 +525,7 @@ public sealed class UpdateFlagTests
 
         return new GameDetailsViewModel(
             tile,
-            "Patched since",
+            "Patched",
             rows,
             Now,
             updateEvents: events,

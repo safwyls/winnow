@@ -10,7 +10,7 @@ namespace Winnow.App.Services;
 /// Debug-only sample library, invoked with <c>dotnet run -- --seed-sample</c>.
 /// Inserts ~40 varied works/releases/ownerships/play_records spanning every
 /// derived bucket and the full dormancy ramp — including titles whose update
-/// events landed after last play, so "Patched since" counts — making the M0
+/// events landed after last play, so "Patched" counts — making the M0
 /// view visually verifiable before real ingest is wired. Writes through the
 /// repository layer only.
 /// </summary>
@@ -361,7 +361,7 @@ public static class SampleDataSeeder
         new("Crusader Kings III", 2020, "steam", 230 * 60, 2),
         new("Path of Exile", 2013, "steam", 410 * 60, 27),
 
-        // ── Patched since (6) — meaningful playtime, then an update landed
+        // ── Patched (6) — meaningful playtime, then an update landed
         //    well past the 6-month stale window after last play.
         new("Vintage Story", 2016, "gog", 41 * 60, 11, PatchedMonthsAfterPlay: 8),
         new("Oxygen Not Included", 2019, "steam", 52 * 60, 14, PatchedMonthsAfterPlay: 12),
@@ -370,8 +370,8 @@ public static class SampleDataSeeder
         new("Project Zomboid", 2013, "steam", 88 * 60, 25, PatchedMonthsAfterPlay: 18),
         new("Satisfactory", 2020, "epic", 64 * 60, 29, PatchedMonthsAfterPlay: 24),
 
-        // ── Bounced off (8) — past the refund line, short of Played out, and
-        //    nothing stale: committed and gave up anyway.
+        // ── Started (8) — past the refund line, short of Played out, and
+        //    nothing stale.
         new("Slay the Spire", 2019, "steam", 89 * 60, 27),
         new("Hollow Knight", 2017, "steam", 62 * 60, 40),
         new("Subnautica", 2018, "steam", 44 * 60, 30),

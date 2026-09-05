@@ -29,3 +29,7 @@
 0020_expansion_refusals.sql              d02c2dd46964d995772743f337911302efe90626876ecf06a1012cdb2964a39b
 0021_identity_link_variants.sql          0950da72c9fe803abb773e59dd271f79cb126d580ac9d9b0a945f25697eb6056
 0022_storefront_relations.sql            feb903f641c42dbdb7ec206d709173c8e7cec0878be91da8cb959eb712a75a4f
+0023_hidden_games.sql                    b477cecfe6a6a6e8d32fa92c6155a82fe094d9669ff991b66832b1f947d3920f
+0024_work_maturity.sql                   cf9a8803932c087bbba85e4b7d0061e36dd64722abb800f3183dd3bb09e4cb27
+0025_manual_entries.sql                  7594e8a8d9d58b626e6cf959ff35ed9ea860e0d3c921f7051178d2e378cb953f
+0026_igdb_pins.sql                       68beb98e71e69a325459b95a18ca65a02119ee5caf8d5d8414d954404ed9cddf

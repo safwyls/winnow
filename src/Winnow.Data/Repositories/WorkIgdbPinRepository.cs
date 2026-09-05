@@ -1,0 +1,141 @@
+using Dapper;
+using Winnow.Core.Domain;
+using Winnow.Core.Repositories;
+
+namespace Winnow.Data.Repositories;
+
+/// <summary>
+/// Dapper over <c>work_igdb_pins</c> (migration 0026). Append-and-stamp:
+/// pinning inserts, clearing stamps <c>cleared_at</c>, and the history is the
+/// table. The pin write overwrites the work's IGDB-sourced metadata
+/// unconditionally, unlike the automatic enrichment write which only fills.
+/// </summary>
+public sealed class WorkIgdbPinRepository : IWorkIgdbPinRepository
+{
+    private readonly ISqliteConnectionFactory _factory;
+    private readonly TimeProvider _clock;
+
+    public WorkIgdbPinRepository(ISqliteConnectionFactory factory, TimeProvider? clock = null)
+    {
+        _factory = factory;
+        _clock = clock ?? TimeProvider.System;
+    }
+
+    public async Task<WorkIgdbPinOutcome> PinAsync(
+        WorkIgdbPinAssignment assignment, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(assignment);
+
+        using var lease = _factory.Lease();
+
+        // The work must exist: a pin is meaningless without the row it pins.
+        var exists = await lease.Connection.ExecuteScalarAsync<long>(new CommandDefinition(
+            "SELECT COUNT(*) FROM works WHERE id = @WorkId;",
+            new { assignment.WorkId }, transaction: lease.Transaction, cancellationToken: ct));
+
+        if (exists == 0)
+        {
+            return WorkIgdbPinOutcome.WorkNotFound;
+        }
+
+        // works.igdb_id is UNIQUE. If another work already holds this id the
+        // pin would violate that constraint, so it is refused rather than
+        // allowed to collide.
+        var claimed = await lease.Connection.ExecuteScalarAsync<long>(new CommandDefinition(
+            "SELECT COUNT(*) FROM works WHERE igdb_id = @IgdbId AND id <> @WorkId;",
+            new { assignment.WorkId, assignment.IgdbId },
+            transaction: lease.Transaction, cancellationToken: ct));
+
+        if (claimed > 0)
+        {
+            return WorkIgdbPinOutcome.IgdbIdClaimedByAnotherWork;
+        }
+
+        var now = _clock.GetUtcNow().UtcDateTime;
+
+        // Stamp-then-insert: any previous live pin is cleared before the new
+        // one is written, so ux_work_igdb_pins_live is never contested.
+        await lease.Connection.ExecuteAsync(new CommandDefinition("""
+            UPDATE work_igdb_pins
+            SET cleared_at = @now
+            WHERE work_id = @WorkId AND cleared_at IS NULL;
+            """,
+            new { assignment.WorkId, now },
+            transaction: lease.Transaction, cancellationToken: ct));
+
+        await lease.Connection.ExecuteAsync(new CommandDefinition("""
+            INSERT INTO work_igdb_pins (work_id, igdb_id, pinned_at, cleared_at)
+            VALUES (@WorkId, @IgdbId, @now, NULL);
+            """,
+            new { assignment.WorkId, assignment.IgdbId, now },
+            transaction: lease.Transaction, cancellationToken: ct));
+
+        // COALESCE/NULLIF on the name: works.name is NOT NULL, so a blank
+        // name keeps the existing title. A real name also clears
+        // name_is_provisional, which stops PromoteProvisionalNameAsync
+        // renaming the work later. Every other column is written
+        // unconditionally — including back to NULL — because the stored
+        // values belonged to the wrong IGDB game.
+        await lease.Connection.ExecuteAsync(new CommandDefinition("""
+            UPDATE works
+            SET igdb_id = @IgdbId,
+
+                name = COALESCE(NULLIF(TRIM(@Name), ''), name),
+                name_is_provisional = CASE
+                        WHEN NULLIF(TRIM(@Name), '') IS NOT NULL THEN 0
+                        ELSE name_is_provisional
+                    END,
+
+                first_release_year     = @FirstReleaseYear,
+                summary                = NULLIF(TRIM(@Summary),  ''),
+                cover_url              = NULLIF(TRIM(@CoverUrl), ''),
+                publisher              = NULLIF(TRIM(@Publisher), ''),
+                igdb_game_type         = NULLIF(TRIM(@IgdbGameType), ''),
+                igdb_parent_id         = @IgdbParentId,
+                igdb_version_parent_id = @IgdbVersionParentId
+            WHERE id = @WorkId;
+            """,
+            new
+            {
+                assignment.WorkId,
+                assignment.IgdbId,
+                assignment.Name,
+                assignment.FirstReleaseYear,
+                assignment.Summary,
+                assignment.CoverUrl,
+                assignment.Publisher,
+                assignment.IgdbGameType,
+                assignment.IgdbParentId,
+                assignment.IgdbVersionParentId,
+            },
+            transaction: lease.Transaction, cancellationToken: ct));
+
+        return WorkIgdbPinOutcome.Pinned;
+    }
+
+    public async Task<bool> ClearAsync(long workId, CancellationToken ct = default)
+    {
+        using var lease = _factory.Lease();
+        var rows = await lease.Connection.ExecuteAsync(new CommandDefinition("""
+            UPDATE work_igdb_pins
+            SET cleared_at = @now
+            WHERE work_id = @workId AND cleared_at IS NULL;
+            """,
+            new { workId, now = _clock.GetUtcNow().UtcDateTime },
+            transaction: lease.Transaction, cancellationToken: ct));
+
+        return rows > 0;
+    }
+
+    public async Task<WorkIgdbPin?> GetAsync(long workId, CancellationToken ct = default)
+    {
+        using var lease = _factory.Lease();
+        return await lease.Connection.QuerySingleOrDefaultAsync<WorkIgdbPin>(new CommandDefinition("""
+            SELECT work_id   AS WorkId,
+                   igdb_id   AS IgdbId,
+                   pinned_at AS PinnedAt
+            FROM work_igdb_pins
+            WHERE work_id = @workId AND cleared_at IS NULL;
+            """, new { workId }, transaction: lease.Transaction, cancellationToken: ct));
+    }
+}

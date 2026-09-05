@@ -40,6 +40,21 @@ public static class ServiceCollectionExtensions
         services.TryAddSingleton<ISettingsStore, SqliteSettingsStore>();
         services.TryAddSingleton<IMetadataCache, SqliteMetadataCache>();
 
+        // DPAPI on Windows for the stored client secret and the cached token,
+        // and an implementation that REFUSES rather than degrades anywhere
+        // else. Same binding rule the Epic and Steam session protectors answer
+        // to (§4.7's second amendment binds every secret Winnow keeps): a host
+        // that cannot encrypt does not store, and the credential stays in memory
+        // for the run.
+        if (OperatingSystem.IsWindows())
+        {
+            services.TryAddSingleton<IIgdbSecretProtector, DpapiIgdbSecretProtector>();
+        }
+        else
+        {
+            services.TryAddSingleton<IIgdbSecretProtector, UnavailableIgdbSecretProtector>();
+        }
+
         // Order is the resolution order: settings table first (the product
         // path — §4.2 keys are user-supplied and stored locally), then
         // IConfiguration (env vars Igdb__ClientId / Igdb__ClientSecret and an
@@ -48,6 +63,16 @@ public static class ServiceCollectionExtensions
         services.TryAddEnumerable(
             ServiceDescriptor.Singleton<IIgdbCredentialSource, DefaultConfigurationCredentialSource>());
         services.TryAddSingleton<IIgdbCredentialProvider, ChainedIgdbCredentialProvider>();
+
+        // The maturity pass fetches age ratings from IGDB and writes
+        // work_maturity rows. Independent of the Steam maturity pass.
+        services.TryAddSingleton<IIgdbMaturityTargetSource, SqliteIgdbMaturityTargetSource>();
+        services.TryAddSingleton<IgdbMaturitySync>();
+
+        // Manual assignment: search, pin and clear. Needs an
+        // IWorkIgdbPinRepository from the host, exactly as the maturity
+        // pass needs an IWorkMaturityRepository.
+        services.TryAddSingleton<IgdbManualAssignment>();
 
         services.TryAddSingleton<IIgdbTokenProvider, TwitchTokenProvider>();
         services.TryAddSingleton<IgdbRateLimiter>();

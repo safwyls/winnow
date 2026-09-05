@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Net.Http.Json;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using Winnow.Enrich.Igdb.Credentials;
 using Winnow.Enrich.Igdb.Storage;
@@ -20,24 +21,43 @@ namespace Winnow.Enrich.Igdb.Auth;
 /// <para>The persisted token is bound to the client id that minted it; changing
 /// credentials therefore invalidates it automatically rather than sending a
 /// token belonging to a different application.</para>
+///
+/// <para>What reaches disk is one DPAPI-protected blob — the token is a bearer
+/// credential, so it gets the same protection the client secret does, and the
+/// same refusal on a host that cannot encrypt: the token is minted and used in
+/// memory and simply not remembered across restarts. The three plaintext rows
+/// an older build wrote are migrated into the blob and left empty on first
+/// load; the token is machine-minted and free to re-mint, so those rows are
+/// emptied even on a host that cannot encrypt, unlike the user-typed client
+/// secret.</para>
 /// </summary>
 public sealed class TwitchTokenProvider : IIgdbTokenProvider
 {
     /// <summary>Named <see cref="HttpClient"/> used for token minting.</summary>
     public const string HttpClientName = "igdb-token";
 
-    /// <summary>Settings key: client id the stored token belongs to.</summary>
+    /// <summary>Settings key holding the protected token blob.</summary>
+    public const string TokenBlobKey = "igdb.token.v1";
+
+    /// <summary>Settings key that held the minting client id in the clear, before the blob.</summary>
     public const string TokenClientIdKey = "igdb.token.client_id";
 
-    /// <summary>Settings key: the access token itself.</summary>
+    /// <summary>Settings key that held the access token itself in the clear.</summary>
     public const string TokenValueKey = "igdb.token.access_token";
 
-    /// <summary>Settings key: token expiry, ISO-8601 round-trip, UTC.</summary>
+    /// <summary>Settings key that held the expiry in the clear.</summary>
     public const string TokenExpiresAtKey = "igdb.token.expires_at";
+
+    private static readonly JsonSerializerOptions BlobSerializerOptions = new()
+    {
+        // Nulls are written, not skipped, so the persisted shape is closed.
+        DefaultIgnoreCondition = JsonIgnoreCondition.Never,
+    };
 
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IIgdbCredentialProvider _credentials;
     private readonly ISettingsStore _settings;
+    private readonly IIgdbSecretProtector _protector;
     private readonly IgdbOptions _options;
     private readonly TimeProvider _clock;
     private readonly ILogger<TwitchTokenProvider> _log;
@@ -45,11 +65,13 @@ public sealed class TwitchTokenProvider : IIgdbTokenProvider
 
     private IgdbAccessToken? _cached;
     private bool _loadedFromStore;
+    private bool _warnedAboutProtection;
 
     public TwitchTokenProvider(
         IHttpClientFactory httpClientFactory,
         IIgdbCredentialProvider credentials,
         ISettingsStore settings,
+        IIgdbSecretProtector protector,
         IgdbOptions options,
         TimeProvider clock,
         ILogger<TwitchTokenProvider> log)
@@ -57,6 +79,7 @@ public sealed class TwitchTokenProvider : IIgdbTokenProvider
         _httpClientFactory = httpClientFactory;
         _credentials = credentials;
         _settings = settings;
+        _protector = protector;
         _options = options;
         _clock = clock;
         _log = log;
@@ -197,7 +220,50 @@ public sealed class TwitchTokenProvider : IIgdbTokenProvider
         return token;
     }
 
+    /// <summary>
+    /// The persisted token, or null. One protected blob holds all three facts
+    /// (client id, value, expiry) so the unit of storage is the unit of meaning —
+    /// the alternative would leave the client id and the expiry sitting in the
+    /// clear next to an encrypted value, or allow a partial write whose halves
+    /// disagreed.
+    ///
+    /// <para>The three plaintext rows an older build wrote are migrated here:
+    /// read, re-stored protected, left empty. They are emptied even when the
+    /// protector refuses — the token is machine-minted and costs one mint to
+    /// replace, so keeping it in the clear is never worth what it protects.</para>
+    /// </summary>
     private async Task<IgdbAccessToken?> LoadAsync(CancellationToken ct)
+    {
+        var stored = await _settings.GetAsync(TokenBlobKey, ct);
+        if (!string.IsNullOrWhiteSpace(stored))
+        {
+            var json = _protector.Unprotect(stored);
+            if (json is null)
+            {
+                // The protector has already said why, at the right level.
+                return null;
+            }
+
+            try
+            {
+                var blob = JsonSerializer.Deserialize<StoredToken>(json, BlobSerializerOptions);
+                return blob?.ToToken();
+            }
+            catch (JsonException)
+            {
+                // Decrypted successfully but did not parse: a shape change or a
+                // truncated write. Same remedy as an unreadable blob: no token.
+                // The exception object is never logged; its message quotes the
+                // JSON, and the JSON is the token.
+                _log.LogWarning("The persisted IGDB token could not be parsed; a new one will be minted.");
+                return null;
+            }
+        }
+
+        return await MigrateLegacyRowsAsync(ct);
+    }
+
+    private async Task<IgdbAccessToken?> MigrateLegacyRowsAsync(CancellationToken ct)
     {
         var clientId = await _settings.GetAsync(TokenClientIdKey, ct);
         var value = await _settings.GetAsync(TokenValueKey, ct);
@@ -211,15 +277,80 @@ public sealed class TwitchTokenProvider : IIgdbTokenProvider
             return null;
         }
 
-        return new IgdbAccessToken(clientId, value, expiresAt);
+        var token = new IgdbAccessToken(clientId, value, expiresAt);
+
+        var protectedJson = _protector.Protect(
+            JsonSerializer.Serialize(StoredToken.From(token), BlobSerializerOptions));
+        if (protectedJson is not null)
+        {
+            await _settings.SetAsync(TokenBlobKey, protectedJson, ct);
+            _log.LogInformation(
+                "The persisted IGDB token was migrated to protected storage; the plaintext rows were emptied.");
+        }
+
+        // Emptied either way, including on a host that cannot encrypt: the
+        // token was minted, not typed, and refusing to use it makes the row
+        // worthless to everyone except whatever else reads the disk.
+        await _settings.SetAsync(TokenClientIdKey, string.Empty, ct);
+        await _settings.SetAsync(TokenValueKey, string.Empty, ct);
+        await _settings.SetAsync(TokenExpiresAtKey, string.Empty, ct);
+
+        return protectedJson is null ? null : token;
     }
 
     private async Task SaveAsync(IgdbAccessToken token, CancellationToken ct)
     {
-        await _settings.SetAsync(TokenClientIdKey, token.ClientId, ct);
-        await _settings.SetAsync(TokenValueKey, token.AccessToken, ct);
-        await _settings.SetAsync(
-            TokenExpiresAtKey, token.ExpiresAt.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture), ct);
+        var json = JsonSerializer.Serialize(StoredToken.From(token), BlobSerializerOptions);
+        var protectedJson = _protector.Protect(json);
+        if (protectedJson is null)
+        {
+            if (!_warnedAboutProtection)
+            {
+                _warnedAboutProtection = true;
+                _log.LogWarning(
+                    "The IGDB access token cannot be encrypted at rest on this host ({Protector}), so it "
+                    + "will not be stored. Tokens are minted on demand, so enrichment still works and simply "
+                    + "mints again after a restart. Storing it unencrypted is deliberately not offered.",
+                    _protector.Name);
+            }
+
+            return;
+        }
+
+        await _settings.SetAsync(TokenBlobKey, protectedJson, ct);
+    }
+
+    /// <summary>The persisted shape, and the whole of it.</summary>
+    private sealed class StoredToken
+    {
+        [JsonPropertyName("client_id")]
+        public string? ClientId { get; set; }
+
+        [JsonPropertyName("access_token")]
+        public string? AccessToken { get; set; }
+
+        [JsonPropertyName("expires_at")]
+        public string? ExpiresAt { get; set; }
+
+        public static StoredToken From(IgdbAccessToken token) => new()
+        {
+            ClientId = token.ClientId,
+            AccessToken = token.AccessToken,
+            ExpiresAt = token.ExpiresAt.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture),
+        };
+
+        public IgdbAccessToken? ToToken()
+        {
+            if (string.IsNullOrWhiteSpace(ClientId)
+                || string.IsNullOrWhiteSpace(AccessToken)
+                || !DateTimeOffset.TryParse(
+                    ExpiresAt, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var expiresAt))
+            {
+                return null;
+            }
+
+            return new IgdbAccessToken(ClientId, AccessToken, expiresAt);
+        }
     }
 
     private sealed class TokenResponse

@@ -287,11 +287,56 @@ public class ShelfFactVarietyTests : IDisposable
         }
     }
 
-    private async Task<IReadOnlyList<Recommendation>> PatchedShelfAsync(
-        RecommendationTuning? tuning = null)
+    /// <summary>
+    /// The cap is derived from how many cards a SURFACE holds, so a caller that
+    /// asks one pass for twelve in order to show six would be handed the cap
+    /// for twelve. Six of the twelve would then be allowed to name Sandbox on a
+    /// six-card shelf, which is the shelf this file was written about.
+    /// </summary>
+    [Fact]
+    public async Task Holding_a_reserve_does_not_widen_the_cap_on_the_cards_shown()
     {
-        var feed = await _harness.Engine.GetShelvesAsync(
-            RecommendHarness.Request() with { Tuning = tuning ?? Tuning });
+        await SeedSandboxShelfAsync();
+
+        var shelf = await PatchedShelfAsync(
+            request: r => r with { MaxPerShelf = 12, VisiblePerShelf = 6 });
+
+        var shown = shelf.Take(6).ToList();
+        var naming = shown.Count(i => i.Reason.Contains("Sandbox", StringComparison.Ordinal));
+
+        Assert.True(
+            naming <= ShelfReasonLedger.CapFor(shown.Count, Tuning),
+            $"{naming} of {shown.Count} shown cards name Sandbox:\n"
+                + string.Join('\n', shown.Select(i => $"{i.Title}: {i.Reason}")));
+    }
+
+    /// <summary>
+    /// The control for the test above: the same depth without the surface size
+    /// declared does widen the cap, so the assertion there cannot quietly stop
+    /// proving anything.
+    /// </summary>
+    [Fact]
+    public async Task The_same_depth_without_a_declared_surface_widens_the_cap()
+    {
+        await SeedSandboxShelfAsync();
+
+        var shelf = await PatchedShelfAsync(request: r => r with { MaxPerShelf = 12 });
+        var shown = shelf.Take(6).ToList();
+        var naming = shown.Count(i => i.Reason.Contains("Sandbox", StringComparison.Ordinal));
+
+        Assert.True(
+            naming > ShelfReasonLedger.CapFor(6, Tuning),
+            "A twelve-deep ask with no surface size stated did not widen the cap, so the test "
+            + "above no longer proves the surface size is what defends it:\n"
+                + string.Join('\n', shown.Select(i => $"{i.Title}: {i.Reason}")));
+    }
+
+    private async Task<IReadOnlyList<Recommendation>> PatchedShelfAsync(
+        RecommendationTuning? tuning = null,
+        Func<RecommendationRequest, RecommendationRequest>? request = null)
+    {
+        var built = RecommendHarness.Request() with { Tuning = tuning ?? Tuning };
+        var feed = await _harness.Engine.GetShelvesAsync(request is null ? built : request(built));
         var shelf = feed.Shelves.FirstOrDefault(s => s.Id == ShelfIds.PatchedWhileAway);
         Assert.NotNull(shelf);
         return shelf!.Items;

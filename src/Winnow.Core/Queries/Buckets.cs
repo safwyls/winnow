@@ -37,15 +37,27 @@ public static class LibraryBuckets
 /// <param name="StaleWindowMonths">Months after last play before an update marks Stale-but-patched.</param>
 /// <param name="UpdateCorrelationWindowDays">Max days between a build push and announcement to count as one update. Default 7.</param>
 /// <param name="ShowNonGameEntries">Whether to include non-game entries (<see cref="NonGameEntries"/>). Default false.</param>
+/// <param name="ShowExplicitContent">Whether to include works whose stored maturity evidence reaches the adults-only tier: <c>esrb:ao</c>, <c>acb:x18</c> or the <c>adult_only_sexual_content</c> descriptor (<see cref="MaturityRules"/>). Default false (hidden). Broad 18+ board ratings are stored evidence, not a hiding trigger. A work with no evidence is unaffected.</param>
 public sealed record BucketThresholds(
     long BouncedFloorMinutes,
     long RetiredFloorMinutes,
     int StaleWindowMonths,
     int UpdateCorrelationWindowDays = 7,
-    bool ShowNonGameEntries = false)
+    bool ShowNonGameEntries = false,
+    bool ShowExplicitContent = false,
+    MaturityTier MaturityCap = MaturityTier.AdultsOnly)
 {
     /// <summary>Settings key for the "show non-game entries" preference.</summary>
     public const string ShowNonGameEntriesSettingKey = "library.show_non_game_entries";
+
+    /// <summary>Settings key for the "show explicit content" preference.</summary>
+    public const string ShowExplicitContentSettingKey = "library.show_explicit_content";
+
+    public const string MaturityCapSettingKey = "library.maturity_cap";
+
+    public const MaturityTier NoMaturityCap = MaturityTier.AdultsOnly;
+
+    public const MaturityTier AdultContentCeiling = MaturityTier.Restricted18;
 
     /// <summary>Conservative defaults; per-genre configuration comes later (§6.1).</summary>
     public static BucketThresholds Default { get; } = new(
@@ -53,7 +65,27 @@ public sealed record BucketThresholds(
         RetiredFloorMinutes: 6_000,
         StaleWindowMonths: 6,
         UpdateCorrelationWindowDays: 7,
-        ShowNonGameEntries: false);
+        ShowNonGameEntries: false,
+        ShowExplicitContent: false,
+        MaturityCap: NoMaturityCap);
+
+    public static MaturityTier EffectiveCap(MaturityTier cap, bool showExplicitContent)
+        => showExplicitContent || cap < AdultContentCeiling ? cap : AdultContentCeiling;
+
+    public static bool IsCapClampedByAdultSetting(MaturityTier cap, bool showExplicitContent)
+        => !showExplicitContent && cap > AdultContentCeiling;
+
+    public MaturityTier EffectiveMaturityCap => EffectiveCap(MaturityCap, ShowExplicitContent);
+
+    public bool ShowsMaturity(string? ratings, string? descriptors)
+        => MaturityTiers.IsWithinCap(
+            MaturityTiers.Highest(ratings, descriptors), EffectiveMaturityCap);
+
+    public static MaturityTier ParseMaturityCap(string? stored)
+        => MaturityTiers.ParseToken(stored, NoMaturityCap);
+
+    public static string FormatMaturityCap(MaturityTier cap)
+        => MaturityTiers.Token(cap);
 
     /// <summary>Parses stored preference text. Non-<c>true</c> values default to hidden.</summary>
     public static bool ParseShowNonGameEntries(string? stored)
@@ -61,6 +93,13 @@ public sealed record BucketThresholds(
 
     /// <summary>Formats the preference for storage. Round-trips with <see cref="ParseShowNonGameEntries"/>.</summary>
     public static string FormatShowNonGameEntries(bool show) => show ? "true" : "false";
+
+    /// <summary>Parses stored preference text. Non-<c>true</c> values default to hidden (explicit content off).</summary>
+    public static bool ParseShowExplicitContent(string? stored)
+        => bool.TryParse(stored?.Trim(), out var show) && show;
+
+    /// <summary>Formats the preference for storage. Round-trips with <see cref="ParseShowExplicitContent"/>.</summary>
+    public static string FormatShowExplicitContent(bool show) => show ? "true" : "false";
 }
 
 /// <summary>

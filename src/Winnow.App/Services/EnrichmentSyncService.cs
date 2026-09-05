@@ -31,6 +31,8 @@ public sealed class EnrichmentSyncService
     private readonly IUnitOfWorkFactory _unitOfWork;
     private readonly ILogger<EnrichmentSyncService> _logger;
 
+    private readonly IProgress<EnrichmentProgress>? _progress;
+
     /// <param name="works">Work repository.</param>
     /// <param name="releases">Release repository — names move with the work.</param>
     /// <param name="igdb">The metadata backbone (§4.4).</param>
@@ -46,6 +48,12 @@ public sealed class EnrichmentSyncService
     /// session, or none at all, simply has no step 3b, and every Epic work keeps
     /// whatever name and classification its local files gave it.
     /// </param>
+    /// <param name="progress">
+    /// Optional channel to the rail's fetch status field. Defaulted to null so
+    /// every existing caller and test is unchanged, and a host that does not
+    /// register it pays nothing. The container supplies it because
+    /// <c>IProgress&lt;EnrichmentProgress&gt;</c> is registered.
+    /// </param>
     public EnrichmentSyncService(
         IWorkRepository works,
         IReleaseRepository releases,
@@ -55,8 +63,10 @@ public sealed class EnrichmentSyncService
         EnrichmentLookupPlanner lookups,
         IUnitOfWorkFactory unitOfWork,
         ILogger<EnrichmentSyncService> logger,
-        IEpicCatalogClient? epicCatalog = null)
+        IEpicCatalogClient? epicCatalog = null,
+        IProgress<EnrichmentProgress>? progress = null)
     {
+        _progress = progress;
         _works = works;
         _releases = releases;
         _igdb = igdb;
@@ -110,12 +120,18 @@ public sealed class EnrichmentSyncService
         var run = new RunState(targets);
         var sliceSize = Math.Max(1, SliceSize);
 
+        var remaining = targets.Count;
+        _progress?.Report(new EnrichmentProgress(targets.Count, remaining));
+
         try
         {
             foreach (var slice in targets.Chunk(sliceSize))
             {
                 ct.ThrowIfCancellationRequested();
                 await EnrichSliceAsync(slice, run, ct);
+
+                remaining = Math.Max(0, remaining - slice.Length);
+                _progress?.Report(new EnrichmentProgress(targets.Count, remaining));
             }
         }
         catch (OperationCanceledException)
@@ -140,6 +156,10 @@ public sealed class EnrichmentSyncService
                 run.EnrichedWorks.Count, run.Promoted,
                 Describe(run.AttemptedByProvider), Describe(run.WrittenByProvider));
             throw;
+        }
+        finally
+        {
+            _progress?.Report(new EnrichmentProgress(targets.Count, 0));
         }
 
         stopwatch.Stop();

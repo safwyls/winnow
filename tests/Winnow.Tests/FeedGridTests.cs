@@ -1,4 +1,6 @@
+using System.Text.RegularExpressions;
 using Winnow.App.Views;
+using Winnow.Tests.Enforcement;
 using Xunit;
 
 namespace Winnow.Tests;
@@ -26,6 +28,37 @@ public sealed class FeedGridTests
     {
         var (columns, _) = FeedGrid.GeometryFor(width, Min, Gutter);
         Assert.Equal(expected, columns);
+    }
+
+    /// <summary>
+    /// Guards that the <c>Button.feedcard</c> style sets
+    /// <c>HorizontalAlignment</c> and <c>VerticalAlignment</c> to
+    /// <c>Stretch</c>. Without them a Button takes its own desired size
+    /// inside the slot <see cref="FeedGrid.ArrangeOverride"/> arranged for
+    /// it, and the card widths become content-driven. Asserted against markup
+    /// because there is no headless UI harness, and the defect is invisible
+    /// in review: the neighbouring <c>*ContentAlignment</c> setters already
+    /// say Stretch, but those align the content inside the button, not the
+    /// button inside its parent.
+    /// </summary>
+    [Theory]
+    [InlineData("HorizontalAlignment")]
+    [InlineData("VerticalAlignment")]
+    public void The_card_fills_the_slot_the_grid_arranges_it_into(string property)
+    {
+        var markup = RepositoryTree.Read("src/Winnow.App/Views/FeedCardView.axaml");
+
+        var style = Regex.Match(
+            markup,
+            @"<Style Selector=""Button\.feedcard"">(.*?)</Style>",
+            RegexOptions.Singleline);
+
+        Assert.True(style.Success, "The card root's style is no longer Button.feedcard.");
+
+        Assert.Contains(
+            $"<Setter Property=\"{property}\" Value=\"Stretch\"/>",
+            style.Groups[1].Value,
+            StringComparison.Ordinal);
     }
 
     /// <summary>

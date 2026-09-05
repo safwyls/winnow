@@ -50,7 +50,8 @@ public sealed class MergesDetailsTests
             post: action => action());
         var shell = new MainWindowViewModel(
             library, queue, DetachedStores.Create(), DetachedAppearance.Create(),
-            DetachedFeed.Create(), new AccountStatsViewModel(new FakeAccountStatsRepository()));
+            DetachedFeed.Create(), new AccountStatsViewModel(new FakeAccountStatsRepository()),
+            new LibrarySettingsViewModel());
 
         await library.LoadCommand.ExecuteAsync(null);
         await queue.LoadCommand.ExecuteAsync(null);

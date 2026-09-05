@@ -87,6 +87,9 @@ Each one is load-bearing for an install that predates the 2026-08-28 rename.
   clicks write to the real library. An unusable path is refused at startup with exit code 2;
   it never falls back silently. Setting `%LOCALAPPDATA%` does not work, because
   `Environment.GetFolderPath` uses the Windows shell API and ignores it.
+- A startup failure — migrations, hosted services, framework initialization — is caught,
+  logged and shown to the user (on the console when there is one, otherwise a message box),
+  and leaves exit code 3, distinct from the `--data-dir` refusal's 2.
 - If the app is running it holds a lock on the output assemblies. Build to a scratch path
   instead: `dotnet test -p:BaseOutputPath=C:\Temp\winnow-verify\`.
 - Commit at milestone boundaries. The database lives at `%LOCALAPPDATA%\Winnow\winnow.db`.

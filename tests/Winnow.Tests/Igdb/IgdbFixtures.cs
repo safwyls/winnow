@@ -1,6 +1,8 @@
 using System.Globalization;
+using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Winnow.Enrich.Igdb.Credentials;
 
 namespace Winnow.Tests.Igdb;
 
@@ -100,6 +102,64 @@ public static class IgdbFixtures
         return JsonSerializer.Serialize(rows, SerializerOptions);
     }
 
+    private static readonly Regex SearchClause = new("search\\s+\"([^\"]*)\"", RegexOptions.Compiled);
+
+    /// <summary>
+    /// Extracts the term from a <c>search "…"</c> clause, or null when
+    /// the body carries no search clause. Used by the test responder to
+    /// tell a search request from a metadata lookup on the same endpoint.
+    /// </summary>
+    public static string? SearchedTerm(string apicalypseBody)
+    {
+        var match = SearchClause.Match(apicalypseBody);
+        return match.Success ? match.Groups[1].Value : null;
+    }
+
+    /// <summary>
+    /// The IGDB id this fixture assigns to the <paramref name="rank"/>th
+    /// search hit. Deterministic from the rank alone, so tests can assert
+    /// the result without knowing the term.
+    /// </summary>
+    public static long IgdbIdForSearchHit(int rank) => 500_000 + rank;
+
+    /// <summary>
+    /// A <c>games</c> response answering a search body:
+    /// <paramref name="matches"/> hits, honouring the query's
+    /// <c>limit</c>, each carrying the fields the search query asks for
+    /// and nothing else. The fixture answers the term the query actually
+    /// asked for, which is what keeps the search assertions non-circular.
+    /// </summary>
+    public static string SearchGames(string body, int matches = 3)
+    {
+        var term = SearchedTerm(body);
+        if (term is null)
+        {
+            return "[]";
+        }
+
+        var rows = Enumerable.Range(1, Math.Min(matches, Limit(body)))
+            .Select(rank => new
+            {
+                id = IgdbIdForSearchHit(rank),
+                name = rank == 1 ? term : $"{term} {rank}",
+                first_release_date = 1_224_460_800L,
+                cover = new
+                {
+                    id = 9,
+                    image_id = "cosearch" + rank.ToString(CultureInfo.InvariantCulture),
+                    url = "//images.igdb.com/igdb/image/upload/t_thumb/cosearch"
+                          + rank.ToString(CultureInfo.InvariantCulture) + ".jpg",
+                },
+                platforms = new[]
+                {
+                    new { id = 6, name = "PC (Microsoft Windows)" },
+                    new { id = 48, name = "PlayStation 4" },
+                },
+            });
+
+        return JsonSerializer.Serialize(rows, SerializerOptions);
+    }
+
     private static readonly JsonSerializerOptions SerializerOptions = new()
     {
         DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
@@ -156,5 +216,33 @@ public static class IgdbFixtures
 
         var end = body.IndexOf(')', start);
         return end < 0 ? null : body[start..end];
+    }
+
+    /// <summary>
+    /// A reversible stand-in for DPAPI, so the protection tests assert the
+    /// <i>shape</i> of protection (that nothing readable is written and that it
+    /// round-trips) without depending on a real Windows user profile. Base64
+    /// is not encryption and is not pretending to be.
+    /// </summary>
+    public sealed class ReversibleProtector : IIgdbSecretProtector
+    {
+        public bool IsAvailable => true;
+
+        public string Name => "test:reversible";
+
+        public string? Protect(string plaintext)
+            => Convert.ToBase64String(Encoding.UTF8.GetBytes(plaintext));
+
+        public string? Unprotect(string? protectedBase64)
+        {
+            try
+            {
+                return Encoding.UTF8.GetString(Convert.FromBase64String(protectedBase64 ?? ""));
+            }
+            catch (FormatException)
+            {
+                return null;
+            }
+        }
     }
 }

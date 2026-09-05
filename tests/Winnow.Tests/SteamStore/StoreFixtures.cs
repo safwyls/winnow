@@ -52,11 +52,18 @@ internal static class StoreFixtures
     /// </summary>
     internal static string RelatedItemsResponse() => File.ReadAllText(PathOf("getitems-related-v1.json"));
 
+    /// <summary>One item's raw JSON out of <see cref="GetItemsResponse"/>.</summary>
+    internal static string ItemJson(string appId)
+        => ItemJsonFrom(GetItemsResponse(), appId);
+
     /// <summary>One item's raw JSON out of <see cref="RelatedItemsResponse"/>.</summary>
     internal static string RelatedItemJson(string appId)
+        => ItemJsonFrom(RelatedItemsResponse(), appId);
+
+    private static string ItemJsonFrom(string response, string appId)
     {
         var id = long.Parse(appId, CultureInfo.InvariantCulture);
-        using var document = JsonDocument.Parse(RelatedItemsResponse());
+        using var document = JsonDocument.Parse(response);
         return document.RootElement.GetProperty("response").GetProperty("store_items")
             .EnumerateArray()
             .Single(item => item.GetProperty("id").GetInt64() == id)

@@ -1,11 +1,11 @@
 ---
 id: TASK-60
 title: Rename settings segment from STORES to PLATFORMS
-status: In Progress
+status: Done
 assignee:
   - '@claude'
 created_date: '2026-09-01 02:50'
-updated_date: '2026-09-01 03:15'
+updated_date: '2026-09-03 16:40'
 labels:
   - ui
   - docs
@@ -22,9 +22,9 @@ The settings rail segment labelled STORES should read PLATFORMS. An earlier rena
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 The rail segment in MainWindow.axaml reads PLATFORMS
-- [ ] #2 No remaining occurrence of STORES in the settings rail, related views, or documentation refers to this segment
-- [ ] #3 Build succeeds and no test regresses
+- [x] #1 The rail segment in MainWindow.axaml reads PLATFORMS
+- [x] #2 No remaining occurrence of STORES in the settings rail, related views, or documentation refers to this segment
+- [x] #3 Build succeeds and no test regresses
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -50,3 +50,9 @@ Test: StoresViewModelTests.The_settings_segment_reads_platforms asserts SegmentL
 
 Verified: full suite 2398 + 98 + 70 passed, 0 failed. Not committed.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Renamed the settings rail segment from STORES to PLATFORMS. Landed in commit 5327392. Verified: StoresViewModel.SegmentLabel returns PLATFORMS (StoresViewModel.cs:105); StoresViewModelTests.The_settings_segment_reads_platforms asserts the label, the title Platforms, and that neither label nor tooltip contains STORES; scoped run of StoresViewModelTests and SteamAccountImportViewModelTests passed 69 of 69. A repository grep for STORES leaves only the Merges queue section name ACROSS STORES and two comments that record the rename itself, none referring to this segment.
+<!-- SECTION:FINAL_SUMMARY:END -->

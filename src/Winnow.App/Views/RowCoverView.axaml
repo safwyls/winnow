@@ -1,0 +1,41 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Winnow.App.ViewModels"
+             x:Class="Winnow.App.Views.RowCoverView"
+             x:DataType="vm:GameTileViewModel"
+             Name="Root"
+             Width="24" Height="36"
+             VerticalAlignment="Center">
+
+    <!--
+        The list row's 24×36 cover. Same cache, same lease mechanism and
+        same two-layer dormancy ramp as the wall tile and the feed card.
+        DormancyAlpha carries the resting ramp; the hover-restored
+        DisplayAlpha is not used, because the list's hover affordance is
+        the row's ChromeRaisedHalf veil. RadiusControl, not RadiusTile,
+        on the rule that the three radii rank by object size.
+    -->
+    <Border CornerRadius="{StaticResource RadiusControl}" ClipToBounds="True"
+            BorderThickness="1" BorderBrush="{StaticResource LineSoft}">
+        <Panel>
+            <!-- Opaque ground under both art layers, so the tile never
+                 composites over whatever is behind the row. -->
+            <Border Background="{StaticResource TileGround}"/>
+
+            <!-- Placeholder gradient pair. No baked Bricolage title: at
+                 24px wide no title is legible, and the row already names
+                 the game in Display type beside the art. -->
+            <Border Background="{Binding FloorBrush}"
+                    IsVisible="{Binding #Root.Cover.ShowPlaceholder}"/>
+            <Border Background="{Binding VividBrush}"
+                    Opacity="{Binding DormancyAlpha}"
+                    IsVisible="{Binding #Root.Cover.ShowPlaceholder}"/>
+
+            <!-- Real art: floor variant under vivid, the same two layers
+                 the grid tile draws. -->
+            <Image Source="{Binding #Root.Cover.Floor}" Stretch="UniformToFill"/>
+            <Image Source="{Binding #Root.Cover.Vivid}" Stretch="UniformToFill"
+                   Opacity="{Binding DormancyAlpha}"/>
+        </Panel>
+    </Border>
+</UserControl>

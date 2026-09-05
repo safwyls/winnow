@@ -148,3 +148,36 @@ public static class IdentityActKinds
     /// <summary>A prior act retracted, restoring every child it displaced.</summary>
     public const string Unlink = "unlink";
 }
+
+/// <summary>
+/// The library grid's expansion-grouping preference (TASK-70.5 AC6).
+///
+/// <para>OFF BY DEFAULT, and the default is the whole of the guarantee
+/// <see cref="IdentityLinkKinds.ExpansionOf"/> makes: with the setting off an
+/// expansion link changes no count, no playtime, no bucket and no
+/// recommendation anywhere. Turning it on is a presentation choice the user
+/// makes about the GRID alone.</para>
+///
+/// <para>It deliberately does NOT live on <c>BucketThresholds</c>, unlike the
+/// neighbouring "show non-game entries" preference. That record is an input to
+/// <c>LibraryQueryRepository</c>'s bucket query, and <c>RecommendationEngine</c>
+/// reads the same repository; a grouping applied there would hide an unplayed
+/// expansion from the feed the moment the setting was switched on, which is the
+/// one thing this task's own AC5 forbids. The grouping is applied above that
+/// chokepoint, in the library view model, so the recommender never sees it.</para>
+/// </summary>
+public static class ExpansionGroupingPreference
+{
+    /// <summary>Settings key for the "group expansions in the library grid" preference.</summary>
+    public const string SettingKey = "library.group_expansions";
+
+    /// <summary>
+    /// Reads the stored preference. Anything unparseable, absent or empty reads
+    /// as OFF, so a corrupt value cannot silently start folding a user's grid.
+    /// </summary>
+    public static bool Parse(string? stored)
+        => bool.TryParse(stored?.Trim(), out var group) && group;
+
+    /// <summary>Formats the preference for storage. Round-trips with <see cref="Parse"/>.</summary>
+    public static string Format(bool group) => group ? "true" : "false";
+}

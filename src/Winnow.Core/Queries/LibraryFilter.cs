@@ -86,7 +86,7 @@ public sealed record LibraryFilter
     public bool? Installed { get; init; }
 
     /// <summary>
-    /// Patched since last played — the Flare badge, and membership of
+    /// Patched — the Flare badge, and membership of
     /// <see cref="LibraryBuckets.StaleButPatched"/>. Null means "don't care".
     /// </summary>
     public bool? HasUnread { get; init; }

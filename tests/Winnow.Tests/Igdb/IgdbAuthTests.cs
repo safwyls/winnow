@@ -2,6 +2,7 @@ using System.Net;
 using Winnow.Enrich.Igdb.Auth;
 using Winnow.Enrich.Igdb.Credentials;
 using Winnow.Enrich.Igdb.Storage;
+using Microsoft.Extensions.Configuration;
 using Xunit;
 
 namespace Winnow.Tests.Igdb;
@@ -236,6 +237,147 @@ public class IgdbAuthTests
 
         Assert.Equal(2, host.Handler.CountFor("token"));
     }
+
+    // ══ Protected at rest (TASK-78) ═════════════════════════════════════════
+
+    /// <summary>
+    /// What reaches disk is one protected blob. The token never appears as
+    /// itself in any row, and the three plaintext rows an older build wrote are
+    /// left empty — a token cached by this build leaves nothing readable behind.
+    /// </summary>
+    [Fact]
+    public async Task The_persisted_token_is_one_protected_row_and_no_plaintext_rows()
+    {
+        var settings = new InMemorySettingsStore();
+
+        using (var first = new IgdbTestHost(IgdbTestHost.DefaultResponder(), settings: settings))
+        {
+            await first.Client.ResolveBySteamAppIdsAsync(TwoAppIds);
+            Assert.Equal(1, first.Handler.CountFor("token"));
+        }
+
+        var blob = await settings.GetAsync(TwitchTokenProvider.TokenBlobKey);
+        Assert.False(string.IsNullOrWhiteSpace(blob));
+
+        // Every token the default responder mints starts with this marker; if
+        // it appears in the stored row, the row is the token, not a cipher.
+        Assert.DoesNotContain("token-", blob, StringComparison.Ordinal);
+
+        // Never written, never migrated: this build leaves the legacy rows unset.
+        Assert.Null(await settings.GetAsync(TwitchTokenProvider.TokenValueKey));
+        Assert.Null(await settings.GetAsync(TwitchTokenProvider.TokenClientIdKey));
+        Assert.Null(await settings.GetAsync(TwitchTokenProvider.TokenExpiresAtKey));
+    }
+
+    /// <summary>
+    /// The upgrade path: an install from before protected storage has its token
+    /// in three plaintext rows. The first use migrates them into the blob and
+    /// leaves them empty, and the token is reused rather than re-minted.
+    /// </summary>
+    [Fact]
+    public async Task A_plaintext_token_from_an_earlier_version_is_migrated_and_reused()
+    {
+        var settings = new InMemorySettingsStore();
+        await settings.SetAsync(SettingsTableCredentialSource.ClientIdKey, "test-client");
+        await settings.SetAsync(SettingsTableCredentialSource.ClientSecretKey, "test-secret");
+
+        // The clock starts 2026-01-01; a token expiring in March is worth reusing.
+        await settings.SetAsync(TwitchTokenProvider.TokenClientIdKey, "test-client");
+        await settings.SetAsync(TwitchTokenProvider.TokenValueKey, "legacy-token-value");
+        await settings.SetAsync(
+            TwitchTokenProvider.TokenExpiresAtKey, new DateTimeOffset(2026, 3, 1, 0, 0, 0, TimeSpan.Zero).ToString("O"));
+
+        using var host = new IgdbTestHost(IgdbTestHost.DefaultResponder(), settings: settings);
+        await host.Client.ResolveBySteamAppIdsAsync(TwoAppIds);
+
+        // Reused, not re-minted.
+        Assert.Equal(0, host.Handler.CountFor("token"));
+
+        // Migrated: blob written without the token in it, plaintext rows emptied.
+        var blob = await settings.GetAsync(TwitchTokenProvider.TokenBlobKey);
+        Assert.False(string.IsNullOrWhiteSpace(blob));
+        Assert.DoesNotContain("legacy-token-value", blob, StringComparison.Ordinal);
+        Assert.Equal(string.Empty, await settings.GetAsync(TwitchTokenProvider.TokenValueKey));
+        Assert.Equal(string.Empty, await settings.GetAsync(TwitchTokenProvider.TokenClientIdKey));
+        Assert.Equal(string.Empty, await settings.GetAsync(TwitchTokenProvider.TokenExpiresAtKey));
+    }
+
+    /// <summary>
+    /// A host that cannot encrypt mints and uses the token in memory but stores
+    /// nothing — no plaintext row is ever written. Enrichment still works via
+    /// configuration-supplied credentials (the settings-table secret is
+    /// refused on such a host, which is the other half of this test's point);
+    /// the token is minted again after a restart, which is the refusal §4.7's
+    /// second amendment asks for.
+    /// </summary>
+    [Fact]
+    public async Task A_host_that_cannot_encrypt_mints_and_stores_nothing()
+    {
+        var settings = new InMemorySettingsStore();
+
+        using (var first = new IgdbTestHost(
+            IgdbTestHost.DefaultResponder(),
+            clientId: null,
+            clientSecret: null,
+            settings: settings,
+            protector: new UnavailableIgdbSecretProtector(),
+            configuration: DeveloperCredentials()))
+        {
+            await first.Client.ResolveBySteamAppIdsAsync(TwoAppIds);
+            Assert.Equal(1, first.Handler.CountFor("token"));
+        }
+
+        Assert.Null(await settings.GetAsync(TwitchTokenProvider.TokenBlobKey));
+    }
+
+    /// <summary>
+    /// The one place a plaintext row is emptied even on a host that cannot
+    /// encrypt: the token was minted, not typed, so the row can only pay out to
+    /// whatever else reads the disk. A mint is cheap; a bearer credential in the
+    /// clear is not.
+    /// </summary>
+    [Fact]
+    public async Task A_host_that_cannot_encrypt_still_empties_plaintext_token_rows()
+    {
+        var settings = new InMemorySettingsStore();
+
+        await settings.SetAsync(TwitchTokenProvider.TokenClientIdKey, "test-client");
+        await settings.SetAsync(TwitchTokenProvider.TokenValueKey, "legacy-token-value");
+        await settings.SetAsync(
+            TwitchTokenProvider.TokenExpiresAtKey, new DateTimeOffset(2026, 3, 1, 0, 0, 0, TimeSpan.Zero).ToString("O"));
+
+        using var host = new IgdbTestHost(
+            IgdbTestHost.DefaultResponder(),
+            clientId: null,
+            clientSecret: null,
+            settings: settings,
+            protector: new UnavailableIgdbSecretProtector(),
+            configuration: DeveloperCredentials());
+        await host.Client.ResolveBySteamAppIdsAsync(TwoAppIds);
+
+        // Not reused — the plaintext token is refused — and re-minted instead.
+        Assert.Equal(1, host.Handler.CountFor("token"));
+
+        // But emptied either way: the machine-minted row never survives a visit.
+        Assert.Equal(string.Empty, await settings.GetAsync(TwitchTokenProvider.TokenValueKey));
+        Assert.Equal(string.Empty, await settings.GetAsync(TwitchTokenProvider.TokenClientIdKey));
+        Assert.Equal(string.Empty, await settings.GetAsync(TwitchTokenProvider.TokenExpiresAtKey));
+        Assert.Null(await settings.GetAsync(TwitchTokenProvider.TokenBlobKey));
+    }
+
+    /// <summary>
+    /// Credentials as the developer path supplies them, for the tests that run
+    /// on a host that cannot encrypt — where the settings-table secret is
+    /// refused and the environment variables are the supported path.
+    /// </summary>
+    private static IConfiguration DeveloperCredentials()
+        => new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Igdb:ClientId"] = "test-client",
+                ["Igdb:ClientSecret"] = "test-secret",
+            })
+            .Build();
 
     [Fact]
     public void Credential_and_token_records_redact_their_values_when_stringified()

@@ -229,7 +229,7 @@ public sealed class FilterPanelViewModelTests
         // The rail's bucket leads, because it is the pile you are standing in
         // and this is the one place the rail and the panel are stated as one
         // filter.
-        Assert.Equal(["Bounced off", "RPG"], library.CutChips.Select(c => c.Label));
+        Assert.Equal(["Started", "RPG"], library.CutChips.Select(c => c.Label));
         Assert.Equal("BUCKET", library.CutChips[0].Dimension);
         Assert.Equal("GENRE", library.CutChips[1].Dimension);
 

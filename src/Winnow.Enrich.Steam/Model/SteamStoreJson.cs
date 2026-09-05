@@ -170,6 +170,7 @@ internal static class SteamStoreJson
                 Categories = ReadCategories(item),
                 StoreType = ReadStoreType(item),
                 Related = ReadRelatedItems(item),
+                ContentDescriptorIds = ReadContentDescriptorIds(item),
             };
         }
         catch (JsonException)
@@ -262,6 +263,36 @@ internal static class SteamStoreJson
            && value is >= int.MinValue and <= int.MaxValue
             ? (int)value
             : null;
+
+    /// <summary>
+    /// Reads <c>content_descriptorids</c>. No <c>data_request</c> flag turns this
+    /// on: it arrives with the query <see cref="BuildGetItemsQuery"/> has always
+    /// sent, which means every store body already in <c>metadata_cache</c> carries
+    /// it and reading the maturity pass costs no HTTP request.
+    /// </summary>
+    private static IReadOnlyList<int> ReadContentDescriptorIds(JsonElement item)
+    {
+        if (!item.TryGetProperty("content_descriptorids", out var array)
+            || array.ValueKind != JsonValueKind.Array)
+        {
+            return SteamStoreItem.NoContentDescriptors;
+        }
+
+        List<int>? ids = null;
+        foreach (var element in array.EnumerateArray())
+        {
+            if (TryReadInt64(element) is { } id and >= int.MinValue and <= int.MaxValue)
+            {
+                ids ??= [];
+                if (!ids.Contains((int)id))
+                {
+                    ids.Add((int)id);
+                }
+            }
+        }
+
+        return ids is null ? SteamStoreItem.NoContentDescriptors : ids;
+    }
 
     /// <summary>
     /// Reads <c>related_items</c> per Valve's <c>webui/common.proto</c>

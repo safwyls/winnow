@@ -62,9 +62,9 @@ public static class WinnowBackdrops
     public static string Reason(WinnowBackdrop backdrop) => backdrop switch
     {
         WinnowBackdrop.Mica =>
-            "Windows 11 only. Tints toward its own near-black base so hard that the wallpaper barely reaches the window - a quieter, more native tone rather than a view of the desktop.",
+            "Windows 11 only. Tints to its own tone rather than showing the desktop.",
         WinnowBackdrop.Acrylic =>
-            "Blurs whatever is behind the window, so the desktop is genuinely visible through the chrome. This is the one the slider can be seen through.",
+            "Blurs the desktop behind the window.",
         _ =>
             "Nothing composited behind the window.",
     };

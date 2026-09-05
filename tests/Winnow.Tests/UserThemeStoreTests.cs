@@ -1,5 +1,6 @@
 using Winnow.App.Services;
 using Winnow.App.Themes;
+using Winnow.App.ViewModels;
 using Winnow.Core.Repositories;
 using Xunit;
 
@@ -353,6 +354,36 @@ public class UserThemeStoreTests : IDisposable
         Assert.Equal("mica", await settings.GetAsync(ThemeService.BackdropSettingKey));
         Assert.Equal("true", await settings.GetAsync(ThemeService.WallSettingKey));
         Assert.Equal("floating", await settings.GetAsync(ThemeService.LayoutSettingKey));
+    }
+
+    /// <summary>On a fresh install the themes directory has a path but nothing on
+    /// disk — the store only creates one when it seeds. A button that opened
+    /// nothing would look broken, so <c>PrepareThemeFolder</c> creates it.</summary>
+    [Fact]
+    public void Preparing_the_theme_folder_creates_it_when_it_is_missing()
+    {
+        Assert.False(Directory.Exists(_dir));
+
+        var appearance = new AppearanceViewModel(new ThemeService(null, new UserThemeStore(_dir)));
+
+        var prepared = appearance.PrepareThemeFolder();
+
+        Assert.NotNull(prepared);
+        Assert.Equal(_dir, prepared.FullName.TrimEnd(Path.DirectorySeparatorChar));
+        Assert.True(Directory.Exists(_dir));
+        Assert.False(appearance.HasThemeActionStatus);
+    }
+
+    /// <summary>A host with no <c>UserThemeStore</c> has no theme directory at
+    /// all. <c>PrepareThemeFolder</c> returns null rather than inventing a path,
+    /// and the YOUR THEMES card is hidden so the button is never on screen.</summary>
+    [Fact]
+    public void Preparing_the_theme_folder_reports_nothing_when_there_is_no_folder()
+    {
+        var appearance = new AppearanceViewModel(new ThemeService());
+
+        Assert.Null(appearance.PrepareThemeFolder());
+        Assert.False(appearance.HasThemeFolder);
     }
 
     private static string Theme(

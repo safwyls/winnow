@@ -1,11 +1,11 @@
 ---
 id: TASK-77
 title: The TITLE signal renders a distance with no sign that it is one
-status: In Progress
+status: Done
 assignee:
   - '@safwyl'
 created_date: '2026-09-02 19:39'
-updated_date: '2026-09-02 19:47'
+updated_date: '2026-09-03 16:39'
 labels: []
 dependencies: []
 ordinal: 104000
@@ -44,3 +44,9 @@ Pick one reading and make it legible: mark it as a delta the way YEAR does, or s
 4. Build with TreatWarningsAsErrors and run the full test suite via --artifacts-path into the scratchpad build dir.
 5. Delegate any non-code text (comments already added inline) review to docs-writer; confirm phrasing before finalizing.
 <!-- SECTION:PLAN:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Stale, and the defect no longer reproduces. This task was never implemented: it has a plan but no implementation notes and no commit. The defect was that the review card signal column rendered TITLE as a bare distance (1 - TitleSimilarity) with no sign of direction, contradicting its own evidence line. TASK-83 (commit 05e97df) deleted src/Winnow.App/ViewModels/MergeSignalViewModel.cs, the file the plan targeted, along with the whole signal-table column. Verified by inspection: that file is absent, and MergeQueueViewModel.cs now formats the reason with MergeCopy.ReasonNameMatchFormat as {0} name match. using payload.TitleSimilarity directly, that is the similarity rather than a distance. That is the second of the two readings acceptance criterion 1 offered, so the ambiguity it objected to is gone. Criteria are left unchecked because they were never verified against a deliberate design decision; the outcome fell out of the rewrite.
+<!-- SECTION:FINAL_SUMMARY:END -->

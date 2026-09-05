@@ -33,7 +33,21 @@ public sealed record FeedShelf(
     string Id,
     string Title,
     string Blurb,
-    IReadOnlyList<FeedItem> Items);
+    IReadOnlyList<FeedItem> Items)
+{
+    /// <summary>
+    /// Items this shelf computed but is not showing: the replacements a
+    /// dismissed card is swapped for, in score order, cap-legal against
+    /// <see cref="Items"/> because the same pass placed them.
+    ///
+    /// <para>A reserve item has not been shown to anyone, so it is deliberately
+    /// absent from the surfacing log until the moment it goes on screen — see
+    /// <see cref="IFeedService.RecordSurfacedAsync"/>. Logging a held card as
+    /// shown would earn it the recently-surfaced demotion tomorrow for a card
+    /// nobody ever saw.</para>
+    /// </summary>
+    public IReadOnlyList<FeedItem> Reserve { get; init; } = [];
+}
 
 /// <summary>One computed feed, reduced to what a screen can draw.</summary>
 /// <param name="Shelves">Shelves in presentation order. Possibly empty.</param>
@@ -112,6 +126,16 @@ public interface IFeedService
 {
     /// <summary>Computes today's feed. Deterministic within a day (shuffle seeded by date).</summary>
     Task<FeedSnapshot> GetShelvesAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Logs that one card has just been put on screen, outside the generation
+    /// pass that logs the rest. The swap path's counterpart to the reserve:
+    /// <see cref="GetShelvesAsync"/> logs only what it shows, and a card
+    /// promoted out of <see cref="FeedShelf.Reserve"/> logs itself here at the
+    /// moment it appears. Never throws — rotation memory is worth less than the
+    /// screen staying up.
+    /// </summary>
+    Task RecordSurfacedAsync(long releaseId, string shelfId, CancellationToken ct = default);
 
     /// <summary>Stores one verdict. The service computes snooze expiry. Never throws.</summary>
     Task<FeedVerdictOutcome> RecordVerdictAsync(

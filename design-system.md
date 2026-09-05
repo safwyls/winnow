@@ -53,7 +53,7 @@ stage and stays out of the way.
 | `Volt` | `#4DE8C2` | **Active / recent / selected** |
 | `Amber` | `#FFB63D` | Attention: high playtime, "played out", warnings, and a live measurement that has crossed a stated line |
 | `Azure` | `#57A8F0` | Informational, links, secondary counts |
-| `Danger` | `#E04B45` | Destructive affordance: the window close button's hover fill, and the confirm button on the one destructive act in the application (§12.3) |
+| `Danger` | `#E04B45` | Destructive affordance: the window close button's hover fill, and the confirm button on any destructive act (§12.3, §16) |
 
 The room is a hued neutral rather than grey on purpose: grey would make `Volt` a decoration
 sitting on top of the chrome instead of the chrome's own colour intensified. The default dark
@@ -131,9 +131,9 @@ they are applied.
 │              ├────────────────────────────────────────────────────────┤
 │  1,247       │   ┌────┐  ┌────┐  ┌────┐  ┌────┐  ┌────┐  ┌────┐       │
 │              │   │    │● │    │  │▓▓▓▓│  │    │● │▓▓▓▓│  │    │       │
-│  ● Patched94 │   │    │  │    │  │▓▓▓▓│  │    │  │▓▓▓▓│  │    │       │
+│  ● Patched 94│   │    │  │    │  │▓▓▓▓│  │    │  │▓▓▓▓│  │    │       │
 │    Never 412 │   └────┘  └────┘  └────┘  └────┘  └────┘  └────┘       │
-│    Bounced186│    vivid   vivid   faded   vivid   faded   vivid       │
+│    Started186│    vivid   vivid   faded   vivid   faded   vivid       │
 │    Played 391│                                                        │
 │    Won't run │   ┌────┐  ┌────┐  ┌────┐  ┌────┐  ┌────┐  ┌────┐       │
 │              │   │▓▓▓▓│  │    │  │▓▓▓▓│  │    │● │▓▓▓▓│  │▓▓▓▓│       │
@@ -223,6 +223,15 @@ floor is 108px and a row of word-chips is wider than the tile there; the words a
 hover, on the back face, in the modal and in the automation name, which satisfies §8's
 decorative-redundant rule.
 
+**A tile that folded an expansion carries a second resting mark**, bottom-right, in the same pip
+as the store mark and with the same fade: a plus and a count. It is drawn only while the library
+grid's expansion-grouping preference is on, which is off by default. It exists because folding a
+pack removes its own tile and with it its place on the Never played rail, so the base game states
+what the fold took away; the words, including whether one of the folded packs has never been
+played, are in the tooltip and the automation name. Neither resting mark is a fact of the hover
+overlay, so the four-fact cap counts neither. Never `Flare`, which marks unread and nothing else,
+and never `Volt`, which is selection.
+
 **Do not show more than four facts.** The tile is a decision surface, not a detail view.
 
 ### 5.4 How the ramp is drawn
@@ -247,17 +256,82 @@ item in a row for a trailing gutter when it computes items-per-line for the scro
 packs rows greedily when it places them, so §4's flush-row geometry made the two disagree by one
 column at every window width. `CoverWall`'s remarks carry the measurements.
 
+### 5.5 Art-backed surfaces
+
+**The tile's back face and the detail modal lay the game's own art behind their
+information.** Both surfaces used to be flat `Surface`, so a game lost its identity the moment
+the user turned it over or opened it.
+
+**The construction is identical on both.** Opaque `Surface` at the bottom, then the game's art,
+then a veil — `ArtVeil`, the theme's own `Surface` at `ArtVeilAlpha` — then the text. The opaque
+base stops a half-decoded cover showing the window through the gap between the dormancy ramp's
+two layers; the same argument §14.4 makes for `TileGround`.
+
+**The veil IS `Surface`, and that is the whole trick.** Over the opaque `Surface` each surface
+already paints, a veil of `Surface` composites back to `Surface`, bit-for-bit. A game with no
+art draws no image and gets the flat treatment exactly — no tone step, and no layout shift,
+because the art and the veil are siblings in a `Panel` and take no space of their own.
+
+**`ArtVeilAlpha` is 0.92.** The art contributes 8%. **0.92 is the round step past the boundary,
+walked rather than assumed.** Measured per theme, the worst text ink over the brightest cover art
+could be (white), at the veil's own alpha:
+
+| | Winnow | Nightshift | Tungsten | Box art |
+|---|---|---|---|---|
+| at 0.91 | **4.49:1** (TextDim) | 5.50 | 4.74 | 4.62 |
+| at **0.92** | **4.62:1** (TextDim) | **5.69:1** (TextDim) | **4.93:1** (Amber) | **4.76:1** (TextDim) |
+
+At 0.91 Winnow lands at 4.49:1, one hundredth under AA. Winnow is the theme that decides the
+value, because it has the lightest `Surface` of the cool three. Tungsten is the one theme where
+the binding ink is `Amber` rather than `TextDim`.
+
+**Which inks are held to 4.5:1.** `Text`, `TextDim`, `Azure` and `Amber` — the four these two
+surfaces set text in. `Flare` is excluded: on these surfaces it is a dot and never a word
+(§5.2), and WCAG scores a non-text component against 3:1, not 4.5:1. The hovered update row is
+measured too: `SurfaceRaisedFaint` is the one veil that sits between the ink and the field
+rather than replacing it, and it moves the worst figure by at most 0.07. Every other hover and
+focus fill is opaque `SurfaceRaised`, which covers the art entirely and is already held to §8's
+floor.
+
+**Why the proof is exhaustive.** The art is walked as 256 greys. Each channel of the composite
+is monotone in the art's own channel, and WCAG relative luminance is monotone in the channels,
+so black and white bracket the composite's luminance and the greys hit every value in between.
+The walk runs at every whole percent of the transparency slider; `Surface` never carries alpha,
+so the veil never walks with it, and `TextDim` brightening under the ink ramp only improves the
+figure. Slider zero is the worst case.
+
+**Both surfaces reuse existing image paths.** The tile's back face binds the same
+`CoverPresenter.Floor` and `CoverPresenter.Vivid` bitmaps the front face draws, from the same
+presenter, at the same `DisplayAlpha`, with §5.1's 140ms restore and the same reduced-motion
+snap. One image path, one lease, one decode: the cover wall's memory bound is untouched. The
+modal binds `GameDetailsViewModel.Cover`, the 200px bitmap it already asks the cover cache for
+at full saturation — §10's rule, that the ramp is a scanning aid and the user has finished
+scanning. That bitmap is upscaled to a card up to 860px wide, and the upscale is what softens
+it; Avalonia's effect pipeline is closed (§5.4) and nothing here needs it to be open.
+
+**A user theme can break this.** `ThemeAudit` warns when `Colorimetry.WorstArtBackedContrast`
+falls under AA, against `seeds.surface`, because it is the theme's own `Surface` that decides
+how much art gets through. It warns and never refuses, like every other check there.
+
 ---
 
 ## 6. Components
 
 **Rail bucket.** Display S name, Data count. Selected: `ChromeRaised` fill, 2px `Volt` left
-edge. The `Patched since` bucket is the only one carrying a `Flare` dot next to its count.
+edge. The `Patched` bucket is the only one carrying a `Flare` dot next to its count.
 Zero-count buckets render at 40% opacity rather than hiding, so the rail never reflows.
 
-**List view.** Same data, no art dependency: title, store, playtime, idle, unread dot. 44px
-rows on `PaneGround`, `Line` rules, `Volt` selection edge, and a column-header strip on
-`ChromeSurface` — so the list has the same structure the grid does, a chrome bar above and a
+**List view.** Every row carries a 24×36 cover on its left edge, drawn from the same cache and
+the same two-layer dormancy ramp as the wall tile. The cover takes the resting ramp
+(`DormancyAlpha`) rather than the hover-restored one (`DisplayAlpha`), because the list's hover
+affordance is the row's `ChromeRaisedHalf` veil; a cover that also woke under the pointer would
+be a second hover language on one row. A game with no cover gets the grid's placeholder
+gradient pair — floor under vivid — not a gap; the placeholder's baked Bricolage title is
+omitted, because at 24px wide no title is legible and the row already names the game in Display
+type beside the art. Corner radius is `RadiusControl`, not `RadiusTile`, on §4's rule that the
+three radii rank by the size of the object they round. Title, store, playtime, idle, unread
+dot. 44px rows on `PaneGround`, `Line` rules, `Volt` selection edge, and a column-header strip
+on `ChromeSurface` — so the list has the same structure the grid does, a chrome bar above and a
 field below. Row fills take `ChromeRaised` for a selection and `ChromeRaisedHalf` for a hover;
 they must not take `SurfaceRaised`, which is an ink and would composite downwards over an open
 field and invert the elevation (§14.2).
@@ -311,6 +385,24 @@ the library. The radio and the checkbox are Tab stops of their own.
 cover at 60×90 on the left. Title, duration in Data, one text field, 5-dot rating in `Volt`.
 Appears at most once per session, never steals focus.
 
+**Fetch status field.** In the rail's pinned bottom, above the settings gear, a `Well` field
+with a `Volt` edge — the same pattern the Stores panel's `Border.note.working` uses. It names
+what the enrichment pass has left to do as a real count that falls a slice at a time: the pass
+reads the whole backlog before the first slice and commits in slices of 40, so every value the
+field shows was true when it was written. Words only — no spinner, no animation, no
+`Transitions` anywhere in it. That is the conforming answer to §8, not a shortcut: §8 says
+the interface states what it is doing in words, in a status field, and motion may be added over
+a status field but may never replace one. Because there is no motion, reduced motion has
+nothing to disable and the surface is identical in both motion settings — an accessibility
+floor with no branch in it cannot be got wrong. The field never appears on a warm library:
+`EnrichAsync` returns early on an empty target list before it reports anything, so every launch
+after the first shows nothing at all. There is deliberately no Cancel: §8 says "and offers
+Cancel where there is one", and this pass is not something the user started; nothing can
+restart it before the next launch, so a Cancel here would be a one-way stop dressed up as a
+choice. It is cleared in a `finally`, so a run cut short by shutdown takes the field away
+rather than leaving a stale count on screen. Exactly one of it for the whole window, because
+it lives in the rail's grid rather than on any screen.
+
 ---
 
 ## 7. Copy
@@ -318,11 +410,21 @@ Appears at most once per session, never steals focus.
 Plain and specific. The app knows something faintly embarrassing about the user — they own
 1,247 games and have opened 412 of them zero times — and must never be smug about it.
 
+**An explanation on screen is a short phrase.** A control carries a label and, where it earns
+one, a single short tooltip — never a paragraph of rationale. What may run longer, because the
+user cannot get it anywhere else: an error naming what failed and what to do; an empty state,
+which must distinguish "nothing here yet" from "nothing matched"; consent copy, where the
+button press is the consent; connection state; a stated default; the consequence of a
+destructive act; and an accessibility or automation name (§8), which names the control and is
+never trimmed for brevity. Reasoning goes in the design documents; where a paragraph on screen
+carries one fact wrapped in reasoning, the fact stays and the reasoning moves here or to
+`game-library-design.md`. Automation names name the control; they do not explain it.
+
 | Context | Write | Don't write |
 |---|---|---|
-| Bucket: updates missed | `Patched since` | `Needs attention` |
+| Bucket: updates missed | `Patched` | `Needs attention` |
 | Bucket: never opened | `Never played` | `Pile of shame` |
-| Bucket: refund line to retired | `Bounced off` | `Barely played` |
+| Bucket: refund line to retired | `Started` | `Barely played`, `Bounced off` |
 | Bucket: high playtime | `Played out` | `Completed` |
 | Bucket: unrunnable | `Won't run` | `Dead` |
 | Badge tooltip | `3 updates since you played` | `New content available!` |
@@ -335,8 +437,8 @@ which asks about games rather than records.
 
 **Empty states are directions, not moods.**
 
-- Patched since, empty: *"Nothing's been patched since you last played. This fills up on its own."*
-- Never played, empty: *"You've played everything you own. Genuinely rare."*
+- Patched, empty: *"Nothing's been patched since you last played. This fills up on its own."*
+- Never played, empty: *"You've played everything you own past the refund window. Genuinely rare."*
 - First run, mid-scan: *"Reading your Steam library. Covers and metadata fill in over the next few minutes — you can browse now."*
 
 The last one matters: store metadata backfill takes hours, so the interface promises a
@@ -359,8 +461,25 @@ panel's strings were written from the auth spikes instead. TASK-81.
   `Volt` everywhere except on a `Volt` fill, where it is `VoltInk`.
 - Full keyboard grid navigation: arrows, `/` to search, `Enter` to launch.
 - **Reduced motion disables the hover saturation animation** — state snaps instead of fading.
-  There is no rule yet for an indeterminate indicator, and none may ship before there is:
-  TASK-79.
+- **When the interface cannot state a proportion, it says what it is doing and what it is
+  waiting for, in words, in a status field, and offers Cancel when there is one.** This is the
+  Stores panel's pattern — a `Volt`-edged status field naming where to look, plus Cancel —
+  generalised. §7 already says the same thing about the first-run grid: placeholder tiles with
+  the title set in Bricolage on a `Surface` field, never a spinner, never an empty grid. When
+  nothing is yet known, the surface says what it is waiting for; it never draws an empty box or
+  a placeholder that claims a measurement it does not have. Because the indicator is words,
+  reduced motion has nothing to disable and the surface is the same in both motion settings.
+  An accessibility floor with no branch in it cannot be got wrong.
+- **Motion may be added to a status field; a status field may never be replaced by motion.**
+  Four conditions on any animated indeterminate indicator: (a) the words are the indicator and
+  the motion is decoration over them, so a screen reader reads a state rather than nothing;
+  (b) at most one moving element on a screen; (c) it is removed entirely under reduced motion,
+  leaving the words — removed by a style, never present as a local `Transitions` value, which
+  is §12.5's rule; (d) it is never the only thing saying that work is happening.
+- **A determinate indicator stays shown and stays accurate under reduced motion** — it is
+  information, not decoration. What goes is the continuous movement: values step at a coarse
+  cadence rather than updating thirty times a second, and the transition that smoothed them is
+  removed by a style, never present as a local value (§12.5).
 - `TextDim` on `Surface` measures **5.88:1**, and on `SurfaceRaised` — what a selected list row
   puts under the store and idle columns — **5.04:1**. **Do not dim further.** `Text` on
   `Surface` is 13.1:1, `Azure` 6.03:1, and `Volt` on `Ground` 11.3:1.
@@ -477,7 +596,7 @@ so `Escape` returns them to exactly the row they were reading.
 ┌─ 200px ────┬──────────────────────────────────────────────────┐
 │            │  Empyrion: Galactic Survival                 [×] │  1 WHAT IS THIS
 │  cover     │  2020 · Eleon Game Studios                       │
-│  200×300   │  [STEAM] [Patched since] [Not installed]         │
+│  200×300   │  [STEAM] [Patched] [Not installed]               │
 │            │                                                  │
 │            │  37h    SINCE YOU PLAYED               9y 7mo    │  2 MY HISTORY
 │            │  PLAYED ├────────────────────────────────●●┤     │    the gap rail
@@ -500,6 +619,12 @@ object: its art, the id Steam calls it, where it lives on disk. Right is your re
 it. The divider spans the right column only, because the left one keeps going. That split also
 fills the ~130px of nothing a game with no last-played date used to leave beside a 300px cover,
 which read as broken rather than as sparse.
+
+**Each column's lower part is a bounded scroll region.** The right column scrolls the rest band;
+the left column scrolls the facts under the cover. Both sit in star rows so each is bounded by
+whatever height the card has and scrolls inside it. An Auto row is measured against infinity, so
+a ScrollViewer inside one takes its content's full height and never scrolls — that is what let
+long content draw past the card and be cut off at the window edge (measured on Avalonia 11.3.20).
 
 ### 10.2 Signature: the gap rail
 
@@ -558,8 +683,8 @@ dead one, and never a URL the data did not supply.
 | Record, one reading | `Checked once, on 23 Aug 2026.` | `Insufficient data` |
 | No last-played date | `Steam has no date for your last session.` | `Unknown` |
 | Never opened | `You've never opened this.` | `Never played` |
-| Provisional title | `Steam's local files gave an id and no name.` | *(nothing)* |
-| No summary yet | `No description yet. Winnow fills the year, publisher and summary in from IGDB as it works through your library.` | `No data` |
+| Provisional title | `Name not yet available. Showing the app id until metadata loads.` | *(nothing)* |
+| No summary yet | `No description yet. Metadata fills in automatically.` | `No data` |
 
 Two of those are load-bearing. **"No updates recorded in that stretch"** and not "nothing has
 shipped": update polling is staggered across days, so an empty rail can mean a quiet decade or
@@ -620,6 +745,143 @@ hiding behind one.
 order and ignores `TabIndex` on a non-focusable container — measured, not assumed. The right
 column is therefore declared first and placed second by `Grid.Column`, so the keyboard reaches
 `Play` before it reaches an appid.
+
+### 10.8 The patch notes panel
+
+A patched game's `Patch notes` button on an update row, and the `All patch notes` link beside
+`Store page`, open the notes in an embedded browser window rather than in the system browser.
+Reading an update no longer leaves the app. The host is the same WebView2 browser Winnow
+already ships for the Epic consent and Steam sign-in windows, differently constrained.
+
+**It is a separate top-level window, not an overlay.** The reason is the airspace problem the
+sign-in window already records: a hosted native browser HWND paints over Avalonia content
+regardless of z-order, so no Avalonia chrome could appear above the browser rectangle. A
+window of its own sidesteps it entirely.
+
+**Non-modal and owned by the main window.** The library keeps scrolling, the detail modal keeps
+its place, nothing is blocked. `Escape` dismisses it, so does the close button, and so does the
+page asking to close itself. One window at a time — opening a second note navigates the open
+window and brings it forward.
+
+**Chrome.** The system title bar, titled with the game. Across the top of the client area a
+`Surface` strip with a `Line` rule under it: the current page's host on the left in Data S,
+and on the right one quiet action that hands the page to the user's own browser. When the
+embedded browser cannot start, an `Amber` line appears in that strip and the window stays
+dismissable. 1024x820, the same size as the sign-in browser window.
+
+**Appearance travels by class name only** — `Window.notes`, `DockPanel.notes`,
+`Border.notes-bar` and `.notes-problem`, declared in `src/Winnow.App/Themes/controls.axaml` —
+because `Winnow.Auth.WebView` references Avalonia and `Winnow.Core` and nothing else. That is
+the same seam the consent window uses, and a theme picked in settings is already in force when
+the panel opens.
+
+**The origin gate is the load-bearing part.** The address that opens a panel must be https, on
+exactly one of four origins:
+
+- `store.steampowered.com`
+- `steamstore-a.akamaihd.net`
+- `steamcommunity.com`
+- `www.steamcommunity.com`
+
+with `/news/` or `/announcements` in its path. Origins are compared as scheme, host and port,
+exactly. Steam's own news API hands out `steamstore-a.akamaihd.net/news/externalpost/...`,
+which redirects onto a community announcement; that is why all four are named.
+`update_events.url` is captured from a network response, so the gate is an allowlist, for the
+same reason §10.3 gives.
+
+Once open:
+
+- An allowlisted origin renders.
+- Any other web address is cancelled and handed to the user's own browser.
+- Anything that is not a web address at all — `data:`, `blob:`, `file:`, `javascript:`, a
+  launcher protocol, any custom scheme — is refused outright.
+- A popup takes the same decision.
+- A subframe takes a stricter one: off the allowlist it is blocked rather than opened
+  externally, so a third-party embedded video does not load. A cost, taken deliberately.
+
+The whole decision is `PatchNotesPolicy`, built on the same `AuthFlowPolicy` the Epic sign-in
+and the Steam account-page harvest run on, so there is one origin mechanism in the application
+rather than two.
+
+**§10.3's rule is unchanged and still first.** Every outbound target is built by
+`GameLink.Create`, and a target that fails validation renders no button. The panel's gate is a
+second gate after that one, not a replacement for it.
+
+**Nothing is injected into the page.** No host objects, no web-message channel, no developer
+tools, no context menu, no downloads, and every permission request is denied. The browser
+profile is in-private and lives under the run's own data directory, so `--data-dir` redirects
+it with everything else. Script runs — a storefront news page is an ordinary web page, and
+there is nothing in the panel for it to talk to.
+
+**A game whose updates carry no page says so.** One `TextDim` line under the update list,
+stating only that there is no page to read — not that nothing shipped, which is the same
+distinction §10.4 draws for its own empty state.
+
+**Where the panel is unavailable** — no WebView2 runtime on the machine — the buttons keep
+their prior behaviour and open the system browser. Nothing is greyed out and nothing announces
+itself.
+
+### 10.9 IGDB override
+
+When fuzzy resolution picks the wrong IGDB entry for a game, or none at all, the cover,
+summary, release year, publisher and genres stay wrong with no way to correct them. This is
+the recourse: search IGDB by title from the modal, pick the right entry, and that choice is
+pinned so later automatic enrichment passes leave it alone. Clearing the pin returns the game
+to automatic resolution.
+
+**It is in the left column, under the cover and ON DISK.** It shipped under ABOUT and the user
+asked for it here. Which game this IS is an identity fact, so it sits with the other identity
+facts in the column §10.1 defines as the object column — its art, its store id, its install
+path. At rest it is one quiet line under ON DISK.
+
+**Inline, never a flyout.** §10.7's rule, applied again: Avalonia's global `FocusAdorner` does
+not render inside a popup — a popup is its own root and has no adorner layer — so every ring
+in a menu here would have to be hand-drawn. The disclosure opens in the modal's own tree,
+which is also §12.3's reason for the action bar.
+
+**What a candidate row draws.** Four facts: a 34x51 cover at `RadiusControl` — §4's rule that
+the three radii rank by the size of the object they round, and §6's list-view precedent — the
+name, the year in Plex Mono, and the platforms in Jakarta: the modal's own identity-line split,
+§3's rule that every number is Plex. Those four facts are what separate Prey (2006, Xbox 360)
+from Prey (2017, PlayStation 4), which is the failure the whole control exists to fix. The left
+column is 200px wide, so the row stacks: the cover in its own column, and beside it the name,
+then the year and platforms, then the assign control. An entry IGDB gave neither a year nor a
+platform draws no second line. The covers ride the existing image path and add no new one:
+IGDB's cover URL carries the asset's image id, and an image-id cover key is one the registered
+IGDB cover source already answers without credentials. They draw at full saturation — the
+dormancy ramp is about your own library and none of these candidates is in it yet.
+
+**The candidate list is a scroll region of at most 208px.** IGDB search returns up to 20
+results, so more than three is the normal case for a common title. The region shows two rows
+and most of a third: the row cut part way, together with the
+scrollbar, is what says there is more rather than the list ending silently. Each row's assign
+control is still a Tab stop, and a row reached by Tab is scrolled into view, so focus is never
+left off screen.
+
+**Six states.** Assigned reloads the library and reopens the modal on the same ownership,
+carrying its confirmation across, so the user sees the corrected cover, title, year and
+summary where they asked for it; that is the same arrangement retracting a link already uses,
+for the same reason. Four refusals — the game is no longer in the library, IGDB had no details
+for that entry, another game already holds that entry, and the write failed — each keep the
+controls in place under their own `Amber` sentence, and each says something different, because
+the third is the only one the user can act on. A search that matched nothing is the sixth state
+and is `TextDim`, not `Amber`: it is not a failure. `Amber` and not `Danger`, per §2: attention,
+not a destructive act.
+
+**The status field is words.** §8, applied: while the search is out or the choice is being
+written, the control says so in words in a status field. No spinner and no `Transitions`, so
+reduced motion has nothing to disable and the surface is identical in both motion settings.
+
+**The cover needs no separate refresh mechanism.** The IGDB cover key is derived from the
+stored cover URL's image id, so rewriting the URL is what refreshes the tile.
+
+**Clear is drawn only while a pin stands**, read when the modal opens. Clearing writes no
+metadata — it only stops the pin — so it does not reload; the metadata the pin wrote stays in
+place and the next automatic pass fills what is empty around it.
+
+**The input field** takes §16.3's field treatment: `Well` cut into the card, found by its
+`Line` border and lit by a `Volt` ring on a border whose thickness never changes (§10.7,
+§14.7). `Enter` runs the search.
 
 ---
 
@@ -718,7 +980,7 @@ so undoing one rule never means hunting for the control that set it.
 
 **Chips are `Volt`-edged, never `Flare`.** A chip is a selection, which is what `Volt` is for.
 There is deliberately **no "has updates" group** anywhere in the panel: that set is exactly the
-rail's `Patched since` bucket, and a second door onto it would need a second marker, and the
+rail's `Patched` bucket, and a second door onto it would need a second marker, and the
 only marker for unread is `Flare`.
 
 **Every chip says who set it, and the grammar is the palette's own: `Volt` means you chose
@@ -792,7 +1054,7 @@ bar is **`Save as live list`**.
 
 **The kinds are told apart by heading, not by a coloured mark.** A pip beside a count was the
 obvious move and the wrong one: the rail already has exactly one dot, the `Flare` pip on
-`Patched since`, and a dot's meaning survives precisely as long as there is only one of them.
+`Patched`, and a dot's meaning survives precisely as long as there is only one of them.
 
 Rows take the bucket treatment — hover fill, 2px `Volt` selection edge — with one difference:
 **the name is body type, not Display S caps.** Bucket names are the application's own
@@ -862,17 +1124,21 @@ either. In the window's own tree, the focus ring and a linear tab order both com
 question sits directly above the thing it is about.
 
 `Enter` confirms, `Escape` cancels, and focus follows the prompt into its field. The save
-prompt opens with the rules read out as a suggested name ("Bounced off · RPG"), because a rail
+prompt opens with the rules read out as a suggested name ("Started · RPG"), because a rail
 full of "Live list 3" is a rail nobody reads.
 
 **`Add to list` is one control for both views.** The grid selects one tile, the list view
 selects many, and the button reads whichever is in force, naming the number once there is more
 than one. The picked set is derived from the selection in the view model rather than in the
-pointer handler, so arrowing across the wall arms it exactly as clicking does.
+pointer handler, so arrowing across the wall arms it exactly as clicking does. **The details
+modal is a third surface for list membership and a different control:** one checkbox per
+hand-built list, ticked when the game is already a member, resolved through `same_game` links
+in SQL so the answer is for the game and not the store entry. Live lists are not offered — a
+live list finds its own members and there is nothing to tick.
 
 **Deleting asks first, and the question says what survives:** *"Delete "Couch co-op night"? The
-titles stay in your library."* It is the only destructive act in the application, and `Danger`
-appears on its confirm button and nowhere else on the strip.
+titles stay in your library."* `Danger` appears on its confirm button and nowhere else on
+the strip. Deleting a hand-added game (§16) is the other destructive act in the application.
 
 ### 12.4 `Escape` unwinds the cut, one layer per press
 
@@ -1009,7 +1275,7 @@ ink, and the same *setting*.
 |---|---|---|
 | `ShellGround` | The client area below the caption, and every gap in the floating layout | Yes, at the ground tier |
 | `WallGround` | The field the covers hang in | Yes, at the pane tier, and only when `appearance.wall` asks for it |
-| `PaneGround` | Merge queue, Stores, Appearance, the library's list view, the empty state | Exactly `WallGround` |
+| `PaneGround` | Merge queue, Stores, Library, Appearance, the library's list view, the empty state | Exactly `WallGround` |
 | `TileGround` | Under the art stack inside one tile | **Never** (§14.4) |
 | `ChromeSurface` | Rail, filter panel, the list view's column-header strip | Yes, at the pane tier |
 | `CaptionFill` | The 36px title lip | Flush it *is* `ChromeSurface`. Floating it paints nothing (§9) |
@@ -1020,8 +1286,8 @@ ink, and the same *setting*.
 
 **A pane composites over the ground exactly once.** `FloatingLayoutTests` walks that at every
 position, in both layouts, in both reach states. A second element declaring `ShellGround` would
-put every figure the Appearance screen prints out by the same factor, and nothing else would
-catch it.
+put every figure this section and §14.3 quote out by the same factor, and nothing but the test
+would catch it.
 
 **Popovers keep an opaque fill.** A flyout is its own popup root and never receives the
 window's backdrop, so a translucent fill there would sample the *application* rather than the
@@ -1062,8 +1328,8 @@ glyphs and is the only reading matter on it. Walked per theme against white:
 | **0.15** | **30 / 31 / 31 / 31** | **chosen** |
 | 0.20 | 32 / 33 / 33 / 33 | more range, less window |
 
-`0.15` is the round step past the boundary, it buys 1 to 5 points on top, and it states as a
-pair of numbers the Appearance screen prints: **the ground admits 85%, a pane admits 35%.**
+`0.15` is the round step past the boundary, it buys 1 to 5 points on top, and it fixes the
+two figures the rest of §14 derives from: **the ground admits 85%, a pane admits 35%.**
 
 #### The two ramps, and why they are not the same ramp
 
@@ -1124,11 +1390,13 @@ composite is darker than `Ground`, so opening a surface deepens the ground its l
 `ThemeContrastTests` asserts that across the range.
 
 **The range past the mark is a choice the user is allowed to make.** Being protected from it is
-not a service, and being ambushed by it is not either — so the Appearance screen draws the mark
-on the track and reports **both** numbers live, in Plex Mono `tnum`, with the worst-case figure
-turning `Amber` and naming the line it crossed once it does. `Amber` and not `Danger`: §2 gives
-`Amber` attention and `Danger` the one destructive act, and a setting chosen with the number in
-front of you is neither an error nor something to be undone for you.
+not a service, and being ambushed by it is not either — so the Appearance screen says nothing
+at all until the setting actually crosses the line, and then shows one `Amber` sentence naming
+the percent at which it crossed. A number visible at every position is not information about
+the position you are on, and the AA ceiling is a per-theme constant the user cannot act on
+until they have passed it. `Amber` and not `Danger`: §2 gives `Amber` attention and `Danger`
+destructive acts, and a setting chosen with the warning in front of you is neither an
+error nor something to be undone for you.
 
 **Requested is not active.** Windows 10, a remote session and a compositor that refuses all end
 with `ActualTransparencyLevel` reporting none of the levels that count, and Avalonia's Win32
@@ -1187,8 +1455,9 @@ on screen, at 45% over the same wallpaper in the same window position:
 Windows composes dark Mica by tinting toward its own near-black base so hard that the wallpaper
 contributes almost nothing: it lands within a couple of units of the same near-black in both
 places, which is `#201F1E` measured a second time. Acrylic carries the wallpaper and changes
-across the window. That table *is* the argument for offering both, and a condensed form of it
-is on the Appearance screen beside the choice.
+across the window. That table *is* the argument for offering both; the two option cards on the
+Appearance screen carry their own one-line descriptions, and this table is where the
+measurement behind them lives.
 
 **A substitution is a third answer, not the second one.** Mica needs Windows 11 and acrylic
 works further back, so the window still falls through — but **the material that came back is
@@ -1225,10 +1494,10 @@ under the dormant capsule's **0.031** and under the rail beside it at **0.036**.
 chrome tier's reach the same field would land at **0.033–0.045**: above the dormant capsule,
 and level with or above the rail, losing both invariants at once on an ordinary desktop.
 
-**The Appearance screen prints both numbers** — how much of the window's ground is desktop, and
-how much of a pane — in Plex Mono `tnum`, so the relation is visible rather than asserted. It
-is a ratio and not a second slider on purpose: two percentages on one screen that mean
-different things is a worse screen than one quantity with a stated relation.
+**One slider, not two.** Two percentages on one screen that mean different things is a worse
+screen than one quantity with a stated relation, and the pane's share is forced by the ground's
+(§14.2) — it is not an independent choice. The ground admits 85% and a pane admits 35%; the
+relation is in the table above and the identity in §14.2.
 
 Both preferences persist beside theme and transparency, under `appearance.backdrop`
 (`acrylic` / `mica`, unset reads as acrylic) and `appearance.wall` (unset reads as *off*).
@@ -1320,7 +1589,7 @@ against.
 | **Cut bar** | Inside the library card | Same rule |
 | **Rail** | **Card** | Content — the feed, bucket and list axis |
 | **Cover wall / list view / empty state** | **Card** | Content |
-| **Merge queue · Stores · Appearance** | **Card** | Content; they replace the library pane and take its island |
+| **Merge queue · Stores · Library · Appearance** | **Card** | Content; they replace the library pane and take its island |
 | **Filter panel** | **Card** | Content, and a peer of the rail (§11.1) |
 | **Detail modal** | Full bleed | A modal covers everything, gaps included |
 
@@ -1333,11 +1602,11 @@ and on nothing else. Three things follow:
   immediately under the caption.
 - **The caption is a lip**, which is all §9 asks it to be. It is the only strip left on the
   window ground.
-- **A visibility rule became a fact of composition.** The merge queue, Stores and Appearance
-  replace the library *specifically* so they do not sit under a command bar whose search and
-  sort mean nothing to them. The bar is inside the library's own `Border`, so no arrangement of
-  those four panes can put a settings screen under the library's controls, and there is no
-  parallel `IsVisible` rule left to keep in step.
+- **A visibility rule became a fact of composition.** The merge queue, Stores, Library and
+  Appearance replace the library *specifically* so they do not sit under a command bar whose
+  search and sort mean nothing to them. The bar is inside the library's own `Border`, so no
+  arrangement of those panes can put a settings screen under the library's controls, and there
+  is no parallel `IsVisible` rule left to keep in step.
 
 The cut bar sits under the command bar and above the art, so the order reads downwards as
 cause, claim, consequence: the controls, then what they did, then the result. **Both bars keep
@@ -1448,3 +1717,81 @@ Two, and neither is fatal:
   own rule inside the library card on the same scanline, y=92. So a header rule still meets a
   header rule, at the same height, under two headers of the same 48px — a continuation in
   everything except the 8px the gaps take out of it.
+
+---
+
+## 16. The settings surface
+
+The gear at the foot of the rail opens `SETTINGS`, which holds three screens in this order:
+**PLATFORMS**, **LIBRARY**, **APPEARANCE**. Each is drawn the same way: a 48px header lining
+up with the command bar and the filter panel's header, its own scroll, cards on `PaneGround`.
+
+PLATFORMS is the store-connection screen. APPEARANCE is §14 and §15 — theme, transparency,
+layout. LIBRARY answers what is in the library and holds three cards: **EXPLICIT CONTENT**,
+**HIDDEN GAMES**, **ADDED BY HAND**.
+
+It is not under APPEARANCE, which changes material and layout and no data. It is not under
+PLATFORMS, which is about connecting to a store; this is about what to do with what arrived.
+
+### 16.1 Explicit content
+
+A toggle, off by default. Off, works whose stored maturity evidence reads as adults-only are dropped
+from the grid, the list view, the feed and every bucket count — one clause in the shared
+bucket query all four read. A game with no rating data is not treated as explicit and stays
+visible either way; the default is stated beside the control.
+
+Beside the toggle, how many library entries turning the filter on would remove, in the same
+`[Data figure] [words]` split the Platforms card's account-scope count uses. The figure
+counts tiles that actually disappear, computed by running the bucket query both ways and
+subtracting. It reads zero on a library where enrichment has not yet stored a rating, and
+says so.
+
+### 16.2 Hidden games
+
+The one place a hidden game can be found and put back, one at a time. Each row states what
+unhiding gives back: the title, how many store entries come with it, and the date it was
+hidden.
+
+Hiding is done from the game, in two places: the library's context menu and the details
+modal's action band. The context menu acts on the whole picked set and names the number once
+there is more than one, exactly as `Add to list` does. The action band places it as a link
+beside `Store page` rather than as a primary, because that band is about getting into the
+game and hiding is the quiet answer beside it.
+
+**Hiding takes the game and its whole link group**, so hiding a game does not pop its demo
+back into the grid. It deletes nothing: the ownership row stays, and a later ingest of the
+same ownership does not bring the game back on screen.
+
+Empty state: nothing hidden, and it says where hiding is done.
+
+### 16.3 Added by hand
+
+Games no launcher on this machine writes to disk — itch.io, Battle.net, a physical or
+emulated title, a standalone installer. A hand-added game participates in the library, the
+feed and the bucket counts like any other.
+
+One inline form serves both add and edit, in the pane's own tree and not a flyout, for
+§12.3's stated reason: a popup is its own root and has no adorner layer, so every focus ring
+inside one would have to be hand-drawn.
+
+**Fields:** title (required), year, a free-text platform label, an executable path, an IGDB
+id and a Steam appid. Naming an executable is what lets session monitoring record play time.
+Either id is what gets the game cover art. An id already belonging to another game in the
+library is refused before anything is written, and the message lands under the field that
+conflicted.
+
+**"Add from a file" starts the form from an executable.** The user browses for a `.exe` and
+Winnow reads its Win32 version-info resource section (file description, product name, company
+name), or when the file is not a PE image or cannot be read, derives a title from the folder
+name or the file name on the path. The result fills the title and executable fields and
+immediately searches IGDB, presenting the same candidate rows the details modal's IGDB
+override uses. The user picks one, edits the form, or dismisses the proposal and types by
+hand. Choosing a candidate fills the title, year and IGDB id fields; nothing is written until
+Save. The status field during a search is words, not a spinner (§8). A search that returned
+nothing is not an error and says the form can still be filled by hand.
+
+**Deleting a hand-added game asks first, and the question names what survives** — §12.3's
+own rule applied a second time. It removes the ownership, then the release only when no
+other ownership hangs off it, then the work only when it has no releases left, so a store
+entry that later attached to the same release keeps its game. `Danger` is on its confirm
+button and on nothing else on the screen.

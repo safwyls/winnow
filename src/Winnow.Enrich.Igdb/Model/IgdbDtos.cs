@@ -160,6 +160,137 @@ internal sealed class ExpandableGameTypeConverter : JsonConverter<IgdbGameTypeDt
         => JsonSerializer.Serialize(writer, value, IgdbJson.Options);
 }
 
+/// <summary>
+/// One <c>age_rating_categories</c> row. Its label field is <c>rating</c>
+/// ("The rating name"), which is a text string — not an enum and not the
+/// same field as <see cref="IgdbAgeRatingDto.Rating"/>.
+/// </summary>
+internal sealed class IgdbAgeRatingCategoryDto
+{
+    public long Id { get; init; }
+
+    public string? Rating { get; init; }
+}
+
+/// <summary>
+/// Reads <c>organization</c>, which arrives as an expanded object under the
+/// shipped query and would arrive as a bare id if the expansion were ever
+/// dropped. Both shapes are handled so a deserialization failure cannot take
+/// a whole batch down.
+/// </summary>
+internal sealed class ExpandableNamedConverter : JsonConverter<IgdbNamedDto?>
+{
+    public override IgdbNamedDto? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        => reader.TokenType switch
+        {
+            JsonTokenType.Number => new IgdbNamedDto { Id = reader.GetInt64() },
+            JsonTokenType.Null => null,
+            _ => JsonSerializer.Deserialize<IgdbNamedDto>(ref reader, IgdbJson.Options),
+        };
+
+    public override void Write(Utf8JsonWriter writer, IgdbNamedDto? value, JsonSerializerOptions options)
+        => JsonSerializer.Serialize(writer, value, IgdbJson.Options);
+}
+
+/// <summary>
+/// Reads <c>rating_category</c>, which arrives as an expanded object under the
+/// shipped query and would arrive as a bare id if the expansion were ever
+/// dropped. Both shapes are handled for the same reason
+/// <see cref="ExpandableNamedConverter"/> handles both.
+/// </summary>
+internal sealed class ExpandableAgeRatingCategoryConverter : JsonConverter<IgdbAgeRatingCategoryDto?>
+{
+    public override IgdbAgeRatingCategoryDto? Read(
+        ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        => reader.TokenType switch
+        {
+            JsonTokenType.Number => new IgdbAgeRatingCategoryDto { Id = reader.GetInt64() },
+            JsonTokenType.Null => null,
+            _ => JsonSerializer.Deserialize<IgdbAgeRatingCategoryDto>(ref reader, IgdbJson.Options),
+        };
+
+    public override void Write(
+        Utf8JsonWriter writer, IgdbAgeRatingCategoryDto? value, JsonSerializerOptions options)
+        => JsonSerializer.Serialize(writer, value, IgdbJson.Options);
+}
+
+/// <summary>
+/// One <c>age_ratings</c> row on a game. Carries both IGDB's deprecated numeric
+/// enums (<see cref="Category"/>, <see cref="Rating"/>) and the current
+/// reference fields (<see cref="Organization"/>, <see cref="RatingCategory"/>).
+/// </summary>
+internal sealed class IgdbAgeRatingDto
+{
+    public long Id { get; init; }
+
+    /// <summary>
+    /// IGDB's deprecated board enum (1 ESRB, 2 PEGI, 3 CERO, 4 USK, 5 GRAC,
+    /// 6 CLASS_IND, 7 ACB). Kept because it is the only rating-board numbering
+    /// IGDB publishes a value table for.
+    /// </summary>
+    public int? Category { get; init; }
+
+    /// <summary>
+    /// IGDB's deprecated rating enum, values 1-39. The board is implied by
+    /// the value, so <see cref="Category"/> is not needed to read it. This is
+    /// the primary reading when present.
+    /// </summary>
+    public int? Rating { get; init; }
+
+    [JsonConverter(typeof(ExpandableNamedConverter))]
+    public IgdbNamedDto? Organization { get; init; }
+
+    [JsonConverter(typeof(ExpandableAgeRatingCategoryConverter))]
+    public IgdbAgeRatingCategoryDto? RatingCategory { get; init; }
+}
+
+/// <summary>
+/// The wire shape of one game from the age-ratings query. Carries only
+/// the <c>age_ratings</c> expansion — no name, no cover, no genres — because
+/// this query is deliberately separate from <see cref="Apicalypse.Games"/>.
+/// </summary>
+internal sealed class IgdbAgeRatingsGameDto
+{
+    public long Id { get; init; }
+
+    public IReadOnlyList<IgdbAgeRatingDto>? AgeRatings { get; init; }
+}
+
+/// <summary>
+/// The wire shape of one game from the search query, deliberately
+/// separate from <see cref="IgdbGameDto"/> for the same reason
+/// <see cref="IgdbAgeRatingsGameDto"/> is: a separate query gets a
+/// separate wire shape. A row with no id or no name yields null from
+/// <see cref="ToDomain"/> and is dropped rather than becoming a nameless
+/// candidate.
+/// </summary>
+internal sealed class IgdbSearchGameDto
+{
+    public long Id { get; init; }
+
+    public string? Name { get; init; }
+
+    public long? FirstReleaseDate { get; init; }
+
+    public IgdbCoverDto? Cover { get; init; }
+
+    public IReadOnlyList<IgdbNamedDto>? Platforms { get; init; }
+
+    internal IgdbSearchResult? ToDomain()
+        => Id <= 0 || string.IsNullOrWhiteSpace(Name)
+            ? null
+            : new IgdbSearchResult(
+                Id,
+                Name.Trim(),
+                IgdbJson.CoverUrl(Cover),
+                IgdbJson.ReleaseYear(FirstReleaseDate),
+                Platforms?
+                    .Where(p => !string.IsNullOrWhiteSpace(p.Name))
+                    .Select(p => p.Name!)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToArray() ?? IgdbGame.NoStrings);
+}
+
 internal sealed class IgdbGameDto
 {
     public long Id { get; init; }

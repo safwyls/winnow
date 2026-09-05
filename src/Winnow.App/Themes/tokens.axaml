@@ -356,6 +356,23 @@
          capsule without becoming a second opaque block on the art. -->
     <SolidColorBrush x:Key="TileChipGround" Color="#D10F1C1E"/>
 
+    <!-- The art veil. The tile's back face and the detail modal lay the
+         game's own art behind their information and dim it through this:
+         the theme's own Surface at ArtVeilAlpha. The art contributes
+         1 - ArtVeilAlpha — 8% at the shipped value.
+
+         The veil IS Surface, so over the opaque Surface each surface
+         already paints, a veil of Surface composites back to Surface
+         exactly. A game with no art draws no image and gets the flat
+         treatment — no tone step and no layout shift, because the art and
+         the veil are siblings in a Panel and take no space of their own.
+
+         0.92 is the round step past the boundary, walked rather than
+         assumed: at 0.91 Winnow's TextDim over a white cover measures
+         4.49:1, one hundredth under AA. -->
+    <x:Double x:Key="ArtVeilAlpha">0.92</x:Double>
+    <SolidColorBrush x:Key="ArtVeil" Color="#EB16282A"/>
+
     <!-- ══ Scrollbars ═════════════════════════════════════════════════════
          Fluent's ScrollBar theme is kept — its rest/expanded behaviour is
          good — and only repainted, by overriding the keys its template reads.

@@ -18,8 +18,8 @@ whether it's been patched since you last tried. Winnow does.
 - **A feed that says why.** Every recommendation carries a sentence — *"You put 2.8 hours into
   this in 2021 and it has had an update since, most recently 'PATCH NOTES – S06.05.02'."* Not
   a genre tag, not a star rating. The reason is the product.
-- **Buckets that mean something.** *Never played* means you haven't opened it. *Bounced off*
-  means you got past Steam's two-hour refund window and stopped anyway.
+- **Buckets that mean something.** *Never played* means you haven't opened it. *Started*
+  means you're past Steam's two-hour refund window.
 - **Patch tracking.** Games updated since you last played them.
 - **Launch and session tracking.** Click Play; the game starts and nothing else happens.
   Winnow records when you actually played, which storefronts don't retain.
@@ -78,10 +78,12 @@ Nothing leaves the machine except read-only requests to IGDB, Steam's public end
 `gamesdb.gog.com` and `api.steamcmd.net`. **Winnow reads launcher files and does not write to
 them.**
 
-Credential protection is uneven today. Epic refresh tokens and Steam session tokens are
-encrypted at rest with DPAPI (`CurrentUser` scope). Steam Web API keys and IGDB client secrets
-are still plaintext rows in the local database, so anyone with access to `winnow.db` can read
-those two. Fixing that is TASK-78 in the backlog.
+Every credential Winnow stores is encrypted at rest with Windows DPAPI (`CurrentUser` scope):
+the Epic refresh token, the Steam sign-in session, the Steam Web API key, and the IGDB client
+secret and cached access token. Nothing credential-like sits in `winnow.db` as plain text,
+and a system that cannot encrypt refuses to store a credential rather than saving a readable
+row. What Winnow reads in the clear is data, not access: client ids, expiry timestamps and
+the like.
 
 *Upgrading from Hoard?* The first launch moves `%LOCALAPPDATA%\Hoard\` to
 `%LOCALAPPDATA%\Winnow\` automatically.

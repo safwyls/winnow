@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
+using Avalonia.Threading;
 using Winnow.App.ViewModels;
 
 namespace Winnow.App.Views;
@@ -44,6 +45,64 @@ public partial class GameDetailsView : UserControl
         // this to a bucket, so this is one decode shared with nothing else.
         var scaling = TopLevel.GetTopLevel(this)?.RenderScaling ?? 1.0;
         details.RequestCover(GameDetailsViewModel.CoverWidth * scaling);
+
+        // Candidate thumbnails decode at the width they are drawn at, and
+        // the scaling is a fact of the window rather than of the view model.
+        details.IgdbMatch?.SetCoverScaling(scaling);
+    }
+
+    /// <summary>
+    /// Enter runs the title search, so the field answers the way every
+    /// other field in the application does. Handled here rather than by a
+    /// KeyBinding because a KeyBinding on the field would fire while the
+    /// query is blank, and the command refuses that case regardless.
+    /// </summary>
+    private void OnMatchQueryKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter
+            || DataContext is not GameDetailsViewModel { IgdbMatch: { } match })
+        {
+            return;
+        }
+
+        if (match.SearchCommand.CanExecute(null))
+        {
+            match.SearchCommand.Execute(null);
+        }
+
+        e.Handled = true;
+    }
+
+    private void OnWrongGamePressed(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not GameDetailsViewModel { IgdbMatch: { } match })
+        {
+            return;
+        }
+
+        Dispatcher.UIThread.Post(
+            () =>
+            {
+                if (!match.IsOpen)
+                {
+                    return;
+                }
+
+                IgdbMatchDisclosure.BringIntoView();
+                MatchQueryField.Focus();
+            },
+            DispatcherPriority.Background);
+    }
+
+    /// <summary>
+    /// A candidate row reached by Tab may sit outside the bounded list's
+    /// viewport. BringIntoView scrolls it in so the focus ring is visible
+    /// where the user is. The handler is on the ScrollViewer because
+    /// GotFocus bubbles from the rows.
+    /// </summary>
+    private void OnCandidateGotFocus(object? sender, GotFocusEventArgs e)
+    {
+        (e.Source as Control)?.BringIntoView();
     }
 
     /// <summary>
@@ -76,7 +135,7 @@ public partial class GameDetailsView : UserControl
     {
         if (sender is Control { DataContext: GameLink link })
         {
-            await LaunchAsync(link);
+            await OpenAsync(link);
         }
     }
 
@@ -90,8 +149,23 @@ public partial class GameDetailsView : UserControl
     {
         if (sender is Control { DataContext: UpdateEventViewModel { Link: { } link } })
         {
-            await LaunchAsync(link);
+            await OpenAsync(link);
         }
+    }
+
+    /// <summary>
+    /// Tries the embedded panel first; if the reader is unavailable or the
+    /// policy refuses the URL, falls back to the system browser silently.
+    /// The fallback is silent because both routes open the same page.
+    /// </summary>
+    private async Task OpenAsync(GameLink link)
+    {
+        if (DataContext is GameDetailsViewModel details && details.TryReadNotes(link))
+        {
+            return;
+        }
+
+        await LaunchAsync(link);
     }
 
     /// <summary>

@@ -14,61 +14,44 @@ public static class AccountStatsCopy
     /// rows in the rail.</summary>
     public const string RailRow = "STATS";
 
-    /// <summary>Rail row tooltip. Same register as the other rail tooltips,
-    /// no trailing period.</summary>
+    /// <summary>Rail row tooltip. No trailing period.</summary>
     public const string RailTooltip =
-        "Spending totals and licence counts from the account pages Winnow has read";
+        "Spending and licence totals from Steam";
 
     /// <summary>Screen title, rendered in Display L. Sentence case, matching
     /// the settings surface's screen titles. Names the user's Steam account,
     /// not their game library.</summary>
     public const string Title = "Steam account";
 
-    /// <summary>Introduction under the title. States the source (captured
-    /// pages) and the partiality caveat that governs the entire screen:
-    /// these are totals of what was read, not of the account.</summary>
+    /// <summary>Introduction under the title. Totals of what was read, not
+    /// of the account.</summary>
     public const string Intro =
-        "Every figure here is computed from the Steam account pages Winnow has "
-        + "read. A capture can be partial, so these are totals of what was read, "
-        + "not of the account.";
+        "Totals of the Steam account pages that were read, not of the whole account.";
 
     // ══ Empty state ═══════════════════════════════════════════════════════
 
-    /// <summary>Shown when no transactions and no licences have ever been
-    /// imported. A direction, not a mood: points the user at the PURCHASES
-    /// screen (§7: empty states are directions).</summary>
+    /// <summary>Shown when nothing has been imported. Points the user at
+    /// the PURCHASES screen.</summary>
     public const string EmptyMessage =
-        "No transactions or licences have been imported. Import them from the "
-        + "PURCHASES screen, which reads your Steam account pages.";
+        "Nothing imported yet. Import from the PURCHASES screen.";
 
     // ══ Mixed currency ════════════════════════════════════════════════════
 
     /// <summary>Heading for the mixed-currency notice. Sentence case.</summary>
     public const string MixedCurrencyHeading = "Mixed currencies";
 
-    /// <summary>Shown when the capture holds transactions in more than one
-    /// currency or transactions with no currency symbol. Explains that
-    /// money totals are withheld and only counts are shown, per
-    /// <see cref="Core.Queries.AccountStats.IsSingleCurrency"/>.</summary>
+    /// <summary>Shown when currency totals cannot be combined.</summary>
     public const string MixedCurrencyMessage =
-        "The capture holds transactions in more than one currency, or "
-        + "transactions with no currency symbol at all. Winnow does not add "
-        + "different currencies together or convert between them, so every money "
-        + "total on this screen is withheld and only counts are shown. The "
-        + "per-currency table below lists which symbols appeared and on how many "
-        + "transactions.";
+        "Money totals are withheld. Only counts are shown.";
 
     // ══ Spend ═════════════════════════════════════════════════════════════
 
     /// <summary>Heading for the product-spend card. Sentence case.</summary>
     public const string SpendHeading = "Spend";
 
-    /// <summary>Defines what counts as spend and what does not. Wallet
-    /// top-ups are excluded and reported in their own section.</summary>
+    /// <summary>What counts as spend. Wallet top-ups are excluded.</summary>
     public const string SpendNote =
-        "Spend is money paid for a product: ordinary purchases, gifts bought "
-        + "for other people, and purchases made inside a game. Wallet top-ups "
-        + "are not spend; they are reported separately below.";
+        "Purchases, gifts given and in-game purchases. Wallet top-ups are not spend.";
 
     /// <summary>Row label for net spend (gross minus refunded). Sentence
     /// case, sits left of a number.</summary>
@@ -88,13 +71,10 @@ public static class AccountStatsCopy
     /// <summary>Heading for the per-year breakdown. Sentence case.</summary>
     public const string YearHeading = "Spend by year";
 
-    /// <summary>States that the year comes from the page's own display date
-    /// (day resolution) and that undated rows are listed separately rather
-    /// than guessed into a year.</summary>
+    /// <summary>Undated rows are listed separately, never guessed into
+    /// a year.</summary>
     public const string YearNote =
-        "The year comes from the date the page displayed, which is day "
-        + "resolution. Rows the parser could not date are listed separately "
-        + "and are never guessed into a year.";
+        "Undated rows are listed separately and never guessed into a year.";
 
     /// <summary>Row label for net spend on undated rows. Short, sits in the
     /// year column where a year would normally appear.</summary>
@@ -117,12 +97,9 @@ public static class AccountStatsCopy
     /// Sentence case, left of a number.</summary>
     public const string LabelInGamePurchases = "In-game purchases";
 
-    /// <summary>States that Winnow records the existence of a gift
-    /// recipient, never the identity. This is a design decision: no name,
-    /// persona or profile link is read from the page.</summary>
+    /// <summary>Recipients are counted, never named.</summary>
     public const string GiftsNote =
-        "Winnow records that a gift had a recipient, not who the recipient "
-        + "was. No name, persona or profile link is read from the page.";
+        "Recipients are counted, never named.";
 
     // ══ Refunds ═══════════════════════════════════════════════════════════
 
@@ -139,15 +116,10 @@ public static class AccountStatsCopy
     /// of a number.</summary>
     public const string LabelRefundTransactions = "Refund transactions";
 
-    /// <summary>Explains that a refund and its purchase are two rows, one
-    /// capture may hold either or both, and the two figures should not be
-    /// added together because reversal rows are never subtracted a second
-    /// time.</summary>
+    /// <summary>The two figures overlap and must not be added
+    /// together.</summary>
     public const string RefundNote =
-        "A refund and the purchase it reverses are two different rows on the "
-        + "page, and a capture may hold either or both. The two figures are "
-        + "reported side by side; reversal rows are never subtracted a second "
-        + "time, so these two numbers should not be added together.";
+        "These two figures overlap. Do not add them together.";
 
     // ══ Bundles ═══════════════════════════════════════════════════════════
 
@@ -158,15 +130,8 @@ public static class AccountStatsCopy
     /// single price. Sentence case, left of a number.</summary>
     public const string LabelBundlePurchases = "Bundle purchases";
 
-    /// <summary>States that the bundle total is a real fact but the per-game
-    /// split is not and is never computed. Per
-    /// <see cref="Core.Queries.AccountStats.BundlePurchases"/> and
-    /// §4.7.</summary>
-    public const string BundleNote =
-        "A bundle's total price is a real fact; what each game inside it cost "
-        + "is not. Dividing by the number of items and weighting by market "
-        + "price are both defensible and both wrong, so no per-game price is "
-        + "shown.";
+    /// <summary>No per-game price is computed or shown.</summary>
+    public const string BundleNote = "No per-game price is shown.";
 
     // ══ Discounts ═════════════════════════════════════════════════════════
 
@@ -181,14 +146,8 @@ public static class AccountStatsCopy
     /// Sentence case, left of a number.</summary>
     public const string LabelDiscountListPrice = "List price total";
 
-    /// <summary>THE LOAD-BEARING CAVEAT. Only rows that rendered a discount
-    /// carry a list price; most carry none. This figure is emphatically not
-    /// total savings. Per
-    /// <see cref="Core.Queries.AccountStats.DiscountedPurchases"/>.</summary>
-    public const string DiscountNote =
-        "Only rows that rendered a discount carry a list price at all, and "
-        + "most purchases carry none. This is the difference on the rows that "
-        + "happened to show a before price. It is not a total-savings figure.";
+    /// <summary>This is not a savings total.</summary>
+    public const string DiscountNote = "This is not a savings total.";
 
     // ══ Biggest transaction ═══════════════════════════════════════════════
 
@@ -196,20 +155,15 @@ public static class AccountStatsCopy
     /// case.</summary>
     public const string BiggestHeading = "Biggest transaction";
 
-    /// <summary>States that this is the largest single transaction by price,
-    /// not the most ever paid for one game. Per
-    /// <see cref="Core.Queries.AccountBiggestPurchase"/>.</summary>
+    /// <summary>Largest single transaction, not the most paid for one
+    /// game.</summary>
     public const string BiggestNote =
-        "This is the largest single transaction by price, not the most ever "
-        + "paid for one game. A bundle is one transaction covering several "
-        + "items.";
+        "Largest single transaction, not the most paid for one game.";
 
-    /// <summary>Shown only when the biggest transaction is a bundle. States
-    /// that it covered several items under one price and that the price is
-    /// not split between them.</summary>
+    /// <summary>One price covering several items, not split between
+    /// them.</summary>
     public const string BiggestIsBundleNote =
-        "This transaction covered several items under one price. The price is "
-        + "not split between them.";
+        "One price covering several items, not split.";
 
     // ══ Wallet ════════════════════════════════════════════════════════════
 
@@ -224,16 +178,9 @@ public static class AccountStatsCopy
     /// case, left of a number.</summary>
     public const string LabelWalletCreditRedeemed = "Wallet credit redeemed";
 
-    /// <summary>Explains the double-counting risk: wallet top-ups and
-    /// direct product payments can cover the same money, so wallet credit
-    /// is never part of the spend figures. Per
-    /// <see cref="Core.Queries.AccountStats.WalletCreditPurchases"/>.</summary>
+    /// <summary>Wallet credit is never counted as spend.</summary>
     public const string WalletNote =
-        "Money reaches Steam either as a direct payment for a product or as a "
-        + "wallet top-up that later pays for products. Counting both would "
-        + "count the same money twice, so wallet credit is reported here as "
-        + "its own fact and is never part of the spend figures above. What a "
-        + "redeemed code cost is not on the page.";
+        "Wallet credit is never counted as spend.";
 
     // ══ Licences ══════════════════════════════════════════════════════════
 
@@ -241,14 +188,9 @@ public static class AccountStatsCopy
     /// spelling per codebase convention.</summary>
     public const string LicenceHeading = "Licences";
 
-    /// <summary>States that these count packages, not games, so a licence
-    /// count is not a library size. The breakdown uses the licenses page's
-    /// own acquisition vocabulary.</summary>
+    /// <summary>These count packages, not games.</summary>
     public const string LicenceNote =
-        "These count packages, not games: a package can be a bundle, a DLC, "
-        + "or a cosmetic, so a licence count is not a library size. The "
-        + "breakdown uses the licenses page's own vocabulary for how each "
-        + "package was acquired.";
+        "These count packages, not games.";
 
     /// <summary>Row label for licences acquired through the Steam Store.
     /// Sentence case, left of a number.</summary>
@@ -276,12 +218,8 @@ public static class AccountStatsCopy
     /// <summary>Heading for the per-currency table. Sentence case.</summary>
     public const string CurrencyHeading = "Currencies";
 
-    /// <summary>States that the table lists which currency symbols appeared
-    /// and on how many transactions, and that nothing is converted.</summary>
-    public const string CurrencyNote =
-        "Which currency symbols appeared and on how many transactions. Every "
-        + "amount is stored exactly as the page displayed it; nothing is "
-        + "converted.";
+    /// <summary>Nothing is converted.</summary>
+    public const string CurrencyNote = "Nothing is converted.";
 
     /// <summary>Row label for transactions that carried no currency symbol
     /// at all. Sentence case, left of a number.</summary>
@@ -293,13 +231,9 @@ public static class AccountStatsCopy
     /// card frames the entire screen as a captured slice.</summary>
     public const string CaptureHeading = "What this was read from";
 
-    /// <summary>States that the dates and counts say which stretch the
-    /// capture covers, and that importing more pages extends it. Points at
-    /// the PURCHASES screen as the source.</summary>
+    /// <summary>Importing more pages extends this screen.</summary>
     public const string CaptureNote =
-        "The dates and counts below say which stretch of the account the "
-        + "capture covers. Importing more pages from the PURCHASES screen "
-        + "extends it.";
+        "Importing more pages from PURCHASES extends this.";
 
     /// <summary>Row label for total transactions read. Sentence case, left
     /// of a number.</summary>
@@ -333,12 +267,8 @@ public static class AccountStatsCopy
     /// case, left of a count.</summary>
     public const string LabelLicencesWithoutDate = "Licences without date";
 
-    /// <summary>States that third-party keys (Humble, Fanatical and others)
-    /// are activated on Steam but never appear in Steam's spending pages, so
-    /// that money is invisible here. Neutral statement of a limit, not an
-    /// apology.</summary>
+    /// <summary>Third-party key spending is not visible here.</summary>
     public const string ThirdPartyKeysNote =
-        "Keys bought from third-party sellers, such as Humble Bundle and "
-        + "Fanatical, are activated on Steam but never appear in Steam's own "
-        + "spending pages. That money is not visible to any figure here.";
+        "Keys from third-party sellers (Humble, Fanatical and others) never "
+        + "appear in Steam's spending pages, so that money is not here.";
 }

@@ -7,6 +7,8 @@ using Avalonia.Media;
 using Avalonia.Reactive;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Winnow.App.Services;
 using Winnow.App.Themes;
 using Winnow.App.ViewModels;
@@ -245,6 +247,31 @@ public partial class MainWindow : Window
     {
         base.OnOpened(e);
 
+        // N02. The only async void in the tree that sequences load-bearing
+        // startup work, so the only one that runs without an event boundary:
+        // an exception from any load below would otherwise escape onto the UI
+        // thread and take the process down at startup — precisely when the
+        // database is most likely to be fresh or newly migrated. The catch
+        // leaves the shell standing on whatever last succeeded, mirroring the
+        // error boundary Program.cs puts around its own startup task (F36,
+        // one layer down).
+        try
+        {
+            await LoadOnOpenAsync();
+        }
+        catch (OperationCanceledException)
+        {
+            // The window closed mid-load. Nothing was half-written that the
+            // next launch does not resume, and a shutdown is not a failure.
+        }
+        catch (Exception ex)
+        {
+            LogStartupLoadFailure(ex);
+        }
+    }
+
+    private async Task LoadOnOpenAsync()
+    {
         if (_library is { } library)
         {
             await library.LoadCommand.ExecuteAsync(null);
@@ -264,6 +291,47 @@ public partial class MainWindow : Window
         if (_shell?.Display is { } display)
         {
             await display.LoadAsync();
+
+            // The grid grain is a stored preference too, and unlike the dimming
+            // above it cannot be repainted into place: it decides which tiles
+            // exist, so it needs the rows walked again. Taken only when the
+            // stored answer differs from the one the first load assumed, which
+            // on a default install it does not, so an ordinary launch pays
+            // nothing for this. Without it the preference would read as ON in
+            // the settings panel and behave as OFF in the grid until the user
+            // toggled it twice.
+            if (_library is { } grid && grid.GroupExpansions != display.GroupExpansions)
+            {
+                grid.GroupExpansions = display.GroupExpansions;
+                await grid.LoadCommand.ExecuteAsync(null);
+            }
+
+            // The rating cap is stored the same way and needs the same walk: it
+            // decides which tiles exist, so a cap set last session would read as
+            // set in the popover and do nothing in the grid until it was moved.
+            if (_library is { } capped && capped.MaturityCap != display.MaturityCap)
+            {
+                capped.MaturityCap = display.MaturityCap;
+                await capped.LoadCommand.ExecuteAsync(null);
+            }
+        }
+
+        // The explicit-content preference is read at startup rather than on first
+        // visit to SETTINGS › LIBRARY, because it decides which tiles exist.
+        // Without this a user who turned the filter off would get the filtered
+        // library back on every launch until they opened the settings screen.
+        // The walk is taken only when the stored answer differs from the one the
+        // first load assumed, so a default install pays nothing.
+        if (_shell?.LibrarySettings is { } librarySettings)
+        {
+            await librarySettings.RefreshAsync();
+
+            if (_library is { } grid
+                && grid.ShowExplicitContent != librarySettings.ShowExplicitContent)
+            {
+                grid.ShowExplicitContent = librarySettings.ShowExplicitContent;
+                await grid.LoadCommand.ExecuteAsync(null);
+            }
         }
 
         // M8, and LAST on purpose. The scoring pass is ~60 ms over a thousand
@@ -421,6 +489,37 @@ public partial class MainWindow : Window
                 Avalonia.Threading.DispatcherPriority.Background);
         }
 #endif
+    }
+
+    /// <summary>
+    /// The catch arm of the <see cref="OnOpened"/> boundary (N02). Logs through
+    /// the host's logger when there is a host to log through, and falls back to
+    /// <see cref="System.Diagnostics.Trace"/> when there is not — the previewer's
+    /// window runs with no host at all, and a host mid-disposal answers nothing.
+    /// The boundary itself must never throw: that would put the process right
+    /// back where this method exists to take it off of.
+    /// </summary>
+    private static void LogStartupLoadFailure(Exception ex)
+    {
+        ILoggerFactory? factory = null;
+        try
+        {
+            factory = Program.AppHost?.Services.GetRequiredService<ILoggerFactory>();
+        }
+        catch (Exception)
+        {
+            // Shutdown race; the Trace below is the fallback for exactly this
+            // shape, so falling through is the whole point of the try.
+        }
+
+        if (factory is null)
+        {
+            System.Diagnostics.Trace.TraceError($"Startup load failed: {ex}");
+            return;
+        }
+
+        factory.CreateLogger(typeof(MainWindow)).LogError(ex,
+            "Startup load failed; the shell stays standing on whatever last succeeded.");
     }
 
     protected override void OnKeyDown(KeyEventArgs e)

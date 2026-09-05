@@ -1,11 +1,11 @@
 ---
 id: TASK-70.4
 title: Resolve links in the library read model and show coverage on the details modal
-status: In Progress
+status: Done
 assignee:
   - '@claude'
 created_date: '2026-09-02 00:14'
-updated_date: '2026-09-02 02:55'
+updated_date: '2026-09-03 16:47'
 labels: []
 dependencies:
   - TASK-70.3
@@ -31,13 +31,13 @@ Stage 3 of TASK-70. Answers point 4 and makes a link visible in the library rath
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 The bucket query carries a resolved work id, computed in the same pass as demo consolidation, and every surface fed by it inherits it
-- [ ] #2 Both store entries of a linked game display the primary title and the primary cover
-- [ ] #3 Library counts, bucket counts and store title counts are unchanged by linking at this stage
-- [ ] #4 Dismissing a linked game in the feed suppresses every store entry of that game
-- [ ] #5 The details modal lists the titles this game covers, each with its own store, playtime, last-played and per-release achievement rows, and never a blended percentage
-- [ ] #6 A control on each covered title retracts just that link, leaving the rest of the group intact
-- [ ] #7 An architecture test enumerates every surface reading works or ownerships and fails if one is on neither the resolve nor the do-not-resolve list
+- [x] #1 The bucket query carries a resolved work id, computed in the same pass as demo consolidation, and every surface fed by it inherits it
+- [x] #2 Both store entries of a linked game display the primary title and the primary cover
+- [x] #3 Library counts, bucket counts and store title counts are unchanged by linking at this stage
+- [x] #4 Dismissing a linked game in the feed suppresses every store entry of that game
+- [x] #5 The details modal lists the titles this game covers, each with its own store, playtime, last-played and per-release achievement rows, and never a blended percentage
+- [x] #6 A control on each covered title retracts just that link, leaving the rest of the group intact
+- [x] #7 An architecture test enumerates every surface reading works or ownerships and fails if one is on neither the resolve nor the do-not-resolve list
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -99,3 +99,9 @@ Build: 0 Warning(s), 0 Error(s) under TreatWarningsAsErrors. Scoped runs first: 
 
 NOT FINALIZED: acceptance criteria not checked, no final summary, status left In Progress, nothing committed.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Resolved identity links in the library read model and gave the details modal a coverage section. Landed in commit 62b1f99. Verified against IdentityReadModelTests, IdentityReadInventoryTests and LinkedFeedSuppressionTests; the identity family scoped run passed 100 of 100 and LinkedFeedSuppressionTests passed 3 of 3. AC1: With_nothing_linked_every_work_resolves_to_itself and A_linked_group_resolves_to_one_game_where_it_resolved_to_two, with The_resolved_join_stays_cheap_on_a_realistic_library holding the cost. AC2: A_linked_pair_is_one_tile_under_the_primary_title_and_cover - note the presentation tightened in TASK-70.6, which collapsed the grid to one tile per game, so the linked group now presents under the primary title and cover as a single tile rather than as two entries both wearing it; the identity the criterion asks for is what shows. AC3: Linking_collapses_one_tile_and_leaves_the_store_counts_alone. AC4: Dismissing_one_store_entry_of_a_linked_game_suppresses_the_other and Dismissing_the_linked_child_suppresses_the_parent_too, resting on RecommendationEngine.cs:317 where the resolved work is what makes one dismissal cover the group; Retracting_the_link_readmits_the_other_entry_with_no_write covers the reverse. AC5: The_modal_lists_the_titles_this_game_covers_with_their_own_figures, The_modal_shows_per_release_achievement_rows_and_never_a_blended_percentage and The_summed_playtime_never_pairs_with_a_foreign_last_played. AC6: Separate_retracts_one_link_and_leaves_the_rest_of_the_act, with Separate_and_link_again_is_repeatable. AC7: Every_reader_of_works_or_ownerships_is_on_the_resolve_or_the_do_not_resolve_list, guarded by A_new_reader_on_neither_list_is_caught_and_named and A_new_repository_read_is_caught_as_well_as_a_new_query.
+<!-- SECTION:FINAL_SUMMARY:END -->

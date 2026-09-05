@@ -108,7 +108,7 @@
 
     </UserControl.Resources>
 
-    <Grid RowDefinitions="Auto,*" Background="{StaticResource PaneGround}">
+    <Grid RowDefinitions="Auto,*">
 
         <!-- ══ Header ═══════════════════════════════════════════════════════ -->
         <Border Grid.Row="0"

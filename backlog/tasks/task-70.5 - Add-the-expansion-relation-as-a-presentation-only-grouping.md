@@ -1,11 +1,11 @@
 ---
 id: TASK-70.5
 title: Add the expansion relation as a presentation-only grouping
-status: In Progress
+status: Done
 assignee:
   - '@claude'
 created_date: '2026-09-02 00:14'
-updated_date: '2026-09-02 06:03'
+updated_date: '2026-09-03 18:08'
 labels: []
 dependencies:
   - TASK-70.3
@@ -31,12 +31,12 @@ Stage 4 of TASK-70. The second half of point 3: presenting a base game with its 
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 An expansion link changes no count, no playtime, no bucket and no recommendation anywhere in the app
-- [ ] #2 A base game and its expansions are proposed as one group and applied as one act, with the user free to take none, some or all
-- [ ] #3 The expansion detector proposes title-extension candidates the soft matcher cannot find, and never applies one automatically
-- [ ] #4 The details modal lists expansions in their own section, separate from covered titles, each with its own playtime and last-played
-- [ ] #5 An unplayed expansion of a played-out base game is still reachable by the recommender
-- [ ] #6 Grouping expansions in the library grid is a setting, and it is off by default
+- [x] #1 An expansion link changes no count, no playtime, no bucket and no recommendation anywhere in the app
+- [x] #2 A base game and its expansions are proposed as one group and applied as one act, with the user free to take none, some or all
+- [x] #3 The expansion detector proposes title-extension candidates the soft matcher cannot find, and never applies one automatically
+- [x] #4 The details modal lists expansions in their own section, separate from covered titles, each with its own playtime and last-played
+- [x] #5 An unplayed expansion of a played-out base game is still reachable by the recommender
+- [x] #6 Grouping expansions in the library grid is a setting, and it is off by default
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -52,6 +52,52 @@ Stage 4 of TASK-70. The second half of point 3: presenting a base game with its 
 8. TESTS. An expansion link moves no number: library count, every bucket count, both playtimes, the grid's tile count, the per-store title counts, and the recommender pool, asserted before and after. An unplayed expansion of a played-out parent is still reachable by the recommender. The detector proposes a real base-plus-expansion pair and refuses two unrelated titles sharing a first token, a sequel, and a rebuild edition. Retract and re-link repeatedly. The 70.4 architecture test still passes, with every new reader classified in its inventory.
 9. OUT OF SCOPE, STATED: the optional grid grouping setting (this subtask's AC #6). The brief for this stage says an expansion link must not move a tile's collapse, and the tests demand an unchanged tile count, so no grid setting is built and AC #6 stays unchecked.
 10. Scoped tests, then the full suite, built via --artifacts-path into the scratchpad. Prose by docs-writer. Nothing committed, task not finalized.
+
+## AC6 delivery plan, agreed with the user 2026-09-03
+
+DECISIONS TAKEN WITH THE USER, because the original implementation refused to make them.
+(a) When grouping is ON the expansion tile FOLDS into the base tile and the counts follow it,
+matching design-system.md section 11's counts-are-per-tile rule and reusing TASK-70.6's grain.
+Playtime still never rolls up. (b) The base tile carries an unplayed marker when a folded group
+holds an expansion with no playtime, so the premise -- you played 200 hours and never opened the
+expansion -- survives the fold.
+
+WHERE IT MUST NOT GO, and this is the load-bearing constraint. RecommendationEngine takes
+ILibraryQueryRepository (RecommendationEngine.cs:20,30), so the repository fold that TASK-70.6
+put in LibraryQueryRepository.Fold is shared with the recommender and the feed. Folding
+expansions there would hide an unplayed expansion from the feed the moment the setting was
+switched on, which is exactly what AC5 forbids and what decision (b) is trying to preserve.
+The grouping therefore applies ABOVE that chokepoint, in LibraryViewModel where _allTiles is
+built, and the repository is not touched at all. ResolvedWorkId stays same_game-only, so
+GameGrouping keeps its one-pass sum invariant and no expansion minutes can enter it.
+
+1. Setting. IdentityConstants gains ExpansionGroupingSettingKey = library.group_expansions with
+   Parse/Format helpers defaulting to FALSE, mirroring BucketThresholds.ShowNonGameEntries.
+   It does NOT join BucketThresholds, because that record is an input to the repository query
+   and would reach the recommender.
+2. DisplaySettingsViewModel gains GroupExpansions, loaded in LoadAsync and saved on change with
+   a library reload, the same shape OnShowNonGameEntriesChanged already uses.
+3. MainWindowViewModel wires library.GroupExpansions from Display.GroupExpansions, beside the
+   existing ShowNonGameEntries wiring at line 75.
+4. LibraryViewModel gains GroupExpansions. In the grouping pass that builds groups/groupOrder
+   from the bucket rows, when the setting is on an expansion work whose base is ALSO a visible
+   group gets no tile of its own and is recorded against the base. An expansion whose base is
+   not owned or not visible keeps its tile, the same shape VariantGrouping.CountsAsTitle uses,
+   so nothing can vanish from the library.
+5. GameTileViewModel gains GroupedExpansionCount and HasUnplayedExpansion. Counts follow with
+   no further work because every count already derives from _allTiles.
+6. Views: a checkbox in MainWindow.axaml beside Dim dormant covers and Show non-game entries,
+   and the unplayed marker on the tile.
+7. Tests: default off leaves every existing invariant untouched (An_expansion_link_moves_no_number_anywhere
+   and An_expansion_link_does_not_collapse_a_tile must pass unchanged); on, the tile folds and
+   All Games and the rail counts follow; playtime never rolls up; an expansion whose base is not
+   owned keeps its tile; the unplayed marker fires; and the recommender still reaches the
+   unplayed expansion with the setting on.
+8. Build and full suite via --artifacts-path.
+
+Prose note: AGENTS.md routes non-code text through the docs-writer agent. This session is under a
+standing instruction not to invoke agents, so the comments and XML docs here are written inline
+and should be reviewed by that owner.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -97,4 +143,89 @@ Then the FULL suite across all three projects, built and run via --artifacts-pat
 Build: 0 Warning(s), 0 Error(s) under TreatWarningsAsErrors. Winnow.Tests moves 2514 to 2547: 18 detector tests, 10 link tests and 5 queue tests added.
 
 NOT FINALIZED: acceptance criteria not checked, no final summary, status left In Progress, nothing committed.
+
+2026-09-03 finalization review. Criteria 1 to 5 verified and checked; criterion 6 confirmed still outstanding, so this task stays In Progress.
+
+AC1: ExpansionLinkTests.An_expansion_link_moves_no_number_anywhere, with An_expansion_never_enters_the_coverage_sum and IdentityReadModelTests.An_expansion_link_moves_nothing.
+AC2: The_scan_proposes_the_base_and_its_packs_and_nothing_else, Ungrouping_one_pack_leaves_its_siblings_grouped and Group_ungroup_and_group_again_ends_where_grouping_once_ends.
+AC3: ExpansionDetectorTests plus A_refused_pair_never_comes_back and A_grouped_pair_is_not_proposed_again; nothing auto-applies.
+AC4: The_pack_says_what_it_extends_and_the_two_sections_stay_apart.
+AC5: ExpansionRecommendationTests.An_unplayed_pack_of_a_played_out_base_game_is_still_recommended and Grouping_does_not_lend_the_base_games_hours_to_the_pack, 2 of 2 passing.
+Identity family scoped run: 100 of 100 passing.
+
+AC6 REMAINS, and was never attempted. The original notes state it outright: the optional setting that groups expansions in the library grid was NOT BUILT, DELIBERATELY, because this stage required an expansion link to move no tile count. No such setting exists in src/Winnow.App today - a search for a grouping setting or a settings key finds nothing, and ExpansionGrouping is consumed by LibraryViewModel without any user-facing toggle. Building it is what remains.
+
+Two things in the original notes have since resolved and need no action. The REVIEW / EXPANSIONS / HISTORY segment this stage placed the surface on was removed by TASK-83, which folded expansions into the Merges queue as their own section. The out-of-scope observation that MergeCopy.LinkEffect still read 'Entries still appear separately.' after TASK-70.6 collapsed the grid no longer applies: both that string and LinkEffect itself are gone from the tree, removed in the TASK-83 rewrite of MergeCopy.
+
+2026-09-03: AC6 implemented.
+
+WHAT WAS BUILT. ExpansionGroupingPreference in Winnow.Core.Identity carries the settings key
+library.group_expansions with Parse/Format that read anything absent, blank or unparseable as
+OFF. DisplaySettingsViewModel gains GroupExpansions, loaded on open and saved on change with a
+library reload, the same shape the non-game toggle uses. MainWindowViewModel passes it to the
+library on that reload, and MainWindow.OnOpened applies the stored value after
+DisplaySettingsViewModel.LoadAsync, reloading only when the stored answer differs from the one
+the first load assumed - so a default install pays nothing, and the preference actually survives
+a restart instead of reading ON in the panel while behaving OFF in the grid.
+
+WHERE THE FOLD LIVES, AND WHY NOT WHERE THE OTHER ONE DOES. LibraryViewModel decides which
+groups give up their tile, before any tile is built, and the bucket query is untouched.
+RecommendationEngine takes ILibraryQueryRepository, the same repository the grid reads, so a
+fold applied in LibraryQueryRepository.Fold - where TASK-70.6 put the same-game fold - would
+have removed an unplayed expansion from the FEED at the same moment it left the grid. That is
+what AC5 forbids and the opposite of what the new marker is for. ResolvedWorkId therefore stays
+same-game-only and GameGrouping keeps its one-pass sum, so no expansion minute can enter it.
+
+THE THREE RULES THE FOLD OBEYS. A pack folds only when its base is itself visible, so a pack
+whose base is unowned or filtered out keeps its tile and cannot be deleted from the library -
+the same shape VariantGrouping.CountsAsTitle uses for a demo. Folded rows are still walked, so
+the coverage entries the details modal reads are still written and AC4 keeps working with the
+setting on. Playtime never rolls up; the base reports the hours it always reported.
+
+THE MARKER. GameTileViewModel gains GroupedExpansionCount, HasUnplayedExpansion,
+ExpansionMarkFace and ExpansionMarkText. Drawn as a plus-and-count in the existing store-pip
+class, bottom-right, hidden unless something was folded, never Flare and never Volt. The words
+including the never-played claim are in the tooltip and the automation name, so it is
+decorative-redundant per section 8 rather than the only home of the fact.
+
+TESTS ADDED. LibraryGrainTests: the stored preference defaults to off over seven inputs; the
+fold takes the tile and the counts follow while playtime does not; a folded unplayed pack marks
+its base and says so in the automation name; a folded played pack marks the count and claims
+nothing more; a pack whose base is not in the library keeps its tile; and the rows the
+recommender reads are identical before and after a fold. LibraryViewModelTests: the preference
+is written and reloads on change, and is applied on load without being written back.
+Scoped runs green - 39 LibraryGrainTests, 12 AC6 cases, 9 persistence cases.
+
+DOCUMENTATION. design-system.md section 5.3 now states the second resting mark and that neither
+resting mark is a hover-overlay fact, so the four-fact cap counts neither. docs/decisions.md
+records the product decision, the rejected alternative and the reason the fold sits above the
+shared query.
+
+PROSE OWNERSHIP. AGENTS.md routes non-code text through the docs-writer agent. This session is
+under a standing instruction not to invoke agents, so every comment, XML doc, copy string and
+documentation paragraph here was written inline and should be reviewed by that owner.
+
+Verification. dotnet build --artifacts-path: Build succeeded, 0 Warning(s), 0 Error(s) under TreatWarningsAsErrors. Full suite via --artifacts-path: Winnow.Covers.Tests 70/70, Winnow.Recommend.Tests 145/145, Winnow.Tests 2773/2773, zero failures. Winnow.Tests was 2759 before this slice; +14 and none removed, which is the 12 AC6 cases in LibraryGrainTests plus the 2 persistence cases in LibraryViewModelTests.
+
+The two invariants that could have regressed did not: An_expansion_link_moves_no_number_anywhere and An_expansion_link_does_not_collapse_a_tile both still pass untouched, because they load with the preference at its default. That is the evidence that criterion 1 survives criterion 6.
+
+No live database was opened and the app was not launched; every build and test ran through --artifacts-path into a scratch path.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Added the expansion relation as a presentation-only grouping. Criteria 1 to 5 landed in commit 315e9fa and were verified on 2026-09-03; criterion 6, the optional grid-grouping setting, was never attempted at the time and is now built.
+
+AC6 as delivered. ExpansionGroupingPreference (Winnow.Core.Identity) carries the key library.group_expansions, parsing anything absent, blank or unparseable as OFF. DisplaySettingsViewModel gains GroupExpansions with a checkbox in the settings panel; MainWindow applies the stored value after the settings load and reloads only when it differs from what the first pass assumed, so the preference survives a restart and a default install pays nothing for it.
+
+Two product decisions were taken with the user, because the original implementation refused to make them and said so. When grouping is ON the pack folds into its base game's tile and the counts follow, which keeps design-system section 11's counts-are-per-tile rule intact; the alternative of counting a tile that does not exist was rejected. And the base tile carries a mark when a folded pack has never been played, because the fold removes the pack from the Never played rail and that fact is the recommendation the app exists to make.
+
+The load-bearing constraint, discovered while planning. RecommendationEngine takes ILibraryQueryRepository, the same repository the grid reads, so folding in LibraryQueryRepository.Fold where TASK-70.6 put the same-game fold would have taken an unplayed expansion out of the FEED at the same moment it left the grid - exactly what criterion 5 forbids. The fold is therefore applied in LibraryViewModel where the tiles are built, above that shared chokepoint. ResolvedWorkId stays same-game-only, GameGrouping keeps its one-pass sum, and no expansion minute can enter it. Grouping_changes_no_row_the_recommender_reads asserts the rows are identical before and after a fold.
+
+Three rules the fold obeys: a pack folds only when its base is itself visible, so a pack whose base is unowned keeps its tile and cannot be deleted from the library; folded rows are still walked so the coverage entries the details modal reads survive, keeping criterion 4 true with the setting on; and playtime never rolls up.
+
+Verified with dotnet build (0 warnings under TreatWarningsAsErrors) and the full suite via --artifacts-path: 2773 + 145 + 70, zero failures, up 14 from 2759 with none removed. Criterion 1's own tests, An_expansion_link_moves_no_number_anywhere and An_expansion_link_does_not_collapse_a_tile, still pass untouched at the default, which is what makes the two criteria compatible rather than contradictory.
+
+design-system.md section 5.3 states the second resting mark and that neither resting mark is a hover-overlay fact; docs/decisions.md records the decisions and the rejected alternative. Prose was written inline rather than by the docs-writer agent, because this session is under a standing instruction not to invoke agents; that owner should review it.
+<!-- SECTION:FINAL_SUMMARY:END -->

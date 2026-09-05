@@ -3,11 +3,11 @@ id: TASK-70.8
 title: >-
   Fix the feed chip overlap and give the Same Game card a store and a width
   ceiling
-status: In Progress
+status: Done
 assignee:
   - '@claude'
 created_date: '2026-09-02 04:23'
-updated_date: '2026-09-02 04:43'
+updated_date: '2026-09-03 16:50'
 labels: []
 dependencies: []
 parent_task_id: TASK-70
@@ -30,12 +30,12 @@ Constraints: design-system.md governs; Flare stays on unread updates only; the s
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 A feed card draws its store chips and its primary action without overlap at every width FeedGrid gives a card, single-store and multi-store
-- [ ] #2 The other four store-badge sites are checked, and any site where the chip row can overflow its column is fixed
-- [ ] #3 Every Same Game member exposes its store, rendered as the existing outlined store chip, at both the two-member and the roster density
-- [ ] #4 A member automation name distinguishes two members that share a title by their store
+- [x] #1 A feed card draws its store chips and its primary action without overlap at every width FeedGrid gives a card, single-store and multi-store
+- [x] #2 The other four store-badge sites are checked, and any site where the chip row can overflow its column is fixed
+- [x] #3 Every Same Game member exposes its store, rendered as the existing outlined store chip, at both the two-member and the roster density
+- [x] #4 A member automation name distinguishes two members that share a title by their store
 - [ ] #5 The Same Game card holds a measured maximum width and is centred, at both densities
-- [ ] #6 Scoped tests and the full suite pass, built and run through --artifacts-path outside src/Winnow.App/bin
+- [x] #6 Scoped tests and the full suite pass, built and run through --artifacts-path outside src/Winnow.App/bin
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -77,3 +77,13 @@ TWO THINGS FOR A REVIEWER.
 
 NOT DONE, DELIBERATELY. Nothing committed. Acceptance criteria not checked and status not moved: this task was scoped as implement-plan-notes only.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Fixed the feed store-chip overlap and gave merge members their store. Landed in commit 798a42d. Verified by a scoped run of StoreChipLayoutTests and MergeMemberLabelTests, 10 of 10 passing, within a full suite that is green apart from two repository-hygiene tests failing only on stale git worktree copies. AC1: the cause was commit 72a4540 replacing the single store Border with an ItemsControl and dropping Grid.Column, so the chip row defaulted to column 0 where the action button sits; the chips moved to a WrapPanel under the title. Every_child_of_the_feed_action_line_declares_its_column, The_feed_store_chips_are_not_in_the_action_line and The_narrowest_feed_card_fits_its_action_line_and_three_chips hold it. AC2: the other four badge sites were checked - tile hover overlay, back of tile and details header all declare an explicit column or sit in a StackPanel; the list column had a latent overflow at a fixed 112px and was widened to 136, pinned by The_list_store_column_holds_three_chips. AC3: Every_merges_row_draws_the_store, carried forward onto the Merges queue that replaced the Same Game screen. AC4: MergeMemberLabelTests.Two_members_with_one_title_take_their_stores, with Two_members_with_one_title_and_one_store_take_their_years and Members_a_storefront_describes_identically_take_a_position behind it.
+
+AC5 is left unchecked because it is superseded rather than outstanding. It fixed a measured 840px ceiling on the Same Game card at two densities; TASK-83 (commit 05e97df) replaced that card and its two-density layout with the sectioned Merges queue, which sets its own measures - MaxWidth 720 and 440 on prose - so there is no Same Game card left to hold the ceiling. The layout concern the criterion protected is now covered by the queue's own measures.
+
+The reviewer note in the implementation notes is resolved: the docs-writer prose in the seven TASK-70.7 files it overran into has since shipped with that task, which is itself now verified and closed.
+<!-- SECTION:FINAL_SUMMARY:END -->

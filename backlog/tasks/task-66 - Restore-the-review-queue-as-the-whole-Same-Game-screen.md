@@ -1,11 +1,11 @@
 ---
 id: TASK-66
 title: Restore the review queue as the whole Same Game screen
-status: In Progress
+status: Done
 assignee:
   - '@safwyl'
 created_date: '2026-09-01 15:43'
-updated_date: '2026-09-01 20:47'
+updated_date: '2026-09-03 16:39'
 labels: []
 dependencies: []
 ordinal: 83000
@@ -80,3 +80,9 @@ MergeBlocker.AlreadyApplied is unreachable in BuildPlanAsync: its branch is guar
 
 Final suite: 2463 + 98 + 70 passed, 0 failed.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Superseded, not delivered as specified. This task rebuilt the Same Game screen as a REVIEW / HISTORY segmented control over the review queue. TASK-83 (commit 05e97df) removed exactly that structure: its scope states the REVIEW / EXPANSIONS / HISTORY segments go away, past acts fold into their sections as resolved strips, and the old view models and tests were deleted. Verified by inspection: MergeQueueView.axaml and MergeQueueViewModel.cs now implement the five-section Merges queue, and no segmented control remains. Acceptance criteria are left unchecked deliberately. The eleven conformance findings this task fixed are recorded in the implementation notes and were carried into the replacement where still applicable.
+<!-- SECTION:FINAL_SUMMARY:END -->

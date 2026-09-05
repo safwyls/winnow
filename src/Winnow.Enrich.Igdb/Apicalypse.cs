@@ -106,5 +106,100 @@ public static class Apicalypse
             offset {offset.ToString(CultureInfo.InvariantCulture)};
             """;
 
+    /// <summary>
+    /// The <c>games</c> query for age ratings — separate from <see cref="Games"/>
+    /// because it names deprecated fields (<c>age_ratings.category</c>,
+    /// <c>age_ratings.rating</c>). A field IGDB finally removes would 400 the
+    /// whole body; on the shared query that single 400 would cost name, cover art,
+    /// genres, themes, game modes, perspectives and publisher for the entire
+    /// library. On its own query it costs maturity alone.
+    /// </summary>
+    public static string AgeRatings(IEnumerable<long> igdbIds, int limit, int offset)
+        => AgeRatingsQuery(
+            "fields age_ratings.category,age_ratings.rating,"
+            + "age_ratings.organization.name,age_ratings.rating_category.rating;",
+            igdbIds,
+            limit,
+            offset);
+
+    /// <summary>
+    /// The fallback query when <see cref="AgeRatings"/> is rejected: only the
+    /// current reference fields (<c>organization.name</c>,
+    /// <c>rating_category.rating</c>), no deprecated enums. Converts "IGDB
+    /// removed a deprecated field" from total loss into label-based mapping.
+    /// </summary>
+    public static string AgeRatingsWithoutDeprecatedFields(IEnumerable<long> igdbIds, int limit, int offset)
+        => AgeRatingsQuery(
+            "fields age_ratings.organization.name,age_ratings.rating_category.rating;",
+            igdbIds,
+            limit,
+            offset);
+
+    /// <summary>
+    /// Default cap on search results. High enough to find the right Prey
+    /// among similarly named games, low enough not to spend the 4 req/s
+    /// budget paging a relevance-ranked tail nobody asked for.
+    /// </summary>
+    public const int DefaultSearchLimit = 20;
+
+    /// <summary>
+    /// Sanitizes a user-typed title into a term safe for the quoted
+    /// <c>search "…"</c> clause. Returns null when nothing searchable
+    /// remains.
+    ///
+    /// <para>Unlike <see cref="IsSafeStringValue"/>, which rejects unsafe
+    /// input, this method replaces the dangerous characters — the double
+    /// quote, the backslash, the semicolon and control characters — with
+    /// spaces and collapses the whitespace. Rejecting is right for a
+    /// machine-generated store id that must never be mangled; a search
+    /// term is free text a person typed, and a title containing a quote
+    /// should still search rather than silently fail.</para>
+    /// </summary>
+    public static string? SearchTerm(string? title)
+    {
+        if (string.IsNullOrWhiteSpace(title))
+        {
+            return null;
+        }
+
+        var builder = new StringBuilder(title.Length);
+        foreach (var c in title)
+        {
+            builder.Append(char.IsControl(c) || c is '"' or '\\' or ';' ? ' ' : c);
+        }
+
+        var cleaned = string.Join(
+            ' ', builder.ToString().Split(' ', StringSplitOptions.RemoveEmptyEntries));
+        return cleaned.Length == 0 ? null : cleaned;
+    }
+
+    /// <summary>
+    /// The <c>games</c> query for a title search: the <c>search "…"</c>
+    /// clause on the same endpoint, asking for name, cover, year and
+    /// platforms. Rides its own query body rather than widening
+    /// <see cref="Games"/>, for the same isolation reason
+    /// <see cref="AgeRatings"/> is separate: a 400 on this query costs
+    /// the search alone, not the shared metadata for the entire library.
+    ///
+    /// <para>The field list differs from <see cref="Games"/>:
+    /// <c>platforms.name</c> is what tells Prey (2006, Xbox 360) apart
+    /// from Prey (2017, PS4/PC), and nothing else in the client needs
+    /// it.</para>
+    /// </summary>
+    public static string SearchGames(string term, int limit)
+        => $"""
+            fields name,cover.image_id,cover.url,first_release_date,platforms.name;
+            search "{term}";
+            limit {Clamp(limit).ToString(CultureInfo.InvariantCulture)};
+            """;
+
+    private static string AgeRatingsQuery(string fields, IEnumerable<long> igdbIds, int limit, int offset)
+        => $"""
+            {fields}
+            where id = {NumberList(igdbIds)};
+            limit {Clamp(limit).ToString(CultureInfo.InvariantCulture)};
+            offset {offset.ToString(CultureInfo.InvariantCulture)};
+            """;
+
     private static int Clamp(int limit) => Math.Clamp(limit, 1, MaxLimit);
 }

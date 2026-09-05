@@ -28,6 +28,13 @@ public partial class GameDetailsViewModel : ObservableObject
     /// <summary>Update flag service. Null hides the mark-as-read control.</summary>
     private readonly IUpdateFlagService? _flags;
 
+    /// <summary>
+    /// Embedded patch-notes reader. Null means the patch-notes button opens the
+    /// system browser instead; the view tries the reader first and falls back
+    /// silently.
+    /// </summary>
+    private readonly Core.Reading.IPatchNotesReader? _patchNotes;
+
     /// <summary>Raw update events for this release, passed to <see cref="IUpdateFlagService.DismissAsync"/>.</summary>
     private readonly IReadOnlyList<UpdateEvent> _events;
 
@@ -50,8 +57,14 @@ public partial class GameDetailsViewModel : ObservableObject
         IUpdateFlagService? updateFlags = null,
         Func<Task>? reloadLibrary = null,
         GameCoverageViewModel? coverage = null,
-        GameExpansionsViewModel? expansions = null)
+        GameExpansionsViewModel? expansions = null,
+        Lists.GameListsViewModel? lists = null,
+        Core.Reading.IPatchNotesReader? patchNotes = null,
+        GameIgdbMatchViewModel? igdbMatch = null)
     {
+        _patchNotes = patchNotes;
+        IgdbMatch = igdbMatch;
+        Lists = lists;
         Coverage = coverage;
         Expansions = expansions;
         Tile = tile;
@@ -109,6 +122,20 @@ public partial class GameDetailsViewModel : ObservableObject
 
     /// <summary>Drawn only when this game is itself a pack, so the grouping can be undone from either end.</summary>
     public bool ShowExtends => Expansions is { HasBase: true };
+
+    public Lists.GameListsViewModel? Lists { get; }
+
+    public bool ShowLists => Lists is not null;
+
+    /// <summary>
+    /// The IGDB reassignment control, in the left column under the cover
+    /// art and the install path. Null when no assignment service is
+    /// registered or the tile has no work id, and then the modal is exactly
+    /// what it was before TASK-89.
+    /// </summary>
+    public GameIgdbMatchViewModel? IgdbMatch { get; }
+
+    public bool ShowIgdbMatch => IgdbMatch is not null;
 
     // ── Band 1: what is this ────────────────────────────────────────────────
 
@@ -230,6 +257,33 @@ public partial class GameDetailsViewModel : ObservableObject
     public string UpdatesLabel => Updates.Any(u => u.IsSinceYouPlayed)
         ? "SINCE YOU PLAYED"
         : "UPDATE HISTORY";
+
+    /// <summary>True when at least one update carries a readable link.</summary>
+    public bool HasNotesPage => Updates.Any(u => u.HasLink);
+
+    /// <summary>True when the game has updates but none of them carries a link.</summary>
+    public bool ShowNoNotesNote => HasUpdates && !HasNotesPage;
+
+    /// <summary>Shown under the update list when no update carries a readable link.</summary>
+    public string NoNotesText => "No patch notes page available for these updates.";
+
+    /// <summary>
+    /// Tries to open <paramref name="link"/> in the embedded patch-notes panel.
+    /// Returns false when there is no reader or the policy refuses the URL, and
+    /// the view then falls back to the system browser.
+    /// </summary>
+    public bool TryReadNotes(GameLink link)
+    {
+        ArgumentNullException.ThrowIfNull(link);
+
+        if (_patchNotes is not { IsAvailable: true } reader
+            || !Uri.TryCreate(link.Uri, UriKind.Absolute, out var uri))
+        {
+            return false;
+        }
+
+        return reader.Open(uri, Title) == Core.Reading.PatchNotesOutcome.Opened;
+    }
 
     // ── Under the list: "I've read this one" ────────────────────────────────
 

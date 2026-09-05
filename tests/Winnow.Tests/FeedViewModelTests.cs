@@ -1,6 +1,7 @@
 ﻿using Winnow.App.Services;
 using Winnow.App.ViewModels;
 using Winnow.Core.Queries;
+using Winnow.Covers;
 using Xunit;
 
 namespace Winnow.Tests;
@@ -392,12 +393,14 @@ public sealed class FeedViewModelTests
 internal sealed class FakeFeedService : IFeedService
 {
     private readonly List<FeedVerdictRecord> _verdicts = [];
+    private readonly List<(long ReleaseId, string ShelfId)> _surfaced = [];
 
     public FakeFeedService(FeedSnapshot next) => Next = next;
 
     public FeedSnapshot Next { get; set; }
 
-    public TaskCompletionSource? Gate { get; init; }
+    /// <summary>Holds a read open. Settable so a test can gate a later pass and not the first.</summary>
+    public TaskCompletionSource? Gate { get; set; }
 
     public int Calls { get; private set; }
 
@@ -410,15 +413,25 @@ internal sealed class FakeFeedService : IFeedService
     /// <summary>Every verdict ever recorded here, newest first — the real repository's order.</summary>
     public IReadOnlyList<FeedVerdictRecord> Verdicts => _verdicts;
 
+    /// <summary>
+    /// Answers to hand out in order, one per call, before falling back to
+    /// <see cref="Next"/>. Chosen at call time rather than at completion time,
+    /// so a test that holds one read open and lets a later one overtake it
+    /// still knows which answer belongs to which call.
+    /// </summary>
+    public Queue<FeedSnapshot> Sequence { get; } = [];
+
     public async Task<FeedSnapshot> GetShelvesAsync(CancellationToken ct = default)
     {
         Calls++;
+        var answer = Sequence.Count > 0 ? Sequence.Dequeue() : Next;
+
         if (Gate is not null)
         {
             await Gate.Task.WaitAsync(ct);
         }
 
-        return Next;
+        return answer;
     }
 
     public Task<FeedVerdictOutcome> RecordVerdictAsync(
@@ -464,7 +477,27 @@ internal sealed class FakeFeedService : IFeedService
     }
 
     public Task<IReadOnlyList<FeedVerdictRecord>> GetHistoryAsync(CancellationToken ct = default)
-        => Task.FromResult<IReadOnlyList<FeedVerdictRecord>>(_verdicts.ToList());
+    {
+        HistoryCalls++;
+        return Task.FromResult<IReadOnlyList<FeedVerdictRecord>>(_verdicts.ToList());
+    }
+
+    /// <summary>How many times the history has been re-read — the trace a live card's subscription leaves.</summary>
+    public int HistoryCalls { get; private set; }
+
+    /// <summary>
+    /// Records synchronously, before returning its task, because the screen
+    /// logs a swapped-in card without awaiting: a test asserting on the log
+    /// asserts on what the press did, not on when a continuation ran.
+    /// </summary>
+    public Task RecordSurfacedAsync(long releaseId, string shelfId, CancellationToken ct = default)
+    {
+        _surfaced.Add((releaseId, shelfId));
+        return Task.CompletedTask;
+    }
+
+    /// <summary>Every card logged as shown outside a generation pass, in the order they went on screen.</summary>
+    public IReadOnlyList<(long ReleaseId, string ShelfId)> Surfaced => _surfaced;
 
     /// <summary>Puts a row in that this session did not write — a lapsed snooze, an old dismissal.</summary>
     public void Seed(FeedVerdictRecord record) => _verdicts.Insert(0, record);
@@ -486,6 +519,9 @@ internal sealed class ThrowingFeedService : IFeedService
 
     public Task<IReadOnlyList<FeedVerdictRecord>> GetHistoryAsync(CancellationToken ct = default)
         => throw new InvalidOperationException("the database went away mid-read");
+
+    public Task RecordSurfacedAsync(long releaseId, string shelfId, CancellationToken ct = default)
+        => throw new InvalidOperationException("the database went away mid-write");
 }
 
 /// <summary>
@@ -501,6 +537,12 @@ internal sealed class FakeTileSource : IGameTileSource
 
     public FakeTileSource(bool empty = false) => _empty = empty;
 
+    /// <summary>
+    /// Shared by every tile the way the real library shares one, so a test can
+    /// state the reduced-motion preference once and have it reach the cards.
+    /// </summary>
+    public DormancyRamp Ramp { get; } = new();
+
     public event EventHandler? TilesChanged;
 
     public bool HasTiles => !_empty && _tiles.Count > 0;
@@ -509,12 +551,19 @@ internal sealed class FakeTileSource : IGameTileSource
     public void Reload() => TilesChanged?.Invoke(this, EventArgs.Empty);
 
     public void Add(long ownershipId, string title)
+        => Add(ownershipId, title, coverKey: null, covers: null);
+
+    /// <summary>The same tile with real cover plumbing, for tests that watch the lease pool.</summary>
+    public void Add(long ownershipId, string title, CoverKey? coverKey, ICoverLeases? covers)
         => _tiles[ownershipId] = TileFixture.Tile(
             nowUtc: new DateTime(2026, 8, 27, 0, 0, 0, DateTimeKind.Utc),
             ownershipId: ownershipId,
             releaseId: ownershipId,
             workId: ownershipId,
             title: title,
+            coverKey: coverKey,
+            covers: covers,
+            ramp: Ramp,
             bucket: LibraryBuckets.StaleButPatched,
             playtimeMinutes: 168,
             lastPlayedUtc: new DateTime(2021, 6, 1, 0, 0, 0, DateTimeKind.Utc),

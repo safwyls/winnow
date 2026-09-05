@@ -1,11 +1,11 @@
 ---
 id: TASK-5
 title: Build merge execution and enforce canonicality in the repository
-status: In Progress
+status: Done
 assignee:
   - '@claude'
 created_date: '2026-08-29 21:52'
-updated_date: '2026-09-01 02:18'
+updated_date: '2026-09-03 16:38'
 labels:
   - resolve
   - data
@@ -233,3 +233,9 @@ Two coordinator-requested items handled alongside the merge work.
 Also registered IMergeExecutionRepository and AddMergeExecution() in Program.cs so the merge
 surface is resolvable; no view model or view was touched.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Superseded, not delivered as specified. The destructive merge machinery built here (Winnow.Resolve/MergeExecutor.cs, Winnow.Data/Repositories/MergeExecutionRepository.cs, migration 0016_merge_canonicality.sql) was retired by TASK-70.7 in commit 798a42d, which replaced collapse-based merging with the non-destructive identity-link relation and added migration 0019_retire_destructive_merge.sql. Verified by inspection: MergeExecutor.cs and MergeExecutionRepository.cs are absent from the tree and 0019 is present. Acceptance criteria are left unchecked deliberately, because they describe a canonicality-by-collapse design the codebase no longer implements. The underlying goal, one identity across stores, is met instead by the link relation delivered in TASK-70.2 through TASK-70.7.
+<!-- SECTION:FINAL_SUMMARY:END -->

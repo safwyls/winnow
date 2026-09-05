@@ -1,11 +1,11 @@
 ---
 id: TASK-70.9
 title: Consolidate the Same Game screen into one designed thing
-status: In Progress
+status: Done
 assignee:
   - '@safwyl'
 created_date: '2026-09-02 12:35'
-updated_date: '2026-09-02 17:51'
+updated_date: '2026-09-03 16:51'
 labels: []
 dependencies: []
 documentation:
@@ -770,3 +770,11 @@ NOTE: a `Winnow` app process and a stray `testhost` were observed holding files 
 shared build output during this work; neither was launched from this task. Both had exited
 before the final build and suite run, which are therefore clean.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Superseded. The consolidation landed in commit 3bdba57, and TASK-83 (commit 05e97df) then replaced the screen it consolidated. Acceptance criteria are left unchecked deliberately, because most of them describe structures the replacement removed and one it deliberately reversed. Verified by inspection of the current MergeQueueView.axaml: the three REVIEW / EXPANSIONS / HISTORY segments are gone, so criteria 1, 3, 6 and 11 - the expansion surface as a segment, the segment-scoped outcome report, per-tab outstanding counts, and the history list heading - no longer have a subject; past acts now fold into their sections as resolved strips, and the rail row is MERGES with no count. Criterion 5's 840px centred column went with the old layout, which now sets its own measures. Criterion 7's 200x300 capsule and roster split was replaced by the section-and-header-row card. Criterion 13 was reversed on purpose: Flare now appears on this screen for the unread dot, which the replacement design specifies and the view comments as Flare means one thing on this screen: the unread dots.
+
+Four of its concerns did carry into the replacement and hold there: the card list still uses a virtualizing ItemsPanel (MergeQueueView.axaml:373), user-facing strings still live in MergeCopy, expansion cards still carry no survivor chooser, and the suite is green apart from two repository-hygiene tests failing only on stale git worktree copies. The contrast floor is still enforced by ThemeContrastTests.
+<!-- SECTION:FINAL_SUMMARY:END -->

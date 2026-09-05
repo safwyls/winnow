@@ -1,5 +1,4 @@
 using System.Globalization;
-using Winnow.Core.Repositories;
 using Winnow.Enrich.SteamWeb.Credentials;
 using Winnow.Ingest.Epic.Web.Auth;
 
@@ -30,8 +29,13 @@ public sealed class StoreConnections : IStoreConnections
     /// </summary>
     private readonly ISteamCredentialProvider? _steamCredentials;
 
-    /// <summary>Where an in-app Web API key is written. Null in a host with no settings table.</summary>
-    private readonly ISettingsRepository? _settings;
+    /// <summary>
+    /// Where an in-app Web API key is written. The module's store — the one
+    /// owner of the key at rest — so what the screen saves is protected on the
+    /// way in and refuses rather than degrades to a plaintext row. Null in a
+    /// host with no settings table.
+    /// </summary>
+    private readonly ISteamApiKeyStore? _apiKeyStore;
 
     /// <summary>
     /// The shared account-confirmation writer, so a key change reconciles the
@@ -45,13 +49,13 @@ public sealed class StoreConnections : IStoreConnections
         EpicSignInService? epic = null,
         IEpicTokenStore? epicSessions = null,
         ISteamCredentialProvider? steamCredentials = null,
-        ISettingsRepository? settings = null,
+        ISteamApiKeyStore? apiKeyStore = null,
         ISteamAccountConfirmation? confirmation = null)
     {
         _epic = epic;
         _epicSessions = epicSessions;
         _steamCredentials = steamCredentials;
-        _settings = settings;
+        _apiKeyStore = apiKeyStore;
         _confirmation = confirmation;
     }
 
@@ -80,35 +84,43 @@ public sealed class StoreConnections : IStoreConnections
     }
 
     /// <inheritdoc/>
-    public Task SaveSteamApiKeyAsync(string? key, CancellationToken ct = default)
+    public Task<SteamApiKeySaveOutcome> SaveSteamApiKeyAsync(string? key, CancellationToken ct = default)
         => WriteSteamApiKeyAsync(key?.Trim() ?? string.Empty, ct);
 
     /// <inheritdoc/>
-    public Task ClearSteamApiKeyAsync(CancellationToken ct = default)
-        => WriteSteamApiKeyAsync(string.Empty, ct);
+    public async Task ClearSteamApiKeyAsync(CancellationToken ct = default)
+        => await WriteSteamApiKeyAsync(string.Empty, ct);
 
     /// <summary>
-    /// The one write path for the settings-table key, so saving and clearing
-    /// cannot drift apart on what has to happen afterwards.
+    /// The one write path for the stored key, so saving and clearing cannot
+    /// drift apart on what has to happen afterwards.
     ///
     /// <para>The empty string is the cleared state rather than a deleted row:
-    /// <see cref="ISettingsRepository"/> has no delete, and
     /// <c>SteamApiKey.TryCreate</c> already treats blank as unset, so an empty
     /// value and an absent row mean the same thing to every reader.</para>
+    ///
+    /// <para><b>Refused means nothing happened, so nothing else happens
+    /// either.</b> No row changed, so there is nothing to invalidate and nothing
+    /// to reconcile; a refusal that also dropped the chain's memo would be a
+    /// restart masquerading as a sentence.</para>
     ///
     /// <para><b>Invalidate, then reconcile, in that order.</b> The key chain
     /// memoises — it is read on every enrichment call — so nothing sees the new
     /// key until the cache is dropped, and reconciliation asks which credentials
     /// are in force, which is a question with the wrong answer until it is.</para>
     /// </summary>
-    private async Task WriteSteamApiKeyAsync(string value, CancellationToken ct)
+    private async Task<SteamApiKeySaveOutcome> WriteSteamApiKeyAsync(string value, CancellationToken ct)
     {
-        if (_settings is null)
+        if (_apiKeyStore is null)
         {
-            return;
+            return SteamApiKeySaveOutcome.Refused;
         }
 
-        await _settings.SetAsync(SettingsTableApiKeySource.ApiKeySetting, value, ct);
+        var outcome = await _apiKeyStore.SaveAsync(value, ct);
+        if (outcome == SteamApiKeySaveOutcome.Refused)
+        {
+            return outcome;
+        }
 
         _steamCredentials?.Invalidate();
 
@@ -121,6 +133,8 @@ public sealed class StoreConnections : IStoreConnections
             // every credential present, not against a preferred one.
             await _confirmation.ReconcileAsync(ct);
         }
+
+        return outcome;
     }
 
     /// <inheritdoc/>

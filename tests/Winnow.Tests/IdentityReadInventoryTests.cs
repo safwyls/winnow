@@ -152,6 +152,14 @@ public sealed class IdentityReadInventoryTests
             "A poll target. A Steam build push is not an Epic build push, so both entries stay "
             + "eligible on their own ids."),
 
+        new("src/Winnow.Enrich.Igdb/Storage/IgdbMaturityTargetSource.cs", "GetTargetsAsync",
+            Policy.DoNotResolve,
+            "Maturity evidence is keyed on the stored work id, one row per (work, source). "
+            + "Link resolution happens at read time in LibraryQueryRepository, where the "
+            + "explicit filter drops the whole resolved game with its variants. Resolving "
+            + "here would file a rating against a group parent rather than the work IGDB "
+            + "actually rated, and a later unlink would leave the evidence on the wrong row."),
+
         new("src/Winnow.Data/Repositories/IdentityLinkRepository.cs", "AssertWorksExistAsync",
             Policy.DoNotResolve,
             "The link machinery itself. Resolving inside the thing that defines resolution would "
@@ -190,6 +198,59 @@ public sealed class IdentityReadInventoryTests
         new("src/Winnow.Resolve/ExternalIdResolver.cs", "PromoteProvisionalNameAsync",
             Policy.DoNotResolve,
             "Names the row's own work from the store entry that was just read."),
+
+        new("src/Winnow.Data/Repositories/HiddenGameRepository.cs", "HideAsync",
+            Policy.DoNotResolve,
+            "Stores the work id the caller was handed, checking only that the work exists. The "
+            + "resolution that decides which work a tile stands for happens in the chokepoint "
+            + "query, which tests the row's work, its same-game parent and its variant parent "
+            + "against this table."),
+
+        new("src/Winnow.Data/Repositories/HiddenGameRepository.cs", "GetHiddenGamesAsync",
+            Policy.DoNotResolve,
+            "The unhide screen lists what was hidden, row by row, with the title and the "
+            + "store-entry count of each stored work. Resolving would offer back a group the "
+            + "user never hid."),
+
+        new("src/Winnow.Data/Repositories/WorkIgdbPinRepository.cs", "PinAsync",
+            Policy.DoNotResolve,
+            "Stores the work id the caller was handed. The two reads are only \"does this work "
+            + "exist\" and \"does another work already hold this igdb_id\" — the second is a "
+            + "question about stored rows, and a resolved answer would let two works claim one "
+            + "IGDB id past a UNIQUE constraint."),
+
+        new("src/Winnow.Data/Repositories/ManualEntryRepository.cs", "GetAsync",
+            Policy.DoNotResolve,
+            "One hand-added entry by its ownership id, for the edit form. The form edits the "
+            + "row the user created, not the group it may have been linked into."),
+
+        new("src/Winnow.Data/Repositories/ManualEntryRepository.cs", "GetAllAsync",
+            Policy.DoNotResolve,
+            "The manage-entries list. Each row is the hand-added entry the user created; "
+            + "resolving would fold it into a linked partner and lose the row's own identity."),
+
+        new("src/Winnow.Data/Repositories/ManualEntryRepository.cs", "UpdateAsync",
+            Policy.DoNotResolve,
+            "Reads back the release and work it is about to write. Resolving would write the "
+            + "parent's row with the child's title."),
+
+        new("src/Winnow.Data/Repositories/ManualEntryRepository.cs", "DeleteAsync",
+            Policy.DoNotResolve,
+            "Deletes exactly the rows the user created, narrowed by what other ownerships are "
+            + "left behind. Resolving would delete a linked partner's game."),
+
+        new("src/Winnow.Data/Repositories/ManualEntryRepository.cs", "AssertIdentifiersAreFreeAsync",
+            Policy.DoNotResolve,
+            "Asks whether an external id is already claimed anywhere in the library. The "
+            + "question is about stored rows, and a resolved answer would let a duplicate id "
+            + "through."),
+
+        new("src/Winnow.App/ViewModels/LibrarySettingsViewModel.cs", "BeginEditAsync",
+            Policy.DoNotResolve,
+            "The edit form reads back the IGDB id stored on the hand-added entry's own work, "
+            + "because ManualEntryRepository.UpdateAsync writes that column as given and a form "
+            + "that opened with it blank would clear the id that got the game its cover art. "
+            + "Resolving would prefill a linked parent's id and then write it onto the child."),
     ];
 
     /// <summary>

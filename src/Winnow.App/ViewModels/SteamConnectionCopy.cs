@@ -14,41 +14,29 @@ public static class SteamConnectionCopy
     /// matching LOCAL FILES and STEAM ACCOUNTS on the same card.</summary>
     public const string SectionLabel = "WEB API";
 
-    /// <summary>
-    /// Introduction under the section label. Names the two methods, states
-    /// both work, and gives the one-line difference between them so the user
-    /// can choose before reading either card.
-    /// </summary>
+    /// <summary>Introduction under the section label. States two methods,
+    /// only one needed.</summary>
     public const string SectionIntro =
-        "Two ways to connect to Steam's Web API. Both work, and you only "
-        + "need one. The sign-in also tells Winnow which account is yours "
-        + "and can read your purchase history. The key never expires.";
+        "Two ways to connect to Steam's Web API. You only need one.";
 
     /// <summary>Label for the local-files row on the Steam card. Uppercase,
     /// matching the other section labels on this card.</summary>
     public const string LocalFilesLabel = "LOCAL FILES";
 
-    /// <summary>Description of what local files provide. Same sentence shape
-    /// as the Epic and GOG local-files lines on this screen.</summary>
+    /// <summary>What local files provide: always on, playtime and
+    /// last-played from Steam's local files.</summary>
     public const string LocalFiles =
-        "Always on. Reads installed and played games, playtime and "
-        + "last-played dates from Steam's local files.";
+        "Always on. Reads playtime and last-played from Steam's local files.";
 
-    /// <summary>
-    /// Shown when neither credential is present. States what the user is
-    /// missing without scolding; the two remedies are visible on the same
-    /// card.
-    /// </summary>
+    /// <summary>Shown when neither credential is present. States what is
+    /// missing without a connection.</summary>
     public const string NothingConnectedCost =
-        "Local files cover games installed or played on this PC. Games "
-        + "you own but have never touched on this machine are not in "
-        + "your library yet.";
+        "Games never touched on this PC are not in your library yet.";
 
     /// <summary>Shown when at least one credential is present. States what
-    /// the connection added over local files alone.</summary>
+    /// the connection added.</summary>
     public const string ConnectedAdds =
-        "Winnow also reads your full list of owned games from Steam, "
-        + "including titles never installed on this PC.";
+        "Adds games never installed on this PC.";
 
     // ══ Combined status pill ═══════════════════════════════════════════════
 
@@ -86,14 +74,9 @@ public static class SteamConnectionCopy
     /// status pill already carries the state.</summary>
     public const string HealthLive = "The sign-in is working.";
 
-    /// <summary>
-    /// Session-health line when the access token is nearing expiry. Neutral
-    /// register; renewal is automatic, so this is the routine steady state
-    /// for any signed-in user.
-    /// </summary>
-    public const string HealthRenewalDue =
-        "The access token is due for renewal. Winnow renews it "
-        + "automatically in the background.";
+    /// <summary>Session-health line when the access token is nearing expiry.
+    /// States that renewal is automatic.</summary>
+    public const string HealthRenewalDue = "Renews automatically.";
 
     /// <summary>
     /// Session-health line when renewal was attempted and failed. Amber
@@ -119,14 +102,10 @@ public static class SteamConnectionCopy
         + "cannot encrypt it, so Winnow did not save it to disk. You "
         + "will need to sign in again after a restart.";
 
-    /// <summary>
-    /// Shown only when both credentials are held. States which credential
-    /// serves which purpose. This sentence is the product owner's decision
-    /// and the whole reason the dual state is visible to the user.
-    /// </summary>
+    /// <summary>Shown only when both credentials are held. Names the key as
+    /// the scheduled-update credential and why: keys do not expire.</summary>
     public const string BothCredentials =
-        "Scheduled updates use the API key, because keys do not expire. "
-        + "The sign-in is used when you ask Winnow to do something.";
+        "Scheduled updates use the API key because keys do not expire.";
 
     // ══ Method A — sign in ═════════════════════════════════════════════════
 
@@ -134,30 +113,15 @@ public static class SteamConnectionCopy
     /// heading's weight.</summary>
     public const string SignInHeading = "Sign in to Steam";
 
-    /// <summary>
-    /// What the sign-in provides: immediate account identification, optional
-    /// purchase-history access, and no key registration. Three facts in
-    /// three sentences.
-    /// </summary>
+    /// <summary>What the sign-in provides: account identification and
+    /// optional purchase-history access.</summary>
     public const string SignInGives =
-        "Winnow learns which Steam account is yours the moment you sign "
-        + "in, so the account filter works straight away with no extra "
-        + "requests. Your purchase history can be read in the same "
-        + "session if you allow it. There is no key to register on "
-        + "Steam's website.";
+        "Identifies your account and can read your purchase history.";
 
-    /// <summary>
-    /// What the sign-in gives up. States the expiry, that renewal is
-    /// automatic but untested against live servers, and that an API key
-    /// is the unconditionally reliable alternative.
-    /// </summary>
+    /// <summary>What the sign-in gives up: short-lived credential, automatic
+    /// renewal that may not work, and the API-key alternative.</summary>
     public const string SignInCosts =
-        "The credential lasts about a day. Winnow renews it "
-        + "automatically, but renewal has not been tested against "
-        + "Valve's live servers and may not work. Signing in to "
-        + "Steam elsewhere can also invalidate it. If renewal "
-        + "fails, a fresh sign-in is the only fix; an API key does "
-        + "not expire and needs no renewal.";
+        "Lasts about a day. Winnow renews it automatically, but this may not work against live servers. An API key does not expire.";
 
     /// <summary>Button label for a first-time sign-in. Matches the Epic
     /// card's "Sign in to Epic".</summary>
@@ -171,11 +135,9 @@ public static class SteamConnectionCopy
     /// sign-in window is open.</summary>
     public const string SignInCancelButton = "Cancel";
 
-    /// <summary>Shown while the sign-in window is open. Same shape as
-    /// SteamAccountImportCopy.SignInBusy.</summary>
+    /// <summary>Shown while the sign-in window is open.</summary>
     public const string SignInBusy =
-        "The sign-in window is open. Sign in to Steam there; this page "
-        + "updates when it finishes.";
+        "Sign in in the window that opened; this page updates automatically.";
 
     /// <summary>
     /// Shown when WebView2 is missing. Points at the API key as a working
@@ -208,20 +170,15 @@ public static class SteamConnectionCopy
         + "identified as yours, so the account filter turns off unless "
         + "a key has already confirmed it.";
 
-    /// <summary>
-    /// Shown after a sign-in that recorded the account. Names the account
-    /// filter's availability because that is the user-visible effect.
-    /// </summary>
+    /// <summary>Shown after a sign-in that recorded the account. The
+    /// account filter is now available.</summary>
     public const string AccountConfirmed =
-        "Winnow now knows which Steam account is yours. The account "
-        + "filter is available; no import needed.";
+        "Account confirmed. The account filter is available.";
 
     /// <summary>Shown after a sign-in that did not record the account.
-    /// Rare; names only the sign-in as the remedy.</summary>
+    /// Names the remedy and the consequence.</summary>
     public const string AccountNotConfirmed =
-        "The sign-in worked, but Winnow did not record which account "
-        + "is yours. The account filter is still unavailable. Signing "
-        + "in again should resolve this.";
+        "The account filter is still unavailable. Signing in again should resolve this.";
 
     // ══ Purchase-history permission (acceptance criterion 2) ═══════════════
 
@@ -308,19 +265,15 @@ public static class SteamConnectionCopy
     /// sign-in heading.</summary>
     public const string ApiKeyHeading = "Web API key";
 
-    /// <summary>What the API key provides: no expiry, no renewal, no
-    /// browser. Two sentences, two benefits.</summary>
+    /// <summary>What the API key provides: never expires, so scheduled
+    /// updates keep working.</summary>
     public const string ApiKeyGives =
-        "The key never expires and needs no renewal, so scheduled "
-        + "background updates keep working indefinitely. There is no "
-        + "browser sign-in; you paste a key from Steam's own website.";
+        "Never expires, so scheduled updates keep working.";
 
     /// <summary>What the API key gives up: no account identity until an
-    /// import, no purchase history. Same honesty as SignInCosts.</summary>
+    /// import, no purchase history.</summary>
     public const string ApiKeyCosts =
-        "A key does not identify which Steam account it belongs to, so "
-        + "the account filter is unavailable until a Steam import "
-        + "confirms it. A key cannot read your purchase history.";
+        "The account filter is unavailable until a Steam import confirms your account. A key cannot read your purchase history.";
 
     /// <summary>Label above the key input field. Uppercase register,
     /// matching the card's other field labels.</summary>
@@ -347,11 +300,10 @@ public static class SteamConnectionCopy
     /// <summary>Status line when no key is stored.</summary>
     public const string ApiKeyNotSet = "No API key is set.";
 
-    /// <summary>Status line when a key is stored and managed by this
-    /// screen.</summary>
+    /// <summary>Status line when a key is stored. States it can be
+    /// replaced or cleared.</summary>
     public const string ApiKeySet =
-        "A key is stored on this machine. It can be replaced or "
-        + "cleared here.";
+        "Key stored. Replace or clear it here.";
 
     /// <summary>
     /// Status line when the key came from the environment. Says all three
@@ -364,10 +316,18 @@ public static class SteamConnectionCopy
         + "Saving a key here takes precedence over it. Clearing here "
         + "cannot remove it.";
 
-    /// <summary>Notice after saving. States that it is in use with no
-    /// restart, so the user knows the change took effect.</summary>
-    public const string ApiKeySaved =
-        "The key is saved and in use. No restart needed.";
+    /// <summary>Notice after saving. Confirms the key is active.</summary>
+    public const string ApiKeySaved = "Saved and in use.";
+
+    /// <summary>
+    /// Notice when saving was refused because this host cannot encrypt at
+    /// rest. Says the two things that matter: the key was NOT stored, and the
+    /// environment variable is the alternative that still works.
+    /// </summary>
+    public const string ApiKeySaveRefused =
+        "The key was not stored: this system cannot encrypt saved "
+        + "credentials. You can still set the Steam__ApiKey environment "
+        + "variable.";
 
     /// <summary>Notice after clearing.</summary>
     public const string ApiKeyCleared = "The key has been removed.";
@@ -405,13 +365,30 @@ public static class SteamConnectionCopy
     // ══ TASK-61 — the condensed top level ══════════════════════════════════
 
     /// <summary>Tooltip on the PLATFORMS segment button. Sentence fragment, no
-    /// trailing period, same register as the Appearance segment tooltip.</summary>
-    public const string SegmentTooltip =
-        "Where your library comes from, what each platform cannot know, and Steam purchase history";
+    /// trailing period.</summary>
+    public const string SegmentTooltip = "Platform connections and import settings";
 
     /// <summary>Terse state phrase for local files. Always available, no setup
-    /// required, so this never changes.</summary>
-    public const string StateLocalAlwaysOn = "Always on";
+    /// required, so this never changes. One word, matching the WEB API line
+    /// beneath it, so the two states read as one column rather than as two
+    /// differently-worded facts.</summary>
+    public const string StateLocalAlwaysOn = "On";
+
+    // ── The WEB API state word ──────────────────────────────────────────────
+    //
+    // Three values, and which credential is in force is part of the state
+    // rather than a separate sentence: a user who has both wants to know which
+    // one is doing the work, and a user with neither wants one word.
+
+    /// <summary>No credential of either kind.</summary>
+    public const string StateWebApiOff = "Off";
+
+    /// <summary>A signed-in session is carrying the Web API calls.</summary>
+    public const string StateWebApiOnLogin = "On - Login";
+
+    /// <summary>A Web API key is carrying them. Preferred when both are held,
+    /// because keys do not expire.</summary>
+    public const string StateWebApiOnApi = "On - API";
 
     /// <summary>Summary line under the WEB API section label when no credential
     /// is held. States the two-method choice so the user knows both exist before
@@ -479,15 +456,91 @@ public static class SteamConnectionCopy
     /// costs, the calm health sentence, the identified account, when the token
     /// expires, the purchase-history permission, and what signing out
     /// removes.</summary>
-    public const string DisclosureSignIn = "What signing in gives, and what it costs";
+    /// <summary>
+    /// Disclosure toggle label on the sign-in method.
+    ///
+    /// <para>It no longer says "what signing in gives, and what it costs",
+    /// because that is now the body of the consent modal, on the near side of
+    /// the button. What is left behind the toggle is the state of a session
+    /// that already exists: which account it identified, when its credential
+    /// expires, the calm health sentence, and what signing out removes. The
+    /// label names that instead, because a toggle whose label promises text
+    /// that moved is worse than no toggle.</para>
+    /// </summary>
+    public const string DisclosureSignIn = "Session details";
 
-    /// <summary>Disclosure toggle label: opens what a key gives, what it costs,
-    /// and the full sentence for whichever key state holds.</summary>
-    public const string DisclosureApiKey = "What a key gives, and what it costs";
+    // ── The modals ──────────────────────────────────────────────────────────
+    //
+    // Three of this card's panels became modals. A disclosure costs the card
+    // the height of everything it opens, which is what kept the card from
+    // fitting its viewport; a modal costs it one line. The two that carry a
+    // decision — which method to use, and what signing in reads — are the ones
+    // a user opens once and never again, so a surface that covers the card
+    // while it is being read and leaves nothing behind is the right shape.
+
+    /// <summary>Title of the comparison modal. Answers the question the link asks.</summary>
+    public const string MethodsModalTitle = "Which one should I use?";
+
+    /// <summary>Right-aligned link on the WEB API line. Opens the comparison.</summary>
+    public const string MethodsModalLink = "Which one should I use?";
+
+    /// <summary>Closes a modal that only informs. Not "cancel": nothing was started.</summary>
+    public const string ModalClose = "Close";
+
+    /// <summary>
+    /// Title of the consent modal shown before the embedded sign-in opens.
+    /// Names the act rather than the screen, because pressing Continue is what
+    /// grants the consent the body describes.
+    /// </summary>
+    public const string SignInConsentTitle = "Before you sign in";
+
+    /// <summary>
+    /// The button that grants consent and opens the sign-in window. ROADMAP
+    /// §4.7 condition 3 makes the paragraph above it the transparency surface
+    /// read BEFORE acting; a modal that must be dismissed by this button is
+    /// that requirement made structural rather than hoped for.
+    /// </summary>
+    public const string SignInConsentContinue = "Continue";
+
+    /// <summary>Backs out of the consent modal without starting anything.</summary>
+    public const string SignInConsentCancel = "Cancel";
+
+    /// <summary>Title of the purchase-history modal, which holds both import routes.</summary>
+    public const string PurchaseModalTitle = "Import purchase history";
+
+    /// <summary>Title of the accounts detail modal.</summary>
+    public const string AccountsModalTitle = "What the account filter can and cannot do";
+
+    /// <summary>Right-aligned link on the accounts summary line. Opens the caveat.</summary>
+    public const string AccountsModalLink = "What this covers";
+
+    /// <summary>
+    /// The separator between the two connection methods.
+    ///
+    /// <para>It says OR and not "choose one", because the two are not
+    /// exclusive: holding both is a supported state, and the state word on the
+    /// WEB API line above names which one is carrying the calls when they are.
+    /// What the separator marks is that EITHER is sufficient — the thing a user
+    /// looking at two credential controls most needs to know.</para>
+    /// </summary>
+    public const string MethodSeparator = "OR";
+
+    /// <summary>
+    /// The marker on whichever method is carrying the Web API calls.
+    ///
+    /// <para>It names the SAME credential the WEB API state word names, from
+    /// the same rule, so the line at the top of the section and the marker
+    /// beside the method can never disagree. When both are held the key wears
+    /// it, because scheduled work takes the key; the tooltip carries
+    /// <see cref="BothCredentials"/> so the split is one hover away rather than
+    /// an implication.</para>
+    /// </summary>
+    public const string MethodInUse = "IN USE";
 
     // ══ TASK-59 — the folded purchase import ═══════════════════════════════
 
     /// <summary>Section label above the two import routes on the Steam card.
     /// Uppercase, matching LOCAL FILES, WEB API and STEAM ACCOUNTS.</summary>
     public const string PurchaseSectionLabel = "PURCHASE HISTORY";
+
 }

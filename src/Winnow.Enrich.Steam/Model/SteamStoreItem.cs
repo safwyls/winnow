@@ -26,6 +26,9 @@ public sealed record SteamStoreItem(string AppId, string Name, IReadOnlyList<Ste
     /// <summary>Shared empty tag list, so a tagless item allocates nothing.</summary>
     public static readonly IReadOnlyList<SteamStoreTag> NoTags = [];
 
+    /// <summary>Shared empty descriptor list, so an app with no descriptors allocates nothing.</summary>
+    public static readonly IReadOnlyList<int> NoContentDescriptors = [];
+
     /// <summary>
     /// Valve's storefront classification (player modes, features, controller
     /// support). Init property so pre-existing cached bodies still project.
@@ -47,6 +50,15 @@ public sealed record SteamStoreItem(string AppId, string Name, IReadOnlyList<Ste
     /// cached bodies still project.
     /// </summary>
     public SteamStoreRelatedItems Related { get; init; } = SteamStoreRelatedItems.None;
+
+    /// <summary>
+    /// Valve's <c>content_descriptorids</c> array. Arrives with the query
+    /// <see cref="SteamStoreJson.BuildGetItemsQuery"/> has always sent — there is
+    /// no <c>include_</c> flag for it — so every body already in
+    /// <c>metadata_cache</c> carries it. Init property so pre-existing cached
+    /// bodies still project.
+    /// </summary>
+    public IReadOnlyList<int> ContentDescriptorIds { get; init; } = NoContentDescriptors;
 }
 
 /// <summary>

@@ -124,7 +124,12 @@ public sealed class WorkRepository : IWorkRepository
             FROM works w
             JOIN releases     r ON r.work_id = w.id
             JOIN external_ids e ON e.release_id = r.id AND e.provider IN @providers
-            WHERE w.name_is_provisional = 1
+            -- A pinned work is not a target: the user chose the mapping, so
+            -- the automatic pass must not even ask IGDB about it.
+            WHERE NOT EXISTS (SELECT 1 FROM work_igdb_pins p
+                              WHERE p.work_id = w.id AND p.cleared_at IS NULL)
+              AND (
+                  w.name_is_provisional = 1
                OR w.igdb_id            IS NULL
                OR w.first_release_year IS NULL
                OR w.summary            IS NULL
@@ -143,7 +148,7 @@ public sealed class WorkRepository : IWorkRepository
                      OR LOWER(COALESCE(NULLIF(TRIM(r.name), ''), w.name)) LIKE '%test%'
                      OR LOWER(COALESCE(NULLIF(TRIM(r.name), ''), w.name)) LIKE '%alpha%'
                      OR LOWER(COALESCE(NULLIF(TRIM(r.name), ''), w.name)) LIKE '%trial%'
-                     OR LOWER(COALESCE(NULLIF(TRIM(r.name), ''), w.name)) LIKE '%weekend%'))
+                     OR LOWER(COALESCE(NULLIF(TRIM(r.name), ''), w.name)) LIKE '%weekend%')))
             )
             SELECT WorkId, ReleaseId, Provider, ProviderId, NameIsProvisional,
                    HasIgdbId, HasFirstReleaseYear, HasSummary, HasCoverUrl,
@@ -175,8 +180,18 @@ public sealed class WorkRepository : IWorkRepository
         using var lease = _factory.Lease();
 
         var name = Trimmed(enrichment.Name);
-        var wasProvisional = await lease.Connection.ExecuteScalarAsync<long?>(new CommandDefinition(
-            "SELECT name_is_provisional FROM works WHERE id = @WorkId;",
+
+        // Defence in depth: a pinned work returns NULL here, so
+        // promoteName stays false and the UPDATE below is a no-op. The
+        // primary enforcement is the target query, which never produces a
+        // pinned work at all.
+        var wasProvisional = await lease.Connection.ExecuteScalarAsync<long?>(new CommandDefinition("""
+            SELECT name_is_provisional
+            FROM works
+            WHERE id = @WorkId
+              AND NOT EXISTS (SELECT 1 FROM work_igdb_pins p
+                              WHERE p.work_id = @WorkId AND p.cleared_at IS NULL);
+            """,
             new { enrichment.WorkId }, transaction: lease.Transaction, cancellationToken: ct));
 
         var promoteName = name is not null && wasProvisional == 1;
@@ -221,7 +236,9 @@ public sealed class WorkRepository : IWorkRepository
                 igdb_game_type         = COALESCE(igdb_game_type,         @IgdbGameType),
                 igdb_parent_id         = COALESCE(igdb_parent_id,         @IgdbParentId),
                 igdb_version_parent_id = COALESCE(igdb_version_parent_id, @IgdbVersionParentId)
-            WHERE id = @WorkId;
+            WHERE id = @WorkId
+              AND NOT EXISTS (SELECT 1 FROM work_igdb_pins p
+                              WHERE p.work_id = @WorkId AND p.cleared_at IS NULL);
             """,
             new
             {

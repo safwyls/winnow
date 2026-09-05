@@ -44,6 +44,15 @@ public static class Program
     private static readonly CancellationTokenSource Shutdown = new();
 
     /// <summary>
+    /// The single-instance mutex held for this run (TASK-23): null in a second
+    /// copy, which refuses to start. A static field, not a local in <see
+    /// cref="Main"/>, because the mutex protects the process only while the
+    /// handle stays open, and a local the JIT considered dead would release it
+    /// mid-run.
+    /// </summary>
+    private static Mutex? SingleInstance;
+
+    /// <summary>
     /// Where this run's database, covers, themes and WebView2 profile live, and
     /// whether getting there involved moving them out of the Hoard folder.
     /// Resolved once, in <see cref="Main"/>, before anything is registered.
@@ -105,6 +114,20 @@ public static class Program
                 Environment.ExitCode = 2;
                 return;
             }
+        }
+
+        // TASK-23 (F39). One Winnow per data directory, decided before the
+        // host exists: the session watcher, the schedulers and the update
+        // poller that host.Start() launches are the very things a second copy
+        // must never double. Keyed on the resolved data directory, so a second
+        // copy pointed at a throwaway --data-dir still runs — that is the
+        // documented safe way to click around, and it is not the two-copies
+        // failure this guard exists to prevent.
+        SingleInstance = Services.SingleInstanceGuard.TryAcquire(DataLocation.Root);
+        if (SingleInstance is null)
+        {
+            Services.SingleInstanceGuard.RefuseToStart(DataLocation.Root);
+            return;
         }
 
         // Both flags mean "leave this database alone", so every writer has to
@@ -264,6 +287,16 @@ public static class Program
                         var facets = await services.GetRequiredService<FacetSyncService>()
                             .SyncAsync(Shutdown.Token);
 
+                        // Two passes, one per Enrich.* module, independent: the
+                        // Steam pass re-parses bytes already in metadata_cache
+                        // and costs zero requests; the IGDB pass needs credentials.
+                        // Neither module references the other, so the keyless
+                        // Steam module stays usable with no IGDB credentials.
+                        await services.GetRequiredService<SteamStoreMaturitySync>()
+                            .SyncAsync(Shutdown.Token);
+                        await services.GetRequiredService<IgdbMaturitySync>()
+                            .SyncAsync(Shutdown.Token);
+
                         await services.GetRequiredService<LibrarySoftMatchSweep>()
                             .SweepAsync(Shutdown.Token);
 
@@ -315,6 +348,24 @@ public static class Program
 
             BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
         }
+        catch (Exception fault)
+        {
+            // TASK-22 (F36). The boundary around the startup spine. Everything
+            // in the try above runs before there is a window, on one thread
+            // with no handler over it: migrations, the hosted services,
+            // Avalonia's own framework initialization and the theme read and
+            // composition root that hang off it. This is a WinExe, so an
+            // exception escaping any of them ends the process with nothing
+            // written anywhere a user can look — the icon is double-clicked
+            // and nothing happens.
+            //
+            // The logger is asked of the host rather than built here so the
+            // fault lands wherever the run's logging goes; StartupFailure
+            // treats a host too broken to answer as the ordinary case and
+            // falls through to the channel that needs nothing.
+            Environment.ExitCode = StartupFailure.Report(
+                fault, DataLocation.Root, LoggerFactoryOrNull(host));
+        }
         finally
         {
             // Stop the startup pipeline and let it unwind BEFORE host.StopAsync
@@ -335,6 +386,32 @@ public static class Program
             host.StopAsync().GetAwaiter().GetResult();
             Shutdown.Dispose();
             AppHost = null;
+        }
+    }
+
+    /// <summary>
+    /// The host's logger factory, or <c>null</c> when the host is too far gone
+    /// to hand one over.
+    ///
+    /// <para>Resolving a service out of the provider is exactly the kind of
+    /// thing that fails when startup has already failed — the container may be
+    /// mid-disposal, or the failure may have BEEN a construction error. The
+    /// error boundary must not become the second exception, so the question is
+    /// asked in a way that can answer "no".</para>
+    /// </summary>
+    private static ILoggerFactory? LoggerFactoryOrNull(IHost host)
+    {
+        try
+        {
+            return host.Services.GetService<ILoggerFactory>();
+        }
+        catch (ObjectDisposedException)
+        {
+            return null;
+        }
+        catch (InvalidOperationException)
+        {
+            return null;
         }
     }
 
@@ -407,6 +484,40 @@ public static class Program
         // release and never a blended percentage, and this repository offers no
         // way to produce one.
         services.AddSingleton<IAchievementQueryRepository, AchievementQueryRepository>();
+
+        // Hiding is per work, not per ownership. The exclusion is one NOT EXISTS
+        // inside LibraryQueryRepository's bucket query, so the grid, the list
+        // view, the feed and every rail count inherit it without naming this
+        // type. The App layer names it only to write — Hide on the tile context
+        // menu and the details modal, and Unhide on the LIBRARY settings section.
+        // No ingest path writes it, which is why a re-ingest cannot resurrect a
+        // hidden game.
+        services.AddSingleton<IHiddenGameRepository, HiddenGameRepository>();
+
+        // Stores evidence — rating and descriptor tokens verbatim, one row per
+        // (work, source) — and never a verdict. MaturityTiers and MaturityRules
+        // decide in C# at read time, so the vocabulary can be retuned with no
+        // migration — TASK-101 narrowed the explicit gate from eight broad 18+
+        // codes to two adults-only signals and needed no schema change. The
+        // enrichment clients are the writers and the bucket query is the
+        // reader; registering it here is what lets the composed app have
+        // either.
+        services.AddSingleton<IWorkMaturityRepository, WorkMaturityRepository>();
+
+        // The user's own IGDB choice (migration 0026), made from the details
+        // modal. WorkRepository's enrichment target query and its apply path
+        // both read this table, so registering it here is what makes a pin
+        // survive an automatic enrichment pass.
+        services.AddSingleton<IWorkIgdbPinRepository, WorkIgdbPinRepository>();
+
+        // A hand-added game is an ordinary work + release + ownership whose
+        // store is 'manual' and whose manual_entries row exists. The row's
+        // presence IS the origin marker, so there is one mechanism rather than
+        // two to keep in step. No reader emits the 'manual' store, so the
+        // resolver's (release_id, store) upsert cannot reach it and an ingest
+        // pass cannot overwrite it. The LIBRARY settings section is its only
+        // caller.
+        services.AddSingleton<IManualEntryRepository, ManualEntryRepository>();
         services.AddSingleton<ILibraryQueryRepository, LibraryQueryRepository>();
         services.AddSingleton<ILibraryHistoryStatsRepository, LibraryHistoryStatsRepository>();
         services.AddSingleton<IFacetRepository, FacetRepository>();
@@ -437,7 +548,7 @@ public static class Program
         // badge's dismiss/undo writes here, and NOTHING reads it to decide
         // whether to draw a badge. The watermark is applied once inside
         // LibraryQueryRepository's bucket query, so every surface that draws or
-        // counts "Patched since" already agrees without seeing this type.
+        // counts "Patched" already agrees without seeing this type.
         services.AddSingleton<IUpdateAcknowledgementRepository, UpdateAcknowledgementRepository>();
 
         // Ingest → Resolve → sync (§5.1: the UI reads the database; it never
@@ -561,6 +672,13 @@ public static class Program
         services.AddWebViewAuthPrompt(Path.Combine(data.Root, "WebView2"));
         services.AddSingleton<IInteractiveAuthPrompt, ConsoleAuthPrompt>();
 
+        // Same WebView2 root the sign-in prompt uses above, so --data-dir
+        // redirects both with everything else. Registered unconditionally: the
+        // reader reports itself unavailable at use time if there is no runtime
+        // or no window, and the patch-notes button keeps its existing behaviour
+        // (the system browser).
+        services.AddWebViewPatchNotesReader(Path.Combine(data.Root, "WebView2"));
+
         // The seam a "Sign in to Epic" command binds to. A view model must not
         // resolve EpicInteractiveSignIn or IEpicTokenProvider directly — that
         // would put Ingest in the view model's constructor and delete the §5.1
@@ -661,10 +779,33 @@ public static class Program
         services.AddSingleton<ThemeService>();
         services.AddSingleton<AppearanceViewModel>();
 
+        // The settings surface's third section, SETTINGS › LIBRARY. What is in
+        // the library: the explicit-content filter, the games the user hid and
+        // the games they added by hand. Not under Appearance (material and
+        // quantity) and not under Platforms (connecting to a store). A singleton
+        // because the shell is; it refreshes on open rather than caching, so it
+        // holds no stale list.
+        //
+        // The OS file dialog and the version-info reader that let the ADDED BY
+        // HAND card start from an executable. Both behind seams, both optional
+        // to the view model — omitting them costs the file route and leaves
+        // the typed form untouched. The IGDB half goes through
+        // IIgdbAssignmentService, registered below for the details modal.
+        services.AddSingleton<IExecutableFilePicker, TopLevelExecutableFilePicker>();
+        services.AddSingleton<IExecutableInspector, FileVersionInfoExecutableInspector>();
+        services.AddSingleton<LibrarySettingsViewModel>();
+
+        // The rail's fetch status field (§8). The view model is a plain object
+        // with no Dispatcher dependency; the reporter marshals the enrichment
+        // pass's reports onto the UI thread. Optional to the pass — defaulted
+        // to null — so every test and any host that omits these lines pays nothing.
+        services.AddSingleton<FetchStatusViewModel>();
+        services.AddSingleton<IProgress<EnrichmentProgress>, FetchStatusReporter>();
+
         services.AddSingleton<EnrichmentSyncService>();
         services.AddSingleton<FacetSyncService>();
 
-        // M2 (§4.5): the two update signals behind "Patched since". Both
+        // M2 (§4.5): the two update signals behind "Patched". Both
         // endpoints are keyless, so there is no unconfigured state to handle.
         services.AddUpdateSignals();
 
@@ -709,6 +850,13 @@ public static class Program
         // Optional to LibraryViewModel for the usual reason: omitting this line
         // costs the "mark as read" control on the detail panel and nothing else.
         services.AddSingleton<IUpdateFlagService, UpdateFlagService>();
+
+        // The App-layer seam in front of IgdbManualAssignment, and the only
+        // App type that names it — the same arrangement FeedService has in
+        // front of Winnow.Recommend. It backs the details modal's IGDB
+        // reassignment control; omitting this line costs that control and
+        // nothing else.
+        services.AddSingleton<IIgdbAssignmentService, IgdbAssignmentService>();
 
         services.AddSingleton<LibraryViewModel>();
 

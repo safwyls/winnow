@@ -58,8 +58,8 @@ public static class WinnowLayouts
     public static string Reason(WinnowLayout layout) => layout switch
     {
         WinnowLayout.Floating =>
-            "The rail, the library and the filter panel become rounded cards with a gap around each, all three starting under the title bar. The window's own ground runs behind them and through every gap, and with transparency up it is the desktop that shows there.",
+            "Rounded cards with a gap around each.",
         _ =>
-            "The rail, the library and the filter panel meet edge to edge, divided by a 1px rule. How Winnow has looked until now, and what every contrast figure on this screen was measured against.",
+            "Panes meet edge to edge, divided by a rule.",
     };
 }

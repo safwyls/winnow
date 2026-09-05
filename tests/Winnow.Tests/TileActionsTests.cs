@@ -213,7 +213,7 @@ public sealed class TileActionsTests
     public void The_detail_panel_offers_exactly_the_tiles_action()
     {
         var tile = Tile(ExternalIdProviders.Gog, installed: true);
-        var details = new GameDetailsViewModel(tile, "Bounced off", [], Now);
+        var details = new GameDetailsViewModel(tile, "Started", [], Now);
 
         Assert.Same(tile.PrimaryAction, details.PrimaryAction);
         Assert.True(details.HasLinks);
@@ -247,7 +247,7 @@ public sealed class TileActionsTests
         var tile = Tile(ExternalIdProviders.Steam, installed: true);
         tile.PrimaryActionCommand = new CommunityToolkit.Mvvm.Input.RelayCommand(() => { });
 
-        var details = new GameDetailsViewModel(tile, "Bounced off", [], Now);
+        var details = new GameDetailsViewModel(tile, "Started", [], Now);
 
         Assert.Same(tile, details.Tile);
         Assert.Same(tile.PrimaryActionCommand, details.Tile.PrimaryActionCommand);

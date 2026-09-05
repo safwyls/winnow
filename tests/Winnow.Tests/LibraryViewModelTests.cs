@@ -2,6 +2,7 @@ using System.Globalization;
 using Winnow.App.Services;
 using Winnow.App.ViewModels;
 using Winnow.Core.Domain;
+using Winnow.Core.Identity;
 using Winnow.Core.Repositories;
 using Winnow.Data.Repositories;
 using Winnow.Resolve;
@@ -710,7 +711,8 @@ public sealed class LibraryViewModelTests
             DetachedStores.Create(),
             DetachedAppearance.Create(),
             DetachedFeed.Create(),
-            DetachedAccountStats.Create())
+            DetachedAccountStats.Create(),
+            new LibrarySettingsViewModel())
         {
             IsMergeQueueVisible = true,
         };
@@ -743,7 +745,8 @@ public sealed class LibraryViewModelTests
             DetachedStores.Create(),
             DetachedAppearance.Create(),
             DetachedFeed.Create(),
-            DetachedAccountStats.Create());
+            DetachedAccountStats.Create(),
+            new LibrarySettingsViewModel());
 
         // The landing state, before anything has been clicked.
         Assert.True(shell.IsFeedVisible);
@@ -788,7 +791,8 @@ public sealed class LibraryViewModelTests
             DetachedStores.Create(),
             DetachedAppearance.Create(),
             DetachedFeed.Create(),
-            DetachedAccountStats.Create());
+            DetachedAccountStats.Create(),
+            new LibrarySettingsViewModel());
 
         // The landing state is the feed, so ALL GAMES is not where you are.
         Assert.True(shell.IsFeedVisible);
@@ -841,7 +845,8 @@ public sealed class LibraryViewModelTests
             DetachedStores.Create(),
             DetachedAppearance.Create(),
             DetachedFeed.Create(),
-            DetachedAccountStats.Create());
+            DetachedAccountStats.Create(),
+            new LibrarySettingsViewModel());
 
         Assert.False(shell.IsSettingsVisible);
 
@@ -999,6 +1004,63 @@ public sealed class LibraryViewModelTests
 
         Assert.Contains(nameof(GameTileViewModel.DormancyAlpha), raised);
         Assert.Contains(nameof(GameTileViewModel.DisplayAlpha), raised);
+    }
+
+    // ── Expansion grouping: persistence (TASK-70.5 AC6) ──────────────────────
+
+    /// <summary>
+    /// The preference survives a restart, which is the whole point of storing
+    /// it, and reloads the grid on the way because it decides which tiles exist
+    /// rather than how they are painted.
+    /// </summary>
+    [Fact]
+    public async Task Turning_expansion_grouping_on_writes_the_preference_and_reloads()
+    {
+        var settings = new FakeSettings();
+        var reloads = 0;
+        var display = new DisplaySettingsViewModel(
+            new DormancyRamp(),
+            settings,
+            reloadLibrary: () =>
+            {
+                reloads++;
+                return Task.CompletedTask;
+            });
+
+        display.GroupExpansions = true;
+        await display.PendingSave;
+
+        Assert.Equal("true", await settings.GetAsync(ExpansionGroupingPreference.SettingKey));
+        Assert.Equal(1, reloads);
+
+        display.GroupExpansions = false;
+        await display.PendingSave;
+
+        Assert.Equal("false", await settings.GetAsync(ExpansionGroupingPreference.SettingKey));
+        Assert.Equal(2, reloads);
+    }
+
+    /// <summary>
+    /// Off unless stored otherwise, and reading the row is not writing it.
+    /// </summary>
+    [Fact]
+    public async Task The_stored_grouping_preference_is_applied_on_load_and_not_written_back()
+    {
+        var settings = new FakeSettings();
+        var display = new DisplaySettingsViewModel(new DormancyRamp(), settings);
+
+        await display.LoadAsync();
+        Assert.False(display.GroupExpansions);
+
+        settings.Seed(ExpansionGroupingPreference.SettingKey, "true");
+        await display.LoadAsync();
+        Assert.True(display.GroupExpansions);
+
+        settings.Seed(ExpansionGroupingPreference.SettingKey, "yes please");
+        await display.LoadAsync();
+        Assert.False(display.GroupExpansions);
+
+        Assert.Equal(0, settings.Writes);
     }
 
     // ── Dimming: persistence ─────────────────────────────────────────────────

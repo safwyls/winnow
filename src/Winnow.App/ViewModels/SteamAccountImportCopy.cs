@@ -11,13 +11,11 @@ public static class SteamAccountImportCopy
     // ══ Header ═════════════════════════════════════════════════════════════
 
     /// <summary>
-    /// The lede under the PURCHASE HISTORY section label on the Steam card.
-    /// Names the three facts the import fills in and states the guarantee: games
-    /// already in the library are annotated, nothing is added or overwritten.
+    /// Lede under the PURCHASE HISTORY label. Names what the import fills in
+    /// and the guarantee that nothing is added or overwritten.
     /// </summary>
     public const string Intro =
-        "Fills in when you got each game, how you got it, and what you paid. "
-        + "Attaches to games already in your library; nothing is added or overwritten.";
+        "Fills in when you got each game and what you paid. Nothing is added or overwritten.";
 
     /// <summary>Closing label on this section's disclosure toggle. The same
     /// string as <see cref="SteamConnectionCopy.DisclosureHide"/>, because the
@@ -38,22 +36,16 @@ public static class SteamAccountImportCopy
     public const string SignInRouteButton = "Sign in to Steam";
 
     /// <summary>
-    /// Transparency paragraph read before the user acts. The button press is
-    /// the consent, so this paragraph is the consent surface and must carry
-    /// four facts in order: a private window opens; the user signs in
-    /// themselves and Winnow never sees the password; exactly two pages are
-    /// read, by name; the session is forgotten when the window closes.
+    /// Consent surface before the sign-in button. Carries four facts: private
+    /// window, user signs in, two named pages, session forgotten on close.
     /// </summary>
     public const string SignInRouteExplanation =
-        "A private browser window opens inside the app. You sign into Steam yourself, "
-        + "on Steam's own page; Winnow never sees your password, and Steam Guard works "
-        + "normally. It reads exactly two pages: your account licenses and your purchase "
-        + "history. The session is forgotten when the window closes.";
+        "A private window opens inside the app. You sign in yourself; Winnow never "
+        + "sees your password. It reads exactly two pages: your account licenses and "
+        + "your purchase history. The session is forgotten when the window closes.";
 
-    /// <summary>Shown while the sign-in window is open. Neutral, present tense.</summary>
-    public const string SignInBusy =
-        "The sign-in window is open. Sign in to Steam there; "
-        + "this page updates when it finishes.";
+    /// <summary>Shown while the sign-in window is open.</summary>
+    public const string SignInBusy = "Sign in to Steam in the window that opened.";
 
     /// <summary>
     /// Shown when the WebView2 runtime is missing. Names the runtime and
@@ -73,40 +65,23 @@ public static class SteamAccountImportCopy
     public const string SavedPagesRouteButton = "Choose saved files";
 
     /// <summary>
-    /// Transparency paragraph for Route B. Must carry: the two pages by name
-    /// and URL; that the user saves them from their own browser; that Winnow
-    /// reads only the picked files; that either can be imported alone though
-    /// both together are more complete.
+    /// Consent and instruction surface for Route B. Names the two pages by
+    /// URL; Winnow reads only the picked files.
     /// </summary>
     public const string SavedPagesRouteExplanation =
         "Sign into Steam in your own browser and open "
         + "store.steampowered.com/account/licenses/ and "
-        + "store.steampowered.com/account/history/. Save each page to a file; "
-        + "Ctrl+S with \"Web Page, HTML only\" is fine. Choose the saved files here. "
-        + "Winnow reads only the files you pick and nothing else. Either page can be "
-        + "imported on its own, though each carries different facts and both together "
-        + "give a fuller result.";
+        + "store.steampowered.com/account/history/. Save each page to a file, "
+        + "then choose the saved files here. Winnow reads only the files you pick.";
 
-    /// <summary>
-    /// Tip shown in the Route B panel before the user saves, not as a
-    /// scolding after. The purchase history page renders only recent
-    /// transactions until the load-more control is clicked.
-    /// </summary>
+    /// <summary>Tip for Route B: click load-more before saving the history page.</summary>
     public const string SavedPagesLoadMoreHint =
-        "Steam's purchase history page shows only recent transactions at first. "
-        + "Click \"load more transactions\" at the bottom until Steam stops offering "
-        + "it, then save the page.";
+        "Click \"load more transactions\" until Steam stops offering it, then save the page.";
 
-    /// <summary>
-    /// Tip shown in the Route B panel before the user saves. The licenses page
-    /// paginates at 100 rather than loading more, so a single saved file holds
-    /// only one page of the list.
-    /// </summary>
+    /// <summary>Tip for Route B: the licenses page paginates at 100, so each
+    /// page needs its own file.</summary>
     public const string SavedPagesLicensesHint =
-        "Steam's licenses page shows 100 licences at a time across separate pages. "
-        + "A saved file holds whichever page you were viewing; a library with more "
-        + "than 100 licences needs each page saved as its own file. The sign-in route "
-        + "walks all pages automatically.";
+        "The licenses page paginates at 100. Each page needs its own saved file.";
 
     /// <summary>Shown while the picked files are being read.</summary>
     public const string SavedPagesBusy = "Reading the saved files.";
@@ -175,23 +150,15 @@ public static class SteamAccountImportCopy
 
     // ══ Truncation notices ═════════════════════════════════════════════════
 
-    /// <summary>
-    /// The saved purchase history file held only the first page of
-    /// transactions. Tells the user how to capture the rest and that Route A
-    /// does it automatically.
-    /// </summary>
+    /// <summary>The saved history file held only the first page. Tells the
+    /// user to click load-more before saving.</summary>
     public const string HistoryTruncatedNotice =
-        "This file holds only the first page of purchase history. Clicking "
-        + "\"load more transactions\" on the page before saving captures the rest; "
-        + "the sign-in route does that clicking itself.";
+        "This file holds only the first page of purchase history. "
+        + "Click \"load more transactions\" before saving to capture the rest.";
 
-    /// <summary>
-    /// The saved licenses file held one page of a paginated list. Notes that
-    /// Route A walks all pages.
-    /// </summary>
+    /// <summary>The saved licenses file held one page of a paginated list.</summary>
     public const string LicensesTruncatedNotice =
-        "This file holds one page of the licenses list. The sign-in route walks "
-        + "all pages automatically.";
+        "This file holds one page of the licenses list.";
 
     /// <summary>
     /// The sign-in route hit its own safety ceiling on "load more transactions"
@@ -257,24 +224,14 @@ public static class SteamAccountImportCopy
     /// <summary>Heading over the skipped-row breakdown. Uppercase label register.</summary>
     public const string SkippedHeading = "SKIPPED";
 
-    /// <summary>
-    /// Every row was read and none filled in a new fact. Not a failure; the
-    /// library either already had these values or nothing matched.
-    /// </summary>
+    /// <summary>Every row was read and nothing new was filled in.</summary>
     public const string NothingApplied =
-        "Every row was read and none of them filled in a new value. The library "
-        + "already had these facts, or nothing matched a game in it.";
+        "Every row was read but nothing new was filled in.";
 
-    /// <summary>
-    /// Shown under the results table when the reported and found licence counts
-    /// differ. Informational, not a warning: Steam's paginator routinely
-    /// advertises a higher total than the rows it renders, so the difference
-    /// does not indicate missed licences.
-    /// </summary>
+    /// <summary>Shown when reported and found licence counts differ. The
+    /// difference is Steam's counting.</summary>
     public const string LicensesCountMismatchNote =
-        "Steam's licences page advertises a total that is larger than the number "
-        + "of rows it renders. The difference is in Steam's own counting, not "
-        + "licences that were missed.";
+        "Steam reports more licences than it shows. The difference is Steam's own counting, not missed licences.";
 
     // ══ Count labels (UPPERCASE, left of a number) ═════════════════════════
 
@@ -340,14 +297,9 @@ public static class SteamAccountImportCopy
     /// <summary>A file of this page kind was already read from an earlier pick.</summary>
     public const string FileDuplicate = "ALREADY READ";
 
-    /// <summary>
-    /// Shown when at least one picked file was labelled <see cref="FileDuplicate"/>.
-    /// Explains that Winnow reads the first file of each page kind and does not
-    /// read the others, and that further pages of the licences list need the
-    /// sign-in route.
-    /// </summary>
+    /// <summary>Shown when at least one picked file was labelled
+    /// <see cref="FileDuplicate"/>. Only the first file of each page kind
+    /// is read.</summary>
     public const string DuplicatePagesNotice =
-        "Winnow read the first file of each page kind and did not read the others. "
-        + "If those were later pages of the licences list, only the first page was "
-        + "imported; the sign-in route reads every page automatically.";
+        "Only the first file of each page kind was read.";
 }

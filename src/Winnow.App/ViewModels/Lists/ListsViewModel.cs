@@ -100,6 +100,16 @@ public partial class ListsViewModel : ObservableObject
         RaiseSectionState();
     }
 
+    /// <summary>
+    /// Which lists hold this game, resolved through <c>same_game</c> identity
+    /// links in SQL. A list contains the game when any release of any work in
+    /// the game's live link group is a member; <c>expansion_of</c> links are
+    /// excluded, so an expansion's membership is its own.
+    /// </summary>
+    public async Task<IReadOnlyList<GameListMembership>> MembershipForGameAsync(
+        long workId, CancellationToken ct = default)
+        => _lists is null ? [] : await _lists.GetMembershipForGameAsync(workId, ct);
+
     /// <summary>Creates a hand-built list seeded with the current selection.</summary>
     public async Task<GameListViewModel?> CreateListAsync(
         string name, IReadOnlyList<long> releaseIds, CancellationToken ct = default)

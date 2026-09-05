@@ -102,3 +102,22 @@ public static class SessionAttributions
     /// <summary>Inferred from the executable's path or name matching an ownership.</summary>
     public const string Inferred = "inferred";
 }
+
+/// <summary>
+/// Ownership store values beyond the external-id providers. The store value
+/// on an ownership row is the load-bearing fact that determines which code
+/// path owns the row: <see cref="ExternalIdProviders"/> lists the stores
+/// ingest writes, and <see cref="Manual"/> is the store no ingest reader
+/// emits. <c>OwnershipRepository.UpsertAsync</c> conflicts on
+/// <c>(release_id, store)</c>, so the store value is what keeps a manual
+/// entry unreachable by any resolve pass.
+/// </summary>
+public static class OwnershipStores
+{
+    /// <summary>
+    /// The store value for hand-added games. Its presence on an ownership row
+    /// is half of the origin marker (the other half is the
+    /// <c>manual_entries</c> row itself).
+    /// </summary>
+    public const string Manual = "manual";
+}

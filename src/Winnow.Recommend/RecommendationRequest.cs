@@ -25,10 +25,30 @@ public sealed record RecommendationRequest
 
     /// <summary>
     /// Items per shelf for <see cref="IRecommendationEngine.GetShelvesAsync"/>.
-    /// 10: a rail the eye can actually sweep — beyond it a shelf stops being a
-    /// pitch and becomes another list.
+    /// 6: since shelves wrap rather than scroll sideways, every item costs real
+    /// height, and past six a shelf stops being a pitch and becomes another list.
+    /// A caller holding a reserve sets this higher and declares
+    /// <see cref="VisiblePerShelf"/> separately.
     /// </summary>
     public int MaxPerShelf { get; init; } = 6;
+
+    /// <summary>
+    /// How many of each shelf's <see cref="MaxPerShelf"/> items the caller will
+    /// actually put on screen, when it holds the rest back as a reserve to swap
+    /// in later. Null (the default) means all of them, and the pass behaves
+    /// exactly as it did before this existed.
+    ///
+    /// <para>The first <c>VisiblePerShelf</c> items of every returned shelf are
+    /// the visible slice, in score order; the rest are the reserve, in score
+    /// order among themselves. Declaring it is not optional for a caller that
+    /// holds a reserve, because two properties of a shelf are defined against
+    /// the surface rather than against the request: the visible slice is filled
+    /// for every shelf before any shelf's reserve is, so a deeper request cannot
+    /// shrink the feed a reader sees; and the reason ledger's variety caps are
+    /// sized to this number, so asking for twelve to show six cannot double how
+    /// many of those six may cite the same supporting fact.</para>
+    /// </summary>
+    public int? VisiblePerShelf { get; init; }
 
     /// <summary>
     /// §6.1's numbers — refund line, retired floor, stale window. Passed

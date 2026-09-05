@@ -124,6 +124,71 @@ public class IgdbCredentialTests
         Assert.NotNull(await provider.GetAsync());
     }
 
+    // ══ Protected at rest (TASK-78) ═════════════════════════════════════════
+
+    /// <summary>
+    /// The upgrade path: an install from before protected storage has its
+    /// client secret in the plaintext row. The first resolution migrates it —
+    /// protected row written, plaintext row left empty — and the secret itself
+    /// never appears in the protected row, which is the point of the move.
+    /// </summary>
+    [Fact]
+    public async Task A_plaintext_secret_from_an_earlier_version_is_migrated_on_first_read()
+    {
+        var store = new InMemorySettingsStore();
+        await store.SetAsync(SettingsTableCredentialSource.ClientIdKey, "client-abc");
+        await store.SetAsync(SettingsTableCredentialSource.ClientSecretKey, "secret-xyz");
+        var source = SourceOver(store);
+
+        var credentials = await source.TryGetAsync();
+
+        Assert.NotNull(credentials);
+        Assert.Equal("secret-xyz", credentials.ClientSecret);
+
+        // Migrated: protected row written, plaintext row emptied.
+        var protectedValue = await store.GetAsync(SettingsTableCredentialSource.ClientSecretProtectedKey);
+        Assert.DoesNotContain("secret-xyz", protectedValue, StringComparison.Ordinal);
+        Assert.Equal(string.Empty, await store.GetAsync(SettingsTableCredentialSource.ClientSecretKey));
+
+        // And it still resolves the second time, from the protected row alone.
+        Assert.NotNull(await SourceOver(store).TryGetAsync());
+    }
+
+    /// <summary>
+    /// Refusing is not license to destroy. On a host that cannot encrypt, the
+    /// plaintext row an earlier version wrote is left exactly where it was and
+    /// simply not used — the settings-table source yields nothing, and the
+    /// configuration source is the supported alternative on such a host.
+    /// </summary>
+    [Fact]
+    public async Task A_host_that_cannot_encrypt_refuses_a_plaintext_secret_and_leaves_it_intact()
+    {
+        var store = new InMemorySettingsStore();
+        await store.SetAsync(SettingsTableCredentialSource.ClientIdKey, "client-abc");
+        await store.SetAsync(SettingsTableCredentialSource.ClientSecretKey, "secret-xyz");
+
+        var source = SourceOver(store, new UnavailableIgdbSecretProtector());
+        Assert.Null(await source.TryGetAsync());
+
+        Assert.Equal("secret-xyz", await store.GetAsync(SettingsTableCredentialSource.ClientSecretKey));
+        Assert.Null(await store.GetAsync(SettingsTableCredentialSource.ClientSecretProtectedKey));
+    }
+
+    /// <summary>
+    /// An unreadable protected row (a different Windows user, a profile restored
+    /// onto another machine) is no credentials, not an error — and not an
+    /// invitation to fall through to some other row.
+    /// </summary>
+    [Fact]
+    public async Task An_unreadable_protected_row_is_no_credentials_rather_than_an_error()
+    {
+        var store = new InMemorySettingsStore();
+        await store.SetAsync(SettingsTableCredentialSource.ClientIdKey, "client-abc");
+        await store.SetAsync(SettingsTableCredentialSource.ClientSecretProtectedKey, "not base64 at all !!");
+
+        Assert.Null(await SourceOver(store).TryGetAsync());
+    }
+
     private static ChainedIgdbCredentialProvider Build(
         (string Id, string Secret)? settings, (string Id, string Secret)? configuration)
     {
@@ -153,7 +218,18 @@ public class IgdbCredentialTests
         }
 
         return new ChainedIgdbCredentialProvider(
-            [new SettingsTableCredentialSource(store), new ConfigurationCredentialSource(config)],
+            [SourceOver(store), new ConfigurationCredentialSource(config)],
             NullLogger<ChainedIgdbCredentialProvider>.Instance);
     }
+
+    /// <summary>
+    /// The settings-table source, over a reversible protector so the tests run
+    /// without a real Windows user profile. The tests seed the LEGACY plaintext
+    /// rows, so resolving credentials goes through the migration path an
+    /// upgrading install takes.
+    /// </summary>
+    private static SettingsTableCredentialSource SourceOver(
+        ISettingsStore store,
+        IIgdbSecretProtector? protector = null)
+        => new(store, protector ?? new IgdbFixtures.ReversibleProtector());
 }

@@ -1012,6 +1012,106 @@ public class ThemeContrastTests
         }
     }
 
+    /// <summary>
+    /// Every text ink on the art-backed field clears AA over every cover the
+    /// art could be, at every slider position. The art is walked as 256 greys,
+    /// which is exhaustive: each composite channel is monotone in the art's own
+    /// channel and luminance is monotone in the channels, so black and white
+    /// bracket the composite and the greys hit every luminance between them.
+    /// The inks are the four these two surfaces set text in; <c>Flare</c> is
+    /// excluded because it is a dot rather than a word. The
+    /// <c>SurfaceRaisedFaint</c> case covers a hovered update row, the one
+    /// veil that sits between the ink and the field rather than replacing it.
+    /// Sums are re-implemented here rather than borrowed from
+    /// <see cref="Colorimetry"/>.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(ThemeIds))]
+    public void Art_behind_the_back_face_and_the_modal_keeps_text_over_AA(string id)
+    {
+        var theme = WinnowThemes.ById(id);
+
+        foreach (var transparency in Range())
+        {
+            var t = theme.Tokens(transparency);
+            Color[] inks = [t["Text"], t["TextDim"], t["Azure"], t["Amber"]];
+
+            for (var grey = 0; grey <= 255; grey++)
+            {
+                var art = Color.FromRgb((byte)grey, (byte)grey, (byte)grey);
+                var field = Over(t["ArtVeil"], art);
+                var hovered = Over(t["SurfaceRaisedFaint"], field);
+
+                foreach (var ink in inks)
+                {
+                    Assert.True(
+                        Contrast(ink, field) >= 4.5,
+                        $"{id}: an ink measures {Contrast(ink, field):0.00}:1 on art-backed Surface over grey {grey} at {transparency:P0}");
+                    Assert.True(
+                        Contrast(ink, hovered) >= 4.5,
+                        $"{id}: an ink measures {Contrast(ink, hovered):0.00}:1 on a hovered art-backed row over grey {grey} at {transparency:P0}");
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// A game with no art draws no image, so the veil composites onto the
+    /// opaque <c>Surface</c> the back face and the card already paint. The
+    /// veil IS <c>Surface</c>, so that composite is <c>Surface</c> bit-for-bit
+    /// and the flat treatment is recovered exactly — no tone step, and nothing
+    /// in the tree moves, because the art and the veil are siblings in a Panel
+    /// and take no space of their own. Asserted at every slider position.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(ThemeIds))]
+    public void A_game_with_no_art_gets_the_flat_surface_back(string id)
+    {
+        var theme = WinnowThemes.ById(id);
+
+        foreach (var transparency in Range())
+        {
+            var t = theme.Tokens(transparency);
+            Assert.Equal(t["Surface"], Over(t["ArtVeil"], t["Surface"]));
+        }
+    }
+
+    /// <summary>
+    /// The veil is <c>WinnowTheme.ArtVeilAlpha</c> on the theme's own
+    /// <c>Surface</c> and nothing else. The dim level is one number, and one
+    /// step less — 0.91 — puts Winnow's <c>TextDim</c> at 4.49:1 over a white
+    /// cover, which is why the value is where it is.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(ThemeIds))]
+    public void The_art_veil_is_the_theme_surface_at_the_stated_alpha(string id)
+    {
+        var theme = WinnowThemes.ById(id);
+        var veil = theme.Tokens(transparency: 0)["ArtVeil"];
+
+        Assert.Equal(theme.Surface.R, veil.R);
+        Assert.Equal(theme.Surface.G, veil.G);
+        Assert.Equal(theme.Surface.B, veil.B);
+        Assert.Equal((byte)Math.Round(WinnowTheme.ArtVeilAlpha * 255), veil.A);
+    }
+
+    /// <summary>
+    /// 0.92 is the round step past the boundary, not a preference. At 0.91
+    /// the default theme's metadata ink measures 4.49:1 over a white cover,
+    /// under AA, so a looser veil would leave the back face and the modal
+    /// unreadable on a pale capsule.
+    /// </summary>
+    [Fact]
+    public void One_step_less_veil_would_drop_the_default_theme_under_AA()
+    {
+        var theme = WinnowThemes.ById("winnow");
+        var t = theme.Tokens(transparency: 0);
+        var looser = Color.FromArgb((byte)Math.Round(0.91 * 255), theme.Surface.R, theme.Surface.G, theme.Surface.B);
+
+        Assert.True(Contrast(t["TextDim"], Over(looser, White)) < 4.5);
+        Assert.True(Contrast(t["TextDim"], Over(t["ArtVeil"], White)) >= 4.5);
+    }
+
     /// <summary>The window's ground as it composites over a backdrop.</summary>
     private static Color Shell(
         WinnowTheme theme, double transparency, Color backdrop, WinnowLayout layout = WinnowLayouts.Default)

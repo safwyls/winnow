@@ -17,6 +17,10 @@
                                TASK-82, which is to state one in the design
                                system rather than in the file that needed it.
           .consent-*           the consent window's own three pieces.
+          Window.notes,        the patch-notes window, its strip and its
+          DockPanel.notes,       failure line. Same assembly-boundary seam
+          Border.notes-bar,      as the consent window.
+          .notes-problem
 
         ══ Why every reference here is {DynamicResource} ══
         This sheet is a StyleInclude inside Application.Styles, and it is loaded
@@ -294,6 +298,26 @@
          too tall for the screen scrolls UNDER it — a consent window whose
          buttons can be scrolled out of sight is a consent window with no way
          out. -->
+    <!-- The patch-notes window — a separate top-level window, not an overlay.
+         Appearance travels by class name only, because Winnow.Auth.WebView
+         references Avalonia and Winnow.Core and nothing else — the same seam
+         the consent window uses. -->
+    <Style Selector="Window.notes">
+        <Setter Property="Background" Value="{DynamicResource Ground}"/>
+    </Style>
+    <Style Selector="DockPanel.notes">
+        <Setter Property="Background" Value="{DynamicResource Ground}"/>
+    </Style>
+    <Style Selector="Border.notes-bar">
+        <Setter Property="Background" Value="{DynamicResource Surface}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource Line}"/>
+        <Setter Property="BorderThickness" Value="0,0,0,1"/>
+        <Setter Property="Padding" Value="16,8"/>
+    </Style>
+    <Style Selector=":is(TextBlock).notes-problem">
+        <Setter Property="Foreground" Value="{DynamicResource Amber}"/>
+    </Style>
+
     <Style Selector="Border.consent-actions">
         <Setter Property="Background" Value="{DynamicResource Ground}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource Line}"/>

@@ -1,8 +1,8 @@
 # Winnow.Recommend — the scoring core
 
 **Status:** built and tested — flat feed, shelf surface, and the feedback loop (§6b:
-verdict storage, cross-day surfacing memory, launch endorsements) — the loop's UI
-affordances are not yet wired (the App layer owns them; the contract is in §6b).
+verdict storage, cross-day surfacing memory, launch endorsements) wired end to end:
+verdicts, surfacing memory, undo, history screen, and a reserve topped up by backfill.
 **Module:** `src/Winnow.Recommend`, depends on `Winnow.Core` only.
 **Charter:** `.claude/agents/recommendation-engine.md`. Vocabulary: `game-library-design.md` §6.1.
 
@@ -213,7 +213,7 @@ to meet: a number that means something.
 | `TasteFacetPrevalenceFloor` | 8 | Carriers below which a facet is never generic regardless of share — in a 20-game library, five carriers of one genre is a small collection, not genericity. Protects small libraries (and test fixtures) from the cut. |
 | `OnTasteMinAffinity` | 0.6 | Floor for the "right up your alley" shelf: the candidate must carry a descriptor at least 60% as loved as the user's most-loved *distinctive* one. Measured: admits a rotating pool of ~200 of 427 never-opened rows. |
 | `ShelfFranchiseCap` | 1 | One franchise entry per shelf, hard, never relaxed — 14 unplayed Infinity Blades is the measured alternative. The rest of a franchise rotates through later days. Grouping key: title before the first colon, slugified, trailing numeral dropped (`Half-Life 2: Deathmatch` → `half_life`). Conservative on purpose: a false split costs a samey shelf; a false merge silently suppresses a valid recommendation. |
-| `ShelfGenreCap` | 4 | Entries sharing one genre per 10-item shelf — below half, so no genre can majority a shelf. Soft: the relaxation pass refills when the eligible pool genuinely is that narrow. |
+| `ShelfGenreCap` | 3 | Entries sharing one genre per 6-card shelf — half, so no genre can majority a shelf. Coupled to how many cards a shelf shows: 4 of 6 would be a two-thirds majority, so the cap moved with the shelf size. Soft: the relaxation pass refills when the eligible pool genuinely is that narrow. |
 | `ShelfOverfetchFactor` / `ShelfProbeLimit` | 3 / 2,000 | Per-shelf shortlists are 3× the shelf size (slack for caps and cross-shelf claims). The probe union is the interleave of those shortlists (rank by rank, not shelf by shelf) capped at 2,000 ownerships. 2,000 is derived from cost, not shelf geometry: the shelf pass costs 46.6 ms median with zero probes (dominated by bulk reads) and 23 microseconds per probe (measured 2026-09-01, 990 candidates, 966 works), so 2,000 probes is where per-row history reading would equal the bulk reads, i.e. where the pass would double. What holds the union well below that on a real library is the score bound (`ScoreBounds.SafeShortlist`), not the cap; on the measured library the natural union is 376 of 966 works and the feed stops changing at ~300. The cap is the backstop for a library where the bound stops discriminating. The previous default of 150 was sized against the per-shelf comfort floors and ignored that the bound legitimately exceeds them; on the real library it starved three of five shelves entirely (§4a). |
 | `PenaltyRecentlyPlayed` | 0.60 | Must dominate: max realistic positive sum ≈ 0.55 for a non-stale row. A game played yesterday cannot crack the feed's top even if it is installed, twice-bought and on-taste. |
 | `PenaltyProbablyDone` | 0.30 | Sized to drop a qualifying row below the bounced midfield but not to zero — it still appears far down the feed, with a reason that says why it is far down. |
@@ -282,11 +282,16 @@ Shelves, in claim order (which is also presentation order — strongest story fi
 
 Rules that make it a feed rather than five lists:
 
-- **One work, one shelf.** A work is claimed by the earliest shelf whose rule it meets and
-  cannot appear again that day. Two rails fronting the same game is the same-five-games
-  failure sideways.
+- **One work, one shelf, reserves included.** A work is claimed by the earliest shelf whose
+  rule it meets and cannot appear again that day, whether it is on screen or held as a
+  reserve. Two rails fronting the same game is the same-five-games failure sideways, and a
+  reserve item that duplicates a visible card is not a replacement.
+- **Visible slices are filled before any reserve.** The pass runs twice over the shelves:
+  first filling every shelf's visible slice, then filling every shelf's reserve. Without
+  that ordering, an early shelf holding spare cards could claim works a later shelf's
+  visible slice needed, and a deeper ask would shrink the feed the reader sees.
 - **Shelves own their stories.** The sub-refund shelves exclude the stale bucket: a patched
-  game that missed the patched shelf's ten slots waits for that shelf's rotation rather
+  game that missed the patched shelf's six slots waits for that shelf's rotation rather
   than leaking its (stronger) patch story onto a rail telling a different one.
 - **Diversity caps** (franchise hard, genre soft with a relaxation refill) — §5's table.
   The passes decide *membership*; display order is still strictly by score, so a
@@ -320,6 +325,47 @@ update since, most recently 'SPOTREP #00121'. Sandbox is where your hours go, an
 one."), the mode-mismatch sentence appears exactly where it should (Star Wars: The Old
 Republic demoted to the bottom of the patched shelf, saying why), and consecutive seeds
 rotate the taste shelf completely.
+
+### The reserve and `VisiblePerShelf`
+
+A caller that holds replacement cards behind each shelf asks one pass for more than it
+shows. `RecommendationRequest.VisiblePerShelf` declares how many of each shelf's
+`MaxPerShelf` items actually reach the screen; the rest are a reserve. The engine cannot
+infer the surface size from the depth alone — asking for ten and showing six is the same
+`MaxPerShelf` as asking for ten and showing ten — so the caller states both, and two
+properties of the feed depend on it.
+
+First, every shelf's visible slice is filled before any shelf's reserve (see the
+"Visible slices are filled before any reserve" rule above). Second, the reason ledger's
+variety caps are sized to the surface, not to the depth — asking for twelve to show six
+must not double how many of those six may cite the same supporting fact. The ledger is
+allocated once per shelf and spans its entire depth, visible and reserve alike, which is
+what makes a reserve card's sentence one the surface has already checked.
+
+The screen is responsible for refusing to promote a card whose sentence a card on the
+shelf is already saying, because a deep enough shelf reaches the end of its distinct
+phrasings before it reaches the end of its candidates. Observed at a depth of ten on the
+real library's `on_your_taste` shelf: two cards sharing a sentence at that depth
+(2026-09-03).
+
+When `VisiblePerShelf` is null (the default), the caller shows everything it asked for,
+there is no reserve, and the pass behaves exactly as it did before this property existed.
+
+Measured on a read-only copy of the real library (968 candidates, 968 works, tier
+Settling, 2026-09-03): asking for ten per shelf and showing six produced the same five
+shelves each showing six cards, in the same time as asking for six. The pass is dominated
+by bulk reads, not by the per-row probes a deeper ask adds. Four of five shelves filled a
+four-card reserve; `ready_to_play` filled none, its eligible pool being only four games.
+
+The reserve is topped up continuously. After each swap, a backfill scores the feed again,
+discards the visible slices and everything already on screen or queued, and merges the
+remainder into the live queues. No shelf is rebuilt and no card on screen moves, which is
+what makes it safe to run under a receipt whose undo the reader might still reach. The
+pass returns fresh games because the dismissal that emptied the slot is already stored as
+a verdict and hard-excluded from the next pass; every shelf shifts up by one, and what
+arrives at the bottom is a game no queue has held. One backfill reads at a time; a second
+request waits behind it, and a backfill from a pass the feed has since replaced is
+discarded.
 
 ## 6b. The feedback loop (2026-08-27)
 
@@ -624,6 +670,10 @@ the flat feed holds 20, and a flat cap of 2 would silence eighteen of twenty.
 `FactCitationFloor` (2) keeps a short surface from being silenced, and matches the
 judgement that two cards making the same claim reads as coincidence while three reads as a
 template. A shelf of 6 therefore caps at 2, under the three-of-six that was reported.
+The cap is derived from how many cards the caller **shows**, not how many it asked for:
+when a caller holds a reserve behind the shelf (`VisiblePerShelf`, §6a), the cap is sized
+to the visible slice so that asking for a deeper shelf cannot widen the variety budget on
+the cards the reader actually sees.
 
 Measured on the reported shelf, seeded as six patched Sandbox games behind a beloved
 50-hour Sandbox anchor:
@@ -711,15 +761,13 @@ whitespace or end of string, outside quoted spans.
 | Silent history-shape lies | 86400/1970 sentinel handling is upstream (migration 0008, `SteamTime`); null last-played beside real minutes is read as maximally dormant, never as fresh. |
 | Score worship | No stored score column exists; the feed is recomputed per request and the request carries every threshold, so two callers can disagree and both be right. |
 
-## 9. Wiring it in later (not now)
+## 9. Wiring
 
-The intended composition: the UI (or a background service) constructs
-`RecommendationEngine` from the same DI container as everything else and renders the
-feed. The feedback sets now have real storage (§6b): the composition root registers
-`FeedFeedbackRepository`, and `FeedService` follows the five-step contract in §6b — load
-`FeedbackSets`, apply, compute, record surfacings, and route the dismiss / snooze / undo
-commands to the repository. The UI affordances themselves (the "not for me" button, the
-inspection list) are the remaining unbuilt piece, owned by the App layer.
+`RecommendationEngine` is constructed from the DI container and rendered by
+`FeedViewModel`. `FeedFeedbackRepository` stores the loop's facts (§6b), and `FeedService`
+follows the five-step contract: load `FeedbackSets`, apply, compute, record surfacings,
+and route the dismiss / snooze / undo commands to the repository. The App layer's
+`FeedCardViewModel` carries the two verdicts, the undo, and the receipt countdown.
 
 `ILibraryHistoryStatsRepository` (`Winnow.Core.Repositories`) has **no `Winnow.Data`
 implementation yet**. The engine takes it as an optional constructor argument and falls

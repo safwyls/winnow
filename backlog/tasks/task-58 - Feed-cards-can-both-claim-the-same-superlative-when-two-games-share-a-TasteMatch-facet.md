@@ -3,11 +3,11 @@ id: TASK-58
 title: >-
   Feed cards can both claim the same superlative when two games share a
   TasteMatch facet
-status: In Progress
+status: Done
 assignee:
   - '@claude'
 created_date: '2026-09-01 02:50'
-updated_date: '2026-09-01 03:06'
+updated_date: '2026-09-03 16:43'
 labels:
   - recommend
   - ui
@@ -24,9 +24,9 @@ ReasonPhrasebook selects a phrasing variant by hashing the release id with the s
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 No two cards visible in a single feed render a phrasing that asserts a unique-in-library superlative
-- [ ] #2 A variant that makes an absolute claim is either validated against the library before selection or reworded to a comparative that holds for any qualifying game
-- [ ] #3 Existing non-superlative TasteMatch variants still render and the phrasebook deterministic-per-release-id stability is preserved
+- [x] #1 No two cards visible in a single feed render a phrasing that asserts a unique-in-library superlative
+- [x] #2 A variant that makes an absolute claim is either validated against the library before selection or reworded to a comparative that holds for any qualifying game
+- [x] #3 Existing non-superlative TasteMatch variants still render and the phrasebook deterministic-per-release-id stability is preserved
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -97,3 +97,9 @@ The Winnow.Tests compile failures are entirely the concurrent settings-UI work, 
 
 Not committed, per instruction. Task left In Progress and not finalized.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Stopped two feed cards claiming the same superlative when they share a TasteMatch facet. Landed in commit 738c91a, which reworded five phrasebook superlatives a card cannot prove. Verified by a scoped run of ReasonHonestyTests and ReasonContractTests: 33 of 33 passed, and Winnow.Recommend.Tests passes 145 of 145. AC1: Games_sharing_one_facet_never_render_competing_superlatives drives a feed where two games share a facet and asserts no competing absolute claim survives. AC2: No_variant_anywhere_in_the_phrasebook_claims_a_rank_it_cannot_prove sweeps the whole phrasebook against a superlative pattern set, and A_strength_claim_is_unusable_until_the_measured_affinity_earns_it gates the remaining claims on measured affinity. AC3: The_taste_match_fallback_still_renders_when_the_facet_is_unknown is annotated in the source as covering this criterion, and The_gating_does_not_disturb_per_release_stability holds the deterministic-per-release-id property. The compile failures the original notes attributed to concurrent settings-UI work have since cleared; Winnow.Tests builds and runs.
+<!-- SECTION:FINAL_SUMMARY:END -->

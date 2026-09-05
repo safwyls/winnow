@@ -95,7 +95,6 @@ for its current state.
 | $0.00 purchase rows are skipped rather than recorded as zero, undecided either way | TASK-40 |
 | The saved-file licenses route captures one page per file | TASK-41 |
 | ACCOUNT and REVIEW each spend a rail section heading on a single row | TASK-42 |
-| The Steam Web API key and the IGDB client secret are still plaintext at rest | TASK-78 |
 
 Two limits are stated as rules in the build spec rather than carried here, because they are
 not going to be fixed: session detection is Windows-only in practice

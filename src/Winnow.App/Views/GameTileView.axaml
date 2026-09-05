@@ -82,7 +82,7 @@
              rather than on the elements because §8's reduced-motion setting has
              to be able to take it away, and a local Transitions value would
              outrank any selector trying to. -->
-        <Style Selector="Border#Lift Border#VividArt, Border#Lift Image#VividArtwork">
+        <Style Selector="Border#Lift Border#VividArt, Border#Lift Image#VividArtwork, Border#Lift Image#BackVividArtwork">
             <Setter Property="Transitions">
                 <Transitions>
                     <DoubleTransition Property="Opacity" Duration="0:0:0.14" Easing="CubicEaseOut"/>
@@ -94,7 +94,7 @@
              schedule at all. This is independent of the dimming preference and
              cannot fight it: with dimming off the resting and hovered alphas are
              both 1.0, so there is nothing for either setting to animate. -->
-        <Style Selector="Border#Lift.snap Border#VividArt, Border#Lift.snap Image#VividArtwork">
+        <Style Selector="Border#Lift.snap Border#VividArt, Border#Lift.snap Image#VividArtwork, Border#Lift.snap Image#BackVividArtwork">
             <Setter Property="Transitions">
                 <Transitions/>
             </Setter>
@@ -355,6 +355,33 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
 
+                    <!-- The folded-expansion mark (TASK-70.5 AC6). Drawn ONLY
+                         when the grouping preference folded a pack into this
+                         tile, which is off by default, so an ordinary library
+                         gains no pixels here either.
+
+                         It exists because the fold takes the pack's own tile
+                         away and with it its place on the Never played rail.
+                         "You played this for two hundred hours and never opened
+                         the expansion" is the premise of the app, so the base
+                         game has to keep saying it once the pack cannot.
+
+                         Same pip as the store mark, same corner, same fade, and
+                         deliberately the same neutral treatment: never Flare,
+                         which means unread and nothing else, and never Volt,
+                         which is selection (§2). The words are in the tooltip
+                         and the automation name, so §8's decorative-redundant
+                         rule is satisfied and this is not the only place the
+                         fact exists. -->
+                    <Border Name="ExpansionMark"
+                            Classes="store-pip"
+                            IsVisible="{Binding HasGroupedExpansions}"
+                            HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                            Margin="8" IsHitTestVisible="False"
+                            ToolTip.Tip="{Binding ExpansionMarkText}">
+                        <TextBlock Text="{Binding ExpansionMarkFace}"/>
+                    </Border>
+
                     <!-- Hover overlay: ≤ 4 facts — the tile is a decision surface. -->
                     <Border Name="Scrim" VerticalAlignment="Bottom" Padding="10,24,10,10"
                             Background="{StaticResource TileScrim}">
@@ -448,104 +475,138 @@
                  Every number below is Plex Mono with tabular figures — the
                  `data-s` class carries `FontFeatures="tnum"`. -->
             <Border Name="Back" Classes="back-field" ClipToBounds="True">
-                <DockPanel Margin="10,10,10,10" LastChildFill="True">
+                <Panel>
 
-                    <StackPanel DockPanel.Dock="Bottom" Spacing="4">
-                        <!-- Play when it is on disk, Install when it is not, and
-                             NOTHING when this app cannot honestly name either —
-                             no id for the store, no verified install route for
-                             the store, or no answer at all about the install
-                             state. §10.3: never an inert button.
+                    <!-- The game's own art behind the back face (§5.5). The
+                         same two bitmaps the front face draws, from the same
+                         CoverPresenter on this container, at the same
+                         DisplayAlpha, with the same 140ms restore and the
+                         same reduced-motion snap. One image path, one lease,
+                         one decode: the cover wall's memory bound is
+                         untouched.
 
-                             Volt, because it is the app's one primary-action
-                             treatment. Never Flare: that colour means "unread"
-                             and nothing else, and it is on the other side of
-                             this very card. -->
-                        <Button Classes="tile-act primary"
-                                Content="{Binding PrimaryActionLabel}"
-                                ToolTip.Tip="{Binding PrimaryActionHint}"
-                                IsVisible="{Binding HasPrimaryAction}"
-                                Command="{Binding PrimaryActionCommand}"
-                                CommandParameter="{Binding}"/>
+                         No cover means both Sources are null, both Images
+                         draw nothing, and ArtVeil over the back-field's own
+                         opaque Surface resolves to Surface exactly — the flat
+                         treatment, with no shift in tone or geometry.
 
-                        <!-- The single-game route into lists. The command bar's
-                             button is the bulk route and stays exactly where it
-                             is (§6, §12.3) — per-card flipping would make "add
-                             twenty games to a list" twenty flips. -->
-                        <Button Classes="tile-act"
-                                Content="Add to list"
-                                ToolTip.Tip="Put this title in a list"
-                                Command="{Binding AddToListCommand}"/>
+                         The art is under the veil and never hit-tested; the
+                         back's buttons are the only things that answer a
+                         press. -->
+                    <Image Source="{Binding #Root.Cover.Floor}"
+                           Stretch="UniformToFill" IsHitTestVisible="False"/>
+                    <Image Name="BackVividArtwork"
+                           Source="{Binding #Root.Cover.Vivid}"
+                           Stretch="UniformToFill"
+                           Opacity="{Binding DisplayAlpha}"
+                           IsHitTestVisible="False"/>
 
-                        <Button Classes="tile-act"
-                                Content="Details"
-                                ToolTip.Tip="Full details"
-                                Command="{Binding OpenDetailsCommand}"
-                                CommandParameter="{Binding}"/>
-                    </StackPanel>
+                    <!-- The veil: the theme's own Surface at ArtVeilAlpha,
+                         a token rather than a literal. The art contributes
+                         what is left. Every ink the back sets text in clears
+                         AA over this field against any cover, in every theme,
+                         walked by ThemeContrastTests. -->
+                    <Border Background="{StaticResource ArtVeil}" IsHitTestVisible="False"/>
 
-                    <StackPanel Spacing="5">
-                        <TextBlock Text="{Binding Title}"
-                                   FontFamily="{StaticResource DisplayFont}"
-                                   FontWeight="Bold" FontSize="13" LineHeight="15"
-                                   TextWrapping="Wrap" MaxLines="2"
-                                   TextTrimming="CharacterEllipsis"
-                                   Foreground="{StaticResource Text}"/>
+                    <DockPanel Margin="10,10,10,10" LastChildFill="True">
 
-                        <TextBlock Classes="label" FontSize="10"
-                                   Text="{Binding BucketLabel}"
-                                   TextTrimming="CharacterEllipsis"/>
+                        <StackPanel DockPanel.Dock="Bottom" Spacing="4">
+                            <!-- Play when it is on disk, Install when it is not, and
+                                 NOTHING when this app cannot honestly name either —
+                                 no id for the store, no verified install route for
+                                 the store, or no answer at all about the install
+                                 state. §10.3: never an inert button.
 
-                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="6">
-                            <TextBlock Grid.Column="0" Classes="label" FontSize="9"
-                                       Text="PLAYED" VerticalAlignment="Center"/>
-                            <TextBlock Grid.Column="1" Classes="data-s"
-                                       Foreground="{StaticResource Text}"
-                                       HorizontalAlignment="Right"
-                                       Text="{Binding PlaytimeText}"/>
-                        </Grid>
+                                 Volt, because it is the app's one primary-action
+                                 treatment. Never Flare: that colour means "unread"
+                                 and nothing else, and it is on the other side of
+                                 this very card. -->
+                            <Button Classes="tile-act primary"
+                                    Content="{Binding PrimaryActionLabel}"
+                                    ToolTip.Tip="{Binding PrimaryActionHint}"
+                                    IsVisible="{Binding HasPrimaryAction}"
+                                    Command="{Binding PrimaryActionCommand}"
+                                    CommandParameter="{Binding}"/>
 
-                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="6">
-                            <TextBlock Grid.Column="0" Classes="label" FontSize="9"
-                                       Text="LAST" VerticalAlignment="Center"/>
-                            <TextBlock Grid.Column="1" Classes="data-s"
-                                       HorizontalAlignment="Right"
+                            <!-- The single-game route into lists. The command bar's
+                                 button is the bulk route and stays exactly where it
+                                 is (§6, §12.3) — per-card flipping would make "add
+                                 twenty games to a list" twenty flips. -->
+                            <Button Classes="tile-act"
+                                    Content="Add to list"
+                                    ToolTip.Tip="Put this title in a list"
+                                    Command="{Binding AddToListCommand}"/>
+
+                            <Button Classes="tile-act"
+                                    Content="Details"
+                                    ToolTip.Tip="Full details"
+                                    Command="{Binding OpenDetailsCommand}"
+                                    CommandParameter="{Binding}"/>
+                        </StackPanel>
+
+                        <StackPanel Spacing="5">
+                            <TextBlock Text="{Binding Title}"
+                                       FontFamily="{StaticResource DisplayFont}"
+                                       FontWeight="Bold" FontSize="13" LineHeight="15"
+                                       TextWrapping="Wrap" MaxLines="2"
                                        TextTrimming="CharacterEllipsis"
-                                       Text="{Binding LastPlayedText}"/>
-                        </Grid>
+                                       Foreground="{StaticResource Text}"/>
 
-                        <!-- A year is a number, so it sets in Plex Mono; the stores are
-                             names, so they wear the outlined chip the overlay uses.
-                        
-                             Chips wrap rather than pinning to one line beside the year:
-                             at the density floor two word-chips are wider than the card,
-                             and a chip clipped mid-glyph reads as a rendering fault. -->
-                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="6">
-                            <TextBlock Grid.Column="0" Classes="data-s"
-                                       VerticalAlignment="Center"
-                                       IsVisible="{Binding HasReleaseYear}"
-                                       Text="{Binding ReleaseYearText}"/>
-                            <ItemsControl Grid.Column="1"
-                                          HorizontalAlignment="Right"
-                                          ItemsSource="{Binding StoreChips}"
-                                          ToolTip.Tip="{Binding StoreNames}">
-                                <ItemsControl.ItemsPanel>
-                                    <ItemsPanelTemplate>
-                                        <WrapPanel Orientation="Horizontal" ItemSpacing="4" LineSpacing="4"/>
-                                    </ItemsPanelTemplate>
-                                </ItemsControl.ItemsPanel>
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <Border Classes="store-chip">
-                                            <TextBlock Text="{Binding}"/>
-                                        </Border>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </Grid>
-                    </StackPanel>
+                            <TextBlock Classes="label" FontSize="10"
+                                       Text="{Binding BucketLabel}"
+                                       TextTrimming="CharacterEllipsis"/>
 
-                </DockPanel>
+                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="6">
+                                <TextBlock Grid.Column="0" Classes="label" FontSize="9"
+                                           Text="PLAYED" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="1" Classes="data-s"
+                                           Foreground="{StaticResource Text}"
+                                           HorizontalAlignment="Right"
+                                           Text="{Binding PlaytimeText}"/>
+                            </Grid>
+
+                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="6">
+                                <TextBlock Grid.Column="0" Classes="label" FontSize="9"
+                                           Text="LAST" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="1" Classes="data-s"
+                                           HorizontalAlignment="Right"
+                                           TextTrimming="CharacterEllipsis"
+                                           Text="{Binding LastPlayedText}"/>
+                            </Grid>
+
+                            <!-- A year is a number, so it sets in Plex Mono; the stores are
+                                 names, so they wear the outlined chip the overlay uses.
+                            
+                                 Chips wrap rather than pinning to one line beside the year:
+                                 at the density floor two word-chips are wider than the card,
+                                 and a chip clipped mid-glyph reads as a rendering fault. -->
+                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="6">
+                                <TextBlock Grid.Column="0" Classes="data-s"
+                                           VerticalAlignment="Center"
+                                           IsVisible="{Binding HasReleaseYear}"
+                                           Text="{Binding ReleaseYearText}"/>
+                                <ItemsControl Grid.Column="1"
+                                              HorizontalAlignment="Right"
+                                              ItemsSource="{Binding StoreChips}"
+                                              ToolTip.Tip="{Binding StoreNames}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <WrapPanel Orientation="Horizontal" ItemSpacing="4" LineSpacing="4"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Classes="store-chip">
+                                                <TextBlock Text="{Binding}"/>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </Grid>
+                        </StackPanel>
+
+                    </DockPanel>
+                </Panel>
             </Border>
 
             <!-- Keyboard/pointer selection ring (§8's 2px Volt edge).
@@ -572,7 +633,7 @@
                  It belongs to the FRONT and turns with it, but it is declared
                  outside the clip so its glow is not sheared off at the tile's
                  corner; the style below fades it with the front instead. The
-                 back restates it in words as the "Patched since" bucket name
+                 back restates it in words as the "Patched" bucket name
                  (§8), so nothing is lost while the card is turned. -->
             <Border Name="Badge"
                     Width="14" Height="14" CornerRadius="7"

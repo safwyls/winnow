@@ -15,7 +15,7 @@ public static class WinnowThemes
     {
         Id = "winnow",
         Name = "Winnow",
-        Reason = "The house look. A green-teal room dark enough that the cover art is the only lit thing in the window.",
+        Reason = "The house look. Dark green-teal, covers carry the light.",
 
         Well = C("#050D0E"),
         Ground = C("#0F1C1E"),
@@ -50,7 +50,7 @@ public static class WinnowThemes
     {
         Id = "nightshift",
         Name = "Nightshift",
-        Reason = "Black glass. The surfaces stop stepping apart and every boundary becomes a drawn line, so the window is one dark pane with the layout scribed on it.",
+        Reason = "Black glass. Boundaries are lines, not steps.",
 
         Well = C("#04060A"),
         Ground = C("#070A10"),
@@ -90,7 +90,7 @@ public static class WinnowThemes
     {
         Id = "tungsten",
         Name = "Tungsten",
-        Reason = "A warm room lit by one lamp. Edges nearly disappear and warm cover art settles into the field instead of standing off it.",
+        Reason = "A warm room lit by one lamp. Edges nearly disappear.",
 
         Well = C("#0C0704"),
         Ground = C("#17100A"),
@@ -135,7 +135,7 @@ public static class WinnowThemes
     {
         Id = "box-art",
         Name = "Box art",
-        Reason = "A neutral mount. The chrome gives up colour entirely, so the covers - and the unread dot - are the only hues in the window.",
+        Reason = "A neutral mount. Covers are the only colour.",
 
         Well = C("#060708"),
         // Near-black, and 4.8x below the chrome: the art hangs in a recess.

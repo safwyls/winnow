@@ -241,6 +241,171 @@ public sealed class LibraryGrainTests
         Assert.Equal(LibraryBuckets.NeverPlayed, expansion.Bucket);
     }
 
+    // ── The grouping preference (TASK-70.5 AC6) ─────────────────────────────
+
+    /// <summary>
+    /// <b>Acceptance criterion 6, the default half.</b> The preference is off
+    /// unless something stored says otherwise, and an unparseable or absent
+    /// value reads as off rather than silently folding a user's grid.
+    /// </summary>
+    [Theory]
+    [InlineData(null, false)]
+    [InlineData("", false)]
+    [InlineData("   ", false)]
+    [InlineData("yes please", false)]
+    [InlineData("false", false)]
+    [InlineData("true", true)]
+    [InlineData(" True ", true)]
+    public void The_stored_grouping_preference_defaults_to_off(string? stored, bool expected)
+    {
+        Assert.Equal(expected, ExpansionGroupingPreference.Parse(stored));
+        Assert.Equal(expected, ExpansionGroupingPreference.Parse(
+            ExpansionGroupingPreference.Format(expected)));
+    }
+
+    /// <summary>
+    /// <b>Acceptance criterion 6, the folding half.</b> With the preference on
+    /// the pack gives up its tile to its base and every count follows it,
+    /// which is §11.2's counts-are-per-tile rule surviving a second change of
+    /// grain. The base keeps its own hours: a fold is not a sum.
+    /// </summary>
+    [Fact]
+    public async Task Grouping_folds_the_pack_into_its_base_and_the_counts_follow()
+    {
+        using var fixture = new GrainFixture();
+        var civ = await fixture.SeedAsync("Civilization IV", minutes: 12_000, lastPlayed: Now.AddYears(-2));
+        var bts = await fixture.SeedAsync("Beyond the Sword", minutes: 0, lastPlayed: null);
+        await fixture.SeedAsync("Hades", minutes: 8_000, lastPlayed: Now.AddDays(-5));
+
+        await fixture.LinkAsync(parent: civ.WorkId, child: bts.WorkId, IdentityLinkKinds.ExpansionOf);
+
+        var off = await fixture.LoadAsync(groupExpansions: false);
+        Assert.Equal(3, off.VisibleTiles.Count);
+        Assert.Equal(3, off.AllGames.Count);
+
+        var on = await fixture.LoadAsync(groupExpansions: true);
+
+        Assert.Equal(2, on.VisibleTiles.Count);
+        Assert.Equal(2, on.AllGames.Count);
+        Assert.Equal(2, on.TotalCount);
+        Assert.DoesNotContain(on.VisibleTiles, t => t.Title == "Beyond the Sword");
+
+        // The rail agrees with the grid, because both are counted over the
+        // same set. Never played held the pack and holds nothing now.
+        Assert.Equal(
+            on.VisibleTiles.Count(t => t.Bucket == LibraryBuckets.NeverPlayed),
+            on.Buckets.Single(b => b.Key == LibraryBuckets.NeverPlayed).Count);
+
+        // A fold is not a sum. The base reports the hours it always reported.
+        var civTile = on.VisibleTiles.Single(t => t.Title == "Civilization IV");
+        Assert.Equal(12_000, civTile.PlaytimeMinutes);
+        Assert.Single(civTile.Entries);
+    }
+
+    /// <summary>
+    /// The marker the fold owes the user. Taking the pack's tile away also
+    /// takes it off the Never played rail, so the base game says the fact
+    /// instead — this is the recommendation the whole app is built to make.
+    /// </summary>
+    [Fact]
+    public async Task A_folded_pack_that_was_never_played_says_so_on_its_base()
+    {
+        using var fixture = new GrainFixture();
+        var civ = await fixture.SeedAsync("Civilization IV", minutes: 12_000, lastPlayed: Now.AddYears(-2));
+        var bts = await fixture.SeedAsync("Beyond the Sword", minutes: 0, lastPlayed: null);
+
+        await fixture.LinkAsync(parent: civ.WorkId, child: bts.WorkId, IdentityLinkKinds.ExpansionOf);
+        var library = await fixture.LoadAsync(groupExpansions: true);
+
+        var civTile = Assert.Single(library.VisibleTiles);
+        Assert.True(civTile.HasGroupedExpansions);
+        Assert.Equal(1, civTile.GroupedExpansionCount);
+        Assert.True(civTile.HasUnplayedExpansion);
+        Assert.Equal("+1", civTile.ExpansionMarkFace);
+        Assert.Contains("never played", civTile.ExpansionMarkText, StringComparison.OrdinalIgnoreCase);
+
+        // §8: the mark is initials-sized, so the words have to be somewhere a
+        // screen reader reaches without hovering a decorative pip.
+        Assert.Contains("never played", civTile.AutomationName, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// A pack that HAS been played still folds and still marks its base, but
+    /// the base must not claim something is untouched when nothing is.
+    /// </summary>
+    [Fact]
+    public async Task A_folded_pack_that_was_played_marks_the_count_and_claims_nothing_more()
+    {
+        using var fixture = new GrainFixture();
+        var civ = await fixture.SeedAsync("Civilization IV", minutes: 12_000, lastPlayed: Now.AddYears(-2));
+        var bts = await fixture.SeedAsync("Beyond the Sword", minutes: 400, lastPlayed: Now.AddDays(-10));
+
+        await fixture.LinkAsync(parent: civ.WorkId, child: bts.WorkId, IdentityLinkKinds.ExpansionOf);
+        var library = await fixture.LoadAsync(groupExpansions: true);
+
+        var civTile = Assert.Single(library.VisibleTiles);
+        Assert.Equal(1, civTile.GroupedExpansionCount);
+        Assert.False(civTile.HasUnplayedExpansion);
+        Assert.DoesNotContain("never played", civTile.ExpansionMarkText, StringComparison.OrdinalIgnoreCase);
+
+        // Still not a sum.
+        Assert.Equal(12_000, civTile.PlaytimeMinutes);
+    }
+
+    /// <summary>
+    /// The rule that stops the fold deleting a game. A pack whose base the user
+    /// does not own is the only copy of that game they have, and folding it into
+    /// a tile the grid is not drawing would remove it from the library
+    /// altogether. The same shape <c>VariantGrouping.CountsAsTitle</c> uses for
+    /// a demo whose parent is unowned.
+    /// </summary>
+    [Fact]
+    public async Task A_pack_whose_base_is_not_in_the_library_keeps_its_own_tile()
+    {
+        using var fixture = new GrainFixture();
+        var bts = await fixture.SeedAsync("Beyond the Sword", minutes: 0, lastPlayed: null);
+        var unownedBase = await fixture.SeedUnownedWorkAsync("Civilization IV");
+
+        await fixture.LinkAsync(parent: unownedBase, child: bts.WorkId, IdentityLinkKinds.ExpansionOf);
+        var library = await fixture.LoadAsync(groupExpansions: true);
+
+        var tile = Assert.Single(library.VisibleTiles);
+        Assert.Equal("Beyond the Sword", tile.Title);
+        Assert.Equal(1, library.AllGames.Count);
+        Assert.False(tile.HasGroupedExpansions);
+    }
+
+    /// <summary>
+    /// The preference is a GRID preference. It must not reach the bucket query,
+    /// because <c>RecommendationEngine</c> reads that same repository and an
+    /// unplayed expansion has to stay reachable by the feed (AC5) whichever way
+    /// the grid is drawn. Asserted on the rows themselves, which is the thing
+    /// the recommender actually consumes.
+    /// </summary>
+    [Fact]
+    public async Task Grouping_changes_no_row_the_recommender_reads()
+    {
+        using var fixture = new GrainFixture();
+        var civ = await fixture.SeedAsync("Civilization IV", minutes: 12_000, lastPlayed: Now.AddYears(-2));
+        var bts = await fixture.SeedAsync("Beyond the Sword", minutes: 0, lastPlayed: null);
+        await fixture.LinkAsync(parent: civ.WorkId, child: bts.WorkId, IdentityLinkKinds.ExpansionOf);
+
+        var before = await fixture.Queries.GetOwnershipBucketsAsync(BucketThresholds.Default);
+
+        // Both games are still rows, and the pack is still Never played, so
+        // the shelf that surfaces it still can.
+        Assert.Equal(2, before.Count);
+        Assert.Contains(before, r => r.WorkId == bts.WorkId && r.Bucket == LibraryBuckets.NeverPlayed);
+
+        // And the fold changed none of it: the grid folded, the rows did not.
+        var on = await fixture.LoadAsync(groupExpansions: true);
+        Assert.Single(on.VisibleTiles);
+
+        var after = await fixture.Queries.GetOwnershipBucketsAsync(BucketThresholds.Default);
+        Assert.Equal(2, after.Count);
+        Assert.Contains(after, r => r.WorkId == bts.WorkId && r.Bucket == LibraryBuckets.NeverPlayed);
+    }
+
     // ── Counts ──────────────────────────────────────────────────────────────
 
     /// <summary>
@@ -645,13 +810,16 @@ public sealed class LibraryGrainTests
 
         public void Dispose() => _db.Dispose();
 
-        public async Task<LibraryViewModel> LoadAsync()
+        public async Task<LibraryViewModel> LoadAsync(bool groupExpansions = false)
         {
             var library = new LibraryViewModel(
                 Queries, Ownerships, Releases, Works, Updates,
                 covers: null,
                 lists: Lists,
-                identityLinks: Links);
+                identityLinks: Links)
+            {
+                GroupExpansions = groupExpansions,
+            };
 
             await library.LoadCommand.ExecuteAsync(null);
             return library;
@@ -707,6 +875,14 @@ public sealed class LibraryGrainTests
 
             return new SeededEntry(workId, releaseId, ownershipId);
         }
+
+        /// <summary>
+        /// A work with no release and no ownership: something a link can point
+        /// at that the grid will never draw a tile for. Models the base game a
+        /// user does not own.
+        /// </summary>
+        public Task<long> SeedUnownedWorkAsync(string title)
+            => Works.InsertAsync(new Work { Name = title, FirstReleaseYear = 2017 });
 
         /// <summary>A correlated build push and announcement: one major update.</summary>
         public async Task SeedMajorUpdateAsync(long releaseId, DateTime occurredAt, string title)

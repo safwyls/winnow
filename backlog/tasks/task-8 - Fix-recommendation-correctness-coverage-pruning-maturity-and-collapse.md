@@ -1,11 +1,11 @@
 ---
 id: TASK-8
 title: 'Fix recommendation correctness: coverage, pruning, maturity, and collapse'
-status: In Progress
+status: Done
 assignee:
   - '@claude'
 created_date: '2026-08-29 21:52'
-updated_date: '2026-09-01 02:14'
+updated_date: '2026-09-03 16:43'
 labels:
   - recommend
 dependencies: []
@@ -21,10 +21,10 @@ Four recommendation scoring defects. Missing genre/tag coverage is treated as ne
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 A game with no coverage data scores neutrally, not negatively
-- [ ] #2 Shortlist pruning preserves candidates above the quality threshold regardless of score proximity
-- [ ] #3 Maturity tier distribution is normalized against library composition
-- [ ] #4 Work-level collapse precedes shortlist capacity enforcement
+- [x] #1 A game with no coverage data scores neutrally, not negatively
+- [x] #2 Shortlist pruning preserves candidates above the quality threshold regardless of score proximity
+- [x] #3 Maturity tier distribution is normalized against library composition
+- [x] #4 Work-level collapse precedes shortlist capacity enforcement
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -57,3 +57,9 @@ Winnow.Recommend.Tests 92/92 green. Winnow.Covers.Tests 70/70 green. Winnow.Test
 
 REPORTED, NOT MADE: Winnow.Data needs a LibraryHistoryStatsRepository implementing ILibraryHistoryStatsRepository (one aggregate over sessions plus an EXISTS for ownerships with a snapshot rise) and Program.cs a registration, so the tier stops being an estimate. Not made because TASK-5 holds Winnow.Data.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Fixed four scoring defects: coverage read as negative evidence (F15), score-bound-unsafe pruning (F32), biased maturity tier (F33) and duplicates consuming shortlist capacity (F38). Landed in commit df38ef9. Verified by a scoped run of UpdateCoverageTests, ShortlistBoundTests, MaturityTierTests and ScorerTests.Probably_done_needs_proven_update_coverage_and_never_claims_silence_without_it: 11 of 11 passed; the full Winnow.Recommend.Tests suite passes 145 of 145. AC1: the probably-done penalty now requires HasProbablyDoneShape AND UpdateCoverage.Observed, so an unproven row is withheld from the penalty rather than scored down. AC2: ScoreBounds.SafeShortlist drops a candidate only when its upper bound falls below the k-th largest lower bound over the pool, unioned with the old fixed slice as a comfort floor. AC3: tier detection no longer reads the candidate probe; the gap the original notes reported as NOT MADE has since been filled - src/Winnow.Data/Repositories/LibraryHistoryStatsRepository.cs implements ILibraryHistoryStatsRepository and Program.cs:411 registers it, so the tier reads real library stats rather than the sampled estimate. AC4: ScoreBounds.CollapseByWork runs before SafeShortlist on both entry points, at RecommendationEngine.cs:74 before :79 and at :129 before :145. The one unrelated failure the original notes recorded, DatabaseBackupTests, no longer fails.
+<!-- SECTION:FINAL_SUMMARY:END -->

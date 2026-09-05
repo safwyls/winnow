@@ -123,7 +123,7 @@ public class SteamWebCredentialTests
         await settings.SetAsync(SettingsTableApiKeySource.ApiKeySetting, "SUPERSECRETKEYVALUE");
 
         var provider = new ChainedSteamApiKeyProvider(
-            [new SettingsTableApiKeySource(settings)],
+            [SourceOver(settings)],
             factory.CreateLogger<ChainedSteamApiKeyProvider>());
 
         Assert.NotNull(await provider.GetAsync());
@@ -154,7 +154,18 @@ public class SteamWebCredentialTests
         }
 
         return new ChainedSteamApiKeyProvider(
-            [new SettingsTableApiKeySource(settings), new ConfigurationApiKeySource(config)],
+            [SourceOver(settings), new ConfigurationApiKeySource(config)],
             NullLogger<ChainedSteamApiKeyProvider>.Instance);
     }
+
+    /// <summary>
+    /// The settings-table source, over the store it reads through. A reversible
+    /// stand-in for DPAPI, so the tests assert the store's own logic (protection,
+    /// migration, refusal) without depending on a real Windows user profile.
+    /// </summary>
+    private static SettingsTableApiKeySource SourceOver(
+        ISettingsRepository settings,
+        SteamApiKeyFixtures.ReversibleProtector? protector = null)
+        => new(new SettingsSteamApiKeyStore(
+            settings, protector ?? new SteamApiKeyFixtures.ReversibleProtector()));
 }

@@ -120,6 +120,46 @@ public sealed class GameDetailsViewModelTests
         Assert.Null(details.Updates[1].Link);
     }
 
+    /// <summary>
+    /// A game whose updates carry no readable link shows a note rather than
+    /// leaving the space empty. The note never claims nothing shipped; it says
+    /// there is no page to read.
+    /// </summary>
+    [Fact]
+    public void An_update_with_no_page_behind_it_says_so()
+    {
+        var updates = new[]
+        {
+            Update("Build 1234", Now.AddDays(-2)),
+            Update("Poisoned", Now.AddDays(-3), url: "javascript:alert(1)"),
+        };
+
+        var details = Details(Tile(lastPlayed: Now.AddDays(-10)), updates);
+
+        Assert.True(details.HasUpdates);
+        Assert.False(details.HasNotesPage);
+        Assert.True(details.ShowNoNotesNote);
+        Assert.NotEmpty(details.NoNotesText);
+    }
+
+    /// <summary>
+    /// When at least one update carries a readable link, the no-page note is
+    /// hidden and the patch-notes button is offered instead.
+    /// </summary>
+    [Fact]
+    public void An_update_with_a_page_behind_it_says_nothing()
+    {
+        var updates = new[]
+        {
+            Update("Real notes", Now.AddDays(-2), url: "https://store.steampowered.com/news/app/80/view/1"),
+        };
+
+        var details = Details(Tile(lastPlayed: Now.AddDays(-10)), updates);
+
+        Assert.True(details.HasNotesPage);
+        Assert.False(details.ShowNoNotesNote);
+    }
+
     // ══ The way in ══════════════════════════════════════════════════════════
 
     /// <summary>
@@ -519,7 +559,7 @@ public sealed class GameDetailsViewModelTests
             .Select(u => UpdateEventViewModel.Create(u, tile.LastPlayedUtc))
             .ToList();
 
-        return new GameDetailsViewModel(tile, "Bounced off", rows, Now, snapshots);
+        return new GameDetailsViewModel(tile, "Started", rows, Now, snapshots);
     }
 
     private static UpdateEvent Update(string title, DateTime occurredAt, string? url = null)
