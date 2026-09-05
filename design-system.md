@@ -1746,6 +1746,17 @@ counts tiles that actually disappear, computed by running the bucket query both 
 subtracting. It reads zero on a library where enrichment has not yet stored a rating, and
 says so.
 
+**The rating cap is a separate control and lives in the Display preferences popover on the
+command bar**, beside density and the dormancy toggle, not on the LIBRARY settings screen. It
+is a slider across `MaturityTiers.Ordered` — Everyone, Preteen, Teen, Mature, 18+, Adults
+only — and hides works whose highest stored maturity evidence exceeds the chosen tier. A work
+with no rating evidence is never hidden by the cap; `MaturityTiers.IsWithinCap` treats
+Unrated as within every cap. The chosen tier is named in words beside the slider and the
+number of titles the cap is hiding is stated underneath; a thumb position is not a value
+anyone can read off a track (§8). When the cap is at its top step while the 18+ toggle here
+is off, a note names which control is still hiding adults-only content, so the user can tell
+where a game went.
+
 ### 16.2 Hidden games
 
 The one place a hidden game can be found and put back, one at a time. Each row states what

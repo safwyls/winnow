@@ -3,30 +3,61 @@ using Winnow.Core.Queries;
 
 namespace Winnow.App.ViewModels;
 
+/// <summary>
+/// User-facing copy for the rating-cap slider in the Display preferences
+/// popover. The cap hides works whose highest stored maturity evidence
+/// exceeds the chosen tier. A work with no rating evidence is never hidden;
+/// <see cref="MaturityTiers.IsWithinCap"/> treats Unrated as within every
+/// cap, and these strings must not imply otherwise.
+/// </summary>
 public static class MaturityCapCopy
 {
-    public const string Heading = "PLACEHOLDER_HEADING";
+    /// <summary>Label beside the slider. Sentence-case body text, matching the
+    /// other Display preference labels.</summary>
+    public const string Heading = "Rating cap";
 
-    public const string Explanation = "PLACEHOLDER_EXPLANATION";
+    /// <summary>One line under the slider. States what the cap does and that
+    /// unrated games are unaffected.</summary>
+    public const string Explanation = "Hides games rated above this level. Unrated games always stay.";
 
-    public const string ClampedNote = "PLACEHOLDER_CLAMPED_NOTE";
+    /// <summary>
+    /// Shown when the cap includes adults-only content but the Settings ›
+    /// Library 18+ toggle is off, so that toggle is still hiding it. Names
+    /// which control is responsible so the user can tell where a game went.
+    /// </summary>
+    public const string ClampedNote =
+        "Adults-only content is still hidden by the toggle in Settings › Library.";
 
-    public const string NothingHidden = "PLACEHOLDER_NOTHING_HIDDEN";
+    /// <summary>Status line when the cap is not hiding any titles.</summary>
+    public const string NothingHidden = "No titles hidden.";
 
-    public const string HiddenOne = "PLACEHOLDER_HIDDEN_ONE";
+    /// <summary>Status line when the cap is hiding exactly one title.</summary>
+    public const string HiddenOne = "Hiding 1 title.";
 
-    public const string HiddenManyFormat = "PLACEHOLDER_HIDDEN_MANY {0}";
+    /// <summary>Status line when the cap is hiding more than one title.
+    /// <c>{0}</c> is the formatted count.</summary>
+    public const string HiddenManyFormat = "Hiding {0} titles.";
 
+    /// <summary>
+    /// The label shown beside the slider for the given cap position. Each
+    /// label names the tier in ordinary language without reference to any
+    /// specific rating board, because the scale spans ESRB, PEGI, USK, CERO,
+    /// GRAC, ClassInd and ACB.
+    /// </summary>
     public static string LabelFor(MaturityTier tier) => tier switch
     {
-        MaturityTier.Everyone => "PLACEHOLDER_EVERYONE",
-        MaturityTier.Preteen => "PLACEHOLDER_PRETEEN",
-        MaturityTier.Teen => "PLACEHOLDER_TEEN",
-        MaturityTier.Mature => "PLACEHOLDER_MATURE",
-        MaturityTier.Restricted18 => "PLACEHOLDER_RESTRICTED18",
-        _ => "PLACEHOLDER_ADULTS_ONLY",
+        MaturityTier.Everyone => "All ages",
+        MaturityTier.Preteen => "Preteen",
+        MaturityTier.Teen => "Teen",
+        MaturityTier.Mature => "Mature",
+        MaturityTier.Restricted18 => "18+",
+        _ => "Adults only",
     };
 
+    /// <summary>
+    /// Returns the status line for the number of titles the cap is currently
+    /// hiding. The count excludes titles already hidden by the 18+ toggle.
+    /// </summary>
     public static string HiddenText(int count) => count switch
     {
         <= 0 => NothingHidden,
