@@ -9,17 +9,16 @@ namespace Winnow.Tests;
 
 /// <summary>
 /// The details modal's wrong-game control against a real migrated database
-/// (TASK-89, acceptance criteria 1, 2 and 4). The assignment rewrites the
-/// work's metadata, the library reloads, the modal reopens on the same
-/// ownership with the corrected game, and the tile's cover key follows the
-/// rewritten <c>works.cover_url</c> — no separate cover-refresh mechanism
-/// is needed.
+/// (TASK-89, acceptance criteria 1, 2 and 4; TASK-106, the cover-precedence
+/// fix). The assignment rewrites the work's metadata, the library reloads,
+/// and the modal reopens on the same ownership with the corrected game.
 ///
-/// <para>The work is seeded with no Steam appid on purpose.
-/// <c>LibraryViewModel</c> prefers a Steam capsule key when a Steam
-/// external id exists, so with one the tile's cover would be the Steam key
-/// whatever IGDB said, and the thing being proved would not be
-/// proved.</para>
+/// <para>Cover precedence is the heart of the TASK-106 tests. A live IGDB
+/// pin outranks the Steam portrait capsule, so a Steam-owned game draws the
+/// pinned art after an assignment and gets its capsule back after a clear.
+/// The GOG-seeded test exercises rule 3 — the image-id path that has no
+/// Steam appid to compete with — and the Steam-seeded tests exercise the
+/// rule that a pin wins over store precedence.</para>
 /// </summary>
 public sealed class IgdbAssignmentModalTests : IDisposable
 {
@@ -90,8 +89,8 @@ public sealed class IgdbAssignmentModalTests : IDisposable
         Assert.Equal("Bethesda Softworks", reopened.Tile.Publisher);
         Assert.Equal("Morgan Yu wakes on Talos I.", reopened.Tile.Summary);
 
-        // The cover key is derived from the rewritten URL, which is why no
-        // separate cover refresh is needed.
+        // Rule 3: this work has no Steam appid, so the cover key is the image
+        // id in the rewritten cover_url — the Epic/GOG path, not the pin path.
         Assert.Equal("igdb", reopened.Tile.CoverKey?.Provider);
         Assert.Equal("co2abc", reopened.Tile.CoverKey?.Id);
 
@@ -182,11 +181,89 @@ public sealed class IgdbAssignmentModalTests : IDisposable
         return library;
     }
 
+    /// <summary>
+    /// TASK-106: the defect the user reported. A Steam-owned game's tile kept
+    /// the original capsule after an assignment, because store precedence
+    /// chose <c>CoverKey.Steam(appid)</c> before anything read the
+    /// <c>cover_url</c> the pin had just rewritten. A live pin now outranks
+    /// the capsule, and clearing the pin hands it back.
+    ///
+    /// <para>The three keys this test walks — steam:3900, igdb:co2abc,
+    /// steam:3900 again — also show that nothing has to be evicted from the
+    /// cover cache. A pin moves the tile to a key naming a different artwork
+    /// asset; the old key is simply no longer asked for.</para>
+    /// </summary>
+    [Fact]
+    public async Task A_steam_owned_game_takes_the_pinned_art_and_gives_the_capsule_back()
+    {
+        var seeded = await SeedAsync(steamAppId: "3900");
+
+        var library = await LoadAsync(new PinningAssignmentService(_pins));
+
+        var before = Assert.Single(library.VisibleTiles);
+        Assert.Equal("steam", before.CoverKey?.Provider);
+        Assert.Equal("3900", before.CoverKey?.Id);
+
+        await library.OpenDetailsCommand.ExecuteAsync(before);
+
+        var match = library.Details!.IgdbMatch!;
+        await match.SearchCommand.ExecuteAsync(null);
+        await match.AssignCommand.ExecuteAsync(match.Candidates[0]);
+
+        // The pin outranks the capsule, so the tile the user is looking at
+        // draws the art of the game they said this is.
+        var pinned = library.Details!.Tile;
+        Assert.Equal(before.OwnershipId, pinned.OwnershipId);
+        Assert.Equal("igdb", pinned.CoverKey?.Provider);
+        Assert.Equal("co2abc", pinned.CoverKey?.Id);
+        Assert.NotEqual(before.CoverKey, pinned.CoverKey);
+        Assert.Equal(pinned.CoverKey, Assert.Single(library.VisibleTiles).CoverKey);
+
+        // The Steam appid is still the release's own — the pin changed which
+        // art the tile asks for, not what the game is owned as.
+        Assert.Equal("3900", pinned.SteamAppId);
+
+        await library.Details!.IgdbMatch!.ClearCommand.ExecuteAsync(null);
+
+        Assert.Null(await _pins.GetAsync(seeded.WorkId));
+
+        var cleared = library.Details!.Tile;
+        Assert.Equal(before.OwnershipId, cleared.OwnershipId);
+        Assert.Equal("steam", cleared.CoverKey?.Provider);
+        Assert.Equal("3900", cleared.CoverKey?.Id);
+        Assert.Equal(before.CoverKey, cleared.CoverKey);
+        Assert.False(library.Details!.IgdbMatch!.IsPinned);
+    }
+
+    /// <summary>
+    /// A pinned entry that IGDB gave no cover falls through to the store
+    /// capsule rather than to the placeholder. The user is no worse off than
+    /// before the pin, and a placeholder tells them less than the wrong art.
+    /// </summary>
+    [Fact]
+    public async Task A_pinned_entry_with_no_cover_leaves_the_capsule_in_place()
+    {
+        await SeedAsync(steamAppId: "3900");
+
+        var library = await LoadAsync(new PinningAssignmentService(_pins, coverUrl: null));
+        await library.OpenDetailsCommand.ExecuteAsync(library.VisibleTiles.Single());
+
+        var match = library.Details!.IgdbMatch!;
+        await match.SearchCommand.ExecuteAsync(null);
+        await match.AssignCommand.ExecuteAsync(match.Candidates[0]);
+
+        var tile = library.Details!.Tile;
+        Assert.Equal(2017, tile.ReleaseYear);
+        Assert.Equal("steam", tile.CoverKey?.Provider);
+        Assert.Equal("3900", tile.CoverKey?.Id);
+    }
+
     private async Task<SeededGame> SeedAsync(
         string title = "Prey",
         long? igdbId = 1234,
         string? coverUrl = WrongCover,
-        int year = 2006)
+        int year = 2006,
+        string? steamAppId = null)
     {
         var workId = await _works.InsertAsync(new Work
         {
@@ -205,10 +282,22 @@ public sealed class IgdbAssignmentModalTests : IDisposable
             Platform = "windows",
         });
 
+        var store = steamAppId is null ? "gog" : "steam";
+
+        if (steamAppId is not null)
+        {
+            await _releases.AddExternalIdAsync(new ExternalId
+            {
+                ReleaseId = releaseId,
+                Provider = ExternalIdProviders.Steam,
+                ProviderId = steamAppId,
+            });
+        }
+
         var ownershipId = await _ownerships.InsertAsync(new Ownership
         {
             ReleaseId = releaseId,
-            Store = "gog",
+            Store = store,
         });
 
         await _plays.InsertAsync(new PlayRecord
@@ -216,7 +305,7 @@ public sealed class IgdbAssignmentModalTests : IDisposable
             OwnershipId = ownershipId,
             PlaytimeMinutes = 120,
             LastPlayedAt = new DateTime(2024, 1, 2, 0, 0, 0, DateTimeKind.Utc),
-            Source = "gog",
+            Source = store,
             ObservedAt = Observed,
         });
 
@@ -235,7 +324,18 @@ public sealed class IgdbAssignmentModalTests : IDisposable
     {
         private readonly IWorkIgdbPinRepository _pins;
 
-        public PinningAssignmentService(IWorkIgdbPinRepository pins) => _pins = pins;
+        /// <summary>
+        /// The cover URL the chosen entry carries. Null stands for an IGDB
+        /// entry with no cover at all — the one case where a pin cannot
+        /// outrank the store capsule.
+        /// </summary>
+        private readonly string? _coverUrl;
+
+        public PinningAssignmentService(IWorkIgdbPinRepository pins, string? coverUrl = RightCover)
+        {
+            _pins = pins;
+            _coverUrl = coverUrl;
+        }
 
         public Task<IReadOnlyList<IgdbCandidate>> SearchAsync(
             string title, CancellationToken ct = default)
@@ -244,7 +344,7 @@ public sealed class IgdbAssignmentModalTests : IDisposable
                 new IgdbCandidate(
                     5678,
                     "Prey",
-                    RightCover,
+                    _coverUrl,
                     2017,
                     ["PC (Microsoft Windows)", "PlayStation 4"]),
             ]);
@@ -260,7 +360,7 @@ public sealed class IgdbAssignmentModalTests : IDisposable
                     Name = "Prey",
                     FirstReleaseYear = 2017,
                     Summary = "Morgan Yu wakes on Talos I.",
-                    CoverUrl = RightCover,
+                    CoverUrl = _coverUrl,
                     Publisher = "Bethesda Softworks",
                 },
                 ct);
@@ -280,5 +380,8 @@ public sealed class IgdbAssignmentModalTests : IDisposable
 
         public Task<WorkIgdbPin?> GetPinAsync(long workId, CancellationToken ct = default)
             => _pins.GetAsync(workId, ct);
+
+        public Task<IReadOnlySet<long>> GetLivePinnedWorkIdsAsync(CancellationToken ct = default)
+            => _pins.GetLivePinnedWorkIdsAsync(ct);
     }
 }

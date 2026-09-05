@@ -431,5 +431,8 @@ public sealed class ManualGameFromExecutableTests : IDisposable
         public Task<Winnow.Core.Domain.WorkIgdbPin?> GetPinAsync(
             long workId, CancellationToken ct = default)
             => Task.FromResult<Winnow.Core.Domain.WorkIgdbPin?>(null);
+
+        public Task<IReadOnlySet<long>> GetLivePinnedWorkIdsAsync(CancellationToken ct = default)
+            => Task.FromResult<IReadOnlySet<long>>(new HashSet<long>());
     }
 }

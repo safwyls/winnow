@@ -124,7 +124,7 @@ public sealed class IgdbMatchViewModelTests
         };
 
         string? carried = null;
-        var vm = Build(service, afterAssign: note =>
+        var vm = Build(service, afterChange: note =>
         {
             carried = note;
             return Task.CompletedTask;
@@ -164,7 +164,7 @@ public sealed class IgdbMatchViewModelTests
         };
 
         var reopened = false;
-        var vm = Build(service, afterAssign: _ =>
+        var vm = Build(service, afterChange: _ =>
         {
             reopened = true;
             return Task.CompletedTask;
@@ -274,8 +274,8 @@ public sealed class IgdbMatchViewModelTests
         FakeAssignmentService service,
         string title = "Prey",
         WorkIgdbPin? pin = null,
-        Func<string, Task>? afterAssign = null)
-        => new(service, WorkId, title, pin: pin, afterAssign: afterAssign);
+        Func<string, Task>? afterChange = null)
+        => new(service, WorkId, title, pin: pin, afterChange: afterChange);
 
     /// <summary>
     /// Answers from canned values and records what it was asked, exactly as
@@ -321,5 +321,10 @@ public sealed class IgdbMatchViewModelTests
 
         public Task<WorkIgdbPin?> GetPinAsync(long workId, CancellationToken ct = default)
             => Task.FromResult<WorkIgdbPin?>(null);
+
+        // The bulk pin read belongs to the library load's cover precedence,
+        // not to this control, so the fake answers the empty set.
+        public Task<IReadOnlySet<long>> GetLivePinnedWorkIdsAsync(CancellationToken ct = default)
+            => Task.FromResult<IReadOnlySet<long>>(new HashSet<long>());
     }
 }

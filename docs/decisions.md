@@ -1083,3 +1083,29 @@ so the ScrollViewer has a finite constraint.
 **§10.1 gained a general rule about the modal's scroll regions.** Each column's lower part sits
 in a star row and scrolls inside whatever height the card has. The rule is stated there because
 it applies to both columns, not only to this control.
+
+### 2026-09-05 — A live IGDB pin now outranks the store capsule (TASK-106)
+
+`design-system.md` §10.9. The cover-key precedence was store-first: a release carrying a Steam
+appid took `CoverKey.Steam(appid)`, and only a release with no Steam appid fell through to the
+image id in `works.cover_url`. Pinning via the wrong-game control rewrote `cover_url`, but for
+a Steam-owned game — the common case — nothing read it, so the tile and the modal kept
+showing the original appid's portrait capsule after an assignment.
+
+The rule is now: (1) a live IGDB pin on this work, when its `cover_url` yields an image id;
+(2) the Steam portrait capsule; (3) the image id in `cover_url`. A user reaching for the
+wrong-game control is saying the storefront art is wrong too, so the pin wins. Clearing a pin
+now reloads the library and reopens the modal, because dropping the pin changes the cover key
+back to the store capsule and only a reload draws it.
+
+Superseded text from §10.9:
+
+> **The cover needs no separate refresh mechanism.** The IGDB cover key is derived from the stored cover URL's image id, so rewriting the URL is what refreshes the tile.
+
+> **Clear is drawn only while a pin stands**, read when the modal opens. Clearing writes no metadata — it only stops the pin — so it does not reload; the metadata the pin wrote stays in place and the next automatic pass fills what is empty around it.
+
+Two code comments said the same wrong thing and were removed in the same change:
+
+> The cover needs no separate refresh because its key is derived from the stored cover URL.
+
+> Returns the work to automatic resolution. No reload: clearing writes no metadata, so nothing on screen has changed except this control.

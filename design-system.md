@@ -872,12 +872,24 @@ not a destructive act.
 written, the control says so in words in a status field. No spinner and no `Transitions`, so
 reduced motion has nothing to disable and the surface is identical in both motion settings.
 
-**The cover needs no separate refresh mechanism.** The IGDB cover key is derived from the
-stored cover URL's image id, so rewriting the URL is what refreshes the tile.
+**A live IGDB pin outranks the store capsule for that work.** The cover-key precedence is:
+(1) a live IGDB pin on this work, when the work's `cover_url` yields an IGDB image id;
+(2) the Steam portrait capsule for this release's appid; (3) the image id in the work's
+stored `cover_url`. A user reaching for the wrong-game control is not only saying the metadata
+is wrong, they are saying the storefront art is wrong, so the pin wins. The pin is read off
+the release's own work row, never the resolved work: the pin and the `cover_url` it rewrote
+are columns of the same row, and resolving through the same-game map would pair one work's pin
+with another work's URL. A pinned entry that IGDB gave no cover keeps the store capsule — the
+user is no worse off than before the pin, and a placeholder tells them less than the wrong art.
+Nothing is evicted from the cover cache: a `CoverKey.Igdb` names the artwork asset itself, so
+pinning moves the tile to a key that has never been fetched, and clearing returns it to the
+Steam key whose cached bytes are still the right bytes.
 
 **Clear is drawn only while a pin stands**, read when the modal opens. Clearing writes no
-metadata — it only stops the pin — so it does not reload; the metadata the pin wrote stays in
-place and the next automatic pass fills what is empty around it.
+metadata — it only stops the pin — but it reloads the library and reopens the modal, because
+dropping the pin changes the cover key back to the store capsule and only a reload draws it.
+The metadata the pin wrote stays in place and the next automatic pass fills what is empty
+around it.
 
 **The input field** takes §16.3's field treatment: `Well` cut into the card, found by its
 `Line` border and lit by a `Volt` ring on a border whose thickness never changes (§10.7,

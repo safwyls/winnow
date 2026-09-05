@@ -85,4 +85,16 @@ public interface IIgdbAssignmentService
     /// hides the Clear control on the modal.
     /// </summary>
     Task<WorkIgdbPin?> GetPinAsync(long workId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Every work id carrying a live pin, in one read. The library load needs
+    /// the whole set at once to decide cover-key precedence (a live pin
+    /// outranks the store capsule), and <see cref="GetPinAsync"/> is per-work.
+    ///
+    /// <para>Empty is a normal answer and also what a failed read degrades
+    /// into, like every other call on this seam: the library still loads,
+    /// and an empty set is the store-capsule precedence the view model had
+    /// before pins existed.</para>
+    /// </summary>
+    Task<IReadOnlySet<long>> GetLivePinnedWorkIdsAsync(CancellationToken ct = default);
 }

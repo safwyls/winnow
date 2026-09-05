@@ -742,6 +742,14 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             ? FacetSnapshot.Empty
             : await _facetRepository.GetSnapshotAsync();
 
+        // Every work carrying a live IGDB pin, in one read rather than one
+        // per work. A pin wins the cover-key precedence below: the user is
+        // saying the art is wrong too. No service means no pins — the
+        // store-capsule precedence this view model had before.
+        var pinnedWorkIds = _igdb is null
+            ? new HashSet<long>()
+            : await _igdb.GetLivePinnedWorkIdsAsync();
+
         // release id → its work, and release id → the provider id its cover art
         // is fetched under. Small library, per-work fetch is fine.
         var workByRelease = new Dictionary<long, Work>();
@@ -793,21 +801,49 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
 
                 if (steam is not null)
                 {
-                    coverKeyByRelease[release.Id] = CoverKey.Steam(steam.ProviderId);
                     steamAppIdByRelease[release.Id] = steam.ProviderId;
+                }
+
+                // Cover-key precedence:
+                //   1. a live IGDB pin on this work, when it yields an image id
+                //   2. the Steam portrait capsule for this release's appid
+                //   3. the image id in the work's stored cover_url
+                //
+                // A pin outranks the capsule because the user is saying the
+                // storefront art is wrong too. Read off the release's OWN work
+                // row, never the resolved work: the pin and the cover_url it
+                // rewrote are columns of the same row, and resolving through the
+                // same-game map would pair one work's pin with another's URL.
+                //
+                // A pinned entry with no IGDB cover falls through to the
+                // capsule, not to the placeholder. Nothing is evicted from the
+                // cache: a CoverKey.Igdb names the artwork asset, so a pin
+                // produces a key that has never been fetched, and clearing one
+                // returns to the Steam key whose cached bytes are still correct.
+                //
+                // Rule 3 is the only cover path an Epic or GOG tile can
+                // reach: no Steam appid means no portrait capsule and no
+                // external_games lookup, so the stored cover_url — which
+                // names the IGDB artwork asset directly — is all there is.
+                // The key must be the image id, not works.igdb_id, because
+                // that column is UNIQUE: of an Epic title and its Steam
+                // twin only one row holds the id, but both hold the same
+                // cover_url. Keying on the game id would leave one half
+                // of every cross-store duplicate pair without a cover key.
+                var pinnedImageId = pinnedWorkIds.Contains(work.Id)
+                    ? IgdbImageUrl.ImageId(work.CoverUrl)
+                    : null;
+
+                if (pinnedImageId is { Length: > 0 })
+                {
+                    coverKeyByRelease[release.Id] = CoverKey.Igdb(pinnedImageId);
+                }
+                else if (steam is not null)
+                {
+                    coverKeyByRelease[release.Id] = CoverKey.Steam(steam.ProviderId);
                 }
                 else if (IgdbImageUrl.ImageId(work.CoverUrl) is { Length: > 0 } imageId)
                 {
-                    // No Steam appid, so no Steam capsule and no external_games
-                    // lookup — which is why every Epic and GOG tile rendered a
-                    // placeholder even after enrichment learned their covers.
-                    // The stored cover_url names IGDB's asset outright, so the
-                    // key is the artwork id and the fetch is a plain CDN GET.
-                    //
-                    // This is the ONLY path that works for the cross-store
-                    // duplicates: works.igdb_id is UNIQUE, so of an Epic title
-                    // and its Steam twin only one row may hold the id, while
-                    // both hold the same cover_url.
                     coverKeyByRelease[release.Id] = CoverKey.Igdb(imageId);
                 }
             }
@@ -1263,19 +1299,20 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             target.Title,
             pin: await _igdb.GetPinAsync(workId),
             covers: _covers,
-            afterAssign: AfterAssigningIgdbAsync,
+            afterChange: AfterIgdbChangeAsync,
             note: note);
     }
 
     /// <summary>
-    /// A hand-assigned entry rewrote the work's name, year, publisher,
-    /// summary and cover URL, so every one of those is stale on the tile
-    /// this modal is bound to. Reloads the library and reopens the modal on
-    /// the same ownership, the same arrangement <see cref="SeparateAsync"/>
-    /// uses. The cover needs no separate refresh because its key is derived
-    /// from the stored cover URL.
+    /// Reloads the library and reopens the modal on the same ownership — the
+    /// same arrangement <c>SeparateAsync</c> uses. An assignment rewrites the
+    /// work's name, year, publisher, summary and cover URL, so every field on
+    /// the bound tile is stale. Clearing a pin comes through here too: it
+    /// writes no metadata, but a live pin outranks the store capsule in the
+    /// cover-key precedence, so dropping the pin gives a Steam-owned game its
+    /// capsule back and only a reload draws it.
     /// </summary>
-    private async Task AfterAssigningIgdbAsync(string note)
+    private async Task AfterIgdbChangeAsync(string note)
     {
         _igdbNote = note;
         await ReopenDetailsAsync();

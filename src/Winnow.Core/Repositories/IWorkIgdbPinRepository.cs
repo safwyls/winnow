@@ -29,4 +29,17 @@ public interface IWorkIgdbPinRepository
     /// Returns the live pin for a work, or null when none is active.
     /// </summary>
     Task<WorkIgdbPin?> GetAsync(long workId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Bulk companion to <see cref="GetAsync"/>: one query returning the work
+    /// ids that currently carry a live (uncleared) pin. Callers that need the
+    /// whole set — the library load's cover-key precedence — use this instead
+    /// of calling <c>GetAsync</c> once per work.
+    ///
+    /// <para>Returns an empty set, never null, when nothing is pinned.
+    /// Cleared pins are excluded, and the partial unique index
+    /// <c>ux_work_igdb_pins_live</c> guarantees a re-pinned work appears
+    /// exactly once.</para>
+    /// </summary>
+    Task<IReadOnlySet<long>> GetLivePinnedWorkIdsAsync(CancellationToken ct = default);
 }

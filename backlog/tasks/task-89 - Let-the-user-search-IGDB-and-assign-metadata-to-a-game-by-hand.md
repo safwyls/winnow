@@ -5,7 +5,7 @@ status: Done
 assignee:
   - '@claude'
 created_date: '2026-09-04 18:13'
-updated_date: '2026-09-04 21:35'
+updated_date: '2026-09-05 03:11'
 labels:
   - ui
   - enrichment
@@ -160,6 +160,8 @@ AC EVIDENCE
 AC 1: IgdbAssignmentModalTests.Choosing_a_candidate_rewrites_the_metadata_and_the_cover drives the search through the real LibraryViewModel and asserts the candidate carries cover key, year and platforms; IgdbMatchViewModelTests covers the same over the view model plus the no-year/no-platform row. Compiled bindings (AvaloniaUseCompiledBindingsByDefault) make the build a check that every binding in the new markup resolves. What no test covers is how it LOOKS - that needs a run.
 AC 2: the same test asserts the reopened tile's year, publisher, summary and cover key all changed, with the pin written by the real WorkIgdbPinRepository.
 AC 4: The_assignment_can_be_cleared_and_the_pin_goes_with_it asserts the row is gone from work_igdb_pins and the control folds away; A_clear_that_did_not_land_keeps_the_control covers the refusal.
+
+Correction (2026-09-05, TASK-106). The claim above that no cover-refresh call is needed held only for Epic and GOG releases, whose tiles already fell through to the image id in works.cover_url (rule 3 of the cover-key precedence). A Steam-owned work was caught first by rule 2 -- CoverKey.Steam(appid) -- so the pin rewrote cover_url and nothing read it; the tile kept the original appid's portrait capsule. This was reported as a defect and fixed under TASK-106. The cover-key precedence is now: (1) a live IGDB pin on the work, when the cover_url yields an image id; (2) the Steam portrait capsule; (3) the image id in cover_url. A pin outranks the store capsule because the user is saying the art is wrong too, and clearing the pin hands the capsule back.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary

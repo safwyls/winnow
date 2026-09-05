@@ -138,4 +138,16 @@ public sealed class WorkIgdbPinRepository : IWorkIgdbPinRepository
             WHERE work_id = @workId AND cleared_at IS NULL;
             """, new { workId }, transaction: lease.Transaction, cancellationToken: ct));
     }
+
+    public async Task<IReadOnlySet<long>> GetLivePinnedWorkIdsAsync(CancellationToken ct = default)
+    {
+        using var lease = _factory.Lease();
+        var workIds = await lease.Connection.QueryAsync<long>(new CommandDefinition("""
+            SELECT work_id
+            FROM work_igdb_pins
+            WHERE cleared_at IS NULL;
+            """, transaction: lease.Transaction, cancellationToken: ct));
+
+        return new HashSet<long>(workIds);
+    }
 }

@@ -35,11 +35,16 @@ public partial class GameIgdbMatchViewModel : ObservableObject
 
     /// <summary>
     /// Reloads the library and reopens this modal on the same ownership,
-    /// carrying the confirmation note across the rebuild so the user sees
-    /// the corrected cover and metadata where they asked for them. Null in
-    /// a test, and then the note lands on this instance instead.
+    /// carrying the confirmation note across the rebuild so the user sees the
+    /// corrected cover and metadata where they asked for them. Null in a test,
+    /// where the note lands on this instance instead.
+    ///
+    /// <para>Both writes on this control run through it. Assigning changes
+    /// the metadata and the cover key; clearing changes the cover key back,
+    /// because a live IGDB pin outranks the store capsule and dropping the
+    /// pin hands a Steam-owned game its capsule again.</para>
     /// </summary>
-    private readonly Func<string, Task>? _afterAssign;
+    private readonly Func<string, Task>? _afterChange;
 
     private readonly long _workId;
 
@@ -53,7 +58,7 @@ public partial class GameIgdbMatchViewModel : ObservableObject
         string title,
         WorkIgdbPin? pin = null,
         ICoverCache? covers = null,
-        Func<string, Task>? afterAssign = null,
+        Func<string, Task>? afterChange = null,
         string? note = null)
     {
         ArgumentNullException.ThrowIfNull(service);
@@ -61,7 +66,7 @@ public partial class GameIgdbMatchViewModel : ObservableObject
         _service = service;
         _workId = workId;
         _covers = covers;
-        _afterAssign = afterAssign;
+        _afterChange = afterChange;
 
         // The title the library already shows is the search anyone would type.
         Query = title ?? string.Empty;
@@ -248,13 +253,13 @@ public partial class GameIgdbMatchViewModel : ObservableObject
             IsOpen = false;
 
             var note = GameIgdbMatchCopy.AssignedNote(candidate.Name);
-            if (_afterAssign is null)
+            if (_afterChange is null)
             {
                 Note = note;
                 return;
             }
 
-            await _afterAssign(note);
+            await _afterChange(note);
         }
         catch (OperationCanceledException)
         {
@@ -268,8 +273,11 @@ public partial class GameIgdbMatchViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Returns the work to automatic resolution. No reload: clearing writes
-    /// no metadata, so nothing on screen has changed except this control.
+    /// Returns the work to automatic resolution, and reloads. Clearing writes
+    /// no metadata, but it changes what the tile draws: a live pin outranks
+    /// the store capsule, so dropping the pin hands a Steam-owned game its
+    /// capsule back and the grid must be rebuilt to show it. The confirmation
+    /// rides the reload the same way an assignment's does.
     /// </summary>
     [RelayCommand]
     private async Task ClearAsync(CancellationToken ct)
@@ -291,7 +299,15 @@ public partial class GameIgdbMatchViewModel : ObservableObject
             }
 
             IsPinned = false;
-            Note = GameIgdbMatchCopy.ClearedNote;
+
+            var note = GameIgdbMatchCopy.ClearedNote;
+            if (_afterChange is null)
+            {
+                Note = note;
+                return;
+            }
+
+            await _afterChange(note);
         }
         catch (OperationCanceledException)
         {

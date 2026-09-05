@@ -137,4 +137,18 @@ public sealed class IgdbManualAssignment
     /// </summary>
     public Task<WorkIgdbPin?> GetPinAsync(long workId, CancellationToken ct = default)
         => _pins.GetAsync(workId, ct);
+
+    /// <summary>
+    /// Returns the work ids that currently carry a live IGDB pin
+    /// (<c>work_igdb_pins</c> rows whose <c>cleared_at</c> is null). One
+    /// query for the whole library, where <see cref="GetPinAsync"/> is one
+    /// query per work.
+    ///
+    /// <para>A passthrough that does not soft-fail: a repository failure
+    /// surfaces to the caller. The App-layer seam
+    /// (<c>IIgdbAssignmentService</c>) wraps the call with its own
+    /// catch-and-degrade.</para>
+    /// </summary>
+    public Task<IReadOnlySet<long>> GetLivePinnedWorkIdsAsync(CancellationToken ct = default)
+        => _pins.GetLivePinnedWorkIdsAsync(ct);
 }

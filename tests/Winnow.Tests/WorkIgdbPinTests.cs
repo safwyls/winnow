@@ -9,8 +9,10 @@ namespace Winnow.Tests;
 /// <summary>
 /// Repository-level tests for <c>work_igdb_pins</c> (migration 0026):
 /// pinning rewrites metadata, re-pinning stamps the previous row,
-/// clearing returns the work to automatic enrichment, and the two refusal
-/// cases — work not found, igdb_id already claimed — are enforced.
+/// clearing returns the work to automatic enrichment, the two refusal
+/// cases — work not found, igdb_id already claimed — are enforced, and the
+/// bulk read (<c>GetLivePinnedWorkIdsAsync</c>) returns only live pins,
+/// excludes cleared pins, and lists a re-pinned work exactly once.
 /// </summary>
 public sealed class WorkIgdbPinTests : IDisposable
 {
@@ -193,6 +195,62 @@ public sealed class WorkIgdbPinTests : IDisposable
         var workId = await SeedAsync("620", "App 620", provisional: true);
 
         Assert.False(await _pins.ClearAsync(workId));
+    }
+
+    [Fact]
+    public async Task The_bulk_read_lists_only_the_works_that_carry_a_live_pin()
+    {
+        var pinned = await SeedAsync("620", "App 620", provisional: true);
+        var unpinned = await SeedAsync("570", "App 570", provisional: true);
+
+        Assert.Empty(await _pins.GetLivePinnedWorkIdsAsync());
+
+        await _pins.PinAsync(new WorkIgdbPinAssignment
+        {
+            WorkId = pinned, IgdbId = 103_298, Name = "Prey (2017)",
+        });
+
+        var live = await _pins.GetLivePinnedWorkIdsAsync();
+        Assert.Contains(pinned, live);
+        Assert.DoesNotContain(unpinned, live);
+    }
+
+    [Fact]
+    public async Task The_bulk_read_excludes_a_pin_that_has_been_cleared()
+    {
+        var workId = await SeedAsync("620", "App 620", provisional: true);
+
+        await _pins.PinAsync(new WorkIgdbPinAssignment
+        {
+            WorkId = workId, IgdbId = 103_298, Name = "Prey (2017)",
+        });
+        Assert.Contains(workId, await _pins.GetLivePinnedWorkIdsAsync());
+
+        Assert.True(await _pins.ClearAsync(workId));
+
+        Assert.DoesNotContain(workId, await _pins.GetLivePinnedWorkIdsAsync());
+    }
+
+    [Fact]
+    public async Task The_bulk_read_lists_a_repinned_work_exactly_once()
+    {
+        var workId = await SeedAsync("620", "App 620", provisional: true);
+
+        await _pins.PinAsync(new WorkIgdbPinAssignment
+        {
+            WorkId = workId, IgdbId = 1020, Name = "Prey (2006)",
+        });
+        await _pins.PinAsync(new WorkIgdbPinAssignment
+        {
+            WorkId = workId, IgdbId = 103_298, Name = "Prey (2017)",
+        });
+
+        Assert.Equal(2, await RowCountAsync(workId));
+        Assert.Equal(1, await LiveRowCountAsync(workId));
+
+        var live = await _pins.GetLivePinnedWorkIdsAsync();
+        Assert.Single(live);
+        Assert.Contains(workId, live);
     }
 
     private async Task<long> SeedAsync(

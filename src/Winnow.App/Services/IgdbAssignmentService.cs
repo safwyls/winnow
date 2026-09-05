@@ -93,4 +93,24 @@ public sealed class IgdbAssignmentService : IIgdbAssignmentService
             return null;
         }
     }
+
+    /// <inheritdoc/>
+    public async Task<IReadOnlySet<long>> GetLivePinnedWorkIdsAsync(CancellationToken ct = default)
+    {
+        try
+        {
+            return await _assignment.GetLivePinnedWorkIdsAsync(ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            // A failed read degrades to "nothing is pinned" — the
+            // store-capsule precedence the library had before pins existed.
+            _log.LogWarning(ex, "Reading the live IGDB pins failed.");
+            return new HashSet<long>();
+        }
+    }
 }
