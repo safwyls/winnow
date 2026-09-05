@@ -830,7 +830,7 @@ pinned so later automatic enrichment passes leave it alone. Clearing the pin ret
 to automatic resolution.
 
 **The disclosure is a `Wrong game?` link in the action band (Band 3)**, beside Store page, All
-patch notes, Open folder and Hide. The search field and the candidate list draw full width in
+patch notes, Open folder, Edit details and Hide. The search field and the candidate list draw full width in
 the right column's rest band, the scrolling star row, which is what makes the bounded-scrolling
 behaviour structural rather than arithmetic. Only the Clear control is in the left column, under
 the cover and ON DISK — §10.1's object column, where the identity facts live.
@@ -867,10 +867,12 @@ carrying its confirmation across, so the user sees the corrected cover, title, y
 summary where they asked for it; that is the same arrangement retracting a link already uses,
 for the same reason. Four refusals — the game is no longer in the library, IGDB had no details
 for that entry, another game already holds that entry, and the write failed — each keep the
-controls in place under their own `Amber` sentence, and each says something different, because
-the third is the only one the user can act on. A search that matched nothing is the sixth state
-and is `TextDim`, not `Amber`: it is not a failure. `Amber` and not `Danger`, per §2: attention,
-not a destructive act.
+controls in place under their own `Amber` sentence. Three of the four are dead ends. The third
+— another game holds that entry — becomes the same-game offer described below whenever the
+holder can be named, and falls back to the bare `Amber` sentence when it cannot (no link
+repository, no holder found, or the holder is this same work). A search that matched nothing is
+the sixth state and is `TextDim`, not `Amber`: it is not a failure. `Amber` and not `Danger`,
+per §2: attention, not a destructive act.
 
 **The status field is words.** §8, applied: while the search is out or the choice is being
 written, the control says so in words in a status field. No spinner and no `Transitions`, so
@@ -907,6 +909,110 @@ outlined store-chip idiom; the title results follow beneath it, with the id-matc
 from them if it appeared there too. An all-digit query that named no IGDB entry gets its own
 `TextDim` line above the results, not `Amber`, for the same reason the empty title search is
 not a failure. The id-match row draws the same facts as a title result, platforms included.
+
+**The same-game offer.** `works.igdb_id` is UNIQUE. Two works claiming one IGDB entry are the
+same game, so a collision is not a dead end — it is an answer. When the holder can be resolved,
+the `Amber` refusal is replaced by an offer that names the other game, draws it in the candidate
+row's own idiom (34x51 cover at `RadiusControl`, name and year in Plex), and asks whether the
+two are the same game. The idiom is reused rather than invented because it is the same
+judgement: comparing one game against another by its art, title and year. The border is `Line`,
+not `Amber`, per §2: the collision refusal is a failure, but the offer is a question.
+
+Accepting writes the same `same_game` identity link the Merges queue writes —
+`IIdentityLinkRepository.LinkAsync`, kind `same_game`, source `user` — with the holder as
+the parent. It is the parent because it carries the `igdb_id`, which is the first rung of
+the Merges queue's own precedence ladder, and its metadata is the entry the user was reaching
+for. Nothing is pinned: pinning the child to an id another row holds is what the UNIQUE
+constraint refused, so the link is the whole answer. The user confirms in place and is never
+sent to the queue. `game-library-design.md` §5.3 permits a hard external-id join to auto-merge;
+naming an exact IGDB id is a hard join, and the in-place confirmation — which names and shows
+the other game — supplies the review a queue would otherwise provide.
+
+Declining writes nothing — no pin, no link — and restores the bare `Amber` refusal sentence, so
+the user still knows why the assignment did not land. The candidate list stays for another try.
+
+On success the library reloads and the modal reopens on the game the two now are, carrying a
+confirmation. The offer is additive and degrades cleanly: with no identity-link repository
+registered, no holder found, or a holder that resolves to this same work, the collision draws
+the refusal sentence it drew before the offer existed.
+
+### 10.10 Editing a field by hand
+
+The IGDB assignment and the automatic enrichment pass set every field in one go. This is the
+other gesture: setting one field and making the user its source, leaving every other field
+tracking its own.
+
+**The disclosure is an `Edit details` link in the action band (Band 3)**, beside `Wrong game?`,
+in the same link idiom, because it is the same kind of act: correcting what Winnow believes
+about this game. `Wrong game?` answers which game this is; `Edit details` answers what each of
+its values should be. The editor draws full width in the right column's rest band, directly
+under the IGDB reassignment control's own block. The identity question comes first on the
+surface because it is first in fact: assigning an IGDB entry rewrites every field in one pass.
+**Inline, never a flyout** — §10.7's rule applied again, for §10.7's own reason. The rest band
+is a bounded scroll region and the editor opens below the fold, so pressing the disclosure
+scrolls the editor into view. Nothing of this control is in the left column. §10.9 puts only
+Clear there, under the cover and ON DISK, and six labelled rows with previews and per-field
+buttons do not fit 200px.
+
+**Each field carries its own source, and that source is the single answer to where the value
+came from.** There is no override layer stacked over an automatic value. A metadata fetch
+rewrites every field in one pass, because the user is saying "take it all from this record." A
+manual edit sets one field and makes the user its source, leaving every other field alone and
+still tracking its own.
+
+**There is consequently no form-wide Save.** A single Save over the whole form would be the
+take-it-all gesture again, and that gesture already exists next door. Save is per row. Every
+row draws its source as an outlined badge in the store-chip idiom: `YOU`, `IGDB`, `STEAM`,
+`EPIC`, `GOG`, or `AUTO` for a field no writer has claimed. Each badge carries a tooltip saying
+in words what the badge means for enrichment — a user-owned field is left alone, an unclaimed
+one will be filled.
+
+**A row carries an `Auto` control that hands that field back to automatic**, drawn only when
+the user owns the field. A field nobody has claimed and a field a service owns have nothing to
+hand back. It is a different control from §10.9's `Clear`, which drops the IGDB pin, and the
+two sit in one modal, so they do not share a word.
+
+**`igdb_id` is deliberately not a field here.** Identity is the pin's question (§10.9), not a
+field's. One consequence: §10.9's same-game offer cannot arise on this surface, because the
+collision it answers can only be produced by naming an IGDB id.
+
+**Six rows, in this order:** Name, Release year, About, Cover art, Publisher, Background art.
+`About` is the one multi-line field. `Release year` is the one numeric field and draws in Plex
+Mono with tabular figures, §3's rule. A year outside 1900–2200, or a blank name, is refused
+under the field rather than stored. The two art rows take a URL in the field and carry a
+`Choose file` button beside it — a web address or a local file, the same two routes, both
+landing in the existing cover cache and both honouring `--data-dir`. Each art row previews what
+it holds, at full saturation — §10's own rule: the dormancy ramp is a scanning aid and the user
+has finished scanning. Cover previews at the 2:3 portrait the whole grid is made of; background
+previews at 16:9. A row with no art draws a placeholder saying so, never a hole — §7's rule.
+
+**Note, status and refusal are per row, not per form**, because the message lands under the
+field it concerns — §16.3 already draws that line for the hand-added form. Status is words:
+loading, saving, clearing, fetching an image, copying an image. No spinner and no
+`Transitions`, so reduced motion has nothing to disable and the surface is identical in both
+motion settings (§8). Refusals are `Amber`, per §2: attention, not a destructive act. The
+controls stay in place under the sentence, so the retry is where the failure was. One busy flag
+for the whole editor: a second write cannot start while one is in flight.
+
+**Saving art reloads the library and reopens the modal on the same ownership**, carrying its
+confirmation across — the same arrangement §10.9 already describes for an assignment, and for
+the same reason: the stored value becomes a user-art reference, the tile's cover key is
+computed when the library loads, and only a reload draws the new art on the wall. **A text save
+does not reload.** Reloading after one would discard the drafts the user has in the other five
+rows. This asymmetry is deliberate and is the reason the two paths are separate. The carried
+confirmation is drawn outside the disclosure's own open/closed gate, because reopening leaves
+the editor closed and a confirmation nobody can see is not one.
+
+**Optional in the way every seam on this modal is.** With no edit service registered, or a tile
+that resolves to no work id, the link is not drawn at all and the modal is exactly what it was.
+Omitting only the image picker costs the `Choose file` route and leaves the URL route
+untouched.
+
+**The action band is now at its limit.** It carries, at once: the primary action, `Store page`,
+`All patch notes`, `Open folder`, `Wrong game?`, `Edit details` and `Hide` — seven controls in
+a horizontal strip that does not wrap, in a right column between the card's 422px minimum width
+and its 582px maximum. Measured against those widths, the full set overruns the column at every
+card width and the strip clips rather than wrapping. A follow-up decides the remedy.
 
 ---
 

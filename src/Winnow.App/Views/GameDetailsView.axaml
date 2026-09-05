@@ -528,6 +528,21 @@
                                                Text="{Binding IgdbMatch.ToggleLabel}"/>
                                 </Button>
 
+                                <!-- The per-field editor opens from here in the same
+                                     Button.link idiom as Wrong game? beside it: both
+                                     correct what Winnow believes about this game. The
+                                     surface draws in the right column's rest band; the
+                                     disclosure is inline and never a flyout (10.7). -->
+                                <Button Classes="link"
+                                        Name="EditDetailsButton"
+                                        IsVisible="{Binding ShowMetadataEditor}"
+                                        Click="OnEditDetailsPressed"
+                                        Command="{Binding MetadataEditor.ToggleCommand}"
+                                        ToolTip.Tip="{Binding MetadataEditor.OpenTooltip}">
+                                    <TextBlock Classes="body" FontSize="12"
+                                               Text="{Binding MetadataEditor.ToggleLabel}"/>
+                                </Button>
+
                                 <!-- Hide, the modal's half. A link and not a
                                      primary: this band is about getting into
                                      the game, and hiding is the quiet answer
@@ -619,6 +634,61 @@
                                            Foreground="{StaticResource TextDim}"
                                            IsVisible="{Binding ShowNoMatches}"
                                            Text="{Binding NoMatchesText}"/>
+
+                                <!-- Same-game offer. The holder is drawn in the
+                                     candidate row's idiom (34x51 cover, name, year)
+                                     because it is the same judgement. Line border,
+                                     not Amber: a question, not a failure (section 2). -->
+                                <Border IsVisible="{Binding ShowClaim}"
+                                        BorderBrush="{StaticResource Line}"
+                                        BorderThickness="1"
+                                        CornerRadius="{StaticResource RadiusControl}"
+                                        Padding="12">
+                                    <StackPanel Spacing="10">
+
+                                        <TextBlock Classes="body" FontSize="12"
+                                                   TextWrapping="Wrap"
+                                                   LineHeight="17"
+                                                   Text="{Binding Claim.Headline}"/>
+
+                                        <Grid ColumnDefinitions="34,*" ColumnSpacing="12">
+                                            <Border Grid.Column="0"
+                                                    Width="34" Height="51"
+                                                    VerticalAlignment="Top"
+                                                    ClipToBounds="True"
+                                                    CornerRadius="{StaticResource RadiusControl}"
+                                                    Background="{StaticResource SurfaceRaised}">
+                                                <Image Source="{Binding Claim.Cover}"
+                                                       Stretch="UniformToFill"/>
+                                            </Border>
+
+                                            <StackPanel Grid.Column="1" Spacing="4"
+                                                        VerticalAlignment="Center">
+                                                <TextBlock Classes="body" FontSize="12"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           Text="{Binding Claim.Name}"/>
+                                                <TextBlock Classes="data-s"
+                                                           IsVisible="{Binding Claim.HasYear, FallbackValue=False}"
+                                                           Text="{Binding Claim.YearText}"/>
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <Button Classes="secondary"
+                                                    AutomationProperties.Name="{Binding Claim.LinkAutomationName}"
+                                                    ToolTip.Tip="{Binding Claim.LinkAutomationName}"
+                                                    Command="{Binding LinkClaimCommand}">
+                                                <TextBlock Classes="body" FontSize="12"
+                                                           Text="{Binding ClaimLinkLabel}"/>
+                                            </Button>
+                                            <Button Classes="quiet"
+                                                    Command="{Binding DeclineClaimCommand}">
+                                                <TextBlock Classes="body" FontSize="12"
+                                                           Text="{Binding ClaimDeclineLabel}"/>
+                                            </Button>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
 
                                 <ScrollViewer Classes="inner"
                                               MaxHeight="238"
@@ -713,6 +783,19 @@
                                        IsVisible="{Binding HasProblem}"
                                        Text="{Binding Problem}"/>
                         </StackPanel>
+                        </StackPanel>
+
+                        <!-- The per-field editor draws full width in the rest band,
+                             directly under the IGDB reassignment control. Its own
+                             root self-gates on IsOpen, so this IsVisible only guards
+                             the null case. The gate is on this wrapper, not on the
+                             view element: a DataContext on an element retargets every
+                             compiled binding on that same element, so IsVisible would
+                             resolve against the editor type and fail with AVLN2000.
+                             The IGDB block above is wrapped for the same reason. -->
+                        <StackPanel Name="MetadataEditorHost"
+                                    IsVisible="{Binding ShowMetadataEditor}">
+                            <views:GameMetadataEditorView DataContext="{Binding MetadataEditor}"/>
                         </StackPanel>
 
                         <StackPanel Spacing="22" Margin="0,18,0,24">

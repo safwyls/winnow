@@ -44,6 +44,20 @@ public sealed record WorkEnrichment(
     /// <summary>IGDB <c>version_parent</c> (migration 0022).</summary>
     public long? IgdbVersionParentId { get; init; }
 
+    /// <summary>
+    /// The service that supplied the metadata fields (migration 0027). Defaults
+    /// to IGDB, which is the only supplier of year, summary, cover and publisher.
+    /// Used by <c>ApplyEnrichmentAsync</c> to stamp each field it fills.
+    /// </summary>
+    public string Source { get; init; } = FieldSources.Igdb;
+
+    /// <summary>
+    /// Separate from <see cref="Source"/> because a title may come from IGDB,
+    /// the Steam store, steamcmd.net or Epic's catalog, and
+    /// <c>EnrichmentSyncService</c> records which step supplied it.
+    /// </summary>
+    public string? NameSource { get; init; }
+
     /// <summary>True when every field is null/blank, so there is nothing to write.</summary>
     public bool IsEmpty =>
         string.IsNullOrWhiteSpace(Name)

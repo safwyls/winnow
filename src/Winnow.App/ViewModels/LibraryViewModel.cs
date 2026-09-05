@@ -119,11 +119,33 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     private readonly Services.IIgdbAssignmentService? _igdb;
 
     /// <summary>
+    /// Per-field metadata editing, handed down to the details modal.
+    /// Optional, and without it the modal carries no Edit details link —
+    /// the same degradation every other optional seam here takes.
+    /// </summary>
+    private readonly Services.IWorkMetadataEditService? _metadataEdits;
+
+    /// <summary>
+    /// The OS file dialog behind the editor's two art rows. Optional
+    /// independently of <see cref="_metadataEdits"/>: omitting it costs the
+    /// "choose a file" route on cover and background art and leaves the URL
+    /// route untouched.
+    /// </summary>
+    private readonly Services.IImageFilePicker? _imagePicker;
+
+    /// <summary>
     /// Carries the assignment confirmation note across the reload and reopen,
     /// since the view model that made the choice does not survive the rebuild.
     /// Read once by the next modal instance this library builds.
     /// </summary>
     private string? _igdbNote;
+
+    /// <summary>
+    /// Carries the art confirmation note across the reload and reopen, for
+    /// the metadata editor. Read once by the next modal instance this
+    /// library builds. The same carrier as <see cref="_igdbNote"/>.
+    /// </summary>
+    private string? _metadataNote;
 
     private IReadOnlyList<GameTileViewModel> _allTiles = [];
     private FacetSnapshot _facets = FacetSnapshot.Empty;
@@ -185,9 +207,13 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         IAchievementQueryRepository? achievements = null,
         IHiddenGameRepository? hidden = null,
         Core.Reading.IPatchNotesReader? patchNotes = null,
-        Services.IIgdbAssignmentService? igdb = null)
+        Services.IIgdbAssignmentService? igdb = null,
+        Services.IWorkMetadataEditService? metadataEdits = null,
+        Services.IImageFilePicker? imagePicker = null)
     {
         _igdb = igdb;
+        _metadataEdits = metadataEdits;
+        _imagePicker = imagePicker;
         _patchNotes = patchNotes;
         _identityLinks = identityLinks;
         _achievements = achievements;
@@ -805,9 +831,15 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
                 }
 
                 // Cover-key precedence:
+                //   0. user-set art (migration 0027)
                 //   1. a live IGDB pin on this work, when it yields an image id
                 //   2. the Steam portrait capsule for this release's appid
                 //   3. the image id in the work's stored cover_url
+                //
+                // Rule 0 outranks the live pin because the value in cover_url
+                // IS the user's under the field-source model — there is nothing
+                // to outrank it — and a later metadata fetch replaces that value
+                // rather than layering over it.
                 //
                 // A pin outranks the capsule because the user is saying the
                 // storefront art is wrong too. Read off the release's OWN work
@@ -834,7 +866,12 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
                     ? IgdbImageUrl.ImageId(work.CoverUrl)
                     : null;
 
-                if (pinnedImageId is { Length: > 0 })
+                // Rule 0: user-set art — see the precedence block above.
+                if (UserArtRef.Token(work.CoverUrl) is { Length: > 0 } userArtToken)
+                {
+                    coverKeyByRelease[release.Id] = CoverKey.User(userArtToken);
+                }
+                else if (pinnedImageId is { Length: > 0 })
                 {
                     coverKeyByRelease[release.Id] = CoverKey.Igdb(pinnedImageId);
                 }
@@ -1272,7 +1309,8 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             expansions: BuildExpansions(target),
             lists: await BuildListsAsync(target),
             patchNotes: _patchNotes,
-            igdbMatch: await BuildIgdbMatchAsync(target));
+            igdbMatch: await BuildIgdbMatchAsync(target),
+            metadataEditor: BuildMetadataEditor(target));
     }
 
     /// <summary>
@@ -1300,7 +1338,85 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             pin: await _igdb.GetPinAsync(workId),
             covers: _covers,
             afterChange: AfterIgdbChangeAsync,
+            note: note,
+            linkSameGame: _identityLinks is null
+                ? null
+                : parentWorkId => LinkIgdbClaimAsync(parentWorkId, workId));
+    }
+
+    /// <summary>
+    /// Builds the right column's per-field metadata editor, or null when no
+    /// edit service is registered or the tile resolves to no work id. Uses
+    /// the same resolved work id <see cref="BuildIgdbMatchAsync"/> uses,
+    /// through <c>GameWorkIdFor</c>, so the editor writes the row the lists,
+    /// expansions and IGDB surfaces all answer for. Nothing is read here:
+    /// the editor loads its own fields on first disclosure, which keeps
+    /// opening the modal the same cost it was before TASK-119.
+    /// </summary>
+    private GameMetadataEditorViewModel? BuildMetadataEditor(GameTileViewModel target)
+    {
+        if (_metadataEdits is null || GameWorkIdFor(target) is not { } workId)
+        {
+            return null;
+        }
+
+        var note = _metadataNote;
+        _metadataNote = null;
+
+        return new GameMetadataEditorViewModel(
+            _metadataEdits,
+            workId,
+            covers: _covers,
+            picker: _imagePicker,
+            afterArtChange: AfterMetadataArtChangeAsync,
             note: note);
+    }
+
+    /// <summary>
+    /// An art field is the one edit whose result is not inside the modal.
+    /// The stored value becomes a <c>winnow://user-art</c> reference, a
+    /// cover key the grid computes at load, so only a reload draws the new
+    /// art on the tile. Reopens on the same ownership and carries the
+    /// confirmation across, exactly as <see cref="AfterIgdbChangeAsync"/>
+    /// does. Text edits do not come through here: reloading after one would
+    /// discard the drafts the user has in the other five rows.
+    /// </summary>
+    private async Task AfterMetadataArtChangeAsync(string note)
+    {
+        _metadataNote = note;
+        await ReopenDetailsAsync();
+    }
+
+    /// <summary>
+    /// Accepts the details modal's same-game offer. Another work already
+    /// holds the IGDB entry the user chose, and <c>works.igdb_id</c> is
+    /// UNIQUE, so the two are the same game. The holder is the parent: it
+    /// carries the <c>igdb_id</c>, which is the first rung of the Merges
+    /// queue's own precedence ladder, and its metadata is the entry the
+    /// user was reaching for.
+    ///
+    /// <para>Builds the same <see cref="IdentityLinkRequest"/>
+    /// <c>MergeQueueViewModel.LinkAsync</c> builds — kind <c>same_game</c>,
+    /// source <c>user</c> — so it is the existing identity-link path, not a
+    /// second mechanism. Nothing is pinned: pinning the child to an id
+    /// another row holds is what the UNIQUE constraint refused.</para>
+    /// </summary>
+    private async Task<bool> LinkIgdbClaimAsync(long parentWorkId, long childWorkId)
+    {
+        if (_identityLinks is null || parentWorkId == childWorkId)
+        {
+            return false;
+        }
+
+        await _identityLinks.LinkAsync(new IdentityLinkRequest
+        {
+            ParentWorkId = parentWorkId,
+            ChildWorkIds = [childWorkId],
+            Kind = IdentityLinkKinds.SameGame,
+            Source = IdentityLinkSources.User,
+        });
+
+        return true;
     }
 
     /// <summary>
@@ -1328,7 +1444,17 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         var ownershipId = Details?.Tile.OwnershipId;
         await LoadAsync();
 
-        var reopened = _allTiles.FirstOrDefault(t => t.OwnershipId == ownershipId);
+        if (ownershipId is not { } id)
+        {
+            return;
+        }
+
+        // Primary match first, then any tile whose entries contain it. A
+        // same-game link folds this game into another tile as a non-primary
+        // entry, so a primary-only lookup would miss it and close the modal
+        // on the one action that is supposed to reopen it.
+        var reopened = _allTiles.FirstOrDefault(t => t.OwnershipId == id)
+            ?? _allTiles.FirstOrDefault(t => t.OwnershipIds.Contains(id));
         if (reopened is not null)
         {
             await OpenDetailsAsync(reopened);

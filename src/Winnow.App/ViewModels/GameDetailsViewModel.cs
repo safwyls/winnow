@@ -60,10 +60,12 @@ public partial class GameDetailsViewModel : ObservableObject
         GameExpansionsViewModel? expansions = null,
         Lists.GameListsViewModel? lists = null,
         Core.Reading.IPatchNotesReader? patchNotes = null,
-        GameIgdbMatchViewModel? igdbMatch = null)
+        GameIgdbMatchViewModel? igdbMatch = null,
+        GameMetadataEditorViewModel? metadataEditor = null)
     {
         _patchNotes = patchNotes;
         IgdbMatch = igdbMatch;
+        MetadataEditor = metadataEditor;
         Lists = lists;
         Coverage = coverage;
         Expansions = expansions;
@@ -136,6 +138,23 @@ public partial class GameDetailsViewModel : ObservableObject
     public GameIgdbMatchViewModel? IgdbMatch { get; }
 
     public bool ShowIgdbMatch => IgdbMatch is not null;
+
+    /// <summary>
+    /// The per-field metadata editor, disclosed from an "Edit details" link
+    /// in the action band and drawn full width in the right column's rest
+    /// band, under the IGDB reassignment control. Null when no
+    /// <see cref="Services.IWorkMetadataEditService"/> is registered or the
+    /// tile resolves to no work id, and then the modal is exactly what it
+    /// was before TASK-119.
+    /// </summary>
+    public GameMetadataEditorViewModel? MetadataEditor { get; }
+
+    /// <summary>
+    /// Gates the null case only. The editor view self-gates on its own
+    /// <c>IsOpen</c>, so this decides whether the surface exists at all,
+    /// not whether it is disclosed.
+    /// </summary>
+    public bool ShowMetadataEditor => MetadataEditor is not null;
 
     // ── Band 1: what is this ────────────────────────────────────────────────
 

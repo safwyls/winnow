@@ -99,6 +99,13 @@ public sealed class IdentityReadInventoryTests
             "One row by id, exactly as stored. A caller asking for work 12 is asking about work "
             + "12."),
 
+        new("src/Winnow.Data/Repositories/WorkRepository.cs", "GetByIgdbIdAsync",
+            Policy.DoNotResolve,
+            "One row by the igdb_id stored on it, a column UNIQUE across the table, so at "
+            + "most one row can answer. Resolving would return a parent whose own igdb_id is "
+            + "a different value or none at all, answering a question about a column with "
+            + "a row that does not carry it."),
+
         new("src/Winnow.Data/Repositories/WorkRepository.cs", "GetEnrichmentTargetsAsync",
             Policy.DoNotResolve,
             "An enrichment target, for GetFacetTargetsAsync's reason."),
@@ -219,6 +226,32 @@ public sealed class IdentityReadInventoryTests
             + "question about stored rows, and a resolved answer would let two works claim one "
             + "IGDB id past a UNIQUE constraint."),
 
+        new("src/Winnow.Data/Repositories/WorkFieldSourceRepository.cs", "GetStateAsync",
+            Policy.DoNotResolve,
+            "Reads the six editable columns FROM works WHERE id = @workId and joins them to "
+            + "that same work's rows in work_field_sources. Each field's value and its source "
+            + "are keyed on the same work id; resolving would pair one work's values with "
+            + "another work's sources. This is also the read the editor renders and then "
+            + "writes back through, so a resolved read would put the parent's text in a "
+            + "field whose Save writes the child."),
+
+        new("src/Winnow.Data/Repositories/WorkFieldSourceRepository.cs", "SetFieldAsync",
+            Policy.DoNotResolve,
+            "An existence check on the row it is about to UPDATE and then stamp in "
+            + "work_field_sources — the same shape as ApplyEnrichmentAsync. Resolving would "
+            + "confirm a parent exists and then write the child, or write the parent with "
+            + "the value the user typed about the child, and stamp the wrong row as "
+            + "user-owned — which under the per-field source model also stops enrichment "
+            + "from ever filling the field again."),
+
+        new("src/Winnow.Data/Repositories/WorkFieldSourceRepository.cs", "ResetFieldAsync",
+            Policy.DoNotResolve,
+            "The same existence check as SetFieldAsync, before it empties the column and "
+            + "deletes the source stamp — the hand-a-field-back-to-automatic gesture. "
+            + "Resolving would hand back a field on a row the user never claimed and leave "
+            + "the row they did claim still user-owned, so the field they were trying to "
+            + "release would never come back."),
+
         new("src/Winnow.Data/Repositories/ManualEntryRepository.cs", "GetAsync",
             Policy.DoNotResolve,
             "One hand-added entry by its ownership id, for the edit form. The form edits the "
@@ -251,6 +284,22 @@ public sealed class IdentityReadInventoryTests
             + "because ManualEntryRepository.UpdateAsync writes that column as given and a form "
             + "that opened with it blank would clear the id that got the game its cover art. "
             + "Resolving would prefill a linked parent's id and then write it onto the child."),
+
+        new("src/Winnow.App/Services/IgdbAssignmentService.cs", "FindClaimingGameAsync",
+            Policy.DoNotResolve,
+            "Asks which works row holds a given igdb_id so the wrong-game modal can name the "
+            + "game that already claims the entry and offer to link the two. Resolving would "
+            + "return a group parent that does not hold the id rather than the row the UNIQUE "
+            + "constraint refused against, naming the wrong game in the one place whose purpose "
+            + "is to be judged as correct by the user."),
+
+        new("src/Winnow.App/Services/WorkMetadataEditService.cs", "GetAsync",
+            Policy.DoNotResolve,
+            "The snapshot the editor renders: the work's name, its field state and its IGDB "
+            + "pin, assembled from one row. The work id it is handed is the resolved game id "
+            + "the details modal derives, and everything it reads is a column of that row; "
+            + "resolving a second time here would resolve an already-resolved id and answer "
+            + "about a different row than the one the editor's Save writes."),
     ];
 
     /// <summary>

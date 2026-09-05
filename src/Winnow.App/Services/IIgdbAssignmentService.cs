@@ -22,6 +22,18 @@ public sealed record IgdbCandidate(
     IReadOnlyList<string> Platforms);
 
 /// <summary>
+/// The game that already holds an IGDB entry, shaped as an App-layer read
+/// model like <see cref="IgdbCandidate"/>. Architecture-boundary tests
+/// enforce §5.1 on what a view model names, so the holder reaches the
+/// modal through this type and no repository type crosses the seam.
+/// </summary>
+public sealed record IgdbClaimingGame(
+    long WorkId,
+    string Title,
+    string? CoverUrl,
+    int? FirstReleaseYear);
+
+/// <summary>
 /// What an assignment attempt did. Every refusal is one of these rather than
 /// an exception, and each is a state the modal renders with its own sentence.
 /// </summary>
@@ -84,6 +96,15 @@ public interface IIgdbAssignmentService
     /// Every refusal is a status, never an exception.
     /// </summary>
     Task<IgdbAssignmentOutcome> AssignAsync(long workId, long igdbId, CancellationToken ct = default);
+
+    /// <summary>
+    /// The work that already holds this IGDB entry, or null. Null covers
+    /// four cases that are one answer to the view model: no such holder,
+    /// a non-positive id, no work repository registered, and a failed
+    /// read. Like everything else on this seam, it does not throw at a
+    /// view model.
+    /// </summary>
+    Task<IgdbClaimingGame?> FindClaimingGameAsync(long igdbId, CancellationToken ct = default);
 
     /// <summary>
     /// Returns the work to automatic resolution. False means the write did

@@ -17,6 +17,9 @@ public sealed record Work
     public string? Summary { get; init; }
     public string? CoverUrl { get; init; }
 
+    /// <summary>Background art (migration 0027). Holds an IGDB image URL or a <c>winnow://user-art/&lt;token&gt;</c> reference; null when nobody has set one.</summary>
+    public string? BackgroundUrl { get; init; }
+
     /// <summary>Primary publisher name, or null when unknown (migration 0005). One name, not a list.</summary>
     public string? Publisher { get; init; }
 

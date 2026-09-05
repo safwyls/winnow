@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Winnow.Core.Domain;
+using Winnow.Core.Repositories;
 using Winnow.Enrich.Igdb;
 using Winnow.Enrich.Igdb.Model;
 
@@ -19,13 +20,16 @@ namespace Winnow.App.Services;
 public sealed class IgdbAssignmentService : IIgdbAssignmentService
 {
     private readonly IgdbManualAssignment _assignment;
+    private readonly IWorkRepository? _works;
     private readonly ILogger<IgdbAssignmentService> _log;
 
     public IgdbAssignmentService(
         IgdbManualAssignment assignment,
+        IWorkRepository? works = null,
         ILogger<IgdbAssignmentService>? log = null)
     {
         _assignment = assignment;
+        _works = works;
         _log = log ?? NullLogger<IgdbAssignmentService>.Instance;
     }
 
@@ -69,6 +73,37 @@ public sealed class IgdbAssignmentService : IIgdbAssignmentService
                 IgdbAssignmentOutcome.IgdbIdClaimedByAnotherWork,
             _ => IgdbAssignmentOutcome.Failed,
         };
+    }
+
+    /// <inheritdoc/>
+    public async Task<IgdbClaimingGame?> FindClaimingGameAsync(
+        long igdbId, CancellationToken ct = default)
+    {
+        if (_works is null || igdbId <= 0)
+        {
+            return null;
+        }
+
+        try
+        {
+            var holder = await _works.GetByIgdbIdAsync(igdbId, ct);
+
+            return holder is null
+                ? null
+                : new IgdbClaimingGame(
+                    holder.Id, holder.Name, holder.CoverUrl, holder.FirstReleaseYear);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            // A failed read degrades to "nobody holds it", which draws the
+            // bare refusal sentence rather than an offer naming a wrong game.
+            _log.LogWarning(ex, "Reading the work holding IGDB entry {IgdbId} failed.", igdbId);
+            return null;
+        }
     }
 
     /// <inheritdoc/>

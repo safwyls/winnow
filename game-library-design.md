@@ -523,6 +523,11 @@ The hardest part of this project. Get it wrong and the dataset is untrustworthy.
 > absorbs a user's playtime destroys trust in every number the app displays. Precision over
 > recall, always, with a human in the loop.
 
+A user naming an exact IGDB id on the details modal is a hard join under step 1. The
+collision — `works.igdb_id` is UNIQUE — is confirmed in place on the modal with the other game
+named and shown, and the link is written without entering the `merge_candidates` queue. The
+queue is where soft matches are cleared; a hard external-id join is not a soft match.
+
 **`Winnow.Enrich.GamesDb` is metadata-only and writes no identity.** It routes Epic titles to
 a Steam appid so they can be enriched, and deliberately writes no `external_ids` row and no
 merge candidate. `external_ids` is keyed `(provider, provider_id)` globally, so putting a Steam
@@ -559,7 +564,7 @@ DbUp, and **append-only: never edit a shipped migration.**
 
 ```sql
 -- Canonical identity
-works(id, igdb_id UNIQUE, name, sort_name, first_release_year, summary, cover_url)
+works(id, igdb_id UNIQUE, name, sort_name, first_release_year, summary, cover_url, background_url)
 releases(id, work_id FK, igdb_version_id, name, platform, edition_note)
 external_ids(release_id FK, provider, provider_id, PRIMARY KEY(provider, provider_id))
   -- provider ∈ {steam, gog, epic, igdb}
@@ -588,6 +593,9 @@ lists(id, name, description, is_smart, filter_json)
 list_items(list_id FK, release_id FK, position)
 hidden_games(id, work_id FK works ON DELETE CASCADE, hidden_at, unhidden_at)
   -- partial unique: ux_hidden_games_live ON hidden_games(work_id) WHERE unhidden_at IS NULL
+work_field_sources(work_id FK works ON DELETE CASCADE, field, source, set_at,
+                   PRIMARY KEY(work_id, field))
+  -- partial index: ix_work_field_sources_user ON (work_id, field) WHERE source = 'user'
 
 -- Maturity evidence
 work_maturity(work_id FK works ON DELETE CASCADE, source, ratings, descriptors,
@@ -661,9 +669,9 @@ attributed. `playtime_snapshots` has no per-account form, so the recommender's e
 and the details modal's snapshot history both read the ownership-level series and can diverge
 from a filtered tile for a game two accounts play.
 
-### 6.4 Hidden games, maturity evidence, hand-added entries and user-pinned IGDB mappings
+### 6.4 Hidden games, maturity evidence, hand-added entries, user-pinned IGDB mappings and per-field sources
 
-Four tables added by migrations 0023-0026. Each is designed so that an ingest pass cannot
+Five tables added by migrations 0023-0027. Each is designed so that an ingest pass cannot
 write, delete or overwrite it.
 
 **Hidden games.** `hidden_games` records a persisted, reversible "never show me this game"
@@ -728,7 +736,61 @@ stamps `cleared_at`, and re-pinning stamps the old row before inserting a fresh 
 partial unique index allows at most one live pin per work. The pin removes the work from the
 enrichment target query rather than merely refusing the write, so the automatic pass never
 even asks IGDB about it. Clearing the pin returns the work to automatic resolution; the
-metadata the pin wrote stays in place, and the next pass fills what is empty.
+stamps stay, and the pass fills what is empty and not user-owned.
+
+The pin answers which game this is; per-field sources (below) answer where each value came
+from. Different questions, and they must not be conflated. Both of the pin's guards survive,
+and the reason is now sharper: the automatic pass resolves identity from the store id via
+IGDB's `external_games`, so on a pinned work everything it would write is metadata about a
+game the user has already said this is not. Per-field sources cannot replace that guard,
+because they do not answer that question. Pinning is also the "take it all from this record"
+gesture: it stamps every field it rewrites as `igdb`, including fields the user previously
+owned, because the user in the same act is saying take it all from this record. The name is
+stamped only when the pin actually wrote one, since `works.name` is NOT NULL and the pin
+COALESCEs over blank. A manual edit on a pinned work sets that one field to `user` and leaves
+the pin live: changing the summary does not un-say which game it is.
+
+**Per-field sources.** `work_field_sources` (migration 0027) records, for each user-visible
+metadata field on a work, the source that last wrote it. One row per (work, field), replaced
+in place: the row answers "where is this value from", and there is exactly one value, so
+exactly one answer. Unlike `hidden_games`, `work_igdb_pins` and the other append-and-stamp
+tables, keeping old answers around would be a second answer to the same question.
+Fields tracked: `name`, `first_release_year`, `summary`, `cover_url`, `publisher`,
+`background_url`. Sources: `user`, `igdb`, `steam`, `epic`, `gog`. Both vocabularies live
+in `Winnow.Core.Queries` (`WorkFields`, `FieldSources`), stored verbatim, with no CHECK on
+`source` or `field` — the same reason migration 0021's `identity_links` rebuild gave and
+the maturity paragraph above already records for `work_maturity`.
+
+There is no backfill. Nothing can retroactively know whether a value written before 0027
+came from IGDB or the Steam store. Absence of a row means no writer has claimed the field
+and it is on automatic — the honest reading of every value that predates the table — and
+the first write of any kind stamps it.
+
+Enrichment's rule is a sentence: it writes a field whose source is a service it can speak
+for, and leaves a field the user owns. `GetEnrichmentTargetsAsync` LEFT JOINs a
+`user_owned` CTE so a user-owned field is never missing and never a reason to spend a
+request — a work whose only empty column the user deliberately emptied stops being a target
+instead of being refilled forever. `ApplyEnrichmentAsync` replaces the incoming value with
+NULL for each field the user owns, so the existing COALESCE leaves the stored value alone;
+that COALESCE means "already answered, leave it", and the first service to answer keeps the
+field. The write stamps every field it actually filled with the source that supplied it.
+
+Only user-visible metadata is tracked. The classification columns — `steam_app_type`,
+`epic_categories`, `steam_store_type`, `steam_parent_app_id`, `igdb_game_type`,
+`igdb_parent_id`, `igdb_version_parent_id` — carry no source row: they are facts about a
+store entry rather than fields the editor exposes, and they are exactly the columns the
+pin also leaves untouched. `works.igdb_id` carries no source row either, because it is
+identity.
+
+Cover art and background art are fields like any other; either can be set from a local file
+or a URL. `UserArtStore` (`Winnow.Covers`) imports the bytes into
+`<CoverCacheOptions.CacheDirectory>/user/<token>.img`, inside the data directory so
+`--data-dir` is honoured. The field then holds `winnow://user-art/<token>`, where the token
+is the first 32 hex characters of the SHA-256 of the bytes, so importing the same picture
+twice writes one file. `UserArtCoverSource` is an ordinary `ICoverSource` over a `user`
+provider, so user art reaches a tile through the same pipeline, disk cache and leases as a
+Steam capsule. `ArtKeys.Resolve` (`Winnow.Covers.Igdb`) is the one place a stored art URL
+becomes a `CoverKey`. The file the user picks is read-only input and is never written.
 
 **List membership resolution.** `lists` and `list_items` already existed. Membership stays
 stored per release — adding a game to a list is an explicit act on the entry the user

@@ -1,5 +1,6 @@
 using Dapper;
 using Winnow.Core.Domain;
+using Winnow.Core.Queries;
 using Winnow.Core.Repositories;
 
 namespace Winnow.Data.Repositories;
@@ -9,6 +10,13 @@ namespace Winnow.Data.Repositories;
 /// pinning inserts, clearing stamps <c>cleared_at</c>, and the history is the
 /// table. The pin write overwrites the work's IGDB-sourced metadata
 /// unconditionally, unlike the automatic enrichment write which only fills.
+///
+/// <para>The pin answers WHICH GAME this is; field sources (migration 0027)
+/// answer WHERE EACH VALUE CAME FROM. A manual edit on a pinned work sets
+/// that one field to <c>user</c> and leaves the pin live — changing the
+/// summary does not un-say which game it is. Clearing the pin returns the
+/// work to the automatic pass; the stamps stay, and the pass fills what is
+/// empty and not user-owned.</para>
 /// </summary>
 public sealed class WorkIgdbPinRepository : IWorkIgdbPinRepository
 {
@@ -109,6 +117,28 @@ public sealed class WorkIgdbPinRepository : IWorkIgdbPinRepository
                 assignment.IgdbVersionParentId,
             },
             transaction: lease.Transaction, cancellationToken: ct));
+
+        // Pinning is the "take it all from this record" gesture, so it
+        // stamps every field it rewrote as igdb — INCLUDING fields the user
+        // previously owned. That is not the pin overriding the user; it is
+        // the user, in the same act, saying take it all from this record.
+        var stamps = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            [WorkFields.FirstReleaseYear] = FieldSources.Igdb,
+            [WorkFields.Summary] = FieldSources.Igdb,
+            [WorkFields.CoverUrl] = FieldSources.Igdb,
+            [WorkFields.Publisher] = FieldSources.Igdb,
+        };
+
+        // The name is stamped only when the pin actually wrote one, because
+        // works.name is NOT NULL and the pin COALESCEs over blank.
+        if (!string.IsNullOrWhiteSpace(assignment.Name))
+        {
+            stamps[WorkFields.Name] = FieldSources.Igdb;
+        }
+
+        await WorkFieldSourceWrites.StampAsync(
+            lease.Connection, lease.Transaction, assignment.WorkId, stamps, now, ct);
 
         return WorkIgdbPinOutcome.Pinned;
     }

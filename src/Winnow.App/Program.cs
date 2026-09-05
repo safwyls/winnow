@@ -510,6 +510,16 @@ public static class Program
         // survive an automatic enrichment pass.
         services.AddSingleton<IWorkIgdbPinRepository, WorkIgdbPinRepository>();
 
+        // Per-field provenance (migration 0027). Each user-visible metadata
+        // field on a work carries its own source, and that source IS the truth
+        // for that field. A metadata fetch rewrites every field in one pass;
+        // a manual edit sets one field and makes the user its source while
+        // every other field goes on tracking its own. The enrichment target
+        // query and the apply path both read this table; the editor and the
+        // pin write it.
+        services.AddSingleton<IWorkFieldSourceRepository, WorkFieldSourceRepository>();
+        services.AddSingleton<IWorkMetadataEditService, WorkMetadataEditService>();
+
         // A hand-added game is an ordinary work + release + ownership whose
         // store is 'manual' and whose manual_entries row exists. The row's
         // presence IS the origin marker, so there is one mechanism rather than
@@ -794,6 +804,14 @@ public static class Program
         services.AddSingleton<IExecutableFilePicker, TopLevelExecutableFilePicker>();
         services.AddSingleton<IExecutableInspector, FileVersionInfoExecutableInspector>();
         services.AddSingleton<LibrarySettingsViewModel>();
+
+        // Image file picker for the metadata editor's two art rows. Same
+        // seam as the executable picker above: omitting it costs the
+        // "choose a file" route on cover and background art and leaves the
+        // URL route untouched. The chosen file is read-only input — its
+        // bytes are copied into the cover cache and the original is never
+        // written to.
+        services.AddSingleton<IImageFilePicker, TopLevelImageFilePicker>();
 
         // The rail's fetch status field (§8). The view model is a plain object
         // with no Dispatcher dependency; the reporter marshals the enrichment

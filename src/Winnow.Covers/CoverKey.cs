@@ -5,6 +5,7 @@ public static class CoverProviders
 {
     public const string Steam = "steam";
     public const string Igdb = "igdb";
+    public const string User = "user";
 }
 
 /// <summary>
@@ -22,6 +23,13 @@ public readonly record struct CoverKey(string Provider, string Id)
     /// because <c>works.igdb_id</c> is UNIQUE and shared across duplicate pairs).
     /// </summary>
     public static CoverKey Igdb(string imageId) => new(CoverProviders.Igdb, imageId);
+
+    /// <summary>
+    /// A key for user-supplied art, keyed by the content token (the SHA-256
+    /// prefix). The art is the asset: two works that pick the same picture
+    /// share one file.
+    /// </summary>
+    public static CoverKey User(string token) => new(CoverProviders.User, token);
 
     /// <summary>Filename stem for the disk cache. Sanitized — ids come from external data.</summary>
     public string CacheStem

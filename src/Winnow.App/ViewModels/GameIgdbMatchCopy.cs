@@ -68,6 +68,40 @@ public static class GameIgdbMatchCopy
     /// <summary>Shown when the clear write did not land. Amber; the controls stay for a retry.</summary>
     public const string ClearFailedText = "Couldn't clear that. Nothing changed.";
 
+    // ── The same-game offer ─────────────────────────────────────────────────
+    //
+    // works.igdb_id is UNIQUE. Two works claiming one entry ARE the same
+    // game, so the collision refusal becomes an offer that names and shows
+    // the holder and lets the user link the two.
+
+    /// <summary>The offer's headline, naming the game that already holds the
+    /// chosen IGDB entry. A question, not a failure sentence.</summary>
+    public static string ClaimHeadline(string name) => $"{name} already uses that IGDB entry. Is this the same game?";
+
+    /// <summary>Face of the control that accepts the offer and writes a
+    /// <c>same_game</c> identity link.</summary>
+    public const string ClaimLinkLabel = "Same game";
+
+    /// <summary>Face of the control that declines the offer and restores
+    /// the refusal sentence.</summary>
+    public const string ClaimDeclineLabel = "No";
+
+    /// <summary>Accessible name and tooltip for the accept control.
+    /// <paramref name="name"/> is the holder's title.</summary>
+    public static string ClaimLinkAutomationName(string name) => $"Link as the same game as {name}";
+
+    /// <summary>Status field while the identity link is being written.
+    /// Words, never a spinner (section 8).</summary>
+    public const string LinkingStatus = "Linking…";
+
+    /// <summary>Confirmation carried across the reload after the link
+    /// lands. <paramref name="name"/> is the holder's title.</summary>
+    public static string LinkedNote(string name) => $"Linked with {name}.";
+
+    /// <summary>Shown when the link write did not land. Amber; the offer
+    /// stays for a retry.</summary>
+    public const string LinkFailedText = "Couldn't link those. Nothing changed.";
+
     /// <summary>
     /// Accessible name and tooltip for one candidate's assign button.
     /// <paramref name="name"/> is the candidate's IGDB title.

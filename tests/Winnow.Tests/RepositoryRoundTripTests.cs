@@ -582,6 +582,57 @@ public class RepositoryRoundTripTests : IDisposable
         Assert.Equal(MergeCandidateStatuses.Pending, byPair!.Status);
     }
 
+    [Fact]
+    public async Task A_work_carrying_an_igdb_id_is_found_by_that_id()
+    {
+        var works = new WorkRepository(_db.Factory);
+
+        var workId = await works.InsertAsync(new Work
+        {
+            IgdbId = 1942,
+            Name = "The Elder Scrolls V: Skyrim",
+            FirstReleaseYear = 2011,
+            CoverUrl = "https://example/skyrim.jpg",
+        });
+
+        var found = await works.GetByIgdbIdAsync(1942);
+
+        Assert.NotNull(found);
+        Assert.Equal(workId, found!.Id);
+        Assert.Equal("The Elder Scrolls V: Skyrim", found.Name);
+        Assert.Equal(2011, found.FirstReleaseYear);
+        Assert.Equal("https://example/skyrim.jpg", found.CoverUrl);
+    }
+
+    [Fact]
+    public async Task A_different_igdb_id_finds_nothing()
+    {
+        var works = new WorkRepository(_db.Factory);
+        await works.InsertAsync(new Work { IgdbId = 1942, Name = "Skyrim" });
+
+        Assert.Null(await works.GetByIgdbIdAsync(1943));
+    }
+
+    [Fact]
+    public async Task A_work_with_no_igdb_id_is_never_returned()
+    {
+        var works = new WorkRepository(_db.Factory);
+        await works.InsertAsync(new Work { Name = "Owned but unenriched" });
+
+        Assert.Null(await works.GetByIgdbIdAsync(1942));
+    }
+
+    [Fact]
+    public async Task A_zero_or_negative_igdb_id_finds_nothing()
+    {
+        var works = new WorkRepository(_db.Factory);
+        await works.InsertAsync(new Work { Name = "Owned but unenriched" });
+        await works.InsertAsync(new Work { IgdbId = 1942, Name = "Skyrim" });
+
+        Assert.Null(await works.GetByIgdbIdAsync(0));
+        Assert.Null(await works.GetByIgdbIdAsync(-1942));
+    }
+
     private async Task<(long WorkId, long ReleaseId, long OwnershipId)> SeedOwnershipAsync()
     {
         var works = new WorkRepository(_db.Factory);

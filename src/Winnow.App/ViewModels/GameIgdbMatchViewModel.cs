@@ -21,6 +21,13 @@ namespace Winnow.App.ViewModels;
 /// identity facts. The search is disclosed inline, in the modal's own tree,
 /// never a flyout (an adorner layer does not exist inside a popup).</para>
 ///
+/// <para>When the assignment hits a UNIQUE-constraint collision on
+/// <c>works.igdb_id</c>, the control turns the refusal into an offer:
+/// it names and shows the game that already holds the entry and offers
+/// to link the two as the same game. Accepting writes a <c>same_game</c>
+/// identity link and pins nothing; declining restores the refusal
+/// sentence.</para>
+///
 /// <para>Optional in the way every seam on this modal is. No service and no
 /// work id means no control at all, which is the pre-TASK-89 modal
 /// exactly.</para>
@@ -48,6 +55,15 @@ public partial class GameIgdbMatchViewModel : ObservableObject
     /// </summary>
     private readonly Func<string, Task>? _afterChange;
 
+    /// <summary>
+    /// Links this work under the claiming work as the same game, through
+    /// the identity-link path the Merges queue uses. Null when no
+    /// identity-link repository is registered; a null delegate means the
+    /// collision degrades to its bare refusal sentence and the offer is
+    /// never shown.
+    /// </summary>
+    private readonly Func<long, Task<bool>>? _linkSameGame;
+
     private readonly long _workId;
 
     private double _coverWidthPixels = CandidateCoverWidth;
@@ -61,7 +77,8 @@ public partial class GameIgdbMatchViewModel : ObservableObject
         WorkIgdbPin? pin = null,
         ICoverCache? covers = null,
         Func<string, Task>? afterChange = null,
-        string? note = null)
+        string? note = null,
+        Func<long, Task<bool>>? linkSameGame = null)
     {
         ArgumentNullException.ThrowIfNull(service);
 
@@ -69,6 +86,7 @@ public partial class GameIgdbMatchViewModel : ObservableObject
         _workId = workId;
         _covers = covers;
         _afterChange = afterChange;
+        _linkSameGame = linkSameGame;
 
         // The title the library already shows is the search anyone would type.
         Query = title ?? string.Empty;
@@ -128,6 +146,18 @@ public partial class GameIgdbMatchViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(ShowIdMiss))]
     public partial bool IdMissed { get; set; }
 
+    /// <summary>
+    /// The game that already holds the chosen IGDB entry, shown so the user
+    /// can judge whether it really is the same game. Null whenever no offer
+    /// stands: before a collision, after the user accepts or declines, and
+    /// when the holder could not be resolved.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowClaim))]
+    [NotifyPropertyChangedFor(nameof(ShowNoMatches))]
+    [NotifyPropertyChangedFor(nameof(ShowIdMiss))]
+    public partial IgdbClaimViewModel? Claim { get; set; }
+
     public bool HasCandidates => Candidates.Count > 0;
 
     public bool HasNote => Note is not null;
@@ -146,13 +176,20 @@ public partial class GameIgdbMatchViewModel : ObservableObject
     /// while a refusal is standing.
     /// </summary>
     public bool ShowNoMatches
-        => Searched && Candidates.Count == 0 && Status is null && Problem is null;
+        => Searched && Candidates.Count == 0 && Status is null && Problem is null && Claim is null;
 
     /// <summary>
     /// True when the id-miss line should be drawn: the id lookup found
     /// nothing, nothing is in flight and no refusal is standing.
     /// </summary>
-    public bool ShowIdMiss => IdMissed && Status is null && Problem is null;
+    public bool ShowIdMiss => IdMissed && Status is null && Problem is null && Claim is null;
+
+    /// <summary>Whether the same-game offer is standing and should be drawn.</summary>
+    public bool ShowClaim => Claim is not null;
+
+    public string ClaimLinkLabel => GameIgdbMatchCopy.ClaimLinkLabel;
+
+    public string ClaimDeclineLabel => GameIgdbMatchCopy.ClaimDeclineLabel;
 
     public string IdMissText => GameIgdbMatchCopy.IdMissText;
 
@@ -226,6 +263,7 @@ public partial class GameIgdbMatchViewModel : ObservableObject
         if (IsOpen)
         {
             Problem = null;
+            Claim = null;
         }
     }
 
@@ -248,6 +286,7 @@ public partial class GameIgdbMatchViewModel : ObservableObject
         try
         {
             Problem = null;
+            Claim = null;
             Note = null;
             IdMissed = false;
             Status = GameIgdbMatchCopy.SearchingStatus;
@@ -303,6 +342,7 @@ public partial class GameIgdbMatchViewModel : ObservableObject
         try
         {
             Problem = null;
+            Claim = null;
             Note = null;
             Status = GameIgdbMatchCopy.AssigningStatus;
 
@@ -311,6 +351,12 @@ public partial class GameIgdbMatchViewModel : ObservableObject
 
             if (outcome != IgdbAssignmentOutcome.Assigned)
             {
+                if (outcome == IgdbAssignmentOutcome.IgdbIdClaimedByAnotherWork
+                    && await OfferToLinkAsync(candidate.IgdbId, ct))
+                {
+                    return;
+                }
+
                 Problem = GameIgdbMatchCopy.ProblemFor(outcome);
                 return;
             }
@@ -336,6 +382,103 @@ public partial class GameIgdbMatchViewModel : ObservableObject
             Status = null;
             _busy = false;
         }
+    }
+
+    /// <summary>
+    /// Turns the collision refusal into an offer. <c>works.igdb_id</c> is
+    /// UNIQUE, so two works claiming one entry are the same game; naming
+    /// and showing the holder is what lets the user judge it. Returns
+    /// false — and the caller falls back to the bare refusal sentence —
+    /// when no link path is wired, when nothing holds the entry any more,
+    /// or when the holder resolves to this same work.
+    /// </summary>
+    private async Task<bool> OfferToLinkAsync(long igdbId, CancellationToken ct)
+    {
+        if (_linkSameGame is null)
+        {
+            return false;
+        }
+
+        var holder = await _service.FindClaimingGameAsync(igdbId, ct);
+        if (holder is null || holder.WorkId == _workId)
+        {
+            return false;
+        }
+
+        Claim = new IgdbClaimViewModel(holder, _covers);
+        Claim.RequestCover(_coverWidthPixels);
+        return true;
+    }
+
+    /// <summary>
+    /// Accepts the offer: links this work under the claiming work as the
+    /// same game, through the identity-link path the Merges queue uses.
+    /// Nothing is pinned — <c>works.igdb_id</c> is UNIQUE, so pinning the
+    /// child to an id another row holds is what the constraint refused, and
+    /// the link is the whole answer. On success the library reloads and
+    /// the modal reopens on the game the two now are.
+    /// </summary>
+    [RelayCommand]
+    private async Task LinkClaimAsync(CancellationToken ct)
+    {
+        if (_busy || Claim is not { } claim || _linkSameGame is null)
+        {
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            Problem = null;
+            Status = GameIgdbMatchCopy.LinkingStatus;
+
+            var linked = await _linkSameGame(claim.WorkId);
+            Status = null;
+
+            if (!linked)
+            {
+                Problem = GameIgdbMatchCopy.LinkFailedText;
+                return;
+            }
+
+            Claim = null;
+            IsOpen = false;
+
+            var note = GameIgdbMatchCopy.LinkedNote(claim.Name);
+            if (_afterChange is null)
+            {
+                Note = note;
+                return;
+            }
+
+            await _afterChange(note);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        finally
+        {
+            Status = null;
+            _busy = false;
+        }
+    }
+
+    /// <summary>
+    /// Declines the offer. Writes nothing — no pin, no link — and restores
+    /// the refusal sentence so the user still knows why the assignment did
+    /// not land. The candidate list stays for another try.
+    /// </summary>
+    [RelayCommand]
+    private void DeclineClaim()
+    {
+        if (Claim is null)
+        {
+            return;
+        }
+
+        Claim = null;
+        Problem = GameIgdbMatchCopy.ProblemFor(IgdbAssignmentOutcome.IgdbIdClaimedByAnotherWork);
     }
 
     /// <summary>
@@ -391,7 +534,106 @@ public partial class GameIgdbMatchViewModel : ObservableObject
         {
             candidate.RequestCover(_coverWidthPixels);
         }
+
+        Claim?.RequestCover(_coverWidthPixels);
     }
+}
+
+/// <summary>
+/// Cover machinery shared by a candidate row and the claiming-game row.
+/// Both draw a 34x51 thumbnail from the IGDB image path, requested at
+/// the display-scaled width the view will draw them at. Lifted from
+/// <see cref="IgdbCandidateViewModel"/> when the claiming-game row
+/// needed the same art loading without the candidate-specific facts.
+/// </summary>
+public abstract partial class IgdbCoverRowViewModel : ObservableObject
+{
+    private readonly ICoverCache? _covers;
+
+    protected IgdbCoverRowViewModel(string? coverUrl, ICoverCache? covers)
+    {
+        _covers = covers;
+
+        CoverKey = IgdbImageUrl.ImageId(coverUrl) is { } imageId
+            ? Winnow.Covers.CoverKey.Igdb(imageId)
+            : null;
+    }
+
+    /// <summary>Null when IGDB named no cover, or named one whose URL does not carry an image id.</summary>
+    public CoverKey? CoverKey { get; }
+
+    /// <summary>The row's cover art at row resolution. Null until it arrives.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowPlaceholder))]
+    public partial Bitmap? Cover { get; set; }
+
+    /// <summary>A row with no art draws a placeholder field, never a hole.</summary>
+    public bool ShowPlaceholder => Cover is null;
+
+    /// <summary>Asks the cache for the art at the width it will be drawn at, off-thread.</summary>
+    public void RequestCover(double displayWidthPixels)
+    {
+        if (_covers is null || CoverKey is not { } key || Cover is not null || displayWidthPixels <= 0)
+        {
+            return;
+        }
+
+        if (_covers.TryGet(key, displayWidthPixels, out var cached))
+        {
+            Cover = cached.Vivid;
+            return;
+        }
+
+        _ = LoadCoverAsync(key, displayWidthPixels);
+    }
+
+    private async Task LoadCoverAsync(CoverKey key, double displayWidthPixels)
+    {
+        var art = await _covers!.GetAsync(key, displayWidthPixels).ConfigureAwait(false);
+        if (art is null)
+        {
+            return;
+        }
+
+        Dispatcher.UIThread.Post(() => Cover = art.Vivid);
+    }
+}
+
+/// <summary>
+/// The game that already holds the chosen IGDB entry. Drawn in the
+/// candidate row's own idiom — 34x51 cover, name and year in Plex —
+/// because the user is judging whether it is the same game, the same
+/// judgement a candidate row is drawn for.
+/// </summary>
+public sealed partial class IgdbClaimViewModel : IgdbCoverRowViewModel
+{
+    private readonly IgdbClaimingGame _holder;
+
+    public IgdbClaimViewModel(IgdbClaimingGame holder, ICoverCache? covers = null)
+        : base(holder?.CoverUrl, covers)
+    {
+        ArgumentNullException.ThrowIfNull(holder);
+
+        _holder = holder;
+    }
+
+    /// <summary>The work that holds the entry. This is the PARENT of the link the offer writes.</summary>
+    public long WorkId => _holder.WorkId;
+
+    public string Name => _holder.Title;
+
+    public bool HasYear => _holder.FirstReleaseYear is > 0;
+
+    /// <summary>The year alone, in Plex Mono. No platforms follow it, so it carries no separator.</summary>
+    public string YearText => HasYear
+        ? _holder.FirstReleaseYear!.Value.ToString("D4", CultureInfo.InvariantCulture)
+        : string.Empty;
+
+    /// <summary>The offer's headline, naming this game. A question, not a
+    /// failure sentence: the border is <c>Line</c>, not <c>Amber</c>.</summary>
+    public string Headline => GameIgdbMatchCopy.ClaimHeadline(Name);
+
+    public string LinkAutomationName => GameIgdbMatchCopy.ClaimLinkAutomationName(Name);
 }
 
 /// <summary>
@@ -404,23 +646,18 @@ public partial class GameIgdbMatchViewModel : ObservableObject
 /// key is one the registered IGDB cover source already answers without
 /// credentials.</para>
 /// </summary>
-public partial class IgdbCandidateViewModel : ObservableObject
+public partial class IgdbCandidateViewModel : IgdbCoverRowViewModel
 {
-    private readonly ICoverCache? _covers;
     private readonly IgdbCandidate _candidate;
 
     public IgdbCandidateViewModel(
         IgdbCandidate candidate, ICoverCache? covers = null, bool isIdMatch = false)
+        : base(candidate?.CoverUrl, covers)
     {
         ArgumentNullException.ThrowIfNull(candidate);
 
         _candidate = candidate;
-        _covers = covers;
         IsIdMatch = isIdMatch;
-
-        CoverKey = IgdbImageUrl.ImageId(candidate.CoverUrl) is { } imageId
-            ? Winnow.Covers.CoverKey.Igdb(imageId)
-            : null;
     }
 
     public long IgdbId => _candidate.IgdbId;
@@ -435,9 +672,6 @@ public partial class IgdbCandidateViewModel : ObservableObject
     public bool IsIdMatch { get; }
 
     public string IdMatchLabel => GameIgdbMatchCopy.IdMatchLabel;
-
-    /// <summary>Null when IGDB named no cover, or named one whose URL does not carry an image id.</summary>
-    public CoverKey? CoverKey { get; }
 
     /// <summary>
     /// The year as a number rather than as display text. The hand-added game
@@ -473,40 +707,4 @@ public partial class IgdbCandidateViewModel : ObservableObject
     public string AssignLabel => GameIgdbMatchCopy.AssignLabel;
 
     public string AssignAutomationName => GameIgdbMatchCopy.AssignAutomationName(Name);
-
-    /// <summary>The candidate's cover art at row resolution. Null until it arrives.</summary>
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ShowPlaceholder))]
-    public partial Bitmap? Cover { get; set; }
-
-    /// <summary>A row with no art draws a placeholder field, never a hole.</summary>
-    public bool ShowPlaceholder => Cover is null;
-
-    /// <summary>Asks the cache for the art at the width it will be drawn at, off-thread.</summary>
-    public void RequestCover(double displayWidthPixels)
-    {
-        if (_covers is null || CoverKey is not { } key || Cover is not null || displayWidthPixels <= 0)
-        {
-            return;
-        }
-
-        if (_covers.TryGet(key, displayWidthPixels, out var cached))
-        {
-            Cover = cached.Vivid;
-            return;
-        }
-
-        _ = LoadCoverAsync(key, displayWidthPixels);
-    }
-
-    private async Task LoadCoverAsync(CoverKey key, double displayWidthPixels)
-    {
-        var art = await _covers!.GetAsync(key, displayWidthPixels).ConfigureAwait(false);
-        if (art is null)
-        {
-            return;
-        }
-
-        Dispatcher.UIThread.Post(() => Cover = art.Vivid);
-    }
 }

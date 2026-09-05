@@ -15,6 +15,7 @@ public sealed class WorkRepository : IWorkRepository
         first_release_year AS FirstReleaseYear,
         summary            AS Summary,
         cover_url          AS CoverUrl,
+        background_url     AS BackgroundUrl,
         publisher          AS Publisher,
         steam_app_type     AS SteamAppType,
         epic_categories    AS EpicCategories,
@@ -27,15 +28,20 @@ public sealed class WorkRepository : IWorkRepository
         """;
 
     private readonly ISqliteConnectionFactory _factory;
+    private readonly TimeProvider _clock;
 
-    public WorkRepository(ISqliteConnectionFactory factory) => _factory = factory;
+    public WorkRepository(ISqliteConnectionFactory factory, TimeProvider? clock = null)
+    {
+        _factory = factory;
+        _clock = clock ?? TimeProvider.System;
+    }
 
     public async Task<long> InsertAsync(Work work, CancellationToken ct = default)
     {
         using var lease = _factory.Lease();
         return await lease.Connection.ExecuteScalarAsync<long>(new CommandDefinition("""
-            INSERT INTO works (igdb_id, name, sort_name, first_release_year, summary, cover_url, publisher, steam_app_type, epic_categories, name_is_provisional, steam_store_type, steam_parent_app_id, igdb_game_type, igdb_parent_id, igdb_version_parent_id)
-            VALUES (@IgdbId, @Name, @SortName, @FirstReleaseYear, @Summary, @CoverUrl, @Publisher, @SteamAppType, @EpicCategories, @NameIsProvisional, @SteamStoreType, @SteamParentAppId, @IgdbGameType, @IgdbParentId, @IgdbVersionParentId)
+            INSERT INTO works (igdb_id, name, sort_name, first_release_year, summary, cover_url, background_url, publisher, steam_app_type, epic_categories, name_is_provisional, steam_store_type, steam_parent_app_id, igdb_game_type, igdb_parent_id, igdb_version_parent_id)
+            VALUES (@IgdbId, @Name, @SortName, @FirstReleaseYear, @Summary, @CoverUrl, @BackgroundUrl, @Publisher, @SteamAppType, @EpicCategories, @NameIsProvisional, @SteamStoreType, @SteamParentAppId, @IgdbGameType, @IgdbParentId, @IgdbVersionParentId)
             RETURNING id;
             """, work, transaction: lease.Transaction, cancellationToken: ct));
     }
@@ -58,6 +64,19 @@ public sealed class WorkRepository : IWorkRepository
         return await lease.Connection.QuerySingleOrDefaultAsync<Work>(new CommandDefinition(
             $"SELECT {Columns} FROM works WHERE id = @id;",
             new { id }, transaction: lease.Transaction, cancellationToken: ct));
+    }
+
+    public async Task<Work?> GetByIgdbIdAsync(long igdbId, CancellationToken ct = default)
+    {
+        if (igdbId <= 0)
+        {
+            return null;
+        }
+
+        using var lease = _factory.Lease();
+        return await lease.Connection.QuerySingleOrDefaultAsync<Work>(new CommandDefinition(
+            $"SELECT {Columns} FROM works WHERE igdb_id = @igdbId;",
+            new { igdbId }, transaction: lease.Transaction, cancellationToken: ct));
     }
 
     public async Task<IReadOnlyList<Work>> GetAllAsync(CancellationToken ct = default)
@@ -89,7 +108,10 @@ public sealed class WorkRepository : IWorkRepository
 
     /// <summary>
     /// Returns works missing any metadata (name, IGDB id, year, summary, cover,
-    /// publisher) or needing type classification. Ordered emptiest-first, then
+    /// publisher) or needing type classification. A field the user owns is
+    /// never missing, so it is never a reason to spend a request, and a work
+    /// whose only empty column the user deliberately emptied stops being a
+    /// target instead of being refilled forever. Ordered emptiest-first, then
     /// round-robin across store providers to prevent any store from being starved.
     /// </summary>
     public async Task<IReadOnlyList<EnrichmentTarget>> GetEnrichmentTargetsAsync(
@@ -98,17 +120,37 @@ public sealed class WorkRepository : IWorkRepository
         var providers = ExternalIdProviders.Stores;
         using var lease = _factory.Lease();
         var rows = await lease.Connection.QueryAsync<EnrichmentTarget>(new CommandDefinition("""
-            WITH candidate AS (
+            -- user_owned: which metadata fields the user has claimed. A
+            -- user-owned field is never empty even when its column is NULL
+            -- (the user deliberately emptied it), so it must not count as
+            -- missing. Hits the partial index ix_work_field_sources_user.
+            WITH user_owned AS (
+                SELECT work_id,
+                       MAX(field = 'name')               AS OwnsName,
+                       MAX(field = 'first_release_year') AS OwnsFirstReleaseYear,
+                       MAX(field = 'summary')            AS OwnsSummary,
+                       MAX(field = 'cover_url')          AS OwnsCoverUrl,
+                       MAX(field = 'publisher')          AS OwnsPublisher
+                FROM work_field_sources
+                WHERE source = 'user'
+                GROUP BY work_id
+            ),
+            candidate AS (
             SELECT w.id  AS WorkId,
                    r.id  AS ReleaseId,
                    e.provider    AS Provider,
                    e.provider_id AS ProviderId,
-                   w.name_is_provisional              AS NameIsProvisional,
-                   (w.igdb_id            IS NOT NULL) AS HasIgdbId,
-                   (w.first_release_year IS NOT NULL) AS HasFirstReleaseYear,
-                   (w.summary            IS NOT NULL) AS HasSummary,
-                   (w.cover_url          IS NOT NULL) AS HasCoverUrl,
-                   (w.publisher          IS NOT NULL) AS HasPublisher,
+                   (w.name_is_provisional = 1
+                        AND COALESCE(u.OwnsName, 0) = 0)   AS NameIsProvisional,
+                   (w.igdb_id            IS NOT NULL)      AS HasIgdbId,
+                   (w.first_release_year IS NOT NULL
+                        OR COALESCE(u.OwnsFirstReleaseYear, 0) = 1) AS HasFirstReleaseYear,
+                   (w.summary            IS NOT NULL
+                        OR COALESCE(u.OwnsSummary, 0) = 1)  AS HasSummary,
+                   (w.cover_url          IS NOT NULL
+                        OR COALESCE(u.OwnsCoverUrl, 0) = 1) AS HasCoverUrl,
+                   (w.publisher          IS NOT NULL
+                        OR COALESCE(u.OwnsPublisher, 0) = 1) AS HasPublisher,
                    (w.steam_app_type     IS NOT NULL) AS HasSteamAppType,
                    (w.epic_categories    IS NOT NULL) AS HasEpicCategories,
                    (w.igdb_game_type     IS NOT NULL) AS HasIgdbGameType,
@@ -116,25 +158,32 @@ public sealed class WorkRepository : IWorkRepository
 
                    -- Count of NULL metadata columns (5 = nothing at all).
                    -- steam_app_type excluded: not user-visible metadata.
-                   ((w.igdb_id            IS NULL)
-                  + (w.first_release_year IS NULL)
-                  + (w.summary            IS NULL)
-                  + (w.cover_url          IS NULL)
-                  + (w.publisher          IS NULL)) AS MissingColumns
+                   ((w.igdb_id IS NULL)
+                  + (w.first_release_year IS NULL AND COALESCE(u.OwnsFirstReleaseYear, 0) = 0)
+                  + (w.summary            IS NULL AND COALESCE(u.OwnsSummary, 0) = 0)
+                  + (w.cover_url          IS NULL AND COALESCE(u.OwnsCoverUrl, 0) = 0)
+                  + (w.publisher          IS NULL AND COALESCE(u.OwnsPublisher, 0) = 0))
+                       AS MissingColumns
             FROM works w
             JOIN releases     r ON r.work_id = w.id
             JOIN external_ids e ON e.release_id = r.id AND e.provider IN @providers
-            -- A pinned work is not a target: the user chose the mapping, so
-            -- the automatic pass must not even ask IGDB about it.
+            LEFT JOIN user_owned u ON u.work_id = w.id
+            -- A pinned work is not a target. The automatic pass resolves
+            -- identity from the store id via IGDB's external_games, so on a
+            -- pinned work everything it would write is metadata about a game
+            -- the user has already said this is not.
             WHERE NOT EXISTS (SELECT 1 FROM work_igdb_pins p
                               WHERE p.work_id = w.id AND p.cleared_at IS NULL)
               AND (
-                  w.name_is_provisional = 1
+                  (w.name_is_provisional = 1 AND COALESCE(u.OwnsName, 0) = 0)
+               -- igdb_id is identity — the pin's question — not a field.
+               -- Tested unconditionally because user_owned tracks fields the
+               -- editor exposes, and igdb_id is not one of them.
                OR w.igdb_id            IS NULL
-               OR w.first_release_year IS NULL
-               OR w.summary            IS NULL
-               OR w.cover_url          IS NULL
-               OR w.publisher          IS NULL
+               OR (w.first_release_year IS NULL AND COALESCE(u.OwnsFirstReleaseYear, 0) = 0)
+               OR (w.summary            IS NULL AND COALESCE(u.OwnsSummary, 0) = 0)
+               OR (w.cover_url          IS NULL AND COALESCE(u.OwnsCoverUrl, 0) = 0)
+               OR (w.publisher          IS NULL AND COALESCE(u.OwnsPublisher, 0) = 0)
                -- migration 0006: cheap LIKE prefilter for demo-like titles.
                -- Over-selects; caller applies DemoConsolidation.IsVariantTitle.
                -- migration 0022: a work that already carries an igdb_id but no
@@ -169,8 +218,9 @@ public sealed class WorkRepository : IWorkRepository
     }
 
     /// <summary>
-    /// Applies enrichment to a work. Every column is guarded so writes can only
-    /// add information. Returns true if a provisional name was promoted.
+    /// Applies enrichment to a work: writes a field whose source is a service
+    /// it can speak for, and leaves a field the user owns. Returns true if a
+    /// provisional name was promoted. Stamps every field it actually fills.
     /// </summary>
     public async Task<bool> ApplyEnrichmentAsync(
         WorkEnrichment enrichment, CancellationToken ct = default)
@@ -179,22 +229,44 @@ public sealed class WorkRepository : IWorkRepository
 
         using var lease = _factory.Lease();
 
-        var name = Trimmed(enrichment.Name);
-
         // Defence in depth: a pinned work returns NULL here, so
         // promoteName stays false and the UPDATE below is a no-op. The
         // primary enforcement is the target query, which never produces a
         // pinned work at all.
-        var wasProvisional = await lease.Connection.ExecuteScalarAsync<long?>(new CommandDefinition("""
-            SELECT name_is_provisional
-            FROM works
-            WHERE id = @WorkId
-              AND NOT EXISTS (SELECT 1 FROM work_igdb_pins p
-                              WHERE p.work_id = @WorkId AND p.cleared_at IS NULL);
-            """,
-            new { enrichment.WorkId }, transaction: lease.Transaction, cancellationToken: ct));
+        var before = await lease.Connection.QuerySingleOrDefaultAsync<EnrichmentWriteState>(
+            new CommandDefinition("""
+                SELECT name_is_provisional          AS NameIsProvisional,
+                       (first_release_year IS NULL) AS FirstReleaseYearIsEmpty,
+                       (summary            IS NULL) AS SummaryIsEmpty,
+                       (cover_url          IS NULL) AS CoverUrlIsEmpty,
+                       (publisher          IS NULL) AS PublisherIsEmpty
+                FROM works
+                WHERE id = @WorkId
+                  AND NOT EXISTS (SELECT 1 FROM work_igdb_pins p
+                                  WHERE p.work_id = @WorkId AND p.cleared_at IS NULL);
+                """,
+                new { enrichment.WorkId }, transaction: lease.Transaction, cancellationToken: ct));
 
-        var promoteName = name is not null && wasProvisional == 1;
+        if (before is null)
+        {
+            return false;
+        }
+
+        // Read the user-owned set once and replace the incoming value with
+        // NULL for each field in it, so the existing COALESCE in the UPDATE
+        // leaves the stored value alone.
+        var userOwned = await WorkFieldSourceWrites.GetUserOwnedFieldsAsync(
+            lease.Connection, lease.Transaction, enrichment.WorkId, ct);
+
+        var name = userOwned.Contains(WorkFields.Name) ? null : Trimmed(enrichment.Name);
+        var firstReleaseYear = userOwned.Contains(WorkFields.FirstReleaseYear)
+            ? null
+            : enrichment.FirstReleaseYear;
+        var summary = userOwned.Contains(WorkFields.Summary) ? null : Trimmed(enrichment.Summary);
+        var coverUrl = userOwned.Contains(WorkFields.CoverUrl) ? null : Trimmed(enrichment.CoverUrl);
+        var publisher = userOwned.Contains(WorkFields.Publisher) ? null : Trimmed(enrichment.Publisher);
+
+        var promoteName = name is not null && before.NameIsProvisional;
 
         await lease.Connection.ExecuteAsync(new CommandDefinition("""
             UPDATE works
@@ -214,9 +286,11 @@ public sealed class WorkRepository : IWorkRepository
                             ELSE @IgdbId
                           END,
 
-                -- COALESCE: incoming only fills NULLs, never overwrites. The
-                -- stored value goes first so an established fact wins over any
-                -- later non-null response from a weaker or changed source.
+                -- COALESCE means "already answered, leave it": the first
+                -- service to answer keeps the field, not a precedence tower
+                -- composing several sources. A field the user owns never
+                -- reaches this UPDATE with a value: the incoming was replaced
+                -- by NULL above, so COALESCE leaves the stored value alone.
                 first_release_year = COALESCE(first_release_year, @FirstReleaseYear),
                 summary            = COALESCE(summary,            @Summary),
                 cover_url          = COALESCE(cover_url,          @CoverUrl),
@@ -246,10 +320,10 @@ public sealed class WorkRepository : IWorkRepository
                 Name = name,
                 PromoteName = promoteName ? 1 : 0,
                 enrichment.IgdbId,
-                enrichment.FirstReleaseYear,
-                Summary = Trimmed(enrichment.Summary),
-                CoverUrl = Trimmed(enrichment.CoverUrl),
-                Publisher = Trimmed(enrichment.Publisher),
+                FirstReleaseYear = firstReleaseYear,
+                Summary = summary,
+                CoverUrl = coverUrl,
+                Publisher = publisher,
                 SteamAppType = Trimmed(enrichment.SteamAppType),
                 EpicCategories = Trimmed(enrichment.EpicCategories),
                 enrichment.SteamStoreType,
@@ -261,10 +335,69 @@ public sealed class WorkRepository : IWorkRepository
             transaction: lease.Transaction,
             cancellationToken: ct));
 
+        // Stamp every field this pass actually filled. The "before" state
+        // is read above so that a COALESCE that changed nothing does not
+        // claim a source — only a field that was empty and is now answered
+        // gets stamped.
+        var stamps = new Dictionary<string, string>(StringComparer.Ordinal);
+        var source = string.IsNullOrWhiteSpace(enrichment.Source)
+            ? FieldSources.Igdb
+            : enrichment.Source;
+
+        // A title may come from four different steps; the metadata columns
+        // come from IGDB and nowhere else.
+        if (promoteName)
+        {
+            stamps[WorkFields.Name] = string.IsNullOrWhiteSpace(enrichment.NameSource)
+                ? source
+                : enrichment.NameSource;
+        }
+
+        if (before.FirstReleaseYearIsEmpty && firstReleaseYear is not null)
+        {
+            stamps[WorkFields.FirstReleaseYear] = source;
+        }
+
+        if (before.SummaryIsEmpty && summary is not null)
+        {
+            stamps[WorkFields.Summary] = source;
+        }
+
+        if (before.CoverUrlIsEmpty && coverUrl is not null)
+        {
+            stamps[WorkFields.CoverUrl] = source;
+        }
+
+        if (before.PublisherIsEmpty && publisher is not null)
+        {
+            stamps[WorkFields.Publisher] = source;
+        }
+
+        await WorkFieldSourceWrites.StampAsync(
+            lease.Connection,
+            lease.Transaction,
+            enrichment.WorkId,
+            stamps,
+            _clock.GetUtcNow().UtcDateTime,
+            ct);
+
         return promoteName;
     }
 
     /// <summary>Normalises blank/whitespace to null so empty strings never satisfy the "filled" test.</summary>
     private static string? Trimmed(string? value)
         => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private sealed class EnrichmentWriteState
+    {
+        public bool NameIsProvisional { get; init; }
+
+        public bool FirstReleaseYearIsEmpty { get; init; }
+
+        public bool SummaryIsEmpty { get; init; }
+
+        public bool CoverUrlIsEmpty { get; init; }
+
+        public bool PublisherIsEmpty { get; init; }
+    }
 }

@@ -202,6 +202,263 @@ public sealed class IgdbMatchViewModelTests
         Assert.DoesNotContain(sentences, string.IsNullOrWhiteSpace);
     }
 
+    // ══ The same-game offer (TASK-122) ══════════════════════════════════════
+
+    private const long HolderWorkId = 77;
+
+    private static IgdbClaimingGame Holder => new(
+        HolderWorkId, "Prey", "https://images.igdb.com/igdb/image/upload/t_cover_big/co2abc.jpg", 2017);
+
+    /// <summary>
+    /// The one refusal the user can act on becomes an offer. It names the
+    /// game that already holds the entry and shows its cover and year, so
+    /// the user can judge whether it really is the same game before
+    /// answering.
+    /// </summary>
+    [Fact]
+    public async Task A_claimed_entry_offers_to_link_and_names_the_holder()
+    {
+        var service = new FakeAssignmentService
+        {
+            Results = [Prey2017],
+            Assignment = IgdbAssignmentOutcome.IgdbIdClaimedByAnotherWork,
+            Claimant = Holder,
+        };
+
+        var vm = Build(service, linkSameGame: _ => Task.FromResult(true));
+
+        await vm.SearchCommand.ExecuteAsync(null);
+        await vm.AssignCommand.ExecuteAsync(vm.Candidates[0]);
+
+        Assert.Equal(5678, service.ClaimLookupIgdbId);
+        Assert.True(vm.ShowClaim);
+        Assert.NotNull(vm.Claim);
+        Assert.Equal(HolderWorkId, vm.Claim.WorkId);
+        Assert.Equal("Prey", vm.Claim.Name);
+        Assert.Contains("Prey", vm.Claim.Headline);
+        Assert.True(vm.Claim.HasYear);
+        Assert.Equal("2017", vm.Claim.YearText);
+        Assert.Equal("igdb", vm.Claim.CoverKey?.Provider);
+        Assert.Equal("co2abc", vm.Claim.CoverKey?.Id);
+
+        // An offer, not a failure: no Amber sentence stands beside it, and
+        // the candidate list is still there.
+        Assert.False(vm.HasProblem);
+        Assert.True(vm.HasCandidates);
+        Assert.False(vm.IsPinned);
+    }
+
+    /// <summary>
+    /// Accepting links this work under the one that holds the entry, and
+    /// pins nothing: works.igdb_id is UNIQUE, so pinning the child is the
+    /// very thing the constraint refused. The confirmation survives the
+    /// reload the link triggers.
+    /// </summary>
+    [Fact]
+    public async Task Accepting_the_offer_links_under_the_holder_and_pins_nothing()
+    {
+        var service = new FakeAssignmentService
+        {
+            Results = [Prey2017],
+            Assignment = IgdbAssignmentOutcome.IgdbIdClaimedByAnotherWork,
+            Claimant = Holder,
+        };
+
+        long? parent = null;
+        string? carried = null;
+        var vm = Build(
+            service,
+            afterChange: note =>
+            {
+                carried = note;
+                return Task.CompletedTask;
+            },
+            linkSameGame: parentWorkId =>
+            {
+                parent = parentWorkId;
+                return Task.FromResult(true);
+            });
+
+        await vm.SearchCommand.ExecuteAsync(null);
+        await vm.AssignCommand.ExecuteAsync(vm.Candidates[0]);
+        await vm.LinkClaimCommand.ExecuteAsync(null);
+
+        // The holder is the PARENT: it is the work carrying the igdb_id.
+        Assert.Equal(HolderWorkId, parent);
+
+        Assert.False(vm.ShowClaim);
+        Assert.False(vm.IsOpen);
+        Assert.False(vm.HasProblem);
+        Assert.False(vm.HasStatus);
+
+        // Nothing was pinned on the way through: the assignment was refused,
+        // and the link is the whole answer.
+        Assert.False(vm.IsPinned);
+        Assert.Null(vm.Claim);
+
+        Assert.NotNull(carried);
+        Assert.Contains("Prey", carried);
+    }
+
+    /// <summary>
+    /// Declining writes nothing at all — no pin, no link — and restores the
+    /// refusal sentence, so the user still knows why the assignment did not
+    /// land. The candidate list stays for another try.
+    /// </summary>
+    [Fact]
+    public async Task Declining_the_offer_writes_nothing_and_restores_the_refusal()
+    {
+        var service = new FakeAssignmentService
+        {
+            Results = [Prey2017],
+            Assignment = IgdbAssignmentOutcome.IgdbIdClaimedByAnotherWork,
+            Claimant = Holder,
+        };
+
+        var linked = false;
+        var reopened = false;
+        var vm = Build(
+            service,
+            afterChange: _ =>
+            {
+                reopened = true;
+                return Task.CompletedTask;
+            },
+            linkSameGame: _ =>
+            {
+                linked = true;
+                return Task.FromResult(true);
+            });
+
+        // Opened the way the user opens it, so the disclosure staying open
+        // through the refusal and the decline is what the test observes.
+        vm.ToggleCommand.Execute(null);
+        await vm.SearchCommand.ExecuteAsync(null);
+        await vm.AssignCommand.ExecuteAsync(vm.Candidates[0]);
+        vm.DeclineClaimCommand.Execute(null);
+
+        Assert.False(linked);
+        Assert.False(reopened);
+        Assert.False(vm.ShowClaim);
+        Assert.Null(vm.Claim);
+        Assert.False(vm.IsPinned);
+        Assert.True(vm.IsOpen);
+        Assert.True(vm.HasCandidates);
+        Assert.Equal(
+            GameIgdbMatchCopy.ProblemFor(IgdbAssignmentOutcome.IgdbIdClaimedByAnotherWork),
+            vm.Problem);
+    }
+
+    /// <summary>
+    /// The offer is additive. With no link path wired, no holder to name, or
+    /// a holder that resolves to this same work, the collision degrades to
+    /// exactly the sentence it drew before the offer existed.
+    /// </summary>
+    [Theory]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    public async Task A_collision_with_nothing_to_offer_stays_a_plain_refusal(
+        bool wireLink, bool nameHolder)
+    {
+        var service = new FakeAssignmentService
+        {
+            Results = [Prey2017],
+            Assignment = IgdbAssignmentOutcome.IgdbIdClaimedByAnotherWork,
+            Claimant = nameHolder ? Holder : null,
+        };
+
+        var vm = Build(
+            service,
+            linkSameGame: wireLink ? _ => Task.FromResult(true) : null);
+
+        await vm.SearchCommand.ExecuteAsync(null);
+        await vm.AssignCommand.ExecuteAsync(vm.Candidates[0]);
+
+        Assert.False(vm.ShowClaim);
+        Assert.Equal(
+            GameIgdbMatchCopy.ProblemFor(IgdbAssignmentOutcome.IgdbIdClaimedByAnotherWork),
+            vm.Problem);
+    }
+
+    /// <summary>
+    /// A holder that IS this work is not a collision anyone can act on, and
+    /// linking a work to itself is not a thing. The bare sentence stands.
+    /// </summary>
+    [Fact]
+    public async Task A_holder_that_is_this_same_work_offers_nothing()
+    {
+        var service = new FakeAssignmentService
+        {
+            Results = [Prey2017],
+            Assignment = IgdbAssignmentOutcome.IgdbIdClaimedByAnotherWork,
+            Claimant = new IgdbClaimingGame(WorkId, "Prey", null, 2017),
+        };
+
+        var vm = Build(service, linkSameGame: _ => Task.FromResult(true));
+
+        await vm.SearchCommand.ExecuteAsync(null);
+        await vm.AssignCommand.ExecuteAsync(vm.Candidates[0]);
+
+        Assert.False(vm.ShowClaim);
+        Assert.True(vm.HasProblem);
+    }
+
+    /// <summary>
+    /// A link write that did not land keeps the offer on screen under its own
+    /// Amber sentence, so the answer the user already gave is not thrown
+    /// away by a failed write.
+    /// </summary>
+    [Fact]
+    public async Task A_link_that_did_not_land_keeps_the_offer()
+    {
+        var service = new FakeAssignmentService
+        {
+            Results = [Prey2017],
+            Assignment = IgdbAssignmentOutcome.IgdbIdClaimedByAnotherWork,
+            Claimant = Holder,
+        };
+
+        var reopened = false;
+        var vm = Build(
+            service,
+            afterChange: _ =>
+            {
+                reopened = true;
+                return Task.CompletedTask;
+            },
+            linkSameGame: _ => Task.FromResult(false));
+
+        await vm.SearchCommand.ExecuteAsync(null);
+        await vm.AssignCommand.ExecuteAsync(vm.Candidates[0]);
+        await vm.LinkClaimCommand.ExecuteAsync(null);
+
+        Assert.False(reopened);
+        Assert.True(vm.ShowClaim);
+        Assert.Equal(GameIgdbMatchCopy.LinkFailedText, vm.Problem);
+        Assert.False(vm.HasStatus);
+    }
+
+    /// <summary>Every sentence and label the offer draws says something, and no two say the same thing.</summary>
+    [Fact]
+    public void The_offer_has_copy_of_its_own()
+    {
+        string[] copy =
+        [
+            GameIgdbMatchCopy.ClaimHeadline("Prey"),
+            GameIgdbMatchCopy.ClaimLinkLabel,
+            GameIgdbMatchCopy.ClaimDeclineLabel,
+            GameIgdbMatchCopy.ClaimLinkAutomationName("Prey"),
+            GameIgdbMatchCopy.LinkingStatus,
+            GameIgdbMatchCopy.LinkedNote("Prey"),
+            GameIgdbMatchCopy.LinkFailedText,
+        ];
+
+        Assert.Equal(copy.Length, copy.Distinct().Count());
+        Assert.DoesNotContain(copy, string.IsNullOrWhiteSpace);
+        Assert.DoesNotContain(copy, c => c.Contains("TODO", StringComparison.Ordinal));
+        Assert.DoesNotContain(copy, c => c.Contains("PLACEHOLDER", StringComparison.Ordinal));
+    }
+
     // ══ Clearing ════════════════════════════════════════════════════════════
 
     [Fact]
@@ -399,8 +656,11 @@ public sealed class IgdbMatchViewModelTests
         FakeAssignmentService service,
         string title = "Prey",
         WorkIgdbPin? pin = null,
-        Func<string, Task>? afterChange = null)
-        => new(service, WorkId, title, pin: pin, afterChange: afterChange);
+        Func<string, Task>? afterChange = null,
+        Func<long, Task<bool>>? linkSameGame = null)
+        => new(
+            service, WorkId, title,
+            pin: pin, afterChange: afterChange, linkSameGame: linkSameGame);
 
     /// <summary>
     /// Answers from canned values and records what it was asked, exactly as
@@ -447,6 +707,17 @@ public sealed class IgdbMatchViewModelTests
             AssignedWorkId = workId;
             AssignedIgdbId = igdbId;
             return Task.FromResult(Assignment);
+        }
+
+        public IgdbClaimingGame? Claimant { get; set; }
+
+        public long? ClaimLookupIgdbId { get; private set; }
+
+        public Task<IgdbClaimingGame?> FindClaimingGameAsync(
+            long igdbId, CancellationToken ct = default)
+        {
+            ClaimLookupIgdbId = igdbId;
+            return Task.FromResult(Claimant);
         }
 
         public Task<bool> ClearAsync(long workId, CancellationToken ct = default)

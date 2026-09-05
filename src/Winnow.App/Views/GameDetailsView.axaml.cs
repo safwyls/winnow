@@ -73,6 +73,34 @@ public partial class GameDetailsView : UserControl
         e.Handled = true;
     }
 
+    /// <summary>
+    /// The same arrangement <see cref="OnWrongGamePressed"/> uses. The
+    /// editor opens in the right column's bounded rest band, below the
+    /// fold, so without <c>BringIntoView</c> the disclosure would appear
+    /// to do nothing. The scroll is posted at Background priority so it
+    /// runs after the command has flipped <c>IsOpen</c> and the surface
+    /// has been laid out; a closing press scrolls nothing.
+    /// </summary>
+    private void OnEditDetailsPressed(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not GameDetailsViewModel { MetadataEditor: { } editor })
+        {
+            return;
+        }
+
+        Dispatcher.UIThread.Post(
+            () =>
+            {
+                if (!editor.IsOpen)
+                {
+                    return;
+                }
+
+                MetadataEditorHost.BringIntoView();
+            },
+            DispatcherPriority.Background);
+    }
+
     private void OnWrongGamePressed(object? sender, RoutedEventArgs e)
     {
         if (DataContext is not GameDetailsViewModel { IgdbMatch: { } match })

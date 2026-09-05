@@ -429,6 +429,10 @@ public sealed class ManualGameFromExecutableTests : IDisposable
             long workId, long igdbId, CancellationToken ct = default)
             => Task.FromResult(IgdbAssignmentOutcome.Failed);
 
+        public Task<IgdbClaimingGame?> FindClaimingGameAsync(
+            long igdbId, CancellationToken ct = default)
+            => Task.FromResult<IgdbClaimingGame?>(null);
+
         public Task<bool> ClearAsync(long workId, CancellationToken ct = default)
             => Task.FromResult(false);
 

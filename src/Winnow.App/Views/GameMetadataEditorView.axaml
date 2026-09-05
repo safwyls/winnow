@@ -1,0 +1,331 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Winnow.App.ViewModels"
+             x:Class="Winnow.App.Views.GameMetadataEditorView"
+             x:DataType="vm:GameMetadataEditorViewModel">
+
+    <!-- Per-field metadata editor (TASK-119). One row per WorkFields.All entry;
+         two DataTemplates discriminated by DataType pick the text or art layout.
+
+         Styles are declared here rather than inherited from GameDetailsView so
+         the editor is self-contained wherever it is hosted. The quiet / secondary /
+         field treatments match GameDetailsView's own so the editor does not read
+         as a second control language inside one modal.
+
+         Focus everywhere is a brush swap on a border whose thickness never changes
+         (§8, §10.7), so nothing reflows as the user tabs through six rows. -->
+
+    <UserControl.Styles>
+
+        <Style Selector="ScrollViewer.inner /template/ ScrollBar">
+            <Setter Property="Margin" Value="0"/>
+        </Style>
+
+        <Style Selector="Button.quiet">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
+            <Setter Property="Padding" Value="7,3"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="Button.quiet /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.quiet:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
+        </Style>
+        <Style Selector="Button.quiet:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
+        </Style>
+        <Style Selector="Button.quiet :is(TextBlock)">
+            <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
+        </Style>
+        <Style Selector="Button.quiet:pointerover :is(TextBlock)">
+            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+        </Style>
+
+        <Style Selector="Button.secondary">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
+            <Setter Property="Padding" Value="11,6"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="Button.secondary /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.secondary:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
+        </Style>
+        <Style Selector="Button.secondary:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
+        </Style>
+        <Style Selector="Button.secondary :is(TextBlock)">
+            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+        </Style>
+        <Style Selector="Button.secondary:disabled :is(TextBlock)">
+            <Setter Property="Foreground" Value="{StaticResource TextFaint}"/>
+        </Style>
+
+        <!-- §16.3 field treatment: Well cut into the card, found by its
+             Line border, lit by a Volt ring on focus. -->
+        <Style Selector="TextBox.field">
+            <Setter Property="MinHeight" Value="30"/>
+            <Setter Property="Padding" Value="10,6"/>
+            <Setter Property="VerticalContentAlignment" Value="Top"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
+            <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+            <Setter Property="SelectionBrush" Value="{StaticResource VoltSelection}"/>
+            <Setter Property="CaretBrush" Value="{StaticResource Volt}"/>
+        </Style>
+        <Style Selector="TextBox.field.numeric">
+            <Setter Property="FontFamily" Value="{StaticResource DataFont}"/>
+            <Setter Property="FontFeatures" Value="tnum"/>
+        </Style>
+        <Style Selector="TextBox.field /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="{StaticResource Well}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+        <Style Selector="TextBox.field:pointerover /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="{StaticResource Well}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+        </Style>
+        <Style Selector="TextBox.field:focus /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="{StaticResource Well}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+        </Style>
+        <Style Selector="TextBox.field /template/ TextBlock#PART_Watermark">
+            <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
+        </Style>
+
+        <!-- Volt on the source chip means "you chose this" (§11.3). A field
+             a service wrote and a field on automatic both take the plain
+             Line-edged chip and are told apart by the word inside (§12.1). -->
+        <Style Selector="Border.store-chip.owned">
+            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+        </Style>
+        <Style Selector="Border.store-chip.owned > :is(TextBlock)">
+            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+        </Style>
+
+        <Style Selector="Border.artframe">
+            <Setter Property="ClipToBounds" Value="True"/>
+            <Setter Property="VerticalAlignment" Value="Top"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
+            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
+        </Style>
+
+        <Style Selector=":is(TextBlock).rowline">
+            <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="LineHeight" Value="16"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+
+    </UserControl.Styles>
+
+    <StackPanel>
+
+    <!-- An art save reloads the library and reopens the modal, which leaves
+         the editor closed, so this line sits outside the IsOpen gate below.
+         The same arrangement as the IGDB reassignment control's carried
+         note. -->
+    <TextBlock Classes="body" FontSize="12"
+               Margin="0,18,0,0"
+               TextWrapping="Wrap"
+               LineHeight="17"
+               Foreground="{StaticResource TextDim}"
+               IsVisible="{Binding HasNote}"
+               Text="{Binding Note}"/>
+
+    <StackPanel IsVisible="{Binding IsOpen}" Spacing="10" Margin="0,18,0,0">
+
+        <TextBlock Classes="body" FontSize="12"
+                   TextWrapping="Wrap"
+                   LineHeight="17"
+                   Foreground="{StaticResource TextDim}"
+                   Text="{Binding Intro}"/>
+
+        <TextBlock Classes="body" FontSize="12"
+                   TextWrapping="Wrap"
+                   Foreground="{StaticResource TextDim}"
+                   IsVisible="{Binding HasStatus}"
+                   Text="{Binding Status}"/>
+
+        <TextBlock Classes="body" FontSize="11"
+                   TextWrapping="Wrap"
+                   LineHeight="16"
+                   Foreground="{StaticResource Amber}"
+                   IsVisible="{Binding HasProblem}"
+                   Text="{Binding Problem}"/>
+
+        <ItemsControl ItemsSource="{Binding Rows}"
+                      IsVisible="{Binding HasRows}"
+                      Margin="0,0,4,0">
+            <ItemsControl.DataTemplates>
+
+                <DataTemplate DataType="vm:MetadataTextRowViewModel">
+                    <Border BorderBrush="{StaticResource Line}"
+                            BorderThickness="0,0,0,1"
+                            Padding="0,12">
+                        <StackPanel Spacing="8">
+
+                            <Grid ColumnDefinitions="Auto,Auto,*,Auto" ColumnSpacing="8">
+                                <TextBlock Grid.Column="0" Classes="label"
+                                           VerticalAlignment="Center"
+                                           Text="{Binding Label}"/>
+                                <Border Grid.Column="1" Classes="store-chip"
+                                        Classes.owned="{Binding IsUserOwned}"
+                                        ToolTip.Tip="{Binding SourceTooltip}">
+                                    <TextBlock Text="{Binding SourceLabel}"/>
+                                </Border>
+                                <Button Grid.Column="3" Classes="quiet"
+                                        IsVisible="{Binding IsUserOwned}"
+                                        AutomationProperties.Name="{Binding ResetAutomationName}"
+                                        ToolTip.Tip="{Binding ResetTooltip}"
+                                        Command="{Binding ResetCommand}">
+                                    <TextBlock Classes="body" FontSize="12"
+                                               Text="{Binding ResetLabel}"/>
+                                </Button>
+                            </Grid>
+
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                <TextBox Grid.Column="0" Classes="field"
+                                         Classes.numeric="{Binding IsNumeric}"
+                                         Height="{Binding FieldHeight}"
+                                         AcceptsReturn="{Binding IsMultiline}"
+                                         TextWrapping="{Binding Wrapping}"
+                                         Watermark="{Binding Watermark}"
+                                         AutomationProperties.Name="{Binding FieldAutomationName}"
+                                         Text="{Binding Draft, Mode=TwoWay}"/>
+                                <Button Grid.Column="1" Classes="secondary"
+                                        VerticalAlignment="Top"
+                                        AutomationProperties.Name="{Binding SaveAutomationName}"
+                                        ToolTip.Tip="{Binding SaveAutomationName}"
+                                        Command="{Binding SaveCommand}">
+                                    <TextBlock Classes="body" FontSize="12"
+                                               Text="{Binding SaveLabel}"/>
+                                </Button>
+                            </Grid>
+
+                            <TextBlock Classes="rowline"
+                                       Foreground="{StaticResource TextDim}"
+                                       IsVisible="{Binding HasStatus}"
+                                       Text="{Binding Status}"/>
+                            <TextBlock Classes="rowline"
+                                       Foreground="{StaticResource TextDim}"
+                                       IsVisible="{Binding HasNote}"
+                                       Text="{Binding Note}"/>
+                            <TextBlock Classes="rowline"
+                                       Foreground="{StaticResource Amber}"
+                                       IsVisible="{Binding HasProblem}"
+                                       Text="{Binding Problem}"/>
+                        </StackPanel>
+                    </Border>
+                </DataTemplate>
+
+                <DataTemplate DataType="vm:MetadataArtRowViewModel">
+                    <Border BorderBrush="{StaticResource Line}"
+                            BorderThickness="0,0,0,1"
+                            Padding="0,12">
+                        <StackPanel Spacing="8">
+
+                            <Grid ColumnDefinitions="Auto,Auto,*,Auto" ColumnSpacing="8">
+                                <TextBlock Grid.Column="0" Classes="label"
+                                           VerticalAlignment="Center"
+                                           Text="{Binding Label}"/>
+                                <Border Grid.Column="1" Classes="store-chip"
+                                        Classes.owned="{Binding IsUserOwned}"
+                                        ToolTip.Tip="{Binding SourceTooltip}">
+                                    <TextBlock Text="{Binding SourceLabel}"/>
+                                </Border>
+                                <Button Grid.Column="3" Classes="quiet"
+                                        IsVisible="{Binding IsUserOwned}"
+                                        AutomationProperties.Name="{Binding ResetAutomationName}"
+                                        ToolTip.Tip="{Binding ResetTooltip}"
+                                        Command="{Binding ResetCommand}">
+                                    <TextBlock Classes="body" FontSize="12"
+                                               Text="{Binding ResetLabel}"/>
+                                </Button>
+                            </Grid>
+
+                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+
+                                <!-- Art preview at the row's own aspect ratio:
+                                     64x96 portrait for cover, 96x54 wide for background.
+                                     An empty preview says what is missing in TextDim
+                                     rather than drawing a hole (§8). -->
+                                <Border Grid.Column="0" Classes="artframe"
+                                        Width="{Binding PreviewWidth}"
+                                        Height="{Binding PreviewHeight}">
+                                    <Panel>
+                                        <Image Source="{Binding Preview}"
+                                               Stretch="UniformToFill"/>
+                                        <TextBlock Classes="rowline"
+                                                   FontSize="10"
+                                                   TextAlignment="Center"
+                                                   VerticalAlignment="Center"
+                                                   Margin="6,0"
+                                                   Foreground="{StaticResource TextDim}"
+                                                   IsVisible="{Binding ShowPlaceholder}"
+                                                   Text="{Binding NoArtText}"/>
+                                    </Panel>
+                                </Border>
+
+                                <StackPanel Grid.Column="1" Spacing="8">
+                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                        <TextBox Grid.Column="0" Classes="field"
+                                                 Height="30"
+                                                 Watermark="{Binding Watermark}"
+                                                 AutomationProperties.Name="{Binding FieldAutomationName}"
+                                                 Text="{Binding Draft, Mode=TwoWay}"/>
+                                        <Button Grid.Column="1" Classes="secondary"
+                                                AutomationProperties.Name="{Binding SaveAutomationName}"
+                                                ToolTip.Tip="{Binding SaveAutomationName}"
+                                                Command="{Binding SaveCommand}">
+                                            <TextBlock Classes="body" FontSize="12"
+                                                       Text="{Binding SaveLabel}"/>
+                                        </Button>
+                                    </Grid>
+
+                                    <Button Classes="secondary"
+                                            HorizontalAlignment="Left"
+                                            IsVisible="{Binding CanPickFile}"
+                                            AutomationProperties.Name="{Binding ChooseFileAutomationName}"
+                                            ToolTip.Tip="{Binding ChooseFileTooltip}"
+                                            Command="{Binding ChooseFileCommand}">
+                                        <TextBlock Classes="body" FontSize="12"
+                                                   Text="{Binding ChooseFileLabel}"/>
+                                    </Button>
+                                </StackPanel>
+                            </Grid>
+
+                            <TextBlock Classes="rowline"
+                                       Foreground="{StaticResource TextDim}"
+                                       IsVisible="{Binding HasStatus}"
+                                       Text="{Binding Status}"/>
+                            <TextBlock Classes="rowline"
+                                       Foreground="{StaticResource TextDim}"
+                                       IsVisible="{Binding HasNote}"
+                                       Text="{Binding Note}"/>
+                            <TextBlock Classes="rowline"
+                                       Foreground="{StaticResource Amber}"
+                                       IsVisible="{Binding HasProblem}"
+                                       Text="{Binding Problem}"/>
+                        </StackPanel>
+                    </Border>
+                </DataTemplate>
+
+            </ItemsControl.DataTemplates>
+        </ItemsControl>
+    </StackPanel>
+    </StackPanel>
+</UserControl>

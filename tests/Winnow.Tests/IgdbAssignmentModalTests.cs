@@ -1,6 +1,7 @@
 using Winnow.App.Services;
 using Winnow.App.ViewModels;
 using Winnow.Core.Domain;
+using Winnow.Core.Identity;
 using Winnow.Core.Repositories;
 using Winnow.Data.Repositories;
 using Xunit;
@@ -172,6 +173,102 @@ public sealed class IgdbAssignmentModalTests : IDisposable
         Assert.False(library.Details.ShowIgdbMatch);
     }
 
+    /// <summary>
+    /// TASK-122. Assigning an IGDB entry another game already holds is not a
+    /// dead end: <c>works.igdb_id</c> is UNIQUE, so the two ARE the same
+    /// game. The refusal becomes an offer naming the holder, and accepting
+    /// writes the same live <c>same_game</c> row the Merges queue writes,
+    /// through the real <see cref="IdentityLinkRepository"/> — not a second
+    /// mechanism. Nothing is pinned, because pinning the child to an id
+    /// another row holds is exactly what the constraint refused.
+    /// </summary>
+    [Fact]
+    public async Task Accepting_the_offer_writes_a_same_game_link_and_pins_nothing()
+    {
+        // The holder: already carries IGDB 5678, which is what the canned
+        // candidate offers.
+        var holder = await SeedAsync(title: "Prey", igdbId: 5678, coverUrl: RightCover, year: 2017);
+
+        // The game the user is looking at, resolved to the wrong entry.
+        var wrong = await SeedAsync(title: "Prey", igdbId: 1234, steamAppId: "3900");
+
+        var links = new IdentityLinkRepository(_db.Factory);
+        var library = new LibraryViewModel(
+            _queries, _ownerships, _releases, _works, _updates,
+            identityLinks: links,
+            igdb: new PinningAssignmentService(_pins, works: _works));
+
+        await library.LoadCommand.ExecuteAsync(null);
+
+        var tile = library.VisibleTiles.Single(t => t.OwnershipId == wrong.OwnershipId);
+        await library.OpenDetailsCommand.ExecuteAsync(tile);
+
+        var match = library.Details!.IgdbMatch!;
+        await match.SearchCommand.ExecuteAsync(null);
+        await match.AssignCommand.ExecuteAsync(match.Candidates[0]);
+
+        // The refusal came back as an offer naming the game that holds it.
+        Assert.True(match.ShowClaim);
+        Assert.Equal(holder.WorkId, match.Claim!.WorkId);
+        Assert.Equal("Prey", match.Claim.Name);
+        Assert.Equal("2017", match.Claim.YearText);
+
+        await match.LinkClaimCommand.ExecuteAsync(null);
+
+        // One live same_game link, child under holder, written by the user.
+        var history = await links.GetHistoryAsync(wrong.WorkId);
+        var link = Assert.Single(history, l => l.IsLive);
+        Assert.Equal(holder.WorkId, link.ParentWorkId);
+        Assert.Equal(wrong.WorkId, link.ChildWorkId);
+        Assert.Equal(IdentityLinkKinds.SameGame, link.Kind);
+        Assert.Equal(IdentityLinkSources.User, link.Source);
+
+        // Nothing was pinned on either side.
+        Assert.Null(await _pins.GetAsync(wrong.WorkId));
+        Assert.Null(await _pins.GetAsync(holder.WorkId));
+
+        // The two read as one game: the grid folds to a single tile.
+        Assert.Single(library.VisibleTiles);
+    }
+
+    /// <summary>
+    /// Declining leaves both works exactly as they were: no link, no pin,
+    /// and the grid still shows two games.
+    /// </summary>
+    [Fact]
+    public async Task Declining_the_offer_leaves_both_games_as_they_were()
+    {
+        var holder = await SeedAsync(title: "Prey", igdbId: 5678, coverUrl: RightCover, year: 2017);
+        var wrong = await SeedAsync(title: "Prey", igdbId: 1234, steamAppId: "3900");
+
+        var links = new IdentityLinkRepository(_db.Factory);
+        var library = new LibraryViewModel(
+            _queries, _ownerships, _releases, _works, _updates,
+            identityLinks: links,
+            igdb: new PinningAssignmentService(_pins, works: _works));
+
+        await library.LoadCommand.ExecuteAsync(null);
+
+        var tile = library.VisibleTiles.Single(t => t.OwnershipId == wrong.OwnershipId);
+        await library.OpenDetailsCommand.ExecuteAsync(tile);
+
+        var match = library.Details!.IgdbMatch!;
+        await match.SearchCommand.ExecuteAsync(null);
+        await match.AssignCommand.ExecuteAsync(match.Candidates[0]);
+        Assert.True(match.ShowClaim);
+
+        match.DeclineClaimCommand.Execute(null);
+
+        Assert.Empty(await links.GetHistoryAsync(wrong.WorkId));
+        Assert.Null(await _pins.GetAsync(wrong.WorkId));
+        Assert.Null(await _pins.GetAsync(holder.WorkId));
+
+        // Both works are untouched, down to the id each still carries.
+        Assert.Equal(1234, (await _works.GetAsync(wrong.WorkId))!.IgdbId);
+        Assert.Equal(5678, (await _works.GetAsync(holder.WorkId))!.IgdbId);
+        Assert.Equal(2, library.VisibleTiles.Count);
+    }
+
     private async Task<LibraryViewModel> LoadAsync(IIgdbAssignmentService service)
     {
         var library = new LibraryViewModel(
@@ -325,16 +422,27 @@ public sealed class IgdbAssignmentModalTests : IDisposable
         private readonly IWorkIgdbPinRepository _pins;
 
         /// <summary>
+        /// The real work repository, so the claiming-game lookup answers from
+        /// the same <c>works</c> rows the UNIQUE constraint refused against.
+        /// Null in the tests that never reach a collision.
+        /// </summary>
+        private readonly IWorkRepository? _works;
+
+        /// <summary>
         /// The cover URL the chosen entry carries. Null stands for an IGDB
         /// entry with no cover at all — the one case where a pin cannot
         /// outrank the store capsule.
         /// </summary>
         private readonly string? _coverUrl;
 
-        public PinningAssignmentService(IWorkIgdbPinRepository pins, string? coverUrl = RightCover)
+        public PinningAssignmentService(
+            IWorkIgdbPinRepository pins,
+            string? coverUrl = RightCover,
+            IWorkRepository? works = null)
         {
             _pins = pins;
             _coverUrl = coverUrl;
+            _works = works;
         }
 
         public Task<IReadOnlyList<IgdbCandidate>> SearchAsync(
@@ -381,6 +489,21 @@ public sealed class IgdbAssignmentModalTests : IDisposable
                     IgdbAssignmentOutcome.IgdbIdClaimedByAnotherWork,
                 _ => IgdbAssignmentOutcome.WorkNotFound,
             };
+        }
+
+        public async Task<IgdbClaimingGame?> FindClaimingGameAsync(
+            long igdbId, CancellationToken ct = default)
+        {
+            if (_works is null)
+            {
+                return null;
+            }
+
+            var holder = await _works.GetByIgdbIdAsync(igdbId, ct);
+            return holder is null
+                ? null
+                : new IgdbClaimingGame(
+                    holder.Id, holder.Name, holder.CoverUrl, holder.FirstReleaseYear);
         }
 
         public Task<bool> ClearAsync(long workId, CancellationToken ct = default)

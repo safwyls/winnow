@@ -1,11 +1,11 @@
 ---
 id: TASK-117
 title: Move the Clear control under the cover art and reword its tooltip
-status: In Progress
+status: Done
 assignee:
   - '@claude'
 created_date: '2026-09-05 03:37'
-updated_date: '2026-09-05 03:50'
+updated_date: '2026-09-05 15:33'
 labels:
   - ui
 dependencies: []
@@ -26,10 +26,10 @@ The tooltip is currently GameIgdbMatchCopy.ClearTooltip = "Return to automatic m
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 The Clear control sits in the left column beneath the cover art, shown only while a pin is live
+- [x] #1 The Clear control sits in the left column beneath the cover art, shown only while a pin is live
 - [x] #2 Its tooltip reads exactly "Return to automatic metadata matching"
 - [x] #3 The wrong-game button stays in the action band and the search results stay full width, per TASK-102
-- [ ] #4 The left column does not overflow with the control present, and the modal still scrolls as TASK-105 established
+- [x] #4 The left column does not overflow with the control present, and the modal still scrolls as TASK-105 established
 - [x] #5 Clearing still reloads so the cover reverts, per TASK-106
 <!-- AC:END -->
 
@@ -66,3 +66,9 @@ created: 2026-09-05 03:50
 Implementation and prose are complete and the build and all three test projects are green at baseline. Left In Progress rather than Done: acceptance criteria 1 and 4 are layout claims that only the running app can settle — that the Clear line draws beneath the cover art, and that the left column does not overflow and the modal still scrolls with it present. Everything else is checked with objective evidence.
 ---
 <!-- COMMENTS:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+The Clear control moved from the right column into the left column, beneath the cover art and the STEAM APPID / ON DISK facts, inside the bounded scroll region TASK-105 established so it cannot lengthen the column past the card. Its visibility gate needed FallbackValue=False: in its old home it sat under a wrapper that had already hopped DataContext to IgdbMatch, and reached from the details view model the binding path crosses a nullable property, where IsVisible would otherwise revert to its own default of true and draw the control on a modal built with no IGDB service. Tooltip is the user verbatim wording, "Return to automatic metadata matching". ClearedNote followed it to "Returned to automatic metadata matching." so the control does not promise one thing and confirm another. This is not a reversal of TASK-102: the search RESULTS left the left column because a row carrying cover, name, year and platforms needed more than 200px, while a single link button fits. Verified by the passing ShowPinned gating tests and IgdbAssignmentModalTests driving ClearCommand and asserting the reopened modal takes the Steam cover key back, plus the user confirming the placement in the running app.
+<!-- SECTION:FINAL_SUMMARY:END -->

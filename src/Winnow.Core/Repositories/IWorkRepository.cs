@@ -16,6 +16,12 @@ public interface IWorkRepository
 
     Task<Work?> GetAsync(long id, CancellationToken ct = default);
 
+    /// <summary>
+    /// The one work holding this IGDB id (igdb_id is UNIQUE), or null when none
+    /// does or the id is zero or less, which is never a real IGDB id.
+    /// </summary>
+    Task<Work?> GetByIgdbIdAsync(long igdbId, CancellationToken ct = default);
+
     Task<IReadOnlyList<Work>> GetAllAsync(CancellationToken ct = default);
 
     /// <summary>Works still holding a placeholder name, with their external id for enrichment lookup.</summary>

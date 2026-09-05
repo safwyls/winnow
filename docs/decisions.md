@@ -350,6 +350,35 @@ findings are now in the spec and the spikes are evidence only. What the spec use
 Two `[VERIFY]` markers survived the fold, because no spike settled them: the exact Steam 429
 figures and the licensability of a HowLongToBeat source. Both are in §9 of the spec.
 
+### 2026-09-05 — Per-field metadata sources replaced a layered override model (TASK-119)
+
+`game-library-design.md` §6, §6.4. Migration 0027 adds `works.background_url` and
+`work_field_sources(work_id, field, source, set_at, PRIMARY KEY(work_id, field))`. Each
+user-visible metadata field on a work now carries its own source, and that source is the
+truth for that field. One value per field, one answer to where it came from.
+
+The task was originally written as a layered override — an automatic value with a user
+override stacked on top, composed by a precedence tower. The user redirected it: "we should
+really have one source of truth, i think the real issue is granularity. each field we
+currently populate via IGDB or Steam should stand alone." The per-field model deletes the
+composition problem instead of solving it, and the same model yields both gestures the user
+asked for: a metadata fetch rewrites every field in one pass ("take it all from this
+record"); a manual edit sets one field and makes the user its source, leaving every other
+field tracking its own.
+
+§6.4's heading and opening line were extended from four tables / 0023-0026 to five tables /
+0023-0027, and the pin paragraph was extended with the pin/field-source interaction. The
+superseded text, verbatim:
+
+> Hidden games, maturity evidence, hand-added entries and user-pinned IGDB mappings
+
+> Four tables added by migrations 0023-0026. Each is designed so that an ingest pass cannot write, delete or overwrite it.
+
+The opening claim about ingest passes remains true — no ingest path writes
+`work_field_sources`. The sentence about clearing a pin was narrowed. The superseded text:
+
+> Clearing the pin returns the work to automatic resolution; the metadata the pin wrote stays in place, and the next pass fills what is empty.
+
 ## The visual system
 
 ### The palette was a deep indigo-violet, and the violet family is gone
@@ -1232,3 +1261,41 @@ Superseded doc comment on `IIgdbAssignmentService.GetCandidateByIdAsync`:
 Superseded doc comment on `Apicalypse.SearchGames`:
 
 > The field list differs from `Games`: `platforms.name` is what tells Prey (2006, Xbox 360) apart from Prey (2017, PS4/PC), and nothing else in the client needs it.
+
+### 2026-09-05 — The IGDB collision refusal becomes a same-game offer, confirmed in place (TASK-122)
+
+`design-system.md` §10.9, `game-library-design.md` §5.3. When a user assigns an IGDB entry that
+another work already holds, the UNIQUE constraint on `works.igdb_id` refuses the pin. That
+constraint is the insight: two works claiming one IGDB entry are the same game. The refusal now
+becomes an offer that names and shows the holder, and the user confirms the link in place on the
+details modal rather than being sent to the Merges queue.
+
+**The user's decision, in their words: "confirm in place, dont route to queue."** §5.3 permits a
+hard external-id join to auto-merge. Naming an exact IGDB id is a hard join, and the in-place
+confirmation — which names and shows the other game — supplies the review a queue would otherwise
+provide. The queue is where soft matches are cleared; this is not a soft match.
+
+**The holder is the parent.** It carries the `igdb_id`, which is the first rung of the Merges
+queue's own precedence ladder, and its metadata is the entry the user was reaching for.
+
+**Nothing is pinned.** Pinning the child to an id another row holds is what the UNIQUE constraint
+refused. The link is the whole answer; the absence of a pin follows from the constraint rather
+than being a choice.
+
+Superseded text from `design-system.md` §10.9's "Six states" paragraph:
+
+> Four refusals — the game is no longer in the library, IGDB had no details for that entry, another game already holds that entry, and the write failed — each keep the controls in place under their own `Amber` sentence, and each says something different, because the third is the only one the user can act on.
+
+### 2026-09-05 — The per-field editor joined the action band, and the band's capacity is now a stated cost (TASK-119)
+
+`design-system.md` §10.9, new §10.10. TASK-119's per-field metadata editor added an
+`Edit details` disclosure to the detail modal's action band (Band 3). The enumeration in §10.9
+was corrected. The sentence it replaced:
+
+> **The disclosure is a `Wrong game?` link in the action band (Band 3)**, beside Store page, All patch notes, Open folder and Hide.
+
+The band now carries seven controls — the primary action, `Store page`, `All patch notes`,
+`Open folder`, `Wrong game?`, `Edit details` and `Hide` — in a horizontal strip that does not
+wrap. At every card width between the column's 422px minimum and 582px maximum, the full set
+overruns the available space and clips. The cost is stated in §10.10 and is not fixed there; a
+follow-up decides the remedy.
