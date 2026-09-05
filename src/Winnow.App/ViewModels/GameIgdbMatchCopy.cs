@@ -4,9 +4,10 @@ namespace Winnow.App.ViewModels;
 
 /// <summary>
 /// User-facing copy for the details modal's IGDB reassignment control.
-/// The control sits in the left column, under the cover art and the install
-/// path, where the user searches IGDB by title and picks the right entry by
-/// hand.
+/// The disclosure opens from a "Wrong game?" link in the action band and the
+/// search field and candidate list draw full width in the right column's rest
+/// band; the Clear line is the one part of the control in the left column,
+/// under the cover and ON DISK.
 /// </summary>
 public static class GameIgdbMatchCopy
 {
@@ -19,11 +20,11 @@ public static class GameIgdbMatchCopy
     /// <summary>Tooltip on the disclosure control.</summary>
     public const string OpenTooltip = "Search IGDB for the right entry";
 
-    /// <summary>Watermark in the title search field.</summary>
-    public const string FieldWatermark = "Search by title";
+    /// <summary>Watermark in the search field, which takes a title or an IGDB id.</summary>
+    public const string FieldWatermark = "Title or IGDB id";
 
-    /// <summary>Accessible name for the title search field.</summary>
-    public const string FieldLabel = "IGDB title search";
+    /// <summary>Accessible name for the search field.</summary>
+    public const string FieldLabel = "IGDB search by title or id";
 
     /// <summary>Face of the button that runs the search.</summary>
     public const string SearchLabel = "Search";
@@ -35,9 +36,10 @@ public static class GameIgdbMatchCopy
     public const string ClearLabel = "Clear";
 
     /// <summary>Tooltip on the clear control.</summary>
-    public const string ClearTooltip = "Return to automatic matching";
+    public const string ClearTooltip = "Return to automatic metadata matching";
 
-    /// <summary>Standing note while a pin is live, read beside the Clear control.</summary>
+    /// <summary>Standing note while a pin is live, drawn in the right column
+    /// above the search disclosure.</summary>
     public const string PinnedNote = "Matched by you.";
 
     /// <summary>Status field while a search is in flight. Words, never a spinner (section 8).</summary>
@@ -49,11 +51,19 @@ public static class GameIgdbMatchCopy
     /// <summary>Shown when a search returned no candidates. Not an error.</summary>
     public const string NoMatchesText = "No results for that title.";
 
+    /// <summary>Mark on the row the id lookup returned, drawn in the outlined
+    /// store-chip idiom before the candidate's name.</summary>
+    public const string IdMatchLabel = "ID MATCH";
+
+    /// <summary>Shown when an all-digit query matched no IGDB entry. Not an error;
+    /// drawn in <c>TextDim</c>, the same register as <see cref="NoMatchesText"/>.</summary>
+    public const string IdMissText = "No IGDB entry for that id.";
+
     /// <summary>Confirmation after a successful assignment. <paramref name="name"/> is the chosen entry's title.</summary>
     public static string AssignedNote(string name) => $"Now using {name}.";
 
     /// <summary>Confirmation after a pin is cleared.</summary>
-    public const string ClearedNote = "Returned to automatic matching.";
+    public const string ClearedNote = "Returned to automatic metadata matching.";
 
     /// <summary>Shown when the clear write did not land. Amber; the controls stay for a retry.</summary>
     public const string ClearFailedText = "Couldn't clear that. Nothing changed.";

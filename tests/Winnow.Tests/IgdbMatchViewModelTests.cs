@@ -270,6 +270,98 @@ public sealed class IgdbMatchViewModelTests
     public void The_field_opens_on_the_title_the_library_shows()
         => Assert.Equal("Prey", Build(new FakeAssignmentService()).Query);
 
+    // ══ Searching by id (TASK-120) ══════════════════════════════════════════
+
+    /// <summary>
+    /// An id IGDB knows leads the list, marked as an id match, and the title
+    /// search still runs beside it.
+    /// </summary>
+    [Fact]
+    public async Task An_id_match_leads_the_list_and_is_marked_as_one()
+    {
+        var service = new FakeAssignmentService
+        {
+            IdResult = Prey2017,
+            Results = [Prey2006],
+        };
+        var vm = Build(service, title: "5678");
+
+        await vm.SearchCommand.ExecuteAsync(null);
+
+        Assert.Equal(5678, service.LookedUpIgdbId);
+        Assert.Equal("5678", service.SearchedFor);
+        Assert.Equal(2, vm.Candidates.Count);
+
+        Assert.Equal(5678, vm.Candidates[0].IgdbId);
+        Assert.True(vm.Candidates[0].IsIdMatch);
+        Assert.False(vm.Candidates[1].IsIdMatch);
+        Assert.False(vm.ShowIdMiss);
+    }
+
+    /// <summary>
+    /// The id hit is not listed twice when the title search returns it too.
+    /// </summary>
+    [Fact]
+    public async Task An_id_match_is_not_repeated_by_the_title_search()
+    {
+        var service = new FakeAssignmentService
+        {
+            IdResult = Prey2017,
+            Results = [Prey2017, Prey2006],
+        };
+        var vm = Build(service, title: "5678");
+
+        await vm.SearchCommand.ExecuteAsync(null);
+
+        Assert.Equal(2, vm.Candidates.Count);
+        Assert.Equal([5678, 1234], vm.Candidates.Select(c => c.IgdbId));
+        Assert.True(vm.Candidates[0].IsIdMatch);
+    }
+
+    /// <summary>
+    /// A title that merely begins with digits is not an id, so the id lookup
+    /// is never asked and the title stays findable by name. This is the case
+    /// that forbids routing every numeric-looking query to the id path.
+    /// </summary>
+    [Theory]
+    [InlineData("1979 Revolution")]
+    [InlineData("7 Days to Die")]
+    public async Task A_title_that_starts_with_digits_never_reaches_the_id_lookup(string title)
+    {
+        var service = new FakeAssignmentService { Results = [Prey2006] };
+        var vm = Build(service, title: title);
+
+        await vm.SearchCommand.ExecuteAsync(null);
+
+        Assert.Null(service.LookedUpIgdbId);
+        Assert.Equal(title, service.SearchedFor);
+        Assert.Single(vm.Candidates);
+        Assert.False(vm.Candidates[0].IsIdMatch);
+        Assert.False(vm.ShowIdMiss);
+    }
+
+    /// <summary>
+    /// An id IGDB has no record for says so on its own line, and does not
+    /// read as a failed search — the title results beside it still stand.
+    /// </summary>
+    [Fact]
+    public async Task An_id_that_matches_nothing_says_so_beside_the_title_results()
+    {
+        var service = new FakeAssignmentService
+        {
+            IdResult = null,
+            Results = [Prey2006],
+        };
+        var vm = Build(service, title: "999999");
+
+        await vm.SearchCommand.ExecuteAsync(null);
+
+        Assert.Equal(999999, service.LookedUpIgdbId);
+        Assert.True(vm.ShowIdMiss);
+        Assert.Single(vm.Candidates);
+        Assert.False(vm.Candidates[0].IsIdMatch);
+    }
+
     private static GameIgdbMatchViewModel Build(
         FakeAssignmentService service,
         string title = "Prey",
@@ -303,6 +395,17 @@ public sealed class IgdbMatchViewModelTests
         {
             SearchedFor = title;
             return Task.FromResult(Results);
+        }
+
+        public IgdbCandidate? IdResult { get; set; }
+
+        public long? LookedUpIgdbId { get; private set; }
+
+        public Task<IgdbCandidate?> GetCandidateByIdAsync(
+            long igdbId, CancellationToken ct = default)
+        {
+            LookedUpIgdbId = igdbId;
+            return Task.FromResult(IdResult);
         }
 
         public Task<IgdbAssignmentOutcome> AssignAsync(

@@ -421,6 +421,10 @@ public sealed class ManualGameFromExecutableTests : IDisposable
             return Task.FromResult(Results);
         }
 
+        public Task<IgdbCandidate?> GetCandidateByIdAsync(
+            long igdbId, CancellationToken ct = default)
+            => Task.FromResult<IgdbCandidate?>(null);
+
         public Task<IgdbAssignmentOutcome> AssignAsync(
             long workId, long igdbId, CancellationToken ct = default)
             => Task.FromResult(IgdbAssignmentOutcome.Failed);

@@ -577,16 +577,6 @@
                                        IsVisible="{Binding HasNote}"
                                        Text="{Binding Note}"/>
 
-                            <Button Classes="link"
-                                    Margin="0,18,0,0"
-                                    HorizontalAlignment="Left"
-                                    IsVisible="{Binding ShowPinned}"
-                                    Command="{Binding ClearCommand}"
-                                    ToolTip.Tip="{Binding ClearTooltip}">
-                                <TextBlock Classes="body" FontSize="12"
-                                           Text="{Binding ClearLabel}"/>
-                            </Button>
-
                             <StackPanel Name="IgdbMatchDisclosure"
                                         Spacing="10"
                                         Margin="0,18,0,0"
@@ -612,6 +602,16 @@
                                            Foreground="{StaticResource TextDim}"
                                            IsVisible="{Binding HasStatus}"
                                            Text="{Binding Status}"/>
+
+                                <!-- An all-digit query that matched no IGDB entry.
+                                     TextDim, not Amber: it is not a failure, the same
+                                     register as the title search's empty result. -->
+                                <TextBlock Classes="body" FontSize="12"
+                                           TextWrapping="Wrap"
+                                           LineHeight="17"
+                                           Foreground="{StaticResource TextDim}"
+                                           IsVisible="{Binding ShowIdMiss}"
+                                           Text="{Binding IdMissText}"/>
 
                                 <TextBlock Classes="body" FontSize="12"
                                            TextWrapping="Wrap"
@@ -647,20 +647,45 @@
 
                                                         <StackPanel Grid.Column="1" Spacing="4"
                                                                     VerticalAlignment="Center">
-                                                            <TextBlock Classes="body" FontSize="12"
-                                                                       TextTrimming="CharacterEllipsis"
-                                                                       Text="{Binding Name}"/>
-                                                            <StackPanel Orientation="Horizontal"
-                                                                        IsVisible="{Binding HasDetailLine}">
-                                                                <TextBlock Classes="data-s"
+                                                            <!-- The id-match chip sits in the Auto column;
+                                                                 the name trims in the star column beside
+                                                                 it. Drawn only when the row was returned
+                                                                 by the id lookup. -->
+                                                            <Grid ColumnDefinitions="Auto,*">
+                                                                <Border Grid.Column="0"
+                                                                        Classes="store-chip"
+                                                                        Margin="0,0,6,0"
+                                                                        IsVisible="{Binding IsIdMatch}">
+                                                                    <TextBlock Text="{Binding IdMatchLabel}"/>
+                                                                </Border>
+                                                                <TextBlock Grid.Column="1"
+                                                                           Classes="body" FontSize="12"
+                                                                           VerticalAlignment="Center"
+                                                                           TextTrimming="CharacterEllipsis"
+                                                                           Text="{Binding Name}"/>
+                                                            </Grid>
+                                                            <!-- The year and platforms sit in a Grid,
+                                                                 not a horizontal StackPanel: a StackPanel
+                                                                 measures children with infinite width, so
+                                                                 TextTrimming never engages and the text
+                                                                 runs past the assign button (TASK-118).
+                                                                 Year is Auto for Plex Mono (§3); platforms
+                                                                 take the star column and trim there. The
+                                                                 full list stays reachable as a tooltip. -->
+                                                            <Grid ColumnDefinitions="Auto,*"
+                                                                  IsVisible="{Binding HasDetailLine}">
+                                                                <TextBlock Grid.Column="0"
+                                                                           Classes="data-s"
                                                                            VerticalAlignment="Center"
                                                                            Text="{Binding YearText}"/>
-                                                                <TextBlock Classes="body" FontSize="11"
+                                                                <TextBlock Grid.Column="1"
+                                                                           Classes="body" FontSize="11"
                                                                            VerticalAlignment="Center"
                                                                            Foreground="{StaticResource TextDim}"
                                                                            TextTrimming="CharacterEllipsis"
+                                                                           ToolTip.Tip="{Binding PlatformsTooltip}"
                                                                            Text="{Binding PlatformsText}"/>
-                                                            </StackPanel>
+                                                            </Grid>
                                                         </StackPanel>
 
                                                         <Button Grid.Column="2" Classes="quiet"
@@ -1146,6 +1171,25 @@
                                        LineHeight="15"
                                        TextWrapping="Wrap"/>
                         </StackPanel>
+
+                        <!-- Clear: returns the work to automatic metadata
+                             matching. Drawn only while a pin stands (§10.9);
+                             FallbackValue=False keeps the control hidden when
+                             IgdbMatch is null, because an unresolvable
+                             sub-property binding would leave IsVisible at its
+                             default of true. Sits at the foot of the identity
+                             facts, inside this column's own scroll region. The
+                             search surface stays in the right column: a
+                             candidate row does not fit 200px. -->
+                        <Button Name="IgdbClearButton"
+                                Classes="link"
+                                HorizontalAlignment="Left"
+                                IsVisible="{Binding IgdbMatch.ShowPinned, FallbackValue=False}"
+                                Command="{Binding IgdbMatch.ClearCommand}"
+                                ToolTip.Tip="{Binding IgdbMatch.ClearTooltip}">
+                            <TextBlock Classes="body" FontSize="12"
+                                       Text="{Binding IgdbMatch.ClearLabel}"/>
+                        </Button>
 
                         </StackPanel>
                         </ScrollViewer>

@@ -69,6 +69,17 @@ public interface IIgdbAssignmentService
     Task<IReadOnlyList<IgdbCandidate>> SearchAsync(string title, CancellationToken ct = default);
 
     /// <summary>
+    /// The one IGDB game carrying this id, shaped as a candidate, or null.
+    /// Null covers three cases that are one answer to the user: no such id,
+    /// a non-positive id, and a failed lookup. Like everything else on this
+    /// seam, it does not throw at a view model. The candidate's
+    /// <see cref="IgdbCandidate.Platforms"/> is empty — the enrichment
+    /// layer's id lookup does not carry platforms; see
+    /// <c>IgdbManualAssignment.GetByIdAsync</c> for why.
+    /// </summary>
+    Task<IgdbCandidate?> GetCandidateByIdAsync(long igdbId, CancellationToken ct = default);
+
+    /// <summary>
     /// Pins the work to the chosen IGDB game and rewrites its metadata.
     /// Every refusal is a status, never an exception.
     /// </summary>

@@ -1109,3 +1109,69 @@ Two code comments said the same wrong thing and were removed in the same change:
 > The cover needs no separate refresh because its key is derived from the stored cover URL.
 
 > Returns the work to automatic resolution. No reload: clearing writes no metadata, so nothing on screen has changed except this control.
+
+### 2026-09-05 — The Clear control moved under the cover art, and its wording gained "metadata" (TASK-117)
+
+`design-system.md` §10.9, `GameIgdbMatchCopy.cs`, `GameIgdbMatchViewModel.cs`. The user asked
+for the move after confirming TASK-106's cover fix: "the clear button could be somewhere
+cleaner. maybe the left column under the cover art." The left column is the object column
+(§10.1) — its art, its store id, its install path — and returning the work to automatic
+metadata matching is an identity fact, so the control sits with them. A single link-styled
+button fits 200px where a candidate row carrying cover, name, year and platforms does not, so
+this is not a reversal of TASK-102: the search surface stays in the right column for the
+reason TASK-102 already states.
+
+`ClearedNote` was carried from "Returned to automatic matching." to "Returned to automatic
+metadata matching." so the confirmation is the past tense of the tooltip's promise.
+
+Superseded strings:
+
+> `ClearTooltip = "Return to automatic matching"`
+
+> `ClearedNote = "Returned to automatic matching."`
+
+Superseded doc comments:
+
+> The control sits in the left column, under the cover art and the install path, where the user searches IGDB by title and picks the right entry by hand.
+
+> Standing note while a pin is live, read beside the Clear control.
+
+> Sits in the left column of the modal, under the cover art and the install path, where the identity facts about the game live. At rest it is one quiet line; the search is disclosed inline, in the modal's own tree, never a flyout (an adorner layer does not exist inside a popup).
+
+> The pin note and the Clear control travel together.
+
+### 2026-09-05 — Three paragraphs in §10.9 corrected, and the id-search behaviour added (TASK-102, TASK-118, TASK-120)
+
+`design-system.md` §10.9.
+
+**The placement paragraph was false since TASK-102.** The disclosure moved to a `Wrong game?`
+link in the action band (Band 3), with the search field and candidate list in the right
+column's rest band. Only the Clear control is in the left column. The paragraph described the
+whole control as living in the left column.
+
+**The row-stacking sentence was false since TASK-102.** The candidate row draws full width in
+the right column on one line rather than stacking in a 200px left column.
+
+**TASK-118 added the platform trim and tooltip.** A horizontal StackPanel measured its children
+with infinite width, so TextTrimming on the platforms never engaged and the text ran under the
+assign button. The detail line is now a Grid with the year in an Auto column and the platforms
+in the star column. The full platform list stays reachable as a tooltip.
+
+**The scroll region height changed from 208px to 238px.** The un-stacked row is 68px (51px
+cover plus 17px of padding and rule) where the stacked row was 83px. At 238 the region shows
+three rows and half of a fourth.
+
+**TASK-120 added the id-search behaviour.** The field now takes a title or an IGDB id. The
+paragraph was added to §10.9 beside the input field description.
+
+Superseded text from §10.9, the placement paragraph:
+
+> **It is in the left column, under the cover and ON DISK.** It shipped under ABOUT and the user asked for it here. Which game this IS is an identity fact, so it sits with the other identity facts in the column §10.1 defines as the object column — its art, its store id, its install path. At rest it is one quiet line under ON DISK.
+
+Superseded text from §10.9, inside "What a candidate row draws":
+
+> The left column is 200px wide, so the row stacks: the cover in its own column, and beside it the name, then the year and platforms, then the assign control.
+
+Superseded text from §10.9, the scroll region paragraph:
+
+> **The candidate list is a scroll region of at most 208px.** IGDB search returns up to 20 results, so more than three is the normal case for a common title. The region shows two rows and most of a third: the row cut part way, together with the scrollbar, is what says there is more rather than the list ending silently.

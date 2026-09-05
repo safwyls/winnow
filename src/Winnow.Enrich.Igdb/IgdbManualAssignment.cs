@@ -65,6 +65,59 @@ public sealed class IgdbManualAssignment
     }
 
     /// <summary>
+    /// Fetches one IGDB game by its id and shapes it as a search candidate,
+    /// so a user who types a known IGDB id gets that exact record rather than
+    /// a title query's guesses. Uses <see cref="IIgdbClient.GetGamesAsync"/>
+    /// — the same call and the same cache <see cref="AssignAsync"/> already
+    /// uses to fetch a chosen game — rather than adding a query of its own.
+    /// A warm cache costs no request.
+    ///
+    /// <para>Returns null for an id IGDB has no record for, a non-positive
+    /// id, and a failed request. None of those is an error; the caller
+    /// renders the same "nothing under that id" answer for all three.
+    /// Soft-fails like <see cref="SearchAsync"/>: catches and logs, and
+    /// rethrows <see cref="OperationCanceledException"/> on the caller's own
+    /// token.</para>
+    ///
+    /// <para>The returned <see cref="IgdbSearchResult.Platforms"/> is always
+    /// empty. <see cref="IgdbGame"/> carries no platforms, and adding
+    /// <c>platforms</c> to the shared <c>GetGamesAsync</c> query body would
+    /// change the cached shape, requiring a bump to
+    /// <c>IgdbClient.GamePayloadVersion</c> — which refetches every game in
+    /// the library against a 4 req/s API (§4.4). The id row is identified by
+    /// its id and its name, so the platform list is not what distinguishes
+    /// it.</para>
+    /// </summary>
+    public async Task<IgdbSearchResult?> GetByIdAsync(
+        long igdbId, CancellationToken ct = default)
+    {
+        if (igdbId <= 0)
+        {
+            return null;
+        }
+
+        try
+        {
+            var games = await _igdb.GetGamesAsync([igdbId], ct: ct);
+            var game = games.FirstOrDefault(g => g.IgdbId == igdbId);
+
+            return game is null
+                ? null
+                : new IgdbSearchResult(
+                    game.IgdbId, game.Name, game.CoverUrl, game.FirstReleaseYear, []);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _log.LogWarning(ex, "IGDB lookup of game {IgdbId} failed; no candidate returned.", igdbId);
+            return null;
+        }
+    }
+
+    /// <summary>
     /// Fetches the chosen game's metadata from IGDB, pins the work and
     /// rewrites its metadata. Refuses when IGDB has no record for the
     /// game, when the work does not exist, or when another work already

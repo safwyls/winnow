@@ -349,6 +349,14 @@ public sealed class IgdbAssignmentModalTests : IDisposable
                     ["PC (Microsoft Windows)", "PlayStation 4"]),
             ]);
 
+        public Task<IgdbCandidate?> GetCandidateByIdAsync(
+            long igdbId, CancellationToken ct = default)
+            => Task.FromResult<IgdbCandidate?>(
+                igdbId == 5678
+                    ? new IgdbCandidate(
+                        5678, "Prey", _coverUrl, 2017, ["PC (Microsoft Windows)", "PlayStation 4"])
+                    : null);
+
         public async Task<IgdbAssignmentOutcome> AssignAsync(
             long workId, long igdbId, CancellationToken ct = default)
         {

@@ -829,10 +829,11 @@ the recourse: search IGDB by title from the modal, pick the right entry, and tha
 pinned so later automatic enrichment passes leave it alone. Clearing the pin returns the game
 to automatic resolution.
 
-**It is in the left column, under the cover and ON DISK.** It shipped under ABOUT and the user
-asked for it here. Which game this IS is an identity fact, so it sits with the other identity
-facts in the column §10.1 defines as the object column — its art, its store id, its install
-path. At rest it is one quiet line under ON DISK.
+**The disclosure is a `Wrong game?` link in the action band (Band 3)**, beside Store page, All
+patch notes, Open folder and Hide. The search field and the candidate list draw full width in
+the right column's rest band, the scrolling star row, which is what makes the bounded-scrolling
+behaviour structural rather than arithmetic. Only the Clear control is in the left column, under
+the cover and ON DISK — §10.1's object column, where the identity facts live.
 
 **Inline, never a flyout.** §10.7's rule, applied again: Avalonia's global `FocusAdorner` does
 not render inside a popup — a popup is its own root and has no adorner layer — so every ring
@@ -843,20 +844,23 @@ which is also §12.3's reason for the action bar.
 the three radii rank by the size of the object they round, and §6's list-view precedent — the
 name, the year in Plex Mono, and the platforms in Jakarta: the modal's own identity-line split,
 §3's rule that every number is Plex. Those four facts are what separate Prey (2006, Xbox 360)
-from Prey (2017, PlayStation 4), which is the failure the whole control exists to fix. The left
-column is 200px wide, so the row stacks: the cover in its own column, and beside it the name,
-then the year and platforms, then the assign control. An entry IGDB gave neither a year nor a
-platform draws no second line. The covers ride the existing image path and add no new one:
+from Prey (2017, PlayStation 4), which is the failure the whole control exists to fix. The row
+draws full width in the right column on one line: the 34x51 cover, then the name over the year
+and platforms, then the assign control in a trailing Auto column. The platforms trim with an
+ellipsis inside the text column and carry the full list as a tooltip, because a trimmed platform
+list is how a user tells *Fortnite* (2018, Android/PC) from *Fortnite* (2020, everything); the
+row's height comes from the cover, so a short and a long subtext measure the same. An entry IGDB
+gave neither a year nor a platform draws no second line. The covers ride the existing image path and add no new one:
 IGDB's cover URL carries the asset's image id, and an image-id cover key is one the registered
 IGDB cover source already answers without credentials. They draw at full saturation — the
 dormancy ramp is about your own library and none of these candidates is in it yet.
 
-**The candidate list is a scroll region of at most 208px.** IGDB search returns up to 20
-results, so more than three is the normal case for a common title. The region shows two rows
-and most of a third: the row cut part way, together with the
-scrollbar, is what says there is more rather than the list ending silently. Each row's assign
-control is still a Tab stop, and a row reached by Tab is scrolled into view, so focus is never
-left off screen.
+**The candidate list is a scroll region of at most 238px.** IGDB search returns up to 20
+results, so more than three is the normal case for a common title. A row is 68px (the 51px
+cover plus padding and rule), so the region shows three rows and half of a fourth; the cut row
+together with the scrollbar is what says there is more rather than the list ending silently.
+Each row's assign control is still a Tab stop, and a row reached by Tab is scrolled into view,
+so focus is never left off screen.
 
 **Six states.** Assigned reloads the library and reopens the modal on the same ownership,
 carrying its confirmation across, so the user sees the corrected cover, title, year and
@@ -885,15 +889,26 @@ Nothing is evicted from the cover cache: a `CoverKey.Igdb` names the artwork ass
 pinning moves the tile to a key that has never been fetched, and clearing returns it to the
 Steam key whose cached bytes are still the right bytes.
 
-**Clear is drawn only while a pin stands**, read when the modal opens. Clearing writes no
-metadata — it only stops the pin — but it reloads the library and reopens the modal, because
-dropping the pin changes the cover key back to the store capsule and only a reload draws it.
-The metadata the pin wrote stays in place and the next automatic pass fills what is empty
-around it.
+**Clear is drawn only while a pin stands**, read when the modal opens. It sits in the left
+column, under the cover and ON DISK, at the foot of the identity facts and inside that
+column's own scroll region; the search surface it used to sit above stays in the right column,
+because a candidate row carrying cover, name, year and platforms does not fit 200px and a
+single link-styled button does. Clearing writes no metadata — it only stops the pin — but it
+reloads the library and reopens the modal, because dropping the pin changes the cover key back
+to the store capsule and only a reload draws it. The metadata the pin wrote stays in place and
+the next automatic pass fills what is empty around it.
 
 **The input field** takes §16.3's field treatment: `Well` cut into the card, found by its
 `Line` border and lit by a `Volt` ring on a border whose thickness never changes (§10.7,
-§14.7). `Enter` runs the search.
+§14.7). `Enter` runs the search. **The field takes a title or an IGDB id.** An all-digit query
+runs both the id lookup and the title search, because numeric titles are real (*2064*, *1979
+Revolution*, *428*). A hit from the id lookup leads the list wearing a chip mark in the
+outlined store-chip idiom; the title results follow beneath it, with the id-matched row removed
+from them if it appeared there too. An all-digit query that named no IGDB entry gets its own
+`TextDim` line above the results, not `Amber`, for the same reason the empty title search is
+not a failure. The id-match row carries no platform list, because the shared metadata query
+does not return platforms and widening it would force a full re-fetch against a rate-limited
+API.
 
 ---
 

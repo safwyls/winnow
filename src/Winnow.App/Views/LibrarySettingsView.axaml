@@ -585,24 +585,26 @@
                                                                 <TextBlock Classes="body-l"
                                                                            TextTrimming="CharacterEllipsis"
                                                                            Text="{Binding Name}"/>
-                                                                <!-- Year in Plex
-                                                                     Mono, platforms
-                                                                     in Jakarta:
-                                                                     the identity-
-                                                                     line split
-                                                                     (§3). -->
-                                                                <StackPanel Orientation="Horizontal"
-                                                                            IsVisible="{Binding HasDetailLine}">
-                                                                    <TextBlock Classes="data-s"
+                                                                <!-- Year in Plex Mono, platforms in Jakarta:
+                                                                     the identity-line split (§3). A Grid, not
+                                                                     a horizontal StackPanel, because a StackPanel
+                                                                     measures children with infinite width and
+                                                                     TextTrimming never engages (TASK-118). -->
+                                                                <Grid ColumnDefinitions="Auto,*"
+                                                                      IsVisible="{Binding HasDetailLine}">
+                                                                    <TextBlock Grid.Column="0"
+                                                                               Classes="data-s"
                                                                                Foreground="{StaticResource TextDim}"
                                                                                VerticalAlignment="Center"
                                                                                Text="{Binding YearText}"/>
-                                                                    <TextBlock Classes="body" FontSize="11"
+                                                                    <TextBlock Grid.Column="1"
+                                                                               Classes="body" FontSize="11"
                                                                                VerticalAlignment="Center"
                                                                                Foreground="{StaticResource TextDim}"
                                                                                TextTrimming="CharacterEllipsis"
+                                                                               ToolTip.Tip="{Binding PlatformsTooltip}"
                                                                                Text="{Binding PlatformsText}"/>
-                                                                </StackPanel>
+                                                                </Grid>
                                                             </StackPanel>
 
                                                             <Button Grid.Column="2"

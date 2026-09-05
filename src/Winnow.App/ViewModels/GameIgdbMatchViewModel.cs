@@ -1,3 +1,4 @@
+using System.Globalization;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -14,9 +15,10 @@ namespace Winnow.App.ViewModels;
 /// entry, or none. Search by title, pick the right one, and pin it so later
 /// enrichment passes leave it alone.
 ///
-/// <para>Sits in the left column of the modal, under the cover art and the
-/// install path, where the identity facts about the game live. At rest it is
-/// one quiet line; the search is disclosed inline, in the modal's own tree,
+/// <para>The disclosure opens from a "Wrong game?" link in the action band
+/// (Band 3) and the search field and candidate list draw full width in the
+/// right column's rest band; Clear alone sits in the left column, under the
+/// identity facts. The search is disclosed inline, in the modal's own tree,
 /// never a flyout (an adorner layer does not exist inside a popup).</para>
 ///
 /// <para>Optional in the way every seam on this modal is. No service and no
@@ -109,13 +111,22 @@ public partial class GameIgdbMatchViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasStatus))]
     [NotifyPropertyChangedFor(nameof(ShowNoMatches))]
+    [NotifyPropertyChangedFor(nameof(ShowIdMiss))]
     public partial string? Status { get; set; }
 
     /// <summary>A refusal sentence, drawn in Amber. The controls stay in place for a retry.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasProblem))]
     [NotifyPropertyChangedFor(nameof(ShowNoMatches))]
+    [NotifyPropertyChangedFor(nameof(ShowIdMiss))]
     public partial string? Problem { get; set; }
+
+    /// <summary>True when the query was all digits and the id lookup returned
+    /// nothing. Drawn as its own line in <c>TextDim</c> beside the title
+    /// results; it is not a failure.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowIdMiss))]
+    public partial bool IdMissed { get; set; }
 
     public bool HasCandidates => Candidates.Count > 0;
 
@@ -125,7 +136,8 @@ public partial class GameIgdbMatchViewModel : ObservableObject
 
     public bool HasProblem => Problem is not null;
 
-    /// <summary>The pin note and the Clear control travel together.</summary>
+    /// <summary>Gates the Clear control in the left column. The standing note
+    /// has its own <c>HasNote</c> gate in the right column.</summary>
     public bool ShowPinned => IsPinned;
 
     /// <summary>
@@ -135,6 +147,42 @@ public partial class GameIgdbMatchViewModel : ObservableObject
     /// </summary>
     public bool ShowNoMatches
         => Searched && Candidates.Count == 0 && Status is null && Problem is null;
+
+    /// <summary>
+    /// True when the id-miss line should be drawn: the id lookup found
+    /// nothing, nothing is in flight and no refusal is standing.
+    /// </summary>
+    public bool ShowIdMiss => IdMissed && Status is null && Problem is null;
+
+    public string IdMissText => GameIgdbMatchCopy.IdMissText;
+
+    /// <summary>
+    /// Returns the IGDB id when <paramref name="query"/> is composed
+    /// entirely of digits and parses to a positive <see cref="long"/>.
+    /// Anything else — including a title that merely starts with
+    /// digits — returns null and is treated as a title search.
+    /// </summary>
+    public static long? IgdbIdIn(string? query)
+    {
+        var trimmed = query?.Trim();
+        if (string.IsNullOrEmpty(trimmed))
+        {
+            return null;
+        }
+
+        foreach (var character in trimmed)
+        {
+            if (character is < '0' or > '9')
+            {
+                return null;
+            }
+        }
+
+        return long.TryParse(trimmed, NumberStyles.None, CultureInfo.InvariantCulture, out var id)
+            && id > 0
+            ? id
+            : null;
+    }
 
     /// <summary>The disclosure control's label, which changes with the open state.</summary>
     public string ToggleLabel => IsOpen ? GameIgdbMatchCopy.CloseLabel : GameIgdbMatchCopy.OpenLabel;
@@ -201,11 +249,29 @@ public partial class GameIgdbMatchViewModel : ObservableObject
         {
             Problem = null;
             Note = null;
+            IdMissed = false;
             Status = GameIgdbMatchCopy.SearchingStatus;
 
-            var results = await _service.SearchAsync(Query.Trim(), ct);
+            var query = Query.Trim();
 
-            Candidates = [.. results.Select(r => new IgdbCandidateViewModel(r, _covers))];
+            // Numeric titles are real (2064, 1979 Revolution, 428), so an
+            // all-digit query runs the id lookup AND the title search
+            // rather than routing digits to the id path alone.
+            var igdbId = IgdbIdIn(query);
+            IgdbCandidateViewModel? idMatch = null;
+            if (igdbId is { } id
+                && await _service.GetCandidateByIdAsync(id, ct) is { } hit)
+            {
+                idMatch = new IgdbCandidateViewModel(hit, _covers, isIdMatch: true);
+            }
+
+            var results = await _service.SearchAsync(query, ct);
+            var titles = results
+                .Where(r => idMatch is null || r.IgdbId != idMatch.IgdbId)
+                .Select(r => new IgdbCandidateViewModel(r, _covers));
+
+            Candidates = idMatch is null ? [.. titles] : [idMatch, .. titles];
+            IdMissed = igdbId is not null && idMatch is null;
             Searched = true;
             RequestCovers();
         }
@@ -343,12 +409,14 @@ public partial class IgdbCandidateViewModel : ObservableObject
     private readonly ICoverCache? _covers;
     private readonly IgdbCandidate _candidate;
 
-    public IgdbCandidateViewModel(IgdbCandidate candidate, ICoverCache? covers = null)
+    public IgdbCandidateViewModel(
+        IgdbCandidate candidate, ICoverCache? covers = null, bool isIdMatch = false)
     {
         ArgumentNullException.ThrowIfNull(candidate);
 
         _candidate = candidate;
         _covers = covers;
+        IsIdMatch = isIdMatch;
 
         CoverKey = IgdbImageUrl.ImageId(candidate.CoverUrl) is { } imageId
             ? Winnow.Covers.CoverKey.Igdb(imageId)
@@ -358,6 +426,15 @@ public partial class IgdbCandidateViewModel : ObservableObject
     public long IgdbId => _candidate.IgdbId;
 
     public string Name => _candidate.Name;
+
+    /// <summary>
+    /// True when this row was returned by the id lookup rather than the
+    /// title search. It is marked with a chip and placed first in the
+    /// candidate list.
+    /// </summary>
+    public bool IsIdMatch { get; }
+
+    public string IdMatchLabel => GameIgdbMatchCopy.IdMatchLabel;
 
     /// <summary>Null when IGDB named no cover, or named one whose URL does not carry an image id.</summary>
     public CoverKey? CoverKey { get; }
@@ -384,6 +461,11 @@ public partial class IgdbCandidateViewModel : ObservableObject
     public bool HasPlatforms => _candidate.Platforms.Count > 0;
 
     public string PlatformsText => string.Join(", ", _candidate.Platforms);
+
+    /// <summary>The full platform list, surfaced as a tooltip because the
+    /// platforms text trims inside the star column. Null when there are no
+    /// platforms, so an entry with none opens no empty tooltip.</summary>
+    public string? PlatformsTooltip => HasPlatforms ? PlatformsText : null;
 
     /// <summary>An entry with neither a year nor a platform draws no detail line.</summary>
     public bool HasDetailLine => HasYear || HasPlatforms;

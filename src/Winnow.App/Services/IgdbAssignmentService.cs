@@ -8,7 +8,8 @@ namespace Winnow.App.Services;
 
 /// <summary>
 /// Adapter over <see cref="IgdbManualAssignment"/>.
-/// <see cref="IgdbManualAssignment.SearchAsync"/> and
+/// <see cref="IgdbManualAssignment.SearchAsync"/>,
+/// <see cref="IgdbManualAssignment.GetByIdAsync"/> and
 /// <see cref="IgdbManualAssignment.AssignAsync"/> already soft-fail; the
 /// two pass-through reads (<see cref="ClearAsync"/> and
 /// <see cref="GetPinAsync"/>) do not, so they are caught here. No call on
@@ -39,6 +40,18 @@ public sealed class IgdbAssignmentService : IIgdbAssignmentService
             .. results.Select(r => new IgdbCandidate(
                 r.IgdbId, r.Name, r.CoverUrl, r.FirstReleaseYear, r.Platforms)),
         ];
+    }
+
+    /// <inheritdoc/>
+    public async Task<IgdbCandidate?> GetCandidateByIdAsync(
+        long igdbId, CancellationToken ct = default)
+    {
+        var result = await _assignment.GetByIdAsync(igdbId, ct);
+
+        return result is null
+            ? null
+            : new IgdbCandidate(
+                result.IgdbId, result.Name, result.CoverUrl, result.FirstReleaseYear, result.Platforms);
     }
 
     /// <inheritdoc/>
