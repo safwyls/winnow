@@ -602,13 +602,32 @@
                          content height and never scrolls; the rest band drew
                          outside the card and was cut off at the window edge.
                          Verified on Avalonia 11.3.20. -->
-                    <!-- Breathing room is the content's margin, not ScrollViewer
-                         padding (padding is not counted in desired height). -->
+                    <!-- Breathing room inside the band is a margin on the
+                         content, not a Padding on the ScrollViewer.
+                         ScrollContentPresenter does not deflate by Padding in
+                         measure or arrange, so the property is inert.
+
+                         The band's scrollbar is drawn over its right edge, so
+                         anything in a trailing column sits under it: the close
+                         glyph on each disclosed section's header row, and the
+                         per-row Separate, Ungroup and Patch notes buttons. The
+                         gutter is therefore on the band's content — one margin
+                         covering every section in the band, the ones here now
+                         and the ones added later — rather than one solved per
+                         header.
+
+                         Not carried by Classes="inner". That class is §9.1's
+                         opt-out, saying this scrollbar's edge is a divider of
+                         ours rather than the window's; the only property it
+                         could set for a gutter is the ScrollViewer's Padding,
+                         which is inert as noted above, and a style reaching
+                         the content instead would lose to the local Margin
+                         values that content already carries. -->
                     <ScrollViewer Grid.Row="2"
                                   Classes="inner"
                                   HorizontalScrollBarVisibility="Disabled"
                                   VerticalScrollBarVisibility="Auto">
-                    <StackPanel>
+                    <StackPanel Margin="{StaticResource InnerScrollGutter}">
 
                         <StackPanel IsVisible="{Binding ShowIgdbMatch}">
                         <StackPanel DataContext="{Binding IgdbMatch}"
@@ -637,7 +656,7 @@
                                      names the surface. -->
                                 <Grid ColumnDefinitions="*,Auto">
                                     <TextBlock Grid.Column="0"
-                                               Classes="label"
+                                               Classes="label section"
                                                VerticalAlignment="Center"
                                                Text="{Binding SectionHeading}"/>
                                     <Button Grid.Column="1" Classes="quiet"
@@ -877,7 +896,7 @@
                             <StackPanel Spacing="10"
                                         DataContext="{Binding Coverage}"
                                         x:DataType="vm:GameCoverageViewModel">
-                                <TextBlock Classes="label" Text="{Binding Heading}"/>
+                                <TextBlock Classes="label section" Text="{Binding Heading}"/>
 
                                 <Grid ColumnDefinitions="Auto,Auto,*,Auto" ColumnSpacing="12">
                                     <TextBlock Grid.Column="0" Classes="label" FontSize="10"
@@ -973,7 +992,7 @@
                             <StackPanel Spacing="10"
                                         DataContext="{Binding Expansions}"
                                         x:DataType="vm:GameExpansionsViewModel">
-                                <TextBlock Classes="label" Text="{Binding ExtendsHeading}"/>
+                                <TextBlock Classes="label section" Text="{Binding ExtendsHeading}"/>
                                 <ContentControl Content="{Binding Extends}">
                                     <ContentControl.ContentTemplate>
                                         <DataTemplate DataType="vm:ExpansionRowViewModel">
@@ -1025,7 +1044,7 @@
                             <StackPanel Spacing="10"
                                         DataContext="{Binding Expansions}"
                                         x:DataType="vm:GameExpansionsViewModel">
-                                <TextBlock Classes="label" Text="{Binding Heading}"/>
+                                <TextBlock Classes="label section" Text="{Binding Heading}"/>
                                 <TextBlock Classes="body" FontSize="12"
                                            TextWrapping="Wrap"
                                            Foreground="{StaticResource TextDim}"
@@ -1101,7 +1120,7 @@
                             <StackPanel Spacing="10"
                                         DataContext="{Binding Lists}"
                                         x:DataType="lists:GameListsViewModel">
-                                <TextBlock Classes="label" Text="{Binding Heading}"/>
+                                <TextBlock Classes="label section" Text="{Binding Heading}"/>
 
                                 <TextBlock Classes="body" FontSize="12"
                                            TextWrapping="Wrap"
@@ -1130,7 +1149,7 @@
                             </StackPanel>
 
                             <StackPanel Spacing="7">
-                                <TextBlock Classes="label" Text="ABOUT"/>
+                                <TextBlock Classes="label section" Text="ABOUT"/>
                                 <SelectableTextBlock Classes="body copyable"
                                            Focusable="True"
                                            Foreground="{StaticResource TextDim}"
@@ -1150,7 +1169,7 @@
                             <!-- Updates list. Patch-notes links only appear when the
                                  update carries a page (§5.2). -->
                             <StackPanel Spacing="4" IsVisible="{Binding HasUpdates}">
-                                <TextBlock Classes="label" Text="{Binding UpdatesLabel}"/>
+                                <TextBlock Classes="label section" Text="{Binding UpdatesLabel}"/>
                                 <ItemsControl ItemsSource="{Binding Updates}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate DataType="vm:UpdateEventViewModel">

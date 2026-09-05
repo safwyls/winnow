@@ -626,6 +626,26 @@ whatever height the card has and scrolls inside it. An Auto row is measured agai
 a ScrollViewer inside one takes its content's full height and never scrolls — that is what let
 long content draw past the card and be cut off at the window edge (measured on Avalonia 11.3.20).
 
+Avalonia's Fluent ScrollViewer draws its scrollbar over the content while auto-hide is on: the
+content presenter is given both spans, so the bar takes no column of its own (verified against
+Avalonia 11.3.20's own theme). Anything in the trailing edge of the right column's rest band —
+the close glyph on each disclosed section's header row (§10.9, §10.10), and the per-row
+Separate, Ungroup and Patch notes buttons — sits under that bar. The rest band's content
+therefore carries a 20px gutter on the right; the token is `InnerScrollGutter`. 20 is 12, the
+width Fluent's track swells to under the pointer, plus 8, §4's own spacing step — the 8 is
+what makes the clearance read as deliberate space rather than as a control that merely stopped
+touching the bar. The gutter is one margin on the band's content rather than one per header, so
+every section the band carries now and every section added later is clear of the bar without
+solving it again. It is not carried by the `ScrollViewer.inner` class: that class is §9.1's
+opt-out, saying this scrollbar's edge is a divider of ours rather than the window's, and the
+only property it could set for a gutter is the ScrollViewer's own `Padding`, which
+`ScrollContentPresenter` ignores in measure and in arrange. The cover wall already records the
+same finding by setting `Padding="0"` and clearing the bar with the wall's own margin; a
+class-level style reaching the content instead would lose to the local `Margin` values that
+content already carries, which is worse than an explicit margin because it would fail silently
+on exactly the regions that need it. The modal's own close button, beside the title in Band 1,
+is outside the scroll region and needs none of this.
+
 ### 10.2 Signature: the gap rail
 
 **The one thing Winnow can draw that nothing else can.** Storefronts hold your last-played date
@@ -677,6 +697,24 @@ section. Choosing a row whose section is already open scrolls the section into v
 than closing it: closing is the close control's job. The close control returns focus to the
 `More` trigger — the control the section was opened from, on the strip outside the rest band's
 scroll region, so it is always drawn.
+
+**A heading that names a section is set in `TextDim`**, the same ink as the `×` glyph beside
+it, so the header reads as chrome rather than as the section's own content. The set is IGDB
+MATCH, EDIT DETAILS, ALSO COVERS, EXTENDS, EXPANSIONS, LISTS, ABOUT and the updates heading.
+A label that names a value — PLAYED and SINCE YOU PLAYED on the gap rail, STEAM APPID, ON
+DISK, the coverage total's label, and the per-field labels in the editor — is a different thing
+and is not in that set. The ink is stated at the heading by the class `label section`, declared
+once in `tokens.axaml`, rather than left to `label`'s own default, so a section heading and the
+close glyph beside it cannot drift apart if the value labels are ever retuned. `TextFaint` is
+not available: §8 already says do not dim further, and the figures confirm it. `TextFaint`
+measures 3.63 / 3.60 / 3.31 / 3.28 across Winnow / Nightshift / Tungsten / Box art on the
+flat card, and 2.86 / 3.01 / 2.67 / 2.60 over the brightest cover the art-backed card of §5.5
+can carry — under AA in every theme before the art is involved at all. `TextDim` measures
+5.88 / 6.82 / 6.44 / 6.10 flat and 4.63 / 5.71 / 5.19 / 4.83 over that same brightest cover.
+A heading at label size is 11px SemiBold, which is not WCAG large text (large text begins at
+14pt bold), so the 4.5:1 bar applies and the 3:1 large-text allowance does not.
+`ThemeContrastTests.The_section_heading_takes_the_quietest_ink_that_still_clears_AA` pins both
+halves per theme.
 
 **The disclosure is `Button.secondary`, not `Button.link`.** `Store page` and `All patch notes`
 are outbound links and draw in `Azure`; the disclosure acts here rather than leaving, so it

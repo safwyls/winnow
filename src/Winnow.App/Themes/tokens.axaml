@@ -393,6 +393,32 @@
          10 = the 8px Windows resize frame (SM_CXFRAME + SM_CXPADDEDBORDER) with
          2px of slack, measured against this window rather than assumed. -->
     <Thickness x:Key="ScrollBarEdgeInset">0,0,10,10</Thickness>
+
+    <!-- The gutter an interior scroll region's content takes so that the
+         region's own scrollbar is not drawn on top of it. Distinct from
+         ScrollBarEdgeInset above: that inset is about pixels the OS resize
+         border owns at the window edge; this gutter is about our own scrollbar
+         being drawn over our own content, and the two are independent — an
+         interior region opts out of the inset and still needs the gutter.
+
+         The mechanism, verified against Avalonia 11.3.20's Fluent theme rather
+         than assumed: while AllowAutoHide is on (the default), the ScrollViewer
+         template gives PART_ContentPresenter Grid.ColumnSpan="2" and
+         Grid.RowSpan="2", so the scrollbar is painted OVER the content instead
+         of taking a column beside it.
+
+         20 = 12 (ScrollBarSize above — the width Fluent's track swells to
+         under the pointer) + 8 (§4's own spacing step). The 8 is what makes
+         the clearance read as deliberate space rather than as a control that
+         merely stopped touching the bar.
+
+         Spent as a margin on the content and never as Padding on the
+         ScrollViewer: ScrollContentPresenter in 11.3.20 does not deflate by
+         Padding in either measure or arrange, so a Padding value there is
+         inert. The cover wall in MainWindow.axaml already works this way — it
+         sets Padding="0" and clears the bar with the wall's own margin. -->
+    <Thickness x:Key="InnerScrollGutter">0,0,20,0</Thickness>
+
     <!-- Fluent binds this to Rectangle.StrokeThickness, which is a double —
          a Thickness here type-casts at runtime, not at build. -->
     <x:Double x:Key="ScrollBarTrackBorderThemeThickness">0</x:Double>
@@ -553,6 +579,32 @@
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="FontSize" Value="{StaticResource LabelSize}"/>
             <Setter Property="LetterSpacing" Value="0.44"/>
+            <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
+        </Style>
+
+        <!-- .section marks a heading that NAMES A SECTION — in the detail
+             modal those are IGDB MATCH, EDIT DETAILS, ALSO COVERS, EXTENDS,
+             EXPANSIONS, LISTS, ABOUT and the updates heading — as against a
+             plain .label, which names a VALUE: PLAYED, STEAM APPID, ON DISK,
+             the coverage total's label, and the per-field labels in the
+             metadata editor.
+
+             The ink is TextDim, §2's labels-and-metadata ink. Stated here
+             rather than left to .label's own default so that a section heading
+             and the close glyph beside it cannot drift apart if .label is ever
+             retuned for the value labels.
+
+             The ink below it is not available. §8 says do not dim further, and
+             measured: TextFaint is 3.63 / 3.60 / 3.31 / 3.28 across Winnow /
+             Nightshift / Tungsten / Box art on the flat card, and 2.86 / 3.01
+             / 2.67 / 2.60 over the brightest cover the art-backed card can
+             carry (§5.5) — under AA in every theme with the art out of it
+             entirely. TextDim is 5.88 / 6.82 / 6.44 / 6.10 flat and 4.63 /
+             5.71 / 5.19 / 4.83 over that brightest cover. A heading at label
+             size is 11px SemiBold, which is not WCAG large text (14pt bold is
+             the threshold), so the 4.5:1 bar applies and the 3:1 large-text
+             allowance does not. -->
+        <Style Selector=":is(TextBlock).label.section">
             <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
         </Style>
 

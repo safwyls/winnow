@@ -1056,6 +1056,42 @@ public class ThemeContrastTests
     }
 
     /// <summary>
+    /// A section heading in the detail modal is set in <c>TextDim</c>, the
+    /// quietest ink that clears AA (4.5:1) over the brightest cover the
+    /// art-backed card (§5.5) can carry, in every theme. <c>TextFaint</c>
+    /// does not clear it — and does not clear it on the flat card either, so
+    /// the exclusion is by measurement rather than by preference. The test
+    /// holds the choice so it cannot drift into the quieter ink later.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(ThemeIds))]
+    public void The_section_heading_takes_the_quietest_ink_that_still_clears_AA(string id)
+    {
+        var theme = WinnowThemes.ById(id);
+        var t = theme.Tokens(transparency: 0);
+
+        // White is the worst cover for a light ink, and the exhaustive
+        // 256-grey walk that proves the bracket is the test directly above,
+        // so this one takes the endpoint.
+        var field = Over(t["ArtVeil"], White);
+
+        Assert.True(
+            Contrast(t["TextDim"], field) >= 4.5,
+            $"{id}: a section heading measures {Contrast(t["TextDim"], field):0.00}:1 over the brightest cover");
+
+        // 11px SemiBold is not WCAG large text (that starts at 14pt bold), so
+        // the 4.5:1 bar applies rather than 3:1. TextFaint is excluded by
+        // measurement, not by preference — it fails with no art behind the
+        // card at all, let alone over a bright cover.
+        Assert.True(
+            Contrast(t["TextFaint"], t["Surface"]) < 4.5,
+            $"{id}: TextFaint measures {Contrast(t["TextFaint"], t["Surface"]):0.00}:1 on the flat card");
+        Assert.True(
+            Contrast(t["TextFaint"], field) < 4.5,
+            $"{id}: TextFaint measures {Contrast(t["TextFaint"], field):0.00}:1 over the brightest cover");
+    }
+
+    /// <summary>
     /// A game with no art draws no image, so the veil composites onto the
     /// opaque <c>Surface</c> the back face and the card already paint. The
     /// veil IS <c>Surface</c>, so that composite is <c>Surface</c> bit-for-bit

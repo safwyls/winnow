@@ -155,7 +155,7 @@
              identifies the surface. -->
         <Grid ColumnDefinitions="*,Auto">
             <TextBlock Grid.Column="0"
-                       Classes="label"
+                       Classes="label section"
                        VerticalAlignment="Center"
                        Text="{Binding SectionHeading}"/>
             <Button Grid.Column="1" Classes="quiet"
@@ -189,9 +189,12 @@
                    IsVisible="{Binding HasProblem}"
                    Text="{Binding Problem}"/>
 
+        <!-- The editor's rows draw inside the details modal's rest band and
+             take that band's own gutter. A margin of their own would be
+             counted twice and would step the editor's rows in from every other
+             section in the band. -->
         <ItemsControl ItemsSource="{Binding Rows}"
-                      IsVisible="{Binding HasRows}"
-                      Margin="0,0,4,0">
+                      IsVisible="{Binding HasRows}">
             <ItemsControl.DataTemplates>
 
                 <DataTemplate DataType="vm:MetadataTextRowViewModel">
