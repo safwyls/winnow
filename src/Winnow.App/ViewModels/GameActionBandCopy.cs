@@ -1,19 +1,15 @@
 namespace Winnow.App.ViewModels;
 
 /// <summary>
-/// User-facing copy for the details modal's action band overflow control.
-/// The band keeps the primary action, Store page and All patch notes visible;
-/// Open folder, Wrong game?, Edit details and Hide are folded behind this
-/// disclosure and drawn inline beneath the band when it is open.
+/// Copy for the details modal's action band trigger. Play, Store page and
+/// All patch notes stay on the strip; Open folder, Wrong game?, Edit details
+/// and Hide fold behind the menu this trigger opens.
 /// </summary>
 public static class GameActionBandCopy
 {
-    /// <summary>Face of the disclosure control when the list is closed.</summary>
+    /// <summary>The trigger's face — always this word, because the menu owns its open state.</summary>
     public const string OpenLabel = "More";
 
-    /// <summary>Face of the disclosure control while the list is open.</summary>
-    public const string CloseLabel = "Close";
-
-    /// <summary>Tooltip on the disclosure control.</summary>
+    /// <summary>Tooltip on the trigger.</summary>
     public const string OpenTooltip = "Folder, corrections and hide";
 }

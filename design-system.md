@@ -661,43 +661,48 @@ nothing at all.
 uninstalled 60GB game promises something the next hour will not deliver. **No appid means no
 primary action at all, never an inert button.**
 
-Beside it, `Store page` and `All patch notes` in `Azure`, and the `More` disclosure — four
-controls on the strip. `Open folder`, `Wrong game?`, `Edit details` and `Hide` are folded
-behind the disclosure and drawn in a vertical, left-aligned column directly beneath the strip,
-above the divider that separates Band 3 from the rest band. The `More` control becomes `Close`
-while the list is open; its tooltip is `Folder, corrections and hide`.
+Beside it, `Store page` and `All patch notes` in `Azure`, and the `More` control — four
+controls on the strip. `More` opens a menu whose rows are `Open folder`, `Wrong game?`,
+`Edit details` and `Hide`, in that order. A row is drawn only when it has something to do:
+`Open folder` when the game is on disk, `Wrong game?` and `Edit details` when their controls
+exist, `Hide` when the library handed its command over. A row with nothing behind it is not
+drawn rather than drawn inert. The trigger's face does not change — the menu owns whether it
+is open, so the button always reads `More`. Its tooltip is `Folder, corrections and hide`.
 
 **The disclosure is `Button.secondary`, not `Button.link`.** `Store page` and `All patch notes`
 are outbound links and draw in `Azure`; the disclosure acts here rather than leaving, so it
 takes the panel's `Text`-ink treatment. `Button.secondary` and `Button.link` have identical
 geometry, so the choice costs no width.
 
-**The disclosed list is inline, never a flyout** — §10.7's rule and §12.3's standing reason:
-Avalonia's global `FocusAdorner` does not render inside a popup, because a popup is its own
-root and has no adorner layer, so every ring in a menu here would have to be hand-drawn. Each
-folded control keeps the idiom it already had.
+**The menu's presenter wears the `actions` class** from `Themes/controls.axaml` — the same
+treatment the library grid's context menu wears, one set of setters covering both. The modal
+and the grid agree instead of being two grammars.
 
-**The disclosed list sits above the rest band's scroll region**, not inside it. An action must
-not scroll out from under the control that disclosed it, so the list needs no `BringIntoView`,
-unlike the surfaces §10.9 and §10.10 put in the rest band. Band 3 is the right column's Auto
-row and the rest band is the star row below it; opening the list grows the Auto row by 144px
-and the rest band absorbs it by scrolling — the same structural property §10.1 already relies
-on.
+**The menu floats.** It is not in any row of the card's grid, so opening it reflows nothing:
+Band 3's height does not change and the rest band is not pushed. A further action costs one
+row of menu height and no width at all. Measured, the menu card is 134 x 103px at three rows
+and 134 x 134px at four — about 31px per row, with no cost to the modal's layout at all.
 
-**Vertical is the growth answer.** A further control costs one row of height and no horizontal
-budget, so the strip cannot be pushed back over the column's edge by the next addition.
+**The mark on the row the keyboard is on is drawn inside the item template**, never by the
+adorner layer (§10.7): one step of fill above the menu's own ground (`SurfaceHigh`) plus a
+2px `Volt` edge on a border whose thickness never changes. It answers two states, because a
+menu opened from a button puts focus on its first row without selecting it: `:selected` covers
+the pointer and the arrow walk, `:focus` covers where the keyboard lands when the menu opens.
+Measured, not assumed — `docs/spikes/details-action-band-menu.md`.
 
 **What earns a place on the strip.** The band is "GET ME IN". A control belongs on the strip
 only if pressing it moves the user toward playing this game now: the primary action, and the
 outbound links that answer what this is and what changed before launching. Everything else
-joins the disclosure. A new control joins the disclosure by default; putting one on the strip
-requires both that it passes that test and that the strip is re-measured and still fits 420px.
-See `docs/spikes/details-action-band-width.md` for the measurements.
+joins the menu. A new control joins the menu by default; putting one on the strip requires
+both that it passes that test and that the strip is re-measured and still fits 420px. See
+`docs/spikes/details-action-band-width.md` for the measurements.
 
-**Keyboard.** Tab order follows declaration order (§10.7): primary action, `Store page`, `All
-patch notes`, `More`, then `Open folder`, `Wrong game?`, `Edit details`, `Hide`. While the
-list is closed those four are not drawn and are therefore not Tab stops — the same disclosure
-contract §10.9 and §10.10 already use.
+**Keyboard.** Tab order on the strip follows declaration order (§10.7): primary action,
+`Store page`, `All patch notes`, `More`. The four menu rows are never Tab stops; they are
+reached by opening the menu. Opening it puts focus on the first row that is drawn, skipping
+any that is not. Up and Down walk every drawn row in declaration order and wrap round rather
+than dead-ending. Enter runs the row and closes the menu. Escape closes it. Both routes hand
+focus back to the trigger.
 
 The folder goes through the launcher's directory entry point as a path, never a `file:` URI.
 
@@ -773,9 +778,11 @@ The launch button is the one place the ring is not `Volt`, because on a `Volt` f
 be: it is `VoltInk`, the button's own text colour, which reads as the control being armed
 rather than as a new colour arriving.
 
-**No flyout anywhere in this panel, deliberately** — an adorner needs an adorner layer and a
-popup is its own root, so any menu here would need its ring hand-drawn. Three links do not need
-hiding behind one.
+**This panel has exactly one popup: the action band's menu (§10.3).** It is allowed because a
+menu draws its own mark inside the item template and therefore never needed the adorner layer.
+Everything else stays in the modal's own tree — the IGDB search and its candidate list
+(§10.9), the per-field editor (§10.10), the list ticks — because those are surfaces to read
+and type in, where a hand-drawn ring per control would be the whole cost of the surface.
 
 **Tab order follows the tree, not `TabIndex`.** Avalonia's tab navigation walks declaration
 order and ignores `TabIndex` on a non-focusable container — measured, not assumed. The right
@@ -865,17 +872,17 @@ the recourse: search IGDB by title from the modal, pick the right entry, and tha
 pinned so later automatic enrichment passes leave it alone. Clearing the pin returns the game
 to automatic resolution.
 
-**The disclosure is a `Wrong game?` link in the action band's overflow list (§10.3)**, folded
-behind the `More` control with `Open folder`, `Edit details` and `Hide`. The search field and
-the candidate list draw full width in the right column's rest band, the scrolling star row,
-which is what makes the bounded-scrolling behaviour structural rather than arithmetic. Only the
-Clear control is in the left column, under the cover and ON DISK — §10.1's object column,
-where the identity facts live.
+**`Wrong game?` is a row in the action band's menu (§10.3)**, beside `Open folder`,
+`Edit details` and `Hide`. The search field and the candidate list draw full width in the
+right column's rest band, the scrolling star row, which is what makes the bounded-scrolling
+behaviour structural rather than arithmetic. Only the Clear control is in the left column,
+under the cover and ON DISK — §10.1's object column, where the identity facts live.
 
-**Inline, never a flyout.** §10.7's rule, applied again: Avalonia's global `FocusAdorner` does
-not render inside a popup — a popup is its own root and has no adorner layer — so every ring
-in a menu here would have to be hand-drawn. The disclosure opens in the modal's own tree,
-which is also §12.3's reason for the action bar.
+**The surface is inline, never a flyout.** The search field and the candidate list draw in
+the modal's own tree, not inside the menu that opens them. §10.7's rule, applied again: these
+are surfaces to read and type in, and a hand-drawn ring per control would be the whole cost
+of the surface. Only the control that opens them moved into the menu, where the mark is drawn
+in the item template (§10.3).
 
 **What a candidate row draws.** Four facts: a 34x51 cover at `RadiusControl` — §4's rule that
 the three radii rank by the size of the object they round, and §6's list-view precedent — the
@@ -989,10 +996,9 @@ The IGDB assignment and the automatic enrichment pass set every field in one go.
 other gesture: setting one field and making the user its source, leaving every other field
 tracking its own.
 
-**The disclosure is an `Edit details` link in the action band's overflow list (§10.3)**, beside
-`Wrong game?`, in the same link idiom, because it is the same kind of act: correcting what
-Winnow believes about this game. `Wrong game?` answers which game this is; `Edit details`
-answers what each of its values should be. The editor draws full width in the right column's rest band, directly
+**`Edit details` is a row in the action band's menu (§10.3)**, beside `Wrong game?`, because
+it is the same kind of act: correcting what Winnow believes about this game. `Wrong game?`
+answers which game this is; `Edit details` answers what each of its values should be. The editor draws full width in the right column's rest band, directly
 under the IGDB reassignment control's own block. The identity question comes first on the
 surface because it is first in fact: assigning an IGDB entry rewrites every field in one pass.
 **Inline, never a flyout** — §10.7's rule applied again, for §10.7's own reason. The rest band
@@ -1301,8 +1307,9 @@ in **the same strip**, replacing the cut bar while they are up.
 
 This is not a stylistic preference. Avalonia's global `FocusAdorner` does not render inside a
 popup — a popup is its own root and has no adorner layer — so every control in a menu here
-would need its ring hand-drawn, which is §10.7's reason for the detail panel having no flyout
-either. In the window's own tree, the focus ring and a linear tab order both come free, and the
+would need its ring hand-drawn, which is §10.7's standing reason. The detail panel has one popup — the action band's menu —
+and it is not a counter-example, because the menu draws its own mark inside the item template
+rather than relying on the adorner layer. In the window's own tree, the focus ring and a linear tab order both come free, and the
 question sits directly above the thing it is about.
 
 `Enter` confirms, `Escape` cancels, and focus follows the prompt into its field. The save
@@ -1947,10 +1954,9 @@ hidden.
 
 Hiding is done from the game, in two places: the library's context menu and the details
 modal's action band. The context menu acts on the whole picked set and names the number once
-there is more than one, exactly as `Add to list` does. The action band folds it behind
-the `More` disclosure (§10.3) rather than placing it on the strip, because that band is about
-getting into the game and hiding is the quiet answer behind it; the context menu remains the
-route that acts on a whole picked set.
+there is more than one, exactly as `Add to list` does. The action band places it as a row in the `More` menu (§10.3) rather than on the strip,
+because that band is about getting into the game and hiding is the quiet answer behind it;
+the context menu remains the route that acts on a whole picked set.
 
 **Hiding takes the game and its whole link group**, so hiding a game does not pop its demo
 back into the grid. It deletes nothing: the ownership row stays, and a later ingest of the

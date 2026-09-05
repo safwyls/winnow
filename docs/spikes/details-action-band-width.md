@@ -60,6 +60,10 @@ measures **357px** with `Install` and 347px with `Play`, and 361/351 while the d
 The disclosed list measures **104 x 144px** across its four rows. A fifth row costs 38px of
 height and 0px of width, which is the whole argument for the list being vertical.
 
+**Note (2026-09-05).** The disclosed vertical list and the `Close` state of the trigger were
+replaced the same day by a menu. The menu measurements are in
+`docs/spikes/details-action-band-menu.md`. The strip and column figures above still stand.
+
 ## Reproducibility
 
 The harness lives outside the repository and was not kept. The method paragraph above is the

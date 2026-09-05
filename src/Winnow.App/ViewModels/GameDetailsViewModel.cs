@@ -61,8 +61,10 @@ public partial class GameDetailsViewModel : ObservableObject
         Lists.GameListsViewModel? lists = null,
         Core.Reading.IPatchNotesReader? patchNotes = null,
         GameIgdbMatchViewModel? igdbMatch = null,
-        GameMetadataEditorViewModel? metadataEditor = null)
+        GameMetadataEditorViewModel? metadataEditor = null,
+        System.Windows.Input.ICommand? hideGame = null)
     {
+        HideCommand = hideGame;
         _patchNotes = patchNotes;
         IgdbMatch = igdbMatch;
         MetadataEditor = metadataEditor;
@@ -487,22 +489,28 @@ public partial class GameDetailsViewModel : ObservableObject
 
     public bool HasSteamAppId => SteamAppId is not null;
 
-    /// <summary>Whether the folded actions in Band 3 are disclosed.</summary>
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(MoreActionsLabel))]
-    public partial bool MoreActionsOpen { get; set; }
+    /// <summary>Face of the More trigger — always the same word, because the menu owns its open state.</summary>
+    public string MoreActionsLabel => GameActionBandCopy.OpenLabel;
 
-    /// <summary>Face of the disclosure control, which changes with the open state.</summary>
-    public string MoreActionsLabel => MoreActionsOpen
-        ? GameActionBandCopy.CloseLabel
-        : GameActionBandCopy.OpenLabel;
-
-    /// <summary>Tooltip on the disclosure control.</summary>
+    /// <summary>Tooltip on the More trigger.</summary>
     public string MoreActionsTooltip => GameActionBandCopy.OpenTooltip;
 
-    /// <summary>Toggles the disclosed actions open or closed.</summary>
-    [RelayCommand]
-    private void ToggleMoreActions() => MoreActionsOpen = !MoreActionsOpen;
+    /// <summary>
+    /// The library's hide command, handed in at construction. The row that
+    /// carries it sits inside a popup, which has no Window above it for a
+    /// <c>$parent[Window]</c> binding to find. Null leaves the row undrawn
+    /// rather than inert (§10.3).
+    /// </summary>
+    public System.Windows.Input.ICommand? HideCommand { get; }
+
+    /// <summary>The Hide row draws only when the library handed over its command.</summary>
+    public bool ShowHide => HideCommand is not null;
+
+    /// <summary>Hide label — always singular, because this modal shows one game.</summary>
+    public string HideLabel => LibrarySettingsCopy.HideDetailsButton;
+
+    /// <summary>Tooltip on Hide, shared with the library's context menu.</summary>
+    public string HideTooltip => LibrarySettingsCopy.HideTooltip;
 
     // ── Body ────────────────────────────────────────────────────────────────
 

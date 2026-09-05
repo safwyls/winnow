@@ -21,6 +21,8 @@
           DockPanel.notes,       failure line. Same assembly-boundary seam
           Border.notes-bar,      as the consent window.
           .notes-problem
+          .actions             the actions menu worn by the library grid's
+                               context menu and the details modal's More menu.
 
         ══ Why every reference here is {DynamicResource} ══
         This sheet is a StyleInclude inside Application.Styles, and it is loaded
@@ -402,6 +404,68 @@
     </Style>
     <Style Selector="Button.ctl.on Path">
         <Setter Property="Fill" Value="{DynamicResource Volt}"/>
+    </Style>
+
+    <!-- ══ The .actions menu ═══════════════════════════════════════════════
+         The library grid's context menu and the details modal's More menu,
+         both drawn as a small card of choices on SurfaceRaised with a Line
+         edge. Written for the context menu and promoted here the moment the
+         modal became its second surface.
+
+         Two roots, one set of setters. A ContextMenu paints its own template
+         from its own Background and BorderBrush; a MenuFlyout paints through
+         a MenuFlyoutPresenter that takes the class from
+         FlyoutPresenterClasses. Both roots are named in every selector so
+         the grid and the modal cannot drift apart under one class name.
+
+         A popup is its own visual root with no adorner layer, so the global
+         2px Volt ring does not render inside one (§10.7, §12.3). The menu
+         draws its own mark instead — one step of fill above the menu's own
+         ground (SurfaceHigh) plus the 2px Volt edge, on a border whose
+         thickness never changes so the row does not reflow as it lights up.
+
+         The mark answers two pseudo-classes, not one: :selected AND :focus.
+         Avalonia raises :selected for the pointer and for the arrow walk,
+         but a menu opened from a button puts focus on its first row without
+         selecting it. :selected alone leaves unmarked the one row a keyboard
+         user meets first. Measured, not assumed
+         (docs/spikes/details-action-band-menu.md). -->
+    <Style Selector="ContextMenu.actions, MenuFlyoutPresenter.actions">
+        <Setter Property="Background" Value="{DynamicResource SurfaceRaised}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource Line}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="{DynamicResource RadiusControl}"/>
+        <Setter Property="Padding" Value="4"/>
+        <Setter Property="MinWidth" Value="0"/>
+    </Style>
+    <Style Selector="ContextMenu.actions MenuItem, MenuFlyoutPresenter.actions MenuItem">
+        <Setter Property="FontFamily" Value="{DynamicResource BodyFont}"/>
+        <Setter Property="FontSize" Value="{DynamicResource BodySize}"/>
+        <Setter Property="Foreground" Value="{DynamicResource Text}"/>
+        <Setter Property="Padding" Value="10,7"/>
+        <Setter Property="Cursor" Value="Hand"/>
+    </Style>
+    <Style Selector="ContextMenu.actions MenuItem /template/ Border#PART_LayoutRoot,
+                     MenuFlyoutPresenter.actions MenuItem /template/ Border#PART_LayoutRoot">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="{DynamicResource SelectionEdge}"/>
+        <Setter Property="CornerRadius" Value="{DynamicResource RadiusControl}"/>
+    </Style>
+    <Style Selector="ContextMenu.actions MenuItem:selected /template/ Border#PART_LayoutRoot,
+                     ContextMenu.actions MenuItem:focus /template/ Border#PART_LayoutRoot,
+                     MenuFlyoutPresenter.actions MenuItem:selected /template/ Border#PART_LayoutRoot,
+                     MenuFlyoutPresenter.actions MenuItem:focus /template/ Border#PART_LayoutRoot">
+        <!-- SurfaceHigh: one step above the menu's own SurfaceRaised
+             ground. SurfaceRaised on SurfaceRaised is no step at all. -->
+        <Setter Property="Background" Value="{DynamicResource SurfaceHigh}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource Volt}"/>
+    </Style>
+    <Style Selector="ContextMenu.actions MenuItem:selected /template/ ContentPresenter#PART_HeaderPresenter,
+                     ContextMenu.actions MenuItem:focus /template/ ContentPresenter#PART_HeaderPresenter,
+                     MenuFlyoutPresenter.actions MenuItem:selected /template/ ContentPresenter#PART_HeaderPresenter,
+                     MenuFlyoutPresenter.actions MenuItem:focus /template/ ContentPresenter#PART_HeaderPresenter">
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource Text}"/>
     </Style>
 
     <!-- Sort menu (§4's `sort ▾`). Flyout content lives in its own popup

@@ -17,6 +17,41 @@ public partial class GameDetailsView : UserControl
     public GameDetailsView()
     {
         InitializeComponent();
+        WireMenuRows();
+    }
+
+    /// <summary>
+    /// Wires the three action-menu rows that need view work on top of their
+    /// commands. Two Avalonia facts force this into code, both measured
+    /// (docs/spikes/details-action-band-menu.md):
+    /// <see cref="MenuItem"/> raises <see cref="MenuItem.ClickEvent"/>
+    /// already marked handled, so a XAML <c>Click="..."</c> handler never
+    /// fires — only <c>AddHandler</c> with <c>handledEventsToo</c> sees it;
+    /// and a name inside a flyout does not reach a code-behind field, so the
+    /// rows are found through the trigger's own <c>Flyout</c>.
+    /// </summary>
+    private void WireMenuRows()
+    {
+        if (MoreActionsButton.Flyout is not MenuFlyout menu)
+        {
+            return;
+        }
+
+        foreach (var row in menu.Items.OfType<MenuItem>())
+        {
+            switch (row.Name)
+            {
+                case "OpenFolderItem":
+                    row.AddHandler(MenuItem.ClickEvent, OnOpenFolderPressed, handledEventsToo: true);
+                    break;
+                case "WrongGameItem":
+                    row.AddHandler(MenuItem.ClickEvent, OnWrongGamePressed, handledEventsToo: true);
+                    break;
+                case "EditDetailsItem":
+                    row.AddHandler(MenuItem.ClickEvent, OnEditDetailsPressed, handledEventsToo: true);
+                    break;
+            }
+        }
     }
 
     /// <summary>Raised when the user dismisses — the shell owns what "closed" means.</summary>

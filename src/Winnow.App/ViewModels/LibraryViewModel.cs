@@ -1310,7 +1310,8 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             lists: await BuildListsAsync(target),
             patchNotes: _patchNotes,
             igdbMatch: await BuildIgdbMatchAsync(target),
-            metadataEditor: BuildMetadataEditor(target));
+            metadataEditor: BuildMetadataEditor(target),
+            hideGame: HideGameCommand);
     }
 
     /// <summary>

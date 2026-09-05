@@ -1,4 +1,5 @@
-﻿using Winnow.App.Services;
+﻿using CommunityToolkit.Mvvm.Input;
+using Winnow.App.Services;
 using Winnow.App.ViewModels;
 using Winnow.Core.Queries;
 using Winnow.Core.Domain;
@@ -509,29 +510,40 @@ public sealed class GameDetailsViewModelTests
         Assert.False(Details(Tile(ramp: new DormancyRamp { ReducedMotion = false })).ReducedMotion);
     }
 
+    /// <summary>
+    /// The menu owns its own open state, so the trigger's face never
+    /// changes — it always reads the same label and tooltip.
+    /// </summary>
     [Fact]
-    public void The_action_band_disclosure_starts_closed()
+    public void The_action_band_trigger_keeps_one_face()
     {
         var details = Details(Tile());
 
-        Assert.False(details.MoreActionsOpen);
         Assert.Equal(GameActionBandCopy.OpenLabel, details.MoreActionsLabel);
+        Assert.Equal(GameActionBandCopy.OpenTooltip, details.MoreActionsTooltip);
     }
 
+    /// <summary>
+    /// Hide is the library's command, handed in at construction because the
+    /// row sits inside a popup that has no Window above it for a
+    /// <c>$parent[Window]</c> binding to find. A null command hides the
+    /// row rather than leaving it inert (§10.3).
+    /// </summary>
     [Fact]
-    public void Toggling_the_action_band_disclosure_swaps_its_label_both_ways()
+    public void Hide_is_drawn_only_when_the_library_handed_over_its_command()
     {
-        var details = Details(Tile());
+        var without = Details(Tile());
 
-        details.ToggleMoreActionsCommand.Execute(null);
+        Assert.Null(without.HideCommand);
+        Assert.False(without.ShowHide);
 
-        Assert.True(details.MoreActionsOpen);
-        Assert.Equal(GameActionBandCopy.CloseLabel, details.MoreActionsLabel);
+        var command = new RelayCommand<GameTileViewModel?>(_ => { });
+        var with = Details(Tile(), hideGame: command);
 
-        details.ToggleMoreActionsCommand.Execute(null);
-
-        Assert.False(details.MoreActionsOpen);
-        Assert.Equal(GameActionBandCopy.OpenLabel, details.MoreActionsLabel);
+        Assert.Same(command, with.HideCommand);
+        Assert.True(with.ShowHide);
+        Assert.Equal(LibrarySettingsCopy.HideDetailsButton, with.HideLabel);
+        Assert.Equal(LibrarySettingsCopy.HideTooltip, with.HideTooltip);
     }
 
     // ── Builders ─────────────────────────────────────────────────────────────
@@ -577,14 +589,15 @@ public sealed class GameDetailsViewModelTests
     private static GameDetailsViewModel Details(
         GameTileViewModel tile,
         IReadOnlyList<UpdateEvent>? updates = null,
-        IReadOnlyList<PlaytimeSnapshot>? snapshots = null)
+        IReadOnlyList<PlaytimeSnapshot>? snapshots = null,
+        System.Windows.Input.ICommand? hideGame = null)
     {
         var rows = (updates ?? [])
             .OrderByDescending(u => u.OccurredAt)
             .Select(u => UpdateEventViewModel.Create(u, tile.LastPlayedUtc))
             .ToList();
 
-        return new GameDetailsViewModel(tile, "Started", rows, Now, snapshots);
+        return new GameDetailsViewModel(tile, "Started", rows, Now, snapshots, hideGame: hideGame);
     }
 
     private static UpdateEvent Update(string title, DateTime occurredAt, string? url = null)

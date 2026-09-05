@@ -1396,3 +1396,58 @@ states what the save does rather than only what it does not do.
 Superseded text from §10.10:
 
 > **A text save does not reload.** Reloading after one would discard the drafts the user has in the other five rows. This asymmetry is deliberate and is the reason the two paths are separate.
+
+### 2026-09-05 — The action band's inline list became a menu (TASK-125)
+
+`design-system.md` §10.3, §10.7, §10.9, §10.10, §12.3, §16.2. The four actions folded behind
+`More` — `Open folder`, `Wrong game?`, `Edit details` and `Hide` — were drawn as buttons in a
+vertical inline list in the modal's own tree. They are now rows in a `MenuFlyout` placed
+`BottomEdgeAlignedLeft`, wearing the `actions` class from `Themes/controls.axaml`, the same
+treatment the library grid's context menu wears.
+
+Two reasons. A menu draws its own mark inside the item template — one step of fill above the
+menu's ground plus a constant-thickness `Volt` border — so the adorner-layer objection that
+forced the inline list does not apply to it. And it makes the modal agree with the library
+grid, which has used that same menu treatment all along, instead of the two being separate
+grammars.
+
+The menu floats over the modal rather than sitting in a row of the card's grid, so opening it
+costs the strip no width and the modal no height. The inline list used to grow Band 3's Auto
+row by 144px and push the rest band down. The trigger no longer changes face: it always reads
+`More`, because the menu owns whether it is open.
+
+The keyboard evidence is in `docs/spikes/details-action-band-menu.md`.
+
+Superseded text from §10.3:
+
+> Beside it, `Store page` and `All patch notes` in `Azure`, and the `More` disclosure — four controls on the strip. `Open folder`, `Wrong game?`, `Edit details` and `Hide` are folded behind the disclosure and drawn in a vertical, left-aligned column directly beneath the strip, above the divider that separates Band 3 from the rest band. The `More` control becomes `Close` while the list is open; its tooltip is `Folder, corrections and hide`.
+
+> **The disclosed list is inline, never a flyout** — §10.7's rule and §12.3's standing reason: Avalonia's global `FocusAdorner` does not render inside a popup, because a popup is its own root and has no adorner layer, so every ring in a menu here would have to be hand-drawn. Each folded control keeps the idiom it already had.
+
+> **The disclosed list sits above the rest band's scroll region**, not inside it. An action must not scroll out from under the control that disclosed it, so the list needs no `BringIntoView`, unlike the surfaces §10.9 and §10.10 put in the rest band. Band 3 is the right column's Auto row and the rest band is the star row below it; opening the list grows the Auto row by 144px and the rest band absorbs it by scrolling — the same structural property §10.1 already relies on.
+
+> **Vertical is the growth answer.** A further control costs one row of height and no horizontal budget, so the strip cannot be pushed back over the column's edge by the next addition.
+
+> **Keyboard.** Tab order follows declaration order (§10.7): primary action, `Store page`, `All patch notes`, `More`, then `Open folder`, `Wrong game?`, `Edit details`, `Hide`. While the list is closed those four are not drawn and are therefore not Tab stops — the same disclosure contract §10.9 and §10.10 already use.
+
+Superseded text from §10.7:
+
+> **No flyout anywhere in this panel, deliberately** — an adorner needs an adorner layer and a popup is its own root, so any menu here would need its ring hand-drawn. Three links do not need hiding behind one.
+
+Superseded text from §10.9:
+
+> **The disclosure is a `Wrong game?` link in the action band's overflow list (§10.3)**, folded behind the `More` control with `Open folder`, `Edit details` and `Hide`.
+
+> **Inline, never a flyout.** §10.7's rule, applied again: Avalonia's global `FocusAdorner` does not render inside a popup — a popup is its own root and has no adorner layer — so every ring in a menu here would have to be hand-drawn. The disclosure opens in the modal's own tree, which is also §12.3's reason for the action bar.
+
+Superseded text from §10.10:
+
+> **The disclosure is an `Edit details` link in the action band's overflow list (§10.3)**, beside `Wrong game?`, in the same link idiom, because it is the same kind of act: correcting what Winnow believes about this game.
+
+Superseded text from §12.3:
+
+> which is §10.7's reason for the detail panel having no flyout either.
+
+Superseded text from §16.2:
+
+> The action band folds it behind the `More` disclosure (§10.3) rather than placing it on the strip, because that band is about getting into the game and hiding is the quiet answer behind it; the context menu remains the route that acts on a whole picked set.
