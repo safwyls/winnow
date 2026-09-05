@@ -44,7 +44,7 @@ public sealed class IgdbIdLookupTests
         Assert.Equal(2017, result.FirstReleaseYear);
         Assert.Equal(
             "https://images.igdb.com/igdb/image/upload/t_cover_big/co2abc.jpg", result.CoverUrl);
-        Assert.Empty(result.Platforms);
+        Assert.Equal(["PC (Microsoft Windows)", "PlayStation 4"], result.Platforms);
     }
 
     [Fact]
@@ -134,7 +134,7 @@ public sealed class IgdbIdLookupTests
         Assert.Equal(2017, candidate.FirstReleaseYear);
         Assert.Equal(
             "https://images.igdb.com/igdb/image/upload/t_cover_big/co2abc.jpg", candidate.CoverUrl);
-        Assert.Empty(candidate.Platforms);
+        Assert.Equal(["PC (Microsoft Windows)", "PlayStation 4"], candidate.Platforms);
     }
 
     [Fact]
@@ -162,7 +162,10 @@ public sealed class IgdbIdLookupTests
             "Morgan Yu wakes on Talos I.",
             ["Shooter"],
             ["Horror"],
-            ["Bethesda Softworks"]);
+            ["Bethesda Softworks"])
+        {
+            Platforms = ["PC (Microsoft Windows)", "PlayStation 4"],
+        };
 
     /// <summary>
     /// Stand-in that answers from a canned game table and records what it

@@ -205,9 +205,13 @@ stored locally.
   query body and its own cache namespace rather than widening the shared metadata query, so a
   400 costs the search alone. The term is user-typed free text, sanitized into the quoted
   clause rather than rejected.
-- The IGDB response cache has no `payload_version`. Adding a field to the cached shape yields
-  empty results for 30 days rather than refetching. Bump a version field before changing the
-  shape.
+- The IGDB response cache carries a payload version per namespace: game payloads at **3**
+  (name, summary, first release date, cover, genres, themes, game modes, player perspectives,
+  platforms, publisher, `game_type`, `parent_game`, `version_parent`, `version_title`),
+  age-rating payloads at **1**, search payloads at **1**. Change a cached shape and bump its
+  version in the same commit, or the cache serves rows with the new field silently empty for
+  the rest of the 30-day TTL. A payload whose version does not match is refetched, and the
+  older payload is still served when no refetch is possible.
 
 ### 4.5 Update detection
 

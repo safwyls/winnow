@@ -49,6 +49,23 @@ internal static class IgdbJson
         return url.Replace("/t_thumb/", "/t_cover_big/", StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// Shapes a <c>platforms</c> expansion into display names: trimmed, blanks
+    /// dropped, duplicates collapsed case-insensitively.
+    ///
+    /// <para>Shared by <see cref="IgdbGameDto"/> and
+    /// <see cref="IgdbSearchGameDto"/> rather than written out in each. The
+    /// wrong-game control draws a row matched by IGDB id beside rows found by
+    /// title search, so two copies of this shaping would be two answers about
+    /// one game.</para>
+    /// </summary>
+    internal static IReadOnlyList<string> PlatformNames(IReadOnlyList<IgdbNamedDto>? platforms)
+        => platforms?
+            .Where(p => !string.IsNullOrWhiteSpace(p.Name))
+            .Select(p => p.Name!.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray() ?? IgdbGame.NoStrings;
+
     /// <summary>first_release_date is Unix seconds, UTC. Null and 0 both mean "unknown".</summary>
     internal static int? ReleaseYear(long? firstReleaseDate)
         => firstReleaseDate is null or 0
@@ -284,11 +301,7 @@ internal sealed class IgdbSearchGameDto
                 Name.Trim(),
                 IgdbJson.CoverUrl(Cover),
                 IgdbJson.ReleaseYear(FirstReleaseDate),
-                Platforms?
-                    .Where(p => !string.IsNullOrWhiteSpace(p.Name))
-                    .Select(p => p.Name!)
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .ToArray() ?? IgdbGame.NoStrings);
+                IgdbJson.PlatformNames(Platforms));
 }
 
 internal sealed class IgdbGameDto
@@ -310,6 +323,13 @@ internal sealed class IgdbGameDto
     public IReadOnlyList<IgdbNamedDto>? GameModes { get; init; }
 
     public IReadOnlyList<IgdbNamedDto>? PlayerPerspectives { get; init; }
+
+    /// <summary>
+    /// <c>platforms</c>, expanded to names. Only the wrong-game control's
+    /// candidate rows read these; they are on the shared query because an
+    /// id-matched row must show what a title-search row shows.
+    /// </summary>
+    public IReadOnlyList<IgdbNamedDto>? Platforms { get; init; }
 
     public IReadOnlyList<IgdbInvolvedCompanyDto>? InvolvedCompanies { get; init; }
 
@@ -359,6 +379,7 @@ internal sealed class IgdbGameDto
         // months from now should not require knowing that.
         GameModes = Names(this.GameModes),
         PlayerPerspectives = Names(this.PlayerPerspectives),
+        Platforms = IgdbJson.PlatformNames(this.Platforms),
         GameType = string.IsNullOrWhiteSpace(this.GameType?.Type) ? null : this.GameType.Type,
         ParentGameId = ParentGame is > 0 ? ParentGame : null,
         VersionParentId = VersionParent is > 0 ? VersionParent : null,

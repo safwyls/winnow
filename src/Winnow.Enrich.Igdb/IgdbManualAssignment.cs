@@ -79,14 +79,11 @@ public sealed class IgdbManualAssignment
     /// rethrows <see cref="OperationCanceledException"/> on the caller's own
     /// token.</para>
     ///
-    /// <para>The returned <see cref="IgdbSearchResult.Platforms"/> is always
-    /// empty. <see cref="IgdbGame"/> carries no platforms, and adding
-    /// <c>platforms</c> to the shared <c>GetGamesAsync</c> query body would
-    /// change the cached shape, requiring a bump to
-    /// <c>IgdbClient.GamePayloadVersion</c> — which refetches every game in
-    /// the library against a 4 req/s API (§4.4). The id row is identified by
-    /// its id and its name, so the platform list is not what distinguishes
-    /// it.</para>
+    /// <para>The returned <see cref="IgdbSearchResult.Platforms"/> carries
+    /// what a title-search row carries: the shared <c>games</c> query asks
+    /// for <c>platforms.name</c>, and both paths shape the names through
+    /// the same helper, so the two kinds of candidate row cannot disagree
+    /// about one game.</para>
     /// </summary>
     public async Task<IgdbSearchResult?> GetByIdAsync(
         long igdbId, CancellationToken ct = default)
@@ -104,7 +101,7 @@ public sealed class IgdbManualAssignment
             return game is null
                 ? null
                 : new IgdbSearchResult(
-                    game.IgdbId, game.Name, game.CoverUrl, game.FirstReleaseYear, []);
+                    game.IgdbId, game.Name, game.CoverUrl, game.FirstReleaseYear, game.Platforms);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {

@@ -97,10 +97,17 @@ public static class Apicalypse
     /// publisher. They were left out originally for the reason 0005 records —
     /// nothing consumed them and §6 had no column — and are added now that
     /// something does.</para>
+    ///
+    /// <para><c>platforms.name</c> rides the same free ride, and is what tells
+    /// Prey (2006, Xbox 360) apart from Prey (2017, PS4/PC) in the wrong-game
+    /// control's candidate rows. It belongs on this query rather than on a third
+    /// one because a candidate found by id and a candidate found by title are
+    /// drawn side by side, and an id row that showed a year and no platforms was
+    /// the defect that put it here.</para>
     /// </summary>
     public static string Games(IEnumerable<long> igdbIds, int limit, int offset)
         => $"""
-            fields name,summary,first_release_date,cover.image_id,cover.url,genres.name,themes.name,game_modes.name,player_perspectives.name,involved_companies.publisher,involved_companies.company.name,game_type.type,parent_game,version_parent,version_title;
+            fields name,summary,first_release_date,cover.image_id,cover.url,genres.name,themes.name,game_modes.name,player_perspectives.name,platforms.name,involved_companies.publisher,involved_companies.company.name,game_type.type,parent_game,version_parent,version_title;
             where id = {NumberList(igdbIds)};
             limit {Clamp(limit).ToString(CultureInfo.InvariantCulture)};
             offset {offset.ToString(CultureInfo.InvariantCulture)};
@@ -181,10 +188,10 @@ public static class Apicalypse
     /// <see cref="AgeRatings"/> is separate: a 400 on this query costs
     /// the search alone, not the shared metadata for the entire library.
     ///
-    /// <para>The field list differs from <see cref="Games"/>:
-    /// <c>platforms.name</c> is what tells Prey (2006, Xbox 360) apart
-    /// from Prey (2017, PS4/PC), and nothing else in the client needs
-    /// it.</para>
+    /// <para>The field list is a subset of <see cref="Games"/>'s, not a
+    /// different set of fields. <see cref="Games"/> asks for
+    /// <c>platforms.name</c> too, which is what lets a candidate matched
+    /// by id and a candidate found by title show the same facts.</para>
     /// </summary>
     public static string SearchGames(string term, int limit)
         => $"""

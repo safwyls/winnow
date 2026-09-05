@@ -39,6 +39,14 @@ public sealed record IgdbGame(
     public IReadOnlyList<string> PlayerPerspectives { get; init; } = NoStrings;
 
     /// <summary>
+    /// IGDB <c>platforms</c> names — "PC (Microsoft Windows)",
+    /// "PlayStation 4". Init property (not positional) under the same rule as
+    /// <see cref="GameModes"/>: existing constructions keep compiling and
+    /// payloads cached before the field was requested keep deserializing.
+    /// </summary>
+    public IReadOnlyList<string> Platforms { get; init; } = NoStrings;
+
+    /// <summary>
     /// The <c>game_types.type</c> label. Fifteen values today: main_game,
     /// dlc_addon, expansion, bundle, standalone_expansion, mod, episode, season,
     /// remake, remaster, expanded_game, port, fork, pack, update. Null when

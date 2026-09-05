@@ -185,6 +185,17 @@ public static class IgdbFixtures
             ? new[] { new { id = 5, name = "Shooter" }, new { id = 31, name = "Adventure" } }
             : null,
         themes = includeRelations ? new[] { new { id = 1, name = "Action" } } : null,
+        // Real IGDB platform ids and names, and deliberately the same pair
+        // SearchGames returns: a test comparing an id-matched row against a
+        // title-search row is only meaningful if both fixtures speak of the
+        // same platforms.
+        platforms = includeRelations
+            ? new[]
+            {
+                new { id = 6, name = "PC (Microsoft Windows)" },
+                new { id = 48, name = "PlayStation 4" },
+            }
+            : null,
         involved_companies = includeRelations
             ? new[]
             {

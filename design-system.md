@@ -906,9 +906,7 @@ Revolution*, *428*). A hit from the id lookup leads the list wearing a chip mark
 outlined store-chip idiom; the title results follow beneath it, with the id-matched row removed
 from them if it appeared there too. An all-digit query that named no IGDB entry gets its own
 `TextDim` line above the results, not `Amber`, for the same reason the empty title search is
-not a failure. The id-match row carries no platform list, because the shared metadata query
-does not return platforms and widening it would force a full re-fetch against a rate-limited
-API.
+not a failure. The id-match row draws the same facts as a title result, platforms included.
 
 ---
 

@@ -52,7 +52,7 @@ public interface IIgdbClient
 
     /// <summary>
     /// Full metadata for known IGDB ids: name, cover, first release date,
-    /// summary, genres, themes and publisher. Batched and cached like
+    /// summary, genres, themes, platforms and publisher. Batched and cached like
     /// <see cref="ResolveBySteamAppIdsAsync"/>.
     /// </summary>
     Task<IReadOnlyList<IgdbGame>> GetGamesAsync(

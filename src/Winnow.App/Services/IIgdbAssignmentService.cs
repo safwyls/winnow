@@ -72,10 +72,10 @@ public interface IIgdbAssignmentService
     /// The one IGDB game carrying this id, shaped as a candidate, or null.
     /// Null covers three cases that are one answer to the user: no such id,
     /// a non-positive id, and a failed lookup. Like everything else on this
-    /// seam, it does not throw at a view model. The candidate's
-    /// <see cref="IgdbCandidate.Platforms"/> is empty — the enrichment
-    /// layer's id lookup does not carry platforms; see
-    /// <c>IgdbManualAssignment.GetByIdAsync</c> for why.
+    /// seam, it does not throw at a view model. The candidate carries the
+    /// same facts a <see cref="SearchAsync"/> candidate does, platforms
+    /// included, so a row found by id and a row found by title draw
+    /// alike.
     /// </summary>
     Task<IgdbCandidate?> GetCandidateByIdAsync(long igdbId, CancellationToken ct = default);
 

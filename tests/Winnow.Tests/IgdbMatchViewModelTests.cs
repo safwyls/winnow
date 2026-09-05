@@ -299,6 +299,39 @@ public sealed class IgdbMatchViewModelTests
     }
 
     /// <summary>
+    /// The id lookup once returned no platforms, so the id row drew a year
+    /// alone while every title row beside it drew a year and a platform list.
+    /// Both rows are the same view model over the same candidate — a row is
+    /// only ever as complete as the candidate handed to it.
+    /// </summary>
+    [Fact]
+    public async Task An_id_match_draws_the_same_detail_line_as_a_title_result()
+    {
+        var service = new FakeAssignmentService
+        {
+            IdResult = Prey2017,
+            Results = [Prey2006],
+        };
+        var vm = Build(service, title: "5678");
+
+        await vm.SearchCommand.ExecuteAsync(null);
+
+        var idRow = vm.Candidates[0];
+        var titleRow = vm.Candidates[1];
+
+        Assert.True(idRow.IsIdMatch);
+        Assert.True(idRow.HasYear);
+        Assert.True(idRow.HasPlatforms);
+        Assert.True(idRow.HasDetailLine);
+        Assert.Equal("PlayStation 4", idRow.PlatformsText);
+        Assert.Equal("PlayStation 4", idRow.PlatformsTooltip);
+
+        Assert.Equal(titleRow.HasYear, idRow.HasYear);
+        Assert.Equal(titleRow.HasPlatforms, idRow.HasPlatforms);
+        Assert.Equal(titleRow.HasDetailLine, idRow.HasDetailLine);
+    }
+
+    /// <summary>
     /// The id hit is not listed twice when the title search returns it too.
     /// </summary>
     [Fact]

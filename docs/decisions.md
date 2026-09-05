@@ -1175,3 +1175,60 @@ Superseded text from §10.9, inside "What a candidate row draws":
 Superseded text from §10.9, the scroll region paragraph:
 
 > **The candidate list is a scroll region of at most 208px.** IGDB search returns up to 20 results, so more than three is the normal case for a common title. The region shows two rows and most of a third: the row cut part way, together with the scrollbar, is what says there is more rather than the list ending silently.
+
+### 2026-09-05 — The shared IGDB game query carries platforms, reversing TASK-120 (TASK-121)
+
+`game-library-design.md` §4.4, `design-system.md` §10.9. An IGDB id typed into the wrong-game
+search returned a candidate row with a year and no platforms, while every
+title-search row showed both. The id lookup rides
+the shared `GetGamesAsync` query, which did not ask for `platforms.name`; the title search has
+its own query body, which always has.
+
+**TASK-120 recorded the opposite decision and this reverses it.** That task left the shared
+query alone because widening it changes the cached shape, and changing the cached shape forces a
+payload-version bump and therefore a one-time refetch of the whole library against a 4 req/s
+API. The user judged that cost acceptable — "fix it right and fetch the platform. invalidating
+the cache once is not an issue" — and asked for the shared query to carry platforms rather than
+for a third query to be added.
+
+**The one-time cost was measured, not assumed.** Two tests drive the real client through the
+real 4 req/s limiter against canned fixtures, for the author's 967-game library. Asked for in
+one call, the way `FacetSyncService` asks: 3 requests, in batches of 400, 400 and 167, which fit
+inside the limiter's 4-permit bucket, so the limiter adds no delay — 158 ms end to end. Asked
+for in 40-target slices, the way `EnrichmentSyncService` asks: 25 requests and 6 seconds, which
+is the token bucket's own arithmetic. The two passes share the cache, so the whole cost is
+between 3 and 25 requests and at most about six seconds, whichever pass reaches an id first.
+
+**The bump nearly took the offline guarantee with it.** `GetGamesAsync` keeps a superseded
+payload and serves it when no refetch is possible, so a machine with no Twitch credentials and
+no network still gets an answer. That fallback knew only the bare pre-envelope shape. Every
+payload on a current install is a version-2 envelope, which deserializes as a bare `IgdbGame`
+with `IgdbId` 0, fails the `> 0` guard, and would have been dropped — so the bump would have
+turned "a stale platform-less row" into "nothing at all" for an offline install, silently
+repealing the guarantee the version mechanism exists to preserve. The fallback now reads an
+older envelope first and falls through to the bare shape.
+
+The §4.4 bullet had been stale since the version mechanism landed and was actively misleading by
+the time it was rewritten: it described a cache with no payload version at all. Its superseded
+text:
+
+> The IGDB response cache has no `payload_version`. Adding a field to the cached shape yields
+> empty results for 30 days rather than refetching. Bump a version field before changing the
+> shape.
+
+`design-system.md` §10.9 stated the same false thing about what the id-match row draws.
+Superseded text:
+
+> The id-match row carries no platform list, because the shared metadata query does not return platforms and widening it would force a full re-fetch against a rate-limited API.
+
+Superseded doc comment on `IgdbManualAssignment.GetByIdAsync`:
+
+> The returned `IgdbSearchResult.Platforms` is always empty. `IgdbGame` carries no platforms, and adding `platforms` to the shared `GetGamesAsync` query body would change the cached shape, requiring a bump to `IgdbClient.GamePayloadVersion` — which refetches every game in the library against a 4 req/s API (§4.4). The id row is identified by its id and its name, so the platform list is not what distinguishes it.
+
+Superseded doc comment on `IIgdbAssignmentService.GetCandidateByIdAsync`:
+
+> The candidate's `IgdbCandidate.Platforms` is empty — the enrichment layer's id lookup does not carry platforms; see `IgdbManualAssignment.GetByIdAsync` for why.
+
+Superseded doc comment on `Apicalypse.SearchGames`:
+
+> The field list differs from `Games`: `platforms.name` is what tells Prey (2006, Xbox 360) apart from Prey (2017, PS4/PC), and nothing else in the client needs it.

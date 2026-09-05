@@ -76,9 +76,10 @@ public sealed class IgdbClient : IIgdbClient
     /// payloads written before a field existed refetches instead of answering
     /// with the field silently empty for the rest of the TTL. Version 2 is
     /// the first to carry <c>game_type</c>, <c>parent_game</c>,
-    /// <c>version_parent</c> and <c>version_title</c>.
+    /// <c>version_parent</c> and <c>version_title</c>; version 3 is the first
+    /// to carry <c>platforms</c>.
     /// </summary>
-    public const int GamePayloadVersion = 2;
+    public const int GamePayloadVersion = 3;
 
     /// <summary>
     /// Versioned envelope a game is cached in. An unversioned payload
@@ -273,20 +274,34 @@ public sealed class IgdbClient : IIgdbClient
                     continue;
                 }
 
-                if (Deserialize<GamePayload>(entry.PayloadJson) is
-                    { Version: GamePayloadVersion, Game: { } game })
+                var payload = Deserialize<GamePayload>(entry.PayloadJson);
+                if (payload is { Version: GamePayloadVersion, Game: { } game })
                 {
                     results.Add(game);
                     continue;
                 }
 
-                // Either a payload written before this version — every entry in
-                // a cache built without game_type, parent_game and
-                // version_parent is one — or one that no longer projects.
-                // Refetch rather than serve a row whose new fields are silently
-                // empty for the rest of the TTL, and keep the old answer as the
-                // fallback for a refetch that cannot happen.
-                if (Deserialize<IgdbGame>(entry.PayloadJson) is { IgdbId: > 0 } legacy)
+                // Either a payload written before this version — a cache built
+                // before the current field list is full of them — or one that no
+                // longer projects. Refetch rather than serve a row whose new
+                // fields are silently empty for the rest of the TTL, and keep the
+                // old answer as the fallback for a refetch that cannot happen.
+                //
+                // Two stored shapes have to survive that, and the order matters.
+                // An older ENVELOPE ({"version":2,"game":{…}}) is what every
+                // payload on a current install looks like; the bare shape below
+                // it is what installs predating version 2 wrote. Read as a bare
+                // IgdbGame, an envelope yields IgdbId 0, fails the `> 0` guard
+                // and is dropped — so without the envelope branch a version bump
+                // turns "a stale row missing one field" into "nothing at all" on
+                // a machine with no credentials and no network, repealing the
+                // guarantee above. Whoever bumps the version next inherits this:
+                // the fallback reads envelopes, and must go on reading them.
+                if (payload is { Game: { IgdbId: > 0 } outdated })
+                {
+                    superseded[id] = outdated;
+                }
+                else if (Deserialize<IgdbGame>(entry.PayloadJson) is { IgdbId: > 0 } legacy)
                 {
                     superseded[id] = legacy;
                 }
