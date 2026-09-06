@@ -1188,6 +1188,8 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             }
         }
 
+        var selectedOwnershipId = SelectedTile?.OwnershipId;
+        var flippedOwnershipId = _flipped?.OwnershipId;
         _allTiles = tiles;
         _coverage = coverage;
 
@@ -1216,6 +1218,19 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
 
         _loaded = true;
         ApplyFilter();
+        if (selectedOwnershipId is { } selectedId)
+        {
+            var selected = VisibleTiles.FirstOrDefault(t => t.Covers(selectedId));
+            SelectTile(selected);
+            if (selected is not null && flippedOwnershipId == selectedId) FlipTile(selected);
+        }
+
+        // Background install refresh must also reach a modal that is already open.
+        // Keep its instance so an in-progress metadata edit or disclosure survives.
+        if (Details is { } details && TileForOwnership(details.Tile.OwnershipId) is { } refreshed)
+        {
+            details.RefreshTileActions(refreshed);
+        }
 
         // Notify listeners that the tile set has been replaced.
         TilesChanged?.Invoke(this, EventArgs.Empty);

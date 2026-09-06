@@ -149,6 +149,28 @@ public sealed class LocalLibrarySyncService : ILocalLibrarySync
 
         var scan = Scan();
 
+        return await ResolveScanAsync(scan, stopwatch, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>Refreshes Epic after its manifests change, without scanning other launchers.</summary>
+    public async Task<LibrarySyncReport> SyncEpicAsync(CancellationToken ct = default)
+    {
+        var stopwatch = Stopwatch.StartNew();
+        return await ResolveScanAsync(new LocalLibraryScan([], [], []), stopwatch, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>Called under the sync gate so a queued scan cannot restore obsolete Epic install state.</summary>
+    internal LocalLibraryScan RefreshEpic(LocalLibraryScan scan)
+    {
+        var epic = _epic.ScanLibrary();
+        return scan with { Epic = epic.Candidates, EpicLaunchTriples = epic.LaunchTriples };
+    }
+
+    private async Task<LibrarySyncReport> ResolveScanAsync(
+        LocalLibraryScan scan, Stopwatch stopwatch, CancellationToken ct)
+    {
+        using var lease = await _gate.EnterAsync(ct).ConfigureAwait(false);
+        scan = RefreshEpic(scan);
         await PersistEpicLaunchTriplesAsync(scan, ct).ConfigureAwait(false);
 
         if (scan.Count == 0)
@@ -156,11 +178,6 @@ public sealed class LocalLibrarySyncService : ILocalLibrarySync
             _logger.LogInformation("Local library sync found no candidates; nothing to resolve.");
             return new LibrarySyncReport(0, null, stopwatch.Elapsed, scan);
         }
-
-        // The gate covers the resolver and nothing else: reading store files
-        // takes no lock, and holding one across the remote job's HTTP timeout
-        // would put a stalled backfill in front of every snapshot tick.
-        using var lease = await _gate.EnterAsync(ct).ConfigureAwait(false);
 
         // LowerBound, and this is the job that makes it matter: localconfig.vdf
         // sees only what the client has synced to this machine, so on any
@@ -312,6 +329,11 @@ public sealed class RemoteOwnershipSyncService : IRemoteOwnershipSync
         // first.
         var epicOwned = await EpicApiCandidatesAsync(ct);
 
+        // HTTP and the other stores stay outside the gate. Epic completion can
+        // change while backfill is waiting, including a reusable startup scan.
+        using var lease = await _gate.EnterAsync(ct).ConfigureAwait(false);
+        scan = _local.RefreshEpic(scan);
+
         var candidates = scan.Steam
             .Concat(owned)
             .Concat(scan.Epic)
@@ -324,10 +346,6 @@ public sealed class RemoteOwnershipSyncService : IRemoteOwnershipSync
             _logger.LogInformation("Remote ownership sync found no candidates; nothing to resolve.");
             return new LibrarySyncReport(0, null, stopwatch.Elapsed, scan);
         }
-
-        // Taken here and not around the fetches above, so a stalled endpoint
-        // never sits in front of the snapshot scheduler's local tick.
-        using var lease = await _gate.EnterAsync(ct).ConfigureAwait(false);
 
         // LowerBound here too. The union of both sources is the best estimate
         // available, but it is still an estimate: a session played offline on

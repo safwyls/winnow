@@ -352,6 +352,20 @@ account's lifetime. The rules that follow govern what may be shown and what must
   `ModSdkMetadataDir`.
 - Epic has **no per-game playtime and no last-played on disk**.
 
+While Winnow is open, an Epic-only local refresh polls top-level `.item` manifests every two
+seconds. Two consecutive identical, readable snapshots trigger a scan through the shared
+resolver gate and a library reload, including actions in an already-open Details panel.
+The reload retains the selected or flipped card when it is still visible and updates the
+Details action state in place, preserving unsaved editor drafts.
+Completion requires an explicit `bIsIncompleteInstall: false`; missing or malformed flags
+never imply installation, and `Pending` files are ignored. Locked or malformed manifests
+defer the refresh until a later stable read. Normal completion appears within two to four
+seconds plus local scan time; this follows the launcher's written state, not download progress.
+The service is disabled with local sync for sample-data and `--no-sync` runs.
+Both local and remote ownership passes reread Epic candidates after acquiring that gate,
+so a queued pass or a slow network backfill cannot restore the install state from an older
+startup scan. Network requests and the Steam/GOG scans remain outside the gate.
+
 **GOG:**
 
 - `galaxy-2.0.db` is a WAL database. `immutable=1` silently returns stale data, and `mode=ro`

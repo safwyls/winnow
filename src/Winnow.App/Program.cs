@@ -628,6 +628,13 @@ public static class Program
         services.AddSingleton(TimeProvider.System);
         services.AddHostedService<SnapshotSchedulerService>();
         services.AddHostedService<RemoteOwnershipSchedulerService>();
+        services.AddHostedService(sp => new EpicInstallRefreshService(
+            new EpicManifestStateReader().ReadFingerprint,
+            ct => sp.GetRequiredService<LocalLibrarySyncService>().SyncEpicAsync(ct),
+            _ => RefreshLibraryAsync(sp),
+            sp.GetRequiredService<ILogger<EpicInstallRefreshService>>(),
+            sp.GetRequiredService<TimeProvider>(),
+            enabled: sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<SnapshotSchedulerOptions>>().Value.Enabled));
 
         // M3 (§5.2 mechanism A): the process watcher — the first writer the
         // `sessions` table has ever had. Polls for game starts, takes an OS

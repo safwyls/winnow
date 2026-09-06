@@ -109,7 +109,19 @@ public partial class GameDetailsViewModel : ObservableObject
     }
 
     /// <summary>The tile this describes — title, store, art and the stat strings all come from it.</summary>
-    public GameTileViewModel Tile { get; }
+    public GameTileViewModel Tile { get; private set; }
+
+    /// <summary>Refreshes launcher actions without replacing editors or their unsaved drafts.</summary>
+    internal void RefreshTileActions(GameTileViewModel tile)
+    {
+        // A changed identity group needs the normal explicit reopen path.
+        if (!Tile.OwnershipIds.ToHashSet().SetEquals(tile.OwnershipIds)) return;
+        Tile = tile;
+        (PrimaryAction, Links, NoWayInSentence) = BuildLinks(tile);
+        GogPatchNotes = tile.PlayableEntry.Store == "gog" ? tile.PlayableEntry.Storefront?.PatchNotes : null;
+        // Install labels, paths, accessibility copy and command parameters all derive from Tile.
+        OnPropertyChanged(string.Empty);
+    }
 
     /// <summary>
     /// The titles this game covers, with the per-store breakdown and the
@@ -547,16 +559,16 @@ public partial class GameDetailsViewModel : ObservableObject
     // ── Band 4: get me in ───────────────────────────────────────────────────
 
     /// <summary>Play or Install link, from the tile. Null when no honest action is available.</summary>
-    public GameLink? PrimaryAction { get; }
+    public GameLink? PrimaryAction { get; private set; }
 
     public bool HasPrimaryAction => PrimaryAction is not null;
 
     /// <summary>Store page and patch-notes hub. Empty when we hold no appid.</summary>
-    public IReadOnlyList<GameLink> Links { get; }
+    public IReadOnlyList<GameLink> Links { get; private set; }
 
     public bool HasLinks => Links.Count > 0;
 
-    public string? GogPatchNotes { get; }
+    public string? GogPatchNotes { get; private set; }
     public bool HasGogPatchNotes => !string.IsNullOrWhiteSpace(GogPatchNotes);
 
     /// <summary>
@@ -566,7 +578,7 @@ public partial class GameDetailsViewModel : ObservableObject
     /// not a band with no way in. Takes <c>Text</c> ink, not <c>TextDim</c>,
     /// because it carries the fact in the way §10.2's no-rail sentence does.
     /// </summary>
-    public string? NoWayInSentence { get; }
+    public string? NoWayInSentence { get; private set; }
 
     /// <summary>True when <see cref="NoWayInSentence"/> is non-null and the line should be drawn.</summary>
     public bool HasNoWayInSentence => NoWayInSentence is not null;

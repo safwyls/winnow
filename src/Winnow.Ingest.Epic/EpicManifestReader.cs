@@ -98,7 +98,9 @@ public sealed class EpicManifestReader
                 LaunchExecutable: EpicJson.String(root, "LaunchExecutable"),
                 AppVersionString: EpicJson.String(root, "AppVersionString"),
                 InstallSize: EpicJson.Int64(root, "InstallSize"),
-                IsIncompleteInstall: EpicJson.Bool(root, "bIsIncompleteInstall"),
+                // Only an explicit completion bit may turn Install into Play.
+                IsIncompleteInstall: !root.TryGetProperty("bIsIncompleteInstall", out var incomplete)
+                    || incomplete.ValueKind != JsonValueKind.False,
                 MainGameCatalogItemId: EpicJson.String(root, "MainGameCatalogItemId"),
                 MainGameAppName: EpicJson.String(root, "MainGameAppName"),
                 AppCategories: EpicJson.StringArray(root, "AppCategories"),

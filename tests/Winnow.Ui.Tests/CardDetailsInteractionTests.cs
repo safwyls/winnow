@@ -24,6 +24,66 @@ namespace Winnow.Ui.Tests;
 public sealed class CardDetailsInteractionTests
 {
     [AvaloniaTheory]
+    [InlineData(108, 100)]
+    [InlineData(108, 80)]
+    [InlineData(108, 120)]
+    [InlineData(148, 140)]
+    [InlineData(200, 180)]
+    public async Task Animated_details_click_opens_when_the_back_is_visible(double width, int delay)
+    {
+        using var fixture = await CardFixture.CreateAsync(width, reducedMotion: false);
+        for (var attempt = 0; attempt < 3; attempt++)
+        {
+            fixture.Window.MouseMove(fixture.Position(fixture.TileView, new Point(width / 2, 30)));
+            fixture.Library.FlipTileCommand.Execute(fixture.Tile);
+            Flush();
+            await Task.Delay(delay);
+            Flush();
+            var button = fixture.Button("Details");
+            var target = fixture.Window.InputHitTest(fixture.Position(button, new Point(4, 4))) as Control;
+            Assert.True(ReferenceEquals(button, target?.FindAncestorOfType<Button>(includeSelf: true)),
+                $"Attempt {attempt}, {delay}ms: {target} at {fixture.Position(button, new Point(4, 4))}; enabled {button.IsEffectivelyEnabled}, back opacity {fixture.TileView.FindControl<Border>("Back")!.Opacity}, transform {fixture.TileView.FindControl<Border>("Back")!.RenderTransform}");
+            fixture.Click(button, new Point(4, 4));
+            if (fixture.Library.OpenDetailsCommand.ExecutionTask is { } opened) await opened;
+            Flush();
+            Assert.True(fixture.Library.IsDetailsOpen, $"Click missed on attempt {attempt} after {delay}ms");
+            fixture.Library.CloseDetailsCommand.Execute(null);
+            Flush();
+        }
+    }
+
+    [AvaloniaTheory]
+    [InlineData(108, true, false)]
+    [InlineData(108, true, true)]
+    [InlineData(108, false, true)]
+    [InlineData(148, true, true)]
+    [InlineData(200, false, true)]
+    public async Task Hover_stats_and_store_chips_do_not_overlap(double width, bool singleStore, bool played)
+    {
+        using var fixture = await CardFixture.CreateAsync(width, singleStore: singleStore, played: played);
+        fixture.Window.MouseMove(fixture.Position(fixture.TileView, new Point(width / 2, 30)));
+        await Task.Delay(200);
+        Flush();
+        var scrim = fixture.TileView.FindControl<Border>("Scrim")!;
+        var stat = scrim.GetVisualDescendants().OfType<TextBlock>().Single(t => t.Text == fixture.Tile.StatText);
+        var statOrigin = stat.TranslatePoint(default, scrim)!.Value;
+        var textBounds = new Rect(statOrigin, new Size(stat.TextLayout.Width, stat.TextLayout.Height));
+        foreach (var chip in scrim.GetVisualDescendants().OfType<Border>().Where(b => b.Classes.Contains("store-chip")))
+        {
+            var chipBounds = new Rect(chip.TranslatePoint(default, scrim)!.Value, chip.Bounds.Size);
+            Assert.False(textBounds.Intersects(chipBounds),
+                $"Stat {textBounds} overlaps chip {chipBounds} at width {width}");
+        }
+        Assert.True(scrim.Bounds.Height <= fixture.TileView.Bounds.Height);
+        if (Environment.GetEnvironmentVariable("WINNOW_UI_CAPTURE_DIR") is { } directory)
+        {
+            Directory.CreateDirectory(directory);
+            using var frame = fixture.Window.CaptureRenderedFrame();
+            frame!.Save(Path.Combine(directory, $"card-hover-{width}-{singleStore}-{played}.png"));
+        }
+    }
+
+    [AvaloniaTheory]
     [InlineData(108)]
     [InlineData(148)]
     public async Task Details_owns_its_hit_area_and_opens_after_each_reopen(double width)
@@ -153,7 +213,7 @@ public sealed class CardDetailsInteractionTests
         public GameTileViewModel Tile { get; private set; } = null!;
         public GameTileView TileView { get; private set; } = null!;
 
-        public static async Task<CardFixture> CreateAsync(double width)
+        public static async Task<CardFixture> CreateAsync(double width, bool reducedMotion = true, bool singleStore = false, bool played = false)
         {
             var fixture = new CardFixture();
             var works = new WorkRepository(fixture._database.Factory);
@@ -166,16 +226,18 @@ public sealed class CardDetailsInteractionTests
                 new LibraryQueryRepository(fixture._database.Factory), ownerships, releases, works,
                 new UpdateEventRepository(fixture._database.Factory));
             await fixture.Library.LoadCommand.ExecuteAsync(null);
-            fixture.Tile = TileFixture.Tile(DateTime.UtcNow,
-                [
-                    TileEntry.For(ownership, release, work, "steam", 0, null,
+            var entries = new[]
+                {
+                    TileEntry.For(ownership, release, work, "steam", played ? 740700 : 0, played ? DateTime.UtcNow.AddYears(-10) : null,
                         ownership: new Ownership { ReleaseId = release, Store = "steam", Installed = true }, steamAppId: "80"),
                     TileEntry.For(ownership + 1, release, work, "gog", 0, null),
                     TileEntry.For(ownership + 2, release, work, "epic", 0, null),
-                ], work, LibraryBuckets.NeverPlayed,
+                };
+            fixture.Tile = TileFixture.Tile(DateTime.UtcNow,
+                singleStore ? entries[..1] : entries, work, played ? LibraryBuckets.Retired : LibraryBuckets.NeverPlayed,
                 title: "A deliberately long game title occupying two lines",
                 work: new Work { Name = "Fixture", FirstReleaseYear = 2006 },
-                ramp: new DormancyRamp { ReducedMotion = true });
+                ramp: new DormancyRamp { ReducedMotion = reducedMotion });
             fixture.Tile.OpenDetailsCommand = fixture.Library.OpenDetailsCommand;
             var wall = new CoverWall
             {

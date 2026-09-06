@@ -2122,3 +2122,17 @@ The old MainWindow pointer-handler comment said:
 
 The store-actions spike previously said: the 11 misses are delisted or giveaway-only titles (Frostpunk, Palia, LOTR Return to Moria, Moonlighter, ABZU, Dauntless, Drawful 2, Torchlight, Unreal Tournament, >observer_, Hob).
 The mapping is incomplete; eight of those titles still have product-home mappings. The correction replaces the unsupported classification with the measured namespace results.
+
+## 2026-09-06 — Keep appearing card controls at their final size
+
+Animated tests reproduced a Details miss at the 108px density floor: a click near the enabled
+button's edge during its first 80ms hit a Border while the back was scaling. The front still
+squashes, but the back now fades in at a stable size. Center clicks after settling did not
+expose this failure.
+
+The hover stat and single-store chip also overlapped at 108px. Stats now wrap to two lines,
+and every store chip sits on the row below. The visual spec previously said:
+
+> Bottom third of the tile, gradient scrim to `Ground` at 92%.
+
+The overlay remains bottom-aligned and grows to fit its bounded content at dense sizes.

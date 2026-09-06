@@ -7,7 +7,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-06 18:23'
-updated_date: '2026-09-06 18:42'
+updated_date: '2026-09-06 19:04'
 labels: []
 dependencies: []
 priority: high
@@ -35,6 +35,8 @@ User reports Epic titles such as Moonlighter have no Store page and Install does
 Copy the relevant Winnow and Epic files to scratch; correlate Moonlighter ownership, launch key, catalog releaseInfo and recent URI logs; verify a supported identifier and store lookup route; implement the general fix and regression fixtures; validate and document observed limits.
 
 Keep the verified install URI and document the launcher-owned failure, without claiming an installation completed. Add per-namespace GraphQL fallback for bulk-map misses, cache null/empty mapping answers, reject GraphQL errors and ambiguous/non-product-home mappings. Verify against Moonlighter catalog/API fixtures and the copied-library census.
+
+Investigate the newly reported Store Page disappearance after Install with an actual-view pending and completed dispatch regression; preserve storefront metadata through install-state refresh.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -45,4 +47,8 @@ Copied live Moonlighter entry has a complete matching namespace/catalog/artifact
 Store-page fix and fixture verification complete: 108 focused tests passed, including exact persisted-namespace fallback, cached null/empty responses, GraphQL error stale fallback, unsafe and ambiguous mapping rejection, Moonlighter scan/persistence/URI round-trip, tile actions and architecture guards. Diff check passed. AC2 remains unchecked and task remains In Progress because the real launcher still has no verified working install confirmation. AC1 also remains unchecked because the exact launcher AI-NE cause is not established; the missing-link cause and accepted-dispatch failure boundary are documented. No launcher restart, cache deletion or install was performed.
 
 Final integration build passed with zero warnings and errors; all 3483 main tests and 5 UI tests passed. Install confirmation remains unverified and this task stays In Progress.
+
+Follow-up actual-view tests at four window sizes keep Moonlighter Store page visible and hit-testable during pending Install, after handoff, mouse leave and focus changes. A fifth test verifies it survives in-place Install-to-Play refresh and the command receives the new installed tile. The reported disappearance is not reproduced; asked whether closing and reopening Details restores it. Do not claim this symptom fixed from passing tests alone.
+
+Final integration checks pass: 3496 main tests, 20 actual-view UI tests, and 185 tests after selection preservation. Store Page disappearance remains unconfirmed and this task stays In Progress; Install-to-Play completion monitoring was delivered separately as TASK-143.
 <!-- SECTION:NOTES:END -->

@@ -225,11 +225,13 @@ the event row. This is the feature that closes the loop: notice → context → 
 
 ### 5.3 Hover overlay
 
-Bottom third of the tile, gradient scrim to `Ground` at 92%. Title in Body L, playtime and
+Bottom-aligned gradient scrim to `Ground` at 92%. Title in Body L, playtime and
 idle time in Data S. A single primary action, `Play`, in `Volt`.
 
 **Stores are a chip row**, one chip per store the game is owned on, unchanged in appearance for
-a single-store tile. A multi-store tile additionally carries a compact one-letter-per-store
+a single-store tile. Chips always occupy their own row below the stats. The stat text wraps
+to at most two lines with ellipsis and a full-text tooltip, so it cannot paint over a chip at
+the density floor. A multi-store tile additionally carries a compact one-letter-per-store
 mark at rest on the front, which fades out over 140ms as the overlay rises, exactly as the
 baked placeholder title does. The chips are the one "where you own it" fact, drawn once, so
 the four-fact cap is not breached. The resting mark uses initials because the density slider's
@@ -254,6 +256,11 @@ Details. The facts therefore scroll inside that remaining space, with the inner 
 gutter; they cannot draw over the buttons or intercept their clicks. Buttons and the facts
 scrollbar own repeated presses. The cover's double-click gesture applies only outside those
 controls.
+
+**The flip keeps the back's hit targets still.** The front squashes over 80ms, then the back
+fades in over 80ms at its final size. Interactive back controls never scale during the turn;
+a click near a visible button edge must hit that button while it is appearing. Reduced motion
+snaps both faces.
 
 ### 5.4 How the ramp is drawn
 

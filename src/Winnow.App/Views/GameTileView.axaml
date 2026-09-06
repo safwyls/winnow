@@ -111,8 +111,9 @@
             </Setter>
         </Style>
 
-        <!-- Card flip (§5.3). 160ms turn: front squashes in 80ms, back opens
-             in 80ms. Transition-based so it reverses automatically. Resting
+        <!-- Card flip (§5.3). 160ms turn: front squashes in 80ms, back fades
+             in over 80ms. Its controls keep stable hit targets while appearing.
+             Transition-based so it reverses automatically. Resting
              values are style setters (not local) so reduced-motion and flipped
              selectors can override them. -->
 
@@ -139,21 +140,16 @@
 
         <Style Selector="Border#Back">
             <Setter Property="Opacity" Value="0"/>
-            <Setter Property="RenderTransform" Value="scaleX(0)"/>
             <Setter Property="IsHitTestVisible" Value="False"/>
             <Setter Property="Transitions">
                 <Transitions>
                     <DoubleTransition Property="Opacity" Duration="0:0:0.08"
                                       Delay="0:0:0.08" Easing="CubicEaseOut"/>
-                    <TransformOperationsTransition Property="RenderTransform"
-                                                   Duration="0:0:0.08"
-                                                   Delay="0:0:0.08" Easing="CubicEaseOut"/>
                 </Transitions>
             </Setter>
         </Style>
         <Style Selector="Border#Lift.flipped Border#Back">
             <Setter Property="Opacity" Value="1"/>
-            <Setter Property="RenderTransform" Value="scaleX(1)"/>
             <!-- Face-up, the back is not merely invisible: it must not eat a
                  press meant for the cover under it. -->
             <Setter Property="IsHitTestVisible" Value="True"/>
@@ -408,24 +404,13 @@
                                        TextWrapping="Wrap" MaxLines="2"
                                        TextTrimming="CharacterEllipsis"
                                        LineHeight="18"/>
-                            <Grid ColumnDefinitions="*,Auto">
-                                <TextBlock Grid.Column="0" Classes="data-s"
-                                           Text="{Binding StatText}" VerticalAlignment="Center"/>
-                                <!-- Single-store tile: one badge beside the stat, as
-                                     the overlay has always drawn it. -->
-                                <Border Grid.Column="1" Classes="store-chip"
-                                        IsVisible="{Binding !IsMultiStore}">
-                                    <TextBlock Text="{Binding StoreBadge}"/>
-                                </Border>
-                            </Grid>
-                            <!-- Multi-store chips sit on their own line. Beside the stat
-                                 they win the Auto column at the 108 px density floor and
-                                 leave playtime with no width, and playtime is the fact the
-                                 overlay exists for. One extra line, only on the rare tile
-                                 that has earned it; still one "where you own it" fact, so
-                                 the four-fact cap (section 5.3) is not breached. -->
+                            <TextBlock Classes="data-s" Text="{Binding StatText}"
+                                       TextWrapping="Wrap" MaxLines="2"
+                                       TextTrimming="CharacterEllipsis"
+                                       ToolTip.Tip="{Binding StatText}"/>
+                            <!-- Even one word-chip crowds the stat at minimum density.
+                                 Keep each fact in its own bounded row at every width. -->
                             <ItemsControl ItemsSource="{Binding StoreChips}"
-                                          IsVisible="{Binding IsMultiStore}"
                                           ToolTip.Tip="{Binding StoreNames}">
                                 <ItemsControl.ItemsPanel>
                                     <ItemsPanelTemplate>
