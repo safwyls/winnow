@@ -21,7 +21,7 @@ of them defers to another, and none of them outranks another.
 | Where each filter value comes from | `docs/facet-provenance.md` |
 | Orientation for a new reader: what it is, how to install, run and build | `README.md` |
 | Evidence: how something was measured | `docs/spikes/` |
-| Per-domain agent charters | `.claude/agents/` |
+| Per-domain agent charters | `.codex/agents/` (Codex), `.claude/agents/` (Claude Code) |
 
 If a document is wrong, edit it to the current truth in the same commit as the change that
 made it wrong, and append the sentence it used to say to `docs/decisions.md`. Do not leave a
@@ -75,10 +75,42 @@ Each one is load-bearing for an install that predates the 2026-08-28 rename.
 - `tests/Winnow.Tests` — xUnit on temp-file SQLite databases. Parser tests use the sanitized
   real fixtures in `tests/fixtures/steam/`.
 
+## Agent instructions and writing
+
+`AGENTS.md` is the shared entry point. `CLAUDE.md` imports it. Codex loads the TOML roles in
+`.codex/agents/`; Claude Code uses the matching Markdown roles in `.claude/agents/`. Keep
+paired role instructions equivalent when editing them. Roles inherit the selected model;
+do not pin a model unless the user requests it.
+
+Each agent writes the documentation, UI copy and comments required by its work. There is no
+separate prose author and no prose handoff required to finish a change.
+
+- Write clear, concise sentences with familiar words and active verbs. Lead with the result
+  or fact; add the explanation needed to understand it. Use lists for actual steps or parallel
+  items, and omit filler, sales language and repeated summaries.
+- Verify behavior in the source before documenting it. State limitations and distinguish
+  measured results from assumptions. Preserve an existing document's structure and voice.
+- Keep rules in the document that owns the domain, historical rationale in `docs/decisions.md`,
+  measurement methods in `docs/spikes/`, and delivery status in `ROADMAP.md` or Backlog.
+- Comments explain constraints or intent that the code cannot show. Avoid narrating the next
+  line or describing the history of a diff. UI copy follows `design-system.md`.
+- Report what changed, what was checked and any remaining limitation. Scale detail to the work.
+
+The frontend-design skill is available in `.agents/skills/` for Codex and `.claude/skills/`
+for Claude Code. Keep both copies aligned. Winnow's visual spec and tokens govern app changes.
+Historical plans and decision records provide context, not additional active agent instructions.
+
+The Codex Backlog hook checks direct `apply_patch` edits; the Claude hook checks direct file
+edits. Neither guards every possible shell or tool write. The Backlog CLI rule below applies
+to all editing methods. If `backlog` is missing from PATH, check the installed npm executable
+(on Windows, `%APPDATA%\npm\backlog.cmd`) before installing anything. If it cannot run,
+report the limitation and leave Backlog files untouched.
+
 ## Conventions
 
-- Domain agents live in `.claude/agents/`. Delegate work by domain and pass the agent its
-  charter.
+- Use domain agents for bounded work that benefits from delegation. Keep small changes local.
+  Give each agent its scope, owned files and relevant charter; concurrent agents must preserve
+  one another's edits. The coordinating agent owns integration and verification.
 - `Directory.Build.props` sets nullable, implicit usings and `TreatWarningsAsErrors`.
 - Build and test with `dotnet build` and `dotnet test` from the repository root.
 - Run with `dotnet run --project src/Winnow.App`. `-- --seed-sample` seeds demo data.

@@ -1,8 +1,6 @@
----
-name: recommendation-engine
-description: Recommendation-engine specialist for Winnow. Owns the scoring model that decides which owned-but-unplayed game to surface next, the signal extraction over longitudinal playtime/session/update data, cold-start behaviour, and explainability. Use for anything in src/Winnow.Recommend.
----
-
+name = "recommendation-engine"
+description = "Recommendation-engine specialist for Winnow. Owns the scoring model that decides which owned-but-unplayed game to surface next, the signal extraction over longitudinal playtime/session/update data, cold-start behaviour, and explainability. Use for anything in src/Winnow.Recommend."
+developer_instructions = '''
 Read `AGENTS.md` and follow its shared workflow and writing guidance.
 
 You are the recommendation-engine specialist for Winnow, a local-first game library manager.
@@ -54,3 +52,4 @@ nothing else can.
   distributions, not five hand-made rows.
 - xUnit tests on temp-file SQLite, same conventions as `tests/Winnow.Tests`. `dotnet build`
   and `dotnet test` from the repository root stay green.
+'''
