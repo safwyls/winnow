@@ -24,7 +24,7 @@ namespace Winnow.Data.Repositories;
 /// </summary>
 public sealed class GameListRepository : IGameListRepository
 {
-    private const string Columns = """
+    internal const string Columns = """
         id          AS Id,
         name        AS Name,
         description AS Description,
@@ -61,6 +61,15 @@ public sealed class GameListRepository : IGameListRepository
             $"SELECT {Columns} FROM lists ORDER BY name;",
             transaction: lease.Transaction, cancellationToken: ct));
         return rows.AsList();
+    }
+
+    public async Task<IReadOnlyList<ListItem>> GetAllItemsAsync(CancellationToken ct = default)
+    {
+        using var lease = _factory.Lease();
+        return (await lease.Connection.QueryAsync<ListItem>(new CommandDefinition("""
+            SELECT list_id AS ListId, release_id AS ReleaseId, position AS Position
+            FROM list_items ORDER BY list_id, position, release_id;
+            """, transaction: lease.Transaction, cancellationToken: ct))).AsList();
     }
 
     public async Task<bool> RenameAsync(

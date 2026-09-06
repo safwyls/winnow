@@ -8,6 +8,9 @@ namespace Winnow.Core.Repositories;
 /// </summary>
 public interface ILibraryQueryRepository
 {
+    /// <summary>Loads the library, identifiers and list membership in one database command.</summary>
+    Task<LibrarySnapshot> GetSnapshotAsync(BucketThresholds thresholds, CancellationToken ct = default);
+
     /// <summary>
     /// One row per ownership with its derived bucket. Excludes consolidated
     /// demos and non-game entries (unless thresholds opt in).

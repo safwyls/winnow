@@ -116,23 +116,14 @@ internal static class TileFixture
 
         return bucket switch
         {
-            LibraryBuckets.Retired => defaults with { RetiredFloorMinutes = Math.Max(1, minutes) },
+            LibraryBuckets.Retired => new BucketThresholds(1, Math.Max(2, minutes), defaults.StaleWindowMonths),
             LibraryBuckets.StaleButPatched => defaults with
             {
                 RetiredFloorMinutes = long.MaxValue,
-                StaleWindowMonths = 0,
+                StaleWindowMonths = 1,
             },
-            LibraryBuckets.Bounced => defaults with
-            {
-                BouncedFloorMinutes = Math.Max(1, minutes),
-                RetiredFloorMinutes = long.MaxValue,
-            },
-            LibraryBuckets.Active => defaults with
-            {
-                BouncedFloorMinutes = long.MaxValue,
-                RetiredFloorMinutes = long.MaxValue,
-                StaleWindowMonths = 1_200,
-            },
+            LibraryBuckets.Bounced => new BucketThresholds(Math.Max(1, Math.Min(long.MaxValue - 1, minutes)), long.MaxValue, defaults.StaleWindowMonths),
+            LibraryBuckets.Active => new BucketThresholds(long.MaxValue - 1, long.MaxValue, 1_200),
             _ => defaults,
         };
     }

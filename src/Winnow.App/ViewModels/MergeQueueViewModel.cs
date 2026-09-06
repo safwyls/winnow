@@ -492,57 +492,65 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private async Task LoadAsync(CancellationToken ct)
     {
-        // Must be read before the queue so an empty section knows if the matcher has run.
-        HasCompletedSweep = _resolveState is not null
-            && await _resolveState.GetLastSoftMatchSweepAsync(ct) is not null;
-
-        var pending = await _candidates.GetPendingAsync(ct);
-        var resolution = await _links.GetResolutionAsync(ct);
-        var scan = await _expansions.ScanAsync(ct);
-        var history = await _links.GetHistoryAsync(null, ct);
-        var acts = await _links.GetActsAsync(ct);
-
-        var releaseIds = new HashSet<long>();
-        foreach (var candidate in pending)
+        var loaded = await Task.Run(async () =>
         {
-            releaseIds.Add(candidate.LeftReleaseId);
-            releaseIds.Add(candidate.RightReleaseId);
-        }
+            // Must be read before the queue so an empty section knows if the matcher has run.
+            var hasCompletedSweep = _resolveState is not null
+                && await _resolveState.GetLastSoftMatchSweepAsync(ct) is not null;
 
-        foreach (var group in scan.Groups)
-        {
-            releaseIds.UnionWith(group.Base.ReleaseIds);
-            foreach (var member in group.Members)
+            var pending = await _candidates.GetPendingAsync(ct);
+            var resolution = await _links.GetResolutionAsync(ct);
+            var scan = await _expansions.ScanAsync(ct);
+            var history = await _links.GetHistoryAsync(null, ct);
+            var acts = await _links.GetActsAsync(ct);
+            var snapshot = await _libraryQueries.GetSnapshotAsync(
+                BucketThresholds.Default with { ShowNonGameEntries = true }, ct);
+            var releasesByWork = snapshot.Releases.ToLookup(release => release.WorkId);
+
+            var releaseIds = new HashSet<long>();
+            foreach (var candidate in pending)
             {
-                releaseIds.UnionWith(member.Work.ReleaseIds);
+                releaseIds.Add(candidate.LeftReleaseId);
+                releaseIds.Add(candidate.RightReleaseId);
             }
-        }
 
-        var standing = StandingActs(history, acts);
-        var releasesOfWork = new Dictionary<long, IReadOnlyList<long>>();
-        foreach (var act in standing)
-        {
-            foreach (var workId in act.WorkIds)
+            foreach (var group in scan.Groups)
             {
-                if (!releasesOfWork.ContainsKey(workId))
+                releaseIds.UnionWith(group.Base.ReleaseIds);
+                foreach (var member in group.Members)
                 {
-                    var owned = await _releases.GetByWorkAsync(workId, ct);
-                    releasesOfWork[workId] = [.. owned.Select(release => release.Id).Order()];
-                    releaseIds.UnionWith(releasesOfWork[workId]);
+                    releaseIds.UnionWith(member.Work.ReleaseIds);
                 }
             }
-        }
 
-        var library = await DescribeAsync(releaseIds, ct);
-        var now = _clock.GetUtcNow().UtcDateTime;
+            var standing = StandingActs(history, acts);
+            var releasesOfWork = new Dictionary<long, IReadOnlyList<long>>();
+            foreach (var act in standing)
+            {
+                foreach (var workId in act.WorkIds)
+                {
+                    if (!releasesOfWork.ContainsKey(workId))
+                    {
+                        var owned = releasesByWork[workId];
+                        releasesOfWork[workId] = [.. owned.Select(release => release.Id).Order()];
+                        releaseIds.UnionWith(releasesOfWork[workId]);
+                    }
+                }
+            }
 
-        var cards = new List<MergeCardViewModel>();
-        cards.AddRange(await BuildSameGameCardsAsync(pending, library, resolution, now, ct));
-        cards.AddRange(await BuildExpansionCardsAsync(scan, library, now, ct));
-        cards.AddRange(await BuildStandingCardsAsync(standing, releasesOfWork, library, now, ct));
+            var library = await DescribeAsync(releaseIds, snapshot, ct);
+            var now = _clock.GetUtcNow().UtcDateTime;
 
+            var cards = new List<MergeCardViewModel>();
+            cards.AddRange(await BuildSameGameCardsAsync(pending, library, resolution, now, ct));
+            cards.AddRange(await BuildExpansionCardsAsync(scan, library, now, ct));
+            cards.AddRange(await BuildStandingCardsAsync(standing, releasesOfWork, library, now, ct));
+            return (hasCompletedSweep, cards);
+        }, ct);
+
+        HasCompletedSweep = loaded.hasCompletedSweep;
         _loaded = true;
-        Place(cards);
+        Place(loaded.cards);
 
         Focus(VisibleRows().FirstOrDefault());
         RequestCovers(_coverWidthPixels);
@@ -1673,13 +1681,14 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
     // The row's face comes from the WORK, because a row is a work and its
     // title is the one the library would keep. The cover key comes from the
     // store entry, because that is where a Steam appid lives.
-    private async Task<MergeSideViewModel> DescribeWorkAsync(
+    private Task<MergeSideViewModel> DescribeWorkAsync(
         long workId,
         IReadOnlyList<long> releaseIds,
         LibrarySnapshot library,
         CancellationToken ct)
     {
-        var work = await _works.GetAsync(workId, ct);
+        ct.ThrowIfCancellationRequested();
+        var work = library.WorkRecords.GetValueOrDefault(workId);
         var releaseId = releaseIds.Count > 0 ? releaseIds[0] : 0;
 
         CoverKey? coverKey = null;
@@ -1723,14 +1732,14 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
             }
         }
 
-        return new MergeSideViewModel(
+        return Task.FromResult(new MergeSideViewModel(
             releaseId,
             work?.Name ?? library.Titles.GetValueOrDefault(releaseId, string.Empty),
             work?.FirstReleaseYear,
             work?.Publisher,
             coverKey,
             _covers,
-            stores);
+            stores));
     }
 
     /// <summary>What one load read about the releases the queue names.</summary>
@@ -1741,7 +1750,8 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
         Dictionary<long, SurvivorCandidate> Works,
         Dictionary<long, IReadOnlyList<string>> Stores,
         Dictionary<long, List<OwnershipBucket>> Played,
-        Dictionary<long, List<Ownership>> Owned)
+        Dictionary<long, List<Ownership>> Owned,
+        Dictionary<long, Work> WorkRecords)
     {
         /// <summary>Folds the read model over a work's releases, the one permitted way.</summary>
         public MergeRowFacts FactsOf(IReadOnlyList<long> releaseIds)
@@ -1787,7 +1797,7 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
     }
 
     private async Task<LibrarySnapshot> DescribeAsync(
-        IEnumerable<long> releaseIds, CancellationToken ct)
+        IEnumerable<long> releaseIds, Winnow.Core.Queries.LibrarySnapshot snapshot, CancellationToken ct)
     {
         var titles = new Dictionary<long, string>();
         var coverKeys = new Dictionary<long, CoverKey>();
@@ -1807,8 +1817,12 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
         // unread dot agree with its tile. Read once per load, every entry,
         // because the queue names releases across the whole library.
         var played = new Dictionary<long, List<OwnershipBucket>>();
-        var buckets = await _libraryQueries.GetOwnershipBucketsAsync(
-            BucketThresholds.Default with { ShowNonGameEntries = true }, ct);
+        var buckets = snapshot.Buckets;
+        var releases = snapshot.Releases.ToDictionary(release => release.Id);
+        var releasesByWork = snapshot.Releases.ToLookup(release => release.WorkId);
+        var workRecords = snapshot.Works.ToDictionary(work => work.Id);
+        var ownershipsByRelease = snapshot.Ownerships.ToLookup(ownership => ownership.ReleaseId);
+        var externalIdsByRelease = snapshot.ExternalIds.ToLookup(id => id.ReleaseId);
         foreach (var bucket in buckets)
         {
             if (!played.TryGetValue(bucket.ReleaseId, out var list))
@@ -1821,7 +1835,7 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
 
         foreach (var releaseId in releaseIds)
         {
-            var release = await _releases.GetAsync(releaseId, ct);
+            var release = releases.GetValueOrDefault(releaseId);
             if (release is null)
             {
                 continue;
@@ -1833,14 +1847,14 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
             // on two storefronts, so it is read from the ownership rows for
             // every entry the queue names rather than derived from the cover
             // key or the external-id provider.
-            var ownerships = await _ownership.GetByReleaseAsync(releaseId, ct);
-            if (ownerships.Count > 0)
+            var ownerships = ownershipsByRelease[releaseId];
+            if (ownerships.Any())
             {
                 stores[releaseId] = [.. ownerships.Select(o => o.Store)];
                 owned[releaseId] = [.. ownerships];
             }
 
-            var work = await _works.GetAsync(release.WorkId, ct);
+            var work = workRecords.GetValueOrDefault(release.WorkId);
             titles[releaseId] = work?.Name ?? release.Name;
 
             if (work is not null && !works.ContainsKey(work.Id))
@@ -1853,11 +1867,11 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
                     WorkId = work.Id,
                     HasIgdbId = work.IgdbId is not null,
                     NameIsProvisional = work.NameIsProvisional,
-                    ReleaseCount = (await _releases.GetByWorkAsync(work.Id, ct)).Count,
+                    ReleaseCount = releasesByWork[work.Id].Count(),
                 };
             }
 
-            var externalIds = await _releases.GetExternalIdsAsync(releaseId, ct);
+            var externalIds = externalIdsByRelease[releaseId];
             var steam = externalIds.FirstOrDefault(x => x.Provider == ExternalIdProviders.Steam);
 
             // Cover-key ladder — the same four rungs the library load
@@ -1892,7 +1906,7 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
             }
         }
 
-        return new LibrarySnapshot(titles, coverKeys, workOfRelease, works, stores, played, owned);
+        return new LibrarySnapshot(titles, coverKeys, workOfRelease, works, stores, played, owned, workRecords);
     }
 
     // ── Undo bookkeeping ─────────────────────────────────────────────────────

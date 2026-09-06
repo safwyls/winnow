@@ -58,7 +58,7 @@ public sealed class IdentityReadInventoryTests
     private static readonly Entry[] Inventory =
     [
         // ── RESOLVE ────────────────────────────────────────────────────────
-        new("src/Winnow.Data/Repositories/LibraryQueryRepository.cs", "QueryAsync", Policy.Resolve,
+        new("src/Winnow.Data/Repositories/LibraryQueryRepository.cs", "BucketSql", Policy.Resolve,
             "The chokepoint. One LEFT JOIN over live same_game links, in the same pass as demo "
             + "consolidation, and every surface it feeds inherits it: the grid, the rail bucket "
             + "counts, All Games, the filter options, list counts, the recommender, the feed and "
@@ -67,7 +67,7 @@ public sealed class IdentityReadInventoryTests
         new("src/Winnow.App/ViewModels/LibraryViewModel.cs", "LoadAsync", Policy.Resolve,
             "The display title and cover. The row keeps its OWN work for everything enrichment "
             + "reads; the user is shown the primary's name and art, so both store entries of one "
-            + "game read as one game while the grid is still one tile per ownership."),
+            + "game read as one tile per resolved work."),
 
         new("src/Winnow.Recommend/RecommendationEngine.cs", "AssemblePoolAsync", Policy.Resolve,
             "Feed suppression. Verdicts are stored per release and widened to the RESOLVED work, "
@@ -75,16 +75,18 @@ public sealed class IdentityReadInventoryTests
             + "offering the same game twice under two badges. The bought-twice signal is keyed the "
             + "same way, which is what the destructive merge used to give it."),
 
-        new("src/Winnow.App/ViewModels/MergeQueueViewModel.cs", "DescribeAsync", Policy.Resolve,
+        new("src/Winnow.App/ViewModels/MergeQueueViewModel.cs", "LoadAsync", Policy.Resolve,
             "Renders the members MergeGrouping produced, and a member IS a resolved work: the "
             + "grouping resolves both ends of every proposal and drops the ones that resolve to "
             + "one work before a card exists."),
 
-        new("src/Winnow.App/ViewModels/MergeQueueViewModel.cs", "DescribeWorkAsync", Policy.Resolve,
-            "The same read at the grain of one member. The id it is handed has already been "
-            + "resolved by MergeGrouping."),
-
         // ── DO NOT RESOLVE ─────────────────────────────────────────────────
+        new("src/Winnow.Data/Repositories/LibraryQueryRepository.cs", "GetSnapshotAsync", Policy.DoNotResolve,
+            "The additional work and ownership result sets preserve each row's own metadata and "
+            + "purchase facts. The bucket result uses the separately inventoried, resolving "
+            + "BucketSql; library and Review presentation resolve over the snapshot without "
+            + "replacing a child's stored artwork, identifiers or ownership facts."),
+
         new("src/Winnow.App/Services/AcquisitionExport.cs", "ReadAsync", Policy.DoNotResolve,
             "The CSV exports one receipt per ownership, with that copy's stored title, date, "
             + "licence and price. Linking games must not fold purchases or replace their facts."),
@@ -443,6 +445,34 @@ public sealed class IdentityReadInventoryTests
 
     // ── The scanner ─────────────────────────────────────────────────────────
 
+    [Fact]
+    public void Shared_SQL_constants_and_bulk_snapshot_callers_are_caught_under_their_own_names()
+    {
+        var sandbox = Path.Combine(Path.GetTempPath(), "winnow-readscan-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(Path.Combine(sandbox, "Winnow.Somewhere"));
+        try
+        {
+            File.WriteAllText(Path.Combine(sandbox, "Winnow.Somewhere", "BulkPanel.cs"), """
+                namespace Winnow.Somewhere;
+                public sealed class BulkPanel
+                {
+                    private readonly ILibraryQueryRepository _library;
+                    private int PreviousMethod() => 0;
+                    private const string StoredRows = "SELECT id FROM works;";
+                    public async Task LoadAsync()
+                    {
+                        var snapshot = await _library.GetSnapshotAsync(BucketThresholds.Default);
+                    }
+                }
+                """);
+            var sites = Scan(sandbox);
+            Assert.Equal(["LoadAsync", "StoredRows"], sites.Select(site => site.Member));
+            Assert.Contains("bulk snapshot", Explain(sites), StringComparison.Ordinal);
+            Assert.DoesNotContain(sites, site => site.Member == "PreviousMethod");
+        }
+        finally { Directory.Delete(sandbox, recursive: true); }
+    }
+
     /// <summary>
     /// A SQL read of works or ownerships. FROM or JOIN only: an INSERT or an
     /// UPDATE is a write and is not what this inventory is about.
@@ -459,6 +489,10 @@ public sealed class IdentityReadInventoryTests
         @"\bI(?:Work|Ownership)Repository\??\s+(_?[A-Za-z]\w*)",
         RegexOptions.CultureInvariant);
 
+    private static readonly Regex SnapshotRepositoryDeclaration = new(
+        @"\bILibraryQueryRepository\??\s+(_?[A-Za-z]\w*)",
+        RegexOptions.CultureInvariant);
+
     /// <summary>
     /// A read member. Insert, Update and Delete are writes and are out of
     /// scope by the same rule the SQL pattern applies.
@@ -473,6 +507,10 @@ public sealed class IdentityReadInventoryTests
     /// </summary>
     private static readonly Regex MemberDeclaration = new(
         @"^\s+(?:\[[^\]]*\]\s*)?(?:public|private|internal|protected)[^;=]*?\b(\w+)\s*(?:<[^>()]*>)?\s*\(",
+        RegexOptions.CultureInvariant);
+
+    private static readonly Regex SqlConstantDeclaration = new(
+        @"^\s+(?:public|private|internal|protected)\s+const\s+string\s+(\w+)\s*=",
         RegexOptions.CultureInvariant);
 
     private static string SourceRoot
@@ -516,17 +554,20 @@ public sealed class IdentityReadInventoryTests
 
             // The identifiers this file reaches works or ownerships through.
             var names = new HashSet<string>(StringComparer.Ordinal);
+            var snapshotNames = new HashSet<string>(StringComparer.Ordinal);
             foreach (var line in lines)
             {
                 foreach (Match declaration in RepositoryDeclaration.Matches(line))
                 {
                     names.Add(declaration.Groups[1].Value);
                 }
+                foreach (Match declaration in SnapshotRepositoryDeclaration.Matches(line))
+                    snapshotNames.Add(declaration.Groups[1].Value);
             }
 
             for (var i = 0; i < lines.Length; i++)
             {
-                var what = Reader(lines[i], names);
+                var what = Reader(lines[i], names, snapshotNames);
                 if (what is null)
                 {
                     continue;
@@ -549,7 +590,7 @@ public sealed class IdentityReadInventoryTests
             .ToList();
     }
 
-    private static string? Reader(string line, HashSet<string> names)
+    private static string? Reader(string line, HashSet<string> names, HashSet<string> snapshotNames)
     {
         if (SqlRead.Match(line) is { Success: true } sql)
         {
@@ -569,6 +610,12 @@ public sealed class IdentityReadInventoryTests
             }
         }
 
+        foreach (var name in snapshotNames)
+        {
+            if (Regex.IsMatch(line, @"(?<![\w.])" + Regex.Escape(name) + @"\s*\.\s*GetSnapshotAsync\s*\("))
+                return "bulk snapshot through " + name;
+        }
+
         return null;
     }
 
@@ -576,6 +623,8 @@ public sealed class IdentityReadInventoryTests
     {
         for (var i = index; i >= 0; i--)
         {
+            if (SqlConstantDeclaration.Match(lines[i]) is { Success: true } constant)
+                return constant.Groups[1].Value;
             if (MemberDeclaration.Match(lines[i]) is { Success: true } member)
             {
                 return member.Groups[1].Value;

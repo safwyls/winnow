@@ -76,7 +76,7 @@ public sealed class FeedReserveTests
     }
 
     [Fact]
-    public async Task Only_the_cards_on_screen_are_logged_as_shown()
+    public async Task Generating_cards_and_reserves_records_no_impressions()
     {
         var store = new FakeFeedbackStore();
         await new FeedService(new DeepEngine(items: 10), store, new FixedClock(Now)).GetShelvesAsync();
@@ -84,7 +84,7 @@ public sealed class FeedReserveTests
         // A held card has been seen by nobody. Logging it here would earn it the
         // recently-surfaced demotion tomorrow, and would put it inside the
         // endorsement window, for an impression that never happened.
-        Assert.Equal([1L, 2L, 3L, 4L, 5L, 6L], store.Surfacings.Select(s => s.ReleaseId).Order());
+        Assert.Empty(store.Surfacings);
     }
 
     [Fact]
@@ -237,8 +237,8 @@ public sealed class FeedReserveTests
         Assert.Equal("Held 101", shelf.Cards[0].Tile.Title);
         Assert.False(shelf.Cards[0].IsSetAside);
 
-        // And it is logged as shown at the moment it goes on screen, not by the
-        // pass that computed it.
+        Assert.Empty(service.Surfaced);
+        await feed.RecordViewportEntryAsync(shelf.Cards[0]);
         Assert.Equal([(101L, "ready_to_play")], service.Surfaced);
     }
 
@@ -340,6 +340,8 @@ public sealed class FeedReserveTests
         feed.Tick(FeedCardViewModel.Countdown);
 
         Assert.Equal("Held 3", shelf.Cards[0].Tile.Title);
+        Assert.Empty(service.Surfaced);
+        await feed.RecordViewportEntryAsync(shelf.Cards[0]);
         Assert.Equal([(103L, "on_your_taste")], service.Surfaced);
     }
 

@@ -8,7 +8,7 @@ namespace Winnow.Enrich.Updates;
 ///
 /// <para>The schedule parameters (<see cref="SweepPeriodDays"/>,
 /// <see cref="MaxAppsPerBatch"/>, <see cref="CatchUpAfter"/>) are what turn the
-/// spike's naive 1,232 requests per poll into ~63 per day. See
+/// eligible library into bounded cached daily batches. See
 /// <see cref="UpdateSignalPoller"/> for how they compose.</para>
 /// </summary>
 public sealed class UpdateSignalOptions
@@ -24,8 +24,8 @@ public sealed class UpdateSignalOptions
     /// <para>A free, unofficial, volunteer-run PICS mirror with, in its own
     /// words, "no authentication or verification" and no SLA — §4.5 records it
     /// erroring outright during design. Everything about how this module talks
-    /// to it (the 1 req/s ceiling, the 14-day cache, the cascade that only calls
-    /// it on a news hit) follows from that, not from an observed limit.</para>
+    /// to it (the 1 req/s ceiling and the 14-day cache) follows from that,
+    /// not from an observed limit.</para>
     /// </summary>
     public Uri BuildInfoBaseAddress { get; set; } = new("https://api.steamcmd.net/");
 
@@ -114,18 +114,6 @@ public sealed class UpdateSignalOptions
     public int CorrelationWindowDays { get; set; } = 7;
 
     /// <summary>
-    /// How recent an announcement must be to justify a steamcmd.net call.
-    ///
-    /// <para><c>timeupdated</c> is the app's <i>latest</i> push. Against a patch
-    /// note from 2019 it will not correlate no matter what it says, so the call
-    /// only spends the volunteer service's bandwidth to confirm a "no". Thirty
-    /// days is comfortably wider than <see cref="CorrelationWindowDays"/>, so a
-    /// pushed-then-announced pair still resolves even when the sweep reaches the
-    /// app three weeks later.</para>
-    /// </summary>
-    public int CascadeMaxAnnouncementAgeDays { get; set; } = 30;
-
-    /// <summary>
     /// Whether the first observation of an app's newest patch note is recorded
     /// as an event, or silently absorbed as a baseline.
     ///
@@ -164,8 +152,8 @@ public sealed class UpdateSignalOptions
     public TimeSpan NoNewsFeedRetryAfter { get; set; } = TimeSpan.FromDays(90);
 
     /// <summary>
-    /// How long a fetched steamcmd.net body stays authoritative, so a cascade
-    /// re-triggered inside the window is served from <c>metadata_cache</c>.
+    /// How long a fetched steamcmd.net body stays authoritative, so repeated
+    /// polls inside the window are served from <c>metadata_cache</c>.
     ///
     /// <para>The spike found the endpoint sends no <c>ETag</c>, no
     /// <c>Last-Modified</c>, no <c>Cache-Control</c> and no working compression:
@@ -213,8 +201,7 @@ public sealed class UpdateSignalOptions
     /// <para>Deliberately half the news rate despite the spike observing no
     /// throttling across 20 back-to-back calls. "No rate limiting observed" on a
     /// free volunteer mirror is an absence of evidence, not a licence; the
-    /// cascade already keeps this to ~10 calls a day, so 1 req/s costs nothing
-    /// and cannot look like scraping.</para>
+    /// cache and stagger limit traffic, and the 1 req/s ceiling prevents bursts.</para>
     /// </summary>
     public int BuildInfoRequestsPerSecond { get; set; } = 1;
 

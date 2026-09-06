@@ -76,6 +76,8 @@ public partial class FeedCardViewModel : ObservableObject, IDisposable
     /// </summary>
     internal long Generation { get; init; }
 
+    internal long SurfacingReleaseId { get; init; }
+
     /// <summary>
     /// Whether the shelf behind this card is holding something to put in its
     /// place. False means the receipt has nowhere to go, and it keeps the card's

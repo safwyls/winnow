@@ -91,9 +91,8 @@ public sealed class FeedService : IFeedService
 
         // One instant for the whole pass. The engine derives its shuffle seed
         // from this DATE, so the feed rotates daily and is stable within a day —
-        // refreshing the screen must not deal a new hand — and the feedback read
-        // and the surfacing write are stamped with the same day for the same
-        // reason.
+        // refreshing the screen must not deal a new hand. Impression timestamps
+        // come from actual viewport entry, which may happen on a later day.
         var now = _clock.GetUtcNow().UtcDateTime;
 
         try
@@ -144,9 +143,8 @@ public sealed class FeedService : IFeedService
             return;
         }
 
-        // The same day stamp the generation pass uses, for the same reason: a
-        // surfacing is a fact about a DAY, and the row is idempotent per
-        // (release, day) so a card swapped in twice costs one row.
+        // Stamp the actual observation day, not the earlier scoring pass. The
+        // row is idempotent per (release, day), including repeated scroll entry.
         var day = DateOnly.FromDateTime(_clock.GetUtcNow().UtcDateTime);
 
         try
@@ -293,7 +291,7 @@ public sealed class FeedService : IFeedService
         }
     }
 
-    /// <summary>Loads feedback, scores candidates, records surfacings. Runs on a background thread.</summary>
+    /// <summary>Loads feedback and scores candidates without recording impressions. Runs on a background thread.</summary>
     private async Task<ShelfFeed> ComputeAsync(DateTime now, CancellationToken ct)
     {
         // No store is a real state, not an error: the feed still computes, it
@@ -315,55 +313,7 @@ public sealed class FeedService : IFeedService
             VisiblePerShelf = VisiblePerShelf,
         });
 
-        var feed = await _engine!.GetShelvesAsync(request, ct).ConfigureAwait(false);
-
-        // Only what the screen is about to hold. A held reserve card logged as
-        // shown would earn the recently-surfaced demotion tomorrow, and would
-        // sit inside the endorsement window, for a card nobody ever saw.
-        await RecordSurfacedAsync(Shown(feed), now, ct).ConfigureAwait(false);
-
-        return feed;
-    }
-
-    /// <summary>The same feed with every shelf trimmed to the items that reach the screen.</summary>
-    private static ShelfFeed Shown(ShelfFeed feed) => feed with
-    {
-        Shelves = feed.Shelves
-            .Select(shelf => shelf with { Items = shelf.Items.Take(VisiblePerShelf).ToList() })
-            .ToList(),
-    };
-
-    /// <summary>Logs surfacings for rotation memory. Idempotent per (release, day). Swallows failures.</summary>
-    private async Task RecordSurfacedAsync(ShelfFeed feed, DateTime now, CancellationToken ct)
-    {
-        if (_feedback is null)
-        {
-            return;
-        }
-
-        var surfacings = FeedbackSets.SurfacingsOf(feed, now);
-        if (surfacings.Count == 0)
-        {
-            return;
-        }
-
-        try
-        {
-            await _feedback.RecordSurfacedAsync(surfacings, ct).ConfigureAwait(false);
-        }
-        catch (OperationCanceledException)
-        {
-            // The pass was superseded or the window closed. The caller's own
-            // catch turns this into "nothing happened", which is right.
-            throw;
-        }
-        catch (Exception ex)
-        {
-            _log?.LogWarning(
-                ex,
-                "Could not log {Count} surfacings; the feed is unaffected and tomorrow's rotation is weaker.",
-                surfacings.Count);
-        }
+        return await _engine!.GetShelvesAsync(request, ct).ConfigureAwait(false);
     }
 
     private static FeedShelf Translate(RecommendationShelf shelf)

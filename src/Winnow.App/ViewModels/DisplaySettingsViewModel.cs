@@ -120,34 +120,38 @@ public partial class DisplaySettingsViewModel : ObservableObject
             return;
         }
 
-        var storedDim = await _settings.GetAsync(DormancyRamp.DimCoversSettingKey, ct);
-        var storedNonGame = await _settings.GetAsync(
-            BucketThresholds.ShowNonGameEntriesSettingKey, ct);
-        var storedGrouping = await _settings.GetAsync(
-            ExpansionGroupingPreference.SettingKey, ct);
-        var storedCap = await _settings.GetAsync(
-            BucketThresholds.MaturityCapSettingKey, ct);
-        var storedExplicit = await _settings.GetAsync(
-            BucketThresholds.ShowExplicitContentSettingKey, ct);
-
-        if (_journal is not null)
+        var stored = await Task.Run(async () =>
         {
-            await _journal.LoadAsync(ct);
-        }
+            var storedDim = await _settings.GetAsync(DormancyRamp.DimCoversSettingKey, ct);
+            var storedNonGame = await _settings.GetAsync(
+                BucketThresholds.ShowNonGameEntriesSettingKey, ct);
+            var storedGrouping = await _settings.GetAsync(
+                ExpansionGroupingPreference.SettingKey, ct);
+            var storedCap = await _settings.GetAsync(
+                BucketThresholds.MaturityCapSettingKey, ct);
+            var storedExplicit = await _settings.GetAsync(
+                BucketThresholds.ShowExplicitContentSettingKey, ct);
+
+            if (_journal is not null)
+            {
+                await _journal.LoadAsync(ct);
+            }
+            return (storedDim, storedNonGame, storedGrouping, storedCap, storedExplicit);
+        }, ct);
 
         _loading = true;
         try
         {
             PromptAfterPlay = _journal?.PromptEnabled ?? false;
-            if (bool.TryParse(storedDim, out var dim))
+            if (bool.TryParse(stored.storedDim, out var dim))
             {
                 DimDormantCovers = dim;
             }
 
-            ShowNonGameEntries = BucketThresholds.ParseShowNonGameEntries(storedNonGame);
-            GroupExpansions = ExpansionGroupingPreference.Parse(storedGrouping);
-            AdultContentAllowed = BucketThresholds.ParseShowExplicitContent(storedExplicit);
-            MaturityCap = BucketThresholds.ParseMaturityCap(storedCap);
+            ShowNonGameEntries = BucketThresholds.ParseShowNonGameEntries(stored.storedNonGame);
+            GroupExpansions = ExpansionGroupingPreference.Parse(stored.storedGrouping);
+            AdultContentAllowed = BucketThresholds.ParseShowExplicitContent(stored.storedExplicit);
+            MaturityCap = BucketThresholds.ParseMaturityCap(stored.storedCap);
         }
         finally
         {
@@ -168,14 +172,13 @@ public partial class DisplaySettingsViewModel : ObservableObject
             return;
         }
 
-        CapHiddenCount = await _libraryQueries.CountHiddenByRatingCapAsync(
-            BucketThresholds.Default with
+        var thresholds = BucketThresholds.Default with
             {
                 ShowNonGameEntries = ShowNonGameEntries,
                 ShowExplicitContent = AdultContentAllowed,
                 MaturityCap = MaturityCap,
-            },
-            ct);
+            };
+        CapHiddenCount = await Task.Run(() => _libraryQueries.CountHiddenByRatingCapAsync(thresholds, ct), ct);
     }
 
     partial void OnDimDormantCoversChanged(bool value)

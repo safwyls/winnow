@@ -447,8 +447,11 @@ at.
 - **The App-layer contract** (for whoever wires the UI; nothing below is built here):
   1. Before computing: `sets = await FeedbackSets.LoadAsync(feedbackRepo, now, tuning)`,
      then `engine.GetShelvesAsync(sets.Apply(request))`.
-  2. After computing: `feedbackRepo.RecordSurfacedAsync(FeedbackSets.SurfacingsOf(feed,
-     now))` — idempotent per (release, day), so refreshes are free.
+  2. On visible viewport entry: `FeedView` checks card clipping, the active visible
+     window and modal occlusion, then `FeedViewModel` asks `IFeedService.RecordSurfacedAsync`
+     to store that release. Generation, backfill and reserve promotion alone record nothing.
+     Entries deduplicate per (release, UTC day), including reloads; a card below the fold
+     contributes no surfacing until scrolled into view.
   3. On "not interested": `RecordVerdictAsync` with kind `not_interested`, no expiry.
      On "not now": kind `snoozed`, `ExpiresAt = now + FeedVerdictKinds.DefaultSnooze`
      (or a UI-offered duration — the schema stores the explicit expiry).

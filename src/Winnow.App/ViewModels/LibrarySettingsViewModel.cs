@@ -419,8 +419,8 @@ public partial class LibrarySettingsViewModel : ObservableObject
     {
         if (_settings is not null)
         {
-            var stored = await _settings.GetAsync(
-                BucketThresholds.ShowExplicitContentSettingKey, ct);
+            var stored = await Task.Run(() => _settings.GetAsync(
+                BucketThresholds.ShowExplicitContentSettingKey, ct), ct);
 
             _loading = true;
             try
@@ -438,8 +438,8 @@ public partial class LibrarySettingsViewModel : ObservableObject
             // The count states what turning the filter ON would remove, so it
             // is asked with the non-game preference in force and independently
             // of the explicit preference itself.
-            ExplicitHiddenCount = await _libraryQueries.CountHiddenByExplicitFilterAsync(
-                BucketThresholds.Default, ct);
+            ExplicitHiddenCount = await Task.Run(() => _libraryQueries.CountHiddenByExplicitFilterAsync(
+                BucketThresholds.Default, ct), ct);
         }
 
         await RefreshHiddenAsync(ct);
@@ -452,7 +452,7 @@ public partial class LibrarySettingsViewModel : ObservableObject
 
         if (_hidden is not null)
         {
-            foreach (var game in await _hidden.GetHiddenGamesAsync(ct))
+            foreach (var game in await Task.Run(() => _hidden.GetHiddenGamesAsync(ct), ct))
             {
                 HiddenGames.Add(new HiddenGameRowViewModel(game));
             }
@@ -467,7 +467,7 @@ public partial class LibrarySettingsViewModel : ObservableObject
 
         if (_manual is not null)
         {
-            foreach (var entry in await _manual.GetAllAsync(ct))
+            foreach (var entry in await Task.Run(() => _manual.GetAllAsync(ct), ct))
             {
                 ManualEntries.Add(new ManualEntryRowViewModel(entry));
             }

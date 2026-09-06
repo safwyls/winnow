@@ -8,9 +8,8 @@ namespace Winnow.Enrich.Updates;
 
 /// <summary>
 /// Polls for update signals (news + build pushes) and writes raw rows into
-/// <c>update_events</c>. Uses three cost-reduction rules: eliminate (skip
-/// never-opened/retired), cascade (cheap news first, expensive build only on
-/// change), and stagger (stable hash assigns apps to daily slots). Failures
+/// <c>update_events</c>. Skips never-opened/retired games and staggers eligible
+/// apps across daily slots. Each source is polled independently. Failures
 /// degrade to "no signal this pass", never blocking a user-facing path.
 /// </summary>
 public sealed class UpdateSignalPoller
@@ -59,12 +58,10 @@ public sealed class UpdateSignalPoller
 
         var due = eligible
             .Where(candidate => IsDue(candidate.AppId, Lookup(states, candidate.AppId), now))
-            // Watch-list apps first — they are mid-correlation and a window is
-            // closing on them — then longest-unpolled. Never-polled apps sort to
-            // the front of the second group, so a truncated batch spends its
-            // budget on the apps with the least information, not the most.
-            .OrderByDescending(candidate => IsWatching(Lookup(states, candidate.AppId), now))
-            .ThenBy(candidate => Lookup(states, candidate.AppId)?.LastPolledAt ?? DateTime.MinValue)
+            // Oldest attempts lead, even when newer attempts failed or are on
+            // watch. No title can hold the front of a capped batch forever.
+            .OrderBy(candidate => Lookup(states, candidate.AppId)?.LastPolledAt ?? DateTime.MinValue)
+            .ThenByDescending(candidate => IsWatching(Lookup(states, candidate.AppId), now))
             .ThenBy(candidate => candidate.ReleaseId)
             .ToArray();
 
@@ -104,110 +101,80 @@ public sealed class UpdateSignalPoller
         var state = known ?? new UpdatePollState();
         tally.Polled++;
 
-        var fetch = await _news.GetLatestPatchNoteAsync(candidate.AppId, ct);
-
-        // Counts wire traffic, not method calls: a live no-feed negative is
-        // answered from cache and costs nothing, which is the entire point of
-        // caching it.
-        if (!fetch.ServedFromCache)
+        var failuresBefore = tally.Failures;
+        try
         {
-            tally.NewsRequests++;
-        }
+            var fetch = await _news.GetLatestPatchNoteAsync(candidate.AppId, ct);
+            if (!fetch.ServedFromCache)
+                tally.NewsRequests++;
 
-        switch (fetch.Outcome)
-        {
-            case NewsOutcome.Unavailable:
-                // Nothing learned. Deliberately NOT stamping last-polled: the app
-                // stays due so a transient outage does not cost it a whole sweep
-                // period of invisibility.
-                tally.Failures++;
-                return;
-
-            case NewsOutcome.NoFeed:
-                // A fact about this appid, already cached by the client for
-                // NoNewsFeedRetryAfter. Stamped as polled so the stagger stops
-                // scheduling it every slot; the cache is what makes it free, and
-                // the stamp is what keeps it out of the ordering.
-                tally.NoFeed++;
-                await _state.SetAsync(candidate.AppId, state with { WatchUntil = null }, now, ct);
-                return;
-
-            case NewsOutcome.NoItems:
-                // The app has a feed and nothing in it is tagged patchnotes.
-                // A real answer: stamp it and move on.
-                await _state.SetAsync(candidate.AppId, state with { WatchUntil = null }, now, ct);
-                return;
-        }
-
-        var item = fetch.Item!;
-
-        var isNews = state.IsNewsSince(item.PublishedAt, item.Gid);
-        var isBaseline = state.IsBaseline;
-
-        var next = state with { LastNewsGid = item.Gid, LastNewsDate = item.PublishedAt };
-
-        if (!isNews)
-        {
-            // Same newest item as last time. This is the overwhelmingly common
-            // outcome — one cheap request, no writes, no cascade — and it is
-            // what the whole cost model rests on.
-            //
-            // The watch list is still honoured below, because "no new
-            // announcement" is exactly the state an app sits in while waiting
-            // for the build that its last announcement promised.
-            next = await ResolveWatchAsync(candidate, next, now, tally, ct);
-            await _state.SetAsync(candidate.AppId, next, now, ct);
-            return;
-        }
-
-        if (!isBaseline || _options.EmitOnBaseline)
-        {
-            if (await WriteAsync(candidate, UpdateEventKinds.Announcement, item.PublishedAt, item.Title, item.Url, buildId: null, item.RawJson, ct))
+            switch (fetch.Outcome)
             {
-                tally.AnnouncementsRecorded++;
+                case NewsOutcome.Unavailable:
+                    tally.Failures++;
+                    break;
+                case NewsOutcome.NoFeed:
+                    tally.NoFeed++;
+                    state = state with { WatchUntil = null };
+                    break;
+                case NewsOutcome.NoItems:
+                    state = state with { WatchUntil = null };
+                    break;
+                default:
+                    var item = fetch.Item!;
+                    if (state.IsNewsSince(item.PublishedAt, item.Gid)
+                        && (!state.IsBaseline || _options.EmitOnBaseline)
+                        && await WriteAsync(candidate, UpdateEventKinds.Announcement,
+                            item.PublishedAt, item.Title, item.Url, null, item.RawJson, ct))
+                    {
+                        tally.AnnouncementsRecorded++;
+                    }
+                    state = state with { LastNewsGid = item.Gid, LastNewsDate = item.PublishedAt };
+                    break;
             }
         }
-
-        // Cascade. The gate is deliberately narrow: `timeupdated` is the app's
-        // LATEST push, so against a patch note from 2019 it cannot correlate no
-        // matter what it says, and the call would spend the volunteer service's
-        // bandwidth to confirm a foregone "no".
-        var age = now - item.PublishedAt;
-        if (age > TimeSpan.FromDays(_options.CascadeMaxAnnouncementAgeDays))
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
-            _log.LogDebug(
-                "Appid {AppId}: newest patch note is {Age:N0} days old — too old to correlate; skipping steamcmd.net.",
-                candidate.AppId, age.TotalDays);
-            await _state.SetAsync(candidate.AppId, next with { WatchUntil = null }, now, ct);
-            return;
+            throw;
+        }
+        catch (Exception ex)
+        {
+            tally.Failures++;
+            _log.LogWarning(ex, "Announcement poll failed for appid {AppId}; build polling continues.", candidate.AppId);
         }
 
-        next = await ConfirmBuildAsync(candidate, next, item.PublishedAt, now, tally, ct);
-        await _state.SetAsync(candidate.AppId, next, now, ct);
-    }
-
-    /// <summary>Re-checks a watched app whose announcement is still waiting on its build push.</summary>
-    private async Task<UpdatePollState> ResolveWatchAsync(
-        PollCandidate candidate, UpdatePollState state, DateTime now, Tally tally, CancellationToken ct)
-    {
-        if (!IsWatching(state, now) || state.LastNewsDate is not { } announcedAt)
+        ct.ThrowIfCancellationRequested();
+        try
         {
-            return state with { WatchUntil = null };
+            // Raw build history is useful even without a feed or a new patch
+            // note. The typed client's cache and rate policy bound its cost.
+            state = await ConfirmBuildAsync(candidate, state, state.LastNewsDate, now, tally, ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            tally.Failures++;
+            _log.LogWarning(ex, "Build poll failed for appid {AppId}; other titles continue.", candidate.AppId);
         }
 
-        return await ConfirmBuildAsync(candidate, state, announcedAt, now, tally, ct);
+        // Attempts consume a turn even on failure. Keeping their signal marks
+        // intact permits retry without letting a broken title monopolize a cap.
+        await _state.SetAsync(candidate.AppId,
+            state with { RetryPending = tally.Failures > failuresBefore }, now, ct);
     }
-
     /// <summary>One steamcmd.net call, plus the decision about whether to keep watching.</summary>
     private async Task<UpdatePollState> ConfirmBuildAsync(
         PollCandidate candidate,
         UpdatePollState state,
-        DateTime announcedAt,
+        DateTime? announcedAt,
         DateTime now,
         Tally tally,
         CancellationToken ct)
     {
-        var watchDeadline = announcedAt.AddDays(_options.CorrelationWindowDays);
+        var watchDeadline = announcedAt?.AddDays(_options.CorrelationWindowDays) ?? now;
         var fetch = await _builds.GetPublicBranchAsync(candidate.AppId, ct: ct);
         if (!fetch.ServedFromCache)
         {
@@ -217,6 +184,7 @@ public sealed class UpdateSignalPoller
         switch (fetch.Outcome)
         {
             case BuildInfoOutcome.Unavailable:
+                tally.Failures++;
                 // §4.5 watched this service go dark. Degrade to "no build
                 // signal" and keep watching until the window closes, so an
                 // outage does not silently drop a correlation that was about to
@@ -247,10 +215,13 @@ public sealed class UpdateSignalPoller
 
         var next = state with { LastBuildTimeUpdated = branch.UpdatedAt };
 
+        if (announcedAt is null)
+            return next with { WatchUntil = null };
+
         // Correlated: the push is within ±CorrelationWindowDays of the
         // announcement, so the bucket query will now find the pair. Nothing left
         // to wait for.
-        var separation = (branch.UpdatedAt - announcedAt).Duration();
+        var separation = (branch.UpdatedAt - announcedAt.Value).Duration();
         if (separation <= TimeSpan.FromDays(_options.CorrelationWindowDays))
         {
             _log.LogDebug(
@@ -324,7 +295,7 @@ public sealed class UpdateSignalPoller
                 return false;
             }
 
-            if (IsWatching(state, now))
+            if (state.RetryPending || IsWatching(state, now))
             {
                 return true;
             }

@@ -7,7 +7,7 @@ namespace Winnow.Data.Repositories;
 
 public sealed class WorkRepository : IWorkRepository
 {
-    private const string Columns = """
+    internal const string Columns = """
         id                 AS Id,
         igdb_id            AS IgdbId,
         name               AS Name,

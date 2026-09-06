@@ -1,7 +1,9 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
+using Winnow.App.ViewModels;
 
 namespace Winnow.App.Views;
 
@@ -12,9 +14,95 @@ namespace Winnow.App.Views;
 /// </summary>
 public partial class FeedView : UserControl
 {
+    // The renderer updates its hit-test scene after layout. A short fallback
+    // tick catches that completion without relying on Avalonia's private events.
+    private readonly DispatcherTimer _observer = new() { Interval = TimeSpan.FromMilliseconds(100) };
+    private Window? _window;
+    private bool _observationPending;
+    private int _attachment;
+
     public FeedView()
     {
         InitializeComponent();
+        LayoutUpdated += (_, _) => QueueObservation();
+        Page.ScrollChanged += (_, _) => QueueObservation();
+        _observer.Tick += (_, _) => ObserveViewport();
+    }
+
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        _window = TopLevel.GetTopLevel(this) as Window;
+        if (_window is not null)
+        {
+            _window.PropertyChanged += WindowChanged;
+            _observer.Start();
+        }
+        QueueObservation();
+    }
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        if (_window is not null)
+        {
+            _window.PropertyChanged -= WindowChanged;
+            _observer.Stop();
+        }
+        _window = null;
+        _attachment++;
+        _observationPending = false;
+        base.OnDetachedFromVisualTree(e);
+    }
+
+    private void WindowChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
+    {
+        if (e.Property == WindowBase.IsActiveProperty || e.Property == IsVisibleProperty
+            || e.Property == Window.WindowStateProperty) QueueObservation();
+    }
+
+    private void QueueObservation()
+    {
+        if (_observationPending || _window is null) return;
+        _observationPending = true;
+        var attachment = _attachment;
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (attachment != _attachment) return;
+            _observationPending = false;
+            ObserveViewport();
+        }, DispatcherPriority.Background);
+    }
+
+    private void ObserveViewport()
+    {
+        if (_window is not { IsActive: true, IsVisible: true } window
+            || window.WindowState == WindowState.Minimized
+            || !IsEffectivelyVisible || !Page.IsEffectivelyVisible
+            || DataContext is not FeedViewModel { ShowShelves: true } feed) return;
+
+        foreach (var card in Page.GetVisualDescendants().OfType<FeedCardView>())
+        {
+            if (!card.IsEffectivelyVisible || card.DataContext is not FeedCardViewModel model
+                || card.TranslatePoint(default, window) is not { } origin) continue;
+            var visible = new Rect(origin, card.Bounds.Size).Intersect(new Rect(window.ClientSize));
+            foreach (var ancestor in card.GetVisualAncestors().Prepend(card))
+            {
+                if (!ancestor.IsVisible || ancestor.Opacity <= 0)
+                {
+                    visible = default;
+                    break;
+                }
+                if ((ancestor.ClipToBounds || ReferenceEquals(ancestor, Page))
+                    && ancestor.TranslatePoint(default, window) is { } clipOrigin)
+                    visible = visible.Intersect(new Rect(clipOrigin, ancestor.Bounds.Size));
+            }
+            // A modal can cover a laid-out, effectively-visible feed. Require a
+            // point inside its clipped rectangle to still belong to the card.
+            if (visible.Width > 0 && visible.Height > 0
+                && window.InputHitTest(visible.Center, enabledElementsOnly: false) is Visual hit
+                && (ReferenceEquals(hit, card) || hit.GetVisualAncestors().Contains(card)))
+                _ = feed.RecordViewportEntryAsync(model);
+        }
     }
 
     /// <summary>

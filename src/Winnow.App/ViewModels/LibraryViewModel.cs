@@ -763,54 +763,39 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     [RelayCommand]
     private async Task LoadAsync()
     {
-        var bucketRows = await _libraryQueries.GetOwnershipBucketsAsync(
-            BucketThresholds.Default with
-            {
-                ShowNonGameEntries = ShowNonGameEntries,
-                ShowExplicitContent = ShowExplicitContent,
-                MaturityCap = MaturityCap,
-            });
-        var ownerships = await _ownerships.GetAllAsync();
-
-        // Deliberately unresolved — the same read enrichment uses, and it must
-        // stay unresolved because resolving would starve the child of the
-        // enrichment whose igdb_id is what fills the group. Resolution is
-        // applied BELOW, per row, for display only.
-        var works = await _works.GetAllAsync();
-
-        // The live same-game map. Read once, here, beside the bucket query that
-        // resolved on the same fact — the query is the authority for anything
-        // that counts, this snapshot only names what covers what.
-        if (_identityLinks is null)
+        var thresholds = BucketThresholds.Default with
         {
-            _resolution = SameGameResolution.Empty;
-            _expansions = ExpansionGrouping.Empty;
-        }
-        else
+            ShowNonGameEntries = ShowNonGameEntries,
+            ShowExplicitContent = ShowExplicitContent,
+            MaturityCap = MaturityCap,
+        };
+        // Microsoft.Data.Sqlite executes synchronously even through async APIs.
+        // Read on a worker; only publish models after returning to the UI context.
+        var loaded = await Task.Run(async () =>
         {
-            var identity = await _identityLinks.GetResolutionAsync();
-            _resolution = identity.SameGame;
-            _expansions = identity.Expansions;
-        }
-
-        // One read for the whole library, not one per tile. Absent facets are a
-        // normal state, not an error: the backfill runs behind a library the
-        // user is already browsing (§7), and a release with no cached metadata
-        // is simply not in the snapshot.
-        _facets = _facetRepository is null
-            ? FacetSnapshot.Empty
-            : await _facetRepository.GetSnapshotAsync();
-
-        // Every work carrying a live IGDB pin, in one read rather than one
-        // per work. A pin wins the cover-key precedence below: the user is
-        // saying the art is wrong too. No service means no pins — the
-        // store-capsule precedence this view model had before.
-        var pinnedWorkIds = _igdb is null
-            ? new HashSet<long>()
-            : await _igdb.GetLivePinnedWorkIdsAsync();
-
+            var snapshot = await _libraryQueries.GetSnapshotAsync(thresholds);
+            var identity = _identityLinks is null ? IdentityResolution.Empty : await _identityLinks.GetResolutionAsync();
+            var facets = _facetRepository is null ? FacetSnapshot.Empty : await _facetRepository.GetSnapshotAsync();
+            var pins = _igdb is null ? new HashSet<long>() : await _igdb.GetLivePinnedWorkIdsAsync();
+            var epic = _epicLaunchKeys is null
+                ? new Dictionary<string, EpicLaunchKey>()
+                : (IReadOnlyDictionary<string, EpicLaunchKey>)await _epicLaunchKeys.GetAllAsync();
+            var storefronts = _storefrontCache is null
+                ? new Dictionary<string, StorefrontDetails>()
+                : await _storefrontCache.ReadAllAsync();
+            return (snapshot, identity, facets, pins, epic, storefronts);
+        });
+        var bucketRows = loaded.snapshot.Buckets;
+        var ownerships = loaded.snapshot.Ownerships;
+        var works = loaded.snapshot.Works;
+        _resolution = loaded.identity.SameGame;
+        _expansions = loaded.identity.Expansions;
+        _facets = loaded.facets;
+        var pinnedWorkIds = loaded.pins;
+        var releasesByWork = loaded.snapshot.Releases.ToLookup(release => release.WorkId);
+        var externalIdsByRelease = loaded.snapshot.ExternalIds.ToLookup(id => id.ReleaseId);
         // release id → its work, and release id → the provider id its cover art
-        // is fetched under. Small library, per-work fetch is fine.
+        // is fetched under. Resolved in memory from the bulk snapshot.
         var workByRelease = new Dictionary<long, Work>();
         var coverKeyByRelease = new Dictionary<long, CoverKey>();
 
@@ -832,23 +817,19 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         // catalog answers the app has cached so far (§7 — enrichment runs behind
         // a library the user is already browsing), and a title it has not
         // reached yet simply gets no Epic launch target.
-        var epicLaunchKeys = _epicLaunchKeys is null
-            ? new Dictionary<string, EpicLaunchKey>()
-            : (IReadOnlyDictionary<string, EpicLaunchKey>)await _epicLaunchKeys.GetAllAsync();
-        var storefronts = _storefrontCache is null
-            ? new Dictionary<string, Winnow.Core.Repositories.StorefrontDetails>()
-            : await _storefrontCache.ReadAllAsync();
+        var epicLaunchKeys = loaded.epic;
+        var storefronts = loaded.storefronts;
 
         foreach (var work in works)
         {
-            foreach (var release in await _releases.GetByWorkAsync(work.Id))
+            foreach (var release in releasesByWork[work.Id])
             {
                 workByRelease[release.Id] = work;
 
                 // Steam's portrait capsule is the first source; the cover cache
                 // tries any further registered source for the same key, so IGDB
                 // art can fill the gaps without this view model changing.
-                var externalIds = await _releases.GetExternalIdsAsync(release.Id);
+                var externalIds = externalIdsByRelease[release.Id];
                 var steam = externalIds.FirstOrDefault(x => x.Provider == ExternalIdProviders.Steam);
 
                 if (externalIds.FirstOrDefault(x => x.Provider == ExternalIdProviders.Gog) is { } gog)
@@ -1204,7 +1185,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         // Rebuild filter options; selections survive by key across reloads.
         Filters.Rebuild(_allTiles, _facets);
 
-        await Lists.LoadAsync();
+        Lists.ApplySnapshot(loaded.snapshot.Lists, loaded.snapshot.ListItems);
 
         // Re-derive rail selection marks after list objects are replaced.
         MarkRailSelection();

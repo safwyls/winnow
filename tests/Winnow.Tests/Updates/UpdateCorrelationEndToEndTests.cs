@@ -75,20 +75,16 @@ public class UpdateCorrelationEndToEndTests : IDisposable
     [Fact]
     public async Task A_lone_build_push_does_not_produce_stale_but_patched()
     {
-        // Dota 2's real shape, brought inside the cascade gate: a fresh depot
+        // Dota 2's shape: a fresh depot
         // push with the newest patch note far enough behind it that the two
         // cannot be the same event. §4.5's noise claim, verified — the push is a
         // DRM bump, a localization file or a one-line hotfix, and announcing
         // "MAJOR UPDATE" on the strength of one is the most visible way this
         // feature can lie.
         //
-        // Twenty-three days apart rather than Dota 2's real 53, because at 53
-        // the poller never asks steamcmd.net at all (an announcement older than
-        // CascadeMaxAnnouncementAgeDays cannot correlate with the app's LATEST
-        // push, so the call is skipped) and there would be no build row to prove
-        // anything about. That path has its own test; this one is about what the
-        // bucket query does when both rows exist and do not pair.
-        var announcedAt = Now.AddDays(-25).UtcDateTime;
+        // Both sources are recorded independently. A 53-day separation leaves
+        // the raw build history available without producing a major-update flag.
+        var announcedAt = Now.AddDays(-55).UtcDateTime;
         var builtAt = Now.AddDays(-2).UtcDateTime;
 
         var release = await SeedAsync(

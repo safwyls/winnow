@@ -65,6 +65,17 @@ public partial class ListsViewModel : ObservableObject
 
     public async Task LoadAsync(CancellationToken ct = default)
     {
+        var loaded = await Task.Run(async () =>
+        {
+            var records = _lists is null ? [] : await _lists.GetAllAsync(ct);
+            var items = _lists is null ? [] : await _lists.GetAllItemsAsync(ct);
+            return (records, items);
+        }, ct);
+        ApplySnapshot(loaded.records, loaded.items);
+    }
+
+    internal void ApplySnapshot(IReadOnlyList<GameList> records, IReadOnlyList<ListItem> items)
+    {
         var openId = Open?.Id;
 
         Lists.Clear();
@@ -77,7 +88,7 @@ public partial class ListsViewModel : ObservableObject
             return;
         }
 
-        var records = await _lists.GetAllAsync(ct);
+        var itemsByList = items.ToLookup(item => item.ListId);
         foreach (var record in records.OrderBy(r => r.Name, StringComparer.CurrentCultureIgnoreCase))
         {
             var list = new GameListViewModel(record);
@@ -87,8 +98,7 @@ public partial class ListsViewModel : ObservableObject
             }
             else
             {
-                var items = await _lists.GetItemsAsync(record.Id, ct);
-                list.ReleaseIds = [.. items.Select(i => i.ReleaseId)];
+                list.ReleaseIds = [.. itemsByList[record.Id].OrderBy(item => item.Position).Select(i => i.ReleaseId)];
                 Lists.Add(list);
             }
         }

@@ -59,6 +59,8 @@ public partial class FeedViewModel : ObservableObject
     /// reader is looking at or has just answered.
     /// </summary>
     private readonly HashSet<long> _spent = [];
+    private readonly HashSet<long> _observed = [];
+    private DateOnly _observedDay;
 
     /// <param name="tiles">Optional; without it the screen reports the library as unloaded.</param>
     /// <param name="clock">The receipt countdown's clock. Injected so a test states the time.</param>
@@ -275,7 +277,7 @@ public partial class FeedViewModel : ObservableObject
                 // Drop items with no matching tile (no cover to draw).
                 if (_tiles?.TileForOwnership(item.OwnershipId) is { } tile)
                 {
-                    cards.Add(NewCard(tile, item.Reason, generation));
+                    cards.Add(NewCard(tile, item.Reason, generation, item.ReleaseId));
                 }
             }
 
@@ -332,10 +334,35 @@ public partial class FeedViewModel : ObservableObject
     [RelayCommand]
     private void CloseHistory() => IsHistoryOpen = false;
 
-    /// <summary>Builds one card, stamped with its pass and wired to this screen.</summary>
-    private FeedCardViewModel NewCard(GameTileViewModel tile, string reason, long generation)
+    /// <summary>Called only by the view after clipping and active-window checks.</summary>
+    internal async Task RecordViewportEntryAsync(FeedCardViewModel card)
     {
-        var card = new FeedCardViewModel(tile, reason, _feed) { Generation = generation };
+        if (!ShowShelves || card.Generation != _generation) return;
+        var shelf = Shelves.FirstOrDefault(s => s.Cards.Contains(card));
+        if (shelf is null) return;
+        var day = DateOnly.FromDateTime(_clock.GetUtcNow().UtcDateTime);
+        if (_observedDay != day)
+        {
+            _observed.Clear();
+            _observedDay = day;
+        }
+        if (!_observed.Add(card.SurfacingReleaseId)) return;
+        try
+        {
+            await _feed.RecordSurfacedAsync(card.SurfacingReleaseId, shelf.Id);
+        }
+        catch
+        {
+            // A third-party service implementation may violate its soft-failure
+            // contract; an observation must never become an unhandled UI task.
+            if (_observedDay == day) _observed.Remove(card.SurfacingReleaseId);
+        }
+    }
+
+    /// <summary>Builds one card, stamped with its pass and wired to this screen.</summary>
+    private FeedCardViewModel NewCard(GameTileViewModel tile, string reason, long generation, long releaseId)
+    {
+        var card = new FeedCardViewModel(tile, reason, _feed) { Generation = generation, SurfacingReleaseId = releaseId };
 
         card.VerdictChanged += OnCardVerdictChanged;
         return card;
@@ -510,17 +537,12 @@ public partial class FeedViewModel : ObservableObject
 
             // One index assigned, not the collection cleared: this realises one
             // container and re-measures one shelf.
-            shelf.Cards[index] = NewCard(next.Tile, next.Item.Reason, _generation);
+            shelf.Cards[index] = NewCard(next.Tile, next.Item.Reason, _generation, next.Item.ReleaseId);
 
             Detach(outgoing);
             outgoing.Dispose();
 
             Offer(shelf);
-
-            // At swap time, because this is the first moment anybody has seen
-            // it. Recording it with the pass would have charged a card nobody
-            // looked at the demotion for having been looked at.
-            _ = _feed.RecordSurfacedAsync(next.Item.ReleaseId, shelf.Id);
 
             return true;
         }

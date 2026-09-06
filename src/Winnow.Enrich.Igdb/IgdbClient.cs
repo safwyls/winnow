@@ -93,6 +93,9 @@ public sealed class IgdbClient : IIgdbClient
     /// </summary>
     private sealed record GamePayload(int Version, IgdbGame? Game);
 
+    public const int ExternalMatchPayloadVersion = 1;
+    private sealed record ExternalMatchPayload(int Version, ExternalMatchCacheEntry? Match);
+
     public async ValueTask<bool> IsConfiguredAsync(CancellationToken ct = default)
         => await _credentials.GetAsync(ct) is not null;
 
@@ -159,15 +162,17 @@ public sealed class IgdbClient : IIgdbClient
         {
             if (cached.TryGetValue(cacheKey(uid), out var entry) && entry.FetchedAt >= cutoff)
             {
-                // A null payload is a cached miss: IGDB has no record for this
-                // id under this source. Re-asking every run would spend the rate
-                // limit learning the same nothing.
-                if (Deserialize<ExternalMatchCacheEntry>(entry.PayloadJson) is { } hit)
+                var payload = Deserialize<ExternalMatchPayload>(entry.PayloadJson);
+                if (payload is { Version: ExternalMatchPayloadVersion })
                 {
-                    results[uid] = hit.ToDomain(uid);
+                    if (payload.Match is { IgdbId: > 0 } hit)
+                        results[uid] = hit.ToDomain(uid);
+                    continue;
                 }
-
-                continue;
+                // Keep an older positive answer available when refetch fails or
+                // credentials are absent, but never treat it as current.
+                var legacy = payload?.Match ?? Deserialize<ExternalMatchCacheEntry>(entry.PayloadJson);
+                if (legacy is { IgdbId: > 0 }) results[uid] = legacy.ToDomain(uid);
             }
 
             pending.Add(uid);
@@ -224,18 +229,19 @@ public sealed class IgdbClient : IIgdbClient
 
             foreach (var uid in batch)
             {
-                // Every requested id gets a cache row, matched or not. The null
-                // payload is the record of a miss.
+                // Misses carry the version too, so a schema bump rechecks them.
                 var match = found.GetValueOrDefault(uid);
                 if (match is not null)
                 {
                     results[uid] = match;
                 }
+                else results.Remove(uid);
 
                 await _cache.SetAsync(
                     CacheProvider,
                     cacheKey(uid),
-                    match is null ? null : Serialize(ExternalMatchCacheEntry.From(match)),
+                    Serialize(new ExternalMatchPayload(ExternalMatchPayloadVersion,
+                        match is null ? null : ExternalMatchCacheEntry.From(match))),
                     fetchedAt,
                     ct);
             }
@@ -270,19 +276,10 @@ public sealed class IgdbClient : IIgdbClient
         {
             if (cached.TryGetValue(GameCacheKey(id), out var entry) && entry.FetchedAt >= cutoff)
             {
-                if (entry.PayloadJson is null)
-                {
-                    // A cached miss carries no fields, so it cannot be missing
-                    // any: the payload version does not apply to it, and
-                    // re-asking would spend the budget learning the same
-                    // nothing.
-                    continue;
-                }
-
                 var payload = Deserialize<GamePayload>(entry.PayloadJson);
-                if (payload is { Version: GamePayloadVersion, Game: { } game })
+                if (payload is { Version: GamePayloadVersion })
                 {
-                    results.Add(game);
+                    if (payload.Game is { } game) results.Add(game);
                     continue;
                 }
 
@@ -347,13 +344,13 @@ public sealed class IgdbClient : IIgdbClient
                 if (game is not null)
                 {
                     results.Add(game);
-                    superseded.Remove(id);
                 }
+                superseded.Remove(id);
 
                 await _cache.SetAsync(
                     CacheProvider,
                     GameCacheKey(id),
-                    game is null ? null : Serialize(new GamePayload(GamePayloadVersion, game)),
+                    Serialize(new GamePayload(GamePayloadVersion, game)),
                     fetchedAt,
                     ct);
             }
@@ -402,18 +399,11 @@ public sealed class IgdbClient : IIgdbClient
         {
             if (cached.TryGetValue(AgeRatingsCacheKey(id), out var entry) && entry.FetchedAt >= cutoff)
             {
-                if (entry.PayloadJson is null)
-                {
-                    // A cached miss: IGDB answered and has no age rating for
-                    // this game. Re-asking every run would spend the 4 req/s
-                    // budget learning the same nothing.
-                    continue;
-                }
-
                 if (Deserialize<AgeRatingsPayload>(entry.PayloadJson) is
-                    { Version: AgeRatingsPayloadVersion, Ratings: { Count: > 0 } ratings })
+                    { Version: AgeRatingsPayloadVersion } payload)
                 {
-                    results[id] = new IgdbAgeRatings(id, ratings);
+                    if (payload.Ratings is { Count: > 0 } ratings)
+                        results[id] = new IgdbAgeRatings(id, ratings);
                     continue;
                 }
             }
@@ -468,7 +458,7 @@ public sealed class IgdbClient : IIgdbClient
                 await _cache.SetAsync(
                     CacheProvider,
                     AgeRatingsCacheKey(id),
-                    tokens is null ? null : Serialize(new AgeRatingsPayload(AgeRatingsPayloadVersion, tokens)),
+                    Serialize(new AgeRatingsPayload(AgeRatingsPayloadVersion, tokens)),
                     fetchedAt,
                     ct);
             }
@@ -544,11 +534,6 @@ public sealed class IgdbClient : IIgdbClient
         var cached = await _cache.GetAsync(CacheProvider, key, ct);
         if (cached is { } entry && entry.FetchedAt >= Cutoff(cacheTtl ?? _options.SearchCacheTtl))
         {
-            if (entry.PayloadJson is null)
-            {
-                return [];
-            }
-
             if (Deserialize<SearchPayload>(entry.PayloadJson) is
                 { Version: SearchPayloadVersion, Results: { } hits })
             {
@@ -709,13 +694,16 @@ public sealed class IgdbClient : IIgdbClient
 
     private static T? Deserialize<T>(string? json)
         where T : class
-        => string.IsNullOrWhiteSpace(json) ? null : JsonSerializer.Deserialize<T>(json, IgdbJson.Options);
+    {
+        if (string.IsNullOrWhiteSpace(json)) return null;
+        try { return JsonSerializer.Deserialize<T>(json, IgdbJson.Options); }
+        catch (JsonException) { return null; }
+    }
 
     /// <summary>
     /// Cached shape of an <c>external_games</c> match. The store id is the cache
-    /// key, so it is not duplicated inside the payload — which is also why the
-    /// stored JSON is unchanged by the rename from the Steam-only shape and
-    /// every existing cache row still deserializes.
+    /// key, so it is not duplicated inside the payload. This inner shape also
+    /// reads legacy unversioned mappings for the offline fallback.
     /// </summary>
     private sealed record ExternalMatchCacheEntry(
         long IgdbId, string? Name, string? CoverUrl, int? FirstReleaseYear, string? Summary)

@@ -231,10 +231,14 @@ stored locally.
   (name, summary, first release date, cover, genres, themes, game modes, player perspectives,
   platforms, publisher, `game_type`, `parent_game`, `version_parent`, `version_title`,
   `screenshots`, `artworks`, `rating`, `rating_count`, `aggregated_rating`,
-  `aggregated_rating_count`), age-rating payloads at **1**, search payloads at **1**. Change a
+  `aggregated_rating_count`), age-rating payloads at **1**, search payloads at **1**, and
+  external-id mapping payloads at **1**. Every client-written payload, including a miss,
+  carries its namespace's `version` in a JSON envelope. Unversioned misses are rechecked.
+  Change a
   cached shape and bump its version in the same commit, or the cache serves rows with the new
   field silently empty for the rest of the 30-day TTL. A payload whose version does not match
-  is refetched, and the older payload is still served when no refetch is possible.
+  is refetched. Compatible older game and external-id mapping payloads remain available
+  when credentials are absent or refetch fails; they never become current merely by being read.
 - The shared `games` query now carries `screenshots` and `artworks` as separate image arrays,
   each row carrying an `image_id`. Only `image_id` is requested: it is the durable handle, and
   the size token in the CDN path decides the rendition, so a stored URL would carry a size that
@@ -247,6 +251,11 @@ stored locally.
 ### 4.5 Update detection
 
 Two independent signals, combined.
+
+Each due eligible title polls news and build history independently, including absent,
+unchanged or failed news. Successful raw signals are kept when the other source fails.
+Every completed attempt advances the persisted schedule; failed sources retry on the
+next day, with oldest attempts first so a capped batch cannot starve other titles.
 
 1. **Build push:** appinfo `depots.branches.public.timeupdated`, a Unix timestamp, from
    `GET https://api.steamcmd.net/v1/info/{appid}` — free, unauthenticated, and verified live.
@@ -509,6 +518,13 @@ graph TB
 
 ### 5.1 Module boundaries
 
+Library loading reads buckets, works, ownerships, releases, external IDs and list membership
+with one multi-result SQLite command in a deferred read transaction. Bucket consolidation
+uses the same rules as standalone bucket reads. Library and startup Review, Display and
+Library settings loads perform repository work on a worker thread, then publish view-model
+state on the UI thread. Facets, identity maps, pins and storefront caches remain fixed-count
+bulk reads. This does not change the pre-window appearance bootstrap or unrelated edit commands.
+
 | Module | Responsibility | Must not |
 |---|---|---|
 | `Winnow.Core` | Domain records, repository interfaces, the ingest contract | Perform IO, or reference anything outside the BCL |
@@ -750,6 +766,11 @@ game with real playtime under the refund line was opened and played.
 
 `bounced_floor` defaults to **120 minutes**, Steam's refund window. At or above it the money
 is spent for good, and the label `Started` names the band between that line and `retired_floor`.
+
+`BucketThresholds` rejects nonpositive minute floors, stale-month windows and correlation-day
+windows. The retired floor must strictly exceed the bounced floor. Constructor calls and
+record-copy updates enforce these invariants before the values can reach a query. Use a new
+threshold instance when changing both floors would pass through an invalid intermediate range.
 
 **Precedence**, in the order the query tests: never-played, retired, stale-but-patched,
 bounced, active. Retired outranks stale so a 200-hour game is never resurfaced. Stale outranks

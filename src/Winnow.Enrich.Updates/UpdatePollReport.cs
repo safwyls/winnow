@@ -2,11 +2,7 @@ namespace Winnow.Enrich.Updates;
 
 /// <summary>
 /// What one <c>PollDueBatchAsync</c> pass did. Returned rather than only logged
-/// because the spike's cost model rests on estimates — "~4 patch announcements a
-/// day across 370 mixed titles, about half confirming on the first call" — and
-/// explicitly says to instrument the real rate and tune. These counters are that
-/// instrument: <see cref="BuildInfoRequests"/> over <see cref="NewsRequests"/> is
-/// the cascade's real hit rate.
+/// to measure each source's wire traffic and recorded signals separately.
 /// </summary>
 public sealed record UpdatePollReport
 {
@@ -40,6 +36,6 @@ public sealed record UpdatePollReport
     /// <summary>Apps left on the daily watch list: announced, build not yet landed.</summary>
     public int Watching { get; init; }
 
-    /// <summary>Apps whose poll produced no answer at all. They stay due.</summary>
+    /// <summary>Failed source operations. Their apps become eligible to retry the next day.</summary>
     public int Failures { get; init; }
 }

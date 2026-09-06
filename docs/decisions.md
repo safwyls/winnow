@@ -2265,3 +2265,17 @@ Activating the UTC handler exposed its truncation of fractional seconds. The han
 preserves the precision Microsoft.Data.Sqlite previously stored. The build spec briefly said:
 
 > Winnow.Data rejects `DateTimeKind.Unspecified` before executing a write, converts Local values to UTC, and stores UTC text as `yyyy-MM-dd HH:mm:ss`.
+
+## 2026-09-06 — Complete IGDB cache version coverage
+
+External-id mappings and negative answers now carry versioned envelopes alongside the
+already-versioned game, rating and search payloads. The build spec previously said:
+
+> `aggregated_rating_count`), age-rating payloads at **1**, search payloads at **1**.
+> A payload whose version does not match is refetched, and the older payload is still served when no refetch is possible.
+
+### 2026-09-06 — Record feed surfacing on viewport entry
+
+Replaced the generation-time impression instruction in the recommendation model with visible viewport entry. Previously:
+
+> After computing: `feedbackRepo.RecordSurfacedAsync(FeedbackSets.SurfacingsOf(feed, now))` — idempotent per (release, day), so refreshes are free.

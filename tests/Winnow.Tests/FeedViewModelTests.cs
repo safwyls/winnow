@@ -347,6 +347,25 @@ public sealed class FeedViewModelTests
 
     // ── Fixtures ─────────────────────────────────────────────────────────────
 
+    [Fact]
+    public async Task Viewport_notifications_ignore_stale_cards_and_deduplicate_reloads()
+    {
+        var tiles = new FakeTileSource();
+        var service = new FakeFeedService(FullFeed(tiles));
+        var feed = new FeedViewModel(service, tiles);
+        await feed.LoadCommand.ExecuteAsync(null);
+        var stale = feed.Shelves[0].Cards[0];
+        await feed.LoadCommand.ExecuteAsync(null);
+        await feed.RecordViewportEntryAsync(stale);
+        Assert.Empty(service.Surfaced);
+        var current = feed.Shelves[0].Cards[0];
+        await feed.RecordViewportEntryAsync(current);
+        await feed.RecordViewportEntryAsync(current);
+        await feed.LoadCommand.ExecuteAsync(null);
+        await feed.RecordViewportEntryAsync(feed.Shelves[0].Cards[0]);
+        Assert.Single(service.Surfaced);
+    }
+
     private static FeedSnapshot FullFeed(
         FakeTileSource tiles, FeedConfidence confidence = FeedConfidence.Settling)
         => new(

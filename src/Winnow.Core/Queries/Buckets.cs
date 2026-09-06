@@ -47,6 +47,55 @@ public sealed record BucketThresholds(
     bool ShowExplicitContent = false,
     MaturityTier MaturityCap = MaturityTier.AdultsOnly)
 {
+    private long _bouncedFloorMinutes = Positive(BouncedFloorMinutes, nameof(BouncedFloorMinutes));
+    private long _retiredFloorMinutes = Retired(RetiredFloorMinutes, BouncedFloorMinutes);
+    private int _staleWindowMonths = PositiveWindow(StaleWindowMonths, nameof(StaleWindowMonths));
+    private int _updateCorrelationWindowDays = PositiveWindow(UpdateCorrelationWindowDays, nameof(UpdateCorrelationWindowDays));
+
+    public long BouncedFloorMinutes
+    {
+        get => _bouncedFloorMinutes;
+        init
+        {
+            Positive(value, nameof(BouncedFloorMinutes));
+            if (value >= _retiredFloorMinutes)
+                throw new ArgumentOutOfRangeException(nameof(BouncedFloorMinutes), "The bounced floor must be below the retired floor.");
+            _bouncedFloorMinutes = value;
+        }
+    }
+
+    public long RetiredFloorMinutes
+    {
+        get => _retiredFloorMinutes;
+        init => _retiredFloorMinutes = Retired(value, _bouncedFloorMinutes);
+    }
+
+    public int StaleWindowMonths
+    {
+        get => _staleWindowMonths;
+        init => _staleWindowMonths = PositiveWindow(value, nameof(StaleWindowMonths));
+    }
+
+    public int UpdateCorrelationWindowDays
+    {
+        get => _updateCorrelationWindowDays;
+        init => _updateCorrelationWindowDays = PositiveWindow(value, nameof(UpdateCorrelationWindowDays));
+    }
+
+    private static long Positive(long value, string name)
+        => value > 0 ? value : throw new ArgumentOutOfRangeException(name, "The threshold must be positive.");
+
+    private static int PositiveWindow(int value, string name)
+        => value > 0 ? value : throw new ArgumentOutOfRangeException(name, "The window must be positive.");
+
+    private static long Retired(long value, long bounced)
+    {
+        Positive(value, nameof(RetiredFloorMinutes));
+        if (value <= bounced)
+            throw new ArgumentOutOfRangeException(nameof(RetiredFloorMinutes), "The retired floor must exceed the bounced floor.");
+        return value;
+    }
+
     /// <summary>Settings key for the "show non-game entries" preference.</summary>
     public const string ShowNonGameEntriesSettingKey = "library.show_non_game_entries";
 

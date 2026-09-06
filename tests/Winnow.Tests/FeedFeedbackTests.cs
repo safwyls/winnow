@@ -328,7 +328,7 @@ public sealed class FeedFeedbackTests
     // ── The service: §6b's five steps ────────────────────────────────────────
 
     [Fact]
-    public async Task A_feed_load_reads_the_verdicts_and_logs_what_it_showed()
+    public async Task A_feed_load_reads_the_verdicts_without_recording_unseen_cards()
     {
         var store = new FakeFeedbackStore();
         store.Verdicts.Add(new FeedVerdict
@@ -365,10 +365,9 @@ public sealed class FeedFeedbackTests
         Assert.Equal([12L], engine.LastRequest.SnoozedReleaseIds);
         Assert.Equal([13L], engine.LastRequest.RecentlySurfacedReleaseIds);
 
-        // Step 4: everything the feed showed is now in the log, stamped with the
-        // feed's own day.
-        Assert.Equal(2, store.Surfacings.Count(s => s.SurfacedOn == new DateOnly(2026, 8, 27)));
-        Assert.Contains(store.Surfacings, s => s.ReleaseId == 101 && s.ShelfId == "patched_while_away");
+        // Computing a feed establishes no actual viewing evidence.
+        Assert.Single(store.Surfacings);
+        Assert.DoesNotContain(store.Surfacings, s => s.SurfacedOn == new DateOnly(2026, 8, 27));
 
         Assert.False(snapshot.Failed);
         Assert.Equal(2, snapshot.Shelves.Sum(s => s.Items.Count));

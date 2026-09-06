@@ -142,9 +142,6 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
         return seen.Count;
     }
 
-    private async Task<IReadOnlyList<OwnershipBucket>> QueryAsync(
-        BucketThresholds thresholds, string? scopeOverride, CancellationToken ct)
-    {
         // Bucket precedence now lives in LibraryBucketRules.Classify rather
         // than in the CASE this query used to carry. The query still finds
         // every stored fact the rules read — the latest play record per
@@ -152,7 +149,7 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
         // push, the account scope — and Consolidate applies the rules on
         // the way out, at both grains. Buckets are still derived on read
         // and still never stored.
-        const string sql = """
+    private const string BucketSql = """
             WITH latest_play AS (
                 -- The newest play record per ownership. observed_at is stored to
                 -- whole seconds, so two scans in one second tie; the higher id
@@ -588,8 +585,7 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
             ORDER BY o.id;
             """;
 
-        using var lease = _factory.Lease();
-        var rows = await lease.Connection.QueryAsync<BucketRow>(new CommandDefinition(sql, new
+    private static object Parameters(BucketThresholds thresholds, string? scopeOverride) => new
         {
             thresholds.BouncedFloorMinutes,
             thresholds.RetiredFloorMinutes,
@@ -604,9 +600,42 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
             LegacySeedSource = OwnershipAccountSources.LegacyOwnershipColumn,
             SameGameKind = IdentityLinkKinds.SameGame,
             VariantKind = IdentityLinkKinds.VariantOf,
-        }, transaction: lease.Transaction, cancellationToken: ct));
+        };
+
+    private async Task<IReadOnlyList<OwnershipBucket>> QueryAsync(
+        BucketThresholds thresholds, string? scopeOverride, CancellationToken ct)
+    {
+        using var lease = _factory.Lease();
+        var rows = await lease.Connection.QueryAsync<BucketRow>(new CommandDefinition(
+            BucketSql, Parameters(thresholds, scopeOverride), transaction: lease.Transaction, cancellationToken: ct));
 
         return Consolidate(rows.AsList(), thresholds);
+    }
+
+    public async Task<LibrarySnapshot> GetSnapshotAsync(BucketThresholds thresholds, CancellationToken ct = default)
+    {
+        using var lease = _factory.Lease();
+        using var snapshot = lease.Transaction is null ? lease.Connection.BeginTransaction(deferred: true) : null;
+        using var results = await lease.Connection.QueryMultipleAsync(new CommandDefinition(
+            BucketSql + $"""
+
+            SELECT {WorkRepository.Columns} FROM works ORDER BY name;
+            SELECT {OwnershipRepository.Columns} FROM ownerships ORDER BY id;
+            SELECT {ReleaseRepository.Columns} FROM releases ORDER BY id;
+            SELECT release_id AS ReleaseId, provider AS Provider, provider_id AS ProviderId
+            FROM external_ids ORDER BY release_id, provider, provider_id;
+            SELECT {GameListRepository.Columns} FROM lists ORDER BY id;
+            SELECT list_id AS ListId, release_id AS ReleaseId, position AS Position
+            FROM list_items ORDER BY list_id, position, release_id;
+            """, Parameters(thresholds, null), transaction: lease.Transaction ?? snapshot, cancellationToken: ct));
+        var buckets = Consolidate((await results.ReadAsync<BucketRow>()).AsList(), thresholds);
+        var works = (await results.ReadAsync<Work>()).AsList();
+        var ownerships = (await results.ReadAsync<Ownership>()).AsList();
+        var releases = (await results.ReadAsync<Release>()).AsList();
+        var ids = (await results.ReadAsync<ExternalId>()).AsList();
+        var lists = (await results.ReadAsync<GameList>()).AsList();
+        var items = (await results.ReadAsync<ListItem>()).AsList();
+        return new LibrarySnapshot(buckets, works, ownerships, releases, ids, lists, items);
     }
 
     public async Task<IReadOnlyList<FacetTarget>> GetFacetTargetsAsync(CancellationToken ct = default)

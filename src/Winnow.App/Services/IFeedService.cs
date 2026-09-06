@@ -128,12 +128,9 @@ public interface IFeedService
     Task<FeedSnapshot> GetShelvesAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// Logs that one card has just been put on screen, outside the generation
-    /// pass that logs the rest. The swap path's counterpart to the reserve:
-    /// <see cref="GetShelvesAsync"/> logs only what it shows, and a card
-    /// promoted out of <see cref="FeedShelf.Reserve"/> logs itself here at the
-    /// moment it appears. Never throws — rotation memory is worth less than the
-    /// screen staying up.
+    /// Records a card entering the active window's visible feed viewport.
+    /// Generation and reserve promotion do not establish visibility.
+    /// Idempotent per (release, UTC day). Failures do not take the screen down.
     /// </summary>
     Task RecordSurfacedAsync(long releaseId, string shelfId, CancellationToken ct = default);
 

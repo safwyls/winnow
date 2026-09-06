@@ -11,6 +11,7 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="4.0.0" />
     <ProjectReference Include="../../src/Winnow.App/Winnow.App.csproj" />
     <Compile Include="../Winnow.Tests/TempDatabase.cs" Link="Fixtures/TempDatabase.cs" />
+    <Compile Include="../Winnow.Tests/LibraryReadFixtures.cs" Link="Fixtures/LibraryReadFixtures.cs" />
     <Compile Include="../Winnow.Tests/TileFixture.cs" Link="Fixtures/TileFixture.cs" />
   </ItemGroup>
 </Project>

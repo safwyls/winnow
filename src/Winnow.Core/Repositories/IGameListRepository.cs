@@ -22,6 +22,9 @@ public interface IGameListRepository
 
     Task<IReadOnlyList<GameList>> GetAllAsync(CancellationToken ct = default);
 
+    /// <summary>All membership rows ordered by list and position, for bulk rail loading.</summary>
+    Task<IReadOnlyList<ListItem>> GetAllItemsAsync(CancellationToken ct = default);
+
     /// <summary>Renames a list and replaces its description (null clears it).</summary>
     /// <returns>False when no such list exists.</returns>
     Task<bool> RenameAsync(long id, string name, string? description, CancellationToken ct = default);
