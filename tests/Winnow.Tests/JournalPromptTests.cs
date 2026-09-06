@@ -397,5 +397,12 @@ public sealed class JournalPromptTests
 
         public Task<SessionNote?> GetNoteAsync(long sessionId, CancellationToken ct = default)
             => inner.GetNoteAsync(sessionId, ct);
+
+        public Task<IReadOnlyList<SessionJournalEntry>> GetJournalEntriesByOwnershipAsync(
+            long ownershipId, CancellationToken ct = default)
+            => inner.GetJournalEntriesByOwnershipAsync(ownershipId, ct);
+
+        public Task DeleteNoteAsync(long sessionId, CancellationToken ct = default)
+            => inner.DeleteNoteAsync(sessionId, ct);
     }
 }

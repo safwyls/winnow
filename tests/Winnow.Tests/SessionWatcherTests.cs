@@ -16,6 +16,28 @@ public sealed class SessionWatcherTests
 {
     private static readonly DateTime T0 = SessionWatcherHarness.Origin;
 
+    [Fact]
+    public async Task A_Proton_loader_is_attributed_by_its_compatibility_prefix()
+    {
+        using var harness = new SessionWatcherHarness();
+        var game = await harness.AddGameAsync("Proton Game", "ProtonGame.exe");
+        var compatPath = $"/home/test/.steam/steam/steamapps/compatdata/{game.SteamAppId}";
+
+        harness.Processes.Start(
+            911,
+            "wine64",
+            executablePath: "/usr/bin/wine64",
+            startedAtUtc: T0,
+            steamCompatibilityDataPath: compatPath);
+        var tick = await harness.TickAtAsync(T0.AddSeconds(5));
+        harness.Processes.Exit(911, T0.AddMinutes(20));
+        await harness.TickAtAsync(T0.AddMinutes(21));
+
+        Assert.Equal(1, tick.Started);
+        var session = Assert.Single(await harness.SessionsForAsync(game.OwnershipId));
+        Assert.Equal(SessionAttributions.Inferred, session.AttributedBy);
+    }
+
     /// <summary>
     /// The one cost requirement in §5.2, and the reason
     /// <see cref="Winnow.Monitor.ProcessListing"/> carries no path. Three hundred

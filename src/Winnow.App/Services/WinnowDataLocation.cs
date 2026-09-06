@@ -324,7 +324,7 @@ public static class WinnowDataLocation
             return current;
         }
 
-        if (SqliteDatabaseCheck.Inspect(current).IsUsable)
+        if (SqliteDatabaseCheck.Probe(current).IsUsable)
         {
             return current;
         }
@@ -333,7 +333,7 @@ public static class WinnowDataLocation
         // not work. If the old name does not work either, the new name is still
         // the answer — a database has to be created somewhere, and it is not
         // going to be under a name the rename is trying to retire.
-        return SqliteDatabaseCheck.Inspect(legacy).IsUsable ? legacy : current;
+        return SqliteDatabaseCheck.Probe(legacy).IsUsable ? legacy : current;
     }
 
     private static DataMigrationOutcome Migrate(string root, string legacyRoot, ILogger? log)
@@ -421,7 +421,7 @@ public static class WinnowDataLocation
     /// </summary>
     private static DataMigrationOutcome Choose(string root, string legacyRoot, ILogger? log)
     {
-        var current = InspectDirectory(root);
+        var current = ProbeDirectory(root);
         if (current.IsUsable)
         {
             log?.LogInformation(
@@ -430,7 +430,7 @@ public static class WinnowDataLocation
             return DataMigrationOutcome.BothPresent;
         }
 
-        var legacy = InspectDirectory(legacyRoot);
+        var legacy = ProbeDirectory(legacyRoot);
         if (legacy.IsUsable)
         {
             log?.LogWarning(
@@ -460,6 +460,19 @@ public static class WinnowDataLocation
         }
 
         var legacy = SqliteDatabaseCheck.Inspect(Path.Combine(directory, LegacyDatabaseFileName));
+        return legacy.IsUsable ? legacy : current;
+    }
+
+    /// <summary>Checks identity while choosing a location without a full database scan.</summary>
+    private static DatabaseCheck ProbeDirectory(string directory)
+    {
+        var current = SqliteDatabaseCheck.Probe(Path.Combine(directory, DatabaseFileName));
+        if (current.IsUsable)
+        {
+            return current;
+        }
+
+        var legacy = SqliteDatabaseCheck.Probe(Path.Combine(directory, LegacyDatabaseFileName));
         return legacy.IsUsable ? legacy : current;
     }
 

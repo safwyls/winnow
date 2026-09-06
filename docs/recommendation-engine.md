@@ -38,7 +38,7 @@ copy of the author's live database, not against imagined data. The findings that
 |---|---|---|
 | Snapshot depth | 955 of 960 snapshot-bearing ownerships have exactly **one** snapshot; 5 have real deltas | The library is at Tier 0 *today*. Snapshot-shape signals must be bonuses, never prerequisites. |
 | Sessions | **Zero** rows | Every session signal is Tier 1+. Cadence gating is deferred entirely. |
-| `acquired_at` | 13 of 1,027 non-null (GOG only) | **Shelf time (acquired → first played) is dead on arrival** for Steam/Epic. The charter lists it as a headline signal; the data says it cannot ship until the GDPR importer lands. Dormancy (time since last played) is the degraded substitute. |
+| `acquired_at` | 13 of 1,027 non-null (GOG only) | At this measurement, Steam/Epic lack acquisition dates. M5 now backfills Steam first-played dates and imports acquisition dates from the account licenses page; shelf time needs both facts for the same ownership. Dormancy remains the substitute where either date is absent. |
 | `last_played_at` | 603 dated, spanning 2012–2026; 357 null; 12 null-with-minutes | Dormancy is the one longitudinal fact that IS retroactively available, because Steam's local files carry it. Lean on it. |
 | §6.1 buckets (defaults) | never_played 754, bounced 244, stale_but_patched 20, retired 9, active 0 | The candidate pool is ~1,018 rows and 74% of it is `never_played`. Ranking *within* the shelfware pile needs a tiebreaker (taste affinity + deterministic jitter); nothing about the pile itself differentiates its members. |
 | Dormancy distribution (dated, non-retired) | median **6.9 years**, p25 2.4y, p75 9.6y; 125 rows ≥10y | A dormancy score that decays after N years would suppress the older *half* of the library — the exact pile the app exists to surface. Dormancy therefore **saturates and stays flat**, and "too old to bother" is expressed only by the narrow probably-done penalty (§5). |
@@ -249,16 +249,9 @@ excluded from the draw; that is exact stratification rather than bias, since the
 no history at all. `LibraryHistoryStats.IsEstimate` says which of the two answered, and a
 scaled figure may gate behaviour but must never be shown to a user as a total.
 
-What improves when the aggregate query exists: the session count and span become exact
-instead of scaled, `Tier2MinSessions`/`Tier2MinSpanDays` are compared against real totals,
-and the sample's cost (120 ownerships × 2 point reads) leaves every feed.
+The registered aggregate makes session count and span exact, so `Tier2MinSessions` and `Tier2MinSpanDays` compare against real totals. The normal App path avoids the fallback sample cost of up to 120 ownerships × 2 point reads per feed.
 
-**The GDPR importer is the cold-start lever** (design doc §5.4): when it lands, it
-backfills `sessions` with `detection_method='import'` and deep playtime history, which
-flips the library to Tier 1/2 retroactively, resurrects the shelf-time signal
-(`acquired_at` from `ExternalLicenses`), and makes return-latency computable. This module
-needs **no changes** for that: it reads the same tables and the tier detector will simply
-find the evidence.
+**M5 supplies the available cold-start backfill** (design doc §5.4): Steam Replay adds monthly playtime snapshots from 2022 onward, ClientGetLastPlayedTimes adds first-played dates, and the account licenses and purchase-history importers add acquisition facts. Real snapshot deltas can establish Tier 1 on the first run. These sources do not reconstruct sessions or session-length distributions, so they cannot establish Tier 2 from an invented session count or recover exact return latency. Winnow records those facts while it runs.
 
 ## 6a. The shelf surface
 
@@ -311,13 +304,13 @@ Rules that make it a feed rather than five lists:
 What each shelf gains as history accrues (the tiering is not flattened by Tier 0 being
 good — that is the whole argument):
 
-| Shelf | Tier 1 (weeks: snapshot deltas, sessions) | Tier 2 (months) / GDPR import |
+| Shelf | Tier 1 (weeks: snapshot deltas, sessions) | Deeper observed history and M5 backfill |
 |---|---|---|
 | `patched_while_away` | Update polling accrues coverage; bounce-vs-single-session shape sharpens which stale rows lead | Return-latency learns whether *this user* ever answers patch calls, and after how long |
-| `worth_another_look` | Tried-to-like-it separates "six attempts" from "one evening" — already firing on the real library's five multi-snapshot rows | Import backfills the true bounce shape of the whole pile; session-length fit gates the 60-hour entries |
+| `worth_another_look` | Tried-to-like-it separates "six attempts" from "one evening" — already firing on the real library's five multi-snapshot rows | Replay snapshots recover monthly playtime shape where available; future session-length fit needs recorded sessions and expected-commitment data |
 | `ready_to_play` | Sessions reveal installs that get launched but not logged by stores | Cadence says *when* a ready game actually fits (the Tuesday-night gate) |
-| `barely_touched` | Distinguishes "sampled once" from "sampled five times and bounced off the door" | Import recovers sampling dates Steam's local files have forgotten |
-| `on_your_taste` | Every new committed game re-weights the profile | Genuine taste clusters replace single-facet affinity; shelf-time (acquired→first-played) resurrects with `ExternalLicenses` dates |
+| `barely_touched` | Distinguishes "sampled once" from "sampled five times and bounced off the door" | First-played backfill recovers the initial sampling date; later attempts require observed sessions or snapshot deltas |
+| `on_your_taste` | Every new committed game re-weights the profile | Taste evidence grows with play; shelf-time (acquired→first-played) becomes available where account-license dates and first-played dates both exist |
 
 Verified on the real library (2026-08-27 copy, feed run end-to-end): all five shelves
 populate, reasons read as intended ("You put 2.4 hours into this in 2017 and it has had an
@@ -730,7 +723,7 @@ whitespace or end of string, outside quoted spans.
   a session cadence (Tier 2) and per-game expected-commitment data (HLTB, unresolved
   [VERIFY]). Would become a Tier-2 value on `RecommendationScorer`.
 - **Return latency** as a scoring input (how long this user's round trips take): needs
-  months of sessions or the GDPR backfill; today it would be fit on five data points.
+  months of recorded sessions and update responses; monthly Replay snapshots cannot supply exact return times.
 - **Will-it-run / Dead bucket**: §6.1 lists Dead (delisted, no viable platform); nothing
   ingests that fact yet. When it exists it becomes hard exclusion #6.
 - **Session-note ratings** as taste/verdict evidence: the table is empty and the journal
@@ -768,12 +761,6 @@ whitespace or end of string, outside quoted spans.
 
 `RecommendationEngine` is constructed from the DI container and rendered by
 `FeedViewModel`. `FeedFeedbackRepository` stores the loop's facts (§6b), and `FeedService`
-follows the five-step contract: load `FeedbackSets`, apply, compute, record surfacings,
-and route the dismiss / snooze / undo commands to the repository. The App layer's
-`FeedCardViewModel` carries the two verdicts, the undo, and the receipt countdown.
+loads `FeedbackSets`, applies them and computes shelves. Actual visible viewport entry records surfacings through the App layer (§6b); generation alone records none. `FeedService` also routes dismiss, snooze and undo commands to the repository. `FeedCardViewModel` carries the two verdicts, undo and receipt countdown.
 
-`ILibraryHistoryStatsRepository` (`Winnow.Core.Repositories`) has **no `Winnow.Data`
-implementation yet**. The engine takes it as an optional constructor argument and falls
-back to the sampled estimate (§6) when it is absent, so the composition root can register
-one whenever it is written with no change here and no change to the tier's meaning — only
-to its precision.
+`LibraryHistoryStatsRepository` implements `ILibraryHistoryStatsRepository` in `Winnow.Data` and is registered in the App composition root. One SQL statement returns exact whole-library session count and span plus the count of ownerships with snapshot rises. The engine uses this aggregate when registered (`IsEstimate=false`) and retains the tested sampled fallback for callers that omit it (`IsEstimate=true`). Tier-detection sampling reads are skipped on the registered path; candidate history probes still serve scoring.

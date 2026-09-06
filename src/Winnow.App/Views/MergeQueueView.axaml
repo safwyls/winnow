@@ -2,7 +2,8 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Winnow.App.ViewModels"
              x:Class="Winnow.App.Views.MergeQueueView"
-             x:DataType="vm:MergeQueueViewModel">
+             x:DataType="vm:MergeQueueViewModel"
+             Classes.reducedmotion="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Library.Ramp.ReducedMotion}">
 
     <!-- The Merges screen (docs/merge_queue_design). Three bands: a 56px
          header, a 40px cut bar, and the queue. The queue is one scroll of
@@ -154,6 +155,19 @@
         </Style>
         <Style Selector="Border.reason > :is(TextBlock).bright">
             <Setter Property="Foreground" Value="{StaticResource Text}"/>
+        </Style>
+
+        <!-- §8: the queue still states its selected and hovered states, but
+             brush changes arrive immediately when the OS disables motion. -->
+        <Style Selector="UserControl.reducedmotion Border.row">
+            <Setter Property="Transitions">
+                <Transitions/>
+            </Setter>
+        </Style>
+        <Style Selector="UserControl.reducedmotion Border.reason > :is(TextBlock)">
+            <Setter Property="Transitions">
+                <Transitions/>
+            </Setter>
         </Style>
 
         <!-- ══ The checkbox ═════════════════════════════════════════════════

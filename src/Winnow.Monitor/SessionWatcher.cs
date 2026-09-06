@@ -442,7 +442,8 @@ public sealed class SessionWatcher : IDisposable
                 // ***** The Tier 1 filter. Nothing above this line opened a
                 // handle, and nothing below it runs for a non-candidate. *****
                 if (!index.ProcessNames.Contains(listing.ProcessName)
-                    && !expected.Contains(listing.ProcessName))
+                    && !expected.Contains(listing.ProcessName)
+                    && !index.HasSteamCompatibilityDataPath(listing.SteamCompatibilityDataPath))
                 {
                     continue;
                 }
@@ -471,6 +472,7 @@ public sealed class SessionWatcher : IDisposable
             // would have shrugged: see LaunchIntents.Attribute for the two rules
             // and for what it deliberately refuses to do.
             var ownershipId = index.Match(process.ExecutablePath, process.ProcessName)
+                ?? index.MatchSteamCompatibilityDataPath(process.SteamCompatibilityDataPath)
                 ?? _intents.Attribute(process.ExecutablePath, process.ProcessName, now);
             if (ownershipId is null)
             {

@@ -18,6 +18,7 @@ public sealed class CacheTimestampBoundaryTests
     [InlineData("updates")]
     [InlineData("steam-store")]
     [InlineData("epic")]
+    [InlineData("epic-library")]
     public async Task Cache_rejects_unspecified_timestamp_without_inserting_or_overwriting(string cache)
     {
         using var db = new TempDatabase();
@@ -29,6 +30,7 @@ public sealed class CacheTimestampBoundaryTests
             "updates" => (payload, at) => new SqliteUpdateSignalCache(db.Factory).SetAsync(cache, "1", payload, at),
             "steam-store" => (payload, at) => new SqliteStoreMetadataCache(db.Factory).SetAsync(cache, "1", payload, at),
             "epic" => (payload, at) => new SqliteEpicCatalogCache(db.Factory).SetAsync("1", payload, at),
+            "epic-library" => (payload, at) => new SqliteEpicLibraryCache(db.Factory).SetAsync("library", payload, at),
             _ => throw new ArgumentOutOfRangeException(nameof(cache)),
         };
         var unspecified = new DateTime(2026, 9, 6, 12, 0, 0, DateTimeKind.Unspecified);

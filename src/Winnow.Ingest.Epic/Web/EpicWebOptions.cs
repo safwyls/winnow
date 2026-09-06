@@ -80,11 +80,14 @@ public sealed class EpicWebOptions
     public IReadOnlyList<Uri> SocialSignInOrigins { get; set; } =
     [
         // Epic's own, beyond www: the bare apex (which redirects to www) and the
-        // captcha service its login page hands off to.
+        // captcha services. The current login bundle uses the ecosec origin;
+        // retain the earlier origin for launcher pages still using it.
         new("https://epicgames.com"),
         new("https://talon-website-prod.ol.epicgames.com"),
+        new("https://talon-website-prod.ecosec.on.epicgames.com"),
 
-        // The identity providers Epic's login page offers.
+        // Verified against the live login page and its public provider config
+        // on 2026-09-06; evidence: docs/spikes/epic-signin-origins.md.
         new("https://accounts.google.com"),
         new("https://appleid.apple.com"),
         new("https://www.facebook.com"),
@@ -94,6 +97,8 @@ public sealed class EpicWebOptions
         new("https://ca.account.sony.com"),
         new("https://accounts.nintendo.com"),
         new("https://steamcommunity.com"),
+        new("https://login.disney.com"),
+        new("https://identity.lego.com"),
     ];
 
     /// <summary>How long a fetched Epic library stays authoritative before a resync refetches it.</summary>

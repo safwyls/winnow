@@ -2279,3 +2279,120 @@ already-versioned game, rating and search payloads. The build spec previously sa
 Replaced the generation-time impression instruction in the recommendation model with visible viewport entry. Previously:
 
 > After computing: `feedbackRepo.RecordSurfacedAsync(FeedbackSets.SurfacingsOf(feed, now))` — idempotent per (release, day), so refreshes are free.
+
+### 2026-09-06 — Pin Steam review response evidence
+
+Replaced these fixture statements after recapturing the public response with reviews enabled:
+
+Captured 2026-08-23 by read-only `GET` with a descriptive `User-Agent`, no auth
+and no API key, and stored **verbatim** — no trimming, no sanitizing. There is
+nothing to sanitize: these are public storefront responses containing no account
+data. See `docs/spikes/steam-store-tags.md` for the findings they encode.
+
+| **no item carries a `reviews` block** | The opposite of `categories`: `reviews` requires `include_reviews` in the `data_request`, and this fixture was captured 2026-08-23, before that flag was ever sent. See the paragraph below. |
+
+## reviews: not yet covered by a fixture
+
+`SteamStoreJson.ReadReviews` is written from Valve's `webui/common.proto` — the
+same file this repo already cites for `StoreItem_RelatedItems` — rather than
+from a captured response. In that proto,
+`StoreBrowseItemDataRequest.include_reviews` is a bool at field 9;
+`StoreItem.reviews` is a `StoreItem_Reviews` at field 23;
+`StoreItem_Reviews` carries `summary_filtered`, `summary_unfiltered` and
+`summary_language_specific`; and `StoreItem_Reviews_StoreReviewSummary` carries
+`review_count`, `percent_positive`, `review_score` and `review_score_label`.
+
+Because the reader is written from the proto and not from bytes on disk, it
+returns "no figure" for any shape it does not recognise — being wrong costs a
+missing number, not a wrong one.
+
+**Recapturing `getitems-v1.json` with `include_reviews: true` is outstanding
+work.** Until it happens, `SteamStoreContractTests` cannot be the early-warning
+system for `reviews` that it is for everything else in this fixture. A contract
+change to the `reviews` shape will pass the test silently; only a live user
+seeing a blank reception line will reveal it. The recapture command above already
+includes the flag; running it and committing the new fixture closes the gap.
+
+
+
+### 2026-09-06 — Describe M5's actual cold-start evidence
+
+Superseded recommendation-model statements:
+
+**Shelf time (acquired → first played) is dead on arrival** for Steam/Epic. The charter lists it as a headline signal; the data says it cannot ship until the GDPR importer lands. Dormancy (time since last played) is the degraded substitute.
+
+**The GDPR importer is the cold-start lever** (design doc §5.4): when it lands, it
+backfills `sessions` with `detection_method='import'` and deep playtime history, which
+flips the library to Tier 1/2 retroactively, resurrects the shelf-time signal
+(`acquired_at` from `ExternalLicenses`), and makes return-latency computable. This module
+needs **no changes** for that: it reads the same tables and the tier detector will simply
+find the evidence.
+
+| Shelf | Tier 1 (weeks: snapshot deltas, sessions) | Tier 2 (months) / GDPR import |
+
+Import backfills the true bounce shape of the whole pile; session-length fit gates the 60-hour entries
+
+Import recovers sampling dates Steam's local files have forgotten
+
+Genuine taste clusters replace single-facet affinity; shelf-time (acquired→first-played) resurrects with `ExternalLicenses` dates
+
+months of sessions or the GDPR backfill; today it would be fit on five data points.
+
+### 2026-09-06 — Correct history aggregate and feed wiring records
+
+Superseded statements:
+
+`ILibraryHistoryStatsRepository` (`Winnow.Core.Repositories`) has **no `Winnow.Data`
+implementation yet**. The engine takes it as an optional constructor argument and falls
+back to the sampled estimate (§6) when it is absent, so the composition root can register
+one whenever it is written with no change here and no change to the tier's meaning — only
+to its precision.
+
+What improves when the aggregate query exists: the session count and span become exact
+instead of scaled, `Tier2MinSessions`/`Tier2MinSpanDays` are compared against real totals,
+and the sample's cost (120 ownerships × 2 point reads) leaves every feed.
+
+follows the five-step contract: load `FeedbackSets`, apply, compute, record surfacings,
+and route the dismiss / snooze / undo commands to the repository. The App layer's
+`FeedCardViewModel` carries the two verdicts, the undo, and the receipt countdown.
+
+### 2026-09-06 — Give saved journal notes a details section
+
+Superseded visual-spec sentences:
+
+**The rest band's order is:** corrections (IGDB MATCH, EDIT DETAILS), UPDATES, ABOUT with
+
+UPDATES moved to the top of the band because it is what Band 2's axis
+summarises and the two should be adjacent.
+
+MATCH, EDIT DETAILS, UPDATES, ABOUT, ALSO COVERS, EXTENDS, EXPANSIONS and LISTS.
+
+### 2026-09-06 — Update beta delivery records
+
+Superseded roadmap entries:
+
+| M8 | The Feed | The recommender is the app's primary view; every card states its reason in one sentence | shipped; no dismiss or snooze, and nothing remembers yesterday |
+
+| M9 | Install / uninstall management | Install and uninstall delegate to the owning store client and reflect state back | required for beta; TASK-3 is in PRE-BETA-HARDENING |
+
+| The IGDB metadata cache has no `payload_version` | TASK-18 |
+
+| `OwnershipRepository.UpsertAsync` could overwrite an imported `acquired_at` | TASK-39 |
+
+### 2026-09-06 — Implement platform-aware session discovery
+
+Superseded build-spec paragraph:
+
+**Session detection is Windows-only in practice.** `GameExecutableIndexBuilder` matches
+`*.exe`, so off Windows the index is empty and nothing is recorded; it warns once rather than
+failing silently. Widening the glob is not the fix. Under Proton the resolved executable is
+the wine loader inside the runtime directory, not a path under the game's install root, so the
+install-prefix join cannot work there at all. Attribution would need
+`STEAM_COMPAT_DATA_PATH` from `/proc/<pid>/environ`, which is a different design.
+
+Superseded roadmap limitation:
+
+Two limits are stated as rules in the build spec rather than carried here, because they are
+not going to be fixed: session detection is Windows-only in practice
+(`game-library-design.md` §5.2), and the account-scope filter errs visible
+(`game-library-design.md` §6.3).

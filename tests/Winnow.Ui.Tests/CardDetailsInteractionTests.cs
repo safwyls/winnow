@@ -24,6 +24,33 @@ namespace Winnow.Ui.Tests;
 
 public sealed class CardDetailsInteractionTests
 {
+    [AvaloniaFact]
+    public async Task Reduced_motion_snaps_every_animated_tile_state()
+    {
+        using var fixture = await CardFixture.CreateAsync(148, reducedMotion: true);
+        var tile = fixture.TileView;
+        var animated = new Control[]
+        {
+            tile.FindControl<Border>("Lift")!,
+            tile.FindControl<Border>("VividArt")!,
+            tile.FindControl<Image>("VividArtwork")!,
+            tile.FindControl<ItemsControl>("RestingChips")!,
+            tile.FindControl<Border>("ExpansionMark")!,
+            tile.FindControl<Border>("Scrim")!,
+            tile.FindControl<Border>("PrimaryActionHost")!,
+            tile.FindControl<Border>("DetailsActionHost")!,
+        };
+
+        animated = [.. animated.Concat(tile.GetVisualDescendants().OfType<TextBlock>()
+            .Where(text => text.Classes.Contains("art-title")))];
+
+        Assert.All(animated, control =>
+        {
+            Assert.NotNull(control.Transitions);
+            Assert.Empty(control.Transitions!);
+        });
+    }
+
     [AvaloniaTheory]
     [InlineData(108)]
     [InlineData(148)]

@@ -43,7 +43,7 @@ public sealed class SessionWatcherHarness : IDisposable
         var options = new SessionWatcherOptions();
         configure?.Invoke(options);
         var wrapped = Options.Create(options);
-        IndexBuilder = new GameExecutableIndexBuilder(_ownerships, wrapped, Clock);
+        IndexBuilder = new GameExecutableIndexBuilder(_ownerships, _releases, wrapped, Clock);
 
         // M3b: the registry the UI declares launches on. Real rather than
         // faked — it is a few fields and a lock, and the thing worth testing is
@@ -120,6 +120,14 @@ public sealed class SessionWatcherHarness : IDisposable
             Platform = "windows",
         });
 
+        var steamAppId = (100000 + releaseId).ToString(System.Globalization.CultureInfo.InvariantCulture);
+        await _releases.AddExternalIdAsync(new ExternalId
+        {
+            ReleaseId = releaseId,
+            Provider = ExternalIdProviders.Steam,
+            ProviderId = steamAppId,
+        });
+
         var ownershipId = await _ownerships.InsertAsync(new Ownership
         {
             ReleaseId = releaseId,
@@ -128,7 +136,7 @@ public sealed class SessionWatcherHarness : IDisposable
             Installed = installed,
         });
 
-        return new InstalledGame(ownershipId, installPath, executables);
+        return new InstalledGame(ownershipId, installPath, steamAppId, executables);
     }
 
     /// <summary>A path under <see cref="_root"/> that belongs to no game.</summary>
@@ -164,7 +172,11 @@ public sealed class SessionWatcherHarness : IDisposable
         }
     }
 
-    public sealed record InstalledGame(long OwnershipId, string InstallPath, IReadOnlyList<string> Executables)
+    public sealed record InstalledGame(
+        long OwnershipId,
+        string InstallPath,
+        string SteamAppId,
+        IReadOnlyList<string> Executables)
     {
         /// <summary>Full path of the executable whose file name (with extension) matches.</summary>
         public string Exe(string fileName)

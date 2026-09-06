@@ -65,7 +65,8 @@ public sealed class SteamStoreReviewTests
     [Fact]
     public async Task An_app_with_no_reviews_block_carries_no_figure_rather_than_a_zero()
     {
-        using var host = new SteamStoreTestHost(SteamStoreTestHost.CapturedResponder());
+        using var host = new SteamStoreTestHost(Responder(
+            """{"response":{"store_items":[{"id":1245620,"appid":1245620,"success":1,"visible":true,"name":"Elden Ring"}]}}"""));
 
         var reviews = (await host.Client.GetItemsAsync([AppId]))[AppId].Reviews;
 

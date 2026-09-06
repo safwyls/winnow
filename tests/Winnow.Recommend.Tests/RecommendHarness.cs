@@ -81,13 +81,16 @@ public sealed class RecommendHarness : IDisposable
     public RecommendationEngine Engine { get; }
 
     /// <summary>The same engine over the same database, plus a global history aggregate for tier detection.</summary>
-    public RecommendationEngine EngineWith(ILibraryHistoryStatsRepository historyStats)
+    public RecommendationEngine EngineWith(
+        ILibraryHistoryStatsRepository? historyStats,
+        IPlaytimeSnapshotRepository? snapshots = null,
+        ISessionRepository? sessions = null)
         => new(
             new LibraryQueryRepository(_db.Factory),
             Releases,
             Ownerships,
-            Snapshots,
-            Sessions,
+            snapshots ?? Snapshots,
+            sessions ?? Sessions,
             UpdateEvents,
             Facets,
             historyStats);

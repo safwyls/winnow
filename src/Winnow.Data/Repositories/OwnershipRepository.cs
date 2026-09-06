@@ -76,7 +76,7 @@ public sealed class OwnershipRepository : IOwnershipRepository
                     COALESCE(@Installed, 0))
             ON CONFLICT (release_id, store) DO UPDATE SET
                 account_ref  = COALESCE(excluded.account_ref, ownerships.account_ref),
-                acquired_at  = COALESCE(excluded.acquired_at, ownerships.acquired_at),
+                acquired_at  = COALESCE(ownerships.acquired_at, excluded.acquired_at),
                 install_path = CASE WHEN @Installed IS NULL
                                     THEN ownerships.install_path
                                     ELSE excluded.install_path END,

@@ -13,7 +13,7 @@ public sealed class FeedViewModelTests
 {
     /// <summary>A real reason string covering playtime, year, patch title and taste clause.</summary>
     private const string PatchedReason =
-        "You put 2.8 hours into this in 2021 and it has had an update since, most recently \"PATCH NOTES - S06.05.02\". Survival is where your hours go, and this is one.";
+        "You put 2.8 hours into this in 2021 and it has had an update since, most recently \"PATCH NOTES - S06.05.02\". This matches your taste in Survival games.";
 
     // ── The five shelves ─────────────────────────────────────────────────────
 
@@ -280,6 +280,37 @@ public sealed class FeedViewModelTests
         Assert.False(feed.CanRetry);
     }
 
+    [Fact]
+    public async Task Rapid_library_invalidations_during_a_load_replay_once_with_the_final_state()
+    {
+        var tiles = new FakeTileSource();
+        var initial = FullFeed(tiles);
+        var final = Snapshot(
+            Shelf("ready_to_play", "Installed and waiting", "Already on your disk, nothing sunk.",
+                Item(tiles, 99, "The final library state.")));
+        var service = new FakeFeedService(initial) { Gate = new TaskCompletionSource() };
+        var feed = new FeedViewModel(service, tiles);
+
+        var loading = feed.LoadCommand.ExecuteAsync(null);
+        Assert.Equal(1, service.Calls);
+
+        // Three changes can arrive while the first read is in flight. They
+        // coalesce into one replay, which must observe the last state rather
+        // than leaving the first snapshot on screen.
+        service.Next = final;
+        tiles.Reload();
+        tiles.Reload();
+        tiles.Reload();
+
+        service.Gate!.SetResult();
+        await loading;
+
+        Assert.Equal(2, service.Calls);
+        var shelf = Assert.Single(feed.Shelves);
+        Assert.Equal("ready_to_play", shelf.Id);
+        Assert.Equal("Deep Rock Galactic 99", Assert.Single(shelf.Cards).Tile.Title);
+    }
+
     // ── Confidence, and the number in the header ─────────────────────────────
 
     [Fact]
@@ -384,7 +415,7 @@ public sealed class FeedViewModelTests
                     Item(tiles, 4, "You tried it for 104 minutes and never went back — that was 2017.")),
                 Shelf("on_your_taste", "Never opened, right up your alley",
                     "Sitting sealed in your library, and it matches where your hours actually go.",
-                    Item(tiles, 5, "Never opened since it joined your library. Sandbox is where your hours go, and this is one.")),
+                    Item(tiles, 5, "Never opened since it joined your library. This matches your taste in Sandbox games.")),
             ],
             CandidateCount: 997,
             confidence,

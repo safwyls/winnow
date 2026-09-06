@@ -33,6 +33,18 @@ public static class GameDetailsCopy
     /// </summary>
     public const string UpdatesHeading = "UPDATES";
 
+    public const string JournalHeading = "JOURNAL";
+
+    public const string JournalEmptyPromptOn = "No notes yet. After you play, Winnow will ask how it went.";
+
+    public const string JournalEmptyPromptOff = "Journal prompts are off. Turn them on in Display preferences after a game.";
+
+    public const string JournalEmptyEditProblem = "Add a note or rating, or delete this entry.";
+
+    public const string JournalSaveProblem = "Couldn't save that. Your changes are still here — try again.";
+
+    public const string JournalDeleteProblem = "Couldn't delete that. Your note is still here — try again.";
+
     /// <summary>
     /// The launch button's accessible name: the action and the game's title,
     /// e.g. "Install Empyrion: Galactic Survival".

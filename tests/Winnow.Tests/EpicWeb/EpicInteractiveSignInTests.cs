@@ -351,6 +351,15 @@ public class EpicInteractiveSignInTests
         Assert.False(policy.IsTrustedOrigin(new Uri("https://accounts.google.com/o/oauth2/auth")));
         Assert.False(policy.AllowsBridge(new Uri("https://accounts.google.com/o/oauth2/auth")));
 
+        foreach (var origin in new[] { "https://login.disney.com", "https://identity.lego.com",
+                     "https://talon-website-prod.ecosec.on.epicgames.com" })
+        {
+            Assert.True(policy.IsNavigableOrigin(new Uri(origin)));
+            Assert.False(policy.IsTrustedOrigin(new Uri(origin)));
+            Assert.False(policy.AllowsBridge(new Uri(origin)));
+            Assert.False(policy.IsNavigableOrigin(new Uri(origin + ".evil.example")));
+        }
+
         // Anything else is refused rather than hosted, and a popup to it goes to
         // the user's own browser.
         Assert.Equal(

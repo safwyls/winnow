@@ -1227,6 +1227,10 @@
 
                         <StackPanel Spacing="22" Margin="0,18,0,24">
 
+                            <StackPanel IsVisible="{Binding ShowJournal}">
+                                <views:GameJournalView DataContext="{Binding Journal}"/>
+                            </StackPanel>
+
                             <!-- Updates list. Patch-notes links only appear when the
                                  update carries a page (§5.2). -->
                             <StackPanel Spacing="4" IsVisible="{Binding HasUpdates}">

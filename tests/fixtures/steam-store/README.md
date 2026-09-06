@@ -1,9 +1,6 @@
 # Steam store-frontend fixtures
 
-Captured 2026-08-23 by read-only `GET` with a descriptive `User-Agent`, no auth
-and no API key, and stored **verbatim** — no trimming, no sanitizing. There is
-nothing to sanitize: these are public storefront responses containing no account
-data. See `docs/spikes/steam-store-tags.md` for the findings they encode.
+Public storefront responses captured by read-only GET without authentication or an API key. The original fixtures date from 2026-08-23; getitems-v1.json was recaptured on 2026-09-06 with reviews enabled and public creator-clan account IDs replaced with fake 123456. Other response fields are retained as received. See `docs/spikes/steam-store-tags.md` for the original findings.
 
 | File | Endpoint | Request |
 |---|---|---|
@@ -43,34 +40,22 @@ curl -sS -G -A "Winnow/0.1 (+https://github.com/winnow-app; local game library m
 | `weight` values (1077, 789, …) | Per-app normalised — comparable within an app, not across. Winnow stores **rank**; the weights survive only here and in `metadata_cache`. |
 | `best_purchase_option.final_price_in_cents` is the **string** `"5999"` while `weight` is a number | Steam mixes numeric encodings within one object; the parser reads numbers from strings everywhere. |
 | every successful item carries a **`categories`** object — and `getitems-v1.json` was captured 2026-08-23, two days before anything read it | Proof that `supported_player_categoryids` / `feature_categoryids` / `controller_categoryids` need **no extra `data_request` flag**. Migration 0007's facets are therefore a re-parse of bodies already in `metadata_cache`, not a backfill. |
-| **no item carries a `reviews` block** | The opposite of `categories`: `reviews` requires `include_reviews` in the `data_request`, and this fixture was captured 2026-08-23, before that flag was ever sent. See the paragraph below. |
+| Each successful item carries `reviews.summary_filtered` and `reviews.summary_language_specific` | The 2026-09-06 capture explicitly requests `include_reviews`; the production reader prefers the filtered aggregate. |
 | Dota 2 has no `controller_categoryids`; appid `760` has no `categories` key at all | A partial or absent block is ordinary. The parser reads a missing list as empty, never as an error. |
 | `getstorecategories-v1.json`: ids 55 and 56 share the display name `DualShock Controller Support`, as do 57/58 and 30/51 | Valve ships duplicate display names. Migration 0007 keys facets on the NAME, which collapses them into one checkbox — the answer a filter panel wants. |
 | three categories (80, 81, 82) have `display_name` values like `#category_playable_at_your_own_pace` | Unresolved localization tokens on Valve's side. The client falls back to `internal_name`, which reads correctly. |
 | tagid `29482` → `Souls-like` and `1091588` → `Roguelike Deckbuilder` in the tag list | The two tags §4.3 names by example; their presence is what makes the vocabulary useful. |
 | `version_hash` `711684454`, 446 tags, 15792 bytes | Byte-identical to the spike's capture. `version_hash` is how a caller detects the vocabulary moving. |
 
-## reviews: not yet covered by a fixture
+## Reviews captured from the live service
 
-`SteamStoreJson.ReadReviews` is written from Valve's `webui/common.proto` — the
-same file this repo already cites for `StoreItem_RelatedItems` — rather than
-from a captured response. In that proto,
-`StoreBrowseItemDataRequest.include_reviews` is a bool at field 9;
-`StoreItem.reviews` is a `StoreItem_Reviews` at field 23;
-`StoreItem_Reviews` carries `summary_filtered`, `summary_unfiltered` and
-`summary_language_specific`; and `StoreItem_Reviews_StoreReviewSummary` carries
-`review_count`, `percent_positive`, `review_score` and `review_score_label`.
-
-Because the reader is written from the proto and not from bytes on disk, it
-returns "no figure" for any shape it does not recognise — being wrong costs a
-missing number, not a wrong one.
-
-**Recapturing `getitems-v1.json` with `include_reviews: true` is outstanding
-work.** Until it happens, `SteamStoreContractTests` cannot be the early-warning
-system for `reviews` that it is for everything else in this fixture. A contract
-change to the `reviews` shape will pass the test silently; only a live user
-seeing a blank reception line will reveal it. The recapture command above already
-includes the flag; running it and committing the new fixture closes the gap.
+`getitems-v1.json` was recaptured anonymously on 2026-09-06 with
+`include_reviews: true`. All three successful items carry `summary_filtered`
+and `summary_language_specific`; the failed item has no reviews block.
+`SteamStoreContractTests` checks the four fields in the filtered summary and
+verifies that the production client returns their captured values. Tests make
+no live requests. Public creator-clan account IDs are replaced with fake
+`123456`; no user account, cookies, token or API key was sent in the capture.
 
 ## getitems-related-v1.json
 

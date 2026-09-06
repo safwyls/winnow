@@ -69,12 +69,14 @@ public partial class GameDetailsViewModel : ObservableObject
         IReadOnlyList<WorkImages>? images = null,
         IReadOnlyList<Ownership>? ownerships = null,
         GameRefetchViewModel? refetch = null,
-        ScreenshotLightboxViewModel? lightbox = null)
+        ScreenshotLightboxViewModel? lightbox = null,
+        GameJournalViewModel? journal = null)
     {
         Reception = GameReceptionViewModel.From(ratings);
         Screenshots = GameScreenshotsViewModel.From(images, covers, lightbox);
         Acquisition = GameAcquisitionViewModel.From(ownerships);
         Refetch = refetch;
+        Journal = journal;
         HideCommand = hideGame;
         _patchNotes = patchNotes;
         IgdbMatch = igdbMatch;
@@ -662,6 +664,11 @@ public partial class GameDetailsViewModel : ObservableObject
 
     /// <summary>Drawn only when a refetch service is available.</summary>
     public bool ShowRefetch => Refetch is not null;
+
+    /// <summary>Saved post-session notes for this game, or null when no session store is available.</summary>
+    public GameJournalViewModel? Journal { get; }
+
+    public bool ShowJournal => Journal is not null;
 
     public string? Summary => Tile.Summary;
 

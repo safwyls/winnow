@@ -253,6 +253,28 @@ public class RepositoryRoundTripTests : IDisposable
     }
 
     /// <summary>
+    /// A launcher candidate may eventually include an acquisition date, but
+    /// the account-history import is the authoritative source once it has
+    /// filled this fact. Upsert is therefore fill-only for this column.
+    /// </summary>
+    [Fact]
+    public async Task Ownership_upsert_does_not_overwrite_an_imported_acquired_at()
+    {
+        var (_, releaseId, ownershipId) = await SeedOwnershipAsync();
+        var ownerships = new OwnershipRepository(_db.Factory);
+        var imported = Utc(2016, 10, 28);
+
+        Assert.True(await ownerships.FillAcquisitionFactsAsync(new OwnershipAcquisitionFill(
+            ownershipId, imported, null, null, null)));
+
+        await ownerships.UpsertAsync(new OwnershipUpsert(
+            releaseId, "steam", "12345678", Utc(2026, 9, 6),
+            InstallPath: null, Installed: null));
+
+        Assert.Equal(imported, (await ownerships.GetAsync(ownershipId))!.AcquiredAt);
+    }
+
+    /// <summary>
     /// The rule the "Installed" filter depends on: a source with no opinion on
     /// install state (Installed: null — §4.2's Web API) leaves BOTH install
     /// columns exactly as the source that could see the disk left them. This is
@@ -410,6 +432,48 @@ public class RepositoryRoundTripTests : IDisposable
         // than as a default: "nobody recorded how this was attributed" is a
         // different fact from "it was inferred".
         Assert.Null(session.AttributedBy);
+    }
+
+    [Fact]
+    public async Task Journal_entries_read_newest_first_and_can_be_deleted()
+    {
+        var (_, _, ownershipId) = await SeedOwnershipAsync();
+        var sessions = new SessionRepository(_db.Factory);
+        var older = await sessions.InsertAsync(new Session
+        {
+            OwnershipId = ownershipId,
+            StartedAt = Utc(2026, 8, 19, 20, 0, 0),
+            EndedAt = Utc(2026, 8, 19, 21, 0, 0),
+            DurationSeconds = 3600,
+            DetectionMethod = DetectionMethods.ProcessWatch,
+        });
+        var newer = await sessions.InsertAsync(new Session
+        {
+            OwnershipId = ownershipId,
+            StartedAt = Utc(2026, 8, 22, 20, 0, 0),
+            EndedAt = Utc(2026, 8, 22, 21, 0, 0),
+            DurationSeconds = 3600,
+            DetectionMethod = DetectionMethods.ProcessWatch,
+        });
+        await sessions.SetNoteAsync(new SessionNote { SessionId = older, Note = "Found the side path.", Rating = 3 });
+        await sessions.SetNoteAsync(new SessionNote { SessionId = newer, Note = "Ready for the final boss.", Rating = 5 });
+
+        var entries = await sessions.GetJournalEntriesByOwnershipAsync(ownershipId);
+
+        Assert.Collection(entries,
+            entry =>
+            {
+                Assert.Equal(newer, entry.SessionId);
+                Assert.Equal("Ready for the final boss.", entry.Note);
+                Assert.Equal(5, entry.Rating);
+            },
+            entry => Assert.Equal(older, entry.SessionId));
+
+        await sessions.DeleteNoteAsync(newer);
+
+        var remaining = await sessions.GetJournalEntriesByOwnershipAsync(ownershipId);
+        Assert.Equal(older, Assert.Single(remaining).SessionId);
+        Assert.Null(await sessions.GetNoteAsync(newer));
     }
 
     /// <summary>

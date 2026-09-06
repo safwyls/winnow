@@ -10,6 +10,8 @@
         Width="1280" Height="820"
         MinWidth="1200" MinHeight="640"
         Classes.floating="{Binding IsFloatingLayout}"
+        Classes.reducedmotion="{Binding Library.Ramp.ReducedMotion}"
+        Classes.motion="{Binding !Library.Ramp.ReducedMotion}"
         Background="{StaticResource ShellGround}"
         TransparencyBackgroundFallback="{StaticResource ShellGround}"
         ExtendClientAreaToDecorationsHint="True"
@@ -619,6 +621,9 @@
             <Setter Property="Fill" Value="{StaticResource Amber}"/>
         </Style>
         <Style Selector="Ellipse.pip.waiting">
+            <Setter Property="Opacity" Value="1"/>
+        </Style>
+        <Style Selector="Window.motion Ellipse.pip.waiting">
             <Style.Animations>
                 <Animation Duration="0:0:1.4" IterationCount="INFINITE" Easing="SineEaseInOut">
                     <KeyFrame Cue="0%"><Setter Property="Opacity" Value="1.0"/></KeyFrame>
@@ -761,6 +766,15 @@
              scrollbar inset (§9.1) is no longer needed. Global rule kept for flush. -->
         <Style Selector="Window.floating ScrollBar:vertical">
             <Setter Property="Margin" Value="0"/>
+        </Style>
+
+        <!-- §8: reduced motion keeps every state change, but drops the
+             transition that would otherwise interpolate it. These selectors
+             live after their defaults so they override by style order. -->
+        <Style Selector="Window.reducedmotion Button.wincontrol /template/ ContentPresenter#PART_ContentPresenter, Window.reducedmotion Button.bucket /template/ ContentPresenter#PART_ContentPresenter, Window.reducedmotion Button.listrow /template/ ContentPresenter#PART_ContentPresenter, Window.reducedmotion Button.railglyph /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Transitions">
+                <Transitions/>
+            </Setter>
         </Style>
 
     </Window.Styles>

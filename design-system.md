@@ -790,16 +790,22 @@ the right column is 420px at the card's `MinWidth`, so the line takes a second r
 width and a single row at 580px (`docs/spikes/details-modal-additions-width.md`). A second row
 is cheaper than trimming a count away.
 
-**The rest band's order is:** corrections (IGDB MATCH, EDIT DETAILS), UPDATES, ABOUT with
+**The rest band's order is:** corrections (IGDB MATCH, EDIT DETAILS), JOURNAL, UPDATES, ABOUT with
 screenshots inside it, ALSO COVERS, EXTENDS, EXPANSIONS, LISTS. The governing rule: **a
 `label section` heading in Band 4 is earned by a list of rows the user can act on. ABOUT is
 the single prose exception. A fact about the game goes in Band 1; a fact about this copy goes
 in the left column; a picture goes inside ABOUT; an act goes in the More menu with its status
-on the strip.** UPDATES moved to the top of the band because it is what Band 2's axis
-summarises and the two should be adjacent. Its heading is the constant `UPDATES`, whether or
+on the strip.** UPDATES provides the event list summarised by Band 2's axis. Its heading is the constant `UPDATES`, whether or
 not anything landed since the last session. It previously took `SINCE YOU PLAYED` in one state
 and `UPDATE HISTORY` in the other, and the first of those is Band 2's own rail label, so one
 modal said the same words about two different things; the rail keeps the name.
+
+**JOURNAL lists saved post-session notes**, newest session first. Each row shows the
+session date in Data, an optional rating out of five, and the note. An empty list says
+“No notes yet. After you play, Winnow will ask how it went.” when prompting is enabled,
+or “Journal prompts are off. Turn them on in Display preferences after a game.” when
+it is disabled. Editing is inline, with the existing five-dot rating control. Deletion
+asks “Delete this note?” and only that confirmation uses Danger.
 
 **Screenshots sit inside ABOUT, not in a section of their own.** A horizontal thumbnail strip
 at 120x68, with a caption naming the count and the source. Picking a thumbnail opens the
@@ -956,7 +962,7 @@ scroll region, so it is always drawn.
 
 **A heading that names a section is set in `TextDim`**, the same ink as the `×` glyph beside
 it, so the header reads as chrome rather than as the section's own content. The set is IGDB
-MATCH, EDIT DETAILS, UPDATES, ABOUT, ALSO COVERS, EXTENDS, EXPANSIONS and LISTS.
+MATCH, EDIT DETAILS, JOURNAL, UPDATES, ABOUT, ALSO COVERS, EXTENDS, EXPANSIONS and LISTS.
 A label that names a value — PLAYED and SINCE YOU PLAYED on the gap rail, STEAM APPID, ON
 DISK, the coverage total's label, and the per-field labels in the editor — is a different thing
 and is not in that set. The ink is stated at the heading by the class `label section`, declared

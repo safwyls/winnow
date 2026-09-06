@@ -24,12 +24,23 @@ public sealed class GameExecutableIndex
 
     private readonly IReadOnlyList<InstallRoot> _roots;
     private readonly Dictionary<string, HashSet<long>> _ownershipsByName;
+    private readonly Dictionary<string, long> _ownershipsBySteamAppId;
 
     /// <param name="executables">Every executable discovered under every installed game.</param>
     /// <param name="installRoots">Install directory per ownership. May include ownerships with no executables found.</param>
     public GameExecutableIndex(
         IEnumerable<GameExecutable> executables,
-        IEnumerable<(string InstallPath, long OwnershipId)> installRoots)
+        IEnumerable<(string InstallPath, long OwnershipId)> installRoots,
+        IEnumerable<(string SteamAppId, long OwnershipId)>? steamAppIds = null)
+        : this(executables, installRoots, steamAppIds, OperatingSystem.IsWindows())
+    {
+    }
+
+    internal GameExecutableIndex(
+        IEnumerable<GameExecutable> executables,
+        IEnumerable<(string InstallPath, long OwnershipId)> installRoots,
+        IEnumerable<(string SteamAppId, long OwnershipId)>? steamAppIds,
+        bool isWindows)
     {
         ArgumentNullException.ThrowIfNull(executables);
         ArgumentNullException.ThrowIfNull(installRoots);
@@ -40,24 +51,27 @@ public sealed class GameExecutableIndex
 
         foreach (var executable in executables)
         {
+            var added = false;
             // Process.ProcessName carries no extension and no directory on
             // Windows, and /proc/<pid>/comm is the same shape on Linux, so the
             // index is keyed the way the enumeration will ask for it.
-            var name = Path.GetFileNameWithoutExtension(executable.Path);
-            if (name.Length == 0)
+            foreach (var name in ProcessNamesForPath(executable.Path, isWindows))
             {
-                continue;
+                names.Add(name);
+                if (!_ownershipsByName.TryGetValue(name, out var owners))
+                {
+                    owners = [];
+                    _ownershipsByName[name] = owners;
+                }
+
+                owners.Add(executable.OwnershipId);
+                added = true;
             }
 
-            names.Add(name);
-            if (!_ownershipsByName.TryGetValue(name, out var owners))
+            if (added)
             {
-                owners = [];
-                _ownershipsByName[name] = owners;
+                count++;
             }
-
-            owners.Add(executable.OwnershipId);
-            count++;
         }
 
         ProcessNames = names;
@@ -79,6 +93,21 @@ public sealed class GameExecutableIndex
         // inner one. Cheap to get right once; impossible to debug later.
         roots.Sort(static (a, b) => b.Path.Length.CompareTo(a.Path.Length));
         _roots = roots;
+
+        _ownershipsBySteamAppId = new Dictionary<string, long>(StringComparer.Ordinal);
+        var ambiguousSteamAppIds = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var (steamAppId, ownershipId) in steamAppIds ?? [])
+        {
+            // A duplicate id would mean corrupt identity rows or two ownerships
+            // of the same Steam release. In either case guessing loses data, so
+            // remove the mapping and refuse the Proton attribution.
+            if (!ambiguousSteamAppIds.Contains(steamAppId)
+                && !_ownershipsBySteamAppId.TryAdd(steamAppId, ownershipId))
+            {
+                _ownershipsBySteamAppId.Remove(steamAppId);
+                ambiguousSteamAppIds.Add(steamAppId);
+            }
+        }
     }
 
     /// <summary>
@@ -110,9 +139,9 @@ public sealed class GameExecutableIndex
 
     /// <summary>
     /// The Tier 1 filter set: every executable name belonging to an installed,
-    /// owned game. <b>This is the only thing the 5-second poll consults</b>, and
-    /// the reason the poll costs a hash lookup per running process instead of a
-    /// path resolution per running process.
+    /// owned game. The 5-second poll uses it for every process except a Linux
+    /// process carrying one of the indexed Steam compatibility prefixes; that
+    /// exact app-id marker is the bounded Proton exception to name filtering.
     /// </summary>
     public IReadOnlySet<string> ProcessNames { get; }
 
@@ -163,6 +192,64 @@ public sealed class GameExecutableIndex
         return _ownershipsByName.TryGetValue(processName, out var owners) && owners.Count == 1
             ? owners.First()
             : null;
+    }
+
+    /// <summary>
+    /// Names operating systems report for this executable. Linux's
+    /// <c>/proc/pid/comm</c> preserves suffixes and is capped at 15 bytes;
+    /// Windows reports the filename without its extension.
+    /// </summary>
+    internal static IReadOnlyList<string> ProcessNamesForPath(string path, bool isWindows)
+    {
+        var fileName = Path.GetFileName(path);
+        if (fileName.Length == 0)
+        {
+            return [];
+        }
+
+        if (isWindows)
+        {
+            var name = Path.GetFileNameWithoutExtension(fileName);
+            return name.Length == 0 ? [] : [name];
+        }
+
+        const int LinuxCommMaximumBytes = 15;
+        var utf8 = System.Text.Encoding.UTF8.GetBytes(fileName);
+        return utf8.Length <= LinuxCommMaximumBytes
+            ? [fileName]
+            // The kernel truncates comm as bytes, and .NET decodes that raw
+            // byte sequence from /proc. Decode the same first 15 bytes here so
+            // a multibyte name keeps the exact alias ProcessName will carry.
+            : [fileName, System.Text.Encoding.UTF8.GetString(utf8.AsSpan(0, LinuxCommMaximumBytes))];
+    }
+
+    /// <summary>Whether a Linux process's compat prefix belongs to one owned Steam release.</summary>
+    public long? MatchSteamCompatibilityDataPath(string? compatibilityDataPath)
+        => SteamAppIdFromCompatibilityDataPath(compatibilityDataPath) is { } appId
+            && _ownershipsBySteamAppId.TryGetValue(appId, out var ownershipId)
+                ? ownershipId
+                : null;
+
+    /// <summary>Whether Tier 1 must promote this Wine/Proton process for exact app-id attribution.</summary>
+    public bool HasSteamCompatibilityDataPath(string? compatibilityDataPath)
+        => MatchSteamCompatibilityDataPath(compatibilityDataPath) is not null;
+
+    private static string? SteamAppIdFromCompatibilityDataPath(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return null;
+        }
+
+        try
+        {
+            var appId = Path.GetFileName(Path.TrimEndingDirectorySeparator(path));
+            return appId.Length > 0 && appId.All(char.IsAsciiDigit) ? appId : null;
+        }
+        catch (ArgumentException)
+        {
+            return null;
+        }
     }
 
     private static bool IsUnder(string path, string root)

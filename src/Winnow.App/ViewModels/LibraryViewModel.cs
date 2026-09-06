@@ -40,6 +40,13 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     private readonly IUpdateEventRepository _updateEvents;
 
     /// <summary>
+    /// The details modal's journal read/write seam. Optional like the other
+    /// detail additions: without it the library still loads and the section is
+    /// simply absent.
+    /// </summary>
+    private readonly ISessionRepository? _sessions;
+
+    /// <summary>
     /// §1's longitudinal playtime series, read only when a detail panel opens.
     /// Optional so the view model still composes in tests and for any host that
     /// has not registered it; the detail view then simply states no record line.
@@ -222,7 +229,8 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         IWorkRatingRepository? workRatings = null,
         IWorkImageRepository? workImages = null,
         Services.IGameRefetch? refetch = null,
-        Winnow.Core.Repositories.IStorefrontRepository? storefrontCache = null)
+        Winnow.Core.Repositories.IStorefrontRepository? storefrontCache = null,
+        ISessionRepository? sessions = null)
     {
         _storefrontCache = storefrontCache;
         _workRatings = workRatings;
@@ -240,6 +248,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         _releases = releases;
         _works = works;
         _updateEvents = updateEvents;
+        _sessions = sessions;
         _covers = covers;
         _leases = leases;
         _snapshots = snapshots;
@@ -1345,7 +1354,29 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             images: images,
             ownerships: await BuildAcquisitionAsync(target),
             refetch: BuildRefetch(workId),
-            lightbox: Lightbox);
+            lightbox: Lightbox,
+            journal: await BuildJournalAsync(target));
+    }
+
+    /// <summary>
+    /// Reads every ownership behind a grouped game. A journal note belongs to
+    /// the sitting that wrote it, so the rows stay separate and newest is the
+    /// only order that makes the history read as a journal.
+    /// </summary>
+    private async Task<GameJournalViewModel?> BuildJournalAsync(GameTileViewModel target)
+    {
+        if (_sessions is null)
+        {
+            return null;
+        }
+
+        var entries = new List<SessionJournalEntry>();
+        foreach (var ownershipId in target.OwnershipIds.Distinct())
+        {
+            entries.AddRange(await _sessions.GetJournalEntriesByOwnershipAsync(ownershipId));
+        }
+
+        return new GameJournalViewModel(entries, Journal.PromptEnabled, _sessions);
     }
 
     private async Task<IReadOnlyList<Ownership>> BuildAcquisitionAsync(GameTileViewModel target)

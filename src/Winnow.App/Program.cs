@@ -716,12 +716,11 @@ public static class Program
         // is accepting by turning it on.
         //
         // Registered BEFORE AddEpicWebApi, whose registrations are all TryAdd:
-        // the Epic module ships an in-memory catalog cache and declares the seam
-        // because it does not reference Winnow.Data, and this is the host filling
-        // it in so catalog answers land in metadata_cache beside IGDB's and
-        // steamcmd's. See SqliteEpicCatalogCache for why this one is worth
-        // persisting when the library cache is not.
+        // the Epic module has no Data reference. The host persists catalog and
+        // account-scoped library answers in metadata_cache so their configured
+        // lifetimes survive a process restart.
         services.AddSingleton<Winnow.Ingest.Epic.Web.IEpicCatalogCache, SqliteEpicCatalogCache>();
+        services.AddSingleton<Winnow.Ingest.Epic.Web.IEpicLibraryCache, SqliteEpicLibraryCache>();
         services.AddEpicWebApi();
 
         // M4.6 — the interactive sign-in, registration ONLY. Order here IS the

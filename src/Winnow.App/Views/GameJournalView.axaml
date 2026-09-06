@@ -1,0 +1,149 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Winnow.App.ViewModels"
+             x:Class="Winnow.App.Views.GameJournalView"
+             x:DataType="vm:GameJournalViewModel">
+
+    <UserControl.Styles>
+        <!-- Rating is optional. Five quiet dots repeat the prompt's vocabulary
+             without turning a past session into a scorecard. -->
+        <Style Selector="Button.journal-rate">
+            <Setter Property="Width" Value="20"/>
+            <Setter Property="Height" Value="20"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Button.journal-rate:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+        </Style>
+        <Style Selector="Button.journal-rate Ellipse">
+            <Setter Property="Width" Value="11"/>
+            <Setter Property="Height" Value="11"/>
+            <Setter Property="Fill" Value="Transparent"/>
+            <Setter Property="Stroke" Value="{StaticResource TextFaint}"/>
+            <Setter Property="StrokeThickness" Value="1.5"/>
+        </Style>
+        <Style Selector="Button.journal-rate:pointerover Ellipse">
+            <Setter Property="Stroke" Value="{StaticResource TextDim}"/>
+        </Style>
+        <Style Selector="Button.journal-rate.on Ellipse">
+            <Setter Property="Fill" Value="{StaticResource Volt}"/>
+            <Setter Property="Stroke" Value="{StaticResource Volt}"/>
+        </Style>
+        <Style Selector="TextBox.journal-note">
+            <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="MinHeight" Value="58"/>
+            <Setter Property="Padding" Value="9,7"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="AcceptsReturn" Value="True"/>
+            <Setter Property="Background" Value="{StaticResource ChromeFieldOnSurface}"/>
+            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+            <Setter Property="CaretBrush" Value="{StaticResource Volt}"/>
+            <Setter Property="SelectionBrush" Value="{StaticResource VoltSelection}"/>
+        </Style>
+        <Style Selector="TextBox.journal-note /template/ Border#PART_BorderElement">
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+        <Style Selector="TextBox.journal-note:focus /template/ Border#PART_BorderElement">
+            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+        </Style>
+    </UserControl.Styles>
+
+    <StackPanel Spacing="10">
+        <TextBlock Classes="label section" Text="{x:Static vm:GameDetailsCopy.JournalHeading}"
+                   AutomationProperties.HeadingLevel="2"/>
+
+        <TextBlock Classes="body" FontSize="12" LineHeight="18" TextWrapping="Wrap"
+                   IsVisible="{Binding !HasEntries}"
+                   Text="{Binding EmptyText}"/>
+
+        <ItemsControl ItemsSource="{Binding Entries}" IsVisible="{Binding HasEntries}">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="vm:JournalEntryViewModel">
+                    <Border BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1"
+                            Padding="0,9"
+                            AutomationProperties.Name="{Binding AutomationName}"
+                            AutomationProperties.AccessibilityView="Control"
+                            AutomationProperties.ControlTypeOverride="ListItem">
+                        <StackPanel Spacing="7" IsEnabled="{Binding CanEdit}">
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                                <TextBlock Grid.Column="0" Classes="data-s"
+                                           Text="{Binding DateText}"/>
+                                <TextBlock Grid.Column="1" Classes="data-s"
+                                           IsVisible="{Binding HasRating}"
+                                           Text="{Binding RatingText}"/>
+                            </Grid>
+
+                            <StackPanel Spacing="7" IsVisible="{Binding ShowRead}">
+                                <TextBlock Classes="body" FontSize="12" TextWrapping="Wrap"
+                                           IsVisible="{Binding HasNote}"
+                                           Text="{Binding Note}"/>
+                                <StackPanel Orientation="Horizontal" Spacing="12">
+                                    <Button Classes="secondary" Padding="0"
+                                            AutomationProperties.Name="Edit journal entry"
+                                            ToolTip.Tip="Edit journal entry"
+                                            Command="{Binding EditCommand}">Edit</Button>
+                                    <Button Classes="secondary" Padding="0"
+                                            IsVisible="{Binding !IsConfirmingDelete}"
+                                            AutomationProperties.Name="Delete journal entry"
+                                            ToolTip.Tip="Delete journal entry"
+                                            Command="{Binding RequestDeleteCommand}">Delete</Button>
+                                </StackPanel>
+                            </StackPanel>
+
+                            <StackPanel Spacing="8" IsVisible="{Binding ShowEditor}">
+                                <TextBox Classes="journal-note"
+                                         AutomationProperties.Name="Journal note"
+                                         Watermark="How was that?"
+                                         Text="{Binding DraftNote, Mode=TwoWay}"/>
+                                <StackPanel Orientation="Horizontal" Spacing="2">
+                                    <Button AutomationProperties.Name="1 out of 5" Classes="journal-rate" Classes.on="{Binding IsDraftRated1}"
+                                            CommandParameter="1" Command="{Binding RateCommand}" ToolTip.Tip="1 out of 5"><Ellipse/></Button>
+                                    <Button AutomationProperties.Name="2 out of 5" Classes="journal-rate" Classes.on="{Binding IsDraftRated2}"
+                                            CommandParameter="2" Command="{Binding RateCommand}" ToolTip.Tip="2 out of 5"><Ellipse/></Button>
+                                    <Button AutomationProperties.Name="3 out of 5" Classes="journal-rate" Classes.on="{Binding IsDraftRated3}"
+                                            CommandParameter="3" Command="{Binding RateCommand}" ToolTip.Tip="3 out of 5"><Ellipse/></Button>
+                                    <Button AutomationProperties.Name="4 out of 5" Classes="journal-rate" Classes.on="{Binding IsDraftRated4}"
+                                            CommandParameter="4" Command="{Binding RateCommand}" ToolTip.Tip="4 out of 5"><Ellipse/></Button>
+                                    <Button AutomationProperties.Name="5 out of 5" Classes="journal-rate" Classes.on="{Binding IsDraftRated5}"
+                                            CommandParameter="5" Command="{Binding RateCommand}" ToolTip.Tip="5 out of 5"><Ellipse/></Button>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Spacing="12">
+                                    <Button Classes="act primary" Padding="12,5"
+                                            AutomationProperties.Name="Save journal entry"
+                                            Command="{Binding SaveCommand}">Save</Button>
+                                    <Button Classes="secondary" Padding="0"
+                                            AutomationProperties.Name="Cancel journal edit"
+                                            Command="{Binding CancelEditCommand}">Cancel</Button>
+                                </StackPanel>
+                            </StackPanel>
+
+                            <StackPanel Orientation="Horizontal" Spacing="12" IsVisible="{Binding IsConfirmingDelete}">
+                                <TextBlock Classes="body" FontSize="12" VerticalAlignment="Center"
+                                           Text="Delete this note?"/>
+                                <Button Classes="act danger" Padding="12,5"
+                                        AutomationProperties.Name="Delete journal entry"
+                                        Command="{Binding DeleteCommand}">Delete</Button>
+                                <Button Classes="secondary" Padding="0"
+                                        AutomationProperties.Name="Keep journal entry"
+                                        Command="{Binding CancelDeleteCommand}">Keep</Button>
+                            </StackPanel>
+
+                            <TextBlock Classes="body" FontSize="11" LineHeight="16" TextWrapping="Wrap"
+                                       Foreground="{StaticResource Amber}"
+                                       IsVisible="{Binding HasProblem}"
+                                       Text="{Binding Problem}"/>
+                        </StackPanel>
+                    </Border>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </StackPanel>
+</UserControl>

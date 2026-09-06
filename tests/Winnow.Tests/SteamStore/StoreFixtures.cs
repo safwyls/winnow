@@ -4,7 +4,7 @@ using System.Text.Json;
 namespace Winnow.Tests.SteamStore;
 
 /// <summary>
-/// The verbatim store responses captured for
+/// The captured store responses, with account identifiers sanitized, for
 /// <c>docs/spikes/steam-store-tags.md</c> (see
 /// tests/fixtures/steam-store/README.md), plus generators that answer a request
 /// for arbitrary appids in the same shape.
@@ -34,7 +34,7 @@ internal static class StoreFixtures
     private static string PathOf(string fileName)
         => Path.Combine(AppContext.BaseDirectory, "fixtures", "steam-store", fileName);
 
-    /// <summary>The real <c>IStoreBrowseService/GetItems</c> response, byte for byte.</summary>
+    /// <summary>The captured <c>IStoreBrowseService/GetItems</c> response with fake creator-clan account IDs.</summary>
     internal static string GetItemsResponse() => File.ReadAllText(PathOf("getitems-v1.json"));
 
     /// <summary>

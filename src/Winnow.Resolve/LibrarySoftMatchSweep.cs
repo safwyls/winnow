@@ -19,6 +19,8 @@ public sealed record SoftMatchSweepOptions
 {
     public static SoftMatchSweepOptions Default { get; } = new();
 
+    private int _maxComparisons = 250_000;
+
     /// <summary>
     /// A token shared by more than this many releases is too common to be a
     /// useful blocking key. Every release still lands in at least one block
@@ -32,7 +34,15 @@ public sealed record SoftMatchSweepOptions
     /// accepted and wraps around, so the ceiling delays coverage rather than
     /// denying it.
     /// </summary>
-    public int MaxComparisons { get; init; } = 250_000;
+    public int MaxComparisons
+    {
+        get => _maxComparisons;
+        init
+        {
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(value);
+            _maxComparisons = value;
+        }
+    }
 }
 
 /// <summary>What one <see cref="LibrarySoftMatchSweep.SweepAsync"/> pass did.</summary>

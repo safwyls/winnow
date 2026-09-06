@@ -377,6 +377,12 @@ account's lifetime. The rules that follow govern what may be shown and what must
 
 ### 4.8 Epic and GOG local files
 
+The authenticated Epic library cache is stored in the selected data directory's
+`metadata_cache`, under a separate provider namespace and an account-specific key.
+A restart reuses a fresh answer for `EpicWebOptions.CacheTtl` (six hours by default);
+stale answers refetch through the existing authenticated client. The ingest module
+keeps its cache interface free of a Data reference; the App supplies SQLite storage.
+
 **Epic:**
 
 - `%PROGRAMDATA%\Epic\EpicGamesLauncher\Data\Manifests\*.item` is **authoritative for
@@ -583,12 +589,19 @@ Known noise sources, all of which must be handled:
 - Proton and Wine wrap everything in a process tree. Match on the tree, not a single PID
 - Debounce: ignore sessions under 60s by default, configurable
 
-**Session detection is Windows-only in practice.** `GameExecutableIndexBuilder` matches
-`*.exe`, so off Windows the index is empty and nothing is recorded; it warns once rather than
-failing silently. Widening the glob is not the fix. Under Proton the resolved executable is
-the wine loader inside the runtime directory, not a path under the game's install root, so the
-install-prefix join cannot work there at all. Attribution would need
-`STEAM_COMPAT_DATA_PATH` from `/proc/<pid>/environ`, which is a different design.
+**Session indexing follows the platform.** Windows indexes `.exe` files; Linux and
+macOS index files with Unix execute permission. Linux discovery also recognises the
+kernel's 15-byte process-name alias. Native processes match their installed path.
+On Linux, the watcher reads only `STEAM_COMPAT_DATA_PATH` from a bounded `/proc/<pid>/environ`
+read and joins its final numeric app ID to an unambiguous installed Steam ownership.
+This attributes a Wine loader outside the game directory without guessing by title;
+missing, unreadable and ambiguous matches contribute no Proton-specific attribution.
+Only that variable is retained, and existing exact-path matching remains authoritative.
+
+The separate Linux session smoke tests use real native processes and a synthetic
+Proton environment. Windows runs skip them explicitly. Passing those tests establishes
+process discovery and attribution on Linux, not a full launcher or game compatibility
+matrix; the PRE-BETA-HARDENING task records execution evidence.
 
 **Journal prompt:** on session end, if enabled, show a small unintrusive window offering a
 free-text note and optional rating. It must be fully disableable in settings and must default

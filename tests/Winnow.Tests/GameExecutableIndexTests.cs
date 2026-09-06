@@ -17,6 +17,53 @@ namespace Winnow.Tests;
 public sealed class GameExecutableIndexTests
 {
     [Fact]
+    public void Native_unix_launchers_are_recognised_from_their_execute_bit()
+    {
+        Assert.True(GameExecutableIndexBuilder.HasExecuteBit(UnixFileMode.UserRead | UnixFileMode.UserExecute));
+        Assert.True(GameExecutableIndexBuilder.HasExecuteBit(UnixFileMode.GroupExecute));
+        Assert.False(GameExecutableIndexBuilder.HasExecuteBit(UnixFileMode.UserRead | UnixFileMode.UserWrite));
+    }
+
+    [Fact]
+    public void A_Steam_appid_claimed_by_three_ownerships_is_never_reintroduced_as_unambiguous()
+    {
+        var index = new GameExecutableIndex(
+            [],
+            [],
+            [("480", 1), ("480", 2), ("480", 3)]);
+
+        Assert.Null(index.MatchSteamCompatibilityDataPath("/tmp/steamapps/compatdata/480"));
+        Assert.False(index.HasSteamCompatibilityDataPath("/tmp/steamapps/compatdata/480"));
+    }
+
+    [Fact]
+    public void Linux_process_names_preserve_suffixes_and_include_the_proc_comm_alias()
+    {
+        const string file = "/games/very-long-linux-game.x86_64";
+        var names = GameExecutableIndex.ProcessNamesForPath(file, isWindows: false);
+        var index = new GameExecutableIndex(
+            [new GameExecutable(file, 71)],
+            [("/games", 71)],
+            steamAppIds: null,
+            isWindows: false);
+
+        Assert.Equal(["very-long-linux-game.x86_64", "very-long-linux"], names);
+        Assert.Equal(71, index.Match(null, "very-long-linux-game.x86_64"));
+        Assert.Equal(71, index.Match(file, "very-long-linux"));
+    }
+
+    [Fact]
+    public void Linux_proc_comm_aliases_are_truncated_as_UTF8_bytes()
+    {
+        const string file = "/games/遊戲-very-long-linux-game.x86_64";
+        var names = GameExecutableIndex.ProcessNamesForPath(file, isWindows: false);
+        var expected = System.Text.Encoding.UTF8.GetString(
+            System.Text.Encoding.UTF8.GetBytes("遊戲-very-long-linux-game.x86_64").AsSpan(0, 15));
+
+        Assert.Equal(expected, names[1]);
+    }
+
+    [Fact]
     public async Task Only_installed_games_reach_the_tier_1_name_set()
     {
         using var harness = new SessionWatcherHarness();

@@ -48,6 +48,11 @@
         <Style Selector="Button.feedcard:pointerover /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
         </Style>
+        <Style Selector="Button.feedcard.snap /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Transitions">
+                <Transitions/>
+            </Setter>
+        </Style>
         <Style Selector="Button.feedcard:pressed /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="{StaticResource SurfaceHigh}"/>
         </Style>
@@ -174,6 +179,7 @@
     <Button Name="Card"
             Classes="feedcard"
             Classes.setaside="{Binding IsSetAside}"
+            Classes.snap="{Binding Tile.SnapDormancy}"
             AutomationProperties.Name="{Binding AutomationName}"
             AutomationProperties.ItemStatus="{Binding StatusAnnouncement}"
             Command="{Binding Tile.OpenDetailsCommand}"

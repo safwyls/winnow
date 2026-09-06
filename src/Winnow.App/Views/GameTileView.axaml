@@ -48,6 +48,11 @@
              Opacity="0" on the element would pin the overlay shut forever. -->
         <Style Selector="Border#Scrim">
             <Setter Property="Opacity" Value="0"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.14" Easing="CubicEaseOut"/>
+                </Transitions>
+            </Setter>
         </Style>
         <Style Selector="Border#Lift.actions-visible Border#Scrim">
             <Setter Property="Opacity" Value="1"/>
@@ -83,7 +88,12 @@
         <Style Selector="Border#Lift.actions-visible ItemsControl#RestingChips, Border#Lift.actions-visible Border#ExpansionMark">
             <Setter Property="Opacity" Value="0"/>
         </Style>
-        <Style Selector="Border#Lift.snap ItemsControl#RestingChips, Border#Lift.snap Border#ExpansionMark">
+        <Style Selector="Border#Lift.snap ItemsControl#RestingChips, Border#Lift.snap Border#ExpansionMark, Border#Lift.snap TextBlock.art-title, Border#Lift.snap Border#Scrim">
+            <Setter Property="Transitions">
+                <Transitions/>
+            </Setter>
+        </Style>
+        <Style Selector="Border#Lift.snap">
             <Setter Property="Transitions">
                 <Transitions/>
             </Setter>
@@ -342,11 +352,6 @@
                     <!-- Hover overlay: ≤ 4 facts — the tile is a decision surface. -->
                     <Border Name="Scrim" VerticalAlignment="Bottom" Padding="10,24,10,10"
                             Background="{StaticResource TileScrim}">
-                        <Border.Transitions>
-                            <Transitions>
-                                <DoubleTransition Property="Opacity" Duration="0:0:0.14" Easing="CubicEaseOut"/>
-                            </Transitions>
-                        </Border.Transitions>
                         <StackPanel Spacing="8">
                             <!-- §5.3: title in Body L, then playtime + idle and
                                  store badges. Three facts; actions are separate. -->

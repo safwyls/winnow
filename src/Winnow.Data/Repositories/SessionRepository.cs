@@ -68,4 +68,31 @@ public sealed class SessionRepository : ISessionRepository
             WHERE session_id = @sessionId;
             """, new { sessionId }, transaction: lease.Transaction, cancellationToken: ct));
     }
+
+    public async Task<IReadOnlyList<SessionJournalEntry>> GetJournalEntriesByOwnershipAsync(
+        long ownershipId, CancellationToken ct = default)
+    {
+        using var lease = _factory.Lease();
+        var rows = await lease.Connection.QueryAsync<SessionJournalEntry>(new CommandDefinition("""
+            SELECT s.id AS SessionId,
+                   s.ownership_id AS OwnershipId,
+                   COALESCE(s.ended_at, s.started_at) AS SessionAt,
+                   n.note AS Note,
+                   n.rating AS Rating
+            FROM sessions AS s
+            INNER JOIN session_notes AS n ON n.session_id = s.id
+            WHERE s.ownership_id = @ownershipId
+              AND (NULLIF(TRIM(n.note), '') IS NOT NULL OR n.rating IS NOT NULL)
+            ORDER BY COALESCE(s.ended_at, s.started_at) DESC, s.id DESC;
+            """, new { ownershipId }, transaction: lease.Transaction, cancellationToken: ct));
+        return rows.AsList();
+    }
+
+    public async Task DeleteNoteAsync(long sessionId, CancellationToken ct = default)
+    {
+        using var lease = _factory.Lease();
+        await lease.Connection.ExecuteAsync(new CommandDefinition("""
+            DELETE FROM session_notes WHERE session_id = @sessionId;
+            """, new { sessionId }, transaction: lease.Transaction, cancellationToken: ct));
+    }
 }

@@ -54,10 +54,10 @@ work was taken up, not the order it was planned.
 | M4.6 | Store sign-in UI (Epic) | A sign-in button runs an embedded-browser OAuth flow that captures the code automatically; the console flow survives as a documented fallback | shipped |
 | M11 | Appearance system | Four themes, a transparency slider with a chosen backdrop, an optional island layout, a drop-in JSON theme format, and an application icon | shipped |
 | M3b | Launch + journal prompt | Launching from Winnow records a session; the journal prompt is opt-in | shipped; the `winnow-wrap` launch-option wrapper is specified and deliberately not built |
-| M8 | The Feed | The recommender is the app's primary view; every card states its reason in one sentence | shipped; no dismiss or snooze, and nothing remembers yesterday |
+| M8 | The Feed | The recommender is the app's primary view; every card states its reason in one sentence | shipped with dismiss, snooze, undo and persisted visible-card impressions |
 | M5 | Historical playtime backfill | Historical playtime backfills; the feed measurably improves on a cold library | built; backfill tested, feed improvement awaiting live validation against the user's key |
 | M6 | Export (JSON + CSV) | JSON is complete and re-readable; CSV covers a defined set of views | acquisition CSV shipped; full JSON/import deferred; exit criterion to be restated |
-| M9 | Install / uninstall management | Install and uninstall delegate to the owning store client and reflect state back | required for beta; TASK-3 is in PRE-BETA-HARDENING |
+| M9 | Install / uninstall management | Install and uninstall delegate to the owning store client and reflect state back | shipped; Steam delegates directly, Epic and GOG expose launcher management where direct uninstall is unsupported |
 | M10 | Full-screen mode + gamepad navigation | The whole app is navigable on a controller at 10 feet | last |
 
 ### Pre-beta hardening
@@ -117,18 +117,15 @@ for its current state.
 |---|---|
 | Merge execution is not built; the queue records intent and nothing applies it | TASK-5, TASK-64 |
 | Cross-store identity should be a link relation, not a destructive merge | TASK-70 and its subtasks |
-| The IGDB metadata cache has no `payload_version` | TASK-18 |
+
 | The account stats screen is a first pass; presentation cleanup is shelved | TASK-43 |
 | The fact tables cannot distinguish two identical same-day transactions | TASK-44 |
-| `OwnershipRepository.UpsertAsync` could overwrite an imported `acquired_at` | TASK-39 |
+
 | $0.00 purchase rows are skipped rather than recorded as zero, undecided either way | TASK-40 |
 | The saved-file licenses route captures one page per file | TASK-41 |
 | ACCOUNT and REVIEW each spend a rail section heading on a single row | TASK-42 |
 
-Two limits are stated as rules in the build spec rather than carried here, because they are
-not going to be fixed: session detection is Windows-only in practice
-(`game-library-design.md` §5.2), and the account-scope filter errs visible
-(`game-library-design.md` §6.3).
+The account-scope filter deliberately errs visible (`game-library-design.md` §6.3). Linux session discovery and Proton attribution are implemented under TASK-32; its live verification remains a beta criterion.
 
 ## 6. The risk
 

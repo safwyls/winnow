@@ -126,7 +126,8 @@ public sealed class EpicWebTestHost : IDisposable
         DateTimeOffset? now = null,
         bool builtInCredentials = false,
         IEnumerable<IInteractiveAuthPrompt>? prompts = null,
-        IEpicCatalogCache? catalogCache = null)
+        IEpicCatalogCache? catalogCache = null,
+        IEpicLibraryCache? libraryCache = null)
     {
         Handler = new FakeEpicHandler(responder);
         Clock = new SteamWebTestClock(now ?? new DateTimeOffset(2026, 8, 26, 20, 0, 0, TimeSpan.Zero));
@@ -168,6 +169,11 @@ public sealed class EpicWebTestHost : IDisposable
         if (catalogCache is not null)
         {
             services.AddSingleton(catalogCache);
+        }
+
+        if (libraryCache is not null)
+        {
+            services.AddSingleton(libraryCache);
         }
 
         services.AddEpicWebApi(options =>
