@@ -1,11 +1,11 @@
 ---
 id: TASK-104
 title: 'Add a game by browsing for its executable, and fetch its metadata'
-status: In Progress
+status: Done
 assignee:
   - '@claude'
 created_date: '2026-09-04 22:50'
-updated_date: '2026-09-04 23:22'
+updated_date: '2026-09-06 17:46'
 labels:
   - ui
   - enrichment
@@ -26,13 +26,13 @@ Let the user browse for an .exe, then derive what can be derived from it — the
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 The add-a-game flow offers a file browser for the executable
-- [ ] #2 Title and metadata are proposed from the executable version info, product name, folder name and path rather than typed by hand
-- [ ] #3 The proposed IGDB match is shown for confirmation and can be overridden or rejected before anything is written
-- [ ] #4 A game whose executable yields nothing useful still falls back to the manual form rather than dead-ending
-- [ ] #5 The executable chosen is the one session monitoring watches
-- [ ] #6 The IGDB search and confirm surface is reused from TASK-89, not duplicated
-- [ ] #7 Tests cover the derivation from version info and the reject path
+- [x] #1 The add-a-game flow offers a file browser for the executable
+- [x] #2 Title and metadata are proposed from the executable version info, product name, folder name and path rather than typed by hand
+- [x] #3 The proposed IGDB match is shown for confirmation and can be overridden or rejected before anything is written
+- [x] #4 A game whose executable yields nothing useful still falls back to the manual form rather than dead-ending
+- [x] #5 The executable chosen is the one session monitoring watches
+- [x] #6 The IGDB search and confirm surface is reused from TASK-89, not duplicated
+- [x] #7 Tests cover the derivation from version info and the reject path
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -56,3 +56,17 @@ UI + App-seam wave. Nothing under Winnow.Core, Winnow.Data or Winnow.Enrich.* ch
 
 7. All prose - copy constants, XAML comments, XML doc comments, design-system.md 16.3 and the docs/decisions.md line - delegated to docs-writer.
 <!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+2026-09-06 UI verification: exercised the compiled LibrarySettingsView in an isolated Avalonia.Headless 11.3.20/Skia window with the real App resources. Enter on Add from a file invoked an injected IExecutableFilePicker, opened the manual form, filled C:/Games/Prey/Prey.exe, derived Prey from the path, and rendered the existing IgdbCandidateViewModel proposal row. Enter on Use this filled the editable title, year 2017 and IGDB id 777 while preserving the executable and keeping the form open. Enter on Dismiss removed proposals and retained the editable draft and executable. Inspected add-proposal.png and add-rejected.png: candidate confirmation, separate Save, and fallback form are visible. No repository was registered and no data was written. The native Windows file dialog was not driven; the picker seam was substituted. Harness and captures: C:/Temp/winnow-task105. Derivation, rejection, persistence and session-monitoring evidence is supplied separately by the coordinating agents existing test run.
+
+Combined verification: coordinating agent ran the existing ManualGameFromExecutableTests and GameExecutableIndexTests in a 164-test passing run. Named cases cover file-description and product-name derivation, folder fallback, shipping suffix cleanup, missing/non-PE files, no-title manual save, candidate selection without writes, rejection, edited-title override, chosen executable persistence, and installed-game executable attribution. The rendered Add from a file / Use this / Dismiss interaction recorded above verifies the live control bindings. The shared IIgdbAssignmentService and IgdbCandidateViewModel provide reuse without prematurely pinning a work that does not yet exist.
+<!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Already implemented. Verified rendered browse/propose/confirm/dismiss controls with an injected picker, plus derivation, fallback, no-write confirmation, executable persistence and monitoring tests. All 164 tests in the combined verification run passed; native OS dialog was not driven.
+<!-- SECTION:FINAL_SUMMARY:END -->

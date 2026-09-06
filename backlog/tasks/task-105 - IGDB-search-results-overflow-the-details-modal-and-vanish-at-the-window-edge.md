@@ -1,11 +1,11 @@
 ---
 id: TASK-105
 title: IGDB search results overflow the details modal and vanish at the window edge
-status: In Progress
+status: Done
 assignee:
-  - '@claude'
+  - '@codex'
 created_date: '2026-09-04 22:50'
-updated_date: '2026-09-04 23:16'
+updated_date: '2026-09-06 17:31'
 labels:
   - ui
 dependencies:
@@ -24,21 +24,15 @@ The manual IGDB assignment control (TASK-89) renders its candidate list unconstr
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
 - [x] #1 The candidate list scrolls within a bounded height instead of extending past the modal
-- [ ] #2 The list is reachable by keyboard as well as by pointer, and focus stays visible while scrolling
-- [ ] #3 A result set larger than the visible area is evidently scrollable rather than silently cut off
+- [x] #2 The list is reachable by keyboard as well as by pointer, and focus stays visible while scrolling
+- [x] #3 A result set larger than the visible area is evidently scrollable rather than silently cut off
 - [x] #4 The modal itself does not grow past the window with a long result set
 <!-- AC:END -->
 
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-1. Root cause. The candidate ItemsControl has no height bound of its own, and the modal card's MaxHeight of 720 does not contain it: a Border does not clip, and the right column's rest band sits in an Auto row, so its ScrollViewer is measured against infinity and never scrolls. Content past the card is drawn outside it and clipped by the window.
-2. Bind the list's height. The candidate list goes inside a ScrollViewer with a MaxHeight and VerticalScrollBarVisibility=Auto, the pattern the Stores modals already use (StoresView MaxHeight 440 / 380 / 460). It takes Classes=inner, so the modal's own scrollbar rule applies and the resize-border inset (section 9.1) stays opted out.
-3. Make the cut visible. The bound is set so a row is cut part way rather than landing on a row boundary, and the scrollbar is the second cue. No count line, no fade: section 7 keeps an explanation to a short phrase and there is nothing here the two cues do not already say.
-4. Keyboard. Each row's assign button stays a Tab stop. A GotFocus handler on the list calls BringIntoView so a row reached by Tab scrolls into view rather than being focused off screen; the ring is the existing brush swap on a constant-thickness border (10.7).
-5. Contain the column the control lives in. TASK-102 moves the control into the left column, so that column gets a bounded scroll region under the cover as well, and the open disclosure can no longer push the card past its own MaxHeight.
-6. Verify. dotnet build with a scratch BaseOutputPath, then dotnet test per project. Compiled bindings make the build a check that every binding in the new markup resolves. Appearance, the scroll bound and the overflow itself need a run; they are named for the user rather than checked.
-7. design-system.md 10.9 gains the bounded list; all prose delegated to docs-writer.
+1. Review current details view against design-system.md 10.9. 2. Exercise the compiled view with twenty candidates in an isolated Avalonia headless harness: Tab, visible focus, pointer scrolling, overflow cues and window containment. 3. Fix demonstrated defects and close with measured evidence.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -76,4 +70,12 @@ VERIFICATION, PowerShell, scratch output path:
 Compiled bindings are on, so the build is a check that every binding in the rewritten markup resolves. The counts are above the 3066 / 152 / 70 baseline because other work landed in this tree; this change adds no tests, because nothing in it is testable below the view.
 
 One run of Winnow.Tests failed IgdbResilienceTests.Rate_limiter_caps_the_initial_burst_and_spaces_the_rest_at_4_per_second, a wall-clock rate-limiter test, on a machine running several agents at once. It passed alone and passed on the next full run, quoted above.
+
+2026-09-06 review: verified the current compiled GameDetailsView under Avalonia.Headless 11.3.20 with the real App resources, Fluent theme and Skia renderer. The current design places results in the right rest band and caps them at 238px (the earlier 208px/left-column notes describe an obsolete intermediate version). At 1200x640, 1280x820 and 1920x1080, twenty results measured a 1360px extent inside a 238px viewport. Real simulated Tab presses reached all twenty assign buttons in order; each focused button remained fully inside both enclosing scroll viewports, with the rendered presenter using the Volt border at constant 1px thickness. The final row reached offset 1122. Pointer wheel moved the inner list to offset 150. Inspected Skia captures at minimum window size: visible scrollbar and partial fourth row at the top, complete focus ring on result twenty, and card contained within 40px window margins. Harness and captures: C:/Temp/winnow-task105 (dotnet run --project Probe.csproj -- --data-dir C:/Temp/winnow-task105/data). No application change was needed.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Already implemented. Closed after headless interaction and rendered-image verification of twenty candidates at three window sizes: bounded scroll, pointer wheel, all Tab stops with visible focus, scrollbar/partial-row overflow cues, and modal containment.
+<!-- SECTION:FINAL_SUMMARY:END -->

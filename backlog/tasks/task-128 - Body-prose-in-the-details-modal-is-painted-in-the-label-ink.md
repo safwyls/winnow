@@ -1,11 +1,11 @@
 ---
 id: TASK-128
 title: Body prose in the details modal is painted in the label ink
-status: In Progress
+status: Done
 assignee:
-  - '@claude'
+  - '@codex'
 created_date: '2026-09-05 22:32'
-updated_date: '2026-09-05 22:37'
+updated_date: '2026-09-06 17:43'
 labels:
   - ui
 dependencies: []
@@ -30,22 +30,27 @@ Check what this does to contrast: Text on the card is brighter than TextDim so i
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Prose in the details modal takes the Text ink, per §2
-- [ ] #2 Value labels, status lines and metadata keep TextDim, and the distinction is stated rather than left to inspection
-- [ ] #3 Section headings visibly separate from the prose beneath them as a result
-- [ ] #4 Contrast figures over the art-backed card are measured and recorded for the changed runs
-- [ ] #5 design-system.md records which runs take which ink, so the next addition does not have to guess
+- [x] #1 Prose in the details modal takes the Text ink, per §2
+- [x] #2 Value labels, status lines and metadata keep TextDim, and the distinction is stated rather than left to inspection
+- [x] #3 Section headings visibly separate from the prose beneath them as a result
+- [x] #4 Contrast figures over the art-backed card are measured and recorded for the changed runs
+- [x] #5 design-system.md records which runs take which ink, so the next addition does not have to guess
 <!-- AC:END -->
 
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-1. Inventory every TextDim run in the modal rather than sweeping. 27 in GameDetailsView.axaml, 11 in GameMetadataEditorView.axaml, plus the runs that take TextDim by style (.label, .data-s). Decide each against section 2: a paragraph the user reads, or a run standing in a prose slot, or a section blurb under a heading, is prose and takes Text; a value label, a status line, a confirmation, or metadata beside a value keeps TextDim.
-2. Verify the previous agent list instead of trusting it. The editor Intro and the ABOUT summary are prose. The IGDB note is NOT: it is either PinnedNote (Matched by you.) - a standing state label on the pin - or a landed-act confirmation (AssignedNote, ClearedNote, LinkedNote). That is a status line and keeps TextDim, and so does the editor mirror of it.
-3. Extend the list past the three named: the gap rail caption and record line and their no-rail counterparts (section 10.2 makes them the words that carry what the rail draws, so a user who cannot resolve a 7px dot reads these instead - section 8 redundancy carrier is primary text); the EXTENDS and EXPANSIONS section blurbs, which sit directly against the headings the user complained about; the LISTS empty state, which is section 7 direction; and the ABOUT empty-body line, which stands in the prose slot.
-4. Leave, with the reason stated: the two runs design-system.md already pins TextDim by name (10.9 no-results and id-miss lines, 10.8 no-notes line); every status and confirmation; the identity line year and publisher; the chips; the candidate row platforms; the coverage total note; the art preview placeholder. Two genuinely ambiguous: the provisional-title note (a state report on the value above it, until metadata loads) and the two flag-control captions (drawn inline and repeated verbatim as the control own tooltip) - both left TextDim with the reasoning recorded.
-5. Contrast from the repo own machinery, not new arithmetic: ThemeContrastTests.Art_behind_the_back_face_and_the_modal_keeps_text_over_AA already walks Text over 256 greys at every slider position on the art-backed card, so the brightened runs are pinned already. Add a case pinning the pair - Text at least as bright as TextDim over the brightest cover, both clearing AA - and state the per-theme figures.
-6. JOB 2: the same InnerScrollGutter token and the same content-margin idiom in the two regions TASK-127 found and left. The IGDB candidate list ItemsControl gives up its local Margin 0,0,4,0. The left column content StackPanel takes the token; its 18px top moves onto the ScrollViewer, since a Thickness token cannot be composed with a second value in XAML, and a top margin on the ScrollViewer is not the inert Padding case. No double-count: the candidate list own bar is a different bar from the band own.
-7. docs-writer authors every XAML comment, every XML doc comment and the design-system.md addition. Wait for every child before the final build.
-8. dotnet build Winnow.slnx to C:\Temp\winnow-gg1, then dotnet test per project --no-build against the same path, from PowerShell.
+1. Review the implemented prose/status inventory and governing design-system.md 10.3 distinction. 2. Verify the rendered ABOUT heading/body treatment through the existing isolated headless harness and run the four-theme prose/art contrast tests. 3. Record verification and close if all criteria are demonstrated.
 <!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+2026-09-06 verification: the implementation and explicit prose/status inventory already exist in GameDetailsView.axaml, GameMetadataEditorView.axaml and design-system.md 10.3. The real compiled view was rendered with Skia in an isolated Avalonia.Headless 11.3.20 window at three sizes. ABOUT resolves to Text (#F0EDE7) at a measured 410px prose width; its heading and metadata resolve to the sage TextDim treatment. Inspected about-1280.png: the brighter two-line paragraph visibly separates from ABOUT and the identity labels. Existing The_modal_prose_takes_the_primary_ink and Art_behind_the_back_face_and_the_modal_keeps_text_over_AA tests passed as part of 192 targeted tests. Four-theme Text contrast already recorded in 10.3: 13.11/16.44/14.76/13.42 flat, 10.34/13.75/11.90/10.61 over brightest art. The exhaustive test walks 256 greys at every transparency position. No application change needed; verification captures live in C:/Temp/winnow-task105.
+<!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Already implemented. Verified the rendered heading/prose distinction, documented status-versus-prose inventory and four-theme art contrast; all 192 targeted checks passed.
+<!-- SECTION:FINAL_SUMMARY:END -->

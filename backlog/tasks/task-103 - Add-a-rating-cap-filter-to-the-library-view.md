@@ -1,11 +1,11 @@
 ---
 id: TASK-103
 title: Add a rating cap filter to the library view
-status: In Progress
+status: Done
 assignee:
   - '@claude'
 created_date: '2026-09-04 22:50'
-updated_date: '2026-09-04 23:22'
+updated_date: '2026-09-06 17:46'
 labels:
   - ui
   - data
@@ -26,13 +26,13 @@ Depends on TASK-101, which splits the adults-only signals away from the broad 18
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 The library view carries a rating cap control alongside its other filters
-- [ ] #2 Choosing a cap hides works whose stored maturity evidence exceeds it, across the grid, the list view and the bucket counts
-- [ ] #3 Works with no maturity evidence are shown at every cap, and that default is stated
-- [ ] #4 The cap and the settings 18+ toggle compose without contradicting each other, and it is clear which one is hiding a game
-- [ ] #5 The cap persists across launches
-- [ ] #6 Tests cover the ordering of tiers and the interaction between the cap and the toggle
-- [ ] #7 Steam content descriptors other than adult-only carry a tier so the cap can act on them; today only adult_only_sexual_content maps to a tier, so a nudity-heavy game reads as Unrated and sits inside every cap
+- [x] #1 The library view carries a rating cap control alongside its other filters
+- [x] #2 Choosing a cap hides works whose stored maturity evidence exceeds it, across the grid, the list view and the bucket counts
+- [x] #3 Works with no maturity evidence are shown at every cap, and that default is stated
+- [x] #4 The cap and the settings 18+ toggle compose without contradicting each other, and it is clear which one is hiding a game
+- [x] #5 The cap persists across launches
+- [x] #6 Tests cover the ordering of tiers and the interaction between the cap and the toggle
+- [x] #7 Steam content descriptors other than adult-only carry a tier so the cap can act on them; today only adult_only_sexual_content maps to a tier, so a nudity-heavy game reads as Unrated and sits inside every cap
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -72,4 +72,14 @@ Depends on TASK-101, which splits the adults-only signals away from the broad 18
 
 <!-- SECTION:NOTES:BEGIN -->
 Context from TASK-101 (not yet decided, needs the user): Steam descriptor 3 (Adult Only Sexual Content) is the explicit gate and is correct there. Descriptor 4 (Frequent Nudity or Sexual Content) is stored but has no tier, so it reads as Unrated and passes every cap — as do descriptors 1 (Some Nudity or Sexual Content), 2 (Frequent Violence or Gore) and 5 (General Mature Content). Recommendation: leave the explicit toggle on descriptor 3 alone, and give 1/4/5 tiers on the MaturityTier scale so the rating cap is what catches "lots of nudity" rather than widening the adults-only gate. That keeps the two controls doing different jobs, which is the point of splitting them.
+
+2026-09-06 UI verification: instantiated the compiled MainWindow and opened its actual Display flyout under Avalonia.Headless 11.3.20 using real App resources and Fluent templates. Supplied an isolated DisplaySettingsViewModel to the flyout content (the rest of the shell was deliberately unwired). Keyboard Left events on MaturityCapSlider traversed indexes 4 to 0: 18+, Mature, Teen, Preteen, All ages. Every step updated the bound view model and chosen-tier label. The unrated-default explanation was present and visible. Returning to index 5 with AdultContentAllowed false rendered the explicit-toggle clamp explanation. This complements the root agents data/persistence tests; the UI probe alone does not exercise the library reload or persistence wiring. Harness source: C:/Temp/winnow-task105/Program.cs.
+
+Combined verification: coordinating agent ran dotnet test tests/Winnow.Tests --no-build -p:BaseOutputPath=C:/Temp/winnow-backlog-review/ with filters MergeQueueViewModelTests, GameMetadataEditorViewModelTests, RatingCap, ManualGameFromExecutableTests and GameExecutableIndexTests: 164 passed. Rating-cap tests cover ordered tier comparisons, Steam descriptor tiers, unrated games, cap/toggle composition, hidden counts, persistence and round trips. The actual Display flyout interaction described above supplies the rendered-control evidence.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Implemented rating cap already complete. Closed after real Display-flyout keyboard/label/explanation verification and passing tier, query, toggle-composition, hidden-count and persistence tests (164 tests in the combined verification run).
+<!-- SECTION:FINAL_SUMMARY:END -->

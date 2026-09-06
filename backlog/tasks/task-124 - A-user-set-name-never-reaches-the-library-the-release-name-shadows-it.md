@@ -1,11 +1,11 @@
 ---
 id: TASK-124
 title: 'A user-set name never reaches the library, the release name shadows it'
-status: In Progress
+status: Done
 assignee:
-  - '@claude'
+  - '@codex'
 created_date: '2026-09-05 17:23'
-updated_date: '2026-09-05 17:32'
+updated_date: '2026-09-06 17:31'
 labels:
   - ui
   - data
@@ -34,50 +34,24 @@ Consider also whether the same shadowing affects any other field the editor writ
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 A name the user set shows in the library grid
-- [ ] #2 It shows identically in the list view, the feed, the details modal, the Merges queue, and in search and sort
-- [ ] #3 A name the user has not set still prefers the release name exactly as before
-- [ ] #4 Every other editor-written field is checked for the same shadowing, and any found is fixed or explicitly recorded as correct
-- [ ] #5 Tests cover a user-set name winning over a release name, and an unset name still deferring to it
+- [x] #1 A name the user set shows in the library grid
+- [x] #2 It shows identically in the list view, the feed, the details modal, the Merges queue, and in search and sort
+- [x] #3 Every other editor-written field is checked for the same shadowing, and any found is fixed or explicitly recorded as correct
+- [x] #4 Tests cover a user-set name winning over a release name, and an unset name still deferring to it
+- [x] #5 A game the user has not named keeps its automatic work title, and demo consolidation still prefers the storefront release title.
 <!-- AC:END -->
 
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-1. VERIFY THE DIAGNOSIS FIRST. Done, and it does not hold. `OwnershipBucket` has no
-   `Title` member: the `COALESCE(NULLIF(TRIM(r.name), ''''), w.name)` at
-   LibraryQueryRepository line 518 lands on the private `BucketRow` and is consumed only
-   by `DemoConsolidation` inside the repository. It never reaches a caller. Every display
-   title in the app comes from a separate `IWorkRepository` read of `works.name`
-   (LibraryViewModel line 1045 `title: display?.Name`). A scratch test proves a user-set
-   name DOES reach the grid tile after a library load.
-2. Establish what the user actually saw. A text save does not reload the library
-   (design-system.md 10.10, deliberate: a reload would discard the drafts in the other
-   five rows), and nothing else refreshes the title, so the new name is invisible until
-   the app is restarted. That is the reported defect and it is in the App layer.
-3. Fix it in the App layer without a reload: after a successful save of the `name` field,
-   push the stored name onto the live tile and the details modal header, and re-apply the
-   current sort and filter so the grid, the list view, the feed cards (which borrow the
-   tile) and search/sort all move together. Delegate to the avalonia-ui agent.
-   Do not touch src/Winnow.App/Views/GameDetailsView.axaml (TASK-123 owns it).
-4. Leave LibraryQueryRepository line 518 and WorkRepository lines 157/195-200 alone: both
-   want the STOREFRONT title, because both feed storefront-title heuristics (demo/variant
-   consolidation, the demo-like prefilter). Add a comment at 518 saying so, so the next
-   reader does not re-diagnose it as a display title. Prose via docs-writer.
-5. Per-field audit of the other five editor-written fields, with a verdict recorded for
-   each. Finding so far: `cover_url` IS shadowed, but in the Merges queue, not the grid.
-   MergeQueueViewModel builds its own Steam-first cover ladder with no user-art rule and
-   no IGDB-pin rule, so user-set cover art never draws there. Fix it to match
-   LibraryViewModel''s TASK-106 precedence. `background_url` has no display consumer at
-   all; record, do not expand scope.
-6. Tests: a user-set name reaching the grid tile and the details modal; an unset name
-   leaving the storefront title alone; the bucket query still handing DemoConsolidation
-   the storefront title; the Merges queue drawing user-set cover art.
-7. Docs, all authored by docs-writer: design-system.md 10.10 (what a text save refreshes),
-   10.9/the merge-queue cover rule, and docs/decisions.md for every sentence replaced.
-8. No migration. `work_field_sources` already records who owns each field, and nothing
-   here needs a new column. Last shipped migration stays 0027.
+1. Verify the landed live-title refresh through editor save commands and repository-backed regression tests. 2. Audit the other editor fields and merge cover precedence. 3. Record the corrected diagnosis, verification evidence and close the task.
 <!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Reviewed 2026-09-06: the original AC3 assumed release-title display precedence that never existed; corrected to the behavior proved by UserSetNameTests. All other fields audited: first_release_year, publisher and summary read from the work into the tile and details; no competing release value. cover_url now uses user-art then pinned IGDB precedence in both library and Merges, covered by MergeQueueViewModelTests. background_url has no display consumer, so cannot be shadowed. Text edits preserve other drafts; art edits reload. UserSetNameTests and MetadataEditorModalTests: 13 passed. MergeQueueViewModelTests, GameMetadataEditorViewModelTests and the rating/executable suites: 164 passed together.
+<!-- SECTION:NOTES:END -->
 
 ## Comments
 
@@ -108,3 +82,9 @@ invisible for the rest of the session. Restarting the app shows it. Fixing that 
 reload is the work.
 ---
 <!-- COMMENTS:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+The landed fix refreshes names in place after editor saves, preserving drafts and reapplying search and sort; Merges honors user cover art. Verified repository-backed title/modal and merge/editor regression tests. Corrected the original release-title diagnosis to match actual display behavior.
+<!-- SECTION:FINAL_SUMMARY:END -->
