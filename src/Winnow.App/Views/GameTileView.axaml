@@ -523,9 +523,8 @@
                         <StackPanel DockPanel.Dock="Bottom" Spacing="4">
                             <!-- Play when it is on disk, Install when it is not, and
                                  NOTHING when this app cannot honestly name either —
-                                 no id for the store, no verified install route for
-                                 the store, or no answer at all about the install
-                                 state. §10.3: never an inert button.
+                                 no id for the store, or no answer at all about the
+                                 install state. §10.3: never an inert button.
 
                                  Volt, because it is the app's one primary-action
                                  treatment. Never Flare: that colour means "unread"

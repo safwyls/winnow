@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@claude'
 created_date: '2026-09-06 02:28'
-updated_date: '2026-09-06 03:38'
+updated_date: '2026-09-06 03:55'
 labels:
   - ui
 dependencies: []
@@ -47,6 +47,20 @@ Establish what each launcher and storefront genuinely supports before designing 
 - [x] #5 No button promises something it cannot do — an action that cannot be honestly offered is not drawn, per section 10.3
 - [x] #6 design-system.md section 10.3 records the per-store matrix so the asymmetry is visible rather than discovered
 <!-- AC:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Read Epic's official protocol-activation documentation (dev.epicgames.com/docs/epic-games-store/protocol-activation). Done: it documents action=launch|updatecheck|installer, a com.epicgames.launcher://store/product/<slug> PDP route with add-on sub-paths, and a URL-encoded install-directory alternative to the Sandbox:Catalog:Artifact triple.
+2. Delegate launcher verification by EXECUTION to the steam-ingest agent (it owns the Epic reader): fire action=installer at a real owned-but-uninstalled Epic game and read the LogUriHandler oracle; contrast against the undocumented action=install the spike used; probe action=updatecheck; probe the install-path route's dispatch; probe ://store/product/fortnite (the documentation's own example) to settle whether the spike's ://store/product/fez was a wrong-slug miss. Measure how many Epic rows lack a complete launch-key triple and how many of those have an install_path, to decide whether the install-path route earns its place.
+3. Correct docs/spikes/store-actions-per-launcher.md via docs-writer: fix every claim the documentation contradicts, add verified-by-vendor-documentation as a provenance category citing the page, and — the part worth more than the corrected table — record HOW the error happened: a real URI tested with an invalid slug, generalised into a negative, with binary evidence (the NavigationUriHandler location table) that looked corroborating but described a different dispatch table.
+4. Implement the Epic Install action with action=installer in StoreActions.EpicPrimary, only if step 2 verifies it behaves as documented. Ship nothing if it does not.
+5. Assess action=updatecheck and the install-path launch route against the measured numbers; build only what earns its place.
+6. Leave the Epic store route unbuilt (TASK-132 owns it), but correct the spike and design-system.md 10.3 to say 'no slug' rather than 'no route' — those imply different follow-on work. Update TASK-132's description if the finding changes what it must do.
+7. Update design-system.md 10.3's per-store matrix, its prose and its 10.4 copy row via docs-writer; append every superseded sentence to docs/decisions.md.
+8. Update tests: Epic off-disk now installs. Re-point TileActionsTests and any sibling assertions.
+9. Wait for every docs-writer child, scan for TODO(docs-writer) and PLACEHOLDER_*, check CRLF, then dotnet build -p:BaseOutputPath=C:\Temp\winnow-epic\ -m:1 and dotnet test per project --no-build.
+<!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
 

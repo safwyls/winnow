@@ -77,14 +77,22 @@ public readonly record struct LocalLibraryScan(
     IReadOnlyList<CandidateOwnership> Epic,
     IReadOnlyList<CandidateOwnership> Gog)
 {
+    /// <summary>
+    /// Carried beside the candidates so the sync pass can persist them without a
+    /// second walk. Empty on a machine with no Epic install.
+    /// </summary>
+    public IReadOnlyList<EpicLaunchTriple> EpicLaunchTriples { get; init; } = [];
+
     public int Count => Steam.Count + Epic.Count + Gog.Count;
 
     public IEnumerable<CandidateOwnership> All => Steam.Concat(Epic).Concat(Gog);
 }
 
 /// <summary>
-/// Implements <see cref="ILocalLibrarySync"/>. Sequences ingest and resolve and
-/// touches no repository itself, keeping the §5.1 module boundary intact.
+/// One scan-and-resolve pass over local store files. Writes no work, release or
+/// ownership row itself — those go through the resolver — but does write one
+/// <c>metadata_cache</c> row per Epic launch triple so the action band can build
+/// launch URLs without a network call.
 /// </summary>
 public sealed class LocalLibrarySyncService : ILocalLibrarySync
 {
@@ -94,6 +102,7 @@ public sealed class LocalLibrarySyncService : ILocalLibrarySync
     private readonly ExternalIdResolver _resolver;
     private readonly LibrarySyncGate _gate;
     private readonly ILogger<LocalLibrarySyncService> _logger;
+    private readonly IEpicLaunchKeyStore? _epicLaunchKeys;
 
     public LocalLibrarySyncService(
         SteamLibrarySource steam,
@@ -101,7 +110,8 @@ public sealed class LocalLibrarySyncService : ILocalLibrarySync
         GogLibrarySource gog,
         ExternalIdResolver resolver,
         LibrarySyncGate gate,
-        ILogger<LocalLibrarySyncService> logger)
+        ILogger<LocalLibrarySyncService> logger,
+        IEpicLaunchKeyStore? epicLaunchKeys = null)
     {
         _steam = steam;
         _epic = epic;
@@ -109,6 +119,7 @@ public sealed class LocalLibrarySyncService : ILocalLibrarySync
         _resolver = resolver;
         _gate = gate;
         _logger = logger;
+        _epicLaunchKeys = epicLaunchKeys;
     }
 
     /// <summary>
@@ -117,7 +128,14 @@ public sealed class LocalLibrarySyncService : ILocalLibrarySync
     /// them; a launcher that is not installed answers empty rather than
     /// failing.
     /// </summary>
-    public LocalLibraryScan Scan() => new(_steam.Scan(), _epic.Scan(), _gog.Scan());
+    public LocalLibraryScan Scan()
+    {
+        var epic = _epic.ScanLibrary();
+        return new LocalLibraryScan(_steam.Scan(), epic.Candidates, _gog.Scan())
+        {
+            EpicLaunchTriples = epic.LaunchTriples,
+        };
+    }
 
     /// <summary>
     /// Scans the local store files and resolves what they hold. Safe to call
@@ -130,6 +148,9 @@ public sealed class LocalLibrarySyncService : ILocalLibrarySync
         var stopwatch = Stopwatch.StartNew();
 
         var scan = Scan();
+
+        await PersistEpicLaunchTriplesAsync(scan, ct).ConfigureAwait(false);
+
         if (scan.Count == 0)
         {
             _logger.LogInformation("Local library sync found no candidates; nothing to resolve.");
@@ -159,6 +180,33 @@ public sealed class LocalLibrarySyncService : ILocalLibrarySync
             result.SnapshotsWritten, result.NamesPromoted);
 
         return new LibrarySyncReport(scan.Count, result, stopwatch.Elapsed, scan);
+    }
+
+    /// <summary>
+    /// Soft-failing on purpose. An unwritable cache row costs the action band its
+    /// Epic buttons; it must never cost the user the ownership rows this pass
+    /// resolved. Skipped when no store is wired up or the scan found no triples.
+    /// </summary>
+    private async Task PersistEpicLaunchTriplesAsync(LocalLibraryScan scan, CancellationToken ct)
+    {
+        if (_epicLaunchKeys is null || scan.EpicLaunchTriples.Count == 0)
+        {
+            return;
+        }
+
+        try
+        {
+            await _epicLaunchKeys.SaveAsync(scan.EpicLaunchTriples, ct).ConfigureAwait(false);
+            _logger.LogDebug(
+                "Stored {Count} Epic launch triples from the local catalog.",
+                scan.EpicLaunchTriples.Count);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // An unwritable cache row costs the action band an Epic button; it
+            // must never cost the user the ownership rows this pass resolved.
+            _logger.LogWarning(ex, "Could not store the Epic launch triples; Epic actions may not draw.");
+        }
     }
 }
 

@@ -71,55 +71,59 @@ public sealed class TileActionsTests
     }
 
     /// <summary>
-    /// The Epic launcher binary (build 20.2.9, verified 2026-09-05) does carry
-    /// an install URI handler (<c>FAppInstallUriHandler</c>), but it has not
-    /// been executed and is therefore not verified; Winnow does not ship an
-    /// unverified URI (§10.3). No store route exists either — <c>://store</c>,
-    /// <c>://store/product/&lt;x&gt;</c>, <c>://library</c>, and the
-    /// <c>apps</c> route with <c>action=productdetail</c>,
-    /// <c>action=store</c> or <c>action=show</c> all failed to resolve a
-    /// handler. An unverified or absent action is no action, never a button
-    /// that silently does nothing.
+    /// The label is Install, the kind is <see cref="GameLinkKind.Install"/>,
+    /// and the literal URI carries <c>?action=install</c> with Fez's real three
+    /// ids. The URI is asserted literally because the verb is undocumented — the
+    /// measured string is the only authority for it, and the documented
+    /// <c>installer</c> is exactly the wrong "fix" a future reader might apply.
     /// </summary>
     [Fact]
-    public void Epic_off_disk_offers_nothing_rather_than_a_button_that_does_nothing()
+    public void Epic_off_disk_installs_through_the_launchers_composite_key()
     {
         var tile = Tile(ExternalIdProviders.Epic, installed: false);
 
-        Assert.Null(tile.PrimaryAction);
-        Assert.False(tile.HasPrimaryAction);
+        Assert.Equal("Install", tile.PrimaryActionLabel);
+        Assert.Equal(
+            "com.epicgames.launcher://apps/41f47fd0d3e248bc938a5815d6d64daa"
+            + "%3A7a70b499513441c792b541d53505e0b2%3ABluebird?action=install",
+            tile.PrimaryAction!.Uri);
+        Assert.Equal(GameLinkKind.Install, tile.PrimaryAction!.Kind);
     }
 
     /// <summary>
-    /// An uninstalled Epic title with no primary action and no links must
-    /// produce a sentence naming the install-route gap. Without it the band
-    /// sits empty and the user has no way to know why.
+    /// The §10.3 guard: with no complete launch key, nothing is drawn — no
+    /// primary action, no label. After the ingest fix essentially every Epic
+    /// row holds its triple, so this case should be empty in practice; the
+    /// guard is the point, and it must not rot just because nothing hits it.
     /// </summary>
     [Fact]
-    public void Epic_off_disk_says_why_the_band_cannot_get_the_user_in()
-    {
-        var tile = Tile(ExternalIdProviders.Epic, installed: false);
-        var details = new GameDetailsViewModel(tile, "Started", [], Now);
-
-        Assert.Equal(NoWayIn.NoInstallRoute, tile.NoWayIn);
-        Assert.False(details.HasPrimaryAction);
-        Assert.False(details.HasLinks);
-        Assert.True(details.HasNoWayInSentence);
-        Assert.Equal(GameActionBandCopy.EpicHasNoInstallRoute, details.NoWayInSentence);
-    }
-
-    /// <summary>
-    /// The install-route reason must be returned even when the launch key is
-    /// absent. Holding the key would not help — there is no install route to
-    /// build with it — so the check order must not fall through to the
-    /// missing-id reason instead.
-    /// </summary>
-    [Fact]
-    public void Epic_off_disk_names_the_route_even_with_no_launch_key()
+    public void Epic_off_disk_without_all_three_ids_draws_no_install_button()
     {
         var tile = Tile(ExternalIdProviders.Epic, installed: false, withEpicKey: false);
 
-        Assert.Equal(NoWayIn.NoInstallRoute, tile.NoWayIn);
+        Assert.Null(tile.EpicLaunchKey);
+        Assert.Null(tile.PrimaryAction);
+        Assert.False(tile.HasPrimaryAction);
+        Assert.Equal(string.Empty, tile.PrimaryActionLabel);
+    }
+
+    /// <summary>
+    /// The same missing-key case seen from Band 3: no primary action, no links,
+    /// and the sentence drawn is the missing-identifier one, not a route-shaped
+    /// one. This test pins the retirement of <c>NoInstallRoute</c> — the honest
+    /// replacement is <see cref="NoWayIn.NoStoreId"/>, not a new route reason.
+    /// </summary>
+    [Fact]
+    public void Epic_off_disk_with_no_launch_key_names_the_id_it_lacks()
+    {
+        var tile = Tile(ExternalIdProviders.Epic, installed: false, withEpicKey: false);
+        var details = new GameDetailsViewModel(tile, "Started", [], Now);
+
+        Assert.Equal(NoWayIn.NoStoreId, tile.NoWayIn);
+        Assert.False(details.HasPrimaryAction);
+        Assert.False(details.HasLinks);
+        Assert.True(details.HasNoWayInSentence);
+        Assert.Equal(GameActionBandCopy.NoStoreId, details.NoWayInSentence);
     }
 
     /// <summary>
@@ -135,6 +139,7 @@ public sealed class TileActionsTests
     [InlineData(ExternalIdProviders.Gog, false)]
     [InlineData(ExternalIdProviders.Gog, null)]
     [InlineData(ExternalIdProviders.Epic, true)]
+    [InlineData(ExternalIdProviders.Epic, false)]
     public void A_store_that_can_be_reached_says_nothing_about_why_it_cannot(string store, bool? installed)
     {
         var tile = Tile(store, installed);
@@ -275,6 +280,7 @@ public sealed class TileActionsTests
 
     [Theory]
     [InlineData("com.epicgames.launcher://apps/a%3Ab%3AC?action=launch&silent=true")]
+    [InlineData("com.epicgames.launcher://apps/a%3Ab%3AC?action=install")]
     [InlineData("goggalaxy://launchGame/gog_1")]
     [InlineData("goggalaxy://installationScreen/1")]
     public void The_two_launcher_schemes_are_openable(string uri)
@@ -306,8 +312,8 @@ public sealed class TileActionsTests
     }
 
     /// <summary>
-    /// Epic gets no store link: a store URL needs a product slug and nothing in
-    /// this database holds one. Absent, not invented.
+    /// Epic gets no store link: the in-launcher route exists but needs a product
+    /// slug, and nothing in this database holds one. Absent, not invented.
     /// </summary>
     [Fact]
     public void Epic_gets_no_links()
@@ -386,6 +392,7 @@ public sealed class TileActionsTests
         Assert.False(Tile(ExternalIdProviders.Gog, installed: false).PrimaryAction!.StartsGame);
 
         Assert.True(Tile(ExternalIdProviders.Epic, installed: true).PrimaryAction!.StartsGame);
+        Assert.False(Tile(ExternalIdProviders.Epic, installed: false).PrimaryAction!.StartsGame);
 
         // A store page is neither, and nothing about it should ever be waited on.
         var storePage = StoreActions.LinksFor(ExternalIdProviders.Steam, "620", null)[0];

@@ -1702,3 +1702,47 @@ Superseded text from §10.3:
 > Beside it, `Store page` and `All patch notes` in `Azure`, and the `More` control — four controls on the strip.
 
 > Nine runs take `Text`.
+
+### 2026-09-05 — Epic's install route is verified, the no-way-in variants drop from three to two (TASK-132)
+
+Supersedes part of the entry directly above. That entry recorded "no verified install route"
+for the per-store table's Epic row and "three variant strings (unknown install state, missing
+identifier, no install route)" for the no-way-in sentence. Both are now false.
+
+`design-system.md` §10.3, §10.4; `GameActionBandCopy.cs`; `StoreActions.cs`.
+
+The root cause of Epic offering no actions at all was a data gap, not a missing verb. Of 67
+Epic ownership rows, 0 held a complete launch triple because the namespace was read at ingest
+and dropped. `catcache.bin` carries it for 67 of 67 owned base games, locally and offline.
+Storing it takes the triple from 0/67 to 67/67. Verified 2026-09-05.
+
+The install verb is `?action=install`, verified by execution against Epic Games Launcher
+build 20.2.9 on 2026-09-05. Epic's own documentation names `?action=installer`, which routes
+to `SelectiveDownloadUpdate` and is a no-op on an uninstalled game; it also names
+`?action=updatecheck`, which is not registered in build 20.2.9. The per-store table's Epic row
+now carries both Play and Install URI templates; the Not installed column and the explanatory
+prose below the table were rewritten. The in-launcher store route
+`com.epicgames.launcher://store/product/<slug>` exists (verified by execution via
+`MainRouter`), but Winnow holds no product slug, so no link is built. See
+`docs/spikes/store-actions-per-launcher.md` for the full evidence and the two methodological
+failures that produced the original wrong findings.
+
+The third no-way-in variant — the one for a store with no verified install route — no longer
+applies to any store and was retired. `NoWayIn.NoInstallRoute` was removed from the enum; its
+sentence was removed from `GameActionBandCopy`; an Epic game whose three-part key is incomplete
+now classifies as `NoStoreId`. The §10.3 causes list now reads "Two sentences, one per cause"
+where it read three. The §10.4 copy table dropped the corresponding row. The Text-ink listing
+carries two no-way-in variants where it carried three; the count of ten runs is unchanged
+because the no-way-in sentence is one run regardless of variant count.
+
+Superseded text from §10.3:
+
+> | Epic | `Play` — `com.epicgames.launcher://apps/<ns>%3A<catalogItemId>%3A<appName>?action=launch&silent=true`, and only when all three ids are held | nothing | nothing |
+
+> The Epic Games Launcher exposes no install route Winnow has verified, and an Epic store URL
+> needs a product slug that nothing Winnow stores holds. GOG's store page and patch notes are
+> both reachable through an anonymous API request Winnow does not yet make, so they are absent
+> rather than impossible. See `docs/spikes/store-actions-per-launcher.md` for the evidence.
+
+> there is nothing to press. Three sentences, one per cause: the install state was never read,
+> the store's identifier is not held, or the store has no install route at all.

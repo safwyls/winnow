@@ -472,9 +472,8 @@ public partial class GameTileViewModel : ObservableObject
 
     /// <summary>
     /// <c>Play</c> when it is on disk, <c>Install</c> when it is not, and null
-    /// when this app cannot honestly name either — no id for the store, no
-    /// verified install route for the store, or no answer at all about the
-    /// install state. Never an inert button (§10.3).
+    /// when this app cannot honestly name either — no id for the store, or no
+    /// answer at all about the install state. Never an inert button (§10.3).
     /// </summary>
     public GameLink? PrimaryAction { get; }
 

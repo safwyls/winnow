@@ -62,14 +62,9 @@ public readonly record struct EpicLaunchKey
 }
 
 /// <summary>
-/// Why Band 3 has no way to get the user into a game. The enum exists so
-/// the band can state a reason rather than sit silent — each member maps
-/// to a sentence in <see cref="GameActionBandCopy"/>.
-///
-/// <para>The check order is deliberate: <see cref="NoInstallRoute"/> is
-/// decided before <see cref="NoStoreId"/>, because holding the launch key
-/// would not help — there is no install route to build with it either
-/// way.</para>
+/// Why Band 3 has no way to get the user into a game. The enum exists so the
+/// band can state a reason rather than sit silent — each member maps to a
+/// sentence in <see cref="GameActionBandCopy"/>.
 /// </summary>
 public enum NoWayIn
 {
@@ -79,23 +74,30 @@ public enum NoWayIn
     /// <summary>A store id is held but no source has read whether this copy is on disk.</summary>
     InstallStateUnknown,
 
-    /// <summary>No store id at all — no appid, no product id, no launch key.</summary>
+    /// <summary>
+    /// No store id at all — no appid, no product id, no launch key. Also the
+    /// answer for an uninstalled Epic game whose three-part launch key is
+    /// incomplete; no separate route-shaped reason exists for that case.
+    /// </summary>
     NoStoreId,
-
-    /// <summary>Epic, uninstalled: the launcher carries no verified install route.</summary>
-    NoInstallRoute,
 }
 
 /// <summary>
 /// Launch and store URIs for each store (§10.3). All URIs were verified by
 /// measurement against the installed launchers, not from documentation.
-/// Steam: <c>steam://run|install/appid</c>. Epic: launch only — the binary
-/// (build 20.2.9, verified 2026-09-05) does carry an install URI handler
-/// (<c>FAppInstallUriHandler</c>), but it has not been executed and is
-/// therefore not verified; Winnow does not ship an unverified URI.
-/// GOG: <c>goggalaxy://launchGame|installationScreen</c>.
-/// Returns null when no honest action can be offered.
-/// See <c>docs/spikes/store-actions-per-launcher.md</c> for the evidence.
+/// <para>Steam: <c>steam://run|install/appid</c>.</para>
+/// <para>Epic: launch and install, both on the <c>apps</c> route keyed by
+/// <c>action=</c>. The install verb is <c>install</c>, verified by execution
+/// against build 20.2.9 on 2026-09-05: the launcher refreshed the entitlement,
+/// resolved the catalog item, dispatched the install and opened Epic's own
+/// install-location selector; Epic downloads, not Winnow, once the user confirms
+/// there. The working verb <c>install</c> is undocumented; the documented
+/// <c>installer</c> routes to the already-installed app's optional-components
+/// screen, and the documented <c>updatecheck</c> is not registered in
+/// build 20.2.9.</para>
+/// <para>GOG: <c>goggalaxy://launchGame|installationScreen</c>.</para>
+/// <para>Returns null when no honest action can be offered. See
+/// <c>docs/spikes/store-actions-per-launcher.md</c> for the evidence.</para>
 /// </summary>
 public static class StoreActions
 {
@@ -143,11 +145,6 @@ public static class StoreActions
             || LinksFor(store, steamAppId, gogProductId).Count > 0)
         {
             return NoWayIn.None;
-        }
-
-        if (store == ExternalIdProviders.Epic && installed is false)
-        {
-            return NoWayIn.NoInstallRoute;
         }
 
         var identified = store switch
@@ -271,16 +268,30 @@ public static class StoreActions
     }
 
     /// <summary>
-    /// Epic has a verified launch and no verified install, so an uninstalled
-    /// Epic title gets nothing. See this class's remarks for what was looked at
-    /// and what was not there.
+    /// One guard decides whether anything is drawn: no complete three-part key,
+    /// no button of either kind (§10.3). When the key is present, Play when on
+    /// disk, Install when not — the two branches differ only in the
+    /// <c>action=</c> value and the <see cref="GameLinkKind"/>. Install is
+    /// <see cref="GameLinkKind.Install"/> rather than <c>Play</c> because the
+    /// download is Epic's wait, not a process Winnow can attribute.
     /// </summary>
     private static GameLink? EpicPrimary(EpicLaunchKey? key, bool installed)
-        => installed && key is { } launch
+    {
+        if (key is not { } launch)
+        {
+            return null;
+        }
+
+        return installed
             ? GameLink.Create(
                 "Play",
                 $"{GameLink.EpicScheme}://apps/{launch.PathSegment}?action=launch&silent=true",
                 "Launch through the Epic Games Launcher",
                 GameLinkKind.Play)
-            : null;
+            : GameLink.Create(
+                "Install",
+                $"{GameLink.EpicScheme}://apps/{launch.PathSegment}?action=install",
+                "Open this game's install screen in the Epic Games Launcher",
+                GameLinkKind.Install);
+    }
 }

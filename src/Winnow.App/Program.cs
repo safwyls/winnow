@@ -602,6 +602,14 @@ public static class Program
         // The gate is a singleton because it is what stops the two schedules and
         // the startup pass from opening concurrent resolver transactions.
         services.AddSingleton<LibrarySyncGate>();
+
+        // The local half of Epic's launch triple. The Epic module cannot write
+        // it — Winnow.Ingest.Epic does not reference Winnow.Data — so the host
+        // fills the seam, exactly as it does for SqliteEpicCatalogCache above.
+        // Without this the triple can only come from the authenticated catalog
+        // backfill, and on a library where that has never run no Epic game can
+        // offer any action at all.
+        services.AddSingleton<IEpicLaunchKeyStore, SqliteEpicLaunchKeyStore>();
         services.AddSingleton<LocalLibrarySyncService>();
         services.AddSingleton<RemoteOwnershipSyncService>();
 
