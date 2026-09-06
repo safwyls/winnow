@@ -1,3 +1,4 @@
+using Winnow.Core.Ingest;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -16,10 +17,15 @@ namespace Winnow.Ingest.Gog;
 public sealed class GogGameInfoReader
 {
     private readonly ILogger<GogGameInfoReader> _logger;
+    private readonly StorefrontParserLimits _limits;
 
     /// <param name="logger">Optional logger.</param>
-    public GogGameInfoReader(ILogger<GogGameInfoReader>? logger = null)
-        => _logger = logger ?? NullLogger<GogGameInfoReader>.Instance;
+    public GogGameInfoReader(ILogger<GogGameInfoReader>? logger = null, StorefrontParserLimits? limits = null)
+    {
+        _logger = logger ?? NullLogger<GogGameInfoReader>.Instance;
+        _limits = limits ?? new StorefrontParserLimits();
+        _limits.Validate();
+    }
 
     /// <summary>Reads the <c>.info</c> for one product id in an install directory, or null.</summary>
     public GogGameInfo? ReadForGame(string installDirectory, string gameId)
@@ -81,8 +87,8 @@ public sealed class GogGameInfoReader
 
         try
         {
-            using var stream = File.OpenRead(filePath);
-            using var document = JsonDocument.Parse(stream);
+            var bytes = StorefrontFile.Read(filePath, _limits);
+            using var document = JsonDocument.Parse(bytes, new JsonDocumentOptions { MaxDepth = _limits.MaxDepth });
             var root = document.RootElement;
             if (root.ValueKind != JsonValueKind.Object)
             {

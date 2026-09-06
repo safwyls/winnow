@@ -1,3 +1,4 @@
+using Winnow.Core.Ingest;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -5,8 +6,10 @@ using System.Text.Json;
 namespace Winnow.Ingest.Epic;
 
 /// <summary>Reads a change token for committed manifests. A failed read is not an uninstall.</summary>
-public sealed class EpicManifestStateReader(string? dataRoot = null)
+public sealed class EpicManifestStateReader(string? dataRoot = null, StorefrontParserLimits? limits = null)
 {
+    private readonly StorefrontParserLimits _limits = limits ?? new();
+
     public string? ReadFingerprint()
     {
         var root = dataRoot ?? EpicPaths.FindDataRoot();
@@ -19,8 +22,8 @@ public sealed class EpicManifestStateReader(string? dataRoot = null)
                 .Where(path => path.EndsWith(".item", StringComparison.OrdinalIgnoreCase))
                 .Order(StringComparer.OrdinalIgnoreCase))
             {
-                var bytes = File.ReadAllBytes(path);
-                using var document = JsonDocument.Parse(bytes);
+                var bytes = StorefrontFile.Read(path, _limits);
+                using var document = JsonDocument.Parse(bytes, new JsonDocumentOptions { MaxDepth = _limits.MaxDepth });
                 var item = document.RootElement;
                 if (item.ValueKind != JsonValueKind.Object
                     || !item.TryGetProperty("CatalogItemId", out var id)

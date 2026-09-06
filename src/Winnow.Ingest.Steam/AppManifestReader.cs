@@ -1,3 +1,4 @@
+using Winnow.Core.Ingest;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -47,13 +48,18 @@ public sealed record AppManifest(
 public sealed class AppManifestReader
 {
     private readonly ILogger<AppManifestReader> _logger;
+    private readonly StorefrontParserLimits _limits;
 
-    public AppManifestReader(ILogger<AppManifestReader>? logger = null)
-        => _logger = logger ?? NullLogger<AppManifestReader>.Instance;
+    public AppManifestReader(ILogger<AppManifestReader>? logger = null, StorefrontParserLimits? limits = null)
+    {
+        _logger = logger ?? NullLogger<AppManifestReader>.Instance;
+        _limits = limits ?? new StorefrontParserLimits();
+        _limits.Validate();
+    }
 
     public AppManifest? Read(string manifestPath)
     {
-        var doc = KeyValues1.TryLoad(manifestPath, _logger);
+        var doc = KeyValues1.TryLoad(manifestPath, _logger, _limits);
         if (doc is null)
         {
             return null;

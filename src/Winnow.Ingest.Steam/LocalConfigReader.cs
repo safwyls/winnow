@@ -1,3 +1,4 @@
+using Winnow.Core.Ingest;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -29,13 +30,18 @@ public sealed class LocalConfigReader
     private static readonly string[] AppsPath = ["Software", "Valve", "Steam", "apps"];
 
     private readonly ILogger<LocalConfigReader> _logger;
+    private readonly StorefrontParserLimits _limits;
 
-    public LocalConfigReader(ILogger<LocalConfigReader>? logger = null)
-        => _logger = logger ?? NullLogger<LocalConfigReader>.Instance;
+    public LocalConfigReader(ILogger<LocalConfigReader>? logger = null, StorefrontParserLimits? limits = null)
+    {
+        _logger = logger ?? NullLogger<LocalConfigReader>.Instance;
+        _limits = limits ?? new StorefrontParserLimits();
+        _limits.Validate();
+    }
 
     public IReadOnlyDictionary<string, SteamAppPlaytime> Read(string localConfigVdfPath)
     {
-        var doc = KeyValues1.TryLoad(localConfigVdfPath, _logger);
+        var doc = KeyValues1.TryLoad(localConfigVdfPath, _logger, _limits);
         if (doc is null)
         {
             return new Dictionary<string, SteamAppPlaytime>(StringComparer.Ordinal);

@@ -1,3 +1,4 @@
+using Winnow.Core.Ingest;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -11,10 +12,15 @@ namespace Winnow.Ingest.Epic;
 public sealed class EpicCatalogReader
 {
     private readonly ILogger<EpicCatalogReader> _logger;
+    private readonly StorefrontParserLimits _limits;
 
     /// <param name="logger">Optional logger.</param>
-    public EpicCatalogReader(ILogger<EpicCatalogReader>? logger = null)
-        => _logger = logger ?? NullLogger<EpicCatalogReader>.Instance;
+    public EpicCatalogReader(ILogger<EpicCatalogReader>? logger = null, StorefrontParserLimits? limits = null)
+    {
+        _logger = logger ?? NullLogger<EpicCatalogReader>.Instance;
+        _limits = limits ?? new StorefrontParserLimits();
+        _limits.Validate();
+    }
 
     /// <summary>
     /// Reads and decodes the catalog. Returns an empty list when the file is
@@ -35,7 +41,7 @@ public sealed class EpicCatalogReader
         byte[] json;
         try
         {
-            var base64 = File.ReadAllBytes(catalogCachePath);
+            var base64 = StorefrontFile.Read(catalogCachePath, _limits);
             json = DecodeBase64(base64);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or FormatException)
@@ -46,7 +52,7 @@ public sealed class EpicCatalogReader
 
         try
         {
-            using var document = JsonDocument.Parse(json);
+            using var document = JsonDocument.Parse(json, new JsonDocumentOptions { MaxDepth = _limits.MaxDepth });
             if (document.RootElement.ValueKind != JsonValueKind.Array)
             {
                 _logger.LogWarning(

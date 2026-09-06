@@ -1,3 +1,4 @@
+using Winnow.Core.Ingest;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -11,10 +12,15 @@ namespace Winnow.Ingest.Epic;
 public sealed class EpicManifestReader
 {
     private readonly ILogger<EpicManifestReader> _logger;
+    private readonly StorefrontParserLimits _limits;
 
     /// <param name="logger">Optional logger.</param>
-    public EpicManifestReader(ILogger<EpicManifestReader>? logger = null)
-        => _logger = logger ?? NullLogger<EpicManifestReader>.Instance;
+    public EpicManifestReader(ILogger<EpicManifestReader>? logger = null, StorefrontParserLimits? limits = null)
+    {
+        _logger = logger ?? NullLogger<EpicManifestReader>.Instance;
+        _limits = limits ?? new StorefrontParserLimits();
+        _limits.Validate();
+    }
 
     /// <summary>
     /// Reads every <c>.item</c> in a manifests directory. Returns an empty list
@@ -74,8 +80,8 @@ public sealed class EpicManifestReader
 
         try
         {
-            using var stream = File.OpenRead(manifestPath);
-            using var document = JsonDocument.Parse(stream);
+            var bytes = StorefrontFile.Read(manifestPath, _limits);
+            using var document = JsonDocument.Parse(bytes, new JsonDocumentOptions { MaxDepth = _limits.MaxDepth });
             var root = document.RootElement;
             if (root.ValueKind != JsonValueKind.Object)
             {

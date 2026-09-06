@@ -473,4 +473,43 @@ public sealed class SteamLibrarySourceTests : IDisposable
         Assert.True(candidate.Installed);
         Assert.Equal(Path.Combine(_root, "steamapps", "common", "Portal 2"), candidate.InstallPath);
     }
+    [Theory]
+    [InlineData("../outside")]
+    [InlineData("..\\outside")]
+    [InlineData("/outside")]
+    [InlineData("C:\\outside")]
+    [InlineData(".")]
+    public void Manifest_install_directory_cannot_escape_common(string directory)
+    {
+        var path = Path.Combine(_root, "steamapps", "appmanifest_1244090.acf");
+        var text = File.ReadAllText(path);
+        text = System.Text.RegularExpressions.Regex.Replace(text,
+            "(\"installdir\"\\s*\")[^\"]*", match => match.Groups[1].Value + Escape(directory));
+        File.WriteAllText(path, text);
+        var candidate = Assert.Single(new SteamLibrarySource().Scan(_root), c => c.ProviderId == "1244090");
+        Assert.Null(candidate.InstallPath);
+        Assert.True(candidate.Installed);
+    }
+
+    [Fact]
+    public void Missing_library_root_keeps_good_manifests_and_unknown_install_state()
+    {
+        var path = Path.Combine(_root, "steamapps", "libraryfolders.vdf");
+        File.WriteAllText(path, File.ReadAllText(path).Replace(Escape(_secondLibrary), Escape(Path.Combine(_root, "Missing"))));
+        var candidates = new SteamLibrarySource().Scan(_root);
+        Assert.Contains(candidates, c => c.ProviderId == "1244090" && c.Installed == true);
+        Assert.Null(Assert.Single(candidates, c => c.ProviderId == "10").Installed);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("\"libraryfolders\" { \"0\" { \"label\" \"missing path\" } }")]
+    public void Unreadable_root_list_preserves_unknown_install_state(string contents)
+    {
+        File.WriteAllText(Path.Combine(_root, "steamapps", "libraryfolders.vdf"), contents);
+        var candidates = new SteamLibrarySource().Scan(_root);
+        Assert.Contains(candidates, c => c.ProviderId == "1244090" && c.Installed == true);
+        Assert.Null(Assert.Single(candidates, c => c.ProviderId == "10").Installed);
+    }
+
 }
