@@ -16,4 +16,11 @@ public interface ISessionRepository
     Task SetNoteAsync(SessionNote note, CancellationToken ct = default);
 
     Task<SessionNote?> GetNoteAsync(long sessionId, CancellationToken ct = default);
+
+    /// <summary>Saved journal responses for one ownership, newest session first.</summary>
+    Task<IReadOnlyList<SessionJournalEntry>> GetJournalEntriesByOwnershipAsync(
+        long ownershipId, CancellationToken ct = default);
+
+    /// <summary>Removes the note and optional rating for a session.</summary>
+    Task DeleteNoteAsync(long sessionId, CancellationToken ct = default);
 }

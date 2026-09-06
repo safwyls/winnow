@@ -141,18 +141,27 @@ public class SteamConnectionSeamTests
     public async Task Saving_a_key_writes_it_and_invalidates_the_credential_provider()
     {
         var settings = new InMemorySettingsRepository();
+        var store = new SettingsSteamApiKeyStore(settings, new SteamApiKeyFixtures.ReversibleProtector());
         var credentials = new FakeCredentialProvider();
         var confirmation = new RecordingConfirmation();
 
         var connections = new StoreConnections(
-            steamCredentials: credentials, settings: settings, confirmation: confirmation);
+            steamCredentials: credentials, apiKeyStore: store, confirmation: confirmation);
 
-        await connections.SaveSteamApiKeyAsync("  0123456789ABCDEF  ");
+        var outcome = await connections.SaveSteamApiKeyAsync("  0123456789ABCDEF  ");
 
-        Assert.Equal(
-            "0123456789ABCDEF",
-            await settings.GetAsync(SettingsTableApiKeySource.ApiKeySetting));
+        Assert.Equal(SteamApiKeySaveOutcome.Stored, outcome);
+        Assert.Equal("0123456789ABCDEF", await store.GetAsync());
         Assert.Equal(1, credentials.Invalidations);
+
+        // The key is protected at rest; the pre-protection plaintext row is
+        // emptied by the same write, so a key saved by this build never leaves
+        // a second, readable copy behind.
+        Assert.Equal(string.Empty, await settings.GetAsync(SettingsTableApiKeySource.ApiKeySetting));
+        Assert.DoesNotContain(
+            "0123456789ABCDEF",
+            await settings.GetAsync(SettingsSteamApiKeyStore.ProtectedSetting),
+            StringComparison.Ordinal);
 
         // A confirmation earned by the key that was just replaced no longer names
         // a credential in force, and an account filter still trusting it would
@@ -160,24 +169,52 @@ public class SteamConnectionSeamTests
         Assert.Equal(1, confirmation.Reconciliations);
     }
 
+    /// <summary>
+    /// A host that cannot encrypt refuses the save. Nothing is written, and
+    /// nothing downstream happens either: there is no row to invalidate against
+    /// and nothing to reconcile, and a refusal that dropped the memo would be a
+    /// restart masquerading as a sentence.
+    /// </summary>
     [Fact]
-    public async Task Clearing_a_key_empties_the_row_and_invalidates()
+    public async Task A_host_that_cannot_encrypt_refuses_rather_than_writing_plaintext()
     {
         var settings = new InMemorySettingsRepository();
+        var store = new SettingsSteamApiKeyStore(
+            settings, new UnavailableSteamApiKeyProtector());
         var credentials = new FakeCredentialProvider();
         var confirmation = new RecordingConfirmation();
 
         var connections = new StoreConnections(
-            steamCredentials: credentials, settings: settings, confirmation: confirmation);
+            steamCredentials: credentials, apiKeyStore: store, confirmation: confirmation);
+
+        var outcome = await connections.SaveSteamApiKeyAsync("0123456789ABCDEF");
+
+        Assert.Equal(SteamApiKeySaveOutcome.Refused, outcome);
+        Assert.Null(await settings.GetAsync(SettingsSteamApiKeyStore.ProtectedSetting));
+        Assert.Null(await settings.GetAsync(SettingsTableApiKeySource.ApiKeySetting));
+        Assert.Equal(0, credentials.Invalidations);
+        Assert.Equal(0, confirmation.Reconciliations);
+    }
+
+    [Fact]
+    public async Task Clearing_a_key_empties_the_row_and_invalidates()
+    {
+        var settings = new InMemorySettingsRepository();
+        var store = new SettingsSteamApiKeyStore(settings, new SteamApiKeyFixtures.ReversibleProtector());
+        var credentials = new FakeCredentialProvider();
+        var confirmation = new RecordingConfirmation();
+
+        var connections = new StoreConnections(
+            steamCredentials: credentials, apiKeyStore: store, confirmation: confirmation);
 
         await connections.SaveSteamApiKeyAsync("0123456789ABCDEF");
         await connections.ClearSteamApiKeyAsync();
 
         // The empty string IS the cleared state: the settings contract has no
         // delete, and a blank value already counts as unset to every reader.
+        Assert.Null(await store.GetAsync());
         Assert.Equal(string.Empty, await settings.GetAsync(SettingsTableApiKeySource.ApiKeySetting));
-        Assert.Null(SteamApiKey.TryCreate(
-            await settings.GetAsync(SettingsTableApiKeySource.ApiKeySetting), "settings"));
+        Assert.Equal(string.Empty, await settings.GetAsync(SettingsSteamApiKeyStore.ProtectedSetting));
 
         Assert.Equal(2, credentials.Invalidations);
         Assert.Equal(2, confirmation.Reconciliations);
@@ -188,12 +225,16 @@ public class SteamConnectionSeamTests
     public async Task Saving_a_blank_field_clears_rather_than_storing_whitespace()
     {
         var settings = new InMemorySettingsRepository();
+        var store = new SettingsSteamApiKeyStore(settings, new SteamApiKeyFixtures.ReversibleProtector());
         var connections = new StoreConnections(
-            steamCredentials: new FakeCredentialProvider(), settings: settings);
+            steamCredentials: new FakeCredentialProvider(), apiKeyStore: store);
 
-        await connections.SaveSteamApiKeyAsync("   ");
+        var outcome = await connections.SaveSteamApiKeyAsync("   ");
 
+        Assert.Equal(SteamApiKeySaveOutcome.Stored, outcome);
+        Assert.Null(await store.GetAsync());
         Assert.Equal(string.Empty, await settings.GetAsync(SettingsTableApiKeySource.ApiKeySetting));
+        Assert.Equal(string.Empty, await settings.GetAsync(SettingsSteamApiKeyStore.ProtectedSetting));
     }
 
     // ══ Doubles ═════════════════════════════════════════════════════════════

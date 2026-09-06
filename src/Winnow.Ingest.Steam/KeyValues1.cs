@@ -1,4 +1,5 @@
 using System.Globalization;
+using Winnow.Core.Ingest;
 using Winnow.Core.Domain;
 using Microsoft.Extensions.Logging;
 using ValveKeyValue;
@@ -16,14 +17,14 @@ internal static class KeyValues1
 {
     // Steam writes escaped backslashes into paths ("C:\\Program Files (x86)\\Steam");
     // ValveKeyValue leaves them doubled unless escape-sequence handling is enabled.
-    private static readonly KVSerializerOptions Options = new() { HasEscapeSequences = true };
+    private static readonly KVSerializerOptions Options = new() { HasEscapeSequences = true, FileLoader = new RejectIncludes() };
 
     /// <summary>
     /// Opens and parses a text-KV1 file, returning null (never throwing) when
     /// the file is missing, locked, or malformed. Steam owns these files and
     /// is an eventually-consistent writer (§4.1) — tolerate anything.
     /// </summary>
-    internal static KVDocument? TryLoad(string path, ILogger logger)
+    internal static KVDocument? TryLoad(string path, ILogger logger, StorefrontParserLimits limits)
     {
         if (!File.Exists(path))
         {
@@ -33,19 +34,66 @@ internal static class KeyValues1
 
         try
         {
-            // Steam may hold the file open for writing; share as widely as possible.
-            using var stream = new FileStream(
-                path, FileMode.Open, FileAccess.Read,
-                FileShare.ReadWrite | FileShare.Delete);
+            var bytes = StorefrontFile.Read(path, limits);
+            using var stream = new MemoryStream(bytes, writable: false);
+            CheckTextDepth(stream, limits.MaxDepth);
+            stream.Position = 0;
             return KVSerializer.Create(KVSerializationFormat.KeyValues1Text).Deserialize(stream, Options);
         }
 #pragma warning disable CA1031 // deliberate: a torn/exotic file from Steam must degrade to "no data", not crash ingest
         catch (Exception ex)
 #pragma warning restore CA1031
         {
-            logger.LogWarning(ex, "Failed to read Steam KeyValues file {Path}", path);
+            logger.LogWarning("Failed to read Steam KeyValues file {Path} ({Failure})", path, ex.GetType().Name);
             return null;
         }
+    }
+
+    // This is a resource preflight, not a VDF parser. ValveKeyValue remains the
+    // authority for syntax and values, but has no depth option to protect its recursion.
+    private static void CheckTextDepth(Stream stream, int maxDepth)
+    {
+        using var reader = new StreamReader(stream, System.Text.Encoding.UTF8,
+            detectEncodingFromByteOrderMarks: true, leaveOpen: true);
+        var depth = 0;
+        var quoted = false;
+        var escaped = false;
+        var comment = false;
+        int next;
+        while ((next = reader.Read()) != -1)
+        {
+            var character = (char)next;
+            if (character == '\0')
+                throw new IOException("Binary data is not supported by this text reader.");
+            if (comment)
+            {
+                if (character is '\r' or '\n') comment = false;
+                continue;
+            }
+            if (quoted)
+            {
+                if (escaped) escaped = false;
+                else if (character == '\\') escaped = true;
+                else if (character == '"') quoted = false;
+                continue;
+            }
+            if (character == '"') quoted = true;
+            else if (character == '/' && reader.Peek() == '/')
+            {
+                reader.Read();
+                comment = true;
+            }
+            else if (character == '{' && ++depth > maxDepth)
+                throw new IOException("Storefront file exceeds the configured nesting limit.");
+            else if (character == '}' && --depth < 0)
+                throw new IOException("Unbalanced storefront file.");
+        }
+    }
+
+    private sealed class RejectIncludes : IIncludedFileLoader
+    {
+        public Stream OpenFile(string filePath)
+            => throw new IOException("Includes are not supported in storefront files.");
     }
 
     /// <summary>Case-insensitive child lookup (first match wins, KV1 collections allow duplicates).</summary>

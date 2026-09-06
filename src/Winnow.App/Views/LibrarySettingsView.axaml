@@ -1,0 +1,669 @@
+<UserControl AutomationProperties.Name="Library settings" AutomationProperties.ControlTypeOverride="Group" xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Winnow.App.ViewModels"
+             x:Class="Winnow.App.Views.LibrarySettingsView"
+             x:DataType="vm:LibrarySettingsViewModel">
+
+    <!-- SETTINGS › LIBRARY — acquisition export and three library controls. One
+         question: what is in the library. EXPLICIT CONTENT is the filter and its
+         stated default. HIDDEN GAMES is the only place a hidden game can be found
+         and put back. ADDED BY HAND is for games no launcher on this machine
+         knows about. No Flare anywhere on this screen; Danger appears on exactly
+         one control, the delete confirmation. Nothing here animates. -->
+
+    <UserControl.Styles>
+
+        <Style Selector="Border.card">
+            <Setter Property="Background" Value="{StaticResource Surface}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
+            <Setter Property="Padding" Value="20"/>
+        </Style>
+
+        <!-- An inset field: the card making a note about itself. Well is the
+             app's inset tone (§9). -->
+        <Style Selector="Border.note">
+            <Setter Property="Background" Value="{StaticResource Well}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
+            <Setter Property="Padding" Value="14,12"/>
+        </Style>
+        <Style Selector="Border.note.attention">
+            <Setter Property="BorderBrush" Value="{StaticResource Amber}"/>
+        </Style>
+
+        <!-- One entry of either list. Constant border thickness so a hover
+             cannot reflow the column (§10.7). -->
+        <Style Selector="Border.row">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+            <Setter Property="Padding" Value="0,10"/>
+        </Style>
+
+        <!-- ══ A form field ═════════════════════════════════════════════════
+             Focus is a brush swap at constant thickness (§10.7): the fields sit
+             in a grid with buttons beside them, and a 1px reflow on focus would
+             shuffle the row. -->
+        <Style Selector="TextBox.field">
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="MinHeight" Value="30"/>
+            <Setter Property="Padding" Value="10,0"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
+            <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+            <Setter Property="SelectionBrush" Value="{StaticResource VoltSelection}"/>
+            <Setter Property="CaretBrush" Value="{StaticResource Volt}"/>
+        </Style>
+        <Style Selector="TextBox.field /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="{StaticResource Well}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+        <Style Selector="TextBox.field:pointerover /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="{StaticResource Well}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+        </Style>
+        <Style Selector="TextBox.field:focus /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="{StaticResource Well}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+        </Style>
+        <Style Selector="TextBox.field /template/ TextBlock#PART_Watermark">
+            <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
+        </Style>
+        <!-- A field the user has to come back to. Amber on the edge only; the
+             sentence under it is what actually says what is wrong (§8). -->
+        <Style Selector="TextBox.field.wrong /template/ Border#PART_BorderElement">
+            <Setter Property="BorderBrush" Value="{StaticResource Amber}"/>
+        </Style>
+
+        <Style Selector=":is(TextBlock).fielderror">
+            <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Foreground" Value="{StaticResource Amber}"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+
+        <!-- Destructive, and the only Danger on this screen (§2, §12.3). -->
+        <Style Selector="Button.act.danger">
+            <Setter Property="Foreground" Value="{StaticResource DangerInk}"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+        <Style Selector="Button.act.danger /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource Danger}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Danger}"/>
+        </Style>
+        <Style Selector="Button.act.danger:pointerover">
+            <Setter Property="Foreground" Value="{StaticResource DangerInk}"/>
+        </Style>
+        <Style Selector="Button.act.danger:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource DangerHover}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource DangerHover}"/>
+        </Style>
+        <Style Selector="Button.act.danger:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="BorderBrush" Value="{StaticResource DangerInk}"/>
+        </Style>
+
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto,*" Background="{StaticResource PaneGround}">
+
+        <!-- ══ Header ═══════════════════════════════════════════════════════ -->
+        <Border Grid.Row="0"
+                Padding="24,20,24,18"
+                BorderBrush="{StaticResource Line}"
+                BorderThickness="0,0,0,1">
+            <StackPanel Spacing="7">
+                <TextBlock AutomationProperties.HeadingLevel="1" Classes="display-l" Text="{Binding Title}"/>
+                <TextBlock Classes="body"
+                           MaxWidth="640"
+                           HorizontalAlignment="Left"
+                           TextWrapping="Wrap"
+                           LineHeight="19"
+                           Foreground="{StaticResource TextDim}"
+                           Text="{Binding IntroMessage}"/>
+            </StackPanel>
+        </Border>
+
+        <ScrollViewer Grid.Row="1"
+                      Name="ScreenScroll"
+                      HorizontalScrollBarVisibility="Disabled"
+                      VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="24,16,24,28" MaxWidth="920"
+                        HorizontalAlignment="Left" Spacing="14">
+
+                <Border Classes="card" IsVisible="{Binding CanExportAcquisitions}"
+                        AutomationProperties.Name="Acquisition export"
+                        AutomationProperties.AccessibilityView="Control">
+                    <StackPanel Spacing="12">
+                        <TextBlock Classes="label" Text="ACQUISITION EXPORT"
+                                   AutomationProperties.HeadingLevel="2"/>
+                        <TextBlock Classes="para" Text="Save a CSV with each copy's title, store, acquisition date, licence and price paid. Missing facts stay blank. Prices use the stored cents; currency is not recorded."
+                                   Foreground="{StaticResource Text}" TextWrapping="Wrap"/>
+                        <Button Classes="act" Content="Export acquisition CSV"
+                                HorizontalAlignment="Left"
+                                AutomationProperties.Name="Export acquisition CSV"
+                                Command="{Binding ExportAcquisitionsCommand}"/>
+                        <TextBlock Classes="para" Text="{Binding AcquisitionExportStatus}"
+                                   Foreground="{StaticResource TextDim}" TextWrapping="Wrap"
+                                   AutomationProperties.LiveSetting="Polite"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- ══ EXPLICIT CONTENT (TASK-88) ════════════════════════════
+                     The default is stated beside the control: off, and a game
+                     with no rating data is not explicit and stays visible. The
+                     count says what turning it on would remove — the number of
+                     tiles that actually disappear. -->
+                <TextBlock Classes="label" FontSize="10" LetterSpacing="1.4"
+                           AutomationProperties.HeadingLevel="2" Text="{Binding ExplicitSectionLabel}"/>
+
+                <Border Classes="card">
+                    <StackPanel Spacing="12">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Grid.Column="0"
+                                       Classes="para"
+                                       VerticalAlignment="Center"
+                                       Text="{Binding ExplicitDefaultNote}"/>
+                            <ToggleSwitch Grid.Column="1"
+                                          Margin="16,0,0,0"
+                                          VerticalAlignment="Center"
+                                          IsChecked="{Binding ShowExplicitContent, Mode=TwoWay}"
+                                          OnContent="{Binding ExplicitToggleLabel}"
+                                          OffContent="{Binding ExplicitToggleLabel}"
+                                          AutomationProperties.Name="{Binding ExplicitToggleLabel}"/>
+                        </Grid>
+
+                        <!-- The same [DATA] [words] split the Platforms card's
+                             account count uses. -->
+                        <StackPanel Orientation="Horizontal" Spacing="6"
+                                    IsVisible="{Binding ShowExplicitHiddenCount}">
+                            <TextBlock Classes="data" FontSize="12"
+                                       Foreground="{StaticResource TextDim}"
+                                       VerticalAlignment="Center"
+                                       Text="{Binding ExplicitHiddenCountText}"/>
+                            <TextBlock Classes="para"
+                                       VerticalAlignment="Center"
+                                       Text="{Binding ExplicitHiddenUnitLabel}"/>
+                        </StackPanel>
+
+                        <TextBlock Classes="para"
+                                   Foreground="{StaticResource TextDim}"
+                                   IsVisible="{Binding ShowExplicitPendingNote}"
+                                   Text="{Binding ExplicitPendingNote}"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- ══ HIDDEN GAMES (TASK-87) ════════════════════════════════
+                     The one place a hidden game can be found and put back, one
+                     at a time. Each row shows the title, how many store entries
+                     come back with it, and when it was hidden. -->
+                <TextBlock Classes="label" FontSize="10" LetterSpacing="1.4"
+                           Margin="0,10,0,0"
+                           AutomationProperties.HeadingLevel="2" Text="{Binding HiddenSectionLabel}"/>
+
+                <Border Classes="card">
+                    <StackPanel Spacing="0">
+                        <TextBlock Classes="para"
+                                   Foreground="{StaticResource TextDim}"
+                                   TextWrapping="Wrap"
+                                   IsVisible="{Binding ShowHiddenEmpty}"
+                                   Text="{Binding HiddenEmptyMessage}"/>
+
+                        <ItemsControl ItemsSource="{Binding HiddenGames}"
+                                      IsVisible="{Binding HasHiddenGames}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="vm:HiddenGameRowViewModel">
+                                    <Border Classes="row">
+                                        <Grid ColumnDefinitions="*,Auto"
+                                              VerticalAlignment="Center">
+                                            <StackPanel Grid.Column="0" Spacing="3"
+                                                        VerticalAlignment="Center">
+                                                <TextBlock Classes="body-l"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           Text="{Binding Title}"/>
+                                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                                    <TextBlock Classes="data-s"
+                                                               Foreground="{StaticResource TextDim}"
+                                                               VerticalAlignment="Center"
+                                                               Text="{Binding StoreEntryCountText}"/>
+                                                    <TextBlock Classes="body" FontSize="11"
+                                                               Foreground="{StaticResource TextDim}"
+                                                               VerticalAlignment="Center"
+                                                               Text="{Binding StoreEntryUnitLabel}"/>
+                                                    <TextBlock Classes="data-s"
+                                                               Foreground="{StaticResource TextDim}"
+                                                               VerticalAlignment="Center"
+                                                               Text="{Binding HiddenAtText}"/>
+                                                </StackPanel>
+                                            </StackPanel>
+
+                                            <Button Grid.Column="1"
+                                                    Classes="act quiet"
+                                                    Margin="16,0,0,0"
+                                                    VerticalAlignment="Center"
+                                                    Content="{Binding UnhideText}"
+                                                    ToolTip.Tip="{Binding UnhideTooltip}"
+                                                    AutomationProperties.Name="{Binding UnhideAutomationName}"
+                                                    Command="{Binding $parent[ItemsControl].((vm:LibrarySettingsViewModel)DataContext).UnhideCommand}"
+                                                    CommandParameter="{Binding}"/>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+
+                <!-- ══ ADDED BY HAND (TASK-99) ═══════════════════════════════
+                     Games no launcher on this machine writes to disk: itch.io,
+                     Battle.net, a physical or emulated title. One inline form
+                     for both add and edit, in the pane's own tree rather than a
+                     flyout (§12.3: a popup has no adorner layer). An id already
+                     in the library is refused before anything is written, and
+                     the message lands under the field it is about. -->
+                <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,10,0,0">
+                    <TextBlock Grid.Column="0"
+                               Classes="label" FontSize="10" LetterSpacing="1.4"
+                               VerticalAlignment="Center"
+                               AutomationProperties.HeadingLevel="2" Text="{Binding ManualSectionLabel}"/>
+                    <!-- The file route leads because it asks for less than
+                         "Add a game". Drawn only when a picker was supplied. -->
+                    <Button Grid.Column="1"
+                            Classes="act quiet"
+                            IsVisible="{Binding CanBrowse}"
+                            Content="{Binding AddFromFileButtonText}"
+                            ToolTip.Tip="{Binding AddFromFileTooltip}"
+                            AutomationProperties.Name="{Binding AddFromFileButtonText}"
+                            Command="{Binding BeginAddFromFileCommand}"/>
+                    <Button Grid.Column="2"
+                            Classes="act quiet"
+                            Margin="8,0,0,0"
+                            Content="{Binding AddButtonText}"
+                            AutomationProperties.Name="{Binding AddButtonText}"
+                            Command="{Binding BeginAddCommand}"/>
+                </Grid>
+
+                <Border Classes="card">
+                    <StackPanel Spacing="14">
+
+                        <TextBlock Classes="para"
+                                   Foreground="{StaticResource TextDim}"
+                                   TextWrapping="Wrap"
+                                   IsVisible="{Binding ShowManualEmpty}"
+                                   Text="{Binding ManualEmptyMessage}"/>
+
+                        <ItemsControl ItemsSource="{Binding ManualEntries}"
+                                      IsVisible="{Binding HasManualEntries}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="vm:ManualEntryRowViewModel">
+                                    <Border Classes="row">
+                                        <Grid ColumnDefinitions="*,Auto,Auto"
+                                              VerticalAlignment="Center">
+                                            <StackPanel Grid.Column="0" Spacing="3"
+                                                        VerticalAlignment="Center">
+                                                <TextBlock Classes="body-l"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           Text="{Binding Title}"/>
+                                                <TextBlock Classes="body" FontSize="11"
+                                                           Foreground="{StaticResource TextDim}"
+                                                           IsVisible="{Binding HasDetail}"
+                                                           Text="{Binding Detail}"/>
+                                                <TextBlock Classes="data-s"
+                                                           Foreground="{StaticResource TextDim}"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           IsVisible="{Binding HasExecutable}"
+                                                           Text="{Binding ExecutablePath}"/>
+                                            </StackPanel>
+
+                                            <Button Grid.Column="1"
+                                                    Classes="act quiet"
+                                                    Margin="16,0,0,0"
+                                                    VerticalAlignment="Center"
+                                                    Content="{Binding EditText}"
+                                                    AutomationProperties.Name="{Binding EditAutomationName}"
+                                                    Command="{Binding $parent[ItemsControl].((vm:LibrarySettingsViewModel)DataContext).BeginEditCommand}"
+                                                    CommandParameter="{Binding}"/>
+
+                                            <Button Grid.Column="2"
+                                                    Classes="act quiet"
+                                                    Margin="8,0,0,0"
+                                                    VerticalAlignment="Center"
+                                                    Content="{Binding DeleteText}"
+                                                    AutomationProperties.Name="{Binding DeleteAutomationName}"
+                                                    Command="{Binding $parent[ItemsControl].((vm:LibrarySettingsViewModel)DataContext).BeginDeleteCommand}"
+                                                    CommandParameter="{Binding}"/>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <!-- The question, and what survives it (§12.3). -->
+                        <Border Classes="note attention"
+                                IsVisible="{Binding IsDeleteConfirmOpen}">
+                            <Grid ColumnDefinitions="*,Auto,Auto">
+                                <TextBlock Grid.Column="0"
+                                           Classes="para"
+                                           TextWrapping="Wrap"
+                                           VerticalAlignment="Center"
+                                           Text="{Binding DeleteConfirmMessage}"/>
+                                <Button Grid.Column="1"
+                                        Classes="act quiet"
+                                        Margin="14,0,0,0"
+                                        VerticalAlignment="Center"
+                                        Content="{Binding CancelButtonText}"
+                                        AutomationProperties.Name="{Binding CancelButtonText}"
+                                        Command="{Binding CancelDeleteCommand}"/>
+                                <Button Grid.Column="2"
+                                        Classes="act danger"
+                                        Margin="8,0,0,0"
+                                        VerticalAlignment="Center"
+                                        Content="{Binding DeleteConfirmButtonText}"
+                                        AutomationProperties.Name="{Binding DeleteConfirmButtonText}"
+                                        Command="{Binding ConfirmDeleteCommand}"/>
+                            </Grid>
+                        </Border>
+
+                        <!-- ══ The form ══════════════════════════════════════
+                             One form for add and for edit; the heading says
+                             which. Every field but the title is optional. -->
+                        <Border Classes="note" IsVisible="{Binding IsFormOpen}">
+                            <StackPanel Spacing="14">
+                                <TextBlock Classes="body-l"
+                                           FontFamily="{StaticResource DisplayFont}"
+                                           FontWeight="Bold"
+                                           Text="{Binding FormTitle}"/>
+
+                                <StackPanel Spacing="5">
+                                    <TextBlock Classes="label" FontSize="10"
+                                               Text="{Binding TitleFieldLabel}"/>
+                                    <TextBox Classes="field"
+                                             Classes.wrong="{Binding HasTitleError}"
+                                             Width="360"
+                                             HorizontalAlignment="Left"
+                                             Watermark="{Binding TitleWatermark}"
+                                             AutomationProperties.Name="{Binding TitleFieldLabel}"
+                                             Text="{Binding DraftTitle, Mode=TwoWay}"/>
+                                    <TextBlock Classes="fielderror"
+                                               IsVisible="{Binding HasTitleError}"
+                                               Text="{Binding TitleError}"/>
+                                </StackPanel>
+
+                                <StackPanel Orientation="Horizontal" Spacing="14">
+                                    <StackPanel Spacing="5">
+                                        <TextBlock Classes="label" FontSize="10"
+                                                   Text="{Binding YearFieldLabel}"/>
+                                        <TextBox Classes="field"
+                                                 Classes.wrong="{Binding HasYearError}"
+                                                 Width="96"
+                                                 Watermark="{Binding YearWatermark}"
+                                                 AutomationProperties.Name="{Binding YearFieldLabel}"
+                                                 Text="{Binding DraftYear, Mode=TwoWay}"/>
+                                        <TextBlock Classes="fielderror"
+                                                   IsVisible="{Binding HasYearError}"
+                                                   Text="{Binding YearError}"/>
+                                    </StackPanel>
+
+                                    <StackPanel Spacing="5">
+                                        <TextBlock Classes="label" FontSize="10"
+                                                   Text="{Binding PlatformFieldLabel}"/>
+                                        <TextBox Classes="field"
+                                                 Width="250"
+                                                 Watermark="{Binding PlatformWatermark}"
+                                                 AutomationProperties.Name="{Binding PlatformFieldLabel}"
+                                                 Text="{Binding DraftPlatform, Mode=TwoWay}"/>
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <!-- The executable is where the add starts.
+                                     Browsing fills this field, proposes the
+                                     title above, and searches IGDB below. The
+                                     field is still typed into when there is no
+                                     file to point at. -->
+                                <StackPanel Spacing="5">
+                                    <TextBlock Classes="label" FontSize="10"
+                                               Text="{Binding ExecutableFieldLabel}"/>
+                                    <Grid ColumnDefinitions="480,Auto" ColumnSpacing="8"
+                                          HorizontalAlignment="Left">
+                                        <TextBox Grid.Column="0"
+                                                 Classes="field"
+                                                 Watermark="{Binding ExecutableWatermark}"
+                                                 AutomationProperties.Name="{Binding ExecutableFieldLabel}"
+                                                 Text="{Binding DraftExecutable, Mode=TwoWay}"/>
+                                        <Button Grid.Column="1"
+                                                Classes="act quiet"
+                                                VerticalAlignment="Center"
+                                                IsVisible="{Binding CanBrowse}"
+                                                Content="{Binding BrowseButtonText}"
+                                                ToolTip.Tip="{Binding BrowseTooltip}"
+                                                AutomationProperties.Name="{Binding BrowseButtonText}"
+                                                Command="{Binding BrowseForExecutableCommand}"/>
+                                    </Grid>
+                                    <TextBlock Classes="body" FontSize="11"
+                                               Foreground="{StaticResource TextDim}"
+                                               Text="{Binding ExecutableHint}"/>
+                                    <!-- What the file yielded, in words, so the
+                                         user can judge the proposal before
+                                         saving. -->
+                                    <TextBlock Classes="body" FontSize="11"
+                                               MaxWidth="560"
+                                               HorizontalAlignment="Left"
+                                               TextWrapping="Wrap"
+                                               LineHeight="16"
+                                               Foreground="{StaticResource TextDim}"
+                                               IsVisible="{Binding HasExecutableNote}"
+                                               Text="{Binding ExecutableNote}"/>
+                                </StackPanel>
+
+                                <StackPanel Spacing="5">
+                                    <StackPanel Orientation="Horizontal" Spacing="14">
+                                        <StackPanel Spacing="5">
+                                            <TextBlock Classes="label" FontSize="10"
+                                                       Text="{Binding IgdbFieldLabel}"/>
+                                            <TextBox Classes="field"
+                                                     Classes.wrong="{Binding HasIgdbIdError}"
+                                                     Width="140"
+                                                     Watermark="{Binding IgdbWatermark}"
+                                                     AutomationProperties.Name="{Binding IgdbFieldLabel}"
+                                                     Text="{Binding DraftIgdbId, Mode=TwoWay}"/>
+                                            <TextBlock Classes="fielderror"
+                                                       MaxWidth="220"
+                                                       IsVisible="{Binding HasIgdbIdError}"
+                                                       Text="{Binding IgdbIdError}"/>
+                                        </StackPanel>
+
+                                        <StackPanel Spacing="5">
+                                            <TextBlock Classes="label" FontSize="10"
+                                                       Text="{Binding SteamAppIdFieldLabel}"/>
+                                            <TextBox Classes="field"
+                                                     Classes.wrong="{Binding HasSteamAppIdError}"
+                                                     Width="140"
+                                                     Watermark="{Binding SteamAppIdWatermark}"
+                                                     AutomationProperties.Name="{Binding SteamAppIdFieldLabel}"
+                                                     Text="{Binding DraftSteamAppId, Mode=TwoWay}"/>
+                                            <TextBlock Classes="fielderror"
+                                                       MaxWidth="220"
+                                                       IsVisible="{Binding HasSteamAppIdError}"
+                                                       Text="{Binding SteamAppIdError}"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                    <TextBlock Classes="body" FontSize="11"
+                                               Foreground="{StaticResource TextDim}"
+                                               Text="{Binding CoverHint}"/>
+                                </StackPanel>
+
+                                <!-- ══ The IGDB proposal ════════════════════
+                                     The same search surface and candidate rows
+                                     the details modal uses, reached through
+                                     the same seam. Sits under the id fields
+                                     because choosing a candidate fills them.
+                                     The TITLE field above is the query;
+                                     correcting it and searching again is the
+                                     override. Nothing here writes: Save is
+                                     still the only write on this screen. -->
+                                <StackPanel Spacing="10" IsVisible="{Binding ShowMatchBlock}">
+
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <Button Classes="act quiet"
+                                                Content="{Binding MatchSearchButtonText}"
+                                                ToolTip.Tip="{Binding MatchSearchTooltip}"
+                                                AutomationProperties.Name="{Binding MatchSearchButtonText}"
+                                                Command="{Binding SearchIgdbCommand}"/>
+                                        <Button Classes="act quiet"
+                                                IsVisible="{Binding ShowMatchDismiss}"
+                                                Content="{Binding MatchDismissButtonText}"
+                                                AutomationProperties.Name="{Binding MatchDismissButtonText}"
+                                                Command="{Binding DismissMatchCommand}"/>
+                                    </StackPanel>
+
+                                    <!-- §8: the control says what it is doing
+                                         in words. No spinner, so reduced
+                                         motion has nothing to disable. -->
+                                    <TextBlock Classes="body" FontSize="11"
+                                               TextWrapping="Wrap"
+                                               Foreground="{StaticResource TextDim}"
+                                               IsVisible="{Binding HasMatchStatus}"
+                                               Text="{Binding MatchStatus}"/>
+
+                                    <TextBlock Classes="body" FontSize="11"
+                                               MaxWidth="560"
+                                               HorizontalAlignment="Left"
+                                               TextWrapping="Wrap"
+                                               LineHeight="16"
+                                               Foreground="{StaticResource TextDim}"
+                                               IsVisible="{Binding HasMatchNote}"
+                                               Text="{Binding MatchNote}"/>
+
+                                    <!-- A search that matched nothing is not a
+                                         failure and does not read as one. -->
+                                    <TextBlock Classes="body" FontSize="11"
+                                               MaxWidth="560"
+                                               HorizontalAlignment="Left"
+                                               TextWrapping="Wrap"
+                                               LineHeight="16"
+                                               Foreground="{StaticResource TextDim}"
+                                               IsVisible="{Binding ShowNoMatches}"
+                                               Text="{Binding MatchNoMatchesText}"/>
+
+                                    <TextBlock Classes="fielderror"
+                                               MaxWidth="560"
+                                               HorizontalAlignment="Left"
+                                               IsVisible="{Binding HasMatchProblem}"
+                                               Text="{Binding MatchProblem}"/>
+
+                                    <!-- Bounded list, for the reason the
+                                         details modal's is bounded: IGDB
+                                         returns up to 20 rows for a common
+                                         title, and without a scroll region the
+                                         form's Save button walks off the
+                                         bottom of the card. Classes="inner"
+                                         opts the scrollbar out of the window
+                                         resize-border inset (§9.1) — this edge
+                                         is ours, not the window's. -->
+                                    <ScrollViewer Classes="inner"
+                                                  MaxHeight="208"
+                                                  Width="480"
+                                                  HorizontalAlignment="Left"
+                                                  IsVisible="{Binding HasCandidates}"
+                                                  GotFocus="OnCandidateGotFocus"
+                                                  HorizontalScrollBarVisibility="Disabled"
+                                                  VerticalScrollBarVisibility="Auto">
+                                        <ItemsControl ItemsSource="{Binding Candidates}"
+                                                      Margin="0,0,4,0">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate DataType="vm:IgdbCandidateViewModel">
+                                                    <Border Classes="row">
+                                                        <Grid ColumnDefinitions="34,*,Auto"
+                                                              ColumnSpacing="10"
+                                                              VerticalAlignment="Center">
+                                                            <!-- Full saturation:
+                                                                 the dormancy ramp
+                                                                 is about the
+                                                                 user's own
+                                                                 library, and none
+                                                                 of these is in it
+                                                                 yet. -->
+                                                            <Border Grid.Column="0"
+                                                                    Width="34" Height="51"
+                                                                    VerticalAlignment="Center"
+                                                                    ClipToBounds="True"
+                                                                    CornerRadius="{StaticResource RadiusControl}"
+                                                                    Background="{StaticResource SurfaceRaised}">
+                                                                <Image Source="{Binding Cover}"
+                                                                       Stretch="UniformToFill"/>
+                                                            </Border>
+
+                                                            <StackPanel Grid.Column="1" Spacing="3"
+                                                                        VerticalAlignment="Center">
+                                                                <TextBlock Classes="body-l"
+                                                                           TextTrimming="CharacterEllipsis"
+                                                                           Text="{Binding Name}"/>
+                                                                <!-- Year in Plex Mono, platforms in Jakarta:
+                                                                     the identity-line split (§3). A Grid, not
+                                                                     a horizontal StackPanel, because a StackPanel
+                                                                     measures children with infinite width and
+                                                                     TextTrimming never engages (TASK-118). -->
+                                                                <Grid ColumnDefinitions="Auto,*"
+                                                                      IsVisible="{Binding HasDetailLine}">
+                                                                    <TextBlock Grid.Column="0"
+                                                                               Classes="data-s"
+                                                                               Foreground="{StaticResource TextDim}"
+                                                                               VerticalAlignment="Center"
+                                                                               Text="{Binding YearText}"/>
+                                                                    <TextBlock Grid.Column="1"
+                                                                               Classes="body" FontSize="11"
+                                                                               VerticalAlignment="Center"
+                                                                               Foreground="{StaticResource TextDim}"
+                                                                               TextTrimming="CharacterEllipsis"
+                                                                               ToolTip.Tip="{Binding PlatformsTooltip}"
+                                                                               Text="{Binding PlatformsText}"/>
+                                                                </Grid>
+                                                            </StackPanel>
+
+                                                            <Button Grid.Column="2"
+                                                                    Classes="act quiet"
+                                                                    VerticalAlignment="Center"
+                                                                    Content="{Binding AssignLabel}"
+                                                                    ToolTip.Tip="{Binding AssignAutomationName}"
+                                                                    AutomationProperties.Name="{Binding AssignAutomationName}"
+                                                                    CommandParameter="{Binding}"
+                                                                    Command="{Binding $parent[ItemsControl].((vm:LibrarySettingsViewModel)DataContext).UseCandidateCommand}"/>
+                                                        </Grid>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </ScrollViewer>
+                                </StackPanel>
+
+                                <TextBlock Classes="fielderror"
+                                           IsVisible="{Binding HasProblem}"
+                                           Text="{Binding Problem}"/>
+
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <Button Classes="act primary"
+                                            Content="{Binding SaveButtonText}"
+                                            AutomationProperties.Name="{Binding SaveButtonText}"
+                                            Command="{Binding SaveFormCommand}"/>
+                                    <Button Classes="act quiet"
+                                            Content="{Binding CancelButtonText}"
+                                            AutomationProperties.Name="{Binding CancelButtonText}"
+                                            Command="{Binding CancelFormCommand}"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                    </StackPanel>
+                </Border>
+
+            </StackPanel>
+        </ScrollViewer>
+
+    </Grid>
+
+</UserControl>

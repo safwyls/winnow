@@ -9,13 +9,17 @@ namespace Winnow.App.ViewModels;
 
 /// <summary>
 /// Window shell: hosts the Feed, library, merge queue, STATS and the settings
-/// surface (Platforms, Appearance). The rail navigates between the first four;
-/// the gear at its foot opens the settings surface. One screen at a time.
+/// surface (Platforms, Library, Appearance). The rail navigates between the
+/// first four; the gear at its foot opens the settings surface. One screen at a
+/// time.
 ///
-/// <para>The settings surface had a third section, Purchases, until TASK-59
-/// folded it into the Steam card on Platforms. This type no longer knows the
-/// import screen exists; <see cref="StoresViewModel"/> owns it now and
-/// refreshes it when the Platforms section opens.</para>
+/// <para>The settings surface originally had three sections: Platforms,
+/// Appearance and Purchases. TASK-59 folded Purchases into the Steam card on
+/// Platforms, leaving two. The Library section added later (hidden games,
+/// explicit content, hand-added games) brings the count back to three but is
+/// not a reinstatement of Purchases. This type no longer knows the import
+/// screen exists; <see cref="StoresViewModel"/> owns it now and refreshes it
+/// when the Platforms section opens.</para>
 /// </summary>
 public partial class MainWindowViewModel : ObservableObject
 {
@@ -27,15 +31,42 @@ public partial class MainWindowViewModel : ObservableObject
         AppearanceViewModel appearance,
         FeedViewModel feed,
         AccountStatsViewModel accountStats,
+        LibrarySettingsViewModel librarySettings,
+        FetchStatusViewModel? fetch = null,
         ISettingsRepository? settings = null,
-        Services.SessionJournalService? journal = null)
+        Services.SessionJournalService? journal = null,
+        ILibraryQueryRepository? libraryQueries = null)
     {
+        Fetch = fetch ?? new FetchStatusViewModel();
         Library = library;
         MergeQueue = mergeQueue;
         Stores = stores;
         Appearance = appearance;
         Feed = feed;
         AccountStats = accountStats;
+        LibrarySettings = librarySettings;
+
+        // Hiding a game, unhiding one, adding one by hand and turning the
+        // explicit filter on all change which rows the bucket query returns, so
+        // the library and the feed both hold stale answers until they ask again.
+        // Assigned here for the same reason Stores.ReloadLibrary is: this is the
+        // only type holding the settings screen and the two screens the change
+        // shows up on. The preference is copied onto the library before the
+        // reload, because the library is what passes it to the query.
+        librarySettings.ReloadLibrary = async () =>
+        {
+            library.ShowExplicitContent = librarySettings.ShowExplicitContent;
+
+            // The 18+ setting is the ceiling of the library view's rating cap,
+            // so the popover has to learn about it to say why its top step is
+            // unavailable. The clamp itself is applied in the bucket query;
+            // this only keeps the explanation honest.
+            Display!.AdultContentAllowed = librarySettings.ShowExplicitContent;
+
+            await library.LoadCommand.ExecuteAsync(null);
+            await Display!.RefreshCapCountAsync();
+            await feed.LoadCommand.ExecuteAsync(null);
+        };
 
         // Floating layout is structural (margins, radii, borders), not colour.
         appearance.Service.Applied += (_, _) => OnPropertyChanged(nameof(IsFloatingLayout));
@@ -70,9 +101,12 @@ public partial class MainWindowViewModel : ObservableObject
             library.Ramp,
             settings,
             journal: journal,
+            libraryQueries: libraryQueries,
             reloadLibrary: async () =>
             {
                 library.ShowNonGameEntries = Display!.ShowNonGameEntries;
+                library.GroupExpansions = Display!.GroupExpansions;
+                library.MaturityCap = Display!.MaturityCap;
                 await library.LoadCommand.ExecuteAsync(null);
             });
     }
@@ -89,7 +123,10 @@ public partial class MainWindowViewModel : ObservableObject
     {
         Stores,
         Appearance,
+        Library,
     }
+
+    public FetchStatusViewModel Fetch { get; }
 
     public LibraryViewModel Library { get; }
 
@@ -112,6 +149,9 @@ public partial class MainWindowViewModel : ObservableObject
     /// </summary>
     public AccountStatsViewModel AccountStats { get; }
 
+    /// <summary>SETTINGS › LIBRARY — hidden games, explicit content, hand-added games.</summary>
+    public LibrarySettingsViewModel LibrarySettings { get; }
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsLibraryVisible), nameof(IsFilterPanelVisible))]
     public partial bool IsMergeQueueVisible { get; set; }
@@ -127,6 +167,12 @@ public partial class MainWindowViewModel : ObservableObject
     [NotifyPropertyChangedFor(
         nameof(IsLibraryVisible), nameof(IsFilterPanelVisible), nameof(IsSettingsVisible))]
     public partial bool IsAppearanceVisible { get; set; }
+
+    /// <summary>The Library screen, the settings surface's third section.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(
+        nameof(IsLibraryVisible), nameof(IsFilterPanelVisible), nameof(IsSettingsVisible))]
+    public partial bool IsLibrarySettingsVisible { get; set; }
 
     /// <summary>The STATS screen, opened from the rail's ACCOUNT › STATS row.</summary>
     [ObservableProperty]
@@ -145,11 +191,12 @@ public partial class MainWindowViewModel : ObservableObject
     /// True while either settings section is up. The XAML binds the settings
     /// surface's visibility to this, and the gear's lit state to it.
     /// </summary>
-    public bool IsSettingsVisible => IsStoresVisible || IsAppearanceVisible;
+    public bool IsSettingsVisible =>
+        IsStoresVisible || IsAppearanceVisible || IsLibrarySettingsVisible;
 
     public bool IsLibraryVisible =>
         !IsMergeQueueVisible && !IsStoresVisible && !IsAppearanceVisible
-        && !IsAccountStatsVisible && !IsFeedVisible;
+        && !IsLibrarySettingsVisible && !IsAccountStatsVisible && !IsFeedVisible;
 
     /// <summary>The filter panel is part of the library screen, not of the window.</summary>
     public bool IsFilterPanelVisible => IsLibraryVisible && Library.Filters.IsOpen;
@@ -218,10 +265,29 @@ public partial class MainWindowViewModel : ObservableObject
                 ShowAppearance();
                 break;
 
+            case SettingsSection.Library:
+                await ShowLibrarySettingsAsync();
+                break;
+
             default:
                 await ShowStoresAsync();
                 break;
         }
+    }
+
+    /// <summary>
+    /// The settings surface's LIBRARY section. Refreshes on arrival for the same
+    /// reason Platforms does: every figure on it is a query rather than a stored
+    /// aggregate, and the user can have hidden a game since the last visit.
+    /// </summary>
+    [RelayCommand]
+    private async Task ShowLibrarySettingsAsync()
+    {
+        _settingsSection = SettingsSection.Library;
+        ShowLibraryPane();
+        IsLibrarySettingsVisible = true;
+
+        await LibrarySettings.RefreshAsync();
     }
 
     /// <summary>
@@ -281,6 +347,7 @@ public partial class MainWindowViewModel : ObservableObject
         IsMergeQueueVisible = false;
         IsStoresVisible = false;
         IsAppearanceVisible = false;
+        IsLibrarySettingsVisible = false;
         IsAccountStatsVisible = false;
         IsFeedVisible = false;
 

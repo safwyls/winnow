@@ -1,4 +1,4 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+<UserControl AutomationProperties.Name="Steam account import" AutomationProperties.ControlTypeOverride="Group" xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Winnow.App.ViewModels"
              x:Class="Winnow.App.Views.SteamAccountImportView"
@@ -73,7 +73,7 @@
          card's disclosure idiom, because condition 3 makes it
          the thing read BEFORE anything runs. -->
     <StackPanel Spacing="12">
-        <TextBlock Classes="display-l" FontSize="16"
+        <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="16"
                    TextWrapping="Wrap"
                    Text="{Binding SignInRouteHeading}"/>
         <TextBlock Classes="para" Text="{Binding SignInRouteExplanation}"/>
@@ -111,7 +111,7 @@
          is TASK-59's third acceptance criterion held as a fact
          of the markup rather than as a promise. -->
     <StackPanel Spacing="12">
-        <TextBlock Classes="display-l" FontSize="16"
+        <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="16"
                    TextWrapping="Wrap"
                    Text="{Binding SavedPagesRouteHeading}"/>
         <TextBlock Classes="para" Text="{Binding SavedPagesRouteExplanation}"/>

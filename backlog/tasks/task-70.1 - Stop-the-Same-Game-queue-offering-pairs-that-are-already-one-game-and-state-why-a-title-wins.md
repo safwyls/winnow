@@ -3,11 +3,11 @@ id: TASK-70.1
 title: >-
   Stop the Same Game queue offering pairs that are already one game, and state
   why a title wins
-status: In Progress
+status: Done
 assignee:
   - '@claude'
 created_date: '2026-09-02 00:12'
-updated_date: '2026-09-02 00:58'
+updated_date: '2026-09-03 16:46'
 labels: []
 dependencies: []
 parent_task_id: TASK-70
@@ -30,10 +30,10 @@ Two defects, both visible on the live library.
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 The pending queue excludes any pair whose two releases already belong to one work, using the same predicate the confirmed read already applies
-- [ ] #2 No BLOCKED card and no already-one-game message can appear for any pair the queue shows
-- [ ] #3 Each card names the reason the proposed surviving title was chosen, in one short phrase, including when the reason is only that it was added first
-- [ ] #4 Tests cover a same-work pair being absent from the pending read and each tiebreak rung producing its own reason phrase
+- [x] #1 The pending queue excludes any pair whose two releases already belong to one work, using the same predicate the confirmed read already applies
+- [x] #2 No BLOCKED card and no already-one-game message can appear for any pair the queue shows
+- [x] #3 Each card names the reason the proposed surviving title was chosen, in one short phrase, including when the reason is only that it was added first
+- [x] #4 Tests cover a same-work pair being absent from the pending read and each tiebreak rung producing its own reason phrase
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -77,3 +77,9 @@ VERBATIM, full suite across all three projects (this is the combined run after T
   Passed!  - Failed: 0, Passed: 2497, Skipped: 0, Total: 2497, Duration: 52 s  - Winnow.Tests.dll (net10.0)
 Build: 0 Warning(s), 0 Error(s) under TreatWarningsAsErrors. Built and run via --artifacts-path into the scratchpad because the user is holding src/Winnow.App/bin. Not committed.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Stopped the queue offering pairs that are already one game, and made each card name why its surviving title won. Landed in commit 1b602a1. Verified: MergeCandidateRepository.cs:71 carries AND l.work_id <> r.work_id in the pending query, with the comment at line 47 recording that it is the same predicate the confirmed read applies, which is exactly what criterion 1 asks; with same-work pairs excluded at the query, no already-one-game card can reach the screen. MergeSurvivorReason enumerates every rung - IgdbMatch, NamedByStore, MostStoreEntries, AddedFirst, ChosenByYou, AlreadyOneGame - and SurvivorLadderTests proves each one names itself: Every_rung_reports_a_reason_of_its_own, A_pair_discriminated_only_by_id_admits_it_was_added_first for the added-first case criterion 3 calls out, plus The_ladder_is_order_independent and One_work_on_both_sides_is_already_one_game. Scoped run of the identity-link and merge test families passed 100 of 100.
+<!-- SECTION:FINAL_SUMMARY:END -->

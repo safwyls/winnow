@@ -1,16 +1,95 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Winnow.App.ViewModels"
+             xmlns:conv="using:Winnow.App.Converters"
              xmlns:views="using:Winnow.App.Views"
+             xmlns:lists="using:Winnow.App.ViewModels.Lists"
              x:Class="Winnow.App.Views.GameDetailsView"
              x:DataType="vm:GameDetailsViewModel"
-             Focusable="True">
+             Focusable="True"
+             AutomationProperties.Name="{Binding Title, StringFormat='Details of {0}'}"
+             AutomationProperties.ControlTypeOverride="Window">
 
     <!-- Game detail modal (§10). Four bands: identity, history, actions, rest.
-         Rows appear when their data exists. No flyouts (focus adorner
-         cannot render inside a popup). -->
+         Rows appear when their data exists. One popup: the action band's
+         menu, which draws its own focus mark because the global adorner
+         does not render inside a popup. Everything else is inline in the
+         modal's own tree for the same reason.
+
+         A label section heading in Band 4 is earned by a list of rows the
+         user can act on; ABOUT is the single prose exception. A fact about
+         the game goes in Band 1, a fact about this copy goes in the left
+         column, a picture goes inside ABOUT, and an act goes in the More
+         menu with its status on the strip.
+
+         Two inks, one line between them. Body prose — a paragraph the
+         user reads, a section blurb, the gap rail's caption — takes
+         Text, §2's primary ink. Labels, metadata, status lines and
+         landed-act confirmations take TextDim. A prose run states no
+         Foreground of its own: the .body type style already gives it
+         Text, so omitting the override IS the correct declaration.
+         Adding a Foreground to a prose TextBlock is the mistake. -->
+
+    <!-- The card scales against the window, not the display: the window
+         is what the user sized, and a display-relative card would
+         overflow a small window on a big screen. There is a mechanical
+         reason too — a Window's own Bounds never depend on what is
+         inside it, so a cap bound to it cannot feed back into layout,
+         while a cap bound to the modal's own host could.
+
+         Each cap is a fraction of the window, floored at the absolute
+         value the modal shipped with. The fractions and the floors are
+         measured values from docs/spikes/details-modal-scale.md, not
+         chosen ones.
+
+         CardWidthCap: half the window, capped at 1582. The number stays
+         but no longer has a derivation: it was the card width at which
+         the in-modal hero reached IGDB's native 1280x720, and the hero
+         is gone (screenshots now open in the lightbox overlay). What
+         still argues for a ceiling is that nothing in the card rewards
+         more width: the object column is a fixed 200 and prose is
+         bounded by the reading measure (design-system.md §3).
+
+         CardHeightCap: two-thirds of the window. No ceiling, because
+         nothing in the card has a native height that stops rewarding
+         growth — the bands are bounded scroll regions, so more height
+         is more content on screen.
+
+         At the card's MinWidth of 700 the right column is still
+         420px — the width every measurement in design-system.md §10.1
+         and §10.3 was taken against. A future addition may assume
+         nothing wider. -->
+    <UserControl.Resources>
+        <conv:ScaledLength x:Key="CardWidthCap" Fraction="0.5" Least="860" Most="1582"/>
+        <conv:ScaledLength x:Key="CardHeightCap" Fraction="0.667" Least="720"/>
+    </UserControl.Resources>
 
     <UserControl.Styles>
+
+        <Style Selector="Expander.gog-notes /template/ ToggleButton#ExpanderHeader">
+            <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+            <Setter Property="Background" Value="{StaticResource Surface}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="FocusAdorner" Value="{x:Null}"/>
+        </Style>
+        <Style Selector="Expander.gog-notes /template/ ToggleButton#ExpanderHeader:pointerover /template/ Border#ToggleButtonBackground, Expander.gog-notes /template/ ToggleButton#ExpanderHeader:pressed /template/ Border#ToggleButtonBackground">
+            <Setter Property="Background" Value="{StaticResource Surface}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource TextDim}"/>
+        </Style>
+        <Style Selector="Expander.gog-notes /template/ ToggleButton#ExpanderHeader:pointerover /template/ ContentPresenter#PART_ContentPresenter, Expander.gog-notes /template/ ToggleButton#ExpanderHeader:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+        </Style>
+        <Style Selector="Expander.gog-notes /template/ ToggleButton#ExpanderHeader /template/ Path#ExpandCollapseChevron, Expander.gog-notes /template/ ToggleButton#ExpanderHeader:pointerover /template/ Path#ExpandCollapseChevron, Expander.gog-notes /template/ ToggleButton#ExpanderHeader:pressed /template/ Path#ExpandCollapseChevron">
+            <Setter Property="Stroke" Value="{StaticResource Text}"/>
+        </Style>
+        <Style Selector="Expander.gog-notes /template/ ToggleButton#ExpanderHeader /template/ Border#ExpandCollapseChevronBorder, Expander.gog-notes /template/ ToggleButton#ExpanderHeader:pointerover /template/ Border#ExpandCollapseChevronBorder, Expander.gog-notes /template/ ToggleButton#ExpanderHeader:pressed /template/ Border#ExpandCollapseChevronBorder">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Expander.gog-notes /template/ ToggleButton#ExpanderHeader:focus-visible /template/ Border#ToggleButtonBackground">
+            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+        </Style>
 
         <!-- The modal's own scrollbar is an interior control, not one at the
              window edge, so it opts out of the resize-border inset (§9). -->
@@ -44,8 +123,79 @@
             <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
         </Style>
 
-        <!-- Azure is the palette's boring one and does the boring work (§2):
-             every outbound link in the panel, and nothing else. -->
+        <!-- A real CheckBox, templated rather than restyled, so it toggles
+             on Space and reports its state to automation. §12.2's rule
+             holds: a checked box is Volt whoever ticked it. Inline in the
+             modal's own tree — never a flyout — because Avalonia's global
+             FocusAdorner does not render inside a popup (§10.7, §12.3). -->
+        <Style Selector="CheckBox.listtick">
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="MinHeight" Value="0"/>
+            <Setter Property="Height" Value="26"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Panel Background="Transparent">
+                        <Border Name="Ring"
+                                Margin="-4,0"
+                                CornerRadius="{StaticResource RadiusControl}"
+                                BorderBrush="{StaticResource Volt}"
+                                BorderThickness="2"
+                                Opacity="0"
+                                IsHitTestVisible="False"/>
+                        <Border Name="Row"
+                                Margin="-4,0"
+                                Padding="4,0"
+                                CornerRadius="{StaticResource RadiusControl}"
+                                Background="Transparent">
+                            <Grid ColumnDefinitions="14,10,*">
+                                <Panel Grid.Column="0" VerticalAlignment="Center">
+                                    <Border Name="Box" Width="14" Height="14"
+                                            CornerRadius="3"
+                                            Background="{StaticResource SurfaceRaised}"
+                                            BorderBrush="{StaticResource Line}"
+                                            BorderThickness="1"/>
+                                    <Path Name="Tick"
+                                          Data="M 0,3 L 2.6,5.6 L 7.4,0.8"
+                                          Stroke="{StaticResource VoltInk}"
+                                          StrokeThickness="1.8"
+                                          StrokeLineCap="Round"
+                                          StrokeJoin="Round"
+                                          Width="8" Height="7"
+                                          Opacity="0"
+                                          HorizontalAlignment="Center"
+                                          VerticalAlignment="Center"/>
+                                </Panel>
+                                <ContentPresenter Grid.Column="2"
+                                                  Content="{TemplateBinding Content}"
+                                                  VerticalAlignment="Center"/>
+                            </Grid>
+                        </Border>
+                    </Panel>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        <Style Selector="CheckBox.listtick:focus-visible /template/ Border#Ring">
+            <Setter Property="Opacity" Value="1"/>
+        </Style>
+        <Style Selector="CheckBox.listtick:pointerover /template/ Border#Row">
+            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
+        </Style>
+        <Style Selector="CheckBox.listtick:pointerover /template/ Border#Box">
+            <Setter Property="BorderBrush" Value="{StaticResource TextDim}"/>
+        </Style>
+        <Style Selector="CheckBox.listtick:checked /template/ Border#Box">
+            <Setter Property="Background" Value="{StaticResource Volt}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+        </Style>
+        <Style Selector="CheckBox.listtick:checked /template/ Path#Tick">
+            <Setter Property="Opacity" Value="1"/>
+        </Style>
+
+        <!-- Azure idiom: outbound links and the secondary controls
+             beside them. Button.secondary is the Text-ink idiom for
+             a control that acts on this panel rather than leaving it. -->
         <Style Selector="Button.link">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="1"/>
@@ -144,6 +294,78 @@
             <Setter Property="Background" Value="{StaticResource SurfaceRaisedFaint}"/>
         </Style>
 
+        <!-- The title search field in the left column's IGDB control.
+             Same treatment as the LIBRARY settings screen's fields:
+             Well cut into the card, Line border at rest, Volt ring on
+             focus on a border whose thickness never changes. Inline in
+             the modal's own tree, never a flyout. -->
+        <Style Selector="TextBox.field">
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="MinHeight" Value="30"/>
+            <Setter Property="Padding" Value="10,0"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
+            <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+            <Setter Property="SelectionBrush" Value="{StaticResource VoltSelection}"/>
+            <Setter Property="CaretBrush" Value="{StaticResource Volt}"/>
+        </Style>
+        <Style Selector="TextBox.field /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="{StaticResource Well}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+        <Style Selector="TextBox.field:pointerover /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="{StaticResource Well}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+        </Style>
+        <Style Selector="TextBox.field:focus /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="{StaticResource Well}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+        </Style>
+        <Style Selector="TextBox.field /template/ TextBlock#PART_Watermark">
+            <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
+        </Style>
+
+        <!-- The refetch status field. TextDim while an act is running and
+             after it lands, Amber when it did not: the same register the rest
+             of this panel uses for a status line and for a refusal. The ink is
+             a class rather than a bound brush, so no view model reaches for a
+             theme resource. -->
+        <Style Selector="TextBlock.actstatus">
+            <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
+        </Style>
+        <Style Selector="TextBlock.actstatus.problem">
+            <Setter Property="Foreground" Value="{StaticResource Amber}"/>
+        </Style>
+
+        <!-- A screenshot thumbnail. A real Button, so it is a Tab stop with
+             the panel's own drawn focus ring; the selected shot keeps a Volt
+             edge on a border whose thickness never changes (§10.7). -->
+        <Style Selector="Button.shot">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="2"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="Button.shot /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="{StaticResource LineSoft}"/>
+            <Setter Property="Padding" Value="0"/>
+        </Style>
+        <Style Selector="Button.shot:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="BorderBrush" Value="{StaticResource TextDim}"/>
+        </Style>
+        <Style Selector="Button.shot.picked /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+        </Style>
+        <Style Selector="Button.shot:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+        </Style>
+
     </UserControl.Styles>
 
     <Panel>
@@ -154,300 +376,1283 @@
         <Border Name="Scrim" Background="{StaticResource ModalScrim}" PointerPressed="OnScrimPressed"/>
 
         <!-- Tab cycles inside the card. A modal that leaks focus into the
-             library behind it is a modal in appearance only (§8). -->
+             library behind it is a modal in appearance only (§8).
+             MaxWidth and MaxHeight come from the scaling resources
+             above rather than from literals here. -->
         <Border Name="Card"
                 Background="{StaticResource Surface}"
                 BorderBrush="{StaticResource Line}"
                 BorderThickness="1"
                 CornerRadius="{StaticResource RadiusTile}"
                 BoxShadow="0 18 48 0 #A6000000"
-                MinWidth="700" MaxWidth="860" MaxHeight="720"
+                MinWidth="700"
+                MaxWidth="{Binding $parent[Window].Bounds.Width,
+                                   Converter={StaticResource CardWidthCap}}"
+                MaxHeight="{Binding $parent[Window].Bounds.Height,
+                                    Converter={StaticResource CardHeightCap}}"
                 Margin="40"
                 KeyboardNavigation.TabNavigation="Cycle"
                 HorizontalAlignment="Center" VerticalAlignment="Center">
 
-            <!-- Two columns: LEFT is the object (art, appid, path),
-                 RIGHT is your relationship (playtime, gap, actions, updates). -->
-            <Grid ColumnDefinitions="200,*" ColumnSpacing="26" Margin="26,24,26,0">
+            <Panel>
+
+                <!-- The game's own art behind the modal card (§5.5). The
+                     source is the modal's own cover bitmap, the one it
+                     already asks the cover cache for at CoverWidth and
+                     full saturation (§10 — the ramp is a scanning aid
+                     and the user has finished scanning). One request, one
+                     decode, no second image path.
+
+                     That bitmap is 200px wide and the card scales up
+                     to 1582, so the upscale is what softens it. Avalonia's effect
+                     pipeline is closed (§5.4) and nothing here needs it
+                     to be open.
+
+                     No cover means a null Source, nothing drawn, and
+                     ArtVeil over the card's own opaque Surface resolving
+                     to Surface exactly — the flat card, unmoved.
+
+                     Clipped to the card's own radius and hit-tests
+                     nothing; the scrim behind the card is what dismisses,
+                     and a press must still reach it. -->
+                <Border CornerRadius="{StaticResource RadiusTile}"
+                        ClipToBounds="True" IsHitTestVisible="False">
+                    <Panel>
+                        <Image Source="{Binding Cover}" Stretch="UniformToFill"/>
+                        <!-- The veil: the theme's own Surface at
+                             ArtVeilAlpha, a token rather than a literal.
+                             The art contributes what is left. Every ink
+                             this panel sets text in clears AA over this
+                             field against any cover, in every theme,
+                             walked by ThemeContrastTests. -->
+                        <Border Background="{StaticResource ArtVeil}"/>
+                    </Panel>
+                </Border>
+
+                <!-- Two columns: LEFT is the object (art, appid, path),
+                     RIGHT is your relationship (playtime, gap, actions, updates). -->
+                <Grid ColumnDefinitions="200,*" ColumnSpacing="26" Margin="26,24,26,0">
 
 
-                <!-- ══ Right: your relationship with it ═════════════════════ -->
-                <Grid Grid.Column="1" RowDefinitions="Auto,Auto,Auto">
+                    <!-- ══ Right: your relationship with it ═════════════════════ -->
+                    <Grid Grid.Column="1" RowDefinitions="Auto,Auto,*">
 
-                    <StackPanel Grid.Row="0" Spacing="16">
+                        <StackPanel Grid.Row="0" Spacing="16">
 
-                        <!-- ── Band 1: what is this ───────────────────────── -->
-                        <StackPanel Spacing="6">
-                            <Grid ColumnDefinitions="*,Auto">
-                                <SelectableTextBlock Grid.Column="0"
-                                           Classes="display-l copyable"
-                                           Focusable="True"
-                                           FontSize="26"
-                                           Text="{Binding Title}"
-                                           TextWrapping="Wrap"
-                                           LineHeight="30"
-                                           Margin="0,0,12,0"/>
-                                <Button Grid.Column="1" Classes="quiet"
-                                        Name="CloseButton"
-                                        VerticalAlignment="Top"
-                                        Click="OnClosePressed"
-                                        ToolTip.Tip="Close (Esc)">
-                                    <TextBlock Classes="body-l"
-                                               Foreground="{StaticResource TextDim}"
-                                               Text="&#x00D7;"/>
-                                </Button>
-                            </Grid>
-
-                            <!-- Year and publisher: three typefaces distinguish
-                                 the three kinds of content (§3). -->
-                            <StackPanel Orientation="Horizontal"
-                                        IsVisible="{Binding HasIdentityLine}">
-                                <SelectableTextBlock Classes="data copyable"
-                                           Focusable="False"
-                                           FontSize="12"
-                                           VerticalAlignment="Center"
-                                           Foreground="{StaticResource TextDim}"
-                                           Text="{Binding IdentityYearText}"/>
-                                <SelectableTextBlock Classes="body copyable"
-                                           Focusable="False"
-                                           FontSize="12"
-                                           VerticalAlignment="Center"
-                                           Foreground="{StaticResource TextDim}"
-                                           IsVisible="{Binding HasPublisher}"
-                                           Text="{Binding Publisher}"/>
-                            </StackPanel>
-
-                            <!-- A provisional title is an appid wearing a
-                                 title's clothes. Saying so is the difference
-                                 between "still loading" and "broken". -->
-                            <TextBlock Classes="body" FontSize="12"
-                                       LineHeight="17"
-                                       TextWrapping="Wrap"
-                                       Foreground="{StaticResource TextDim}"
-                                       IsVisible="{Binding TitleIsProvisional}"
-                                       Text="{Binding ProvisionalNote}"/>
-                        </StackPanel>
-
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <!-- Every store this game is on. The per-entry rows
-                                 in ALSO COVERS below are the breakdown; this is
-                                 the header saying which platforms the title
-                                 exists on at all. -->
-                            <ItemsControl ItemsSource="{Binding StoreChips}"
-                                          ToolTip.Tip="{Binding StoreNames}"
-                                          VerticalAlignment="Center">
-                                <ItemsControl.ItemsPanel>
-                                    <ItemsPanelTemplate>
-                                        <StackPanel Orientation="Horizontal" Spacing="6"/>
-                                    </ItemsPanelTemplate>
-                                </ItemsControl.ItemsPanel>
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <Border Classes="store-chip" Padding="7,3">
-                                            <TextBlock Text="{Binding}"/>
-                                        </Border>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                            <Border Background="{StaticResource SurfaceRaised}"
-                                    CornerRadius="3" Padding="7,3" VerticalAlignment="Center">
-                                <TextBlock Classes="body" FontSize="11"
-                                           Foreground="{StaticResource TextDim}"
-                                           Text="{Binding BucketLabel}"/>
-                            </Border>
-                            <!-- Install state: null (no source looked) is
-                                 hidden, never shown as "Unknown" (§10.5). -->
-                            <Border Background="{StaticResource SurfaceRaised}"
-                                    CornerRadius="3" Padding="7,3" VerticalAlignment="Center"
-                                    IsVisible="{Binding HasInstallState}">
-                                <TextBlock Classes="body" FontSize="11"
-                                           Foreground="{StaticResource TextDim}"
-                                           Text="{Binding InstallText}"/>
-                            </Border>
-                        </StackPanel>
-
-                        <!-- ── Band 2: my history ─────────────────────────── -->
-                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="26">
-
-                            <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Top">
-                                <TextBlock Classes="data"
-                                           FontSize="30" LineHeight="34"
-                                           Text="{Binding PlaytimeText}"/>
-                                <TextBlock Classes="label" FontSize="10" Text="PLAYED"/>
-                            </StackPanel>
-
-                            <!-- The gap: last session → now, with what shipped
-                                 in between. §10's signature. -->
-                            <StackPanel Grid.Column="1" Spacing="7"
-                                        IsVisible="{Binding HasGap}">
+                            <!-- ── Band 1: what is this ───────────────────────── -->
+                            <!-- The band is a named group in the UIA tree.
+                                 AccessibilityView=Control is what un-prunes a
+                                 StackPanel, whose own peer reports itself out of
+                                 the control view; AutomationControlType.None maps
+                                 to the UIA Group type, so it reads as a named
+                                 group rather than as nothing. Verified against
+                                 the Avalonia 11.3.20 source (TASK-129). -->
+                            <StackPanel Spacing="6"
+                                        AutomationProperties.Name="{Binding IdentityGroupName}"
+                                        AutomationProperties.AccessibilityView="Control">
                                 <Grid ColumnDefinitions="*,Auto">
-                                    <TextBlock Grid.Column="0" Classes="label"
-                                               FontSize="10" Text="SINCE YOU PLAYED"/>
-                                    <TextBlock Grid.Column="1" Classes="data"
-                                               FontSize="14"
-                                               Foreground="{StaticResource Text}"
-                                               Text="{Binding IdleText}"/>
+                                    <!-- HeadingLevel is one of the four attached
+                                         properties Avalonia 11.3.20 actually
+                                         wires to Windows UIA; the title is the
+                                         modal's level-1 heading. The name comes
+                                         from Text, because a TextBlock peer
+                                         ignores AutomationProperties.Name. -->
+                                    <SelectableTextBlock Grid.Column="0"
+                                               Classes="display-l copyable"
+                                               Focusable="True"
+                                               FontSize="26"
+                                               AutomationProperties.HeadingLevel="1"
+                                               Text="{Binding Title}"
+                                               TextWrapping="Wrap"
+                                               LineHeight="30"
+                                               Margin="0,0,12,0"/>
+                                    <Button Grid.Column="1" Classes="quiet"
+                                            Name="CloseButton"
+                                            VerticalAlignment="Top"
+                                            Click="OnClosePressed"
+                                            AutomationProperties.Name="{Binding CloseAutomationName}"
+                                            ToolTip.Tip="Close (Esc)">
+                                        <TextBlock Classes="body-l"
+                                                   Foreground="{StaticResource TextDim}"
+                                                   Text="&#x00D7;"/>
+                                    </Button>
                                 </Grid>
 
-                                <views:GapRail Marks="{Binding RailMarks}"
-                                               StartBrush="{StaticResource Volt}"
-                                               EndBrush="{StaticResource Line}"
-                                               MarkBrush="{StaticResource Flare}"
-                                               MarkRingBrush="{StaticResource Surface}"/>
+                                <!-- Year and publisher: three typefaces distinguish
+                                     the three kinds of content (§3). -->
+                                <StackPanel Orientation="Horizontal"
+                                            IsVisible="{Binding HasIdentityLine}">
+                                    <SelectableTextBlock Classes="data copyable"
+                                               Focusable="False"
+                                               FontSize="12"
+                                               VerticalAlignment="Center"
+                                               Foreground="{StaticResource TextDim}"
+                                               Text="{Binding IdentityYearText}"/>
+                                    <SelectableTextBlock Classes="body copyable"
+                                               Focusable="False"
+                                               FontSize="12"
+                                               VerticalAlignment="Center"
+                                               Foreground="{StaticResource TextDim}"
+                                               IsVisible="{Binding HasPublisher}"
+                                               Text="{Binding Publisher}"/>
+                                </StackPanel>
 
-                                <Grid ColumnDefinitions="Auto,*,Auto">
-                                    <TextBlock Grid.Column="0" Classes="data-s"
-                                               Text="{Binding LastPlayedText}"/>
-                                    <TextBlock Grid.Column="2" Classes="data-s"
-                                               Text="today"/>
-                                </Grid>
+                                <!-- The reception line: up to three figures, each
+                                     named for the population behind it and each
+                                     carrying its count, because a 9 from four
+                                     people and a 9 from four thousand are
+                                     different claims. Never blended, never a
+                                     verdict of Winnow's own. Steam's label is
+                                     not on the line: it arrives with the
+                                     percentage and the count on hover.
 
+                                     No source with a figure means no row in
+                                     work_ratings, which means no line — never a
+                                     zero and never an empty scale.
+
+                                     A WrapPanel, not a horizontal StackPanel:
+                                     "IGDB CRITICS 85 42 critic scores" beside
+                                     two more groups does not fit the 420px
+                                     column at the card's MinWidth, and the
+                                     line's second row is cheaper than trimming
+                                     a count away. -->
+                                <ItemsControl ItemsSource="{Binding Reception.Figures}"
+                                              IsVisible="{Binding ShowReception}"
+                                              AutomationProperties.Name="{Binding Reception.AutomationName}"
+                                              AutomationProperties.AccessibilityView="Control"
+                                              AutomationProperties.ControlTypeOverride="Group">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <WrapPanel Orientation="Horizontal"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="vm:ReceptionFigureViewModel">
+                                            <StackPanel Orientation="Horizontal"
+                                                        Spacing="6"
+                                                        Margin="0,0,14,0"
+                                                        ToolTip.Tip="{Binding Tooltip}"
+                                                        AutomationProperties.Name="{Binding AutomationName}"
+                                                        AutomationProperties.AccessibilityView="Control">
+                                                <TextBlock Classes="label" FontSize="10"
+                                                           VerticalAlignment="Center"
+                                                           Text="{Binding Source}"/>
+                                                <TextBlock Classes="data" FontSize="13"
+                                                           VerticalAlignment="Center"
+                                                           Foreground="{StaticResource Text}"
+                                                           Text="{Binding Value}"/>
+                                                <TextBlock Classes="data-s"
+                                                           VerticalAlignment="Center"
+                                                           Text="{Binding Count}"/>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+
+                                <!-- A provisional title is an appid wearing a
+                                     title's clothes. Saying so is the difference
+                                     between "still loading" and "broken". It keeps
+                                     TextDim because it reports the state of the
+                                     title above it: a status line in the identity
+                                     block, not prose of the panel. -->
                                 <TextBlock Classes="body" FontSize="12"
                                            LineHeight="17"
                                            TextWrapping="Wrap"
                                            Foreground="{StaticResource TextDim}"
-                                           Text="{Binding GapCaption}"/>
-
-                                <!-- §1's longitudinal record, at the resolution
-                                     the data supports: a sentence, not a chart
-                                     through one point. -->
-                                <TextBlock Classes="body" FontSize="12"
-                                           LineHeight="17"
-                                           TextWrapping="Wrap"
-                                           Foreground="{StaticResource TextDim}"
-                                           IsVisible="{Binding HasRecordLine}"
-                                           Text="{Binding RecordLine}"/>
+                                           IsVisible="{Binding TitleIsProvisional}"
+                                           Text="{Binding ProvisionalNote}"/>
                             </StackPanel>
 
-                            <!-- No date, no rail. Two different absences, and
-                                 the copy keeps them apart. -->
-                            <StackPanel Grid.Column="1" Spacing="7"
-                                        VerticalAlignment="Center"
-                                        IsVisible="{Binding LacksGap}">
-                                <TextBlock Classes="body" FontSize="13"
-                                           TextWrapping="Wrap"
-                                           Foreground="{StaticResource TextDim}"
-                                           Text="{Binding NoGapText}"/>
-                                <TextBlock Classes="body" FontSize="12"
-                                           LineHeight="17"
-                                           TextWrapping="Wrap"
-                                           Foreground="{StaticResource TextDim}"
-                                           IsVisible="{Binding HasRecordLine}"
-                                           Text="{Binding RecordLine}"/>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <!-- Every store this game is on. The per-entry rows
+                                     in ALSO COVERS below are the breakdown; this is
+                                     the header saying which platforms the title
+                                     exists on at all. -->
+                                <ItemsControl ItemsSource="{Binding StoreChips}"
+                                              ToolTip.Tip="{Binding StoreNames}"
+                                              VerticalAlignment="Center">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Horizontal" Spacing="6"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Classes="store-chip" Padding="7,3">
+                                                <TextBlock Text="{Binding}"/>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <Border Background="{StaticResource SurfaceRaised}"
+                                        CornerRadius="3" Padding="7,3" VerticalAlignment="Center">
+                                    <TextBlock Classes="body" FontSize="11"
+                                               Foreground="{StaticResource TextDim}"
+                                               Text="{Binding BucketLabel}"/>
+                                </Border>
+                                <!-- Install state: null (no source looked) is
+                                     hidden, never shown as "Unknown" (§10.5). -->
+                                <Border Background="{StaticResource SurfaceRaised}"
+                                        CornerRadius="3" Padding="7,3" VerticalAlignment="Center"
+                                        IsVisible="{Binding HasInstallState}">
+                                    <TextBlock Classes="body" FontSize="11"
+                                               Foreground="{StaticResource TextDim}"
+                                               Text="{Binding InstallText}"/>
+                                </Border>
                             </StackPanel>
-                        </Grid>
 
-                        <!-- ── Band 3: get me in ──────────────────────────── -->
-                        <StackPanel Orientation="Horizontal" Spacing="10">
-                            <!-- steam://run when it is on disk, steam://install
-                                 when it is not. The button is named for what it
-                                 does, so it cannot promise the wrong thing. -->
-                            <Button Classes="launch"
-                                    Name="LaunchButton"
-                                    IsVisible="{Binding HasPrimaryAction}"
-                                    Content="{Binding PrimaryAction.Label}"
-                                    ToolTip.Tip="{Binding PrimaryAction.Tooltip}"
-                                    Command="{Binding Tile.PrimaryActionCommand}"
-                                    CommandParameter="{Binding Tile}"/>
+                            <!-- ── Band 2: my history ─────────────────────────── -->
+                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="26"
+                                  AutomationProperties.Name="{Binding HistoryGroupName}"
+                                  AutomationProperties.AccessibilityView="Control">
 
-                            <ItemsControl ItemsSource="{Binding Links}">
-                                <ItemsControl.ItemsPanel>
-                                    <ItemsPanelTemplate>
-                                        <StackPanel Orientation="Horizontal" Spacing="10"/>
-                                    </ItemsPanelTemplate>
-                                </ItemsControl.ItemsPanel>
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate DataType="vm:GameLink">
-                                        <Button Classes="link"
-                                                Click="OnLinkPressed"
-                                                ToolTip.Tip="{Binding Tooltip}">
-                                            <TextBlock Classes="body" FontSize="12"
-                                                       Text="{Binding Label}"/>
-                                        </Button>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
+                                <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Top">
+                                    <TextBlock Classes="data"
+                                               FontSize="30" LineHeight="34"
+                                               Text="{Binding PlaytimeText}"/>
+                                    <TextBlock Classes="label" FontSize="10" Text="PLAYED"/>
+                                </StackPanel>
 
-                            <!-- Local folder, not a file: URI — GameLink refuses
-                                 that scheme on purpose and the launcher takes a
-                                 DirectoryInfo directly. -->
-                            <Button Classes="link"
-                                    IsVisible="{Binding HasOpenableFolder}"
-                                    Click="OnOpenFolderPressed"
-                                    ToolTip.Tip="{Binding InstallPath}">
-                                <TextBlock Classes="body" FontSize="12" Text="Open folder"/>
-                            </Button>
-                        </StackPanel>
+                                <!-- The lifetime axis: this game's release to
+                                     today, in two zones. The left zone is play
+                                     whose AMOUNT Winnow knows and whose SHAPE it
+                                     does not, drawn as a flat band and never as
+                                     a slope, because the reconstructed series
+                                     stamps everything before Steam Replay's
+                                     coverage as one figure at one instant. The
+                                     right zone is one bar per closed month, from
+                                     the month-end readings that are the only
+                                     genuinely per-month data in the table.
+                                     Sessions are not mixed in: they exist only
+                                     from Winnow's own install and would make a
+                                     game played for years before it look
+                                     dormant for those years. -->
+                                <StackPanel Grid.Column="1" Spacing="7"
+                                            IsVisible="{Binding ShowAxis}">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBlock Grid.Column="0" Classes="label"
+                                                   FontSize="10" Text="SINCE YOU PLAYED"/>
+                                        <TextBlock Grid.Column="1" Classes="data"
+                                                   FontSize="14"
+                                                   Foreground="{StaticResource Text}"
+                                                   Text="{Binding IdleText}"/>
+                                    </Grid>
 
-                    </StackPanel>
+                                    <views:PlayAxis Bars="{Binding Axis.Bars}"
+                                                    UnmeasuredFraction="{Binding Axis.UnmeasuredFraction}"
+                                                    StopFraction="{Binding Axis.StopFraction}"
+                                                    Marks="{Binding Axis.Marks}"
+                                                    NearBrush="{StaticResource Volt}"
+                                                    FarBrush="{StaticResource Line}"
+                                                    MarkBrush="{StaticResource Flare}"
+                                                    MarkRingBrush="{StaticResource Surface}"
+                                                    ToolTip.Tip="{Binding AxisTooltip}"/>
 
-                    <!-- The seam between deciding and reading. It spans the
-                         right column only: the left column keeps going. -->
-                    <Border Grid.Row="1" Height="1" Margin="0,22,0,0"
-                            Background="{StaticResource Line}"/>
+                                    <Grid ColumnDefinitions="Auto,*,Auto">
+                                        <TextBlock Grid.Column="0" Classes="data-s"
+                                                   Text="{Binding AxisStartText}"/>
+                                        <TextBlock Grid.Column="2" Classes="data-s"
+                                                   Text="today"/>
+                                    </Grid>
 
-                <!-- ══ Band 4: the rest ═════════════════════════════════════ -->
-                <!-- Breathing room is the content's margin, not ScrollViewer
-                     padding (padding is not counted in desired height). -->
-                <ScrollViewer Grid.Row="2"
-                              Classes="inner"
-                              HorizontalScrollBarVisibility="Disabled"
-                              VerticalScrollBarVisibility="Auto">
-                    <StackPanel Spacing="22" Margin="0,18,0,24">
+                                    <!-- Everything the axis draws is restated in
+                                         words (§10.2, §8), and the words are what
+                                         carry the fact for a reader who cannot
+                                         resolve a 7px dot. The carrier of a fact
+                                         is primary text, so these take .body's
+                                         own Text ink and state no Foreground.
+                                         The first names whose hours these are —
+                                         the user's own, never a player
+                                         population, which no source Winnow can
+                                         reach reports. -->
+                                    <TextBlock Classes="body" FontSize="12"
+                                               LineHeight="17"
+                                               TextWrapping="Wrap"
+                                               Text="{Binding AxisOwnHoursNote}"/>
 
-                        <!-- ALSO COVERS. The user's fourth complaint answered:
-                             this game also covers these titles. First in the
-                             band because it is a fact about identity, and it
-                             draws only when there is coverage to draw.
+                                    <TextBlock Classes="body" FontSize="12"
+                                               LineHeight="17"
+                                               TextWrapping="Wrap"
+                                               IsVisible="{Binding ShowAxisUnmeasured}"
+                                               Text="{Binding AxisUnmeasuredNote}"/>
 
-                             Every row carries ONE entry's minutes beside THAT
-                             SAME entry's last-played. The total above them is a
-                             sum across stores - Winnow's own composite, which no
-                             source reports - and it carries its own coherent
-                             date, the latest anywhere in the group. The rows
-                             stay on screen underneath so the composite can be
-                             checked against its parts.
+                                    <TextBlock Classes="body" FontSize="12"
+                                               LineHeight="17"
+                                               TextWrapping="Wrap"
+                                               Text="{Binding AxisLastSessionLine}"/>
+                                </StackPanel>
 
-                             Achievements are per release (6.2), on the release's
-                             own row. There is no combined percentage here and no
-                             property that could produce one. -->
-                        <StackPanel IsVisible="{Binding ShowCoverage}">
-                        <StackPanel Spacing="10"
-                                    DataContext="{Binding Coverage}"
-                                    x:DataType="vm:GameCoverageViewModel">
-                            <TextBlock Classes="label" Text="{Binding Heading}"/>
+                                <!-- No release year, or fewer than two month-end
+                                     readings, means no axis: there is no measured
+                                     month to draw and a single flat line would be
+                                     the misleading drawing. The shipped gap rail
+                                     stands unchanged in that case. -->
+                                <StackPanel Grid.Column="1" Spacing="7"
+                                            IsVisible="{Binding ShowGapRail}">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBlock Grid.Column="0" Classes="label"
+                                                   FontSize="10" Text="SINCE YOU PLAYED"/>
+                                        <TextBlock Grid.Column="1" Classes="data"
+                                                   FontSize="14"
+                                                   Foreground="{StaticResource Text}"
+                                                   Text="{Binding IdleText}"/>
+                                    </Grid>
 
-                            <Grid ColumnDefinitions="Auto,Auto,*,Auto" ColumnSpacing="12">
-                                <TextBlock Grid.Column="0" Classes="label" FontSize="10"
-                                           VerticalAlignment="Center"
-                                           Text="{Binding TotalLabel}"/>
-                                <TextBlock Grid.Column="1" Classes="data"
-                                           FontSize="18"
-                                           VerticalAlignment="Center"
-                                           Foreground="{StaticResource Text}"
-                                           Text="{Binding TotalPlaytimeText}"/>
-                                <TextBlock Grid.Column="2" Classes="body" FontSize="12"
-                                           VerticalAlignment="Center"
-                                           TextWrapping="Wrap"
-                                           Foreground="{StaticResource TextDim}"
-                                           Text="{Binding TotalNote}"/>
-                                <TextBlock Grid.Column="3" Classes="data-s"
-                                           VerticalAlignment="Center"
-                                           Text="{Binding TotalLastPlayedText}"/>
+                                    <views:GapRail Marks="{Binding RailMarks}"
+                                                   StartBrush="{StaticResource Volt}"
+                                                   EndBrush="{StaticResource Line}"
+                                                   MarkBrush="{StaticResource Flare}"
+                                                   MarkRingBrush="{StaticResource Surface}"/>
+
+                                    <Grid ColumnDefinitions="Auto,*,Auto">
+                                        <TextBlock Grid.Column="0" Classes="data-s"
+                                                   Text="{Binding LastPlayedText}"/>
+                                        <TextBlock Grid.Column="2" Classes="data-s"
+                                                   Text="today"/>
+                                    </Grid>
+
+                                    <!-- Both runs are prose: §10.2 says everything
+                                         the rail draws is restated in words, and
+                                         §8 makes those words the carrier of the
+                                         fact for a user who cannot resolve a 7px
+                                         dot. The carrier of a fact is primary text,
+                                         so both take .body's own Text ink. -->
+                                    <TextBlock Classes="body" FontSize="12"
+                                               LineHeight="17"
+                                               TextWrapping="Wrap"
+                                               Text="{Binding GapCaption}"/>
+
+                                    <!-- §1's longitudinal record, at the resolution
+                                         the data supports: a sentence, not a chart
+                                         through one point. -->
+                                    <TextBlock Classes="body" FontSize="12"
+                                               LineHeight="17"
+                                               TextWrapping="Wrap"
+                                               IsVisible="{Binding HasRecordLine}"
+                                               Text="{Binding RecordLine}"/>
+                                </StackPanel>
+
+                                <!-- No date, no rail. Two different absences, and
+                                     the copy keeps them apart. Both runs carry
+                                     the fact in words (§10.2, §8), so they take
+                                     .body's own Text ink, the same rule. -->
+                                <StackPanel Grid.Column="1" Spacing="7"
+                                            VerticalAlignment="Center"
+                                            IsVisible="{Binding LacksGap}">
+                                    <TextBlock Classes="body" FontSize="13"
+                                               TextWrapping="Wrap"
+                                               Text="{Binding NoGapText}"/>
+                                    <TextBlock Classes="body" FontSize="12"
+                                               LineHeight="17"
+                                               TextWrapping="Wrap"
+                                               IsVisible="{Binding HasRecordLine}"
+                                               Text="{Binding RecordLine}"/>
+                                </StackPanel>
                             </Grid>
 
-                            <ItemsControl ItemsSource="{Binding Rows}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate DataType="vm:CoverageRowViewModel">
-                                        <Border BorderBrush="{StaticResource Line}"
-                                                BorderThickness="0,0,0,1"
-                                                Padding="0,9">
-                                            <StackPanel Spacing="4">
-                                                <Grid ColumnDefinitions="52,*,Auto,Auto,Auto"
+                            <!-- ── Band 3: get me in ──────────────────────────── -->
+                            <!-- Primary action and outbound links sit on the
+                                 strip; Open folder, corrections and Hide fold
+                                 behind a More button whose MenuFlyout floats
+                                 over the modal and reflows nothing. -->
+                            <StackPanel Orientation="Horizontal" Spacing="10"
+                                        AutomationProperties.Name="{Binding ActionsGroupName}"
+                                        AutomationProperties.AccessibilityView="Control">
+                                <!-- steam://run when it is on disk, steam://install
+                                     when it is not. The button is named for what it
+                                     does, so it cannot promise the wrong thing. -->
+                                <Button Classes="launch"
+                                        Name="LaunchButton"
+                                        IsVisible="{Binding HasPrimaryAction}"
+                                        Content="{Binding PrimaryAction.Label}"
+                                        AutomationProperties.Name="{Binding LaunchAutomationName}"
+                                        ToolTip.Tip="{Binding PrimaryAction.Tooltip}"
+                                        Command="{Binding Tile.PrimaryActionCommand}"
+                                        CommandParameter="{Binding Tile}"/>
+
+                                <ItemsControl ItemsSource="{Binding Links}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Horizontal" Spacing="10"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="vm:GameLink">
+                                            <Button Classes="link"
+                                                    Click="OnLinkPressed"
+                                                    AutomationProperties.Name="{Binding Tooltip}"
+                                                    ToolTip.Tip="{Binding Tooltip}">
+                                                <TextBlock Classes="body" FontSize="12"
+                                                           Text="{Binding Label}"/>
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+
+                                <!-- The More trigger. Secondary class rather
+                                     than link — it acts on this panel, not
+                                     outbound — and the two share geometry, so
+                                     the choice costs no width.
+
+                                     MenuFlyout, not ContextMenu: the trigger is
+                                     a press, and ContextMenu waits on right-click.
+                                     The presenter wears the .actions treatment
+                                     from controls.axaml, the same class the
+                                     library grid's context menu wears. Rows carry
+                                     no Click attribute because MenuItem raises
+                                     Click already handled; the code-behind wires
+                                     them with handledEventsToo. -->
+                                <Button AutomationProperties.Name="{Binding MoreActionsLabel}" Classes="secondary"
+                                        Name="MoreActionsButton"
+                                        ToolTip.Tip="{Binding MoreActionsTooltip}">
+                                    <Button.Flyout>
+                                        <MenuFlyout Placement="BottomEdgeAlignedLeft"
+                                                    FlyoutPresenterClasses="actions">
+
+                                            <MenuItem Name="ManageInstallationItem"
+                                                      Header="{Binding ManagementAction.Label}"
+                                                      IsVisible="{Binding HasManagementAction}"
+                                                      ToolTip.Tip="{Binding ManagementAction.Tooltip}"/>
+
+                                            <!-- Local folder, not a file: URI — GameLink
+                                                 refuses that scheme on purpose and the
+                                                 launcher takes a DirectoryInfo directly. -->
+                                            <MenuItem Name="OpenFolderItem"
+                                                      Header="Open folder"
+                                                      IsVisible="{Binding HasOpenableFolder}"
+                                                      ToolTip.Tip="{Binding InstallPath}"/>
+
+                                            <!-- Refetch is in the menu and not on the
+                                                 strip: the strip is "get me in", and
+                                                 re-asking a source about this game
+                                                 moves nobody closer to playing it.
+                                                 Its status lands on a line in Band 3
+                                                 outside the rest band's scroll region,
+                                                 so an act started from a popup is
+                                                 answered where it can always be seen. -->
+                                            <MenuItem Name="RefetchItem"
+                                                      Header="{Binding Refetch.MenuLabel}"
+                                                      IsVisible="{Binding ShowRefetch}"
+                                                      Command="{Binding Refetch.RefetchCommand}"
+                                                      ToolTip.Tip="{Binding Refetch.MenuTooltip}"/>
+
+                                            <!-- The row keeps one name regardless of
+                                                 whether the section is open — the
+                                                 menu has closed itself by the time
+                                                 the section appears. The section
+                                                 carries its own close control in its
+                                                 header row instead. -->
+                                            <MenuItem Name="WrongGameItem"
+                                                      Header="{Binding IgdbMatch.OpenLabel}"
+                                                      IsVisible="{Binding ShowIgdbMatch}"
+                                                      Command="{Binding IgdbMatch.OpenCommand}"
+                                                      ToolTip.Tip="{Binding IgdbMatch.OpenTooltip}"/>
+
+                                            <!-- Beside Wrong game? in the menu: both
+                                                 correct what Winnow believes about
+                                                 this game. The editor surface draws
+                                                 inline in the right column's rest
+                                                 band, not inside the popup. -->
+                                            <MenuItem Name="EditDetailsItem"
+                                                      Header="{Binding MetadataEditor.OpenLabel}"
+                                                      IsVisible="{Binding ShowMetadataEditor}"
+                                                      Command="{Binding MetadataEditor.OpenCommand}"
+                                                      ToolTip.Tip="{Binding MetadataEditor.OpenTooltip}"/>
+
+                                            <!-- Hide: behind the menu rather than on
+                                                 the strip, because the strip is about
+                                                 getting in. The command is the library's
+                                                 own, handed in at construction — a
+                                                 $parent[Window] binding has no Window
+                                                 to find from inside a popup. Null
+                                                 leaves the row undrawn (§10.3).
+                                                 Reversible from SETTINGS > LIBRARY;
+                                                 nothing is deleted. -->
+                                            <MenuItem Name="HideItem"
+                                                      Header="{Binding HideLabel}"
+                                                      IsVisible="{Binding ShowHide}"
+                                                      Command="{Binding HideCommand}"
+                                                      CommandParameter="{Binding Tile}"
+                                                      ToolTip.Tip="{Binding HideTooltip}"/>
+
+                                        </MenuFlyout>
+                                    </Button.Flyout>
+                                    <TextBlock Classes="body" FontSize="12"
+                                               Text="{Binding MoreActionsLabel}"/>
+                                </Button>
+                            </StackPanel>
+
+                            <!-- Drawn only when the band has no primary action
+                                 and no links — stating why Band 3 cannot get
+                                 the user in. Takes .body's own Text ink rather
+                                 than the refetch line's TextDim, because it
+                                 carries the fact in the way §10.2's no-rail
+                                 sentence does, not a status line about an act
+                                 the user started. A plain TextBlock with no
+                                 AutomationProperties.Name: §8 says that
+                                 property is ignored on a TextBlock peer, which
+                                 returns Text instead. Unlike the refetch field
+                                 below, this is not a live region — it is a
+                                 fixed property of this game rather than the
+                                 result of something the user just did. -->
+                            <TextBlock Classes="body"
+                                       Name="NoWayInLine"
+                                       FontSize="12" LineHeight="17"
+                                       TextWrapping="Wrap"
+                                       IsVisible="{Binding HasNoWayInSentence}"
+                                       Text="{Binding NoWayInSentence}"/>
+
+                            <!-- The refetch status field. It is a live region:
+                                 changing an AutomationProperties.Name at runtime
+                                 raises no UIA event, but TextBlockAutomationPeer
+                                 raises a Name change whenever Text changes, and
+                                 AutomationNode turns that into a live-region
+                                 event while LiveSetting is not Off (verified
+                                 against the Avalonia 11.3.20 source). So the
+                                 name here IS the bound Text, and no
+                                 AutomationProperties.Name is set.
+
+                                 It sits in Band 3, outside the rest band's
+                                 bounded scroll region, so a status that lands
+                                 while the user is reading the foot of the modal
+                                 is still on screen. Absent entirely at rest. -->
+                            <TextBlock Classes="body actstatus"
+                                       Name="RefetchStatus"
+                                       FontSize="12" LineHeight="17"
+                                       TextWrapping="Wrap"
+                                       AutomationProperties.LiveSetting="Polite"
+                                       Classes.problem="{Binding Refetch.IsProblem, FallbackValue=False}"
+                                       IsVisible="{Binding Refetch.HasStatus, FallbackValue=False}"
+                                       Text="{Binding Refetch.Status}"/>
+
+                        </StackPanel>
+
+                        <!-- The seam between deciding and reading. It spans the
+                             right column only: the left column keeps going. -->
+                        <Border Grid.Row="1" Height="1" Margin="0,22,0,0"
+                                Background="{StaticResource Line}"/>
+
+                    <!-- ══ Band 4: the rest ═════════════════════════════════════ -->
+                    <!-- Row 2 is star, not Auto. An Auto row measures against
+                         infinity, so a ScrollViewer inside one takes its full
+                         content height and never scrolls; the rest band drew
+                         outside the card and was cut off at the window edge.
+                         Verified on Avalonia 11.3.20. -->
+                    <!-- Breathing room inside the band is a margin on the
+                         content, not a Padding on the ScrollViewer.
+                         ScrollContentPresenter does not deflate by Padding in
+                         measure or arrange, so the property is inert.
+
+                         The band's scrollbar is drawn over its right edge, so
+                         anything in a trailing column sits under it: the close
+                         glyph on each disclosed section's header row, and the
+                         per-row Separate, Ungroup and Patch notes buttons. The
+                         gutter is therefore on the band's content — one margin
+                         covering every section in the band, the ones here now
+                         and the ones added later — rather than one solved per
+                         header.
+
+                         Not carried by Classes="inner". That class is §9.1's
+                         opt-out, saying this scrollbar's edge is a divider of
+                         ours rather than the window's; the only property it
+                         could set for a gutter is the ScrollViewer's Padding,
+                         which is inert as noted above, and a style reaching
+                         the content instead would lose to the local Margin
+                         values that content already carries. -->
+                    <ScrollViewer Grid.Row="2"
+                                  Classes="inner"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="{StaticResource InnerScrollGutter}">
+
+                        <Expander Header="GOG patch notes" Classes="gog-notes"
+                                  Background="{StaticResource Surface}" BorderBrush="{StaticResource Line}"
+                                  AutomationProperties.Name="GOG patch notes"
+                                  IsVisible="{Binding HasGogPatchNotes}"
+                                  Margin="0,12,0,0" HorizontalAlignment="Stretch">
+                            <TextBlock Classes="body" FontSize="13" TextWrapping="Wrap"
+                                       Text="{Binding GogPatchNotes}"/>
+                        </Expander>
+
+                        <StackPanel IsVisible="{Binding ShowIgdbMatch}">
+                        <StackPanel DataContext="{Binding IgdbMatch}"
+                                    x:DataType="vm:GameIgdbMatchViewModel">
+
+                            <TextBlock Classes="body" FontSize="12"
+                                       Margin="0,18,0,0"
+                                       TextWrapping="Wrap"
+                                       LineHeight="17"
+                                       Foreground="{StaticResource TextDim}"
+                                       IsVisible="{Binding HasNote}"
+                                       Text="{Binding Note}"/>
+
+                            <StackPanel Name="IgdbMatchDisclosure"
+                                        Spacing="10"
+                                        Margin="0,18,0,0"
+                                        IsVisible="{Binding IsOpen}">
+
+                                <!-- The section names itself with a heading and
+                                     closes itself with a quiet button carrying
+                                     the same glyph as the modal's own close,
+                                     one level down. The heading exists because
+                                     the menu row that opened the section has
+                                     dismissed itself by the time the content
+                                     appears — without it, nothing on screen
+                                     names the surface. -->
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0"
+                                               Classes="label section"
+                                               VerticalAlignment="Center"
+                                               AutomationProperties.HeadingLevel="2"
+                                               Text="{Binding SectionHeading}"/>
+                                    <Button Grid.Column="1" Classes="quiet"
+                                            Name="MatchCloseButton"
+                                            VerticalAlignment="Top"
+                                            Command="{Binding CloseCommand}"
+                                            Click="OnSectionClosePressed"
+                                            AutomationProperties.Name="{Binding CloseAutomationName}"
+                                            ToolTip.Tip="{Binding CloseTooltip}">
+                                        <TextBlock Classes="body-l"
+                                                   Foreground="{StaticResource TextDim}"
+                                                   Text="&#x00D7;"/>
+                                    </Button>
+                                </Grid>
+
+                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                    <TextBox Grid.Column="0"
+                                             Name="MatchQueryField"
+                                             Classes="field"
+                                             Watermark="{Binding FieldWatermark}"
+                                             AutomationProperties.Name="{Binding FieldLabel}"
+                                             Text="{Binding Query, Mode=TwoWay}"
+                                             KeyDown="OnMatchQueryKeyDown"/>
+                                    <Button AutomationProperties.Name="{Binding SearchLabel}" Grid.Column="1" Classes="secondary"
+                                            Command="{Binding SearchCommand}">
+                                        <TextBlock Classes="body" FontSize="12"
+                                                   Text="{Binding SearchLabel}"/>
+                                    </Button>
+                                </Grid>
+
+                                <TextBlock Classes="body" FontSize="12"
+                                           TextWrapping="Wrap"
+                                           Foreground="{StaticResource TextDim}"
+                                           IsVisible="{Binding HasStatus}"
+                                           Text="{Binding Status}"/>
+
+                                <!-- An all-digit query that matched no IGDB entry.
+                                     TextDim, not Amber: it is not a failure, the same
+                                     register as the title search's empty result. -->
+                                <TextBlock Classes="body" FontSize="12"
+                                           TextWrapping="Wrap"
+                                           LineHeight="17"
+                                           Foreground="{StaticResource TextDim}"
+                                           IsVisible="{Binding ShowIdMiss}"
+                                           Text="{Binding IdMissText}"/>
+
+                                <TextBlock Classes="body" FontSize="12"
+                                           TextWrapping="Wrap"
+                                           LineHeight="17"
+                                           Foreground="{StaticResource TextDim}"
+                                           IsVisible="{Binding ShowNoMatches}"
+                                           Text="{Binding NoMatchesText}"/>
+
+                                <!-- Same-game offer. The holder is drawn in the
+                                     candidate row's idiom (34x51 cover, name, year)
+                                     because it is the same judgement. Line border,
+                                     not Amber: a question, not a failure (section 2). -->
+                                <Border IsVisible="{Binding ShowClaim}"
+                                        BorderBrush="{StaticResource Line}"
+                                        BorderThickness="1"
+                                        CornerRadius="{StaticResource RadiusControl}"
+                                        Padding="12">
+                                    <StackPanel Spacing="10">
+
+                                        <TextBlock Classes="body" FontSize="12"
+                                                   TextWrapping="Wrap"
+                                                   LineHeight="17"
+                                                   Text="{Binding Claim.Headline}"/>
+
+                                        <Grid ColumnDefinitions="34,*" ColumnSpacing="12">
+                                            <Border Grid.Column="0"
+                                                    Width="34" Height="51"
+                                                    VerticalAlignment="Top"
+                                                    ClipToBounds="True"
+                                                    CornerRadius="{StaticResource RadiusControl}"
+                                                    Background="{StaticResource SurfaceRaised}">
+                                                <Image Source="{Binding Claim.Cover}"
+                                                       Stretch="UniformToFill"/>
+                                            </Border>
+
+                                            <StackPanel Grid.Column="1" Spacing="4"
+                                                        VerticalAlignment="Center">
+                                                <TextBlock Classes="body" FontSize="12"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           Text="{Binding Claim.Name}"/>
+                                                <TextBlock Classes="data-s"
+                                                           IsVisible="{Binding Claim.HasYear, FallbackValue=False}"
+                                                           Text="{Binding Claim.YearText}"/>
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <Button Classes="secondary"
+                                                    AutomationProperties.Name="{Binding Claim.LinkAutomationName}"
+                                                    ToolTip.Tip="{Binding Claim.LinkAutomationName}"
+                                                    Command="{Binding LinkClaimCommand}">
+                                                <TextBlock Classes="body" FontSize="12"
+                                                           Text="{Binding ClaimLinkLabel}"/>
+                                            </Button>
+                                            <Button AutomationProperties.Name="{Binding ClaimDeclineLabel}" Classes="quiet"
+                                                    Command="{Binding DeclineClaimCommand}">
+                                                <TextBlock Classes="body" FontSize="12"
+                                                           Text="{Binding ClaimDeclineLabel}"/>
+                                            </Button>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- A second scroll region with a bar of its own,
+                                     so it takes its own InnerScrollGutter; the
+                                     rest band's gutter clears the band's bar, not
+                                     this one. Same mechanism, explained at the
+                                     rest band's ScrollViewer above. -->
+                                <ScrollViewer Classes="inner"
+                                              MaxHeight="238"
+                                              IsVisible="{Binding HasCandidates}"
+                                              GotFocus="OnCandidateGotFocus"
+                                              HorizontalScrollBarVisibility="Disabled"
+                                              VerticalScrollBarVisibility="Auto">
+                                    <ItemsControl ItemsSource="{Binding Candidates}"
+                                                  Margin="{StaticResource InnerScrollGutter}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate DataType="vm:IgdbCandidateViewModel">
+                                                <Border BorderBrush="{StaticResource Line}"
+                                                        BorderThickness="0,0,0,1"
+                                                        Padding="0,8">
+                                                    <Grid ColumnDefinitions="34,*,Auto"
+                                                          ColumnSpacing="12">
+                                                        <Border Grid.Column="0"
+                                                                Width="34" Height="51"
+                                                                VerticalAlignment="Top"
+                                                                ClipToBounds="True"
+                                                                CornerRadius="{StaticResource RadiusControl}"
+                                                                Background="{StaticResource SurfaceRaised}">
+                                                            <Image Source="{Binding Cover}"
+                                                                   Stretch="UniformToFill"/>
+                                                        </Border>
+
+                                                        <StackPanel Grid.Column="1" Spacing="4"
+                                                                    VerticalAlignment="Center">
+                                                            <!-- The id-match chip sits in the Auto column;
+                                                                 the name trims in the star column beside
+                                                                 it. Drawn only when the row was returned
+                                                                 by the id lookup. -->
+                                                            <Grid ColumnDefinitions="Auto,*">
+                                                                <Border Grid.Column="0"
+                                                                        Classes="store-chip"
+                                                                        Margin="0,0,6,0"
+                                                                        IsVisible="{Binding IsIdMatch}">
+                                                                    <TextBlock Text="{Binding IdMatchLabel}"/>
+                                                                </Border>
+                                                                <TextBlock Grid.Column="1"
+                                                                           Classes="body" FontSize="12"
+                                                                           VerticalAlignment="Center"
+                                                                           TextTrimming="CharacterEllipsis"
+                                                                           Text="{Binding Name}"/>
+                                                            </Grid>
+                                                            <!-- The year and platforms sit in a Grid,
+                                                                 not a horizontal StackPanel: a StackPanel
+                                                                 measures children with infinite width, so
+                                                                 TextTrimming never engages and the text
+                                                                 runs past the assign button (TASK-118).
+                                                                 Year is Auto for Plex Mono (§3); platforms
+                                                                 take the star column and trim there. The
+                                                                 full list stays reachable as a tooltip. -->
+                                                            <Grid ColumnDefinitions="Auto,*"
+                                                                  IsVisible="{Binding HasDetailLine}">
+                                                                <TextBlock Grid.Column="0"
+                                                                           Classes="data-s"
+                                                                           VerticalAlignment="Center"
+                                                                           Text="{Binding YearText}"/>
+                                                                <TextBlock Grid.Column="1"
+                                                                           Classes="body" FontSize="11"
+                                                                           VerticalAlignment="Center"
+                                                                           Foreground="{StaticResource TextDim}"
+                                                                           TextTrimming="CharacterEllipsis"
+                                                                           ToolTip.Tip="{Binding PlatformsTooltip}"
+                                                                           Text="{Binding PlatformsText}"/>
+                                                            </Grid>
+                                                        </StackPanel>
+
+                                                        <Button Grid.Column="2" Classes="quiet"
+                                                                VerticalAlignment="Center"
+                                                                AutomationProperties.Name="{Binding AssignAutomationName}"
+                                                                ToolTip.Tip="{Binding AssignAutomationName}"
+                                                                CommandParameter="{Binding}"
+                                                                Command="{Binding $parent[ItemsControl].((vm:GameIgdbMatchViewModel)DataContext).AssignCommand}">
+                                                            <TextBlock Classes="body" FontSize="12"
+                                                                       Text="{Binding AssignLabel}"/>
+                                                        </Button>
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+                            </StackPanel>
+
+                            <TextBlock Classes="body" FontSize="11"
+                                       Margin="0,18,0,0"
+                                       TextWrapping="Wrap"
+                                       LineHeight="16"
+                                       Foreground="{StaticResource Amber}"
+                                       IsVisible="{Binding HasProblem}"
+                                       Text="{Binding Problem}"/>
+                        </StackPanel>
+                        </StackPanel>
+
+                        <!-- The per-field editor draws full width in the rest band,
+                             directly under the IGDB reassignment control. Its own
+                             root self-gates on IsOpen, so this IsVisible only guards
+                             the null case. The gate is on this wrapper, not on the
+                             view element: a DataContext on an element retargets every
+                             compiled binding on that same element, so IsVisible would
+                             resolve against the editor type and fail with AVLN2000.
+                             The IGDB block above is wrapped for the same reason. -->
+                        <StackPanel Name="MetadataEditorHost"
+                                    IsVisible="{Binding ShowMetadataEditor}">
+                            <views:GameMetadataEditorView Name="MetadataEditorView"
+                                                          DataContext="{Binding MetadataEditor}"/>
+                        </StackPanel>
+
+                        <StackPanel Spacing="22" Margin="0,18,0,24">
+
+                            <StackPanel IsVisible="{Binding ShowJournal}">
+                                <views:GameJournalView DataContext="{Binding Journal}"/>
+                            </StackPanel>
+
+                            <!-- Updates list. Patch-notes links only appear when the
+                                 update carries a page (§5.2). -->
+                            <StackPanel Spacing="4" IsVisible="{Binding HasUpdates}">
+                                <TextBlock Classes="label section" Text="{Binding UpdatesLabel}"
+                                           AutomationProperties.HeadingLevel="2"/>
+                                <ItemsControl ItemsSource="{Binding Updates}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="vm:UpdateEventViewModel">
+                                            <!-- The row's own name carries the
+                                                 unread fact in words, because the
+                                                 Flare dot is a mark and §8's
+                                                 decorative-redundant rule wants
+                                                 the same fact as text. It goes on
+                                                 the template root with
+                                                 AccessibilityView=Control, which
+                                                 is what un-prunes a Border, and
+                                                 with ControlTypeOverride so the
+                                                 row reports as a list item rather
+                                                 than as a bare group. -->
+                                            <Border Classes="updaterow"
+                                                    BorderBrush="{StaticResource Line}"
+                                                    BorderThickness="0,0,0,1"
+                                                    Padding="0,9"
+                                                    AutomationProperties.Name="{Binding AutomationName}"
+                                                    AutomationProperties.AccessibilityView="Control"
+                                                    AutomationProperties.ControlTypeOverride="ListItem">
+                                                <Grid ColumnDefinitions="16,*,Auto,Auto" ColumnSpacing="10">
+                                                    <!-- Flare: unread-update marker
+                                                         only, here as everywhere. -->
+                                                    <Border Grid.Column="0"
+                                                            Width="7" Height="7" CornerRadius="4"
+                                                            HorizontalAlignment="Left"
+                                                            VerticalAlignment="Center"
+                                                            Background="{StaticResource Flare}"
+                                                            BoxShadow="{DynamicResource PipGlow}"
+                                                            IsVisible="{Binding IsUnread}"
+                                                            ToolTip.Tip="Unread update"/>
+                                                    <SelectableTextBlock Grid.Column="1" Classes="body copyable"
+                                                               Focusable="False"
+                                                               Text="{Binding Headline}"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               VerticalAlignment="Center"/>
+                                                    <TextBlock Grid.Column="2" Classes="data-s"
+                                                               Text="{Binding DateText}"
+                                                               VerticalAlignment="Center"/>
+                                                    <Button AutomationProperties.Name="Patch notes" Grid.Column="3"
+                                                            Classes="quiet"
+                                                            IsVisible="{Binding HasLink}"
+                                                            Click="OnUpdateLinkPressed"
+                                                            ToolTip.Tip="{Binding Link.Tooltip}">
+                                                        <TextBlock Classes="body" FontSize="12"
+                                                                   Foreground="{StaticResource Azure}"
+                                                                   Text="Patch notes"/>
+                                                    </Button>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+
+                                <!-- Shown when the game has updates but none carries a readable link. -->
+                                <TextBlock Classes="body" FontSize="12"
+                                           TextWrapping="Wrap"
+                                           LineHeight="18"
+                                           Margin="26,4,0,0"
+                                           Foreground="{StaticResource TextDim}"
+                                           IsVisible="{Binding ShowNoNotesNote}"
+                                           Text="{Binding NoNotesText}"/>
+                            </StackPanel>
+
+                            <!-- "I've read this one": placed under the update list.
+                                 Not "Not interested"; that is the feed card's verdict. -->
+                            <StackPanel Spacing="8" IsVisible="{Binding ShowFlagControl}">
+
+                                <!-- Each caption is drawn beside its own button
+                                     and repeated verbatim as that button's
+                                     ToolTip.Tip, so it is an annotation on a
+                                     control rather than prose of the panel.
+                                     TextDim, not Text. -->
+
+                                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12"
+                                      IsVisible="{Binding ShowDismissFlag}">
+                                    <Button AutomationProperties.Name="{Binding DismissFlagLabel}" Grid.Column="0" Classes="secondary"
+                                            Command="{Binding DismissFlagCommand}"
+                                            ToolTip.Tip="{Binding DismissFlagNote}">
+                                        <TextBlock Classes="body" FontSize="12"
+                                                   Text="{Binding DismissFlagLabel}"/>
+                                    </Button>
+                                    <TextBlock Grid.Column="1" Classes="body"
+                                               FontSize="12" LineHeight="17"
+                                               TextWrapping="Wrap"
+                                               VerticalAlignment="Center"
+                                               Foreground="{StaticResource TextDim}"
+                                               Text="{Binding DismissFlagNote}"/>
+                                </Grid>
+
+                                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12"
+                                      IsVisible="{Binding ShowRestoreFlag}">
+                                    <Button AutomationProperties.Name="{Binding RestoreFlagLabel}" Grid.Column="0" Classes="secondary"
+                                            Command="{Binding RestoreFlagCommand}"
+                                            ToolTip.Tip="{Binding RestoreFlagNote}">
+                                        <TextBlock Classes="body" FontSize="12"
+                                                   Text="{Binding RestoreFlagLabel}"/>
+                                    </Button>
+                                    <TextBlock Grid.Column="1" Classes="body"
+                                               FontSize="12" LineHeight="17"
+                                               TextWrapping="Wrap"
+                                               VerticalAlignment="Center"
+                                               Foreground="{StaticResource TextDim}"
+                                               Text="{Binding RestoreFlagNote}"/>
+                                </Grid>
+
+                                <!-- A write that did not land. Controls stay in
+                                     place for retry; Amber for attention (§2). -->
+                                <TextBlock Classes="body" FontSize="11"
+                                           TextWrapping="Wrap"
+                                           Foreground="{StaticResource Amber}"
+                                           IsVisible="{Binding HasFlagProblem}"
+                                           Text="{Binding FlagProblem}"/>
+                            </StackPanel>
+
+                            <!-- ABOUT is the band's one prose section, and the
+                                 one place a picture belongs: a screenshot says
+                                 what the game looks like, which is the same
+                                 question the summary answers in words. It is not
+                                 a section of its own, because a heading in this
+                                 band is earned by a list of rows the user can
+                                 act on. -->
+                            <StackPanel Spacing="7">
+                                <TextBlock Classes="label section" Text="{Binding AboutHeading}"
+                                           AutomationProperties.HeadingLevel="2"/>
+                                <SelectableTextBlock Classes="body prose copyable"
+                                           Focusable="True"
+                                           LineHeight="20"
+                                           IsVisible="{Binding HasSummary}"
+                                           Text="{Binding Summary}"/>
+                                <!-- §7: an empty screen is a direction, not a mood. -->
+                                <TextBlock Classes="body prose"
+                                           LineHeight="20"
+                                           IsVisible="{Binding ShowEmptyBody}"
+                                           Text="{Binding EmptyBodyText}"/>
+
+                                <!-- Screenshots. The strip stays here as the
+                                     entry point; pressing a thumbnail opens the
+                                     lightbox, the full-window overlay declared
+                                     beside this view in MainWindow.axaml
+                                     (§10.7). The hero that used to expand above
+                                     the strip is gone, and its window-fraction
+                                     cap with it.
+
+                                     Nothing is drawn at all when the game has no
+                                     screenshots, which is a property of the data
+                                     — no ids in work_images means no view model
+                                     — rather than of the view.
+
+                                     The strip is a bounded horizontal scroll
+                                     region, so its content takes the horizontal
+                                     form of the same gutter every other bounded
+                                     region here takes: the bar is drawn over the
+                                     content, and 20px is Fluent's swelled track
+                                     plus §4's own spacing step. -->
+                                <!-- Two panels, not one: x:DataType applies to
+                                     the element's own bindings, so IsVisible has
+                                     to be read against the modal's view model
+                                     before DataContext moves to the strip's. -->
+                                <StackPanel IsVisible="{Binding ShowScreenshots}">
+                                <StackPanel Spacing="8"
+                                            DataContext="{Binding Screenshots}"
+                                            x:DataType="vm:GameScreenshotsViewModel">
+
+                                    <ScrollViewer Classes="inner"
+                                                  GotFocus="OnScreenshotGotFocus"
+                                                  HorizontalScrollBarVisibility="Auto"
+                                                  VerticalScrollBarVisibility="Disabled">
+                                        <ItemsControl ItemsSource="{Binding Shots}"
+                                                      Margin="{StaticResource InnerScrollGutterBottom}"
+                                                      AutomationProperties.Name="{Binding ListAutomationName}"
+                                                      AutomationProperties.AccessibilityView="Control">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <StackPanel Orientation="Horizontal" Spacing="8"/>
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate DataType="vm:GameScreenshotViewModel">
+                                                    <!-- The name and the list-item
+                                                         type go on the DataTemplate
+                                                         root, never on the
+                                                         ItemsControl: every
+                                                         container is a
+                                                         ContentPresenter, whose peer
+                                                         reports itself out of the
+                                                         control view, so a list
+                                                         addressed at the control
+                                                         reports no items at all. -->
+                                                    <Button Classes="shot"
+                                                            Classes.picked="{Binding IsSelected}"
+                                                            Width="120" Height="68"
+                                                            Click="OnShotPressed"
+                                                            AutomationProperties.Name="{Binding AutomationName}"
+                                                            AutomationProperties.ControlTypeOverride="ListItem"
+                                                            ToolTip.Tip="{Binding Tooltip}"
+                                                            CommandParameter="{Binding}"
+                                                            Command="{Binding $parent[ItemsControl].((vm:GameScreenshotsViewModel)DataContext).SelectCommand}">
+                                                        <Border ClipToBounds="True"
+                                                                CornerRadius="2"
+                                                                Background="{StaticResource SurfaceRaised}">
+                                                            <Image Source="{Binding Image}"
+                                                                   Stretch="UniformToFill"/>
+                                                        </Border>
+                                                    </Button>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </ScrollViewer>
+
+                                    <TextBlock Classes="data-s"
+                                               Text="{Binding Caption}"/>
+                                </StackPanel>
+                                </StackPanel>
+                            </StackPanel>
+
+                            <!-- ALSO COVERS. The user's fourth complaint answered:
+                                 this game also covers these titles. Draws only
+                                 when there is coverage to draw.
+
+                                 Every row carries ONE entry's minutes beside THAT
+                                 SAME entry's last-played. The total above them is a
+                                 sum across stores - Winnow's own composite, which no
+                                 source reports - and it carries its own coherent
+                                 date, the latest anywhere in the group. The rows
+                                 stay on screen underneath so the composite can be
+                                 checked against its parts.
+
+                                 Achievements are per release (6.2), on the release's
+                                 own row. There is no combined percentage here and no
+                                 property that could produce one. -->
+                            <StackPanel IsVisible="{Binding ShowCoverage}">
+                            <StackPanel Spacing="10"
+                                        DataContext="{Binding Coverage}"
+                                        x:DataType="vm:GameCoverageViewModel">
+                                <TextBlock Classes="label section" Text="{Binding Heading}"
+                                           AutomationProperties.HeadingLevel="2"/>
+
+                                <Grid ColumnDefinitions="Auto,Auto,*,Auto" ColumnSpacing="12">
+                                    <TextBlock Grid.Column="0" Classes="label" FontSize="10"
+                                               VerticalAlignment="Center"
+                                               Text="{Binding TotalLabel}"/>
+                                    <TextBlock Grid.Column="1" Classes="data"
+                                               FontSize="18"
+                                               VerticalAlignment="Center"
+                                               Foreground="{StaticResource Text}"
+                                               Text="{Binding TotalPlaytimeText}"/>
+                                    <TextBlock Grid.Column="2" Classes="body" FontSize="12"
+                                               VerticalAlignment="Center"
+                                               TextWrapping="Wrap"
+                                               Foreground="{StaticResource TextDim}"
+                                               Text="{Binding TotalNote}"/>
+                                    <TextBlock Grid.Column="3" Classes="data-s"
+                                               VerticalAlignment="Center"
+                                               Text="{Binding TotalLastPlayedText}"/>
+                                </Grid>
+
+                                <ItemsControl ItemsSource="{Binding Rows}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="vm:CoverageRowViewModel">
+                                            <Border BorderBrush="{StaticResource Line}"
+                                                    BorderThickness="0,0,0,1"
+                                                    Padding="0,9">
+                                                <StackPanel Spacing="4">
+                                                    <Grid ColumnDefinitions="52,*,Auto,Auto,Auto"
+                                                          ColumnSpacing="10">
+                                                        <TextBlock Grid.Column="0" Classes="data-s"
+                                                                   VerticalAlignment="Center"
+                                                                   Text="{Binding StoreBadge}"/>
+                                                        <TextBlock Grid.Column="1" Classes="body"
+                                                                   VerticalAlignment="Center"
+                                                                   TextTrimming="CharacterEllipsis"
+                                                                   Text="{Binding Title}"/>
+                                                        <TextBlock Grid.Column="2" Classes="data-s"
+                                                                   VerticalAlignment="Center"
+                                                                   Text="{Binding PlaytimeText}"/>
+                                                        <TextBlock Grid.Column="3" Classes="data-s"
+                                                                   VerticalAlignment="Center"
+                                                                   Text="{Binding LastPlayedText}"/>
+                                                        <Button Grid.Column="4" Classes="quiet"
+                                                                IsVisible="{Binding IsCovered}"
+                                                                AutomationProperties.Name="{Binding SeparateAutomationName}"
+                                                                ToolTip.Tip="{Binding SeparateTooltip}"
+                                                                CommandParameter="{Binding}"
+                                                                Command="{Binding $parent[ItemsControl].((vm:GameCoverageViewModel)DataContext).SeparateCommand}">
+                                                            <TextBlock Classes="body" FontSize="12"
+                                                                       Text="{Binding SeparateLabel}"/>
+                                                        </Button>
+                                                    </Grid>
+
+                                                    <StackPanel IsVisible="{Binding HasAchievements}">
+                                                    <Grid ColumnDefinitions="52,Auto,Auto,*"
+                                                          ColumnSpacing="10"
+                                                          DataContext="{Binding Achievements}"
+                                                          x:DataType="vm:ReleaseAchievementRowViewModel">
+                                                        <TextBlock Grid.Column="1" Classes="label"
+                                                                   FontSize="10"
+                                                                   VerticalAlignment="Center"
+                                                                   Text="{Binding Label}"/>
+                                                        <TextBlock Grid.Column="2" Classes="data-s"
+                                                                   VerticalAlignment="Center"
+                                                                   Text="{Binding CountText}"/>
+                                                        <TextBlock Grid.Column="3" Classes="data-s"
+                                                                   VerticalAlignment="Center"
+                                                                   Text="{Binding PercentText}"/>
+                                                    </Grid>
+                                                    </StackPanel>
+                                                </StackPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+
+                                <TextBlock Classes="body" FontSize="11"
+                                           TextWrapping="Wrap"
+                                           Foreground="{StaticResource Amber}"
+                                           IsVisible="{Binding HasProblem}"
+                                           Text="{Binding Problem}"/>
+                            </StackPanel>
+                            </StackPanel>
+
+                            <!-- EXTENDS.
+                                 The other end of the relation, on a pack's own
+                                 modal. It names the base game and offers the same
+                                 retraction, so the grouping can be undone from
+                                 either side. The link's child is this game, not
+                                 the row, which is why the control retracts the
+                                 right link from here. -->
+                            <StackPanel IsVisible="{Binding ShowExtends}">
+                            <StackPanel Spacing="10"
+                                        DataContext="{Binding Expansions}"
+                                        x:DataType="vm:GameExpansionsViewModel">
+                                <TextBlock Classes="label section" Text="{Binding ExtendsHeading}"
+                                           AutomationProperties.HeadingLevel="2"/>
+                                <ContentControl Content="{Binding Extends}">
+                                    <ContentControl.ContentTemplate>
+                                        <DataTemplate DataType="vm:ExpansionRowViewModel">
+                                            <Grid ColumnDefinitions="*,Auto,Auto,Auto"
+                                                  ColumnSpacing="10">
+                                                <TextBlock Grid.Column="0" Classes="body"
+                                                           VerticalAlignment="Center"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           Text="{Binding Title}"/>
+                                                <TextBlock Grid.Column="1" Classes="data-s"
+                                                           VerticalAlignment="Center"
+                                                           Text="{Binding PlaytimeText}"/>
+                                                <TextBlock Grid.Column="2" Classes="data-s"
+                                                           VerticalAlignment="Center"
+                                                           Text="{Binding LastPlayedText}"/>
+                                                <Button Grid.Column="3" Classes="quiet"
+                                                        AutomationProperties.Name="{Binding UngroupAutomationName}"
+                                                        ToolTip.Tip="{Binding UngroupTooltip}"
+                                                        CommandParameter="{Binding}"
+                                                        Command="{Binding $parent[ContentControl].((vm:GameExpansionsViewModel)DataContext).UngroupCommand}">
+                                                    <TextBlock Classes="body" FontSize="12"
+                                                               Text="{Binding UngroupLabel}"/>
+                                                </Button>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ContentControl.ContentTemplate>
+                                </ContentControl>
+                                <TextBlock Classes="body" FontSize="12"
+                                           TextWrapping="Wrap"
+                                           Text="{Binding ExtendsNote}"/>
+                            </StackPanel>
+                            </StackPanel>
+
+                            <!-- EXPANSIONS.
+                                 The same treatment ALSO COVERS uses, with one
+                                 deliberate omission: NO TOTAL. Coverage sums
+                                 because two store entries are one game being
+                                 played; expansions do not, because they are
+                                 separate products and a sum of the two is a figure
+                                 no source reported about either. Each row carries
+                                 its own minutes beside its own last-played, and
+                                 nothing here adds two rows together.
+
+                                 The two sections are never merged: a covered
+                                 title is this same game on another store, an
+                                 expansion is a different product. -->
+                            <StackPanel IsVisible="{Binding ShowExpansions}">
+                            <StackPanel Spacing="10"
+                                        DataContext="{Binding Expansions}"
+                                        x:DataType="vm:GameExpansionsViewModel">
+                                <TextBlock Classes="label section" Text="{Binding Heading}"
+                                           AutomationProperties.HeadingLevel="2"/>
+                                <TextBlock Classes="body" FontSize="12"
+                                           TextWrapping="Wrap"
+                                           Text="{Binding Note}"/>
+
+                                <ItemsControl ItemsSource="{Binding Expansions}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="vm:ExpansionRowViewModel">
+                                            <Border BorderBrush="{StaticResource Line}"
+                                                    BorderThickness="0,0,0,1"
+                                                    Padding="0,9">
+                                                <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto"
                                                       ColumnSpacing="10">
-                                                    <TextBlock Grid.Column="0" Classes="data-s"
-                                                               VerticalAlignment="Center"
-                                                               Text="{Binding StoreBadge}"/>
+                                                    <ItemsControl Grid.Column="0"
+                                                                  VerticalAlignment="Center"
+                                                                  IsVisible="{Binding HasStores}"
+                                                                  ToolTip.Tip="{Binding StoreNames}"
+                                                                  ItemsSource="{Binding StoreChips}">
+                                                        <ItemsControl.ItemsPanel>
+                                                            <ItemsPanelTemplate>
+                                                                <StackPanel Orientation="Horizontal" Spacing="4"/>
+                                                            </ItemsPanelTemplate>
+                                                        </ItemsControl.ItemsPanel>
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <Border Classes="store-chip">
+                                                                    <TextBlock Text="{Binding}"/>
+                                                                </Border>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
                                                     <TextBlock Grid.Column="1" Classes="body"
                                                                VerticalAlignment="Center"
                                                                TextTrimming="CharacterEllipsis"
@@ -459,338 +1664,200 @@
                                                                VerticalAlignment="Center"
                                                                Text="{Binding LastPlayedText}"/>
                                                     <Button Grid.Column="4" Classes="quiet"
-                                                            IsVisible="{Binding IsCovered}"
-                                                            AutomationProperties.Name="{Binding SeparateAutomationName}"
-                                                            ToolTip.Tip="{Binding SeparateTooltip}"
+                                                            AutomationProperties.Name="{Binding UngroupAutomationName}"
+                                                            ToolTip.Tip="{Binding UngroupTooltip}"
                                                             CommandParameter="{Binding}"
-                                                            Command="{Binding $parent[ItemsControl].((vm:GameCoverageViewModel)DataContext).SeparateCommand}">
+                                                            Command="{Binding $parent[ItemsControl].((vm:GameExpansionsViewModel)DataContext).UngroupCommand}">
                                                         <TextBlock Classes="body" FontSize="12"
-                                                                   Text="{Binding SeparateLabel}"/>
+                                                                   Text="{Binding UngroupLabel}"/>
                                                     </Button>
                                                 </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
 
-                                                <StackPanel IsVisible="{Binding HasAchievements}">
-                                                <Grid ColumnDefinitions="52,Auto,Auto,*"
-                                                      ColumnSpacing="10"
-                                                      DataContext="{Binding Achievements}"
-                                                      x:DataType="vm:ReleaseAchievementRowViewModel">
-                                                    <TextBlock Grid.Column="1" Classes="label"
-                                                               FontSize="10"
-                                                               VerticalAlignment="Center"
-                                                               Text="{Binding Label}"/>
-                                                    <TextBlock Grid.Column="2" Classes="data-s"
-                                                               VerticalAlignment="Center"
-                                                               Text="{Binding CountText}"/>
-                                                    <TextBlock Grid.Column="3" Classes="data-s"
-                                                               VerticalAlignment="Center"
-                                                               Text="{Binding PercentText}"/>
-                                                </Grid>
-                                                </StackPanel>
-                                            </StackPanel>
-                                        </Border>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
+                                <TextBlock Classes="body" FontSize="11"
+                                           TextWrapping="Wrap"
+                                           Foreground="{StaticResource Amber}"
+                                           IsVisible="{Binding HasProblem}"
+                                           Text="{Binding Problem}"/>
+                            </StackPanel>
+                            </StackPanel>
 
-                            <TextBlock Classes="body" FontSize="11"
-                                       TextWrapping="Wrap"
-                                       Foreground="{StaticResource Amber}"
-                                       IsVisible="{Binding HasProblem}"
-                                       Text="{Binding Problem}"/>
-                        </StackPanel>
-                        </StackPanel>
+                            <!-- LISTS.
+                                 Between EXPANSIONS and ABOUT: one checkbox per
+                                 hand-built list, ticked when the game is already
+                                 a member. Live lists are excluded — they hold a
+                                 rule and find their own members. The section is
+                                 drawn even when the user has no lists yet; §7
+                                 says an empty state is a direction, not a mood,
+                                 so it points at where a list is made. -->
+                            <StackPanel IsVisible="{Binding ShowLists}">
+                            <StackPanel Spacing="10"
+                                        DataContext="{Binding Lists}"
+                                        x:DataType="lists:GameListsViewModel">
+                                <TextBlock Classes="label section" Text="{Binding Heading}"
+                                           AutomationProperties.HeadingLevel="2"/>
 
-                        <!-- EXTENDS.
-                             The other end of the relation, on a pack's own
-                             modal. It names the base game and offers the same
-                             retraction, so the grouping can be undone from
-                             either side. The link's child is this game, not
-                             the row, which is why the control retracts the
-                             right link from here. -->
-                        <StackPanel IsVisible="{Binding ShowExtends}">
-                        <StackPanel Spacing="10"
-                                    DataContext="{Binding Expansions}"
-                                    x:DataType="vm:GameExpansionsViewModel">
-                            <TextBlock Classes="label" Text="{Binding ExtendsHeading}"/>
-                            <ContentControl Content="{Binding Extends}">
-                                <ContentControl.ContentTemplate>
-                                    <DataTemplate DataType="vm:ExpansionRowViewModel">
-                                        <Grid ColumnDefinitions="*,Auto,Auto,Auto"
-                                              ColumnSpacing="10">
-                                            <TextBlock Grid.Column="0" Classes="body"
-                                                       VerticalAlignment="Center"
-                                                       TextTrimming="CharacterEllipsis"
-                                                       Text="{Binding Title}"/>
-                                            <TextBlock Grid.Column="1" Classes="data-s"
-                                                       VerticalAlignment="Center"
-                                                       Text="{Binding PlaytimeText}"/>
-                                            <TextBlock Grid.Column="2" Classes="data-s"
-                                                       VerticalAlignment="Center"
-                                                       Text="{Binding LastPlayedText}"/>
-                                            <Button Grid.Column="3" Classes="quiet"
-                                                    AutomationProperties.Name="{Binding UngroupAutomationName}"
-                                                    ToolTip.Tip="{Binding UngroupTooltip}"
-                                                    CommandParameter="{Binding}"
-                                                    Command="{Binding $parent[ContentControl].((vm:GameExpansionsViewModel)DataContext).UngroupCommand}">
+                                <TextBlock Classes="body" FontSize="12"
+                                           TextWrapping="Wrap"
+                                           LineHeight="18"
+                                           IsVisible="{Binding IsEmpty}"
+                                           Text="{Binding EmptyText}"/>
+
+                                <ItemsControl IsVisible="{Binding HasLists}"
+                                              ItemsSource="{Binding Rows}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="lists:GameListEntryViewModel">
+                                            <CheckBox Classes="listtick"
+                                                      IsChecked="{Binding IsMember, Mode=TwoWay}"
+                                                      AutomationProperties.Name="{Binding AutomationName}"
+                                                      ToolTip.Tip="{Binding AutomationName}">
                                                 <TextBlock Classes="body" FontSize="12"
-                                                           Text="{Binding UngroupLabel}"/>
-                                            </Button>
-                                        </Grid>
-                                    </DataTemplate>
-                                </ContentControl.ContentTemplate>
-                            </ContentControl>
-                            <TextBlock Classes="body" FontSize="12"
-                                       TextWrapping="Wrap"
-                                       Foreground="{StaticResource TextDim}"
-                                       Text="{Binding ExtendsNote}"/>
-                        </StackPanel>
-                        </StackPanel>
-
-                        <!-- EXPANSIONS.
-                             The same treatment ALSO COVERS uses, with one
-                             deliberate omission: NO TOTAL. Coverage sums
-                             because two store entries are one game being
-                             played; expansions do not, because they are
-                             separate products and a sum of the two is a figure
-                             no source reported about either. Each row carries
-                             its own minutes beside its own last-played, and
-                             nothing here adds two rows together.
-
-                             The two sections are never merged: a covered
-                             title is this same game on another store, an
-                             expansion is a different product. -->
-                        <StackPanel IsVisible="{Binding ShowExpansions}">
-                        <StackPanel Spacing="10"
-                                    DataContext="{Binding Expansions}"
-                                    x:DataType="vm:GameExpansionsViewModel">
-                            <TextBlock Classes="label" Text="{Binding Heading}"/>
-                            <TextBlock Classes="body" FontSize="12"
-                                       TextWrapping="Wrap"
-                                       Foreground="{StaticResource TextDim}"
-                                       Text="{Binding Note}"/>
-
-                            <ItemsControl ItemsSource="{Binding Expansions}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate DataType="vm:ExpansionRowViewModel">
-                                        <Border BorderBrush="{StaticResource Line}"
-                                                BorderThickness="0,0,0,1"
-                                                Padding="0,9">
-                                            <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto"
-                                                  ColumnSpacing="10">
-                                                <ItemsControl Grid.Column="0"
-                                                              VerticalAlignment="Center"
-                                                              IsVisible="{Binding HasStores}"
-                                                              ToolTip.Tip="{Binding StoreNames}"
-                                                              ItemsSource="{Binding StoreChips}">
-                                                    <ItemsControl.ItemsPanel>
-                                                        <ItemsPanelTemplate>
-                                                            <StackPanel Orientation="Horizontal" Spacing="4"/>
-                                                        </ItemsPanelTemplate>
-                                                    </ItemsControl.ItemsPanel>
-                                                    <ItemsControl.ItemTemplate>
-                                                        <DataTemplate>
-                                                            <Border Classes="store-chip">
-                                                                <TextBlock Text="{Binding}"/>
-                                                            </Border>
-                                                        </DataTemplate>
-                                                    </ItemsControl.ItemTemplate>
-                                                </ItemsControl>
-                                                <TextBlock Grid.Column="1" Classes="body"
                                                            VerticalAlignment="Center"
                                                            TextTrimming="CharacterEllipsis"
-                                                           Text="{Binding Title}"/>
-                                                <TextBlock Grid.Column="2" Classes="data-s"
-                                                           VerticalAlignment="Center"
-                                                           Text="{Binding PlaytimeText}"/>
-                                                <TextBlock Grid.Column="3" Classes="data-s"
-                                                           VerticalAlignment="Center"
-                                                           Text="{Binding LastPlayedText}"/>
-                                                <Button Grid.Column="4" Classes="quiet"
-                                                        AutomationProperties.Name="{Binding UngroupAutomationName}"
-                                                        ToolTip.Tip="{Binding UngroupTooltip}"
-                                                        CommandParameter="{Binding}"
-                                                        Command="{Binding $parent[ItemsControl].((vm:GameExpansionsViewModel)DataContext).UngroupCommand}">
-                                                    <TextBlock Classes="body" FontSize="12"
-                                                               Text="{Binding UngroupLabel}"/>
-                                                </Button>
-                                            </Grid>
-                                        </Border>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
+                                                           Text="{Binding Name}"/>
+                                            </CheckBox>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                            </StackPanel>
 
-                            <TextBlock Classes="body" FontSize="11"
-                                       TextWrapping="Wrap"
-                                       Foreground="{StaticResource Amber}"
-                                       IsVisible="{Binding HasProblem}"
-                                       Text="{Binding Problem}"/>
-                        </StackPanel>
-                        </StackPanel>
 
-                        <StackPanel Spacing="7">
-                            <TextBlock Classes="label" Text="ABOUT"/>
-                            <SelectableTextBlock Classes="body copyable"
+                        </StackPanel>
+                    </StackPanel>
+                    </ScrollViewer>
+
+                    </Grid>
+
+                    <!-- ══ Left: the object ═════════════════════════════════════
+                         Declared after right column so Tab reaches Play first
+                         (tree order, not TabIndex). -->
+                    <Grid Grid.Column="0" Grid.Row="0" RowDefinitions="Auto,*"
+                          Margin="0,0,0,24">
+
+                        <Border Grid.Row="0" Height="300"
+                                CornerRadius="{StaticResource RadiusTile}"
+                                ClipToBounds="True"
+                                BorderThickness="1" BorderBrush="{StaticResource LineSoft}">
+                            <Panel>
+                                <!-- Placeholder is the fallback, never a hole (§7). -->
+                                <Border Background="{Binding PlaceholderBrush}"
+                                        IsVisible="{Binding ShowPlaceholder}">
+                                    <TextBlock Text="{Binding Title}"
+                                               FontFamily="{StaticResource DisplayFont}"
+                                               FontWeight="Bold" FontSize="22" LineHeight="24"
+                                               TextWrapping="Wrap" Foreground="White"
+                                               VerticalAlignment="Bottom" Margin="16"/>
+                                </Border>
+                                <!-- Full saturation: the ramp is a scanning aid for
+                                     the grid, and the user has already scanned. -->
+                                <Image Source="{Binding Cover}" Stretch="UniformToFill"/>
+                            </Panel>
+                        </Border>
+
+                        <!-- Row 1 is star: the cover is fixed and the
+                             identity facts under it scroll. With the IGDB
+                             search disclosed, the column would otherwise run
+                             past the card's MaxHeight, the same overflow the
+                             right column's star row fixes.
+
+                             The 18px gap between the cover and the facts is
+                             a Margin on the ScrollViewer, not on the content:
+                             a Thickness token cannot be composed with a
+                             second value in XAML, and a Margin on a
+                             ScrollViewer is not the inert Padding case, so
+                             the gap stays fixed as the content scrolls. The
+                             content takes InnerScrollGutter for the same bar
+                             the rest band clears; same mechanism, explained
+                             there. -->
+                        <ScrollViewer Grid.Row="1"
+                                      Classes="inner"
+                                      Margin="0,18,0,0"
+                                      HorizontalScrollBarVisibility="Disabled"
+                                      VerticalScrollBarVisibility="Auto">
+                        <StackPanel Spacing="18"
+                                    Margin="{StaticResource InnerScrollGutter}">
+
+                        <!-- What Steam calls it. Selectable because an appid is a
+                             thing people paste into a search box. -->
+                        <StackPanel Spacing="3" IsVisible="{Binding HasSteamAppId}">
+                            <TextBlock Classes="label" FontSize="10" Text="STEAM APPID"/>
+                            <SelectableTextBlock Classes="data copyable"
                                        Focusable="True"
-                                       Foreground="{StaticResource TextDim}"
-                                       LineHeight="20"
-                                       TextWrapping="Wrap"
-                                       IsVisible="{Binding HasSummary}"
-                                       Text="{Binding Summary}"/>
-                            <!-- §7: an empty screen is a direction, not a mood. -->
-                            <TextBlock Classes="body"
-                                       Foreground="{StaticResource TextDim}"
-                                       LineHeight="20"
-                                       TextWrapping="Wrap"
-                                       IsVisible="{Binding ShowEmptyBody}"
-                                       Text="{Binding EmptyBodyText}"/>
+                                       HorizontalAlignment="Left"
+                                       Text="{Binding SteamAppId}"/>
                         </StackPanel>
 
-                        <!-- Updates list. Patch-notes links only appear when the
-                             update carries a page (§5.2). -->
-                        <StackPanel Spacing="4" IsVisible="{Binding HasUpdates}">
-                            <TextBlock Classes="label" Text="{Binding UpdatesLabel}"/>
-                            <ItemsControl ItemsSource="{Binding Updates}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate DataType="vm:UpdateEventViewModel">
-                                        <Border Classes="updaterow"
-                                                BorderBrush="{StaticResource Line}"
-                                                BorderThickness="0,0,0,1"
-                                                Padding="0,9">
-                                            <Grid ColumnDefinitions="16,*,Auto,Auto" ColumnSpacing="10">
-                                                <!-- Flare: unread-update marker
-                                                     only, here as everywhere. -->
-                                                <Border Grid.Column="0"
-                                                        Width="7" Height="7" CornerRadius="4"
-                                                        HorizontalAlignment="Left"
-                                                        VerticalAlignment="Center"
-                                                        Background="{StaticResource Flare}"
-                                                        BoxShadow="{DynamicResource PipGlow}"
-                                                        IsVisible="{Binding IsUnread}"
-                                                        ToolTip.Tip="Unread update"/>
-                                                <SelectableTextBlock Grid.Column="1" Classes="body copyable"
-                                                           Focusable="False"
-                                                           Text="{Binding Headline}"
-                                                           TextTrimming="CharacterEllipsis"
-                                                           VerticalAlignment="Center"/>
-                                                <TextBlock Grid.Column="2" Classes="data-s"
-                                                           Text="{Binding DateText}"
-                                                           VerticalAlignment="Center"/>
-                                                <Button Grid.Column="3"
-                                                        Classes="quiet"
-                                                        IsVisible="{Binding HasLink}"
-                                                        Click="OnUpdateLinkPressed"
-                                                        ToolTip.Tip="{Binding Link.Tooltip}">
-                                                    <TextBlock Classes="body" FontSize="12"
-                                                               Foreground="{StaticResource Azure}"
-                                                               Text="Patch notes"/>
-                                                </Button>
-                                            </Grid>
-                                        </Border>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
+                        <!-- Only when there is a path to give. "Not installed" is
+                             already a chip at the top, and §7 does not want a fact
+                             stated twice on one screen. -->
+                        <StackPanel Spacing="3" IsVisible="{Binding HasInstallPath}">
+                            <TextBlock Classes="label" FontSize="10" Text="ON DISK"/>
+                            <SelectableTextBlock Classes="data-s copyable"
+                                       Focusable="True"
+                                       Text="{Binding InstallPath}"
+                                       LineHeight="15"
+                                       TextWrapping="Wrap"/>
                         </StackPanel>
 
-                        <!-- "I've read this one": placed under the update list.
-                             Not "Not interested"; that is the feed card's verdict. -->
-                        <StackPanel Spacing="8" IsVisible="{Binding ShowFlagControl}">
+                        <!-- Acquisition. A fact about THIS COPY — when it
+                             arrived and under what licence — so it belongs in
+                             the object column beside the appid and the path,
+                             not in the identity block, which is about the game.
+                             Drawn only for a user who has run the saved-page
+                             import; absent rather than empty for everyone else.
 
-                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12"
-                                  IsVisible="{Binding ShowDismissFlag}">
-                                <Button Grid.Column="0" Classes="secondary"
-                                        Command="{Binding DismissFlagCommand}"
-                                        ToolTip.Tip="{Binding DismissFlagNote}">
-                                    <TextBlock Classes="body" FontSize="12"
-                                               Text="{Binding DismissFlagLabel}"/>
-                                </Button>
-                                <TextBlock Grid.Column="1" Classes="body"
-                                           FontSize="12" LineHeight="17"
-                                           TextWrapping="Wrap"
-                                           VerticalAlignment="Center"
-                                           Foreground="{StaticResource TextDim}"
-                                           Text="{Binding DismissFlagNote}"/>
-                            </Grid>
-
-                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12"
-                                  IsVisible="{Binding ShowRestoreFlag}">
-                                <Button Grid.Column="0" Classes="secondary"
-                                        Command="{Binding RestoreFlagCommand}"
-                                        ToolTip.Tip="{Binding RestoreFlagNote}">
-                                    <TextBlock Classes="body" FontSize="12"
-                                               Text="{Binding RestoreFlagLabel}"/>
-                                </Button>
-                                <TextBlock Grid.Column="1" Classes="body"
-                                           FontSize="12" LineHeight="17"
-                                           TextWrapping="Wrap"
-                                           VerticalAlignment="Center"
-                                           Foreground="{StaticResource TextDim}"
-                                           Text="{Binding RestoreFlagNote}"/>
-                            </Grid>
-
-                            <!-- A write that did not land. Controls stay in
-                                 place for retry; Amber for attention (§2). -->
+                             Price paid is stored beside these two and is
+                             deliberately never bound here. §7: never be smug.
+                             "$59.99 · never opened" is the sentence this
+                             product must not write. -->
+                        <StackPanel Spacing="3" IsVisible="{Binding ShowAcquisition}">
+                            <TextBlock Classes="label" FontSize="10"
+                                       Text="{Binding AcquiredLabel}"/>
+                        <StackPanel Spacing="3"
+                                    DataContext="{Binding Acquisition}"
+                                    x:DataType="vm:GameAcquisitionViewModel">
+                            <SelectableTextBlock Classes="data copyable"
+                                       Focusable="False"
+                                       HorizontalAlignment="Left"
+                                       IsVisible="{Binding HasDate}"
+                                       Text="{Binding DateText}"/>
                             <TextBlock Classes="body" FontSize="11"
                                        TextWrapping="Wrap"
-                                       Foreground="{StaticResource Amber}"
-                                       IsVisible="{Binding HasFlagProblem}"
-                                       Text="{Binding FlagProblem}"/>
+                                       Foreground="{StaticResource TextDim}"
+                                       IsVisible="{Binding HasLicence}"
+                                       Text="{Binding LicenseText}"/>
+                        </StackPanel>
                         </StackPanel>
 
-                    </StackPanel>
-                </ScrollViewer>
+                        <!-- Clear: returns the work to automatic metadata
+                             matching. Drawn only while a pin stands (§10.9);
+                             FallbackValue=False keeps the control hidden when
+                             IgdbMatch is null, because an unresolvable
+                             sub-property binding would leave IsVisible at its
+                             default of true. Sits at the foot of the identity
+                             facts, inside this column's own scroll region. The
+                             search surface stays in the right column: a
+                             candidate row does not fit 200px. -->
+                        <Button AutomationProperties.Name="{Binding IgdbMatch.ClearLabel}" Name="IgdbClearButton"
+                                Classes="link"
+                                HorizontalAlignment="Left"
+                                IsVisible="{Binding IgdbMatch.ShowPinned, FallbackValue=False}"
+                                Command="{Binding IgdbMatch.ClearCommand}"
+                                ToolTip.Tip="{Binding IgdbMatch.ClearTooltip}">
+                            <TextBlock Classes="body" FontSize="12"
+                                       Text="{Binding IgdbMatch.ClearLabel}"/>
+                        </Button>
 
+                        </StackPanel>
+                        </ScrollViewer>
+
+                    </Grid>
                 </Grid>
-
-                <!-- ══ Left: the object ═════════════════════════════════════
-                     Declared after right column so Tab reaches Play first
-                     (tree order, not TabIndex). -->
-                <StackPanel Grid.Column="0" Grid.Row="0" Spacing="18"
-                            Margin="0,0,0,24">
-
-                    <Border Height="300"
-                            CornerRadius="{StaticResource RadiusTile}"
-                            ClipToBounds="True"
-                            BorderThickness="1" BorderBrush="{StaticResource LineSoft}">
-                        <Panel>
-                            <!-- Placeholder is the fallback, never a hole (§7). -->
-                            <Border Background="{Binding PlaceholderBrush}"
-                                    IsVisible="{Binding ShowPlaceholder}">
-                                <TextBlock Text="{Binding Title}"
-                                           FontFamily="{StaticResource DisplayFont}"
-                                           FontWeight="Bold" FontSize="22" LineHeight="24"
-                                           TextWrapping="Wrap" Foreground="White"
-                                           VerticalAlignment="Bottom" Margin="16"/>
-                            </Border>
-                            <!-- Full saturation: the ramp is a scanning aid for
-                                 the grid, and the user has already scanned. -->
-                            <Image Source="{Binding Cover}" Stretch="UniformToFill"/>
-                        </Panel>
-                    </Border>
-
-                    <!-- What Steam calls it. Selectable because an appid is a
-                         thing people paste into a search box. -->
-                    <StackPanel Spacing="3" IsVisible="{Binding HasSteamAppId}">
-                        <TextBlock Classes="label" FontSize="10" Text="STEAM APPID"/>
-                        <SelectableTextBlock Classes="data copyable"
-                                   Focusable="True"
-                                   HorizontalAlignment="Left"
-                                   Text="{Binding SteamAppId}"/>
-                    </StackPanel>
-
-                    <!-- Only when there is a path to give. "Not installed" is
-                         already a chip at the top, and §7 does not want a fact
-                         stated twice on one screen. -->
-                    <StackPanel Spacing="3" IsVisible="{Binding HasInstallPath}">
-                        <TextBlock Classes="label" FontSize="10" Text="ON DISK"/>
-                        <SelectableTextBlock Classes="data-s copyable"
-                                   Focusable="True"
-                                   Text="{Binding InstallPath}"
-                                   LineHeight="15"
-                                   TextWrapping="Wrap"/>
-                    </StackPanel>
-
-                </StackPanel>
-            </Grid>
+            </Panel>
         </Border>
     </Panel>
 

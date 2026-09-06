@@ -118,6 +118,12 @@
     <SolidColorBrush x:Key="SurfaceRaisedHalf" Color="#801D3437"/>
     <SolidColorBrush x:Key="SurfaceRaisedGhost" Color="#1F1D3437"/>
     <SolidColorBrush x:Key="SurfaceRaisedFaint" Color="#141D3437"/>
+    <!-- The screenshot lightbox controls have to read over arbitrary art.
+         Keep these as ordinary mutable tokens: a binding inside the view's
+         deferred resource dictionary crashes Avalonia while it constructs
+         the startup window on .NET 10. -->
+    <SolidColorBrush x:Key="LightboxControlFill" Color="#B316282A"/>
+    <SolidColorBrush x:Key="LightboxControlActiveFill" Color="#D91D3437"/>
     <SolidColorBrush x:Key="GroundVeil" Color="#4D0F1C1E"/>
     <!-- The detail modal's scrim (§9): the same unlit tone as the caption. -->
     <SolidColorBrush x:Key="ModalScrim" Color="#D6050D0E"/>
@@ -356,6 +362,23 @@
          capsule without becoming a second opaque block on the art. -->
     <SolidColorBrush x:Key="TileChipGround" Color="#D10F1C1E"/>
 
+    <!-- The art veil. The detail modal lays the game's own art behind its
+         information and dims it through this:
+         the theme's own Surface at ArtVeilAlpha. The art contributes
+         1 - ArtVeilAlpha — 8% at the shipped value.
+
+         The veil IS Surface, so over the opaque Surface the modal already
+         paints, a veil of Surface composites back to Surface
+         exactly. A game with no art draws no image and gets the flat
+         treatment — no tone step and no layout shift, because the art and
+         the veil are siblings in a Panel and take no space of their own.
+
+         0.92 is the round step past the boundary, walked rather than
+         assumed: at 0.91 Winnow's TextDim over a white cover measures
+         4.49:1, one hundredth under AA. -->
+    <x:Double x:Key="ArtVeilAlpha">0.92</x:Double>
+    <SolidColorBrush x:Key="ArtVeil" Color="#EB16282A"/>
+
     <!-- ══ Scrollbars ═════════════════════════════════════════════════════
          Fluent's ScrollBar theme is kept — its rest/expanded behaviour is
          good — and only repainted, by overriding the keys its template reads.
@@ -376,6 +399,37 @@
          10 = the 8px Windows resize frame (SM_CXFRAME + SM_CXPADDEDBORDER) with
          2px of slack, measured against this window rather than assumed. -->
     <Thickness x:Key="ScrollBarEdgeInset">0,0,10,10</Thickness>
+
+    <!-- The gutter an interior scroll region's content takes so that the
+         region's own scrollbar is not drawn on top of it. Distinct from
+         ScrollBarEdgeInset above: that inset is about pixels the OS resize
+         border owns at the window edge; this gutter is about our own scrollbar
+         being drawn over our own content, and the two are independent — an
+         interior region opts out of the inset and still needs the gutter.
+
+         The mechanism, verified against Avalonia 11.3.20's Fluent theme rather
+         than assumed: while AllowAutoHide is on (the default), the ScrollViewer
+         template gives PART_ContentPresenter Grid.ColumnSpan="2" and
+         Grid.RowSpan="2", so the scrollbar is painted OVER the content instead
+         of taking a column beside it.
+
+         20 = 12 (ScrollBarSize above — the width Fluent's track swells to
+         under the pointer) + 8 (§4's own spacing step). The 8 is what makes
+         the clearance read as deliberate space rather than as a control that
+         merely stopped touching the bar.
+
+         Spent as a margin on the content and never as Padding on the
+         ScrollViewer: ScrollContentPresenter in 11.3.20 does not deflate by
+         Padding in either measure or arrange, so a Padding value there is
+         inert. The cover wall in MainWindow.axaml already works this way — it
+         sets Padding="0" and clears the bar with the wall's own margin. -->
+    <Thickness x:Key="InnerScrollGutter">0,0,20,0</Thickness>
+
+    <!-- The same clearance turned through ninety degrees, for a region whose
+         bar is horizontal and therefore drawn over the foot of its content
+         rather than over its trailing edge. Same width, same argument. -->
+    <Thickness x:Key="InnerScrollGutterBottom">0,0,0,20</Thickness>
+
     <!-- Fluent binds this to Rectangle.StrokeThickness, which is a double —
          a Thickness here type-casts at runtime, not at build. -->
     <x:Double x:Key="ScrollBarTrackBorderThemeThickness">0</x:Double>
@@ -449,6 +503,13 @@
     <x:Double x:Key="LabelSize">11</x:Double>
     <x:Double x:Key="DataSize">12</x:Double>
     <x:Double x:Key="DataSSize">10</x:Double>
+    <!-- The reading measure (design-system.md §3). Measured in the
+         shipped face: 66 characters of prose measure 410px at Body 13
+         and 379px at 12, so one token at 410 is 66 characters at 13/20
+         and 72 at 12/18 — both inside the 45-75 character band a
+         reading measure is drawn from, which is why the system states
+         one number rather than one per size. -->
+    <x:Double x:Key="ProseMeasure">410</x:Double>
 
     <!-- ══ Spacing (4px base) ═════════════════════════════════════════════ -->
     <x:Double x:Key="Space1">4</x:Double>
@@ -531,11 +592,51 @@
             <Setter Property="Foreground" Value="{StaticResource Text}"/>
         </Style>
 
+        <!-- A prose run — a paragraph the reader reads. Carries the
+             reading measure as a MaxWidth, left-aligned because a
+             maximum under the default Stretch centres the paragraph
+             away from the column's left edge. Worn today by the
+             details modal's ABOUT summary and its empty-body line,
+             which are the runs that would otherwise stretch to the
+             full right column. -->
+        <Style Selector=":is(TextBlock).prose">
+            <Setter Property="MaxWidth" Value="{StaticResource ProseMeasure}"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+
         <Style Selector=":is(TextBlock).label">
             <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="FontSize" Value="{StaticResource LabelSize}"/>
             <Setter Property="LetterSpacing" Value="0.44"/>
+            <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
+        </Style>
+
+        <!-- .section marks a heading that NAMES A SECTION — in the detail
+             modal those are IGDB MATCH, EDIT DETAILS, ALSO COVERS, EXTENDS,
+             EXPANSIONS, LISTS, ABOUT and the updates heading — as against a
+             plain .label, which names a VALUE: PLAYED, STEAM APPID, ON DISK,
+             the coverage total's label, and the per-field labels in the
+             metadata editor.
+
+             The ink is TextDim, §2's labels-and-metadata ink. Stated here
+             rather than left to .label's own default so that a section heading
+             and the close glyph beside it cannot drift apart if .label is ever
+             retuned for the value labels. The prose between those headings
+             takes .body's own Text ink, stating no Foreground of its own.
+
+             The ink below it is not available. §8 says do not dim further, and
+             measured: TextFaint is 3.63 / 3.60 / 3.31 / 3.28 across Winnow /
+             Nightshift / Tungsten / Box art on the flat card, and 2.86 / 3.01
+             / 2.67 / 2.60 over the brightest cover the art-backed card can
+             carry (§5.5) — under AA in every theme with the art out of it
+             entirely. TextDim is 5.88 / 6.82 / 6.44 / 6.10 flat and 4.63 /
+             5.71 / 5.19 / 4.83 over that brightest cover. A heading at label
+             size is 11px SemiBold, which is not WCAG large text (14pt bold is
+             the threshold), so the 4.5:1 bar applies and the 3:1 large-text
+             allowance does not. -->
+        <Style Selector=":is(TextBlock).label.section">
             <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
         </Style>
 

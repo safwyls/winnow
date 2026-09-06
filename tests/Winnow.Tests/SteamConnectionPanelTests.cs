@@ -725,11 +725,13 @@ public class SteamConnectionPanelTests
         // is a key this screen owns.
         Assert.Equal(key, panel.ClearSteamApiKeyCommand.CanExecute(null));
 
-        // The disclosures are shut, and the top level held up anyway.
+        // The disclosures are shut, the modals are closed, and the top level
+        // held up anyway. The key's own disclosure is gone: what it held is
+        // half of the comparison the methods modal draws (TASK-61).
         Assert.False(panel.SteamLocalDetailsOpen);
         Assert.False(panel.SteamMethodsDetailsOpen);
         Assert.False(panel.SteamSignInDetailsOpen);
-        Assert.False(panel.SteamApiKeyDetailsOpen);
+        Assert.False(panel.IsAnyModalOpen);
     }
 
     /// <summary>
@@ -795,7 +797,7 @@ public class SteamConnectionPanelTests
     /// effect on it.
     /// </summary>
     [Fact]
-    public async Task The_four_disclosures_start_shut_and_open_on_their_own_command()
+    public async Task The_three_disclosures_start_shut_and_open_on_their_own_command()
     {
         var panel = await Panel(Credentials(key: true, session: true), SteamSessionHealth.Live);
 
@@ -810,9 +812,6 @@ public class SteamConnectionPanelTests
             (() => panel.SteamSignInDetailsOpen,
                 () => panel.ToggleSteamSignInDetailsCommand.Execute(null),
                 () => panel.SteamSignInDetailsToggleText),
-            (() => panel.SteamApiKeyDetailsOpen,
-                () => panel.ToggleSteamApiKeyDetailsCommand.Execute(null),
-                () => panel.SteamApiKeyDetailsToggleText),
         ];
 
         foreach (var (open, toggle, label) in disclosures)
@@ -917,7 +916,7 @@ public class SteamConnectionPanelTests
 
         Assert.Equal(SteamConnectionCopy.StateApiKeyExternal, panel.SteamApiKeyStateText);
         Assert.False(panel.ClearSteamApiKeyCommand.CanExecute(null));
-        Assert.False(panel.SteamApiKeyDetailsOpen);
+        Assert.False(panel.IsAnyModalOpen);
 
         // The state line is the one place a user reads this without opening
         // anything, so it has to say the consequence and not only the state.

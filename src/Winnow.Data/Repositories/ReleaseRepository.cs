@@ -7,7 +7,7 @@ namespace Winnow.Data.Repositories;
 
 public sealed class ReleaseRepository : IReleaseRepository
 {
-    private const string Columns = """
+    internal const string Columns = """
         id              AS Id,
         work_id         AS WorkId,
         igdb_version_id AS IgdbVersionId,

@@ -105,7 +105,7 @@ public sealed class LibraryBucketRulesTests
             },
         };
 
-        var game = GameGrouping.Of(1, entries, null, Thresholds);
+        var game = GameGrouping.Of(1, entries, null, 0, Thresholds);
 
         Assert.Equal(120, game.PlaytimeMinutes);
         Assert.Equal(newer, game.LastPlayedAt);

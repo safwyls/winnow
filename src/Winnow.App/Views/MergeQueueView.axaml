@@ -1,8 +1,9 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+<UserControl AutomationProperties.Name="Merges" AutomationProperties.ControlTypeOverride="Group" xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Winnow.App.ViewModels"
              x:Class="Winnow.App.Views.MergeQueueView"
-             x:DataType="vm:MergeQueueViewModel">
+             x:DataType="vm:MergeQueueViewModel"
+             Classes.reducedmotion="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Library.Ramp.ReducedMotion}">
 
     <!-- The Merges screen (docs/merge_queue_design). Three bands: a 56px
          header, a 40px cut bar, and the queue. The queue is one scroll of
@@ -156,6 +157,19 @@
             <Setter Property="Foreground" Value="{StaticResource Text}"/>
         </Style>
 
+        <!-- §8: the queue still states its selected and hovered states, but
+             brush changes arrive immediately when the OS disables motion. -->
+        <Style Selector="UserControl.reducedmotion Border.row">
+            <Setter Property="Transitions">
+                <Transitions/>
+            </Setter>
+        </Style>
+        <Style Selector="UserControl.reducedmotion Border.reason > :is(TextBlock)">
+            <Setter Property="Transitions">
+                <Transitions/>
+            </Setter>
+        </Style>
+
         <!-- ══ The checkbox ═════════════════════════════════════════════════
              A real CheckBox, templated rather than restyled: Fluent's own
              reads a dozen resource keys across six states. The 2px Volt ring
@@ -287,11 +301,11 @@
 
     </UserControl.Styles>
 
-    <Grid RowDefinitions="56,40,*" Background="{StaticResource PaneGround}">
+    <Grid RowDefinitions="56,40,*">
 
         <!-- ══ Band 1: header ═══════════════════════════════════════════════ -->
         <Grid Grid.Row="0" ColumnDefinitions="Auto,Auto,*,Auto,Auto,Auto" Margin="16,0">
-            <TextBlock Grid.Column="0" Classes="display-l"
+            <TextBlock AutomationProperties.HeadingLevel="1" Grid.Column="0" Classes="display-l"
                        VerticalAlignment="Center"
                        Text="{Binding Title}"/>
             <TextBlock Grid.Column="1" Classes="data"
@@ -320,7 +334,7 @@
                         <ItemsControl ItemsSource="{Binding SortOptions}" MinWidth="176">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate DataType="vm:MergeSortOptionViewModel">
-                                    <Button Classes="sortitem" Click="OnSortItemClick">
+                                    <Button AutomationProperties.Name="{Binding Label}" Classes="sortitem" Click="OnSortItemClick">
                                         <Grid ColumnDefinitions="14,*">
                                             <Border Width="6" Height="6" CornerRadius="3"
                                                     HorizontalAlignment="Left"
@@ -340,7 +354,7 @@
             </Button>
 
             <!-- The safe bulk path: cross-store exact matches only. -->
-            <Button Grid.Column="4" Classes="ctl"
+            <Button AutomationProperties.Name="{Binding AcceptExactLabel}" Grid.Column="4" Classes="ctl"
                     Margin="0,0,12,0"
                     VerticalAlignment="Center"
                     IsEnabled="{Binding CanAcceptExact}"
@@ -377,7 +391,7 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="vm:MergeKindOptionViewModel">
-                                <Button Classes="seg tab"
+                                <Button AutomationProperties.Name="{Binding Label}" Classes="seg tab"
                                         Classes.on="{Binding IsSelected}"
                                         Command="{Binding $parent[UserControl].((vm:MergeQueueViewModel)DataContext).SelectKindCommand}"
                                         CommandParameter="{Binding}">
@@ -398,7 +412,7 @@
                                    VerticalAlignment="Center"
                                    Foreground="{StaticResource Text}"
                                    Text="{Binding KindChipLabel}"/>
-                        <Button Classes="chipx"
+                        <Button AutomationProperties.Name="{Binding KindChipClearTip}" Classes="chipx"
                                 Command="{Binding ClearKindCommand}"
                                 ToolTip.Tip="{Binding KindChipClearTip}">
                             <Path Data="M 0.5,0.5 L 6.5,6.5 M 6.5,0.5 L 0.5,6.5"/>
@@ -433,7 +447,7 @@
 
                                 <StackPanel Spacing="2" Margin="0,0,0,2">
                                     <StackPanel Orientation="Horizontal" Spacing="8">
-                                        <TextBlock Classes="shelf" Text="{Binding Title}"/>
+                                        <TextBlock AutomationProperties.HeadingLevel="2" Classes="shelf" Text="{Binding Title}"/>
                                         <TextBlock Classes="data"
                                                    VerticalAlignment="Center"
                                                    Margin="0,2,0,0"
@@ -547,7 +561,26 @@
                                                             </StackPanel>
                                                         </Grid>
 
-                                                        <!-- ── Candidate rows ────────────── -->
+                                                        <!-- ── Candidate rows ──────────────
+                                                             The row is a focusable Border and
+                                                             the DataTemplate's root, so there
+                                                             is no control to move its name
+                                                             onto: a Border gets a
+                                                             NoneAutomationPeer and UIA drops
+                                                             it from the control view, and the
+                                                             ItemsControl's own containers are
+                                                             ContentPresenters, which are
+                                                             dropped for the same reason — the
+                                                             list reports as a List with no
+                                                             items in it. AccessibilityView
+                                                             puts the row back in the tree with
+                                                             its name, and ControlTypeOverride
+                                                             makes it report as a row of that
+                                                             list rather than as a bare group,
+                                                             which is what None maps to. The
+                                                             fix belongs on the template root;
+                                                             on the ItemsControl it would name
+                                                             the list, not a row. -->
                                                         <ItemsControl ItemsSource="{Binding Rows}">
                                                             <ItemsControl.ItemTemplate>
                                                                 <DataTemplate DataType="vm:MergeRowViewModel">
@@ -562,7 +595,9 @@
                                                                             PointerPressed="OnRowPressed"
                                                                             GotFocus="OnRowFocus"
                                                                             ToolTip.Tip="{Binding DetailsTip}"
-                                                                            AutomationProperties.Name="{Binding DetailsAutomationName}">
+                                                                            AutomationProperties.Name="{Binding DetailsAutomationName}"
+                                                                            AutomationProperties.AccessibilityView="Control"
+                                                                            AutomationProperties.ControlTypeOverride="ListItem">
                                                                         <Grid ColumnDefinitions="2,36,44,*,Auto,94,78,26,36">
 
                                                                             <!-- The selection edge: Volt on the header only. -->

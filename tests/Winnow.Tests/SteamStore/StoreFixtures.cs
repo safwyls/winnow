@@ -4,7 +4,7 @@ using System.Text.Json;
 namespace Winnow.Tests.SteamStore;
 
 /// <summary>
-/// The verbatim store responses captured for
+/// The captured store responses, with account identifiers sanitized, for
 /// <c>docs/spikes/steam-store-tags.md</c> (see
 /// tests/fixtures/steam-store/README.md), plus generators that answer a request
 /// for arbitrary appids in the same shape.
@@ -34,7 +34,7 @@ internal static class StoreFixtures
     private static string PathOf(string fileName)
         => Path.Combine(AppContext.BaseDirectory, "fixtures", "steam-store", fileName);
 
-    /// <summary>The real <c>IStoreBrowseService/GetItems</c> response, byte for byte.</summary>
+    /// <summary>The captured <c>IStoreBrowseService/GetItems</c> response with fake creator-clan account IDs.</summary>
     internal static string GetItemsResponse() => File.ReadAllText(PathOf("getitems-v1.json"));
 
     /// <summary>
@@ -52,11 +52,18 @@ internal static class StoreFixtures
     /// </summary>
     internal static string RelatedItemsResponse() => File.ReadAllText(PathOf("getitems-related-v1.json"));
 
+    /// <summary>One item's raw JSON out of <see cref="GetItemsResponse"/>.</summary>
+    internal static string ItemJson(string appId)
+        => ItemJsonFrom(GetItemsResponse(), appId);
+
     /// <summary>One item's raw JSON out of <see cref="RelatedItemsResponse"/>.</summary>
     internal static string RelatedItemJson(string appId)
+        => ItemJsonFrom(RelatedItemsResponse(), appId);
+
+    private static string ItemJsonFrom(string response, string appId)
     {
         var id = long.Parse(appId, CultureInfo.InvariantCulture);
-        using var document = JsonDocument.Parse(RelatedItemsResponse());
+        using var document = JsonDocument.Parse(response);
         return document.RootElement.GetProperty("response").GetProperty("store_items")
             .EnumerateArray()
             .Single(item => item.GetProperty("id").GetInt64() == id)

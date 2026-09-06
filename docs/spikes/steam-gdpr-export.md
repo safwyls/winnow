@@ -84,11 +84,13 @@ Treat this as **REPORTED at best, and likely wrong**, for three reasons:
 Note the circularity risk: this page (or an ancestor of it) is the most likely origin of
 §5.4's own wording, so it must not be treated as independent corroboration.
 
-**`ExternalLicenses` specifically: UNKNOWN.** No page by that name appears in the 2022
-SteamTracking index. Probing `help.steampowered.com/en/accountdata/ExternalLicenses`
-anonymously is non-discriminating; every path under `/accountdata/`, including a
-deliberately bogus one, returns the same login redirect. §4.7 rests its third-party-key
-story on this file; that footing is currently unverified.
+**`ExternalLicenses`: no distinct page observed, verified authenticated 2026-09-06.**
+The signed-in dashboard has no such link. Opening
+`help.steampowered.com/en/accountdata/ExternalLicenses` while authenticated renders the
+ordinary account-data dashboard: its 112 content links match the index exactly, and no
+separate license table appears. This refutes the proposed page for the tested account;
+it does not establish what a support-request export might contain. Use the dashboard's
+actual `store.steampowered.com/account/licenses` link for license acquisition data.
 
 What does verifiably exist is `store.steampowered.com/account/licenses` ("View licenses
 and product key activations"), listed on the Privacy Dashboard as "Licenses". Community
@@ -334,7 +336,8 @@ No license-compatible parser exists to learn patterns from.
    pages (licenses and purchase history) have been parsed from real saved HTML; selectors
    are VERIFIED and fixtures committed. See §8. The `help.steampowered.com/en/accountdata/*`
    pages remain unverified; their markup is still a guess.
-2. Whether `ExternalLicenses` exists at all, and if so its columns.
+2. **Resolved for the live dashboard 2026-09-06:** `ExternalLicenses` renders the index,
+   not a separate data page. There are no distinct columns to document; see §2.
 3. Whether a support ticket yields files, and in what container.
 4. Whether the licenses page distinguishes third-party-key *vendors* (Humble vs Fanatical)
    or only says "Retail". **Still UNKNOWN as of 2026-08-29.** The sample account had no
@@ -467,6 +470,21 @@ See that directory's README for sanitization details.
   paginator in-page (fetch + DOMParser append, paginator element replaced so a complete walk
   parses as complete), capped by `MaxLicensesPages` (default 50). The result carries
   `LicensesPagesWalked` and `LicensesStoppedBecause` for diagnostics.
+
+**Live paginator recheck, 2026-09-06 (TASK-47).** In an authenticated browser on
+`store.steampowered.com/account/licenses`, the user ran a read-only console probe that
+selects `a.license_paginator_next`, verifies its same origin, fetches it with
+`credentials: 'include'` and `cache: 'no-store'`, then parses it with `DOMParser`.
+The response was HTTP 200 and contained 100 non-header rows in the account table
+identified by `th.license_date_col`. No CSP-related fetch failure was observed. This
+checks one live page transition, not an entire embedded-WebView harvest. The automation
+browser's restricted evaluator lacked `fetch`; that tool limitation was not a Steam CSP
+failure. No account HTML, cookies, or paginator tokens were saved.
+
+If a future CSP change blocks the in-page fetch, preserve the existing incomplete-harvest
+diagnostic and offer the saved-page import route. Do not bypass CSP or export browser
+credentials to make unattended requests. A navigation-based walk inside the user-present
+sign-in WebView would require separate implementation and verification.
 
 ### Still UNKNOWN
 

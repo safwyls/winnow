@@ -6,6 +6,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="Winnow.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!--
       Hosting.Abstractions for the BackgroundService that drives the poll, DI and
       Options for composition, Logging for diagnostics. NOT Winnow.Data, NOT any

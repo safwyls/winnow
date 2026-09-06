@@ -23,6 +23,11 @@ namespace Winnow.App.ViewModels;
 /// claim, which is the safe direction, but it means registering the
 /// soft-match sweep without also registering this repository leaves the
 /// queue permanently understating what it knows.</para>
+///
+/// <para><c>IIgdbAssignmentService</c> is optional. Without it the
+/// queue's cover ladder loses only its live-pin rung; user-set art and
+/// the stored cover URL are read off the work row itself and still
+/// apply.</para>
 /// </summary>
 public static class MergeQueueServiceCollectionExtensions
 {

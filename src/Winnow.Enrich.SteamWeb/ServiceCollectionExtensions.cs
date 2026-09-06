@@ -39,7 +39,30 @@ public static class ServiceCollectionExtensions
         services.TryAddSingleton<ISettingsRepository, SettingsRepository>();
         services.TryAddSingleton<ISteamWebMetadataCache, SqliteSteamWebMetadataCache>();
 
-        // Order is the resolution order: settings table first (the product path
+        // DPAPI on Windows for the stored key, and an implementation that
+        // REFUSES rather than degrades anywhere else — the same binding rule the
+        // session protector answers to (§4.7's second amendment binds every
+        // secret Winnow keeps). Separate interface, separate entropy: the key
+        // and the session are different credentials and must not be
+        // interchangeable ciphertexts.
+        if (OperatingSystem.IsWindows())
+        {
+            services.TryAddSingleton<ISteamApiKeyProtector, DpapiSteamApiKeyProtector>();
+        }
+        else
+        {
+            services.TryAddSingleton<ISteamApiKeyProtector, UnavailableSteamApiKeyProtector>();
+        }
+
+        // The one owner of the key at rest. ISettingsRepository is optional the
+        // same way the session store's is: a host or test that registered none
+        // gets a store that refuses rather than a container that throws.
+        services.TryAddSingleton<ISteamApiKeyStore>(sp => new SettingsSteamApiKeyStore(
+            sp.GetService<ISettingsRepository>(),
+            sp.GetRequiredService<ISteamApiKeyProtector>(),
+            sp.GetService<ILogger<SettingsSteamApiKeyStore>>()));
+
+        // Order is the resolution order: the stored key first (the product path
         // — §4.2 keys are user-supplied and stored locally), then
         // IConfiguration (the Steam__ApiKey environment variable and an optional
         // appsettings.local.json) for development.

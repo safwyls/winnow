@@ -1,11 +1,11 @@
 ---
 id: TASK-70.3
 title: Make the Same Game screen link groups instead of merging pairs
-status: In Progress
+status: Done
 assignee:
   - '@claude'
 created_date: '2026-09-02 00:13'
-updated_date: '2026-09-02 02:02'
+updated_date: '2026-09-03 16:47'
 labels: []
 dependencies:
   - TASK-70.2
@@ -33,14 +33,14 @@ Stage 2 of TASK-70, and the stage that answers points 1, 2, 3 (same-game half) a
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 The queue shows one card per group of store entries that resolve to the same game, never one card per pair
-- [ ] #2 Answering a card cannot make any other card stale or unanswerable, in any order of answering
-- [ ] #3 The card lets the user choose the primary title, shows why the default was chosen, and lets the user include none, some or all of the members
-- [ ] #4 Approving a group is one act and one transaction, and undoing it retracts the whole act
-- [ ] #5 A pair can be linked and unlinked repeatedly, and after an undo the pair returns to the queue as an ordinary pending pair
-- [ ] #6 A member excluded from a group records a rejection for that edge, so a later sweep does not re-propose it
-- [ ] #7 The soft-match sweep and admission resolve links, so a linked pair is never proposed again and leftover pending rows are retired
-- [ ] #8 merge_candidates carries only pending and rejected, and no screen can produce an undone status
+- [x] #1 The queue shows one card per group of store entries that resolve to the same game, never one card per pair
+- [x] #2 Answering a card cannot make any other card stale or unanswerable, in any order of answering
+- [x] #3 The card lets the user choose the primary title, shows why the default was chosen, and lets the user include none, some or all of the members
+- [x] #4 Approving a group is one act and one transaction, and undoing it retracts the whole act
+- [x] #5 A pair can be linked and unlinked repeatedly, and after an undo the pair returns to the queue as an ordinary pending pair
+- [x] #6 A member excluded from a group records a rejection for that edge, so a later sweep does not re-propose it
+- [x] #7 The soft-match sweep and admission resolve links, so a linked pair is never proposed again and leftover pending rows are retired
+- [x] #8 merge_candidates carries only pending and rejected, and no screen can produce an undone status
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -114,3 +114,9 @@ Build: 0 Warning(s), 0 Error(s) under TreatWarningsAsErrors. Scoped runs first: 
 
 NOT FINALIZED: acceptance criteria not checked, no final summary, status left In Progress, nothing committed. The live database was never opened.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Replaced pair-at-a-time merging on the queue with connected-component groups linked as one act. Landed in commit e73204b. Verified against MergeGroupingTests, IdentityLinkTests and LibrarySoftMatchSweepTests in a scoped run of 100 tests, all passing. AC1: Three_proposals_over_three_works_are_one_group, Disjoint_proposals_stay_separate_cards and Two_proposals_naming_one_work_are_one_member_not_two give one card per group, never per pair. AC2: A_link_can_collapse_two_cards_into_one, A_proposal_whose_sides_resolve_to_one_work_is_dropped and The_order_of_the_proposals_does_not_change_the_result cover answering in any order. AC3: the header row is promotable (MergeQueueViewModel.PromoteFocused into MergeCardViewModel.Promote), the reason is named by The_reason_is_the_rung_that_separated_the_winner_from_the_rest and Choosing_a_title_names_the_user_as_the_reason, and members remain individually includable - MergeRowViewModel.IsIncluded is a two-way bound checkbox with CanExclude on every non-header row, drawn at MergeQueueView.axaml:664. AC4: One_act_links_a_whole_group_and_one_retraction_undoes_it. AC5: Link_retract_link_ends_identical_to_linking_once and A_reversed_merge_returns_to_the_queue_and_a_standing_one_becomes_a_link. AC6: MergeQueueViewModel:815 collects RejectedCandidateIds from the card and records them with the act. AC7: LibrarySoftMatchSweep takes IIdentityLinkRepository and resolves each admitted entry's work id through it, with A_pending_pair_whose_sides_now_share_a_work_is_retired covering the leftover rows. AC8: migration 0019 rebuilds merge_candidates with CHECK (status IN (pending, rejected)), so undone cannot be produced.
+<!-- SECTION:FINAL_SUMMARY:END -->

@@ -27,6 +27,7 @@ public partial class GameListViewModel : ObservableObject
     public bool IsManual => !IsLive;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(AutomationName))]
     public partial string Name { get; set; }
 
     /// <summary>Carried so a rename round-trips it (repository replaces with what it receives).</summary>
@@ -42,7 +43,7 @@ public partial class GameListViewModel : ObservableObject
 
     /// <summary>Current member count, recomputed on every library load.</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(CountText))]
+    [NotifyPropertyChangedFor(nameof(CountText), nameof(AutomationName))]
     public partial int Count { get; set; }
 
     [ObservableProperty]
@@ -50,6 +51,8 @@ public partial class GameListViewModel : ObservableObject
 
     /// <summary>Formatted count for display.</summary>
     public string CountText => Count.ToString("N0");
+
+    public string AutomationName => $"{Name}, {CountText} {(Count == 1 ? "game" : "games")}";
 
     /// <summary>What the open list's header calls it. Uppercase, like every other kind label.</summary>
     public string KindLabel => IsLive ? "LIVE LIST" : "LIST";

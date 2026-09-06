@@ -1,3 +1,4 @@
+using Winnow.Core.Ingest;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -13,10 +14,15 @@ namespace Winnow.Ingest.Epic;
 public sealed class EpicThirdPartyAppReader
 {
     private readonly ILogger<EpicThirdPartyAppReader> _logger;
+    private readonly StorefrontParserLimits _limits;
 
     /// <param name="logger">Optional logger.</param>
-    public EpicThirdPartyAppReader(ILogger<EpicThirdPartyAppReader>? logger = null)
-        => _logger = logger ?? NullLogger<EpicThirdPartyAppReader>.Instance;
+    public EpicThirdPartyAppReader(ILogger<EpicThirdPartyAppReader>? logger = null, StorefrontParserLimits? limits = null)
+    {
+        _logger = logger ?? NullLogger<EpicThirdPartyAppReader>.Instance;
+        _limits = limits ?? new StorefrontParserLimits();
+        _limits.Validate();
+    }
 
     /// <summary>
     /// Reads every file in the directory. Empty when the directory is absent —
@@ -68,8 +74,8 @@ public sealed class EpicThirdPartyAppReader
 
         try
         {
-            using var stream = File.OpenRead(filePath);
-            using var document = JsonDocument.Parse(stream);
+            var bytes = StorefrontFile.Read(filePath, _limits);
+            using var document = JsonDocument.Parse(bytes, new JsonDocumentOptions { MaxDepth = _limits.MaxDepth });
             var root = document.RootElement;
             if (root.ValueKind != JsonValueKind.Object)
             {

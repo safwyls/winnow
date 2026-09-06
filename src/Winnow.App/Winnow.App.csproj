@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -68,6 +68,8 @@
     <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.20" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.11" />
+    <PackageReference Include="Serilog.Extensions.Logging" Version="10.0.0" />
+    <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
   </ItemGroup>
 
   <ItemGroup>
@@ -83,6 +85,7 @@
     <ProjectReference Include="..\Winnow.Enrich.GamesDb\Winnow.Enrich.GamesDb.csproj" />
     <ProjectReference Include="..\Winnow.Enrich.Igdb\Winnow.Enrich.Igdb.csproj" />
     <ProjectReference Include="..\Winnow.Enrich.Steam\Winnow.Enrich.Steam.csproj" />
+    <ProjectReference Include="..\Winnow.Enrich.Stores\Winnow.Enrich.Stores.csproj" />
     <ProjectReference Include="..\Winnow.Enrich.SteamWeb\Winnow.Enrich.SteamWeb.csproj" />
     <ProjectReference Include="..\Winnow.Enrich.Updates\Winnow.Enrich.Updates.csproj" />
     <ProjectReference Include="..\Winnow.Ingest.Epic\Winnow.Ingest.Epic.csproj" />

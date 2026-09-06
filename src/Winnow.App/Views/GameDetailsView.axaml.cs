@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
+using Avalonia.Threading;
 using Winnow.App.ViewModels;
 
 namespace Winnow.App.Views;
@@ -16,6 +17,62 @@ public partial class GameDetailsView : UserControl
     public GameDetailsView()
     {
         InitializeComponent();
+        WireMenuRows();
+        MetadataEditorView.CloseRequested += OnSectionClosed;
+    }
+
+    /// <summary>
+    /// Closing a disclosed section hands focus to the More trigger — the
+    /// control the section was opened from, and the destination Escape and
+    /// an activated row already use (§10.3). The trigger sits in Band 3,
+    /// outside the rest band's scroll region, so it is always on screen
+    /// and focus is never dropped below the fold. Both sections route
+    /// here: the IGDB close button is in this view's own tree and calls
+    /// <see cref="OnSectionClosePressed"/> directly; the editor is a
+    /// separate <see cref="GameMetadataEditorView"/> that raises
+    /// <see cref="GameMetadataEditorView.CloseRequested"/>, wired in the
+    /// constructor.
+    /// </summary>
+    private void OnSectionClosePressed(object? sender, RoutedEventArgs e)
+        => OnSectionClosed(sender, EventArgs.Empty);
+
+    private void OnSectionClosed(object? sender, EventArgs e) => MoreActionsButton.Focus();
+
+    /// <summary>
+    /// Wires the three action-menu rows that need view work on top of their
+    /// commands. Two Avalonia facts force this into code, both measured
+    /// (docs/spikes/details-action-band-menu.md):
+    /// <see cref="MenuItem"/> raises <see cref="MenuItem.ClickEvent"/>
+    /// already marked handled, so a XAML <c>Click="..."</c> handler never
+    /// fires — only <c>AddHandler</c> with <c>handledEventsToo</c> sees it;
+    /// and a name inside a flyout does not reach a code-behind field, so the
+    /// rows are found through the trigger's own <c>Flyout</c>.
+    /// </summary>
+    private void WireMenuRows()
+    {
+        if (MoreActionsButton.Flyout is not MenuFlyout menu)
+        {
+            return;
+        }
+
+        foreach (var row in menu.Items.OfType<MenuItem>())
+        {
+            switch (row.Name)
+            {
+                case "OpenFolderItem":
+                    row.AddHandler(MenuItem.ClickEvent, OnOpenFolderPressed, handledEventsToo: true);
+                    break;
+                case "ManageInstallationItem":
+                    row.AddHandler(MenuItem.ClickEvent, OnManageInstallationPressed, handledEventsToo: true);
+                    break;
+                case "WrongGameItem":
+                    row.AddHandler(MenuItem.ClickEvent, OnWrongGamePressed, handledEventsToo: true);
+                    break;
+                case "EditDetailsItem":
+                    row.AddHandler(MenuItem.ClickEvent, OnEditDetailsPressed, handledEventsToo: true);
+                    break;
+            }
+        }
     }
 
     /// <summary>Raised when the user dismisses — the shell owns what "closed" means.</summary>
@@ -24,6 +81,13 @@ public partial class GameDetailsView : UserControl
     protected override void OnDataContextChanged(EventArgs e)
     {
         base.OnDataContextChanged(e);
+
+        // A new subject means the remembered thumbnail belongs to a game that
+        // is no longer on screen. The strip's buttons are recycled containers,
+        // so keeping the reference would hand focus to whatever shot now sits
+        // in that slot.
+        _lightboxOrigin = null;
+
         RequestCover();
     }
 
@@ -44,6 +108,138 @@ public partial class GameDetailsView : UserControl
         // this to a bucket, so this is one decode shared with nothing else.
         var scaling = TopLevel.GetTopLevel(this)?.RenderScaling ?? 1.0;
         details.RequestCover(GameDetailsViewModel.CoverWidth * scaling);
+
+        // Candidate thumbnails decode at the width they are drawn at, and
+        // the scaling is a fact of the window rather than of the view model.
+        details.IgdbMatch?.SetCoverScaling(scaling);
+
+        // Screenshot thumbnails decode at the width they are drawn at, for the
+        // same reason and off the same fact about the window.
+        details.Screenshots?.RequestThumbnails(scaling);
+    }
+
+    /// <summary>
+    /// Enter runs the title search, so the field answers the way every
+    /// other field in the application does. Handled here rather than by a
+    /// KeyBinding because a KeyBinding on the field would fire while the
+    /// query is blank, and the command refuses that case regardless.
+    /// </summary>
+    private void OnMatchQueryKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter
+            || DataContext is not GameDetailsViewModel { IgdbMatch: { } match })
+        {
+            return;
+        }
+
+        if (match.SearchCommand.CanExecute(null))
+        {
+            match.SearchCommand.Execute(null);
+        }
+
+        e.Handled = true;
+    }
+
+    /// <summary>
+    /// The same arrangement <see cref="OnWrongGamePressed"/> uses. The editor
+    /// opens in the right column's bounded rest band, below the fold, so
+    /// without <c>BringIntoView</c> the row would appear to do nothing. The
+    /// scroll is posted at Background priority so it runs after the command
+    /// has set <c>IsOpen</c> and the surface has been laid out. The row only
+    /// ever opens, so the scroll always runs: choosing an already-open row
+    /// brings its section back into view rather than folding it away.
+    /// </summary>
+    private void OnEditDetailsPressed(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not GameDetailsViewModel { MetadataEditor: not null })
+        {
+            return;
+        }
+
+        Dispatcher.UIThread.Post(
+            MetadataEditorHost.BringIntoView,
+            DispatcherPriority.Background);
+    }
+
+    private void OnWrongGamePressed(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not GameDetailsViewModel { IgdbMatch: not null })
+        {
+            return;
+        }
+
+        Dispatcher.UIThread.Post(
+            () =>
+            {
+                IgdbMatchDisclosure.BringIntoView();
+                MatchQueryField.Focus();
+            },
+            DispatcherPriority.Background);
+    }
+
+    /// <summary>
+    /// A candidate row reached by Tab may sit outside the bounded list's
+    /// viewport. BringIntoView scrolls it in so the focus ring is visible
+    /// where the user is. The handler is on the ScrollViewer because
+    /// GotFocus bubbles from the rows.
+    /// </summary>
+    private void OnCandidateGotFocus(object? sender, GotFocusEventArgs e)
+    {
+        (e.Source as Control)?.BringIntoView();
+    }
+
+    /// <summary>
+    /// The screenshot strip scrolls sideways, so a thumbnail reached by Tab can
+    /// be off the right edge of the region. Same mechanism as the IGDB candidate
+    /// list: focus is never left where it cannot be seen.
+    /// </summary>
+    private void OnScreenshotGotFocus(object? sender, GotFocusEventArgs e)
+    {
+        (e.Source as Control)?.BringIntoView();
+    }
+
+    /// <summary>
+    /// The thumbnail the lightbox was opened from. Remembered on the press
+    /// rather than read back from the view model, because the overlay's own
+    /// selection moves as the user navigates and focus goes back to where the
+    /// user left rather than to where they got to.
+    /// </summary>
+    private Control? _lightboxOrigin;
+
+    private void OnShotPressed(object? sender, RoutedEventArgs e)
+        => _lightboxOrigin = sender as Control;
+
+    /// <summary>
+    /// Puts focus back on the thumbnail that opened the lightbox, once the
+    /// overlay has gone. Nothing happens when the modal itself is on its way
+    /// out: the lightbox closes with it, and the library owns where focus goes
+    /// then. The thumbnail is scrolled back into view for the same reason
+    /// <see cref="OnScreenshotGotFocus"/> exists — the strip may have been
+    /// scrolled since.
+    /// </summary>
+    public void RestoreLightboxFocus()
+    {
+        if (!IsVisible || _lightboxOrigin is not { } origin)
+        {
+            return;
+        }
+
+        Dispatcher.UIThread.Post(
+            () =>
+            {
+                // Checked again here, not only above: the modal's own IsVisible
+                // is written by a binding that runs after the overlay has gone,
+                // so a lightbox closing because the modal closed reaches this
+                // method while the modal still reports itself visible.
+                if (!IsVisible)
+                {
+                    return;
+                }
+
+                origin.BringIntoView();
+                origin.Focus(NavigationMethod.Tab);
+            },
+            DispatcherPriority.Input);
     }
 
     /// <summary>
@@ -76,8 +272,14 @@ public partial class GameDetailsView : UserControl
     {
         if (sender is Control { DataContext: GameLink link })
         {
-            await LaunchAsync(link);
+            await OpenAsync(link);
         }
+    }
+
+    private async void OnManageInstallationPressed(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is GameDetailsViewModel { ManagementAction: { } link })
+            await OpenAsync(link);
     }
 
     /// <summary>
@@ -90,8 +292,23 @@ public partial class GameDetailsView : UserControl
     {
         if (sender is Control { DataContext: UpdateEventViewModel { Link: { } link } })
         {
-            await LaunchAsync(link);
+            await OpenAsync(link);
         }
+    }
+
+    /// <summary>
+    /// Tries the embedded panel first; if the reader is unavailable or the
+    /// policy refuses the URL, falls back to the system browser silently.
+    /// The fallback is silent because both routes open the same page.
+    /// </summary>
+    private async Task OpenAsync(GameLink link)
+    {
+        if (DataContext is GameDetailsViewModel details && details.TryReadNotes(link))
+        {
+            return;
+        }
+
+        await LaunchAsync(link);
     }
 
     /// <summary>

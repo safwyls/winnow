@@ -1,11 +1,11 @@
 ---
 id: TASK-70.6
 title: Decide and implement the library grid grain for unified games
-status: In Progress
+status: Done
 assignee:
   - '@claude'
 created_date: '2026-09-02 00:14'
-updated_date: '2026-09-02 03:54'
+updated_date: '2026-09-03 16:49'
 labels: []
 dependencies:
   - TASK-70.4
@@ -32,11 +32,11 @@ The library grid renders one tile per ownership. It always has, and merging neve
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 The product decisions on grid grain and on headline playtime for a twice-owned game are recorded before implementation starts
-- [ ] #2 A game owned on two stores appears in the grid according to the recorded decision, and the rail counts, All Games count and store title counts each agree with their own stated definition
-- [ ] #3 No tile displays a playtime and a last-played date taken from different ownerships
-- [ ] #4 Bucket membership for a cross-store game is asserted against the chosen playtime rule rather than against a hard-coded number
-- [ ] #5 The recommender offers a cross-store game once
+- [x] #1 The product decisions on grid grain and on headline playtime for a twice-owned game are recorded before implementation starts
+- [x] #2 A game owned on two stores appears in the grid according to the recorded decision, and the rail counts, All Games count and store title counts each agree with their own stated definition
+- [x] #3 No tile displays a playtime and a last-played date taken from different ownerships
+- [x] #4 Bucket membership for a cross-store game is asserted against the chosen playtime rule rather than against a hard-coded number
+- [x] #5 The recommender offers a cross-store game once
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -119,3 +119,9 @@ Build: 0 Warning(s), 0 Error(s) under TreatWarningsAsErrors.
 
 NOT FINALIZED: acceptance criteria not checked, no final summary, status left In Progress, nothing committed. The live database was never opened and the user's running app was never touched.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Collapsed the library grid to one tile per resolved game, with store chips. Landed in commit 72a4540. Verified by a scoped run of LibraryGrainTests and LibraryBucketRulesTests, 42 of 42 passing, plus the identity family run of 100. AC1: the grain decision is recorded in design-system.md section 11 - the grid is one tile per game rather than one per ownership, counts are taken per tile, and the per-store figures consequently sum to more than All Games by exactly the number of extra store memberships - and the headline rule is recorded in the task notes as the group sum carried with the group date. AC2: Every_count_on_screen_agrees_with_its_own_definition, A_linked_pair_is_one_tile_whose_chips_are_exactly_its_stores, Chips_list_every_store_and_never_one_store_twice and An_unlinked_library_is_tile_for_tile_the_library_it_was. AC3: The_headline_sums_and_carries_the_groups_own_date and Dormancy_follows_the_groups_last_played_and_not_the_primarys, made structurally inexpressible by GameGrouping, a sealed type whose single factory admits no constructor pairing a sum with a date it did not derive; IdentityReadModelTests.The_summed_playtime_never_pairs_with_a_foreign_last_played covers the modal. AC4: The_bucket_of_a_cross_store_game_is_the_rule_applied_to_the_sum, against LibraryBucketRules.Classify moved out of SQL into Winnow.Core.Queries so one rule serves both grains; buckets stay derived on read and never a stored column. AC5: AntiPatternTests.One_work_owned_twice_is_one_feed_entry_with_the_bought_twice_signal, with ShortlistBoundTests.A_twice_owned_game_does_not_consume_capacity_a_distinct_work_needed.
+<!-- SECTION:FINAL_SUMMARY:END -->

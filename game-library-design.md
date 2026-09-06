@@ -146,6 +146,28 @@ immediately, and reads may be stale by an unbounded amount.
 **Never write to any Steam file.** Steam Cloud may also overwrite local edits with a newer
 server-side version. Winnow is read-only against all Steam files.
 
+**Local parser limits.** Steam VDF and Epic/GOG local JSON readers use
+`StorefrontParserLimits`: 64 MiB per file and 64 nesting levels by default. Reader constructors
+accept overrides; depth cannot exceed 256. Byte limits apply to the actual bytes read, including
+files that grow during a read. Epic's base64 catalog is bounded before decoding. JSON uses
+`JsonDocumentOptions.MaxDepth`; VDF uses a quote/comment-aware depth preflight before
+ValveKeyValue, which still owns syntax and value parsing. VDF includes are refused so another
+file cannot bypass these limits. Rejected input yields no data. These are Winnow's operating
+limits, not vendor format limits; they do not govern Galaxy's SQLite snapshot or saved HTML
+account-page imports.
+
+Steam manifest install directories must resolve beneath the library's `steamapps/common`
+directory. Rooted paths and parent traversal are rejected. Each library root has its own
+validation and enumeration failure boundary; a bad root logs a warning and leaves other roots
+readable. When a root or manifest cannot be read, missing manifests do not establish an
+uninstall: playtime-only candidates carry unknown install state.
+
+While Winnow is open, Steam installation refresh polls the manifest inventory every two
+seconds. Two matching complete inventories trigger local sync and a library reload. Only a
+complete scan can clear installation flags and paths for absent app ids; ownership and history
+remain, including for never-played manifest-only games and after restart. An offline root or
+malformed manifest preserves the stored state until the inventory is readable again.
+
 ### 4.2 Steam Web API
 
 Used for enrichment, entitlement backfill and friends data. The key is user-supplied and
@@ -201,13 +223,39 @@ stored locally.
   catalog-id lookup returns nothing.
 - **`game_versions` exposes release editions** (Skyrim, Special Edition, Anniversary). This is
   the abstraction the Release layer needs. Do not reinvent it.
-- The IGDB response cache has no `payload_version`. Adding a field to the cached shape yields
-  empty results for 30 days rather than refetching. Bump a version field before changing the
-  shape.
+- A title search is the `search "…"` clause on the same `games` endpoint. It rides its own
+  query body and its own cache namespace rather than widening the shared metadata query, so a
+  400 costs the search alone. The term is user-typed free text, sanitized into the quoted
+  clause rather than rejected.
+- The IGDB response cache carries a payload version per namespace: game payloads at **4**
+  (name, summary, first release date, cover, genres, themes, game modes, player perspectives,
+  platforms, publisher, `game_type`, `parent_game`, `version_parent`, `version_title`,
+  `screenshots`, `artworks`, `rating`, `rating_count`, `aggregated_rating`,
+  `aggregated_rating_count`), age-rating payloads at **1**, search payloads at **1**, and
+  external-id mapping payloads at **1**. Every client-written payload, including a miss,
+  carries its namespace's `version` in a JSON envelope. Unversioned misses are rechecked.
+  Change a
+  cached shape and bump its version in the same commit, or the cache serves rows with the new
+  field silently empty for the rest of the 30-day TTL. A payload whose version does not match
+  is refetched. Compatible older game and external-id mapping payloads remain available
+  when credentials are absent or refetch fails; they never become current merely by being read.
+- The shared `games` query now carries `screenshots` and `artworks` as separate image arrays,
+  each row carrying an `image_id`. Only `image_id` is requested: it is the durable handle, and
+  the size token in the CDN path decides the rendition, so a stored URL would carry a size that
+  has to be rewritten on read. `rating`/`rating_count` are IGDB's own users;
+  `aggregated_rating`/`aggregated_rating_count` are its aggregation of external critics.
+  `total_rating`/`total_rating_count` exist and are deliberately not requested — a blended
+  figure cannot be attributed to anyone, and the rule is that a score is shown with its source
+  and its count or not at all.
 
 ### 4.5 Update detection
 
 Two independent signals, combined.
+
+Each due eligible title polls news and build history independently, including absent,
+unchanged or failed news. Successful raw signals are kept when the other source fails.
+Every completed attempt advances the persisted schedule; failed sources retry on the
+next day, with oldest attempts first so a capped batch cannot starve other titles.
 
 1. **Build push:** appinfo `depots.branches.public.timeupdated`, a Unix timestamp, from
    `GET https://api.steamcmd.net/v1/info/{appid}` — free, unauthenticated, and verified live.
@@ -238,6 +286,12 @@ Steam exposes transaction history at `store.steampowered.com/account/store_trans
 a lifetime total at `help.steampowered.com/en/accountdata/AccountSpend`. Neither has an API or
 an export.
 
+License acquisition data comes from `store.steampowered.com/account/licenses`, linked as
+Licenses on the account-data dashboard. A signed-in check on 2026-09-06 found that
+`help.steampowered.com/en/accountdata/ExternalLicenses` renders the dashboard rather than
+a separate data page. Do not depend on an `ExternalLicenses` page or inferred export file;
+the observed route and its limits are recorded in `docs/spikes/steam-gdpr-export.md` §2.
+
 **Winnow must never hold or exfiltrate the user's browser session, and must never impersonate
 their browser.** Within that, two routes to the account pages are permitted and are equal
 peers: the user saves the pages from their own browser and Winnow parses local files, or
@@ -252,8 +306,17 @@ Eight conditions bind, and all eight are binding:
    `sessionid`, no persisted browser profile, no page content. **A host that cannot encrypt
    refuses to store rather than degrading to plaintext.** Refusing costs the user a sign-in
    they repeat after a restart; a plaintext fallback fails silently and permanently. The same
-   standard is intended for every secret Winnow keeps; the Steam Web API key and the IGDB
-   client secret do not meet it yet and are tracked as debt in `ROADMAP.md` §6.
+   standard binds every secret Winnow keeps: the Steam Web API key, the optional Epic OAuth
+   client secret, the IGDB client secret and the cached Twitch access token are stored
+   DPAPI-encrypted under their module's versioned entropy, are migrated out of any plaintext
+   row a pre-protection install left,
+   and refuse on a host that cannot encrypt rather than saving a readable row. The one
+   distinction: refusing never destroys what a user typed (the legacy rows are left as they
+   were), while machine-minted rows — the token — are emptied, because a mint is free and a
+   bearer credential in the clear is not.
+   Reads retry plaintext cleanup after an interrupted migration, and discard incomplete
+   legacy Twitch token rows. Migration changes logical settings rows, not historical backups
+   or residual disk bytes.
 3. **A closed list of three unattended request kinds.** With nobody watching, Winnow may issue
    only the `finalizelogin` call, the `transfer_info` POSTs that call returns, and one token
    mint. No authenticated HTML page is ever fetched without the user present.
@@ -283,7 +346,48 @@ data underdetermines it: bundles appear as a single line item for N games, and t
 keys from Humble, Fanatical and the rest never appear in Steam's spending data at all, which
 is exactly the population with large libraries and unplayed piles.
 
+#### Rules governing the account-stats figures
+
+Every figure on the account-stats screen is computed from the captured pages, never from the
+account's lifetime. The rules that follow govern what may be shown and what must be withheld.
+
+- When a capture holds more than one currency, or transactions with no currency symbol,
+  money totals are withheld and only counts are shown. Amounts are stored exactly as the page
+  displayed them; nothing is converted or added across currencies.
+- Wallet top-ups are not spend. Money reaches Steam either as a direct payment or as a
+  top-up that later pays for products, and counting both would count the same money twice.
+  Wallet credit is reported as its own fact and never as part of spend. What a redeemed code
+  cost is not on the page.
+- A bundle's total price is a real fact; the per-game split is not. Dividing by item count
+  and weighting by market price are both defensible and both wrong, so no per-game price is
+  computed or shown.
+- Only rows that rendered a discount carry a list price, and most purchases carry none. The
+  discount figure is the difference on those rows and is never a total-savings figure.
+- The biggest transaction is the largest single transaction by price, not the most ever paid
+  for one game; a bundle is one transaction covering several items.
+- A refund and the purchase it reverses are two different rows, and a capture may hold either
+  or both. The two figures are reported side by side and are never added together; reversal
+  rows are never subtracted twice.
+- Licence counts count packages, not games — a package can be a bundle, a DLC or a
+  cosmetic — so a licence count is not a library size. The breakdown uses the licences page's
+  own acquisition vocabulary, and unrecognised methods are counted, never guessed.
+- The year comes from the date the page displayed, at day resolution. Rows the parser could
+  not date are listed separately and never guessed into a year.
+- A gift's recipient is recorded as having existed, never identified: no name, persona or
+  profile link is read from the page.
+- Steam's licences paginator advertises a total larger than the rows it renders; the
+  difference is Steam's own counting, not missed licences.
+- Either account page can be imported on its own; each carries different facts and both
+  together give a fuller result. The sign-in route walks every page of both lists
+  automatically; a hand-saved file holds only the page that was on screen.
+
 ### 4.8 Epic and GOG local files
+
+The authenticated Epic library cache is stored in the selected data directory's
+`metadata_cache`, under a separate provider namespace and an account-specific key.
+A restart reuses a fresh answer for `EpicWebOptions.CacheTtl` (six hours by default);
+stale answers refetch through the existing authenticated client. The ingest module
+keeps its cache interface free of a Data reference; the App supplies SQLite storage.
 
 **Epic:**
 
@@ -295,7 +399,26 @@ is exactly the population with large libraries and unplayed piles.
   `ModSdkMetadataDir`.
 - Epic has **no per-game playtime and no last-played on disk**.
 
+While Winnow is open, an Epic refresh polls top-level `.item` manifests every two
+seconds. Two consecutive identical, readable snapshots trigger a scan through the shared
+resolver gate and a library reload, including actions in an already-open Details panel.
+The reload retains the selected or flipped card when it is still visible and updates the
+Details action state in place, preserving unsaved editor drafts.
+Completion requires an explicit `bIsIncompleteInstall: false`; missing or malformed flags
+never imply installation, and `Pending` files are ignored. Locked or malformed manifests
+defer the refresh until a later stable read. Normal completion appears within two to four
+seconds plus local scan time; this follows the launcher's written state, not download progress.
+The service is disabled with local sync for sample-data and `--no-sync` runs.
+Both local and remote ownership passes reread Steam and Epic candidates after acquiring that gate,
+so a queued pass or a slow network backfill cannot restore the install state from an older
+startup scan. Network requests and GOG scans remain outside the gate.
+
 **GOG:**
+
+Every successful scheduled local scan reloads the library, including changes only to install
+state. Failures and cancellation do not trigger a reload. GOG installation changes become
+visible on the existing 15-minute local scan interval; Steam and Epic use the faster manifest
+refresh described above.
 
 - `galaxy-2.0.db` is a WAL database. `immutable=1` silently returns stale data, and `mode=ro`
   writes `-wal` and `-shm` files into the store's directory. **Copy the file first, then read
@@ -310,6 +433,36 @@ is exactly the population with large libraries and unplayed piles.
 **Built-in storefront client credentials.** Epic's launcher client id and secret ship with
 Winnow, at the lowest priority in the credential chain, so a user-supplied pair always wins.
 The reasoning is in `docs/decisions.md`.
+
+**Anonymous storefront links and GOG changelogs** live in `Winnow.Enrich.Stores`.
+Epic's `GET https://store-content.ak.epicgames.com/api/content/productmapping` maps namespaces
+to slugs in one library-wide response. GOG's
+`GET https://api.gog.com/products/{productId}?expand=changelog` supplies `links.product_card`
+and HTML `changelog` in one response per owned product. Neither request sends credentials.
+Background startup sync runs this pass after the existing metadata passes; library load reads
+only cached rows. Responses use the `storefront-v1` namespace in `metadata_cache`, with a
+24-hour lifetime including negative results. A 404 clears a stale result; a 403 retains a prior
+result and suppresses another attempt for 24 hours. Transport, timeout and malformed-response
+failures retain stale data. Missing slugs produce no store link. GOG changelogs are parsed to
+plain text, without executing scripts or loading remote resources.
+
+These services publish no verified request budget. Winnow chooses a conservative shared
+one-request-per-second budget, enforced by a singleton Polly limiter at the typed HttpClient
+level. Every retry spends a permit. HTTP 408, 429, 5xx and transport failures receive at most
+two retries with exponential backoff and jitter, starting at one second; `Retry-After` is
+honoured up to 30 seconds. HTTP 403 and 404 are not retried. Each request is bounded by the
+90-second HttpClient timeout and a 2 MiB response buffer. These are Winnow's operating choices,
+not claimed vendor limits. Endpoint measurements are in `docs/spikes/store-actions-per-launcher.md`.
+
+The bulk Epic map is incomplete even for active products. For owned namespaces it omits,
+issue an anonymous GET to `https://store.epicgames.com/graphql` with the URL-encoded query
+`query { Catalog { catalogNs(namespace:"<namespace>") { mappings(pageType:"productHome") { pageSlug pageType } } } }`.
+Only persisted, validated namespace identifiers enter that query; titles never form slugs.
+Cache each answer under `epic-namespace:<namespace>` in the same cache provider, lifetime and
+HTTP policy as the bulk response. Accept one distinct safe `productHome` slug; offer mappings
+and ambiguous answers yield no link. A null namespace or null/empty mappings is a cached
+negative result. GraphQL errors or malformed envelopes retain a prior answer. The bulk map
+keeps precedence when it later includes the namespace.
 
 ---
 
@@ -377,6 +530,13 @@ graph TB
 
 ### 5.1 Module boundaries
 
+Library loading reads buckets, works, ownerships, releases, external IDs and list membership
+with one multi-result SQLite command in a deferred read transaction. Bucket consolidation
+uses the same rules as standalone bucket reads. Library and startup Review, Display and
+Library settings loads perform repository work on a worker thread, then publish view-model
+state on the UI thread. Facets, identity maps, pins and storefront caches remain fixed-count
+bulk reads. This does not change the pre-window appearance bootstrap or unrelated edit commands.
+
 | Module | Responsibility | Must not |
 |---|---|---|
 | `Winnow.Core` | Domain records, repository interfaces, the ingest contract | Perform IO, or reference anything outside the BCL |
@@ -435,12 +595,19 @@ Known noise sources, all of which must be handled:
 - Proton and Wine wrap everything in a process tree. Match on the tree, not a single PID
 - Debounce: ignore sessions under 60s by default, configurable
 
-**Session detection is Windows-only in practice.** `GameExecutableIndexBuilder` matches
-`*.exe`, so off Windows the index is empty and nothing is recorded; it warns once rather than
-failing silently. Widening the glob is not the fix. Under Proton the resolved executable is
-the wine loader inside the runtime directory, not a path under the game's install root, so the
-install-prefix join cannot work there at all. Attribution would need
-`STEAM_COMPAT_DATA_PATH` from `/proc/<pid>/environ`, which is a different design.
+**Session indexing follows the platform.** Windows indexes `.exe` files; Linux and
+macOS index files with Unix execute permission. Linux discovery also recognises the
+kernel's 15-byte process-name alias. Native processes match their installed path.
+On Linux, the watcher reads only `STEAM_COMPAT_DATA_PATH` from a bounded `/proc/<pid>/environ`
+read and joins its final numeric app ID to an unambiguous installed Steam ownership.
+This attributes a Wine loader outside the game directory without guessing by title;
+missing, unreadable and ambiguous matches contribute no Proton-specific attribution.
+Only that variable is retained, and existing exact-path matching remains authoritative.
+
+The separate Linux session smoke tests use real native processes and a synthetic
+Proton environment. Windows runs skip them explicitly. Passing those tests establishes
+process discovery and attribution on Linux, not a full launcher or game compatibility
+matrix; the PRE-BETA-HARDENING task records execution evidence.
 
 **Journal prompt:** on session end, if enabled, show a small unintrusive window offering a
 free-text note and optional rating. It must be fully disableable in settings and must default
@@ -475,6 +642,11 @@ The hardest part of this project. Get it wrong and the dataset is untrustworthy.
 > absorbs a user's playtime destroys trust in every number the app displays. Precision over
 > recall, always, with a human in the loop.
 
+A user naming an exact IGDB id on the details modal is a hard join under step 1. The
+collision — `works.igdb_id` is UNIQUE — is confirmed in place on the modal with the other game
+named and shown, and the link is written without entering the `merge_candidates` queue. The
+queue is where soft matches are cleared; a hard external-id join is not a soft match.
+
 **`Winnow.Enrich.GamesDb` is metadata-only and writes no identity.** It routes Epic titles to
 a Steam appid so they can be enriched, and deliberately writes no `external_ids` row and no
 merge candidate. `external_ids` is keyed `(provider, provider_id)` globally, so putting a Steam
@@ -483,6 +655,11 @@ also resolves *games*, not editions, so an Epic "Gold Edition" can land on the b
 record: right for the Work columns enrichment writes, wrong for a Release.
 
 ### 5.4 Historical backfill
+
+Steam Replay completion markers are written only after an account passes confirmation and
+its import finishes. Markers left by older builds on unconfirmed accounts are reset to pending
+before confirmation, allowing later matching credentials to recover historical years even if
+an anchor request fails. Confirmed completed years stay skipped; the current year remains eligible.
 
 Winnow backfills history rather than waiting months for snapshots to accumulate. Three
 mechanisms, all in §4.2 and §4.7:
@@ -509,9 +686,27 @@ is a no-op.
 SQLite. Migrations are embedded resources, checked into the repository, applied on startup by
 DbUp, and **append-only: never edit a shipped migration.**
 
+Timestamp parameters use `DateTime` with an explicit kind. Winnow.Data rejects
+`DateTimeKind.Unspecified` before executing a write, converts Local values to UTC, and stores
+UTC text as `yyyy-MM-dd HH:mm:ss.FFFFFFF`, retaining fractional seconds when present.
+Callers must resolve a source timestamp's timezone before
+persistence; the data layer never guesses it. Nullable timestamps remain null, and stored
+timestamp text is read as UTC. `DateTimeOffset` resolve-state timestamps retain their explicit
+UTC round-trip format.
+
+`Migrations/hashes.json` records SHA-256 for each SQL script, normalizing CRLF to LF.
+CI verifies file membership and content, and checks existing entries against the previous
+revision so changing a script and its hash together still fails. New migrations append entries.
+
+Facet replacement, list reordering and feed surfacing batches are atomic repository calls.
+Each opens a local transaction when called alone, or a savepoint inside the caller's unit
+of work. A failed batch rolls back its own writes even when the caller catches the failure;
+a successful batch never commits the caller's transaction. Facet vocabulary creation and
+assignment replacement belong to the same batch.
+
 ```sql
 -- Canonical identity
-works(id, igdb_id UNIQUE, name, sort_name, first_release_year, summary, cover_url)
+works(id, igdb_id UNIQUE, name, sort_name, first_release_year, summary, cover_url, background_url)
 releases(id, work_id FK, igdb_version_id, name, platform, edition_note)
 external_ids(release_id FK, provider, provider_id, PRIMARY KEY(provider, provider_id))
   -- provider ∈ {steam, gog, epic, igdb}
@@ -519,10 +714,13 @@ external_ids(release_id FK, provider, provider_id, PRIMARY KEY(provider, provide
 -- Ownership and play
 ownerships(id, release_id FK, store, account_ref, acquired_at,
            license_type, price_paid_cents, price_source, install_path, installed BOOL)
+  -- store ∈ {steam, gog, epic, manual}
 play_records(ownership_id FK, playtime_minutes, last_played_at, source, observed_at)
 playtime_snapshots(id, ownership_id FK, playtime_minutes, observed_at)  -- longitudinal
 sessions(id, ownership_id FK, started_at, ended_at, duration_s, detection_method)
 session_notes(session_id FK, note TEXT, rating INT)
+manual_entries(ownership_id PK FK ownerships ON DELETE CASCADE,
+              executable_path, platform_label, added_at, updated_at)
 
 -- Achievements: per-release, never merged across platforms
 achievements(release_id FK, provider_key, name, description, hidden, global_pct)
@@ -535,6 +733,23 @@ update_events(id, release_id FK, kind, build_id, occurred_at, title, url, raw_js
 -- User organisation
 lists(id, name, description, is_smart, filter_json)
 list_items(list_id FK, release_id FK, position)
+hidden_games(id, work_id FK works ON DELETE CASCADE, hidden_at, unhidden_at)
+  -- partial unique: ux_hidden_games_live ON hidden_games(work_id) WHERE unhidden_at IS NULL
+work_field_sources(work_id FK works ON DELETE CASCADE, field, source, set_at,
+                   PRIMARY KEY(work_id, field))
+  -- partial index: ix_work_field_sources_user ON (work_id, field) WHERE source = 'user'
+
+-- Maturity evidence
+work_maturity(work_id FK works ON DELETE CASCADE, source, ratings, descriptors,
+              observed_at, PRIMARY KEY(work_id, source))
+
+-- Reception and media
+work_images(work_id FK works ON DELETE CASCADE, source, kind, image_ids, observed_at,
+            PRIMARY KEY(work_id, source, kind))
+  -- kind ∈ {screenshot, artwork}; image_ids is IGDB image_id values, comma-joined, in IGDB's order
+work_ratings(work_id FK works ON DELETE CASCADE, source, score, rating_count, label, observed_at,
+             PRIMARY KEY(work_id, source))
+  -- source ∈ {igdb_users, igdb_critics, steam}
 
 -- Resolution
 merge_candidates(id, left_release_id, right_release_id, score, signals_json, status)
@@ -544,6 +759,13 @@ merge_candidates(id, left_release_id, right_release_id, score, signals_json, sta
 metadata_cache(provider, provider_id, payload_json, fetched_at, PRIMARY KEY(provider, provider_id))
 settings(key, value)
 ```
+
+The three rating sources in `work_ratings` are stored apart and never blended; a source with
+no figure gets no row. `label` is Steam's own words ("Very Positive"), stored verbatim rather
+than re-derived from the percentage. `work_ratings.score` is not a derived value: it is a
+figure a third party published, recorded as observed against the work and the source that
+published it, and nothing in Winnow computes it. It sits beside `merge_candidates.score` on
+the enforcement test's short list of recorded observations.
 
 ### 6.1 Derived buckets
 
@@ -561,9 +783,13 @@ settings(key, value)
 **Never played means never opened.** Zero minutes *and* no last-played date, nothing else. A
 game with real playtime under the refund line was opened and played.
 
-`bounced_floor` defaults to **120 minutes**, Steam's refund window. At or above it the user
-committed past the point of no return and gave up anyway, which is the fact "Bounced off"
-names.
+`bounced_floor` defaults to **120 minutes**, Steam's refund window. At or above it the money
+is spent for good, and the label `Started` names the band between that line and `retired_floor`.
+
+`BucketThresholds` rejects nonpositive minute floors, stale-month windows and correlation-day
+windows. The retired floor must strictly exceed the bounced floor. Constructor calls and
+record-copy updates enforce these invariants before the values can reach a query. Use a new
+threshold instance when changing both floors would pass through an invalid intermediate range.
 
 **Precedence**, in the order the query tests: never-played, retired, stale-but-patched,
 bounced, active. Retired outranks stale so a 200-hour game is never resurfaced. Stale outranks
@@ -605,6 +831,154 @@ attributed. `playtime_snapshots` has no per-account form, so the recommender's e
 and the details modal's snapshot history both read the ownership-level series and can diverge
 from a filtered tile for a game two accounts play.
 
+### 6.4 Hidden games, maturity evidence, hand-added entries, user-pinned IGDB mappings and per-field sources
+
+Five tables added by migrations 0023-0027. Each is designed so that an ingest pass cannot
+write, delete or overwrite it.
+
+**Hidden games.** `hidden_games` records a persisted, reversible "never show me this game"
+at the work grain, because the grid draws one tile per resolved work. Append-and-stamp:
+unhiding stamps `unhidden_at` rather than deleting, so the row is the history and re-hiding
+is a fresh insert. The exclusion is applied in exactly one place, the derived-bucket query,
+which tests three work ids per row: the row's own work, its live `same_game` parent and its
+`variant_of` parent. Hiding a game takes its whole link group with it, and stops its demo
+appearing when the parent disappears. Because the filter is in the bucket query, the grid,
+the list view, the feed, the rail counts, the filter chips and the recommender all agree
+without any of them learning that hiding exists. The table survives re-ingest structurally:
+no ingest path writes `hidden_games`, the resolver joins only on an exact
+`(provider, provider_id)` external id, and no runtime path deletes a `works` row.
+
+**Maturity evidence.** `work_maturity` stores rating and descriptor tokens verbatim, one
+row per (work, source), so IGDB and the Steam store each keep their own reading. `ratings`
+and `descriptors` are comma-joined tokens, the same treatment `works.epic_categories` gets.
+There is deliberately no stored verdict: whether a work is explicit is decided at read time
+by `MaturityRules.IsExplicit`, exactly as `NonGameEntries` decides non-game-ness over rows
+the bucket query returns. Explicit when any token reaches `AdultsOnly` on the `MaturityTier` scale
+(`Winnow.Core.Queries`): the rating codes `esrb:ao` and `acb:x18`, and the descriptor
+`adult_only_sexual_content`. The broad 18+ board ratings — `pegi:18`, `usk:18`, `cero:z`,
+`acb:r18`, `classind:18`, `grac:18` — sit at `Restricted18`, one tier below, and are not
+explicit: IGDB returns every board for a work, so a game rated PEGI 18 for violence was
+hidden under the old rule and is not now. The full scale is `Unrated`, `Everyone`,
+`Preteen`, `Teen`, `Mature`, `Restricted18`, `AdultsOnly`, ascending, anchored on the
+minimum age each board states. `Unrated` is inside every cap and is never explicit.
+`MaturityRules.ExplicitTier` is `AdultsOnly`, pinned by
+`ExplicitContentTests.The_explicit_set_is_exactly_the_adults_only_signals`. The tier scale
+is the input TASK-103's rating-cap filter consumes, which is why the tiers are kept rather
+than reduced to a boolean. Retuning the vocabulary was a code change, not a migration —
+tokens are stored verbatim and the verdict is taken at read time, exactly the payoff
+0024's no-stored-verdict design was built for. Migration 0024's header comment still
+enumerates the old eight-code list; migrations are append-only, so `MaturityTiers` and
+`MaturityRules` in `Winnow.Core.Queries` are the authority on the current vocabulary.
+**A work with no maturity row is never explicit.**
+Absence of data is not a rating; hiding a game because nobody has looked it up yet is the
+failure to avoid. **The same rule governs `NonGameEntries`: a row whose type no store has
+stated is not a non-game entry and stays visible either way.** There is no CHECK on
+`source` on purpose: migration 0021 had to rebuild
+`identity_links` to widen a CHECK, and a closed list in DDL pays that cost on every new
+source. The preference is `BucketThresholds.ShowExplicitContent`, settings key
+`library.show_explicit_content`, default false. The filter drops the whole resolved game,
+not one entry, and takes the game's variants with it.
+
+**Hand-added entries.** A hand-added game is an ordinary work + release + ownership whose
+`ownerships.store` is `manual` and whose `manual_entries` row exists. That row's presence is
+the origin marker — one mechanism, not two, and a table no ingest path writes. The guarantee
+that an ingest pass never deletes or overwrites a hand-added entry rests on facts that were
+already true: `OwnershipRepository.UpsertAsync` conflicts on `(release_id, store)` and no
+reader emits the store `manual`; the work is created with `name_is_provisional = 0`, and the
+resolver's name promotion fires only while that flag is set while the enrichment patch is
+fill-only; and nothing in the runtime deletes a `works`, `releases` or `ownerships` row.
+Session monitoring needs no change: `GameExecutableIndexBuilder` reads
+`ownerships.installed` and `install_path`, so naming an executable stores its directory and
+sets `installed = 1`. Deleting a hand-added entry removes the ownership, then the release
+only when no other ownership hangs off it, then the work only when it has no releases left.
+
+**User-pinned IGDB mappings.** `work_igdb_pins` (migration 0026) records a user-chosen
+work-to-IGDB mapping in the same append-and-stamp shape: pinning inserts a row, clearing
+stamps `cleared_at`, and re-pinning stamps the old row before inserting a fresh one. A
+partial unique index allows at most one live pin per work. The pin removes the work from the
+enrichment target query rather than merely refusing the write, so the automatic pass never
+even asks IGDB about it. Clearing the pin returns the work to automatic resolution; the
+stamps stay, and the pass fills what is empty and not user-owned.
+
+The pin answers which game this is; per-field sources (below) answer where each value came
+from. Different questions, and they must not be conflated. Both of the pin's guards survive,
+and the reason is now sharper: the automatic pass resolves identity from the store id via
+IGDB's `external_games`, so on a pinned work everything it would write is metadata about a
+game the user has already said this is not. Per-field sources cannot replace that guard,
+because they do not answer that question. Pinning is also the "take it all from this record"
+gesture: it stamps every field it rewrites as `igdb`, including fields the user previously
+owned, because the user in the same act is saying take it all from this record. The name is
+stamped only when the pin actually wrote one, since `works.name` is NOT NULL and the pin
+COALESCEs over blank. A manual edit on a pinned work sets that one field to `user` and leaves
+the pin live: changing the summary does not un-say which game it is.
+
+**Per-field sources.** `work_field_sources` (migration 0027) records, for each user-visible
+metadata field on a work, the source that last wrote it. One row per (work, field), replaced
+in place: the row answers "where is this value from", and there is exactly one value, so
+exactly one answer. Unlike `hidden_games`, `work_igdb_pins` and the other append-and-stamp
+tables, keeping old answers around would be a second answer to the same question.
+Fields tracked: `name`, `first_release_year`, `summary`, `cover_url`, `publisher`,
+`background_url`. Sources: `user`, `igdb`, `steam`, `epic`, `gog`. Both vocabularies live
+in `Winnow.Core.Queries` (`WorkFields`, `FieldSources`), stored verbatim, with no CHECK on
+`source` or `field` — the same reason migration 0021's `identity_links` rebuild gave and
+the maturity paragraph above already records for `work_maturity`.
+
+There is no backfill. Nothing can retroactively know whether a value written before 0027
+came from IGDB or the Steam store. Absence of a row means no writer has claimed the field
+and it is on automatic — the honest reading of every value that predates the table — and
+the first write of any kind stamps it.
+
+Enrichment's rule is a sentence: it writes a field whose source is a service it can speak
+for, and leaves a field the user owns. `GetEnrichmentTargetsAsync` LEFT JOINs a
+`user_owned` CTE so a user-owned field is never missing and never a reason to spend a
+request — a work whose only empty column the user deliberately emptied stops being a target
+instead of being refilled forever. `ApplyEnrichmentAsync` replaces the incoming value with
+NULL for each field the user owns, so the existing COALESCE leaves the stored value alone;
+that COALESCE means "already answered, leave it", and the first service to answer keeps the
+field. The write stamps every field it actually filled with the source that supplied it.
+
+**Read-side precedence.** `work_field_sources` answers who last wrote a value; it is not a
+read-time precedence layer. There is nothing for it to outrank: each field has one value in
+one column, and the read is that column. A work's displayed name is `works.name` on every
+surface — the grid tile and the list row, the details modal headline, the feed card, search
+and the title sort, the Merges queue, the hidden-games list and the hand-added list. Two
+queries COALESCE `releases.name` over `works.name` into a `Title` column, and neither is a
+display read: the bucket query in `LibraryQueryRepository`, which never leaves `BucketRow`
+and feeds `DemoConsolidation`; and the enrichment target query in `WorkRepository`, which
+feeds the demo-like prefilter. Both want the storefront's own words so that a user rename
+cannot unfold a demo. Setting a field by hand therefore needs no read-side precedence rule
+and needed no migration.
+
+Only user-visible metadata is tracked. The classification columns — `steam_app_type`,
+`epic_categories`, `steam_store_type`, `steam_parent_app_id`, `igdb_game_type`,
+`igdb_parent_id`, `igdb_version_parent_id` — carry no source row: they are facts about a
+store entry rather than fields the editor exposes, and they are exactly the columns the
+pin also leaves untouched. `works.igdb_id` carries no source row either, because it is
+identity.
+
+Cover art and background art are fields like any other; either can be set from a local file
+or a URL. `UserArtStore` (`Winnow.Covers`) imports the bytes into
+`<CoverCacheOptions.CacheDirectory>/user/<token>.img`, inside the data directory so
+`--data-dir` is honoured. The field then holds `winnow://user-art/<token>`, where the token
+is the first 32 hex characters of the SHA-256 of the bytes, so importing the same picture
+twice writes one file. `UserArtCoverSource` is an ordinary `ICoverSource` over a `user`
+provider, so user art reaches a tile through the same pipeline, disk cache and leases as a
+Steam capsule. `ArtKeys.Resolve` (`Winnow.Covers.Igdb`) is the one place a stored art URL
+becomes a `CoverKey`. The file the user picks is read-only input and is never written.
+
+Cover HTTP responses are streamed with a 16 MiB encoded-byte ceiling, including when the
+server omits or understates Content-Length. Before allocating pixels, decoding rejects
+dimensions above 8192 on either axis or 32 Mi pixels total. Negative cache entries carry
+the source-set identity; capability refresh runs before suppressing a miss so configuring
+IGDB can reopen it in the same session. Existing positive disk art remains reusable.
+
+**List membership resolution.** `lists` and `list_items` already existed. Membership stays
+stored per release — adding a game to a list is an explicit act on the entry the user
+picked — and is now resolved per read: a list contains a game when any release of any work
+in that game's live `same_game` group is a member. `kind` is `same_game` only, so an
+expansion's membership is its own. Membership survives a link because the link model never
+deletes or repoints a `list_items` row, and the read follows the resolved game.
+
 ## 7. Export
 
 A launch feature, not an afterthought. Every incumbent in this space is a roach motel.
@@ -614,9 +988,25 @@ A launch feature, not an afterthought. Every incumbent in this space is a roach 
 - No account and no network required
 - A schema version in every export; write the importer against the version field from day one
 
+The acquisition CSV in Settings → Library is the first implemented export. It writes one
+row per ownership, including hidden entries, with `schema_version` (1), `ownership_id`,
+`release_id`, `title`, `store`, `acquired_at`, `license_type`, `price_paid_cents` and
+`price_source`. Dates are UTC, missing facts are empty cells, and a known zero price stays
+zero. Prices carry no currency because the source schema does not record one. CSV uses UTF-8,
+quoted values and CRLF records, preserving commas, quotes and newlines in titles. Full JSON
+export and import remain deferred.
+
 ---
 
 ## 8. Sources of silence and failure
+
+Diagnostics persist at `<data-dir>/logs/diagnostic*.log` from host setup onward. Serilog retains
+five files, rolling at 1 MiB; events are capped at 8 KiB, so managed logs stay below
+5 × (1 MiB + 8 KiB). Writes flush per event. The formatter suppresses string and identity
+properties and scopes, scrubs path/account/credential patterns in templates, and records
+exception types and method frames without messages or source filenames. Counts and timings
+remain. Log templates must remain static; put user and service values in named properties.
+Bootstrap data-location resolution precedes file logging.
 
 **A source's silence is not an answer.** A field a source cannot provide arrives `null`, never
 `false` or `0`. Feed every reader a fixture with the field absent and assert the candidate

@@ -1,4 +1,4 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+<UserControl AutomationProperties.Name="Platforms" AutomationProperties.ControlTypeOverride="Group" xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Winnow.App.ViewModels"
              xmlns:views="using:Winnow.App.Views"
@@ -19,6 +19,21 @@
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="CornerRadius" Value="{StaticResource RadiusTile}"/>
             <Setter Property="Padding" Value="20"/>
+        </Style>
+
+        <!-- ══ Modal card ═══════════════════════════════════════════════════
+             The surface the three former disclosures moved onto. Raised rather
+             than Surface, because it sits over a card that is already Surface
+             and two identical planes would read as one. Width is a measure,
+             not a guess: 560px holds this screen's paragraphs at the same
+             reading width the card gives them. -->
+        <Style Selector="Border.modal">
+            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusTile}"/>
+            <Setter Property="Padding" Value="24"/>
+            <Setter Property="Width" Value="560"/>
         </Style>
 
         <!-- ══ Status pill ══════════════════════════════════════════════════
@@ -198,6 +213,8 @@
 
     </UserControl.Styles>
 
+    <Panel>
+
     <Grid RowDefinitions="Auto,*" Background="{StaticResource PaneGround}">
 
         <!-- ══ Header ═══════════════════════════════════════════════════════ -->
@@ -205,53 +222,166 @@
                 Padding="24,20,24,18"
                 BorderBrush="{StaticResource Line}"
                 BorderThickness="0,0,0,1">
-            <StackPanel Spacing="7">
-                <TextBlock Classes="display-l" Text="{Binding Title}"/>
-                <TextBlock Classes="body"
-                           MaxWidth="640"
-                           HorizontalAlignment="Left"
-                           TextWrapping="Wrap"
-                           LineHeight="19"
-                           Foreground="{StaticResource TextDim}"
-                           Text="{Binding IntroMessage}"/>
+            <StackPanel Spacing="12">
+                <StackPanel Spacing="7">
+                    <TextBlock AutomationProperties.HeadingLevel="1" Classes="display-l" Text="{Binding Title}"/>
+                    <TextBlock Classes="body"
+                               MaxWidth="640"
+                               HorizontalAlignment="Left"
+                               TextWrapping="Wrap"
+                               LineHeight="19"
+                               Foreground="{StaticResource TextDim}"
+                               Text="{Binding IntroMessage}"/>
+                </StackPanel>
+
+                <!-- ══ THE PLATFORM TABS (TASK-61) ══════════════════════════
+                     One card per screen. Three stacked in one scroller made
+                     the Steam card share a 644px viewport with two others
+                     while needing 863px on its own, and what was left in it
+                     after the purchase-history disclosure was controls and
+                     the two transparency paragraphs §4.7 condition 3 pins at
+                     the top level — nothing further to condense.
+
+                     Each tab carries an Amber dot when its platform needs
+                     acting on. A card that can be off screen can hide a
+                     failing session, which is the state condition 8 exists to
+                     keep visible; the condition was written when every card
+                     was drawn at once, and a tab honours it only by saying so
+                     itself. Amber, never Flare: Flare is unread updates and
+                     nothing else (§2). -->
+                <Border BorderBrush="{StaticResource Line}"
+                        BorderThickness="1"
+                        CornerRadius="{StaticResource RadiusControl}"
+                        Background="{StaticResource ChromeFieldOnGround}"
+                        ClipToBounds="True"
+                        HorizontalAlignment="Left"
+                        Height="30">
+                    <StackPanel Orientation="Horizontal">
+                        <Button Classes="seg tab"
+                                Classes.on="{Binding IsSteamVisible}"
+                                Command="{Binding ShowSteamCommand}"
+                                AutomationProperties.Name="{Binding SteamTabLabel}">
+                            <StackPanel Orientation="Horizontal" Spacing="6"
+                                        VerticalAlignment="Center">
+                                <TextBlock Classes="display-s" Text="{Binding SteamTabLabel}"
+                                           VerticalAlignment="Center"/>
+                                <Ellipse Width="6" Height="6"
+                                         VerticalAlignment="Center"
+                                         Fill="{StaticResource Amber}"
+                                         IsVisible="{Binding SteamTabNeedsAttention}"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Classes="seg tab"
+                                Classes.on="{Binding IsEpicVisible}"
+                                Command="{Binding ShowEpicCommand}"
+                                AutomationProperties.Name="{Binding EpicTabLabel}">
+                            <StackPanel Orientation="Horizontal" Spacing="6"
+                                        VerticalAlignment="Center">
+                                <TextBlock Classes="display-s" Text="{Binding EpicTabLabel}"
+                                           VerticalAlignment="Center"/>
+                                <Ellipse Width="6" Height="6"
+                                         VerticalAlignment="Center"
+                                         Fill="{StaticResource Amber}"
+                                         IsVisible="{Binding EpicTabNeedsAttention}"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Classes="seg tab"
+                                Classes.on="{Binding IsGogVisible}"
+                                Command="{Binding ShowGogCommand}"
+                                AutomationProperties.Name="{Binding GogTabLabel}">
+                            <TextBlock Classes="display-s" Text="{Binding GogTabLabel}"
+                                       VerticalAlignment="Center"/>
+                        </Button>
+                    </StackPanel>
+                </Border>
             </StackPanel>
         </Border>
 
         <ScrollViewer Grid.Row="1"
                       HorizontalScrollBarVisibility="Disabled"
                       VerticalScrollBarVisibility="Auto">
-            <!-- 720px max width for readable paragraph measure. -->
+            <!-- 720px for readable paragraph measure, as a WIDTH rather than a
+                 maximum.
+
+                 As a maximum it was only a ceiling, so each card sized to its
+                 own widest line: a card narrowed whenever a sentence was
+                 removed from it, and the three platform cards sat at three
+                 different widths. Stretch is not the fix either — a stretched
+                 child under a max width centres, which pulls the cards off the
+                 left edge the header above them sits on. A width holds all
+                 three at one size, aligned with the header, whatever their
+                 content. The window's own MinWidth is 1200, so 720 plus these
+                 margins always fits. -->
             <StackPanel Margin="24,20,24,28"
-                        MaxWidth="720"
+                        Width="720"
                         HorizontalAlignment="Left"
                         Spacing="16">
 
                 <!-- ══ STEAM ════════════════════════════════════════════════
                      Local files always; either connection method (sign-in
                      or Web API key) adds owned-but-never-installed titles. -->
-                <Border Classes="card">
+                <Border Classes="card" IsVisible="{Binding IsSteamVisible}">
                     <StackPanel Spacing="14">
 
-                        <Grid ColumnDefinitions="*,Auto">
+                        <!-- The header line. Name, count, the account filter and
+                             the status pill, all on one row and all centred on
+                             it. The filter moved up here because it is a switch
+                             about WHOSE titles the number beside it counts, and
+                             the two facts belong on one line. -->
+                        <Grid ColumnDefinitions="Auto,*,Auto,Auto">
                             <StackPanel Grid.Column="0" Orientation="Horizontal"
                                         Spacing="10" VerticalAlignment="Center">
-                                <TextBlock Classes="display-l" FontSize="18" Text="Steam"
+                                <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="18" Text="Steam"
                                            VerticalAlignment="Center"/>
-                                <TextBlock Classes="data" FontSize="12"
-                                           Foreground="{StaticResource TextDim}"
-                                           Text="{Binding SteamCountText}"
-                                           IsVisible="{Binding ShowSteamCount}"
-                                           VerticalAlignment="Center"/>
-                                <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
-                                           Text="TITLES"
-                                           IsVisible="{Binding ShowSteamCount}"
-                                           VerticalAlignment="Center"/>
+                                <!-- The count and its unit share ONE TextBlock,
+                                     as two Runs, because they must share a
+                                     BASELINE. As separate TextBlocks each was
+                                     centred on the row, and centring aligns
+                                     layout BOXES: three faces at three sizes —
+                                     Display Bold 18, Plex Mono 12, Body SemiBold
+                                     10 — put their glyphs at three different
+                                     heights inside those boxes, which is the
+                                     misalignment. Inlines sit on one baseline by
+                                     construction, and digits and small caps are
+                                     both cap-height, so a shared baseline is a
+                                     shared optical line. -->
+                                <TextBlock VerticalAlignment="Center"
+                                           IsVisible="{Binding ShowSteamCount}">
+                                    <Run FontFamily="{StaticResource DataFont}"
+                                         FontSize="12"
+                                         FontFeatures="tnum"
+                                         Foreground="{StaticResource TextDim}"
+                                         Text="{Binding SteamCountText}"/>
+                                    <Run FontFamily="{StaticResource BodyFont}"
+                                         FontWeight="SemiBold"
+                                         FontSize="10"
+                                         Foreground="{StaticResource TextDim}"
+                                         Text=" TITLES"/>
+                                </TextBlock>
                             </StackPanel>
 
-                            <Border Grid.Column="1" Classes="pill"
+                            <!-- Disabled rather than hidden while Winnow cannot
+                                 tell which account is the user's; the reason
+                                 rides on the tooltip, and the note below the
+                                 header still spells it out. -->
+                            <StackPanel Grid.Column="2" Orientation="Horizontal"
+                                        Spacing="8" Margin="0,0,12,0"
+                                        VerticalAlignment="Center">
+                                <ToggleSwitch IsChecked="{Binding ShowOwnAccountOnly}"
+                                              IsEnabled="{Binding CanChooseAccountScope}"
+                                              VerticalAlignment="Center"
+                                              OnContent="{Binding AccountScopeToggleLabel}"
+                                              OffContent="{Binding AccountScopeToggleLabel}"
+                                              AutomationProperties.Name="{Binding AccountScopeToggleLabel}"
+                                              ToolTip.Tip="{Binding AccountScopeMessage}"/>
+                            </StackPanel>
+
+                            <Border Grid.Column="3" Classes="pill"
+                                    VerticalAlignment="Center"
                                     Classes.live="{Binding SteamStatusIsLive}"
                                     Classes.attention="{Binding SteamStatusNeedsAttention}">
                                 <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
+                                           VerticalAlignment="Center"
                                            Text="{Binding SteamStatusLabel}"/>
                             </Border>
                         </Grid>
@@ -263,19 +393,28 @@
                              missing while nothing is connected, are both one
                              click away. -->
                         <StackPanel Spacing="8">
-                            <StackPanel Orientation="Horizontal" Spacing="10">
-                                <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
+                            <!-- One line: what it is, whether it is on, and the
+                                 way to the detail. Every cell centres on the
+                                 row, so the label's cap-height, the state word
+                                 and the link sit on one optical line instead of
+                                 three near-misses. -->
+                            <Grid ColumnDefinitions="Auto,10,Auto,*,Auto">
+                                <TextBlock Grid.Column="0"
+                                           Classes="label" FontSize="10" LetterSpacing="1"
                                            VerticalAlignment="Center"
                                            Text="{Binding SteamLocalLabel}"/>
-                                <TextBlock Classes="para lead"
+                                <TextBlock Grid.Column="2"
+                                           Classes="para lead"
                                            VerticalAlignment="Center"
+                                           Foreground="{StaticResource Volt}"
                                            Text="{Binding SteamLocalStateText}"/>
-                            </StackPanel>
-
-                            <Button Classes="disclose"
-                                    Content="{Binding SteamLocalDetailsToggleText}"
-                                    AutomationProperties.Name="{Binding SteamLocalDetailsToggleText}"
-                                    Command="{Binding ToggleSteamLocalDetailsCommand}"/>
+                                <Button Grid.Column="4"
+                                        Classes="disclose"
+                                        VerticalAlignment="Center"
+                                        Content="{Binding SteamLocalDetailsToggleText}"
+                                        AutomationProperties.Name="{Binding SteamLocalDetailsToggleText}"
+                                        Command="{Binding ToggleSteamLocalDetailsCommand}"/>
+                            </Grid>
 
                             <StackPanel Spacing="8" IsVisible="{Binding SteamLocalDetailsOpen}">
                                 <TextBlock Classes="para" Text="{Binding SteamLocalMessage}"/>
@@ -307,40 +446,68 @@
                              No Flare anywhere. Volt is what works, Amber is what
                              needs attention, TextDim is what nobody has done
                              yet. The role wants a name of its own: TASK-80. -->
-                        <StackPanel Spacing="8">
-                            <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
+                        <!-- The WEB API line, read exactly like LOCAL FILES
+                             above it: name, state, and the way to the detail,
+                             all centred on one row. The state word carries
+                             WHICH credential is in force, so a user holding
+                             both can see which one is doing the work without
+                             opening anything.
+
+                             The link opens a modal rather than an expander.
+                             The comparison is read once and decided once, and
+                             an expander made the card pay its full height on
+                             every visit. -->
+                        <Grid ColumnDefinitions="Auto,10,Auto,*,Auto">
+                            <TextBlock Grid.Column="0"
+                                       Classes="label" FontSize="10" LetterSpacing="1"
+                                       VerticalAlignment="Center"
                                        Text="{Binding SteamConnectionSectionLabel}"/>
-                            <TextBlock Classes="para lead"
-                                       Text="{Binding SteamConnectionSummaryMessage}"/>
-
-                            <Button Classes="disclose"
-                                    Content="{Binding SteamMethodsDetailsToggleText}"
-                                    AutomationProperties.Name="{Binding SteamMethodsDetailsToggleText}"
-                                    Command="{Binding ToggleSteamMethodsDetailsCommand}"/>
-
-                            <StackPanel Spacing="10" IsVisible="{Binding SteamMethodsDetailsOpen}">
-                                <TextBlock Classes="para" Text="{Binding SteamConnectionIntroMessage}"/>
-
-                                <!-- Both credentials held: the user is told which
-                                     one does what, rather than being left to
-                                     guess why a scheduled sync kept working
-                                     after a sign-in lapsed. -->
-                                <Border Classes="note" IsVisible="{Binding ShowSteamBothCredentials}">
-                                    <TextBlock Classes="para" Text="{Binding SteamBothCredentialsMessage}"/>
-                                </Border>
-                            </StackPanel>
-                        </StackPanel>
+                            <TextBlock Grid.Column="2"
+                                       Classes="para lead"
+                                       VerticalAlignment="Center"
+                                       Foreground="{StaticResource Volt}"
+                                       IsVisible="{Binding SteamWebApiIsOn}"
+                                       Text="{Binding SteamWebApiStateText}"/>
+                            <TextBlock Grid.Column="2"
+                                       Classes="para lead"
+                                       VerticalAlignment="Center"
+                                       Foreground="{StaticResource TextDim}"
+                                       IsVisible="{Binding !SteamWebApiIsOn}"
+                                       Text="{Binding SteamWebApiStateText}"/>
+                            <Button Grid.Column="4"
+                                    Classes="disclose"
+                                    VerticalAlignment="Center"
+                                    Content="{Binding MethodsModalLink}"
+                                    AutomationProperties.Name="{Binding MethodsModalLink}"
+                                    Command="{Binding OpenMethodsModalCommand}"/>
+                        </Grid>
 
                         <!-- ── METHOD 1 — sign in ───────────────────────────── -->
                         <StackPanel Spacing="12">
 
+                            <!-- Heading, state, and the marker naming whichever
+                                 credential is carrying the calls. The marker is
+                                 not a radio: the two methods are peers and
+                                 holding both is supported, so nothing here
+                                 claims an exclusive choice. It says which one
+                                 is doing the work, from the same rule the WEB
+                                 API state word uses, so the two cannot
+                                 disagree. -->
                             <StackPanel Orientation="Horizontal" Spacing="10">
-                                <TextBlock Classes="display-l" FontSize="16"
+                                <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="16"
                                            VerticalAlignment="Center"
                                            Text="{Binding SteamSignInHeading}"/>
                                 <TextBlock Classes="para lead"
                                            VerticalAlignment="Center"
                                            Text="{Binding SteamSignInStateText}"/>
+                                <Border Classes="pill live"
+                                        VerticalAlignment="Center"
+                                        IsVisible="{Binding SteamSignInIsInUse}"
+                                        ToolTip.Tip="{Binding MethodInUseTooltip}">
+                                    <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
+                                               VerticalAlignment="Center"
+                                               Text="{Binding MethodInUseText}"/>
+                                </Border>
                             </StackPanel>
 
                             <!-- CONDITION 8, and the one thing on this card that
@@ -388,17 +555,20 @@
                                  here because it is a control; the sentence
                                  saying that declining is a complete answer is in
                                  the disclosure (AC2). -->
+                            <!-- The button no longer starts the sign-in: it opens
+                                 the consent modal, whose Continue does. The
+                                 permission control and the paragraph that says
+                                 what the window reads live in there, on the near
+                                 side of the act rather than beside it, so
+                                 §4.7 condition 3's "read before acting" is a
+                                 property of the flow instead of a hope about
+                                 the order someone reads a card in. -->
                             <StackPanel Spacing="10" IsVisible="{Binding ShowSteamSignInAction}">
-                                <CheckBox Classes="permission"
-                                          Content="{Binding CapturePurchaseHistoryLabel}"
-                                          AutomationProperties.Name="{Binding CapturePurchaseHistoryLabel}"
-                                          IsChecked="{Binding CapturePurchaseHistory, Mode=TwoWay}"/>
-
                                 <Button Classes="act primary"
                                         HorizontalAlignment="Left"
                                         Content="{Binding SteamSignInButtonText}"
                                         AutomationProperties.Name="{Binding SteamSignInButtonText}"
-                                        Command="{Binding SignInToSteamCommand}"/>
+                                        Command="{Binding OpenSignInConsentCommand}"/>
                             </StackPanel>
 
                             <!-- Text progress: a Volt-edged field saying where to
@@ -435,20 +605,31 @@
                                 </StackPanel>
                             </Border>
 
-                            <!-- ── The sign-in's depth ──────────────────────
-                                 Nothing is deleted; all of it is one click
-                                 away. What signing in gives and costs, the calm
-                                 health sentence, the account it identified, when
-                                 the token dies, what the permission does, and
-                                 what signing out removes. -->
+                            <!-- ── The session's state ───────────────────────
+                                 Only offered once a session EXISTS. What
+                                 signing in gives and costs moved to the consent
+                                 modal, so on a signed-out card this toggle
+                                 would open a single sentence the state text
+                                 beside the heading has already said. What it
+                                 holds now is what a signed-in user might look
+                                 up: the account, the expiry, the calm health
+                                 sentence, and what signing out removes. -->
                             <Button Classes="disclose"
+                                    IsVisible="{Binding ShowSteamSignedIn}"
                                     Content="{Binding SteamSignInDetailsToggleText}"
                                     AutomationProperties.Name="{Binding SteamSignInDetailsToggleText}"
                                     Command="{Binding ToggleSteamSignInDetailsCommand}"/>
 
-                            <StackPanel Spacing="10" IsVisible="{Binding SteamSignInDetailsOpen}">
-                                <TextBlock Classes="para" Text="{Binding SteamSignInGivesMessage}"/>
-                                <TextBlock Classes="para" Text="{Binding SteamSignInCostsMessage}"/>
+                            <StackPanel Spacing="10"
+                                        IsVisible="{Binding SteamSignInDetailsOpen}">
+                                <!-- What signing in gives and costs, and what
+                                     the permission does, are no longer here:
+                                     they are the body of the consent modal,
+                                     which is where they are actually read. What
+                                     stays is the state a signed-in user might
+                                     look up — the calm health sentence, the
+                                     account, the expiry, and what signing out
+                                     removes. -->
 
                                 <!-- The three states that are facts rather than
                                      faults. The other three are up at the top
@@ -486,21 +667,50 @@
                                            Text="{Binding SteamSignInAccountConfirmedMessage}"/>
 
                                 <TextBlock Classes="para"
-                                           IsVisible="{Binding ShowSteamSignInAction}"
-                                           Text="{Binding CapturePurchaseHistoryMessage}"/>
-
-                                <TextBlock Classes="para"
                                            IsVisible="{Binding ShowSteamSignedIn}"
                                            Text="{Binding SteamSignOutMessage}"/>
                             </StackPanel>
 
                         </StackPanel>
 
+                        <!-- The separator between the two methods. It says OR
+                             and not "choose one", because the two are NOT
+                             exclusive: holding both is a supported state, and
+                             the WEB API line above names which one is carrying
+                             the calls when they are. What this marks is that
+                             EITHER is sufficient, which is the thing a user
+                             looking at two credential controls most needs to
+                             know. A rule either side so it reads as a division
+                             of the section rather than a label inside it. -->
+                        <Grid ColumnDefinitions="*,Auto,*" Margin="0,2">
+                            <Border Grid.Column="0" Height="1"
+                                    VerticalAlignment="Center"
+                                    Background="{StaticResource Line}"/>
+                            <TextBlock Grid.Column="1"
+                                       Classes="label" FontSize="10" LetterSpacing="1.4"
+                                       Margin="12,0"
+                                       VerticalAlignment="Center"
+                                       Foreground="{StaticResource TextDim}"
+                                       Text="{Binding MethodSeparatorText}"/>
+                            <Border Grid.Column="2" Height="1"
+                                    VerticalAlignment="Center"
+                                    Background="{StaticResource Line}"/>
+                        </Grid>
+
                         <!-- ── METHOD 2 — the Web API key ───────────────────── -->
                         <StackPanel Spacing="12">
 
-                            <StackPanel Orientation="Horizontal" Spacing="10">
-                                <TextBlock Classes="display-l" FontSize="16"
+                            <!-- Get a key rides the heading row, right-aligned.
+                                 It is the one control here that does not act on
+                                 the field below it — it opens Steam's own
+                                 registration page — so sitting under the field
+                                 put it in the row of things that do. Up here it
+                                 reads as belonging to the method rather than to
+                                 the input, and the field, Save and Clear are
+                                 left as one uninterrupted group. -->
+                            <Grid ColumnDefinitions="Auto,10,Auto,10,Auto,*,Auto">
+                                <TextBlock AutomationProperties.HeadingLevel="2" Grid.Column="0"
+                                           Classes="display-l" FontSize="16"
                                            VerticalAlignment="Center"
                                            Text="{Binding SteamApiKeyHeading}"/>
                                 <!-- The environment branch of this line says at
@@ -510,11 +720,28 @@
                                      is inside a collapsed panel reads as a bug.
                                      The rest of that sentence — the variable's
                                      name, that saving here takes precedence — is
-                                     in the disclosure. -->
-                                <TextBlock Classes="para lead"
+                                     in the methods modal. -->
+                                <TextBlock Grid.Column="2"
+                                           Classes="para lead"
                                            VerticalAlignment="Center"
                                            Text="{Binding SteamApiKeyStateText}"/>
-                            </StackPanel>
+                                <Border Grid.Column="4"
+                                        Classes="pill live"
+                                        VerticalAlignment="Center"
+                                        IsVisible="{Binding SteamApiKeyIsInUse}"
+                                        ToolTip.Tip="{Binding MethodInUseTooltip}">
+                                    <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
+                                               VerticalAlignment="Center"
+                                               Text="{Binding MethodInUseText}"/>
+                                </Border>
+                                <Button Grid.Column="6"
+                                        Classes="act quiet"
+                                        Padding="14,5"
+                                        VerticalAlignment="Center"
+                                        Content="{Binding SteamApiKeyGetButtonText}"
+                                        AutomationProperties.Name="{Binding SteamApiKeyGetButtonText}"
+                                        Command="{Binding OpenSteamApiKeyPageCommand}"/>
+                            </Grid>
 
                             <StackPanel Spacing="8">
                                 <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
@@ -544,13 +771,6 @@
                                             AutomationProperties.Name="{Binding SteamApiKeyClearButtonText}"
                                             Command="{Binding ClearSteamApiKeyCommand}"/>
                                 </Grid>
-
-                                <Button Classes="act quiet"
-                                        HorizontalAlignment="Left"
-                                        Padding="14,5"
-                                        Content="{Binding SteamApiKeyGetButtonText}"
-                                        AutomationProperties.Name="{Binding SteamApiKeyGetButtonText}"
-                                        Command="{Binding OpenSteamApiKeyPageCommand}"/>
                             </StackPanel>
 
                             <Border Classes="note" IsVisible="{Binding ShowSteamApiKeyNotice}">
@@ -558,20 +778,20 @@
                                            Text="{Binding SteamApiKeyNoticeMessage}"/>
                             </Border>
 
-                            <!-- ── The key's depth ──────────────────────────
-                                 What a key gives, what it gives up, and the full
-                                 sentence for whichever of the three key states
-                                 holds. -->
-                            <Button Classes="disclose"
-                                    Content="{Binding SteamApiKeyDetailsToggleText}"
-                                    AutomationProperties.Name="{Binding SteamApiKeyDetailsToggleText}"
-                                    Command="{Binding ToggleSteamApiKeyDetailsCommand}"/>
+                            <!-- The key's own disclosure is gone. What a key
+                                 gives and what it costs are half of the
+                                 comparison the WEB API line's link opens, and
+                                 stating them twice on one card was the
+                                 duplication that made the comparison worth
+                                 opening at all.
 
-                            <StackPanel Spacing="10" IsVisible="{Binding SteamApiKeyDetailsOpen}">
-                                <TextBlock Classes="para" Text="{Binding SteamApiKeyGivesMessage}"/>
-                                <TextBlock Classes="para" Text="{Binding SteamApiKeyCostsMessage}"/>
-                                <TextBlock Classes="para" Text="{Binding SteamApiKeyStatusMessage}"/>
-                            </StackPanel>
+                                 The state sentence went with it, into the same
+                                 modal beneath the key's own heading. The one
+                                 fact a user acts on — that the key came from
+                                 outside and the Clear button therefore cannot
+                                 remove it — is already on the heading line
+                                 above, which is what stops the disabled button
+                                 reading as a bug. -->
 
                         </StackPanel>
 
@@ -588,15 +808,54 @@
                         <Border Height="1" Background="{StaticResource Line}"
                                 IsVisible="{Binding ShowPurchaseImport}"/>
 
-                        <StackPanel Spacing="12" IsVisible="{Binding ShowPurchaseImport}">
-                            <StackPanel Spacing="5">
-                                <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
-                                           Text="{Binding SteamPurchaseSectionLabel}"/>
-                                <TextBlock Classes="para"
-                                           Text="{Binding AccountImport.IntroMessage}"/>
-                            </StackPanel>
+                        <!-- PURCHASE HISTORY, behind one disclosure holding BOTH
+                             routes (TASK-61 AC1).
 
-                            <views:SteamAccountImportView DataContext="{Binding AccountImport}"/>
+                             This is the only section of the card a user need
+                             not visit to have a working library, and it was the
+                             largest block on it: the card measured 1196px in a
+                             644px viewport before this, and the two route
+                             paragraphs are most of the difference.
+
+                             They could not simply be moved. ROADMAP §4.7
+                             condition 3 makes each route's paragraph the
+                             transparency surface read before acting, and makes
+                             the two routes equal peers — a peer whose
+                             explanation is a click away is not an equal peer.
+                             So the toggle holds the WHOLE section rather than
+                             the prose inside it: closed, no button is reachable
+                             and nothing can be consented to unread; open, both
+                             routes and both paragraphs arrive together, neither
+                             one nearer than the other. -->
+                        <StackPanel Spacing="8" IsVisible="{Binding ShowPurchaseImport}">
+                            <!-- Label and button, and no summary between them.
+                                 The line said the import was optional and what
+                                 it fills in; the modal behind the button opens
+                                 on the same sentence, so the card was saying it
+                                 twice to a user who had not asked yet. -->
+                            <Grid ColumnDefinitions="Auto,*,Auto">
+                                <TextBlock Grid.Column="0"
+                                           Classes="label" FontSize="10" LetterSpacing="1"
+                                           VerticalAlignment="Center"
+                                           Text="{Binding SteamPurchaseSectionLabel}"/>
+                                <!-- A button, not a link. The other links on
+                                     this card open something that explains;
+                                     this one opens the surface where an import
+                                     is actually performed, so it reads as the
+                                     secondary action it is. Quiet rather than
+                                     primary: the card's primary action is the
+                                     connection above, and the import is
+                                     optional. Padding matches Get a key, the
+                                     card's other quiet button, so the two do
+                                     not sit at different weights. -->
+                                <Button Grid.Column="2"
+                                        Classes="act quiet"
+                                        Padding="14,5"
+                                        VerticalAlignment="Center"
+                                        Content="{Binding PurchaseModalTitle}"
+                                        AutomationProperties.Name="{Binding PurchaseModalTitle}"
+                                        Command="{Binding OpenPurchaseModalCommand}"/>
+                            </Grid>
                         </StackPanel>
 
                         <!-- ══ ACCOUNT VISIBILITY ════════════════════════════
@@ -606,41 +865,55 @@
                              two reasons is in force. -->
                         <Border Height="1" Background="{StaticResource Line}"/>
 
-                        <StackPanel Spacing="10">
-                            <StackPanel Spacing="5">
-                                <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
+                        <StackPanel Spacing="8">
+                            <!-- The section says the two figures and nothing
+                                 else. The paragraph that used to explain that
+                                 every account on the PC is read has gone: the
+                                 figures say it, and the toggle on the header
+                                 line says what can be done about it. There is
+                                 no per-account breakdown because no account
+                                 NAME is stored anywhere — AccountFacts records
+                                 presence only, never identity — so the honest
+                                 unit is the total and the count.
+
+                                 PENDING FETCH replaced the note explaining why
+                                 the toggle is disabled. That the toggle is
+                                 disabled is already visible; what a user could
+                                 not see is that the answer is COMING rather
+                                 than missing. The full sentence is still on the
+                                 toggle tooltip. -->
+                            <Grid ColumnDefinitions="Auto,10,Auto,*">
+                                <TextBlock Grid.Column="0"
+                                           Classes="label" FontSize="10" LetterSpacing="1"
+                                           VerticalAlignment="Center"
                                            Text="{Binding AccountScopeSectionLabel}"/>
-                                <TextBlock Classes="para" Text="{Binding AccountScopeMessage}"/>
-                            </StackPanel>
-
-                            <ToggleSwitch IsChecked="{Binding ShowOwnAccountOnly}"
-                                          IsEnabled="{Binding CanChooseAccountScope}"
-                                          OnContent="{Binding AccountScopeToggleLabel}"
-                                          OffContent="{Binding AccountScopeToggleLabel}"/>
-
-                            <!-- The cost of the toggle, in the same [DATA]
-                                 [words] split the card header uses for its
-                                 per-store counts: every figure renders in Plex
-                                 Mono tnum (§8), which a control's content face
-                                 is not. Absent at zero. -->
-                            <StackPanel Orientation="Horizontal" Spacing="6"
-                                        IsVisible="{Binding ShowAccountScopeCount}">
-                                <TextBlock Classes="data" FontSize="12"
+                                <TextBlock Grid.Column="2"
+                                           Classes="label" FontSize="10" LetterSpacing="1"
+                                           VerticalAlignment="Center"
                                            Foreground="{StaticResource TextDim}"
-                                           Text="{Binding AccountScopeHiddenCountText}"
-                                           VerticalAlignment="Center"/>
-                                <TextBlock Classes="para"
-                                           Text="{Binding AccountScopeHiddenUnitLabel}"
-                                           VerticalAlignment="Center"/>
-                            </StackPanel>
+                                           IsVisible="{Binding ShowSteamAccountsPending}"
+                                           Text="{Binding SteamAccountsPendingText}"/>
+                            </Grid>
 
-                            <Border Classes="note" IsVisible="{Binding ShowAccountScopeBlocked}">
-                                <TextBlock Classes="para" Text="{Binding AccountScopeBlockedMessage}"/>
-                            </Border>
-
-                            <Border Classes="note" IsVisible="{Binding ShowAccountScopeCaveat}">
-                                <TextBlock Classes="para" Text="{Binding AccountScopeCaveatMessage}"/>
-                            </Border>
+                            <!-- The two figures, with the caveat one click away
+                                 on the same row. It used to be a note under the
+                                 toggle, drawn only while the filter was on. It
+                                 is a fact about what the filter can and cannot
+                                 promise, so it belongs beside the figures it
+                                 qualifies rather than under a switch. -->
+                            <Grid ColumnDefinitions="Auto,*,Auto"
+                                  IsVisible="{Binding ShowSteamAccountsSummary}">
+                                <TextBlock Grid.Column="0"
+                                           Classes="para"
+                                           VerticalAlignment="Center"
+                                           Text="{Binding SteamAccountsSummaryText}"/>
+                                <Button Grid.Column="2"
+                                        Classes="disclose"
+                                        VerticalAlignment="Center"
+                                        Content="{Binding AccountsModalLink}"
+                                        AutomationProperties.Name="{Binding AccountsModalLink}"
+                                        Command="{Binding OpenAccountsModalCommand}"/>
+                            </Grid>
                         </StackPanel>
 
                     </StackPanel>
@@ -648,23 +921,39 @@
 
                 <!-- ══ EPIC ═════════════════════════════════════════════════
                      What Winnow has, then the gap, then the sign-in button. -->
-                <Border Classes="card">
+                <Border Classes="card" IsVisible="{Binding IsEpicVisible}">
                     <StackPanel Spacing="14">
 
                         <Grid ColumnDefinitions="*,Auto">
                             <StackPanel Grid.Column="0" Orientation="Horizontal"
                                         Spacing="10" VerticalAlignment="Center">
-                                <TextBlock Classes="display-l" FontSize="18" Text="Epic"
+                                <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="18" Text="Epic"
                                            VerticalAlignment="Center"/>
-                                <TextBlock Classes="data" FontSize="12"
-                                           Foreground="{StaticResource TextDim}"
-                                           Text="{Binding EpicCountText}"
-                                           IsVisible="{Binding ShowEpicCount}"
-                                           VerticalAlignment="Center"/>
-                                <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
-                                           Text="TITLES"
-                                           IsVisible="{Binding ShowEpicCount}"
-                                           VerticalAlignment="Center"/>
+                                <!-- The count and its unit share ONE TextBlock,
+                                     as two Runs, because they must share a
+                                     BASELINE. As separate TextBlocks each was
+                                     centred on the row, and centring aligns
+                                     layout BOXES: three faces at three sizes —
+                                     Display Bold 18, Plex Mono 12, Body SemiBold
+                                     10 — put their glyphs at three different
+                                     heights inside those boxes, which is the
+                                     misalignment. Inlines sit on one baseline by
+                                     construction, and digits and small caps are
+                                     both cap-height, so a shared baseline is a
+                                     shared optical line. -->
+                                <TextBlock VerticalAlignment="Center"
+                                           IsVisible="{Binding ShowEpicCount}">
+                                    <Run FontFamily="{StaticResource DataFont}"
+                                         FontSize="12"
+                                         FontFeatures="tnum"
+                                         Foreground="{StaticResource TextDim}"
+                                         Text="{Binding EpicCountText}"/>
+                                    <Run FontFamily="{StaticResource BodyFont}"
+                                         FontWeight="SemiBold"
+                                         FontSize="10"
+                                         Foreground="{StaticResource TextDim}"
+                                         Text=" TITLES"/>
+                                </TextBlock>
                             </StackPanel>
 
                             <Border Grid.Column="1" Classes="pill"
@@ -799,23 +1088,39 @@
                 <!-- ══ GOG ══════════════════════════════════════════════════
                      No sign-in button: the authenticated endpoint carries
                      nothing the local DB does not already have. -->
-                <Border Classes="card">
+                <Border Classes="card" IsVisible="{Binding IsGogVisible}">
                     <StackPanel Spacing="14">
 
                         <Grid ColumnDefinitions="*,Auto">
                             <StackPanel Grid.Column="0" Orientation="Horizontal"
                                         Spacing="10" VerticalAlignment="Center">
-                                <TextBlock Classes="display-l" FontSize="18" Text="GOG"
+                                <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="18" Text="GOG"
                                            VerticalAlignment="Center"/>
-                                <TextBlock Classes="data" FontSize="12"
-                                           Foreground="{StaticResource TextDim}"
-                                           Text="{Binding GogCountText}"
-                                           IsVisible="{Binding ShowGogCount}"
-                                           VerticalAlignment="Center"/>
-                                <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
-                                           Text="TITLES"
-                                           IsVisible="{Binding ShowGogCount}"
-                                           VerticalAlignment="Center"/>
+                                <!-- The count and its unit share ONE TextBlock,
+                                     as two Runs, because they must share a
+                                     BASELINE. As separate TextBlocks each was
+                                     centred on the row, and centring aligns
+                                     layout BOXES: three faces at three sizes —
+                                     Display Bold 18, Plex Mono 12, Body SemiBold
+                                     10 — put their glyphs at three different
+                                     heights inside those boxes, which is the
+                                     misalignment. Inlines sit on one baseline by
+                                     construction, and digits and small caps are
+                                     both cap-height, so a shared baseline is a
+                                     shared optical line. -->
+                                <TextBlock VerticalAlignment="Center"
+                                           IsVisible="{Binding ShowGogCount}">
+                                    <Run FontFamily="{StaticResource DataFont}"
+                                         FontSize="12"
+                                         FontFeatures="tnum"
+                                         Foreground="{StaticResource TextDim}"
+                                         Text="{Binding GogCountText}"/>
+                                    <Run FontFamily="{StaticResource BodyFont}"
+                                         FontWeight="SemiBold"
+                                         FontSize="10"
+                                         Foreground="{StaticResource TextDim}"
+                                         Text=" TITLES"/>
+                                </TextBlock>
                             </StackPanel>
 
                             <!-- Volt: this source is complete. -->
@@ -844,5 +1149,193 @@
         </ScrollViewer>
 
     </Grid>
+
+    <!-- @@ THE MODALS @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+         Three panels that used to be disclosures on the Steam card. A
+         disclosure costs the card the height of everything it opens on every
+         visit; a modal costs it one line. All three hold things read once:
+         which method to choose, what the sign-in will read, and the import
+         itself. A surface that covers the card while it is read and leaves
+         nothing behind is the right shape for them.
+
+         Scrim dismisses, exactly as the game details modal does, EXCEPT on
+         the consent modal: a click landing outside it must not read as
+         consent, so that one is dismissed only by its own two buttons. -->
+    <Panel IsVisible="{Binding IsAnyModalOpen}">
+
+        <!-- Which one should I use? -->
+        <Panel IsVisible="{Binding IsMethodsModalOpen}">
+            <Border Background="{StaticResource ModalScrim}"
+                    PointerPressed="OnModalScrimPressed"/>
+            <Border Classes="modal"
+                    HorizontalAlignment="Center" VerticalAlignment="Center">
+                <StackPanel Spacing="16">
+                    <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="18"
+                               Text="{Binding MethodsModalTitle}"/>
+
+                    <ScrollViewer MaxHeight="440"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  VerticalScrollBarVisibility="Auto">
+                        <StackPanel Spacing="14">
+                            <TextBlock Classes="para" Text="{Binding SteamConnectionIntroMessage}"/>
+
+                            <StackPanel Spacing="6">
+                                <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
+                                           Text="{Binding SteamSignInHeading}"/>
+                                <TextBlock Classes="para" Text="{Binding SteamSignInGivesMessage}"/>
+                                <TextBlock Classes="para" Text="{Binding SteamSignInCostsMessage}"/>
+                            </StackPanel>
+
+                            <StackPanel Spacing="6">
+                                <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
+                                           Text="{Binding SteamApiKeyHeading}"/>
+                                <TextBlock Classes="para" Text="{Binding SteamApiKeyGivesMessage}"/>
+                                <TextBlock Classes="para" Text="{Binding SteamApiKeyCostsMessage}"/>
+                                <!-- Which of the three key states this install
+                                     is actually in. It reads as part of the
+                                     comparison here, where the alternative is
+                                     beside it. -->
+                                <TextBlock Classes="para" Text="{Binding SteamApiKeyStatusMessage}"/>
+                            </StackPanel>
+
+                            <Border Classes="note" IsVisible="{Binding ShowSteamBothCredentials}">
+                                <TextBlock Classes="para" Text="{Binding SteamBothCredentialsMessage}"/>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <Button Classes="act quiet"
+                            HorizontalAlignment="Right"
+                            Content="{Binding ModalCloseText}"
+                            AutomationProperties.Name="{Binding ModalCloseText}"
+                            Command="{Binding CloseModalCommand}"/>
+                </StackPanel>
+            </Border>
+        </Panel>
+
+        <!-- Before you sign in. The consent surface: section 4.7 condition 3
+             requires the paragraph to be read before the act, and the act is
+             now on the far side of it. No scrim dismissal, because backing
+             out has to be explicit. -->
+        <Panel IsVisible="{Binding IsSignInConsentOpen}">
+            <Border Background="{StaticResource ModalScrim}"/>
+            <Border Classes="modal"
+                    HorizontalAlignment="Center" VerticalAlignment="Center">
+                <StackPanel Spacing="16">
+                    <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="18"
+                               Text="{Binding SignInConsentTitle}"/>
+
+                    <ScrollViewer MaxHeight="380"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  VerticalScrollBarVisibility="Auto">
+                        <StackPanel Spacing="14">
+                            <TextBlock Classes="para" Text="{Binding SteamSignInGivesMessage}"/>
+                            <TextBlock Classes="para" Text="{Binding SteamSignInCostsMessage}"/>
+                            <TextBlock Classes="para" Text="{Binding CapturePurchaseHistoryMessage}"/>
+
+                            <!-- The permission, on the near side of Continue.
+                                 Unticked on every install; declining is a
+                                 complete answer, and the sentence above says so. -->
+                            <CheckBox Classes="permission"
+                                      Content="{Binding CapturePurchaseHistoryLabel}"
+                                      AutomationProperties.Name="{Binding CapturePurchaseHistoryLabel}"
+                                      IsChecked="{Binding CapturePurchaseHistory, Mode=TwoWay}"/>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <StackPanel Orientation="Horizontal" Spacing="10"
+                                HorizontalAlignment="Right">
+                        <Button Classes="act quiet"
+                                Content="{Binding SignInConsentCancelText}"
+                                AutomationProperties.Name="{Binding SignInConsentCancelText}"
+                                Command="{Binding CloseModalCommand}"/>
+                        <Button Classes="act primary"
+                                Content="{Binding SignInConsentContinueText}"
+                                AutomationProperties.Name="{Binding SignInConsentContinueText}"
+                                Command="{Binding ContinueSignInCommand}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Panel>
+
+        <!-- What the account filter can and cannot do. The caveat that used to
+             be a note under the toggle: the filter is deliberately incomplete
+             rather than leaky, and a filtered library reports one account's
+             figures. -->
+        <Panel IsVisible="{Binding IsAccountsModalOpen}">
+            <Border Background="{StaticResource ModalScrim}"
+                    PointerPressed="OnModalScrimPressed"/>
+            <Border Classes="modal"
+                    HorizontalAlignment="Center" VerticalAlignment="Center">
+                <StackPanel Spacing="16">
+                    <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="18"
+                               Text="{Binding AccountsModalTitle}"/>
+
+                    <StackPanel Spacing="14">
+                        <TextBlock Classes="para" Text="{Binding AccountScopeMessage}"/>
+                        <TextBlock Classes="para" Text="{Binding AccountScopeCaveatMessage}"/>
+
+                        <!-- Why the switch is disabled, when it is. This was a
+                             top-level note; the section title now carries
+                             PENDING FETCH and the sentence lives here. -->
+                        <Border Classes="note" IsVisible="{Binding ShowAccountScopeBlocked}">
+                            <TextBlock Classes="para" Text="{Binding AccountScopeBlockedMessage}"/>
+                        </Border>
+
+                        <!-- What turning it on would remove, in the same
+                             [DATA] [words] split the card header uses. -->
+                        <StackPanel Orientation="Horizontal" Spacing="6"
+                                    IsVisible="{Binding ShowAccountScopeCount}">
+                            <TextBlock Classes="data" FontSize="12"
+                                       Foreground="{StaticResource TextDim}"
+                                       VerticalAlignment="Center"
+                                       Text="{Binding AccountScopeHiddenCountText}"/>
+                            <TextBlock Classes="para"
+                                       VerticalAlignment="Center"
+                                       Text="{Binding AccountScopeHiddenUnitLabel}"/>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <Button Classes="act quiet"
+                            HorizontalAlignment="Right"
+                            Content="{Binding ModalCloseText}"
+                            AutomationProperties.Name="{Binding ModalCloseText}"
+                            Command="{Binding CloseModalCommand}"/>
+                </StackPanel>
+            </Border>
+        </Panel>
+
+        <!-- Import purchase history. Both routes together, as equal peers. -->
+        <Panel IsVisible="{Binding IsPurchaseModalOpen}">
+            <Border Background="{StaticResource ModalScrim}"
+                    PointerPressed="OnModalScrimPressed"/>
+            <Border Classes="modal"
+                    HorizontalAlignment="Center" VerticalAlignment="Center">
+                <StackPanel Spacing="16">
+                    <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="18"
+                               Text="{Binding PurchaseModalTitle}"/>
+
+                    <ScrollViewer MaxHeight="460"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  VerticalScrollBarVisibility="Auto">
+                        <StackPanel Spacing="14">
+                            <TextBlock Classes="para"
+                                       Text="{Binding AccountImport.IntroMessage}"/>
+                            <views:SteamAccountImportView DataContext="{Binding AccountImport}"/>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <Button Classes="act quiet"
+                            HorizontalAlignment="Right"
+                            Content="{Binding ModalCloseText}"
+                            AutomationProperties.Name="{Binding ModalCloseText}"
+                            Command="{Binding CloseModalCommand}"/>
+                </StackPanel>
+            </Border>
+        </Panel>
+
+    </Panel>
+
+    </Panel>
 
 </UserControl>

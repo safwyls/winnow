@@ -57,6 +57,9 @@ public partial class JournalPromptViewModel : ObservableObject, IDisposable
     /// </summary>
     public Func<long, string?>? TitleFor { get; set; }
 
+    /// <summary>Whether a future completed session will offer the prompt.</summary>
+    public bool PromptEnabled => _journal?.PromptEnabled == true;
+
     [ObservableProperty]
     public partial bool IsOpen { get; set; }
 

@@ -1,4 +1,4 @@
-﻿<UserControl xmlns="https://github.com/avaloniaui"
+<UserControl AutomationProperties.Name="Appearance" AutomationProperties.ControlTypeOverride="Group" xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Winnow.App.ViewModels"
              x:Class="Winnow.App.Views.AppearanceView"
@@ -123,11 +123,6 @@
             <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
         </Style>
 
-        <!-- Worst-case ratio under AA turns Amber (attention, not error). -->
-        <Style Selector="TextBlock.ratio.under">
-            <Setter Property="Foreground" Value="{StaticResource Amber}"/>
-        </Style>
-
         <!-- ══ One line of the themes folder's report ══════════════════════
              Failed files take Amber; warnings take ordinary ink. The two are
              told apart in words as well as by edge colour (§8). -->
@@ -163,7 +158,7 @@
                 BorderBrush="{StaticResource Line}"
                 BorderThickness="0,0,0,1">
             <StackPanel Spacing="7">
-                <TextBlock Classes="display-l" Text="{Binding Title}"/>
+                <TextBlock AutomationProperties.HeadingLevel="1" Classes="display-l" Text="{Binding Title}"/>
                 <TextBlock Classes="body"
                            MaxWidth="640"
                            HorizontalAlignment="Left"
@@ -181,7 +176,7 @@
             <StackPanel Margin="24,16,24,28" MaxWidth="920"
                         HorizontalAlignment="Left" Spacing="14">
 
-                <TextBlock Classes="label" FontSize="10" LetterSpacing="1.4" Text="THEME"/>
+                <TextBlock AutomationProperties.HeadingLevel="2" Classes="label" FontSize="10" LetterSpacing="1.4" Text="THEME"/>
 
                 <ItemsControl ItemsSource="{Binding Themes}">
                     <ItemsControl.ItemsPanel>
@@ -191,7 +186,7 @@
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate DataType="vm:ThemeChoiceViewModel">
-                            <Button Classes="themecard"
+                            <Button AutomationProperties.Name="{Binding Name}" Classes="themecard"
                                     Classes.picked="{Binding IsSelected}"
                                     Margin="0,0,12,12"
                                     Command="{Binding $parent[ItemsControl].((vm:AppearanceViewModel)DataContext).SelectThemeCommand}"
@@ -282,7 +277,7 @@
 
                                     <StackPanel Margin="16,12,16,14" Spacing="6">
                                         <Grid ColumnDefinitions="*,Auto">
-                                            <TextBlock Grid.Column="0"
+                                            <TextBlock AutomationProperties.HeadingLevel="2" Grid.Column="0"
                                                        Classes="display-l" FontSize="17"
                                                        Text="{Binding Name}"
                                                        VerticalAlignment="Center"/>
@@ -347,6 +342,12 @@
                             <Button Classes="act quiet"
                                     Command="{Binding ReloadThemesCommand}"
                                     Content="Re-read the folder"/>
+                            <!-- Opens the folder printed above. Creates it
+                                 first when missing, so a fresh install can
+                                 use the button straight away. -->
+                            <Button Classes="act quiet"
+                                    Click="OnOpenThemeFolderPressed"
+                                    Content="Open the folder"/>
                         </StackPanel>
 
                         <TextBlock Classes="para"
@@ -446,7 +447,7 @@
                      Sits between THEME and TRANSPARENCY because it is a peer of
                      THEME (applies at every slider position), not a transparency
                      qualifier. Two cards with 1/8-scale miniatures. -->
-                <TextBlock Classes="label" FontSize="10" LetterSpacing="1.4"
+                <TextBlock AutomationProperties.HeadingLevel="2" Classes="label" FontSize="10" LetterSpacing="1.4"
                            Margin="0,10,0,0" Text="LAYOUT"/>
 
                 <ItemsControl ItemsSource="{Binding Layouts}">
@@ -457,7 +458,7 @@
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate DataType="vm:LayoutChoiceViewModel">
-                            <Button Classes="themecard"
+                            <Button AutomationProperties.Name="{Binding Name}" Classes="themecard"
                                     Classes.picked="{Binding IsSelected}"
                                     Margin="0,0,12,12"
                                     Command="{Binding $parent[ItemsControl].((vm:AppearanceViewModel)DataContext).SelectLayoutCommand}"
@@ -562,7 +563,7 @@
 
                                     <StackPanel Margin="16,12,16,14" Spacing="6">
                                         <Grid ColumnDefinitions="*,Auto">
-                                            <TextBlock Grid.Column="0"
+                                            <TextBlock AutomationProperties.HeadingLevel="2" Grid.Column="0"
                                                        Classes="display-l" FontSize="17"
                                                        Text="{Binding Name}"
                                                        VerticalAlignment="Center"/>
@@ -585,7 +586,7 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
 
-                <TextBlock Classes="label" FontSize="10" LetterSpacing="1.4"
+                <TextBlock AutomationProperties.HeadingLevel="2" Classes="label" FontSize="10" LetterSpacing="1.4"
                            Margin="0,10,0,0" Text="TRANSPARENCY"/>
 
                 <Border Classes="card" MaxWidth="720" HorizontalAlignment="Left">
@@ -606,33 +607,12 @@
                         <Border Classes="sliderframe">
                             <StackPanel Width="{Binding SliderWidth}" Spacing="0">
 
-                                <!-- ══ The AA mark ═══════════════════════════
-                                     Tick where worst-case contrast drops under
-                                     4.5:1. Position is per-theme, computed from
-                                     track geometry in the view model. -->
-                                <Panel Height="14" HorizontalAlignment="Stretch">
-                                    <TextBlock Classes="data-s"
-                                               Text="AA"
-                                               Padding="4,0,0,0"
-                                               Foreground="{StaticResource TextFaint}"
-                                               HorizontalAlignment="Left"
-                                               VerticalAlignment="Top"
-                                               Margin="{Binding AaMarkMargin}"/>
-                                </Panel>
-                                <Panel Height="6" HorizontalAlignment="Stretch">
-                                    <Border Width="1" Height="6"
-                                            Background="{StaticResource TextFaint}"
-                                            HorizontalAlignment="Left"
-                                            VerticalAlignment="Bottom"
-                                            Margin="{Binding AaMarkMargin}"/>
-                                </Panel>
-
-                                <Slider Name="TransparencySlider"
+                                <Slider AutomationProperties.Name="Transparency" Name="TransparencySlider"
                                         Classes="opacity"
                                         Minimum="0" Maximum="100"
                                         SmallChange="1" LargeChange="10"
                                         Value="{Binding Transparency, Mode=TwoWay}"
-                                        ToolTip.Tip="How much of the desktop the rail, title bar, filter panel and command bar let through"/>
+                                        ToolTip.Tip="How much desktop shows through"/>
 
                                 <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,2,0,0">
                                     <!-- Zero is a position, so it is named. -->
@@ -644,6 +624,22 @@
                                                Text="MOST DESKTOP"/>
                                 </Grid>
                             </StackPanel>
+                        </Border>
+
+                        <!-- ══ Legibility warning ═══════════════════════════
+                             Visible only when the current position actually
+                             drops worst-case contrast under 4.5:1. Amber
+                             (§2): the range past the mark is a choice, not
+                             an error. -->
+                        <Border IsVisible="{Binding UnderAa}"
+                                Background="{StaticResource Ground}"
+                                BorderBrush="{StaticResource Amber}"
+                                BorderThickness="1"
+                                CornerRadius="{StaticResource RadiusControl}"
+                                Padding="14,12">
+                            <TextBlock Classes="body" FontSize="12" LineHeight="18"
+                                       TextWrapping="Wrap"
+                                       Text="{Binding LegibilityWarning}"/>
                         </Border>
 
                         <!-- ══ Backdrop and reach qualifiers ═════════════════
@@ -665,7 +661,7 @@
                                 </ItemsControl.ItemsPanel>
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate DataType="vm:AppearanceOptionViewModel">
-                                        <Button Classes="optioncard"
+                                        <Button AutomationProperties.Name="{Binding Name}" Classes="optioncard"
                                                 Classes.picked="{Binding IsSelected}"
                                                 Margin="0,0,10,0"
                                                 Command="{Binding $parent[ItemsControl].((vm:AppearanceViewModel)DataContext).SelectBackdropCommand}"
@@ -697,17 +693,6 @@
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
 
-                            <!-- The measurement, stated where the choice is made
-                                 rather than left for someone to discover. Plex
-                                 Mono because it is a number (§3). -->
-                            <Grid ColumnDefinitions="Auto,10,*" IsVisible="{Binding MicaPicked}">
-                                <TextBlock Grid.Column="0" Classes="data"
-                                           VerticalAlignment="Top"
-                                           Text="{Binding MicaComposite}"/>
-                                <TextBlock Grid.Column="2" Classes="para"
-                                           Text="{Binding MicaCompositeNote}"/>
-                            </Grid>
-
                             <!-- Backdrop substitution notice. Amber for
                                  attention (not an error). -->
                             <Border IsVisible="{Binding BackdropSubstituted}"
@@ -734,7 +719,7 @@
                                 </ItemsControl.ItemsPanel>
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate DataType="vm:AppearanceOptionViewModel">
-                                        <Button Classes="optioncard"
+                                        <Button AutomationProperties.Name="{Binding Name}" Classes="optioncard"
                                                 Classes.picked="{Binding IsSelected}"
                                                 Margin="0,0,10,0"
                                                 Command="{Binding $parent[ItemsControl].((vm:AppearanceViewModel)DataContext).SelectReachCommand}"
@@ -763,83 +748,6 @@
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
 
-                            <!-- The two transparency tiers (ground and pane).
-                                 Only drawn when the wall is translucent. -->
-                            <StackPanel Spacing="6" IsVisible="{Binding WallTranslucent}">
-                                <Grid ColumnDefinitions="Auto,10,*">
-                                    <TextBlock Grid.Column="0" Classes="data"
-                                               Text="{Binding GroundAdmits}"/>
-                                    <TextBlock Grid.Column="2" Classes="body" FontSize="12"
-                                               Foreground="{StaticResource TextDim}"
-                                               VerticalAlignment="Center"
-                                               Text="of the window's ground is desktop"/>
-                                </Grid>
-                                <Grid ColumnDefinitions="Auto,10,*">
-                                    <TextBlock Grid.Column="0" Classes="data"
-                                               VerticalAlignment="Top"
-                                               Text="{Binding PaneAdmits}"/>
-                                    <TextBlock Grid.Column="2" Classes="para"
-                                               Text="{Binding PaneAdmitsNote}"/>
-                                </Grid>
-                                <!-- These panes now match the library pane's
-                                     transparency. -->
-                                <TextBlock Classes="para"
-                                           Text="Settings, the review queue and the list view open up with the wall — the same amount, the same setting. So does every input field, and it gets there by painting nothing at all: a field is a step cut into a pane that is already at this share, so there is nothing left for a fill of its own to spend. It is found by its border and lit by its ring."/>
-                            </StackPanel>
-                        </StackPanel>
-
-                        <Border Height="1" Background="{StaticResource Line}" Margin="0,2"/>
-
-                        <!-- ══ Live contrast measurements ═══════════════════
-                             Two backdrops measured: Mica composite and white
-                             (worst case). Under-AA number turns Amber. -->
-                        <!-- Gaps and title bar share the ground's transparency
-                             figure. Only drawn when translucent. -->
-                        <StackPanel Spacing="6" IsVisible="{Binding ShowGapNote}">
-                            <Border Height="1" Background="{StaticResource Line}" Margin="0,2"/>
-                            <TextBlock Classes="label" FontSize="9" LetterSpacing="1.2"
-                                       Text="THE GAPS, AND THE TITLE BAR"/>
-                            <Grid ColumnDefinitions="Auto,10,*">
-                                <TextBlock Grid.Column="0" Classes="data"
-                                           VerticalAlignment="Top"
-                                           Text="{Binding GroundAdmits}"/>
-                                <TextBlock Grid.Column="2" Classes="para"
-                                           Text="{Binding GapNote}"/>
-                            </Grid>
-                        </StackPanel>
-
-                        <StackPanel Spacing="6" Margin="0,4,0,0">
-                            <TextBlock Classes="label" FontSize="9" LetterSpacing="1.2"
-                                       Text="LABELS ON THE TITLE BAR"/>
-
-                            <Grid ColumnDefinitions="Auto,10,*" IsVisible="{Binding !IsSolid}">
-                                <TextBlock Grid.Column="0" Classes="data"
-                                           Text="{Binding ContrastOnDarkWallpaper}"/>
-                                <TextBlock Grid.Column="2" Classes="body" FontSize="12"
-                                           Foreground="{StaticResource TextDim}"
-                                           VerticalAlignment="Center"
-                                           Text="{Binding DarkWallpaperNote}"/>
-                            </Grid>
-                            <Grid ColumnDefinitions="Auto,10,*" IsVisible="{Binding !IsSolid}">
-                                <TextBlock Grid.Column="0" Classes="data ratio"
-                                           Classes.under="{Binding UnderAa}"
-                                           Text="{Binding ContrastOnWhiteWallpaper}"/>
-                                <TextBlock Grid.Column="2" Classes="body" FontSize="12"
-                                           Foreground="{StaticResource TextDim}"
-                                           VerticalAlignment="Center"
-                                           Text="{Binding WhiteWallpaperNote}"/>
-                            </Grid>
-
-                            <Grid ColumnDefinitions="Auto,10,*" IsVisible="{Binding IsSolid}">
-                                <TextBlock Grid.Column="0" Classes="data"
-                                           Text="{Binding ContrastOnWhiteWallpaper}"/>
-                                <TextBlock Grid.Column="2" Classes="body" FontSize="12"
-                                           Foreground="{StaticResource TextDim}"
-                                           VerticalAlignment="Center"
-                                           Text="on the chrome, solid"/>
-                            </Grid>
-
-                            <TextBlock Classes="para" Text="{Binding ContrastNote}"/>
                         </StackPanel>
 
                         <!-- Transparency unavailable on this machine.
@@ -852,13 +760,8 @@
                                 Padding="14,12">
                             <TextBlock Classes="body" FontSize="12" LineHeight="18"
                                        TextWrapping="Wrap"
-                                       Text="Not available here. Windows 10, a remote session and some virtual display drivers all refuse the backdrop."/>
+                                       Text="Not available here. The compositor refused the backdrop."/>
                         </Border>
-
-                        <Border Height="1" Background="{StaticResource Line}" Margin="0,2"/>
-
-                        <TextBlock Classes="para"
-                                   Text="{Binding TransparencyStatus}"/>
                     </StackPanel>
                 </Border>
 

@@ -56,4 +56,8 @@
     <ProjectReference Include="..\Winnow.Core\Winnow.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Include="..\Shared\StorefrontFile.cs" Link="StorefrontFile.cs" />
+  </ItemGroup>
+
 </Project>

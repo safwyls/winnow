@@ -1,4 +1,4 @@
-using CommunityToolkit.Mvvm.ComponentModel;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Winnow.App.Services;
 
@@ -21,6 +21,9 @@ public partial class FeedCardViewModel : ObservableObject, IDisposable
     private readonly IFeedService? _feed;
 
     private bool _busy;
+
+    /// <summary>Unheld time this receipt has been standing.</summary>
+    private TimeSpan _counted;
 
     public FeedCardViewModel(GameTileViewModel tile, string reason, IFeedService? feed = null)
     {
@@ -68,6 +71,60 @@ public partial class FeedCardViewModel : ObservableObject, IDisposable
     internal event EventHandler? VerdictChanged;
 
     /// <summary>
+    /// Which scoring pass built this card. A swap belonging to a pass the feed
+    /// has already replaced must not land on the pass that replaced it.
+    /// </summary>
+    internal long Generation { get; init; }
+
+    internal long SurfacingReleaseId { get; init; }
+
+    /// <summary>
+    /// Whether the shelf behind this card is holding something to put in its
+    /// place. False means the receipt has nowhere to go, and it keeps the card's
+    /// place with no countdown on it — a clock that ran out on nothing would be
+    /// stating a replacement the shelf does not have.
+    /// </summary>
+    [ObservableProperty]
+    public partial bool CanReplace { get; set; }
+
+    /// <summary>
+    /// How much of the receipt's three seconds has run, 0 to 1. The view sweeps
+    /// an arc from it. Determinate on purpose: it states the time left before
+    /// the undo goes, which is a fact the reader is entitled to act on, not a
+    /// decoration saying that something is happening.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CountdownSweep))]
+    public partial double CountdownProgress { get; set; }
+
+    /// <summary>The arc's sweep in degrees, so the view binds a number rather than carrying a converter.</summary>
+    public double CountdownSweep => CountdownProgress * 360.0;
+
+    /// <summary>Whether the receipt is on a clock. False for a receipt with nowhere to go.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(StatusAnnouncement))]
+    public partial bool IsCountingDown { get; set; }
+
+    /// <summary>
+    /// Held while the reader is on this card — the pointer is over it, or
+    /// something inside it has focus. A three-second window on an undo is a time
+    /// limit, and taking it away from somebody who is looking at it is the one
+    /// thing this countdown must not do. Every verdict keeps its undo on the
+    /// history screen afterwards regardless.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsCountdownHeld))]
+    public partial bool IsPointerOver { get; set; }
+
+    /// <inheritdoc cref="IsPointerOver"/>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsCountdownHeld))]
+    public partial bool IsFocusWithin { get; set; }
+
+    /// <summary>Whether the countdown is being held where it is.</summary>
+    public bool IsCountdownHeld => IsPointerOver || IsFocusWithin;
+
+    /// <summary>
     /// Whether the two feedback controls are offered at all. False only when
     /// nothing can store the answer.
     /// </summary>
@@ -86,7 +143,7 @@ public partial class FeedCardViewModel : ObservableObject, IDisposable
     /// place, its cover and its sentence; what changes is the action line.
     /// </summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ShowActions))]
+    [NotifyPropertyChangedFor(nameof(ShowActions), nameof(StatusAnnouncement))]
     public partial bool IsSetAside { get; set; }
 
     /// <summary>
@@ -94,6 +151,7 @@ public partial class FeedCardViewModel : ObservableObject, IDisposable
     /// a dismissal states what is now true, a snooze states the day it ends.
     /// </summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(StatusAnnouncement))]
     public partial string SetAsideNote { get; set; } = string.Empty;
 
     /// <summary>
@@ -102,7 +160,7 @@ public partial class FeedCardViewModel : ObservableObject, IDisposable
     /// has no date to state.
     /// </summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasSetAsideDate))]
+    [NotifyPropertyChangedFor(nameof(HasSetAsideDate), nameof(StatusAnnouncement))]
     public partial string SetAsideDate { get; set; } = string.Empty;
 
     /// <summary>
@@ -110,12 +168,66 @@ public partial class FeedCardViewModel : ObservableObject, IDisposable
     /// both controls exactly where they were so the user can simply press again.
     /// </summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasProblem))]
+    [NotifyPropertyChangedFor(nameof(HasProblem), nameof(StatusAnnouncement))]
     public partial string? Problem { get; set; }
 
     public bool HasSetAsideDate => SetAsideDate.Length > 0;
 
     public bool HasProblem => Problem is not null;
+
+    /// <summary>
+    /// What a screen reader is told about this card: the tile's own name, then
+    /// the engine's sentence. The sentence is the whole point of a feed card —
+    /// <see cref="Reason"/> has always said it was kept "for the accessible
+    /// name", and until now nothing acted on that — and it was reachable only
+    /// by walking into the card's children.
+    /// <para>One string, and it sits on the Button, because the Button is the
+    /// Tab stop and the one element here with an automation peer of its own.
+    /// The panels and TextBlocks it wraps are pruned from the control view or
+    /// answer with their own text, so a name hung on any of them says nothing
+    /// or says the wrong thing.</para>
+    /// </summary>
+    public string AutomationName
+    {
+        get
+        {
+            var name = Tile.AutomationName;
+            return Reason.Length == 0 ? name : $"{name} {Reason}";
+        }
+    }
+
+    /// <summary>
+    /// Everything about this card that changes after it is drawn, in one
+    /// sentence, bound to <c>AutomationProperties.ItemStatus</c>. It carries
+    /// the failed write first, then the verdict receipt, and says the undo is
+    /// on a clock while the countdown runs. Empty while the card is unanswered,
+    /// so an untouched card announces no state at all.
+    /// <para>ItemStatus and not the name: <c>ControlAutomationPeer</c> raises a
+    /// UIA property-changed event for IsVisible, Bounds, RenderTransform,
+    /// VisualParent and ItemStatus, and for nothing else. Changing a Name at
+    /// runtime announces nothing, so a reader who had already passed the card
+    /// would never learn that the verdict landed, or that it did not.</para>
+    /// </summary>
+    public string StatusAnnouncement
+    {
+        get
+        {
+            if (HasProblem)
+            {
+                return Problem!;
+            }
+
+            if (!IsSetAside)
+            {
+                return string.Empty;
+            }
+
+            var note = HasSetAsideDate ? $"{SetAsideNote} {SetAsideDate}" : SetAsideNote;
+            return IsCountingDown
+                ? $"{note} Undo before this card is replaced."
+                : note;
+        }
+    }
 
     /// <summary>The action line's two states, and they are exclusive.</summary>
     public bool ShowActions => !IsSetAside;
@@ -177,6 +289,79 @@ public partial class FeedCardViewModel : ObservableObject, IDisposable
     }
 
     /// <summary>
+    /// How long a receipt stays before its replacement takes the slot. Three
+    /// seconds is long enough to read one line and reach the undo beside it,
+    /// and short enough that answering a run of cards does not turn into
+    /// waiting for each one. It is a floor rather than a deadline: the clock is
+    /// held for as long as the reader is on the card.
+    /// </summary>
+    internal static TimeSpan Countdown { get; } = TimeSpan.FromSeconds(3);
+
+    /// <summary>
+    /// Advances the receipt's clock and reports whether it has run out. Driven
+    /// by the screen rather than by a timer of its own: several receipts can be
+    /// counting at once, and one ticker for the feed is cheaper and easier to
+    /// reason about than one per card.
+    /// </summary>
+    /// <param name="elapsed">Time since the last tick. Ignored while the countdown is held.</param>
+    internal bool Tick(TimeSpan elapsed)
+    {
+        if (!IsCountingDown)
+        {
+            return false;
+        }
+
+        if (IsCountdownHeld)
+        {
+            return false;
+        }
+
+        _counted += elapsed;
+
+        var progress = _counted / Countdown;
+        CountdownProgress = Math.Clamp(progress, 0.0, 1.0);
+
+        return progress >= 1.0;
+    }
+
+    /// <summary>Puts the receipt on the clock, if the shelf has something to put in its place.</summary>
+    private void StartCountdown()
+    {
+        if (!IsSetAside || !CanReplace || IsCountingDown)
+        {
+            return;
+        }
+
+        _counted = TimeSpan.Zero;
+        CountdownProgress = 0.0;
+        IsCountingDown = true;
+    }
+
+    private void StopCountdown()
+    {
+        _counted = TimeSpan.Zero;
+        CountdownProgress = 0.0;
+        IsCountingDown = false;
+    }
+
+    /// <summary>
+    /// A shelf that had nothing to offer can be handed something by a backfill
+    /// while a receipt is standing on it, and then the receipt has somewhere to
+    /// go after all.
+    /// </summary>
+    partial void OnCanReplaceChanged(bool value)
+    {
+        if (value)
+        {
+            StartCountdown();
+        }
+        else
+        {
+            StopCountdown();
+        }
+    }
+
+    /// <summary>
     /// Puts the card back to its unanswered state. Called by the undo above and
     /// by the history screen, whose revoke covers the same release — a receipt
     /// still showing "off the feed" for a verdict the user has just taken back
@@ -188,6 +373,7 @@ public partial class FeedCardViewModel : ObservableObject, IDisposable
         IsSetAside = false;
         SetAsideNote = string.Empty;
         SetAsideDate = string.Empty;
+        StopCountdown();
     }
 
     private async Task GiveAsync(FeedVerdictKind kind, CancellationToken ct)
@@ -218,6 +404,7 @@ public partial class FeedCardViewModel : ObservableObject, IDisposable
                 ? expires.ToLocalTime().ToString("d MMM yyyy")
                 : string.Empty;
             IsSetAside = true;
+            StartCountdown();
             VerdictChanged?.Invoke(this, EventArgs.Empty);
         }
         catch (OperationCanceledException)

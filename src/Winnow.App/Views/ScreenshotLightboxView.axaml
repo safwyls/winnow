@@ -1,0 +1,172 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Winnow.App.ViewModels"
+             x:Class="Winnow.App.Views.ScreenshotLightboxView"
+             x:DataType="vm:ScreenshotLightboxViewModel">
+
+    <!-- The screenshot lightbox (design-system.md §10.7).
+
+         This is an overlay, not a popup. It is declared in MainWindow.axaml
+         as a sibling of GameDetailsView, spanning all three columns of the
+         window's own Grid, so it lives in the window's visual tree. §10.7
+         forbids flyouts in the detail modal because a popup is its own root
+         with no adorner layer and FocusAdorner draws nothing there. That
+         rule does not apply here: neither the modal nor this overlay is a
+         popup.
+
+         The ground is ModalScrim, the same token the modal's own scrim
+         takes, lying over that scrim rather than replacing it. Two stacked
+         passes of the theme's Well at 84% compose to roughly 97%, which
+         dims the library and the card without introducing a second token to
+         keep in step across four themes.
+
+         Focus is trapped by TabNavigation="Cycle" on the overlay panel,
+         the same trap the modal's own card carries one layer up. Escape and
+         the arrow keys are answered in MainWindow.OnKeyDown above the
+         modal's layer, so one press of Escape closes the lightbox and
+         leaves the modal standing.
+
+         The overlay names itself as a dialog and states which shot of how
+         many is showing in its accessible name: Avalonia 11.3.20 has no
+         AutomationProperties.IsDialog, and PositionInSet / SizeOfSet are
+         read by nothing (§8), so both facts are spelled into the string.
+         Changing a Name at runtime raises no UIA event, so the caption
+         under the image carries the position as a bound TextBlock marked
+         Polite — the route §8 leaves open and the one §10.3's refetch
+         status already uses. -->
+
+    <UserControl.Styles>
+
+        <!-- The three controls. Readable over the image: the 1px border is
+             transparent at rest so it reserves the space the focus ring
+             needs without drawing anything. Same construction as
+             Button.quiet in the detail modal, declared again here because
+             that class is local to that view. -->
+        <Style Selector="Button.lightbox">
+            <Setter Property="Background" Value="{StaticResource LightboxControlFill}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
+            <Setter Property="Width" Value="36"/>
+            <Setter Property="Height" Value="36"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="Button.lightbox /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource LightboxControlFill}"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.lightbox:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource LightboxControlActiveFill}"/>
+        </Style>
+        <Style Selector="Button.lightbox:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+            <Setter Property="Background" Value="{StaticResource LightboxControlActiveFill}"/>
+        </Style>
+
+    </UserControl.Styles>
+
+    <Panel Name="Overlay"
+           KeyboardNavigation.TabNavigation="Cycle"
+           AutomationProperties.Name="{Binding AutomationName}"
+           AutomationProperties.AccessibilityView="Control"
+           AutomationProperties.ControlTypeOverride="Window">
+
+        <!-- Only a press that lands on the scrim itself closes — a press
+             that starts on the image and drifts must not dismiss. Same
+             guard the modal's own scrim carries. -->
+        <Border Name="Scrim"
+                Background="{StaticResource ModalScrim}"
+                PointerPressed="OnScrimPressed"/>
+
+        <Grid Margin="24" RowDefinitions="*,Auto" RowSpacing="8"
+              HorizontalAlignment="Center"
+              VerticalAlignment="Center">
+
+            <!-- Center both axes so the image sets the controls' bounds,
+                 including when a short window limits the image's height. -->
+            <Grid Grid.Row="0"
+                  HorizontalAlignment="Center"
+                  VerticalAlignment="Center">
+
+                <!-- Native screenshot size plus the 1px border on each side. -->
+                <Border Name="Frame"
+                        MaxWidth="1282"
+                        MaxHeight="722"
+                        ClipToBounds="True"
+                        CornerRadius="{StaticResource RadiusControl}"
+                        BorderThickness="1"
+                        BorderBrush="{StaticResource LineSoft}">
+                    <Image Source="{Binding Image}" Stretch="Uniform"/>
+                </Border>
+
+                <Button Name="CloseButton"
+                        Classes="lightbox"
+                        Margin="12"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Top"
+                        Command="{Binding CloseCommand}"
+                        AutomationProperties.Name="{Binding CloseAutomationName}"
+                        ToolTip.Tip="{Binding CloseTooltip}">
+                    <Canvas Width="16" Height="16" IsHitTestVisible="False">
+                        <Path Data="M 2,2 L 14,14 M 14,2 L 2,14"
+                              Stroke="{StaticResource Text}" StrokeThickness="2"
+                              StrokeLineCap="Round"/>
+                    </Canvas>
+                </Button>
+
+                <!-- A game with one screenshot draws no navigation at all
+                     rather than two inert controls. -->
+                <Button Name="PreviousButton"
+                        Classes="lightbox"
+                        Margin="12"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Center"
+                        IsVisible="{Binding CanNavigate}"
+                        Command="{Binding PreviousCommand}"
+                        AutomationProperties.Name="{Binding PreviousAutomationName}"
+                        ToolTip.Tip="{Binding PreviousTooltip}">
+                    <Canvas Width="24" Height="24" IsHitTestVisible="False">
+                        <Path Data="M 16,4 L 8,12 L 16,20"
+                              Stroke="{StaticResource Text}" StrokeThickness="2"
+                              StrokeLineCap="Round" StrokeJoin="Round"/>
+                    </Canvas>
+                </Button>
+
+                <Button Name="NextButton"
+                        Classes="lightbox"
+                        Margin="12"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center"
+                        IsVisible="{Binding CanNavigate}"
+                        Command="{Binding NextCommand}"
+                        AutomationProperties.Name="{Binding NextAutomationName}"
+                        ToolTip.Tip="{Binding NextTooltip}">
+                    <Canvas Width="24" Height="24" IsHitTestVisible="False">
+                        <Path Data="M 8,4 L 16,12 L 8,20"
+                              Stroke="{StaticResource Text}" StrokeThickness="2"
+                              StrokeLineCap="Round" StrokeJoin="Round"/>
+                    </Canvas>
+                </Button>
+
+            </Grid>
+
+            <!-- Live region. A bound TextBlock's Text change raises a Name
+                 change on its peer, which AutomationNode turns into a
+                 live-region event (verified against the Avalonia 11.3.20
+                 source). No AutomationProperties.Name is set: the peer
+                 discards it and reads the Text (§8). -->
+            <TextBlock Grid.Row="1"
+                       Name="PositionCaption"
+                       Classes="data-s"
+                       HorizontalAlignment="Center"
+                       AutomationProperties.LiveSetting="Polite"
+                       Text="{Binding Caption}"/>
+
+        </Grid>
+
+    </Panel>
+
+</UserControl>

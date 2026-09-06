@@ -60,12 +60,10 @@ public sealed class GameExecutableIndexBuilder
     private const int LaunchScanCapMultiplier = 8;
 
     private readonly IOwnershipRepository _ownerships;
+    private readonly IReleaseRepository _releases;
     private readonly SessionWatcherOptions _options;
     private readonly TimeProvider _timeProvider;
     private readonly ILogger<GameExecutableIndexBuilder> _logger;
-
-    /// <summary>Latched so the platform-gap warning is said once, not every rebuild.</summary>
-    private bool _platformGapLogged;
 
     private readonly Dictionary<string, ScanResult> _scans =
         new(OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()
@@ -74,6 +72,7 @@ public sealed class GameExecutableIndexBuilder
 
     public GameExecutableIndexBuilder(
         IOwnershipRepository ownerships,
+        IReleaseRepository releases,
         IOptions<SessionWatcherOptions> options,
         TimeProvider? timeProvider = null,
         ILogger<GameExecutableIndexBuilder>? logger = null)
@@ -81,6 +80,7 @@ public sealed class GameExecutableIndexBuilder
         ArgumentNullException.ThrowIfNull(options);
 
         _ownerships = ownerships;
+        _releases = releases;
         _options = options.Value;
         _timeProvider = timeProvider ?? TimeProvider.System;
         _logger = logger ?? NullLogger<GameExecutableIndexBuilder>.Instance;
@@ -89,13 +89,15 @@ public sealed class GameExecutableIndexBuilder
     /// <summary>Rebuilds the index from current ownership rows. Never throws for missing or unreadable directories.</summary>
     public async Task<GameExecutableIndex> BuildAsync(CancellationToken ct = default)
     {
-        WarnIfUnsupportedPlatform();
-
         var ownerships = await _ownerships.GetAllAsync(ct).ConfigureAwait(false);
+        var steamAppIdsByRelease = (await _releases.GetIdentitiesAsync(ct).ConfigureAwait(false))
+            .Where(static r => !string.IsNullOrWhiteSpace(r.SteamAppId))
+            .ToDictionary(static r => r.ReleaseId, static r => r.SteamAppId!, EqualityComparer<long>.Default);
         var now = _timeProvider.GetUtcNow().UtcDateTime;
 
         var executables = new List<GameExecutable>();
         var roots = new List<(string InstallPath, long OwnershipId)>();
+        var proton = new List<(string SteamAppId, long OwnershipId)>();
         var live = new HashSet<string>(_scans.Comparer);
         var scanned = 0;
 
@@ -121,6 +123,11 @@ public sealed class GameExecutableIndexBuilder
 
             live.Add(installPath);
             roots.Add((installPath, ownership.Id));
+            if (string.Equals(ownership.Store, Winnow.Core.Domain.ExternalIdProviders.Steam, StringComparison.Ordinal)
+                && steamAppIdsByRelease.TryGetValue(ownership.ReleaseId, out var steamAppId))
+            {
+                proton.Add((steamAppId, ownership.Id));
+            }
 
             if (!_scans.TryGetValue(installPath, out var scan)
                 || now - scan.ScannedAtUtc >= _options.ExecutableScanTtl)
@@ -143,7 +150,7 @@ public sealed class GameExecutableIndexBuilder
             _scans.Remove(stale);
         }
 
-        var index = new GameExecutableIndex(executables, roots);
+        var index = new GameExecutableIndex(executables, roots, proton);
         _logger.LogDebug(
             "Executable index: {Names} distinct name(s) over {Executables} executable(s) "
             + "in {Roots} installed game(s); {Scanned} directory scan(s) this pass.",
@@ -202,13 +209,9 @@ public sealed class GameExecutableIndexBuilder
 
             try
             {
-                foreach (var file in Directory.EnumerateFiles(directory, "*.exe"))
+                foreach (var file in Directory.EnumerateFiles(directory))
                 {
-                    // Windows matches longer extensions against a three-letter
-                    // pattern (the 8.3 short-name rule), so "*.exe" also returns
-                    // "foo.exefoo". The same defence SteamLibrarySource applies
-                    // to "*.acf".
-                    if (!file.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+                    if (!IsPlatformExecutable(file, OperatingSystem.IsWindows()))
                     {
                         continue;
                     }
@@ -253,20 +256,47 @@ public sealed class GameExecutableIndexBuilder
         return found;
     }
 
-    /// <summary>Warns once that session detection is Windows-only (*.exe scan).</summary>
-    private void WarnIfUnsupportedPlatform()
+    /// <summary>
+    /// Windows game launches are PE files; Unix launchers are identified by an
+    /// execute bit. The latter deliberately includes scripts: Steam-native
+    /// games commonly ship a shell launcher beside the binary it starts.
+    /// </summary>
+    internal static bool IsPlatformExecutable(string path, bool isWindows)
     {
-        if (_platformGapLogged || OperatingSystem.IsWindows())
+        if (isWindows)
         {
-            return;
+            // Windows matches longer extensions against a three-letter pattern
+            // (the 8.3 short-name rule), so retain the exact suffix check that
+            // protected the former "*.exe" scan.
+            return path.EndsWith(".exe", StringComparison.OrdinalIgnoreCase);
         }
 
-        _platformGapLogged = true;
-        _logger.LogWarning(
-            "Session detection is Windows-only in this build: the executable scan matches *.exe, "
-            + "so no game will be watched and no session will be recorded on this platform. "
-            + "This is a known gap, not a failure.");
+        if (!OperatingSystem.IsLinux() && !OperatingSystem.IsMacOS())
+        {
+            return false;
+        }
+
+        return IsUnixExecutable(path);
     }
+
+    [System.Runtime.Versioning.SupportedOSPlatform("linux")]
+    [System.Runtime.Versioning.SupportedOSPlatform("macos")]
+    private static bool IsUnixExecutable(string path)
+    {
+        try
+        {
+            return HasExecuteBit(File.GetUnixFileMode(path));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException
+            or PlatformNotSupportedException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>Pure so Unix executable-mode coverage does not need a Linux runner.</summary>
+    internal static bool HasExecuteBit(UnixFileMode mode)
+        => (mode & (UnixFileMode.UserExecute | UnixFileMode.GroupExecute | UnixFileMode.OtherExecute)) != 0;
 
     private static bool SafeDirectoryExists(string path)
     {

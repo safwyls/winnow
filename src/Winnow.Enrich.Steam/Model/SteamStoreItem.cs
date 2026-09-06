@@ -26,6 +26,9 @@ public sealed record SteamStoreItem(string AppId, string Name, IReadOnlyList<Ste
     /// <summary>Shared empty tag list, so a tagless item allocates nothing.</summary>
     public static readonly IReadOnlyList<SteamStoreTag> NoTags = [];
 
+    /// <summary>Shared empty descriptor list, so an app with no descriptors allocates nothing.</summary>
+    public static readonly IReadOnlyList<int> NoContentDescriptors = [];
+
     /// <summary>
     /// Valve's storefront classification (player modes, features, controller
     /// support). Init property so pre-existing cached bodies still project.
@@ -47,6 +50,67 @@ public sealed record SteamStoreItem(string AppId, string Name, IReadOnlyList<Ste
     /// cached bodies still project.
     /// </summary>
     public SteamStoreRelatedItems Related { get; init; } = SteamStoreRelatedItems.None;
+
+    /// <summary>
+    /// Valve's <c>content_descriptorids</c> array. Arrives with the query
+    /// <see cref="SteamStoreJson.BuildGetItemsQuery"/> has always sent — there is
+    /// no <c>include_</c> flag for it — so every body already in
+    /// <c>metadata_cache</c> carries it. Init property so pre-existing cached
+    /// bodies still project.
+    /// </summary>
+    public IReadOnlyList<int> ContentDescriptorIds { get; init; } = NoContentDescriptors;
+
+    /// <summary>
+    /// Steam review summary from <c>IStoreBrowseService/GetItems</c>. Init
+    /// property so bodies already in <c>metadata_cache</c> still project.
+    /// Unlike <see cref="Categories"/> and <see cref="ContentDescriptorIds"/>,
+    /// this field does NOT arrive for free: it needs the
+    /// <c>include_reviews</c> flag, so bodies cached before this change carry
+    /// no <c>reviews</c> block and the figure fills in as the 7-day store
+    /// TTL turns them over.
+    /// </summary>
+    public SteamStoreReviewSummary Reviews { get; init; } = SteamStoreReviewSummary.None;
+}
+
+/// <summary>
+/// One review summary block from <c>IStoreBrowseService/GetItems</c>.
+/// <see cref="Label"/> is Steam's own <c>review_score_label</c> — e.g.
+/// "Very Positive" — stored verbatim rather than re-derived from the
+/// percentage. The approved design shows Steam's label with the percentage
+/// and count on hover, so the label has to be the one Steam actually
+/// published.
+///
+/// <para>Field names verified against Valve's <c>webui/common.proto</c>,
+/// read 2026-09-05. <c>StoreBrowseItemDataRequest.include_reviews</c> is a
+/// bool at field 9. <c>StoreItem.reviews</c> is a <c>StoreItem_Reviews</c>
+/// at field 23. <c>StoreItem_Reviews</c> carries
+/// <c>summary_filtered = 1</c>, <c>summary_unfiltered = 2</c>,
+/// <c>summary_language_specific = 3</c>.
+/// <c>StoreItem_Reviews_StoreReviewSummary</c> carries
+/// <c>uint32 review_count = 1</c>, <c>int32 percent_positive = 2</c>,
+/// <c>int32 review_score = 3</c> (an enum),
+/// <c>string review_score_label = 4</c>. No pinned fixture proves this
+/// shape yet: <c>tests/fixtures/steam-store/getitems-v1.json</c> was
+/// captured before <c>include_reviews</c> was ever sent and carries no
+/// <c>reviews</c> block, so unlike <c>related_items</c> this reader is
+/// written from the proto and not from bytes on disk — which is why it
+/// returns <see cref="None"/> for anything it does not recognise.</para>
+/// </summary>
+/// <param name="ReviewCount">Number of reviews in this summary. Zero means no data.</param>
+/// <param name="PercentPositive">Percentage of positive reviews, 0–100.</param>
+public sealed record SteamStoreReviewSummary(int ReviewCount, int PercentPositive)
+{
+    /// <summary>Sentinel for an app with no review data. A <see cref="ReviewCount"/> of zero, a missing block, or any unrecognised shape all yield this.</summary>
+    public static readonly SteamStoreReviewSummary None = new(0, 0);
+
+    /// <summary>Steam's <c>review_score</c> enum value. Null when not present.</summary>
+    public int? ReviewScore { get; init; }
+
+    /// <summary>Steam's <c>review_score_label</c> — their own words, e.g. "Very Positive", "Mixed".</summary>
+    public string? Label { get; init; }
+
+    /// <summary>True when this is the <see cref="None"/> sentinel or otherwise carries no review data.</summary>
+    public bool IsEmpty => ReviewCount <= 0;
 }
 
 /// <summary>

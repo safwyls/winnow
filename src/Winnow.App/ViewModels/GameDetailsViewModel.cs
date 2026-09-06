@@ -28,6 +28,13 @@ public partial class GameDetailsViewModel : ObservableObject
     /// <summary>Update flag service. Null hides the mark-as-read control.</summary>
     private readonly IUpdateFlagService? _flags;
 
+    /// <summary>
+    /// Embedded patch-notes reader. Null means the patch-notes button opens the
+    /// system browser instead; the view tries the reader first and falls back
+    /// silently.
+    /// </summary>
+    private readonly Core.Reading.IPatchNotesReader? _patchNotes;
+
     /// <summary>Raw update events for this release, passed to <see cref="IUpdateFlagService.DismissAsync"/>.</summary>
     private readonly IReadOnlyList<UpdateEvent> _events;
 
@@ -35,6 +42,8 @@ public partial class GameDetailsViewModel : ObservableObject
     private readonly Func<Task>? _reloadLibrary;
 
     private readonly DateTime _nowUtc;
+
+    private readonly IReadOnlyList<PlaytimeSnapshot> _snapshots;
 
     private bool _busy;
 
@@ -50,8 +59,29 @@ public partial class GameDetailsViewModel : ObservableObject
         IUpdateFlagService? updateFlags = null,
         Func<Task>? reloadLibrary = null,
         GameCoverageViewModel? coverage = null,
-        GameExpansionsViewModel? expansions = null)
+        GameExpansionsViewModel? expansions = null,
+        Lists.GameListsViewModel? lists = null,
+        Core.Reading.IPatchNotesReader? patchNotes = null,
+        GameIgdbMatchViewModel? igdbMatch = null,
+        GameMetadataEditorViewModel? metadataEditor = null,
+        System.Windows.Input.ICommand? hideGame = null,
+        IReadOnlyList<WorkRating>? ratings = null,
+        IReadOnlyList<WorkImages>? images = null,
+        IReadOnlyList<Ownership>? ownerships = null,
+        GameRefetchViewModel? refetch = null,
+        ScreenshotLightboxViewModel? lightbox = null,
+        GameJournalViewModel? journal = null)
     {
+        Reception = GameReceptionViewModel.From(ratings);
+        Screenshots = GameScreenshotsViewModel.From(images, covers, lightbox);
+        Acquisition = GameAcquisitionViewModel.From(ownerships);
+        Refetch = refetch;
+        Journal = journal;
+        HideCommand = hideGame;
+        _patchNotes = patchNotes;
+        IgdbMatch = igdbMatch;
+        MetadataEditor = metadataEditor;
+        Lists = lists;
         Coverage = coverage;
         Expansions = expansions;
         Tile = tile;
@@ -71,15 +101,29 @@ public partial class GameDetailsViewModel : ObservableObject
         FlagIsRaised = tile.HasUnread;
         DismissalStands = acknowledgedThrough is not null;
 
-        RecordLine = BuildRecordLine(snapshots ?? [], nowUtc);
-        (PrimaryAction, Links) = BuildLinks(tile);
+        _snapshots = snapshots ?? [];
+        RecordLine = BuildRecordLine(_snapshots, nowUtc);
+        (PrimaryAction, Links, NoWayInSentence) = BuildLinks(tile);
+        GogPatchNotes = tile.PlayableEntry.Store == "gog" ? tile.PlayableEntry.Storefront?.PatchNotes : null;
 
         // Derives acknowledged state, rail marks, and caption.
         ApplyWatermark(acknowledgedThrough);
     }
 
     /// <summary>The tile this describes — title, store, art and the stat strings all come from it.</summary>
-    public GameTileViewModel Tile { get; }
+    public GameTileViewModel Tile { get; private set; }
+
+    /// <summary>Refreshes launcher actions without replacing editors or their unsaved drafts.</summary>
+    internal void RefreshTileActions(GameTileViewModel tile)
+    {
+        // A changed identity group needs the normal explicit reopen path.
+        if (!Tile.OwnershipIds.ToHashSet().SetEquals(tile.OwnershipIds)) return;
+        Tile = tile;
+        (PrimaryAction, Links, NoWayInSentence) = BuildLinks(tile);
+        GogPatchNotes = tile.PlayableEntry.Store == "gog" ? tile.PlayableEntry.Storefront?.PatchNotes : null;
+        // Install labels, paths, accessibility copy and command parameters all derive from Tile.
+        OnPropertyChanged(string.Empty);
+    }
 
     /// <summary>
     /// The titles this game covers, with the per-store breakdown and the
@@ -110,9 +154,54 @@ public partial class GameDetailsViewModel : ObservableObject
     /// <summary>Drawn only when this game is itself a pack, so the grouping can be undone from either end.</summary>
     public bool ShowExtends => Expansions is { HasBase: true };
 
+    public Lists.GameListsViewModel? Lists { get; }
+
+    public bool ShowLists => Lists is not null;
+
+    /// <summary>
+    /// The IGDB reassignment control, in the left column under the cover
+    /// art and the install path. Null when no assignment service is
+    /// registered or the tile has no work id, and then the modal is exactly
+    /// what it was before TASK-89.
+    /// </summary>
+    public GameIgdbMatchViewModel? IgdbMatch { get; }
+
+    public bool ShowIgdbMatch => IgdbMatch is not null;
+
+    /// <summary>
+    /// The per-field metadata editor, disclosed from an "Edit details" link
+    /// in the action band and drawn full width in the right column's rest
+    /// band, under the IGDB reassignment control. Null when no
+    /// <see cref="Services.IWorkMetadataEditService"/> is registered or the
+    /// tile resolves to no work id, and then the modal is exactly what it
+    /// was before TASK-119.
+    /// </summary>
+    public GameMetadataEditorViewModel? MetadataEditor { get; }
+
+    /// <summary>
+    /// Gates the null case only. The editor view self-gates on its own
+    /// <c>IsOpen</c>, so this decides whether the surface exists at all,
+    /// not whether it is disclosed.
+    /// </summary>
+    public bool ShowMetadataEditor => MetadataEditor is not null;
+
     // ── Band 1: what is this ────────────────────────────────────────────────
 
     public string Title => Tile.Title;
+
+    /// <summary>
+    /// Raises change notifications for <see cref="Title"/> and
+    /// <see cref="TitleIsProvisional"/>, which are computed off the tile
+    /// and do not follow from its own notifications. The library calls
+    /// this after renaming the tiles so the headline follows without the
+    /// modal being rebuilt — rebuilding would close the editor and take
+    /// the user's unsaved drafts with it.
+    /// </summary>
+    internal void NotifyTitleChanged()
+    {
+        OnPropertyChanged(nameof(Title));
+        OnPropertyChanged(nameof(TitleIsProvisional));
+    }
 
     /// <summary>True when the title is a raw app id, not a real name.</summary>
     public bool TitleIsProvisional => Tile.NameIsProvisional;
@@ -135,6 +224,12 @@ public partial class GameDetailsViewModel : ObservableObject
     public string? Publisher => Tile.Publisher;
 
     public bool HasPublisher => Publisher is not null;
+
+    /// <summary>Band 1's reception line: up to three attributed figures, never blended.</summary>
+    public GameReceptionViewModel? Reception { get; }
+
+    /// <summary>Drawn only when at least one source contributed a figure.</summary>
+    public bool ShowReception => Reception is { HasFigures: true };
 
     public string StoreBadge => Tile.StoreBadge;
 
@@ -190,6 +285,51 @@ public partial class GameDetailsViewModel : ObservableObject
 
     public bool HasRailMarks => RailMarks.Count > 0;
 
+    /// <summary>The lifetime axis series, recomputed on each watermark change.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowAxis))]
+    [NotifyPropertyChangedFor(nameof(ShowGapRail))]
+    [NotifyPropertyChangedFor(nameof(ShowAxisUnmeasured))]
+    [NotifyPropertyChangedFor(nameof(AxisUnmeasuredNote))]
+    [NotifyPropertyChangedFor(nameof(AxisStartText))]
+    public partial PlayAxisSeries Axis { get; set; } = PlayAxisSeries.None;
+
+    /// <summary>True when the axis has enough data to draw. False falls back to the gap rail.</summary>
+    public bool ShowAxis => HasGap && Axis.CanDraw;
+
+    /// <summary>True when the gap rail should be drawn instead of the axis.</summary>
+    public bool ShowGapRail => HasGap && !Axis.CanDraw;
+
+    /// <summary>Accessible name for the lifetime axis control.</summary>
+    public string AxisAutomationName => PlayAxisCopy.AxisAutomationName;
+
+    /// <summary>Tooltip for the lifetime axis control.</summary>
+    public string AxisTooltip => PlayAxisCopy.AxisTooltip;
+
+    /// <summary>Sentence stating whose hours these are — the user's own, never a player population.</summary>
+    public string AxisOwnHoursNote => PlayAxisCopy.OwnHoursNote;
+
+    /// <summary>True when unmeasured play exists before the coverage boundary.</summary>
+    public bool ShowAxisUnmeasured => Axis.HasUnmeasured;
+
+    /// <summary>Sentence describing the unmeasured zone: an amount and the date it covers through.</summary>
+    public string AxisUnmeasuredNote => Axis.HasUnmeasured
+        ? PlayAxisCopy.UnmeasuredNote(
+            SpanText(Axis.UnmeasuredMinutes),
+            Axis.CoverageStartUtc.ToLocalTime().ToString("MMM yyyy"))
+        : string.Empty;
+
+    /// <summary>Left-edge label: the release year.</summary>
+    public string AxisStartText => Axis.CanDraw
+        ? Axis.AxisStartUtc.Year.ToString("D4")
+        : string.Empty;
+
+    /// <summary>Sentence restating in words what the axis draws: last session, idle time, missed updates.</summary>
+    public string AxisLastSessionLine => PlayAxisCopy.LastSessionLine(
+        LastPlayedText,
+        IdleText,
+        Updates.Count(u => u.IsSinceYouPlayed));
+
     /// <summary>Gap rail caption: counts updates since last play, distinguishing unread from read.</summary>
     public string GapCaption
     {
@@ -226,10 +366,40 @@ public partial class GameDetailsViewModel : ObservableObject
 
     public bool HasUpdates => Updates.Count > 0;
 
-    /// <summary>"SINCE YOU PLAYED" when gap updates exist, otherwise "UPDATE HISTORY".</summary>
-    public string UpdatesLabel => Updates.Any(u => u.IsSinceYouPlayed)
-        ? "SINCE YOU PLAYED"
-        : "UPDATE HISTORY";
+    /// <summary>
+    /// The update list's heading, constant whether or not anything landed since
+    /// the last session. SINCE YOU PLAYED is Band 2's own rail label; one modal
+    /// was saying the same words about two different things, so the list took a
+    /// name of its own.
+    /// </summary>
+    public string UpdatesLabel => GameDetailsCopy.UpdatesHeading;
+
+    /// <summary>True when at least one update carries a readable link.</summary>
+    public bool HasNotesPage => Updates.Any(u => u.HasLink);
+
+    /// <summary>True when the game has updates but none of them carries a link.</summary>
+    public bool ShowNoNotesNote => HasUpdates && !HasNotesPage;
+
+    /// <summary>Shown under the update list when no update carries a readable link.</summary>
+    public string NoNotesText => "No patch notes page available for these updates.";
+
+    /// <summary>
+    /// Tries to open <paramref name="link"/> in the embedded patch-notes panel.
+    /// Returns false when there is no reader or the policy refuses the URL, and
+    /// the view then falls back to the system browser.
+    /// </summary>
+    public bool TryReadNotes(GameLink link)
+    {
+        ArgumentNullException.ThrowIfNull(link);
+
+        if (_patchNotes is not { IsAvailable: true } reader
+            || !Uri.TryCreate(link.Uri, UriKind.Absolute, out var uri))
+        {
+            return false;
+        }
+
+        return reader.Open(uri, Title) == Core.Reading.PatchNotesOutcome.Opened;
+    }
 
     // ── Under the list: "I've read this one" ────────────────────────────────
 
@@ -373,7 +543,16 @@ public partial class GameDetailsViewModel : ObservableObject
         }
 
         RailMarks = BuildRailMarks(Updates, LastPlayedUtc, _nowUtc);
+
+        Axis = PlayAxisSeries.Build(
+            _snapshots,
+            Tile.ReleaseYear,
+            LastPlayedUtc,
+            [.. Updates.Where(u => u.IsUnread).Select(u => u.OccurredAtUtc)],
+            _nowUtc);
+
         OnPropertyChanged(nameof(GapCaption));
+        OnPropertyChanged(nameof(AxisLastSessionLine));
     }
 
     /// <summary>Reloads the library after a flag change so bucket counts update.</summary>
@@ -382,14 +561,34 @@ public partial class GameDetailsViewModel : ObservableObject
     // ── Band 4: get me in ───────────────────────────────────────────────────
 
     /// <summary>Play or Install link, from the tile. Null when no honest action is available.</summary>
-    public GameLink? PrimaryAction { get; }
+    public GameLink? PrimaryAction { get; private set; }
 
     public bool HasPrimaryAction => PrimaryAction is not null;
 
+    public GameLink? ManagementAction => StoreActions.ManagementFor(
+        Tile.PlayableEntry.Store, Tile.Installed, Tile.SteamAppId, Tile.PlayableEntry.GogProductId);
+
+    public bool HasManagementAction => ManagementAction is not null;
+
     /// <summary>Store page and patch-notes hub. Empty when we hold no appid.</summary>
-    public IReadOnlyList<GameLink> Links { get; }
+    public IReadOnlyList<GameLink> Links { get; private set; }
 
     public bool HasLinks => Links.Count > 0;
+
+    public string? GogPatchNotes { get; private set; }
+    public bool HasGogPatchNotes => !string.IsNullOrWhiteSpace(GogPatchNotes);
+
+    /// <summary>
+    /// The sentence Band 3 draws when there is no primary action and no
+    /// links — stating why the band cannot get the user in. Null when the
+    /// band does have a way in; a band with a store page in its links is
+    /// not a band with no way in. Takes <c>Text</c> ink, not <c>TextDim</c>,
+    /// because it carries the fact in the way §10.2's no-rail sentence does.
+    /// </summary>
+    public string? NoWayInSentence { get; private set; }
+
+    /// <summary>True when <see cref="NoWayInSentence"/> is non-null and the line should be drawn.</summary>
+    public bool HasNoWayInSentence => NoWayInSentence is not null;
 
     /// <summary>Install directory path for "open folder", or null if not on disk.</summary>
     public string? OpenableFolder => Tile.IsOnDisk ? Tile.InstallPath : null;
@@ -400,7 +599,76 @@ public partial class GameDetailsViewModel : ObservableObject
 
     public bool HasSteamAppId => SteamAppId is not null;
 
+    /// <summary>Face of the More trigger — always the same word, because the menu owns its open state.</summary>
+    public string MoreActionsLabel => GameActionBandCopy.OpenLabel;
+
+    /// <summary>Tooltip on the More trigger.</summary>
+    public string MoreActionsTooltip => GameActionBandCopy.OpenTooltip;
+
+    /// <summary>
+    /// The library's hide command, handed in at construction. The row that
+    /// carries it sits inside a popup, which has no Window above it for a
+    /// <c>$parent[Window]</c> binding to find. Null leaves the row undrawn
+    /// rather than inert (§10.3).
+    /// </summary>
+    public System.Windows.Input.ICommand? HideCommand { get; }
+
+    /// <summary>The Hide row draws only when the library handed over its command.</summary>
+    public bool ShowHide => HideCommand is not null;
+
+    /// <summary>Hide label — always singular, because this modal shows one game.</summary>
+    public string HideLabel => LibrarySettingsCopy.HideDetailsButton;
+
+    /// <summary>Tooltip on Hide, shared with the library's context menu.</summary>
+    public string HideTooltip => LibrarySettingsCopy.HideTooltip;
+
+    /// <summary>Accessible group name for Band 1.</summary>
+    public string IdentityGroupName => GameDetailsCopy.IdentityGroupName;
+
+    /// <summary>Accessible group name for Band 2.</summary>
+    public string HistoryGroupName => GameDetailsCopy.HistoryGroupName;
+
+    /// <summary>Accessible group name for Band 3.</summary>
+    public string ActionsGroupName => GameDetailsCopy.ActionsGroupName;
+
+    /// <summary>Accessible name for the modal's close button.</summary>
+    public string CloseAutomationName => GameDetailsCopy.CloseAutomationName;
+
+    /// <summary>Value label for the ACQUIRED block in the object column.</summary>
+    public string AcquiredLabel => GameDetailsCopy.AcquiredLabel;
+
+    /// <summary>Section heading for ABOUT in Band 4.</summary>
+    public string AboutHeading => GameDetailsCopy.AboutHeading;
+
+    /// <summary>Accessible name for the launch button, e.g. "Install Empyrion: Galactic Survival".</summary>
+    public string LaunchAutomationName => PrimaryAction is { } action
+        ? GameDetailsCopy.LaunchAutomationName(action.Label, Title)
+        : string.Empty;
+
     // ── Body ────────────────────────────────────────────────────────────────
+
+    /// <summary>The screenshot strip inside ABOUT. Null when no screenshots exist.</summary>
+    public GameScreenshotsViewModel? Screenshots { get; }
+
+    /// <summary>Drawn only when screenshots exist.</summary>
+    public bool ShowScreenshots => Screenshots is { HasShots: true };
+
+    /// <summary>The ACQUIRED block in the left column. Null when neither date nor licence exists.</summary>
+    public GameAcquisitionViewModel? Acquisition { get; }
+
+    /// <summary>Drawn only when an acquisition fact exists.</summary>
+    public bool ShowAcquisition => Acquisition is not null;
+
+    /// <summary>The More-menu refetch row and its status field. Null when no refetch service is registered.</summary>
+    public GameRefetchViewModel? Refetch { get; }
+
+    /// <summary>Drawn only when a refetch service is available.</summary>
+    public bool ShowRefetch => Refetch is not null;
+
+    /// <summary>Saved post-session notes for this game, or null when no session store is available.</summary>
+    public GameJournalViewModel? Journal { get; }
+
+    public bool ShowJournal => Journal is not null;
 
     public string? Summary => Tile.Summary;
 
@@ -519,7 +787,23 @@ public partial class GameDetailsViewModel : ObservableObject
         return rest == 0 ? $"{hours}h" : $"{hours}h {rest}m";
     }
 
-    /// <summary>Builds the primary action and store links from the tile's store ids.</summary>
-    private static (GameLink? Primary, IReadOnlyList<GameLink> Links) BuildLinks(GameTileViewModel tile)
-        => (tile.PrimaryAction, StoreActions.LinksFor(tile.Store, tile.SteamAppId, tile.GogProductId));
+    /// <summary>
+    /// Builds the primary action, store links and no-way-in sentence from
+    /// the tile's store ids. Returns three values: the primary action (null
+    /// when none is honest), the outbound links (empty when no id is held),
+    /// and the sentence explaining why there is no way in (null when the
+    /// band does have a primary action or at least one link).
+    /// </summary>
+    private static (GameLink? Primary, IReadOnlyList<GameLink> Links, string? NoWayIn) BuildLinks(
+        GameTileViewModel tile)
+    {
+        var primary = tile.PrimaryAction;
+        var links = StoreActions.LinksFor(tile.Store, tile.SteamAppId, tile.GogProductId, tile.PlayableEntry.Storefront);
+
+        var sentence = primary is null && links.Count == 0
+            ? GameActionBandCopy.NoWayInSentence(tile.NoWayIn)
+            : null;
+
+        return (primary, links, sentence);
+    }
 }

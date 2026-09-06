@@ -10,12 +10,16 @@ namespace Winnow.Monitor;
 /// reports it on Windows and <c>/proc/&lt;pid&gt;/comm</c> on Linux. Compared
 /// case-insensitively against <see cref="GameExecutableIndex.ProcessNames"/>.
 /// </param>
-public readonly record struct ProcessListing(int Pid, string ProcessName);
+public readonly record struct ProcessListing(
+    int Pid,
+    string ProcessName,
+    string? SteamCompatibilityDataPath = null);
 
 /// <summary>
 /// The watcher's OS seam. <see cref="List"/> is Tier 1 (cheap, polled, names
-/// only); <see cref="Track"/> is Tier 2 (per-candidate, pins process, arms exit
-/// callback). Implementations must not resolve paths in <see cref="List"/>.
+/// plus the one Linux Proton marker); <see cref="Track"/> is Tier 2
+/// (per-candidate, pins process, arms exit callback). Implementations must not
+/// resolve executable paths in <see cref="List"/>.
 /// </summary>
 public interface IProcessSource
 {
@@ -24,9 +28,12 @@ public interface IProcessSource
     ///
     /// <para>Called once per poll (default 5s), so it must stay cheap: on
     /// Windows this is one <c>NtQuerySystemInformation</c> snapshot, on Linux a
-    /// directory listing of <c>/proc</c> plus one <c>comm</c> read each. It must
-    /// not open per-process handles and must not throw for processes it cannot
-    /// see — an unreadable process is simply absent from the result.</para>
+    /// directory listing of <c>/proc</c> plus one <c>comm</c> and bounded
+    /// <c>environ</c> read each. The latter reads only
+    /// <c>STEAM_COMPAT_DATA_PATH</c>; it is the exact Steam app-id join that
+    /// lets a Wine loader reach an owned game. It must not open per-process
+    /// handles and must not throw for processes it cannot see — an unreadable
+    /// process is simply absent from the result.</para>
     /// </summary>
     IReadOnlyList<ProcessListing> List();
 
@@ -75,6 +82,14 @@ public interface ITrackedProcess : IDisposable
     /// across the whole library.</para>
     /// </summary>
     string? ExecutablePath { get; }
+
+    /// <summary>
+    /// Steam Proton's <c>STEAM_COMPAT_DATA_PATH</c>, read from Linux
+    /// <c>/proc/&lt;pid&gt;/environ</c> while this process is held, or null when
+    /// absent or unreadable. Its terminal directory is Steam's app id and lets
+    /// the watcher attribute Wine's loader to the owned release it launched.
+    /// </summary>
+    string? SteamCompatibilityDataPath { get; }
 
     /// <summary>
     /// True wall-clock start, UTC. <b>Not</b> the time the watcher noticed.

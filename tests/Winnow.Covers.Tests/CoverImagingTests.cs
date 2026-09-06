@@ -110,7 +110,9 @@ public class CoverImagingTests
     [InlineData(222, 240)]   // 1.5x
     [InlineData(296, 320)]   // 2x
     [InlineData(592, 640)]   // 4x
-    [InlineData(2000, 640)]  // clamped: no display needs more than the capsule holds
+    [InlineData(641, 1280)]  // past every grid bucket: the screenshot lightbox's own
+    [InlineData(1280, 1280)] // t_screenshot_huge at its native width
+    [InlineData(2560, 1280)] // clamped: nothing is drawn wider than the shot is
     public void Display_widths_snap_to_a_finite_set_of_buckets(double requested, int expected)
         => Assert.Equal(expected, CoverImaging.SnapWidth(requested));
 

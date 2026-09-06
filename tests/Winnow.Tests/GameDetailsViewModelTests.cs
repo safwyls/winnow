@@ -1,4 +1,5 @@
-﻿using Winnow.App.Services;
+﻿using CommunityToolkit.Mvvm.Input;
+using Winnow.App.Services;
 using Winnow.App.ViewModels;
 using Winnow.Core.Queries;
 using Winnow.Core.Domain;
@@ -120,6 +121,46 @@ public sealed class GameDetailsViewModelTests
         Assert.Null(details.Updates[1].Link);
     }
 
+    /// <summary>
+    /// A game whose updates carry no readable link shows a note rather than
+    /// leaving the space empty. The note never claims nothing shipped; it says
+    /// there is no page to read.
+    /// </summary>
+    [Fact]
+    public void An_update_with_no_page_behind_it_says_so()
+    {
+        var updates = new[]
+        {
+            Update("Build 1234", Now.AddDays(-2)),
+            Update("Poisoned", Now.AddDays(-3), url: "javascript:alert(1)"),
+        };
+
+        var details = Details(Tile(lastPlayed: Now.AddDays(-10)), updates);
+
+        Assert.True(details.HasUpdates);
+        Assert.False(details.HasNotesPage);
+        Assert.True(details.ShowNoNotesNote);
+        Assert.NotEmpty(details.NoNotesText);
+    }
+
+    /// <summary>
+    /// When at least one update carries a readable link, the no-page note is
+    /// hidden and the patch-notes button is offered instead.
+    /// </summary>
+    [Fact]
+    public void An_update_with_a_page_behind_it_says_nothing()
+    {
+        var updates = new[]
+        {
+            Update("Real notes", Now.AddDays(-2), url: "https://store.steampowered.com/news/app/80/view/1"),
+        };
+
+        var details = Details(Tile(lastPlayed: Now.AddDays(-10)), updates);
+
+        Assert.True(details.HasNotesPage);
+        Assert.False(details.ShowNoNotesNote);
+    }
+
     // ══ The way in ══════════════════════════════════════════════════════════
 
     /// <summary>
@@ -223,7 +264,7 @@ public sealed class GameDetailsViewModelTests
         Assert.False(details.HasRailMarks);
         Assert.Equal(2, details.Updates.Count);
         Assert.DoesNotContain(details.Updates, u => u.IsSinceYouPlayed);
-        Assert.Equal("UPDATE HISTORY", details.UpdatesLabel);
+        Assert.Equal("UPDATES", details.UpdatesLabel);
 
         // "recorded", not "nothing shipped": polling is staggered across days,
         // so an empty rail can mean a quiet decade or a turn that has not come
@@ -232,7 +273,7 @@ public sealed class GameDetailsViewModelTests
     }
 
     [Fact]
-    public void A_missed_update_renames_the_section_and_marks_its_row()
+    public void A_missed_update_marks_its_row_and_leaves_the_heading_alone()
     {
         var updates = new[]
         {
@@ -242,7 +283,7 @@ public sealed class GameDetailsViewModelTests
 
         var details = Details(Tile(lastPlayed: Now.AddDays(-30)), updates);
 
-        Assert.Equal("SINCE YOU PLAYED", details.UpdatesLabel);
+        Assert.Equal("UPDATES", details.UpdatesLabel);
         Assert.Equal("1 update landed while you were away.", details.GapCaption);
         Assert.True(details.Updates[0].IsSinceYouPlayed);
         Assert.False(details.Updates[1].IsSinceYouPlayed);
@@ -469,6 +510,42 @@ public sealed class GameDetailsViewModelTests
         Assert.False(Details(Tile(ramp: new DormancyRamp { ReducedMotion = false })).ReducedMotion);
     }
 
+    /// <summary>
+    /// The menu owns its own open state, so the trigger's face never
+    /// changes — it always reads the same label and tooltip.
+    /// </summary>
+    [Fact]
+    public void The_action_band_trigger_keeps_one_face()
+    {
+        var details = Details(Tile());
+
+        Assert.Equal(GameActionBandCopy.OpenLabel, details.MoreActionsLabel);
+        Assert.Equal(GameActionBandCopy.OpenTooltip, details.MoreActionsTooltip);
+    }
+
+    /// <summary>
+    /// Hide is the library's command, handed in at construction because the
+    /// row sits inside a popup that has no Window above it for a
+    /// <c>$parent[Window]</c> binding to find. A null command hides the
+    /// row rather than leaving it inert (§10.3).
+    /// </summary>
+    [Fact]
+    public void Hide_is_drawn_only_when_the_library_handed_over_its_command()
+    {
+        var without = Details(Tile());
+
+        Assert.Null(without.HideCommand);
+        Assert.False(without.ShowHide);
+
+        var command = new RelayCommand<GameTileViewModel?>(_ => { });
+        var with = Details(Tile(), hideGame: command);
+
+        Assert.Same(command, with.HideCommand);
+        Assert.True(with.ShowHide);
+        Assert.Equal(LibrarySettingsCopy.HideDetailsButton, with.HideLabel);
+        Assert.Equal(LibrarySettingsCopy.HideTooltip, with.HideTooltip);
+    }
+
     // ── Builders ─────────────────────────────────────────────────────────────
 
     private static GameTileViewModel Tile(
@@ -512,14 +589,15 @@ public sealed class GameDetailsViewModelTests
     private static GameDetailsViewModel Details(
         GameTileViewModel tile,
         IReadOnlyList<UpdateEvent>? updates = null,
-        IReadOnlyList<PlaytimeSnapshot>? snapshots = null)
+        IReadOnlyList<PlaytimeSnapshot>? snapshots = null,
+        System.Windows.Input.ICommand? hideGame = null)
     {
         var rows = (updates ?? [])
             .OrderByDescending(u => u.OccurredAt)
             .Select(u => UpdateEventViewModel.Create(u, tile.LastPlayedUtc))
             .ToList();
 
-        return new GameDetailsViewModel(tile, "Bounced off", rows, Now, snapshots);
+        return new GameDetailsViewModel(tile, "Started", rows, Now, snapshots, hideGame: hideGame);
     }
 
     private static UpdateEvent Update(string title, DateTime occurredAt, string? url = null)

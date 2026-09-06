@@ -23,6 +23,19 @@ public enum EpicConnection
     Lapsed,
 }
 
+/// <summary>Which platform card the Platforms screen is showing (TASK-61).</summary>
+public enum StorePlatform
+{
+    /// <summary>Steam. The default, and the source most libraries are mostly made of.</summary>
+    Steam = 0,
+
+    /// <summary>Epic.</summary>
+    Epic,
+
+    /// <summary>GOG.</summary>
+    Gog,
+}
+
 /// <summary>
 /// The Platforms settings screen: shows which sources feed the library, what each
 /// can see, and sign-in state. Talks to <see cref="IStoreConnections"/> and
@@ -106,8 +119,66 @@ public partial class StoresViewModel : ObservableObject
 
     public string SegmentTooltip => SteamConnectionCopy.SegmentTooltip;
 
-    public string IntroMessage =>
-        "Where your library comes from. All three read local files; Steam and Epic can also connect for more.";
+    public string IntroMessage => "Where your library comes from.";
+
+    // ══ The platform tabs ═══════════════════════════════════════════════════
+    //
+    // TASK-61. One card per screen rather than three stacked in one scroller.
+    // The Steam card alone measured 863px against a 644px viewport after its
+    // purchase-history section went behind a disclosure, and what remained was
+    // controls and the two transparency paragraphs ROADMAP §4.7 condition 3
+    // pins at the top level — not prose that could be condensed further. A tab
+    // gives each platform the viewport instead of a third of it.
+
+    /// <summary>Which platform card is on screen. Steam first: it is the source
+    /// almost every library is mostly made of.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(
+        nameof(IsSteamVisible), nameof(IsEpicVisible), nameof(IsGogVisible))]
+    public partial StorePlatform SelectedPlatform { get; set; } = StorePlatform.Steam;
+
+    public bool IsSteamVisible => SelectedPlatform == StorePlatform.Steam;
+
+    public bool IsEpicVisible => SelectedPlatform == StorePlatform.Epic;
+
+    public bool IsGogVisible => SelectedPlatform == StorePlatform.Gog;
+
+    /// <summary>Tab labels. Bound rather than written into the XAML for the
+    /// reason TASK-60 recorded: a label that exists only in an attribute is a
+    /// label no test can see, and this screen's last one drifted back.</summary>
+    public string SteamTabLabel => "STEAM";
+
+    public string EpicTabLabel => "EPIC";
+
+    public string GogTabLabel => "GOG";
+
+    [RelayCommand]
+    private void ShowSteam() => SelectedPlatform = StorePlatform.Steam;
+
+    [RelayCommand]
+    private void ShowEpic() => SelectedPlatform = StorePlatform.Epic;
+
+    [RelayCommand]
+    private void ShowGog() => SelectedPlatform = StorePlatform.Gog;
+
+    /// <summary>
+    /// Whether the Steam tab wears an attention mark while another tab is
+    /// selected.
+    ///
+    /// <para>A card that can be off screen can hide a state the user has to act
+    /// on, which is exactly what ROADMAP §4.7 condition 8 forbids for the Steam
+    /// session. The condition was written when the card was always drawn; a tab
+    /// makes it reachable again only if the tab itself says something is wrong.
+    /// Amber, never Flare — Flare marks unread updates and nothing else.</para>
+    /// </summary>
+    public bool SteamTabNeedsAttention => SteamStatusNeedsAttention;
+
+    /// <summary>The same for Epic, whose refresh token lapses while the app is
+    /// closed and which therefore has a failure state of its own.</summary>
+    public bool EpicTabNeedsAttention => EpicStatusNeedsAttention;
+
+    /// <summary>GOG has nothing to sign into, so it has no state to miss.</summary>
+    public bool GogTabNeedsAttention => false;
 
     // ══ Steam ═══════════════════════════════════════════════════════════════
     //
@@ -129,7 +200,10 @@ public partial class StoresViewModel : ObservableObject
     [NotifyPropertyChangedFor(
         nameof(SteamWebApiConfigured), nameof(SteamHasApiKey), nameof(SteamHasSession),
         nameof(SteamApiKeyIsAppManaged), nameof(SteamStatusLabel), nameof(SteamStatusIsLive),
-        nameof(SteamStatusNeedsAttention), nameof(SteamConnectionMessage),
+        nameof(SteamStatusNeedsAttention), nameof(SteamTabNeedsAttention),
+        nameof(SteamWebApiStateText), nameof(SteamWebApiIsOn),
+        nameof(SteamSignInIsInUse), nameof(SteamApiKeyIsInUse), nameof(MethodInUseTooltip),
+        nameof(SteamConnectionMessage),
         nameof(SteamApiKeyStatusMessage), nameof(SteamApiKeyStateText),
         nameof(ShowSteamBothCredentials), nameof(SteamConnectionSummaryMessage),
         nameof(SteamSignedInAccountText), nameof(ShowSteamSignedInAccount),
@@ -149,6 +223,7 @@ public partial class StoresViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(
         nameof(SteamStatusLabel), nameof(SteamStatusIsLive), nameof(SteamStatusNeedsAttention),
+        nameof(SteamTabNeedsAttention),
         nameof(SteamSessionHealthMessage), nameof(ShowSteamSessionAttention),
         nameof(SteamSignInStateText), nameof(ShowSteamSessionCalmHealth),
         nameof(SteamSignInButtonText), nameof(ShowSteamSignedIn), nameof(ShowSteamSignInAction))]
@@ -169,7 +244,9 @@ public partial class StoresViewModel : ObservableObject
     public bool SteamApiKeyIsAppManaged => SteamCredentials.ApiKeyIsAppManaged;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(SteamCountText), nameof(ShowSteamCount))]
+    [NotifyPropertyChangedFor(
+        nameof(SteamCountText), nameof(ShowSteamCount),
+        nameof(SteamAccountsSummaryText), nameof(ShowSteamAccountsSummary))]
     public partial int SteamTitleCount { get; set; }
 
     public string SteamCountText => SteamTitleCount.ToString("N0");
@@ -183,6 +260,26 @@ public partial class StoresViewModel : ObservableObject
     /// <summary>Terse state phrase for local files, beside its heading. The
     /// full description is in the disclosure.</summary>
     public string SteamLocalStateText => SteamConnectionCopy.StateLocalAlwaysOn;
+
+    /// <summary>
+    /// The WEB API line's state word: Off, or On with the credential actually
+    /// carrying the calls. Which one is in force is part of the state rather
+    /// than a sentence elsewhere, because a user holding both wants to know
+    /// which is doing the work and a user holding neither wants one word.
+    ///
+    /// <para>The key wins when both are held, which is the decision recorded in
+    /// <see cref="SteamConnectionCopy.BothCredentials"/>: scheduled work takes
+    /// the key because keys do not expire.</para>
+    /// </summary>
+    public string SteamWebApiStateText =>
+        SteamHasApiKey ? SteamConnectionCopy.StateWebApiOnApi
+        : SteamHasSession ? SteamConnectionCopy.StateWebApiOnLogin
+        : SteamConnectionCopy.StateWebApiOff;
+
+    /// <summary>Whether the WEB API state word wears the enabled treatment.
+    /// Volt is what works on this card; Off stays dim because nothing is
+    /// wrong with it, it simply has not been done.</summary>
+    public bool SteamWebApiIsOn => SteamHasApiKey || SteamHasSession;
 
     public string SteamConnectionSectionLabel => SteamConnectionCopy.SectionLabel;
 
@@ -507,6 +604,10 @@ public partial class StoresViewModel : ObservableObject
         ? SteamConnectionCopy.DisclosureHide
         : SteamConnectionCopy.DisclosureMethods;
 
+    /// <summary>
+    /// Whether the purchase-history import is open. Closed by default: it is
+    /// the one section of the Steam card a user need not visit to have a
+    /// working library, and it was the largest block on the card.
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(SteamSignInDetailsToggleText))]
     public partial bool SteamSignInDetailsOpen { get; set; }
@@ -518,16 +619,132 @@ public partial class StoresViewModel : ObservableObject
         ? SteamConnectionCopy.DisclosureHide
         : SteamConnectionCopy.DisclosureSignIn;
 
+    // ══ The three modals ════════════════════════════════════════════════════
+    //
+    // A disclosure costs the card the height of everything it opens, which is
+    // what kept this card from fitting its viewport at any window size. A modal
+    // costs it one line. These three hold what a user reads once: which method
+    // to choose, what the sign-in will read before it opens, and the import
+    // itself.
+    //
+    // Only ONE can be open at a time. They are separate flags rather than an
+    // enum because each is bound independently, and OpenOnly is what keeps them
+    // mutually exclusive in one place instead of at three call sites.
+
+    /// <summary>The method comparison. Informs only; nothing is started from it.</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(SteamApiKeyDetailsToggleText))]
-    public partial bool SteamApiKeyDetailsOpen { get; set; }
+    public partial bool IsMethodsModalOpen { get; set; }
+
+    /// <summary>
+    /// The consent surface read before the embedded sign-in opens. ROADMAP §4.7
+    /// condition 3 requires the transparency paragraph to be read BEFORE
+    /// acting; a modal whose only way forward is Continue makes that structural
+    /// rather than a hope about reading order.
+    /// </summary>
+    [ObservableProperty]
+    public partial bool IsSignInConsentOpen { get; set; }
+
+    /// <summary>The purchase import, holding both routes as equal peers.</summary>
+    [ObservableProperty]
+    public partial bool IsPurchaseModalOpen { get; set; }
+
+    /// <summary>
+    /// What the account filter can and cannot do. Holds the caveat that used
+    /// to sit under the toggle as a note: that games Winnow cannot attribute
+    /// to an account stay visible, and that a filtered library reports one
+    /// account's figures.
+    /// </summary>
+    [ObservableProperty]
+    public partial bool IsAccountsModalOpen { get; set; }
+
+    /// <summary>True while any modal covers the card.</summary>
+    public bool IsAnyModalOpen =>
+        IsMethodsModalOpen || IsSignInConsentOpen || IsPurchaseModalOpen || IsAccountsModalOpen;
+
+    public string MethodsModalTitle => SteamConnectionCopy.MethodsModalTitle;
+
+    public string MethodsModalLink => SteamConnectionCopy.MethodsModalLink;
+
+    public string ModalCloseText => SteamConnectionCopy.ModalClose;
+
+    public string SignInConsentTitle => SteamConnectionCopy.SignInConsentTitle;
+
+    public string SignInConsentContinueText => SteamConnectionCopy.SignInConsentContinue;
+
+    public string SignInConsentCancelText => SteamConnectionCopy.SignInConsentCancel;
+
+    public string PurchaseModalTitle => SteamConnectionCopy.PurchaseModalTitle;
+
+    public string AccountsModalTitle => SteamConnectionCopy.AccountsModalTitle;
+
+    public string AccountsModalLink => SteamConnectionCopy.AccountsModalLink;
+
+    /// <summary>The separator between the two connection methods.</summary>
+    public string MethodSeparatorText => SteamConnectionCopy.MethodSeparator;
+
+    public string MethodInUseText => SteamConnectionCopy.MethodInUse;
+
+    /// <summary>
+    /// Whether the SIGN-IN is the credential carrying the Web API calls. True
+    /// only when there is no key, because the key wins when both are held.
+    /// Derived from the same rule as <see cref="SteamWebApiStateText"/>, so the
+    /// section's state word and this marker cannot disagree.
+    /// </summary>
+    public bool SteamSignInIsInUse => SteamHasSession && !SteamHasApiKey;
+
+    /// <summary>Whether the KEY is carrying them. It wins whenever it exists.</summary>
+    public bool SteamApiKeyIsInUse => SteamHasApiKey;
+
+    /// <summary>
+    /// What the marker says on hover. When both credentials are held it is the
+    /// sentence that explains the split; otherwise it names what the marker
+    /// means on its own.
+    /// </summary>
+    public string MethodInUseTooltip => ShowSteamBothCredentials
+        ? SteamConnectionCopy.BothCredentials
+        : "This is the credential Winnow uses for Steam's Web API.";
+
+    private void OpenOnly(
+        bool methods = false, bool consent = false, bool purchase = false, bool accounts = false)
+    {
+        IsMethodsModalOpen = methods;
+        IsSignInConsentOpen = consent;
+        IsPurchaseModalOpen = purchase;
+        IsAccountsModalOpen = accounts;
+        OnPropertyChanged(nameof(IsAnyModalOpen));
+    }
 
     [RelayCommand]
-    private void ToggleSteamApiKeyDetails() => SteamApiKeyDetailsOpen = !SteamApiKeyDetailsOpen;
+    private void OpenMethodsModal() => OpenOnly(methods: true);
 
-    public string SteamApiKeyDetailsToggleText => SteamApiKeyDetailsOpen
-        ? SteamConnectionCopy.DisclosureHide
-        : SteamConnectionCopy.DisclosureApiKey;
+    [RelayCommand]
+    private void OpenPurchaseModal() => OpenOnly(purchase: true);
+
+    [RelayCommand]
+    private void OpenAccountsModal() => OpenOnly(accounts: true);
+
+    /// <summary>
+    /// Opens the consent surface. Deliberately NOT the sign-in: the button on
+    /// the card no longer starts anything, so the paragraph and the permission
+    /// control cannot be skipped past.
+    /// </summary>
+    [RelayCommand]
+    private void OpenSignInConsent() => OpenOnly(consent: true);
+
+    [RelayCommand]
+    private void CloseModal() => OpenOnly();
+
+    /// <summary>
+    /// Continue. The press that grants consent and opens the window, which is
+    /// the same press the old inline button was — moved to the far side of the
+    /// paragraph it was always supposed to follow.
+    /// </summary>
+    [RelayCommand]
+    private async Task ContinueSignInAsync()
+    {
+        OpenOnly();
+        await SignInToSteamCommand.ExecuteAsync(null);
+    }
 
     // ══ Steam purchase and licence history ══════════════════════════════════
     //
@@ -557,7 +774,7 @@ public partial class StoresViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(
         nameof(CanChooseAccountScope), nameof(ShowAccountScopeBlocked),
-        nameof(AccountScopeBlockedMessage))]
+        nameof(AccountScopeBlockedMessage), nameof(ShowSteamAccountsPending))]
     public partial bool SteamAccountConfirmed { get; set; }
 
     /// <summary>The preference itself. False — every account — on every install until the user acts.</summary>
@@ -577,9 +794,51 @@ public partial class StoresViewModel : ObservableObject
 
     public string AccountScopeSectionLabel => "STEAM ACCOUNTS";
 
+    /// <summary>
+    /// How many Steam accounts this machine has been seen holding games for.
+    /// Counted off the per-account membership rows rather than
+    /// <c>ownerships.account_ref</c>, which holds only the account that won the
+    /// play tuple and therefore under-counts a shared PC.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SteamAccountsSummaryText), nameof(ShowSteamAccountsSummary))]
+    public partial int SteamAccountCount { get; set; }
+
+    /// <summary>
+    /// The whole of what the section says now: the size of the library and how
+    /// many accounts it came from.
+    ///
+    /// <para>It replaced a two-line paragraph explaining that every account on
+    /// the PC is read. The sentence was true and nobody needed it twice: the
+    /// figures say the same thing, and the toggle beside the title says what
+    /// can be done about it. Per-account breakdown is not offered because no
+    /// account NAME is stored anywhere — <c>AccountFacts</c> records presence
+    /// only, never identity — so the honest unit is the total and the count.</para>
+    /// </summary>
+    public string SteamAccountsSummaryText =>
+        $"{SteamTitleCount:N0} {(SteamTitleCount == 1 ? "game" : "games")} across "
+        + $"{SteamAccountCount:N0} {(SteamAccountCount == 1 ? "account" : "accounts")}";
+
+    /// <summary>Absent until there is something to count.</summary>
+    public bool ShowSteamAccountsSummary => SteamAccountCount > 0 && SteamTitleCount > 0;
+
+    /// <summary>
+    /// The clarifier beside the section title while Winnow has not yet
+    /// established which account is the user's.
+    ///
+    /// <para>It replaced a note explaining, at length, why the toggle is
+    /// disabled. The toggle being disabled is already visible; what a user
+    /// cannot see is that the answer is COMING rather than missing, and that is
+    /// the one word this adds. The full sentence still exists on the toggle
+    /// tooltip.</para>
+    /// </summary>
+    public string SteamAccountsPendingText => "PENDING FETCH";
+
+    /// <summary>Shown only while the account is unconfirmed.</summary>
+    public bool ShowSteamAccountsPending => !SteamAccountConfirmed;
+
     public string AccountScopeMessage =>
-        "Winnow reads every Steam account signed in on this PC and shows all their games as one "
-        + "library. You can filter to show only games from your own account.";
+        "Every Steam account on this PC shows as one library.";
 
     /// <summary>
     /// The toggle's own face. Carries no number: design-system.md renders every
@@ -643,9 +902,7 @@ public partial class StoresViewModel : ObservableObject
     /// rather than leaky, and that the numbers on the tiles have changed meaning.
     /// </summary>
     public string AccountScopeCaveatMessage =>
-        "Games Winnow cannot attribute to a specific account stay visible. For games seen on more "
-        + "than one account, the playtime and last-played date shown become your own account's "
-        + "figures, and categories like Never played and Bounced are derived from those.";
+        "Games Winnow cannot attribute stay visible. Shown playtime becomes your account's.";
 
     // ══ Epic ════════════════════════════════════════════════════════════════
 
@@ -653,7 +910,8 @@ public partial class StoresViewModel : ObservableObject
     [NotifyPropertyChangedFor(
         nameof(EpicIsSignedIn), nameof(EpicIsSigningIn), nameof(EpicIsLapsed),
         nameof(EpicCanSignIn), nameof(EpicStatusLabel), nameof(EpicStatusIsLive),
-        nameof(EpicStatusNeedsAttention), nameof(EpicSignInButtonText),
+        nameof(EpicStatusNeedsAttention), nameof(EpicTabNeedsAttention),
+        nameof(EpicSignInButtonText),
         nameof(ShowEpicAccountLine), nameof(ShowEpicAnonymousLine))]
     public partial EpicConnection EpicState { get; set; } = EpicConnection.SignedOut;
 
@@ -722,15 +980,13 @@ public partial class StoresViewModel : ObservableObject
     public string EpicAnonymousMessage => "Connected. Epic didn't supply a display name for this account.";
 
     public string EpicLocalMessage =>
-        "Always on. Reads owned Epic games and install state from the launcher's local files.";
+        "Always on. Reads owned Epic games and install state.";
 
     public string EpicGapMessage =>
-        "Epic writes no playtime or last-played date to disk, so Epic games won't appear in "
-        + "playtime-based categories unless you sign in.";
+        "Epic writes no playtime to disk. Sign in for playtime-based categories.";
 
     public string EpicSignInAddsMessage =>
-        "Signing in adds playtime and acquisition dates. Last-played dates come from Winnow "
-        + "watching your sessions, not from Epic.";
+        "Adds playtime and acquisition dates.";
 
     public string EpicConsentPromiseMessage =>
         "You'll see what Winnow is requesting before anything connects. The credential is stored encrypted on this machine.";
@@ -761,10 +1017,10 @@ public partial class StoresViewModel : ObservableObject
     public bool ShowGogCount => GogTitleCount > 0;
 
     public string GogLocalMessage =>
-        "Always on. Reads owned GOG games, playtime, last-played dates and install state from Galaxy's local database.";
+        "Always on. Reads owned games, playtime, last-played and install state from Galaxy.";
 
     public string GogNoSignInMessage =>
-        "Not needed. Galaxy's local database already provides everything GOG's online API does.";
+        "Not needed. The local database has everything.";
 
     public string GogStatusLabel => "LOCAL FILES";
 
@@ -848,6 +1104,7 @@ public partial class StoresViewModel : ObservableObject
             SteamAccountConfirmed = state.AccountConfirmed;
             ShowOwnAccountOnly = state.OwnAccountOnly;
             AccountScopeHiddenCount = state.HiddenCount;
+            SteamAccountCount = state.AccountCount;
         }
         finally
         {
@@ -1039,17 +1296,27 @@ public partial class StoresViewModel : ObservableObject
     /// <summary>
     /// Stores the pasted key and puts it into force without a restart.
     ///
-    /// <para>The field is emptied on the way out. It is a bound property with a
-    /// public getter, and there is no reason for a key to stay in one after the
-    /// settings row has it.</para>
+    /// <para>The field is emptied on the way out — but only when the key was
+    /// actually stored. A refusal leaves what the user typed where they can
+    /// still see it, because telling them "not stored" while deleting the
+    /// input would be destroying the very thing they now have to put
+    /// somewhere else.</para>
     /// </summary>
     [RelayCommand(CanExecute = nameof(CanSaveSteamApiKey))]
     private async Task SaveSteamApiKeyAsync(CancellationToken ct)
     {
-        await _connections.SaveSteamApiKeyAsync(SteamApiKeyInput, ct);
+        var outcome = await _connections.SaveSteamApiKeyAsync(SteamApiKeyInput, ct);
 
-        SteamApiKeyInput = string.Empty;
-        SteamApiKeyNoticeMessage = SteamConnectionCopy.ApiKeySaved;
+        SteamApiKeyNoticeMessage = outcome switch
+        {
+            SteamApiKeySaveOutcome.Stored => SteamConnectionCopy.ApiKeySaved,
+            _ => SteamConnectionCopy.ApiKeySaveRefused,
+        };
+
+        if (outcome == SteamApiKeySaveOutcome.Stored)
+        {
+            SteamApiKeyInput = string.Empty;
+        }
 
         await RefreshSteamAsync(ct);
     }

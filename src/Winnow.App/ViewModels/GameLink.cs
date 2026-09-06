@@ -142,8 +142,7 @@ public sealed record GameLink
 }
 
 /// <summary>
-/// What a <see cref="GameLink"/> is FOR. Three answers, and the middle one is
-/// the reason the enum exists rather than a boolean.
+/// What a <see cref="GameLink"/> does, independently of its label.
 /// </summary>
 public enum GameLinkKind
 {
@@ -163,4 +162,7 @@ public enum GameLinkKind
     /// on the screen for the rest of the evening.
     /// </summary>
     Install,
+
+    /// <summary>Opens the owning launcher's uninstall confirmation; never launches a game.</summary>
+    Uninstall,
 }

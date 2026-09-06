@@ -19,6 +19,10 @@ public sealed record UpdatePollState
     [JsonIgnore]
     public DateTime? LastPolledAt { get; init; }
 
+    /// <summary>A source failed on the last attempt; retry on the next day.</summary>
+    [JsonPropertyName("retry_pending")]
+    public bool RetryPending { get; init; }
+
     /// <summary>
     /// The <c>gid</c> of the newest patch note seen. Compared alongside
     /// <see cref="LastNewsDate"/> so an edited-in-place announcement (same date,

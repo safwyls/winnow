@@ -21,7 +21,7 @@ of them defers to another, and none of them outranks another.
 | Where each filter value comes from | `docs/facet-provenance.md` |
 | Orientation for a new reader: what it is, how to install, run and build | `README.md` |
 | Evidence: how something was measured | `docs/spikes/` |
-| Per-domain agent charters | `.claude/agents/` |
+| Per-domain agent charters | `.codex/agents/` (Codex), `.claude/agents/` (Claude Code) |
 
 If a document is wrong, edit it to the current truth in the same commit as the change that
 made it wrong, and append the sentence it used to say to `docs/decisions.md`. Do not leave a
@@ -74,19 +74,67 @@ Each one is load-bearing for an install that predates the 2026-08-28 rename.
   never calls ingest or enrichment directly.
 - `tests/Winnow.Tests` — xUnit on temp-file SQLite databases. Parser tests use the sanitized
   real fixtures in `tests/fixtures/steam/`.
+- `tests/Winnow.Ui.Tests` — isolated Avalonia headless pointer and keyboard tests with real
+  fonts and templates. Use temporary data and never start the production host.
+
+## Agent instructions and writing
+
+`AGENTS.md` is the shared entry point. `CLAUDE.md` imports it. Codex loads the TOML roles in
+`.codex/agents/`; Claude Code uses the matching Markdown roles in `.claude/agents/`. Keep
+paired role instructions equivalent when editing them. Roles inherit the selected model;
+do not pin a model unless the user requests it.
+
+Each agent writes the documentation, UI copy and comments required by its work. There is no
+separate prose author and no prose handoff required to finish a change.
+
+- Write clear, concise sentences with familiar words and active verbs. Lead with the result
+  or fact; add the explanation needed to understand it. Use lists for actual steps or parallel
+  items, and omit filler, sales language and repeated summaries.
+- Verify behavior in the source before documenting it. State limitations and distinguish
+  measured results from assumptions. Preserve an existing document's structure and voice.
+- Keep rules in the document that owns the domain, historical rationale in `docs/decisions.md`,
+  measurement methods in `docs/spikes/`, and delivery status in `ROADMAP.md` or Backlog.
+- Comments explain constraints or intent that the code cannot show. Avoid narrating the next
+  line or describing the history of a diff. UI copy follows `design-system.md`.
+- Report what changed, what was checked and any remaining limitation. Scale detail to the work.
+
+The frontend-design skill is available in `.agents/skills/` for Codex and `.claude/skills/`
+for Claude Code. Keep both copies aligned. Winnow's visual spec and tokens govern app changes.
+Historical plans and decision records provide context, not additional active agent instructions.
+
+The Codex Backlog hook checks direct `apply_patch` edits; the Claude hook checks direct file
+edits. Neither guards every possible shell or tool write. The Backlog CLI rule below applies
+to all editing methods. If `backlog` is missing from PATH, check the installed npm executable
+(on Windows, `%APPDATA%\npm\backlog.cmd`) before installing anything. If it cannot run,
+report the limitation and leave Backlog files untouched.
 
 ## Conventions
 
-- Domain agents live in `.claude/agents/`. Delegate work by domain and pass the agent its
-  charter.
+- Use domain agents for bounded work that benefits from delegation. Keep small changes local.
+  Give each agent its scope, owned files and relevant charter; concurrent agents must preserve
+  one another's edits. The coordinating agent owns integration and verification.
 - `Directory.Build.props` sets nullable, implicit usings and `TreatWarningsAsErrors`.
 - Build and test with `dotnet build` and `dotnet test` from the repository root.
+- CI runs Windows Release restore/build/test on pushes and pull requests, with SDK analyzers
+  and direct/transitive NuGet auditing enabled; warnings fail the gate. Migration integrity
+  uses `scripts/Verify-Migrations.ps1`. For a new migration, append its SHA-256 to
+  `src/Winnow.Data/Migrations/hashes.json`: UTF-8 text without BOM, CRLF normalized to LF,
+  all other whitespace retained. Never replace an existing entry. Verify with
+  `./scripts/Verify-Migrations.ps1 -BaselineRef HEAD`; mutation tests are in
+  `scripts/Test-MigrationHashes.ps1`.
+- Windows CI prints completed tests and retains TRX plus hang diagnostics. A five-minute
+  test inactivity timeout captures a mini dump so a stalled host can be investigated.
+- A separate Ubuntu CI job runs `tests/Winnow.Monitor.Linux.Tests` against real native
+  processes and a synthetic Proton environment. Those tests explicitly skip on non-Linux hosts.
 - Run with `dotnet run --project src/Winnow.App`. `-- --seed-sample` seeds demo data.
 - **For any run where you might click something, pass `-- --data-dir <path>`** to redirect the
   database, sidecars, covers, themes and WebView2 profile to a throwaway directory. Otherwise
   clicks write to the real library. An unusable path is refused at startup with exit code 2;
   it never falls back silently. Setting `%LOCALAPPDATA%` does not work, because
   `Environment.GetFolderPath` uses the Windows shell API and ignores it.
+- A startup failure — migrations, hosted services, framework initialization — is caught,
+  logged and shown to the user (on the console when there is one, otherwise a message box),
+  and leaves exit code 3, distinct from the `--data-dir` refusal's 2.
 - If the app is running it holds a lock on the output assemblies. Build to a scratch path
   instead: `dotnet test -p:BaseOutputPath=C:\Temp\winnow-verify\`.
 - Commit at milestone boundaries. The database lives at `%LOCALAPPDATA%\Winnow\winnow.db`.

@@ -17,6 +17,12 @@
                                TASK-82, which is to state one in the design
                                system rather than in the file that needed it.
           .consent-*           the consent window's own three pieces.
+          Window.notes,        the patch-notes window, its strip and its
+          DockPanel.notes,       failure line. Same assembly-boundary seam
+          Border.notes-bar,      as the consent window.
+          .notes-problem
+          .actions             the actions menu worn by the library grid's
+                               context menu and the details modal's More menu.
 
         ══ Why every reference here is {DynamicResource} ══
         This sheet is a StyleInclude inside Application.Styles, and it is loaded
@@ -122,10 +128,15 @@
 
     <!-- ══ Prose ══════════════════════════════════════════════════════════════
          Paragraph body. 12/18 rather than §3's 13/18 default, capped at 720px by
-         whatever lays it out. That pair is the provisional answer for a reading
-         measure the design system does not yet own (TASK-82); it is recorded
-         here so the next prose surface does not invent a second one. TextDim
-         keeps a paragraph part of the room.
+         whatever lays it out. The design system now owns a reading measure
+         (§3, the ProseMeasure token in tokens.axaml), but .para has not been
+         swept onto it yet: there are around 100 .para sites across the
+         settings, appearance, account-stats, merge and consent surfaces, and
+         applying a maximum plus left alignment to all of them is a sweep
+         TASK-82 still owns. The Stores panel's 720px cap is a card width
+         holding controls and rows rather than a prose measure, so the rule
+         does not simply overwrite it. TextDim keeps a paragraph part of the
+         room.
 
          `:is(TextBlock)` rather than `TextBlock` for tokens.axaml's reason: an
          Avalonia type selector matches the exact type, so a bare selector
@@ -294,6 +305,26 @@
          too tall for the screen scrolls UNDER it — a consent window whose
          buttons can be scrolled out of sight is a consent window with no way
          out. -->
+    <!-- The patch-notes window — a separate top-level window, not an overlay.
+         Appearance travels by class name only, because Winnow.Auth.WebView
+         references Avalonia and Winnow.Core and nothing else — the same seam
+         the consent window uses. -->
+    <Style Selector="Window.notes">
+        <Setter Property="Background" Value="{DynamicResource Ground}"/>
+    </Style>
+    <Style Selector="DockPanel.notes">
+        <Setter Property="Background" Value="{DynamicResource Ground}"/>
+    </Style>
+    <Style Selector="Border.notes-bar">
+        <Setter Property="Background" Value="{DynamicResource Surface}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource Line}"/>
+        <Setter Property="BorderThickness" Value="0,0,0,1"/>
+        <Setter Property="Padding" Value="16,8"/>
+    </Style>
+    <Style Selector=":is(TextBlock).notes-problem">
+        <Setter Property="Foreground" Value="{DynamicResource Amber}"/>
+    </Style>
+
     <Style Selector="Border.consent-actions">
         <Setter Property="Background" Value="{DynamicResource Ground}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource Line}"/>
@@ -303,7 +334,7 @@
 
     <!-- ══ STORE CHIPS (TASK-70.6) ═══════════════════════════════════════════
          The outlined store badge that already stood in the tile's hover
-         overlay, on the back of the card, on a feed card, in the details
+         overlay, on a feed card, in the details
          header and in the list column, promoted to a shared class and drawn
          one per store. The grid is one tile per game now, so the single badge
          became a row: a game bought on Steam and on Epic wears both.
@@ -329,8 +360,8 @@
 
     <!-- The resting mark on the front of a multi-store tile. One letter,
          because at the 108px density floor a row of word-chips is wider than
-         the tile; the words arrive on hover, on the back face and in the
-         modal, so nothing the grid encodes is available only as a glyph (§8).
+         the tile; the words arrive on hover and in the modal, so nothing the
+         grid encodes is available only as a glyph (§8).
          Drawn on a TileChipGround field so it stays legible over any cover,
          and not drawn at all on a single-store tile, which is every tile in
          a library nothing has been linked in. -->
@@ -378,6 +409,68 @@
     </Style>
     <Style Selector="Button.ctl.on Path">
         <Setter Property="Fill" Value="{DynamicResource Volt}"/>
+    </Style>
+
+    <!-- ══ The .actions menu ═══════════════════════════════════════════════
+         The library grid's context menu and the details modal's More menu,
+         both drawn as a small card of choices on SurfaceRaised with a Line
+         edge. Written for the context menu and promoted here the moment the
+         modal became its second surface.
+
+         Two roots, one set of setters. A ContextMenu paints its own template
+         from its own Background and BorderBrush; a MenuFlyout paints through
+         a MenuFlyoutPresenter that takes the class from
+         FlyoutPresenterClasses. Both roots are named in every selector so
+         the grid and the modal cannot drift apart under one class name.
+
+         A popup is its own visual root with no adorner layer, so the global
+         2px Volt ring does not render inside one (§10.7, §12.3). The menu
+         draws its own mark instead — one step of fill above the menu's own
+         ground (SurfaceHigh) plus the 2px Volt edge, on a border whose
+         thickness never changes so the row does not reflow as it lights up.
+
+         The mark answers two pseudo-classes, not one: :selected AND :focus.
+         Avalonia raises :selected for the pointer and for the arrow walk,
+         but a menu opened from a button puts focus on its first row without
+         selecting it. :selected alone leaves unmarked the one row a keyboard
+         user meets first. Measured, not assumed
+         (docs/spikes/details-action-band-menu.md). -->
+    <Style Selector="ContextMenu.actions, MenuFlyoutPresenter.actions">
+        <Setter Property="Background" Value="{DynamicResource SurfaceRaised}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource Line}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="{DynamicResource RadiusControl}"/>
+        <Setter Property="Padding" Value="4"/>
+        <Setter Property="MinWidth" Value="0"/>
+    </Style>
+    <Style Selector="ContextMenu.actions MenuItem, MenuFlyoutPresenter.actions MenuItem">
+        <Setter Property="FontFamily" Value="{DynamicResource BodyFont}"/>
+        <Setter Property="FontSize" Value="{DynamicResource BodySize}"/>
+        <Setter Property="Foreground" Value="{DynamicResource Text}"/>
+        <Setter Property="Padding" Value="10,7"/>
+        <Setter Property="Cursor" Value="Hand"/>
+    </Style>
+    <Style Selector="ContextMenu.actions MenuItem /template/ Border#PART_LayoutRoot,
+                     MenuFlyoutPresenter.actions MenuItem /template/ Border#PART_LayoutRoot">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="{DynamicResource SelectionEdge}"/>
+        <Setter Property="CornerRadius" Value="{DynamicResource RadiusControl}"/>
+    </Style>
+    <Style Selector="ContextMenu.actions MenuItem:selected /template/ Border#PART_LayoutRoot,
+                     ContextMenu.actions MenuItem:focus /template/ Border#PART_LayoutRoot,
+                     MenuFlyoutPresenter.actions MenuItem:selected /template/ Border#PART_LayoutRoot,
+                     MenuFlyoutPresenter.actions MenuItem:focus /template/ Border#PART_LayoutRoot">
+        <!-- SurfaceHigh: one step above the menu's own SurfaceRaised
+             ground. SurfaceRaised on SurfaceRaised is no step at all. -->
+        <Setter Property="Background" Value="{DynamicResource SurfaceHigh}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource Volt}"/>
+    </Style>
+    <Style Selector="ContextMenu.actions MenuItem:selected /template/ ContentPresenter#PART_HeaderPresenter,
+                     ContextMenu.actions MenuItem:focus /template/ ContentPresenter#PART_HeaderPresenter,
+                     MenuFlyoutPresenter.actions MenuItem:selected /template/ ContentPresenter#PART_HeaderPresenter,
+                     MenuFlyoutPresenter.actions MenuItem:focus /template/ ContentPresenter#PART_HeaderPresenter">
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource Text}"/>
     </Style>
 
     <!-- Sort menu (§4's `sort ▾`). Flyout content lives in its own popup

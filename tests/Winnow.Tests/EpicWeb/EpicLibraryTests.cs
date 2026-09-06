@@ -1,6 +1,7 @@
 using System.Net;
 using Winnow.Core.Domain;
 using Winnow.Core.Ingest;
+using Winnow.App.Services;
 using Winnow.Ingest.Epic;
 using Winnow.Ingest.Epic.Web;
 using Winnow.Ingest.Epic.Web.Model;
@@ -211,6 +212,28 @@ public sealed class EpicLibraryTests
         Assert.True(second.FromCache);
         Assert.Equal(3, second.Items.Count);
         Assert.Equal(afterFirst, host.Handler.CountFor(EpicEndpoint.LibraryItems));
+    }
+
+    [Fact]
+    public async Task A_fresh_disk_cache_survives_a_client_restart_without_refetching()
+    {
+        using var db = new TempDatabase();
+        var cache = new SqliteEpicLibraryCache(db.Factory);
+
+        using (var first = new EpicWebTestHost(EpicWebTestHost.Healthy(), libraryCache: cache))
+        {
+            await first.SignInAsync();
+            Assert.False((await first.Client.GetOwnedLibraryAsync()).FromCache);
+            Assert.Equal(2, first.Handler.CountFor(EpicEndpoint.LibraryItems));
+        }
+
+        using var restarted = new EpicWebTestHost(EpicWebTestHost.Healthy(), libraryCache: cache);
+        var library = await restarted.Client.GetOwnedLibraryAsync();
+
+        Assert.True(library.Succeeded);
+        Assert.True(library.FromCache);
+        Assert.Equal(3, library.Items.Count);
+        Assert.Equal(0, restarted.Handler.CountFor(EpicEndpoint.LibraryItems));
     }
 
     [Fact]

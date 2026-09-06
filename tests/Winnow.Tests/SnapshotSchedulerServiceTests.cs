@@ -28,7 +28,8 @@ public sealed class SnapshotSchedulerServiceTests
         TimeProvider time,
         TimeSpan? interval = null,
         bool runOnStartup = false,
-        bool enabled = true)
+        bool enabled = true,
+        Func<CancellationToken, Task>? refresh = null)
         => new(
             sync,
             Options.Create(new SnapshotSchedulerOptions
@@ -38,7 +39,52 @@ public sealed class SnapshotSchedulerServiceTests
                 Enabled = enabled,
             }),
             NullLogger<SnapshotSchedulerService>.Instance,
-            time);
+            time,
+            refresh);
+
+    [Fact]
+    public async Task Successful_scan_refreshes_even_when_history_counters_are_zero()
+    {
+        var clock = new SchedulerClock();
+        var refreshed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var sync = new FakeLocalLibrarySync((_, _) => Task.FromResult(
+            new LibrarySyncReport(1, new Winnow.Resolve.ResolveResult(1, 0, 0, 0), TimeSpan.Zero)));
+        using var service = Scheduler(sync, clock, runOnStartup: true, refresh: _ =>
+        {
+            refreshed.SetResult();
+            return Task.CompletedTask;
+        });
+        await service.StartAsync(CancellationToken.None);
+        await refreshed.Task.WaitAsync(FailureBound);
+        Assert.Equal(1, sync.Calls);
+        await service.StopAsync(CancellationToken.None).WaitAsync(FailureBound);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Failed_or_cancelled_scan_does_not_refresh(bool cancelled)
+    {
+        var clock = new SchedulerClock();
+        var refreshes = 0;
+        var sync = new FakeLocalLibrarySync(async (_, ct) =>
+        {
+            if (cancelled)
+                await Task.Delay(Timeout.Infinite, ct);
+            throw new IOException("Scan failed");
+        });
+        using var service = Scheduler(sync, clock, runOnStartup: true, refresh: _ =>
+        {
+            Interlocked.Increment(ref refreshes);
+            return Task.CompletedTask;
+        });
+        await service.StartAsync(CancellationToken.None);
+        await sync.NextStartAsync();
+        if (!cancelled)
+            await sync.NextCompletionAsync();
+        await service.StopAsync(CancellationToken.None).WaitAsync(FailureBound);
+        Assert.Equal(0, refreshes);
+    }
 
     /// <summary>
     /// Point 3. Program syncs once, synchronously, before the window opens; a

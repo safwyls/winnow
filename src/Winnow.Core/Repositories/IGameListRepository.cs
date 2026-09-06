@@ -7,6 +7,11 @@ namespace Winnow.Core.Repositories;
 /// The <c>lists</c> and <c>list_items</c> tables. Manual lists store items with
 /// explicit ordering; live lists store a <see cref="LibraryFilter"/> and compute
 /// membership at read time. Deleting a list never deletes a game.
+///
+/// <para>Storage is per release (unchanged) and resolution is per read: a list
+/// contains a game when any release of any work in that game's live
+/// <c>same_game</c> group is a member. <c>expansion_of</c> links are excluded —
+/// an expansion is a title of its own and its membership is its own.</para>
 /// </summary>
 public interface IGameListRepository
 {
@@ -16,6 +21,9 @@ public interface IGameListRepository
     Task<GameList?> GetAsync(long id, CancellationToken ct = default);
 
     Task<IReadOnlyList<GameList>> GetAllAsync(CancellationToken ct = default);
+
+    /// <summary>All membership rows ordered by list and position, for bulk rail loading.</summary>
+    Task<IReadOnlyList<ListItem>> GetAllItemsAsync(CancellationToken ct = default);
 
     /// <summary>Renames a list and replaces its description (null clears it).</summary>
     /// <returns>False when no such list exists.</returns>
@@ -46,4 +54,21 @@ public interface IGameListRepository
     /// omitted members are appended in their previous relative order.
     /// </summary>
     Task ReorderAsync(long listId, IReadOnlyList<long> releaseIdsInOrder, CancellationToken ct = default);
+
+    /// <summary>
+    /// Every list that contains this game, resolved through <c>same_game</c>
+    /// links: a list answers for the game when any release of any work in the
+    /// game's live group is a member. <c>expansion_of</c> links are excluded,
+    /// so an expansion's membership is its own.
+    /// </summary>
+    Task<IReadOnlyList<GameListMembership>> GetMembershipForGameAsync(
+        long workId, CancellationToken ct = default);
+
+    /// <summary>
+    /// The resolved work ids of every game in the list, folded so two store
+    /// entries of one linked game are one entry. Ordered by the earliest
+    /// position the game holds, which is where the user put it.
+    /// <c>same_game</c> only — an expansion is its own entry.
+    /// </summary>
+    Task<IReadOnlyList<long>> GetMemberWorkIdsAsync(long listId, CancellationToken ct = default);
 }

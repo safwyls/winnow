@@ -1,5 +1,6 @@
 using Dapper;
 using Winnow.Core.Domain;
+using Winnow.Core.Identity;
 using Winnow.Core.Queries;
 using Winnow.Core.Repositories;
 
@@ -14,16 +15,16 @@ namespace Winnow.Data.Repositories;
 /// <see cref="LibraryFilter.Apply"/> answers it over rows the caller already
 /// holds.</para>
 ///
-/// <para>Identity links are deliberately NOT resolved here. Adding a game to a
-/// list is an explicit user act on one store entry, and the user picked that
-/// entry. De-duplicating a list by resolved work would remove a row the user
-/// put there by hand. If the grid ever becomes work-grained (TASK-70.6),
-/// display may de-duplicate what it draws; the stored membership still stays
-/// exactly what was added.</para>
+/// <para>Storage is deliberately unresolved: adding a game to a list is an
+/// explicit user act on one store entry, and the user picked that entry.
+/// De-duplicating by resolved work would remove a row they put there by hand.
+/// Reads resolve, so a list answers for the game rather than for the one store
+/// row — two entries of one linked pair that are both members count as one game,
+/// and the list still stores both rows.</para>
 /// </summary>
 public sealed class GameListRepository : IGameListRepository
 {
-    private const string Columns = """
+    internal const string Columns = """
         id          AS Id,
         name        AS Name,
         description AS Description,
@@ -60,6 +61,15 @@ public sealed class GameListRepository : IGameListRepository
             $"SELECT {Columns} FROM lists ORDER BY name;",
             transaction: lease.Transaction, cancellationToken: ct));
         return rows.AsList();
+    }
+
+    public async Task<IReadOnlyList<ListItem>> GetAllItemsAsync(CancellationToken ct = default)
+    {
+        using var lease = _factory.Lease();
+        return (await lease.Connection.QueryAsync<ListItem>(new CommandDefinition("""
+            SELECT list_id AS ListId, release_id AS ReleaseId, position AS Position
+            FROM list_items ORDER BY list_id, position, release_id;
+            """, transaction: lease.Transaction, cancellationToken: ct))).AsList();
     }
 
     public async Task<bool> RenameAsync(
@@ -158,10 +168,82 @@ public sealed class GameListRepository : IGameListRepository
             new { listId, releaseId }, transaction: lease.Transaction, cancellationToken: ct));
     }
 
+    public async Task<IReadOnlyList<GameListMembership>> GetMembershipForGameAsync(
+        long workId, CancellationToken ct = default)
+    {
+        using var lease = _factory.Lease();
+
+        // Storage is per release, resolution is per read. The group is the
+        // work's live same-game primary plus every work linked under it, so a
+        // list answers for the GAME the user is looking at rather than for the
+        // one store row they happened to add. kind is same_game only: an
+        // expansion is a title of its own and its membership is its own.
+        var rows = await lease.Connection.QueryAsync<GameListMembership>(new CommandDefinition("""
+            WITH primary_work AS (
+                SELECT COALESCE(
+                    (SELECT parent_work_id
+                     FROM identity_links
+                     WHERE child_work_id = @workId
+                       AND retracted_at IS NULL
+                       AND kind = @sameGameKind),
+                    @workId) AS work_id
+            ),
+            group_works AS (
+                SELECT work_id FROM primary_work
+                UNION
+                SELECT l.child_work_id
+                FROM identity_links l
+                JOIN primary_work p ON p.work_id = l.parent_work_id
+                WHERE l.retracted_at IS NULL
+                  AND l.kind = @sameGameKind
+            )
+            SELECT DISTINCT
+                   l.id          AS ListId,
+                   l.name        AS Name,
+                   li.release_id AS ReleaseId
+            FROM list_items li
+            JOIN lists    l ON l.id = li.list_id
+            JOIN releases r ON r.id = li.release_id
+            WHERE r.work_id IN (SELECT work_id FROM group_works)
+            ORDER BY l.name, li.release_id;
+            """,
+            new { workId, sameGameKind = IdentityLinkKinds.SameGame },
+            transaction: lease.Transaction, cancellationToken: ct));
+
+        return rows.AsList();
+    }
+
+    public async Task<IReadOnlyList<long>> GetMemberWorkIdsAsync(
+        long listId, CancellationToken ct = default)
+    {
+        using var lease = _factory.Lease();
+
+        // The resolved work of each member, folded so two store entries of one
+        // linked game are one entry in the list the rail draws. Ordered by the
+        // earliest position the game holds, which is where the user put it.
+        var rows = await lease.Connection.QueryAsync<long>(new CommandDefinition("""
+            SELECT COALESCE(l.parent_work_id, r.work_id) AS resolved_work_id
+            FROM list_items li
+            JOIN releases r ON r.id = li.release_id
+            LEFT JOIN identity_links l
+                   ON l.child_work_id = r.work_id
+                  AND l.retracted_at IS NULL
+                  AND l.kind = @sameGameKind
+            WHERE li.list_id = @listId
+            GROUP BY resolved_work_id
+            ORDER BY MIN(li.position);
+            """,
+            new { listId, sameGameKind = IdentityLinkKinds.SameGame },
+            transaction: lease.Transaction, cancellationToken: ct));
+
+        return rows.AsList();
+    }
+
     public async Task ReorderAsync(
         long listId, IReadOnlyList<long> releaseIdsInOrder, CancellationToken ct = default)
     {
-        using var lease = _factory.Lease();
+        using var batch = new RepositoryWriteBatch(_factory);
+        var lease = batch.Lease;
 
         var current = (await lease.Connection.QueryAsync<long>(new CommandDefinition(
             "SELECT release_id FROM list_items WHERE list_id = @listId ORDER BY position;",
@@ -169,6 +251,7 @@ public sealed class GameListRepository : IGameListRepository
 
         if (current.Count == 0)
         {
+            batch.Commit();
             return;
         }
 
@@ -209,5 +292,7 @@ public sealed class GameListRepository : IGameListRepository
                 new { listId, releaseId = ordered[position], position },
                 transaction: lease.Transaction, cancellationToken: ct));
         }
+
+        batch.Commit();
     }
 }

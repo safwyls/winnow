@@ -48,11 +48,10 @@ public sealed record DatabaseCheck(string Path, DatabaseHealth Health, string? D
 /// question: <c>WinnowDataLocation</c> asks it before adopting a directory, and
 /// <see cref="DatabaseInitializer"/> asks it before and after changing a schema.
 ///
-/// <para>Nothing here runs on the steady-state launch path. The directory checks
-/// happen only when two data directories exist or a copy has just been staged,
-/// and the initializer's checks happen only when a migration is actually
-/// pending — so <c>quick_check</c>, which is O(database), is never a per-launch
-/// cost on a library that has nothing to decide.</para>
+/// <para><see cref="Probe"/> is the lightweight identity check used while data
+/// location chooses between directories. <see cref="Inspect(string)"/> adds
+/// <c>quick_check</c> and is reserved for a migration or copy validation, where
+/// its O(database) cost protects a write to the user's only library.</para>
 /// </summary>
 public static class SqliteDatabaseCheck
 {
@@ -96,6 +95,49 @@ public static class SqliteDatabaseCheck
         {
             using var connection = OpenExisting(databasePath);
             return Inspect(connection, databasePath);
+        }
+        catch (Exception unopenable)
+            when (unopenable is SqliteException or IOException or UnauthorizedAccessException
+                or InvalidOperationException)
+        {
+            return new DatabaseCheck(databasePath, DatabaseHealth.Unreadable, unopenable.Message);
+        }
+    }
+
+    /// <summary>
+    /// Opens a candidate and verifies the two tables that identify a Winnow
+    /// library, without scanning every page through <c>quick_check</c>. This is
+    /// sufficient to choose a data directory; <see cref="Inspect(string)"/>
+    /// remains the integrity gate before migration and after a staged copy.
+    /// </summary>
+    public static DatabaseCheck Probe(string databasePath)
+    {
+        if (!File.Exists(databasePath))
+        {
+            return new DatabaseCheck(databasePath, DatabaseHealth.Missing, "There is no file at this path.");
+        }
+
+        if (!LooksLikeDatabase(databasePath, out var notADatabase))
+        {
+            return new DatabaseCheck(databasePath, DatabaseHealth.Unreadable, notADatabase);
+        }
+
+        try
+        {
+            using var connection = OpenExisting(databasePath);
+            var tables = Tables(connection);
+            if (tables.Count == 0)
+            {
+                return new DatabaseCheck(databasePath, DatabaseHealth.Empty, "The file holds no tables.");
+            }
+
+            var missing = RequiredTables.Where(table => !tables.Contains(table)).ToList();
+            return missing.Count > 0
+                ? new DatabaseCheck(
+                    databasePath,
+                    DatabaseHealth.Incomplete,
+                    $"Missing {string.Join(", ", missing)}.")
+                : new DatabaseCheck(databasePath, DatabaseHealth.Healthy, null);
         }
         catch (Exception unopenable)
             when (unopenable is SqliteException or IOException or UnauthorizedAccessException

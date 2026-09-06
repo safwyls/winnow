@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <MSBuildWarningsAsMessages>MSB3277</MSBuildWarningsAsMessages>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Avalonia.Headless.XUnit" Version="11.3.20" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.9.0" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="4.0.0" />
+    <ProjectReference Include="../../src/Winnow.App/Winnow.App.csproj" />
+    <Compile Include="../Winnow.Tests/TempDatabase.cs" Link="Fixtures/TempDatabase.cs" />
+    <Compile Include="../Winnow.Tests/LibraryReadFixtures.cs" Link="Fixtures/LibraryReadFixtures.cs" />
+    <Compile Include="../Winnow.Tests/TileFixture.cs" Link="Fixtures/TileFixture.cs" />
+  </ItemGroup>
+</Project>

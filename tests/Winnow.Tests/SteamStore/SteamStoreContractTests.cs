@@ -15,7 +15,8 @@ namespace Winnow.Tests.SteamStore;
 /// their exact shape.</para>
 ///
 /// <para>These tests pin that shape against the bytes captured live on
-/// 2026-08-23 (tests/fixtures/steam-store/). They do not detect a change on
+/// 2026-08-23, with GetItems recaptured 2026-09-06 (tests/fixtures/steam-store/).
+/// They do not detect a change on
 /// their own — nothing can, without calling the live API — but the moment
 /// someone recaptures a fixture, every field the client relies on that Valve has
 /// moved, renamed or dropped fails here <i>loudly</i>, instead of the client
@@ -26,6 +27,25 @@ namespace Winnow.Tests.SteamStore;
 /// </summary>
 public class SteamStoreContractTests
 {
+    [Theory]
+    [InlineData(StoreFixtures.EldenRingAppId)]
+    [InlineData(StoreFixtures.DotaAppId)]
+    [InlineData(StoreFixtures.TeamFortressAppId)]
+    public async Task Client_reads_review_summary_from_the_live_captured_bytes(string appId)
+    {
+        var summary = Item(appId).GetProperty("reviews").GetProperty("summary_filtered");
+        Assert.Equal(JsonValueKind.Number, summary.GetProperty("review_count").ValueKind);
+        Assert.Equal(JsonValueKind.Number, summary.GetProperty("percent_positive").ValueKind);
+        Assert.Equal(JsonValueKind.Number, summary.GetProperty("review_score").ValueKind);
+        Assert.Equal(JsonValueKind.String, summary.GetProperty("review_score_label").ValueKind);
+        using var host = new SteamStoreTestHost(SteamStoreTestHost.CapturedResponder());
+        var reviews = (await host.Client.GetItemsAsync([appId]))[appId].Reviews;
+        Assert.Equal(summary.GetProperty("review_count").GetInt32(), reviews.ReviewCount);
+        Assert.Equal(summary.GetProperty("percent_positive").GetInt32(), reviews.PercentPositive);
+        Assert.Equal(summary.GetProperty("review_score").GetInt32(), reviews.ReviewScore);
+        Assert.Equal(summary.GetProperty("review_score_label").GetString(), reviews.Label);
+    }
+
     // ── GetItems envelope ────────────────────────────────────────────────────
 
     [Fact]

@@ -188,6 +188,13 @@ public sealed class SteamWebTestHost : IDisposable
         services.AddSingleton(Cache);
         services.AddSingleton(Settings);
 
+        // The key store's protector, swapped for a reversible stand-in so no test
+        // depends on a real Windows user profile. The host seeds the LEGACY
+        // plaintext row (what a pre-protection install had), so every test that
+        // resolves a key goes through the migration path too — the product path
+        // an upgrading install takes.
+        services.AddSingleton<ISteamApiKeyProtector>(new SteamApiKeyFixtures.ReversibleProtector());
+
         if (renewer is not null)
         {
             services.AddSingleton(renewer);

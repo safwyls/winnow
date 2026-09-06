@@ -40,7 +40,9 @@ public sealed class IgdbTestHost : IDisposable
         Action<IgdbOptions>? configure = null,
         IMetadataCache? cache = null,
         ISettingsStore? settings = null,
-        DateTimeOffset? now = null)
+        DateTimeOffset? now = null,
+        IIgdbSecretProtector? protector = null,
+        Microsoft.Extensions.Configuration.IConfiguration? configuration = null)
     {
         Handler = new FakeHttpMessageHandler(responder);
         Clock = new IgdbTestClock(now ?? new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero));
@@ -64,6 +66,21 @@ public sealed class IgdbTestHost : IDisposable
         services.AddSingleton<TimeProvider>(Clock);
         services.AddSingleton(Cache);
         services.AddSingleton(Settings);
+
+        // The secret protector, swapped for a reversible stand-in so no test
+        // depends on a real Windows user profile. The host seeds the LEGACY
+        // plaintext rows (what a pre-protection install had), so every test that
+        // resolves credentials or reuses a token goes through the migration path
+        // too — the product path an upgrading install takes. A test that wants
+        // the host-that-cannot-encrypt branch hands in a refusing protector
+        // (and supplies credentials through configuration, the supported path on
+        // such a host).
+        services.AddSingleton(protector ?? new IgdbFixtures.ReversibleProtector());
+
+        if (configuration is not null)
+        {
+            services.AddSingleton(configuration);
+        }
 
         services.AddIgdbEnrichment(options =>
         {
@@ -111,7 +128,13 @@ public sealed class IgdbTestHost : IDisposable
                 HttpStatusCode.OK, IgdbFixtures.TokenResponse("token-" + Guid.NewGuid().ToString("N"))),
             "external_games" => FakeHttpMessageHandler.Json(
                 HttpStatusCode.OK, IgdbFixtures.ExternalGames(request.Body, unknownAppIds)),
-            "games" => FakeHttpMessageHandler.Json(HttpStatusCode.OK, IgdbFixtures.Games(request.Body)),
+            // Search and the id lookup share the /games endpoint but not the
+            // query, so the responder tells them apart by the body.
+            "games" => FakeHttpMessageHandler.Json(
+                HttpStatusCode.OK,
+                IgdbFixtures.SearchedTerm(request.Body) is null
+                    ? IgdbFixtures.Games(request.Body)
+                    : IgdbFixtures.SearchGames(request.Body)),
             _ => FakeHttpMessageHandler.Json(HttpStatusCode.NotFound, "[]"),
         };
 

@@ -31,6 +31,8 @@ public sealed class EnrichmentSyncService
     private readonly IUnitOfWorkFactory _unitOfWork;
     private readonly ILogger<EnrichmentSyncService> _logger;
 
+    private readonly IProgress<EnrichmentProgress>? _progress;
+
     /// <param name="works">Work repository.</param>
     /// <param name="releases">Release repository — names move with the work.</param>
     /// <param name="igdb">The metadata backbone (§4.4).</param>
@@ -46,6 +48,12 @@ public sealed class EnrichmentSyncService
     /// session, or none at all, simply has no step 3b, and every Epic work keeps
     /// whatever name and classification its local files gave it.
     /// </param>
+    /// <param name="progress">
+    /// Optional channel to the rail's fetch status field. Defaulted to null so
+    /// every existing caller and test is unchanged, and a host that does not
+    /// register it pays nothing. The container supplies it because
+    /// <c>IProgress&lt;EnrichmentProgress&gt;</c> is registered.
+    /// </param>
     public EnrichmentSyncService(
         IWorkRepository works,
         IReleaseRepository releases,
@@ -55,8 +63,10 @@ public sealed class EnrichmentSyncService
         EnrichmentLookupPlanner lookups,
         IUnitOfWorkFactory unitOfWork,
         ILogger<EnrichmentSyncService> logger,
-        IEpicCatalogClient? epicCatalog = null)
+        IEpicCatalogClient? epicCatalog = null,
+        IProgress<EnrichmentProgress>? progress = null)
     {
+        _progress = progress;
         _works = works;
         _releases = releases;
         _igdb = igdb;
@@ -110,12 +120,18 @@ public sealed class EnrichmentSyncService
         var run = new RunState(targets);
         var sliceSize = Math.Max(1, SliceSize);
 
+        var remaining = targets.Count;
+        _progress?.Report(new EnrichmentProgress(targets.Count, remaining));
+
         try
         {
             foreach (var slice in targets.Chunk(sliceSize))
             {
                 ct.ThrowIfCancellationRequested();
                 await EnrichSliceAsync(slice, run, ct);
+
+                remaining = Math.Max(0, remaining - slice.Length);
+                _progress?.Report(new EnrichmentProgress(targets.Count, remaining));
             }
         }
         catch (OperationCanceledException)
@@ -140,6 +156,10 @@ public sealed class EnrichmentSyncService
                 run.EnrichedWorks.Count, run.Promoted,
                 Describe(run.AttemptedByProvider), Describe(run.WrittenByProvider));
             throw;
+        }
+        finally
+        {
+            _progress?.Report(new EnrichmentProgress(targets.Count, 0));
         }
 
         stopwatch.Stop();
@@ -258,11 +278,19 @@ public sealed class EnrichmentSyncService
         }
 
         var titles = new Dictionary<TargetKey, string>();
+
+        // Which service supplied each title, so the write stamps the name
+        // field with the source it actually came from (migration 0027). A
+        // title may come from IGDB, the Steam store, steamcmd.net or Epic's
+        // catalog service; the metadata columns (year, summary, cover,
+        // publisher) come from IGDB and nowhere else.
+        var titleSources = new Dictionary<TargetKey, string>();
         foreach (var (key, match) in matches)
         {
             if (!string.IsNullOrWhiteSpace(match.Name))
             {
                 titles[key] = match.Name;
+                titleSources[key] = FieldSources.Igdb;
             }
         }
 
@@ -296,6 +324,7 @@ public sealed class EnrichmentSyncService
                 if (!string.IsNullOrWhiteSpace(item.Name))
                 {
                     titles[new TargetKey(ExternalIdProviders.Steam, appId)] = item.Name;
+                    titleSources[new TargetKey(ExternalIdProviders.Steam, appId)] = FieldSources.Steam;
                 }
             }
         }
@@ -325,7 +354,7 @@ public sealed class EnrichmentSyncService
         //     — a name for a work that has none, and the storefront's own
         //     classification — but for Epic ids, which neither Steam endpoint can
         //     be asked about.
-        var epic = await ReadEpicCatalogAsync(slice, titles, ct);
+        var epic = await ReadEpicCatalogAsync(slice, titles, titleSources, ct);
         run.EpicClassified += epic.Count;
 
         // 4. steamcmd.net, last. See the class remarks for why it is last and
@@ -335,7 +364,7 @@ public sealed class EnrichmentSyncService
             .Select(pair => pair.Key)
             .ToHashSet(StringComparer.Ordinal);
 
-        var steamCmd = await ReadSteamCmdAsync(slice, titles, storeParents, ct);
+        var steamCmd = await ReadSteamCmdAsync(slice, titles, titleSources, storeParents, ct);
         run.TypesRead += steamCmd.Types.Count;
         run.ParentsRead += steamCmd.Parents.Count
                            + storeItems.Values.Count(i => i.Related.ParentAppId is not null);
@@ -359,7 +388,8 @@ public sealed class EnrichmentSyncService
 
             var key = KeyOf(target);
             var patch = BuildPatch(
-                target, key, titles, matches, games, steamCmd.Types, steamCmd.Parents, storeItems, epic);
+                target, key, titles, titleSources, matches, games,
+                steamCmd.Types, steamCmd.Parents, storeItems, epic);
             if (patch.IsEmpty)
             {
                 continue;
@@ -498,6 +528,7 @@ public sealed class EnrichmentSyncService
     private async Task<SteamCmdResult> ReadSteamCmdAsync(
         IReadOnlyList<EnrichmentTarget> targets,
         Dictionary<TargetKey, string> titles,
+        Dictionary<TargetKey, string> titleSources,
         IReadOnlySet<string> storeParents,
         CancellationToken ct)
     {
@@ -579,6 +610,7 @@ public sealed class EnrichmentSyncService
             if (needsName && !string.IsNullOrWhiteSpace(fetch.Info.Name))
             {
                 titles[KeyOf(target)] = fetch.Info.Name;
+                titleSources[KeyOf(target)] = FieldSources.Steam;
                 named.Add(target.ProviderId);
             }
         }
@@ -599,6 +631,7 @@ public sealed class EnrichmentSyncService
     private async Task<IReadOnlyDictionary<string, EpicCatalogItemInfo>> ReadEpicCatalogAsync(
         IReadOnlyList<EnrichmentTarget> targets,
         Dictionary<TargetKey, string> titles,
+        Dictionary<TargetKey, string> titleSources,
         CancellationToken ct)
     {
         if (_epicCatalog is null)
@@ -646,7 +679,10 @@ public sealed class EnrichmentSyncService
             // again — so an Epic title that came from catcache.bin cannot be
             // replaced by this, which is the "never overwrite a good local title"
             // rule holding at all three layers.
-            titles.TryAdd(KeyOf(target), item.Title!);
+            if (titles.TryAdd(KeyOf(target), item.Title!))
+            {
+                titleSources[KeyOf(target)] = FieldSources.Epic;
+            }
         }
 
         return answers;
@@ -675,6 +711,7 @@ public sealed class EnrichmentSyncService
         EnrichmentTarget target,
         TargetKey key,
         IReadOnlyDictionary<TargetKey, string> titles,
+        IReadOnlyDictionary<TargetKey, string> titleSources,
         IReadOnlyDictionary<TargetKey, IgdbExternalMatch> matches,
         IReadOnlyDictionary<long, IgdbGame> games,
         IReadOnlyDictionary<string, string> appTypes,
@@ -745,6 +782,13 @@ public sealed class EnrichmentSyncService
             IgdbGameType = game?.GameType,
             IgdbParentId = game?.ParentGameId,
             IgdbVersionParentId = game?.VersionParentId,
+
+            // Migration 0027: what the write stamps on each field it fills.
+            // The metadata columns come from IGDB and nowhere else; a title
+            // may have come from IGDB, the Steam store, steamcmd or Epic's
+            // catalog, so it carries the source the step that supplied it
+            // recorded.
+            NameSource = name is null ? null : titleSources.GetValueOrDefault(key),
         };
     }
 

@@ -1,7 +1,10 @@
 using System.Globalization;
 using Dapper;
+using Winnow.App.Services;
 using Winnow.App.ViewModels;
 using Winnow.Core.Domain;
+using Winnow.Core.Queries;
+using Winnow.Covers;
 using Winnow.Core.Identity;
 using Winnow.Core.Repositories;
 using Winnow.Data;
@@ -328,6 +331,73 @@ public sealed class MergeQueueViewModelTests
     }
 
     // ── Same game ────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// TASK-147. Operation Arrowhead is already a child of Arma 2. A soft
+    /// match against its obsolete beta therefore cannot become a depth-one
+    /// same-game link with Operation Arrowhead as the header. Expansion and
+    /// variant children are both excluded before candidate edges are grouped.
+    /// </summary>
+    [Theory]
+    [InlineData(IdentityLinkKinds.ExpansionOf)]
+    [InlineData(IdentityLinkKinds.VariantOf)]
+    public async Task A_non_same_game_child_is_not_offered_as_a_same_game_parent(string kind)
+    {
+        using var fixture = new MergeQueueFixture();
+        var arma = await fixture.CreateReleaseAsync(new SeedSide("Arma 2", 2009, "Bohemia Interactive"));
+        var arrowhead = await fixture.CreateReleaseAsync(
+            new SeedSide("Arma 2: Operation Arrowhead", 2010, "Bohemia Interactive"));
+        var beta = await fixture.CreateReleaseAsync(
+            new SeedSide("Arma 2: Operation Arrowhead Beta (Obsolete)", 2010, "Bohemia Interactive"));
+
+        await fixture.LinkAsync(arma, arrowhead, kind);
+        var candidateId = await fixture.QueueScoredPairAsync(arrowhead, beta);
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+
+        Assert.DoesNotContain(
+            queue.Sections
+                .Where(section => section.Kind is MergeSectionKind.Stores or MergeSectionKind.Editions)
+                .SelectMany(section => section.Cards),
+            card => card.IsPending
+                && card.Rows.Any(row => row.WorkId == arrowhead.WorkId));
+        Assert.Equal(MergeCandidateStatuses.Pending, await fixture.StatusOfAsync(candidateId));
+    }
+
+    /// <summary>
+    /// The queue can become stale after it loads. The repository remains the
+    /// final structural guard, but its refusal is consumed as a failed user
+    /// action: the stale card leaves, a no-change notice appears, and there is
+    /// no Undo because no act was written.
+    /// </summary>
+    [Fact]
+    public async Task A_stale_card_refusal_is_nonfatal_and_removes_the_card()
+    {
+        using var fixture = new MergeQueueFixture();
+        var (left, right) = await fixture.CreatePairAsync(Prey, Prey);
+        var candidateId = await fixture.QueueScoredPairAsync(left, right);
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+        var section = Section(queue, MergeSectionKind.Editions);
+        var card = Assert.Single(section.Cards);
+        Assert.Equal(left.WorkId, card.ParentWorkId);
+
+        var baseGame = await fixture.CreateReleaseAsync(
+            new SeedSide("Arma 2", 2009, "Bohemia Interactive"));
+        await fixture.LinkAsync(baseGame, left, IdentityLinkKinds.ExpansionOf);
+
+        await queue.SameGameCommand.ExecuteAsync(card);
+
+        Assert.Empty(section.Cards);
+        Assert.Equal(1, fixture.ActCount());
+        Assert.Equal(MergeCandidateStatuses.Pending, await fixture.StatusOfAsync(candidateId));
+        Assert.True(queue.IsDockOpen);
+        Assert.False(queue.CanUndoDock);
+        Assert.Equal(MergeCopy.DockLinkRefusedTitle, queue.DockTitle);
+        Assert.Equal(MergeCopy.DockLinkRefusedNote, queue.DockNote);
+    }
 
     [Fact]
     public async Task Same_game_writes_one_act_under_the_header_and_leaves_a_strip_in_place()
@@ -1725,6 +1795,83 @@ public sealed class MergeQueueViewModelTests
         Assert.Equal(0, card.HeaderIndex);
     }
 
+    // ── Cover-key precedence ─────────────────────────────────────────────────
+
+    /// <summary>
+    /// A work whose stored art is a <c>winnow://user-art/</c> reference draws
+    /// that art on its queue row even though the release has a Steam appid.
+    /// The other side of the pair keeps its store capsule. User-set art must
+    /// outrank the store ladder everywhere the grid honours it.
+    /// </summary>
+    [Fact]
+    public async Task User_set_art_outranks_the_store_capsule_on_a_queue_row()
+    {
+        using var fixture = new MergeQueueFixture();
+        var (left, right) = await fixture.CreatePairAsync(Prey, PreyUnknown);
+        await fixture.QueueScoredPairAsync(left, right);
+        await fixture.SetCoverUrlAsync(left, UserArtRef.Format("abc123"));
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+
+        var card = Assert.Single(Section(queue, MergeSectionKind.Editions).Cards);
+        Assert.Equal(
+            CoverKey.User("abc123"),
+            card.Rows.Single(row => row.WorkId == left.WorkId).Side.CoverKey);
+
+        Assert.Equal(
+            CoverProviders.Steam,
+            card.Rows.Single(row => row.WorkId == right.WorkId).Side.CoverKey!.Value.Provider);
+    }
+
+    /// <summary>
+    /// A live IGDB pin on the work wins over the store capsule, the same
+    /// precedence the grid uses (design-system §10.9). Without this rule the
+    /// queue would show the capsule while the grid and the modal already show
+    /// the pinned cover.
+    /// </summary>
+    [Fact]
+    public async Task A_live_igdb_pin_outranks_the_store_capsule_on_a_queue_row()
+    {
+        using var fixture = new MergeQueueFixture();
+        var (left, right) = await fixture.CreatePairAsync(Prey, PreyUnknown);
+        await fixture.QueueScoredPairAsync(left, right);
+        await fixture.SetCoverUrlAsync(
+            left, "https://images.igdb.com/igdb/image/upload/t_cover_big/co2abc.jpg");
+
+        var queue = fixture.CreateViewModel(pinnedWorkIds: [left.WorkId]);
+        await queue.LoadCommand.ExecuteAsync(null);
+
+        var card = Assert.Single(Section(queue, MergeSectionKind.Editions).Cards);
+        Assert.Equal(
+            CoverKey.Igdb("co2abc"),
+            card.Rows.Single(row => row.WorkId == left.WorkId).Side.CoverKey);
+    }
+
+    /// <summary>
+    /// The same work and the same stored IGDB cover URL, but no live pin: the
+    /// row keeps the store capsule. This pins the pin itself as the deciding
+    /// fact, not the URL — without it the test above would pass for the wrong
+    /// reason.
+    /// </summary>
+    [Fact]
+    public async Task An_unpinned_work_keeps_the_store_capsule_on_a_queue_row()
+    {
+        using var fixture = new MergeQueueFixture();
+        var (left, right) = await fixture.CreatePairAsync(Prey, PreyUnknown);
+        await fixture.QueueScoredPairAsync(left, right);
+        await fixture.SetCoverUrlAsync(
+            left, "https://images.igdb.com/igdb/image/upload/t_cover_big/co2abc.jpg");
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+
+        var card = Assert.Single(Section(queue, MergeSectionKind.Editions).Cards);
+        Assert.Equal(
+            CoverProviders.Steam,
+            card.Rows.Single(row => row.WorkId == left.WorkId).Side.CoverKey!.Value.Provider);
+    }
+
     private static MergeSectionViewModel Section(MergeQueueViewModel queue, MergeSectionKind kind)
         => queue.Sections.Single(section => section.Kind == kind);
 
@@ -1778,6 +1925,39 @@ public sealed class MergeQueueViewModelTests
             => inner.WithdrawPendingAsync(id, ct);
     }
 
+    /// <summary>
+    /// Answers <see cref="IIgdbAssignmentService.GetLivePinnedWorkIdsAsync"/>
+    /// from a canned list and refuses everything else, the way the real seam
+    /// refuses: a status or an empty answer, never an exception. The queue
+    /// only calls the one method; this stub makes that boundary explicit.
+    /// </summary>
+    private sealed class PinnedWorksOnly(IReadOnlyList<long> pinned) : IIgdbAssignmentService
+    {
+        public Task<IReadOnlySet<long>> GetLivePinnedWorkIdsAsync(CancellationToken ct = default)
+            => Task.FromResult<IReadOnlySet<long>>(pinned.ToHashSet());
+
+        public Task<IReadOnlyList<IgdbCandidate>> SearchAsync(
+            string title, CancellationToken ct = default)
+            => Task.FromResult<IReadOnlyList<IgdbCandidate>>([]);
+
+        public Task<IgdbCandidate?> GetCandidateByIdAsync(long igdbId, CancellationToken ct = default)
+            => Task.FromResult<IgdbCandidate?>(null);
+
+        public Task<IgdbAssignmentOutcome> AssignAsync(
+            long workId, long igdbId, CancellationToken ct = default)
+            => Task.FromResult(IgdbAssignmentOutcome.Failed);
+
+        public Task<IgdbClaimingGame?> FindClaimingGameAsync(
+            long igdbId, CancellationToken ct = default)
+            => Task.FromResult<IgdbClaimingGame?>(null);
+
+        public Task<bool> ClearAsync(long workId, CancellationToken ct = default)
+            => Task.FromResult(false);
+
+        public Task<WorkIgdbPin?> GetPinAsync(long workId, CancellationToken ct = default)
+            => Task.FromResult<WorkIgdbPin?>(null);
+    }
+
     private sealed class MergeQueueFixture : IDisposable
     {
         /// <summary>The fake clock's now. Every idle span and staleness test is measured from here.</summary>
@@ -1828,10 +2008,15 @@ public sealed class MergeQueueViewModelTests
 
         /// <summary>
         /// No cover cache, the fake clock, and an inline poster so the dock
-        /// timer's callback runs on the test thread.
+        /// timer's callback runs on the test thread. Passing
+        /// <paramref name="pinnedWorkIds"/> registers the IGDB assignment
+        /// seam with those ids pinned; passing none leaves the queue on the
+        /// store-first cover ladder.
         /// </summary>
         public MergeQueueViewModel CreateViewModel(
-            bool withResolveState = true, IMergeCandidateRepository? candidates = null)
+            bool withResolveState = true,
+            IMergeCandidateRepository? candidates = null,
+            IReadOnlyList<long>? pinnedWorkIds = null)
             => new(
                 candidates ?? Candidates,
                 Releases,
@@ -1843,8 +2028,18 @@ public sealed class MergeQueueViewModelTests
                 new LibraryQueryRepository(_db.Factory),
                 covers: null,
                 resolveState: withResolveState ? ResolveState : null,
+                igdb: pinnedWorkIds is null ? null : new PinnedWorksOnly(pinnedWorkIds),
                 clock: Clock,
                 post: action => action());
+
+        /// <summary>
+        /// Sets one work's stored art reference through the real enrichment
+        /// write path. A <c>winnow://user-art/</c> reference and an IGDB
+        /// cover URL both land here, which is why the cover-key tests can
+        /// seed either value with the same helper.
+        /// </summary>
+        public Task SetCoverUrlAsync(SeededRelease release, string coverUrl)
+            => Works.ApplyEnrichmentAsync(new WorkEnrichment(release.WorkId, CoverUrl: coverUrl));
 
         public MatchSubject Subject(SeededRelease release)
             => new()

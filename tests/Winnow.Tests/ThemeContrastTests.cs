@@ -1012,6 +1012,243 @@ public class ThemeContrastTests
         }
     }
 
+    /// <summary>
+    /// Every text ink on the art-backed field clears AA over every cover the
+    /// art could be, at every slider position. The art is walked as 256 greys,
+    /// which is exhaustive: each composite channel is monotone in the art's own
+    /// channel and luminance is monotone in the channels, so black and white
+    /// bracket the composite and the greys hit every luminance between them.
+    /// The inks are the four these two surfaces set text in; <c>Flare</c> is
+    /// excluded because it is a dot rather than a word. The
+    /// <c>SurfaceRaisedFaint</c> case covers a hovered update row, the one
+    /// veil that sits between the ink and the field rather than replacing it.
+    /// Sums are re-implemented here rather than borrowed from
+    /// <see cref="Colorimetry"/>.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(ThemeIds))]
+    public void Art_behind_the_back_face_and_the_modal_keeps_text_over_AA(string id)
+    {
+        var theme = WinnowThemes.ById(id);
+
+        foreach (var transparency in Range())
+        {
+            var t = theme.Tokens(transparency);
+            Color[] inks = [t["Text"], t["TextDim"], t["Azure"], t["Amber"]];
+
+            for (var grey = 0; grey <= 255; grey++)
+            {
+                var art = Color.FromRgb((byte)grey, (byte)grey, (byte)grey);
+                var field = Over(t["ArtVeil"], art);
+                var hovered = Over(t["SurfaceRaisedFaint"], field);
+
+                foreach (var ink in inks)
+                {
+                    Assert.True(
+                        Contrast(ink, field) >= 4.5,
+                        $"{id}: an ink measures {Contrast(ink, field):0.00}:1 on art-backed Surface over grey {grey} at {transparency:P0}");
+                    Assert.True(
+                        Contrast(ink, hovered) >= 4.5,
+                        $"{id}: an ink measures {Contrast(ink, hovered):0.00}:1 on a hovered art-backed row over grey {grey} at {transparency:P0}");
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// A section heading in the detail modal is set in <c>TextDim</c>, the
+    /// quietest ink that clears AA (4.5:1) over the brightest cover the
+    /// art-backed card (§5.5) can carry, in every theme. <c>TextFaint</c>
+    /// does not clear it — and does not clear it on the flat card either, so
+    /// the exclusion is by measurement rather than by preference. The test
+    /// holds the choice so it cannot drift into the quieter ink later.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(ThemeIds))]
+    public void The_section_heading_takes_the_quietest_ink_that_still_clears_AA(string id)
+    {
+        var theme = WinnowThemes.ById(id);
+        var t = theme.Tokens(transparency: 0);
+
+        // White is the worst cover for a light ink, and the exhaustive
+        // 256-grey walk that proves the bracket is the test directly above,
+        // so this one takes the endpoint.
+        var field = Over(t["ArtVeil"], White);
+
+        Assert.True(
+            Contrast(t["TextDim"], field) >= 4.5,
+            $"{id}: a section heading measures {Contrast(t["TextDim"], field):0.00}:1 over the brightest cover");
+
+        // 11px SemiBold is not WCAG large text (that starts at 14pt bold), so
+        // the 4.5:1 bar applies rather than 3:1. TextFaint is excluded by
+        // measurement, not by preference — it fails with no art behind the
+        // card at all, let alone over a bright cover.
+        Assert.True(
+            Contrast(t["TextFaint"], t["Surface"]) < 4.5,
+            $"{id}: TextFaint measures {Contrast(t["TextFaint"], t["Surface"]):0.00}:1 on the flat card");
+        Assert.True(
+            Contrast(t["TextFaint"], field) < 4.5,
+            $"{id}: TextFaint measures {Contrast(t["TextFaint"], field):0.00}:1 over the brightest cover");
+    }
+
+    /// <summary>
+    /// The modal's body prose takes <c>Text</c>, §2's primary ink, where its
+    /// section headings take <c>TextDim</c>. <c>Text</c> is already one of
+    /// the four inks the exhaustive test above walks over all 256 greys at
+    /// every slider position, so this case takes the white endpoint and adds
+    /// what that test does not say: <c>Text</c> is strictly brighter than
+    /// <c>TextDim</c> on both the flat card and the art-backed one, so
+    /// brightening a run from the label ink to the prose ink cannot lose a
+    /// figure the label ink already held. The test holds the choice so the
+    /// prose ink cannot drift back down. At slider zero, Winnow / Nightshift
+    /// / Tungsten / Box art: <c>Text</c> is 13.11 / 16.44 / 14.76 / 13.42
+    /// on the flat card and 10.34 / 13.75 / 11.90 / 10.61 over the brightest
+    /// cover; <c>TextDim</c> is 5.88 / 6.82 / 6.44 / 6.10 and 4.63 / 5.71
+    /// / 5.19 / 4.83.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(ThemeIds))]
+    public void The_modal_prose_takes_the_primary_ink(string id)
+    {
+        var theme = WinnowThemes.ById(id);
+        var t = theme.Tokens(transparency: 0);
+
+        var field = Over(t["ArtVeil"], White);
+
+        Assert.True(
+            Contrast(t["Text"], t["Surface"]) >= 4.5,
+            $"{id}: modal prose measures {Contrast(t["Text"], t["Surface"]):0.00}:1 on the flat card");
+        Assert.True(
+            Contrast(t["Text"], field) >= 4.5,
+            $"{id}: modal prose measures {Contrast(t["Text"], field):0.00}:1 over the brightest cover");
+
+        // Brightening cannot lose a figure the label ink already held.
+        Assert.True(
+            Contrast(t["Text"], t["Surface"]) > Contrast(t["TextDim"], t["Surface"]),
+            $"{id}: Text is not brighter than TextDim on the flat card");
+        Assert.True(
+            Contrast(t["Text"], field) > Contrast(t["TextDim"], field),
+            $"{id}: Text is not brighter than TextDim over the brightest cover");
+    }
+
+    /// <summary>
+    /// The reception line introduces no ink. Its value takes <c>Text</c> and
+    /// its source attribution and count take <c>TextDim</c>, the two inks the
+    /// modal already holds and the two the tests above already walk. The mock
+    /// this line was built from sets the source attribution in the faint ink;
+    /// that is what this test refuses. At slider zero, Winnow / Nightshift /
+    /// Tungsten / Box art: <c>TextFaint</c> measures 3.63 / 3.60 / 3.31 / 3.28
+    /// on the flat card and 2.86 / 3.01 / 2.67 / 2.60 over the brightest cover
+    /// the art-backed card of §5.5 can carry — under AA in every theme before
+    /// the art is involved at all. The attribution is 10px SemiBold and the
+    /// count 10px, neither of which is WCAG large text, so the 4.5:1 bar
+    /// applies and the 3:1 allowance does not.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(ThemeIds))]
+    public void The_reception_line_introduces_no_ink_below_the_floor(string id)
+    {
+        var theme = WinnowThemes.ById(id);
+        var t = theme.Tokens(transparency: 0);
+        var field = Over(t["ArtVeil"], White);
+
+        foreach (var ink in new[] { t["Text"], t["TextDim"] })
+        {
+            Assert.True(
+                Contrast(ink, t["Surface"]) >= 4.5,
+                $"{id}: a reception run measures {Contrast(ink, t["Surface"]):0.00}:1 on the flat card");
+            Assert.True(
+                Contrast(ink, field) >= 4.5,
+                $"{id}: a reception run measures {Contrast(ink, field):0.00}:1 over the brightest cover");
+        }
+
+        Assert.True(
+            Contrast(t["TextFaint"], field) < 4.5,
+            $"{id}: TextFaint measures {Contrast(t["TextFaint"], field):0.00}:1 over the brightest cover");
+    }
+
+    /// <summary>
+    /// A game with no art draws no image, so the veil composites onto the
+    /// opaque <c>Surface</c> the modal already paints. The
+    /// veil IS <c>Surface</c>, so that composite is <c>Surface</c> bit-for-bit
+    /// and the flat treatment is recovered exactly — no tone step, and nothing
+    /// in the tree moves, because the art and the veil are siblings in a Panel
+    /// and take no space of their own. Asserted at every slider position.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(ThemeIds))]
+    public void A_game_with_no_art_gets_the_flat_surface_back(string id)
+    {
+        var theme = WinnowThemes.ById(id);
+
+        foreach (var transparency in Range())
+        {
+            var t = theme.Tokens(transparency);
+            Assert.Equal(t["Surface"], Over(t["ArtVeil"], t["Surface"]));
+        }
+    }
+
+    /// <summary>
+    /// The veil is <c>WinnowTheme.ArtVeilAlpha</c> on the theme's own
+    /// <c>Surface</c> and nothing else. The dim level is one number, and one
+    /// step less — 0.91 — puts Winnow's <c>TextDim</c> at 4.49:1 over a white
+    /// cover, which is why the value is where it is.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(ThemeIds))]
+    public void The_art_veil_is_the_theme_surface_at_the_stated_alpha(string id)
+    {
+        var theme = WinnowThemes.ById(id);
+        var veil = theme.Tokens(transparency: 0)["ArtVeil"];
+
+        Assert.Equal(theme.Surface.R, veil.R);
+        Assert.Equal(theme.Surface.G, veil.G);
+        Assert.Equal(theme.Surface.B, veil.B);
+        Assert.Equal((byte)Math.Round(WinnowTheme.ArtVeilAlpha * 255), veil.A);
+    }
+
+    /// <summary>
+    /// The lightbox buttons keep their stated neutral inks and alpha in every
+    /// theme. They are global mutable brush tokens so theme changes can repaint
+    /// them without runtime bindings in a deferred view resource dictionary.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(ThemeIds))]
+    public void Lightbox_controls_follow_the_theme_at_their_stated_opacity(string id)
+    {
+        var theme = WinnowThemes.ById(id);
+        var tokens = theme.Tokens(transparency: 0);
+
+        var resting = tokens["LightboxControlFill"];
+        Assert.Equal(theme.Surface.R, resting.R);
+        Assert.Equal(theme.Surface.G, resting.G);
+        Assert.Equal(theme.Surface.B, resting.B);
+        Assert.Equal((byte)Math.Round(0.70 * 255), resting.A);
+
+        var active = tokens["LightboxControlActiveFill"];
+        Assert.Equal(theme.SurfaceRaised.R, active.R);
+        Assert.Equal(theme.SurfaceRaised.G, active.G);
+        Assert.Equal(theme.SurfaceRaised.B, active.B);
+        Assert.Equal((byte)Math.Round(0.85 * 255), active.A);
+    }
+
+    /// <summary>
+    /// 0.92 is the round step past the boundary, not a preference. At 0.91
+    /// the default theme's metadata ink measures 4.49:1 over a white cover,
+    /// under AA, so a looser veil would leave the modal unreadable on a pale
+    /// capsule.
+    /// </summary>
+    [Fact]
+    public void One_step_less_veil_would_drop_the_default_theme_under_AA()
+    {
+        var theme = WinnowThemes.ById("winnow");
+        var t = theme.Tokens(transparency: 0);
+        var looser = Color.FromArgb((byte)Math.Round(0.91 * 255), theme.Surface.R, theme.Surface.G, theme.Surface.B);
+
+        Assert.True(Contrast(t["TextDim"], Over(looser, White)) < 4.5);
+        Assert.True(Contrast(t["TextDim"], Over(t["ArtVeil"], White)) >= 4.5);
+    }
+
     /// <summary>The window's ground as it composites over a backdrop.</summary>
     private static Color Shell(
         WinnowTheme theme, double transparency, Color backdrop, WinnowLayout layout = WinnowLayouts.Default)

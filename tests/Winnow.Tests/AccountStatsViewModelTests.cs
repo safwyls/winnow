@@ -443,7 +443,8 @@ public sealed class AccountStatsViewModelTests
             DetachedStores.Create(),
             DetachedAppearance.Create(),
             DetachedFeed.Create(),
-            stats);
+            stats,
+            new LibrarySettingsViewModel());
 }
 
 /// <summary>

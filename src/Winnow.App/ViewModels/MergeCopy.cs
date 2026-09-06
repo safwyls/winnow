@@ -115,21 +115,21 @@ public static class MergeCopy
 
     /// <summary>Section blurb.</summary>
     public const string SectionStoresBlurb =
-        "The same game bought more than once. Playtime rolls up under whichever copy you keep.";
+        "The same game bought more than once.";
 
     /// <summary>Section title.</summary>
     public const string SectionEditions = "EDITIONS";
 
     /// <summary>Section blurb.</summary>
     public const string SectionEditionsBlurb =
-        "Remasters and re-releases. Winnow cannot tell a re-release from a sequel on its own — these are yours to call.";
+        "Remasters and re-releases — yours to call.";
 
     /// <summary>Section title.</summary>
     public const string SectionExpansions = "EXPANSIONS";
 
     /// <summary>Section blurb.</summary>
     public const string SectionExpansionsBlurb =
-        "Content that needs the base game to run. Nesting these keeps one row per game in the library.";
+        "Content that needs the base game to run.";
 
     /// <summary>Section title.</summary>
     public const string SectionParts = "PARTS";
@@ -344,6 +344,12 @@ public static class MergeCopy
 
     /// <summary>Dock note after Different games.</summary>
     public const string DockStaySeparate = "They stay separate in your library. Winnow will not ask again.";
+
+    /// <summary>Dock title when a stale proposal reaches a repository safeguard.</summary>
+    public const string DockLinkRefusedTitle = "Couldn't link those.";
+
+    /// <summary>Dock note after a refused link. There is no act and therefore no Undo.</summary>
+    public const string DockLinkRefusedNote = "That proposal was out of date · nothing changed.";
 
     /// <summary>The dock's one control.</summary>
     public const string UndoButton = "Undo";

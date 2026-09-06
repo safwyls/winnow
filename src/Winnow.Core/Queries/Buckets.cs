@@ -37,15 +37,76 @@ public static class LibraryBuckets
 /// <param name="StaleWindowMonths">Months after last play before an update marks Stale-but-patched.</param>
 /// <param name="UpdateCorrelationWindowDays">Max days between a build push and announcement to count as one update. Default 7.</param>
 /// <param name="ShowNonGameEntries">Whether to include non-game entries (<see cref="NonGameEntries"/>). Default false.</param>
+/// <param name="ShowExplicitContent">Whether to include works whose stored maturity evidence reaches the adults-only tier: <c>esrb:ao</c>, <c>acb:x18</c> or the <c>adult_only_sexual_content</c> descriptor (<see cref="MaturityRules"/>). Default false (hidden). Broad 18+ board ratings are stored evidence, not a hiding trigger. A work with no evidence is unaffected.</param>
 public sealed record BucketThresholds(
     long BouncedFloorMinutes,
     long RetiredFloorMinutes,
     int StaleWindowMonths,
     int UpdateCorrelationWindowDays = 7,
-    bool ShowNonGameEntries = false)
+    bool ShowNonGameEntries = false,
+    bool ShowExplicitContent = false,
+    MaturityTier MaturityCap = MaturityTier.AdultsOnly)
 {
+    private long _bouncedFloorMinutes = Positive(BouncedFloorMinutes, nameof(BouncedFloorMinutes));
+    private long _retiredFloorMinutes = Retired(RetiredFloorMinutes, BouncedFloorMinutes);
+    private int _staleWindowMonths = PositiveWindow(StaleWindowMonths, nameof(StaleWindowMonths));
+    private int _updateCorrelationWindowDays = PositiveWindow(UpdateCorrelationWindowDays, nameof(UpdateCorrelationWindowDays));
+
+    public long BouncedFloorMinutes
+    {
+        get => _bouncedFloorMinutes;
+        init
+        {
+            Positive(value, nameof(BouncedFloorMinutes));
+            if (value >= _retiredFloorMinutes)
+                throw new ArgumentOutOfRangeException(nameof(BouncedFloorMinutes), "The bounced floor must be below the retired floor.");
+            _bouncedFloorMinutes = value;
+        }
+    }
+
+    public long RetiredFloorMinutes
+    {
+        get => _retiredFloorMinutes;
+        init => _retiredFloorMinutes = Retired(value, _bouncedFloorMinutes);
+    }
+
+    public int StaleWindowMonths
+    {
+        get => _staleWindowMonths;
+        init => _staleWindowMonths = PositiveWindow(value, nameof(StaleWindowMonths));
+    }
+
+    public int UpdateCorrelationWindowDays
+    {
+        get => _updateCorrelationWindowDays;
+        init => _updateCorrelationWindowDays = PositiveWindow(value, nameof(UpdateCorrelationWindowDays));
+    }
+
+    private static long Positive(long value, string name)
+        => value > 0 ? value : throw new ArgumentOutOfRangeException(name, "The threshold must be positive.");
+
+    private static int PositiveWindow(int value, string name)
+        => value > 0 ? value : throw new ArgumentOutOfRangeException(name, "The window must be positive.");
+
+    private static long Retired(long value, long bounced)
+    {
+        Positive(value, nameof(RetiredFloorMinutes));
+        if (value <= bounced)
+            throw new ArgumentOutOfRangeException(nameof(RetiredFloorMinutes), "The retired floor must exceed the bounced floor.");
+        return value;
+    }
+
     /// <summary>Settings key for the "show non-game entries" preference.</summary>
     public const string ShowNonGameEntriesSettingKey = "library.show_non_game_entries";
+
+    /// <summary>Settings key for the "show explicit content" preference.</summary>
+    public const string ShowExplicitContentSettingKey = "library.show_explicit_content";
+
+    public const string MaturityCapSettingKey = "library.maturity_cap";
+
+    public const MaturityTier NoMaturityCap = MaturityTier.AdultsOnly;
+
+    public const MaturityTier AdultContentCeiling = MaturityTier.Restricted18;
 
     /// <summary>Conservative defaults; per-genre configuration comes later (§6.1).</summary>
     public static BucketThresholds Default { get; } = new(
@@ -53,7 +114,27 @@ public sealed record BucketThresholds(
         RetiredFloorMinutes: 6_000,
         StaleWindowMonths: 6,
         UpdateCorrelationWindowDays: 7,
-        ShowNonGameEntries: false);
+        ShowNonGameEntries: false,
+        ShowExplicitContent: false,
+        MaturityCap: NoMaturityCap);
+
+    public static MaturityTier EffectiveCap(MaturityTier cap, bool showExplicitContent)
+        => showExplicitContent || cap < AdultContentCeiling ? cap : AdultContentCeiling;
+
+    public static bool IsCapClampedByAdultSetting(MaturityTier cap, bool showExplicitContent)
+        => !showExplicitContent && cap > AdultContentCeiling;
+
+    public MaturityTier EffectiveMaturityCap => EffectiveCap(MaturityCap, ShowExplicitContent);
+
+    public bool ShowsMaturity(string? ratings, string? descriptors)
+        => MaturityTiers.IsWithinCap(
+            MaturityTiers.Highest(ratings, descriptors), EffectiveMaturityCap);
+
+    public static MaturityTier ParseMaturityCap(string? stored)
+        => MaturityTiers.ParseToken(stored, NoMaturityCap);
+
+    public static string FormatMaturityCap(MaturityTier cap)
+        => MaturityTiers.Token(cap);
 
     /// <summary>Parses stored preference text. Non-<c>true</c> values default to hidden.</summary>
     public static bool ParseShowNonGameEntries(string? stored)
@@ -61,6 +142,13 @@ public sealed record BucketThresholds(
 
     /// <summary>Formats the preference for storage. Round-trips with <see cref="ParseShowNonGameEntries"/>.</summary>
     public static string FormatShowNonGameEntries(bool show) => show ? "true" : "false";
+
+    /// <summary>Parses stored preference text. Non-<c>true</c> values default to hidden (explicit content off).</summary>
+    public static bool ParseShowExplicitContent(string? stored)
+        => bool.TryParse(stored?.Trim(), out var show) && show;
+
+    /// <summary>Formats the preference for storage. Round-trips with <see cref="ParseShowExplicitContent"/>.</summary>
+    public static string FormatShowExplicitContent(bool show) => show ? "true" : "false";
 }
 
 /// <summary>
@@ -84,6 +172,7 @@ public sealed class GameGrouping
         long playtimeMinutes,
         DateTime? lastPlayedAt,
         DateTime? majorUpdateAt,
+        int unreadUpdateCount,
         int entryCount)
     {
         ResolvedWorkId = resolvedWorkId;
@@ -91,6 +180,7 @@ public sealed class GameGrouping
         PlaytimeMinutes = playtimeMinutes;
         LastPlayedAt = lastPlayedAt;
         MajorUpdateAt = majorUpdateAt;
+        UnreadUpdateCount = unreadUpdateCount;
         EntryCount = entryCount;
     }
 
@@ -122,6 +212,15 @@ public sealed class GameGrouping
     /// </summary>
     public DateTime? MajorUpdateAt { get; }
 
+    /// <summary>
+    /// How many correlated build pushes this game is behind on. The maximum
+    /// across the group's releases and never the sum: two store copies of one
+    /// game carry the same patches, and adding them would state a number no
+    /// storefront pushed. Filtered by the same acknowledgement watermark as
+    /// <see cref="MajorUpdateAt"/>, and zero whenever that is null.
+    /// </summary>
+    public int UnreadUpdateCount { get; }
+
     /// <summary>How many visible store entries this game has. One is the ordinary case.</summary>
     public int EntryCount { get; }
 
@@ -136,11 +235,17 @@ public sealed class GameGrouping
     /// those figures. There is no constructor that would let a caller pair a
     /// sum with a date it did not derive, or file a game under a bucket its
     /// own playtime does not put it in.
+    ///
+    /// <para>The update count is one more fact that must agree with the
+    /// timestamp beside it, which is why this forces it to zero when there is
+    /// no push: the two come from different columns, and a count standing on
+    /// its own would put a number on a badge that is not being drawn.</para>
     /// </summary>
     public static GameGrouping Of(
         long resolvedWorkId,
         IEnumerable<Winnow.Core.Identity.IPlayedEntry> entries,
         DateTime? majorUpdateAt,
+        int unreadUpdateCount,
         BucketThresholds thresholds)
     {
         var total = Winnow.Core.Identity.CoveragePlaytime.Across(entries);
@@ -152,6 +257,8 @@ public sealed class GameGrouping
             total.PlaytimeMinutes,
             total.LastPlayedAt,
             majorUpdateAt,
+            // No push, no count. The pair is derived here so it cannot disagree.
+            majorUpdateAt is null ? 0 : unreadUpdateCount,
             total.EntryCount);
     }
 }

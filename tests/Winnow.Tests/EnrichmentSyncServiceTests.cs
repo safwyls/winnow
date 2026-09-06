@@ -1574,6 +1574,157 @@ public sealed class EnrichmentSyncServiceTests
         Assert.Null(work.IgdbVersionParentId);
     }
 
+    // ── User-pinned IGDB mappings (TASK-89) ──────────────────────────────
+
+    /// <summary>
+    /// The acceptance criterion of TASK-89: a pinned work survives a
+    /// subsequent enrichment run. Asserts not only that the pinned mapping
+    /// and its metadata are unchanged, but that the pass never even asked
+    /// IGDB or the Steam store about that appid — the difference between a
+    /// guard that refuses a write and a target query that never produces the
+    /// work.
+    /// </summary>
+    [Fact]
+    public async Task A_pinned_work_survives_an_enrichment_pass()
+    {
+        using var fixture = new EnrichmentFixture();
+        var work = await fixture.AddProvisionalAsync("620");
+
+        fixture.Igdb.Configured = true;
+        fixture.Igdb.Matches["620"] = new IgdbExternalMatch(
+            "620", 1020, "Prey (2006)", "https://images.example/wrong.jpg", 2006, "The wrong game.");
+        fixture.Igdb.Games[1020] = new IgdbGame(
+            1020, "Prey (2006)", "https://images.example/wrong.jpg", 2006, "The wrong game.",
+            ["Shooter"], ["Action"], ["3D Realms"]);
+
+        var pinned = await fixture.Pins.PinAsync(new WorkIgdbPinAssignment
+        {
+            WorkId = work.WorkId,
+            IgdbId = 103_298,
+            Name = "Prey (2017)",
+            FirstReleaseYear = 2017,
+            Summary = "The one the user actually owns.",
+            CoverUrl = "https://images.igdb.com/igdb/image/upload/t_cover_big/co1r7f.jpg",
+            Publisher = "Bethesda Softworks",
+            IgdbGameType = "main_game",
+        });
+
+        Assert.Equal(WorkIgdbPinOutcome.Pinned, pinned);
+
+        var report = await fixture.Service.EnrichAsync();
+
+        var after = await fixture.WorkAsync(work.WorkId);
+        Assert.Equal(103_298, after.IgdbId);
+        Assert.Equal("Prey (2017)", after.Name);
+        Assert.False(after.NameIsProvisional);
+        Assert.Equal(2017, after.FirstReleaseYear);
+        Assert.Equal("The one the user actually owns.", after.Summary);
+        Assert.Equal(
+            "https://images.igdb.com/igdb/image/upload/t_cover_big/co1r7f.jpg", after.CoverUrl);
+        Assert.Equal("Bethesda Softworks", after.Publisher);
+
+        Assert.Empty(fixture.Igdb.Asked);
+        Assert.Empty(fixture.Steam.Asked);
+        Assert.Equal(0, report.Outstanding);
+    }
+
+    /// <summary>
+    /// Clearing the pin removes the guard and the work becomes a target
+    /// again. The next pass fills the empty columns with automatic metadata.
+    /// </summary>
+    [Fact]
+    public async Task Clearing_the_pin_returns_the_work_to_automatic_enrichment()
+    {
+        using var fixture = new EnrichmentFixture();
+        var work = await fixture.AddProvisionalAsync("620");
+
+        fixture.Igdb.Configured = true;
+        fixture.Igdb.Matches["620"] = new IgdbExternalMatch(
+            "620", 1020, "Portal 2", "https://images.example/portal2.jpg", 2011, "Still alive.");
+        fixture.Igdb.Games[1020] = new IgdbGame(
+            1020, "Portal 2", "https://images.example/portal2.jpg", 2011, "Still alive.",
+            ["Puzzle"], ["Comedy"], ["Valve"]);
+
+        await fixture.Pins.PinAsync(new WorkIgdbPinAssignment
+        {
+            WorkId = work.WorkId,
+            IgdbId = 103_298,
+            Name = "Prey (2017)",
+        });
+
+        await fixture.Service.EnrichAsync();
+        Assert.Empty(fixture.Igdb.Asked);
+
+        Assert.True(await fixture.Pins.ClearAsync(work.WorkId));
+        Assert.Null(await fixture.Pins.GetAsync(work.WorkId));
+
+        await fixture.Service.EnrichAsync();
+
+        var after = await fixture.WorkAsync(work.WorkId);
+        Assert.Contains("620", fixture.Igdb.Asked);
+        Assert.Equal("Still alive.", after.Summary);
+        Assert.Equal(2011, after.FirstReleaseYear);
+
+        // The pin's hand-picked title and id stand after clearing: the
+        // name is no longer provisional, and igdb_id is write-once.
+        Assert.Equal("Prey (2017)", after.Name);
+        Assert.Equal(103_298, after.IgdbId);
+    }
+
+    // ── What the rail's fetch status field is told (TASK-90) ────────────────
+    //
+    // The progress hook is an optional final constructor parameter,
+    // defaulted to null. A host that does not register it pays nothing;
+    // these two tests are the only callers that supply one.
+
+    /// <summary>
+    /// The first report carries the total backlog so the field can show
+    /// an initial count; the last carries zero so the field clears itself.
+    /// The count falls by a slice at a time because the pass commits in
+    /// slices before reporting.
+    /// </summary>
+    [Fact]
+    public async Task A_pass_reports_its_backlog_first_and_zero_last()
+    {
+        var reported = new List<EnrichmentProgress>();
+        using var fixture = new EnrichmentFixture(
+            sliceSize: 1, progress: new ProgressRecorder(reported));
+
+        await fixture.AddProvisionalAsync("620");
+        await fixture.AddProvisionalAsync("730");
+        fixture.Steam.Names["620"] = "Portal 2";
+        fixture.Steam.Names["730"] = "Counter-Strike 2";
+
+        await fixture.Service.EnrichAsync();
+
+        Assert.Equal(2, reported[0].Total);
+        Assert.Equal(2, reported[0].Remaining);
+        Assert.Equal(0, reported[^1].Remaining);
+        Assert.Contains(reported, p => p.Remaining == 1);
+    }
+
+    /// <summary>
+    /// <see cref="EnrichmentSyncService.EnrichAsync"/> returns early on an
+    /// empty target list, before it reports anything, so a warm library
+    /// never raises the indicator at all.
+    /// </summary>
+    [Fact]
+    public async Task A_library_with_nothing_outstanding_reports_nothing_at_all()
+    {
+        var reported = new List<EnrichmentProgress>();
+        using var fixture = new EnrichmentFixture(progress: new ProgressRecorder(reported));
+
+        await fixture.Service.EnrichAsync();
+
+        Assert.Empty(reported);
+    }
+
+    private sealed class ProgressRecorder(List<EnrichmentProgress> into)
+        : IProgress<EnrichmentProgress>
+    {
+        public void Report(EnrichmentProgress value) => into.Add(value);
+    }
+
     private sealed class EnrichmentFixture : IDisposable
     {
         private readonly TempDatabase _db = new();
@@ -1591,7 +1742,9 @@ public sealed class EnrichmentSyncServiceTests
         /// session, and every Epic work named by the launcher's own files.
         /// </param>
         public EnrichmentFixture(
-            int sliceSize = EnrichmentSyncService.DefaultSliceSize, bool epicCatalog = true)
+            int sliceSize = EnrichmentSyncService.DefaultSliceSize,
+            bool epicCatalog = true,
+            IProgress<EnrichmentProgress>? progress = null)
         {
             Works = new WorkRepository(_db.Factory);
             Releases = new ReleaseRepository(_db.Factory);
@@ -1605,7 +1758,8 @@ public sealed class EnrichmentSyncServiceTests
             Service = new EnrichmentSyncService(
                 Works, Releases, Igdb, Steam, SteamCmd, Planner, _db.Factory,
                 NullLogger<EnrichmentSyncService>.Instance,
-                epicCatalog ? EpicCatalog : null)
+                epicCatalog ? EpicCatalog : null,
+                progress)
             {
                 SliceSize = sliceSize,
             };
@@ -1625,6 +1779,9 @@ public sealed class EnrichmentSyncServiceTests
         public IWorkRepository Works { get; }
 
         public IReleaseRepository Releases { get; }
+
+        /// <summary>The pin repository, wired to the same temp database the fixture uses.</summary>
+        public IWorkIgdbPinRepository Pins => new WorkIgdbPinRepository(_db.Factory);
 
         public FakeIgdbClient Igdb { get; } = new();
 
@@ -1890,6 +2047,19 @@ public sealed class EnrichmentSyncServiceTests
 
             return Task.FromResult<IReadOnlyList<IgdbGame>>(found);
         }
+
+        public Task<IReadOnlyDictionary<long, IgdbAgeRatings>> GetAgeRatingsAsync(
+            IEnumerable<long> igdbIds, TimeSpan? cacheTtl = null, CancellationToken ct = default)
+            => Task.FromResult<IReadOnlyDictionary<long, IgdbAgeRatings>>(
+                new Dictionary<long, IgdbAgeRatings>());
+
+        /// <summary>Canned search results: title → candidates, like <see cref="Names"/> for the resolver.</summary>
+        public Dictionary<string, IReadOnlyList<IgdbSearchResult>> SearchResults { get; }
+            = new(StringComparer.OrdinalIgnoreCase);
+
+        public Task<IReadOnlyList<IgdbSearchResult>> SearchGamesAsync(
+            string title, int limit = 0, TimeSpan? cacheTtl = null, CancellationToken ct = default)
+            => Task.FromResult(SearchResults.GetValueOrDefault(title, []));
     }
 
     private sealed class FakeSteamStoreClient : ISteamStoreClient

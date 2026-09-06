@@ -1,11 +1,11 @@
 ---
 id: TASK-68
 title: Raise ShelfProbeLimit so the last three feed shelves are scored
-status: In Progress
+status: Done
 assignee:
   - '@safwyl'
 created_date: '2026-09-01 20:57'
-updated_date: '2026-09-01 21:21'
+updated_date: '2026-09-03 16:42'
 labels:
   - recommend
 dependencies: []
@@ -37,11 +37,11 @@ This shortfall was found while evaluating the feed-card swap feature. Any reserv
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 ShelfProbeLimit default is raised so all five shelves are scored on the real library at its current scale
-- [ ] #2 The natural probe union at the new limit does not approach the total candidate count, preserving the limit's stated purpose
-- [ ] #3 The feed produces all five designed shelves on a library of 958 or more works
-- [ ] #4 The tuning table in docs/recommendation-engine.md section 5 is updated with the new default and the measured figures
-- [ ] #5 A test verifies that all shelves populate when the candidate pool is large enough to fill them
+- [x] #1 ShelfProbeLimit default is raised so all five shelves are scored on the real library at its current scale
+- [x] #2 The natural probe union at the new limit does not approach the total candidate count, preserving the limit's stated purpose
+- [x] #3 The feed produces all five designed shelves on a library of 958 or more works
+- [x] #4 The tuning table in docs/recommendation-engine.md section 5 is updated with the new default and the measured figures
+- [x] #5 A test verifies that all shelves populate when the candidate pool is large enough to fill them
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -98,3 +98,9 @@ Built and tested via --artifacts-path into the scratchpad; src/Winnow.App/bin wa
 
 docs/recommendation-engine.md section 5 still lists ShelfGenreCap as 4 "per 10-item shelf" while the code is 3 and MaxPerShelf is 6; RecommendationRequest.MaxPerShelf carries an XML comment beginning "10:" against a value of 6; section 6a says "the patched shelf's ten slots". These predate this task and were left alone.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Raised ShelfProbeLimit and made the probe union a rank-by-rank interleave so no shelf is starved. Landed in commit faeccc8. Verified: RecommendationTuning.ShelfProbeLimit is 2,000 (was 150), and RecommendationEngine.cs:149 draws the union through ProbeUnion(shortlists, tuning.ShelfProbeLimit). docs/recommendation-engine.md section 5 carries the new default with the measurements behind it - 46.6 ms median at zero probes, 23 microseconds per probe, 990 candidates and 966 works measured 2026-09-01 - and records that the natural union is 376 of 966, far below the 2,000 cap, so the cap remains a backstop rather than a trim. Section 4a records that all five shelves populate on the real library even at a budget of 5, where the old claim-order fill starved three of five. ShelfProbeBudgetTests.Every_shelf_is_scored_when_the_probe_budget_binds asserts at limits 5, 25 and 150 that the budget actually bound before asserting all five shelves populated, and The_default_probe_budget_does_not_change_the_feed_it_bounds fingerprints the bounded pass against an unbounded one. Winnow.Recommend.Tests passed 145 of 145.
+<!-- SECTION:FINAL_SUMMARY:END -->

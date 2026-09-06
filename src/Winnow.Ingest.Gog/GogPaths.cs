@@ -1,3 +1,4 @@
+using Winnow.Core.Ingest;
 using System.Text.Json;
 using Microsoft.Win32;
 
@@ -64,7 +65,7 @@ public static class GogPaths
     /// Reads <c>storagePath</c> out of Galaxy's <c>config.json</c>, or null when
     /// the file is absent, unreadable, or does not name one.
     /// </summary>
-    public static string? ReadStoragePath(string configPath)
+    public static string? ReadStoragePath(string configPath, StorefrontParserLimits? limits = null)
     {
         ArgumentNullException.ThrowIfNull(configPath);
 
@@ -75,8 +76,9 @@ public static class GogPaths
 
         try
         {
-            using var stream = File.OpenRead(configPath);
-            using var document = JsonDocument.Parse(stream);
+            limits ??= new StorefrontParserLimits();
+            var bytes = StorefrontFile.Read(configPath, limits);
+            using var document = JsonDocument.Parse(bytes, new JsonDocumentOptions { MaxDepth = limits.MaxDepth });
             if (document.RootElement.ValueKind != JsonValueKind.Object
                 || !document.RootElement.TryGetProperty("storagePath", out var value)
                 || value.ValueKind != JsonValueKind.String)

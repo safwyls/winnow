@@ -249,7 +249,7 @@ public sealed class UpdateFlagTests
         // All three landed in the gap, and that stays true — dismissing does not
         // un-land an update.
         Assert.All(details.Updates, u => Assert.True(u.IsSinceYouPlayed));
-        Assert.Equal("SINCE YOU PLAYED", details.UpdatesLabel);
+        Assert.Equal("UPDATES", details.UpdatesLabel);
 
         Assert.True(details.Updates[0].IsUnread);
         Assert.False(details.Updates[1].IsUnread);
@@ -525,7 +525,7 @@ public sealed class UpdateFlagTests
 
         return new GameDetailsViewModel(
             tile,
-            "Patched since",
+            "Patched",
             rows,
             Now,
             updateEvents: events,

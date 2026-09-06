@@ -101,13 +101,17 @@ public sealed class SchemaDisciplineTests
             @"^(bucket|staleness|score|is_(never|bounced|retired|stale))",
             RegexOptions.IgnoreCase);
 
-        // The one stored score, and it is not a derived value: it is the soft
-        // matcher's confidence in one specific pair, recorded with the pair at
-        // the moment it was queued, so a human reviewing the queue can see what
-        // the machine thought. §6's schema declares it. Re-deriving it later
-        // would answer a different question, because the matcher will have
-        // changed.
-        string[] recordedObservations = ["merge_candidates.score"];
+        // Two stored scores, neither a derived value. merge_candidates.score
+        // is the soft matcher's confidence in one specific pair, recorded with
+        // the pair at the moment it was queued, so a human reviewing the queue
+        // can see what the machine thought. Re-deriving it later would answer
+        // a different question, because the matcher will have changed.
+        // work_ratings.score is a figure IGDB or Steam published, recorded as
+        // observed against the work and the source that published it (migration
+        // 0028). Nothing in Winnow computes it, so no threshold retune can
+        // make it rot, and re-deriving it is not possible — it is a fact about
+        // somebody else's users.
+        string[] recordedObservations = ["merge_candidates.score", "work_ratings.score"];
 
         var failures = new List<string>();
 

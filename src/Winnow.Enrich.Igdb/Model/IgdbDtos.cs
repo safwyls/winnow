@@ -49,6 +49,80 @@ internal static class IgdbJson
         return url.Replace("/t_thumb/", "/t_cover_big/", StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// Shapes a <c>platforms</c> expansion into display names: trimmed, blanks
+    /// dropped, duplicates collapsed case-insensitively.
+    ///
+    /// <para>Shared by <see cref="IgdbGameDto"/> and
+    /// <see cref="IgdbSearchGameDto"/> rather than written out in each. The
+    /// wrong-game control draws a row matched by IGDB id beside rows found by
+    /// title search, so two copies of this shaping would be two answers about
+    /// one game.</para>
+    /// </summary>
+    internal static IReadOnlyList<string> PlatformNames(IReadOnlyList<IgdbNamedDto>? platforms)
+        => platforms?
+            .Where(p => !string.IsNullOrWhiteSpace(p.Name))
+            .Select(p => p.Name!.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray() ?? IgdbGame.NoStrings;
+
+    /// <summary>
+    /// Shapes an image array (<c>screenshots</c> or <c>artworks</c>) into
+    /// validated ids: trimmed, blanks dropped, anything that is not an IGDB
+    /// image id rejected, duplicates collapsed ordinally. IGDB's own order
+    /// is preserved — the strip is drawn in the order IGDB returns, which is
+    /// the order the publisher chose. Ordinal rather than case-insensitive
+    /// because IGDB image ids are lowercase alphanumeric and two ids
+    /// differing only in case would be two different assets.
+    /// </summary>
+    internal static IReadOnlyList<string> ImageIds(IReadOnlyList<IgdbImageDto>? images)
+        => images?
+            .Where(i => !string.IsNullOrWhiteSpace(i.ImageId))
+            .Select(i => i.ImageId!.Trim())
+            .Where(IsImageId)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray() ?? IgdbGame.NoStrings;
+
+    /// <summary>
+    /// ASCII alphanumeric, 1–64 characters. Strict for the same reason
+    /// <c>IgdbImageUrl.ImageId</c> is strict: an id that fails this check
+    /// would become a 404 from the CDN, and a 404 becomes a 30-day
+    /// negative marker in the cover cache.
+    /// </summary>
+    internal static bool IsImageId(string value)
+    {
+        if (value.Length is 0 or > 64)
+        {
+            return false;
+        }
+
+        foreach (var c in value)
+        {
+            if (!char.IsAsciiLetterOrDigit(c))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Reads a rating score. IGDB sends 0 for "no rating" rather than
+    /// omitting the field, so zero is read as absence. That makes "a game
+    /// with no rating data shows nothing rather than a zero" a property of
+    /// the data instead of something the view has to remember.
+    /// </summary>
+    internal static double? Score(double? value)
+        => value is > 0 and <= 100 ? value : null;
+
+    /// <summary>
+    /// Reads a rating count. Zero means "nobody has rated it" and is read
+    /// as absence, same discipline as <see cref="Score"/>.
+    /// </summary>
+    internal static int? Count(int? value)
+        => value is > 0 ? value : null;
+
     /// <summary>first_release_date is Unix seconds, UTC. Null and 0 both mean "unknown".</summary>
     internal static int? ReleaseYear(long? firstReleaseDate)
         => firstReleaseDate is null or 0
@@ -68,6 +142,19 @@ internal sealed class IgdbNamedDto
     public long Id { get; init; }
 
     public string? Name { get; init; }
+}
+
+/// <summary>
+/// The shared wire shape of a <c>screenshots</c> or <c>artworks</c> row.
+/// Both are the same shape in IGDB's protobuf schema (<c>message Screenshot</c>
+/// and <c>message Artwork</c> carry identical fields); only <c>image_id</c>
+/// is consumed because the size token in the CDN path decides the rendition.
+/// </summary>
+internal sealed class IgdbImageDto
+{
+    public long Id { get; init; }
+
+    public string? ImageId { get; init; }
 }
 
 internal sealed class IgdbInvolvedCompanyDto
@@ -160,6 +247,133 @@ internal sealed class ExpandableGameTypeConverter : JsonConverter<IgdbGameTypeDt
         => JsonSerializer.Serialize(writer, value, IgdbJson.Options);
 }
 
+/// <summary>
+/// One <c>age_rating_categories</c> row. Its label field is <c>rating</c>
+/// ("The rating name"), which is a text string — not an enum and not the
+/// same field as <see cref="IgdbAgeRatingDto.Rating"/>.
+/// </summary>
+internal sealed class IgdbAgeRatingCategoryDto
+{
+    public long Id { get; init; }
+
+    public string? Rating { get; init; }
+}
+
+/// <summary>
+/// Reads <c>organization</c>, which arrives as an expanded object under the
+/// shipped query and would arrive as a bare id if the expansion were ever
+/// dropped. Both shapes are handled so a deserialization failure cannot take
+/// a whole batch down.
+/// </summary>
+internal sealed class ExpandableNamedConverter : JsonConverter<IgdbNamedDto?>
+{
+    public override IgdbNamedDto? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        => reader.TokenType switch
+        {
+            JsonTokenType.Number => new IgdbNamedDto { Id = reader.GetInt64() },
+            JsonTokenType.Null => null,
+            _ => JsonSerializer.Deserialize<IgdbNamedDto>(ref reader, IgdbJson.Options),
+        };
+
+    public override void Write(Utf8JsonWriter writer, IgdbNamedDto? value, JsonSerializerOptions options)
+        => JsonSerializer.Serialize(writer, value, IgdbJson.Options);
+}
+
+/// <summary>
+/// Reads <c>rating_category</c>, which arrives as an expanded object under the
+/// shipped query and would arrive as a bare id if the expansion were ever
+/// dropped. Both shapes are handled for the same reason
+/// <see cref="ExpandableNamedConverter"/> handles both.
+/// </summary>
+internal sealed class ExpandableAgeRatingCategoryConverter : JsonConverter<IgdbAgeRatingCategoryDto?>
+{
+    public override IgdbAgeRatingCategoryDto? Read(
+        ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        => reader.TokenType switch
+        {
+            JsonTokenType.Number => new IgdbAgeRatingCategoryDto { Id = reader.GetInt64() },
+            JsonTokenType.Null => null,
+            _ => JsonSerializer.Deserialize<IgdbAgeRatingCategoryDto>(ref reader, IgdbJson.Options),
+        };
+
+    public override void Write(
+        Utf8JsonWriter writer, IgdbAgeRatingCategoryDto? value, JsonSerializerOptions options)
+        => JsonSerializer.Serialize(writer, value, IgdbJson.Options);
+}
+
+/// <summary>
+/// One <c>age_ratings</c> row on a game. Carries both IGDB's deprecated numeric
+/// enums (<see cref="Category"/>, <see cref="Rating"/>) and the current
+/// reference fields (<see cref="Organization"/>, <see cref="RatingCategory"/>).
+/// </summary>
+internal sealed class IgdbAgeRatingDto
+{
+    public long Id { get; init; }
+
+    /// <summary>
+    /// IGDB's deprecated board enum (1 ESRB, 2 PEGI, 3 CERO, 4 USK, 5 GRAC,
+    /// 6 CLASS_IND, 7 ACB). Kept because it is the only rating-board numbering
+    /// IGDB publishes a value table for.
+    /// </summary>
+    public int? Category { get; init; }
+
+    /// <summary>
+    /// IGDB's deprecated rating enum, values 1-39. The board is implied by
+    /// the value, so <see cref="Category"/> is not needed to read it. This is
+    /// the primary reading when present.
+    /// </summary>
+    public int? Rating { get; init; }
+
+    [JsonConverter(typeof(ExpandableNamedConverter))]
+    public IgdbNamedDto? Organization { get; init; }
+
+    [JsonConverter(typeof(ExpandableAgeRatingCategoryConverter))]
+    public IgdbAgeRatingCategoryDto? RatingCategory { get; init; }
+}
+
+/// <summary>
+/// The wire shape of one game from the age-ratings query. Carries only
+/// the <c>age_ratings</c> expansion — no name, no cover, no genres — because
+/// this query is deliberately separate from <see cref="Apicalypse.Games"/>.
+/// </summary>
+internal sealed class IgdbAgeRatingsGameDto
+{
+    public long Id { get; init; }
+
+    public IReadOnlyList<IgdbAgeRatingDto>? AgeRatings { get; init; }
+}
+
+/// <summary>
+/// The wire shape of one game from the search query, deliberately
+/// separate from <see cref="IgdbGameDto"/> for the same reason
+/// <see cref="IgdbAgeRatingsGameDto"/> is: a separate query gets a
+/// separate wire shape. A row with no id or no name yields null from
+/// <see cref="ToDomain"/> and is dropped rather than becoming a nameless
+/// candidate.
+/// </summary>
+internal sealed class IgdbSearchGameDto
+{
+    public long Id { get; init; }
+
+    public string? Name { get; init; }
+
+    public long? FirstReleaseDate { get; init; }
+
+    public IgdbCoverDto? Cover { get; init; }
+
+    public IReadOnlyList<IgdbNamedDto>? Platforms { get; init; }
+
+    internal IgdbSearchResult? ToDomain()
+        => Id <= 0 || string.IsNullOrWhiteSpace(Name)
+            ? null
+            : new IgdbSearchResult(
+                Id,
+                Name.Trim(),
+                IgdbJson.CoverUrl(Cover),
+                IgdbJson.ReleaseYear(FirstReleaseDate),
+                IgdbJson.PlatformNames(Platforms));
+}
+
 internal sealed class IgdbGameDto
 {
     public long Id { get; init; }
@@ -179,6 +393,13 @@ internal sealed class IgdbGameDto
     public IReadOnlyList<IgdbNamedDto>? GameModes { get; init; }
 
     public IReadOnlyList<IgdbNamedDto>? PlayerPerspectives { get; init; }
+
+    /// <summary>
+    /// <c>platforms</c>, expanded to names. Only the wrong-game control's
+    /// candidate rows read these; they are on the shared query because an
+    /// id-matched row must show what a title-search row shows.
+    /// </summary>
+    public IReadOnlyList<IgdbNamedDto>? Platforms { get; init; }
 
     public IReadOnlyList<IgdbInvolvedCompanyDto>? InvolvedCompanies { get; init; }
 
@@ -209,6 +430,24 @@ internal sealed class IgdbGameDto
     /// <summary><c>version_title</c>, e.g. "Game of the Year Edition". Present only on a version entry.</summary>
     public string? VersionTitle { get; init; }
 
+    /// <summary><c>screenshots</c>, the publisher-ordered image array distinct from cover art.</summary>
+    public IReadOnlyList<IgdbImageDto>? Screenshots { get; init; }
+
+    /// <summary><c>artworks</c>, promotional art distinct from both covers and screenshots.</summary>
+    public IReadOnlyList<IgdbImageDto>? Artworks { get; init; }
+
+    /// <summary>IGDB's own user-body rating, 0–100. Zero means "no rating" and is read as null by <see cref="IgdbJson.Score"/>.</summary>
+    public double? Rating { get; init; }
+
+    /// <summary>How many IGDB users rated this game. Zero means "nobody" and is read as null by <see cref="IgdbJson.Count"/>.</summary>
+    public int? RatingCount { get; init; }
+
+    /// <summary>IGDB's aggregation of external critics, 0–100. Zero means "no data" and is read as null by <see cref="IgdbJson.Score"/>.</summary>
+    public double? AggregatedRating { get; init; }
+
+    /// <summary>How many external critic sources IGDB aggregated. Zero means "none" and is read as null by <see cref="IgdbJson.Count"/>.</summary>
+    public int? AggregatedRatingCount { get; init; }
+
     internal IgdbGame ToDomain() => new(
         Id,
         Name ?? string.Empty,
@@ -228,10 +467,17 @@ internal sealed class IgdbGameDto
         // months from now should not require knowing that.
         GameModes = Names(this.GameModes),
         PlayerPerspectives = Names(this.PlayerPerspectives),
+        Platforms = IgdbJson.PlatformNames(this.Platforms),
         GameType = string.IsNullOrWhiteSpace(this.GameType?.Type) ? null : this.GameType.Type,
         ParentGameId = ParentGame is > 0 ? ParentGame : null,
         VersionParentId = VersionParent is > 0 ? VersionParent : null,
         VersionTitle = string.IsNullOrWhiteSpace(this.VersionTitle) ? null : this.VersionTitle,
+        ScreenshotImageIds = IgdbJson.ImageIds(this.Screenshots),
+        ArtworkImageIds = IgdbJson.ImageIds(this.Artworks),
+        UserRating = IgdbJson.Score(this.Rating),
+        UserRatingCount = IgdbJson.Count(this.RatingCount),
+        CriticRating = IgdbJson.Score(this.AggregatedRating),
+        CriticRatingCount = IgdbJson.Count(this.AggregatedRatingCount),
     };
 
     private static IReadOnlyList<string> Names(IReadOnlyList<IgdbNamedDto>? items)

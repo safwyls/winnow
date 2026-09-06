@@ -408,6 +408,46 @@ public sealed class StoresViewModelTests
         Assert.Equal(SteamConnectionCopy.ConnectedAdds, stores.SteamConnectionMessage);
     }
 
+    // ── The Web API key save, and its refusal (TASK-78) ───────────────────────
+
+    /// <summary>
+    /// A stored key clears the field and says it is in use — the pre-TASK-78
+    /// behaviour, kept because the happy path did not change.
+    /// </summary>
+    [Fact]
+    public async Task A_saved_key_clears_the_field_and_says_it_is_in_use()
+    {
+        var stores = new StoresViewModel(new FakeStoreConnections())
+        {
+            SteamApiKeyInput = "0123456789ABCDEF",
+        };
+
+        await stores.SaveSteamApiKeyCommand.ExecuteAsync(null);
+
+        Assert.Equal(string.Empty, stores.SteamApiKeyInput);
+        Assert.Equal(SteamConnectionCopy.ApiKeySaved, stores.SteamApiKeyNoticeMessage);
+        Assert.True(stores.ShowSteamApiKeyNotice);
+    }
+
+    /// <summary>
+    /// A host that cannot encrypt refuses the save. The panel must not say the
+    /// key was stored when it was not, and must not destroy the input the user
+    /// now has to take somewhere else.
+    /// </summary>
+    [Fact]
+    public async Task A_refused_save_says_so_and_keeps_the_input()
+    {
+        var stores = new StoresViewModel(new FakeStoreConnections { RefuseApiKeySaves = true })
+        {
+            SteamApiKeyInput = "0123456789ABCDEF",
+        };
+
+        await stores.SaveSteamApiKeyCommand.ExecuteAsync(null);
+
+        Assert.Equal("0123456789ABCDEF", stores.SteamApiKeyInput);
+        Assert.Equal(SteamConnectionCopy.ApiKeySaveRefused, stores.SteamApiKeyNoticeMessage);
+    }
+
     // ── The settings segment's label (TASK-60) ───────────────────────────────
 
     /// <summary>
@@ -443,6 +483,378 @@ public sealed class StoresViewModelTests
 
         Assert.True(stores.ShowPurchaseImport);
         Assert.Same(import, stores.AccountImport);
+    }
+
+    // ── The Steam card's modals (TASK-61) ────────────────────────────────────
+
+    /// <summary>
+    /// All three start closed, only one can be open at a time, and Close shuts
+    /// whichever is. They replaced disclosures, so nothing may be open on
+    /// arrival.
+    /// </summary>
+    [Fact]
+    public void The_three_modals_start_closed_and_are_mutually_exclusive()
+    {
+        var stores = new StoresViewModel(new FakeStoreConnections());
+
+        Assert.False(stores.IsMethodsModalOpen);
+        Assert.False(stores.IsSignInConsentOpen);
+        Assert.False(stores.IsPurchaseModalOpen);
+        Assert.False(stores.IsAnyModalOpen);
+
+        stores.OpenMethodsModalCommand.Execute(null);
+        Assert.True(stores.IsMethodsModalOpen);
+        Assert.True(stores.IsAnyModalOpen);
+
+        // Opening another closes the first rather than stacking on it.
+        stores.OpenPurchaseModalCommand.Execute(null);
+        Assert.False(stores.IsMethodsModalOpen);
+        Assert.True(stores.IsPurchaseModalOpen);
+
+        stores.OpenSignInConsentCommand.Execute(null);
+        Assert.False(stores.IsPurchaseModalOpen);
+        Assert.True(stores.IsSignInConsentOpen);
+
+        stores.CloseModalCommand.Execute(null);
+        Assert.False(stores.IsAnyModalOpen);
+    }
+
+    /// <summary>
+    /// <b>ROADMAP §4.7 condition 3, made structural.</b> The card's sign-in
+    /// button no longer signs in: it opens the consent surface, and only
+    /// Continue starts the flow. The paragraph a user must read before acting
+    /// is therefore on the near side of the act rather than beside it, and no
+    /// reading order can skip it.
+    /// </summary>
+    [Fact]
+    public void The_card_button_opens_consent_and_does_not_sign_in()
+    {
+        var connections = new FakeStoreConnections();
+        var stores = new StoresViewModel(connections);
+
+        stores.OpenSignInConsentCommand.Execute(null);
+
+        Assert.True(stores.IsSignInConsentOpen);
+
+        // Nothing was started. The Steam sign-in seam was never resolved here,
+        // and the Epic one — the only one this fake counts — is untouched.
+        Assert.Equal(0, connections.SignInCalls);
+
+        // Backing out starts nothing either.
+        stores.CloseModalCommand.Execute(null);
+        Assert.False(stores.IsAnyModalOpen);
+        Assert.Equal(0, connections.SignInCalls);
+    }
+
+    /// <summary>
+    /// The permission rides in the consent modal now, and it is still unticked
+    /// on arrival: opening the surface that explains it must not pre-answer it.
+    /// </summary>
+    [Fact]
+    public void Opening_consent_leaves_the_purchase_permission_unticked()
+    {
+        var stores = new StoresViewModel(new FakeStoreConnections());
+
+        Assert.False(stores.CapturePurchaseHistory);
+
+        stores.OpenSignInConsentCommand.Execute(null);
+
+        Assert.True(stores.IsSignInConsentOpen);
+        Assert.False(stores.CapturePurchaseHistory);
+    }
+
+    /// <summary>
+    /// The two state words the card leads with. LOCAL FILES is always On; WEB
+    /// API names which credential is carrying the calls, and the key wins when
+    /// both are held because keys do not expire.
+    /// </summary>
+    [Fact]
+    public void The_two_state_words_say_what_is_on_and_which_credential_carries_it()
+    {
+        var stores = new StoresViewModel(new FakeStoreConnections());
+
+        Assert.Equal("On", stores.SteamLocalStateText);
+
+        Assert.Equal(SteamConnectionCopy.StateWebApiOff, stores.SteamWebApiStateText);
+        Assert.False(stores.SteamWebApiIsOn);
+
+        stores.SteamCredentials = SteamConnection.None with { HasSession = true };
+        Assert.Equal(SteamConnectionCopy.StateWebApiOnLogin, stores.SteamWebApiStateText);
+        Assert.True(stores.SteamWebApiIsOn);
+
+        stores.SteamCredentials = SteamConnection.None with { HasApiKey = true };
+        Assert.Equal(SteamConnectionCopy.StateWebApiOnApi, stores.SteamWebApiStateText);
+
+        // Both held: the key is what does the scheduled work, so it is what the
+        // line names.
+        stores.SteamCredentials = SteamConnection.None with { HasApiKey = true, HasSession = true };
+        Assert.Equal(SteamConnectionCopy.StateWebApiOnApi, stores.SteamWebApiStateText);
+        Assert.True(stores.SteamWebApiIsOn);
+    }
+
+    /// <summary>
+    /// The IN USE marker, and the property that makes it honest: it names the
+    /// same credential the WEB API state word names, from the same rule, so the
+    /// line at the top of the section and the marker beside the method cannot
+    /// disagree.
+    ///
+    /// <para>It is deliberately not a radio. The two methods are peers and
+    /// holding both is supported, so nothing on this card may claim that
+    /// choosing one deselects the other.</para>
+    /// </summary>
+    [Fact]
+    public void The_in_use_marker_names_the_same_credential_the_state_word_does()
+    {
+        var stores = new StoresViewModel(new FakeStoreConnections());
+
+        // Neither held: nothing is in use, and nothing is marked.
+        Assert.False(stores.SteamSignInIsInUse);
+        Assert.False(stores.SteamApiKeyIsInUse);
+        Assert.Equal(SteamConnectionCopy.StateWebApiOff, stores.SteamWebApiStateText);
+
+        // Session only.
+        stores.SteamCredentials = SteamConnection.None with { HasSession = true };
+        Assert.True(stores.SteamSignInIsInUse);
+        Assert.False(stores.SteamApiKeyIsInUse);
+        Assert.Equal(SteamConnectionCopy.StateWebApiOnLogin, stores.SteamWebApiStateText);
+
+        // Key only.
+        stores.SteamCredentials = SteamConnection.None with { HasApiKey = true };
+        Assert.False(stores.SteamSignInIsInUse);
+        Assert.True(stores.SteamApiKeyIsInUse);
+        Assert.Equal(SteamConnectionCopy.StateWebApiOnApi, stores.SteamWebApiStateText);
+
+        // Both: the key wins, exactly one marker is drawn, and the tooltip
+        // becomes the sentence that explains the split rather than implying
+        // the sign-in is idle.
+        stores.SteamCredentials = SteamConnection.None with { HasApiKey = true, HasSession = true };
+        Assert.False(stores.SteamSignInIsInUse);
+        Assert.True(stores.SteamApiKeyIsInUse);
+        Assert.Equal(SteamConnectionCopy.StateWebApiOnApi, stores.SteamWebApiStateText);
+        Assert.Equal(SteamConnectionCopy.BothCredentials, stores.MethodInUseTooltip);
+
+        // Never both at once, in any state.
+        Assert.False(stores.SteamSignInIsInUse && stores.SteamApiKeyIsInUse);
+    }
+
+    /// <summary>
+    /// The accounts caveat moved off the card into a modal reached from the
+    /// summary line, and it is one of the four the card now has.
+    /// </summary>
+    [Fact]
+    public void The_accounts_caveat_is_reachable_from_the_summary_line()
+    {
+        var stores = new StoresViewModel(new FakeStoreConnections());
+
+        Assert.False(stores.IsAccountsModalOpen);
+
+        stores.OpenAccountsModalCommand.Execute(null);
+
+        Assert.True(stores.IsAccountsModalOpen);
+        Assert.True(stores.IsAnyModalOpen);
+
+        // The text that used to be a note under the toggle is what it holds.
+        Assert.Contains(
+            "cannot attribute", stores.AccountScopeCaveatMessage, StringComparison.OrdinalIgnoreCase);
+
+        // Still mutually exclusive with the other three.
+        stores.OpenMethodsModalCommand.Execute(null);
+        Assert.False(stores.IsAccountsModalOpen);
+
+        stores.CloseModalCommand.Execute(null);
+        Assert.False(stores.IsAnyModalOpen);
+    }
+
+    // ── The STEAM ACCOUNTS summary (TASK-61) ─────────────────────────────────
+
+    /// <summary>
+    /// The section says two figures and nothing else. No per-account breakdown
+    /// is offered because no account NAME is stored anywhere — AccountFacts
+    /// records presence, never identity — so the honest unit is the total and
+    /// the count.
+    /// </summary>
+    [Theory]
+    [InlineData(1247, 2, "1,247 games across 2 accounts")]
+    [InlineData(1, 1, "1 game across 1 account")]
+    [InlineData(0, 0, "0 games across 0 accounts")]
+    public void The_accounts_section_states_the_total_and_the_account_count(
+        int titles, int accounts, string expected)
+    {
+        var stores = new StoresViewModel(new FakeStoreConnections())
+        {
+            SteamTitleCount = titles,
+            SteamAccountCount = accounts,
+        };
+
+        Assert.Equal(expected, stores.SteamAccountsSummaryText);
+
+        // Absent until there is something to count, so a fresh install draws
+        // no line rather than a line of zeroes.
+        Assert.Equal(titles > 0 && accounts > 0, stores.ShowSteamAccountsSummary);
+    }
+
+    /// <summary>
+    /// The clarifier that replaced the note. A disabled toggle is already
+    /// visible; what a user cannot see is that the answer is coming rather than
+    /// missing, and that is the one thing this adds.
+    /// </summary>
+    [Fact]
+    public void An_unconfirmed_account_marks_the_section_as_pending()
+    {
+        var stores = new StoresViewModel(new FakeStoreConnections());
+
+        Assert.False(stores.SteamAccountConfirmed);
+        Assert.True(stores.ShowSteamAccountsPending);
+        Assert.False(stores.CanChooseAccountScope);
+
+        // The full sentence did not disappear with the note; it rides the
+        // toggle tooltip.
+        Assert.NotEmpty(stores.AccountScopeMessage);
+
+        stores.SteamAccountConfirmed = true;
+
+        Assert.False(stores.ShowSteamAccountsPending);
+        Assert.True(stores.CanChooseAccountScope);
+    }
+
+    // ── The platform tabs (TASK-61) ──────────────────────────────────────────
+
+    /// <summary>
+    /// One card per screen. Steam is the default because it is the source most
+    /// libraries are mostly made of, and because landing on an empty GOG card
+    /// would say nothing about the library.
+    /// </summary>
+    [Fact]
+    public void The_platform_tabs_open_on_steam()
+    {
+        var stores = new StoresViewModel(new FakeStoreConnections());
+
+        Assert.Equal(StorePlatform.Steam, stores.SelectedPlatform);
+        Assert.True(stores.IsSteamVisible);
+        Assert.False(stores.IsEpicVisible);
+        Assert.False(stores.IsGogVisible);
+
+        // Bound rather than literal, for the reason TASK-60 recorded: a label
+        // that lives only in a XAML attribute is one no test can see.
+        Assert.Equal("STEAM", stores.SteamTabLabel);
+        Assert.Equal("EPIC", stores.EpicTabLabel);
+        Assert.Equal("GOG", stores.GogTabLabel);
+    }
+
+    /// <summary>
+    /// Exactly one card is drawn at a time, whichever tab is chosen and in any
+    /// order. Two visible at once would be the stacked screen this replaced.
+    /// </summary>
+    [Fact]
+    public void Exactly_one_platform_card_is_visible_at_a_time()
+    {
+        var stores = new StoresViewModel(new FakeStoreConnections());
+
+        foreach (var (command, expected) in new (System.Windows.Input.ICommand, StorePlatform)[]
+        {
+            (stores.ShowEpicCommand, StorePlatform.Epic),
+            (stores.ShowGogCommand, StorePlatform.Gog),
+            (stores.ShowSteamCommand, StorePlatform.Steam),
+            (stores.ShowGogCommand, StorePlatform.Gog),
+        })
+        {
+            command.Execute(null);
+
+            Assert.Equal(expected, stores.SelectedPlatform);
+            Assert.Single(
+                new[] { stores.IsSteamVisible, stores.IsEpicVisible, stores.IsGogVisible },
+                visible => visible);
+        }
+    }
+
+    /// <summary>
+    /// The cost of putting a card off screen, and the rule that pays it. A
+    /// failing Steam session must stay legible (ROADMAP §4.7 condition 8), and
+    /// a lapsed Epic session is the same shape of fact. The condition was
+    /// written when every card was drawn at once; once a card can be hidden
+    /// behind a tab, only the tab can carry the signal. Amber, never Flare.
+    /// </summary>
+    [Fact]
+    public async Task A_platform_needing_attention_marks_its_tab_from_another_tab()
+    {
+        var connections = new FakeStoreConnections
+        {
+            Session = new StoreSession(IsLive: false, DisplayName: "wanderer"),
+        };
+        var stores = new StoresViewModel(connections);
+
+        await stores.RefreshCommand.ExecuteAsync(null);
+
+        // Epic has lapsed while Steam is the selected tab.
+        Assert.True(stores.IsSteamVisible);
+        Assert.False(stores.IsEpicVisible);
+        Assert.True(stores.EpicTabNeedsAttention);
+
+        // A dying Steam session marks its own tab from anywhere else.
+        stores.SteamSessionState = Winnow.Enrich.SteamWeb.Credentials.SteamSessionHealth.RenewalFailing;
+        stores.ShowGogCommand.Execute(null);
+
+        Assert.False(stores.IsSteamVisible);
+        Assert.True(stores.SteamTabNeedsAttention);
+
+        // GOG has nothing to sign into, so it has no state to miss.
+        Assert.False(stores.GogTabNeedsAttention);
+    }
+
+    /// <summary>
+    /// TASK-61. PURCHASE HISTORY sits behind one button, closed on arrival,
+    /// because it was the largest block on a card that overflowed its viewport
+    /// and it is the one section a user need not visit to have a working
+    /// library. The section label stays at the top level, so the card still
+    /// names what is behind the button.
+    /// </summary>
+    [Fact]
+    public void The_purchase_import_arrives_closed_behind_one_button()
+    {
+        var stores = new StoresViewModel(
+            new FakeStoreConnections(), null, null, null, null, DetachedAccountImport.Create());
+
+        Assert.False(stores.IsPurchaseModalOpen);
+
+        // The section is still announced at the top level; only its body moved.
+        // The label is now the whole of the row beside the button: the summary
+        // line went because the modal opens on the same sentence.
+        Assert.Equal(SteamConnectionCopy.PurchaseSectionLabel, stores.SteamPurchaseSectionLabel);
+
+        stores.OpenPurchaseModalCommand.Execute(null);
+
+        Assert.True(stores.IsPurchaseModalOpen);
+    }
+
+    /// <summary>
+    /// ROADMAP §4.7 condition 3, which is why the toggle holds the WHOLE
+    /// section and not the prose inside it. Each route's paragraph is the
+    /// transparency surface read before acting, and the two routes are equal
+    /// peers; a panel that hid one paragraph, or opened one route without the
+    /// other, would break that. Both explanations therefore remain properties
+    /// of the import itself, reached through one button, neither nearer than
+    /// the other.
+    /// </summary>
+    [Fact]
+    public void Neither_import_route_has_its_explanation_hidden_behind_the_other()
+    {
+        var import = DetachedAccountImport.Create();
+        var stores = new StoresViewModel(
+            new FakeStoreConnections(), null, null, null, null, import);
+
+        stores.OpenPurchaseModalCommand.Execute(null);
+        Assert.True(stores.IsPurchaseModalOpen);
+
+        // One modal holds both, so the two paragraphs are always in the same
+        // state as each other: there is no per-route disclosure to disagree.
+        Assert.Equal(
+            SteamAccountImportCopy.SignInRouteExplanation, import.SignInRouteExplanation);
+        Assert.Equal(
+            SteamAccountImportCopy.SavedPagesRouteExplanation, import.SavedPagesRouteExplanation);
+
+        // Only the saved-page HINTS keep a disclosure of their own, and it is
+        // closed by default. The explanation above it is not behind it.
+        Assert.False(import.SavedPagesHintsOpen);
     }
 
     /// <summary>
@@ -525,12 +937,27 @@ public sealed class StoresViewModelTests
 
         Assert.Contains("Not needed", stores.GogNoSignInMessage, StringComparison.OrdinalIgnoreCase);
 
-        // The panel exposes exactly two sign-in commands and both are Epic's.
-        // A GOG one appearing here is the regression this asserts against.
-        var commands = typeof(StoresViewModel).GetProperties()
+        // The regression this guards against is GOG growing a sign-in
+        // affordance. It used to assert that NO command named for GOG existed,
+        // which was the same thing while the screen had no per-platform
+        // navigation; TASK-61's tabs added ShowGogCommand, which selects a card
+        // and connects to nothing. The rule is therefore stated as what it
+        // always meant — no GOG sign-in, sign-out or connect command — and the
+        // tab is named as the one permitted exception so a second one cannot
+        // arrive unnoticed.
+        var gogCommands = typeof(StoresViewModel).GetProperties()
             .Select(p => p.Name)
-            .Where(n => n.Contains("Gog", StringComparison.Ordinal) && n.EndsWith("Command", StringComparison.Ordinal));
-        Assert.Empty(commands);
+            .Where(n => n.Contains("Gog", StringComparison.Ordinal)
+                && n.EndsWith("Command", StringComparison.Ordinal))
+            .ToArray();
+
+        Assert.Equal(["ShowGogCommand"], gogCommands);
+
+        Assert.DoesNotContain(
+            gogCommands,
+            n => n.Contains("SignIn", StringComparison.OrdinalIgnoreCase)
+                || n.Contains("SignOut", StringComparison.OrdinalIgnoreCase)
+                || n.Contains("Connect", StringComparison.OrdinalIgnoreCase));
     }
 
     // ── Counts ───────────────────────────────────────────────────────────────
@@ -676,12 +1103,18 @@ internal sealed class FakeStoreConnections : IStoreConnections
         };
     }
 
-    public Task SaveSteamApiKeyAsync(string? key, CancellationToken ct = default)
+    /// <summary>Whether the next save is refused — the host-that-cannot-encrypt branch.</summary>
+    public bool RefuseApiKeySaves { get; set; }
+
+    public Task<Winnow.Enrich.SteamWeb.Credentials.SteamApiKeySaveOutcome> SaveSteamApiKeyAsync(
+        string? key, CancellationToken ct = default)
     {
         ApiKeySaves++;
         SavedApiKey = key;
         Steam = Steam with { HasApiKey = !string.IsNullOrWhiteSpace(key), ApiKeyIsAppManaged = true };
-        return Task.CompletedTask;
+        return Task.FromResult(RefuseApiKeySaves
+            ? Winnow.Enrich.SteamWeb.Credentials.SteamApiKeySaveOutcome.Refused
+            : Winnow.Enrich.SteamWeb.Credentials.SteamApiKeySaveOutcome.Stored);
     }
 
     public Task ClearSteamApiKeyAsync(CancellationToken ct = default)

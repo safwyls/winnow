@@ -1,11 +1,11 @@
 ---
 id: TASK-59
 title: Fold the Purchases settings screen into the Steam platform section
-status: In Progress
+status: Done
 assignee:
   - '@claude'
 created_date: '2026-09-01 02:50'
-updated_date: '2026-09-01 03:16'
+updated_date: '2026-09-03 16:40'
 labels:
   - ui
 dependencies: []
@@ -21,9 +21,9 @@ The Purchases screen in settings is now redundant: Steam sign-in can capture pur
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 The standalone Purchases screen is removed from the settings rail
-- [ ] #2 The Steam platform section offers both the embedded-session import and the saved-file import for purchase and license history
-- [ ] #3 A user who has not signed in can still reach the saved-file import without being forced through sign-in first
+- [x] #1 The standalone Purchases screen is removed from the settings rail
+- [x] #2 The Steam platform section offers both the embedded-session import and the saved-file import for purchase and license history
+- [x] #3 A user who has not signed in can still reach the saved-file import without being forced through sign-in first
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -59,3 +59,9 @@ Files: src/Winnow.App/ViewModels/StoresViewModel.cs, MainWindowViewModel.cs, Ste
 
 Verified: full suite 2398 + 98 + 70 passed, 0 failed. Not committed.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Folded the standalone Purchases settings screen into the Steam platform section. Landed in commit 5327392. Verified: no PurchasesView or PurchasesViewModel remains in src/Winnow.App (the surviving Purchases strings are AccountStats row labels, not a rail screen); StoresViewModel exposes the import as ShowPurchaseImport/AccountImport, proven by The_purchase_import_is_a_section_of_this_panel and A_panel_composed_without_the_import_draws_no_purchase_section; both routes are offered, the embedded session route via SignInRouteAvailable and the saved-file route via ImportFromSavedPagesCommand; and The_saved_file_import_is_reachable_with_no_sign_in_and_no_key, written against criterion 3, asserts the saved-file command is executable with no session, no API key and no usable embedded route. Scoped run passed 69 of 69.
+<!-- SECTION:FINAL_SUMMARY:END -->

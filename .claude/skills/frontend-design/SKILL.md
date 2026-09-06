@@ -6,6 +6,14 @@ license: Complete terms in LICENSE.txt
 
 # Frontend Design
 
+## Winnow scope
+
+For Winnow app work, read `design-system.md` and use `src/Winnow.App/Themes/tokens.axaml`.
+Follow the existing palette, typography, layout, motion and copy rules. The exploratory
+process below applies only to design choices the brief and visual spec leave open; routine
+UI changes do not require a new visual identity, token system or aesthetic risk. Apply web
+guidance only to web artifacts, and use Avalonia patterns for the desktop app.
+
 Approach this as the design lead at a small studio known for giving every client a visual identity that could not be mistaken for anyone else's. This client has already rejected proposals that felt templated, and is paying for a distinctive point of view: make deliberate, opinionated choices about palette, typography, and layout that are specific to this brief, and take one real aesthetic risk you can justify.
 
 ## Ground it in the subject

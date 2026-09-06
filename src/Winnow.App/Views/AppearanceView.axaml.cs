@@ -1,18 +1,53 @@
 using Avalonia.Controls;
+using Avalonia.Interactivity;
+using Avalonia.Platform.Storage;
+using Winnow.App.ViewModels;
 
 namespace Winnow.App.Views;
 
 /// <summary>
-/// Code-behind for the Appearance screen. There is deliberately none of it
-/// beyond <c>InitializeComponent</c>: everything here is either static copy or
-/// bound state on <see cref="ViewModels.AppearanceViewModel"/>, and picking a
-/// theme is a command (§5.1).
+/// Code-behind for the Appearance screen. All state lives on
+/// <see cref="ViewModels.AppearanceViewModel"/> and every other interaction is a
+/// command; the one handler here exists because opening a folder needs the
+/// window's platform launcher, which a view model cannot reach.
 /// </summary>
 public partial class AppearanceView : UserControl
 {
     public AppearanceView()
     {
         InitializeComponent();
+    }
+
+    /// <summary>
+    /// Opens the user-theme directory in the OS file manager via the platform
+    /// launcher, creating it first so the button works on a fresh install.
+    /// </summary>
+    private async void OnOpenThemeFolderPressed(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not AppearanceViewModel appearance)
+        {
+            return;
+        }
+
+        if (TopLevel.GetTopLevel(this)?.Launcher is not { } launcher)
+        {
+            return;
+        }
+
+        if (appearance.PrepareThemeFolder() is not { } directory)
+        {
+            return;
+        }
+
+        try
+        {
+            await launcher.LaunchDirectoryInfoAsync(directory);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            // The path is printed on screen beside the button, so a
+            // refused launch is not worth a message.
+        }
     }
 
 #if DEBUG

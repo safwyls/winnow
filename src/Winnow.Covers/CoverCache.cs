@@ -56,11 +56,6 @@ public sealed class CoverCache : ICoverCache, IDisposable
             return Task.FromResult<CoverArt?>(hit);
         }
 
-        if (_pipeline.IsKnownMissing(key))
-        {
-            return Task.FromResult<CoverArt?>(null);
-        }
-
         var slot = new Slot(key, CoverImaging.SnapWidth(displayWidthPixels));
 
         // Task.Run, not a bare async call: this is invoked from the UI thread as

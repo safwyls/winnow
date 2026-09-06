@@ -74,8 +74,8 @@ public static class RecommendationScorer
         {
             Add(SignalNames.TasteAffinity, tuning.WeightTasteAffinity, Math.Clamp(affinity, 0.0, 1.0),
                 facts.TasteFacetName is { Length: > 0 } facetName
-                    ? $"{facetName} is where your hours go, and this is one."
-                    : "It matches where your hours go.");
+                    ? $"This matches your taste in {facetName} games."
+                    : "This matches your taste.");
         }
 
         // ── Tried to like it (Tier 1) ──────────────────────────────────────

@@ -62,12 +62,25 @@ public sealed class EpicLibrarySource
     /// instance was constructed with, then to <see cref="EpicPaths.FindDataRoot"/>.
     /// </param>
     public IReadOnlyList<CandidateOwnership> Scan(string? dataRoot = null)
+        => ScanLibrary(dataRoot).Candidates;
+
+    /// <summary>
+    /// The whole result of a scan: candidates and launch triples in one pass.
+    /// <see cref="Scan"/> is the candidates-only overload, kept because most
+    /// callers want exactly that and changing its signature would touch every one
+    /// of them.
+    /// </summary>
+    /// <param name="dataRoot">
+    /// Launcher <c>Data</c> root to scan. Null falls back to the root this
+    /// instance was constructed with, then to <see cref="EpicPaths.FindDataRoot"/>.
+    /// </param>
+    public EpicScanResult ScanLibrary(string? dataRoot = null)
     {
         dataRoot ??= _dataRoot ?? EpicPaths.FindDataRoot();
         if (dataRoot is null || !Directory.Exists(dataRoot))
         {
             _logger.LogInformation("No Epic Games Launcher installation found; Epic ingest yields nothing");
-            return [];
+            return new EpicScanResult([], []);
         }
 
         var manifestsDirectory = EpicPaths.ManifestsDirectory(dataRoot);
@@ -107,6 +120,7 @@ public sealed class EpicLibrarySource
 
         var observedAt = _timeProvider.GetUtcNow().UtcDateTime;
         var candidates = new List<CandidateOwnership>();
+        var launchTriples = new List<EpicLaunchTriple>();
         var installedCount = 0;
         var thirdPartyCount = 0;
 
@@ -125,6 +139,11 @@ public sealed class EpicLibrarySource
             if (app is not null || entry?.IsThirdPartyManaged == true)
             {
                 thirdPartyCount++;
+            }
+
+            if (LaunchTripleFor(catalogItemId, manifest, entry, app) is { } triple)
+            {
+                launchTriples.Add(triple);
             }
 
             candidates.Add(new CandidateOwnership(
@@ -156,10 +175,37 @@ public sealed class EpicLibrarySource
 
         _logger.LogInformation(
             "Epic scan: {Candidates} candidates ({Installed} installed, {Catalog} catalog entries, "
-            + "{Manifests} manifests, {ThirdParty} delivered by another launcher) under {Root}",
-            candidates.Count, installedCount, catalog.Count, manifests.Count, thirdPartyCount, dataRoot);
+            + "{Manifests} manifests, {ThirdParty} delivered by another launcher, "
+            + "{LaunchTriples} with a complete launch triple) under {Root}",
+            candidates.Count, installedCount, catalog.Count, manifests.Count, thirdPartyCount,
+            launchTriples.Count, dataRoot);
 
-        return candidates;
+        return new EpicScanResult(candidates, launchTriples);
+    }
+
+    /// <summary>
+    /// Assembles the triple from whichever source has each field, strongest
+    /// evidence first: manifest (authoritative for an installed title), then
+    /// catalog entry (authoritative for the owned library), then third-party
+    /// record (the only source for a title delivered by another launcher that
+    /// the catalog has not caught up with). Returns null unless both the
+    /// namespace and the AppName were found: a partial triple builds a URL the
+    /// launcher cannot resolve, and a URL that cannot resolve is worse than no
+    /// button.
+    /// </summary>
+    private static EpicLaunchTriple? LaunchTripleFor(
+        string catalogItemId,
+        EpicManifest? manifest,
+        EpicCatalogEntry? entry,
+        EpicThirdPartyApp? app)
+    {
+        var catalogNamespace = FirstReal(
+            manifest?.CatalogNamespace, entry?.CatalogNamespace, app?.CatalogNamespace);
+        var appName = FirstReal(manifest?.AppName, entry?.AppName, app?.AppName);
+
+        return catalogNamespace is null || appName is null
+            ? null
+            : new EpicLaunchTriple(catalogItemId, catalogNamespace, appName);
     }
 
     /// <summary>

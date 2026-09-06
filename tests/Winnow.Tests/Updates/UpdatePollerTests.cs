@@ -8,11 +8,7 @@ using Xunit;
 namespace Winnow.Tests.Updates;
 
 /// <summary>
-/// The spike's "eliminate, cascade, stagger" strategy, which is what takes a
-/// naive 1,232 requests per poll down to ~63 a day. Each rule is asserted
-/// separately, because each one is separately load-bearing: dropping any of the
-/// three puts the volunteer service back on the hook for hundreds of daily
-/// requests.
+/// Eligibility, independent source polling, caching and fair scheduling.
 /// </summary>
 public class UpdatePollerTests : IDisposable
 {
@@ -134,7 +130,7 @@ public class UpdatePollerTests : IDisposable
     // ── Cascade ─────────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task Steamcmd_is_only_called_when_a_new_patch_note_appeared()
+    public async Task Unchanged_news_still_reads_build_history_through_its_cache()
     {
         var announcedAt = Now.AddDays(-2).UtcDateTime;
         var builtAt = Now.AddDays(-1).UtcDateTime;
@@ -149,18 +145,14 @@ public class UpdatePollerTests : IDisposable
 
         var first = await host.Poller.PollDueBatchAsync();
 
-        // The announcement is new, so the cascade fires: one cheap news call
-        // gates one expensive build call.
+        // Both sources are read on the initial pass.
         Assert.Equal(1, first.NewsRequests);
         Assert.Equal(1, first.BuildInfoRequests);
         Assert.Equal(1, first.AnnouncementsRecorded);
         Assert.Equal(1, first.BuildPushesRecorded);
 
-        // Next day, same newest item. This is the overwhelmingly common
-        // outcome and the entire basis of the cost model: one ~440-byte request,
-        // no ~12 KB request, no writes. Announcements are rare; depot pushes are
-        // constant, so sweeping the cheap signal and gating the expensive one is
-        // what drops steamcmd.net from 616 hits a day to about ten.
+        // The next day's build read hits the existing cache. Unchanged news
+        // does not suppress it, and unchanged signals produce no new events.
         host.Handler.Clear();
         host.Clock.AdvanceDays(1);
 
@@ -174,23 +166,22 @@ public class UpdatePollerTests : IDisposable
     }
 
     [Fact]
-    public async Task An_ancient_patch_note_does_not_cost_a_steamcmd_call()
+    public async Task An_ancient_patch_note_does_not_block_raw_build_history()
     {
         using var host = Host(
             (request, _) => request.Host == UpdateHost.SteamNews
                 ? FakeUpdateHandler.Json(
                     HttpStatusCode.OK, UpdateFixtures.News(request.AppId, Now.AddYears(-3).UtcDateTime, "old"))
-                : UpdateSignalTestHost.Unarranged(request),
+                : FakeUpdateHandler.Json(HttpStatusCode.OK, UpdateFixtures.BuildInfo(request.AppId, Now.UtcDateTime)),
             candidates: [new PollCandidate(1, "100", 240, Now.AddYears(-4).UtcDateTime)]);
 
         var report = await host.Poller.PollDueBatchAsync();
 
-        // `timeupdated` is the app's LATEST push, so against a three-year-old
-        // patch note it cannot correlate no matter what it says. The call would
-        // spend the volunteer service's bandwidth to confirm a foregone "no".
+        // Correlation does not determine which raw signals are requested.
         Assert.Equal(1, report.NewsRequests);
-        Assert.Equal(0, report.BuildInfoRequests);
+        Assert.Equal(1, report.BuildInfoRequests);
         Assert.Equal(1, report.AnnouncementsRecorded);
+        Assert.Equal(1, report.BuildPushesRecorded);
     }
 
     [Fact]
@@ -281,18 +272,19 @@ public class UpdatePollerTests : IDisposable
     }
 
     [Fact]
-    public async Task A_no_feed_app_costs_one_request_ever_and_never_a_build_call()
+    public async Task A_no_feed_app_caches_news_independently_of_build_history()
     {
         using var host = Host(
             (request, _) => request.Host == UpdateHost.SteamNews
                 ? FakeUpdateHandler.NoNewsFeed()
-                : UpdateSignalTestHost.Unarranged(request),
+                : FakeUpdateHandler.Json(HttpStatusCode.OK, UpdateFixtures.BuildInfo(request.AppId, Now.UtcDateTime)),
             candidates: [new PollCandidate(1, UpdateFixtures.NoFeedAppId, 240, Now.AddMonths(-8).UtcDateTime)]);
 
         var first = await host.Poller.PollDueBatchAsync();
         Assert.Equal(1, first.NoFeed);
         Assert.Equal(1, first.NewsRequests);
-        Assert.Equal(0, first.BuildInfoRequests);
+        Assert.Equal(1, first.BuildInfoRequests);
+        Assert.Equal(1, first.BuildPushesRecorded);
 
         // Fourteen days later — past the catch-up threshold, so it is genuinely
         // scheduled again — the answer still costs nothing.
@@ -313,7 +305,7 @@ public class UpdatePollerTests : IDisposable
             .ToArray();
 
         using var host = Host(
-            NewsOnly(Now.AddYears(-3).UtcDateTime),
+            NewsAndBuild(Now.AddYears(-3).UtcDateTime),
             candidates: candidates,
             configure: options => options.SweepPeriodDays = 7);
 
@@ -342,7 +334,7 @@ public class UpdatePollerTests : IDisposable
             .ToArray();
 
         using var host = Host(
-            NewsOnly(Now.AddYears(-3).UtcDateTime),
+            NewsAndBuild(Now.AddYears(-3).UtcDateTime),
             candidates: candidates,
             configure: options =>
             {
@@ -377,7 +369,7 @@ public class UpdatePollerTests : IDisposable
     public async Task Polling_twice_in_one_day_does_not_re_poll()
     {
         using var host = Host(
-            NewsOnly(Now.AddYears(-3).UtcDateTime),
+            NewsAndBuild(Now.AddYears(-3).UtcDateTime),
             candidates: [new PollCandidate(1, "100", 240, Now.AddMonths(-8).UtcDateTime)],
             configure: options => options.SweepPeriodDays = 1);
 
@@ -399,7 +391,7 @@ public class UpdatePollerTests : IDisposable
         var cache = new Winnow.Enrich.Updates.Storage.SqliteUpdateSignalCache(_db.Factory);
 
         using (var host = Host(
-            NewsOnly(Now.AddYears(-3).UtcDateTime),
+            NewsAndBuild(Now.AddYears(-3).UtcDateTime),
             candidates: candidates,
             cache: cache,
             configure: options => options.SweepPeriodDays = 1))
@@ -410,7 +402,7 @@ public class UpdatePollerTests : IDisposable
         // A brand new provider, new clients, new poller — everything a restart
         // replaces — sharing only the database.
         using (var restarted = Host(
-            NewsOnly(Now.AddYears(-3).UtcDateTime),
+            NewsAndBuild(Now.AddYears(-3).UtcDateTime),
             candidates: candidates,
             cache: cache,
             configure: options => options.SweepPeriodDays = 1))
@@ -449,30 +441,128 @@ public class UpdatePollerTests : IDisposable
     }
 
     [Fact]
-    public async Task An_unanswered_poll_leaves_the_app_due()
+    public async Task An_unanswered_poll_retries_on_the_next_day()
     {
         var failing = true;
 
         using var host = Host(
             (request, _) => request.Host == UpdateHost.SteamNews && failing
                 ? FakeUpdateHandler.Json(HttpStatusCode.ServiceUnavailable, "{}")
-                : FakeUpdateHandler.Json(
+                : request.Host == UpdateHost.SteamCmd
+                    ? FakeUpdateHandler.Json(HttpStatusCode.OK, UpdateFixtures.BuildInfo(request.AppId, Now.UtcDateTime))
+                    : FakeUpdateHandler.Json(
                     HttpStatusCode.OK, UpdateFixtures.News(request.AppId, Now.AddYears(-3).UtcDateTime, "g")),
             candidates: [new PollCandidate(1, "100", 240, Now.AddMonths(-8).UtcDateTime)],
-            configure: options => options.MaxRetryAttempts = 1);
+            configure: options =>
+            {
+                options.MaxRetryAttempts = 1;
+                options.SweepPeriodDays = 7;
+            },
+            now: FirstDueDay("100", 7, Now));
 
         var first = await host.Poller.PollDueBatchAsync();
         Assert.Equal(1, first.Failures);
+        Assert.Equal(0, (await host.Poller.PollDueBatchAsync()).Polled);
 
-        // Not stamped as polled: a transient outage must not cost the app a
-        // whole sweep period of invisibility.
+        // Failure yields this day to other apps, but retries the next day.
         failing = false;
+        host.Clock.AdvanceDays(1);
         var second = await host.Poller.PollDueBatchAsync();
         Assert.Equal(1, second.Polled);
         Assert.Equal(1, second.AnnouncementsRecorded);
     }
 
     // ── Idempotency ─────────────────────────────────────────────────────────
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Persistent_failures_yield_each_capped_turn_and_survive_restart(bool throws)
+    {
+        var cache = new InMemoryUpdateSignalCache();
+        var candidates = Enumerable.Range(1, 3)
+            .Select(id => new PollCandidate(id, id.ToString(), 240, Now.AddMonths(-8).UtcDateTime))
+            .ToArray();
+        var asked = new List<string>();
+        for (var day = 0; day < 2; day++)
+        {
+            // Recreate the poller between every capped turn, retaining only its
+            // persisted cache. A process-local cursor cannot pass this test.
+            for (var turn = 0; turn < 3; turn++)
+            {
+                using var host = Host((request, attempt) =>
+                {
+                    if (request.Host == UpdateHost.SteamNews)
+                    {
+                        if (attempt == 0)
+                            asked.Add(request.AppId);
+                        if (throws)
+                            throw new InvalidOperationException("Persistent news failure");
+                        return FakeUpdateHandler.Json(HttpStatusCode.ServiceUnavailable, "{}");
+                    }
+                    return FakeUpdateHandler.Json(HttpStatusCode.OK,
+                        UpdateFixtures.BuildInfo(request.AppId, Now.UtcDateTime));
+                }, candidates, options =>
+                {
+                    options.MaxAppsPerBatch = 1;
+                    options.MaxRetryAttempts = 1;
+                }, cache, Now.AddDays(day));
+
+                var result = await host.Poller.PollDueBatchAsync();
+                Assert.Equal(1, result.Polled);
+                Assert.Equal(1, result.Failures);
+                Assert.Equal(day == 0 ? 1 : 0, result.BuildPushesRecorded);
+            }
+        }
+        Assert.Equal(["1", "2", "3", "1", "2", "3"], asked);
+    }
+
+    [Theory]
+    [InlineData(UpdateHost.SteamNews, false)]
+    [InlineData(UpdateHost.SteamNews, true)]
+    [InlineData(UpdateHost.SteamCmd, false)]
+    [InlineData(UpdateHost.SteamCmd, true)]
+    public async Task A_failed_source_does_not_block_the_other_source(UpdateHost failedHost, bool throws)
+    {
+        using var host = Host((request, _) =>
+        {
+            if (request.Host == failedHost)
+            {
+                if (throws)
+                    throw new InvalidOperationException("Source failure");
+                return FakeUpdateHandler.Json(HttpStatusCode.ServiceUnavailable, "{}");
+            }
+            return FakeUpdateHandler.Json(HttpStatusCode.OK,
+                request.Host == UpdateHost.SteamNews
+                    ? UpdateFixtures.News(request.AppId, Now.UtcDateTime, "gid")
+                    : UpdateFixtures.BuildInfo(request.AppId, Now.UtcDateTime));
+        }, [new PollCandidate(1, "100", 240, Now.AddMonths(-8).UtcDateTime)],
+            options => options.MaxRetryAttempts = 1);
+
+        var result = await host.Poller.PollDueBatchAsync();
+        Assert.Equal(1, result.Failures);
+        Assert.Equal(failedHost == UpdateHost.SteamNews && !throws ? 2 : 1,
+            host.Handler.CountFor(UpdateHost.SteamNews));
+        Assert.Equal(failedHost == UpdateHost.SteamCmd && !throws ? 2 : 1,
+            host.Handler.CountFor(UpdateHost.SteamCmd));
+        Assert.Equal(failedHost == UpdateHost.SteamNews ? 0 : 1, result.AnnouncementsRecorded);
+        Assert.Equal(failedHost == UpdateHost.SteamCmd ? 0 : 1, result.BuildPushesRecorded);
+    }
+
+    [Fact]
+    public async Task Empty_news_does_not_block_raw_build_history()
+    {
+        using var host = Host((request, _) => FakeUpdateHandler.Json(HttpStatusCode.OK,
+            request.Host == UpdateHost.SteamNews
+                ? UpdateFixtures.NewsEmpty(request.AppId)
+                : UpdateFixtures.BuildInfo(request.AppId, Now.UtcDateTime)),
+            [new PollCandidate(1, "100", 240, Now.AddMonths(-8).UtcDateTime)]);
+        var result = await host.Poller.PollDueBatchAsync();
+        Assert.Equal(0, result.AnnouncementsRecorded);
+        Assert.Equal(1, result.BuildPushesRecorded);
+        Assert.Equal(0, result.Watching);
+        Assert.Equal(0, result.Failures);
+    }
 
     [Fact]
     public async Task Re_polling_the_same_events_writes_no_duplicates()
@@ -628,12 +718,12 @@ public class UpdatePollerTests : IDisposable
         return notBefore;
     }
 
-    /// <summary>Answers the news endpoint and fails loudly on any build call.</summary>
-    private static Func<RecordedUpdateRequest, int, HttpResponseMessage> NewsOnly(DateTime publishedAt)
+    /// <summary>Answers both endpoints with stable signals for schedule tests.</summary>
+    private static Func<RecordedUpdateRequest, int, HttpResponseMessage> NewsAndBuild(DateTime publishedAt)
         => (request, _) => request.Host == UpdateHost.SteamNews
             ? FakeUpdateHandler.Json(
                 HttpStatusCode.OK, UpdateFixtures.News(request.AppId, publishedAt, "gid-" + request.AppId))
-            : UpdateSignalTestHost.Unarranged(request);
+            : FakeUpdateHandler.Json(HttpStatusCode.OK, UpdateFixtures.BuildInfo(request.AppId, publishedAt));
 
     private async Task<long> SeedAsync(string appId, long? playtimeMinutes, DateTime? lastPlayed)
     {

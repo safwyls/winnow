@@ -1,32 +1,124 @@
 using Winnow.Enrich.Igdb.Storage;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Winnow.Enrich.Igdb.Credentials;
 
 /// <summary>
 /// The settings table — the product path. §4.2: keys are user-supplied and
-/// stored locally, so the app's own settings screen writes here and this is the
-/// first source consulted.
+/// stored locally, so this is the first source consulted.
+///
+/// <para>The client id is a public identifier and stays as it is. The client
+/// secret is a long-lived bearer credential and is stored protected: this
+/// source reads it through <see cref="IIgdbSecretProtector"/>, and a plaintext
+/// row left by a pre-protection install is migrated on first read and left
+/// empty. On a host that cannot encrypt, a plaintext secret is refused rather
+/// than used — and never destroyed, because refusing is not license to delete
+/// what a user typed.</para>
 /// </summary>
 public sealed class SettingsTableCredentialSource : IIgdbCredentialSource
 {
     /// <summary>Settings key holding the Twitch application client id.</summary>
     public const string ClientIdKey = "igdb.client_id";
 
-    /// <summary>Settings key holding the Twitch application client secret.</summary>
+    /// <summary>
+    /// Settings key that held the client secret in the clear before protected
+    /// storage existed. Kept as a constant because this source migrates it and
+    /// empties it; nothing writes a value here any more.
+    /// </summary>
     public const string ClientSecretKey = "igdb.client_secret";
 
-    private readonly ISettingsStore _settings;
+    /// <summary>
+    /// Settings key holding the protected client secret. Versioned: a future
+    /// change to the payload shape takes a new key rather than trying to
+    /// interpret an old one.
+    /// </summary>
+    public const string ClientSecretProtectedKey = "igdb.client_secret.v1";
 
-    public SettingsTableCredentialSource(ISettingsStore settings) => _settings = settings;
+    private readonly ISettingsStore _settings;
+    private readonly IIgdbSecretProtector _protector;
+    private readonly ILogger<SettingsTableCredentialSource> _log;
+
+    private bool _warnedAboutProtection;
+
+    public SettingsTableCredentialSource(
+        ISettingsStore settings,
+        IIgdbSecretProtector protector,
+        ILogger<SettingsTableCredentialSource>? log = null)
+    {
+        _settings = settings;
+        _protector = protector;
+        _log = log ?? NullLogger<SettingsTableCredentialSource>.Instance;
+    }
 
     public string Name => "settings";
 
     public async ValueTask<IgdbCredentials?> TryGetAsync(CancellationToken ct = default)
     {
         var clientId = await _settings.GetAsync(ClientIdKey, ct);
-        var clientSecret = await _settings.GetAsync(ClientSecretKey, ct);
+        var clientSecret = await GetClientSecretAsync(ct);
         return IgdbCredentials.TryCreate(clientId, clientSecret, Name);
+    }
+
+    /// <summary>
+    /// The client secret, protected at rest. One-time migration from the
+    /// plaintext row an older build may have written: read it, store it
+    /// protected, leave the plaintext row empty.
+    /// </summary>
+    private async Task<string?> GetClientSecretAsync(CancellationToken ct)
+    {
+        var stored = await _settings.GetAsync(ClientSecretProtectedKey, ct);
+        if (!string.IsNullOrWhiteSpace(stored))
+        {
+            var secret = _protector.Unprotect(stored);
+            if (!string.IsNullOrWhiteSpace(secret))
+            {
+                // Retry cleanup if migration stopped after writing the protected row.
+                if (!string.IsNullOrEmpty(await _settings.GetAsync(ClientSecretKey, ct)))
+                {
+                    await _settings.SetAsync(ClientSecretKey, string.Empty, ct);
+                }
+
+                return secret;
+            }
+
+            // The row exists but this host cannot read it. Not an error to the
+            // user — the credentials are simply not in force here.
+            return null;
+        }
+
+        var legacy = await _settings.GetAsync(ClientSecretKey, ct);
+        if (string.IsNullOrWhiteSpace(legacy))
+        {
+            return null;
+        }
+
+        var protectedValue = _protector.Protect(legacy.Trim());
+        if (protectedValue is null)
+        {
+            // A host that cannot encrypt refuses to use a plaintext credential
+            // rather than letting the row keep paying out. What the user typed is
+            // left exactly where it was; the environment variables are the
+            // supported alternative on such a host.
+            if (!_warnedAboutProtection)
+            {
+                _warnedAboutProtection = true;
+                _log.LogWarning(
+                    "An IGDB client secret is present in the clear from an earlier version, and this host "
+                    + "cannot encrypt at rest ({Protector}), so it is not used. Supply the credentials through "
+                    + "the Igdb__ClientId / Igdb__ClientSecret environment variables instead.",
+                    _protector.Name);
+            }
+
+            return null;
+        }
+
+        await _settings.SetAsync(ClientSecretProtectedKey, protectedValue, ct);
+        await _settings.SetAsync(ClientSecretKey, string.Empty, ct);
+        _log.LogInformation(
+            "The stored IGDB client secret was migrated to protected storage; the plaintext row was emptied.");
+        return legacy.Trim();
     }
 }
 

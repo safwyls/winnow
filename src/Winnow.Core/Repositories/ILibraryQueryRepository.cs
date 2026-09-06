@@ -8,6 +8,9 @@ namespace Winnow.Core.Repositories;
 /// </summary>
 public interface ILibraryQueryRepository
 {
+    /// <summary>Loads the library, identifiers and list membership in one database command.</summary>
+    Task<LibrarySnapshot> GetSnapshotAsync(BucketThresholds thresholds, CancellationToken ct = default);
+
     /// <summary>
     /// One row per ownership with its derived bucket. Excludes consolidated
     /// demos and non-game entries (unless thresholds opt in).
@@ -32,6 +35,28 @@ public interface ILibraryQueryRepository
     /// disabled.</para>
     /// </summary>
     Task<int> CountHiddenByAccountScopeAsync(
+        BucketThresholds thresholds, CancellationToken ct = default);
+
+    /// <summary>
+    /// How many library entries the explicit-content filter would remove —
+    /// the number the toggle's own label states.
+    ///
+    /// <para>Answered by running the bucket query in both modes and
+    /// subtracting, so the figure counts tiles that actually disappear rather
+    /// than rows in a table: a demo already folded into its base game, or a
+    /// soundtrack the non-game filter had removed anyway, was never on screen
+    /// to be hidden and is not counted.</para>
+    ///
+    /// <para>Independent of the stored preference — it answers the same way
+    /// whether the filter is currently on or off, because the toggle has to
+    /// state what it does before it is used. Zero on any library with no
+    /// maturity evidence stored, which is every library until enrichment has
+    /// run.</para>
+    /// </summary>
+    Task<int> CountHiddenByExplicitFilterAsync(
+        BucketThresholds thresholds, CancellationToken ct = default);
+
+    Task<int> CountHiddenByRatingCapAsync(
         BucketThresholds thresholds, CancellationToken ct = default);
 
     /// <summary>Every release with its IGDB id and Steam appid, for facet backfill.</summary>

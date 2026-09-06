@@ -1,4 +1,4 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+<UserControl AutomationProperties.Name="Feed" AutomationProperties.ControlTypeOverride="Group" xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Winnow.App.ViewModels"
              xmlns:views="using:Winnow.App.Views"
@@ -31,7 +31,7 @@
 
     </UserControl.Styles>
 
-    <Grid RowDefinitions="Auto,*" Background="{StaticResource PaneGround}">
+    <Grid RowDefinitions="Auto,*">
 
         <!-- ══ Header ═══════════════════════════════════════════════════════
              Full-bleed rule distinguishes this from section headers. Count
@@ -42,7 +42,7 @@
                 BorderThickness="0,0,0,1">
             <Grid ColumnDefinitions="*,Auto">
                 <StackPanel Grid.Column="0" Spacing="7">
-                    <TextBlock Classes="display-l" Text="{Binding Title}"/>
+                    <TextBlock AutomationProperties.HeadingLevel="1" Classes="display-l" Text="{Binding Title}"/>
 
                     <StackPanel Orientation="Horizontal" Spacing="6"
                                 IsVisible="{Binding ShowCandidates}">
@@ -68,7 +68,7 @@
 
                 <!-- ══ Feed history toggle ══════════════════════════════════
                      Audit trail of feed responses; second undo route. -->
-                <Button Grid.Column="1"
+                <Button AutomationProperties.Name="{Binding HistoryLabel}" Grid.Column="1"
                         Classes="act quiet"
                         Padding="12,6"
                         FontSize="12"
@@ -126,13 +126,13 @@
 
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:FeedShelfViewModel">
-                        <Border Classes="section">
+                        <Border Classes="section" AutomationProperties.Name="{Binding Title}" AutomationProperties.AccessibilityView="Control" AutomationProperties.ControlTypeOverride="Group">
                             <StackPanel>
 
                                 <!-- The section's header band. -->
                                 <StackPanel Margin="18,15,18,14" Spacing="3">
                                     <StackPanel Orientation="Horizontal" Spacing="10">
-                                        <TextBlock Classes="shelf" Text="{Binding Title}"/>
+                                        <TextBlock AutomationProperties.HeadingLevel="2" Classes="shelf" Text="{Binding Title}"/>
 
                                         <!-- Section count, beside its name. Confirms
                                              a short section is complete. -->
@@ -188,7 +188,7 @@
 
                     <StackPanel Margin="18,15,18,14" Spacing="3">
                         <StackPanel Orientation="Horizontal" Spacing="10">
-                            <TextBlock Classes="shelf" Text="{Binding History.Title}"/>
+                            <TextBlock AutomationProperties.HeadingLevel="2" Classes="shelf" Text="{Binding History.Title}"/>
                             <TextBlock Classes="data-s"
                                        VerticalAlignment="Center"
                                        IsVisible="{Binding History.HasEntries}"

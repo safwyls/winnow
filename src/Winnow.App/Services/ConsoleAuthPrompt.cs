@@ -132,14 +132,20 @@ public sealed class ConsoleAuthPrompt : IInteractiveAuthPrompt
         }
     }
 
-    /// <summary>Whether there is anywhere to prompt. Redirected streams count as available.</summary>
-    private static bool HasConsole()
+    /// <summary>
+    /// Whether there is anywhere to prompt. Called only from this class
+    /// (<see cref="IsAvailableAsync"/> and <see cref="RequestCodeAsync"/>).
+    /// Internal so <see cref="StartupAlert"/> can reach <see
+    /// cref="AttachConsoleIfNeeded"/>, which shares the visibility.
+    ///
+    /// <para>Treats a redirected stream as available, but a WinExe launched
+    /// from Explorer has a NULL standard handle that .NET reports as
+    /// redirected, so this answers "yes" in exactly the launch that has no
+    /// console. TASK-57 owns correcting that and the sign-in flows that
+    /// trust it.</para>
+    /// </summary>
+    internal static bool HasConsole()
     {
-        if (Console.IsInputRedirected || Console.IsOutputRedirected)
-        {
-            return true;
-        }
-
         if (!OperatingSystem.IsWindows())
         {
             return Environment.UserInteractive;
@@ -147,7 +153,7 @@ public sealed class ConsoleAuthPrompt : IInteractiveAuthPrompt
 
         try
         {
-            return GetConsoleWindow() != IntPtr.Zero;
+            return StandardHandleIsUsable(GetStdHandle(StdOutputHandle));
         }
         catch (EntryPointNotFoundException)
         {
@@ -162,14 +168,36 @@ public sealed class ConsoleAuthPrompt : IInteractiveAuthPrompt
     /// </summary>
     internal static void AttachConsoleIfNeeded()
     {
-        if (!OperatingSystem.IsWindows() || Console.IsInputRedirected || Console.IsOutputRedirected)
+        if (!OperatingSystem.IsWindows())
         {
             return;
         }
 
         try
         {
-            AttachConsole(AttachParentProcess);
+            // Console.Is*Redirected is not enough here. A WinExe started with
+            // no console receives null standard handles, which .NET reports as
+            // redirected even though no reader exists. Pipes and files are
+            // valid destinations and must stay untouched; an absent stdout
+            // means attach to the parent terminal.
+            if (StandardHandleIsUsable(GetStdHandle(StdOutputHandle)))
+            {
+                return;
+            }
+
+            var inputWasAbsent = !StandardHandleIsUsable(GetStdHandle(StdInputHandle));
+            if (AttachConsole(AttachParentProcess))
+            {
+                // Console caches streams made from the null WinExe handles.
+                // Reopen them after attaching so subsequent WriteLine calls
+                // reach the terminal we just joined.
+                if (inputWasAbsent)
+                {
+                    Console.SetIn(new StreamReader(Console.OpenStandardInput()));
+                }
+                Console.SetOut(new StreamWriter(Console.OpenStandardOutput()) { AutoFlush = true });
+                Console.SetError(new StreamWriter(Console.OpenStandardError()) { AutoFlush = true });
+            }
         }
         catch (EntryPointNotFoundException)
         {
@@ -178,10 +206,24 @@ public sealed class ConsoleAuthPrompt : IInteractiveAuthPrompt
     }
 
     private const int AttachParentProcess = -1;
+    private const int StdInputHandle = -10;
+    private const int StdOutputHandle = -11;
+    private const uint FileTypeUnknown = 0;
+    private static readonly IntPtr InvalidHandleValue = new(-1);
+
+    /// <summary>Whether a standard handle targets a console, pipe, or file.</summary>
+    internal static bool StandardHandleIsUsable(IntPtr handle)
+        => handle != IntPtr.Zero && handle != InvalidHandleValue && GetFileType(handle) != FileTypeUnknown;
 
     [DllImport("kernel32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool AttachConsole(int processId);
+
+    [DllImport("kernel32.dll")]
+    private static extern IntPtr GetStdHandle(int which);
+
+    [DllImport("kernel32.dll")]
+    private static extern uint GetFileType(IntPtr handle);
 
     [DllImport("kernel32.dll")]
     private static extern IntPtr GetConsoleWindow();

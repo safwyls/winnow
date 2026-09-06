@@ -5,6 +5,7 @@ using Winnow.App.Services;
 using Winnow.App.ViewModels;
 using Winnow.App.Views;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Winnow.App;
 
@@ -122,7 +123,25 @@ public partial class App : Application
         }
 #endif
 
-        theme.LoadAsync().GetAwaiter().GetResult();
+        // TASK-22 (F36). The one read on the startup spine whose failure must
+        // not be fatal. It runs synchronously inside
+        // OnFrameworkInitializationCompleted, so a throw here escapes into
+        // Avalonia's start path and out to Program's boundary — which would
+        // correctly refuse to open the app over an unreadable palette
+        // preference. But a palette is not a library: every token already
+        // carries the authored value from tokens.axaml, so a caught failure
+        // leaves the window painted in the Winnow default rather than not
+        // painted at all, and the user keeps their games.
+        try
+        {
+            theme.LoadAsync().GetAwaiter().GetResult();
+        }
+        catch (Exception ex)
+        {
+            Program.AppHost?.Services.GetService<ILoggerFactory>()
+                ?.CreateLogger(typeof(App).FullName!)
+                .LogWarning(ex, "The stored appearance could not be read; opening in the default theme.");
+        }
 
         // Hot reload, started only on a real session. An author editing a
         // palette in a text editor gets the window repainted on save; a capture

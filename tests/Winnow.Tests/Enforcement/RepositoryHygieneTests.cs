@@ -111,6 +111,7 @@ public sealed class RepositoryHygieneTests
                                                              && !f.StartsWith("backlog/", StringComparison.Ordinal)
                                                              && !f.StartsWith("docs/spikes/", StringComparison.Ordinal)
                                                              && f != "docs/code-review-2026-08-28.md"
+                                                             && f != "docs/code-review-2026-09-03.md"
                                                              && f != "docs/stabilization-2026-08-28.md"));
 
         foreach (var file in scan)

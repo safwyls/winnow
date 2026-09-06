@@ -69,7 +69,7 @@ public sealed class SqliteUpdateSignalCache : IUpdateSignalCache
                 payload_json = excluded.payload_json,
                 fetched_at   = excluded.fetched_at;
             """,
-            new { provider, providerId, payloadJson, fetchedAt = fetchedAt.ToUniversalTime() },
+            new { provider, providerId, payloadJson, fetchedAt },
             transaction: lease.Transaction,
             cancellationToken: ct));
     }

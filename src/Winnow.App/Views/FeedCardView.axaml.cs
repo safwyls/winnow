@@ -23,8 +23,12 @@ public partial class FeedCardView : UserControl
     /// </summary>
     private const double CoverWidth = 108;
 
+    private FeedCardViewModel? _card;
     private GameTileViewModel? _tile;
     private CoverPresenter? _cover;
+
+    private bool _hovered;
+    private bool _focused;
 
     public FeedCardView()
     {
@@ -54,6 +58,24 @@ public partial class FeedCardView : UserControl
         SetHover(false);
     }
 
+    /// <summary>
+    /// GotFocus and LostFocus bubble, but LostFocus fires when focus moves
+    /// from the card to the Undo inside it, reporting a transient "not focused"
+    /// in the middle of a move that never left the card. IsKeyboardFocusWithin
+    /// is correct at every instant and needs no state machine. It matters
+    /// because Undo is a Tab stop: focus inside the card holds the countdown,
+    /// and a false gap would let it advance.
+    /// </summary>
+    protected override void OnPropertyChanged(Avalonia.AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+
+        if (change.Property == IsKeyboardFocusWithinProperty)
+        {
+            SetFocusWithin(change.NewValue is true);
+        }
+    }
+
     protected override void OnDataContextChanged(EventArgs e)
     {
         base.OnDataContextChanged(e);
@@ -70,12 +92,25 @@ public partial class FeedCardView : UserControl
     {
         base.OnDetachedFromVisualTree(e);
         SetHover(false);
+        SetFocusWithin(false);
     }
 
     private void Bind(FeedCardViewModel? card)
     {
+        // Release the outgoing card before giving the incoming one this
+        // view's actual pointer/focus state. A card left with IsPointerOver
+        // true after a rebind would be a receipt whose clock never runs again.
+        if (_card is not null)
+        {
+            _card.IsPointerOver = false;
+            _card.IsFocusWithin = false;
+        }
+
+        _card = card;
         _tile = card?.Tile;
         _cover = card?.Cover;
+
+        Apply();
 
         WriteReason(card);
         RequestCover();
@@ -134,11 +169,38 @@ public partial class FeedCardView : UserControl
         _cover.Request(CoverWidth * scaling);
     }
 
+    /// <summary>
+    /// One pointer mechanism for two readers: the tile (dormancy wake)
+    /// and the card (countdown hold). Both read the same flag rather
+    /// than tracking the pointer independently.
+    /// </summary>
     private void SetHover(bool value)
+    {
+        _hovered = value;
+        Apply();
+    }
+
+    /// <summary>
+    /// Undo is a Tab stop inside the card, so keyboard focus within holds
+    /// the countdown the same way the pointer does.
+    /// </summary>
+    private void SetFocusWithin(bool value)
+    {
+        _focused = value;
+        Apply();
+    }
+
+    private void Apply()
     {
         if (_tile is not null)
         {
-            _tile.IsPointerOver = value;
+            _tile.IsPointerOver = _hovered;
+        }
+
+        if (_card is not null)
+        {
+            _card.IsPointerOver = _hovered;
+            _card.IsFocusWithin = _focused;
         }
     }
 }

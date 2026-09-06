@@ -16,9 +16,9 @@ namespace Winnow.App.ViewModels;
 /// </summary>
 public partial class AppearanceViewModel : ObservableObject
 {
-    /// <summary>Track and thumb widths used to position the AA mark in pixels.</summary>
+    /// <summary>Width of the transparency slider's track, in pixels. The view binds
+    /// <see cref="SliderWidth"/> to it.</summary>
     private const double TrackWidth = 340;
-    private const double ThumbWidth = 16;
 
     private readonly ThemeService _service;
 
@@ -86,7 +86,7 @@ public partial class AppearanceViewModel : ObservableObject
     public string Title => "Appearance";
 
     public string IntroMessage =>
-        "Theme and window appearance. Changes apply immediately and persist.";
+        "Theme and window appearance.";
 
     // ══ The transparency slider ═════════════════════════════════════════════
     // Mica is a binary window hint, but nothing anyone can SEE is: the perceived
@@ -107,21 +107,9 @@ public partial class AppearanceViewModel : ObservableObject
 
     public bool IsSolid => _service.Transparency == 0;
 
-    /// <summary>Contrast ratio of metadata ink on the title bar against a dark desktop.</summary>
-    public string ContrastOnDarkWallpaper => Ratio(Colorimetry.DarkDesktop);
-
-    /// <summary>Contrast ratio against a pure white backdrop (worst case).</summary>
-    public string ContrastOnWhiteWallpaper => Ratio(Colorimetry.White);
-
-    /// <summary>Label for the white-wallpaper row; notes when it drops under AA.</summary>
-    public string WhiteWallpaperNote => UnderAa
-        ? "on a white one - under the 4.5:1 minimum"
-        : "on a white one";
-
-    /// <summary>Label for the dark-desktop contrast row.</summary>
-    public string DarkWallpaperNote => "on a dark desktop";
-
-    /// <summary>True once the white-backdrop measurement is under AA.</summary>
+    /// <summary>True when the slider is off SOLID and worst-case title-bar contrast
+    /// against a white desktop has dropped under 4.5:1. This is the sole trigger
+    /// for the legibility warning on this screen.</summary>
     public bool UnderAa => !IsSolid
         && Colorimetry.WorstMetadataContrast(_service.Theme, _service.Transparency / 100.0, Colorimetry.White)
             < Colorimetry.AaThreshold;
@@ -129,26 +117,16 @@ public partial class AppearanceViewModel : ObservableObject
     /// <summary>Highest transparency % where worst-case contrast still clears AA for the active theme.</summary>
     public int AaCeiling => Colorimetry.AaCeiling(_service.Theme);
 
-    /// <summary>AA mark position in pixels from the track's left edge.</summary>
-    public Thickness AaMarkMargin =>
-        new(((TrackWidth - ThumbWidth) * (AaCeiling / 100.0)) + (ThumbWidth / 2) - 0.5, 0, 0, 0);
+    /// <summary>The one legibility sentence on this screen. Shown only when
+    /// <see cref="UnderAa"/> is true, naming the last safe position so the user
+    /// knows where the line is.</summary>
+    public string LegibilityWarning =>
+        $"Past {AaCeiling}%, title-bar text may not clear 4.5:1 on a light desktop.";
 
     public double SliderWidth => TrackWidth;
 
-    public string ContrastNote => IsSolid
-        ? "Measured on the title bar. Solid, so contrast is fixed."
-        : UnderAa
-            ? $"Measured on the title bar. Past {AaCeiling}% the white figure drops under 4.5:1."
-            : "Measured on the title bar. Your desktop falls between these two values.";
-
     /// <summary>True when transparency was requested but the compositor refused it.</summary>
     public bool TransparencyUnavailable => _service.TransparencyRequested && !_service.BackdropAvailable;
-
-    public string TransparencyStatus => TransparencyUnavailable
-        ? "Desktop compositing is not available, so the window draws solid. Your setting is saved."
-        : WallTranslucent
-            ? "All panes at one level. Covers stay solid."
-            : "Frame and sidebars only. The library pane stays solid.";
 
     // ══ Material, and reach ═════════════════════════════════════════════════
     // The screen holds four decisions now, and four rows would be a wall of
@@ -163,42 +141,12 @@ public partial class AppearanceViewModel : ObservableObject
     /// <summary>What the user asked Windows for.</summary>
     public WinnowBackdrop Backdrop => _service.Backdrop;
 
-    /// <summary>True when the user picked Mica.</summary>
-    public bool MicaPicked => _service.Backdrop == WinnowBackdrop.Mica;
-
-    /// <summary>Measured Mica composite colour on this machine, rendered in Plex Mono (§3).</summary>
-    public string MicaComposite => "#201F1E";
-
-    public string MicaCompositeNote =>
-        "is what Mica resolves to on this machine. Mica tints toward its base colour rather than showing the desktop directly.";
-
     /// <summary>True when the compositor substituted a different material than requested.</summary>
     public bool BackdropSubstituted => _service.BackdropSubstituted;
 
     public string BackdropSubstitutedNote => _service.Backdrop == WinnowBackdrop.Mica
-        ? "Mica requires Windows 11. Using acrylic instead. Your preference is saved."
+        ? "Mica requires Windows 11. Using acrylic instead."
         : "Acrylic was refused, using Mica instead.";
-
-    /// <summary>Whether the cover wall's field is included.</summary>
-    public bool WallTranslucent => _service.WallTranslucent;
-
-    /// <summary>Whether the content panes float (§15).</summary>
-    public bool IsFloating => _service.IsFloating;
-
-    /// <summary>Shown when floating layout and transparency are both active.</summary>
-    public bool ShowGapNote => IsFloating && !IsSolid;
-
-    public string GapNote =>
-        "The gaps and title bar share one transparency level, one step more open than the panes.";
-
-    /// <summary>Desktop admitted through the window ground (gaps and title bar), as a whole percent.</summary>
-    public string GroundAdmits => Admits(WinnowTheme.MinShellAlpha);
-
-    /// <summary>Desktop admitted through panes (rail, filter panel, library), as a whole percent.</summary>
-    public string PaneAdmits => Admits(WinnowTheme.MinWallAlpha);
-
-    public string PaneAdmitsNote =>
-        "of every pane — rail, filter panel and library alike.";
 
     // ══ YOUR THEMES ═════════════════════════════════════════════════════════
     // A folder of JSON files at %LOCALAPPDATA%\Winnow\themes. The block below is
@@ -220,7 +168,7 @@ public partial class AppearanceViewModel : ObservableObject
 
     public string UserThemeSummary => UserThemeCount switch
     {
-        0 => "No theme files yet. Export a built-in as a starting point, or drop a .json file in.",
+        0 => "No theme files yet. Export a built-in or drop a .json file in.",
         1 => "One theme file loaded. It reloads on save.",
         _ => $"{UserThemeCount.ToString(CultureInfo.InvariantCulture)} theme files loaded. They reload on save.",
     };
@@ -279,7 +227,7 @@ public partial class AppearanceViewModel : ObservableObject
 
     public string ReportWallNote => Report.WallCeiling >= Report.AaCeiling
         ? "before the cover dimming inverts. Past the contrast mark."
-        : "before the cover dimming inverts. Before the contrast mark — on this theme the covers fail first.";
+        : "before the cover dimming inverts — on this theme the covers fail first.";
 
     public string ReportMetadata => Ratio(Report.MetadataOnChrome);
 
@@ -304,10 +252,39 @@ public partial class AppearanceViewModel : ObservableObject
     {
         var (file, problem) = _service.ExportTheme(_service.Theme);
         ThemeActionStatus = file is not null
-            ? $"Wrote {file}. Change its id and its name, then edit - it is already in the list above."
+            ? $"Wrote {file}. Change its id and name, then edit."
             : problem ?? "There is no themes folder on this machine.";
 
         OnPropertyChanged(nameof(HasThemeActionStatus));
+    }
+
+    /// <summary>
+    /// Returns the user-theme directory, creating it when it does not yet exist
+    /// (a fresh install has a path but no directory). Returns <c>null</c> when the
+    /// host registered no theme store or the directory could not be created; in the
+    /// latter case the error is reported on <see cref="ThemeActionStatus"/>.
+    /// </summary>
+    public DirectoryInfo? PrepareThemeFolder()
+    {
+        if (string.IsNullOrEmpty(ThemeFolder))
+        {
+            return null;
+        }
+
+        try
+        {
+            return Directory.CreateDirectory(ThemeFolder);
+        }
+        catch (Exception ex) when (ex is IOException
+            or UnauthorizedAccessException
+            or NotSupportedException
+            or ArgumentException)
+        {
+            ThemeActionStatus =
+                $"Could not prepare the themes folder ({ex.GetType().Name}): {ThemeFolder}";
+            OnPropertyChanged(nameof(HasThemeActionStatus));
+            return null;
+        }
     }
 
     /// <summary>Manually re-reads the themes folder (fallback when the file watcher is unavailable).</summary>
@@ -379,22 +356,6 @@ public partial class AppearanceViewModel : ObservableObject
         }
     }
 
-    /// <summary>How much desktop a surface with this floor lets through at the
-    /// position the slider is holding, as a whole percent.</summary>
-    private string Admits(double floorAlpha)
-    {
-        var t = _service.Transparency / 100.0;
-        var alpha = 1 - (t * (1 - floorAlpha));
-        return Math.Round((1 - alpha) * 100).ToString("0", CultureInfo.InvariantCulture) + "%";
-    }
-
-    private string Ratio(Color backdrop)
-    {
-        var ratio = Colorimetry.WorstMetadataContrast(
-            _service.Theme, _service.Transparency / 100.0, backdrop);
-        return ratio.ToString("0.00", CultureInfo.InvariantCulture) + ":1";
-    }
-
     private void Refresh()
     {
         foreach (var choice in Themes)
@@ -427,28 +388,15 @@ public partial class AppearanceViewModel : ObservableObject
         OnPropertyChanged(nameof(Transparency));
         OnPropertyChanged(nameof(TransparencyReading));
         OnPropertyChanged(nameof(IsSolid));
-        OnPropertyChanged(nameof(ContrastOnDarkWallpaper));
-        OnPropertyChanged(nameof(ContrastOnWhiteWallpaper));
         OnPropertyChanged(nameof(UnderAa));
-        OnPropertyChanged(nameof(WhiteWallpaperNote));
-        OnPropertyChanged(nameof(DarkWallpaperNote));
         OnPropertyChanged(nameof(AaCeiling));
-        OnPropertyChanged(nameof(AaMarkMargin));
-        OnPropertyChanged(nameof(ContrastNote));
+        OnPropertyChanged(nameof(LegibilityWarning));
         OnPropertyChanged(nameof(TransparencyUnavailable));
-        OnPropertyChanged(nameof(TransparencyStatus));
 
         OnPropertyChanged(nameof(ShowComposition));
         OnPropertyChanged(nameof(Backdrop));
-        OnPropertyChanged(nameof(MicaPicked));
         OnPropertyChanged(nameof(BackdropSubstituted));
         OnPropertyChanged(nameof(BackdropSubstitutedNote));
-        OnPropertyChanged(nameof(WallTranslucent));
-        OnPropertyChanged(nameof(GroundAdmits));
-        OnPropertyChanged(nameof(PaneAdmits));
-
-        OnPropertyChanged(nameof(IsFloating));
-        OnPropertyChanged(nameof(ShowGapNote));
 
         OnPropertyChanged(nameof(ThemeFolder));
         OnPropertyChanged(nameof(HasThemeFolder));

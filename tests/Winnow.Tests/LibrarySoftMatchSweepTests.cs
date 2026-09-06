@@ -23,6 +23,15 @@ namespace Winnow.Tests;
 /// </summary>
 public sealed class LibrarySoftMatchSweepTests
 {
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void Max_comparisons_must_be_positive(int maxComparisons)
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            new SoftMatchSweepOptions { MaxComparisons = maxComparisons });
+    }
+
     // ── The point of the whole thing ─────────────────────────────────────────
 
     [Fact]

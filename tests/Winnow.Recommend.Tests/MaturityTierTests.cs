@@ -1,3 +1,4 @@
+using Winnow.Core.Domain;
 using Winnow.Core.Queries;
 using Winnow.Core.Repositories;
 using Xunit;
@@ -21,27 +22,30 @@ public class MaturityTierTests : IDisposable
     {
         var asOf = RecommendHarness.AsOf;
 
-        // Seventy patched bounces: the strongest signal in the model, so they
-        // occupy the whole candidate shortlist, and the most recently played
-        // rows in the library, so they occupy the recent probe too. Not one of
-        // them has a session.
-        for (var i = 0; i < 70; i++)
+        await _harness.SeedBatchAsync(async () =>
         {
-            var loud = await _harness.SeedGameAsync(
-                $"Loud Candidate {i:00}", minutes: 200, lastPlayed: asOf.AddYears(-1));
-            await _harness.SeedMajorUpdateAsync(loud, asOf.AddMonths(-1), $"Update {i}");
-        }
+            // Seventy patched bounces: the strongest signal in the model, so
+            // they occupy the whole candidate shortlist, and the most recently
+            // played rows in the library, so they occupy the recent probe too.
+            // Not one of them has a session.
+            for (var i = 0; i < 70; i++)
+            {
+                var loud = await _harness.SeedGameAsync(
+                    $"Loud Candidate {i:00}", minutes: 200, lastPlayed: asOf.AddYears(-1));
+                await _harness.SeedMajorUpdateAsync(loud, asOf.AddMonths(-1), $"Update {i}");
+            }
 
-        // The user's actual history: one session each on a hundred older games,
-        // spread over seven months. A hundred sessions across a hundred titles
-        // is a settled, months-in library — and every one of them sits on a row
-        // the feed ranks below the patched pile.
-        for (var i = 0; i < 100; i++)
-        {
-            var quiet = await _harness.SeedGameAsync(
-                $"Quiet History {i:00}", minutes: 150, lastPlayed: asOf.AddYears(-5));
-            await _harness.SeedSessionAsync(quiet, asOf.AddDays(-300 + (i * 2)));
-        }
+            // The user's actual history: one session each on a hundred older
+            // games, spread over seven months. A hundred sessions across a
+            // hundred titles is a settled, months-in library — and every one
+            // of them sits on a row the feed ranks below the patched pile.
+            for (var i = 0; i < 100; i++)
+            {
+                var quiet = await _harness.SeedGameAsync(
+                    $"Quiet History {i:00}", minutes: 150, lastPlayed: asOf.AddYears(-5));
+                await _harness.SeedSessionAsync(quiet, asOf.AddDays(-300 + (i * 2)));
+            }
+        });
 
         var feed = await _harness.Engine.GetFeedAsync(RecommendHarness.Request(maxResults: 20));
 
@@ -83,7 +87,57 @@ public class MaturityTierTests : IDisposable
         Assert.Equal(DataTier.ColdStart, (await engine.GetFeedAsync(RecommendHarness.Request())).Tier);
     }
 
-    /// <summary>Stands in for the data layer's single aggregate query until one is wired up.</summary>
+    [Fact]
+    public async Task A_registered_aggregate_skips_tier_sampling_point_reads()
+    {
+        var patched = await _harness.SeedGameAsync(
+            "Strong candidate", minutes: 3_000, lastPlayed: RecommendHarness.AsOf.AddYears(-5));
+        await _harness.SeedMajorUpdateAsync(
+            patched, RecommendHarness.AsOf.AddMonths(-1), "Recent overhaul");
+
+        for (var i = 0; i < 10; i++)
+        {
+            await _harness.SeedGameAsync(
+                $"Recent low signal {i}", minutes: 1,
+                lastPlayed: RecommendHarness.AsOf.AddDays(-1));
+        }
+
+        var tuning = RecommendationTuning.Default with
+        {
+            HistoryProbeLimit = 1,
+            RecentProbeLimit = 0,
+            TierSampleOwnerships = 10,
+        };
+
+        var aggregateSnapshots = new CountingSnapshots(_harness.Snapshots);
+        var aggregateSessions = new CountingSessions(_harness.Sessions);
+        var aggregateEngine = _harness.EngineWith(
+            new FixedHistoryStats(LibraryHistoryStats.Empty),
+            aggregateSnapshots,
+            aggregateSessions);
+
+        await aggregateEngine.GetFeedAsync(RecommendHarness.Request(maxResults: 1) with { Tuning = tuning });
+        var aggregateReads = aggregateSnapshots.Reads + aggregateSessions.Reads;
+
+        var fallbackSnapshots = new CountingSnapshots(_harness.Snapshots);
+        var fallbackSessions = new CountingSessions(_harness.Sessions);
+        var fallbackEngine = _harness.EngineWith(
+            historyStats: null,
+            snapshots: fallbackSnapshots,
+            sessions: fallbackSessions);
+
+        await fallbackEngine.GetFeedAsync(RecommendHarness.Request(maxResults: 1) with { Tuning = tuning });
+        var fallbackReads = fallbackSnapshots.Reads + fallbackSessions.Reads;
+
+        // Both paths read the shortlisted candidate once for presentation.
+        // Only the absent-repository path performs the additional ten-row
+        // tier sample, so the point-read count must increase there.
+        Assert.True(aggregateReads > 0);
+        Assert.True(fallbackReads > aggregateReads,
+            $"fallback reads {fallbackReads}, aggregate reads {aggregateReads}");
+    }
+
+    /// <summary>Supplies a deterministic aggregate answer without database I/O.</summary>
     private sealed class FixedHistoryStats : ILibraryHistoryStatsRepository
     {
         private readonly LibraryHistoryStats _stats;
@@ -92,5 +146,58 @@ public class MaturityTierTests : IDisposable
 
         public Task<LibraryHistoryStats> GetAsync(CancellationToken ct = default)
             => Task.FromResult(_stats);
+    }
+
+    private sealed class CountingSnapshots(IPlaytimeSnapshotRepository inner)
+        : IPlaytimeSnapshotRepository
+    {
+        public int Reads { get; private set; }
+
+        public Task<long> InsertAsync(PlaytimeSnapshot snapshot, CancellationToken ct = default)
+            => inner.InsertAsync(snapshot, ct);
+
+        public Task<long?> TryAppendAsync(PlaytimeSnapshot snapshot, CancellationToken ct = default)
+            => inner.TryAppendAsync(snapshot, ct);
+
+        public Task<PlaytimeSnapshot?> GetLatestAsync(long ownershipId, CancellationToken ct = default)
+            => inner.GetLatestAsync(ownershipId, ct);
+
+        public async Task<IReadOnlyList<PlaytimeSnapshot>> GetByOwnershipAsync(
+            long ownershipId, CancellationToken ct = default)
+        {
+            Reads++;
+            return await inner.GetByOwnershipAsync(ownershipId, ct);
+        }
+    }
+
+    private sealed class CountingSessions(ISessionRepository inner) : ISessionRepository
+    {
+        public int Reads { get; private set; }
+
+        public Task<long> InsertAsync(Session session, CancellationToken ct = default)
+            => inner.InsertAsync(session, ct);
+
+        public Task<Session?> GetAsync(long id, CancellationToken ct = default)
+            => inner.GetAsync(id, ct);
+
+        public async Task<IReadOnlyList<Session>> GetByOwnershipAsync(
+            long ownershipId, CancellationToken ct = default)
+        {
+            Reads++;
+            return await inner.GetByOwnershipAsync(ownershipId, ct);
+        }
+
+        public Task SetNoteAsync(SessionNote note, CancellationToken ct = default)
+            => inner.SetNoteAsync(note, ct);
+
+        public Task<SessionNote?> GetNoteAsync(long sessionId, CancellationToken ct = default)
+            => inner.GetNoteAsync(sessionId, ct);
+
+        public Task<IReadOnlyList<SessionJournalEntry>> GetJournalEntriesByOwnershipAsync(
+            long ownershipId, CancellationToken ct = default)
+            => inner.GetJournalEntriesByOwnershipAsync(ownershipId, ct);
+
+        public Task DeleteNoteAsync(long sessionId, CancellationToken ct = default)
+            => inner.DeleteNoteAsync(sessionId, ct);
     }
 }

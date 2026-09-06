@@ -17,6 +17,53 @@ public sealed class FeedService : IFeedService
     /// <summary>Shared tuning instance so the feedback read and the scoring pass use the same parameters.</summary>
     private static readonly RecommendationTuning Tuning = RecommendationTuning.Default;
 
+    /// <summary>
+    /// Cards a shelf puts on screen.
+    ///
+    /// Six, and the number came from measuring the grid rather than from
+    /// taste. Ten was a RAIL's number: items past the right edge cost no
+    /// vertical space, so the cap was free. Sections wrap now, and every
+    /// item occupies real height — at the 1200px minimum a ten-item section
+    /// is five rows and the whole feed runs to roughly six screenfuls. Six is
+    /// three rows there and one or two above 1600.
+    ///
+    /// Past it a shelf stops being a pitch and becomes another list, which is
+    /// the surface the library already is, one click away.
+    ///
+    /// Coupled to RecommendationTuning.ShelfGenreCap, which moved 4 -> 3 in the
+    /// same change: the property it defends is that no genre may take a
+    /// MAJORITY of a shelf, and 4 of 6 is two-thirds. Moving this number alone
+    /// would silently re-break the constant that exists to prevent exactly that.
+    /// </summary>
+    private const int VisiblePerShelf = 6;
+
+    /// <summary>
+    /// Replacements held behind each shelf, so a dismissed card can be answered
+    /// with a fresh one before the next full pass.
+    ///
+    /// Four, and cost is not what bounds it. Measured on a copy of the real
+    /// library (968 candidates, 2026-09-03), asking for ten per shelf and
+    /// showing six scored the same feed in the same time as asking for six —
+    /// the pass is dominated by bulk reads, not by the per-row probes a deeper
+    /// ask adds twenty of.
+    ///
+    /// What bounds it is what a shelf actually has to say. One shelf shares one
+    /// reason ledger, so a deep shelf reaches the end of its distinct sentences
+    /// before it reaches the end of its candidates, and a card whose sentence
+    /// is already on the shelf is not promoted (see
+    /// <c>FeedViewModel.NextReplacement</c>) — it is held back rather than put
+    /// beside the card already saying it. Deeper than this buys held cards that
+    /// are increasingly likely to be unusable for that reason: on the same
+    /// library, four of the five shelves fill a four-card reserve, one
+    /// (installed-and-waiting, four eligible games in total) fills none, and
+    /// the sealed shelf already repeats one sentence at this depth.
+    ///
+    /// Four replacements covers two thirds of a shelf. The queue is topped up
+    /// by a backfill after each swap, so this bounds the initial stock rather
+    /// than the total.
+    /// </summary>
+    private const int ReservePerShelf = 4;
+
     private readonly IRecommendationEngine? _engine;
     private readonly IFeedFeedbackRepository? _feedback;
     private readonly TimeProvider _clock;
@@ -44,9 +91,8 @@ public sealed class FeedService : IFeedService
 
         // One instant for the whole pass. The engine derives its shuffle seed
         // from this DATE, so the feed rotates daily and is stable within a day —
-        // refreshing the screen must not deal a new hand — and the feedback read
-        // and the surfacing write are stamped with the same day for the same
-        // reason.
+        // refreshing the screen must not deal a new hand. Impression timestamps
+        // come from actual viewport entry, which may happen on a later day.
         var now = _clock.GetUtcNow().UtcDateTime;
 
         try
@@ -85,6 +131,41 @@ public sealed class FeedService : IFeedService
             // The screen says so and offers the library; nothing else changes.
             _log?.LogWarning(ex, "Could not compute the feed; the library is unaffected.");
             return FeedSnapshot.Unavailable;
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task RecordSurfacedAsync(
+        long releaseId, string shelfId, CancellationToken ct = default)
+    {
+        if (_feedback is null)
+        {
+            return;
+        }
+
+        // Stamp the actual observation day, not the earlier scoring pass. The
+        // row is idempotent per (release, day), including repeated scroll entry.
+        var day = DateOnly.FromDateTime(_clock.GetUtcNow().UtcDateTime);
+
+        try
+        {
+            await Task.Run(
+                () => _feedback.RecordSurfacedAsync(
+                    [new FeedSurfacing { ReleaseId = releaseId, SurfacedOn = day, ShelfId = shelfId }],
+                    ct),
+                ct).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _log?.LogWarning(
+                ex,
+                "Could not log the surfacing of release {ReleaseId} on shelf {ShelfId}; the card is on screen either way.",
+                releaseId,
+                shelfId);
         }
     }
 
@@ -210,7 +291,7 @@ public sealed class FeedService : IFeedService
         }
     }
 
-    /// <summary>Loads feedback, scores candidates, records surfacings. Runs on a background thread.</summary>
+    /// <summary>Loads feedback and scores candidates without recording impressions. Runs on a background thread.</summary>
     private async Task<ShelfFeed> ComputeAsync(DateTime now, CancellationToken ct)
     {
         // No store is a real state, not an error: the feed still computes, it
@@ -224,62 +305,15 @@ public sealed class FeedService : IFeedService
             AsOfUtc = now,
             Tuning = Tuning,
 
-            // Six, and the number came from measuring the grid rather than from
-            // taste. Ten was a RAIL's number: items past the right edge cost no
-            // vertical space, so the cap was free. Sections wrap now, and every
-            // item occupies real height — at the 1200px minimum a ten-item
-            // section is five rows and the whole feed runs to roughly six
-            // screenfuls. Six is three rows there and one or two above 1600.
-            //
-            // Past it a shelf stops being a pitch and becomes another list,
-            // which is the surface the library already is, one click away.
-            //
-            // Coupled to RecommendationTuning.ShelfGenreCap, which moved 4 -> 3
-            // in the same change: the property it defends is that no genre may
-            // take a MAJORITY of a shelf, and 4 of 6 is two-thirds. Moving this
-            // number alone would silently re-break the constant that exists to
-            // prevent exactly that.
-            MaxPerShelf = 6,
+            // Deeper than the shelf shows, and the difference is the reserve.
+            // Declaring both halves is what keeps the deeper ask invisible to
+            // the reader: see RecommendationRequest.VisiblePerShelf for the two
+            // properties that depend on the engine knowing the surface size.
+            MaxPerShelf = VisiblePerShelf + ReservePerShelf,
+            VisiblePerShelf = VisiblePerShelf,
         });
 
-        var feed = await _engine!.GetShelvesAsync(request, ct).ConfigureAwait(false);
-
-        await RecordSurfacedAsync(feed, now, ct).ConfigureAwait(false);
-
-        return feed;
-    }
-
-    /// <summary>Logs surfacings for rotation memory. Idempotent per (release, day). Swallows failures.</summary>
-    private async Task RecordSurfacedAsync(ShelfFeed feed, DateTime now, CancellationToken ct)
-    {
-        if (_feedback is null)
-        {
-            return;
-        }
-
-        var surfacings = FeedbackSets.SurfacingsOf(feed, now);
-        if (surfacings.Count == 0)
-        {
-            return;
-        }
-
-        try
-        {
-            await _feedback.RecordSurfacedAsync(surfacings, ct).ConfigureAwait(false);
-        }
-        catch (OperationCanceledException)
-        {
-            // The pass was superseded or the window closed. The caller's own
-            // catch turns this into "nothing happened", which is right.
-            throw;
-        }
-        catch (Exception ex)
-        {
-            _log?.LogWarning(
-                ex,
-                "Could not log {Count} surfacings; the feed is unaffected and tomorrow's rotation is weaker.",
-                surfacings.Count);
-        }
+        return await _engine!.GetShelvesAsync(request, ct).ConfigureAwait(false);
     }
 
     private static FeedShelf Translate(RecommendationShelf shelf)
@@ -287,9 +321,13 @@ public sealed class FeedService : IFeedService
             shelf.Id,
             shelf.Title,
             shelf.Blurb,
-            shelf.Items
-                .Select(i => new FeedItem(i.OwnershipId, i.ReleaseId, i.Title, i.Reason))
-                .ToList());
+            shelf.Items.Take(VisiblePerShelf).Select(Translate).ToList())
+        {
+            Reserve = shelf.Items.Skip(VisiblePerShelf).Select(Translate).ToList(),
+        };
+
+    private static FeedItem Translate(Recommendation item)
+        => new(item.OwnershipId, item.ReleaseId, item.Title, item.Reason);
 
     private static FeedConfidence Confidence(DataTier tier) => tier switch
     {

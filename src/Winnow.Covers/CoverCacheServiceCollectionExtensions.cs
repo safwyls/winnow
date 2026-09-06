@@ -36,7 +36,17 @@ public static class CoverCacheServiceCollectionExtensions
         });
 
         services.AddCoverImageHttpClient(SteamCapsuleSource.HttpClientName);
+        services.AddCoverImageHttpClient(UserArtStore.HttpClientName);
 
+        services.TryAddSingleton(sp => new UserArtStore(
+            sp.GetRequiredService<CoverCacheOptions>(),
+            () => sp.GetRequiredService<IHttpClientFactory>()
+                    .CreateClient(UserArtStore.HttpClientName)));
+
+        // UserArtCoverSource is first for legibility, not necessity: no other
+        // source handles user: keys, so registration order decides nothing
+        // about which source wins a contested key.
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<ICoverSource, UserArtCoverSource>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<ICoverSource, SteamCapsuleSource>());
         services.TryAddSingleton<CoverDiskCache>();
         services.TryAddSingleton<CoverPipeline>();

@@ -1,4 +1,4 @@
-﻿<UserControl xmlns="https://github.com/avaloniaui"
+<UserControl AutomationProperties.Name="Library actions" AutomationProperties.ControlTypeOverride="Group" xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Winnow.App.ViewModels"
              xmlns:filters="using:Winnow.App.ViewModels.Filters"
@@ -223,7 +223,7 @@
                                     <TextBlock Classes="body" FontSize="12"
                                                Text="{Binding Label}"
                                                VerticalAlignment="Center"/>
-                                    <Button Classes="chipx"
+                                    <Button AutomationProperties.Name="{Binding RemoveTip}" Classes="chipx"
                                             Command="{Binding RemoveCommand}"
                                             ToolTip.Tip="{Binding RemoveTip}">
                                         <Path Data="M 0.5,0.5 L 6.5,6.5 M 6.5,0.5 L 0.5,6.5"/>
@@ -342,7 +342,7 @@
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate DataType="lists:GameListViewModel">
-                            <Button Classes="listchip" Margin="0,2,7,2"
+                            <Button AutomationProperties.Name="{Binding AutomationName}" AutomationProperties.ItemStatus="{Binding AutomationName}" Classes="listchip" Margin="0,2,7,2"
                                     Command="{Binding $parent[ItemsControl].((lists:ActionPromptViewModel)DataContext).ChooseCommand}"
                                     CommandParameter="{Binding}">
                                 <StackPanel Orientation="Horizontal" Spacing="8">
@@ -358,7 +358,7 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
 
-                <TextBox Grid.Column="2"
+                <TextBox AutomationProperties.Name="{Binding InputWatermark}" Grid.Column="2"
                          Name="PromptInput"
                          Classes="prompt"
                          Margin="0,0,8,0"

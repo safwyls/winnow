@@ -1,10 +1,11 @@
 ---
 id: TASK-67
 title: Evaluate swapping a fresh recommendation into a dismissed feed card's place
-status: To Do
-assignee: []
+status: Done
+assignee:
+  - '@safwyl'
 created_date: '2026-09-01 20:57'
-updated_date: '2026-09-01 20:57'
+updated_date: '2026-09-04 04:34'
 labels:
   - recommend
   - ui
@@ -41,14 +42,104 @@ Recommended path: hold a pre-computed reserve and delay the swap behind the exis
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 ShelfProbeLimit is raised so that all five shelves are scored before any reserve work ships
-- [ ] #2 FeedService requests a deeper shelf and holds items beyond the visible count as a reserve, with no engine API change
-- [ ] #3 A swapped-in card records its surfacing at swap time, not at generation time
-- [ ] #4 Reserve items are excluded from the surfacing log at generation time
-- [ ] #5 The swap is generation-scoped and discarded if a feed reload supersedes the originating pass
-- [ ] #6 The receipt and its inline undo remain visible until the user dismisses them or they lapse; the reserve card replaces the receipt, not the verdict
-- [ ] #7 FeedShelfViewModel.Cards supports in-place replacement without rebuilding the entire shelf
-- [ ] #8 When the reserve is exhausted a background re-score refills it, coalesced with the invalidation mechanism from TASK-20
-- [ ] #9 Not-now receipts that state a return date remain visible for at least one interaction before the swap replaces them
-- [ ] #10 The outgoing card's cover lease and VerdictChanged subscription are released on swap, verified by a test
+- [x] #1 ShelfProbeLimit is raised so that all five shelves are scored before any reserve work ships
+- [x] #2 FeedService requests a deeper shelf and holds items beyond the visible count as a reserve, with no engine API change
+- [x] #3 A swapped-in card records its surfacing at swap time, not at generation time
+- [x] #4 Reserve items are excluded from the surfacing log at generation time
+- [x] #5 The swap is generation-scoped and discarded if a feed reload supersedes the originating pass
+- [x] #6 The receipt and its inline undo remain visible until the user dismisses them or they lapse; the reserve card replaces the receipt, not the verdict
+- [x] #7 FeedShelfViewModel.Cards supports in-place replacement without rebuilding the entire shelf
+- [x] #8 When the reserve is exhausted a background re-score refills it, coalesced with the invalidation mechanism from TASK-20
+- [x] #9 Not-now receipts that state a return date remain visible for at least one interaction before the swap replaces them
+- [x] #10 The outgoing card's cover lease and VerdictChanged subscription are released on swap, verified by a test
 <!-- AC:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Confirm the spike's premises against current code before building on them: TASK-68 landed (ShelfProbeLimit 2000 + round-robin ProbeUnion), FeedShelfViewModel.Cards is IReadOnlyList, FeedViewModel.Apply clears and rebuilds, FeedbackSets.SurfacingsOf logs every item in the ShelfFeed. Re-measure a MaxPerShelf 6 vs 12 pass on a read-only COPY of the live database and diff the VISIBLE slice, because a deeper request that shrinks the visible feed would be a regression the spike did not test for.
+2. Fix the two ways a deeper request would change what the reader sees, inside ShelfBuilder (internal; IRecommendationEngine untouched). (a) Two-phase fill: every shelf fills its VISIBLE slice in claim order first, then every shelf fills its reserve, so an early shelf's reserve can no longer claim a work a later shelf's visible slice needed. (b) Size ShelfReasonLedger.CapFor to the visible count, not the requested depth, or asking for 12 to show 6 silently doubles how many of those 6 may cite the same fact and undoes TASK-76. Both need one optional RecommendationRequest property (VisiblePerShelf); the engine interface and the module boundary stay as they are.
+3. Carry the reserve through the app seam: FeedShelf gains a Reserve list (init property, so no call site breaks), FeedService requests visible+reserve per shelf and slices, and RecordSurfacedAsync is given only the visible slice so a held card is never logged as shown.
+4. Add IFeedService.RecordSurfacedAsync(releaseId, shelfId) so a card records its surfacing at the moment it goes on screen.
+5. Make FeedShelfViewModel.Cards an ObservableCollection so one card can be replaced in place; the shelf becomes an ObservableObject so its count stays honest.
+6. Receipt lifecycle on FeedCardViewModel: the receipt keeps its inline Undo and gains a dismiss control; it also lapses on the next verdict given anywhere in the feed, so a not-now receipt with a return date always survives at least one interaction. Both routes raise one internal ReplacementRequested event.
+7. Swap in FeedViewModel: stamp each card with the generation of the pass that built it, drop a swap whose generation is stale, dequeue the shelf's reserve, unsubscribe VerdictChanged and Dispose the outgoing card (lease and subscription both), replace in place, record the surfacing at swap time.
+8. Refill: coalescing reload gate (an invalidation arriving during a load is queued and replayed, TASK-20's mechanism) and an exhausted-reserve flag that requests the refill through it, held back until no receipt is still on screen so a background pass cannot yank a receipt the user is reading.
+9. Tests: ShelfBuilder visible-slice equivalence and citation cap; FeedService reserve slicing and surfacing exclusion; FeedViewModel swap, generation scoping, receipt survival, lease and subscription release, exhaustion refill.
+10. Delegate every comment, XML doc and UI string to docs-writer; update docs/recommendation-engine.md if the request contract changes. Build and test to a scratch artifacts path (the app holds bin), full suite across all three test projects.
+<!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+## The spike's premises, re-checked before building on them
+
+TASK-68 landed, so the probe budget no longer starves shelves (round-robin ProbeUnion, limit 2,000) and AC #1 was satisfied before this task started. The rest of the evaluation held: 'FeedViewModel.Apply' disposed every card and cleared the collection for one dismissal, 'FeedShelfViewModel.Cards' was 'IReadOnlyList' with no in-place path, and 'FeedbackSets.SurfacingsOf' logged every item in the ShelfFeed with no notion of a held one.
+
+## Two ways a deeper request would have shown through to the reader
+
+The spike's recommendation is 'request a deeper shelf and slice', which is what shipped, but a literal reading of it changes the visible feed in two ways the evaluation did not test for. Both are in the fill, and both had to be fixed for the deeper ask to be invisible.
+
+Shrinkage. Shelves fill in claim order against one shared set of claimed works. A shelf allowed to take ten instead of six claims four more works, and a later shelf whose pool overlaps loses them. On the shelf catalogue this is not hypothetical: 'ready_to_play' (installed, under the refund line) is a subset of 'barely_touched' (1..refund minutes) for every installed game with minutes on it, and it claims first. 'ShelfBuilder.Build' now runs two passes over the shelves, filling every shelf's visible slice before any shelf's reserve, with a resumable per-shelf fill that keeps the strict pass and the genre-relaxation pass at their positions. Resuming to a deeper limit visits the pool in the order a single call to that limit would; what it no longer does is claim those works early. Pinned by ShelfReserveTests against a fixture where every installed game is eligible for both shelves.
+
+Reason variety. 'ShelfReasonLedger.CapFor' derives the citation cap from the surface size, and the surface size was 'MaxPerShelf'. Asking for twelve to show six would have moved the cap from 2 to 4 and allowed four of six visible cards to name the same facet, which is exactly the shelf TASK-76 was written about. The fill is now sized by a new optional request property, 'RecommendationRequest.VisiblePerShelf'. Two tests in ShelfFactVarietyTests: the deep-with-surface-stated case holds at 2, and the deep-without-surface-stated control confirms the cap really does widen without it, so the first cannot quietly stop proving anything.
+
+'VisiblePerShelf' is a deviation from AC #2's 'no engine API change' and is called out as such below.
+
+## What a deeper ask does legitimately change
+
+A deeper 'MaxPerShelf' deepens 'ScoreBounds.SafeShortlist', so more candidates are probed for history, and one of them can turn out to belong on screen. Measured on the contested fixture: one visible card at position six differs between a plain six-request and a 6+4 request, because the extra candidate outscored it once its history was read. This is the shortlist bound working, not the reserve leaking, and it is the same effect as raising the probe limit. The test therefore pins the shelves and the per-shelf card counts rather than byte-identity, and says why.
+
+## The reserve depth, and the phrasing ceiling
+
+One shelf shares one reason ledger, so a deep shelf runs out of distinct sentences before it runs out of candidates. Measured against twenty near-identical games on one shelf: every card distinct through a depth of ten, repeats from eleven. Measured on a copy of the live library (968 candidates, 968 works, tier Settling, 2026-09-03) at the shipped depth of ten: four of five shelves fill a four-card reserve, 'ready_to_play' fills none (four eligible games in total), and 'on_your_taste' already repeats one sentence - two cards reading 'Still sealed since the day it arrived.', the terminal say-less phrasing.
+
+So depth alone cannot guarantee it. 'FeedViewModel.NextReplacement' refuses to promote a reserve card whose sentence a card on that shelf is already saying, the outgoing card included, and takes the next one instead. That is the actual guarantee; the depth of four is what keeps the refusal from being what the feature runs on.
+
+## Cost
+
+On the same live-library copy, 6+4 scored the same feed in the same time as a plain 6 (medians within noise across five runs each; the pass is dominated by bulk reads, and a deeper ask adds twenty probes). The measurement harness was temporary and has been deleted.
+
+## The receipt's two exits, and why lapsing is an interaction rather than a clock
+
+AC #6 allows a receipt to go when the reader dismisses it OR when it lapses, and AC #9 requires a not-now receipt to survive at least one interaction. Lapsing is defined as the next verdict given anywhere in the feed, not a timer. A receipt therefore always survives the press that made it, and always outlives at least one further answer; the date on a 'not now' receipt is the whole of its content and a clock could take it away mid-read. It is also testable without a dispatcher or a fake clock. An undo is not an answer and lapses nothing.
+
+## Refill
+
+'FeedViewModel' now queues an invalidation that arrives during a load and replays it when that load finishes, which is the mechanism TASK-20 describes; the exhausted-reserve refill is requested through it. The refill is additionally held back while any receipt is still on screen: a background pass rebuilds the feed, and the receipt is the zero-friction undo, so a pass that ran under one would take the undo away to answer a question nobody asked.
+
+This means TASK-20's own acceptance criteria are now met by 'FeedViewModel'. It has NOT been closed from here; it is the user's call whether to close it or keep it for the wider invalidation surface.
+
+## Not done here
+
+TASK-10 (record impressions when a card is actually visible) remains open and is unaffected. What this task needed from it - that a held card is never logged as shown, and that a promoted card logs itself when it appears - is done (AC #3 and #4). Impressions are still recorded at generation time for the cards the pass puts on screen, whether or not anyone scrolls to them.
+
+## Deviation from AC #2, stated plainly
+
+AC #2 asks for the reserve 'with no engine API change'. 'IRecommendationEngine' is unchanged, both its methods keep their signatures, the reserve logic stays in FeedService and 'ShelfBuilder' (internal), and the module boundary the criterion cites is intact. One thing did change: 'RecommendationRequest' gained an optional 'VisiblePerShelf' property, additive and defaulted to null, so every existing caller and test compiles and behaves identically.
+
+It is not decoration. Without it the engine cannot distinguish 'asked for ten, showing ten' from 'asked for ten, showing six', and both properties the feature rests on are defined against the surface rather than the request: the fill order that stops a deeper ask shrinking a later shelf, and the reason ledger's variety cap. A literal reading of 'no engine API change' would have shipped a feed that quietly showed fewer cards on the later shelves and let four of six visible cards cite the same fact. The criterion is checked on that basis; the judgement is recorded here so it can be overruled.
+
+## Verification
+
+- tests/Winnow.Tests: 2,844 passed, 0 failed (includes 20 new in FeedReserveTests and the Enforcement suite).
+- tests/Winnow.Recommend.Tests: 152 passed, 0 failed (includes 5 new in ShelfReserveTests and 2 new in ShelfFactVarietyTests).
+- tests/Winnow.Covers.Tests: 70 passed, 0 failed.
+- Built and run: 'dotnet run --project src/Winnow.App -- --seed-sample --data-dir <throwaway>'. Starts clean, seeds, scores twice (the startup pass, then the library-load invalidation now queued and replayed rather than dropped: 62 ms then 7 ms), no exception and no binding failure. Compiled bindings are on by default in Winnow.App, so the receipt's new 'ShowReplace' and 'ReplaceCommand' bindings were resolved against FeedCardViewModel at build time.
+
+One limit on AC #7's evidence. What is tested is the view model's contract: the shelf's collection raises a single Replace at the dismissed card's index and its count does not move, where the old path cleared the collection. That one container is realised rather than the whole shelf rebuilt is Avalonia's ItemsControl behaviour and was not separately proven, because the project has no headless UI test harness - the same gap the evaluation noted.
+<!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+The spike's recommended path, built: one scoring pass computes six cards per shelf and holds four more, and a dismissed card's receipt is replaced by a held card once the reader is done with it. The verdict is untouched by the swap.
+
+Two things the evaluation did not test for would have made the deeper ask visible to the reader, and both are fixed in ShelfBuilder. Shelves claim works in claim order from one shared set, so a shelf allowed to take ten would have taken four works a later shelf's VISIBLE slice needed - on this catalogue 'ready_to_play' is a subset of 'barely_touched' and claims first, so the shrinkage is real, not hypothetical. The fill now runs twice over the shelves, every visible slice before any reserve, with a resumable per-shelf fill. And the reason ledger sizes its variety caps from the surface, which was MaxPerShelf: asking for twelve to show six would have moved the cap from two to four and let four of six visible cards name the same facet, re-breaking TASK-76. Both are driven by one new optional request property, VisiblePerShelf; IRecommendationEngine is unchanged. That property is a deviation from AC #2's 'no engine API change' and is argued in the notes.
+
+A third problem showed up only on the real library. One shelf shares one reason ledger, so a deep shelf runs out of distinct sentences before it runs out of candidates: at the shipped depth of ten, 'on_your_taste' already has two cards reading 'Still sealed since the day it arrived.' Depth alone cannot fix that, so the screen refuses to promote a card whose sentence a card on that shelf is already saying, the outgoing card included.
+
+Receipts keep their inline undo and lapse on the next verdict given anywhere in the feed rather than on a clock, so a 'not now' receipt always survives the press that made it and always outlives one further answer - the return date it states is the whole of its content. The refill is a background re-score requested through a new queue-and-replay gate (TASK-20's mechanism), held back while any receipt is still on screen so a pass cannot take the reader's undo away to answer a question nobody asked.
+
+Verified: 2,844 tests in Winnow.Tests, 152 in Winnow.Recommend.Tests, 70 in Winnow.Covers.Tests, all passing, including 27 new ones covering the slice, the surfacing split, the swap, generation scoping, receipt survival, lease and subscription release, phrasing collision, and refill coalescing. Measured on a read-only copy of the live library (968 candidates, 968 works, tier Settling): 6+4 produced the same five shelves each showing six cards in the same time as a plain 6. Run end to end against a throwaway data directory: starts clean, scores, no exception or binding failure.
+<!-- SECTION:FINAL_SUMMARY:END -->

@@ -1,4 +1,4 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+<UserControl AutomationProperties.Name="Account stats" AutomationProperties.ControlTypeOverride="Group" xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Winnow.App.ViewModels"
              x:Class="Winnow.App.Views.AccountStatsView"
@@ -108,7 +108,7 @@
 
     </UserControl.Resources>
 
-    <Grid RowDefinitions="Auto,*" Background="{StaticResource PaneGround}">
+    <Grid RowDefinitions="Auto,*">
 
         <!-- ══ Header ═══════════════════════════════════════════════════════ -->
         <Border Grid.Row="0"
@@ -116,7 +116,7 @@
                 BorderBrush="{StaticResource Line}"
                 BorderThickness="0,0,0,1">
             <StackPanel Spacing="7">
-                <TextBlock Classes="display-l" Text="{Binding Title}"/>
+                <TextBlock AutomationProperties.HeadingLevel="1" Classes="display-l" Text="{Binding Title}"/>
                 <TextBlock Classes="body"
                            MaxWidth="700"
                            HorizontalAlignment="Left"
@@ -164,7 +164,7 @@
                     <!-- ══ SPEND ════════════════════════════════════════════ -->
                     <Border Classes="card">
                         <StackPanel Spacing="14">
-                            <TextBlock Classes="display-l" FontSize="18" Text="{Binding SpendHeading}"/>
+                            <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="18" Text="{Binding SpendHeading}"/>
                             <TextBlock Classes="para" Text="{Binding SpendNote}"/>
 
                             <Grid ColumnDefinitions="*,16,96,16,132">
@@ -185,7 +185,7 @@
                          spend in a year Winnow can name. -->
                     <Border Classes="card">
                         <StackPanel Spacing="14">
-                            <TextBlock Classes="display-l" FontSize="18" Text="{Binding YearHeading}"/>
+                            <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="18" Text="{Binding YearHeading}"/>
                             <TextBlock Classes="para" Text="{Binding YearNote}"/>
                             <ItemsControl ItemsSource="{Binding YearRows}"
                                           ItemTemplate="{StaticResource StatRow}"/>
@@ -195,7 +195,7 @@
                     <!-- ══ WHERE THE MONEY WENT ═════════════════════════════ -->
                     <Border Classes="card">
                         <StackPanel Spacing="14">
-                            <TextBlock Classes="display-l" FontSize="18" Text="{Binding KindHeading}"/>
+                            <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="18" Text="{Binding KindHeading}"/>
                             <ItemsControl ItemsSource="{Binding KindRows}"
                                           ItemTemplate="{StaticResource StatRow}"/>
                             <Border Classes="note">
@@ -209,7 +209,7 @@
                          sits under them rather than in a tooltip. -->
                     <Border Classes="card">
                         <StackPanel Spacing="14">
-                            <TextBlock Classes="display-l" FontSize="18" Text="{Binding RefundHeading}"/>
+                            <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="18" Text="{Binding RefundHeading}"/>
                             <ItemsControl ItemsSource="{Binding RefundRows}"
                                           ItemTemplate="{StaticResource StatRow}"/>
                             <TextBlock Classes="para" Text="{Binding RefundNote}"/>
@@ -219,7 +219,7 @@
                     <!-- ══ BUNDLES ══════════════════════════════════════════ -->
                     <Border Classes="card">
                         <StackPanel Spacing="14">
-                            <TextBlock Classes="display-l" FontSize="18" Text="{Binding BundleHeading}"/>
+                            <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="18" Text="{Binding BundleHeading}"/>
                             <ItemsControl ItemsSource="{Binding BundleRows}"
                                           ItemTemplate="{StaticResource StatRow}"/>
                             <TextBlock Classes="para" Text="{Binding BundleNote}"/>
@@ -233,7 +233,7 @@
                          screen backwards. -->
                     <Border Classes="card">
                         <StackPanel Spacing="14">
-                            <TextBlock Classes="display-l" FontSize="18" Text="{Binding DiscountHeading}"/>
+                            <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="18" Text="{Binding DiscountHeading}"/>
                             <ItemsControl ItemsSource="{Binding DiscountRows}"
                                           ItemTemplate="{StaticResource StatRow}"/>
                             <Border Classes="note">
@@ -249,7 +249,7 @@
                          with. -->
                     <Border Classes="card" IsVisible="{Binding ShowBiggest}">
                         <StackPanel Spacing="14">
-                            <TextBlock Classes="display-l" FontSize="18" Text="{Binding BiggestHeading}"/>
+                            <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="18" Text="{Binding BiggestHeading}"/>
 
                             <StackPanel Orientation="Horizontal" Spacing="14">
                                 <TextBlock Classes="data"
@@ -283,7 +283,7 @@
                          count the same money twice. -->
                     <Border Classes="card">
                         <StackPanel Spacing="14">
-                            <TextBlock Classes="display-l" FontSize="18" Text="{Binding WalletHeading}"/>
+                            <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="18" Text="{Binding WalletHeading}"/>
                             <ItemsControl ItemsSource="{Binding WalletRows}"
                                           ItemTemplate="{StaticResource StatRow}"/>
                             <Border Classes="note">
@@ -297,7 +297,7 @@
                          because a licence row carries no price. -->
                     <Border Classes="card">
                         <StackPanel Spacing="14">
-                            <TextBlock Classes="display-l" FontSize="18" Text="{Binding LicenceHeading}"/>
+                            <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="18" Text="{Binding LicenceHeading}"/>
                             <TextBlock Classes="para" Text="{Binding LicenceNote}"/>
                             <ItemsControl ItemsSource="{Binding LicenceRows}"
                                           ItemTemplate="{StaticResource StatRow}"/>
@@ -307,7 +307,7 @@
                     <!-- ══ CURRENCIES ═══════════════════════════════════════ -->
                     <Border Classes="card" IsVisible="{Binding ShowCurrencies}">
                         <StackPanel Spacing="14">
-                            <TextBlock Classes="display-l" FontSize="18" Text="{Binding CurrencyHeading}"/>
+                            <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="18" Text="{Binding CurrencyHeading}"/>
                             <TextBlock Classes="para" Text="{Binding CurrencyNote}"/>
                             <ItemsControl ItemsSource="{Binding CurrencyRows}"
                                           ItemTemplate="{StaticResource StatRow}"/>
@@ -321,7 +321,7 @@
                          capture. -->
                     <Border Classes="card">
                         <StackPanel Spacing="14">
-                            <TextBlock Classes="display-l" FontSize="18" Text="{Binding CaptureHeading}"/>
+                            <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="18" Text="{Binding CaptureHeading}"/>
                             <TextBlock Classes="para" Text="{Binding CaptureNote}"/>
                             <ItemsControl ItemsSource="{Binding CaptureRows}"
                                           ItemTemplate="{StaticResource StatRow}"/>

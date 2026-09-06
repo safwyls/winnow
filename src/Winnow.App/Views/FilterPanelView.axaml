@@ -1,4 +1,4 @@
-﻿<UserControl xmlns="https://github.com/avaloniaui"
+<UserControl AutomationProperties.Name="Filters" AutomationProperties.ControlTypeOverride="Group" xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:filters="using:Winnow.App.ViewModels.Filters"
              x:Class="Winnow.App.Views.FilterPanelView"
@@ -230,7 +230,7 @@
                      that one of them must do something subtly different. The
                      survivors are the ones that also work with this panel shut,
                      which is the state it spends most of its life in. -->
-                <TextBlock Classes="label"
+                <TextBlock AutomationProperties.HeadingLevel="2" Classes="label"
                            FontSize="10"
                            LetterSpacing="1.4"
                            Text="FILTERS"
@@ -256,13 +256,14 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="filters:FilterGroupViewModel">
-                                <StackPanel Spacing="7">
+                                <StackPanel Spacing="7" AutomationProperties.Name="{Binding Header}"
+                                            AutomationProperties.AccessibilityView="Control" AutomationProperties.ControlTypeOverride="Group">
                                     <TextBlock Classes="label"
                                                FontSize="10"
                                                LetterSpacing="1.2"
                                                Text="{Binding Header}"/>
 
-                                    <TextBox Classes="find"
+                                    <TextBox AutomationProperties.Name="{Binding FindWatermark}" Classes="find"
                                              Margin="0,1,0,2"
                                              IsVisible="{Binding IsFindable}"
                                              Watermark="{Binding FindWatermark}"
@@ -271,7 +272,7 @@
                                     <ItemsControl ItemsSource="{Binding Options}">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate DataType="filters:FilterOptionViewModel">
-                                                <CheckBox Classes="facet"
+                                                <CheckBox AutomationProperties.Name="{Binding AutomationName}" AutomationProperties.ItemStatus="{Binding AutomationName}" Classes="facet"
                                                           IsChecked="{Binding IsChecked, Mode=TwoWay}"
                                                           IsEnabled="{Binding IsAvailable}"
                                                           ToolTip.Tip="{Binding Label}">
@@ -298,7 +299,7 @@
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
 
-                                    <Button Classes="linky"
+                                    <Button AutomationProperties.Name="{Binding ShowAllText}" Classes="linky"
                                             Margin="23,2,0,0"
                                             Command="{Binding ToggleShowAllCommand}"
                                             IsVisible="{Binding CanExpand}">
@@ -325,7 +326,7 @@
                                    LetterSpacing="1.2"
                                    Text="RELEASE YEAR"/>
                         <StackPanel Orientation="Horizontal" Spacing="8">
-                            <TextBox Classes="year"
+                            <TextBox AutomationProperties.Name="From this year" Classes="year"
                                      Watermark="{Binding EarliestYearText}"
                                      Text="{Binding YearFromText, Mode=TwoWay}"
                                      ToolTip.Tip="From this year"/>
@@ -333,7 +334,7 @@
                                        Foreground="{StaticResource TextDim}"
                                        Text="—"
                                        VerticalAlignment="Center"/>
-                            <TextBox Classes="year"
+                            <TextBox AutomationProperties.Name="Up to this year" Classes="year"
                                      Watermark="{Binding LatestYearText}"
                                      Text="{Binding YearToText, Mode=TwoWay}"
                                      ToolTip.Tip="Up to this year"/>

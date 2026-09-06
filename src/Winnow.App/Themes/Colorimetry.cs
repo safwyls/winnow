@@ -204,6 +204,50 @@ public static class Colorimetry
     }
 
 
+    /// <summary>
+    /// The field the detail modal puts its text on: the opaque
+    /// <c>Surface</c>, then the game's art, then the
+    /// <c>ArtVeil</c> — <c>Surface</c> again at
+    /// <see cref="WinnowTheme.ArtVeilAlpha"/>.
+    ///
+    /// <para>Only the veil's own alpha decides how much art reaches the eye.
+    /// The opaque base is what stops a half-decoded cover showing the window
+    /// through the gap between the dormancy ramp's two layers (§14.4).</para>
+    /// </summary>
+    public static Color ArtBackedField(WinnowTheme theme, Color art, double transparency = 0)
+        => Over(theme.Tokens(transparency)["ArtVeil"], art);
+
+    /// <summary>
+    /// The worst any text ink does on the art-backed field, over every cover
+    /// the art could be. The modal's inks are <c>Text</c>, <c>TextDim</c>,
+    /// <c>Azure</c> and <c>Amber</c>.
+    ///
+    /// <para>The art is walked as 256 greys, which is exhaustive rather than
+    /// a sample: each channel of the composite is monotone in the art's own
+    /// channel and relative luminance is monotone in the channels, so black
+    /// and white bracket the luminance and the greys hit every value between
+    /// them. <c>Flare</c> is excluded because on these surfaces it is a dot
+    /// and never a word (§5.2), which WCAG scores against the 3:1 non-text
+    /// floor rather than 4.5:1.</para>
+    /// </summary>
+    public static double WorstArtBackedContrast(WinnowTheme theme, double transparency = 0)
+    {
+        var tokens = theme.Tokens(transparency);
+        Color[] inks = [tokens["Text"], tokens["TextDim"], tokens["Azure"], tokens["Amber"]];
+
+        var worst = double.MaxValue;
+        for (var grey = 0; grey <= 255; grey++)
+        {
+            var field = ArtBackedField(theme, Color.FromRgb((byte)grey, (byte)grey, (byte)grey), transparency);
+            foreach (var ink in inks)
+            {
+                worst = Math.Min(worst, Contrast(ink, field));
+            }
+        }
+
+        return worst;
+    }
+
     private static double Channel(byte c)
     {
         var v = c / 255.0;

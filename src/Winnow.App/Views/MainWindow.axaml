@@ -1,4 +1,4 @@
-﻿<Window xmlns="https://github.com/avaloniaui"
+<Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:Winnow.App.ViewModels"
         xmlns:views="using:Winnow.App.Views"
@@ -10,6 +10,8 @@
         Width="1280" Height="820"
         MinWidth="1200" MinHeight="640"
         Classes.floating="{Binding IsFloatingLayout}"
+        Classes.reducedmotion="{Binding Library.Ramp.ReducedMotion}"
+        Classes.motion="{Binding !Library.Ramp.ReducedMotion}"
         Background="{StaticResource ShellGround}"
         TransparencyBackgroundFallback="{StaticResource ShellGround}"
         ExtendClientAreaToDecorationsHint="True"
@@ -356,56 +358,8 @@
              Themes/controls.axaml the moment the Merges screen became their
              second surface. -->
 
-        <!-- ══ The selection's context menu ════════════════════════════════
-             Same presenter treatment as the sort menu, because it is the same
-             object: a small dark card of choices on SurfaceRaised with a Line
-             edge. ContextMenu paints its own template from its own Background
-             and BorderBrush rather than through a presenter, so these are set on
-             the control; a Style in this window outranks Fluent's ControlTheme
-             for the same properties.
-
-             §12.3 records why this app has no flyouts: a popup is its own visual
-             root, has no adorner layer, and §8's global 2px Volt ring therefore
-             does not render inside one. So this menu draws its own, and it costs
-             one selector: Avalonia raises MenuItem's `:selected` for the pointer
-             AND for the keyboard walk (Shift+F10 or the Menu key opens the menu,
-             arrows move through it), so one highlight covers both routes — one
-             step of fill above the menu's own ground plus the 2px Volt edge that
-             every picked row in this window wears. Drawn, not adorned (§10.7),
-             and the
-             edge is a border on a Border whose thickness never changes, so the
-             item does not reflow as it lights up. -->
-        <Style Selector="ContextMenu.actions">
-            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
-            <Setter Property="Padding" Value="4"/>
-            <Setter Property="MinWidth" Value="0"/>
-        </Style>
-        <Style Selector="ContextMenu.actions MenuItem">
-            <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
-            <Setter Property="FontSize" Value="{StaticResource BodySize}"/>
-            <Setter Property="Foreground" Value="{StaticResource Text}"/>
-            <Setter Property="Padding" Value="10,7"/>
-            <Setter Property="Cursor" Value="Hand"/>
-        </Style>
-        <Style Selector="ContextMenu.actions MenuItem /template/ Border#PART_LayoutRoot">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderBrush" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="{StaticResource SelectionEdge}"/>
-            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
-        </Style>
-        <Style Selector="ContextMenu.actions MenuItem:selected /template/ Border#PART_LayoutRoot">
-            <!-- One step above the menu's own SurfaceRaised ground — the same
-                 #254042 the caption buttons press to. SurfaceRaised on
-                 SurfaceRaised would have been no step at all. -->
-            <Setter Property="Background" Value="{StaticResource SurfaceHigh}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
-        </Style>
-        <Style Selector="ContextMenu.actions MenuItem:selected /template/ ContentPresenter#PART_HeaderPresenter">
-            <Setter Property="TextElement.Foreground" Value="{StaticResource Text}"/>
-        </Style>
+        <!-- The .actions menu moved to Themes/controls.axaml when the
+             details modal's More menu became its second surface. -->
 
         <!-- ══ Display preferences popover (§8) ════════════════════════════
              Same presenter treatment as the sort menu, with room for a line of
@@ -489,9 +443,11 @@
         </Style>
 
         <!-- ══ List view (§6) ══════════════════════════════════════════════
-             "Same data, no art dependency… 44px rows, Surface ground, Line
-             rules, Volt selection edge." Sortable headers write the same sort
-             state the command-bar menu does. -->
+             "Every row carries a 24×36 cover… same cache and same dormancy
+             ramp as the wall tile. Title, store, playtime, idle, unread dot.
+             44px rows, PaneGround, Line rules, Volt selection edge."
+             Sortable headers write the same sort state the command-bar
+             menu does. -->
         <Style Selector="Button.colhead">
             <Setter Property="Padding" Value="0"/>
             <Setter Property="CornerRadius" Value="0"/>
@@ -516,7 +472,8 @@
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Padding" Value="0"/>
         </Style>
-        <Style Selector="ListBox.rows ListBoxItem">
+        <Style Selector="ListBox.rows ListBoxItem" x:DataType="vm:GameTileViewModel">
+            <Setter Property="AutomationProperties.Name" Value="{Binding AutomationName}"/>
             <Setter Property="Padding" Value="0"/>
             <Setter Property="Margin" Value="0"/>
             <Setter Property="MinHeight" Value="44"/>
@@ -562,6 +519,58 @@
             <Setter Property="Background" Value="{StaticResource Text}"/>
         </Style>
 
+        <!-- Rating-cap slider — same chrome as the density slider but at the
+             larger settings size Slider.opacity uses (4px track, 14px thumb),
+             because this one sits inside a popover, not on the command bar.
+             Six discrete steps; the slider snaps to them. -->
+        <Style Selector="Slider.cap">
+            <Setter Property="MinHeight" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
+        </Style>
+        <Style Selector="Slider.cap /template/ Track#PART_Track RepeatButton#PART_DecreaseButton /template/ Border">
+            <Setter Property="Background" Value="{StaticResource TextDim}"/>
+            <Setter Property="Height" Value="4"/>
+            <Setter Property="CornerRadius" Value="2"/>
+        </Style>
+        <Style Selector="Slider.cap /template/ Track#PART_Track RepeatButton#PART_IncreaseButton /template/ Border">
+            <Setter Property="Background" Value="{StaticResource Line}"/>
+            <Setter Property="Height" Value="4"/>
+            <Setter Property="CornerRadius" Value="2"/>
+        </Style>
+        <Style Selector="Slider.cap /template/ Thumb">
+            <Setter Property="Background" Value="{StaticResource TextDim}"/>
+            <Setter Property="Width" Value="14"/>
+            <Setter Property="Height" Value="14"/>
+        </Style>
+        <Style Selector="Slider.cap:pointerover /template/ Thumb">
+            <Setter Property="Background" Value="{StaticResource Text}"/>
+        </Style>
+        <!-- Six steps need drawn positions; a continuous track can imply its
+             range, a discrete one cannot. Fill is Line — these are marks on a
+             track, the same family as a divider (§2). -->
+        <Style Selector="Slider.cap /template/ TickBar">
+            <Setter Property="Fill" Value="{StaticResource Line}"/>
+        </Style>
+
+        <!-- A flyout is its own popup root and has no adorner layer, so
+             Avalonia's global FocusAdorner does not render here — the same
+             reason CheckBox.pref above draws its own ring in its template
+             (§10.7, §12.3). The ring cannot live on the thumb because it would
+             travel with it; it frames the whole track instead. Brush swap only,
+             thickness never changes — thickening would reflow the popover. Same
+             idiom as Border.sliderframe in AppearanceView.axaml. -->
+        <Style Selector="Border.capframe">
+            <Setter Property="BorderThickness" Value="2"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="4,2"/>
+            <Setter Property="Margin" Value="-6,0,-6,0"/>
+        </Style>
+        <Style Selector="Border.capframe:focus-within">
+            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+        </Style>
+
 
         <!-- ══ The panes, flush ═══════════════════════════
              Border thickness in styles, not inline, so the floating layout can
@@ -581,8 +590,14 @@
         <Style Selector="Border.wallpane">
             <Setter Property="BorderThickness" Value="0"/>
         </Style>
+        <!-- The ground is on the pane, not on the content root inside it, for
+             the same reason the rail and the island carry theirs: a Border
+             paints its stroke first and its child over it, and a child inset by
+             one pixel still covers the corner arc of a radius-8 pane. Exactly
+             one coat, so a translucent theme's alpha stays as written. -->
         <Style Selector="Border.screenpane">
             <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="{StaticResource PaneGround}"/>
         </Style>
 
         <!-- ══ THE AMBIENT DOCK (M3b) ══════════════════════════
@@ -606,6 +621,9 @@
             <Setter Property="Fill" Value="{StaticResource Amber}"/>
         </Style>
         <Style Selector="Ellipse.pip.waiting">
+            <Setter Property="Opacity" Value="1"/>
+        </Style>
+        <Style Selector="Window.motion Ellipse.pip.waiting">
             <Style.Animations>
                 <Animation Duration="0:0:1.4" IterationCount="INFINITE" Easing="SineEaseInOut">
                     <KeyFrame Cue="0%"><Setter Property="Opacity" Value="1.0"/></KeyFrame>
@@ -750,6 +768,15 @@
             <Setter Property="Margin" Value="0"/>
         </Style>
 
+        <!-- §8: reduced motion keeps every state change, but drops the
+             transition that would otherwise interpolate it. These selectors
+             live after their defaults so they override by style order. -->
+        <Style Selector="Window.reducedmotion Button.wincontrol /template/ ContentPresenter#PART_ContentPresenter, Window.reducedmotion Button.bucket /template/ ContentPresenter#PART_ContentPresenter, Window.reducedmotion Button.listrow /template/ ContentPresenter#PART_ContentPresenter, Window.reducedmotion Button.railglyph /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Transitions">
+                <Transitions/>
+            </Setter>
+        </Style>
+
     </Window.Styles>
 
     <!-- OffScreenMargin absorbs the maximised overhang (§9). -->
@@ -789,12 +816,12 @@
                 </StackPanel>
 
                 <StackPanel Grid.Column="2" Orientation="Horizontal">
-                    <Button Classes="wincontrol"
+                    <Button AutomationProperties.Name="Minimise" Classes="wincontrol"
                             Click="OnMinimisePressed"
                             ToolTip.Tip="Minimise">
                         <Path Data="M 0,5.5 L 10,5.5"/>
                     </Button>
-                    <Button Name="MaximiseButton"
+                    <Button AutomationProperties.Name="Maximise" Name="MaximiseButton"
                             Classes="wincontrol"
                             Click="OnMaximisePressed"
                             ToolTip.Tip="Maximise">
@@ -806,7 +833,7 @@
                                   Data="M 2.5,2.5 L 2.5,0.5 L 10.5,0.5 L 10.5,8.5 L 8.5,8.5 M 0.5,2.5 L 8.5,2.5 L 8.5,10.5 L 0.5,10.5 Z"/>
                         </Panel>
                     </Button>
-                    <Button Classes="wincontrol close"
+                    <Button AutomationProperties.Name="Close" Classes="wincontrol close"
                             Click="OnClosePressed"
                             ToolTip.Tip="Close">
                         <Path Data="M 0.5,0.5 L 9.5,9.5 M 9.5,0.5 L 0.5,9.5"/>
@@ -829,14 +856,15 @@
                 Width="{StaticResource RailWidth}"
                 Background="{StaticResource ChromeSurface}"
                 BorderBrush="{StaticResource Line}">
-            <!-- Rows scroll; the gear does not. Grid RowDefinitions="*,Auto"
-                 pins the gear below the ScrollViewer so it stays visible
-                 however far the rail is scrolled. Grid rather than DockPanel
-                 because DockPanel requires the docked child to be declared
-                 first, and this file's rule is that element order equals
-                 reading order equals Tab walk order; the gear must be the
-                 last Tab stop in the rail. -->
-            <Grid RowDefinitions="*,Auto">
+            <!-- Rows scroll; the fetch status field and the gear do not.
+                 Grid RowDefinitions="*,Auto,Auto" pins both below the
+                 ScrollViewer so they stay visible however far the rail
+                 is scrolled. Grid rather than DockPanel because DockPanel
+                 requires the docked child to be declared first, and this
+                 file's rule is that element order equals reading order
+                 equals Tab walk order; the gear must be the last Tab stop
+                 in the rail. -->
+            <Grid RowDefinitions="*,Auto,Auto">
 
             <!-- Interior: the rail's own right edge is a divider, not the
                  window's, so this scrollbar keeps its flush position. -->
@@ -853,7 +881,7 @@
                          the all-games bucket and reuses the bucket style, so its
                          count renders as Data 11 rather than a heading's
                          Data 22. -->
-                    <Button Classes="bucket"
+                    <Button AutomationProperties.Name="FEED" Classes="bucket"
                             Classes.selected="{Binding IsFeedVisible}"
                             Command="{Binding ShowFeedCommand}"
                             ToolTip.Tip="Games worth going back to, and why">
@@ -872,7 +900,7 @@
                          The Merges screen (docs/merge_queue_design). A screen
                          row like FEED, not a cut: no count, no recede. The
                          pending count is on the screen's own header. -->
-                    <Button Classes="bucket"
+                    <Button AutomationProperties.Name="{Binding MergeQueue.RailLabel}" Classes="bucket"
                             Classes.selected="{Binding IsMergeQueueVisible}"
                             Command="{Binding ToggleMergeQueueCommand}"
                             ToolTip.Tip="{Binding MergeQueue.RailTooltip}">
@@ -887,7 +915,7 @@
                         </Grid>
                     </Button>
 
-                    <Button Classes="bucket"
+                    <Button AutomationProperties.Name="{Binding Library.AllGames.AutomationName}" Classes="bucket"
                             Classes.selected="{Binding Library.AllGames.IsSelected}"
                             Command="{Binding SelectBucketCommand}"
                             CommandParameter="{Binding Library.AllGames}"
@@ -919,10 +947,17 @@
                     <ItemsControl ItemsSource="{Binding Library.Buckets}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="vm:BucketViewModel">
+                                <!-- The row needs a name of its own because
+                                     ContentControlAutomationPeer.GetNameCore
+                                     falls back to Content?.ToString(), and this
+                                     Button's content is the Grid below: without
+                                     one, every bucket announced
+                                     "Avalonia.Controls.Grid". -->
                                 <Button Classes="bucket"
                                         Classes.selected="{Binding IsSelected}"
                                         Classes.rule="{Binding IsRule}"
                                         Opacity="{Binding RowOpacity}"
+                                        AutomationProperties.Name="{Binding AutomationName}"
                                         Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).SelectBucketCommand}"
                                         CommandParameter="{Binding}">
                                     <Grid ColumnDefinitions="2,16,Auto,*,Auto,16">
@@ -976,12 +1011,12 @@
                             Padding="0,14,0,0"
                             BorderBrush="{StaticResource Line}"
                             BorderThickness="0,1,0,0">
-                        <TextBlock Classes="label"
+                        <TextBlock AutomationProperties.HeadingLevel="2" Classes="label"
                                    FontSize="10"
                                    LetterSpacing="1.4"
                                    Text="ACCOUNT"/>
                     </Border>
-                    <Button Classes="bucket"
+                    <Button AutomationProperties.Name="{Binding AccountStats.RailRow}" Classes="bucket"
                             Classes.selected="{Binding IsAccountStatsVisible}"
                             Command="{Binding ToggleAccountStatsCommand}"
                             ToolTip.Tip="{Binding AccountStats.RailTooltip}">
@@ -1007,7 +1042,7 @@
                             BorderBrush="{StaticResource Line}"
                             BorderThickness="0,1,0,0"
                             IsVisible="{Binding Library.Lists.ShowListsHeader}">
-                        <TextBlock Classes="label"
+                        <TextBlock AutomationProperties.HeadingLevel="2" Classes="label"
                                    FontSize="10"
                                    LetterSpacing="1.4"
                                    Text="LISTS"/>
@@ -1016,7 +1051,7 @@
                     <ItemsControl ItemsSource="{Binding Library.Lists.Lists}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="lists:GameListViewModel">
-                                <Button Classes="listrow"
+                                <Button AutomationProperties.Name="{Binding AutomationName}" AutomationProperties.ItemStatus="{Binding AutomationName}" Classes="listrow"
                                         Classes.selected="{Binding IsSelected}"
                                         Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).SelectListCommand}"
                                         CommandParameter="{Binding}"
@@ -1058,7 +1093,7 @@
                             BorderBrush="{StaticResource Line}"
                             BorderThickness="0,1,0,0"
                             IsVisible="{Binding Library.Lists.HasLiveLists}">
-                        <TextBlock Classes="label"
+                        <TextBlock AutomationProperties.HeadingLevel="2" Classes="label"
                                    FontSize="10"
                                    LetterSpacing="1.4"
                                    Text="LIVE LISTS"/>
@@ -1067,7 +1102,7 @@
                     <ItemsControl ItemsSource="{Binding Library.Lists.LiveLists}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="lists:GameListViewModel">
-                                <Button Classes="listrow"
+                                <Button AutomationProperties.Name="{Binding AutomationName}" AutomationProperties.ItemStatus="{Binding AutomationName}" Classes="listrow"
                                         Classes.selected="{Binding IsSelected}"
                                         Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).SelectListCommand}"
                                         CommandParameter="{Binding}"
@@ -1096,11 +1131,65 @@
                 </StackPanel>
             </ScrollViewer>
 
+            <!-- The fetch status field (§8). Words only — no spinner, no
+                 animation, no Transitions anywhere in it. The count is
+                 real, falls a slice at a time, and never appears on a
+                 warm library. A Well field with a Volt edge, the same
+                 pattern the Stores panel's working note uses. There is
+                 deliberately no Cancel: this pass is not something the
+                 user started, and nothing can restart it before the next
+                 launch (§8 says "offers Cancel where there is one").
+                 Pinned in the Grid's Auto row above the gear so there
+                 is exactly one of it for the whole window and no screen
+                 can ever draw a second.
+
+                 The field is a Border, and a Border gets a NoneAutomationPeer,
+                 which answers false for IsControlElement; UIA's control view —
+                 the tree a screen reader walks — filters on exactly that, so
+                 the name would never arrive. There is no peer-bearing control
+                 inside the field to move it to, only TextBlocks, which answer
+                 with their own Text and discard a name. AccessibilityView is
+                 consulted by ControlAutomationPeer before the peer's own
+                 answer, so "Control" puts the field back in the tree with its
+                 name intact, reported as a named group.
+
+                 The same sentence is also ItemStatus because the count falls a
+                 slice at a time and a Name change raises no UIA event: Avalonia
+                 raises one for IsVisible, Bounds, RenderTransform, VisualParent
+                 and ItemStatus, and for nothing else. -->
+            <Border Grid.Row="1"
+                    Padding="14,12,14,0"
+                    IsVisible="{Binding Fetch.IsActive}">
+                <Border Background="{StaticResource Well}"
+                        BorderBrush="{StaticResource Volt}"
+                        BorderThickness="1"
+                        CornerRadius="{StaticResource RadiusControl}"
+                        Padding="10,8"
+                        AutomationProperties.Name="{Binding Fetch.AutomationName}"
+                        AutomationProperties.ItemStatus="{Binding Fetch.AutomationName}"
+                        AutomationProperties.AccessibilityView="Control">
+                    <StackPanel Spacing="4">
+                        <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
+                                   Text="{Binding Fetch.Label}"/>
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Classes="data-s"
+                                       VerticalAlignment="Center"
+                                       Foreground="{StaticResource Text}"
+                                       Text="{Binding Fetch.RemainingText}"/>
+                            <TextBlock Classes="body" FontSize="11"
+                                       VerticalAlignment="Center"
+                                       Foreground="{StaticResource TextDim}"
+                                       Text="{Binding Fetch.RemainingNote}"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </Border>
+
             <!-- The gear. A glyph and no label: the three sections name
                  themselves once the surface is open, and every other rail
                  row is a library cut, which this is not. Pinned in the
                  Grid's Auto row so it cannot be scrolled past. -->
-            <Border Grid.Row="1"
+            <Border Grid.Row="2"
                     Padding="14,10"
                     BorderBrush="{StaticResource Line}"
                     BorderThickness="0,1,0,0">
@@ -1110,7 +1199,7 @@
                         Command="{Binding ShowSettingsCommand}"
                         HorizontalAlignment="Left"
                         AutomationProperties.Name="Settings"
-                        ToolTip.Tip="Where your library comes from, how purchases are imported, and how the window looks">
+                        ToolTip.Tip="Platforms, library and appearance">
                     <Path Data="F0 M 12.95,6.10 L 15.22,6.40 L 15.22,9.60 L 12.95,9.90 L 12.84,10.16 L 14.24,11.98 L 11.98,14.24 L 10.16,12.84 L 9.90,12.95 L 9.60,15.22 L 6.40,15.22 L 6.10,12.95 L 5.84,12.84 L 4.02,14.24 L 1.76,11.98 L 3.16,10.16 L 3.05,9.90 L 0.78,9.60 L 0.78,6.40 L 3.05,6.10 L 3.16,5.84 L 1.76,4.02 L 4.02,1.76 L 5.84,3.16 L 6.10,3.05 L 6.40,0.78 L 9.60,0.78 L 9.90,3.05 L 10.16,3.16 L 11.98,1.76 L 14.24,4.02 L 12.84,5.84 Z M 5.50,8.00 A 2.50,2.50 0 1 0 10.50,8.00 A 2.50,2.50 0 1 0 5.50,8.00 Z"
                           Stretch="Uniform"
                           Width="16" Height="16"/>
@@ -1162,7 +1251,7 @@
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
                       </Grid.ColumnDefinitions>
-                    <TextBox Name="SearchBox"
+                    <TextBox AutomationProperties.Name="Search titles" Name="SearchBox"
                              Grid.Column="0"
                              Classes="search"
                              HorizontalAlignment="Stretch"
@@ -1183,7 +1272,7 @@
                             Background="{StaticResource ChromeFieldOnGround}"
                             ClipToBounds="True" Height="30">
                         <StackPanel Orientation="Horizontal">
-                            <Button Classes="seg"
+                            <Button AutomationProperties.Name="Grid" Classes="seg"
                                     Classes.on="{Binding Library.IsGridView}"
                                     Command="{Binding Library.ShowGridViewCommand}"
                                     ToolTip.Tip="Grid">
@@ -1194,7 +1283,7 @@
                                     <Rectangle Width="5" Height="5" Margin="1,1,0,0"/>
                                 </UniformGrid>
                             </Button>
-                            <Button Classes="seg"
+                            <Button AutomationProperties.Name="List" Classes="seg"
                                     Classes.on="{Binding !Library.IsGridView}"
                                     Command="{Binding Library.ShowListViewCommand}"
                                     ToolTip.Tip="List">
@@ -1210,12 +1299,17 @@
 
                     <TextBlock Classes="label" FontSize="10" Text="DENSITY"
                                VerticalAlignment="Center"/>
-                    <Slider Name="DensitySlider"
+                    <!-- The label is the design system's own word; the direction was the part
+                         with no spec behind it. IsDirectionReversed was not taken because it
+                         also swaps which RepeatButton the filled-track style paints, putting
+                         the TextDim travelled side on the wrong end. -->
+                    <Slider AutomationProperties.Name="Density" Name="DensitySlider"
                             Classes="density"
-                            Minimum="108" Maximum="200"
-                            Value="{Binding Library.TileWidth, Mode=TwoWay}"
+                            Minimum="{x:Static vm:LibraryViewModel.MinimumTileWidth}"
+                            Maximum="{x:Static vm:LibraryViewModel.MaximumTileWidth}"
+                            Value="{Binding Library.Density, Mode=TwoWay}"
                             VerticalAlignment="Center"
-                            ToolTip.Tip="Tile size"/>
+                            ToolTip.Tip="How tightly the grid packs"/>
 
                     <!-- Rule: per-session controls left, persisted prefs right. -->
                     <Border Width="1" Height="18" Margin="2,0"
@@ -1223,9 +1317,9 @@
                             VerticalAlignment="Center"/>
 
                     <!-- ── Display preferences (§8) ────────────────────────
-                         Persistent preferences behind a popover (not inline,
-                         because they need explanatory text). -->
-                    <Button Name="DisplayButton" Classes="ctl"
+                         Persisted preferences behind a popover. The command
+                         bar holds per-session controls; these persist. -->
+                    <Button AutomationProperties.Name="Display" Name="DisplayButton" Classes="ctl"
                             ToolTip.Tip="Display preferences">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <TextBlock Classes="body" FontSize="12"
@@ -1249,7 +1343,7 @@
                                                LineHeight="17"
                                                TextWrapping="Wrap"
                                                Foreground="{StaticResource TextDim}"
-                                               Text="Covers fade the longer a game sits unplayed. Off shows every cover at full colour — the unread dots and the rail counts carry the same signal."/>
+                                               Text="Covers fade the longer a game sits unplayed."/>
 
                                     <Border Height="1" Margin="0,4"
                                             Background="{StaticResource Line}"/>
@@ -1263,7 +1357,76 @@
                                                LineHeight="17"
                                                TextWrapping="Wrap"
                                                Foreground="{StaticResource TextDim}"
-                                               Text="Steam also carries tools, dedicated servers and soundtracks. They're hidden by default. Anything Steam hasn't told us the type of stays visible either way."/>
+                                               Text="Tools, servers and soundtracks. Hidden by default."/>
+
+                                    <Border Height="1" Margin="0,4"
+                                            Background="{StaticResource Line}"/>
+
+                                    <!-- Rating cap. Both this and the non-game
+                                         toggle above answer the same question —
+                                         what counts as being in my library — so
+                                         they sit together. The chosen step is
+                                         named in words beside the slider and the
+                                         number of titles the cap is currently
+                                         hiding is stated underneath; a thumb
+                                         position is not a value anyone can read
+                                         off a track (§8). One further line
+                                         appears only when the cap is at its top
+                                         step while Settings > Library > 18+ is
+                                         off. -->
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBlock Grid.Column="0" Classes="body"
+                                                   VerticalAlignment="Center"
+                                                   Text="{x:Static vm:MaturityCapCopy.Heading}"/>
+                                        <TextBlock Grid.Column="1" Classes="body" FontSize="12"
+                                                   VerticalAlignment="Center"
+                                                   Text="{Binding Display.MaturityCapLabel}"/>
+                                    </Grid>
+
+                                    <Border Classes="capframe">
+                                        <Slider Name="MaturityCapSlider"
+                                                Classes="cap"
+                                                Minimum="0"
+                                                Maximum="{x:Static vm:DisplaySettingsViewModel.MaximumCapIndex}"
+                                                TickFrequency="1"
+                                                IsSnapToTickEnabled="True"
+                                                TickPlacement="BottomRight"
+                                                SmallChange="1" LargeChange="1"
+                                                Value="{Binding Display.MaturityCapIndex, Mode=TwoWay}"
+                                                AutomationProperties.Name="{x:Static vm:MaturityCapCopy.Heading}"
+                                                ToolTip.Tip="{Binding Display.MaturityCapLabel}"/>
+                                    </Border>
+
+                                    <TextBlock Classes="body" FontSize="12"
+                                               LineHeight="17"
+                                               TextWrapping="Wrap"
+                                               Foreground="{StaticResource TextDim}"
+                                               Text="{x:Static vm:MaturityCapCopy.Explanation}"/>
+                                    <TextBlock Classes="body" FontSize="12"
+                                               LineHeight="17"
+                                               TextWrapping="Wrap"
+                                               Foreground="{StaticResource TextDim}"
+                                               Text="{Binding Display.CapHiddenText}"/>
+                                    <TextBlock Classes="body" FontSize="12"
+                                               LineHeight="17"
+                                               TextWrapping="Wrap"
+                                               Foreground="{StaticResource TextDim}"
+                                               IsVisible="{Binding Display.IsCapClamped}"
+                                               Text="{x:Static vm:MaturityCapCopy.ClampedNote}"/>
+
+                                    <Border Height="1" Margin="0,4"
+                                            Background="{StaticResource Line}"/>
+
+                                    <CheckBox Name="GroupExpansionsToggle"
+                                              Classes="pref"
+                                              Content="Group expansions under the base game"
+                                              IsChecked="{Binding Display.GroupExpansions, Mode=TwoWay}"/>
+                                    <TextBlock Classes="body" FontSize="12"
+                                               Margin="26,0,0,0"
+                                               LineHeight="17"
+                                               TextWrapping="Wrap"
+                                               Foreground="{StaticResource TextDim}"
+                                               Text="Off by default. Hours are never added together."/>
 
                                     <Border Height="1" Margin="0,4"
                                             Background="{StaticResource Line}"/>
@@ -1279,7 +1442,7 @@
                                                LineHeight="17"
                                                TextWrapping="Wrap"
                                                Foreground="{StaticResource TextDim}"
-                                               Text="Off by default. When on, a small card appears in the corner of this window after a game ends, offering a note and a rating. It never opens a window over your game, never takes focus, and goes away on its own if you ignore it."/>
+                                               Text="Off by default. A small card appears after a game ends."/>
                                 </StackPanel>
                             </Flyout>
                         </Button.Flyout>
@@ -1301,7 +1464,7 @@
                                 Spacing="10" VerticalAlignment="Center">
                     <!-- Sort. The button face is the order in force; the menu
                          is the same state the list-view column headers write. -->
-                    <Button Name="SortButton"
+                    <Button AutomationProperties.Name="{Binding Library.SortLabel}" Name="SortButton"
                             Classes="ctl" ToolTip.Tip="Sort order">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <TextBlock Classes="body" FontSize="12"
@@ -1318,7 +1481,7 @@
                                               MinWidth="176">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate DataType="vm:SortOptionViewModel">
-                                            <Button Classes="sortitem" Click="OnSortItemClick">
+                                            <Button AutomationProperties.Name="{Binding Label}" Classes="sortitem" Click="OnSortItemClick">
                                                 <Grid ColumnDefinitions="14,*">
                                                     <!-- Volt marks the active order —
                                                          selection, which is exactly
@@ -1344,7 +1507,7 @@
                     <!-- ── Filters ──────────────────────────────────────────
                          Opens as a column beside the grid (not an overlay).
                          Badge shows how many rules are in force. -->
-                    <Button Name="FiltersButton"
+                    <Button AutomationProperties.Name="Filters" Name="FiltersButton"
                             Classes="ctl"
                             Classes.on="{Binding Library.Filters.IsOpen}"
                             Command="{Binding Library.Filters.ToggleCommand}"
@@ -1397,6 +1560,13 @@
                                  Opening="OnLibraryContextMenuOpening">
                         <MenuItem Header="{Binding Library.AddToListLabel}"
                                   Command="{Binding Library.BeginAddToListCommand}"/>
+                        <!-- Hide acts on the whole picked set, exactly as
+                             Add to list does, and names the count once there
+                             is more than one. Reversible from
+                             SETTINGS › LIBRARY; nothing is deleted. -->
+                        <MenuItem Header="{Binding Library.HideLabel}"
+                                  Command="{Binding Library.HideSelectionCommand}"
+                                  ToolTip.Tip="{Binding Library.HideTooltip}"/>
                     </ContextMenu>
                 </Panel.ContextMenu>
 
@@ -1425,8 +1595,9 @@
                 </ScrollViewer>
 
                 <!-- ── List view (§6) ──────────────────────────────────────
-                     Same data, no art. Virtualized. PaneGround (opaque)
-                     because text must not sit on a translucent field. -->
+                     Same data as the grid, each row carrying a 24×36 cover.
+                     Virtualized. PaneGround (opaque) because text must not
+                     sit on a translucent field. -->
                 <Grid RowDefinitions="30,*" IsVisible="{Binding Library.ShowList}"
                       Background="{StaticResource PaneGround}">
 
@@ -1435,8 +1606,8 @@
                             Background="{StaticResource ChromeSurface}"
                             BorderBrush="{StaticResource Line}"
                             BorderThickness="0,0,0,1">
-                        <Grid ColumnDefinitions="2,18,*,136,104,92,24">
-                            <Button Grid.Column="2" Classes="colhead"
+                        <Grid ColumnDefinitions="2,32,18,*,136,104,92,24">
+                            <Button AutomationProperties.Name="TITLE" Grid.Column="3" Classes="colhead"
                                     Command="{Binding Library.SortByTitleCommand}">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                     <TextBlock Classes="label" FontSize="10" Text="TITLE"/>
@@ -1449,10 +1620,10 @@
                                 </StackPanel>
                             </Button>
 
-                            <TextBlock Grid.Column="3" Classes="label" FontSize="10"
+                            <TextBlock Grid.Column="4" Classes="label" FontSize="10"
                                        Text="STORE" VerticalAlignment="Center"/>
 
-                            <Button Grid.Column="4" Classes="colhead"
+                            <Button AutomationProperties.Name="PLAYTIME" Grid.Column="5" Classes="colhead"
                                     HorizontalContentAlignment="Right"
                                     Command="{Binding Library.SortByPlaytimeCommand}">
                                 <StackPanel Orientation="Horizontal" Spacing="6"
@@ -1467,7 +1638,7 @@
                                 </StackPanel>
                             </Button>
 
-                            <Button Grid.Column="5" Classes="colhead"
+                            <Button AutomationProperties.Name="IDLE" Grid.Column="6" Classes="colhead"
                                     HorizontalContentAlignment="Right"
                                     Command="{Binding Library.SortByIdleCommand}"
                                     ToolTip.Tip="Time since you last played">
@@ -1485,7 +1656,7 @@
                         </Grid>
                     </Border>
 
-                    <ListBox Grid.Row="1"
+                    <ListBox AutomationProperties.Name="Games" Grid.Row="1"
                              Name="ListRows"
                              Classes="rows"
                              SelectionMode="Multiple"
@@ -1498,17 +1669,24 @@
                                 <Border BorderBrush="{StaticResource Line}"
                                         BorderThickness="0,0,0,1"
                                         Height="44">
-                                    <Grid ColumnDefinitions="2,18,*,136,104,92,24">
+                                    <Grid ColumnDefinitions="2,32,18,*,136,104,92,24">
                                         <!-- 2px Volt selection edge (§6), bound to
                                              the row's own state for the same
                                              name-scope reason as the rail. -->
                                         <Border Grid.Column="0"
                                                 Background="{StaticResource Volt}"
                                                 IsVisible="{Binding IsSelected}"/>
+                                        <!-- The row's cover (§6). The art
+                                             column is fixed width, so a row with
+                                             a cover and a row without are
+                                             identical in height and in where
+                                             every other column starts. -->
+                                        <views:RowCoverView Grid.Column="1"
+                                                            Margin="4,0,4,0"/>
                                         <!-- The unread dot: Flare, here and on
                                              the tile and the rail pip. Nowhere
                                              else, ever. -->
-                                        <Border Grid.Column="1"
+                                        <Border Grid.Column="2"
                                                 Width="8" Height="8" CornerRadius="4"
                                                 HorizontalAlignment="Left"
                                                 VerticalAlignment="Center"
@@ -1517,7 +1695,7 @@
                                                 BoxShadow="{DynamicResource PipGlow}"
                                                 IsVisible="{Binding HasUnread}"
                                                 ToolTip.Tip="Patched since you played"/>
-                                        <TextBlock Grid.Column="2"
+                                        <TextBlock Grid.Column="3"
                                                    Classes="body-l"
                                                    FontFamily="{StaticResource DisplayFont}"
                                                    FontWeight="Bold"
@@ -1525,17 +1703,16 @@
                                                    TextTrimming="CharacterEllipsis"
                                                    VerticalAlignment="Center"
                                                    Margin="0,0,12,0"/>
-                                        <!-- Store chips. The list is the same
-                                             rows as the grid without the art, so
-                                             a row that named one store while its
-                                             tile names two would disagree with
-                                             the grid it is an alternate view of.
+                                        <!-- Store chips. The list is an
+                                             alternate view of the grid, so a row
+                                             that named one store while its tile
+                                             names two would disagree with it.
                                              Same outlined chip treatment. Column
                                              widened to 136px because three chips
                                              (123.1px) plus the 8px margin
                                              overflowed the old 112px into
                                              PLAYTIME. -->
-                                        <ItemsControl Grid.Column="3"
+                                        <ItemsControl Grid.Column="4"
                                                       ItemsSource="{Binding StoreChips}"
                                                       ToolTip.Tip="{Binding StoreNames}"
                                                       VerticalAlignment="Center"
@@ -1553,12 +1730,12 @@
                                                 </DataTemplate>
                                             </ItemsControl.ItemTemplate>
                                         </ItemsControl>
-                                        <TextBlock Grid.Column="4"
+                                        <TextBlock Grid.Column="5"
                                                    Classes="data"
                                                    Text="{Binding PlaytimeText}"
                                                    TextAlignment="Right"
                                                    VerticalAlignment="Center"/>
-                                        <TextBlock Grid.Column="5"
+                                        <TextBlock Grid.Column="6"
                                                    Classes="data"
                                                    Foreground="{StaticResource TextDim}"
                                                    Text="{Binding IdleText}"
@@ -1607,20 +1784,19 @@
         </Border>
 
         <!-- ══ THE SETTINGS SURFACE ════════════════════════════════════════
-             One pane holding Platforms and Appearance, opened by the gear at
-             the foot of the rail. Purchases was a third section until TASK-59
-             folded it into the Steam card on Platforms, so that connecting
-             Steam and importing what Steam sold you are one place rather than
-             two overlapping screens. The two sections switch
-             through a segmented control that reuses the command bar's
-             grid/list toggle grammar (same bordered field, same ChromeRaised
-             fill, Volt on the active label), in a 48px header that lines up
-             with the command bar and the filter panel's header (§11.1).
-             Each screen keeps its own header and its own scroll. -->
+             Three sections — Platforms, Library, Appearance — opened by the
+             gear at the foot of the rail. Purchases was a section until TASK-59
+             folded it into the Steam card on Platforms. Library holds what the
+             library shows: hidden games, explicit content and hand-added games.
+             The three sections switch through a segmented control that reuses
+             the command bar's grid/list toggle grammar (same bordered field,
+             same ChromeRaised fill, Volt on the active label), in a 48px header
+             that lines up with the command bar and the filter panel's header
+             (§11.1). Each screen keeps its own header and its own scroll. -->
         <Border Classes="screenpane"
                 BorderBrush="{StaticResource Line}"
                 IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsSettingsVisible}">
-            <Grid RowDefinitions="48,*" Background="{StaticResource PaneGround}">
+            <Grid RowDefinitions="48,*">
 
                 <Border Grid.Row="0"
                         BorderBrush="{StaticResource Line}"
@@ -1646,16 +1822,27 @@
                                      before and drifted back, because the only
                                      place it existed was this attribute and no
                                      test could see it (TASK-60). -->
-                                <Button Classes="seg tab"
+                                <Button AutomationProperties.Name="{Binding Stores.SegmentLabel}" Classes="seg tab"
                                         Classes.on="{Binding IsStoresVisible}"
                                         Command="{Binding ShowStoresCommand}"
                                         ToolTip.Tip="{Binding Stores.SegmentTooltip}">
                                     <TextBlock Classes="display-s" Text="{Binding Stores.SegmentLabel}"/>
                                 </Button>
-                                <Button Classes="seg tab"
+                                <!-- SETTINGS › LIBRARY. What the library
+                                     shows: hidden games, explicit content,
+                                     hand-added games. Label is bound rather
+                                     than written in, for TASK-60's reason. -->
+                                <Button AutomationProperties.Name="{Binding LibrarySettings.SegmentLabel}" Classes="seg tab"
+                                        Classes.on="{Binding IsLibrarySettingsVisible}"
+                                        Command="{Binding ShowLibrarySettingsCommand}"
+                                        ToolTip.Tip="{Binding LibrarySettings.SegmentTooltip}">
+                                    <TextBlock Classes="display-s"
+                                               Text="{Binding LibrarySettings.SegmentLabel}"/>
+                                </Button>
+                                <Button AutomationProperties.Name="APPEARANCE" Classes="seg tab"
                                         Classes.on="{Binding IsAppearanceVisible}"
                                         Command="{Binding ShowAppearanceCommand}"
-                                        ToolTip.Tip="Theme, and whether the window lets the desktop through">
+                                        ToolTip.Tip="Theme and transparency">
                                     <TextBlock Classes="display-s" Text="APPEARANCE"/>
                                 </Button>
                             </StackPanel>
@@ -1667,6 +1854,9 @@
                     <views:StoresView Name="StoresPanel"
                                       DataContext="{Binding Stores}"
                                       IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsStoresVisible}"/>
+                    <views:LibrarySettingsView Name="LibrarySettingsPanel"
+                                               DataContext="{Binding LibrarySettings}"
+                                               IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsLibrarySettingsVisible}"/>
                     <views:AppearanceView Name="AppearancePanel"
                                           DataContext="{Binding Appearance}"
                                           IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsAppearanceVisible}"/>
@@ -1711,6 +1901,7 @@
                         <Button Grid.Column="1" Classes="act quiet"
                                 FontSize="12" Padding="10,3" BorderThickness="1"
                                 VerticalAlignment="Center"
+                                IsVisible="{Binding CanUndoDock}"
                                 Content="{Binding UndoButtonText}"
                                 ToolTip.Tip="{Binding UndoTooltip}"
                                 Command="{Binding UndoCommand}"/>
@@ -1746,25 +1937,25 @@
                     </Grid>
 
                     <StackPanel Orientation="Horizontal" Spacing="2">
-                        <Button Classes="rate" Classes.on="{Binding IsRated1}"
+                        <Button AutomationProperties.Name="1 out of 5" Classes="rate" Classes.on="{Binding IsRated1}"
                                 CommandParameter="1" Command="{Binding RateCommand}"
                                 ToolTip.Tip="1 out of 5"><Ellipse/></Button>
-                        <Button Classes="rate" Classes.on="{Binding IsRated2}"
+                        <Button AutomationProperties.Name="2 out of 5" Classes="rate" Classes.on="{Binding IsRated2}"
                                 CommandParameter="2" Command="{Binding RateCommand}"
                                 ToolTip.Tip="2 out of 5"><Ellipse/></Button>
-                        <Button Classes="rate" Classes.on="{Binding IsRated3}"
+                        <Button AutomationProperties.Name="3 out of 5" Classes="rate" Classes.on="{Binding IsRated3}"
                                 CommandParameter="3" Command="{Binding RateCommand}"
                                 ToolTip.Tip="3 out of 5"><Ellipse/></Button>
-                        <Button Classes="rate" Classes.on="{Binding IsRated4}"
+                        <Button AutomationProperties.Name="4 out of 5" Classes="rate" Classes.on="{Binding IsRated4}"
                                 CommandParameter="4" Command="{Binding RateCommand}"
                                 ToolTip.Tip="4 out of 5"><Ellipse/></Button>
-                        <Button Classes="rate" Classes.on="{Binding IsRated5}"
+                        <Button AutomationProperties.Name="5 out of 5" Classes="rate" Classes.on="{Binding IsRated5}"
                                 CommandParameter="5" Command="{Binding RateCommand}"
                                 ToolTip.Tip="5 out of 5"><Ellipse/></Button>
                     </StackPanel>
 
                     <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-                        <TextBox Grid.Column="0"
+                        <TextBox AutomationProperties.Name="How was it?" Grid.Column="0"
                                  Name="JournalNote"
                                  Classes="note"
                                  Watermark="How was it?"
@@ -1824,6 +2015,20 @@
                                Grid.Column="0" Grid.ColumnSpan="3"
                                DataContext="{Binding Library.Details}"
                                IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Library.IsDetailsOpen}"/>
+
+        <!-- ── Screenshot lightbox (§10.7) ───────────────────────────────────
+             Declared after the modal and spanning the same three columns, so
+             it draws over it. It is an ordinary child of the window's own
+             Grid — in the window's visual tree, where drawn focus rings work
+             — not a Popup, which would be its own root with no adorner layer.
+
+             IsOpen is bound off Library, not off Library.Details, because a
+             binding whose path passes through a null resolves to UnsetValue
+             and IsVisible would fall back to its default of true. -->
+        <views:ScreenshotLightboxView Name="LightboxPanel"
+                                      Grid.Column="0" Grid.ColumnSpan="3"
+                                      DataContext="{Binding Library.Lightbox}"
+                                      IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Library.Lightbox.IsOpen}"/>
 
     </Grid>
     </Grid>

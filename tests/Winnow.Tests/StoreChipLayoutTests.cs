@@ -111,13 +111,13 @@ public sealed class StoreChipLayoutTests
         var grids = window
             .Descendants(Avalonia + "Grid")
             .Select(g => g.Attribute("ColumnDefinitions")?.Value)
-            .Where(v => v is not null && v.StartsWith("2,18,*,", StringComparison.Ordinal))
+            .Where(v => v is not null && v.StartsWith("2,32,18,*,", StringComparison.Ordinal))
             .ToList();
 
         Assert.Equal(2, grids.Count);
         foreach (var definition in grids)
         {
-            var store = double.Parse(definition!.Split(',')[3], CultureInfo.InvariantCulture);
+            var store = double.Parse(definition!.Split(',')[4], CultureInfo.InvariantCulture);
             Assert.True(
                 store >= ThreeChips + 8,
                 $"The list's store column is {store}px; three chips plus their 8px margin "

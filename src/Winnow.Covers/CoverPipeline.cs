@@ -34,7 +34,7 @@ public sealed class CoverPipeline : IDisposable
 
     // Negative results are remembered in memory as well as on disk so a grid of
     // 616 tiles, most of which will miss, costs no file stat per scroll frame.
-    private readonly ConcurrentDictionary<CoverKey, bool> _knownMissing = new();
+    private readonly ConcurrentDictionary<CoverKey, string> _knownMissing = new();
 
     public CoverPipeline(
         IEnumerable<ICoverSource> sources,
@@ -62,17 +62,19 @@ public sealed class CoverPipeline : IDisposable
     /// <summary>Whether every source has already declined this key (memory or disk marker).</summary>
     public bool IsKnownMissing(CoverKey key)
     {
-        if (_knownMissing.ContainsKey(key))
+        var identity = SourceSetIdFor(key);
+        if (_knownMissing.TryGetValue(key, out var missingIdentity) && missingIdentity == identity)
         {
             return true;
         }
 
-        if (!_disk.IsKnownMissing(key, SourceSetIdFor(key)))
+        _knownMissing.TryRemove(key, out _);
+        if (!_disk.IsKnownMissing(key, identity))
         {
             return false;
         }
 
-        _knownMissing[key] = true;
+        _knownMissing[key] = identity;
         return true;
     }
 
@@ -92,11 +94,6 @@ public sealed class CoverPipeline : IDisposable
         // enough: it resumes on the captured SynchronizationContext, which on
         // the UI thread is Avalonia's dispatcher, so every decode would land
         // back on the thread that has to keep the grid scrolling.
-        if (IsKnownMissing(key))
-        {
-            return null;
-        }
-
         try
         {
             if (TryDecodeFromDisk(key, width) is { } cached)
@@ -104,11 +101,25 @@ public sealed class CoverPipeline : IDisposable
                 return cached;
             }
 
+            foreach (var source in _sources)
+            {
+                if (source.CanHandle(key))
+                {
+                    await source.RefreshCapabilityAsync(key, ct).ConfigureAwait(false);
+                }
+            }
+
+            if (IsKnownMissing(key))
+            {
+                return null;
+            }
+
+            var identity = SourceSetIdFor(key);
             var bytes = await FetchAsync(key, ct).ConfigureAwait(false);
             if (bytes is null)
             {
-                _knownMissing[key] = true;
-                _disk.MarkMissing(key, SourceSetIdFor(key));
+                _knownMissing[key] = identity;
+                _disk.MarkMissing(key, identity);
                 return null;
             }
 

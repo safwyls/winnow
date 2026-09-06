@@ -9,7 +9,7 @@ using Xunit;
 namespace Winnow.Tests;
 
 /// <summary>
-/// Cover tile primary actions and card flip, with URIs asserted literally.
+/// Cover tile primary actions, with URIs asserted literally.
 /// </summary>
 public sealed class TileActionsTests
 {
@@ -21,11 +21,15 @@ public sealed class TileActionsTests
     public void Steam_on_disk_plays_and_off_disk_installs()
     {
         Assert.Equal("Play", Tile(ExternalIdProviders.Steam, installed: true).PrimaryActionLabel);
+        Assert.True(Tile(ExternalIdProviders.Steam, installed: true).IsPlayAction);
+        Assert.False(Tile(ExternalIdProviders.Steam, installed: true).IsInstallAction);
         Assert.Equal(
             "steam://run/620",
             Tile(ExternalIdProviders.Steam, installed: true).PrimaryAction!.Uri);
 
         Assert.Equal("Install", Tile(ExternalIdProviders.Steam, installed: false).PrimaryActionLabel);
+        Assert.False(Tile(ExternalIdProviders.Steam, installed: false).IsPlayAction);
+        Assert.True(Tile(ExternalIdProviders.Steam, installed: false).IsInstallAction);
         Assert.Equal(
             "steam://install/620",
             Tile(ExternalIdProviders.Steam, installed: false).PrimaryAction!.Uri);
@@ -71,18 +75,140 @@ public sealed class TileActionsTests
     }
 
     /// <summary>
-    /// The Epic launcher exposes no install route — its binary carries
-    /// <c>launch</c>, <c>installer</c>, <c>updatecheck</c> and <c>verify</c> and
-    /// no <c>install</c>, and no store route at all. An unverifiable action is
-    /// no action, never a button that silently does nothing.
+    /// The label is Install, the kind is <see cref="GameLinkKind.Install"/>,
+    /// and the literal URI carries <c>?action=install</c> with Fez's real three
+    /// ids. The URI is asserted literally because the verb is undocumented — the
+    /// measured string is the only authority for it, and the documented
+    /// <c>installer</c> is exactly the wrong "fix" a future reader might apply.
     /// </summary>
     [Fact]
-    public void Epic_off_disk_offers_nothing_rather_than_a_button_that_does_nothing()
+    public void Epic_off_disk_installs_through_the_launchers_composite_key()
     {
         var tile = Tile(ExternalIdProviders.Epic, installed: false);
 
+        Assert.Equal("Install", tile.PrimaryActionLabel);
+        Assert.Equal(
+            "com.epicgames.launcher://apps/41f47fd0d3e248bc938a5815d6d64daa"
+            + "%3A7a70b499513441c792b541d53505e0b2%3ABluebird?action=install",
+            tile.PrimaryAction!.Uri);
+        Assert.Equal(GameLinkKind.Install, tile.PrimaryAction!.Kind);
+    }
+
+    /// <summary>
+    /// The §10.3 guard: with no complete launch key, nothing is drawn — no
+    /// primary action, no label. After the ingest fix essentially every Epic
+    /// row holds its triple, so this case should be empty in practice; the
+    /// guard is the point, and it must not rot just because nothing hits it.
+    /// </summary>
+    [Fact]
+    public void Epic_off_disk_without_all_three_ids_draws_no_install_button()
+    {
+        var tile = Tile(ExternalIdProviders.Epic, installed: false, withEpicKey: false);
+
+        Assert.Null(tile.EpicLaunchKey);
         Assert.Null(tile.PrimaryAction);
         Assert.False(tile.HasPrimaryAction);
+        Assert.Equal(string.Empty, tile.PrimaryActionLabel);
+    }
+
+    /// <summary>
+    /// The same missing-key case seen from Band 3: no primary action, no links,
+    /// and the sentence drawn is the missing-identifier one, not a route-shaped
+    /// one. This test pins the retirement of <c>NoInstallRoute</c> — the honest
+    /// replacement is <see cref="NoWayIn.NoStoreId"/>, not a new route reason.
+    /// </summary>
+    [Fact]
+    public void Epic_off_disk_with_no_launch_key_names_the_id_it_lacks()
+    {
+        var tile = Tile(ExternalIdProviders.Epic, installed: false, withEpicKey: false);
+        var details = new GameDetailsViewModel(tile, "Started", [], Now);
+
+        Assert.Equal(NoWayIn.NoStoreId, tile.NoWayIn);
+        Assert.False(details.HasPrimaryAction);
+        Assert.False(details.HasLinks);
+        Assert.True(details.HasNoWayInSentence);
+        Assert.Equal(GameActionBandCopy.NoStoreId, details.NoWayInSentence);
+    }
+
+    /// <summary>
+    /// A band that has a primary action or at least one link must never
+    /// produce a no-way-in sentence. Showing a reason alongside a working
+    /// button would contradict the button.
+    /// </summary>
+    [Theory]
+    [InlineData(ExternalIdProviders.Steam, true)]
+    [InlineData(ExternalIdProviders.Steam, false)]
+    [InlineData(ExternalIdProviders.Steam, null)]
+    [InlineData(ExternalIdProviders.Gog, true)]
+    [InlineData(ExternalIdProviders.Gog, false)]
+    [InlineData(ExternalIdProviders.Gog, null)]
+    [InlineData(ExternalIdProviders.Epic, true)]
+    [InlineData(ExternalIdProviders.Epic, false)]
+    public void A_store_that_can_be_reached_says_nothing_about_why_it_cannot(string store, bool? installed)
+    {
+        var tile = Tile(store, installed);
+        var details = new GameDetailsViewModel(tile, "Started", [], Now);
+
+        Assert.Equal(NoWayIn.None, tile.NoWayIn);
+        Assert.False(details.HasNoWayInSentence);
+        Assert.Null(details.NoWayInSentence);
+    }
+
+    /// <summary>
+    /// An Epic copy with a launch key but a null install state must report
+    /// <see cref="NoWayIn.InstallStateUnknown"/>, not the missing-id reason.
+    /// The install state is three-valued and the third value is "nothing
+    /// looked", which the sentence must say rather than hide.
+    /// </summary>
+    [Fact]
+    public void An_epic_copy_whose_install_state_nobody_read_is_named_as_that()
+    {
+        var tile = Tile(ExternalIdProviders.Epic, installed: null);
+        var details = new GameDetailsViewModel(tile, "Started", [], Now);
+
+        Assert.Equal(NoWayIn.InstallStateUnknown, tile.NoWayIn);
+        Assert.Equal(GameActionBandCopy.InstallStateUnknown, details.NoWayInSentence);
+    }
+
+    /// <summary>
+    /// An installed Epic copy with no launch key cannot play and has no links,
+    /// so the band must name the missing store identifier as the reason. The
+    /// key arrives via a background catalogue backfill, so this is "not yet"
+    /// rather than "never".
+    /// </summary>
+    [Fact]
+    public void An_epic_copy_on_disk_with_no_launch_key_names_the_id_it_lacks()
+    {
+        var tile = Tile(ExternalIdProviders.Epic, installed: true, withEpicKey: false);
+        var details = new GameDetailsViewModel(tile, "Started", [], Now);
+
+        Assert.Equal(NoWayIn.NoStoreId, tile.NoWayIn);
+        Assert.Equal(GameActionBandCopy.NoStoreId, details.NoWayInSentence);
+    }
+
+    /// <summary>
+    /// Both <c>TODO(docs-writer)</c> and <c>PLACEHOLDER_*</c> markers have
+    /// reached a user of this project. This test guards every sentence in
+    /// <see cref="GameActionBandCopy"/> against both, so a stub that
+    /// survives a commit is caught before it ships.
+    /// </summary>
+    [Fact]
+    public void No_sentence_is_ever_a_placeholder()
+    {
+        foreach (var reason in Enum.GetValues<NoWayIn>())
+        {
+            var sentence = GameActionBandCopy.NoWayInSentence(reason);
+
+            if (reason == NoWayIn.None)
+            {
+                Assert.Null(sentence);
+                continue;
+            }
+
+            Assert.False(string.IsNullOrWhiteSpace(sentence));
+            Assert.DoesNotContain("TODO", sentence, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("PLACEHOLDER", sentence, StringComparison.OrdinalIgnoreCase);
+        }
     }
 
     // ══ The third install state ═════════════════════════════════════════════
@@ -158,6 +284,7 @@ public sealed class TileActionsTests
 
     [Theory]
     [InlineData("com.epicgames.launcher://apps/a%3Ab%3AC?action=launch&silent=true")]
+    [InlineData("com.epicgames.launcher://apps/a%3Ab%3AC?action=install")]
     [InlineData("goggalaxy://launchGame/gog_1")]
     [InlineData("goggalaxy://installationScreen/1")]
     public void The_two_launcher_schemes_are_openable(string uri)
@@ -189,8 +316,8 @@ public sealed class TileActionsTests
     }
 
     /// <summary>
-    /// Epic gets no store link: a store URL needs a product slug and nothing in
-    /// this database holds one. Absent, not invented.
+    /// Epic gets no store link: the in-launcher route exists but needs a product
+    /// slug, and nothing in this database holds one. Absent, not invented.
     /// </summary>
     [Fact]
     public void Epic_gets_no_links()
@@ -213,7 +340,7 @@ public sealed class TileActionsTests
     public void The_detail_panel_offers_exactly_the_tiles_action()
     {
         var tile = Tile(ExternalIdProviders.Gog, installed: true);
-        var details = new GameDetailsViewModel(tile, "Bounced off", [], Now);
+        var details = new GameDetailsViewModel(tile, "Started", [], Now);
 
         Assert.Same(tile.PrimaryAction, details.PrimaryAction);
         Assert.True(details.HasLinks);
@@ -227,7 +354,7 @@ public sealed class TileActionsTests
     [Fact]
     public async Task Every_tile_launches_through_the_librarys_own_command()
     {
-        using var fixture = new FlipFixture();
+        using var fixture = new LibraryFixture();
         await fixture.SeedAsync("Anvil");
         var library = await fixture.LoadAsync();
 
@@ -247,7 +374,7 @@ public sealed class TileActionsTests
         var tile = Tile(ExternalIdProviders.Steam, installed: true);
         tile.PrimaryActionCommand = new CommunityToolkit.Mvvm.Input.RelayCommand(() => { });
 
-        var details = new GameDetailsViewModel(tile, "Bounced off", [], Now);
+        var details = new GameDetailsViewModel(tile, "Started", [], Now);
 
         Assert.Same(tile, details.Tile);
         Assert.Same(tile.PrimaryActionCommand, details.Tile.PrimaryActionCommand);
@@ -269,6 +396,7 @@ public sealed class TileActionsTests
         Assert.False(Tile(ExternalIdProviders.Gog, installed: false).PrimaryAction!.StartsGame);
 
         Assert.True(Tile(ExternalIdProviders.Epic, installed: true).PrimaryAction!.StartsGame);
+        Assert.False(Tile(ExternalIdProviders.Epic, installed: false).PrimaryAction!.StartsGame);
 
         // A store page is neither, and nothing about it should ever be waited on.
         var storePage = StoreActions.LinksFor(ExternalIdProviders.Steam, "620", null)[0];
@@ -276,160 +404,26 @@ public sealed class TileActionsTests
         Assert.Equal(GameLinkKind.Link, storePage.Kind);
     }
 
-    // ══ The card flip ═══════════════════════════════════════════════════════
+    // ══ Grid command wiring ══════════════════════════════════════════════════
 
     [Fact]
-    public async Task A_click_turns_one_card_over_and_selects_it()
+    public async Task The_grid_actions_carry_the_librarys_own_commands()
     {
-        using var fixture = new FlipFixture();
-        await fixture.SeedAsync("Anvil");
-        var library = await fixture.LoadAsync();
-
-        var anvil = library.VisibleTiles.Single(t => t.Title == "Anvil");
-        library.FlipTileCommand.Execute(anvil);
-
-        Assert.True(anvil.IsFlipped);
-        Assert.Same(anvil, library.FlippedTile);
-        Assert.Same(anvil, library.SelectedTile);
-        Assert.Equal([anvil], library.SelectedTiles);
-    }
-
-    [Fact]
-    public async Task Clicking_the_turned_card_again_turns_it_back()
-    {
-        using var fixture = new FlipFixture();
-        await fixture.SeedAsync("Anvil");
-        var library = await fixture.LoadAsync();
-
-        var anvil = library.VisibleTiles.Single(t => t.Title == "Anvil");
-        library.FlipTileCommand.Execute(anvil);
-        library.FlipTileCommand.Execute(anvil);
-
-        Assert.False(anvil.IsFlipped);
-        Assert.Null(library.FlippedTile);
-    }
-
-    /// <summary>
-    /// Exactly one card is ever face-down. §1 says the art is the interface, and
-    /// a grid of backs is a grid with no art in it.
-    /// </summary>
-    [Fact]
-    public async Task Turning_a_second_card_turns_the_first_one_back()
-    {
-        using var fixture = new FlipFixture();
-        await fixture.SeedAsync("Anvil");
-        await fixture.SeedAsync("Banjo");
-        var library = await fixture.LoadAsync();
-
-        var anvil = library.VisibleTiles.Single(t => t.Title == "Anvil");
-        var banjo = library.VisibleTiles.Single(t => t.Title == "Banjo");
-
-        library.FlipTileCommand.Execute(anvil);
-        library.FlipTileCommand.Execute(banjo);
-
-        Assert.False(anvil.IsFlipped);
-        Assert.True(banjo.IsFlipped);
-        Assert.Same(banjo, library.FlippedTile);
-    }
-
-    /// <summary>
-    /// Arrowing off a turned card turns it back: selection and the flip move
-    /// together, which is what makes the keyboard route out of the back face a
-    /// key the user already knows (§8).
-    /// </summary>
-    [Fact]
-    public async Task Moving_the_selection_turns_the_card_back()
-    {
-        using var fixture = new FlipFixture();
-        await fixture.SeedAsync("Anvil");
-        await fixture.SeedAsync("Banjo");
-        var library = await fixture.LoadAsync();
-
-        var first = library.VisibleTiles[0];
-        library.FlipTileCommand.Execute(first);
-        library.MoveSelection(1);
-
-        Assert.False(first.IsFlipped);
-        Assert.Null(library.FlippedTile);
-    }
-
-    /// <summary>
-    /// The wall is rebuilt under whatever was turned over, and the turned card
-    /// may not even be in the new set.
-    /// </summary>
-    [Fact]
-    public async Task Cutting_the_library_turns_every_card_back()
-    {
-        using var fixture = new FlipFixture();
-        await fixture.SeedAsync("Anvil");
-        await fixture.SeedAsync("Banjo");
-        var library = await fixture.LoadAsync();
-
-        var anvil = library.VisibleTiles.Single(t => t.Title == "Anvil");
-        library.FlipTileCommand.Execute(anvil);
-        library.SearchText = "banjo";
-
-        Assert.False(anvil.IsFlipped);
-        Assert.Null(library.FlippedTile);
-    }
-
-    [Fact]
-    public async Task Leaving_the_grid_turns_every_card_back()
-    {
-        using var fixture = new FlipFixture();
-        await fixture.SeedAsync("Anvil");
-        var library = await fixture.LoadAsync();
-
-        library.FlipTileCommand.Execute(library.VisibleTiles[0]);
-        library.ShowListViewCommand.Execute(null);
-
-        Assert.Null(library.FlippedTile);
-    }
-
-    /// <summary>
-    /// The modal is the richer version of the back face, so the card goes
-    /// face-up on the way in — Escape should return the user to the wall they
-    /// were reading, not to a step they have already taken.
-    /// </summary>
-    [Fact]
-    public async Task Opening_the_details_modal_turns_the_card_back()
-    {
-        using var fixture = new FlipFixture();
-        await fixture.SeedAsync("Anvil");
-        var library = await fixture.LoadAsync();
-
-        var anvil = library.VisibleTiles[0];
-        library.FlipTileCommand.Execute(anvil);
-        await library.OpenDetailsCommand.ExecuteAsync(anvil);
-
-        Assert.False(anvil.IsFlipped);
-        Assert.Null(library.FlippedTile);
-        Assert.True(library.IsDetailsOpen);
-    }
-
-    /// <summary>
-    /// The back face raises the library's own commands rather than reaching for
-    /// a repository (§5.1) — and "Add to list" is the SAME command the command
-    /// bar runs, so the single-game route and the bulk route can never drift.
-    /// </summary>
-    [Fact]
-    public async Task The_back_face_carries_the_librarys_own_commands()
-    {
-        using var fixture = new FlipFixture();
+        using var fixture = new LibraryFixture();
         await fixture.SeedAsync("Anvil");
         var library = await fixture.LoadAsync();
 
         var anvil = library.VisibleTiles[0];
 
-        Assert.Same(library.BeginAddToListCommand, anvil.AddToListCommand);
+        Assert.Same(library.LaunchCommand, anvil.PrimaryActionCommand);
         Assert.Same(library.OpenDetailsCommand, anvil.OpenDetailsCommand);
     }
 
     /// <summary>The §7 name, not the query's key — the rail's own vocabulary.</summary>
     [Fact]
-    public async Task The_back_face_names_the_bucket_the_way_the_rail_does()
+    public async Task The_tile_names_the_bucket_the_way_the_rail_does()
     {
-        using var fixture = new FlipFixture();
+        using var fixture = new LibraryFixture();
         await fixture.SeedAsync("Anvil");
         var library = await fixture.LoadAsync();
 
@@ -468,11 +462,10 @@ public sealed class TileActionsTests
             bucketLabel: "Never played");
 
     /// <summary>
-    /// The smallest real library the flip needs: a migrated SQLite file and the
-    /// real repositories, with no cover cache and no Avalonia application. The
-    /// flip is view-model state, so nothing here has to render.
+    /// The smallest real library the grid command wiring needs: a migrated
+    /// SQLite file and the real repositories.
     /// </summary>
-    private sealed class FlipFixture : IDisposable
+    private sealed class LibraryFixture : IDisposable
     {
         private readonly TempDatabase _db = new();
         private int _appId = 700000;

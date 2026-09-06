@@ -78,6 +78,7 @@ public partial class GameTileViewModel : ObservableObject
         GogProductId = PlayableEntry.GogProductId;
         EpicLaunchKey = PlayableEntry.EpicLaunchKey;
         PrimaryAction = PlayableEntry.PrimaryAction;
+        NoWayIn = PlayableEntry.NoWayIn;
 
         // One chip per store, in the order the entries arrive, and never
         // twice for one store: two Steam accounts owning one game is two
@@ -117,10 +118,11 @@ public partial class GameTileViewModel : ObservableObject
         PlaytimeMinutes = game.PlaytimeMinutes;
         LastPlayedUtc = game.LastPlayedAt;
 
-        // The unread badge and the "Patched since" bucket count the same fact
+        // The unread badge and the "Patched" bucket count the same fact
         // (§5.2), so the tile derives one from the other rather than being told
         // both and risking disagreement.
         HasUnread = game.Bucket == LibraryBuckets.StaleButPatched;
+        UnreadUpdateCount = game.UnreadUpdateCount;
 
         // Enrichment fills these in behind a library the user is already
         // browsing (§7), so every one of them is legitimately null on a fresh
@@ -186,14 +188,80 @@ public partial class GameTileViewModel : ObservableObject
     public bool IsMultiStore => Stores.Count > 1;
 
     /// <summary>
-    /// What a screen reader is told. A collapsed tile names its stores in
-    /// words, because the resting mark is initials and §8 requires anything
-    /// the grid encodes to be available as text. A single-store tile is just
-    /// the title.
+    /// How many expansions were folded into this tile (TASK-70.5 AC6). Zero
+    /// whenever the grouping preference is off, which is its default, so an
+    /// ordinary library never draws anything for it.
     /// </summary>
-    public string AutomationName => IsMultiStore
-        ? $"{Title}. Owned on {StoreNames}."
-        : Title;
+    public int GroupedExpansionCount { get; set; }
+
+    /// <summary>True when at least one expansion was folded into this tile.</summary>
+    public bool HasGroupedExpansions => GroupedExpansionCount > 0;
+
+    /// <summary>
+    /// True when a folded expansion has never been played. The fold takes the
+    /// expansion's own tile away, and with it its place on the Never played
+    /// rail, so the fact has to survive somewhere: "you played two hundred
+    /// hours of this and never opened the expansion" is the premise of the
+    /// app, not a detail. Never set while the grouping preference is off,
+    /// because nothing is folded then.
+    /// </summary>
+    public bool HasUnplayedExpansion { get; set; }
+
+    /// <summary>
+    /// What a screen reader is told: the title, then whatever the tile's marks
+    /// encode. A collapsed tile names its stores in words, because the resting
+    /// mark is initials; a tile that folded expansions says how many and
+    /// whether one has never been played; a badged tile says it has been
+    /// patched. §8 requires anything the grid encodes to be available as text,
+    /// and each of those is drawn as a shape at the density floor. A
+    /// single-store tile with no marks is just the title.
+    /// </summary>
+    public string AutomationName
+    {
+        get
+        {
+            var name = IsMultiStore ? $"{Title}. Owned on {StoreNames}." : Title;
+
+            if (HasGroupedExpansions)
+            {
+                name = $"{name} {ExpansionMarkText}";
+            }
+
+            // The badge's count is part of the sentence because there is no
+            // other channel for it. Avalonia declares PositionInSet and
+            // SizeOfSet and reads neither — one reference each in the 11.3.20
+            // source, their own declaration — so no count on a tile reaches a
+            // screen reader except as part of this string.
+            var unread = UnreadText;
+            return unread.Length == 0 ? name : $"{name} {unread}";
+        }
+    }
+
+    /// <summary>
+    /// The resting mark's face when expansions are folded here: a plus and a
+    /// count, in the same pip the store initials use. It is a count and not a
+    /// word for the reason the store mark is initials — the density floor is
+    /// 108px. The words are in <see cref="ExpansionMarkText"/>, which reaches
+    /// the tooltip and the automation name, so the mark is
+    /// decorative-redundant per §8 rather than the only place the fact lives.
+    /// </summary>
+    public string ExpansionMarkFace => $"+{GroupedExpansionCount}";
+
+    /// <summary>
+    /// The folded packs in words. Says the unplayed part out loud, because
+    /// that is the fact the fold took off the Never played rail and the whole
+    /// reason the mark exists.
+    /// </summary>
+    public string ExpansionMarkText
+    {
+        get
+        {
+            var packs = GroupedExpansionCount == 1 ? "1 expansion" : $"{GroupedExpansionCount} expansions";
+            return HasUnplayedExpansion
+                ? $"Includes {packs}, one of them never played."
+                : $"Includes {packs}.";
+        }
+    }
 
     /// <summary>Every ownership this tile stands for.</summary>
     public IEnumerable<long> OwnershipIds => Entries.Select(static e => e.OwnershipId);
@@ -275,7 +343,8 @@ public partial class GameTileViewModel : ObservableObject
     /// <summary>The PRIMARY release. Update events are read for every entry; see LibraryViewModel.</summary>
     public long ReleaseId { get; }
 
-    public string Title { get; }
+    /// <summary>The work's name as the last load or the last <see cref="Rename"/> left it.</summary>
+    public string Title { get; private set; }
 
     /// <summary>The PRIMARY entry's store as stored ("steam"). <see cref="Stores"/> is the whole set.</summary>
     public string Store { get; }
@@ -294,6 +363,21 @@ public partial class GameTileViewModel : ObservableObject
 
     /// <summary>Unread-update badge (§5.2) — set from stale-but-patched bucket membership.</summary>
     public bool HasUnread { get; }
+
+    /// <summary>
+    /// How many correlated build pushes landed since the user last played,
+    /// taken from the read model beside <see cref="HasUnread"/> rather than
+    /// counted here. Zero whenever there is no badge, because the query zeroes
+    /// it wherever it has no update timestamp to pair it with.
+    /// </summary>
+    public int UnreadUpdateCount { get; }
+
+    /// <summary>
+    /// The badge in words, for the automation name and for anything else that
+    /// has to state what the dot means. Empty when there is no badge, so the
+    /// name of an unbadged tile is unchanged.
+    /// </summary>
+    public string UnreadText => UnreadCopy.TileBadge(HasUnread, UnreadUpdateCount);
 
     /// <summary>Scrim line: "312h · idle 8mo", or "never opened".</summary>
     public string StatText { get; }
@@ -346,7 +430,7 @@ public partial class GameTileViewModel : ObservableObject
     public Winnow.Core.Queries.FilterableRow Row { get; set; }
         = new(0, 0, string.Empty, [], string.Empty, false, false, null, [], []);
 
-    /// <summary>The §7 bucket name this tile falls in ("Never played"), for the back face.</summary>
+    /// <summary>The §7 bucket name this tile falls in ("Never played"), shared with details.</summary>
     public string BucketLabel { get; }
 
     /// <summary>
@@ -388,13 +472,25 @@ public partial class GameTileViewModel : ObservableObject
 
     /// <summary>
     /// <c>Play</c> when it is on disk, <c>Install</c> when it is not, and null
-    /// when this app cannot honestly name either — no id for the store, no
-    /// verified install route for the store, or no answer at all about the
-    /// install state. Never an inert button (§10.3).
+    /// when this app cannot honestly name either — no id for the store, or no
+    /// answer at all about the install state. Never an inert button (§10.3).
     /// </summary>
     public GameLink? PrimaryAction { get; }
 
+    /// <summary>
+    /// Why Band 3 cannot get the user in, from <see cref="PlayableEntry"/>
+    /// — the same entry <see cref="PrimaryAction"/> is derived from, so the
+    /// reason always describes the copy whose action is missing.
+    /// </summary>
+    public NoWayIn NoWayIn { get; }
+
     public bool HasPrimaryAction => PrimaryAction is not null;
+
+    /// <summary>True when the compact grid action starts the game.</summary>
+    public bool IsPlayAction => PrimaryAction?.Kind == GameLinkKind.Play;
+
+    /// <summary>True when the compact grid action opens the install flow.</summary>
+    public bool IsInstallAction => PrimaryAction?.Kind == GameLinkKind.Install;
 
     /// <summary>The button's face: "Play" or "Install", named for what it does.</summary>
     public string PrimaryActionLabel => PrimaryAction?.Label ?? string.Empty;
@@ -406,9 +502,10 @@ public partial class GameTileViewModel : ObservableObject
     /// True when the title is a machine-minted stand-in ("App 8510") rather than
     /// a real name — Steam's local files knew the appid and nothing else. The
     /// detail view says so out loud; a placeholder that looks like a title is
-    /// how a user concludes the whole panel is wrong.
+    /// how a user concludes the whole panel is wrong. Cleared by
+    /// <see cref="Rename"/> when the user sets the name.
     /// </summary>
-    public bool NameIsProvisional { get; }
+    public bool NameIsProvisional { get; private set; }
 
     /// <summary>
     /// Resting vivid-layer opacity from the §5.1 ramp: α = (S − 0.22) / 0.78 —
@@ -418,11 +515,17 @@ public partial class GameTileViewModel : ObservableObject
     /// </summary>
     public double DormancyAlpha => _ramp.VividAlphaFor(LastPlayedUtc, _nowUtc);
 
-    /// <summary>Vivid art layer. Placeholder gradient now; display-resolution bitmap later.</summary>
-    public IBrush VividBrush { get; }
+    /// <summary>
+    /// Vivid art layer. Placeholder gradient now; display-resolution bitmap
+    /// later. Recomputed by <see cref="Rename"/> when the title changes.
+    /// </summary>
+    public IBrush VividBrush { get; private set; }
 
-    /// <summary>Floor variant (sat 0.22 / bright 0.60). Pre-computed bitmap variant later.</summary>
-    public IBrush FloorBrush { get; }
+    /// <summary>
+    /// Floor variant (sat 0.22 / bright 0.60). Pre-computed bitmap variant
+    /// later. Recomputed by <see cref="Rename"/>.
+    /// </summary>
+    public IBrush FloorBrush { get; private set; }
 
     /// <summary>Placeholder-title ink on the floor layer, so the title fades with its art.</summary>
     public IBrush FloorTitleBrush { get; }
@@ -458,25 +561,12 @@ public partial class GameTileViewModel : ObservableObject
     [ObservableProperty]
     public partial bool IsSelected { get; set; }
 
-    /// <summary>
-    /// Whether the card is flipped to show its back face. Lives on the VM (not
-    /// the container) because the cover wall virtualizes — container state
-    /// doesn't survive recycling. Only one card is flipped at a time.
-    /// </summary>
-    [ObservableProperty]
-    public partial bool IsFlipped { get; set; }
-
-    /// <summary>Add to list, wired by the library. Null in tests.</summary>
     /// <summary>Play/Install command, wired by the library for session tracking.</summary>
     public System.Windows.Input.ICommand? PrimaryActionCommand { get; set; }
 
-    public System.Windows.Input.ICommand? AddToListCommand { get; set; }
-
     /// <summary>
-    /// The detail modal for this game. The back face carries it because the flip
-    /// took the gesture the grid used to open it with, and §10 calls that modal
-    /// the answer to §5.3's four-fact cap — a surface that must not become
-    /// unreachable.
+    /// The detail modal for this game. The hover action and double-click gesture
+    /// both use this library-owned command.
     /// </summary>
     public System.Windows.Input.ICommand? OpenDetailsCommand { get; set; }
 
@@ -504,6 +594,45 @@ public partial class GameTileViewModel : ObservableObject
         OnPropertyChanged(nameof(DormancyAlpha));
         OnPropertyChanged(nameof(DisplayAlpha));
         OnPropertyChanged(nameof(SnapDormancy));
+    }
+
+    /// <summary>
+    /// Applies a name saved in the per-field metadata editor (§10.10)
+    /// without reloading the library. A reload after a text save would
+    /// discard the drafts the user has in the other five rows, so the
+    /// running session updates the tile in place instead.
+    ///
+    /// <para>Ignores a blank title and one equal to the current value.
+    /// Sets <see cref="Title"/>, clears <see cref="NameIsProvisional"/>
+    /// (the repository already cleared the column, so the badge must
+    /// follow), re-points <see cref="Row"/> and recomputes the placeholder
+    /// gradient, which is derived from the title. A feed card borrows this
+    /// instance through <see cref="IGameTileSource"/>, so its notification
+    /// follows without the card being told separately. The private setters
+    /// on Title, NameIsProvisional, VividBrush and FloorBrush make this
+    /// method their only writer: the tile stays a projection of the
+    /// database, not a thing surfaces can edit.</para>
+    /// </summary>
+    internal void Rename(string title)
+    {
+        if (string.IsNullOrWhiteSpace(title) || string.Equals(Title, title, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        Title = title;
+        NameIsProvisional = false;
+        Row = Row with { Title = title };
+
+        var (start, end) = PlaceholderArt.VividColors(title);
+        VividBrush = PlaceholderArt.Gradient(start, end);
+        FloorBrush = PlaceholderArt.Gradient(PlaceholderArt.ToFloor(start), PlaceholderArt.ToFloor(end));
+
+        OnPropertyChanged(nameof(Title));
+        OnPropertyChanged(nameof(AutomationName));
+        OnPropertyChanged(nameof(NameIsProvisional));
+        OnPropertyChanged(nameof(VividBrush));
+        OnPropertyChanged(nameof(FloorBrush));
     }
 
     private static string BuildStatText(long playtimeMinutes, DateTime? lastPlayedUtc, DateTime nowUtc)

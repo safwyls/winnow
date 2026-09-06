@@ -62,14 +62,63 @@ public readonly record struct EpicLaunchKey
 }
 
 /// <summary>
-/// Launch and store URIs for each store (§10.3). All URIs were verified by
-/// measurement against the installed launchers, not from documentation.
-/// Steam: <c>steam://run|install/appid</c>. Epic: launch only (no install action
-/// exists in the binary). GOG: <c>goggalaxy://launchGame|installationScreen</c>.
-/// Returns null when no honest action can be offered.
+/// Why Band 3 has no way to get the user into a game. The enum exists so the
+/// band can state a reason rather than sit silent — each member maps to a
+/// sentence in <see cref="GameActionBandCopy"/>.
+/// </summary>
+public enum NoWayIn
+{
+    /// <summary>The band has a way in. No sentence is drawn.</summary>
+    None = 0,
+
+    /// <summary>A store id is held but no source has read whether this copy is on disk.</summary>
+    InstallStateUnknown,
+
+    /// <summary>
+    /// No store id at all — no appid, no product id, no launch key. Also the
+    /// answer for an uninstalled Epic game whose three-part launch key is
+    /// incomplete; no separate route-shaped reason exists for that case.
+    /// </summary>
+    NoStoreId,
+}
+
+/// <summary>
+/// Launch and store URIs for each store (§10.3). Launcher routes were measured
+/// against the installed launchers; public store URLs come from verified
+/// service responses or the browser-confirmed Epic URL template.
+/// <para>Steam: <c>steam://run|install/appid</c>.</para>
+/// <para>Epic: launch and install, both on the <c>apps</c> route keyed by
+/// <c>action=</c>. The install verb is <c>install</c>, verified by execution
+/// against build 20.2.9 on 2026-09-05: the launcher refreshed the entitlement,
+/// resolved the catalog item, dispatched the install and opened Epic's own
+/// install-location selector; Epic downloads, not Winnow, once the user confirms
+/// there. The working verb <c>install</c> is undocumented; the documented
+/// <c>installer</c> routes to the already-installed app's optional-components
+/// screen, and the documented <c>updatecheck</c> is not registered in
+/// build 20.2.9.</para>
+/// <para>GOG: <c>goggalaxy://launchGame|installationScreen</c>.</para>
+/// <para>Returns null when no honest action can be offered. See
+/// <c>docs/spikes/store-actions-per-launcher.md</c> for the evidence.</para>
 /// </summary>
 public static class StoreActions
 {
+    /// <summary>Steam owns uninstall confirmation. Other clients expose management navigation only.</summary>
+    public static GameLink? ManagementFor(
+        string store, bool? installed, string? steamAppId, string? gogProductId)
+        => store switch
+        {
+            ExternalIdProviders.Steam when installed == true && GameLink.IsSteamAppId(steamAppId)
+                => GameLink.Create("Uninstall in Steam", $"steam://uninstall/{steamAppId}",
+                    "Open Steam's uninstall confirmation", GameLinkKind.Uninstall),
+            ExternalIdProviders.Gog when IsGogProductId(gogProductId)
+                => GameLink.Create("Manage in GOG Galaxy", $"goggalaxy://openGameView/{GogReleaseKey(gogProductId!)}",
+                    "Open this game's page to manage its installation in GOG Galaxy"),
+            ExternalIdProviders.Epic
+                => GameLink.Create("Manage in Epic Games Launcher", "com.epicgames.launcher://store/library",
+                    "Open the Epic library to manage this game's installation"),
+            _ => null,
+        };
+
     /// <summary>
     /// Returns the primary Play/Install action for a tile, or null.
     /// <paramref name="installed"/> is three-valued: true/false/null (unknown).
@@ -97,13 +146,50 @@ public static class StoreActions
     }
 
     /// <summary>
+    /// Returns the reason the band cannot get the user in, or
+    /// <see cref="NoWayIn.None"/> when it can. Self-contained: it re-asks
+    /// <see cref="PrimaryFor"/> and <see cref="LinksFor"/> rather than
+    /// trusting a caller to have checked first, so it cannot be misused
+    /// into naming a reason for a band that does have a way in.
+    /// </summary>
+    public static NoWayIn WhyNoWayIn(
+        string store,
+        bool? installed,
+        string? steamAppId,
+        string? gogProductId,
+        EpicLaunchKey? epicKey,
+        Winnow.Core.Repositories.StorefrontDetails? storefront = null)
+    {
+        if (PrimaryFor(store, installed, steamAppId, gogProductId, epicKey) is not null
+            || LinksFor(store, steamAppId, gogProductId, storefront).Count > 0)
+        {
+            return NoWayIn.None;
+        }
+
+        var identified = store switch
+        {
+            ExternalIdProviders.Steam => GameLink.IsSteamAppId(steamAppId),
+            ExternalIdProviders.Gog => IsGogProductId(gogProductId),
+            ExternalIdProviders.Epic => epicKey is not null,
+            _ => false,
+        };
+
+        return identified && installed is null
+            ? NoWayIn.InstallStateUnknown
+            : NoWayIn.NoStoreId;
+    }
+
+    /// <summary>
     /// Store page, patch notes, launcher shortcuts — everything beside the
     /// primary action. Empty is a normal answer.
     /// </summary>
     public static IReadOnlyList<GameLink> LinksFor(
-        string store, string? steamAppId, string? gogProductId)
+        string store, string? steamAppId, string? gogProductId,
+        Winnow.Core.Repositories.StorefrontDetails? storefront = null)
     {
         var links = new List<GameLink>(2);
+        if (store is ExternalIdProviders.Epic or ExternalIdProviders.Gog)
+            Add(links, GameLink.Create("Store page", storefront?.StoreUrl));
 
         switch (store)
         {
@@ -173,6 +259,16 @@ public static class StoreActions
                 GameLinkKind.Install);
     }
 
+    /// <summary>
+    /// <c>launchGame</c> and <c>openGameView</c> take Galaxy's release key
+    /// (<c>gog_&lt;id&gt;</c>), while <c>installationScreen</c> takes the bare
+    /// numeric product id. That asymmetry looks like a bug and is not one:
+    /// confirmed by inspecting GalaxyClient.exe — the launch and game-view
+    /// paths carry an error string about failing to convert their argument
+    /// to a GRK, whereas the installation-screen path carries one about an
+    /// empty Product ID, and its C++ symbol takes a <c>ProductId</c>
+    /// directly rather than a release key.
+    /// </summary>
     private static GameLink? GogPrimary(string? productId, bool installed)
     {
         if (!IsGogProductId(productId))
@@ -194,16 +290,30 @@ public static class StoreActions
     }
 
     /// <summary>
-    /// Epic has a verified launch and no verified install, so an uninstalled
-    /// Epic title gets nothing. See this class's remarks for what was looked at
-    /// and what was not there.
+    /// One guard decides whether anything is drawn: no complete three-part key,
+    /// no button of either kind (§10.3). When the key is present, Play when on
+    /// disk, Install when not — the two branches differ only in the
+    /// <c>action=</c> value and the <see cref="GameLinkKind"/>. Install is
+    /// <see cref="GameLinkKind.Install"/> rather than <c>Play</c> because the
+    /// download is Epic's wait, not a process Winnow can attribute.
     /// </summary>
     private static GameLink? EpicPrimary(EpicLaunchKey? key, bool installed)
-        => installed && key is { } launch
+    {
+        if (key is not { } launch)
+        {
+            return null;
+        }
+
+        return installed
             ? GameLink.Create(
                 "Play",
                 $"{GameLink.EpicScheme}://apps/{launch.PathSegment}?action=launch&silent=true",
                 "Launch through the Epic Games Launcher",
                 GameLinkKind.Play)
-            : null;
+            : GameLink.Create(
+                "Install",
+                $"{GameLink.EpicScheme}://apps/{launch.PathSegment}?action=install",
+                "Open this game's install screen in the Epic Games Launcher",
+                GameLinkKind.Install);
+    }
 }

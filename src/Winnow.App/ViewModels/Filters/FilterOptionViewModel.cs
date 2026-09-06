@@ -26,7 +26,7 @@ public partial class FilterOptionViewModel : ObservableObject
     public string Label { get; }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(CountText), nameof(IsAvailable))]
+    [NotifyPropertyChangedFor(nameof(CountText), nameof(IsAvailable), nameof(AutomationName))]
     public partial int Count { get; set; }
 
     [ObservableProperty]
@@ -35,6 +35,8 @@ public partial class FilterOptionViewModel : ObservableObject
 
     /// <summary>Formatted count for display.</summary>
     public string CountText => Count.ToString("N0");
+
+    public string AutomationName => $"{Label}, {CountText} matching {(Count == 1 ? "title" : "titles")}";
 
     /// <summary>False when unchecked and count is zero (would produce empty results). Checked rows stay available.</summary>
     public bool IsAvailable => IsChecked || Count > 0;

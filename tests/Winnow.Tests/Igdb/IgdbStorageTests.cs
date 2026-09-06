@@ -72,9 +72,13 @@ public class IgdbStorageTests
         // Over SQLite's 999-parameter ceiling: the store must chunk rather than
         // throw, because a real library resolves in batches this size.
         var stored = Enumerable.Range(0, 1200).Select(i => "steam-app:" + i).ToArray();
-        foreach (var id in stored)
+        using (var seed = db.Factory.Begin())
         {
-            await cache.SetAsync(IgdbClient.CacheProvider, id, "{}", fetchedAt);
+            foreach (var id in stored)
+            {
+                await cache.SetAsync(IgdbClient.CacheProvider, id, "{}", fetchedAt);
+            }
+            seed.Commit();
         }
 
         var requested = stored.Concat(["steam-app:missing"]).ToArray();

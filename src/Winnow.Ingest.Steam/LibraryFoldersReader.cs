@@ -1,3 +1,4 @@
+using Winnow.Core.Ingest;
 using System.Globalization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -30,13 +31,22 @@ public sealed record SteamLibraryFolder(
 public sealed class LibraryFoldersReader
 {
     private readonly ILogger<LibraryFoldersReader> _logger;
+    private readonly StorefrontParserLimits _limits;
 
-    public LibraryFoldersReader(ILogger<LibraryFoldersReader>? logger = null)
-        => _logger = logger ?? NullLogger<LibraryFoldersReader>.Instance;
+    public LibraryFoldersReader(ILogger<LibraryFoldersReader>? logger = null, StorefrontParserLimits? limits = null)
+    {
+        _logger = logger ?? NullLogger<LibraryFoldersReader>.Instance;
+        _limits = limits ?? new StorefrontParserLimits();
+        _limits.Validate();
+    }
 
     public IReadOnlyList<SteamLibraryFolder> Read(string libraryFoldersVdfPath)
+        => Read(libraryFoldersVdfPath, out _);
+
+    internal IReadOnlyList<SteamLibraryFolder> Read(string libraryFoldersVdfPath, out bool complete)
     {
-        var doc = KeyValues1.TryLoad(libraryFoldersVdfPath, _logger);
+        var doc = KeyValues1.TryLoad(libraryFoldersVdfPath, _logger, _limits);
+        complete = doc is not null;
         if (doc is null)
         {
             return [];
@@ -55,6 +65,7 @@ public sealed class LibraryFoldersReader
             var path = KeyValues1.GetString(node, "path");
             if (string.IsNullOrWhiteSpace(path))
             {
+                complete = false;
                 _logger.LogWarning(
                     "libraryfolders.vdf entry '{Key}' has no path; skipping", pair.Key);
                 continue;

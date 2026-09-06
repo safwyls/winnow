@@ -1,11 +1,11 @@
 ---
 id: TASK-70.2
 title: 'Add the identity link schema, repository and resolver, inert'
-status: In Progress
+status: Done
 assignee:
   - '@claude'
 created_date: '2026-09-02 00:13'
-updated_date: '2026-09-02 00:58'
+updated_date: '2026-09-03 16:46'
 labels: []
 dependencies: []
 parent_task_id: TASK-70
@@ -28,13 +28,13 @@ Stage 1 of TASK-70. Adds the link schema and its resolver and ships them inert: 
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Migration 0018 creates identity_acts and identity_links with a partial unique index that makes at most one live parent per work a schema-level fact
-- [ ] #2 A work can be linked, the link retracted, and the same link made again any number of times, ending in a state identical to a single link
-- [ ] #3 Retracting an act restores every child it touched to the parent it had immediately before that act
-- [ ] #4 Cycles and links deeper than one level are rejected, with a test that asserts it at both the repository and the database level
-- [ ] #5 The same-game resolver and the expansion grouper are separate types, so a caller cannot accidentally fold an expansion into an identity
-- [ ] #6 No existing query, screen or count changes behaviour when this stage ships
-- [ ] #7 Migration 0018 resets merge_candidates rows left at undone by an already-reversed application back to pending
+- [x] #1 Migration 0018 creates identity_acts and identity_links with a partial unique index that makes at most one live parent per work a schema-level fact
+- [x] #2 A work can be linked, the link retracted, and the same link made again any number of times, ending in a state identical to a single link
+- [x] #3 Retracting an act restores every child it touched to the parent it had immediately before that act
+- [x] #4 Cycles and links deeper than one level are rejected, with a test that asserts it at both the repository and the database level
+- [x] #5 The same-game resolver and the expansion grouper are separate types, so a caller cannot accidentally fold an expansion into an identity
+- [x] #6 No existing query, screen or count changes behaviour when this stage ships
+- [x] #7 Migration 0018 resets merge_candidates rows left at undone by an already-reversed application back to pending
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -86,3 +86,9 @@ VERBATIM, full suite across all three projects, built and run via --artifacts-pa
   Passed!  - Failed: 0, Passed: 2497, Skipped: 0, Total: 2497, Duration: 52 s  - Winnow.Tests.dll (net10.0)
 Build: 0 Warning(s), 0 Error(s) under TreatWarningsAsErrors. Not committed.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Added the identity link schema, repository and resolver, inert. Landed in commit 1b602a1. Verified against migration 0018_identity_links.sql and IdentityLinkTests, in a scoped run of 100 tests, all passing. AC1: identity_acts and identity_links exist and ux_identity_links_live is a partial unique index on child_work_id WHERE retracted_at IS NULL, making at most one live parent per work a schema fact; The_schema_rejects_two_live_parents_for_one_child asserts it at the database. AC2: Link_and_retract_repeated_ends_where_one_link_and_one_retract_ends and Link_retract_link_ends_identical_to_linking_once. AC3: Retracting_an_act_restores_every_child_to_its_prior_parent, with Linking_a_work_that_has_children_reparents_them_inside_the_same_act. AC4: refused at both levels - A_two_cycle_is_refused and A_parent_that_is_already_a_child_is_refused at the repository, The_schema_rejects_a_work_linked_to_itself and The_schema_rejects_two_live_parents_for_one_child at the database. AC5: The_same_game_resolver_and_the_expansion_grouper_do_not_see_each_other. AC6: A_live_link_moves_the_resolved_work_id_and_nothing_else holds the stage inert. AC7: 0018 lines 109-128 reset status undone to pending where the application was already undone, covered by A_reversed_merge_returns_to_the_queue_and_a_standing_one_becomes_a_link.
+<!-- SECTION:FINAL_SUMMARY:END -->

@@ -14,7 +14,7 @@ namespace Winnow.Data.Repositories;
 /// <para>One of those stored facts is the user's own: an
 /// <c>update_acknowledgements</c> watermark (migration 0012) drops the build
 /// pushes they have already read out of the <c>major_update</c> CTE, which is
-/// the whole of the "dismiss the Patched since flag" feature. It lives here
+/// the whole of the "dismiss the Patched flag" feature. It lives here
 /// because design-system.md §5.2 makes the badge identical to
 /// <c>stale_but_patched</c> membership, so every surface that draws or counts
 /// that badge inherits the dismissal from this one query.</para>
@@ -39,6 +39,20 @@ namespace Winnow.Data.Repositories;
 /// account's own figures for the household ones — so the grid, the rail counts,
 /// the filter chips, the recommender and the feed narrow together, and no caller
 /// has to learn that accounts exist.</para>
+///
+/// <para>The hidden-games filter (migration 0023) is the fourth stored user fact.
+/// A game the user has asked to hide is excluded from the result, along with
+/// every entry in its <c>same_game</c> group and every variant that points at
+/// it. The exclusion lives here for the acknowledgement watermark's reason: one
+/// clause in one query makes the grid, the list view, the feed, the rail counts
+/// and the recommender agree at once.</para>
+///
+/// <para>The explicit-content filter (migration 0024, <see cref="MaturityRules"/>)
+/// is the fifth. With <see cref="BucketThresholds.ShowExplicitContent"/> off,
+/// works whose stored maturity evidence reaches the adults-only tier are
+/// dropped. The verdict is taken in C# over evidence the query carries out,
+/// the same arrangement the non-game filter has: retuning the rule is a code
+/// change, not a migration, and a work with no evidence is never explicit.</para>
 /// </summary>
 public sealed class LibraryQueryRepository : ILibraryQueryRepository
 {
@@ -78,23 +92,56 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
         // difference between two counts of distinct games — a linked pair
         // whose Steam entry is filtered away loses a store chip and not a
         // tile, and counting rows would promise a tile back that never left.
-        return Math.Max(0, Games(all) - Games(own));
-
-        static int Games(IReadOnlyList<OwnershipBucket> rows)
-        {
-            var seen = new HashSet<long>();
-            foreach (var row in rows)
-            {
-                seen.Add(row.ResolvedWorkId);
-            }
-
-            return seen.Count;
-        }
+        return Math.Max(0, DistinctGames(all) - DistinctGames(own));
     }
 
-    private async Task<IReadOnlyList<OwnershipBucket>> QueryAsync(
-        BucketThresholds thresholds, string? scopeOverride, CancellationToken ct)
+    /// <inheritdoc/>
+    public async Task<int> CountHiddenByExplicitFilterAsync(
+        BucketThresholds thresholds, CancellationToken ct = default)
     {
+        // The same both-ways subtraction CountHiddenByAccountScopeAsync uses,
+        // and for the same reason: the setting's label has to state how many
+        // TILES the toggle removes, after demo consolidation and the non-game
+        // filter have already taken rows off the screen. Independent of the
+        // stored preference, so the label is correct before the toggle is
+        // used. Zero on any library with no maturity evidence stored, which
+        // is every library until enrichment has run.
+        var shown = await QueryAsync(
+            thresholds with { ShowExplicitContent = true }, scopeOverride: null, ct);
+        var hidden = await QueryAsync(
+            thresholds with { ShowExplicitContent = false }, scopeOverride: null, ct);
+
+        return Math.Max(0, DistinctGames(shown) - DistinctGames(hidden));
+    }
+
+    /// <inheritdoc/>
+    public async Task<int> CountHiddenByRatingCapAsync(
+        BucketThresholds thresholds, CancellationToken ct = default)
+    {
+        if (thresholds.MaturityCap >= BucketThresholds.NoMaturityCap)
+        {
+            return 0;
+        }
+
+        var uncapped = await QueryAsync(
+            thresholds with { MaturityCap = BucketThresholds.NoMaturityCap },
+            scopeOverride: null, ct);
+        var capped = await QueryAsync(thresholds, scopeOverride: null, ct);
+
+        return Math.Max(0, DistinctGames(uncapped) - DistinctGames(capped));
+    }
+
+    private static int DistinctGames(IReadOnlyList<OwnershipBucket> rows)
+    {
+        var seen = new HashSet<long>();
+        foreach (var row in rows)
+        {
+            seen.Add(row.ResolvedWorkId);
+        }
+
+        return seen.Count;
+    }
+
         // Bucket precedence now lives in LibraryBucketRules.Classify rather
         // than in the CASE this query used to carry. The query still finds
         // every stored fact the rules read — the latest play record per
@@ -102,7 +149,7 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
         // push, the account scope — and Consolidate applies the rules on
         // the way out, at both grains. Buckets are still derived on read
         // and still never stored.
-        const string sql = """
+    private const string BucketSql = """
             WITH latest_play AS (
                 -- The newest play record per ownership. observed_at is stored to
                 -- whole seconds, so two scans in one second tie; the higher id
@@ -172,7 +219,7 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
                 -- Applying it HERE, once, is the entire reach of the feature.
                 -- design-system.md §5.2 states the badge IS `stale_but_patched`
                 -- bucket membership, so this single exclusion makes the tile
-                -- badge, the rail's "Patched since" count, the library filter
+                -- badge, the rail's "Patched" count, the library filter
                 -- chip, the recommender's bucket bonus and the feed's
                 -- `patched_while_away` shelf agree at once — none of them need
                 -- to learn that acknowledgements exist, and a second consumer
@@ -190,8 +237,15 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
                 -- retuned" still holds — the acknowledgement is a separate fact
                 -- layered over untouched rows, which is also why the detail
                 -- view can still list every update the user missed.
+                -- The count rides in the same aggregate as the timestamp, under
+                -- the same watermark and the same correlation EXISTS, so it can
+                -- never stand for more patches than the badge does. Counting it
+                -- anywhere else would be a second reading of update_events with
+                -- its own chance of drifting from this one; here it is another
+                -- aggregate over rows already grouped, and costs no extra scan.
                 SELECT push.release_id,
-                       MAX(push.occurred_at) AS occurred_at
+                       MAX(push.occurred_at) AS occurred_at,
+                       COUNT(*)              AS update_count
                 FROM update_events push
                 LEFT JOIN acknowledged ack ON ack.release_id = push.release_id
                 WHERE push.kind = 'build_push'
@@ -420,6 +474,34 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
                 FROM identity_links
                 WHERE retracted_at IS NULL
                   AND kind = @VariantKind
+            ),
+            hidden_game AS (
+                -- The user's own "never show me this again" (migration 0023).
+                -- Standing is a query: a hidden row is one whose unhidden_at
+                -- is still null, with no "active" column and nothing to
+                -- maintain. Excluding it HERE, once, covers the grid, the list
+                -- view, the feed and every rail count at once, for the same
+                -- reason the acknowledgement watermark is applied here and
+                -- only here: one clause in one query makes every surface agree.
+                SELECT work_id
+                FROM hidden_games
+                WHERE unhidden_at IS NULL
+            ),
+            maturity AS (
+                -- Stored maturity evidence (migration 0024). One row per
+                -- (work, source), so IGDB and the Steam store each keep their
+                -- own reading; GROUP_CONCAT merges the per-source tokens and
+                -- hands them out VERBATIM. No verdict is computed here:
+                -- MaturityTiers and MaturityRules decide in C# below, exactly
+                -- as NonGameEntries does, so the rule can be retuned without a
+                -- migration — TASK-101 narrowed it from eight broad 18+ codes
+                -- to two adults-only signals and needed no schema change. A
+                -- work with no row is never explicit.
+                SELECT work_id,
+                       GROUP_CONCAT(ratings)     AS ratings,
+                       GROUP_CONCAT(descriptors) AS descriptors
+                FROM work_maturity
+                GROUP BY work_id
             )
             SELECT o.id                                AS OwnershipId,
                    o.release_id                        AS ReleaseId,
@@ -437,6 +519,13 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
                    -- and that must be asked with the SAME normaliser the soft
                    -- matcher uses, so it happens in C# below over the rows this
                    -- join already had to read.
+                   --
+                   -- NOT a display title. This column lands on BucketRow and
+                   -- never reaches OwnershipBucket — no surface reads it. A
+                   -- work's displayed name is works.name, read by IWorkRepository.
+                   -- It prefers releases.name deliberately and does not consult
+                   -- work_field_sources: consolidation matches the storefront's
+                   -- own words, so a user rename cannot unfold a demo.
                    COALESCE(NULLIF(TRIM(r.name), ''), w.name)  AS Title,
                    w.name_is_provisional               AS NameIsProvisional,
                    w.first_release_year                AS FirstReleaseYear,
@@ -453,7 +542,19 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
                    -- The CASE that stood here now lives in
                    -- LibraryBucketRules.Classify so it can run at two grains
                    -- (per row and per game) without two implementations.
-                   mu.occurred_at                      AS MajorUpdateAt
+                   mu.occurred_at                      AS MajorUpdateAt,
+                   -- The count beside the timestamp it was aggregated with, so
+                   -- the tile's words and its dot come off one row. Zero when
+                   -- the join found nothing, which is the same case as a null
+                   -- MajorUpdateAt: no qualifying push, no badge, no count.
+                   COALESCE(mu.update_count, 0)        AS UnreadUpdateCount,
+                   -- The stored maturity EVIDENCE, verbatim, never a verdict.
+                   -- Carried on the row so Consolidate can evaluate
+                   -- MaturityRules.IsExplicit in C# over the same rows the
+                   -- non-game filter runs on, and a work with no maturity row
+                   -- has nulls here, which IsExplicit reads as "no evidence".
+                   mat.ratings                         AS MaturityRatings,
+                   mat.descriptors                     AS MaturityDescriptors
             FROM ownerships o
             JOIN releases            r  ON r.id = o.release_id
             JOIN works               w  ON w.id = r.work_id
@@ -466,14 +567,25 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
             LEFT JOIN same_game      sg ON sg.child_work_id = w.id
             -- Same shape and the same guarantee: at most one row per child.
             LEFT JOIN variant        va ON va.child_work_id = w.id
+            -- One row per work by the GROUP BY above, so this cannot multiply.
+            LEFT JOIN maturity       mat ON mat.work_id = w.id
             -- Empty unless the user asked to see one account only. See the CTE
             -- for why "no evidence" is not "not yours".
             WHERE NOT EXISTS (SELECT 1 FROM hidden h WHERE h.ownership_id = o.id)
+              -- All three work ids are tested because hiding a game must take
+              -- its whole group with it. The row's own work covers the
+              -- ordinary case; the same-game parent covers a game hidden by
+              -- the tile the user was looking at, which is the resolved one;
+              -- the variant parent stops a hidden game's demo popping into the
+              -- grid the moment its parent disappears. A NULL parent matches
+              -- nothing, which is the no-links case and costs nothing.
+              AND NOT EXISTS (
+                  SELECT 1 FROM hidden_game hg
+                  WHERE hg.work_id IN (w.id, COALESCE(sg.parent_work_id, w.id), va.parent_work_id))
             ORDER BY o.id;
             """;
 
-        using var lease = _factory.Lease();
-        var rows = await lease.Connection.QueryAsync<BucketRow>(new CommandDefinition(sql, new
+    private static object Parameters(BucketThresholds thresholds, string? scopeOverride) => new
         {
             thresholds.BouncedFloorMinutes,
             thresholds.RetiredFloorMinutes,
@@ -488,9 +600,42 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
             LegacySeedSource = OwnershipAccountSources.LegacyOwnershipColumn,
             SameGameKind = IdentityLinkKinds.SameGame,
             VariantKind = IdentityLinkKinds.VariantOf,
-        }, transaction: lease.Transaction, cancellationToken: ct));
+        };
+
+    private async Task<IReadOnlyList<OwnershipBucket>> QueryAsync(
+        BucketThresholds thresholds, string? scopeOverride, CancellationToken ct)
+    {
+        using var lease = _factory.Lease();
+        var rows = await lease.Connection.QueryAsync<BucketRow>(new CommandDefinition(
+            BucketSql, Parameters(thresholds, scopeOverride), transaction: lease.Transaction, cancellationToken: ct));
 
         return Consolidate(rows.AsList(), thresholds);
+    }
+
+    public async Task<LibrarySnapshot> GetSnapshotAsync(BucketThresholds thresholds, CancellationToken ct = default)
+    {
+        using var lease = _factory.Lease();
+        using var snapshot = lease.Transaction is null ? lease.Connection.BeginTransaction(deferred: true) : null;
+        using var results = await lease.Connection.QueryMultipleAsync(new CommandDefinition(
+            BucketSql + $"""
+
+            SELECT {WorkRepository.Columns} FROM works ORDER BY name;
+            SELECT {OwnershipRepository.Columns} FROM ownerships ORDER BY id;
+            SELECT {ReleaseRepository.Columns} FROM releases ORDER BY id;
+            SELECT release_id AS ReleaseId, provider AS Provider, provider_id AS ProviderId
+            FROM external_ids ORDER BY release_id, provider, provider_id;
+            SELECT {GameListRepository.Columns} FROM lists ORDER BY id;
+            SELECT list_id AS ListId, release_id AS ReleaseId, position AS Position
+            FROM list_items ORDER BY list_id, position, release_id;
+            """, Parameters(thresholds, null), transaction: lease.Transaction ?? snapshot, cancellationToken: ct));
+        var buckets = Consolidate((await results.ReadAsync<BucketRow>()).AsList(), thresholds);
+        var works = (await results.ReadAsync<Work>()).AsList();
+        var ownerships = (await results.ReadAsync<Ownership>()).AsList();
+        var releases = (await results.ReadAsync<Release>()).AsList();
+        var ids = (await results.ReadAsync<ExternalId>()).AsList();
+        var lists = (await results.ReadAsync<GameList>()).AsList();
+        var items = (await results.ReadAsync<ListItem>()).AsList();
+        return new LibrarySnapshot(buckets, works, ownerships, releases, ids, lists, items);
     }
 
     public async Task<IReadOnlyList<FacetTarget>> GetFacetTargetsAsync(CancellationToken ct = default)
@@ -634,9 +779,31 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
             }
         }
 
+        var overCapWorkIds = new HashSet<long>();
+        if (thresholds.EffectiveMaturityCap < MaturityTier.AdultsOnly)
+        {
+            foreach (var row in rows)
+            {
+                if (!thresholds.ShowsMaturity(row.MaturityRatings, row.MaturityDescriptors))
+                {
+                    overCapWorkIds.Add(row.WorkId);
+                    overCapWorkIds.Add(row.ResolvedWorkId);
+                }
+            }
+        }
+
         var survivors = new List<BucketRow>(rows.Count);
         foreach (var row in rows)
         {
+            if (overCapWorkIds.Count > 0
+                && (overCapWorkIds.Contains(row.WorkId)
+                    || overCapWorkIds.Contains(row.ResolvedWorkId)
+                    || (row.VariantParentWorkId is { } variantParent
+                        && overCapWorkIds.Contains(variantParent))))
+            {
+                continue;
+            }
+
             if (consolidated.ContainsKey(row.ReleaseId) || suppressedVariants.Contains(row.ReleaseId))
             {
                 // Suppressed from the LIBRARY VIEW only. The ownership, its
@@ -717,15 +884,26 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
         foreach (var (resolvedWorkId, rows) in members)
         {
             DateTime? update = null;
+
+            // The game's figure is the MAXIMUM across its releases, never the
+            // sum. Two store copies of one game carry the same patches, so
+            // adding them would report a number no storefront ever pushed —
+            // "6 updates" for the three the developer shipped twice.
+            var unread = 0;
             foreach (var row in rows)
             {
                 if (row.MajorUpdateAt is { } at && (update is null || at > update))
                 {
                     update = at;
                 }
+
+                if (row.UnreadUpdateCount > unread)
+                {
+                    unread = row.UnreadUpdateCount;
+                }
             }
 
-            games[resolvedWorkId] = GameGrouping.Of(resolvedWorkId, rows, update, thresholds);
+            games[resolvedWorkId] = GameGrouping.Of(resolvedWorkId, rows, update, unread, thresholds);
         }
 
         var result = new List<OwnershipBucket>(survivors.Count);
@@ -768,10 +946,13 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
         public long PlaytimeMinutes { get; init; }
         public DateTime? LastPlayedAt { get; init; }
         public DateTime? MajorUpdateAt { get; init; }
+        public int UnreadUpdateCount { get; init; }
         public string? Title { get; init; }
         public bool NameIsProvisional { get; init; }
         public int? FirstReleaseYear { get; init; }
         public string? SteamAppType { get; init; }
         public string? EpicCategories { get; init; }
+        public string? MaturityRatings { get; init; }
+        public string? MaturityDescriptors { get; init; }
     }
 }

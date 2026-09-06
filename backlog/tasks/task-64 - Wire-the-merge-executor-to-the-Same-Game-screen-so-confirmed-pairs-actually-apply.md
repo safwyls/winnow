@@ -3,10 +3,10 @@ id: TASK-64
 title: >-
   Wire the merge executor to the Same Game screen so confirmed pairs actually
   apply
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-09-01 03:09'
-updated_date: '2026-09-01 04:31'
+updated_date: '2026-09-03 16:39'
 labels:
   - resolve
   - ui
@@ -112,3 +112,9 @@ fallback for a collapse of two entries that already shared a work.
 Tests: tests/Winnow.Tests/MergeApplyViewModelTests.cs (16) and MergeScreenRegistrationTests.cs
 (3). Full suite over all three projects: 2449 + 98 + 70 = 2617 passed, 0 failed, 0 warnings.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Superseded, not delivered as specified. The wiring built here connected MergeExecutor and the 0017 undo journal to the Same Game screen. Both ends were subsequently removed: TASK-70.7 (commit 798a42d) retired the executor and journal via migration 0019_retire_destructive_merge.sql, and TASK-83 (commit 05e97df) replaced the Same Game screen with the Merges queue, deleting the old view models and their tests. Verified by inspection: MergeExecutor.cs is absent and the Ready to apply and Applied merges sections this task added no longer exist. Acceptance criteria are left unchecked deliberately. Applying a confirmed decision is now immediate and reversible on the Merges queue rather than a separate apply step.
+<!-- SECTION:FINAL_SUMMARY:END -->

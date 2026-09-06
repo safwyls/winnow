@@ -97,4 +97,13 @@ internal sealed class FakeIgdbClient : IIgdbClient
     public Task<IReadOnlyList<IgdbGame>> GetGamesAsync(
         IEnumerable<long> igdbIds, TimeSpan? cacheTtl = null, CancellationToken ct = default)
         => Task.FromResult<IReadOnlyList<IgdbGame>>([]);
+
+    public Task<IReadOnlyDictionary<long, IgdbAgeRatings>> GetAgeRatingsAsync(
+        IEnumerable<long> igdbIds, TimeSpan? cacheTtl = null, CancellationToken ct = default)
+        => Task.FromResult<IReadOnlyDictionary<long, IgdbAgeRatings>>(
+            new Dictionary<long, IgdbAgeRatings>());
+
+    public Task<IReadOnlyList<IgdbSearchResult>> SearchGamesAsync(
+        string title, int limit = 0, TimeSpan? cacheTtl = null, CancellationToken ct = default)
+        => Task.FromResult<IReadOnlyList<IgdbSearchResult>>([]);
 }

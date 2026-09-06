@@ -48,6 +48,11 @@ public static class ServiceCollectionExtensions
         services.TryAddSingleton(TimeProvider.System);
         services.TryAddSingleton<IStoreMetadataCache, SqliteStoreMetadataCache>();
 
+        // The maturity pass re-reads cached bodies for content descriptors;
+        // it costs no HTTP request and needs no credentials.
+        services.TryAddSingleton<ISteamMaturityTargetSource, SqliteSteamMaturityTargetSource>();
+        services.TryAddSingleton<SteamStoreMaturitySync>();
+
         services.TryAddSingleton<SteamStoreRateLimiter>();
         services.TryAddTransient<SteamStoreResilienceHandler>();
         services.TryAddTransient<SteamStoreRateLimitingHandler>();

@@ -97,10 +97,142 @@ public static class Apicalypse
     /// publisher. They were left out originally for the reason 0005 records —
     /// nothing consumed them and §6 had no column — and are added now that
     /// something does.</para>
+    ///
+    /// <para><c>platforms.name</c> rides the same free ride, and is what tells
+    /// Prey (2006, Xbox 360) apart from Prey (2017, PS4/PC) in the wrong-game
+    /// control's candidate rows. It belongs on this query rather than on a third
+    /// one because a candidate found by id and a candidate found by title are
+    /// drawn side by side, and an id row that showed a year and no platforms was
+    /// the defect that put it here.</para>
+    ///
+    /// <para><c>screenshots.image_id</c>, <c>artworks.image_id</c>,
+    /// <c>rating</c>, <c>rating_count</c>, <c>aggregated_rating</c> and
+    /// <c>aggregated_rating_count</c> ride the same request for the same
+    /// reason: an Apicalypse <c>fields</c> clause is one request whatever it
+    /// lists. Only <c>image_id</c> is requested for the two image arrays,
+    /// not <c>url</c>/<c>width</c>/<c>height</c>: <c>image_id</c> is the
+    /// durable handle and the size token in the CDN path decides the
+    /// rendition, so a stored URL would carry a size we would only have to
+    /// rewrite. <c>rating</c>/<c>rating_count</c> are IGDB's own user
+    /// body; <c>aggregated_rating</c>/<c>aggregated_rating_count</c> are
+    /// its aggregation of external critics. <c>total_rating</c> and
+    /// <c>total_rating_count</c> exist and are deliberately NOT requested:
+    /// the approved design shows the two figures attributed separately with
+    /// their counts, and a blended figure cannot be attributed to anyone.
+    /// These stay off <see cref="SearchGames"/> and off
+    /// <see cref="AgeRatings"/>, for the isolation reason those two queries
+    /// already state.</para>
+    ///
+    /// <para>Field names verified against IGDB's published protobuf schema,
+    /// fetched unauthenticated from
+    /// <c>https://api.igdb.com/v4/igdbapi.proto</c> on 2026-09-05.
+    /// In <c>message Game</c>: <c>repeated Artwork artworks = 6</c>,
+    /// <c>double aggregated_rating = 3</c>,
+    /// <c>int32 aggregated_rating_count = 4</c>,
+    /// <c>double rating = 30</c>, <c>int32 rating_count = 31</c>,
+    /// <c>repeated Screenshot screenshots = 33</c>.
+    /// <c>message Screenshot</c> and <c>message Artwork</c> share the same
+    /// shape; <c>image_id</c> is a string field in both. No live
+    /// credentialed API call was made.</para>
     /// </summary>
     public static string Games(IEnumerable<long> igdbIds, int limit, int offset)
         => $"""
-            fields name,summary,first_release_date,cover.image_id,cover.url,genres.name,themes.name,game_modes.name,player_perspectives.name,involved_companies.publisher,involved_companies.company.name,game_type.type,parent_game,version_parent,version_title;
+            fields name,summary,first_release_date,cover.image_id,cover.url,genres.name,themes.name,game_modes.name,player_perspectives.name,platforms.name,involved_companies.publisher,involved_companies.company.name,game_type.type,parent_game,version_parent,version_title,screenshots.image_id,artworks.image_id,rating,rating_count,aggregated_rating,aggregated_rating_count;
+            where id = {NumberList(igdbIds)};
+            limit {Clamp(limit).ToString(CultureInfo.InvariantCulture)};
+            offset {offset.ToString(CultureInfo.InvariantCulture)};
+            """;
+
+    /// <summary>
+    /// The <c>games</c> query for age ratings — separate from <see cref="Games"/>
+    /// because it names deprecated fields (<c>age_ratings.category</c>,
+    /// <c>age_ratings.rating</c>). A field IGDB finally removes would 400 the
+    /// whole body; on the shared query that single 400 would cost name, cover art,
+    /// genres, themes, game modes, perspectives and publisher for the entire
+    /// library. On its own query it costs maturity alone.
+    /// </summary>
+    public static string AgeRatings(IEnumerable<long> igdbIds, int limit, int offset)
+        => AgeRatingsQuery(
+            "fields age_ratings.category,age_ratings.rating,"
+            + "age_ratings.organization.name,age_ratings.rating_category.rating;",
+            igdbIds,
+            limit,
+            offset);
+
+    /// <summary>
+    /// The fallback query when <see cref="AgeRatings"/> is rejected: only the
+    /// current reference fields (<c>organization.name</c>,
+    /// <c>rating_category.rating</c>), no deprecated enums. Converts "IGDB
+    /// removed a deprecated field" from total loss into label-based mapping.
+    /// </summary>
+    public static string AgeRatingsWithoutDeprecatedFields(IEnumerable<long> igdbIds, int limit, int offset)
+        => AgeRatingsQuery(
+            "fields age_ratings.organization.name,age_ratings.rating_category.rating;",
+            igdbIds,
+            limit,
+            offset);
+
+    /// <summary>
+    /// Default cap on search results. High enough to find the right Prey
+    /// among similarly named games, low enough not to spend the 4 req/s
+    /// budget paging a relevance-ranked tail nobody asked for.
+    /// </summary>
+    public const int DefaultSearchLimit = 20;
+
+    /// <summary>
+    /// Sanitizes a user-typed title into a term safe for the quoted
+    /// <c>search "…"</c> clause. Returns null when nothing searchable
+    /// remains.
+    ///
+    /// <para>Unlike <see cref="IsSafeStringValue"/>, which rejects unsafe
+    /// input, this method replaces the dangerous characters — the double
+    /// quote, the backslash, the semicolon and control characters — with
+    /// spaces and collapses the whitespace. Rejecting is right for a
+    /// machine-generated store id that must never be mangled; a search
+    /// term is free text a person typed, and a title containing a quote
+    /// should still search rather than silently fail.</para>
+    /// </summary>
+    public static string? SearchTerm(string? title)
+    {
+        if (string.IsNullOrWhiteSpace(title))
+        {
+            return null;
+        }
+
+        var builder = new StringBuilder(title.Length);
+        foreach (var c in title)
+        {
+            builder.Append(char.IsControl(c) || c is '"' or '\\' or ';' ? ' ' : c);
+        }
+
+        var cleaned = string.Join(
+            ' ', builder.ToString().Split(' ', StringSplitOptions.RemoveEmptyEntries));
+        return cleaned.Length == 0 ? null : cleaned;
+    }
+
+    /// <summary>
+    /// The <c>games</c> query for a title search: the <c>search "…"</c>
+    /// clause on the same endpoint, asking for name, cover, year and
+    /// platforms. Rides its own query body rather than widening
+    /// <see cref="Games"/>, for the same isolation reason
+    /// <see cref="AgeRatings"/> is separate: a 400 on this query costs
+    /// the search alone, not the shared metadata for the entire library.
+    ///
+    /// <para>The field list is a subset of <see cref="Games"/>'s, not a
+    /// different set of fields. <see cref="Games"/> asks for
+    /// <c>platforms.name</c> too, which is what lets a candidate matched
+    /// by id and a candidate found by title show the same facts.</para>
+    /// </summary>
+    public static string SearchGames(string term, int limit)
+        => $"""
+            fields name,cover.image_id,cover.url,first_release_date,platforms.name;
+            search "{term}";
+            limit {Clamp(limit).ToString(CultureInfo.InvariantCulture)};
+            """;
+
+    private static string AgeRatingsQuery(string fields, IEnumerable<long> igdbIds, int limit, int offset)
+        => $"""
+            {fields}
             where id = {NumberList(igdbIds)};
             limit {Clamp(limit).ToString(CultureInfo.InvariantCulture)};
             offset {offset.ToString(CultureInfo.InvariantCulture)};

@@ -15,7 +15,7 @@ public sealed class SystemProcessSource : IProcessSource
     public SystemProcessSource(ILogger<SystemProcessSource>? logger = null)
         => _logger = logger ?? NullLogger<SystemProcessSource>.Instance;
 
-    /// <summary>Enumerates all processes (Tier 1). Reads only pid and name; opens no handles.</summary>
+    /// <summary>Enumerates all processes (Tier 1). Reads pid, name and the Linux Proton marker; opens no handles.</summary>
     public IReadOnlyList<ProcessListing> List()
     {
         Process[] processes;
@@ -35,9 +35,12 @@ public sealed class SystemProcessSource : IProcessSource
         {
             try
             {
-                // Both of these come out of the snapshot. Touching anything else
-                // here — MainModule above all — is what §5.2 forbids.
-                listings.Add(new ProcessListing(process.Id, process.ProcessName));
+                // The pid and name come out of the snapshot. Linux also reads
+                // its one bounded Proton marker; MainModule remains Tier 2.
+                listings.Add(new ProcessListing(
+                    process.Id,
+                    process.ProcessName,
+                    ReadSteamCompatibilityDataPath(process.Id)));
             }
             catch (Exception ex) when (ex is InvalidOperationException or Win32Exception)
             {
@@ -79,7 +82,11 @@ public sealed class SystemProcessSource : IProcessSource
             var startedAt = ResolveStartTimeUtc(process);
 
             var tracked = new SystemTrackedProcess(
-                process, expectedName, ResolveExecutablePath(process), startedAt);
+                process,
+                expectedName,
+                ResolveExecutablePath(process),
+                ReadSteamCompatibilityDataPath(process.Id),
+                startedAt);
             process = null; // ownership handed over; the finally must not dispose it
             return tracked;
         }
@@ -143,6 +150,56 @@ public sealed class SystemProcessSource : IProcessSource
         }
     }
 
+    /// <summary>Reads the one Proton attribution variable without retaining process environment data.</summary>
+    private static string? ReadSteamCompatibilityDataPath(int pid)
+    {
+        if (!OperatingSystem.IsLinux())
+        {
+            return null;
+        }
+
+        try
+        {
+            // A process environment is untrusted input. Only this one marker
+            // matters, so cap the Tier 1 read rather than letting a hostile
+            // process turn every five-second poll into an arbitrary allocation.
+            const int maximumEnvironmentBytes = 64 * 1024;
+            var bytes = new byte[maximumEnvironmentBytes];
+            int length;
+            using (var stream = new FileStream(
+                $"/proc/{pid}/environ", FileMode.Open, FileAccess.Read,
+                FileShare.ReadWrite | FileShare.Delete))
+            {
+                length = stream.Read(bytes, 0, bytes.Length);
+            }
+
+            var prefix = "STEAM_COMPAT_DATA_PATH="u8;
+            for (var offset = 0; offset < length;)
+            {
+                var end = Array.IndexOf(bytes, (byte)0, offset);
+                if (end < 0 || end > length)
+                {
+                    end = length;
+                }
+
+                var entry = bytes.AsSpan(offset, end - offset);
+                if (entry.StartsWith(prefix))
+                {
+                    return System.Text.Encoding.UTF8.GetString(entry[prefix.Length..]);
+                }
+
+                offset = end + 1;
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // A process can exit or be protected between List and Track. No
+            // prefix then means no Proton-specific attribution, never a guess.
+        }
+
+        return null;
+    }
+
     /// <summary>Wraps a live <c>Process</c>, holding the handle until <see cref="Dispose"/>.</summary>
     private sealed class SystemTrackedProcess : ITrackedProcess
     {
@@ -158,12 +215,17 @@ public sealed class SystemProcessSource : IProcessSource
         private bool _disposed;
 
         internal SystemTrackedProcess(
-            Process process, string processName, string? executablePath, DateTime startedAtUtc)
+            Process process,
+            string processName,
+            string? executablePath,
+            string? steamCompatibilityDataPath,
+            DateTime startedAtUtc)
         {
             _process = process;
             _pid = process.Id;
             ProcessName = processName;
             ExecutablePath = executablePath;
+            SteamCompatibilityDataPath = steamCompatibilityDataPath;
             StartedAtUtc = startedAtUtc;
 
             // Arm first, subscribe second. .NET registers a wait on the process
@@ -188,6 +250,8 @@ public sealed class SystemProcessSource : IProcessSource
         public string ProcessName { get; }
 
         public string? ExecutablePath { get; }
+
+        public string? SteamCompatibilityDataPath { get; }
 
         public DateTime StartedAtUtc { get; }
 

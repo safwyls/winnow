@@ -1,3 +1,4 @@
+using Winnow.Core.Domain;
 using Winnow.Core.Queries;
 using Winnow.Core.Repositories;
 
@@ -19,10 +20,10 @@ namespace Winnow.App.Services;
 /// that actually disappear, so it agrees with what the user sees happen.
 /// </param>
 public sealed record AccountVisibilityState(
-    bool AccountConfirmed, bool OwnAccountOnly, int HiddenCount)
+    bool AccountConfirmed, bool OwnAccountOnly, int HiddenCount, int AccountCount = 0)
 {
     /// <summary>Nothing known: no confirmed account, filter off, nothing hidden.</summary>
-    public static AccountVisibilityState Unknown { get; } = new(false, false, 0);
+    public static AccountVisibilityState Unknown { get; } = new(false, false, 0, 0);
 }
 
 /// <summary>
@@ -60,10 +61,26 @@ public sealed class AccountVisibilityService : IAccountVisibility
     private readonly ISettingsRepository _settings;
     private readonly ILibraryQueryRepository _library;
 
-    public AccountVisibilityService(ISettingsRepository settings, ILibraryQueryRepository library)
+    /// <summary>
+    /// The per-account membership rows, read only to count how many Steam
+    /// accounts this machine has been seen holding games for.
+    ///
+    /// <para>It has to come from here rather than from
+    /// <c>ownerships.account_ref</c>: that column holds the one account that
+    /// won the play tuple, so on a shared PC it under-counts by exactly the
+    /// accounts that never played anything the most. Optional, so a host that
+    /// composed the service without it still answers everything else.</para>
+    /// </summary>
+    private readonly IOwnershipAccountRepository? _accounts;
+
+    public AccountVisibilityService(
+        ISettingsRepository settings,
+        ILibraryQueryRepository library,
+        IOwnershipAccountRepository? accounts = null)
     {
         _settings = settings;
         _library = library;
+        _accounts = accounts;
     }
 
     /// <inheritdoc/>
@@ -96,7 +113,14 @@ public sealed class AccountVisibilityService : IAccountVisibility
             hidden = await _library.CountHiddenByAccountScopeAsync(thresholds, ct);
         }
 
-        return new AccountVisibilityState(confirmed, ownOnly, hidden);
+        // Distinct accounts seen holding a Steam game. Counted whatever the
+        // filter is set to, because the sentence it feeds is about the machine
+        // rather than about the current view.
+        var accounts = _accounts is null
+            ? 0
+            : (await _accounts.GetAccountRefsAsync(ExternalIdProviders.Steam, ct)).Count;
+
+        return new AccountVisibilityState(confirmed, ownOnly, hidden, accounts);
     }
 
     /// <inheritdoc/>

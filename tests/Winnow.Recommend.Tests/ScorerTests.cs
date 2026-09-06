@@ -25,6 +25,7 @@ public class ScorerTests
         bool recentlySurfaced = false,
         int? returnEpisodes = null,
         double? tasteAffinity = null,
+        string? tasteFacetName = null,
         UpdateCoverage updateCoverage = UpdateCoverage.Observed)
         => new()
         {
@@ -41,7 +42,7 @@ public class ScorerTests
             RecentlySurfaced = recentlySurfaced,
             ReturnEpisodes = returnEpisodes,
             TasteAffinity = tasteAffinity,
-            TasteFacetName = tasteAffinity is null ? null : "Survival",
+            TasteFacetName = tasteFacetName ?? (tasteAffinity is null ? null : "Survival"),
             UpdateCoverage = updateCoverage,
         };
 
@@ -71,6 +72,33 @@ public class ScorerTests
         }
 
         Assert.Equal(signals.Sum(s => s.Contribution), RecommendationScorer.Total(signals), precision: 12);
+    }
+
+    [Fact]
+    public void Taste_explanation_names_the_matching_facet_without_a_whole_library_claim()
+    {
+        var contribution = Find(Score(Facts(
+            LibraryBuckets.NeverPlayed, 0, null, tasteAffinity: 0.8)),
+            SignalNames.TasteAffinity);
+
+        Assert.NotNull(contribution);
+        Assert.Equal("This matches your taste in Survival games.", contribution!.Explanation);
+        Assert.DoesNotContain("where your hours go", contribution.Explanation, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Taste_explanations_for_different_facets_can_be_read_together()
+    {
+        var survival = Find(Score(Facts(
+            LibraryBuckets.NeverPlayed, 0, null, tasteAffinity: 0.8)), SignalNames.TasteAffinity);
+        var strategy = Find(Score(Facts(
+            LibraryBuckets.NeverPlayed, 0, null, tasteAffinity: 0.8,
+            tasteFacetName: "Strategy")), SignalNames.TasteAffinity);
+
+        Assert.NotNull(survival);
+        Assert.NotNull(strategy);
+        Assert.Contains("Survival games", survival!.Explanation, StringComparison.Ordinal);
+        Assert.Contains("Strategy games", strategy!.Explanation, StringComparison.Ordinal);
     }
 
     // ── Commitment curve ───────────────────────────────────────────────────

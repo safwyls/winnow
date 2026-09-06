@@ -18,8 +18,8 @@ whether it's been patched since you last tried. Winnow does.
 - **A feed that says why.** Every recommendation carries a sentence — *"You put 2.8 hours into
   this in 2021 and it has had an update since, most recently 'PATCH NOTES – S06.05.02'."* Not
   a genre tag, not a star rating. The reason is the product.
-- **Buckets that mean something.** *Never played* means you haven't opened it. *Bounced off*
-  means you got past Steam's two-hour refund window and stopped anyway.
+- **Buckets that mean something.** *Never played* means you haven't opened it. *Started*
+  means you're past Steam's two-hour refund window.
 - **Patch tracking.** Games updated since you last played them.
 - **Launch and session tracking.** Click Play; the game starts and nothing else happens.
   Winnow records when you actually played, which storefronts don't retain.
@@ -37,6 +37,10 @@ dotnet run --project src/Winnow.App
 
 Windows only in practice — Epic and GOG discovery uses the registry, credentials use DPAPI,
 and session detection is Windows-shaped. It builds elsewhere; it will find less.
+
+Diagnostics are saved under `%LOCALAPPDATA%\Winnow\logs` (or the selected `--data-dir`).
+Five rolling files retain roughly 5 MiB. Logs omit identity values, paths, credentials and
+exception messages while retaining operation names, counts, timings and exception types.
 
 The window opens as soon as the local scan finishes, about a second. Titles, cover art and
 update signals fill in behind it.
@@ -78,10 +82,14 @@ Nothing leaves the machine except read-only requests to IGDB, Steam's public end
 `gamesdb.gog.com` and `api.steamcmd.net`. **Winnow reads launcher files and does not write to
 them.**
 
-Credential protection is uneven today. Epic refresh tokens and Steam session tokens are
-encrypted at rest with DPAPI (`CurrentUser` scope). Steam Web API keys and IGDB client secrets
-are still plaintext rows in the local database, so anyone with access to `winnow.db` can read
-those two. Fixing that is TASK-78 in the backlog.
+Winnow encrypts stored credentials with Windows DPAPI (`CurrentUser` scope): Epic and Steam
+sign-in sessions, the Steam Web API key, the optional Epic OAuth client secret, and the IGDB
+client secret and cached access token. Legacy plaintext credentials migrate on first read;
+cleanup retries if an earlier migration was interrupted. A system that cannot encrypt refuses
+to persist new credentials. It leaves legacy user-entered secrets untouched but unused, and
+clears legacy machine-minted tokens. This migration updates settings rows; it does not scrub
+old database backups or guarantee removal of historical bytes from disk. Public client ids
+remain readable.
 
 *Upgrading from Hoard?* The first launch moves `%LOCALAPPDATA%\Hoard\` to
 `%LOCALAPPDATA%\Winnow\` automatically.
@@ -156,6 +164,20 @@ dotnet build
 dotnet test
 ```
 
+GitHub Actions runs restore, dependency auditing, an analyzer-enabled Release build and all
+tests on Windows for every push and pull request. Advisory warnings fail the restore,
+including advisories on transitive packages. Test results are retained for seven days.
+The workflow also verifies migration hashes against the previous push or pull-request base.
+Repository administrators can require the `Windows build, tests and migration integrity`
+check in branch protection; the workflow file itself does not configure that setting.
+
+To check migration integrity locally:
+
+```powershell
+./scripts/Verify-Migrations.ps1 -BaselineRef HEAD
+./scripts/Test-MigrationHashes.ps1
+```
+
 No network calls: parser tests run against sanitized captures of real launcher files in
 `tests/fixtures/`, and every HTTP client is tested against canned responses. Fixtures carry
 fake account ids — sanitize anything you add.
@@ -182,7 +204,10 @@ One document owns each domain, and [`AGENTS.md`](AGENTS.md) carries the full lis
 
 ### What isn't built
 
-Merge *execution* (the queue records intent; nothing applies it), JSON/CSV export, install
+Settings → Library offers an acquisition CSV export with title, store, acquisition date,
+licence and price paid. Missing values stay blank; prices are stored cents without a currency.
+
+Merge *execution* (the queue records intent; nothing applies it), full JSON export/import, install
 management, and full-screen gamepad navigation. [`ROADMAP.md`](ROADMAP.md) §5 lists the
 carried debt against its backlog tasks.
 

@@ -1,0 +1,90 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  linux-sessions:
+    name: Linux native and Proton-environment session smoke tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      DOTNET_NOLOGO: true
+      DOTNET_CLI_TELEMETRY_OPTOUT: true
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          dotnet-version: '10.0.x'
+      - name: Verify real Linux process discovery and session recording
+        run: dotnet test tests/Winnow.Monitor.Linux.Tests --configuration Release --logger trx --results-directory TestResults
+      - name: Keep Linux test results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: linux-session-results
+          path: TestResults/**/*.trx
+          if-no-files-found: ignore
+          retention-days: 7
+
+  verify:
+    name: Windows build, tests and migration integrity
+    runs-on: windows-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      DOTNET_NOLOGO: true
+      DOTNET_CLI_TELEMETRY_OPTOUT: true
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Verify immutable migrations
+        env:
+          BASELINE_REF: ${{ github.event.pull_request.base.sha || github.event.before }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          $baseline = $env:BASELINE_REF
+          if (!$baseline -or $baseline -match '^0+$') {
+            $baseline = git merge-base HEAD "origin/$env:DEFAULT_BRANCH"
+            if ($LASTEXITCODE -ne 0) { throw 'Cannot resolve migration baseline.' }
+          }
+          ./scripts/Verify-Migrations.ps1 -BaselineRef $baseline
+          ./scripts/Test-MigrationHashes.ps1
+
+      - name: Restore and audit direct and transitive dependencies
+        run: dotnet restore --force-evaluate --no-cache -warnaserror
+
+      - name: Build with analyzers
+        run: dotnet build --configuration Release --no-restore -warnaserror
+
+      - name: Test
+        run: dotnet test --configuration Release --no-build --logger trx --logger "console;verbosity=normal" --results-directory TestResults --blame-hang-timeout 5m --blame-hang-dump-type mini
+
+      - name: Keep test results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: test-results
+          path: TestResults/**
+          if-no-files-found: ignore
+          retention-days: 7

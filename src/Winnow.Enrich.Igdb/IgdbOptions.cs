@@ -43,6 +43,23 @@ public sealed class IgdbOptions
     /// </summary>
     public int BatchSize { get; set; } = 400;
 
+    /// <summary>
+    /// Maximum results returned by a title search. Overridable per call.
+    /// </summary>
+    public int SearchResultLimit { get; set; } = Apicalypse.DefaultSearchLimit;
+
+    /// <summary>
+    /// How long a cached search result set stays authoritative. 1 day
+    /// rather than the 30-day <see cref="CacheTtl"/> the rest of the
+    /// client uses: the other payloads describe shipped games whose name,
+    /// cover and year change on the order of never, while a search result
+    /// set changes whenever IGDB adds a game. A search is an interactive
+    /// action the user may repeat within one sitting; a day is long enough
+    /// to make the repeat free and short enough that a newly added game
+    /// is findable.
+    /// </summary>
+    public TimeSpan SearchCacheTtl { get; set; } = TimeSpan.FromDays(1);
+
     /// <summary>Retry attempts after the first try, for 429/5xx/transient failures.</summary>
     public int MaxRetryAttempts { get; set; } = 3;
 

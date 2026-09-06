@@ -51,6 +51,8 @@ public sealed record TileEntry : IPlayedEntry
     /// <summary>Epic's composite launch key, or null when all three parts are not held.</summary>
     public EpicLaunchKey? EpicLaunchKey { get; init; }
 
+    public Winnow.Core.Repositories.StorefrontDetails? Storefront { get; init; }
+
     /// <summary>True only when a source looked and found it on disk.</summary>
     public bool IsOnDisk => Installed == true;
 
@@ -63,8 +65,8 @@ public sealed record TileEntry : IPlayedEntry
     /// <summary>
     /// The compact resting mark's face — one letter. The front of a tile at
     /// the 108px density floor cannot hold word-chips, so the resting mark
-    /// is initials and the words arrive on hover, on the back face and in
-    /// the modal; see <see cref="StoreNaming.Initial"/>.
+    /// is initials and the words arrive on hover and in the modal; see
+    /// <see cref="StoreNaming.Initial"/>.
     /// </summary>
     public string StoreInitial => StoreNaming.Initial(Store);
 
@@ -74,6 +76,14 @@ public sealed record TileEntry : IPlayedEntry
     /// </summary>
     public GameLink? PrimaryAction => StoreActions.PrimaryFor(
         Store, Installed, SteamAppId, GogProductId, EpicLaunchKey);
+
+    /// <summary>
+    /// Why Band 3 cannot get the user into this entry's copy, or
+    /// <see cref="ViewModels.NoWayIn.None"/> when it can. Derived from the
+    /// same store ids and install state as <see cref="PrimaryAction"/>.
+    /// </summary>
+    public NoWayIn NoWayIn => StoreActions.WhyNoWayIn(
+        Store, Installed, SteamAppId, GogProductId, EpicLaunchKey, Storefront);
 
     /// <summary>Builds the entry for one ownership row.</summary>
     public static TileEntry For(
@@ -86,7 +96,8 @@ public sealed record TileEntry : IPlayedEntry
         Ownership? ownership = null,
         string? steamAppId = null,
         string? gogProductId = null,
-        EpicLaunchKey? epicLaunchKey = null)
+        EpicLaunchKey? epicLaunchKey = null,
+        Winnow.Core.Repositories.StorefrontDetails? storefront = null)
         => new()
         {
             OwnershipId = ownershipId,
@@ -100,6 +111,7 @@ public sealed record TileEntry : IPlayedEntry
             SteamAppId = GameLink.IsSteamAppId(steamAppId) ? steamAppId : null,
             GogProductId = StoreActions.IsGogProductId(gogProductId) ? gogProductId : null,
             EpicLaunchKey = epicLaunchKey,
+            Storefront = storefront,
         };
 }
 
@@ -126,8 +138,8 @@ public static class StoreNaming
     /// <summary>
     /// The first letter of the display name. The front of a tile at the
     /// 108px density floor cannot hold word-chips, so the resting mark on a
-    /// multi-store tile is initials; the words arrive on hover, on the back
-    /// face and in the modal. The mark is therefore decorative-redundant,
+    /// multi-store tile is initials; the words arrive on hover and in the
+    /// modal. The mark is therefore decorative-redundant,
     /// which §8 requires of anything the grid encodes.
     /// </summary>
     public static string Initial(string store)

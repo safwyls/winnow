@@ -58,7 +58,7 @@ public sealed class IdentityReadInventoryTests
     private static readonly Entry[] Inventory =
     [
         // ── RESOLVE ────────────────────────────────────────────────────────
-        new("src/Winnow.Data/Repositories/LibraryQueryRepository.cs", "QueryAsync", Policy.Resolve,
+        new("src/Winnow.Data/Repositories/LibraryQueryRepository.cs", "BucketSql", Policy.Resolve,
             "The chokepoint. One LEFT JOIN over live same_game links, in the same pass as demo "
             + "consolidation, and every surface it feeds inherits it: the grid, the rail bucket "
             + "counts, All Games, the filter options, list counts, the recommender, the feed and "
@@ -67,7 +67,7 @@ public sealed class IdentityReadInventoryTests
         new("src/Winnow.App/ViewModels/LibraryViewModel.cs", "LoadAsync", Policy.Resolve,
             "The display title and cover. The row keeps its OWN work for everything enrichment "
             + "reads; the user is shown the primary's name and art, so both store entries of one "
-            + "game read as one game while the grid is still one tile per ownership."),
+            + "game read as one tile per resolved work."),
 
         new("src/Winnow.Recommend/RecommendationEngine.cs", "AssemblePoolAsync", Policy.Resolve,
             "Feed suppression. Verdicts are stored per release and widened to the RESOLVED work, "
@@ -75,21 +75,39 @@ public sealed class IdentityReadInventoryTests
             + "offering the same game twice under two badges. The bought-twice signal is keyed the "
             + "same way, which is what the destructive merge used to give it."),
 
-        new("src/Winnow.App/ViewModels/MergeQueueViewModel.cs", "DescribeAsync", Policy.Resolve,
+        new("src/Winnow.App/ViewModels/MergeQueueViewModel.cs", "LoadAsync", Policy.Resolve,
             "Renders the members MergeGrouping produced, and a member IS a resolved work: the "
             + "grouping resolves both ends of every proposal and drops the ones that resolve to "
             + "one work before a card exists."),
 
-        new("src/Winnow.App/ViewModels/MergeQueueViewModel.cs", "DescribeWorkAsync", Policy.Resolve,
-            "The same read at the grain of one member. The id it is handed has already been "
-            + "resolved by MergeGrouping."),
-
         // ── DO NOT RESOLVE ─────────────────────────────────────────────────
+        new("src/Winnow.Data/Repositories/LibraryQueryRepository.cs", "GetSnapshotAsync", Policy.DoNotResolve,
+            "The additional work and ownership result sets preserve each row's own metadata and "
+            + "purchase facts. The bucket result uses the separately inventoried, resolving "
+            + "BucketSql; library and Review presentation resolve over the snapshot without "
+            + "replacing a child's stored artwork, identifiers or ownership facts."),
+
+        new("src/Winnow.App/Services/AcquisitionExport.cs", "ReadAsync", Policy.DoNotResolve,
+            "The CSV exports one receipt per ownership, with that copy's stored title, date, "
+            + "licence and price. Linking games must not fold purchases or replace their facts."),
+
+        new("src/Winnow.App/Services/StorefrontSyncService.cs", "SyncCoreAsync", Policy.DoNotResolve,
+            "Storefront metadata targets each owned release's own store ids. A linked Steam "
+            + "copy cannot supply an Epic store slug or a GOG changelog."),
+
         new("src/Winnow.Data/Repositories/LibraryQueryRepository.cs", "GetFacetTargetsAsync",
             Policy.DoNotResolve,
             "An enrichment target. Every work still needs enriching on its own ids, and resolving "
             + "here would starve the child of the enrichment whose igdb_id is what fills the "
             + "group."),
+
+        new("src/Winnow.App/ViewModels/LibraryViewModel.cs", "BuildAcquisitionAsync",
+            Policy.DoNotResolve,
+            "Acquisition facts belong to the copy, not to the game. The date a licence arrived "
+            + "and the licence it arrived under are properties of the ownership row the user "
+            + "actually holds, and the details modal draws them in the object column for exactly "
+            + "that reason. Resolving would answer a question about this copy with another "
+            + "copy's licence."),
 
         new("src/Winnow.Data/Repositories/WorkRepository.cs", "GetAllAsync", Policy.DoNotResolve,
             "The unresolved catalogue every enrichment pass walks. Resolving it would hide the "
@@ -98,6 +116,13 @@ public sealed class IdentityReadInventoryTests
         new("src/Winnow.Data/Repositories/WorkRepository.cs", "GetAsync", Policy.DoNotResolve,
             "One row by id, exactly as stored. A caller asking for work 12 is asking about work "
             + "12."),
+
+        new("src/Winnow.Data/Repositories/WorkRepository.cs", "GetByIgdbIdAsync",
+            Policy.DoNotResolve,
+            "One row by the igdb_id stored on it, a column UNIQUE across the table, so at "
+            + "most one row can answer. Resolving would return a parent whose own igdb_id is "
+            + "a different value or none at all, answering a question about a column with "
+            + "a row that does not carry it."),
 
         new("src/Winnow.Data/Repositories/WorkRepository.cs", "GetEnrichmentTargetsAsync",
             Policy.DoNotResolve,
@@ -152,6 +177,14 @@ public sealed class IdentityReadInventoryTests
             "A poll target. A Steam build push is not an Epic build push, so both entries stay "
             + "eligible on their own ids."),
 
+        new("src/Winnow.Enrich.Igdb/Storage/IgdbMaturityTargetSource.cs", "GetTargetsAsync",
+            Policy.DoNotResolve,
+            "Maturity evidence is keyed on the stored work id, one row per (work, source). "
+            + "Link resolution happens at read time in LibraryQueryRepository, where the "
+            + "explicit filter drops the whole resolved game with its variants. Resolving "
+            + "here would file a rating against a group parent rather than the work IGDB "
+            + "actually rated, and a later unlink would leave the evidence on the wrong row."),
+
         new("src/Winnow.Data/Repositories/IdentityLinkRepository.cs", "AssertWorksExistAsync",
             Policy.DoNotResolve,
             "The link machinery itself. Resolving inside the thing that defines resolution would "
@@ -167,6 +200,10 @@ public sealed class IdentityReadInventoryTests
 
         new("src/Winnow.App/Services/EnrichmentSyncService.cs", "EnrichAsync", Policy.DoNotResolve,
             "Enrichment targets the row's own ids. See GetFacetTargetsAsync."),
+
+        new("src/Winnow.App/Services/GameRefetchService.cs", "RunAsync", Policy.DoNotResolve,
+            "Re-asks one work's own sources by its own ids. Resolving to a link partner first "
+            + "would ask about the other storefront's copy and write the answer against this row."),
 
         new("src/Winnow.App/Services/SampleDataSeeder.cs", "SeedLibraryAsync", Policy.DoNotResolve,
             "Seeds demo rows. A seeder writes the rows resolution is later computed over."),
@@ -190,6 +227,101 @@ public sealed class IdentityReadInventoryTests
         new("src/Winnow.Resolve/ExternalIdResolver.cs", "PromoteProvisionalNameAsync",
             Policy.DoNotResolve,
             "Names the row's own work from the store entry that was just read."),
+
+        new("src/Winnow.Data/Repositories/HiddenGameRepository.cs", "HideAsync",
+            Policy.DoNotResolve,
+            "Stores the work id the caller was handed, checking only that the work exists. The "
+            + "resolution that decides which work a tile stands for happens in the chokepoint "
+            + "query, which tests the row's work, its same-game parent and its variant parent "
+            + "against this table."),
+
+        new("src/Winnow.Data/Repositories/HiddenGameRepository.cs", "GetHiddenGamesAsync",
+            Policy.DoNotResolve,
+            "The unhide screen lists what was hidden, row by row, with the title and the "
+            + "store-entry count of each stored work. Resolving would offer back a group the "
+            + "user never hid."),
+
+        new("src/Winnow.Data/Repositories/WorkIgdbPinRepository.cs", "PinAsync",
+            Policy.DoNotResolve,
+            "Stores the work id the caller was handed. The two reads are only \"does this work "
+            + "exist\" and \"does another work already hold this igdb_id\" — the second is a "
+            + "question about stored rows, and a resolved answer would let two works claim one "
+            + "IGDB id past a UNIQUE constraint."),
+
+        new("src/Winnow.Data/Repositories/WorkFieldSourceRepository.cs", "GetStateAsync",
+            Policy.DoNotResolve,
+            "Reads the six editable columns FROM works WHERE id = @workId and joins them to "
+            + "that same work's rows in work_field_sources. Each field's value and its source "
+            + "are keyed on the same work id; resolving would pair one work's values with "
+            + "another work's sources. This is also the read the editor renders and then "
+            + "writes back through, so a resolved read would put the parent's text in a "
+            + "field whose Save writes the child."),
+
+        new("src/Winnow.Data/Repositories/WorkFieldSourceRepository.cs", "SetFieldAsync",
+            Policy.DoNotResolve,
+            "An existence check on the row it is about to UPDATE and then stamp in "
+            + "work_field_sources — the same shape as ApplyEnrichmentAsync. Resolving would "
+            + "confirm a parent exists and then write the child, or write the parent with "
+            + "the value the user typed about the child, and stamp the wrong row as "
+            + "user-owned — which under the per-field source model also stops enrichment "
+            + "from ever filling the field again."),
+
+        new("src/Winnow.Data/Repositories/WorkFieldSourceRepository.cs", "ResetFieldAsync",
+            Policy.DoNotResolve,
+            "The same existence check as SetFieldAsync, before it empties the column and "
+            + "deletes the source stamp — the hand-a-field-back-to-automatic gesture. "
+            + "Resolving would hand back a field on a row the user never claimed and leave "
+            + "the row they did claim still user-owned, so the field they were trying to "
+            + "release would never come back."),
+
+        new("src/Winnow.Data/Repositories/ManualEntryRepository.cs", "GetAsync",
+            Policy.DoNotResolve,
+            "One hand-added entry by its ownership id, for the edit form. The form edits the "
+            + "row the user created, not the group it may have been linked into."),
+
+        new("src/Winnow.Data/Repositories/ManualEntryRepository.cs", "GetAllAsync",
+            Policy.DoNotResolve,
+            "The manage-entries list. Each row is the hand-added entry the user created; "
+            + "resolving would fold it into a linked partner and lose the row's own identity."),
+
+        new("src/Winnow.Data/Repositories/ManualEntryRepository.cs", "UpdateAsync",
+            Policy.DoNotResolve,
+            "Reads back the release and work it is about to write. Resolving would write the "
+            + "parent's row with the child's title."),
+
+        new("src/Winnow.Data/Repositories/ManualEntryRepository.cs", "DeleteAsync",
+            Policy.DoNotResolve,
+            "Deletes exactly the rows the user created, narrowed by what other ownerships are "
+            + "left behind. Resolving would delete a linked partner's game."),
+
+        new("src/Winnow.Data/Repositories/ManualEntryRepository.cs", "AssertIdentifiersAreFreeAsync",
+            Policy.DoNotResolve,
+            "Asks whether an external id is already claimed anywhere in the library. The "
+            + "question is about stored rows, and a resolved answer would let a duplicate id "
+            + "through."),
+
+        new("src/Winnow.App/ViewModels/LibrarySettingsViewModel.cs", "BeginEditAsync",
+            Policy.DoNotResolve,
+            "The edit form reads back the IGDB id stored on the hand-added entry's own work, "
+            + "because ManualEntryRepository.UpdateAsync writes that column as given and a form "
+            + "that opened with it blank would clear the id that got the game its cover art. "
+            + "Resolving would prefill a linked parent's id and then write it onto the child."),
+
+        new("src/Winnow.App/Services/IgdbAssignmentService.cs", "FindClaimingGameAsync",
+            Policy.DoNotResolve,
+            "Asks which works row holds a given igdb_id so the wrong-game modal can name the "
+            + "game that already claims the entry and offer to link the two. Resolving would "
+            + "return a group parent that does not hold the id rather than the row the UNIQUE "
+            + "constraint refused against, naming the wrong game in the one place whose purpose "
+            + "is to be judged as correct by the user."),
+
+        new("src/Winnow.App/Services/WorkMetadataEditService.cs", "GetAsync",
+            Policy.DoNotResolve,
+            "The snapshot the editor renders: the work's name, its field state and its IGDB "
+            + "pin, assembled from one row. The work id it is handed is the resolved game id "
+            + "the details modal derives, and everything it reads is a column of that row; "
+            + "resolving a second time here would resolve an already-resolved id and answer "
+            + "about a different row than the one the editor's Save writes."),
     ];
 
     /// <summary>
@@ -313,6 +445,34 @@ public sealed class IdentityReadInventoryTests
 
     // ── The scanner ─────────────────────────────────────────────────────────
 
+    [Fact]
+    public void Shared_SQL_constants_and_bulk_snapshot_callers_are_caught_under_their_own_names()
+    {
+        var sandbox = Path.Combine(Path.GetTempPath(), "winnow-readscan-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(Path.Combine(sandbox, "Winnow.Somewhere"));
+        try
+        {
+            File.WriteAllText(Path.Combine(sandbox, "Winnow.Somewhere", "BulkPanel.cs"), """
+                namespace Winnow.Somewhere;
+                public sealed class BulkPanel
+                {
+                    private readonly ILibraryQueryRepository _library;
+                    private int PreviousMethod() => 0;
+                    private const string StoredRows = "SELECT id FROM works;";
+                    public async Task LoadAsync()
+                    {
+                        var snapshot = await _library.GetSnapshotAsync(BucketThresholds.Default);
+                    }
+                }
+                """);
+            var sites = Scan(sandbox);
+            Assert.Equal(["LoadAsync", "StoredRows"], sites.Select(site => site.Member));
+            Assert.Contains("bulk snapshot", Explain(sites), StringComparison.Ordinal);
+            Assert.DoesNotContain(sites, site => site.Member == "PreviousMethod");
+        }
+        finally { Directory.Delete(sandbox, recursive: true); }
+    }
+
     /// <summary>
     /// A SQL read of works or ownerships. FROM or JOIN only: an INSERT or an
     /// UPDATE is a write and is not what this inventory is about.
@@ -329,6 +489,10 @@ public sealed class IdentityReadInventoryTests
         @"\bI(?:Work|Ownership)Repository\??\s+(_?[A-Za-z]\w*)",
         RegexOptions.CultureInvariant);
 
+    private static readonly Regex SnapshotRepositoryDeclaration = new(
+        @"\bILibraryQueryRepository\??\s+(_?[A-Za-z]\w*)",
+        RegexOptions.CultureInvariant);
+
     /// <summary>
     /// A read member. Insert, Update and Delete are writes and are out of
     /// scope by the same rule the SQL pattern applies.
@@ -343,6 +507,10 @@ public sealed class IdentityReadInventoryTests
     /// </summary>
     private static readonly Regex MemberDeclaration = new(
         @"^\s+(?:\[[^\]]*\]\s*)?(?:public|private|internal|protected)[^;=]*?\b(\w+)\s*(?:<[^>()]*>)?\s*\(",
+        RegexOptions.CultureInvariant);
+
+    private static readonly Regex SqlConstantDeclaration = new(
+        @"^\s+(?:public|private|internal|protected)\s+const\s+string\s+(\w+)\s*=",
         RegexOptions.CultureInvariant);
 
     private static string SourceRoot
@@ -386,17 +554,20 @@ public sealed class IdentityReadInventoryTests
 
             // The identifiers this file reaches works or ownerships through.
             var names = new HashSet<string>(StringComparer.Ordinal);
+            var snapshotNames = new HashSet<string>(StringComparer.Ordinal);
             foreach (var line in lines)
             {
                 foreach (Match declaration in RepositoryDeclaration.Matches(line))
                 {
                     names.Add(declaration.Groups[1].Value);
                 }
+                foreach (Match declaration in SnapshotRepositoryDeclaration.Matches(line))
+                    snapshotNames.Add(declaration.Groups[1].Value);
             }
 
             for (var i = 0; i < lines.Length; i++)
             {
-                var what = Reader(lines[i], names);
+                var what = Reader(lines[i], names, snapshotNames);
                 if (what is null)
                 {
                     continue;
@@ -419,7 +590,7 @@ public sealed class IdentityReadInventoryTests
             .ToList();
     }
 
-    private static string? Reader(string line, HashSet<string> names)
+    private static string? Reader(string line, HashSet<string> names, HashSet<string> snapshotNames)
     {
         if (SqlRead.Match(line) is { Success: true } sql)
         {
@@ -439,6 +610,12 @@ public sealed class IdentityReadInventoryTests
             }
         }
 
+        foreach (var name in snapshotNames)
+        {
+            if (Regex.IsMatch(line, @"(?<![\w.])" + Regex.Escape(name) + @"\s*\.\s*GetSnapshotAsync\s*\("))
+                return "bulk snapshot through " + name;
+        }
+
         return null;
     }
 
@@ -446,6 +623,8 @@ public sealed class IdentityReadInventoryTests
     {
         for (var i = index; i >= 0; i--)
         {
+            if (SqlConstantDeclaration.Match(lines[i]) is { Success: true } constant)
+                return constant.Groups[1].Value;
             if (MemberDeclaration.Match(lines[i]) is { Success: true } member)
             {
                 return member.Groups[1].Value;

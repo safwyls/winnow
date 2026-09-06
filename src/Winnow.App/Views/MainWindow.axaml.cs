@@ -1,12 +1,15 @@
 using System.ComponentModel;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Reactive;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Winnow.App.Services;
 using Winnow.App.Themes;
 using Winnow.App.ViewModels;
@@ -37,8 +40,13 @@ public partial class MainWindow : Window
 
         DetailsPanel.CloseRequested += (_, _) => _library?.CloseDetailsCommand.Execute(null);
 
-        // Tunnel, not bubble: this handler must see a press before the buttons
-        // on a turned card's back face do. See OnTilePressed.
+        // When the lightbox closes, focus goes back to the thumbnail it was
+        // opened from, regardless of which of the four exits was taken. The
+        // modal refuses the restore when the modal itself is on the way out.
+        LightboxPanel.Closed += (_, _) => DetailsPanel.RestoreLightboxFocus();
+
+        // See the card gesture before a child handles it, while leaving the
+        // hover actions to handle their own presses.
         TileWall.AddHandler(PointerPressedEvent, OnTilePressed, RoutingStrategies.Tunnel);
 
         RequestBackdrop();
@@ -206,6 +214,7 @@ public partial class MainWindow : Window
         MaximiseGlyph.IsVisible = !maximised;
         RestoreGlyph.IsVisible = maximised;
         ToolTip.SetTip(MaximiseButton, maximised ? "Restore down" : "Maximise");
+        Avalonia.Automation.AutomationProperties.SetName(MaximiseButton, maximised ? "Restore down" : "Maximise");
     }
 
     protected override void OnDataContextChanged(EventArgs e)
@@ -245,6 +254,31 @@ public partial class MainWindow : Window
     {
         base.OnOpened(e);
 
+        // N02. The only async void in the tree that sequences load-bearing
+        // startup work, so the only one that runs without an event boundary:
+        // an exception from any load below would otherwise escape onto the UI
+        // thread and take the process down at startup — precisely when the
+        // database is most likely to be fresh or newly migrated. The catch
+        // leaves the shell standing on whatever last succeeded, mirroring the
+        // error boundary Program.cs puts around its own startup task (F36,
+        // one layer down).
+        try
+        {
+            await LoadOnOpenAsync();
+        }
+        catch (OperationCanceledException)
+        {
+            // The window closed mid-load. Nothing was half-written that the
+            // next launch does not resume, and a shutdown is not a failure.
+        }
+        catch (Exception ex)
+        {
+            LogStartupLoadFailure(ex);
+        }
+    }
+
+    private async Task LoadOnOpenAsync()
+    {
         if (_library is { } library)
         {
             await library.LoadCommand.ExecuteAsync(null);
@@ -264,6 +298,47 @@ public partial class MainWindow : Window
         if (_shell?.Display is { } display)
         {
             await display.LoadAsync();
+
+            // The grid grain is a stored preference too, and unlike the dimming
+            // above it cannot be repainted into place: it decides which tiles
+            // exist, so it needs the rows walked again. Taken only when the
+            // stored answer differs from the one the first load assumed, which
+            // on a default install it does not, so an ordinary launch pays
+            // nothing for this. Without it the preference would read as ON in
+            // the settings panel and behave as OFF in the grid until the user
+            // toggled it twice.
+            if (_library is { } grid && grid.GroupExpansions != display.GroupExpansions)
+            {
+                grid.GroupExpansions = display.GroupExpansions;
+                await grid.LoadCommand.ExecuteAsync(null);
+            }
+
+            // The rating cap is stored the same way and needs the same walk: it
+            // decides which tiles exist, so a cap set last session would read as
+            // set in the popover and do nothing in the grid until it was moved.
+            if (_library is { } capped && capped.MaturityCap != display.MaturityCap)
+            {
+                capped.MaturityCap = display.MaturityCap;
+                await capped.LoadCommand.ExecuteAsync(null);
+            }
+        }
+
+        // The explicit-content preference is read at startup rather than on first
+        // visit to SETTINGS › LIBRARY, because it decides which tiles exist.
+        // Without this a user who turned the filter off would get the filtered
+        // library back on every launch until they opened the settings screen.
+        // The walk is taken only when the stored answer differs from the one the
+        // first load assumed, so a default install pays nothing.
+        if (_shell?.LibrarySettings is { } librarySettings)
+        {
+            await librarySettings.RefreshAsync();
+
+            if (_library is { } grid
+                && grid.ShowExplicitContent != librarySettings.ShowExplicitContent)
+            {
+                grid.ShowExplicitContent = librarySettings.ShowExplicitContent;
+                await grid.LoadCommand.ExecuteAsync(null);
+            }
         }
 
         // M8, and LAST on purpose. The scoring pass is ~60 ms over a thousand
@@ -423,6 +498,37 @@ public partial class MainWindow : Window
 #endif
     }
 
+    /// <summary>
+    /// The catch arm of the <see cref="OnOpened"/> boundary (N02). Logs through
+    /// the host's logger when there is a host to log through, and falls back to
+    /// <see cref="System.Diagnostics.Trace"/> when there is not — the previewer's
+    /// window runs with no host at all, and a host mid-disposal answers nothing.
+    /// The boundary itself must never throw: that would put the process right
+    /// back where this method exists to take it off of.
+    /// </summary>
+    private static void LogStartupLoadFailure(Exception ex)
+    {
+        ILoggerFactory? factory = null;
+        try
+        {
+            factory = Program.AppHost?.Services.GetRequiredService<ILoggerFactory>();
+        }
+        catch (Exception)
+        {
+            // Shutdown race; the Trace below is the fallback for exactly this
+            // shape, so falling through is the whole point of the try.
+        }
+
+        if (factory is null)
+        {
+            System.Diagnostics.Trace.TraceError($"Startup load failed: {ex}");
+            return;
+        }
+
+        factory.CreateLogger(typeof(MainWindow)).LogError(ex,
+            "Startup load failed; the shell stays standing on whatever last succeeded.");
+    }
+
     protected override void OnKeyDown(KeyEventArgs e)
     {
         base.OnKeyDown(e);
@@ -440,6 +546,32 @@ public partial class MainWindow : Window
         {
             prompt.CancelCommand.Execute(null);
             e.Handled = true;
+            return;
+        }
+
+        // The screenshot lightbox sits above the modal and answers first:
+        // Escape closes the overlay and leaves the modal standing (§12.4's
+        // one-layer-per-press rule). Left and Right walk the shots and wrap.
+        // The return is unconditional, so no key reaches the modal or the
+        // library while the overlay is up.
+        if (_library?.Lightbox is { IsOpen: true } lightbox)
+        {
+            switch (e.Key)
+            {
+                case Key.Escape:
+                    lightbox.CloseCommand.Execute(null);
+                    e.Handled = true;
+                    break;
+                case Key.Left:
+                    lightbox.PreviousCommand.Execute(null);
+                    e.Handled = true;
+                    break;
+                case Key.Right:
+                    lightbox.NextCommand.Execute(null);
+                    e.Handled = true;
+                    break;
+            }
+
             return;
         }
 
@@ -631,22 +763,9 @@ public partial class MainWindow : Window
                 e.Handled = true;
                 break;
 
-            // §8: the flip has to be reachable without a pointer, or the actions
-            // on the back of the card are mouse-only. Space is the key every
-            // toolkit already spends on "act on the selected thing"; a focused
-            // button answers it first and marks it handled, so pressing Space on
-            // Play launches rather than turning the card back.
-            case Key.Space:
-                FlipSelectedTile();
-                e.Handled = true;
-                break;
-
             case Key.Enter:
                 // §5.3 caps the tile at four facts; Enter is how you get the
-                // rest. It stays the keyboard route to the modal even though the
-                // back face now carries a Details button too — §10 names Enter
-                // and a double click as the two ways in, and the flip took the
-                // pointer one.
+                // rest, alongside the hover action and a double click.
                 _library.OpenDetailsCommand.Execute(_library.SelectedTile);
                 e.Handled = true;
                 break;
@@ -754,17 +873,6 @@ public partial class MainWindow : Window
             return;
         }
 
-        // A turned card is the newest and shallowest thing on the screen — it is
-        // one click old and it is not a cut of the library at all — so it is the
-        // first thing Escape gives back. Focus comes with it, or the next press
-        // would be answered by a button that is no longer showing.
-        if (_library.FlippedTile is not null)
-        {
-            _library.ClearFlip();
-            TakeGridFocus();
-            return;
-        }
-
         if (_library.Filters.IsOpen)
         {
             _library.Filters.IsOpen = false;
@@ -804,13 +912,15 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// A click turns the card over; a double click opens the detail modal.
-    /// Registered on the tunnel route so the double click is caught before the
-    /// back face's buttons.
+    /// A click selects the card; a double click opens the detail modal.
+    /// Buttons own their presses, including repeated clicks.
     /// </summary>
     private void OnTilePressed(object? sender, PointerPressedEventArgs e)
+        => HandleTilePressed(_library, e);
+
+    private static void HandleTilePressed(LibraryViewModel? library, PointerPressedEventArgs e)
     {
-        if (_library is null
+        if (library is null
             || e.Source is not Control source
             || source.FindAncestorOfType<GameTileView>(includeSelf: true) is not
                 { DataContext: GameTileViewModel tile })
@@ -818,28 +928,27 @@ public partial class MainWindow : Window
             return;
         }
 
+        if (!e.GetCurrentPoint(source).Properties.IsLeftButtonPressed)
+        {
+            library.SelectTile(tile);
+            return;
+        }
+
+        if (source.FindAncestorOfType<Button>(includeSelf: true) is not null
+            || source.FindAncestorOfType<RangeBase>(includeSelf: true) is not null)
+        {
+            library.SelectTile(tile);
+            return;
+        }
+
         if (e.ClickCount >= 2)
         {
-            // Takes the press away from the back face before it is offered one.
-            _library.OpenDetailsCommand.Execute(tile);
+            library.OpenDetailsCommand.Execute(tile);
             e.Handled = true;
             return;
         }
 
-        if (!e.GetCurrentPoint(source).Properties.IsLeftButtonPressed)
-        {
-            _library.SelectTile(tile);
-            return;
-        }
-
-        // A press on one of the back's own controls belongs to that control.
-        if (source.FindAncestorOfType<Button>(includeSelf: true) is not null)
-        {
-            _library.SelectTile(tile);
-            return;
-        }
-
-        _library.FlipTileCommand.Execute(tile);
+        library.SelectTile(tile);
     }
 
     /// <summary>
@@ -997,10 +1106,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        // Moving selection turned any face-down card back over (the library
-        // keeps the two together), which may have just removed the control that
-        // had focus. Take it back to the window so the next arrow key still
-        // reaches this handler rather than falling into nothing.
+        // Keep the grid's arrow-key handler as the keyboard focus moves selection.
         TakeGridFocus();
 
         // The target is usually not realized — selection can jump a hundred
@@ -1009,64 +1115,8 @@ public partial class MainWindow : Window
         TileWall.ScrollIntoView(index);
     }
 
-    // ══ The card flip, from the keyboard ════════════════════════════════════
-    // §8 asks for the whole interface to be reachable without a pointer, and a
-    // flip that only answers a click would put Play, Add to list and Details
-    // behind a mouse. Space turns the selected card over — the key every
-    // toolkit already spends on "act on the thing that is selected" — and focus
-    // follows it in, so Tab walks the three buttons and §8's focus ring shows
-    // where it is. Escape turns it back (see UnwindCut) and returns focus here,
-    // as do the arrow keys by way of moving the selection.
-
-    /// <summary>Turns the selected card over, or back, and takes focus with it.</summary>
-    private void FlipSelectedTile()
-    {
-        if (_library is not { IsGridView: true, SelectedTile: { } tile })
-        {
-            return;
-        }
-
-        _library.FlipTileCommand.Execute(tile);
-
-        if (_library.FlippedTile is null)
-        {
-            TakeGridFocus();
-            return;
-        }
-
-        // Posted at input priority: the class that turns the back face into a
-        // hit-testable, focusable surface is applied on the next layout pass, so
-        // focusing inline would land on a control that is still face-down.
-        Dispatcher.UIThread.Post(FocusFlippedCard, DispatcherPriority.Input);
-    }
-
     /// <summary>
-    /// Puts focus on the first action on the turned card. Silently does nothing
-    /// when the container is not realized — the tile is off screen, which is not
-    /// a state Space can produce, since flipping selects and selection scrolls.
-    /// </summary>
-    private void FocusFlippedCard()
-    {
-        if (_library?.FlippedTile is not { } flipped)
-        {
-            return;
-        }
-
-        foreach (var child in TileWall.Children)
-        {
-            if (child.IsVisible
-                && ReferenceEquals(child.DataContext, flipped)
-                && child.GetVisualDescendants().OfType<Button>().FirstOrDefault(b => b.IsVisible) is { } first)
-            {
-                first.Focus(NavigationMethod.Tab);
-                return;
-            }
-        }
-    }
-
-    /// <summary>
-    /// Focus back on the window, which is where the grid's own key handling
-    /// lives. Called whenever a card goes face-up under a focused button.
+    /// Focus back on the window, which is where the grid's own key handling lives.
     /// </summary>
     private void TakeGridFocus() => Focus();
 }

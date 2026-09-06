@@ -76,9 +76,15 @@ public sealed class IgdbClient : IIgdbClient
     /// payloads written before a field existed refetches instead of answering
     /// with the field silently empty for the rest of the TTL. Version 2 is
     /// the first to carry <c>game_type</c>, <c>parent_game</c>,
-    /// <c>version_parent</c> and <c>version_title</c>.
+    /// <c>version_parent</c> and <c>version_title</c>; version 3 is the first
+    /// to carry <c>platforms</c>; version 4 is the first to carry
+    /// <c>screenshots</c>, <c>artworks</c> and the four rating figures
+    /// (<c>rating</c>, <c>rating_count</c>, <c>aggregated_rating</c>,
+    /// <c>aggregated_rating_count</c>). Measured cost of the 3 → 4 bump:
+    /// 967 games refetch in 3 requests (400 ids per batch), and the cached
+    /// payload grows from 628 to 658 bytes per game — about 4.8%.
     /// </summary>
-    public const int GamePayloadVersion = 2;
+    public const int GamePayloadVersion = 4;
 
     /// <summary>
     /// Versioned envelope a game is cached in. An unversioned payload
@@ -86,6 +92,9 @@ public sealed class IgdbClient : IIgdbClient
     /// <see cref="GamePayloadVersion"/> on read and is refetched.
     /// </summary>
     private sealed record GamePayload(int Version, IgdbGame? Game);
+
+    public const int ExternalMatchPayloadVersion = 1;
+    private sealed record ExternalMatchPayload(int Version, ExternalMatchCacheEntry? Match);
 
     public async ValueTask<bool> IsConfiguredAsync(CancellationToken ct = default)
         => await _credentials.GetAsync(ct) is not null;
@@ -153,15 +162,17 @@ public sealed class IgdbClient : IIgdbClient
         {
             if (cached.TryGetValue(cacheKey(uid), out var entry) && entry.FetchedAt >= cutoff)
             {
-                // A null payload is a cached miss: IGDB has no record for this
-                // id under this source. Re-asking every run would spend the rate
-                // limit learning the same nothing.
-                if (Deserialize<ExternalMatchCacheEntry>(entry.PayloadJson) is { } hit)
+                var payload = Deserialize<ExternalMatchPayload>(entry.PayloadJson);
+                if (payload is { Version: ExternalMatchPayloadVersion })
                 {
-                    results[uid] = hit.ToDomain(uid);
+                    if (payload.Match is { IgdbId: > 0 } hit)
+                        results[uid] = hit.ToDomain(uid);
+                    continue;
                 }
-
-                continue;
+                // Keep an older positive answer available when refetch fails or
+                // credentials are absent, but never treat it as current.
+                var legacy = payload?.Match ?? Deserialize<ExternalMatchCacheEntry>(entry.PayloadJson);
+                if (legacy is { IgdbId: > 0 }) results[uid] = legacy.ToDomain(uid);
             }
 
             pending.Add(uid);
@@ -218,18 +229,19 @@ public sealed class IgdbClient : IIgdbClient
 
             foreach (var uid in batch)
             {
-                // Every requested id gets a cache row, matched or not. The null
-                // payload is the record of a miss.
+                // Misses carry the version too, so a schema bump rechecks them.
                 var match = found.GetValueOrDefault(uid);
                 if (match is not null)
                 {
                     results[uid] = match;
                 }
+                else results.Remove(uid);
 
                 await _cache.SetAsync(
                     CacheProvider,
                     cacheKey(uid),
-                    match is null ? null : Serialize(ExternalMatchCacheEntry.From(match)),
+                    Serialize(new ExternalMatchPayload(ExternalMatchPayloadVersion,
+                        match is null ? null : ExternalMatchCacheEntry.From(match))),
                     fetchedAt,
                     ct);
             }
@@ -264,29 +276,34 @@ public sealed class IgdbClient : IIgdbClient
         {
             if (cached.TryGetValue(GameCacheKey(id), out var entry) && entry.FetchedAt >= cutoff)
             {
-                if (entry.PayloadJson is null)
+                var payload = Deserialize<GamePayload>(entry.PayloadJson);
+                if (payload is { Version: GamePayloadVersion })
                 {
-                    // A cached miss carries no fields, so it cannot be missing
-                    // any: the payload version does not apply to it, and
-                    // re-asking would spend the budget learning the same
-                    // nothing.
+                    if (payload.Game is { } game) results.Add(game);
                     continue;
                 }
 
-                if (Deserialize<GamePayload>(entry.PayloadJson) is
-                    { Version: GamePayloadVersion, Game: { } game })
+                // Either a payload written before this version — a cache built
+                // before the current field list is full of them — or one that no
+                // longer projects. Refetch rather than serve a row whose new
+                // fields are silently empty for the rest of the TTL, and keep the
+                // old answer as the fallback for a refetch that cannot happen.
+                //
+                // Two stored shapes have to survive that, and the order matters.
+                // An older ENVELOPE ({"version":2,"game":{…}}) is what every
+                // payload on a current install looks like; the bare shape below
+                // it is what installs predating version 2 wrote. Read as a bare
+                // IgdbGame, an envelope yields IgdbId 0, fails the `> 0` guard
+                // and is dropped — so without the envelope branch a version bump
+                // turns "a stale row missing one field" into "nothing at all" on
+                // a machine with no credentials and no network, repealing the
+                // guarantee above. Whoever bumps the version next inherits this:
+                // the fallback reads envelopes, and must go on reading them.
+                if (payload is { Game: { IgdbId: > 0 } outdated })
                 {
-                    results.Add(game);
-                    continue;
+                    superseded[id] = outdated;
                 }
-
-                // Either a payload written before this version — every entry in
-                // a cache built without game_type, parent_game and
-                // version_parent is one — or one that no longer projects.
-                // Refetch rather than serve a row whose new fields are silently
-                // empty for the rest of the TTL, and keep the old answer as the
-                // fallback for a refetch that cannot happen.
-                if (Deserialize<IgdbGame>(entry.PayloadJson) is { IgdbId: > 0 } legacy)
+                else if (Deserialize<IgdbGame>(entry.PayloadJson) is { IgdbId: > 0 } legacy)
                 {
                     superseded[id] = legacy;
                 }
@@ -327,13 +344,13 @@ public sealed class IgdbClient : IIgdbClient
                 if (game is not null)
                 {
                     results.Add(game);
-                    superseded.Remove(id);
                 }
+                superseded.Remove(id);
 
                 await _cache.SetAsync(
                     CacheProvider,
                     GameCacheKey(id),
-                    game is null ? null : Serialize(new GamePayload(GamePayloadVersion, game)),
+                    Serialize(new GamePayload(GamePayloadVersion, game)),
                     fetchedAt,
                     ct);
             }
@@ -343,6 +360,223 @@ public sealed class IgdbClient : IIgdbClient
         // answer about a real game; the version only decides whether it is
         // allowed to be the FIRST answer.
         results.AddRange(superseded.Values);
+        return results;
+    }
+
+    /// <summary>
+    /// Cache key for an age-rating lookup. Own namespace, separate from
+    /// <see cref="GameCacheKey"/>, so a deprecated-field 400 cannot invalidate
+    /// the metadata cache.
+    /// </summary>
+    public static string AgeRatingsCacheKey(long igdbId)
+        => "maturity:" + igdbId.ToString(CultureInfo.InvariantCulture);
+
+    /// <summary>
+    /// Shape version of a cached <c>maturity:</c> payload. Version 1 is the
+    /// first and only shape so far. Bumping it makes every stored entry a miss
+    /// on the next read, the same mechanism <see cref="GamePayloadVersion"/>
+    /// uses.
+    /// </summary>
+    public const int AgeRatingsPayloadVersion = 1;
+
+    private sealed record AgeRatingsPayload(int Version, IReadOnlyList<string>? Ratings);
+
+    public async Task<IReadOnlyDictionary<long, IgdbAgeRatings>> GetAgeRatingsAsync(
+        IEnumerable<long> igdbIds, TimeSpan? cacheTtl = null, CancellationToken ct = default)
+    {
+        var wanted = igdbIds.Where(id => id > 0).Distinct().ToArray();
+        var results = new Dictionary<long, IgdbAgeRatings>();
+        if (wanted.Length == 0)
+        {
+            return results;
+        }
+
+        var cached = await _cache.GetManyAsync(CacheProvider, wanted.Select(AgeRatingsCacheKey), ct);
+        var cutoff = Cutoff(cacheTtl);
+        var pending = new List<long>(wanted.Length);
+
+        foreach (var id in wanted)
+        {
+            if (cached.TryGetValue(AgeRatingsCacheKey(id), out var entry) && entry.FetchedAt >= cutoff)
+            {
+                if (Deserialize<AgeRatingsPayload>(entry.PayloadJson) is
+                    { Version: AgeRatingsPayloadVersion } payload)
+                {
+                    if (payload.Ratings is { Count: > 0 } ratings)
+                        results[id] = new IgdbAgeRatings(id, ratings);
+                    continue;
+                }
+            }
+
+            pending.Add(id);
+        }
+
+        if (pending.Count == 0 || !await IsConfiguredAsync(ct))
+        {
+            return results;
+        }
+
+        var fetchedAt = _clock.GetUtcNow().UtcDateTime;
+        foreach (var batch in pending.Chunk(BatchSize))
+        {
+            var page = await FetchAllAsync<IgdbAgeRatingsGameDto>(
+                "games", (limit, offset) => Apicalypse.AgeRatings(batch, limit, offset), ct);
+
+            if (!page.Succeeded)
+            {
+                // The query names deprecated fields. When IGDB rejects it
+                // — the 400 a removed field would cause — re-ask with only
+                // the current reference fields rather than losing the batch.
+                page = await FetchAllAsync<IgdbAgeRatingsGameDto>(
+                    "games",
+                    (limit, offset) => Apicalypse.AgeRatingsWithoutDeprecatedFields(batch, limit, offset),
+                    ct);
+            }
+
+            if (!page.Succeeded)
+            {
+                continue;
+            }
+
+            var found = new Dictionary<long, IReadOnlyList<string>>();
+            foreach (var dto in page.Items)
+            {
+                if (dto.Id > 0 && RatingTokens(dto) is { Count: > 0 } tokens)
+                {
+                    found[dto.Id] = tokens;
+                }
+            }
+
+            foreach (var id in batch)
+            {
+                var tokens = found.GetValueOrDefault(id);
+                if (tokens is { Count: > 0 })
+                {
+                    results[id] = new IgdbAgeRatings(id, tokens);
+                }
+
+                await _cache.SetAsync(
+                    CacheProvider,
+                    AgeRatingsCacheKey(id),
+                    Serialize(new AgeRatingsPayload(AgeRatingsPayloadVersion, tokens)),
+                    fetchedAt,
+                    ct);
+            }
+        }
+
+        return results;
+    }
+
+    /// <summary>
+    /// Maps one game's age-rating rows into distinct <c>board:tier</c> tokens.
+    /// Three readings are tried per row in descending order of how firmly the
+    /// value is established: the published rating enum, then the organization
+    /// name and rating-category label, then the published category enum paired
+    /// with that label. A row none of the three can name yields no token, so
+    /// it cannot manufacture a row.
+    /// </summary>
+    private static IReadOnlyList<string> RatingTokens(IgdbAgeRatingsGameDto dto)
+    {
+        if (dto.AgeRatings is not { Count: > 0 } rows)
+        {
+            return [];
+        }
+
+        var tokens = new List<string>();
+        foreach (var row in rows)
+        {
+            var token = IgdbAgeRatingTokens.FromLegacyRating(row.Rating)
+                        ?? IgdbAgeRatingTokens.FromLabels(row.Organization?.Name, row.RatingCategory?.Rating)
+                        ?? IgdbAgeRatingTokens.FromLegacyOrganization(row.Category, row.RatingCategory?.Rating);
+
+            if (token is not null && !tokens.Contains(token, StringComparer.OrdinalIgnoreCase))
+            {
+                tokens.Add(token);
+            }
+        }
+
+        return tokens;
+    }
+
+    /// <summary>
+    /// Cache key for a search result set. The term is lower-cased so a
+    /// repeat with different casing is a hit, and the limit is in the key
+    /// because a 5-result answer must not be served to a caller asking
+    /// for 20.
+    /// </summary>
+    public static string SearchCacheKey(string term, int limit)
+        => "search:" + limit.ToString(CultureInfo.InvariantCulture) + ":" + term.ToLowerInvariant();
+
+    /// <summary>
+    /// Shape version of a cached <c>search:</c> payload. The same
+    /// bump-to-invalidate mechanism <see cref="GamePayloadVersion"/> and
+    /// <see cref="AgeRatingsPayloadVersion"/> use. Version 1 is the
+    /// first shape.
+    /// </summary>
+    public const int SearchPayloadVersion = 1;
+
+    /// <summary>Versioned envelope a search result set is cached in.</summary>
+    private sealed record SearchPayload(int Version, IReadOnlyList<IgdbSearchResult>? Results);
+
+    public async Task<IReadOnlyList<IgdbSearchResult>> SearchGamesAsync(
+        string title, int limit = 0, TimeSpan? cacheTtl = null, CancellationToken ct = default)
+    {
+        var term = Apicalypse.SearchTerm(title);
+        if (term is null)
+        {
+            return [];
+        }
+
+        var wanted = Math.Clamp(
+            limit > 0 ? limit : _options.SearchResultLimit, 1, Apicalypse.MaxLimit);
+        var key = SearchCacheKey(term, wanted);
+
+        var cached = await _cache.GetAsync(CacheProvider, key, ct);
+        if (cached is { } entry && entry.FetchedAt >= Cutoff(cacheTtl ?? _options.SearchCacheTtl))
+        {
+            if (Deserialize<SearchPayload>(entry.PayloadJson) is
+                { Version: SearchPayloadVersion, Results: { } hits })
+            {
+                return hits;
+            }
+        }
+
+        if (!await IsConfiguredAsync(ct))
+        {
+            return [];
+        }
+
+        // PostAsync directly, not FetchAllAsync: FetchAllAsync follows
+        // offset pages until a page comes back short. A search deliberately
+        // wants the top N by relevance, and paging the tail would spend the
+        // 4 req/s budget walking results nobody asked for.
+        var page = await PostAsync<IgdbSearchGameDto>(
+            "games", Apicalypse.SearchGames(term, wanted), ct);
+
+        if (!page.Succeeded)
+        {
+            // A failed request is NOT cached: a 400 or a dropped connection
+            // would otherwise record "IGDB knows nothing by that name" for
+            // a whole TTL.
+            return [];
+        }
+
+        // An empty result IS cached: IGDB answered, and "no such title"
+        // is a real answer worth keeping for the search TTL.
+        var results = page.Items
+            .Select(dto => dto.ToDomain())
+            .Where(result => result is not null)
+            .Select(result => result!)
+            .Take(wanted)
+            .ToArray();
+
+        await _cache.SetAsync(
+            CacheProvider,
+            key,
+            Serialize(new SearchPayload(SearchPayloadVersion, results)),
+            _clock.GetUtcNow().UtcDateTime,
+            ct);
+
         return results;
     }
 
@@ -460,13 +694,16 @@ public sealed class IgdbClient : IIgdbClient
 
     private static T? Deserialize<T>(string? json)
         where T : class
-        => string.IsNullOrWhiteSpace(json) ? null : JsonSerializer.Deserialize<T>(json, IgdbJson.Options);
+    {
+        if (string.IsNullOrWhiteSpace(json)) return null;
+        try { return JsonSerializer.Deserialize<T>(json, IgdbJson.Options); }
+        catch (JsonException) { return null; }
+    }
 
     /// <summary>
     /// Cached shape of an <c>external_games</c> match. The store id is the cache
-    /// key, so it is not duplicated inside the payload — which is also why the
-    /// stored JSON is unchanged by the rename from the Steam-only shape and
-    /// every existing cache row still deserializes.
+    /// key, so it is not duplicated inside the payload. This inner shape also
+    /// reads legacy unversioned mappings for the offline fallback.
     /// </summary>
     private sealed record ExternalMatchCacheEntry(
         long IgdbId, string? Name, string? CoverUrl, int? FirstReleaseYear, string? Summary)

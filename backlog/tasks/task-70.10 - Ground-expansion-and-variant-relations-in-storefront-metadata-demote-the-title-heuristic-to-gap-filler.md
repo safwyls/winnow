@@ -3,11 +3,11 @@ id: TASK-70.10
 title: >-
   Ground expansion and variant relations in storefront metadata, demote the
   title heuristic to gap-filler
-status: In Progress
+status: Done
 assignee:
   - '@claude'
 created_date: '2026-09-02 12:37'
-updated_date: '2026-09-02 21:00'
+updated_date: '2026-09-03 17:07'
 labels: []
 dependencies:
   - TASK-18
@@ -97,18 +97,18 @@ What Steam will NOT give: expansions. Every genuine standalone expansion in the 
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Apicalypse.Games requests game_type.type, parent_game and version_parent; IgdbGameDto and IgdbGame carry all three fields
-- [ ] #2 SteamStoreJson parses type and related_items.parent_appid from cached GetItems bodies; SteamStoreItem exposes both
-- [ ] #3 The steamcmd ParentAppId already parsed in SteamAppInfo is stored and available to the relation pipeline
-- [ ] #4 identity_links.kind accepts variant_of alongside same_game and expansion_of
-- [ ] #5 A variant_of link does not count as a title while its parent is owned, counts when it is the only thing owned, and never rolls up playtime
-- [ ] #6 A relation_label or evidence_json entry carries the source's vocabulary word so the card shows the true type without a migration per label
+- [x] #1 Apicalypse.Games requests game_type.type, parent_game and version_parent; IgdbGameDto and IgdbGame carry all three fields
+- [x] #2 SteamStoreJson parses type and related_items.parent_appid from cached GetItems bodies; SteamStoreItem exposes both
+- [x] #3 The steamcmd ParentAppId already parsed in SteamAppInfo is stored and available to the relation pipeline
+- [x] #4 identity_links.kind accepts variant_of alongside same_game and expansion_of
+- [x] #5 A variant_of link does not count as a title while its parent is owned, counts when it is the only thing owned, and never rolls up playtime
+- [x] #6 A relation_label or evidence_json entry carries the source's vocabulary word so the card shows the true type without a migration per label
 - [x] #7 The detector never proposes a pair that metadata contradicts: a known parent pointing to a different work refutes the pair, and game_type main_game with null parent_game refutes it
-- [ ] #8 Demo, beta and playtest proposals surface as variant_of, never expansion_of
-- [ ] #9 The corroboration guard is strengthened beyond "both years are known"; two known years alone no longer satisfy RequireCorroboration
-- [ ] #10 The heuristic proposes only where every metadata source (IGDB game_type, Steam store type, steamcmd parent) is silent on both members of the pair
-- [ ] #11 No new HTTP requests are required for the Steam half; the IGDB half adds no requests beyond the existing enrichment pass
-- [ ] #12 Mods are recorded with their source label but not auto-folded; the open question of grouping a mod under its base game is stated, not decided
+- [x] #8 Demo, beta and playtest proposals surface as variant_of, never expansion_of
+- [x] #9 The corroboration guard is strengthened beyond "both years are known"; two known years alone no longer satisfy RequireCorroboration
+- [x] #10 The heuristic proposes only where every metadata source (IGDB game_type, Steam store type, steamcmd parent) is silent on both members of the pair
+- [x] #11 No new HTTP requests are required for the Steam half; the IGDB half adds no requests beyond the existing enrichment pass
+- [x] #12 Mods are recorded with their source label but not auto-folded; the open question of grouping a mod under its base game is stated, not decided
 - [x] #13 A remake, remaster or port is never offered on the Expansions surface: metadata naming one of those kinds refutes an expansion proposal the same way main_game with a null parent does
 - [x] #14 The metadata claim path passes through the same refusal guards as the title heuristic rather than writing straight into the results, so a guard cannot be bypassed by a source naming a kind
 - [x] #15 No proposal arrives with its checkbox pre-ticked when the relation the metadata names is not the relation the surface is asking about
@@ -378,4 +378,42 @@ Baseline was 2927 total across all three projects before this slice. +1 net test
 ## New test
 
 `Expanded_game_refutes_on_a_measured_owned_base_pair` in `ExpansionMetadataGuardTests.cs`. Pins the decision on the Ori and the Blind Forest: Definitive Edition pair, one of the five measured owned-base cases.
+
+2026-09-03 finalization. The eleven remaining criteria were implemented across commits 0737a8c, 1a9bc09 and 80421de but never verified or checked. Verified now against the tree and a scoped run of ExpansionMetadataGuardTests, SteamStoreRelatedItemsTests, VariantLinkTests, IgdbRelationFieldTests, ExpansionDetectorTests and ExpansionRefusalRetractTests: 104 of 104 passing. Full suite green: Winnow.Tests 2759, Winnow.Recommend.Tests 145, Winnow.Covers.Tests 70, zero failures.
+
+AC1: Apicalypse.cs:103 sends game_type.type, parent_game, version_parent and version_title on the fields clause it was already sending; IgdbGameTypeDto exists with GameType on the game DTO, read through ExpandableGameTypeConverter so a reference arrives as either an id or an object. IgdbRelationFieldTests pins that the query asks for game_type.type and not the deprecated category.
+AC2: SteamStoreItem.StoreType and SteamStoreItem.Related exist; SteamStoreJson.ReadStoreType and the related_items reader parse parent_appid, demos, standalone_demos, playtests and dlc_parent_appids per Valve webui/common.proto.
+AC3: SteamCmdBuildInfoClient ParentAppId is carried through EnrichmentSyncService.cs:572-574 into Work.SteamParentAppId, and StorefrontRelation consumes it.
+AC4: migration 0021 rebuilds identity_links with CHECK (kind IN (same_game, expansion_of, variant_of)); MigrationTests.Migration_0021_admits_variant_of_and_keeps_every_standing_link.
+AC5: VariantLinkTests.A_variant_stops_counting_as_a_title_only_while_its_parent_is_owned, An_expansion_still_counts_as_a_title_where_a_variant_does_not, An_unaccompanied_demo_is_still_visible_to_both.
+AC6: 0021 adds relation_label with no CHECK, deliberately, because the vocabulary belongs to IGDB and Valve; RelationLabels carries the words; The_relation_label_is_stored_and_read_back round-trips it. MigrationTests.Migration_0022_adds_the_relation_columns_and_leaves_old_rows_unknown pins the works columns.
+AC8: ExpansionDetector derives the kind from DemoConsolidation.VariantLabel, so a marked title becomes VariantOf and never ExpansionOf even on the fallback path; MergeQueueViewModelTests.A_demo_lands_in_TEST_BUILDS_as_a_variant proves it end to end.
+AC9: the corroboration guard now requires a separator boundary, or an agreeing publisher together with a year gap consistent with an expansion. Two known years alone no longer satisfy it, and the pinned test passes two KNOWN years, the shape production actually has.
+AC10: ExpansionDetector.cs:437 refuses with MetadataSpeaks when either member has a storefront claim, so the heuristic proposes only into silence.
+AC11: ISteamStoreClient.GetCachedItemsAsync projects metadata_cache and touches the network on no path; SteamStoreRelatedItemsTests runs behind a handler that throws on any request, with Cached_bodies_yield_their_parent_pointers_with_no_request and An_uncached_appid_yields_nothing_and_still_asks_nobody. The IGDB half adds fields to an existing fields clause, which costs no extra request.
+AC12: Steam type 2 and PICS mod map to RelationLabels.Mod with Kind null, so a mod is recorded and never folded; the open question is stated at StorefrontRelation.cs:206 as an open question for the user rather than a decision the code makes, and pinned by the mod InlineData rows.
+
+AC15 REVERIFIED, because its original pin was deleted. It was checked against ExpansionMemberViewModel.IsAskedRelation; TASK-83 deleted that view model in commit 05e97df. The guarantee is now structural rather than a flag: MergeQueueViewModel.SectionOf routes variant_of to MergeSectionKind.Tests and episode/season to Parts, so the section IS the question and a variant cannot appear under the Expansions header at all. A_demo_lands_in_TEST_BUILDS_as_a_variant asserts the demo card is in TEST BUILDS and that the Expansions section is empty. The criterion holds more strongly than when it was first checked.
+
+The card contract the original notes left for the Same Game screen agents has been taken up: MergeCardViewModel.RelationLabel exists and MergeQueueViewModel reads Kind and RelationLabel to section and label the card.
+
+The correction owed to migration 0006, that Valve has no beta/playtest type, is on the record in the header of migration 0022 under Correction to 0006, on the record. That is the right home: shipped migrations are append-only and cannot be edited, and the documentation enforcement tests govern the governing documents rather than migration SQL.
+
+Two stale git worktrees under .claude/worktrees were failing two RepositoryHygieneTests by presenting duplicate AGENTS.md and tokens.axaml copies to the tree scan. Both directories are gone and the stale admin record was pruned; the suite is green as a result. No source file was changed during this finalization.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Grounded expansion and variant relations in storefront metadata and demoted the title heuristic to a gap-filler. Landed across commits 0737a8c, 1a9bc09 and 80421de; the eleven criteria still open were implemented but unverified, and are now verified and checked. All 15 acceptance criteria hold.
+
+What changed. Steam contributes with zero new HTTP requests: SteamStoreJson reads StoreItem.type and the whole related_items block from bodies already in metadata_cache, through a new ISteamStoreClient.GetCachedItemsAsync that touches the network on no path, and the steamcmd ParentAppId that EnrichmentSyncService used to drop is now stored. IGDB contributes with no extra requests, by adding game_type.type, parent_game, version_parent and version_title to a fields clause it was already sending. Migration 0021 rebuilds identity_links for the new variant_of kind plus a relation_label carrying the source vocabulary word; 0022 adds the raw storefront facts to works. The kind is derived in StorefrontRelation and never stored, because the meaning of parent_appid depends on the type - a type 14 parent is a same_game claim, not a child relation. The heuristic now refuses with MetadataSpeaks wherever any source speaks, and its corroboration guard no longer accepts two known years as evidence.
+
+Verified with a scoped run of ExpansionMetadataGuardTests, SteamStoreRelatedItemsTests, VariantLinkTests, IgdbRelationFieldTests, ExpansionDetectorTests and ExpansionRefusalRetractTests, 104 of 104 passing, inside a full suite of 2759 + 145 + 70 with zero failures. Per-criterion evidence is recorded in the implementation notes.
+
+Two findings from this pass. AC15 needed reverification: it had been checked against ExpansionMemberViewModel.IsAskedRelation, which TASK-83 deleted with the old screen. The guarantee is now structural instead of a flag - SectionOf routes variant_of into TEST BUILDS, so the section is the question and a variant cannot be offered under the Expansions header, asserted by A_demo_lands_in_TEST_BUILDS_as_a_variant. And the two stale git worktrees that were failing two RepositoryHygieneTests are gone and pruned, which is why the suite is now green where it previously reported two failures.
+
+Measured effect on the real library, recorded during implementation: 27 base games and 29 proposals at HEAD, 22 of them remakes, remasters and ports pre-ticked as expansions, became 16 base games and 20 proposals with zero rebuilds, while the genuine expansions this task was written about appeared for the first time - Half-Life: Opposing Force and Blue Shift, Don't Starve Together, Prey: Typhon Hunter, Subnautica: Below Zero, and Dishonored: Death of the Outsider under Dishonored 2, which is the parent the title heuristic got wrong.
+
+Left open deliberately and stated rather than decided: whether a mod should be grouped under its base game (AC12), recorded at StorefrontRelation.cs:206. Two rows worth a later look, neither caused here: Alan Wake's American Nightmare appears twice because two unlinked works share the title, and The Witcher: Enhanced Edition proposes under a second work of the same name, which is a same_game question wearing an Expanded Game label.
+<!-- SECTION:FINAL_SUMMARY:END -->

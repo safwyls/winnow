@@ -66,7 +66,12 @@ public sealed class SteamLibrarySource
 
     /// <summary>Scans the Steam install and returns one candidate per appid. Never throws for a missing install.</summary>
     public IReadOnlyList<CandidateOwnership> Scan(string? steamRoot = null)
+        => Scan(out _, steamRoot);
+
+    /// <summary>Completeness is required before absence can clear a previously known installation.</summary>
+    public IReadOnlyList<CandidateOwnership> Scan(out bool complete, string? steamRoot = null)
     {
+        complete = false;
         steamRoot ??= _steamRoot ?? SteamPaths.FindSteamRoot();
         if (steamRoot is null || !Directory.Exists(steamRoot))
         {
@@ -74,7 +79,17 @@ public sealed class SteamLibrarySource
             return [];
         }
 
-        var manifests = CollectManifests(steamRoot);
+        try
+        {
+            steamRoot = Path.GetFullPath(steamRoot);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            _logger.LogWarning(ex, "Invalid Steam installation root {Path}; skipping", steamRoot);
+            return [];
+        }
+
+        var manifests = CollectManifests(steamRoot, out complete);
 
         var accounts = _accountEnumerator.Enumerate(steamRoot);
         var playtimeByAccount = new List<(SteamAccount Account, IReadOnlyDictionary<string, SteamAppPlaytime> Apps)>(accounts.Count);
@@ -128,9 +143,7 @@ public sealed class SteamLibrarySource
             {
                 // Manifest present: it is authoritative for title and install state.
                 var (manifest, libraryRoot) = entry;
-                var installPath = manifest.InstallDir.Length > 0
-                    ? Path.Combine(libraryRoot, "steamapps", "common", manifest.InstallDir)
-                    : null;
+                var installPath = ResolveInstallPath(libraryRoot, manifest.InstallDir);
 
                 // With a winner, minutes/date/attribution all come from that one
                 // account and nothing else touches them. Without one, the
@@ -172,10 +185,8 @@ public sealed class SteamLibrarySource
                     Title: null,
                     AccountRef: accountRef,
                     InstallPath: null,
-                    // A real observation, not a shrug: this scan read every
-                    // library root and found no manifest, so the game is gone
-                    // from disk and the stored flag must clear.
-                    Installed: false,
+                    // An incomplete scan cannot establish that an install is gone.
+                    Installed: complete ? false : null,
                     PlaytimeMinutes: winner?.PlaytimeMinutes,
                     LastPlayedAt: winner?.LastPlayedUtc,
                     AcquiredAt: null,
@@ -192,6 +203,34 @@ public sealed class SteamLibrarySource
             + "{PlaytimeOnly} played-but-uninstalled) from {Accounts} account(s) under {Root}",
             candidates.Count, installedCount, candidates.Count - installedCount, accounts.Count, steamRoot);
         return candidates;
+    }
+
+    /// <summary>Only a complete, readable manifest inventory can trigger install reconciliation.</summary>
+    public string? ReadInstallFingerprint()
+    {
+        var root = _steamRoot ?? SteamPaths.FindSteamRoot();
+        if (root is null || !Directory.Exists(root)) return null;
+        try
+        {
+            var manifests = CollectManifests(Path.GetFullPath(root), out var complete);
+            if (!complete) return null;
+            var state = new System.Text.StringBuilder();
+            foreach (var (id, entry) in manifests.OrderBy(pair => pair.Key, StringComparer.Ordinal))
+            {
+                Add(id);
+                Add(entry.LibraryRoot);
+                Add(entry.Manifest.InstallDir);
+                Add(entry.Manifest.IsFullyInstalled ? "installed" : "pending");
+            }
+            return Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(
+                System.Text.Encoding.UTF8.GetBytes(state.ToString())));
+
+            void Add(string value) => state.Append(value.Length).Append(':').Append(value);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            return null;
+        }
     }
 
     /// <summary>
@@ -272,25 +311,34 @@ public sealed class SteamLibrarySource
         return (winner, winnerAccount);
     }
 
-    private Dictionary<string, (AppManifest Manifest, string LibraryRoot)> CollectManifests(string steamRoot)
+    private Dictionary<string, (AppManifest Manifest, string LibraryRoot)> CollectManifests(string steamRoot, out bool complete)
     {
         var libraryRoots = new List<string>();
         var seenRoots = new HashSet<string>(PathComparer);
 
         foreach (var folder in _libraryFoldersReader.Read(
-                     Path.Combine(steamRoot, "steamapps", "libraryfolders.vdf")))
+                     Path.Combine(steamRoot, "steamapps", "libraryfolders.vdf"), out complete))
         {
-            if (!Directory.Exists(folder.Path))
+            try
             {
-                _logger.LogDebug(
-                    "Steam library root {Path} does not exist (offline drive?); skipping",
-                    folder.Path);
-                continue;
-            }
+                if (!Path.IsPathFullyQualified(folder.Path) || !Directory.Exists(folder.Path))
+                {
+                    complete = false;
+                    _logger.LogWarning(
+                        "Steam library root {Path} does not exist (offline drive?); skipping",
+                        folder.Path);
+                    continue;
+                }
 
-            if (seenRoots.Add(Path.GetFullPath(folder.Path)))
+                if (seenRoots.Add(Path.GetFullPath(folder.Path)))
+                {
+                    libraryRoots.Add(Path.GetFullPath(folder.Path));
+                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
             {
-                libraryRoots.Add(folder.Path);
+                complete = false;
+                _logger.LogWarning(ex, "Cannot read Steam library root {Path}; skipping", folder.Path);
             }
         }
 
@@ -304,47 +352,85 @@ public sealed class SteamLibrarySource
         var manifests = new Dictionary<string, (AppManifest Manifest, string LibraryRoot)>(StringComparer.Ordinal);
         foreach (var libraryRoot in libraryRoots)
         {
-            var steamApps = Path.Combine(libraryRoot, "steamapps");
-            if (!Directory.Exists(steamApps))
+            try
             {
-                continue;
+                var steamApps = Path.Combine(libraryRoot, "steamapps");
+                if (!Directory.Exists(steamApps))
+                {
+                    complete = false;
+                    _logger.LogWarning("Steam library root {Path} has no readable steamapps directory; skipping", libraryRoot);
+                    continue;
+                }
+
+                foreach (var manifestPath in Directory.EnumerateFiles(steamApps, "appmanifest_*.acf"))
+                {
+                    // On Windows a three-character extension in a glob also matches
+                    // longer ones (the 8.3 short-name rule): "*.acf" happily returns
+                    // "appmanifest_1.acfx" or a "…acf.bak"-style leftover. Steam's
+                    // own backup/temp files land in this directory, so check the
+                    // suffix explicitly rather than trusting the pattern.
+                    if (!manifestPath.EndsWith(".acf", StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
+                    var manifest = _appManifestReader.Read(manifestPath);
+                    if (manifest is null)
+                    {
+                        complete = false;
+                        continue;
+                    }
+
+                    if (ToolAppIds.Contains(manifest.AppId))
+                    {
+                        _logger.LogDebug(
+                            "Skipping Steam tooling app {AppId} ({Name})", manifest.AppId, manifest.Name);
+                        continue;
+                    }
+
+                    if (!manifests.TryAdd(manifest.AppId, (manifest, libraryRoot)))
+                    {
+                        _logger.LogWarning(
+                            "App {AppId} has manifests in multiple library roots; keeping {Kept}",
+                            manifest.AppId, manifests[manifest.AppId].LibraryRoot);
+                    }
+                }
             }
-
-            foreach (var manifestPath in Directory.EnumerateFiles(steamApps, "appmanifest_*.acf"))
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
             {
-                // On Windows a three-character extension in a glob also matches
-                // longer ones (the 8.3 short-name rule): "*.acf" happily returns
-                // "appmanifest_1.acfx" or a "…acf.bak"-style leftover. Steam's
-                // own backup/temp files land in this directory, so check the
-                // suffix explicitly rather than trusting the pattern.
-                if (!manifestPath.EndsWith(".acf", StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-
-                var manifest = _appManifestReader.Read(manifestPath);
-                if (manifest is null)
-                {
-                    continue;
-                }
-
-                if (ToolAppIds.Contains(manifest.AppId))
-                {
-                    _logger.LogDebug(
-                        "Skipping Steam tooling app {AppId} ({Name})", manifest.AppId, manifest.Name);
-                    continue;
-                }
-
-                if (!manifests.TryAdd(manifest.AppId, (manifest, libraryRoot)))
-                {
-                    _logger.LogWarning(
-                        "App {AppId} has manifests in multiple library roots; keeping {Kept}",
-                        manifest.AppId, manifests[manifest.AppId].LibraryRoot);
-                }
+                complete = false;
+                _logger.LogWarning(ex, "Cannot enumerate Steam library root {Path}; skipping", libraryRoot);
             }
         }
 
         return manifests;
+    }
+
+    private string? ResolveInstallPath(string libraryRoot, string installDir)
+    {
+        if (string.IsNullOrWhiteSpace(installDir))
+            return null;
+        try
+        {
+            // A manifest supplies a relative directory, never an absolute path.
+            // Reject both separator alphabets, including Windows paths on Unix.
+            if (Path.IsPathRooted(installDir) || installDir.Contains(':') ||
+                installDir.StartsWith('\\') ||
+                installDir.Split('/', '\\').Any(part => part == ".."))
+                throw new ArgumentException("Install directory is not contained in the library");
+            var common = Path.GetFullPath(Path.Combine(libraryRoot, "steamapps", "common"));
+            var resolved = Path.GetFullPath(Path.Combine(common, installDir));
+            var relative = Path.GetRelativePath(common, resolved);
+            if (relative == "." || Path.IsPathRooted(relative) || relative == ".." ||
+                relative.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal))
+                throw new ArgumentException("Install directory is not contained in the library");
+            return resolved;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            _logger.LogWarning(ex, "Invalid Steam install directory {InstallDir} under {Root}; ignoring path", installDir, libraryRoot);
+            return null;
+        }
     }
 
     private static long ParseAppIdForOrdering(string appId)

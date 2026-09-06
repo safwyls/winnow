@@ -16,6 +16,7 @@ public sealed class SnapshotSchedulerService : BackgroundService
     private readonly SnapshotSchedulerOptions _options;
     private readonly TimeProvider _timeProvider;
     private readonly ILogger<SnapshotSchedulerService> _logger;
+    private readonly Func<CancellationToken, Task>? _refresh;
 
     /// <param name="timeProvider">
     /// Injected rather than read from <see cref="TimeProvider.System"/> so the
@@ -26,12 +27,14 @@ public sealed class SnapshotSchedulerService : BackgroundService
         ILocalLibrarySync sync,
         IOptions<SnapshotSchedulerOptions> options,
         ILogger<SnapshotSchedulerService> logger,
-        TimeProvider? timeProvider = null)
+        TimeProvider? timeProvider = null,
+        Func<CancellationToken, Task>? refresh = null)
     {
         _sync = sync;
         _options = options.Value;
         _logger = logger;
         _timeProvider = timeProvider ?? TimeProvider.System;
+        _refresh = refresh;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -102,6 +105,13 @@ public sealed class SnapshotSchedulerService : BackgroundService
         try
         {
             var report = await _sync.SyncAsync(ct).ConfigureAwait(false);
+            ct.ThrowIfCancellationRequested();
+            // Install flags can change without any of the history counters
+            // changing. Refresh after every successful scan to expose them.
+            if (_refresh is not null)
+            {
+                await _refresh(ct).ConfigureAwait(false);
+            }
             var result = report.Result;
 
             var changed = result is not null
@@ -136,9 +146,9 @@ public sealed class SnapshotSchedulerService : BackgroundService
         }
         catch (Exception ex)
         {
-            // The resolver runs the whole pass in one transaction, so a failed
-            // tick left nothing half-written; the next tick re-reads from disk.
-            _logger.LogWarning(ex, "Snapshot tick failed; the series resumes at the next tick.");
+            // Sync failures roll back their transaction. A refresh failure can
+            // follow a committed sync; the next tick retries both operations.
+            _logger.LogWarning(ex, "Snapshot scan or refresh failed; retrying at the next tick.");
         }
     }
 }

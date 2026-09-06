@@ -77,14 +77,22 @@ public readonly record struct LocalLibraryScan(
     IReadOnlyList<CandidateOwnership> Epic,
     IReadOnlyList<CandidateOwnership> Gog)
 {
+    /// <summary>
+    /// Carried beside the candidates so the sync pass can persist them without a
+    /// second walk. Empty on a machine with no Epic install.
+    /// </summary>
+    public IReadOnlyList<EpicLaunchTriple> EpicLaunchTriples { get; init; } = [];
+
     public int Count => Steam.Count + Epic.Count + Gog.Count;
 
     public IEnumerable<CandidateOwnership> All => Steam.Concat(Epic).Concat(Gog);
 }
 
 /// <summary>
-/// Implements <see cref="ILocalLibrarySync"/>. Sequences ingest and resolve and
-/// touches no repository itself, keeping the §5.1 module boundary intact.
+/// One scan-and-resolve pass over local store files. Writes no work, release or
+/// ownership row itself — those go through the resolver — but does write one
+/// <c>metadata_cache</c> row per Epic launch triple so the action band can build
+/// launch URLs without a network call.
 /// </summary>
 public sealed class LocalLibrarySyncService : ILocalLibrarySync
 {
@@ -94,6 +102,8 @@ public sealed class LocalLibrarySyncService : ILocalLibrarySync
     private readonly ExternalIdResolver _resolver;
     private readonly LibrarySyncGate _gate;
     private readonly ILogger<LocalLibrarySyncService> _logger;
+    private readonly IEpicLaunchKeyStore? _epicLaunchKeys;
+    private readonly Winnow.Core.Repositories.ISteamInstallStateRepository? _steamInstallState;
 
     public LocalLibrarySyncService(
         SteamLibrarySource steam,
@@ -101,7 +111,9 @@ public sealed class LocalLibrarySyncService : ILocalLibrarySync
         GogLibrarySource gog,
         ExternalIdResolver resolver,
         LibrarySyncGate gate,
-        ILogger<LocalLibrarySyncService> logger)
+        ILogger<LocalLibrarySyncService> logger,
+        IEpicLaunchKeyStore? epicLaunchKeys = null,
+        Winnow.Core.Repositories.ISteamInstallStateRepository? steamInstallState = null)
     {
         _steam = steam;
         _epic = epic;
@@ -109,6 +121,8 @@ public sealed class LocalLibrarySyncService : ILocalLibrarySync
         _resolver = resolver;
         _gate = gate;
         _logger = logger;
+        _epicLaunchKeys = epicLaunchKeys;
+        _steamInstallState = steamInstallState;
     }
 
     /// <summary>
@@ -117,7 +131,14 @@ public sealed class LocalLibrarySyncService : ILocalLibrarySync
     /// them; a launcher that is not installed answers empty rather than
     /// failing.
     /// </summary>
-    public LocalLibraryScan Scan() => new(_steam.Scan(), _epic.Scan(), _gog.Scan());
+    public LocalLibraryScan Scan()
+    {
+        var epic = _epic.ScanLibrary();
+        return new LocalLibraryScan(_steam.Scan(), epic.Candidates, _gog.Scan())
+        {
+            EpicLaunchTriples = epic.LaunchTriples,
+        };
+    }
 
     /// <summary>
     /// Scans the local store files and resolves what they hold. Safe to call
@@ -129,17 +150,48 @@ public sealed class LocalLibrarySyncService : ILocalLibrarySync
     {
         var stopwatch = Stopwatch.StartNew();
 
-        var scan = Scan();
+        // Steam and Epic are read under the gate, after any earlier sync completes.
+        var scan = new LocalLibraryScan([], [], _gog.Scan());
+
+        return await ResolveScanAsync(scan, stopwatch, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>Refreshes launcher installation state after Epic manifests change.</summary>
+    public async Task<LibrarySyncReport> SyncEpicAsync(CancellationToken ct = default)
+    {
+        var stopwatch = Stopwatch.StartNew();
+        return await ResolveScanAsync(new LocalLibraryScan([], [], []), stopwatch, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>Called under the sync gate so a queued scan cannot restore obsolete Epic install state.</summary>
+    internal LocalLibraryScan RefreshEpic(LocalLibraryScan scan)
+    {
+        var epic = _epic.ScanLibrary();
+        return scan with { Epic = epic.Candidates, EpicLaunchTriples = epic.LaunchTriples };
+    }
+
+    internal async Task<LocalLibraryScan> RefreshInstallStateAsync(LocalLibraryScan scan, CancellationToken ct)
+    {
+        var steam = _steam.Scan(out var complete);
+        if (complete && _steamInstallState is not null)
+            await _steamInstallState.ClearMissingAsync(
+                steam.Where(candidate => candidate.Installed != false).Select(candidate => candidate.ProviderId).ToArray(), ct)
+                .ConfigureAwait(false);
+        return RefreshEpic(scan with { Steam = steam });
+    }
+
+    private async Task<LibrarySyncReport> ResolveScanAsync(
+        LocalLibraryScan scan, Stopwatch stopwatch, CancellationToken ct)
+    {
+        using var lease = await _gate.EnterAsync(ct).ConfigureAwait(false);
+        scan = await RefreshInstallStateAsync(scan, ct).ConfigureAwait(false);
+        await PersistEpicLaunchTriplesAsync(scan, ct).ConfigureAwait(false);
+
         if (scan.Count == 0)
         {
             _logger.LogInformation("Local library sync found no candidates; nothing to resolve.");
             return new LibrarySyncReport(0, null, stopwatch.Elapsed, scan);
         }
-
-        // The gate covers the resolver and nothing else: reading store files
-        // takes no lock, and holding one across the remote job's HTTP timeout
-        // would put a stalled backfill in front of every snapshot tick.
-        using var lease = await _gate.EnterAsync(ct).ConfigureAwait(false);
 
         // LowerBound, and this is the job that makes it matter: localconfig.vdf
         // sees only what the client has synced to this machine, so on any
@@ -159,6 +211,33 @@ public sealed class LocalLibrarySyncService : ILocalLibrarySync
             result.SnapshotsWritten, result.NamesPromoted);
 
         return new LibrarySyncReport(scan.Count, result, stopwatch.Elapsed, scan);
+    }
+
+    /// <summary>
+    /// Soft-failing on purpose. An unwritable cache row costs the action band its
+    /// Epic buttons; it must never cost the user the ownership rows this pass
+    /// resolved. Skipped when no store is wired up or the scan found no triples.
+    /// </summary>
+    private async Task PersistEpicLaunchTriplesAsync(LocalLibraryScan scan, CancellationToken ct)
+    {
+        if (_epicLaunchKeys is null || scan.EpicLaunchTriples.Count == 0)
+        {
+            return;
+        }
+
+        try
+        {
+            await _epicLaunchKeys.SaveAsync(scan.EpicLaunchTriples, ct).ConfigureAwait(false);
+            _logger.LogDebug(
+                "Stored {Count} Epic launch triples from the local catalog.",
+                scan.EpicLaunchTriples.Count);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // An unwritable cache row costs the action band an Epic button; it
+            // must never cost the user the ownership rows this pass resolved.
+            _logger.LogWarning(ex, "Could not store the Epic launch triples; Epic actions may not draw.");
+        }
     }
 }
 
@@ -264,6 +343,11 @@ public sealed class RemoteOwnershipSyncService : IRemoteOwnershipSync
         // first.
         var epicOwned = await EpicApiCandidatesAsync(ct);
 
+        // HTTP and GOG stay outside the gate. Steam/Epic completion can change
+        // while backfill is waiting, including a reusable startup scan.
+        using var lease = await _gate.EnterAsync(ct).ConfigureAwait(false);
+        scan = await _local.RefreshInstallStateAsync(scan, ct).ConfigureAwait(false);
+
         var candidates = scan.Steam
             .Concat(owned)
             .Concat(scan.Epic)
@@ -276,10 +360,6 @@ public sealed class RemoteOwnershipSyncService : IRemoteOwnershipSync
             _logger.LogInformation("Remote ownership sync found no candidates; nothing to resolve.");
             return new LibrarySyncReport(0, null, stopwatch.Elapsed, scan);
         }
-
-        // Taken here and not around the fetches above, so a stalled endpoint
-        // never sits in front of the snapshot scheduler's local tick.
-        using var lease = await _gate.EnterAsync(ct).ConfigureAwait(false);
 
         // LowerBound here too. The union of both sources is the best estimate
         // available, but it is still an estimate: a session played offline on

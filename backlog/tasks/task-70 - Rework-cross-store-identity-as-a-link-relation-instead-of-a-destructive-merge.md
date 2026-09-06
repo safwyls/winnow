@@ -1,10 +1,10 @@
 ---
 id: TASK-70
 title: Rework cross-store identity as a link relation instead of a destructive merge
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-09-02 00:12'
-updated_date: '2026-09-02 00:19'
+updated_date: '2026-09-03 18:08'
 labels: []
 dependencies: []
 ordinal: 87000
@@ -167,14 +167,14 @@ Six stages, each shippable, recorded as subtasks. Stage 0 is independent of ever
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 The queue never shows a pair that cannot be acted on: no BLOCKED card, no already-one-game message, no stale entry, at any point in a session where pairs are being answered
-- [ ] #2 The card states which title takes precedence and why in plain words, including when the only reason is that it was added first, and the user can choose a different one before answering
-- [ ] #3 A base game and several expansions are presented as one group and applied as one act, with the user free to take none, some or all
-- [ ] #4 A unified title survives as a row, and the game details modal lists the other titles it covers, each with its own store, playtime and last-played
-- [ ] #5 Link and unlink are idempotent and repeatable: a pair can be linked, unlinked and linked again any number of times, and no screen ever declares the pair terminal
-- [ ] #6 A surface that has not been taught to resolve links shows the pre-link view (two entries for one game) and never shows doubled, missing or corrupted data
-- [ ] #7 same_game and expansion_of are distinguishable in the schema and behave differently in counts, playtime, buckets and recommendations, with expansion_of changing none of them by default
-- [ ] #8 An install that cannot be rebuilt migrates without losing any decision or any row, and the migration path is documented in the migration file itself
+- [x] #1 The queue never shows a pair that cannot be acted on: no BLOCKED card, no already-one-game message, no stale entry, at any point in a session where pairs are being answered
+- [x] #2 The card states which title takes precedence and why in plain words, including when the only reason is that it was added first, and the user can choose a different one before answering
+- [x] #3 A base game and several expansions are presented as one group and applied as one act, with the user free to take none, some or all
+- [x] #4 A unified title survives as a row, and the game details modal lists the other titles it covers, each with its own store, playtime and last-played
+- [x] #5 Link and unlink are idempotent and repeatable: a pair can be linked, unlinked and linked again any number of times, and no screen ever declares the pair terminal
+- [x] #6 A surface that has not been taught to resolve links shows the pre-link view (two entries for one game) and never shows doubled, missing or corrupted data
+- [x] #7 same_game and expansion_of are distinguishable in the schema and behave differently in counts, playtime, buckets and recommendations, with expansion_of changing none of them by default
+- [x] #8 An install that cannot be rebuilt migrates without losing any decision or any row, and the migration path is documented in the migration file itself
 <!-- AC:END -->
 
 ## Implementation Notes
@@ -189,4 +189,35 @@ Decisions recorded 2026-08-31. Four product decisions, made after reading the de
 3. Expansions are titles; their playtime stays separate. An expansion counts as a game the user owns. Grouping an expansion under a base game is presentation only. Civilization IV's hours stay Civilization IV's. The recommender can still surface an unplayed expansion of a played-out parent, which the design pass identified as probably the best recommendation the app can make in that situation. This settles both items 3 and 4: expansion playtime does not roll up.
 
 4. Migration path for the live database: drop and rebuild. The user accepts losing their merge decisions and roughly a week of self-accumulated playtime snapshots. What survives: the Year in Review backfill re-runs and restores 2022 onward, ownership and purchase history are re-derivable from storefront files, and the user has no process-monitor sessions or journal notes. What is lost: the standing merge decision and the playtime snapshot rows accumulated between install day and rebuild. The replay path is still required for any install that cannot rebuild, so TASK-70.7 retains it; this decision settles only what happens to the user's own database.
+
+2026-09-03 finalization review of the whole 70.x family. Status corrected from To Do to In Progress: eight of the ten subtasks are Done and the work has shipped, so To Do misrepresented it. All eight of this parent's own acceptance criteria are now verified and checked, each against a subtask closed on its own evidence.
+
+AC1 <- 70.1: MergeCandidateRepository.cs:71 carries AND l.work_id <> r.work_id in the pending query, the same predicate the confirmed read applies, so a same-work pair cannot reach the screen; LibrarySoftMatchSweepTests.A_pending_pair_whose_sides_now_share_a_work_is_retired covers the leftover rows.
+AC2 <- 70.1: MergeSurvivorReason names every rung, SurvivorLadderTests.Every_rung_reports_a_reason_of_its_own and A_pair_discriminated_only_by_id_admits_it_was_added_first cover the added-first case, and ChosenByYou plus MergeGroupingTests.Choosing_a_title_names_the_user_as_the_reason cover the user overriding it.
+AC3 <- 70.5: ExpansionLinkTests.The_scan_proposes_the_base_and_its_packs_and_nothing_else and Ungrouping_one_pack_leaves_its_siblings_grouped.
+AC4 <- 70.4: IdentityReadModelTests.The_modal_lists_the_titles_this_game_covers_with_their_own_figures and The_summed_playtime_never_pairs_with_a_foreign_last_played.
+AC5 <- 70.2 and 70.3: Link_retract_link_ends_identical_to_linking_once, Link_and_retract_repeated_ends_where_one_link_and_one_retract_ends, and migration 0019 narrowing merge_candidates to pending and rejected so no screen can declare a pair terminal.
+AC6 <- 70.4: IdentityReadInventoryTests.Every_reader_of_works_or_ownerships_is_on_the_resolve_or_the_do_not_resolve_list, guarded by A_new_reader_on_neither_list_is_caught_and_named.
+AC7 <- 70.2 and 70.5: identity_links.kind separates same_game from expansion_of, ResolvedWorkId folds same_game only, and An_expansion_link_moves_no_number_anywhere plus An_expansion_link_moves_nothing prove expansion_of changes no count, playtime, bucket or recommendation.
+AC8 <- 70.7: StandingMergeReplay plus migration 0019, whose header documents the two-pass upgrade, the three replay cases and the status narrowing; MergeRetirementTests covers all three cases including the loud refusal for an unreplayable merge.
+
+WHAT KEEPS THIS OPEN. Two subtasks remain, and both carry work beyond this parent's criteria rather than gaps in them. TASK-70.5 AC6, the optional setting that groups expansions in the library grid, was never built. TASK-70.10, grounding expansion and variant relations in storefront metadata, stands at 4 of 15 criteria. Neither is required by any criterion above.
+
+Two subtasks were closed as superseded rather than delivered: TASK-70.9 (its screen was replaced by TASK-83) and TASK-70.8 criterion 5 (the 840px ceiling measured a card that no longer exists).
+
+2026-09-03, later the same day: TASK-70.10 is now verified and Done, all 15 of its criteria checked. The only work left anywhere under this parent is TASK-70.5 criterion 6, the optional setting that groups expansions in the library grid, which was never attempted. Every other subtask is closed - eight delivered and verified, TASK-70.9 closed as superseded by TASK-83.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Reworked cross-store identity as a link relation instead of a destructive merge. All eight acceptance criteria verified, and all ten subtasks are now closed.
+
+What shipped. Identity is a link, not a collapse: migration 0018 adds identity_acts and identity_links with a partial unique index making at most one live parent per work a schema fact; 0019 replays every standing merge into links and then drops the destructive executor, its undo journal and the undone status; 0021 admits variant_of and a relation_label; 0022 records the raw storefront facts the relation is derived from. The library grid became one tile per resolved game, the details modal gained a coverage section and an expansions section, and the Merges queue proposes groups rather than pairs. Expansion and variant relations are grounded in metadata the storefronts already hand Winnow, with the title heuristic demoted to a gap-filler that proposes only into silence.
+
+Eight criteria, each verified against a subtask closed on its own evidence: the queue never offers a pair that is already one game (70.1); the card names why a title won and lets the user choose another (70.1); a base and its packs are one group applied as one act (70.5); a unified title keeps its row and the modal lists what it covers (70.4); link and unlink are idempotent and no screen declares a pair terminal (70.2, 70.3); an untaught surface is caught by the resolve inventory rather than shown doubled data (70.4); same_game and expansion_of are distinguishable in the schema and behave differently, with expansion_of changing nothing by default (70.2, 70.5); and an unrebuildable install migrates without losing a decision or a row, documented in the migration file itself (70.7).
+
+Two subtasks closed as superseded rather than delivered, both by TASK-83's replacement of the Same Game screen: TASK-70.9 entirely, and TASK-70.8's width-ceiling criterion, which measured a card that no longer exists.
+
+Verified across the family with scoped runs - 100 identity-link tests, 42 grain tests, 104 metadata-grounding tests - inside a full suite of 2773 + 145 + 70 with zero failures. The last gap, TASK-70.5's optional grid-grouping setting, was built on 2026-09-03 with two product decisions taken with the user, and is applied above the repository chokepoint so the recommender's view of the library is unchanged whichever way the grid is drawn.
+<!-- SECTION:FINAL_SUMMARY:END -->

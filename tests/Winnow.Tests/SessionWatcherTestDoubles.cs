@@ -41,7 +41,12 @@ public sealed class ScriptedProcessSource : IProcessSource
     public int ListCalls { get; private set; }
 
     /// <summary>Starts a process. Visible to the next <see cref="List"/>.</summary>
-    public FakeProcess Start(int pid, string name, string? executablePath, DateTime startedAtUtc)
+    public FakeProcess Start(
+        int pid,
+        string name,
+        string? executablePath,
+        DateTime startedAtUtc,
+        string? steamCompatibilityDataPath = null)
     {
         if (_handles.TryGetValue(pid, out var held) && !held.Disposed)
         {
@@ -50,7 +55,7 @@ public sealed class ScriptedProcessSource : IProcessSource
                 + "The OS would not recycle it; neither will this fake.");
         }
 
-        var process = new FakeProcess(pid, name, executablePath, startedAtUtc);
+        var process = new FakeProcess(pid, name, executablePath, startedAtUtc, steamCompatibilityDataPath);
         _running[pid] = process;
         _handles.Remove(pid);
         return process;
@@ -78,7 +83,7 @@ public sealed class ScriptedProcessSource : IProcessSource
         // handle this process happens to have closed. Only the handle wrapper
         // loses the id.
         return _running.Values
-            .Select(static p => new ProcessListing(p.Number, p.ProcessName))
+            .Select(static p => new ProcessListing(p.Number, p.ProcessName, p.SteamCompatibilityDataPath))
             .ToList();
     }
 
@@ -102,11 +107,17 @@ public sealed class FakeProcess : ITrackedProcess
 {
     private bool _exited;
 
-    internal FakeProcess(int pid, string processName, string? executablePath, DateTime startedAtUtc)
+    internal FakeProcess(
+        int pid,
+        string processName,
+        string? executablePath,
+        DateTime startedAtUtc,
+        string? steamCompatibilityDataPath)
     {
         Number = pid;
         ProcessName = processName;
         ExecutablePath = executablePath;
+        SteamCompatibilityDataPath = steamCompatibilityDataPath;
         StartedAtUtc = startedAtUtc;
     }
 
@@ -133,6 +144,8 @@ public sealed class FakeProcess : ITrackedProcess
     public string ProcessName { get; }
 
     public string? ExecutablePath { get; }
+
+    public string? SteamCompatibilityDataPath { get; }
 
     public DateTime StartedAtUtc { get; }
 
@@ -227,4 +240,11 @@ public sealed class FlakySessionRepository(ISessionRepository inner) : ISessionR
 
     public Task<SessionNote?> GetNoteAsync(long sessionId, CancellationToken ct = default)
         => inner.GetNoteAsync(sessionId, ct);
+
+    public Task<IReadOnlyList<SessionJournalEntry>> GetJournalEntriesByOwnershipAsync(
+        long ownershipId, CancellationToken ct = default)
+        => inner.GetJournalEntriesByOwnershipAsync(ownershipId, ct);
+
+    public Task DeleteNoteAsync(long sessionId, CancellationToken ct = default)
+        => inner.DeleteNoteAsync(sessionId, ct);
 }
