@@ -1,4 +1,4 @@
-﻿# Winnow — Design System
+# Winnow — Design System
 
 **Applies to:** Avalonia 11+ desktop client, dark-only
 **Companion files:** `src/Winnow.App/Themes/tokens.axaml` (the token dictionary),
@@ -1154,24 +1154,12 @@ crop the user reported and must not come back. There is deliberately no window f
 the cap is the picture's own size, not a share of the window, because a full-window overlay has
 room to spare from a very ordinary window upward.
 
-**What a window produces:**
-
-| window | overlay | shot drawn | the hero it replaces |
-|---|---|---|---|
-| 1200x640 (the app's own minimum) | 1200 x 604 | 882 x 496 | 352 x 198 |
-| 1280x820 (default) | 1280 x 784 | 1136 x 639 | 434 x 244 |
-| 1440x900 | 1440 x 864 | 1280 x 720 | — |
-| 1600x900 | 1600 x 864 | 1280 x 720 | 476 x 268 |
-| 1920x1080 | 1920 x 1044 | 1280 x 720 | 572 x 322 |
-| 2560x1440 | 2560 x 1404 | 1280 x 720 | 764 x 430 |
-| 3440x1440 | 3440 x 1404 | 1280 x 720 | 764 x 430 |
-| 3840x2160 | 3840 x 2124 | 1280 x 720 | 1148 x 646 |
-
-The shot is drawn at its native size from an overlay of 1424 x 828 upward, which is a window
-of about 1424 x 864 once the title bar is taken off — so from 1440x900 up. Below that the
-whole frame shrinks uniformly. At the app's own minimum window the shot is 6.3 times the area
-of the hero it replaces, at the default window 6.9 times, and even at 3840x2160, where the
-hero was largest, 1.24 times.
+The image and its controls share a centered container. Close overlays the top-right corner;
+back and forward overlay the left and right edges, vertically centered, all inset by 12px.
+Controls use `Surface` at 70% opacity, rising to `SurfaceRaised` at 85% on hover or keyboard focus.
+Each button is 36px square, with a centered vector X or a 24px chevron icon.
+The image and position caption are centered together, with the count 8px below the image.
+The overlay keeps at least 24px of outer space.
 
 **The decode.** `CoverImaging.WidthBuckets` used to top out at 640 pixels, so the in-modal hero
 was already a 640-wide decode upscaled — at 3840x2160 it was drawn 1148px wide from a 640px
@@ -1191,9 +1179,8 @@ same guard the modal's own scrim carries.
 
 **Focus.** `KeyboardNavigation.TabNavigation="Cycle"` on the overlay panel — the same trap the
 modal's card already carries, one layer up — so Tab cannot reach the modal beneath. Focus moves
-to the close control when the overlay appears, with `NavigationMethod.Tab` so the drawn ring is
-visible; a plain `Focus()` sets focus without marking it visible, which is an overlay taking
-focus without showing where it went. On close, focus returns to the thumbnail the lightbox was
+to the close control without an initial highlight (`NavigationMethod.Pointer`). Tab navigation
+still shows the keyboard focus ring. On close, focus returns to the thumbnail the lightbox was
 opened from, and that thumbnail is scrolled back into view because the strip scrolls sideways.
 It returns to the originating thumbnail rather than to the one now showing; the strip's own
 mark follows the overlay, so the two can differ after the user has navigated, and the mark is
@@ -1209,7 +1196,8 @@ so the position also rides the caption under the image: a bound `TextBlock` with
 `LiveSetting="Polite"` and no `AutomationProperties.Name` of its own, exactly the arrangement
 §10.3's refetch status field uses and for the reason recorded there.
 
-See `docs/spikes/screenshot-lightbox-scale.md` for the measurements.
+See `docs/spikes/screenshot-lightbox-scale.md` for measurements of the original layout,
+which reserved separate rows and columns for the controls.
 
 **Tab order follows the tree, not `TabIndex`.** Avalonia's tab navigation walks declaration
 order and ignores `TabIndex` on a non-focusable container — measured, not assumed. The right

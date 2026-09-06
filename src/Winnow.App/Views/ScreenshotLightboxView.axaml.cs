@@ -37,12 +37,11 @@ public partial class ScreenshotLightboxView : UserControl
 
         if (change.GetNewValue<bool>())
         {
-            // NavigationMethod.Tab so the focus ring is drawn — a plain
-            // Focus() sets focus without making the ring visible. Posted at
-            // Input priority because the controls are not laid out at the
-            // instant IsVisible turns true.
+            // Keep focus inside the overlay without an initial keyboard ring.
+            // Tabbing still reveals the ring through :focus-visible. Wait until
+            // the controls have been laid out before moving focus.
             Dispatcher.UIThread.Post(
-                () => CloseButton.Focus(NavigationMethod.Tab),
+                () => CloseButton.Focus(NavigationMethod.Pointer),
                 DispatcherPriority.Input);
 
             return;

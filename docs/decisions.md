@@ -2030,3 +2030,46 @@ AGENTS.md:
 >
 > **You never modify code semantics.** If a comment edit would require touching executable
 > lines, report what is needed instead of doing it."""
+
+## 2026-09-06 — Lightbox controls follow the image
+
+The controls now overlay the image, freeing the space previously reserved for navigation
+and close. The former design-system window-size measurements described that old layout:
+
+**What a window produces:**
+
+| window | overlay | shot drawn | the hero it replaces |
+|---|---|---|---|
+| 1200x640 (the app's own minimum) | 1200 x 604 | 882 x 496 | 352 x 198 |
+| 1280x820 (default) | 1280 x 784 | 1136 x 639 | 434 x 244 |
+| 1440x900 | 1440 x 864 | 1280 x 720 | — |
+| 1600x900 | 1600 x 864 | 1280 x 720 | 476 x 268 |
+| 1920x1080 | 1920 x 1044 | 1280 x 720 | 572 x 322 |
+| 2560x1440 | 2560 x 1404 | 1280 x 720 | 764 x 430 |
+| 3440x1440 | 3440 x 1404 | 1280 x 720 | 764 x 430 |
+| 3840x2160 | 3840 x 2124 | 1280 x 720 | 1148 x 646 |
+
+The shot is drawn at its native size from an overlay of 1424 x 828 upward, which is a window
+of about 1424 x 864 once the title bar is taken off — so from 1440x900 up. Below that the
+whole frame shrinks uniformly. At the app's own minimum window the shot is 6.3 times the area
+of the hero it replaces, at the default window 6.9 times, and even at 3840x2160, where the
+hero was largest, 1.24 times.
+
+## 2026-09-06 — Refine lightbox controls
+
+Replaced the opaque control fill with translucency and centered vector icons.
+The design system previously said:
+
+> Controls use an opaque `Surface` background so they remain readable over any screenshot.
+
+## 2026-09-06 — Lightbox opening focus and caption
+
+The close control receives focus without an opening highlight, and the count sits directly
+below the image. The design system previously said:
+
+> Focus moves
+> to the close control when the overlay appears, with `NavigationMethod.Tab` so the drawn ring is
+> visible; a plain `Focus()` sets focus without marking it visible, which is an overlay taking
+> focus without showing where it went.
+
+> The overlay keeps 24px of outer space and an 8px gap before the position caption.

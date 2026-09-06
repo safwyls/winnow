@@ -88,7 +88,7 @@ public sealed class ScreenshotLightboxStructureTests
 
         var frame = Regex.Match(
             markup,
-            @"<Border Grid\.Column=""1""(.*?)</Border>",
+            @"<Border Name=""Frame""(.*?)</Border>",
             RegexOptions.Singleline);
 
         Assert.True(frame.Success, "The lightbox frame is gone.");
@@ -125,7 +125,7 @@ public sealed class ScreenshotLightboxStructureTests
 
         var caption = Regex.Match(
             markup,
-            @"<TextBlock Grid\.Row=""2""(.*?)/>",
+            @"<TextBlock Grid\.Row=""1""(.*?)/>",
             RegexOptions.Singleline);
 
         Assert.True(caption.Success, "The position caption is gone.");

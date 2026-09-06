@@ -1,4 +1,4 @@
-﻿<UserControl xmlns="https://github.com/avaloniaui"
+<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Winnow.App.ViewModels"
              x:Class="Winnow.App.Views.ScreenshotLightboxView"
@@ -35,31 +35,43 @@
          Polite — the route §8 leaves open and the one §10.3's refetch
          status already uses. -->
 
+    <UserControl.Resources>
+        <!-- Bind to the live theme brushes so theme changes reach these fills. -->
+        <SolidColorBrush x:Key="LightboxControlFill" Opacity="0.7"
+                         Color="{Binding Color, Source={StaticResource Surface}, x:CompileBindings=False}"/>
+        <SolidColorBrush x:Key="LightboxControlActiveFill" Opacity="0.85"
+                         Color="{Binding Color, Source={StaticResource SurfaceRaised}, x:CompileBindings=False}"/>
+    </UserControl.Resources>
+
     <UserControl.Styles>
 
-        <!-- The three controls. Quiet until touched: the 1px border is
+        <!-- The three controls. Readable over the image: the 1px border is
              transparent at rest so it reserves the space the focus ring
              needs without drawing anything. Same construction as
              Button.quiet in the detail modal, declared again here because
              that class is local to that view. -->
         <Style Selector="Button.lightbox">
-            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Background" Value="{StaticResource LightboxControlFill}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="BorderBrush" Value="Transparent"/>
             <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
-            <Setter Property="Padding" Value="9,4"/>
+            <Setter Property="Width" Value="36"/>
+            <Setter Property="Height" Value="36"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
             <Setter Property="Cursor" Value="Hand"/>
         </Style>
         <Style Selector="Button.lightbox /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Background" Value="{StaticResource LightboxControlFill}"/>
             <Setter Property="BorderBrush" Value="Transparent"/>
         </Style>
         <Style Selector="Button.lightbox:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
+            <Setter Property="Background" Value="{StaticResource LightboxControlActiveFill}"/>
         </Style>
         <Style Selector="Button.lightbox:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
-            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
+            <Setter Property="Background" Value="{StaticResource LightboxControlActiveFill}"/>
         </Style>
 
     </UserControl.Styles>
@@ -77,45 +89,20 @@
                 Background="{StaticResource ModalScrim}"
                 PointerPressed="OnScrimPressed"/>
 
-        <Grid Margin="24" RowDefinitions="Auto,*,Auto" RowSpacing="8">
+        <Grid Margin="24" RowDefinitions="*,Auto" RowSpacing="8"
+              HorizontalAlignment="Center"
+              VerticalAlignment="Center">
 
-            <Button Grid.Row="0"
-                    Name="CloseButton"
-                    Classes="lightbox"
-                    HorizontalAlignment="Right"
-                    Command="{Binding CloseCommand}"
-                    AutomationProperties.Name="{Binding CloseAutomationName}"
-                    ToolTip.Tip="{Binding CloseTooltip}">
-                <TextBlock Classes="body-l" Text="&#x00D7;"/>
-            </Button>
+            <!-- Center both axes so the image sets the controls' bounds,
+                 including when a short window limits the image's height. -->
+            <Grid Grid.Row="0"
+                  HorizontalAlignment="Center"
+                  VerticalAlignment="Center">
 
-            <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="16">
-
-                <!-- A game with one screenshot draws no navigation at all
-                     rather than two inert controls. -->
-                <Button Grid.Column="0"
-                        Name="PreviousButton"
-                        Classes="lightbox"
-                        VerticalAlignment="Center"
-                        IsVisible="{Binding CanNavigate}"
-                        Command="{Binding PreviousCommand}"
-                        AutomationProperties.Name="{Binding PreviousAutomationName}"
-                        ToolTip.Tip="{Binding PreviousTooltip}">
-                    <TextBlock Classes="data" FontSize="18" Text="&#x2190;"/>
-                </Button>
-
-                <!-- 1282 x 722 = 1280 x 720 plus the 1px border on each
-                     side. 1280 x 720 is the native size of IGDB's
-                     t_screenshot_huge; past it every pixel is upscale.
-                     Stretch is Uniform so a small window shrinks the whole
-                     frame rather than cropping it, and the caps prevent
-                     growth past native on a large one. -->
-                <Border Grid.Column="1"
-                        Name="Frame"
+                <!-- Native screenshot size plus the 1px border on each side. -->
+                <Border Name="Frame"
                         MaxWidth="1282"
                         MaxHeight="722"
-                        HorizontalAlignment="Center"
-                        VerticalAlignment="Center"
                         ClipToBounds="True"
                         CornerRadius="{StaticResource RadiusControl}"
                         BorderThickness="1"
@@ -123,15 +110,53 @@
                     <Image Source="{Binding Image}" Stretch="Uniform"/>
                 </Border>
 
-                <Button Grid.Column="2"
-                        Name="NextButton"
+                <Button Name="CloseButton"
                         Classes="lightbox"
+                        Margin="12"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Top"
+                        Command="{Binding CloseCommand}"
+                        AutomationProperties.Name="{Binding CloseAutomationName}"
+                        ToolTip.Tip="{Binding CloseTooltip}">
+                    <Canvas Width="16" Height="16" IsHitTestVisible="False">
+                        <Path Data="M 2,2 L 14,14 M 14,2 L 2,14"
+                              Stroke="{StaticResource Text}" StrokeThickness="2"
+                              StrokeLineCap="Round"/>
+                    </Canvas>
+                </Button>
+
+                <!-- A game with one screenshot draws no navigation at all
+                     rather than two inert controls. -->
+                <Button Name="PreviousButton"
+                        Classes="lightbox"
+                        Margin="12"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Center"
+                        IsVisible="{Binding CanNavigate}"
+                        Command="{Binding PreviousCommand}"
+                        AutomationProperties.Name="{Binding PreviousAutomationName}"
+                        ToolTip.Tip="{Binding PreviousTooltip}">
+                    <Canvas Width="24" Height="24" IsHitTestVisible="False">
+                        <Path Data="M 16,4 L 8,12 L 16,20"
+                              Stroke="{StaticResource Text}" StrokeThickness="2"
+                              StrokeLineCap="Round" StrokeJoin="Round"/>
+                    </Canvas>
+                </Button>
+
+                <Button Name="NextButton"
+                        Classes="lightbox"
+                        Margin="12"
+                        HorizontalAlignment="Right"
                         VerticalAlignment="Center"
                         IsVisible="{Binding CanNavigate}"
                         Command="{Binding NextCommand}"
                         AutomationProperties.Name="{Binding NextAutomationName}"
                         ToolTip.Tip="{Binding NextTooltip}">
-                    <TextBlock Classes="data" FontSize="18" Text="&#x2192;"/>
+                    <Canvas Width="24" Height="24" IsHitTestVisible="False">
+                        <Path Data="M 8,4 L 16,12 L 8,20"
+                              Stroke="{StaticResource Text}" StrokeThickness="2"
+                              StrokeLineCap="Round" StrokeJoin="Round"/>
+                    </Canvas>
                 </Button>
 
             </Grid>
@@ -141,7 +166,7 @@
                  live-region event (verified against the Avalonia 11.3.20
                  source). No AutomationProperties.Name is set: the peer
                  discards it and reads the Text (§8). -->
-            <TextBlock Grid.Row="2"
+            <TextBlock Grid.Row="1"
                        Name="PositionCaption"
                        Classes="data-s"
                        HorizontalAlignment="Center"
