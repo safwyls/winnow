@@ -1,4 +1,4 @@
-﻿<UserControl xmlns="https://github.com/avaloniaui"
+<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Winnow.App.ViewModels"
              xmlns:conv="using:Winnow.App.Converters"
@@ -6,7 +6,9 @@
              xmlns:lists="using:Winnow.App.ViewModels.Lists"
              x:Class="Winnow.App.Views.GameDetailsView"
              x:DataType="vm:GameDetailsViewModel"
-             Focusable="True">
+             Focusable="True"
+             AutomationProperties.Name="{Binding Title, StringFormat='Details of {0}'}"
+             AutomationProperties.ControlTypeOverride="Window">
 
     <!-- Game detail modal (§10). Four bands: identity, history, actions, rest.
          Rows appear when their data exists. One popup: the action band's
@@ -63,6 +65,31 @@
     </UserControl.Resources>
 
     <UserControl.Styles>
+
+        <Style Selector="Expander.gog-notes /template/ ToggleButton#ExpanderHeader">
+            <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+            <Setter Property="Background" Value="{StaticResource Surface}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="FocusAdorner" Value="{x:Null}"/>
+        </Style>
+        <Style Selector="Expander.gog-notes /template/ ToggleButton#ExpanderHeader:pointerover /template/ Border#ToggleButtonBackground, Expander.gog-notes /template/ ToggleButton#ExpanderHeader:pressed /template/ Border#ToggleButtonBackground">
+            <Setter Property="Background" Value="{StaticResource Surface}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource TextDim}"/>
+        </Style>
+        <Style Selector="Expander.gog-notes /template/ ToggleButton#ExpanderHeader:pointerover /template/ ContentPresenter#PART_ContentPresenter, Expander.gog-notes /template/ ToggleButton#ExpanderHeader:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+        </Style>
+        <Style Selector="Expander.gog-notes /template/ ToggleButton#ExpanderHeader /template/ Path#ExpandCollapseChevron, Expander.gog-notes /template/ ToggleButton#ExpanderHeader:pointerover /template/ Path#ExpandCollapseChevron, Expander.gog-notes /template/ ToggleButton#ExpanderHeader:pressed /template/ Path#ExpandCollapseChevron">
+            <Setter Property="Stroke" Value="{StaticResource Text}"/>
+        </Style>
+        <Style Selector="Expander.gog-notes /template/ ToggleButton#ExpanderHeader /template/ Border#ExpandCollapseChevronBorder, Expander.gog-notes /template/ ToggleButton#ExpanderHeader:pointerover /template/ Border#ExpandCollapseChevronBorder, Expander.gog-notes /template/ ToggleButton#ExpanderHeader:pressed /template/ Border#ExpandCollapseChevronBorder">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Expander.gog-notes /template/ ToggleButton#ExpanderHeader:focus-visible /template/ Border#ToggleButtonBackground">
+            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+        </Style>
 
         <!-- The modal's own scrollbar is an interior control, not one at the
              window edge, so it opts out of the resize-border inset (§9). -->
@@ -775,7 +802,7 @@
                                      no Click attribute because MenuItem raises
                                      Click already handled; the code-behind wires
                                      them with handledEventsToo. -->
-                                <Button Classes="secondary"
+                                <Button AutomationProperties.Name="{Binding MoreActionsLabel}" Classes="secondary"
                                         Name="MoreActionsButton"
                                         ToolTip.Tip="{Binding MoreActionsTooltip}">
                                     <Button.Flyout>
@@ -933,6 +960,15 @@
                                   VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="{StaticResource InnerScrollGutter}">
 
+                        <Expander Header="GOG patch notes" Classes="gog-notes"
+                                  Background="{StaticResource Surface}" BorderBrush="{StaticResource Line}"
+                                  AutomationProperties.Name="GOG patch notes"
+                                  IsVisible="{Binding HasGogPatchNotes}"
+                                  Margin="0,12,0,0" HorizontalAlignment="Stretch">
+                            <TextBlock Classes="body" FontSize="13" TextWrapping="Wrap"
+                                       Text="{Binding GogPatchNotes}"/>
+                        </Expander>
+
                         <StackPanel IsVisible="{Binding ShowIgdbMatch}">
                         <StackPanel DataContext="{Binding IgdbMatch}"
                                     x:DataType="vm:GameIgdbMatchViewModel">
@@ -985,7 +1021,7 @@
                                              AutomationProperties.Name="{Binding FieldLabel}"
                                              Text="{Binding Query, Mode=TwoWay}"
                                              KeyDown="OnMatchQueryKeyDown"/>
-                                    <Button Grid.Column="1" Classes="secondary"
+                                    <Button AutomationProperties.Name="{Binding SearchLabel}" Grid.Column="1" Classes="secondary"
                                             Command="{Binding SearchCommand}">
                                         <TextBlock Classes="body" FontSize="12"
                                                    Text="{Binding SearchLabel}"/>
@@ -1061,7 +1097,7 @@
                                                 <TextBlock Classes="body" FontSize="12"
                                                            Text="{Binding ClaimLinkLabel}"/>
                                             </Button>
-                                            <Button Classes="quiet"
+                                            <Button AutomationProperties.Name="{Binding ClaimDeclineLabel}" Classes="quiet"
                                                     Command="{Binding DeclineClaimCommand}">
                                                 <TextBlock Classes="body" FontSize="12"
                                                            Text="{Binding ClaimDeclineLabel}"/>
@@ -1231,7 +1267,7 @@
                                                     <TextBlock Grid.Column="2" Classes="data-s"
                                                                Text="{Binding DateText}"
                                                                VerticalAlignment="Center"/>
-                                                    <Button Grid.Column="3"
+                                                    <Button AutomationProperties.Name="Patch notes" Grid.Column="3"
                                                             Classes="quiet"
                                                             IsVisible="{Binding HasLink}"
                                                             Click="OnUpdateLinkPressed"
@@ -1268,7 +1304,7 @@
 
                                 <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12"
                                       IsVisible="{Binding ShowDismissFlag}">
-                                    <Button Grid.Column="0" Classes="secondary"
+                                    <Button AutomationProperties.Name="{Binding DismissFlagLabel}" Grid.Column="0" Classes="secondary"
                                             Command="{Binding DismissFlagCommand}"
                                             ToolTip.Tip="{Binding DismissFlagNote}">
                                         <TextBlock Classes="body" FontSize="12"
@@ -1284,7 +1320,7 @@
 
                                 <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12"
                                       IsVisible="{Binding ShowRestoreFlag}">
-                                    <Button Grid.Column="0" Classes="secondary"
+                                    <Button AutomationProperties.Name="{Binding RestoreFlagLabel}" Grid.Column="0" Classes="secondary"
                                             Command="{Binding RestoreFlagCommand}"
                                             ToolTip.Tip="{Binding RestoreFlagNote}">
                                         <TextBlock Classes="body" FontSize="12"
@@ -1797,7 +1833,7 @@
                              facts, inside this column's own scroll region. The
                              search surface stays in the right column: a
                              candidate row does not fit 200px. -->
-                        <Button Name="IgdbClearButton"
+                        <Button AutomationProperties.Name="{Binding IgdbMatch.ClearLabel}" Name="IgdbClearButton"
                                 Classes="link"
                                 HorizontalAlignment="Left"
                                 IsVisible="{Binding IgdbMatch.ShowPinned, FallbackValue=False}"

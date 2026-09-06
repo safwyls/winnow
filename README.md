@@ -184,7 +184,10 @@ One document owns each domain, and [`AGENTS.md`](AGENTS.md) carries the full lis
 
 ### What isn't built
 
-Merge *execution* (the queue records intent; nothing applies it), JSON/CSV export, install
+Settings → Library offers an acquisition CSV export with title, store, acquisition date,
+licence and price paid. Missing values stay blank; prices are stored cents without a currency.
+
+Merge *execution* (the queue records intent; nothing applies it), full JSON export/import, install
 management, and full-screen gamepad navigation. [`ROADMAP.md`](ROADMAP.md) §5 lists the
 carried debt against its backlog tasks.
 

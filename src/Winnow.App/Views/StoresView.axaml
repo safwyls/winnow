@@ -1,4 +1,4 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+<UserControl AutomationProperties.Name="Platforms" AutomationProperties.ControlTypeOverride="Group" xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Winnow.App.ViewModels"
              xmlns:views="using:Winnow.App.Views"
@@ -224,7 +224,7 @@
                 BorderThickness="0,0,0,1">
             <StackPanel Spacing="12">
                 <StackPanel Spacing="7">
-                    <TextBlock Classes="display-l" Text="{Binding Title}"/>
+                    <TextBlock AutomationProperties.HeadingLevel="1" Classes="display-l" Text="{Binding Title}"/>
                     <TextBlock Classes="body"
                                MaxWidth="640"
                                HorizontalAlignment="Left"
@@ -331,7 +331,7 @@
                         <Grid ColumnDefinitions="Auto,*,Auto,Auto">
                             <StackPanel Grid.Column="0" Orientation="Horizontal"
                                         Spacing="10" VerticalAlignment="Center">
-                                <TextBlock Classes="display-l" FontSize="18" Text="Steam"
+                                <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="18" Text="Steam"
                                            VerticalAlignment="Center"/>
                                 <!-- The count and its unit share ONE TextBlock,
                                      as two Runs, because they must share a
@@ -494,7 +494,7 @@
                                  API state word uses, so the two cannot
                                  disagree. -->
                             <StackPanel Orientation="Horizontal" Spacing="10">
-                                <TextBlock Classes="display-l" FontSize="16"
+                                <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="16"
                                            VerticalAlignment="Center"
                                            Text="{Binding SteamSignInHeading}"/>
                                 <TextBlock Classes="para lead"
@@ -709,7 +709,7 @@
                                  the input, and the field, Save and Clear are
                                  left as one uninterrupted group. -->
                             <Grid ColumnDefinitions="Auto,10,Auto,10,Auto,*,Auto">
-                                <TextBlock Grid.Column="0"
+                                <TextBlock AutomationProperties.HeadingLevel="2" Grid.Column="0"
                                            Classes="display-l" FontSize="16"
                                            VerticalAlignment="Center"
                                            Text="{Binding SteamApiKeyHeading}"/>
@@ -927,7 +927,7 @@
                         <Grid ColumnDefinitions="*,Auto">
                             <StackPanel Grid.Column="0" Orientation="Horizontal"
                                         Spacing="10" VerticalAlignment="Center">
-                                <TextBlock Classes="display-l" FontSize="18" Text="Epic"
+                                <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="18" Text="Epic"
                                            VerticalAlignment="Center"/>
                                 <!-- The count and its unit share ONE TextBlock,
                                      as two Runs, because they must share a
@@ -1094,7 +1094,7 @@
                         <Grid ColumnDefinitions="*,Auto">
                             <StackPanel Grid.Column="0" Orientation="Horizontal"
                                         Spacing="10" VerticalAlignment="Center">
-                                <TextBlock Classes="display-l" FontSize="18" Text="GOG"
+                                <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="18" Text="GOG"
                                            VerticalAlignment="Center"/>
                                 <!-- The count and its unit share ONE TextBlock,
                                      as two Runs, because they must share a
@@ -1170,7 +1170,7 @@
             <Border Classes="modal"
                     HorizontalAlignment="Center" VerticalAlignment="Center">
                 <StackPanel Spacing="16">
-                    <TextBlock Classes="display-l" FontSize="18"
+                    <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="18"
                                Text="{Binding MethodsModalTitle}"/>
 
                     <ScrollViewer MaxHeight="440"
@@ -1222,7 +1222,7 @@
             <Border Classes="modal"
                     HorizontalAlignment="Center" VerticalAlignment="Center">
                 <StackPanel Spacing="16">
-                    <TextBlock Classes="display-l" FontSize="18"
+                    <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="18"
                                Text="{Binding SignInConsentTitle}"/>
 
                     <ScrollViewer MaxHeight="380"
@@ -1268,7 +1268,7 @@
             <Border Classes="modal"
                     HorizontalAlignment="Center" VerticalAlignment="Center">
                 <StackPanel Spacing="16">
-                    <TextBlock Classes="display-l" FontSize="18"
+                    <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="18"
                                Text="{Binding AccountsModalTitle}"/>
 
                     <StackPanel Spacing="14">
@@ -1312,7 +1312,7 @@
             <Border Classes="modal"
                     HorizontalAlignment="Center" VerticalAlignment="Center">
                 <StackPanel Spacing="16">
-                    <TextBlock Classes="display-l" FontSize="18"
+                    <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="18"
                                Text="{Binding PurchaseModalTitle}"/>
 
                     <ScrollViewer MaxHeight="460"

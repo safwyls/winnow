@@ -83,8 +83,9 @@ public enum NoWayIn
 }
 
 /// <summary>
-/// Launch and store URIs for each store (§10.3). All URIs were verified by
-/// measurement against the installed launchers, not from documentation.
+/// Launch and store URIs for each store (§10.3). Launcher routes were measured
+/// against the installed launchers; public store URLs come from verified
+/// service responses or the browser-confirmed Epic URL template.
 /// <para>Steam: <c>steam://run|install/appid</c>.</para>
 /// <para>Epic: launch and install, both on the <c>apps</c> route keyed by
 /// <c>action=</c>. The install verb is <c>install</c>, verified by execution
@@ -139,10 +140,11 @@ public static class StoreActions
         bool? installed,
         string? steamAppId,
         string? gogProductId,
-        EpicLaunchKey? epicKey)
+        EpicLaunchKey? epicKey,
+        Winnow.Core.Repositories.StorefrontDetails? storefront = null)
     {
         if (PrimaryFor(store, installed, steamAppId, gogProductId, epicKey) is not null
-            || LinksFor(store, steamAppId, gogProductId).Count > 0)
+            || LinksFor(store, steamAppId, gogProductId, storefront).Count > 0)
         {
             return NoWayIn.None;
         }
@@ -165,9 +167,12 @@ public static class StoreActions
     /// primary action. Empty is a normal answer.
     /// </summary>
     public static IReadOnlyList<GameLink> LinksFor(
-        string store, string? steamAppId, string? gogProductId)
+        string store, string? steamAppId, string? gogProductId,
+        Winnow.Core.Repositories.StorefrontDetails? storefront = null)
     {
         var links = new List<GameLink>(2);
+        if (store is ExternalIdProviders.Epic or ExternalIdProviders.Gog)
+            Add(links, GameLink.Create("Store page", storefront?.StoreUrl));
 
         switch (store)
         {

@@ -4,7 +4,7 @@ namespace Winnow.App.ViewModels;
 
 /// <summary>
 /// User-facing copy for the SETTINGS › LIBRARY screen and the Hide controls
-/// the library's context menu and details modal carry. Three cards answer one
+/// the library's context menu and details modal carry. Three controls answer one
 /// question — what is in the library: the explicit-content toggle (TASK-88),
 /// the hidden-games list (TASK-87) and the hand-added games form (TASK-99).
 /// The screen sits beside Platforms and Appearance rather than inside either,

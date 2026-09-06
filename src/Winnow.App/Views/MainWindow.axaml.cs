@@ -213,6 +213,7 @@ public partial class MainWindow : Window
         MaximiseGlyph.IsVisible = !maximised;
         RestoreGlyph.IsVisible = maximised;
         ToolTip.SetTip(MaximiseButton, maximised ? "Restore down" : "Maximise");
+        Avalonia.Automation.AutomationProperties.SetName(MaximiseButton, maximised ? "Restore down" : "Maximise");
     }
 
     protected override void OnDataContextChanged(EventArgs e)

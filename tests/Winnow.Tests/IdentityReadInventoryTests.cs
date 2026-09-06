@@ -85,6 +85,14 @@ public sealed class IdentityReadInventoryTests
             + "resolved by MergeGrouping."),
 
         // ── DO NOT RESOLVE ─────────────────────────────────────────────────
+        new("src/Winnow.App/Services/AcquisitionExport.cs", "ReadAsync", Policy.DoNotResolve,
+            "The CSV exports one receipt per ownership, with that copy's stored title, date, "
+            + "licence and price. Linking games must not fold purchases or replace their facts."),
+
+        new("src/Winnow.App/Services/StorefrontSyncService.cs", "SyncCoreAsync", Policy.DoNotResolve,
+            "Storefront metadata targets each owned release's own store ids. A linked Steam "
+            + "copy cannot supply an Epic store slug or a GOG changelog."),
+
         new("src/Winnow.Data/Repositories/LibraryQueryRepository.cs", "GetFacetTargetsAsync",
             Policy.DoNotResolve,
             "An enrichment target. Every work still needs enriching on its own ids, and resolving "

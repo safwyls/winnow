@@ -73,6 +73,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     /// renders as no Play button rather than a broken one.
     /// </summary>
     private readonly Services.IEpicLaunchKeys? _epicLaunchKeys;
+    private readonly Winnow.Core.Repositories.IStorefrontRepository? _storefrontCache;
 
     /// <summary>
     /// M3b. Optional, like every other seam on this view model: with nothing
@@ -220,8 +221,10 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         Services.IImageFilePicker? imagePicker = null,
         IWorkRatingRepository? workRatings = null,
         IWorkImageRepository? workImages = null,
-        Services.IGameRefetch? refetch = null)
+        Services.IGameRefetch? refetch = null,
+        Winnow.Core.Repositories.IStorefrontRepository? storefrontCache = null)
     {
+        _storefrontCache = storefrontCache;
         _workRatings = workRatings;
         _workImages = workImages;
         _refetch = refetch;
@@ -832,6 +835,9 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         var epicLaunchKeys = _epicLaunchKeys is null
             ? new Dictionary<string, EpicLaunchKey>()
             : (IReadOnlyDictionary<string, EpicLaunchKey>)await _epicLaunchKeys.GetAllAsync();
+        var storefronts = _storefrontCache is null
+            ? new Dictionary<string, Winnow.Core.Repositories.StorefrontDetails>()
+            : await _storefrontCache.ReadAllAsync();
 
         foreach (var work in works)
         {
@@ -1052,7 +1058,10 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
                     ownership: ownership,
                     steamAppId: steamAppIdByRelease.GetValueOrDefault(member.ReleaseId),
                     gogProductId: gogProductIdByRelease.GetValueOrDefault(member.ReleaseId),
-                    epicLaunchKey: EpicKeyFor(member.ReleaseId)));
+                    epicLaunchKey: EpicKeyFor(member.ReleaseId),
+                    storefront: storefronts.GetValueOrDefault(ownership?.Store == "epic"
+                        ? "epic:" + EpicKeyFor(member.ReleaseId)?.Namespace
+                        : "gog:" + gogProductIdByRelease.GetValueOrDefault(member.ReleaseId))));
 
                 coverage.Add(new CoverageEntry
                 {

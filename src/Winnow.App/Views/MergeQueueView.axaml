@@ -1,4 +1,4 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+<UserControl AutomationProperties.Name="Merges" AutomationProperties.ControlTypeOverride="Group" xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Winnow.App.ViewModels"
              x:Class="Winnow.App.Views.MergeQueueView"
@@ -291,7 +291,7 @@
 
         <!-- ══ Band 1: header ═══════════════════════════════════════════════ -->
         <Grid Grid.Row="0" ColumnDefinitions="Auto,Auto,*,Auto,Auto,Auto" Margin="16,0">
-            <TextBlock Grid.Column="0" Classes="display-l"
+            <TextBlock AutomationProperties.HeadingLevel="1" Grid.Column="0" Classes="display-l"
                        VerticalAlignment="Center"
                        Text="{Binding Title}"/>
             <TextBlock Grid.Column="1" Classes="data"
@@ -320,7 +320,7 @@
                         <ItemsControl ItemsSource="{Binding SortOptions}" MinWidth="176">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate DataType="vm:MergeSortOptionViewModel">
-                                    <Button Classes="sortitem" Click="OnSortItemClick">
+                                    <Button AutomationProperties.Name="{Binding Label}" Classes="sortitem" Click="OnSortItemClick">
                                         <Grid ColumnDefinitions="14,*">
                                             <Border Width="6" Height="6" CornerRadius="3"
                                                     HorizontalAlignment="Left"
@@ -340,7 +340,7 @@
             </Button>
 
             <!-- The safe bulk path: cross-store exact matches only. -->
-            <Button Grid.Column="4" Classes="ctl"
+            <Button AutomationProperties.Name="{Binding AcceptExactLabel}" Grid.Column="4" Classes="ctl"
                     Margin="0,0,12,0"
                     VerticalAlignment="Center"
                     IsEnabled="{Binding CanAcceptExact}"
@@ -377,7 +377,7 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="vm:MergeKindOptionViewModel">
-                                <Button Classes="seg tab"
+                                <Button AutomationProperties.Name="{Binding Label}" Classes="seg tab"
                                         Classes.on="{Binding IsSelected}"
                                         Command="{Binding $parent[UserControl].((vm:MergeQueueViewModel)DataContext).SelectKindCommand}"
                                         CommandParameter="{Binding}">
@@ -398,7 +398,7 @@
                                    VerticalAlignment="Center"
                                    Foreground="{StaticResource Text}"
                                    Text="{Binding KindChipLabel}"/>
-                        <Button Classes="chipx"
+                        <Button AutomationProperties.Name="{Binding KindChipClearTip}" Classes="chipx"
                                 Command="{Binding ClearKindCommand}"
                                 ToolTip.Tip="{Binding KindChipClearTip}">
                             <Path Data="M 0.5,0.5 L 6.5,6.5 M 6.5,0.5 L 0.5,6.5"/>
@@ -433,7 +433,7 @@
 
                                 <StackPanel Spacing="2" Margin="0,0,0,2">
                                     <StackPanel Orientation="Horizontal" Spacing="8">
-                                        <TextBlock Classes="shelf" Text="{Binding Title}"/>
+                                        <TextBlock AutomationProperties.HeadingLevel="2" Classes="shelf" Text="{Binding Title}"/>
                                         <TextBlock Classes="data"
                                                    VerticalAlignment="Center"
                                                    Margin="0,2,0,0"

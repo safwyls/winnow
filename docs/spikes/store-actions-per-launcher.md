@@ -65,9 +65,9 @@ Also documented on Epic's protocol-activation page. Not registered in build 20.2
 
 The launcher resolved a bare Fez directory path back into its full launch triple. But an uninstalled game has no directory, so the route can only address games the triple already serves. Recorded as measured and deliberately not built.
 
-### Store page — verified-by-execution that the route exists; the slug is missing
+### Store page — verified-by-execution
 
-`com.epicgames.launcher://store/product/<slug>` works: `MainRouter` rewrites it to `launcher.store.epicgames.com/store/product/<slug>`. What Winnow lacks is not a route but the **slug**, which it does not store.
+`com.epicgames.launcher://store/product/<slug>` works: `MainRouter` rewrites it to `launcher.store.epicgames.com/store/product/<slug>`. The initial gap was the slug. Winnow now caches the namespace-to-slug map and opens the verified public HTTPS store page.
 
 The earlier probe on this same machine concluded that no in-launcher route existed. That conclusion was wrong for two compounding reasons documented in [Methodological failures](#methodological-failures) below: the probe read `OnSignInUriHandler` (a catch-all this document's own Method section warns against) as its oracle while never checking `MainRouter`, and it ran while signed out. The original measurements follow for the record: `://store`, `://store/product/fez`, `://store/en-US/product/fez` and `://library` all fell through to the catch-all; bare `://apps` resolved no handler; on the `apps` route `action=productdetail`, `action=store` and `action=show` each produced `Was unable to find URI Handler`. The `NavigationUriHandler` internal location table at `0x27ab190` reads `/apps /epics /mods /coderedemption /debug /social /invite /settings /null` plus `firstrun twinmotion epoodle requiresbuildrefresh` — no `/store`. The string `/store/en-US/product/` does exist in the binary, but only as a web path used by the friends-product flow, not as a URI route. The probe was right that `NavigationUriHandler` has no `/store` entry; the error was in treating that handler as the only router.
 
@@ -79,7 +79,7 @@ The live `catcache.bin` (297 entries) was decoded and its top-level and `customA
 
 `https://store-content.ak.epicgames.com/api/content/productmapping` is public and unauthenticated, needs no key and no headers, and returned HTTP 200 / 68,473 bytes / 1,283 entries: a flat JSON object mapping catalog **namespace** to store **slug** (`{"fn":"fortnite","crab":"satisfactory","min":"hades",...}`). Measured against this machine's real library it covers 56 of 67 owned base games (84%); the 11 misses are delisted or giveaway-only titles (Frostpunk, Palia, LOTR Return to Moria, Moonlighter, ABZU, Dauntless, Drawful 2, Torchlight, Unreal Tournament, >observer_, Hob). Slug validity was confirmed with a negative control against `https://store-content.ak.epicgames.com/api/en-US/content/products/{slug}`: 200 for `soma`, `this-war-of-mine`, `tiny-tinas-wonderlands` and `world-war-z`; 404 for `winnow-bogus-slug-xyz`.
 
-`store.epicgames.com` returns 403 to every request from this machine, bogus paths and real ones alike, so the final web URL `https://store.epicgames.com/p/{slug}` is **needs-execution-by-the-user**: open `https://store.epicgames.com/p/soma` in a browser and confirm it lands on SOMA. The slug is measured; the URL template built from it is not.
+The initial programmatic probe returned 403. On 2026-09-06 the browser opened `https://store.epicgames.com/p/soma` and showed the SOMA page title, heading and game description. An age gate was present and was left untouched. The public URL template is now **verified-by-execution**.
 
 ### Patch notes — verified-by-inspection, none exists
 
@@ -158,18 +158,35 @@ The store-route probe reached a correct negative for two compounding reasons tha
 | GOG | Launch (installed) | `goggalaxy://launchGame/gog_<productId>` | verified-by-inspection | `gogProductId` |
 | GOG | Install (not installed) | `goggalaxy://installationScreen/<productId>` | verified-by-inspection; needs-execution-by-the-user | `gogProductId` |
 | GOG | Show in GOG Galaxy | `goggalaxy://openGameView/gog_<productId>` | verified-by-inspection | `gogProductId` |
-| GOG | Store page | none shipped; slug from `api.gog.com` would unlock it | verified-by-execution (API), not built | `gogProductId` + slug from API |
-| GOG | Patch notes | none shipped; changelog from `api.gog.com` would unlock it | verified-by-execution (API), not built | `gogProductId` + changelog from API |
+| GOG | Store page | cached `links.product_card` from `api.gog.com` | verified-by-execution (API); cached by Winnow | `gogProductId` + slug from API |
+| GOG | Patch notes | cached changelog, displayed as readable text in details | verified-by-execution (API); cached by Winnow | `gogProductId` + changelog from API |
 | Epic | Launch (installed) | `com.epicgames.launcher://apps/<ns>%3A<catalogItemId>%3A<appName>?action=launch&silent=true` | verified-by-inspection | `EpicLaunchKey` (all three parts) |
 | Epic | Install (not installed) | `com.epicgames.launcher://apps/<ns>%3A<catalogItemId>%3A<appName>?action=install` | verified-by-execution; **undocumented** — the documented verb `action=installer` is wrong (see [Methodological failures](#methodological-failures)) | `EpicLaunchKey` (all three parts) |
-| Epic | Store page | `com.epicgames.launcher://store/product/<slug>` | verified-by-execution (route exists); slug not stored; slug from productmapping would unlock it | `CatalogNamespace` (now stored) + slug from productmapping API |
+| Epic | Store page | `com.epicgames.launcher://store/product/<slug>` | verified-by-execution (route and public HTTPS page); namespace-to-slug map cached | `CatalogNamespace` (now stored) + slug from productmapping API |
 | Epic | Patch notes | none exists | verified-by-inspection | — |
 
-## What Winnow does not store but could
+## Storefront data now stored
 
-One landed; three remain as follow-on work.
+All four data paths below are now implemented. The historical library census remains a sample, not a coverage guarantee.
 
 1. **Epic `CatalogNamespace` at ingest — now stored.** `EpicLibrarySource` persists the namespace from `catcache.bin` at ingest, taking the complete launch triple from 0/67 to 67/67. This was the highest-leverage change for the action band and has landed.
-2. **Epic slug, from the 68KB productmapping** — one request for the whole library, trivially cacheable. Unlocks the store page for about 84% of Epic titles.
-3. **GOG slug, from `api.gog.com`**, or opportunistically free from the Galaxy database when it happens to have cached it.
-4. **GOG changelog** — the same call as the slug, so patch notes cost nothing extra once the slug is being fetched.
+2. **Epic slug, from productmapping — now cached.** One response serves the library. The 2026-09-05 census covered 56 of 67 owned base games (84%); unresolved namespaces still draw no store-page link.
+3. **GOG store URL — now cached.** The product response supplies `links.product_card`, so Winnow uses the service-returned URL rather than guessing a slug.
+4. **GOG changelog — now cached.** The same product call supplies HTML; Winnow renders text in the GOG patch notes disclosure without running scripts or loading remote resources.
+
+### Completion verification — 2026-09-06
+
+The public mapping again returned 1,283 entries, including fn=fortnite and min=hades. The anonymous GOG product request for 1207658871 returned the Panzer General 2 store URL and the Internal Update (11 January 2022) changelog, including Cloud Saves support. Those are one-product GOG observations; they do not imply universal changelog coverage. Missing or empty changelogs produce no disclosure. No new launcher URI was introduced.
+
+The compiled Avalonia details view was also exercised through a headless Skia test runner at
+1200 × 640. The GOG disclosure starts collapsed; Space expands and collapses its focused header.
+A game with no changelog hides it. The header shows a full Volt focus border, the panels use
+Surface and Line, and both header and notes use Jakarta and Text. Forty lines of notes create
+an 832 px scroll extent inside the 333 px rest-band viewport; pointer-wheel input moved the
+scroll offset to 150 px. The temporary harness and inspected image were at
+`C:/Temp/winnow-task105/Program.cs` and `C:/Temp/winnow-task105/gog-notes.png`.
+
+`StorefrontTests` runs against canned HTTP bodies and temporary SQLite databases. It covers
+cached Epic mappings, GOG product URLs and safe text extraction, invalid identifiers and URLs,
+negative caching, stale fallback, cancellation, mismatched product responses and the Polly
+retry/permit boundary. No HTTP test calls a live service.

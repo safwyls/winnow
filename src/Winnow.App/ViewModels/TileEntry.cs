@@ -51,6 +51,8 @@ public sealed record TileEntry : IPlayedEntry
     /// <summary>Epic's composite launch key, or null when all three parts are not held.</summary>
     public EpicLaunchKey? EpicLaunchKey { get; init; }
 
+    public Winnow.Core.Repositories.StorefrontDetails? Storefront { get; init; }
+
     /// <summary>True only when a source looked and found it on disk.</summary>
     public bool IsOnDisk => Installed == true;
 
@@ -81,7 +83,7 @@ public sealed record TileEntry : IPlayedEntry
     /// same store ids and install state as <see cref="PrimaryAction"/>.
     /// </summary>
     public NoWayIn NoWayIn => StoreActions.WhyNoWayIn(
-        Store, Installed, SteamAppId, GogProductId, EpicLaunchKey);
+        Store, Installed, SteamAppId, GogProductId, EpicLaunchKey, Storefront);
 
     /// <summary>Builds the entry for one ownership row.</summary>
     public static TileEntry For(
@@ -94,7 +96,8 @@ public sealed record TileEntry : IPlayedEntry
         Ownership? ownership = null,
         string? steamAppId = null,
         string? gogProductId = null,
-        EpicLaunchKey? epicLaunchKey = null)
+        EpicLaunchKey? epicLaunchKey = null,
+        Winnow.Core.Repositories.StorefrontDetails? storefront = null)
         => new()
         {
             OwnershipId = ownershipId,
@@ -108,6 +111,7 @@ public sealed record TileEntry : IPlayedEntry
             SteamAppId = GameLink.IsSteamAppId(steamAppId) ? steamAppId : null,
             GogProductId = StoreActions.IsGogProductId(gogProductId) ? gogProductId : null,
             EpicLaunchKey = epicLaunchKey,
+            Storefront = storefront,
         };
 }
 

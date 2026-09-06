@@ -497,6 +497,15 @@ panel's strings were written from the auth spikes instead. TASK-81.
   element keeps its children and nothing throws, so a name that stops arriving looks exactly
   like a name that does. `AutomationNameReachabilityTests` scans every `.axaml` under
   `src/Winnow.App` and fails when a name sits where UIA will drop it.
+- **Composed controls name themselves explicitly.** A button containing a layout panel does
+  not inherit the text drawn inside that panel. Rail navigation, list choices, filter options,
+  theme cards and glyph buttons bind their visible label as their name; list and filter counts
+  are included in words and also travel on `ItemStatus` when they change. Primary screens are
+  named groups, screen titles are level-1 headings and section titles are level 2. The details
+  surface itself has a `Window` role and a name identifying the game, because its focusable
+  root must be named as well as its inner bands. `InteractiveControlNameTests` checks the
+  authored controls; `docs/spikes/accessibility-navigation.ps1` exercises the Windows UIA
+  provider on an isolated sample library.
 - **Reduced motion disables the hover saturation animation** — state snaps instead of fading.
 - **When the interface cannot state a proportion, it says what it is doing and what it is
   waiting for, in words, in a status field, and offers Cancel when there is one.** This is the
@@ -877,8 +886,8 @@ controls on the strip for Steam. Other stores have fewer, because their launcher
 | Store | Installed | Not installed | Links |
 |---|---|---|---|
 | Steam | `Play` — `steam://run/<appid>` | `Install` — `steam://install/<appid>` | `Store page`, `All patch notes` |
-| GOG | `Play` — `goggalaxy://launchGame/gog_<id>` | `Install` — `goggalaxy://installationScreen/<id>` | `Show in GOG Galaxy` |
-| Epic | `Play` — `com.epicgames.launcher://apps/<ns>%3A<catalogItemId>%3A<appName>?action=launch&silent=true` | `Install` — `com.epicgames.launcher://apps/<ns>%3A<catalogItemId>%3A<appName>?action=install` | nothing |
+| GOG | `Play` — `goggalaxy://launchGame/gog_<id>` | `Install` — `goggalaxy://installationScreen/<id>` | `Store page` when cached, `Show in GOG Galaxy` |
+| Epic | `Play` — `com.epicgames.launcher://apps/<ns>%3A<catalogItemId>%3A<appName>?action=launch&silent=true` | `Install` — `com.epicgames.launcher://apps/<ns>%3A<catalogItemId>%3A<appName>?action=install` | `Store page` when a slug is cached |
 
 Neither Epic action is drawn unless Winnow holds all three ids — namespace, catalog item id and
 artifact id.
@@ -891,10 +900,11 @@ confirms there, not Winnow. That verb is undocumented. The documented `?action=i
 to the optional-components screen for an already-installed app and is a no-op on an uninstalled
 one; the documented `?action=updatecheck` is not registered at all in build 20.2.9 and is
 rejected before dispatch. See `docs/spikes/store-actions-per-launcher.md` for the full evidence.
-`com.epicgames.launcher://store/product/<slug>` does work — the launcher rewrites it to its
-embedded store — but Winnow holds no product slug, so the link is not built. GOG's store page
-and patch notes are both reachable through an anonymous API request Winnow does not yet make, so
-they are absent rather than impossible.
+Epic's cached namespace-to-slug map supplies `https://store.epicgames.com/p/<slug>`; unresolved
+namespaces draw no link. GOG's cached product response supplies its store-page URL and patch
+notes. When notes exist, a collapsed `GOG patch notes` disclosure in the scrollable rest band
+opens readable text; it is absent when the response has no changelog. The API and cache are
+background work, so opening details never waits for either store.
 
 **When a store entry has no primary action and no links, Band 3 says why** instead of showing
 a strip whose only control is `More`. The sentence takes `Text`, not `TextDim`, on the same
@@ -2350,11 +2360,17 @@ The gear at the foot of the rail opens `SETTINGS`, which holds three screens in 
 up with the command bar and the filter panel's header, its own scroll, cards on `PaneGround`.
 
 PLATFORMS is the store-connection screen. APPEARANCE is §14 and §15 — theme, transparency,
-layout. LIBRARY answers what is in the library and holds three cards: **EXPLICIT CONTENT**,
-**HIDDEN GAMES**, **ADDED BY HAND**.
+layout. LIBRARY holds four cards: **ACQUISITION EXPORT**, **EXPLICIT CONTENT**,
+**HIDDEN GAMES**, **ADDED BY HAND**. Export saves the stored facts; the other three control
+what appears in the library.
 
 It is not under APPEARANCE, which changes material and layout and no data. It is not under
 PLATFORMS, which is about connecting to a store; this is about what to do with what arrived.
+
+The acquisition export card offers **Export acquisition CSV**, followed by a polite status
+line for completion, cancellation or failure. Its explanation states that missing facts stay
+blank and prices are stored cents without a recorded currency. It uses the same card and
+action-button styles as its neighbours. Price stays out of the game details modal (§10.5).
 
 ### 16.1 Explicit content
 

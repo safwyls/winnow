@@ -1,11 +1,11 @@
 ---
 id: TASK-38
 title: Surface acquisition facts in the UI or export
-status: In Progress
+status: Done
 assignee:
-  - '@avalonia-ui'
+  - '@codex'
 created_date: '2026-08-29 21:54'
-updated_date: '2026-09-06 01:57'
+updated_date: '2026-09-06 18:11'
 labels:
   - data
   - ui
@@ -24,24 +24,14 @@ The ownership columns acquired_at, license_type, and price_paid_cents are stored
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 At least one consumer (export or UI) reads and displays acquired_at, license_type, and price_paid_cents
-- [ ] #2 The export format includes these columns when populated
+- [x] #1 At least one consumer (export or UI) reads and displays acquired_at, license_type, and price_paid_cents
+- [x] #2 The export format includes these columns when populated
 <!-- AC:END -->
 
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-UI HALF of the combined details-modal pass (TASK-111/112/113/115/38/21/30 land as ONE edit to GameDetailsView.axaml + GameDetailsViewModel, per the approved design at mock-details.html).
-1. Wire the seams that already exist but are unregistered: IWorkImageRepository, IWorkRatingRepository, WorkReceptionWriter, ReceptionSyncService (called beside the maturity syncs) and GameRefetchService in Program.cs. Nothing new is fetched here.
-2. Band 1 gains a reception line under year/publisher: GameReceptionViewModel over work_ratings, three attributed figures (igdb_users, igdb_critics, steam) each with its count. Steam carries its own label + percentage + count on hover. No row, no line.
-3. Band 2 replaces the gap rail in place with a release-to-today PlayAxis (new custom Control beside GapRail). Two zones: a flat band for the pre-coverage amount (shape unknown, never a slope) and one bar per measured month. Measured months are the month-end points only (snapshots stamped at SteamPlaytimeHistory.MonthEnd), which are the backfilled series; live snapshots are never differenced. Sessions are not mixed in. Marks are the unread updates, placed on the whole axis. No release year or fewer than two month-end points falls back to the shipped gap rail; no last-played date keeps the sentence-only branch.
-4. Band 3 gains a Refetch metadata row in the More menu (order: Open folder, Refetch metadata, Wrong game?, Edit details, Hide) with its status on a bound-Text TextBlock in Band 3 OUTSIDE the scroll region, LiveSetting=Polite.
-5. Band 4 reorders to corrections, updates, ABOUT+screenshots, ALSO COVERS, EXTENDS, EXPANSIONS, LISTS. The update list is renamed so it stops colliding with Band 2 SINCE YOU PLAYED. Screenshots ride inside ABOUT as a thumbnail strip that expands one shot to a hero, inline, no popup, on CoverKey.IgdbScreenshot through the existing cover cache.
-6. Left column gains ACQUIRED (acquired_at + license_type) under ON DISK. price_paid_cents is never read into this modal.
-7. TASK-21/30 modal half: HeadingLevel on the title and the section headings, named Groups via AccessibilityView=Control on the band containers, ControlTypeOverride=ListItem on update and screenshot template roots with the unread count spelled into the name, names on the close/launch/link buttons. All four attached properties verified wired to Windows UIA in the Avalonia 11.3.20 source; AutomationProperties.Name is never placed on a TextBlock.
-8. Re-measure the reception line and the strip at the 420px column in a headless Skia harness at 11.3.20, per docs/spikes/details-action-band-width.md.
-9. All prose delegated to docs-writer. design-system.md 10.1/10.2/10.3/10.5 rewritten; every superseded sentence appended to docs/decisions.md.
-10. Verify: dotnet build Winnow.slnx -p:BaseOutputPath=C:\Temp\winnow-modal\ -m:1, then dotnet test per project --no-build.
+1. Preserve the existing acquisition date/licence UI and keep price out of the game modal. 2. Add a local acquisition CSV export in Library settings, one row per ownership with schema version, title, store, acquired_at, license_type, price_paid_cents and price_source. 3. Verify populated, missing and zero values, CSV quoting, cancel/failure and the export command using temporary SQLite and a fake destination. 4. Document this limited export without claiming the deferred full JSON/import milestone.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -118,4 +108,14 @@ TextFaint, which measures 3.63/3.60/3.31/3.28 flat and 2.86/3.01/2.67/2.60 over 
 everywhere - so it was refused and a test now pins the refusal.
 
 NOT CLOSED, and deliberately. Acceptance criterion 1 asks for a consumer that reads and displays acquired_at, license_type AND price_paid_cents. The details modal now reads and draws the first two, in the object column under ON DISK, with the licence in words for the four types the parser recognises and nothing at all for one it does not. It will never read the third: the approved design decision on this task puts price paid outside this modal under section 7's 'never be smug', because '$59.99 · never opened' is the sentence the product must not write, and a test now asserts that no member of either the acquisition view model or the details view model names a price. Criterion 2, the export format, is untouched by this pass. Both remaining halves - price paid, and the export columns - belong to the export and account-stats work, and neither was in scope here. The task stays open on those two.
+
+Completed 2026-09-06: Settings > Library now exports versioned acquisition CSV, one row per ownership with title/store/date/licence/price/source, including blank unknowns and known zero prices. Price stays out of the modal. AcquisitionExportTests: 5 passed, covering populated facts, multiline/quoted titles, blank vs zero prices, command save/cancel/failure and unavailable service. Actual LibrarySettingsView pointer click in headless Skia harness with temp SQLite sent the 1299-cent acquisition to the destination and rendered completion status; screenshot C:/Temp/winnow-task105/export.png inspected without clipping. Win32 UIA also found the named export Button inside Acquisition export and Library settings Groups. Native OS save dialog uses the existing Avalonia storage-provider pattern; tests substitute the destination. Full JSON/import remains deferred and docs state that scope.
+
+Final integration: solution build succeeded with zero warnings/errors. Main suite3469 passed, Covers84 passed, Recommend152 passed; final store-action/accessibility regression selection82 passed. Identity-read inventory explicitly classifies acquisition export as per-ownership facts that must not be folded by identity links.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Added acquisition CSV export to Library settings, completing the consumer for date, licence and price while keeping price out of the game modal. Verified five regression tests, actual-view export command/rendering with temporary data, and Win32 UIA reachability. Documented the CSV schema and deferred full JSON/import.
+<!-- SECTION:FINAL_SUMMARY:END -->

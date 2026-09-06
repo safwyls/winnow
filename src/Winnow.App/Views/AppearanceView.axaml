@@ -1,4 +1,4 @@
-﻿<UserControl xmlns="https://github.com/avaloniaui"
+<UserControl AutomationProperties.Name="Appearance" AutomationProperties.ControlTypeOverride="Group" xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Winnow.App.ViewModels"
              x:Class="Winnow.App.Views.AppearanceView"
@@ -158,7 +158,7 @@
                 BorderBrush="{StaticResource Line}"
                 BorderThickness="0,0,0,1">
             <StackPanel Spacing="7">
-                <TextBlock Classes="display-l" Text="{Binding Title}"/>
+                <TextBlock AutomationProperties.HeadingLevel="1" Classes="display-l" Text="{Binding Title}"/>
                 <TextBlock Classes="body"
                            MaxWidth="640"
                            HorizontalAlignment="Left"
@@ -176,7 +176,7 @@
             <StackPanel Margin="24,16,24,28" MaxWidth="920"
                         HorizontalAlignment="Left" Spacing="14">
 
-                <TextBlock Classes="label" FontSize="10" LetterSpacing="1.4" Text="THEME"/>
+                <TextBlock AutomationProperties.HeadingLevel="2" Classes="label" FontSize="10" LetterSpacing="1.4" Text="THEME"/>
 
                 <ItemsControl ItemsSource="{Binding Themes}">
                     <ItemsControl.ItemsPanel>
@@ -186,7 +186,7 @@
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate DataType="vm:ThemeChoiceViewModel">
-                            <Button Classes="themecard"
+                            <Button AutomationProperties.Name="{Binding Name}" Classes="themecard"
                                     Classes.picked="{Binding IsSelected}"
                                     Margin="0,0,12,12"
                                     Command="{Binding $parent[ItemsControl].((vm:AppearanceViewModel)DataContext).SelectThemeCommand}"
@@ -277,7 +277,7 @@
 
                                     <StackPanel Margin="16,12,16,14" Spacing="6">
                                         <Grid ColumnDefinitions="*,Auto">
-                                            <TextBlock Grid.Column="0"
+                                            <TextBlock AutomationProperties.HeadingLevel="2" Grid.Column="0"
                                                        Classes="display-l" FontSize="17"
                                                        Text="{Binding Name}"
                                                        VerticalAlignment="Center"/>
@@ -447,7 +447,7 @@
                      Sits between THEME and TRANSPARENCY because it is a peer of
                      THEME (applies at every slider position), not a transparency
                      qualifier. Two cards with 1/8-scale miniatures. -->
-                <TextBlock Classes="label" FontSize="10" LetterSpacing="1.4"
+                <TextBlock AutomationProperties.HeadingLevel="2" Classes="label" FontSize="10" LetterSpacing="1.4"
                            Margin="0,10,0,0" Text="LAYOUT"/>
 
                 <ItemsControl ItemsSource="{Binding Layouts}">
@@ -458,7 +458,7 @@
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate DataType="vm:LayoutChoiceViewModel">
-                            <Button Classes="themecard"
+                            <Button AutomationProperties.Name="{Binding Name}" Classes="themecard"
                                     Classes.picked="{Binding IsSelected}"
                                     Margin="0,0,12,12"
                                     Command="{Binding $parent[ItemsControl].((vm:AppearanceViewModel)DataContext).SelectLayoutCommand}"
@@ -563,7 +563,7 @@
 
                                     <StackPanel Margin="16,12,16,14" Spacing="6">
                                         <Grid ColumnDefinitions="*,Auto">
-                                            <TextBlock Grid.Column="0"
+                                            <TextBlock AutomationProperties.HeadingLevel="2" Grid.Column="0"
                                                        Classes="display-l" FontSize="17"
                                                        Text="{Binding Name}"
                                                        VerticalAlignment="Center"/>
@@ -586,7 +586,7 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
 
-                <TextBlock Classes="label" FontSize="10" LetterSpacing="1.4"
+                <TextBlock AutomationProperties.HeadingLevel="2" Classes="label" FontSize="10" LetterSpacing="1.4"
                            Margin="0,10,0,0" Text="TRANSPARENCY"/>
 
                 <Border Classes="card" MaxWidth="720" HorizontalAlignment="Left">
@@ -607,7 +607,7 @@
                         <Border Classes="sliderframe">
                             <StackPanel Width="{Binding SliderWidth}" Spacing="0">
 
-                                <Slider Name="TransparencySlider"
+                                <Slider AutomationProperties.Name="Transparency" Name="TransparencySlider"
                                         Classes="opacity"
                                         Minimum="0" Maximum="100"
                                         SmallChange="1" LargeChange="10"
@@ -661,7 +661,7 @@
                                 </ItemsControl.ItemsPanel>
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate DataType="vm:AppearanceOptionViewModel">
-                                        <Button Classes="optioncard"
+                                        <Button AutomationProperties.Name="{Binding Name}" Classes="optioncard"
                                                 Classes.picked="{Binding IsSelected}"
                                                 Margin="0,0,10,0"
                                                 Command="{Binding $parent[ItemsControl].((vm:AppearanceViewModel)DataContext).SelectBackdropCommand}"
@@ -719,7 +719,7 @@
                                 </ItemsControl.ItemsPanel>
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate DataType="vm:AppearanceOptionViewModel">
-                                        <Button Classes="optioncard"
+                                        <Button AutomationProperties.Name="{Binding Name}" Classes="optioncard"
                                                 Classes.picked="{Binding IsSelected}"
                                                 Margin="0,0,10,0"
                                                 Command="{Binding $parent[ItemsControl].((vm:AppearanceViewModel)DataContext).SelectReachCommand}"

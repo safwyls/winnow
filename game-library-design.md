@@ -368,6 +368,26 @@ account's lifetime. The rules that follow govern what may be shown and what must
 Winnow, at the lowest priority in the credential chain, so a user-supplied pair always wins.
 The reasoning is in `docs/decisions.md`.
 
+**Anonymous storefront links and GOG changelogs** live in `Winnow.Enrich.Stores`.
+Epic's `GET https://store-content.ak.epicgames.com/api/content/productmapping` maps namespaces
+to slugs in one library-wide response. GOG's
+`GET https://api.gog.com/products/{productId}?expand=changelog` supplies `links.product_card`
+and HTML `changelog` in one response per owned product. Neither request sends credentials.
+Background startup sync runs this pass after the existing metadata passes; library load reads
+only cached rows. Responses use the `storefront-v1` namespace in `metadata_cache`, with a
+24-hour lifetime including negative results. A 404 clears a stale result; a 403 retains a prior
+result and suppresses another attempt for 24 hours. Transport, timeout and malformed-response
+failures retain stale data. Missing slugs produce no store link. GOG changelogs are parsed to
+plain text, without executing scripts or loading remote resources.
+
+These services publish no verified request budget. Winnow chooses a conservative shared
+one-request-per-second budget, enforced by a singleton Polly limiter at the typed HttpClient
+level. Every retry spends a permit. HTTP 408, 429, 5xx and transport failures receive at most
+two retries with exponential backoff and jitter, starting at one second; `Retry-After` is
+honoured up to 30 seconds. HTTP 403 and 404 are not retried. Each request is bounded by the
+90-second HttpClient timeout and a 2 MiB response buffer. These are Winnow's operating choices,
+not claimed vendor limits. Endpoint measurements are in `docs/spikes/store-actions-per-launcher.md`.
+
 ---
 
 ## 5. Architecture
@@ -843,6 +863,14 @@ A launch feature, not an afterthought. Every incumbent in this space is a roach 
 - CSV: flattened, one row per ownership, for spreadsheet users
 - No account and no network required
 - A schema version in every export; write the importer against the version field from day one
+
+The acquisition CSV in Settings → Library is the first implemented export. It writes one
+row per ownership, including hidden entries, with `schema_version` (1), `ownership_id`,
+`release_id`, `title`, `store`, `acquired_at`, `license_type`, `price_paid_cents` and
+`price_source`. Dates are UTC, missing facts are empty cells, and a known zero price stays
+zero. Prices carry no currency because the source schema does not record one. CSV uses UTF-8,
+quoted values and CRLF records, preserving commas, quotes and newlines in titles. Full JSON
+export and import remain deferred.
 
 ---
 

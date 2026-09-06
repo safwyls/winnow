@@ -1,10 +1,10 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+<UserControl AutomationProperties.Name="Library settings" AutomationProperties.ControlTypeOverride="Group" xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Winnow.App.ViewModels"
              x:Class="Winnow.App.Views.LibrarySettingsView"
              x:DataType="vm:LibrarySettingsViewModel">
 
-    <!-- SETTINGS › LIBRARY — the third settings section. Three cards, one
+    <!-- SETTINGS › LIBRARY — acquisition export and three library controls. One
          question: what is in the library. EXPLICIT CONTENT is the filter and its
          stated default. HIDDEN GAMES is the only place a hidden game can be found
          and put back. ADDED BY HAND is for games no launcher on this machine
@@ -118,7 +118,7 @@
                 BorderBrush="{StaticResource Line}"
                 BorderThickness="0,0,0,1">
             <StackPanel Spacing="7">
-                <TextBlock Classes="display-l" Text="{Binding Title}"/>
+                <TextBlock AutomationProperties.HeadingLevel="1" Classes="display-l" Text="{Binding Title}"/>
                 <TextBlock Classes="body"
                            MaxWidth="640"
                            HorizontalAlignment="Left"
@@ -136,13 +136,31 @@
             <StackPanel Margin="24,16,24,28" MaxWidth="920"
                         HorizontalAlignment="Left" Spacing="14">
 
+                <Border Classes="card" IsVisible="{Binding CanExportAcquisitions}"
+                        AutomationProperties.Name="Acquisition export"
+                        AutomationProperties.AccessibilityView="Control">
+                    <StackPanel Spacing="12">
+                        <TextBlock Classes="label" Text="ACQUISITION EXPORT"
+                                   AutomationProperties.HeadingLevel="2"/>
+                        <TextBlock Classes="para" Text="Save a CSV with each copy's title, store, acquisition date, licence and price paid. Missing facts stay blank. Prices use the stored cents; currency is not recorded."
+                                   Foreground="{StaticResource Text}" TextWrapping="Wrap"/>
+                        <Button Classes="act" Content="Export acquisition CSV"
+                                HorizontalAlignment="Left"
+                                AutomationProperties.Name="Export acquisition CSV"
+                                Command="{Binding ExportAcquisitionsCommand}"/>
+                        <TextBlock Classes="para" Text="{Binding AcquisitionExportStatus}"
+                                   Foreground="{StaticResource TextDim}" TextWrapping="Wrap"
+                                   AutomationProperties.LiveSetting="Polite"/>
+                    </StackPanel>
+                </Border>
+
                 <!-- ══ EXPLICIT CONTENT (TASK-88) ════════════════════════════
                      The default is stated beside the control: off, and a game
                      with no rating data is not explicit and stays visible. The
                      count says what turning it on would remove — the number of
                      tiles that actually disappear. -->
                 <TextBlock Classes="label" FontSize="10" LetterSpacing="1.4"
-                           Text="{Binding ExplicitSectionLabel}"/>
+                           AutomationProperties.HeadingLevel="2" Text="{Binding ExplicitSectionLabel}"/>
 
                 <Border Classes="card">
                     <StackPanel Spacing="12">
@@ -186,7 +204,7 @@
                      come back with it, and when it was hidden. -->
                 <TextBlock Classes="label" FontSize="10" LetterSpacing="1.4"
                            Margin="0,10,0,0"
-                           Text="{Binding HiddenSectionLabel}"/>
+                           AutomationProperties.HeadingLevel="2" Text="{Binding HiddenSectionLabel}"/>
 
                 <Border Classes="card">
                     <StackPanel Spacing="0">
@@ -252,7 +270,7 @@
                     <TextBlock Grid.Column="0"
                                Classes="label" FontSize="10" LetterSpacing="1.4"
                                VerticalAlignment="Center"
-                               Text="{Binding ManualSectionLabel}"/>
+                               AutomationProperties.HeadingLevel="2" Text="{Binding ManualSectionLabel}"/>
                     <!-- The file route leads because it asks for less than
                          "Add a game". Drawn only when a picker was supplied. -->
                     <Button Grid.Column="1"

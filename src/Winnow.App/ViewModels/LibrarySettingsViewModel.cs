@@ -73,7 +73,9 @@ public partial class LibrarySettingsViewModel : ObservableObject
         IExecutableFilePicker? executables = null,
         IExecutableInspector? inspector = null,
         IIgdbAssignmentService? igdb = null,
-        ICoverCache? covers = null)
+        ICoverCache? covers = null,
+        AcquisitionExport? acquisitionExport = null,
+        IAcquisitionExportDestination? exportDestination = null)
     {
         _hidden = hidden;
         _manual = manual;
@@ -85,6 +87,37 @@ public partial class LibrarySettingsViewModel : ObservableObject
         _inspector = inspector;
         _igdb = igdb;
         _covers = covers;
+        _acquisitionExport = acquisitionExport;
+        _exportDestination = exportDestination;
+    }
+
+    private readonly AcquisitionExport? _acquisitionExport;
+    private readonly IAcquisitionExportDestination? _exportDestination;
+
+    public bool CanExportAcquisitions => _acquisitionExport is not null && _exportDestination is not null;
+
+    [ObservableProperty]
+    public partial string AcquisitionExportStatus { get; set; } = "";
+
+    [RelayCommand(CanExecute = nameof(CanExportAcquisitions))]
+    private async Task ExportAcquisitionsAsync(CancellationToken ct)
+    {
+        AcquisitionExportStatus = "Preparing acquisition CSV…";
+        try
+        {
+            var csv = await _acquisitionExport!.ReadAsync(ct);
+            AcquisitionExportStatus = await _exportDestination!.SaveAsync(csv.Content, ct)
+                ? $"Exported {csv.OwnershipCount.ToString(CultureInfo.CurrentCulture)} ownership {(csv.OwnershipCount == 1 ? "record" : "records")}."
+                : "Export cancelled.";
+        }
+        catch (OperationCanceledException)
+        {
+            AcquisitionExportStatus = "Export cancelled.";
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException)
+        {
+            AcquisitionExportStatus = "Could not save the export. Try another location.";
+        }
     }
 
     /// <summary>

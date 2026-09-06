@@ -2073,3 +2073,36 @@ below the image. The design system previously said:
 > focus without showing where it went.
 
 > The overlay keeps 24px of outer space and an 8px gap before the position caption.
+
+## 2026-09-06 — Acquisition CSV closes TASK-38
+
+Settings → Library now exports the stored acquisition facts, including price, without adding
+price to the game modal. The full JSON/import milestone stays deferred. Superseded text:
+
+> layout. LIBRARY answers what is in the library and holds three cards: **EXPLICIT CONTENT**,
+> **HIDDEN GAMES**, **ADDED BY HAND**.
+
+> | M6 | Export (JSON + CSV) | JSON is complete and re-readable; CSV covers a defined set of views | deferred 2026-08-31; exit criterion to be restated |
+
+> Merge *execution* (the queue records intent; nothing applies it), JSON/CSV export, install
+> management, and full-screen gamepad navigation.
+
+## Storefront links completed — 2026-09-06
+
+Superseded design-system.md §10.3 sentences:
+- `com.epicgames.launcher://store/product/<slug>` does work — the launcher rewrites it to its embedded store — but Winnow holds no product slug, so the link is not built.
+- GOG's store page and patch notes are both reachable through an anonymous API request Winnow does not yet make, so they are absent rather than impossible.
+- The per-store matrix previously listed only Show in GOG Galaxy for GOG links and nothing for Epic links.
+
+Superseded spike statements:
+- ### Store page — verified-by-execution that the route exists; the slug is missing
+- One landed; three remain as follow-on work.
+- **Epic slug, from the 68KB productmapping** — one request for the whole library, trivially cacheable. Unlocks the store page for about 84% of Epic titles.
+- **GOG slug, from `api.gog.com`**, or opportunistically free from the Galaxy database when it happens to have cached it.
+- `store.epicgames.com` returns 403 to every request from this machine, bogus paths and real ones alike, so the final web URL `https://store.epicgames.com/p/{slug}` is **needs-execution-by-the-user**: open `https://store.epicgames.com/p/soma` in a browser and confirm it lands on SOMA. The slug is measured; the URL template built from it is not.
+- **GOG changelog** — the same call as the slug, so patch notes cost nothing extra once the slug is being fetched.
+- verified-by-execution (API), not built
+- none shipped; slug from `api.gog.com` would unlock it
+- verified-by-execution (route exists); slug not stored; slug from productmapping would unlock it
+- none shipped; changelog from `api.gog.com` would unlock it
+- What Winnow lacks is not a route but the **slug**, which it does not store.

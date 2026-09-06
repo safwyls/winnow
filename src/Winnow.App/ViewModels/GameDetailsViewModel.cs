@@ -102,6 +102,7 @@ public partial class GameDetailsViewModel : ObservableObject
         _snapshots = snapshots ?? [];
         RecordLine = BuildRecordLine(_snapshots, nowUtc);
         (PrimaryAction, Links, NoWayInSentence) = BuildLinks(tile);
+        GogPatchNotes = tile.PlayableEntry.Store == "gog" ? tile.PlayableEntry.Storefront?.PatchNotes : null;
 
         // Derives acknowledged state, rail marks, and caption.
         ApplyWatermark(acknowledgedThrough);
@@ -555,6 +556,9 @@ public partial class GameDetailsViewModel : ObservableObject
 
     public bool HasLinks => Links.Count > 0;
 
+    public string? GogPatchNotes { get; }
+    public bool HasGogPatchNotes => !string.IsNullOrWhiteSpace(GogPatchNotes);
+
     /// <summary>
     /// The sentence Band 3 draws when there is no primary action and no
     /// links — stating why the band cannot get the user in. Null when the
@@ -770,7 +774,7 @@ public partial class GameDetailsViewModel : ObservableObject
         GameTileViewModel tile)
     {
         var primary = tile.PrimaryAction;
-        var links = StoreActions.LinksFor(tile.Store, tile.SteamAppId, tile.GogProductId);
+        var links = StoreActions.LinksFor(tile.Store, tile.SteamAppId, tile.GogProductId, tile.PlayableEntry.Storefront);
 
         var sentence = primary is null && links.Count == 0
             ? GameActionBandCopy.NoWayInSentence(tile.NoWayIn)

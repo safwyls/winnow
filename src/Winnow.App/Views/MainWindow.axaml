@@ -1,4 +1,4 @@
-﻿<Window xmlns="https://github.com/avaloniaui"
+<Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:Winnow.App.ViewModels"
         xmlns:views="using:Winnow.App.Views"
@@ -470,7 +470,8 @@
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Padding" Value="0"/>
         </Style>
-        <Style Selector="ListBox.rows ListBoxItem">
+        <Style Selector="ListBox.rows ListBoxItem" x:DataType="vm:GameTileViewModel">
+            <Setter Property="AutomationProperties.Name" Value="{Binding AutomationName}"/>
             <Setter Property="Padding" Value="0"/>
             <Setter Property="Margin" Value="0"/>
             <Setter Property="MinHeight" Value="44"/>
@@ -801,12 +802,12 @@
                 </StackPanel>
 
                 <StackPanel Grid.Column="2" Orientation="Horizontal">
-                    <Button Classes="wincontrol"
+                    <Button AutomationProperties.Name="Minimise" Classes="wincontrol"
                             Click="OnMinimisePressed"
                             ToolTip.Tip="Minimise">
                         <Path Data="M 0,5.5 L 10,5.5"/>
                     </Button>
-                    <Button Name="MaximiseButton"
+                    <Button AutomationProperties.Name="Maximise" Name="MaximiseButton"
                             Classes="wincontrol"
                             Click="OnMaximisePressed"
                             ToolTip.Tip="Maximise">
@@ -818,7 +819,7 @@
                                   Data="M 2.5,2.5 L 2.5,0.5 L 10.5,0.5 L 10.5,8.5 L 8.5,8.5 M 0.5,2.5 L 8.5,2.5 L 8.5,10.5 L 0.5,10.5 Z"/>
                         </Panel>
                     </Button>
-                    <Button Classes="wincontrol close"
+                    <Button AutomationProperties.Name="Close" Classes="wincontrol close"
                             Click="OnClosePressed"
                             ToolTip.Tip="Close">
                         <Path Data="M 0.5,0.5 L 9.5,9.5 M 9.5,0.5 L 0.5,9.5"/>
@@ -866,7 +867,7 @@
                          the all-games bucket and reuses the bucket style, so its
                          count renders as Data 11 rather than a heading's
                          Data 22. -->
-                    <Button Classes="bucket"
+                    <Button AutomationProperties.Name="FEED" Classes="bucket"
                             Classes.selected="{Binding IsFeedVisible}"
                             Command="{Binding ShowFeedCommand}"
                             ToolTip.Tip="Games worth going back to, and why">
@@ -885,7 +886,7 @@
                          The Merges screen (docs/merge_queue_design). A screen
                          row like FEED, not a cut: no count, no recede. The
                          pending count is on the screen's own header. -->
-                    <Button Classes="bucket"
+                    <Button AutomationProperties.Name="{Binding MergeQueue.RailLabel}" Classes="bucket"
                             Classes.selected="{Binding IsMergeQueueVisible}"
                             Command="{Binding ToggleMergeQueueCommand}"
                             ToolTip.Tip="{Binding MergeQueue.RailTooltip}">
@@ -900,7 +901,7 @@
                         </Grid>
                     </Button>
 
-                    <Button Classes="bucket"
+                    <Button AutomationProperties.Name="{Binding Library.AllGames.AutomationName}" Classes="bucket"
                             Classes.selected="{Binding Library.AllGames.IsSelected}"
                             Command="{Binding SelectBucketCommand}"
                             CommandParameter="{Binding Library.AllGames}"
@@ -996,12 +997,12 @@
                             Padding="0,14,0,0"
                             BorderBrush="{StaticResource Line}"
                             BorderThickness="0,1,0,0">
-                        <TextBlock Classes="label"
+                        <TextBlock AutomationProperties.HeadingLevel="2" Classes="label"
                                    FontSize="10"
                                    LetterSpacing="1.4"
                                    Text="ACCOUNT"/>
                     </Border>
-                    <Button Classes="bucket"
+                    <Button AutomationProperties.Name="{Binding AccountStats.RailRow}" Classes="bucket"
                             Classes.selected="{Binding IsAccountStatsVisible}"
                             Command="{Binding ToggleAccountStatsCommand}"
                             ToolTip.Tip="{Binding AccountStats.RailTooltip}">
@@ -1027,7 +1028,7 @@
                             BorderBrush="{StaticResource Line}"
                             BorderThickness="0,1,0,0"
                             IsVisible="{Binding Library.Lists.ShowListsHeader}">
-                        <TextBlock Classes="label"
+                        <TextBlock AutomationProperties.HeadingLevel="2" Classes="label"
                                    FontSize="10"
                                    LetterSpacing="1.4"
                                    Text="LISTS"/>
@@ -1036,7 +1037,7 @@
                     <ItemsControl ItemsSource="{Binding Library.Lists.Lists}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="lists:GameListViewModel">
-                                <Button Classes="listrow"
+                                <Button AutomationProperties.Name="{Binding AutomationName}" AutomationProperties.ItemStatus="{Binding AutomationName}" Classes="listrow"
                                         Classes.selected="{Binding IsSelected}"
                                         Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).SelectListCommand}"
                                         CommandParameter="{Binding}"
@@ -1078,7 +1079,7 @@
                             BorderBrush="{StaticResource Line}"
                             BorderThickness="0,1,0,0"
                             IsVisible="{Binding Library.Lists.HasLiveLists}">
-                        <TextBlock Classes="label"
+                        <TextBlock AutomationProperties.HeadingLevel="2" Classes="label"
                                    FontSize="10"
                                    LetterSpacing="1.4"
                                    Text="LIVE LISTS"/>
@@ -1087,7 +1088,7 @@
                     <ItemsControl ItemsSource="{Binding Library.Lists.LiveLists}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="lists:GameListViewModel">
-                                <Button Classes="listrow"
+                                <Button AutomationProperties.Name="{Binding AutomationName}" AutomationProperties.ItemStatus="{Binding AutomationName}" Classes="listrow"
                                         Classes.selected="{Binding IsSelected}"
                                         Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).SelectListCommand}"
                                         CommandParameter="{Binding}"
@@ -1236,7 +1237,7 @@
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
                       </Grid.ColumnDefinitions>
-                    <TextBox Name="SearchBox"
+                    <TextBox AutomationProperties.Name="Search titles" Name="SearchBox"
                              Grid.Column="0"
                              Classes="search"
                              HorizontalAlignment="Stretch"
@@ -1257,7 +1258,7 @@
                             Background="{StaticResource ChromeFieldOnGround}"
                             ClipToBounds="True" Height="30">
                         <StackPanel Orientation="Horizontal">
-                            <Button Classes="seg"
+                            <Button AutomationProperties.Name="Grid" Classes="seg"
                                     Classes.on="{Binding Library.IsGridView}"
                                     Command="{Binding Library.ShowGridViewCommand}"
                                     ToolTip.Tip="Grid">
@@ -1268,7 +1269,7 @@
                                     <Rectangle Width="5" Height="5" Margin="1,1,0,0"/>
                                 </UniformGrid>
                             </Button>
-                            <Button Classes="seg"
+                            <Button AutomationProperties.Name="List" Classes="seg"
                                     Classes.on="{Binding !Library.IsGridView}"
                                     Command="{Binding Library.ShowListViewCommand}"
                                     ToolTip.Tip="List">
@@ -1288,7 +1289,7 @@
                          with no spec behind it. IsDirectionReversed was not taken because it
                          also swaps which RepeatButton the filled-track style paints, putting
                          the TextDim travelled side on the wrong end. -->
-                    <Slider Name="DensitySlider"
+                    <Slider AutomationProperties.Name="Density" Name="DensitySlider"
                             Classes="density"
                             Minimum="{x:Static vm:LibraryViewModel.MinimumTileWidth}"
                             Maximum="{x:Static vm:LibraryViewModel.MaximumTileWidth}"
@@ -1304,7 +1305,7 @@
                     <!-- ── Display preferences (§8) ────────────────────────
                          Persisted preferences behind a popover. The command
                          bar holds per-session controls; these persist. -->
-                    <Button Name="DisplayButton" Classes="ctl"
+                    <Button AutomationProperties.Name="Display" Name="DisplayButton" Classes="ctl"
                             ToolTip.Tip="Display preferences">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <TextBlock Classes="body" FontSize="12"
@@ -1449,7 +1450,7 @@
                                 Spacing="10" VerticalAlignment="Center">
                     <!-- Sort. The button face is the order in force; the menu
                          is the same state the list-view column headers write. -->
-                    <Button Name="SortButton"
+                    <Button AutomationProperties.Name="{Binding Library.SortLabel}" Name="SortButton"
                             Classes="ctl" ToolTip.Tip="Sort order">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <TextBlock Classes="body" FontSize="12"
@@ -1466,7 +1467,7 @@
                                               MinWidth="176">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate DataType="vm:SortOptionViewModel">
-                                            <Button Classes="sortitem" Click="OnSortItemClick">
+                                            <Button AutomationProperties.Name="{Binding Label}" Classes="sortitem" Click="OnSortItemClick">
                                                 <Grid ColumnDefinitions="14,*">
                                                     <!-- Volt marks the active order —
                                                          selection, which is exactly
@@ -1492,7 +1493,7 @@
                     <!-- ── Filters ──────────────────────────────────────────
                          Opens as a column beside the grid (not an overlay).
                          Badge shows how many rules are in force. -->
-                    <Button Name="FiltersButton"
+                    <Button AutomationProperties.Name="Filters" Name="FiltersButton"
                             Classes="ctl"
                             Classes.on="{Binding Library.Filters.IsOpen}"
                             Command="{Binding Library.Filters.ToggleCommand}"
@@ -1592,7 +1593,7 @@
                             BorderBrush="{StaticResource Line}"
                             BorderThickness="0,0,0,1">
                         <Grid ColumnDefinitions="2,32,18,*,136,104,92,24">
-                            <Button Grid.Column="3" Classes="colhead"
+                            <Button AutomationProperties.Name="TITLE" Grid.Column="3" Classes="colhead"
                                     Command="{Binding Library.SortByTitleCommand}">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                     <TextBlock Classes="label" FontSize="10" Text="TITLE"/>
@@ -1608,7 +1609,7 @@
                             <TextBlock Grid.Column="4" Classes="label" FontSize="10"
                                        Text="STORE" VerticalAlignment="Center"/>
 
-                            <Button Grid.Column="5" Classes="colhead"
+                            <Button AutomationProperties.Name="PLAYTIME" Grid.Column="5" Classes="colhead"
                                     HorizontalContentAlignment="Right"
                                     Command="{Binding Library.SortByPlaytimeCommand}">
                                 <StackPanel Orientation="Horizontal" Spacing="6"
@@ -1623,7 +1624,7 @@
                                 </StackPanel>
                             </Button>
 
-                            <Button Grid.Column="6" Classes="colhead"
+                            <Button AutomationProperties.Name="IDLE" Grid.Column="6" Classes="colhead"
                                     HorizontalContentAlignment="Right"
                                     Command="{Binding Library.SortByIdleCommand}"
                                     ToolTip.Tip="Time since you last played">
@@ -1641,7 +1642,7 @@
                         </Grid>
                     </Border>
 
-                    <ListBox Grid.Row="1"
+                    <ListBox AutomationProperties.Name="Games" Grid.Row="1"
                              Name="ListRows"
                              Classes="rows"
                              SelectionMode="Multiple"
@@ -1807,7 +1808,7 @@
                                      before and drifted back, because the only
                                      place it existed was this attribute and no
                                      test could see it (TASK-60). -->
-                                <Button Classes="seg tab"
+                                <Button AutomationProperties.Name="{Binding Stores.SegmentLabel}" Classes="seg tab"
                                         Classes.on="{Binding IsStoresVisible}"
                                         Command="{Binding ShowStoresCommand}"
                                         ToolTip.Tip="{Binding Stores.SegmentTooltip}">
@@ -1817,14 +1818,14 @@
                                      shows: hidden games, explicit content,
                                      hand-added games. Label is bound rather
                                      than written in, for TASK-60's reason. -->
-                                <Button Classes="seg tab"
+                                <Button AutomationProperties.Name="{Binding LibrarySettings.SegmentLabel}" Classes="seg tab"
                                         Classes.on="{Binding IsLibrarySettingsVisible}"
                                         Command="{Binding ShowLibrarySettingsCommand}"
                                         ToolTip.Tip="{Binding LibrarySettings.SegmentTooltip}">
                                     <TextBlock Classes="display-s"
                                                Text="{Binding LibrarySettings.SegmentLabel}"/>
                                 </Button>
-                                <Button Classes="seg tab"
+                                <Button AutomationProperties.Name="APPEARANCE" Classes="seg tab"
                                         Classes.on="{Binding IsAppearanceVisible}"
                                         Command="{Binding ShowAppearanceCommand}"
                                         ToolTip.Tip="Theme and transparency">
@@ -1921,25 +1922,25 @@
                     </Grid>
 
                     <StackPanel Orientation="Horizontal" Spacing="2">
-                        <Button Classes="rate" Classes.on="{Binding IsRated1}"
+                        <Button AutomationProperties.Name="1 out of 5" Classes="rate" Classes.on="{Binding IsRated1}"
                                 CommandParameter="1" Command="{Binding RateCommand}"
                                 ToolTip.Tip="1 out of 5"><Ellipse/></Button>
-                        <Button Classes="rate" Classes.on="{Binding IsRated2}"
+                        <Button AutomationProperties.Name="2 out of 5" Classes="rate" Classes.on="{Binding IsRated2}"
                                 CommandParameter="2" Command="{Binding RateCommand}"
                                 ToolTip.Tip="2 out of 5"><Ellipse/></Button>
-                        <Button Classes="rate" Classes.on="{Binding IsRated3}"
+                        <Button AutomationProperties.Name="3 out of 5" Classes="rate" Classes.on="{Binding IsRated3}"
                                 CommandParameter="3" Command="{Binding RateCommand}"
                                 ToolTip.Tip="3 out of 5"><Ellipse/></Button>
-                        <Button Classes="rate" Classes.on="{Binding IsRated4}"
+                        <Button AutomationProperties.Name="4 out of 5" Classes="rate" Classes.on="{Binding IsRated4}"
                                 CommandParameter="4" Command="{Binding RateCommand}"
                                 ToolTip.Tip="4 out of 5"><Ellipse/></Button>
-                        <Button Classes="rate" Classes.on="{Binding IsRated5}"
+                        <Button AutomationProperties.Name="5 out of 5" Classes="rate" Classes.on="{Binding IsRated5}"
                                 CommandParameter="5" Command="{Binding RateCommand}"
                                 ToolTip.Tip="5 out of 5"><Ellipse/></Button>
                     </StackPanel>
 
                     <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-                        <TextBox Grid.Column="0"
+                        <TextBox AutomationProperties.Name="How was it?" Grid.Column="0"
                                  Name="JournalNote"
                                  Classes="note"
                                  Watermark="How was it?"

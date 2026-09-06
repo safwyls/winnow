@@ -12,6 +12,7 @@ using Winnow.Data.Repositories;
 using Winnow.Enrich.GamesDb;
 using Winnow.Enrich.Igdb;
 using Winnow.Enrich.Steam;
+using Winnow.Enrich.Stores;
 using Winnow.Enrich.SteamWeb;
 using Winnow.Enrich.Updates;
 using Winnow.Ingest.Epic;
@@ -341,6 +342,11 @@ public static class Program
                         await Dispatcher.UIThread.InvokeAsync(() =>
                             services.GetRequiredService<MergeQueueViewModel>()
                                 .LoadCommand.ExecuteAsync(null));
+
+                        // Optional storefront links follow the existing metadata passes;
+                        // a slow storefront must not hold up titles, covers, or facets.
+                        await services.GetRequiredService<StorefrontSyncService>().SyncAsync(Shutdown.Token);
+                        await RefreshLibraryAsync(services);
                     }
                     catch (OperationCanceledException)
                     {
@@ -829,6 +835,8 @@ public static class Program
         // the typed form untouched. The IGDB half goes through
         // IIgdbAssignmentService, registered below for the details modal.
         services.AddSingleton<IExecutableFilePicker, TopLevelExecutableFilePicker>();
+        services.AddSingleton<AcquisitionExport>();
+        services.AddSingleton<IAcquisitionExportDestination, TopLevelAcquisitionExportDestination>();
         services.AddSingleton<IExecutableInspector, FileVersionInfoExecutableInspector>();
         services.AddSingleton<LibrarySettingsViewModel>();
 
@@ -869,6 +877,8 @@ public static class Program
         // SqliteEpicCatalogCache wrote. See IEpicLaunchKeys for why the UI is
         // allowed to read it and where it should eventually live instead.
         services.AddSingleton<IEpicLaunchKeys, SqliteEpicLaunchKeys>();
+        services.AddStorefrontEnrichment();
+        services.AddSingleton<StorefrontSyncService>();
 
         // M3b (§5.2): launching, and the seam that makes a Winnow-started session
         // exactly attributed instead of inferred.

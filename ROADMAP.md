@@ -56,7 +56,7 @@ work was taken up, not the order it was planned.
 | M3b | Launch + journal prompt | Launching from Winnow records a session; the journal prompt is opt-in | shipped; the `winnow-wrap` launch-option wrapper is specified and deliberately not built |
 | M8 | The Feed | The recommender is the app's primary view; every card states its reason in one sentence | shipped; no dismiss or snooze, and nothing remembers yesterday |
 | M5 | Historical playtime backfill | Historical playtime backfills; the feed measurably improves on a cold library | built; backfill tested, feed improvement awaiting live validation against the user's key |
-| M6 | Export (JSON + CSV) | JSON is complete and re-readable; CSV covers a defined set of views | deferred 2026-08-31; exit criterion to be restated |
+| M6 | Export (JSON + CSV) | JSON is complete and re-readable; CSV covers a defined set of views | acquisition CSV shipped; full JSON/import deferred; exit criterion to be restated |
 | M9 | Install / uninstall management | Install and uninstall delegate to the owning store client and reflect state back | after M6 |
 | M10 | Full-screen mode + gamepad navigation | The whole app is navigable on a controller at 10 feet | last |
 
