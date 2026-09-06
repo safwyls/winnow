@@ -1,10 +1,10 @@
 ---
 id: TASK-32
 title: Add cross-platform session support
-status: Done
+status: In Progress
 assignee: []
 created_date: '2026-08-29 21:54'
-updated_date: '2026-09-06 22:49'
+updated_date: '2026-09-06 23:09'
 labels:
   - infra
   - ingest
@@ -31,6 +31,8 @@ Session detection is Windows-only. `GameExecutableIndexBuilder` matches `*.exe`,
 
 <!-- SECTION:PLAN:BEGIN -->
 1. Inspect process enumeration and executable indexing boundaries. 2. Add Linux-native executable patterns and read-only Proton compatibility-prefix attribution from proc environments. 3. Add focused tests and attempt a read-only Linux runtime verification without installing components.
+
+Stabilize the real-process smoke assertion by waiting for the monitor-owned asynchronous exit callback and persistence, then rerun Ubuntu verification.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -45,6 +47,8 @@ Linux native name matching preserves extension-like suffixes and indexes a 15-ch
 Correction: Unix /proc comm truncation is 15 UTF-8 bytes, not 15 characters. The index now produces the matching UTF-8 byte-truncated alias and a multibyte regression test. LinuxFact explicitly skips the real-process smoke facts on all non-Linux hosts; no local Linux runtime result is claimed.
 
 Ubuntu CI run 34065062873 at commit 9eb2ebe passed both real-process smoke tests on 2026-09-06. The native case discovers an executable with Unix mode bits inside its install root. The compatibility case runs a process outside that root and records its session using only the exact Steam appid from STEAM_COMPAT_DATA_PATH. This verifies the Proton attribution mechanism with a synthetic environment; it is not a compatibility matrix of real Wine/Proton games. The full Windows suite passed 3,932 tests, with these two Linux facts explicitly skipped; Release build and migration integrity checks also passed.
+
+The second Ubuntu run discovered the compatibility process but asserted before its session was recorded. Investigating the smoke-test exit/persistence synchronization; first-run evidence remains valid but repeatability must be restored.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary

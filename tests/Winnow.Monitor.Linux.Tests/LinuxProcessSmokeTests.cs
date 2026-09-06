@@ -91,7 +91,16 @@ public sealed class LinuxProcessSmokeTests
                 await WaitForDiscoveryAsync(watcher);
                 process.Kill();
                 await process.WaitForExitAsync();
-                await watcher.TickAsync();
+                // The watcher owns a separate Process and receives its exit
+                // callback asynchronously; waiting on this handle does not join it.
+                for (var attempt = 0; attempt < 100 && sessions.Items.Count == 0; attempt++)
+                {
+                    await watcher.TickAsync();
+                    if (sessions.Items.Count == 0)
+                    {
+                        await Task.Delay(50);
+                    }
+                }
 
                 var session = Assert.Single(sessions.Items);
                 Assert.Equal(ownershipId, session.OwnershipId);
