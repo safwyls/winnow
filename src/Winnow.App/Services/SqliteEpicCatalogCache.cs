@@ -50,7 +50,7 @@ public sealed class SqliteEpicCatalogCache : IEpicCatalogCache
                 payload_json = excluded.payload_json,
                 fetched_at   = excluded.fetched_at;
             """,
-            new { Provider, catalogItemId, payloadJson, fetchedAt = fetchedAt.ToUniversalTime() },
+            new { Provider, catalogItemId, payloadJson, fetchedAt },
             transaction: lease.Transaction,
             cancellationToken: ct));
     }

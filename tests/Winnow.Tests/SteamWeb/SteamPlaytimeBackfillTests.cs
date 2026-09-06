@@ -390,6 +390,61 @@ public sealed class SteamPlaytimeBackfillTests : IDisposable
         Assert.Null(await Marker(2024));
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Matching_credentials_recover_all_years_after_an_unconfirmed_pass(bool legacyMarkers)
+    {
+        await SeedLibraryAsync();
+        var account = SteamId.FromAccountId(SteamWebFixtures.FixtureAccountId)!.Value;
+        if (legacyMarkers)
+        {
+            // Reproduce the persisted state older builds left after rejecting
+            // this account, including historical markers with zero imports.
+            for (var year = 2022; year <= 2025; year++)
+            {
+                await _settings.SetAsync($"steam.backfill.yir.{account.Value}.{year}",
+                    "2026-08-01T00:00:00.0000000Z;games=0;written=0");
+            }
+        }
+
+        var rejected = new HistoryStub { Undisclosed = true };
+        var first = await Backfill(rejected).BackfillAsync();
+        Assert.Equal([2022, 2023, 2024, 2025, 2026], rejected.YearsAsked);
+        Assert.Equal(0, first.YearsCompleted);
+        Assert.False(first.WroteAnything);
+        Assert.False(rejected.AnchorsAsked);
+        Assert.Null(await Marker(2026));
+        if (!legacyMarkers)
+        {
+            for (var year = 2022; year <= 2025; year++)
+                Assert.Null(await Marker(year));
+        }
+
+        if (legacyMarkers)
+        {
+            var unavailableAnchor = new HistoryStub { AnchorsAnswer = false };
+            var interrupted = await Backfill(unavailableAnchor).BackfillAsync();
+            Assert.False(interrupted.WroteAnything);
+            Assert.Equal(0, interrupted.YearsCompleted);
+        }
+
+        // The canned populated responses model the service receiving a key
+        // belonging to this account on the next launch.
+        var matching = new HistoryStub();
+        var recovered = await Backfill(matching).BackfillAsync();
+        Assert.Equal([2022, 2023, 2024, 2025, 2026], matching.YearsAsked);
+        Assert.Equal(5, recovered.YearsCompleted);
+        Assert.True(recovered.SnapshotsWritten > 0);
+        var snapshots = await _snapshots.GetByOwnershipAsync(await OwnershipAsync(Enshrouded));
+        Assert.Contains(snapshots, s => s.ObservedAt.Year == 2024 && s.PlaytimeMinutes == 417);
+        Assert.Contains(snapshots, s => s.ObservedAt.Year == 2025 && s.PlaytimeMinutes == 817);
+
+        var again = new HistoryStub();
+        Assert.False((await Backfill(again).BackfillAsync()).WroteAnything);
+        Assert.Equal([2026], again.YearsAsked);
+    }
+
     private async Task<string?> Marker(int year)
         => await _settings.GetAsync(
             $"steam.backfill.yir.{SteamId.FromAccountId(SteamWebFixtures.FixtureAccountId)!.Value.Value}.{year}");
@@ -456,6 +511,8 @@ public sealed class SteamPlaytimeBackfillTests : IDisposable
 
         public bool AnchorsAnswer { get; init; } = true;
 
+        public bool Undisclosed { get; init; }
+
         /// <summary>An appid to strip from the anchor response, to exercise the no-anchor path.</summary>
         public string? WithholdAnchorFor { get; init; }
 
@@ -510,7 +567,7 @@ public sealed class SteamPlaytimeBackfillTests : IDisposable
                 _ => null,
             };
 
-            if (body is null)
+            if (body is null || Undisclosed)
             {
                 // An answered-but-empty year: the bare envelope, which is what a
                 // year with no Steam Replay looks like.

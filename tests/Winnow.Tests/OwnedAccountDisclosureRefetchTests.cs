@@ -247,19 +247,22 @@ public sealed class OwnedAccountDisclosureRefetchTests : IDisposable
     }
 
     [Fact]
-    public async Task An_account_that_never_confirmed_is_not_refetched_at_all()
+    public async Task An_account_that_never_confirmed_retries_history_without_bypassing_confirmation()
     {
         await SeedAsync();
         await MarkFinishedAsync(populated: 2025);
 
-        // No confirmed marker: nothing has ever proved a Year in Review answers
-        // for this account, so there is no reason to think a re-read would
-        // disclose what the current year did not.
-        var history = new YearStub { PopulatedYears = { 2025 } };
+        // Old completion markers alone cannot freeze an unconfirmed account's
+        // history. Empty responses still cannot establish its identity.
+        var history = new YearStub();
 
-        await Backfill(history).BackfillAsync();
+        var report = await Backfill(history).BackfillAsync();
 
-        Assert.Equal([2026], history.Asked.Select(a => a.Year));
+        Assert.Equal([2022, 2023, 2024, 2025, 2026], history.Asked.Select(a => a.Year));
+        Assert.Equal(0, report.YearsCompleted);
+        Assert.False(report.WroteAnything);
+        Assert.Null(await _settings.GetAsync(
+            $"{SteamPlaytimeBackfillService.ConfirmedPrefix}{_steamId.Value}.confirmed"));
     }
 
     // ══ The marker parse ════════════════════════════════════════════════════

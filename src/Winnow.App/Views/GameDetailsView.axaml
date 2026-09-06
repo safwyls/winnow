@@ -809,6 +809,11 @@
                                         <MenuFlyout Placement="BottomEdgeAlignedLeft"
                                                     FlyoutPresenterClasses="actions">
 
+                                            <MenuItem Name="ManageInstallationItem"
+                                                      Header="{Binding ManagementAction.Label}"
+                                                      IsVisible="{Binding HasManagementAction}"
+                                                      ToolTip.Tip="{Binding ManagementAction.Tooltip}"/>
+
                                             <!-- Local folder, not a file: URI — GameLink
                                                  refuses that scheme on purpose and the
                                                  launcher takes a DirectoryInfo directly. -->

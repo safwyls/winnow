@@ -79,7 +79,8 @@ public sealed class CrossJobPlaytimeSeriesTests : IDisposable
             SilentStores.Gog(),
             resolver,
             gate,
-            NullLogger<LocalLibrarySyncService>.Instance);
+            NullLogger<LocalLibrarySyncService>.Instance,
+            steamInstallState: new SteamInstallStateRepository(_db.Factory));
 
         _remote = new RemoteOwnershipSyncService(
             _local,
@@ -274,13 +275,11 @@ public sealed class CrossJobPlaytimeSeriesTests : IDisposable
     }
 
     /// <summary>
-    /// P3's other half: the startup pipeline hands the backfill the scan the
-    /// local job just paid for. Proven by deleting the Steam root in between —
-    /// a pass that re-read the disk would find nothing to attach the owned
-    /// library to.
+    /// Backfill rereads install state under the sync gate. An unavailable
+    /// library is unknown, so it cannot clear a previously known installation.
     /// </summary>
     [Fact]
-    public async Task The_startup_backfill_reuses_the_local_passs_scan_instead_of_rescanning()
+    public async Task Startup_backfill_rereads_install_state_but_an_offline_library_preserves_the_stored_installation()
     {
         var local = await _local.SyncAsync();
         Assert.NotNull(local.Scan);
@@ -289,8 +288,31 @@ public sealed class CrossJobPlaytimeSeriesTests : IDisposable
 
         var report = await _remote.SyncAsync(local.Scan!.Value);
 
-        Assert.Equal(2, report.Candidates);
+        Assert.Equal(1, report.Candidates);
+        var ownership = await _ownerships.GetAsync(await OwnershipIdAsync());
+        Assert.True(ownership!.Installed);
+        Assert.NotNull(ownership.InstallPath);
         Assert.Equal(AccountWideMinutes, (await BucketAsync()).PlaytimeMinutes);
+    }
+
+    [Fact]
+    public async Task Startup_backfill_cannot_restore_a_manifest_deleted_after_the_reusable_scan()
+    {
+        var local = await _local.SyncAsync();
+        Assert.NotNull(local.Scan);
+        var ownershipId = await OwnershipIdAsync();
+        Assert.True((await _ownerships.GetAsync(ownershipId))!.Installed);
+
+        File.Delete(Path.Combine(_steamRoot, "steamapps", $"appmanifest_{AppId}.acf"));
+        var report = await _remote.SyncAsync(local.Scan!.Value);
+
+        Assert.Equal(2, report.Candidates);
+        var ownership = await _ownerships.GetAsync(ownershipId);
+        Assert.False(ownership!.Installed);
+        Assert.Null(ownership.InstallPath);
+        Assert.Equal(AccountWideMinutes, (await BucketAsync()).PlaytimeMinutes);
+        Assert.Equal([LocalMinutes, AccountWideMinutes],
+            (await _snapshots.GetByOwnershipAsync(ownershipId)).Select(snapshot => snapshot.PlaytimeMinutes));
     }
 
     private async Task<long> OwnershipIdAsync()

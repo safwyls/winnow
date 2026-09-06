@@ -2236,3 +2236,32 @@ README.md previously said:
 The build spec previously said:
 
 > The same standard binds every secret Winnow keeps: the Steam Web API key, the IGDB client secret and the cached Twitch access token are each stored DPAPI-encrypted under their own versioned entropy, are migrated out of any plaintext row a pre-protection install left, and refuse on a host that cannot encrypt rather than saving a readable row.
+
+## 2026-09-06 — Epic install acceptance and live confirmation
+
+Launcher acceptance alone did not prove an install screen appeared. Later user checks verified
+both addressing forms for an uninstalled Enter the Gungeon, while Moonlighter was already
+installed. The earlier transient error remains unexplained. The spike previously said:
+
+> The URI and identifiers are therefore not the observed failure. The failure occurs after Epic accepts them. The exact meaning of `AI-NE` was not found in official documentation; stale entitlement/UI state is a hypothesis, not a decoded error or a proven root cause. The install URI remains unchanged, and this investigation does not claim an installation or a working confirmation screen.
+> TASK-141's install-confirmation criterion remains unchecked pending successful user verification through the launcher.
+
+## 2026-09-06 — Installation management in Details
+
+Installation management belongs in the existing More menu. Steam owns its uninstall
+confirmation; Epic and GOG management links open their own clients. The visual spec previously said:
+
+> `More` opens a menu whose rows are `Open folder`, `Refetch metadata`, `Wrong game?`, `Edit details` and `Hide`, in that order.
+> `More`. Its tooltip is `Folder, metadata, corrections and hide`.
+
+The build spec previously said:
+
+> While Winnow is open, an Epic-only local refresh polls top-level `.item` manifests every two seconds.
+> Both local and remote ownership passes reread Epic candidates after acquiring that gate, so a queued pass or a slow network backfill cannot restore the install state from an older startup scan. Network requests and the Steam/GOG scans remain outside the gate.
+
+## 2026-09-06 — Preserve timestamp precision while enforcing kind
+
+Activating the UTC handler exposed its truncation of fractional seconds. The handler now
+preserves the precision Microsoft.Data.Sqlite previously stored. The build spec briefly said:
+
+> Winnow.Data rejects `DateTimeKind.Unspecified` before executing a write, converts Local values to UTC, and stores UTC text as `yyyy-MM-dd HH:mm:ss`.

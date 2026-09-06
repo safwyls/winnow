@@ -3,12 +3,12 @@ using Microsoft.Extensions.Logging;
 
 namespace Winnow.App.Services;
 
-/// <summary>Publishes stable Epic manifest changes through local sync and the normal library reload.</summary>
-public sealed class EpicInstallRefreshService(
+/// <summary>Publishes stable launcher manifest changes through local sync and the normal library reload.</summary>
+public class StableInstallRefreshService(
     Func<string?> readFingerprint,
     Func<CancellationToken, Task> sync,
     Func<CancellationToken, Task> refresh,
-    ILogger<EpicInstallRefreshService> logger,
+    ILogger logger,
     TimeProvider? timeProvider = null,
     bool enabled = true) : BackgroundService
 {
@@ -60,7 +60,25 @@ public sealed class EpicInstallRefreshService(
         catch (Exception ex)
         {
             _pending = null;
-            logger.LogWarning(ex, "Epic installation refresh failed; the next stable manifest read will retry.");
+            logger.LogWarning(ex, "Installation refresh failed; the next stable manifest read will retry.");
         }
     }
 }
+
+public sealed class EpicInstallRefreshService(
+    Func<string?> readFingerprint,
+    Func<CancellationToken, Task> sync,
+    Func<CancellationToken, Task> refresh,
+    ILogger<EpicInstallRefreshService> logger,
+    TimeProvider? timeProvider = null,
+    bool enabled = true)
+    : StableInstallRefreshService(readFingerprint, sync, refresh, logger, timeProvider, enabled);
+
+public sealed class SteamInstallRefreshService(
+    Func<string?> readFingerprint,
+    Func<CancellationToken, Task> sync,
+    Func<CancellationToken, Task> refresh,
+    ILogger<SteamInstallRefreshService> logger,
+    TimeProvider? timeProvider = null,
+    bool enabled = true)
+    : StableInstallRefreshService(readFingerprint, sync, refresh, logger, timeProvider, enabled);

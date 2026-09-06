@@ -73,7 +73,7 @@ public sealed class SqliteGamesDbCache : IGamesDbCache
                 payload_json = excluded.payload_json,
                 fetched_at   = excluded.fetched_at;
             """,
-            new { provider = CacheProvider, key, payloadJson, fetchedAt = fetchedAt.ToUniversalTime() },
+            new { provider = CacheProvider, key, payloadJson, fetchedAt },
             transaction: lease.Transaction,
             cancellationToken: ct));
     }

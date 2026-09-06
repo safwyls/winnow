@@ -162,6 +162,12 @@ validation and enumeration failure boundary; a bad root logs a warning and leave
 readable. When a root or manifest cannot be read, missing manifests do not establish an
 uninstall: playtime-only candidates carry unknown install state.
 
+While Winnow is open, Steam installation refresh polls the manifest inventory every two
+seconds. Two matching complete inventories trigger local sync and a library reload. Only a
+complete scan can clear installation flags and paths for absent app ids; ownership and history
+remain, including for never-played manifest-only games and after restart. An offline root or
+malformed manifest preserves the stored state until the inventory is readable again.
+
 ### 4.2 Steam Web API
 
 Used for enrichment, entitlement backfill and friends data. The key is user-supplied and
@@ -372,7 +378,7 @@ account's lifetime. The rules that follow govern what may be shown and what must
   `ModSdkMetadataDir`.
 - Epic has **no per-game playtime and no last-played on disk**.
 
-While Winnow is open, an Epic-only local refresh polls top-level `.item` manifests every two
+While Winnow is open, an Epic refresh polls top-level `.item` manifests every two
 seconds. Two consecutive identical, readable snapshots trigger a scan through the shared
 resolver gate and a library reload, including actions in an already-open Details panel.
 The reload retains the selected or flipped card when it is still visible and updates the
@@ -382,11 +388,16 @@ never imply installation, and `Pending` files are ignored. Locked or malformed m
 defer the refresh until a later stable read. Normal completion appears within two to four
 seconds plus local scan time; this follows the launcher's written state, not download progress.
 The service is disabled with local sync for sample-data and `--no-sync` runs.
-Both local and remote ownership passes reread Epic candidates after acquiring that gate,
+Both local and remote ownership passes reread Steam and Epic candidates after acquiring that gate,
 so a queued pass or a slow network backfill cannot restore the install state from an older
-startup scan. Network requests and the Steam/GOG scans remain outside the gate.
+startup scan. Network requests and GOG scans remain outside the gate.
 
 **GOG:**
+
+Every successful scheduled local scan reloads the library, including changes only to install
+state. Failures and cancellation do not trigger a reload. GOG installation changes become
+visible on the existing 15-minute local scan interval; Steam and Epic use the faster manifest
+refresh described above.
 
 - `galaxy-2.0.db` is a WAL database. `immutable=1` silently returns stale data, and `mode=ro`
   writes `-wal` and `-shm` files into the store's directory. **Copy the file first, then read
@@ -610,6 +621,11 @@ record: right for the Work columns enrichment writes, wrong for a Release.
 
 ### 5.4 Historical backfill
 
+Steam Replay completion markers are written only after an account passes confirmation and
+its import finishes. Markers left by older builds on unconfirmed accounts are reset to pending
+before confirmation, allowing later matching credentials to recover historical years even if
+an anchor request fails. Confirmed completed years stay skipped; the current year remains eligible.
+
 Winnow backfills history rather than waiting months for snapshots to accumulate. Three
 mechanisms, all in §4.2 and §4.7:
 
@@ -634,6 +650,15 @@ is a no-op.
 
 SQLite. Migrations are embedded resources, checked into the repository, applied on startup by
 DbUp, and **append-only: never edit a shipped migration.**
+
+Timestamp parameters use `DateTime` with an explicit kind. Winnow.Data rejects
+`DateTimeKind.Unspecified` before executing a write, converts Local values to UTC, and stores
+UTC text as `yyyy-MM-dd HH:mm:ss.FFFFFFF`, retaining fractional seconds when present.
+Callers must resolve a source timestamp's timezone before
+persistence; the data layer never guesses it. Nullable timestamps remain null, and stored
+timestamp text is read as UTC. `DateTimeOffset` resolve-state timestamps retain their explicit
+UTC round-trip format.
+
 `Migrations/hashes.json` records SHA-256 for each SQL script, normalizing CRLF to LF.
 CI verifies file membership and content, and checks existing entries against the previous
 revision so changing a script and its hash together still fails. New migrations append entries.
@@ -934,6 +959,14 @@ export and import remain deferred.
 ---
 
 ## 8. Sources of silence and failure
+
+Diagnostics persist at `<data-dir>/logs/diagnostic*.log` from host setup onward. Serilog retains
+five files, rolling at 1 MiB; events are capped at 8 KiB, so managed logs stay below
+5 × (1 MiB + 8 KiB). Writes flush per event. The formatter suppresses string and identity
+properties and scopes, scrubs path/account/credential patterns in templates, and records
+exception types and method frames without messages or source filenames. Counts and timings
+remain. Log templates must remain static; put user and service values in named properties.
+Bootstrap data-location resolution precedes file logging.
 
 **A source's silence is not an answer.** A field a source cannot provide arrives `null`, never
 `false` or `0`. Feed every reader a fixture with the field absent and assert the candidate

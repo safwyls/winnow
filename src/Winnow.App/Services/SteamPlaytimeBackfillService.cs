@@ -46,7 +46,7 @@ public sealed class SteamPlaytimeBackfillOptions
 /// <summary>What one backfill pass did. Every field is a count, never a payload.</summary>
 /// <param name="Accounts">Steam accounts the pass looked at.</param>
 /// <param name="YearsFetched">Years asked about, cache hits included.</param>
-/// <param name="YearsCompleted">Years answered and therefore marked done.</param>
+/// <param name="YearsCompleted">Answered years marked done after a confirmed import.</param>
 /// <param name="YearsFailed">Years that did not answer and will be retried.</param>
 /// <param name="GamesReconstructed">Appids that produced at least one cumulative point.</param>
 /// <param name="SnapshotsWritten">New rows in <c>playtime_snapshots</c>. Zero on a re-run.</param>
@@ -283,15 +283,25 @@ public sealed class SteamPlaytimeBackfillService : ISteamPlaytimeBackfill
     private async Task BackfillAccountAsync(SteamId steamId, Totals totals, CancellationToken ct)
     {
         var currentYear = _clock.GetUtcNow().UtcDateTime.Year;
+        var confirmed = await _settings.GetAsync(ConfirmedKey(steamId), ct) is not null;
 
         // The current year is always refetched: it is still accruing, and a
         // marker written in March would freeze the series at March. Every
-        // earlier year is closed history and is asked about exactly once per
-        // install.
+        // earlier year is closed history after a confirmed import. Older builds
+        // also marked unconfirmed empty responses complete; ignore those markers
+        // so a matching credential can recover the historical years.
         var pending = new List<int>();
         for (var year = _options.FirstYear; year <= currentYear; year++)
         {
-            if (year == currentYear || await _settings.GetAsync(YearMarker(steamId, year), ct) is null)
+            var marker = await _settings.GetAsync(YearMarker(steamId, year), ct);
+            if (!confirmed && !string.IsNullOrEmpty(marker))
+            {
+                // Invalidate before confirmation can persist. If the anchor or
+                // import then fails, the next pass must still retry this year.
+                await _settings.SetAsync(YearMarker(steamId, year), string.Empty, ct);
+            }
+
+            if (!confirmed || year == currentYear || string.IsNullOrEmpty(marker))
             {
                 pending.Add(year);
             }
@@ -308,7 +318,6 @@ public sealed class SteamPlaytimeBackfillService : ISteamPlaytimeBackfill
         var months = new Dictionary<string, List<SteamMonthlyPlaytime>>(StringComparer.Ordinal);
         var yearFirstPlayed = new Dictionary<string, DateTime>(StringComparer.Ordinal);
         var completed = new List<(int Year, int Games)>();
-        var confirmed = await _settings.GetAsync(ConfirmedKey(steamId), ct) is not null;
 
         // Kept separate from `confirmed`, which a marker written on some earlier
         // launch can satisfy. Only a disclosure THIS PASS proves the key in
@@ -422,9 +431,8 @@ public sealed class SteamPlaytimeBackfillService : ISteamPlaytimeBackfill
             // Nothing has ever proved the key belongs to this account.
             // Steam's bare envelope is the same for "no Replay this year"
             // and "not your account", and the anchor endpoint carries no
-            // account id to check against. Empty years are recorded as done;
-            // nothing is imported.
-            await RecordCompletionAsync(steamId, completed, imported: 0, totals, ct);
+            // account id to check against. Leave every year eligible so a later
+            // matching credential can fetch and import its history.
             _logger.LogDebug(
                 "Steam Year in Review disclosed nothing for account {Account}; "
                 + "no anchor was fetched and nothing was imported.",

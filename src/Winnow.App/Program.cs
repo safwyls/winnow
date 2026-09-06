@@ -131,6 +131,8 @@ public static class Program
             return;
         }
 
+        DiagnosticLogging.Configure(builder.Logging, DataLocation.Root);
+
         // Both flags mean "leave this database alone", so every writer has to
         // honour them — otherwise rows appear fifteen minutes into UI work
         // against a fixed or seeded library.
@@ -472,6 +474,7 @@ public static class Program
         services.AddSingleton<IWorkRepository, WorkRepository>();
         services.AddSingleton<IReleaseRepository, ReleaseRepository>();
         services.AddSingleton<IOwnershipRepository, OwnershipRepository>();
+        services.AddSingleton<ISteamInstallStateRepository, SteamInstallStateRepository>();
 
         // The per-account membership rows behind the account visibility filter
         // (migration 0015). Written by the resolver in the same unit of work as
@@ -626,8 +629,20 @@ public static class Program
         services.AddSingleton<ILocalLibrarySync>(sp => sp.GetRequiredService<LocalLibrarySyncService>());
         services.AddSingleton<IRemoteOwnershipSync>(sp => sp.GetRequiredService<RemoteOwnershipSyncService>());
         services.AddSingleton(TimeProvider.System);
-        services.AddHostedService<SnapshotSchedulerService>();
+        services.AddHostedService(sp => new SnapshotSchedulerService(
+            sp.GetRequiredService<ILocalLibrarySync>(),
+            sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<SnapshotSchedulerOptions>>(),
+            sp.GetRequiredService<ILogger<SnapshotSchedulerService>>(),
+            sp.GetRequiredService<TimeProvider>(),
+            refresh: _ => RefreshLibraryAsync(sp)));
         services.AddHostedService<RemoteOwnershipSchedulerService>();
+        services.AddHostedService(sp => new SteamInstallRefreshService(
+            sp.GetRequiredService<SteamLibrarySource>().ReadInstallFingerprint,
+            ct => sp.GetRequiredService<LocalLibrarySyncService>().SyncAsync(ct),
+            _ => RefreshLibraryAsync(sp),
+            sp.GetRequiredService<ILogger<SteamInstallRefreshService>>(),
+            sp.GetRequiredService<TimeProvider>(),
+            enabled: sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<SnapshotSchedulerOptions>>().Value.Enabled));
         services.AddHostedService(sp => new EpicInstallRefreshService(
             new EpicManifestStateReader().ReadFingerprint,
             ct => sp.GetRequiredService<LocalLibrarySyncService>().SyncEpicAsync(ct),

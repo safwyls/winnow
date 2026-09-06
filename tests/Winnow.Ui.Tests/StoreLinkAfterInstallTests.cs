@@ -20,6 +20,47 @@ namespace Winnow.Ui.Tests;
 public sealed class StoreLinkAfterInstallTests
 {
     [AvaloniaFact]
+    public void Steam_uninstall_menu_row_disappears_when_refreshed_ownership_is_uninstalled()
+    {
+        var now = DateTime.UtcNow;
+        GameTileViewModel Tile(bool installed) => TileFixture.Tile(now,
+            [TileEntry.For(1, 1, 1, "steam", 0, null, steamAppId: "620",
+                ownership: new Ownership { ReleaseId = 1, Store = "steam", Installed = installed })],
+            1, LibraryBuckets.NeverPlayed, title: "Portal 2");
+        var model = new GameDetailsViewModel(Tile(true), "Never played", [], now);
+        var view = new GameDetailsView { DataContext = model };
+        var window = new Window { Width = 1200, Height = 640, Content = view };
+        window.Show();
+        Flush();
+        try
+        {
+            var more = view.FindControl<Button>("MoreActionsButton")!;
+            var click = BoundsInWindow(more, window).Center;
+            window.MouseMove(click);
+            window.MouseDown(click, MouseButton.Left);
+            window.MouseUp(click, MouseButton.Left);
+            Flush();
+            var menu = Assert.IsType<MenuFlyout>(more.Flyout);
+            Assert.True(menu.IsOpen);
+            var row = Assert.Single(menu.Items.OfType<MenuItem>(), item => item.Name == "ManageInstallationItem");
+            Assert.True(row.IsVisible);
+            Assert.Equal("Uninstall in Steam", row.Header);
+            Assert.True(row.Focus(NavigationMethod.Tab));
+            menu.Hide();
+            typeof(GameDetailsViewModel).GetMethod("RefreshTileActions",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+                .Invoke(model, [Tile(false)]);
+            Flush();
+            menu.ShowAt(more);
+            Flush();
+            Assert.False(row.IsVisible);
+            Assert.Equal("Install", model.PrimaryAction!.Label);
+            menu.Hide();
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaFact]
     public void Open_details_refreshes_install_to_play_without_losing_the_store_link()
     {
         var now = DateTime.UtcNow;

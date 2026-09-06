@@ -62,6 +62,9 @@ public partial class GameDetailsView : UserControl
                 case "OpenFolderItem":
                     row.AddHandler(MenuItem.ClickEvent, OnOpenFolderPressed, handledEventsToo: true);
                     break;
+                case "ManageInstallationItem":
+                    row.AddHandler(MenuItem.ClickEvent, OnManageInstallationPressed, handledEventsToo: true);
+                    break;
                 case "WrongGameItem":
                     row.AddHandler(MenuItem.ClickEvent, OnWrongGamePressed, handledEventsToo: true);
                     break;
@@ -271,6 +274,12 @@ public partial class GameDetailsView : UserControl
         {
             await OpenAsync(link);
         }
+    }
+
+    private async void OnManageInstallationPressed(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is GameDetailsViewModel { ManagementAction: { } link })
+            await OpenAsync(link);
     }
 
     /// <summary>

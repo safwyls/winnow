@@ -633,6 +633,62 @@ public class RepositoryRoundTripTests : IDisposable
         Assert.Null(await works.GetByIgdbIdAsync(-1942));
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Unspecified_session_timestamp_is_rejected_before_insertion(bool nullableTimestamp)
+    {
+        var (_, _, ownershipId) = await SeedOwnershipAsync();
+        var sessions = new SessionRepository(_db.Factory);
+        var unspecified = new DateTime(2026, 9, 1, 12, 0, 0, DateTimeKind.Unspecified);
+        var session = new Session
+        {
+            OwnershipId = ownershipId,
+            StartedAt = nullableTimestamp ? Utc(2026, 9, 1) : unspecified,
+            EndedAt = nullableTimestamp ? unspecified : null,
+            DetectionMethod = DetectionMethods.ProcessWatch,
+        };
+
+        var error = await Assert.ThrowsAsync<ArgumentException>(() => sessions.InsertAsync(session));
+
+        Assert.Contains("Unspecified", error.Message);
+        Assert.Empty(await sessions.GetByOwnershipAsync(ownershipId));
+    }
+
+    [Theory]
+    [InlineData(DateTimeKind.Utc, false)]
+    [InlineData(DateTimeKind.Utc, true)]
+    [InlineData(DateTimeKind.Local, false)]
+    [InlineData(DateTimeKind.Local, true)]
+    public async Task Session_timestamp_round_trips_as_utc_with_optional_end(
+        DateTimeKind kind, bool hasEnd)
+    {
+        var (_, _, ownershipId) = await SeedOwnershipAsync();
+        var sessions = new SessionRepository(_db.Factory);
+        var instant = Utc(2026, 9, 1, 12).AddTicks(1234567);
+        var supplied = kind == DateTimeKind.Local ? instant.ToLocalTime() : instant;
+        var id = await sessions.InsertAsync(new Session
+        {
+            OwnershipId = ownershipId,
+            StartedAt = supplied,
+            EndedAt = hasEnd ? supplied.AddHours(1) : null,
+            DetectionMethod = DetectionMethods.ProcessWatch,
+        });
+
+        var stored = Assert.IsType<Session>(await sessions.GetAsync(id));
+        Assert.Equal(instant, stored.StartedAt);
+        Assert.Equal(DateTimeKind.Utc, stored.StartedAt.Kind);
+        if (hasEnd)
+        {
+            Assert.Equal(instant.AddHours(1), stored.EndedAt);
+            Assert.Equal(DateTimeKind.Utc, stored.EndedAt!.Value.Kind);
+        }
+        else
+        {
+            Assert.Null(stored.EndedAt);
+        }
+    }
+
     private async Task<(long WorkId, long ReleaseId, long OwnershipId)> SeedOwnershipAsync()
     {
         var works = new WorkRepository(_db.Factory);

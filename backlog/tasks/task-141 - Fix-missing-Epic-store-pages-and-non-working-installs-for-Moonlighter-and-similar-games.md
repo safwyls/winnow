@@ -7,12 +7,13 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-06 18:23'
-updated_date: '2026-09-06 19:04'
+updated_date: '2026-09-06 21:44'
 labels: []
+milestone: m-4
 dependencies: []
 priority: high
 type: bug
-ordinal: 168000
+ordinal: 800
 ---
 
 ## Description
@@ -24,7 +25,7 @@ User reports Epic titles such as Moonlighter have no Store page and Install does
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
 - [ ] #1 Moonlighter root causes are established from copied library and launcher data, with findings recorded.
-- [ ] #2 Valid Epic game identifiers reach the launcher install confirmation; invalid or unsupported routes are not offered as Install.
+- [x] #2 Valid Epic game identifiers reach the launcher install confirmation; invalid or unsupported routes are not offered as Install.
 - [x] #3 A valid store page is available when Epic can resolve the stored identifiers, including namespace map misses, without title-specific hardcoding.
 - [x] #4 Regression fixtures cover the diagnosed failures, caching and malformed or missing responses; no live API calls in tests.
 <!-- AC:END -->
@@ -51,4 +52,10 @@ Final integration build passed with zero warnings and errors; all 3483 main test
 Follow-up actual-view tests at four window sizes keep Moonlighter Store page visible and hit-testable during pending Install, after handoff, mouse leave and focus changes. A fifth test verifies it survives in-place Install-to-Play refresh and the command receives the new installed tile. The reported disappearance is not reproduced; asked whether closing and reopening Details restores it. Do not claim this symptom fixed from passing tests alone.
 
 Final integration checks pass: 3496 main tests, 20 actual-view UI tests, and 185 tests after selection preservation. Store Page disappearance remains unconfirmed and this task stays In Progress; Install-to-Play completion monitoring was delivered separately as TASK-143.
+
+User confirms Moonlighter install-location confirmation opens from Epic Library. This weakens the earlier inference that URI acceptance ruled out a handoff issue. Investigating artifact-only install addressing versus the composite launch key, using launcher logs copied to scratch.
+
+At 21:40 UTC an artifact-only Eagle install probe resolved the same complete Moonlighter key with ownership Owned, but reported AI-AAI and opened no confirmation (user observed). Retry at 21:41 was rejected as already processing. Fresh copied committed manifest now marks Moonlighter fully installed (bIsIncompleteInstall=false), so this probe cannot compare uninstalled addressing routes and does not establish an artifact-only fix. Awaiting current Play-state confirmation; no URI code change based on this invalid comparison.
+
+Live user verification: Moonlighter is now installed and shows Play. Enter the Gungeon was uninstalled in a fresh copied manifest set; both the existing composite route and artifact-only Garlic route opened the correct install-location selector and were canceled. Copied logs confirm selector completion accepted=false. Existing route retained; earlier transient AI-NE root cause remains unknown, so AC1 stays unchecked. Epic store/library management navigation also confirmed by user.
 <!-- SECTION:NOTES:END -->

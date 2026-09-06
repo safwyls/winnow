@@ -237,15 +237,33 @@ The copied user-action log shows this sequence (UTC):
 - Repeated clicks are rejected because the same handler is still processing. At 18:24:01.780
   its 600-second selector backstop times out.
 
-The URI and identifiers are therefore not the observed failure. The failure occurs after
-Epic accepts them. The exact meaning of `AI-NE` was not found in official documentation;
-stale entitlement/UI state is a hypothesis, not a decoded error or a proven root cause. The
-install URI remains unchanged, and this investigation does not claim an installation or a
-working confirmation screen.
+The failure occurs after Epic accepts the URI; acceptance alone does not rule out a handoff
+problem. The exact meaning of `AI-NE` was not found in official documentation. Stale
+entitlement/UI state is a hypothesis, not a decoded error or a proven root cause.
 
 [Epic's application-not-owned guidance](https://www.epicgames.com/help/c-32735058/c-36403860/a13533694)
 recommends trying the game from the Epic Library, checking the owning account, and checking
 pending launcher updates. It does not name `AI-NE`, so it is recovery guidance rather than
 proof of that code's meaning. Repeated Winnow clicks cannot clear Epic's already-processing
-state. TASK-141's install-confirmation criterion remains unchecked pending successful user
-verification through the launcher.
+state.
+
+### Live comparison during beta hardening — 2026-09-06
+
+The user confirmed that Moonlighter opens an install-location selector directly from Epic's
+Library. By the next probe, a fresh copied committed manifest marked it fully installed, and
+the user confirmed that it showed Play. An artifact-only `apps/Eagle?action=install` request
+at 21:40 UTC then resolved the same complete key with ownership `Owned`, reported `AI-AAI`,
+and showed no selector. Its retry was rejected as already processing. This installed-game
+probe cannot establish which install addressing form works for an uninstalled game.
+
+Enter the Gungeon (`Garlic`) had no committed manifest in a fresh copied manifest set. The
+user verified the correct install-location selector with both the existing composite route
+and `apps/Garlic?action=install`, canceling both. Copied logs record selector completion with
+`accepted=false`; the artifact-only request at 21:42:59 resolves the same complete key.
+This verifies the existing route on a title that earlier logged `AI-NE`, and gives no reason
+to replace it with the artifact-only variant. It does not explain the earlier transient error.
+TASK-141 retains its root-cause criterion; install confirmation now has live evidence.
+
+The user also verified `com.epicgames.launcher://store/library` opens the Library. Winnow's
+management action uses this navigation, where Epic exposes its own Uninstall menu; it does
+not claim to invoke a game-uninstall protocol.

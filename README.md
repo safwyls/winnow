@@ -38,6 +38,10 @@ dotnet run --project src/Winnow.App
 Windows only in practice — Epic and GOG discovery uses the registry, credentials use DPAPI,
 and session detection is Windows-shaped. It builds elsewhere; it will find less.
 
+Diagnostics are saved under `%LOCALAPPDATA%\Winnow\logs` (or the selected `--data-dir`).
+Five rolling files retain roughly 5 MiB. Logs omit identity values, paths, credentials and
+exception messages while retaining operation names, counts, timings and exception types.
+
 The window opens as soon as the local scan finishes, about a second. Titles, cover art and
 update signals fill in behind it.
 

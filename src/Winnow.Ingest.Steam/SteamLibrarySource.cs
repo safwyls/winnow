@@ -66,7 +66,12 @@ public sealed class SteamLibrarySource
 
     /// <summary>Scans the Steam install and returns one candidate per appid. Never throws for a missing install.</summary>
     public IReadOnlyList<CandidateOwnership> Scan(string? steamRoot = null)
+        => Scan(out _, steamRoot);
+
+    /// <summary>Completeness is required before absence can clear a previously known installation.</summary>
+    public IReadOnlyList<CandidateOwnership> Scan(out bool complete, string? steamRoot = null)
     {
+        complete = false;
         steamRoot ??= _steamRoot ?? SteamPaths.FindSteamRoot();
         if (steamRoot is null || !Directory.Exists(steamRoot))
         {
@@ -84,7 +89,7 @@ public sealed class SteamLibrarySource
             return [];
         }
 
-        var manifests = CollectManifests(steamRoot, out var complete);
+        var manifests = CollectManifests(steamRoot, out complete);
 
         var accounts = _accountEnumerator.Enumerate(steamRoot);
         var playtimeByAccount = new List<(SteamAccount Account, IReadOnlyDictionary<string, SteamAppPlaytime> Apps)>(accounts.Count);
@@ -198,6 +203,34 @@ public sealed class SteamLibrarySource
             + "{PlaytimeOnly} played-but-uninstalled) from {Accounts} account(s) under {Root}",
             candidates.Count, installedCount, candidates.Count - installedCount, accounts.Count, steamRoot);
         return candidates;
+    }
+
+    /// <summary>Only a complete, readable manifest inventory can trigger install reconciliation.</summary>
+    public string? ReadInstallFingerprint()
+    {
+        var root = _steamRoot ?? SteamPaths.FindSteamRoot();
+        if (root is null || !Directory.Exists(root)) return null;
+        try
+        {
+            var manifests = CollectManifests(Path.GetFullPath(root), out var complete);
+            if (!complete) return null;
+            var state = new System.Text.StringBuilder();
+            foreach (var (id, entry) in manifests.OrderBy(pair => pair.Key, StringComparer.Ordinal))
+            {
+                Add(id);
+                Add(entry.LibraryRoot);
+                Add(entry.Manifest.InstallDir);
+                Add(entry.Manifest.IsFullyInstalled ? "installed" : "pending");
+            }
+            return Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(
+                System.Text.Encoding.UTF8.GetBytes(state.ToString())));
+
+            void Add(string value) => state.Append(value.Length).Append(':').Append(value);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            return null;
+        }
     }
 
     /// <summary>

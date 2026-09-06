@@ -102,6 +102,23 @@ public enum NoWayIn
 /// </summary>
 public static class StoreActions
 {
+    /// <summary>Steam owns uninstall confirmation. Other clients expose management navigation only.</summary>
+    public static GameLink? ManagementFor(
+        string store, bool? installed, string? steamAppId, string? gogProductId)
+        => store switch
+        {
+            ExternalIdProviders.Steam when installed == true && GameLink.IsSteamAppId(steamAppId)
+                => GameLink.Create("Uninstall in Steam", $"steam://uninstall/{steamAppId}",
+                    "Open Steam's uninstall confirmation", GameLinkKind.Uninstall),
+            ExternalIdProviders.Gog when IsGogProductId(gogProductId)
+                => GameLink.Create("Manage in GOG Galaxy", $"goggalaxy://openGameView/{GogReleaseKey(gogProductId!)}",
+                    "Open this game's page to manage its installation in GOG Galaxy"),
+            ExternalIdProviders.Epic
+                => GameLink.Create("Manage in Epic Games Launcher", "com.epicgames.launcher://store/library",
+                    "Open the Epic library to manage this game's installation"),
+            _ => null,
+        };
+
     /// <summary>
     /// Returns the primary Play/Install action for a tile, or null.
     /// <paramref name="installed"/> is three-valued: true/false/null (unknown).

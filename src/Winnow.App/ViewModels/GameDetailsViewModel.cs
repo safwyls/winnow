@@ -563,6 +563,11 @@ public partial class GameDetailsViewModel : ObservableObject
 
     public bool HasPrimaryAction => PrimaryAction is not null;
 
+    public GameLink? ManagementAction => StoreActions.ManagementFor(
+        Tile.PlayableEntry.Store, Tile.Installed, Tile.SteamAppId, Tile.PlayableEntry.GogProductId);
+
+    public bool HasManagementAction => ManagementAction is not null;
+
     /// <summary>Store page and patch-notes hub. Empty when we hold no appid.</summary>
     public IReadOnlyList<GameLink> Links { get; private set; }
 

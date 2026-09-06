@@ -930,13 +930,20 @@ reasoning as the no-rail sentence: it is the whole of what Band 3 says about get
 there is nothing to press. Two sentences, one per cause: the install state was never read, or
 the store's identifier is not held.
 
-`More` opens a menu whose rows are `Open folder`, `Refetch metadata`, `Wrong game?`,
+`More` opens a menu whose rows are installation management, `Open folder`, `Refetch metadata`, `Wrong game?`,
 `Edit details` and `Hide`, in that order. A row is drawn only when it has something to do:
 `Open folder` when the game is on disk, `Refetch metadata` when enrichment services are
 registered, `Wrong game?` and `Edit details` when their controls exist, `Hide` when the library
 handed its command over. A row with nothing behind it is not drawn rather than drawn inert. The
 trigger's face does not change — the menu owns whether it is open, so the button always reads
-`More`. Its tooltip is `Folder, metadata, corrections and hide`.
+`More`. Its tooltip is `Installation, folder, metadata, corrections and hide`.
+
+Installation management is `Uninstall in Steam` for an installed Steam game with an app id,
+opening `steam://uninstall/<appid>` so Steam owns confirmation and removal. Epic entries offer
+`Manage in Epic Games Launcher`, opening `com.epicgames.launcher://store/library`; GOG entries
+with a product id offer `Manage in GOG Galaxy`, opening the game's existing Galaxy page.
+These navigation actions do not claim to invoke a game-uninstall protocol. Winnow never
+deletes a game's files. Installation management stays in `More`, outside the primary Play/Install strip.
 
 **A row's name does not change with the state of what it opens.** The row opens; the surface
 it opens carries its own close control — a `×` glyph in the trailing Auto column of the

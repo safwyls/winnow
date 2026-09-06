@@ -103,6 +103,7 @@ public sealed class LocalLibrarySyncService : ILocalLibrarySync
     private readonly LibrarySyncGate _gate;
     private readonly ILogger<LocalLibrarySyncService> _logger;
     private readonly IEpicLaunchKeyStore? _epicLaunchKeys;
+    private readonly Winnow.Core.Repositories.ISteamInstallStateRepository? _steamInstallState;
 
     public LocalLibrarySyncService(
         SteamLibrarySource steam,
@@ -111,7 +112,8 @@ public sealed class LocalLibrarySyncService : ILocalLibrarySync
         ExternalIdResolver resolver,
         LibrarySyncGate gate,
         ILogger<LocalLibrarySyncService> logger,
-        IEpicLaunchKeyStore? epicLaunchKeys = null)
+        IEpicLaunchKeyStore? epicLaunchKeys = null,
+        Winnow.Core.Repositories.ISteamInstallStateRepository? steamInstallState = null)
     {
         _steam = steam;
         _epic = epic;
@@ -120,6 +122,7 @@ public sealed class LocalLibrarySyncService : ILocalLibrarySync
         _gate = gate;
         _logger = logger;
         _epicLaunchKeys = epicLaunchKeys;
+        _steamInstallState = steamInstallState;
     }
 
     /// <summary>
@@ -147,12 +150,13 @@ public sealed class LocalLibrarySyncService : ILocalLibrarySync
     {
         var stopwatch = Stopwatch.StartNew();
 
-        var scan = Scan();
+        // Steam and Epic are read under the gate, after any earlier sync completes.
+        var scan = new LocalLibraryScan([], [], _gog.Scan());
 
         return await ResolveScanAsync(scan, stopwatch, ct).ConfigureAwait(false);
     }
 
-    /// <summary>Refreshes Epic after its manifests change, without scanning other launchers.</summary>
+    /// <summary>Refreshes launcher installation state after Epic manifests change.</summary>
     public async Task<LibrarySyncReport> SyncEpicAsync(CancellationToken ct = default)
     {
         var stopwatch = Stopwatch.StartNew();
@@ -166,11 +170,21 @@ public sealed class LocalLibrarySyncService : ILocalLibrarySync
         return scan with { Epic = epic.Candidates, EpicLaunchTriples = epic.LaunchTriples };
     }
 
+    internal async Task<LocalLibraryScan> RefreshInstallStateAsync(LocalLibraryScan scan, CancellationToken ct)
+    {
+        var steam = _steam.Scan(out var complete);
+        if (complete && _steamInstallState is not null)
+            await _steamInstallState.ClearMissingAsync(
+                steam.Where(candidate => candidate.Installed != false).Select(candidate => candidate.ProviderId).ToArray(), ct)
+                .ConfigureAwait(false);
+        return RefreshEpic(scan with { Steam = steam });
+    }
+
     private async Task<LibrarySyncReport> ResolveScanAsync(
         LocalLibraryScan scan, Stopwatch stopwatch, CancellationToken ct)
     {
         using var lease = await _gate.EnterAsync(ct).ConfigureAwait(false);
-        scan = RefreshEpic(scan);
+        scan = await RefreshInstallStateAsync(scan, ct).ConfigureAwait(false);
         await PersistEpicLaunchTriplesAsync(scan, ct).ConfigureAwait(false);
 
         if (scan.Count == 0)
@@ -329,10 +343,10 @@ public sealed class RemoteOwnershipSyncService : IRemoteOwnershipSync
         // first.
         var epicOwned = await EpicApiCandidatesAsync(ct);
 
-        // HTTP and the other stores stay outside the gate. Epic completion can
-        // change while backfill is waiting, including a reusable startup scan.
+        // HTTP and GOG stay outside the gate. Steam/Epic completion can change
+        // while backfill is waiting, including a reusable startup scan.
         using var lease = await _gate.EnterAsync(ct).ConfigureAwait(false);
-        scan = _local.RefreshEpic(scan);
+        scan = await _local.RefreshInstallStateAsync(scan, ct).ConfigureAwait(false);
 
         var candidates = scan.Steam
             .Concat(owned)

@@ -12,7 +12,7 @@ public static class GameActionBandCopy
     public const string OpenLabel = "More";
 
     /// <summary>Tooltip on the trigger.</summary>
-    public const string OpenTooltip = "Folder, metadata, corrections and hide";
+    public const string OpenTooltip = "Installation, folder, metadata, corrections and hide";
 
     /// <summary>
     /// Shown when Winnow holds a store id but no source has established
