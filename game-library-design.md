@@ -286,6 +286,12 @@ Steam exposes transaction history at `store.steampowered.com/account/store_trans
 a lifetime total at `help.steampowered.com/en/accountdata/AccountSpend`. Neither has an API or
 an export.
 
+License acquisition data comes from `store.steampowered.com/account/licenses`, linked as
+Licenses on the account-data dashboard. A signed-in check on 2026-09-06 found that
+`help.steampowered.com/en/accountdata/ExternalLicenses` renders the dashboard rather than
+a separate data page. Do not depend on an `ExternalLicenses` page or inferred export file;
+the observed route and its limits are recorded in `docs/spikes/steam-gdpr-export.md` §2.
+
 **Winnow must never hold or exfiltrate the user's browser session, and must never impersonate
 their browser.** Within that, two routes to the account pages are permitted and are equal
 peers: the user saves the pages from their own browser and Winnow parses local files, or

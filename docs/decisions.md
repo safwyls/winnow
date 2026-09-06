@@ -2406,3 +2406,13 @@ Superseded ROADMAP.md text:
 > TASK-32 remains in the milestone, but Windows is still the only platform with established session support until its Linux and Proton criteria pass.
 
 > The account-scope filter deliberately errs visible (`game-library-design.md` §6.3). Linux session discovery and Proton attribution are implemented under TASK-32; its live verification remains a beta criterion.
+
+### TASK-45: authenticated account-data route check (2026-09-06)
+
+The ExternalLicenses route renders the same dashboard as the index, with 112 identical content links. No separate license table was observed. The real Licenses link points to the store account page.
+
+Superseded docs/spikes/steam-gdpr-export.md text:
+
+> **`ExternalLicenses` specifically: UNKNOWN.** No page by that name appears in the 2022 SteamTracking index. Probing `help.steampowered.com/en/accountdata/ExternalLicenses` anonymously is non-discriminating; every path under `/accountdata/`, including a deliberately bogus one, returns the same login redirect. §4.7 rests its third-party-key story on this file; that footing is currently unverified.
+
+> Whether `ExternalLicenses` exists at all, and if so its columns.

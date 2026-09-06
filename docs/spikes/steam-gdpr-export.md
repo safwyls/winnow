@@ -84,11 +84,13 @@ Treat this as **REPORTED at best, and likely wrong**, for three reasons:
 Note the circularity risk: this page (or an ancestor of it) is the most likely origin of
 §5.4's own wording, so it must not be treated as independent corroboration.
 
-**`ExternalLicenses` specifically: UNKNOWN.** No page by that name appears in the 2022
-SteamTracking index. Probing `help.steampowered.com/en/accountdata/ExternalLicenses`
-anonymously is non-discriminating; every path under `/accountdata/`, including a
-deliberately bogus one, returns the same login redirect. §4.7 rests its third-party-key
-story on this file; that footing is currently unverified.
+**`ExternalLicenses`: no distinct page observed, verified authenticated 2026-09-06.**
+The signed-in dashboard has no such link. Opening
+`help.steampowered.com/en/accountdata/ExternalLicenses` while authenticated renders the
+ordinary account-data dashboard: its 112 content links match the index exactly, and no
+separate license table appears. This refutes the proposed page for the tested account;
+it does not establish what a support-request export might contain. Use the dashboard's
+actual `store.steampowered.com/account/licenses` link for license acquisition data.
 
 What does verifiably exist is `store.steampowered.com/account/licenses` ("View licenses
 and product key activations"), listed on the Privacy Dashboard as "Licenses". Community
@@ -334,7 +336,8 @@ No license-compatible parser exists to learn patterns from.
    pages (licenses and purchase history) have been parsed from real saved HTML; selectors
    are VERIFIED and fixtures committed. See §8. The `help.steampowered.com/en/accountdata/*`
    pages remain unverified; their markup is still a guess.
-2. Whether `ExternalLicenses` exists at all, and if so its columns.
+2. **Resolved for the live dashboard 2026-09-06:** `ExternalLicenses` renders the index,
+   not a separate data page. There are no distinct columns to document; see §2.
 3. Whether a support ticket yields files, and in what container.
 4. Whether the licenses page distinguishes third-party-key *vendors* (Humble vs Fanatical)
    or only says "Retail". **Still UNKNOWN as of 2026-08-29.** The sample account had no

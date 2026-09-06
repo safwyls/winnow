@@ -1,10 +1,10 @@
 ---
 id: TASK-32
 title: Add cross-platform session support
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-08-29 21:54'
-updated_date: '2026-09-06 23:09'
+updated_date: '2026-09-06 23:11'
 labels:
   - infra
   - ingest
@@ -49,6 +49,8 @@ Correction: Unix /proc comm truncation is 15 UTF-8 bytes, not 15 characters. The
 Ubuntu CI run 34065062873 at commit 9eb2ebe passed both real-process smoke tests on 2026-09-06. The native case discovers an executable with Unix mode bits inside its install root. The compatibility case runs a process outside that root and records its session using only the exact Steam appid from STEAM_COMPAT_DATA_PATH. This verifies the Proton attribution mechanism with a synthetic environment; it is not a compatibility matrix of real Wine/Proton games. The full Windows suite passed 3,932 tests, with these two Linux facts explicitly skipped; Release build and migration integrity checks also passed.
 
 The second Ubuntu run discovered the compatibility process but asserted before its session was recorded. Investigating the smoke-test exit/persistence synchronization; first-run evidence remains valid but repeatability must be restored.
+
+Repeat Ubuntu run 34066077028 at commit 544aa5a passed after the smoke test was corrected to await the asynchronous monitor-owned exit callback and session recording. No production session code changed for this race.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
