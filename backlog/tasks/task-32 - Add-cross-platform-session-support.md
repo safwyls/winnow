@@ -1,10 +1,10 @@
 ---
 id: TASK-32
 title: Add cross-platform session support
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-08-29 21:54'
-updated_date: '2026-09-06 22:42'
+updated_date: '2026-09-06 22:49'
 labels:
   - infra
   - ingest
@@ -22,9 +22,9 @@ Session detection is Windows-only. `GameExecutableIndexBuilder` matches `*.exe`,
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Session detection works on at least one non-Windows platform (Linux with native games)
-- [ ] #2 Proton games are attributed via `STEAM_COMPAT_DATA_PATH` or an equivalent mechanism
-- [ ] #3 The executable index includes platform-appropriate binary patterns
+- [x] #1 Session detection works on at least one non-Windows platform (Linux with native games)
+- [x] #2 Proton games are attributed via `STEAM_COMPAT_DATA_PATH` or an equivalent mechanism
+- [x] #3 The executable index includes platform-appropriate binary patterns
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -43,4 +43,12 @@ Implemented Proton attribution without a schema change: GameExecutableIndexBuild
 Linux native name matching preserves extension-like suffixes and indexes a 15-character /proc/pid/comm alias; the Linux smoke uses a long suffixed executable so CI exercises that behavior.
 
 Correction: Unix /proc comm truncation is 15 UTF-8 bytes, not 15 characters. The index now produces the matching UTF-8 byte-truncated alias and a multibyte regression test. LinuxFact explicitly skips the real-process smoke facts on all non-Linux hosts; no local Linux runtime result is claimed.
+
+Ubuntu CI run 34065062873 at commit 9eb2ebe passed both real-process smoke tests on 2026-09-06. The native case discovers an executable with Unix mode bits inside its install root. The compatibility case runs a process outside that root and records its session using only the exact Steam appid from STEAM_COMPAT_DATA_PATH. This verifies the Proton attribution mechanism with a synthetic environment; it is not a compatibility matrix of real Wine/Proton games. The full Windows suite passed 3,932 tests, with these two Linux facts explicitly skipped; Release build and migration integrity checks also passed.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Implemented Linux-native executable indexing and bounded proc-environment Steam appid attribution, including UTF-8 comm aliases and ambiguous-id rejection. Both real-process smoke checks passed on Ubuntu CI: https://github.com/safwyls/winnow/actions/runs/34065062873. Windows regression suite remains green.
+<!-- SECTION:FINAL_SUMMARY:END -->

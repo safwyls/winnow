@@ -2396,3 +2396,13 @@ Two limits are stated as rules in the build spec rather than carried here, becau
 not going to be fixed: session detection is Windows-only in practice
 (`game-library-design.md` §5.2), and the account-scope filter errs visible
 (`game-library-design.md` §6.3).
+
+### TASK-32: Ubuntu session smoke verification (2026-09-06)
+
+The Ubuntu job in CI run 34065062873 passed native executable discovery and attribution from a synthetic Proton compatibility environment at commit 9eb2ebe. These are real processes, not a Wine/Proton game compatibility survey.
+
+Superseded ROADMAP.md text:
+
+> TASK-32 remains in the milestone, but Windows is still the only platform with established session support until its Linux and Proton criteria pass.
+
+> The account-scope filter deliberately errs visible (`game-library-design.md` §6.3). Linux session discovery and Proton attribution are implemented under TASK-32; its live verification remains a beta criterion.

@@ -76,8 +76,8 @@ TASK-3 moves from M9 into this queue: export was a sequencing dependency, not a 
 prerequisite for store handoff. TASK-26 depends on TASK-31's migration verification.
 TASK-141 needs observed Epic launcher success before it can close; passing dispatch tests
 alone do not establish that installation works. TASK-45, TASK-47 and TASK-48 require live
-verification. TASK-32 remains in the milestone, but Windows is still the only platform with
-established session support until its Linux and Proton criteria pass.
+verification. TASK-32 now has passing Ubuntu smoke coverage for native discovery and
+Proton-environment attribution. Actual Wine/Proton game compatibility remains unmeasured.
 
 Unassigned tasks left outside beta are new scoring signals and evaluation research
 (TASK-135–138), achievement ingestion (TASK-15), per-edition years (TASK-13), Dead-bucket
@@ -125,7 +125,7 @@ for its current state.
 | The saved-file licenses route captures one page per file | TASK-41 |
 | ACCOUNT and REVIEW each spend a rail section heading on a single row | TASK-42 |
 
-The account-scope filter deliberately errs visible (`game-library-design.md` §6.3). Linux session discovery and Proton attribution are implemented under TASK-32; its live verification remains a beta criterion.
+The account-scope filter deliberately errs visible (`game-library-design.md` §6.3). Linux session discovery and Proton-environment attribution passed real-process Ubuntu smoke tests under TASK-32; this does not establish compatibility across actual Wine/Proton games.
 
 ## 6. The risk
 
