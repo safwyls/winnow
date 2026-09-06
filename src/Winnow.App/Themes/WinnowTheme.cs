@@ -562,6 +562,8 @@ public sealed record WinnowTheme
             ["SurfaceRaisedHalf"] = A(SurfaceRaised, 0.50),
             ["SurfaceRaisedGhost"] = A(SurfaceRaised, 0.12),
             ["SurfaceRaisedFaint"] = A(SurfaceRaised, 0.08),
+            ["LightboxControlFill"] = A(Surface, 0.70),
+            ["LightboxControlActiveFill"] = A(SurfaceRaised, 0.85),
             ["GroundVeil"] = A(Ground, 0.30),
             ["ModalScrim"] = A(Well, 0.84),
 

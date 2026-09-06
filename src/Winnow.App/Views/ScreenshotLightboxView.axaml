@@ -35,14 +35,6 @@
          Polite — the route §8 leaves open and the one §10.3's refetch
          status already uses. -->
 
-    <UserControl.Resources>
-        <!-- Bind to the live theme brushes so theme changes reach these fills. -->
-        <SolidColorBrush x:Key="LightboxControlFill" Opacity="0.7"
-                         Color="{Binding Color, Source={StaticResource Surface}, x:CompileBindings=False}"/>
-        <SolidColorBrush x:Key="LightboxControlActiveFill" Opacity="0.85"
-                         Color="{Binding Color, Source={StaticResource SurfaceRaised}, x:CompileBindings=False}"/>
-    </UserControl.Resources>
-
     <UserControl.Styles>
 
         <!-- The three controls. Readable over the image: the 1px border is

@@ -76,6 +76,24 @@ public sealed class ScreenshotLightboxStructureTests
             StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// The translucent fills are application tokens, not bindings inside this
+    /// view's deferred resource dictionary. Avalonia constructs deferred
+    /// resources while the startup window is loading; a runtime binding there
+    /// terminates .NET 10 with an <c>AccessViolationException</c> before the
+    /// window can appear.
+    /// </summary>
+    [Fact]
+    public void Control_fills_use_theme_tokens_without_deferred_runtime_bindings()
+    {
+        var markup = RepositoryTree.Read(View);
+
+        Assert.DoesNotContain("<UserControl.Resources>", markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("x:CompileBindings=False", markup, StringComparison.Ordinal);
+        Assert.Contains("{StaticResource LightboxControlFill}", markup, StringComparison.Ordinal);
+        Assert.Contains("{StaticResource LightboxControlActiveFill}", markup, StringComparison.Ordinal);
+    }
+
     /// <summary>1282 x 722 is 1280 x 720 plus the 1px border on each side;
     /// 1280 x 720 is the native size of IGDB's <c>t_screenshot_huge</c>.
     /// <c>Stretch</c> is <c>Uniform</c>, so a small window shrinks the whole

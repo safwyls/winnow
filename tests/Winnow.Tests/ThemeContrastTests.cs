@@ -1208,6 +1208,31 @@ public class ThemeContrastTests
     }
 
     /// <summary>
+    /// The lightbox buttons keep their stated neutral inks and alpha in every
+    /// theme. They are global mutable brush tokens so theme changes can repaint
+    /// them without runtime bindings in a deferred view resource dictionary.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(ThemeIds))]
+    public void Lightbox_controls_follow_the_theme_at_their_stated_opacity(string id)
+    {
+        var theme = WinnowThemes.ById(id);
+        var tokens = theme.Tokens(transparency: 0);
+
+        var resting = tokens["LightboxControlFill"];
+        Assert.Equal(theme.Surface.R, resting.R);
+        Assert.Equal(theme.Surface.G, resting.G);
+        Assert.Equal(theme.Surface.B, resting.B);
+        Assert.Equal((byte)Math.Round(0.70 * 255), resting.A);
+
+        var active = tokens["LightboxControlActiveFill"];
+        Assert.Equal(theme.SurfaceRaised.R, active.R);
+        Assert.Equal(theme.SurfaceRaised.G, active.G);
+        Assert.Equal(theme.SurfaceRaised.B, active.B);
+        Assert.Equal((byte)Math.Round(0.85 * 255), active.A);
+    }
+
+    /// <summary>
     /// 0.92 is the round step past the boundary, not a preference. At 0.91
     /// the default theme's metadata ink measures 4.49:1 over a white cover,
     /// under AA, so a looser veil would leave the back face and the modal

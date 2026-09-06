@@ -118,6 +118,12 @@
     <SolidColorBrush x:Key="SurfaceRaisedHalf" Color="#801D3437"/>
     <SolidColorBrush x:Key="SurfaceRaisedGhost" Color="#1F1D3437"/>
     <SolidColorBrush x:Key="SurfaceRaisedFaint" Color="#141D3437"/>
+    <!-- The screenshot lightbox controls have to read over arbitrary art.
+         Keep these as ordinary mutable tokens: a binding inside the view's
+         deferred resource dictionary crashes Avalonia while it constructs
+         the startup window on .NET 10. -->
+    <SolidColorBrush x:Key="LightboxControlFill" Color="#B316282A"/>
+    <SolidColorBrush x:Key="LightboxControlActiveFill" Color="#D91D3437"/>
     <SolidColorBrush x:Key="GroundVeil" Color="#4D0F1C1E"/>
     <!-- The detail modal's scrim (§9): the same unlit tone as the caption. -->
     <SolidColorBrush x:Key="ModalScrim" Color="#D6050D0E"/>
