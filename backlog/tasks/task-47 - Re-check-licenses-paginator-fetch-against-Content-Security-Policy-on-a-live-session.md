@@ -3,11 +3,11 @@ id: TASK-47
 title: >-
   Re-check licenses paginator fetch against Content Security Policy on a live
   session
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-08-29 21:55'
-updated_date: '2026-09-06 22:21'
+updated_date: '2026-09-06 23:13'
 labels:
   - auth
   - ingest
@@ -25,8 +25,8 @@ The embedded licenses-walk uses `fetch()` with `DOMParser` inside the WebView to
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 A live session on a real account confirms that `fetch()` to the paginator URL succeeds under the page's current CSP
-- [ ] #2 Any CSP-related failure is documented and a fallback strategy is recorded
+- [x] #1 A live session on a real account confirms that `fetch()` to the paginator URL succeeds under the page's current CSP
+- [x] #2 Any CSP-related failure is documented and a fallback strategy is recorded
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -34,3 +34,15 @@ The embedded licenses-walk uses `fetch()` with `DOMParser` inside the WebView to
 <!-- SECTION:PLAN:BEGIN -->
 Verify the current implementation and required live evidence, apply the scoped correction, update governing documentation with superseded text retained in decisions, and close only acceptance criteria supported by objective checks.
 <!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+User executed the read-only same-origin paginator probe in the authenticated Steam licenses page on 2026-09-06 and reported {"status":200,"licenseRows":100}. Fetch used credentials include and cache no-store, followed by DOMParser and the production license table selector. No CSP failure observed. Documented evidence and saved-page import fallback in docs/spikes/steam-gdpr-export.md; this verifies one live transition, not a full embedded harvest.
+<!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Live authenticated paginator fetch returned HTTP 200 and 100 license rows. Recorded the method, limits, and fallback if CSP later blocks fetching. No production code change required.
+<!-- SECTION:FINAL_SUMMARY:END -->

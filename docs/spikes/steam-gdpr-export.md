@@ -471,6 +471,21 @@ See that directory's README for sanitization details.
   parses as complete), capped by `MaxLicensesPages` (default 50). The result carries
   `LicensesPagesWalked` and `LicensesStoppedBecause` for diagnostics.
 
+**Live paginator recheck, 2026-09-06 (TASK-47).** In an authenticated browser on
+`store.steampowered.com/account/licenses`, the user ran a read-only console probe that
+selects `a.license_paginator_next`, verifies its same origin, fetches it with
+`credentials: 'include'` and `cache: 'no-store'`, then parses it with `DOMParser`.
+The response was HTTP 200 and contained 100 non-header rows in the account table
+identified by `th.license_date_col`. No CSP-related fetch failure was observed. This
+checks one live page transition, not an entire embedded-WebView harvest. The automation
+browser's restricted evaluator lacked `fetch`; that tool limitation was not a Steam CSP
+failure. No account HTML, cookies, or paginator tokens were saved.
+
+If a future CSP change blocks the in-page fetch, preserve the existing incomplete-harvest
+diagnostic and offer the saved-page import route. Do not bypass CSP or export browser
+credentials to make unattended requests. A navigation-based walk inside the user-present
+sign-in WebView would require separate implementation and verification.
+
 ### Still UNKNOWN
 
 - Whether these selectors hold for non-US locales.
