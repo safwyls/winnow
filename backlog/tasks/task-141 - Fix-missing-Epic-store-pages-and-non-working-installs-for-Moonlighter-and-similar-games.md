@@ -3,11 +3,11 @@ id: TASK-141
 title: >-
   Fix missing Epic store pages and non-working installs for Moonlighter and
   similar games
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-09-06 18:23'
-updated_date: '2026-09-06 21:44'
+updated_date: '2026-09-06 23:08'
 labels: []
 milestone: m-4
 dependencies: []
@@ -58,4 +58,12 @@ User confirms Moonlighter install-location confirmation opens from Epic Library.
 At 21:40 UTC an artifact-only Eagle install probe resolved the same complete Moonlighter key with ownership Owned, but reported AI-AAI and opened no confirmation (user observed). Retry at 21:41 was rejected as already processing. Fresh copied committed manifest now marks Moonlighter fully installed (bIsIncompleteInstall=false), so this probe cannot compare uninstalled addressing routes and does not establish an artifact-only fix. Awaiting current Play-state confirmation; no URI code change based on this invalid comparison.
 
 Live user verification: Moonlighter is now installed and shows Play. Enter the Gungeon was uninstalled in a fresh copied manifest set; both the existing composite route and artifact-only Garlic route opened the correct install-location selector and were canceled. Copied logs confirm selector completion accepted=false. Existing route retained; earlier transient AI-NE root cause remains unknown, so AC1 stays unchecked. Epic store/library management navigation also confirmed by user.
+
+User approved closing TASK-141 on 2026-09-06 unless the problem recurs. The historical AI-NE root cause remains unknown; AC1 is deliberately left unchecked rather than claiming that it was established. Reopen this task if the install failure or disappearing store-page symptom recurs, and capture fresh copied launcher logs and current install state.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Closed with explicit user acceptance of the remaining diagnostic limitation. The general Epic store-page fallback is fixed and covered by regression tests. User verified both composite and artifact-only install confirmations for uninstalled Enter the Gungeon, Moonlighter installed/Play state, and Epic Library navigation. Historical AI-NE remains unexplained; reopen on recurrence.
+<!-- SECTION:FINAL_SUMMARY:END -->
