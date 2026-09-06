@@ -71,10 +71,15 @@ public sealed class TileActionsTests
     }
 
     /// <summary>
-    /// The Epic launcher exposes no install route — its binary carries
-    /// <c>launch</c>, <c>installer</c>, <c>updatecheck</c> and <c>verify</c> and
-    /// no <c>install</c>, and no store route at all. An unverifiable action is
-    /// no action, never a button that silently does nothing.
+    /// The Epic launcher binary (build 20.2.9, verified 2026-09-05) does carry
+    /// an install URI handler (<c>FAppInstallUriHandler</c>), but it has not
+    /// been executed and is therefore not verified; Winnow does not ship an
+    /// unverified URI (§10.3). No store route exists either — <c>://store</c>,
+    /// <c>://store/product/&lt;x&gt;</c>, <c>://library</c>, and the
+    /// <c>apps</c> route with <c>action=productdetail</c>,
+    /// <c>action=store</c> or <c>action=show</c> all failed to resolve a
+    /// handler. An unverified or absent action is no action, never a button
+    /// that silently does nothing.
     /// </summary>
     [Fact]
     public void Epic_off_disk_offers_nothing_rather_than_a_button_that_does_nothing()
@@ -83,6 +88,118 @@ public sealed class TileActionsTests
 
         Assert.Null(tile.PrimaryAction);
         Assert.False(tile.HasPrimaryAction);
+    }
+
+    /// <summary>
+    /// An uninstalled Epic title with no primary action and no links must
+    /// produce a sentence naming the install-route gap. Without it the band
+    /// sits empty and the user has no way to know why.
+    /// </summary>
+    [Fact]
+    public void Epic_off_disk_says_why_the_band_cannot_get_the_user_in()
+    {
+        var tile = Tile(ExternalIdProviders.Epic, installed: false);
+        var details = new GameDetailsViewModel(tile, "Started", [], Now);
+
+        Assert.Equal(NoWayIn.NoInstallRoute, tile.NoWayIn);
+        Assert.False(details.HasPrimaryAction);
+        Assert.False(details.HasLinks);
+        Assert.True(details.HasNoWayInSentence);
+        Assert.Equal(GameActionBandCopy.EpicHasNoInstallRoute, details.NoWayInSentence);
+    }
+
+    /// <summary>
+    /// The install-route reason must be returned even when the launch key is
+    /// absent. Holding the key would not help — there is no install route to
+    /// build with it — so the check order must not fall through to the
+    /// missing-id reason instead.
+    /// </summary>
+    [Fact]
+    public void Epic_off_disk_names_the_route_even_with_no_launch_key()
+    {
+        var tile = Tile(ExternalIdProviders.Epic, installed: false, withEpicKey: false);
+
+        Assert.Equal(NoWayIn.NoInstallRoute, tile.NoWayIn);
+    }
+
+    /// <summary>
+    /// A band that has a primary action or at least one link must never
+    /// produce a no-way-in sentence. Showing a reason alongside a working
+    /// button would contradict the button.
+    /// </summary>
+    [Theory]
+    [InlineData(ExternalIdProviders.Steam, true)]
+    [InlineData(ExternalIdProviders.Steam, false)]
+    [InlineData(ExternalIdProviders.Steam, null)]
+    [InlineData(ExternalIdProviders.Gog, true)]
+    [InlineData(ExternalIdProviders.Gog, false)]
+    [InlineData(ExternalIdProviders.Gog, null)]
+    [InlineData(ExternalIdProviders.Epic, true)]
+    public void A_store_that_can_be_reached_says_nothing_about_why_it_cannot(string store, bool? installed)
+    {
+        var tile = Tile(store, installed);
+        var details = new GameDetailsViewModel(tile, "Started", [], Now);
+
+        Assert.Equal(NoWayIn.None, tile.NoWayIn);
+        Assert.False(details.HasNoWayInSentence);
+        Assert.Null(details.NoWayInSentence);
+    }
+
+    /// <summary>
+    /// An Epic copy with a launch key but a null install state must report
+    /// <see cref="NoWayIn.InstallStateUnknown"/>, not the missing-id reason.
+    /// The install state is three-valued and the third value is "nothing
+    /// looked", which the sentence must say rather than hide.
+    /// </summary>
+    [Fact]
+    public void An_epic_copy_whose_install_state_nobody_read_is_named_as_that()
+    {
+        var tile = Tile(ExternalIdProviders.Epic, installed: null);
+        var details = new GameDetailsViewModel(tile, "Started", [], Now);
+
+        Assert.Equal(NoWayIn.InstallStateUnknown, tile.NoWayIn);
+        Assert.Equal(GameActionBandCopy.InstallStateUnknown, details.NoWayInSentence);
+    }
+
+    /// <summary>
+    /// An installed Epic copy with no launch key cannot play and has no links,
+    /// so the band must name the missing store identifier as the reason. The
+    /// key arrives via a background catalogue backfill, so this is "not yet"
+    /// rather than "never".
+    /// </summary>
+    [Fact]
+    public void An_epic_copy_on_disk_with_no_launch_key_names_the_id_it_lacks()
+    {
+        var tile = Tile(ExternalIdProviders.Epic, installed: true, withEpicKey: false);
+        var details = new GameDetailsViewModel(tile, "Started", [], Now);
+
+        Assert.Equal(NoWayIn.NoStoreId, tile.NoWayIn);
+        Assert.Equal(GameActionBandCopy.NoStoreId, details.NoWayInSentence);
+    }
+
+    /// <summary>
+    /// Both <c>TODO(docs-writer)</c> and <c>PLACEHOLDER_*</c> markers have
+    /// reached a user of this project. This test guards every sentence in
+    /// <see cref="GameActionBandCopy"/> against both, so a stub that
+    /// survives a commit is caught before it ships.
+    /// </summary>
+    [Fact]
+    public void No_sentence_is_ever_a_placeholder()
+    {
+        foreach (var reason in Enum.GetValues<NoWayIn>())
+        {
+            var sentence = GameActionBandCopy.NoWayInSentence(reason);
+
+            if (reason == NoWayIn.None)
+            {
+                Assert.Null(sentence);
+                continue;
+            }
+
+            Assert.False(string.IsNullOrWhiteSpace(sentence));
+            Assert.DoesNotContain("TODO", sentence, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("PLACEHOLDER", sentence, StringComparison.OrdinalIgnoreCase);
+        }
     }
 
     // ══ The third install state ═════════════════════════════════════════════

@@ -78,6 +78,7 @@ public partial class GameTileViewModel : ObservableObject
         GogProductId = PlayableEntry.GogProductId;
         EpicLaunchKey = PlayableEntry.EpicLaunchKey;
         PrimaryAction = PlayableEntry.PrimaryAction;
+        NoWayIn = PlayableEntry.NoWayIn;
 
         // One chip per store, in the order the entries arrive, and never
         // twice for one store: two Steam accounts owning one game is two
@@ -476,6 +477,13 @@ public partial class GameTileViewModel : ObservableObject
     /// install state. Never an inert button (§10.3).
     /// </summary>
     public GameLink? PrimaryAction { get; }
+
+    /// <summary>
+    /// Why Band 3 cannot get the user in, from <see cref="PlayableEntry"/>
+    /// — the same entry <see cref="PrimaryAction"/> is derived from, so the
+    /// reason always describes the copy whose action is missing.
+    /// </summary>
+    public NoWayIn NoWayIn { get; }
 
     public bool HasPrimaryAction => PrimaryAction is not null;
 

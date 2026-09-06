@@ -100,7 +100,7 @@ public partial class GameDetailsViewModel : ObservableObject
 
         _snapshots = snapshots ?? [];
         RecordLine = BuildRecordLine(_snapshots, nowUtc);
-        (PrimaryAction, Links) = BuildLinks(tile);
+        (PrimaryAction, Links, NoWayInSentence) = BuildLinks(tile);
 
         // Derives acknowledged state, rail marks, and caption.
         ApplyWatermark(acknowledgedThrough);
@@ -554,6 +554,18 @@ public partial class GameDetailsViewModel : ObservableObject
 
     public bool HasLinks => Links.Count > 0;
 
+    /// <summary>
+    /// The sentence Band 3 draws when there is no primary action and no
+    /// links — stating why the band cannot get the user in. Null when the
+    /// band does have a way in; a band with a store page in its links is
+    /// not a band with no way in. Takes <c>Text</c> ink, not <c>TextDim</c>,
+    /// because it carries the fact in the way §10.2's no-rail sentence does.
+    /// </summary>
+    public string? NoWayInSentence { get; }
+
+    /// <summary>True when <see cref="NoWayInSentence"/> is non-null and the line should be drawn.</summary>
+    public bool HasNoWayInSentence => NoWayInSentence is not null;
+
     /// <summary>Install directory path for "open folder", or null if not on disk.</summary>
     public string? OpenableFolder => Tile.IsOnDisk ? Tile.InstallPath : null;
 
@@ -746,7 +758,23 @@ public partial class GameDetailsViewModel : ObservableObject
         return rest == 0 ? $"{hours}h" : $"{hours}h {rest}m";
     }
 
-    /// <summary>Builds the primary action and store links from the tile's store ids.</summary>
-    private static (GameLink? Primary, IReadOnlyList<GameLink> Links) BuildLinks(GameTileViewModel tile)
-        => (tile.PrimaryAction, StoreActions.LinksFor(tile.Store, tile.SteamAppId, tile.GogProductId));
+    /// <summary>
+    /// Builds the primary action, store links and no-way-in sentence from
+    /// the tile's store ids. Returns three values: the primary action (null
+    /// when none is honest), the outbound links (empty when no id is held),
+    /// and the sentence explaining why there is no way in (null when the
+    /// band does have a primary action or at least one link).
+    /// </summary>
+    private static (GameLink? Primary, IReadOnlyList<GameLink> Links, string? NoWayIn) BuildLinks(
+        GameTileViewModel tile)
+    {
+        var primary = tile.PrimaryAction;
+        var links = StoreActions.LinksFor(tile.Store, tile.SteamAppId, tile.GogProductId);
+
+        var sentence = primary is null && links.Count == 0
+            ? GameActionBandCopy.NoWayInSentence(tile.NoWayIn)
+            : null;
+
+        return (primary, links, sentence);
+    }
 }

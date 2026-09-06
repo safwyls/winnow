@@ -1679,3 +1679,26 @@ Superseded text from §10.1:
 The screenshot thumbnail strip in ABOUT is the fourth inner scroll region. It scrolls
 horizontally, and its content carries `InnerScrollGutterBottom` — the same 20px as the vertical
 regions' `InnerScrollGutter`, turned through ninety degrees.
+
+### 2026-09-05 — The action band's control count is per-store, and the no-way-in sentence (TASK-131)
+
+`design-system.md` §10.3, §10.4. The strip's control count was stated without qualification, and
+the `Text`-ink enumeration was one short.
+
+§10.3 said "four controls on the strip" as though every store had all four. Steam has four; GOG
+has three (no patch notes link, one GOG Galaxy link instead of two web links); Epic has two (play
+and the menu trigger) when installed and one (the menu trigger alone) when not. The sentence now
+reads "four controls on the strip for Steam", and a per-store table states what each store
+offers and what it does not. The Epic row names why: no verified install route, and no store-page
+slug in any field Winnow stores. The GOG row notes that its store page and patch notes are
+reachable through an anonymous API request Winnow does not yet make.
+
+A no-way-in sentence was added for entries where there is no primary action and no link, in
+`Text` ink, with three variant strings (unknown install state, missing identifier, no install
+route). The `Text`-ink enumeration moved from nine to ten.
+
+Superseded text from §10.3:
+
+> Beside it, `Store page` and `All patch notes` in `Azure`, and the `More` control — four controls on the strip.
+
+> Nine runs take `Text`.

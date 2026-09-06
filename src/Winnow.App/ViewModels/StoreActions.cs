@@ -62,11 +62,40 @@ public readonly record struct EpicLaunchKey
 }
 
 /// <summary>
+/// Why Band 3 has no way to get the user into a game. The enum exists so
+/// the band can state a reason rather than sit silent — each member maps
+/// to a sentence in <see cref="GameActionBandCopy"/>.
+///
+/// <para>The check order is deliberate: <see cref="NoInstallRoute"/> is
+/// decided before <see cref="NoStoreId"/>, because holding the launch key
+/// would not help — there is no install route to build with it either
+/// way.</para>
+/// </summary>
+public enum NoWayIn
+{
+    /// <summary>The band has a way in. No sentence is drawn.</summary>
+    None = 0,
+
+    /// <summary>A store id is held but no source has read whether this copy is on disk.</summary>
+    InstallStateUnknown,
+
+    /// <summary>No store id at all — no appid, no product id, no launch key.</summary>
+    NoStoreId,
+
+    /// <summary>Epic, uninstalled: the launcher carries no verified install route.</summary>
+    NoInstallRoute,
+}
+
+/// <summary>
 /// Launch and store URIs for each store (§10.3). All URIs were verified by
 /// measurement against the installed launchers, not from documentation.
-/// Steam: <c>steam://run|install/appid</c>. Epic: launch only (no install action
-/// exists in the binary). GOG: <c>goggalaxy://launchGame|installationScreen</c>.
+/// Steam: <c>steam://run|install/appid</c>. Epic: launch only — the binary
+/// (build 20.2.9, verified 2026-09-05) does carry an install URI handler
+/// (<c>FAppInstallUriHandler</c>), but it has not been executed and is
+/// therefore not verified; Winnow does not ship an unverified URI.
+/// GOG: <c>goggalaxy://launchGame|installationScreen</c>.
 /// Returns null when no honest action can be offered.
+/// See <c>docs/spikes/store-actions-per-launcher.md</c> for the evidence.
 /// </summary>
 public static class StoreActions
 {
@@ -94,6 +123,44 @@ public static class StoreActions
             ExternalIdProviders.Epic => EpicPrimary(epicKey, onDisk),
             _ => null,
         };
+    }
+
+    /// <summary>
+    /// Returns the reason the band cannot get the user in, or
+    /// <see cref="NoWayIn.None"/> when it can. Self-contained: it re-asks
+    /// <see cref="PrimaryFor"/> and <see cref="LinksFor"/> rather than
+    /// trusting a caller to have checked first, so it cannot be misused
+    /// into naming a reason for a band that does have a way in.
+    /// </summary>
+    public static NoWayIn WhyNoWayIn(
+        string store,
+        bool? installed,
+        string? steamAppId,
+        string? gogProductId,
+        EpicLaunchKey? epicKey)
+    {
+        if (PrimaryFor(store, installed, steamAppId, gogProductId, epicKey) is not null
+            || LinksFor(store, steamAppId, gogProductId).Count > 0)
+        {
+            return NoWayIn.None;
+        }
+
+        if (store == ExternalIdProviders.Epic && installed is false)
+        {
+            return NoWayIn.NoInstallRoute;
+        }
+
+        var identified = store switch
+        {
+            ExternalIdProviders.Steam => GameLink.IsSteamAppId(steamAppId),
+            ExternalIdProviders.Gog => IsGogProductId(gogProductId),
+            ExternalIdProviders.Epic => epicKey is not null,
+            _ => false,
+        };
+
+        return identified && installed is null
+            ? NoWayIn.InstallStateUnknown
+            : NoWayIn.NoStoreId;
     }
 
     /// <summary>
@@ -173,6 +240,16 @@ public static class StoreActions
                 GameLinkKind.Install);
     }
 
+    /// <summary>
+    /// <c>launchGame</c> and <c>openGameView</c> take Galaxy's release key
+    /// (<c>gog_&lt;id&gt;</c>), while <c>installationScreen</c> takes the bare
+    /// numeric product id. That asymmetry looks like a bug and is not one:
+    /// confirmed by inspecting GalaxyClient.exe — the launch and game-view
+    /// paths carry an error string about failing to convert their argument
+    /// to a GRK, whereas the installation-screen path carries one about an
+    /// empty Product ID, and its C++ symbol takes a <c>ProductId</c>
+    /// directly rather than a release key.
+    /// </summary>
     private static GameLink? GogPrimary(string? productId, bool installed)
     {
         if (!IsGogProductId(productId))

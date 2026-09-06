@@ -75,6 +75,14 @@ public sealed record TileEntry : IPlayedEntry
     public GameLink? PrimaryAction => StoreActions.PrimaryFor(
         Store, Installed, SteamAppId, GogProductId, EpicLaunchKey);
 
+    /// <summary>
+    /// Why Band 3 cannot get the user into this entry's copy, or
+    /// <see cref="ViewModels.NoWayIn.None"/> when it can. Derived from the
+    /// same store ids and install state as <see cref="PrimaryAction"/>.
+    /// </summary>
+    public NoWayIn NoWayIn => StoreActions.WhyNoWayIn(
+        Store, Installed, SteamAppId, GogProductId, EpicLaunchKey);
+
     /// <summary>Builds the entry for one ownership row.</summary>
     public static TileEntry For(
         long ownershipId,

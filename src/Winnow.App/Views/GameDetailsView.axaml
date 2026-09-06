@@ -809,6 +809,26 @@
                                 </Button>
                             </StackPanel>
 
+                            <!-- Drawn only when the band has no primary action
+                                 and no links — stating why Band 3 cannot get
+                                 the user in. Takes .body's own Text ink rather
+                                 than the refetch line's TextDim, because it
+                                 carries the fact in the way §10.2's no-rail
+                                 sentence does, not a status line about an act
+                                 the user started. A plain TextBlock with no
+                                 AutomationProperties.Name: §8 says that
+                                 property is ignored on a TextBlock peer, which
+                                 returns Text instead. Unlike the refetch field
+                                 below, this is not a live region — it is a
+                                 fixed property of this game rather than the
+                                 result of something the user just did. -->
+                            <TextBlock Classes="body"
+                                       Name="NoWayInLine"
+                                       FontSize="12" LineHeight="17"
+                                       TextWrapping="Wrap"
+                                       IsVisible="{Binding HasNoWayInSentence}"
+                                       Text="{Binding NoWayInSentence}"/>
+
                             <!-- The refetch status field. It is a live region:
                                  changing an AutomationProperties.Name at runtime
                                  raises no UIA event, but TextBlockAutomationPeer

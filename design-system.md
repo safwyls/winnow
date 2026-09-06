@@ -808,7 +808,26 @@ uninstalled 60GB game promises something the next hour will not deliver. **No ap
 primary action at all, never an inert button.**
 
 Beside it, `Store page` and `All patch notes` in `Azure`, and the `More` control — four
-controls on the strip. `More` opens a menu whose rows are `Open folder`, `Refetch metadata`, `Wrong game?`,
+controls on the strip for Steam. Other stores have fewer, because their launchers expose less:
+
+| Store | Installed | Not installed | Links |
+|---|---|---|---|
+| Steam | `Play` — `steam://run/<appid>` | `Install` — `steam://install/<appid>` | `Store page`, `All patch notes` |
+| GOG | `Play` — `goggalaxy://launchGame/gog_<id>` | `Install` — `goggalaxy://installationScreen/<id>` | `Show in GOG Galaxy` |
+| Epic | `Play` — `com.epicgames.launcher://apps/<ns>%3A<catalogItemId>%3A<appName>?action=launch&silent=true`, and only when all three ids are held | nothing | nothing |
+
+The Epic Games Launcher exposes no install route Winnow has verified, and an Epic store URL
+needs a product slug that nothing Winnow stores holds. GOG's store page and patch notes are
+both reachable through an anonymous API request Winnow does not yet make, so they are absent
+rather than impossible. See `docs/spikes/store-actions-per-launcher.md` for the evidence.
+
+**When a store entry has no primary action and no links, Band 3 says why** instead of showing
+a strip whose only control is `More`. The sentence takes `Text`, not `TextDim`, on the same
+reasoning as the no-rail sentence: it is the whole of what Band 3 says about getting in when
+there is nothing to press. Three sentences, one per cause: the install state was never read,
+the store's identifier is not held, or the store has no install route at all.
+
+`More` opens a menu whose rows are `Open folder`, `Refetch metadata`, `Wrong game?`,
 `Edit details` and `Hide`, in that order. A row is drawn only when it has something to do:
 `Open folder` when the game is on disk, `Refetch metadata` when enrichment services are
 registered, `Wrong game?` and `Edit details` when their controls exist, `Hide` when the library
@@ -849,7 +868,7 @@ not where it sits. A paragraph the user reads, a sentence standing in a prose sl
 sitting under a heading is prose. A value label, a status line, a landed-act confirmation, or
 metadata beside a value is not.
 
-Nine runs take `Text`. The gap rail's caption and its longitudinal record line, and the same
+Ten runs take `Text`. The gap rail's caption and its longitudinal record line, and the same
 record line in the no-rail branch — §10.2 says everything the rail draws is restated in words
 underneath, and §8's decorative-redundant rule makes those words the carrier of the fact; the
 carrier of a fact is primary text. The no-rail sentence itself ("You've never opened this." /
@@ -860,7 +879,12 @@ pair that prompted the change. The LISTS empty state ("Select titles in the libr
 Add to list on the action bar."), a direction the user acts on (§7). The ABOUT summary — the
 game's own description — and the empty-body line that stands in the same slot ("No description
 yet. Metadata fills in automatically."). The metadata editor's intro ("Each field tracks its
-own source, so editing one leaves the rest alone."). Each dropped its local `Foreground`
+own source, so editing one leaves the rest alone."). The no-way-in sentence in Band 3
+("Winnow has not read this copy's install state yet." / "Winnow does not yet hold the
+identifier this store needs to reach this game." / "The Epic Games Launcher offers Winnow no
+way to start an install, so this game needs to be installed from Epic directly."), which is
+the whole of what Band 3 says about getting in when there is nothing to press. Each dropped
+its local `Foreground`
 override entirely rather than swapping one token for another, so the ink comes from the `.body`
 type style, which §2 already gives `Text`. A prose run that states no ink of its own is correct
 by default.
@@ -966,6 +990,9 @@ dead one, and never a URL the data did not supply.
 | Never opened | `You've never opened this.` | `Never played` |
 | Provisional title | `Name not yet available. Showing the app id until metadata loads.` | *(nothing)* |
 | No summary yet | `No description yet. Metadata fills in automatically.` | `No data` |
+| No way in, unknown state | `Winnow has not read this copy's install state yet.` | `Install state unknown` |
+| No way in, no id | `Winnow does not yet hold the identifier this store needs to reach this game.` | `Missing store id` |
+| No way in, Epic uninstalled | `The Epic Games Launcher offers Winnow no way to start an install, so this game needs to be installed from Epic directly.` | `No install action available` |
 
 Two of those are load-bearing. **"No updates recorded in that stretch"** and not "nothing has
 shipped": update polling is staggered across days, so an empty rail can mean a quiet decade or
