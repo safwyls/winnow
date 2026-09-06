@@ -78,7 +78,7 @@ jobs:
         run: dotnet build --configuration Release --no-restore -warnaserror
 
       - name: Test
-        run: dotnet test --configuration Release --no-build --logger trx --results-directory TestResults --blame-hang-timeout 5m --blame-hang-dump-type mini
+        run: dotnet test --configuration Release --no-build --logger trx --logger "console;verbosity=normal" --results-directory TestResults --blame-hang-timeout 5m --blame-hang-dump-type mini
 
       - name: Keep test results
         if: always()

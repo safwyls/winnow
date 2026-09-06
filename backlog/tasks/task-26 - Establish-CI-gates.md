@@ -1,11 +1,11 @@
 ---
 id: TASK-26
 title: Establish CI gates
-status: Done
+status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-08-29 21:53'
-updated_date: '2026-09-06 21:34'
+updated_date: '2026-09-06 23:27'
 labels:
   - infra
 milestone: m-4
@@ -33,6 +33,8 @@ No CI pipeline exists. Restore, build, test, analyzers, migration-hash verificat
 
 <!-- SECTION:PLAN:BEGIN -->
 Add a Windows GitHub Actions gate for pushes and pull requests using the .NET 10 SDK. Run restore with transitive dependency auditing, build with explicit SDK analyzers and warnings as errors, test all projects, and verify immutable migrations against the event baseline. Validate the same commands locally and document checks; hosted execution requires a later push.
+
+Investigate hosted Windows Test-step duration using retained reports; batch expensive fixture setup without changing assertions, expose test progress in CI, and verify the hosted run.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -41,6 +43,10 @@ Add a Windows GitHub Actions gate for pushes and pull requests using the .NET 10
 Workflow passes actionlint 1.7.12. Fresh dotnet restore --force-evaluate --no-cache -warnaserror passed with NuGet auditing enabled for direct/transitive packages; Release build with SDK analyzers and warnings-as-errors passed. Migration verifier and isolated mutation tests passed. Full Release test run follows ingest integration. No remote push or branch-protection change was made; first hosted workflow execution remains pending.
 
 Final integrated Release build passed with zero warnings and errors; all 3813 tests passed across four projects. Corrected new Steam fixtures to the repository-approved fake account ID after the hygiene check caught an unapproved invented ID.
+
+Hosted reports show two passing recommendation tests taking 5m38 and 4m22; Windows main suite remains active. Reopened to diagnose and complete hosted verification rather than treating a quiet Test step as success.
+
+Retained TRX identified four expensive fixture setups: 170-game maturity history, 200-game shortlist, 1200 cache writes, and 1000 identity-model games. Wrapped setup writes in existing unit-of-work scopes committed before measured reads/assertions; retained all counts/assertions and left the deliberate 2003-lease legacy benchmark unchanged. 28 affected tests pass locally. Added normal console test progress alongside TRX and five-minute hang diagnostics.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary

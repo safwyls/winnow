@@ -22,27 +22,30 @@ public class MaturityTierTests : IDisposable
     {
         var asOf = RecommendHarness.AsOf;
 
-        // Seventy patched bounces: the strongest signal in the model, so they
-        // occupy the whole candidate shortlist, and the most recently played
-        // rows in the library, so they occupy the recent probe too. Not one of
-        // them has a session.
-        for (var i = 0; i < 70; i++)
+        await _harness.SeedBatchAsync(async () =>
         {
-            var loud = await _harness.SeedGameAsync(
-                $"Loud Candidate {i:00}", minutes: 200, lastPlayed: asOf.AddYears(-1));
-            await _harness.SeedMajorUpdateAsync(loud, asOf.AddMonths(-1), $"Update {i}");
-        }
+            // Seventy patched bounces: the strongest signal in the model, so
+            // they occupy the whole candidate shortlist, and the most recently
+            // played rows in the library, so they occupy the recent probe too.
+            // Not one of them has a session.
+            for (var i = 0; i < 70; i++)
+            {
+                var loud = await _harness.SeedGameAsync(
+                    $"Loud Candidate {i:00}", minutes: 200, lastPlayed: asOf.AddYears(-1));
+                await _harness.SeedMajorUpdateAsync(loud, asOf.AddMonths(-1), $"Update {i}");
+            }
 
-        // The user's actual history: one session each on a hundred older games,
-        // spread over seven months. A hundred sessions across a hundred titles
-        // is a settled, months-in library — and every one of them sits on a row
-        // the feed ranks below the patched pile.
-        for (var i = 0; i < 100; i++)
-        {
-            var quiet = await _harness.SeedGameAsync(
-                $"Quiet History {i:00}", minutes: 150, lastPlayed: asOf.AddYears(-5));
-            await _harness.SeedSessionAsync(quiet, asOf.AddDays(-300 + (i * 2)));
-        }
+            // The user's actual history: one session each on a hundred older
+            // games, spread over seven months. A hundred sessions across a
+            // hundred titles is a settled, months-in library — and every one
+            // of them sits on a row the feed ranks below the patched pile.
+            for (var i = 0; i < 100; i++)
+            {
+                var quiet = await _harness.SeedGameAsync(
+                    $"Quiet History {i:00}", minutes: 150, lastPlayed: asOf.AddYears(-5));
+                await _harness.SeedSessionAsync(quiet, asOf.AddDays(-300 + (i * 2)));
+            }
+        });
 
         var feed = await _harness.Engine.GetFeedAsync(RecommendHarness.Request(maxResults: 20));
 

@@ -130,31 +130,34 @@ public class ShortlistBoundTests : IDisposable
         var asOf = RecommendHarness.AsOf;
         var random = new Random(7);
 
-        // The measured shape: mostly never-opened, a long tail of old bounces,
-        // a handful of patched comebacks. Correctness cannot be traded for
-        // query count, so the bound is what it is — but on a real distribution
-        // it has to stay cheap, and never-opened rows (which can hide nothing)
-        // are what keeps it that way.
-        for (var i = 0; i < 120; i++)
+        await _harness.SeedBatchAsync(async () =>
         {
-            await _harness.SeedGameAsync($"Sealed {i:000}");
-        }
+            // The measured shape: mostly never-opened, a long tail of old
+            // bounces, a handful of patched comebacks. Correctness cannot be
+            // traded for query count, so the bound is what it is — but on a
+            // real distribution it has to stay cheap, and never-opened rows
+            // (which can hide nothing) are what keeps it that way.
+            for (var i = 0; i < 120; i++)
+            {
+                await _harness.SeedGameAsync($"Sealed {i:000}");
+            }
 
-        for (var i = 0; i < 60; i++)
-        {
-            await _harness.SeedGameAsync(
-                $"Bounce {i:000}",
-                minutes: 130 + random.Next(4_000),
-                lastPlayed: asOf.AddDays(-400 - random.Next(2_500)));
-        }
+            for (var i = 0; i < 60; i++)
+            {
+                await _harness.SeedGameAsync(
+                    $"Bounce {i:000}",
+                    minutes: 130 + random.Next(4_000),
+                    lastPlayed: asOf.AddDays(-400 - random.Next(2_500)));
+            }
 
-        for (var i = 0; i < 20; i++)
-        {
-            var patched = await _harness.SeedGameAsync(
-                $"Patched {i:000}", minutes: 200 + random.Next(1_000),
-                lastPlayed: asOf.AddYears(-3));
-            await _harness.SeedMajorUpdateAsync(patched, asOf.AddMonths(-2), $"Update {i}");
-        }
+            for (var i = 0; i < 20; i++)
+            {
+                var patched = await _harness.SeedGameAsync(
+                    $"Patched {i:000}", minutes: 200 + random.Next(1_000),
+                    lastPlayed: asOf.AddYears(-3));
+                await _harness.SeedMajorUpdateAsync(patched, asOf.AddMonths(-2), $"Update {i}");
+            }
+        });
 
         var feed = await _harness.Engine.GetFeedAsync(RecommendHarness.Request(maxResults: 20));
 

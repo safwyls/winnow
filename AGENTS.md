@@ -122,6 +122,8 @@ report the limitation and leave Backlog files untouched.
   all other whitespace retained. Never replace an existing entry. Verify with
   `./scripts/Verify-Migrations.ps1 -BaselineRef HEAD`; mutation tests are in
   `scripts/Test-MigrationHashes.ps1`.
+- Windows CI prints completed tests and retains TRX plus hang diagnostics. A five-minute
+  test inactivity timeout captures a mini dump so a stalled host can be investigated.
 - A separate Ubuntu CI job runs `tests/Winnow.Monitor.Linux.Tests` against real native
   processes and a synthetic Proton environment. Those tests explicitly skip on non-Linux hosts.
 - Run with `dotnet run --project src/Winnow.App`. `-- --seed-sample` seeds demo data.

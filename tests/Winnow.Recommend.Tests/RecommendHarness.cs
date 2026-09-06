@@ -80,6 +80,17 @@ public sealed class RecommendHarness : IDisposable
 
     public RecommendationEngine Engine { get; }
 
+    /// <summary>
+    /// Runs a fixture seed in one transaction and commits it before the caller
+    /// exercises the recommendation engine.
+    /// </summary>
+    public async Task SeedBatchAsync(Func<Task> seed)
+    {
+        using var unitOfWork = _db.Factory.Begin();
+        await seed();
+        unitOfWork.Commit();
+    }
+
     /// <summary>The same engine over the same database, plus a global history aggregate for tier detection.</summary>
     public RecommendationEngine EngineWith(
         ILibraryHistoryStatsRepository? historyStats,

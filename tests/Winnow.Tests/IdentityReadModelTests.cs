@@ -480,14 +480,17 @@ public sealed class IdentityReadModelTests
         using var fixture = new ReadModelFixture();
 
         var works = new List<SeededEntry>(1_200);
-        for (var i = 0; i < 1_000; i++)
+        await fixture.SeedBatchAsync(async () =>
         {
-            works.Add(await fixture.SeedAsync(
-                $"Game {i:D4}",
-                minutes: i % 400,
-                lastPlayed: i % 3 == 0 ? null : Now.AddDays(-(i % 900)),
-                store: i % 5 == 0 ? "epic" : "steam"));
-        }
+            for (var i = 0; i < 1_000; i++)
+            {
+                works.Add(await fixture.SeedAsync(
+                    $"Game {i:D4}",
+                    minutes: i % 400,
+                    lastPlayed: i % 3 == 0 ? null : Now.AddDays(-(i % 900)),
+                    store: i % 5 == 0 ? "epic" : "steam"));
+            }
+        });
 
         // Warm first, measure second: the first query of a session pays for the
         // connection, the page cache and Dapper's mapper, none of which the join
@@ -560,6 +563,13 @@ public sealed class IdentityReadModelTests
         public IAchievementQueryRepository Achievements { get; }
 
         public void Dispose() => _db.Dispose();
+
+        public async Task SeedBatchAsync(Func<Task> seed)
+        {
+            using var scope = _db.Factory.Begin();
+            await seed();
+            scope.Commit();
+        }
 
         public LibraryViewModel CreateViewModel()
             => new(
