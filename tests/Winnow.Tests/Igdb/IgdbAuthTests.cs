@@ -17,6 +17,29 @@ public class IgdbAuthTests
     private static readonly string[] TwoAppIds = ["440", "570"];
     private static readonly string[] OtherAppIds = ["620", "730"];
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Legacy_token_cleanup_recovers_partial_or_interrupted_migration(bool protectedCopy)
+    {
+        var settings = new InMemorySettingsStore();
+        await settings.SetAsync(SettingsTableCredentialSource.ClientIdKey, "test-client");
+        await settings.SetAsync(SettingsTableCredentialSource.ClientSecretKey, "test-secret");
+        await settings.SetAsync(TwitchTokenProvider.TokenValueKey, "leftover-plaintext-token");
+        if (protectedCopy)
+        {
+            await settings.SetAsync(TwitchTokenProvider.TokenBlobKey,
+                new IgdbFixtures.ReversibleProtector().Protect(
+                    """{"client_id":"test-client","access_token":"protected-token","expires_at":"2026-03-01T00:00:00+00:00"}"""));
+        }
+
+        using var host = new IgdbTestHost(IgdbTestHost.DefaultResponder(), settings: settings);
+        await host.Client.ResolveBySteamAppIdsAsync(TwoAppIds);
+
+        Assert.Equal(string.Empty, await settings.GetAsync(TwitchTokenProvider.TokenValueKey));
+        Assert.Equal(protectedCopy ? 0 : 1, host.Handler.CountFor("token"));
+    }
+
     [Fact]
     public async Task Token_is_minted_once_and_reused_across_calls()
     {

@@ -2216,3 +2216,23 @@ and every store chip sits on the row below. The visual spec previously said:
 > Bottom third of the tile, gradient scrim to `Ground` at 92%.
 
 The overlay remains bottom-aligned and grows to fit its bounded content at dense sizes.
+
+## 2026-09-06 — Beta queue and credential migration completion
+
+Install/uninstall is required for beta, independent of export. ROADMAP.md previously said:
+
+> | M9 | Install / uninstall management | Install and uninstall delegate to the owning store client and reflect state back | after M6 |
+
+The credential audit found an unprotected optional Epic client-secret reader and migration
+cleanup that could be skipped forever after interruption. The Epic reader now uses the
+existing Epic DPAPI protector. Steam and IGDB readers retry cleanup; incomplete legacy Twitch
+token rows are discarded. This changes settings rows, not historical disk bytes or backups.
+README.md previously said:
+
+> Every credential Winnow stores is encrypted at rest with Windows DPAPI (`CurrentUser` scope): the Epic refresh token, the Steam sign-in session, the Steam Web API key, and the IGDB client secret and cached access token.
+> Nothing credential-like sits in `winnow.db` as plain text, and a system that cannot encrypt refuses to store a credential rather than saving a readable row.
+> What Winnow reads in the clear is data, not access: client ids, expiry timestamps and the like.
+
+The build spec previously said:
+
+> The same standard binds every secret Winnow keeps: the Steam Web API key, the IGDB client secret and the cached Twitch access token are each stored DPAPI-encrypted under their own versioned entropy, are migrated out of any plaintext row a pre-protection install left, and refuse on a host that cannot encrypt rather than saving a readable row.

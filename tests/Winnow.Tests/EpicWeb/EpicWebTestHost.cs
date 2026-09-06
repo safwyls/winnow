@@ -160,6 +160,7 @@ public sealed class EpicWebTestHost : IDisposable
         services.AddSingleton<TimeProvider>(Clock);
         services.AddSingleton(Settings);
         services.AddSingleton(TokenStore);
+        services.AddSingleton<IEpicSecretProtector>(new EpicSecretsTests.ReversibleTestProtector());
 
         // Registered before AddEpicWebApi so its TryAdd defers to it. A test
         // that wants to inspect what was cached — including that a transport

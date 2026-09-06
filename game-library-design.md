@@ -269,13 +269,17 @@ Eight conditions bind, and all eight are binding:
    `sessionid`, no persisted browser profile, no page content. **A host that cannot encrypt
    refuses to store rather than degrading to plaintext.** Refusing costs the user a sign-in
    they repeat after a restart; a plaintext fallback fails silently and permanently. The same
-   standard binds every secret Winnow keeps: the Steam Web API key, the IGDB client secret
-   and the cached Twitch access token are each stored DPAPI-encrypted under their own
-   versioned entropy, are migrated out of any plaintext row a pre-protection install left,
+   standard binds every secret Winnow keeps: the Steam Web API key, the optional Epic OAuth
+   client secret, the IGDB client secret and the cached Twitch access token are stored
+   DPAPI-encrypted under their module's versioned entropy, are migrated out of any plaintext
+   row a pre-protection install left,
    and refuse on a host that cannot encrypt rather than saving a readable row. The one
    distinction: refusing never destroys what a user typed (the legacy rows are left as they
    were), while machine-minted rows — the token — are emptied, because a mint is free and a
    bearer credential in the clear is not.
+   Reads retry plaintext cleanup after an interrupted migration, and discard incomplete
+   legacy Twitch token rows. Migration changes logical settings rows, not historical backups
+   or residual disk bytes.
 3. **A closed list of three unattended request kinds.** With nobody watching, Winnow may issue
    only the `finalizelogin` call, the `transfer_info` POSTs that call returns, and one token
    mint. No authenticated HTML page is ever fetched without the user present.

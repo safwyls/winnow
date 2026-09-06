@@ -74,6 +74,12 @@ public sealed class SettingsTableCredentialSource : IIgdbCredentialSource
             var secret = _protector.Unprotect(stored);
             if (!string.IsNullOrWhiteSpace(secret))
             {
+                // Retry cleanup if migration stopped after writing the protected row.
+                if (!string.IsNullOrEmpty(await _settings.GetAsync(ClientSecretKey, ct)))
+                {
+                    await _settings.SetAsync(ClientSecretKey, string.Empty, ct);
+                }
+
                 return secret;
             }
 

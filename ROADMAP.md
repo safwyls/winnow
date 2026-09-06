@@ -57,8 +57,37 @@ work was taken up, not the order it was planned.
 | M8 | The Feed | The recommender is the app's primary view; every card states its reason in one sentence | shipped; no dismiss or snooze, and nothing remembers yesterday |
 | M5 | Historical playtime backfill | Historical playtime backfills; the feed measurably improves on a cold library | built; backfill tested, feed improvement awaiting live validation against the user's key |
 | M6 | Export (JSON + CSV) | JSON is complete and re-readable; CSV covers a defined set of views | acquisition CSV shipped; full JSON/import deferred; exit criterion to be restated |
-| M9 | Install / uninstall management | Install and uninstall delegate to the owning store client and reflect state back | after M6 |
+| M9 | Install / uninstall management | Install and uninstall delegate to the owning store client and reflect state back | required for beta; TASK-3 is in PRE-BETA-HARDENING |
 | M10 | Full-screen mode + gamepad navigation | The whole app is navigable on a controller at 10 feet | last |
+
+### Pre-beta hardening
+
+The 2026-09-06 review puts security, data integrity and broken shipped behavior ahead of new
+features. PRE-BETA-HARDENING owns the release queue; task priority and ordinal record severity
+and execution order. Read Backlog for current completion status.
+
+| Priority | Tasks in execution order | Reason |
+|---|---|---|
+| High | TASK-24, TASK-11, TASK-16, TASK-17, TASK-28, TASK-31, TASK-26, TASK-141, TASK-3, TASK-52, TASK-25 | Credential protection, atomic writes, ingest and cover safety, migration and CI gates, working install/uninstall, recoverable backfill, redacted diagnostics |
+| Medium | TASK-33, TASK-6, TASK-7, TASK-10, TASK-12, TASK-18, TASK-19, TASK-20, TASK-107, TASK-139, TASK-39, TASK-57, TASK-48, TASK-47, TASK-29, TASK-35, TASK-32, TASK-130, TASK-63, TASK-69 | Timestamp and feed correctness, responsiveness, cache behavior, readable journal notes, acquisition protection, usable auth, accessibility, platform support, contract evidence and accurate explanations |
+| Low | TASK-36, TASK-45 | Startup overhead and remaining account-page verification |
+
+TASK-3 moves from M9 into this queue: export was a sequencing dependency, not a technical
+prerequisite for store handoff. TASK-26 depends on TASK-31's migration verification.
+TASK-141 needs observed Epic launcher success before it can close; passing dispatch tests
+alone do not establish that installation works. TASK-45, TASK-47 and TASK-48 require live
+verification. TASK-32 remains in the milestone, but Windows is still the only platform with
+established session support until its Linux and Proton criteria pass.
+
+Unassigned tasks left outside beta are new scoring signals and evaluation research
+(TASK-135–138), achievement ingestion (TASK-15), per-edition years (TASK-13), Dead-bucket
+support (TASK-14), broader
+cross-store automation (TASK-37), notification and navigation features (TASK-108–110,
+TASK-114), optional presentation work (TASK-27, TASK-42, TASK-43, TASK-80–82), and deferred
+import/research or test maintenance (TASK-40, TASK-41, TASK-44, TASK-46, TASK-49, TASK-65).
+These remain useful work, but do not repair the beta's existing core loop. Exact history
+aggregates (TASK-139) are included because they fix tier decisions and avoid repeated sampling
+reads; new ranking weights can wait for evidence from beta use.
 
 ## 4. Excluded, and deferred
 

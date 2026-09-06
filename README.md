@@ -78,12 +78,14 @@ Nothing leaves the machine except read-only requests to IGDB, Steam's public end
 `gamesdb.gog.com` and `api.steamcmd.net`. **Winnow reads launcher files and does not write to
 them.**
 
-Every credential Winnow stores is encrypted at rest with Windows DPAPI (`CurrentUser` scope):
-the Epic refresh token, the Steam sign-in session, the Steam Web API key, and the IGDB client
-secret and cached access token. Nothing credential-like sits in `winnow.db` as plain text,
-and a system that cannot encrypt refuses to store a credential rather than saving a readable
-row. What Winnow reads in the clear is data, not access: client ids, expiry timestamps and
-the like.
+Winnow encrypts stored credentials with Windows DPAPI (`CurrentUser` scope): Epic and Steam
+sign-in sessions, the Steam Web API key, the optional Epic OAuth client secret, and the IGDB
+client secret and cached access token. Legacy plaintext credentials migrate on first read;
+cleanup retries if an earlier migration was interrupted. A system that cannot encrypt refuses
+to persist new credentials. It leaves legacy user-entered secrets untouched but unused, and
+clears legacy machine-minted tokens. This migration updates settings rows; it does not scrub
+old database backups or guarantee removal of historical bytes from disk. Public client ids
+remain readable.
 
 *Upgrading from Hoard?* The first launch moves `%LOCALAPPDATA%\Hoard\` to
 `%LOCALAPPDATA%\Winnow\` automatically.

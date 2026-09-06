@@ -224,9 +224,8 @@ public sealed class EpicSecretsTests
     [Fact]
     public void The_windows_protector_is_selected_only_on_windows()
     {
-        using var host = new EpicWebTestHost(EpicWebTestHost.Healthy());
-
-        var protector = host.Resolve<IEpicSecretProtector>();
+        using var provider = new ServiceCollection().AddEpicWebApi().BuildServiceProvider();
+        var protector = provider.GetRequiredService<IEpicSecretProtector>();
 
         if (OperatingSystem.IsWindows())
         {
@@ -273,7 +272,7 @@ public sealed class EpicSecretsTests
     /// <see cref="Dpapi_round_trips_a_session_on_windows"/>; this one exists so
     /// the store's own logic is testable anywhere.</para>
     /// </summary>
-    private sealed class ReversibleTestProtector : IEpicSecretProtector
+    internal sealed class ReversibleTestProtector : IEpicSecretProtector
     {
         public bool FailToUnprotect { get; init; }
 

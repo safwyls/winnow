@@ -89,6 +89,12 @@ public sealed class SettingsSteamApiKeyStore : ISteamApiKeyStore
             var key = _protector.Unprotect(stored);
             if (!string.IsNullOrWhiteSpace(key))
             {
+                // Retry cleanup if migration stopped after writing the protected row.
+                if (!string.IsNullOrEmpty(await _settings.GetAsync(SettingsTableApiKeySource.ApiKeySetting, ct)))
+                {
+                    await _settings.SetAsync(SettingsTableApiKeySource.ApiKeySetting, string.Empty, ct);
+                }
+
                 return key;
             }
 
@@ -148,9 +154,8 @@ public sealed class SettingsSteamApiKeyStore : ISteamApiKeyStore
 
     /// <summary>
     /// The one-time move of a pre-protection install's key into the protected
-    /// row. Returns the key either way when it is found: the value was already
-    /// at rest on this disk, and re-storing it protected removes plaintext
-    /// rather than adding it.
+    /// row. Returns the key only after protection succeeds; an unavailable
+    /// protector leaves the legacy value intact but refuses to use it.
     /// </summary>
     private async Task<string?> MigrateLegacyRowAsync(CancellationToken ct)
     {

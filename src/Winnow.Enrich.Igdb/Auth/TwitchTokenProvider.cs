@@ -114,8 +114,8 @@ public sealed class TwitchTokenProvider : IIgdbTokenProvider
 
             if (!_loadedFromStore)
             {
-                _loadedFromStore = true;
                 var persisted = await LoadAsync(ct);
+                _loadedFromStore = true;
                 if (IsUsable(persisted, credentials))
                 {
                     _cached = persisted;
@@ -237,6 +237,7 @@ public sealed class TwitchTokenProvider : IIgdbTokenProvider
         var stored = await _settings.GetAsync(TokenBlobKey, ct);
         if (!string.IsNullOrWhiteSpace(stored))
         {
+            await ClearLegacyRowsAsync(ct);
             var json = _protector.Unprotect(stored);
             if (json is null)
             {
@@ -274,6 +275,7 @@ public sealed class TwitchTokenProvider : IIgdbTokenProvider
             || !DateTimeOffset.TryParse(
                 expiresAtRaw, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var expiresAt))
         {
+            await ClearLegacyRowsAsync(ct);
             return null;
         }
 
@@ -291,11 +293,20 @@ public sealed class TwitchTokenProvider : IIgdbTokenProvider
         // Emptied either way, including on a host that cannot encrypt: the
         // token was minted, not typed, and refusing to use it makes the row
         // worthless to everyone except whatever else reads the disk.
-        await _settings.SetAsync(TokenClientIdKey, string.Empty, ct);
-        await _settings.SetAsync(TokenValueKey, string.Empty, ct);
-        await _settings.SetAsync(TokenExpiresAtKey, string.Empty, ct);
+        await ClearLegacyRowsAsync(ct);
 
         return protectedJson is null ? null : token;
+    }
+
+    private async Task ClearLegacyRowsAsync(CancellationToken ct)
+    {
+        foreach (var key in new[] { TokenValueKey, TokenClientIdKey, TokenExpiresAtKey })
+        {
+            if (!string.IsNullOrEmpty(await _settings.GetAsync(key, ct)))
+            {
+                await _settings.SetAsync(key, string.Empty, ct);
+            }
+        }
     }
 
     private async Task SaveAsync(IgdbAccessToken token, CancellationToken ct)

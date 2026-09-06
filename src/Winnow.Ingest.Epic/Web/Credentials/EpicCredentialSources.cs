@@ -1,4 +1,5 @@
 using Winnow.Core.Repositories;
+using Winnow.Ingest.Epic.Web.Auth;
 using Microsoft.Extensions.Configuration;
 
 namespace Winnow.Ingest.Epic.Web.Credentials;
@@ -12,12 +13,19 @@ public sealed class SettingsTableEpicCredentialSource : IEpicCredentialSource
     /// <summary>Settings key holding the user's Epic OAuth client id. Namespaced per the §6 convention.</summary>
     public const string ClientIdSetting = "epic.oauth.client_id";
 
-    /// <summary>Settings key holding the user's Epic OAuth client secret.</summary>
+    /// <summary>Legacy plaintext key, emptied after successful protection.</summary>
     public const string ClientSecretSetting = "epic.oauth.client_secret";
 
-    private readonly ISettingsRepository? _settings;
+    public const string ProtectedClientSecretSetting = "epic.oauth.client_secret.v1";
 
-    public SettingsTableEpicCredentialSource(ISettingsRepository? settings) => _settings = settings;
+    private readonly ISettingsRepository? _settings;
+    private readonly IEpicSecretProtector _protector;
+
+    public SettingsTableEpicCredentialSource(ISettingsRepository? settings, IEpicSecretProtector protector)
+    {
+        _settings = settings;
+        _protector = protector;
+    }
 
     public string Name => "settings";
 
@@ -26,8 +34,49 @@ public sealed class SettingsTableEpicCredentialSource : IEpicCredentialSource
             ? null
             : EpicClientCredentials.TryCreate(
                 await _settings.GetAsync(ClientIdSetting, ct),
-                await _settings.GetAsync(ClientSecretSetting, ct),
+                await GetSecretAsync(ct),
                 Name);
+
+    private async Task<string?> GetSecretAsync(CancellationToken ct)
+    {
+        var stored = await _settings!.GetAsync(ProtectedClientSecretSetting, ct);
+        if (!string.IsNullOrWhiteSpace(stored))
+        {
+            var secret = _protector.Unprotect(stored);
+            if (!string.IsNullOrWhiteSpace(secret))
+            {
+                await ClearLegacyAsync(ct);
+            }
+
+            return secret;
+        }
+
+        var legacy = await _settings.GetAsync(ClientSecretSetting, ct);
+        if (string.IsNullOrWhiteSpace(legacy))
+        {
+            return null;
+        }
+
+        var protectedValue = _protector.Protect(legacy.Trim());
+        if (protectedValue is null)
+        {
+            // Preserve a user-entered value when protection fails, but never use it.
+            return null;
+        }
+
+        await _settings.SetAsync(ProtectedClientSecretSetting, protectedValue, ct);
+        await ClearLegacyAsync(ct);
+        return legacy.Trim();
+    }
+
+    private async Task ClearLegacyAsync(CancellationToken ct)
+    {
+        // A previous run may have stopped between writing the blob and clearing plaintext.
+        if (!string.IsNullOrEmpty(await _settings!.GetAsync(ClientSecretSetting, ct)))
+        {
+            await _settings.SetAsync(ClientSecretSetting, string.Empty, ct);
+        }
+    }
 }
 
 /// <summary>
@@ -80,7 +129,8 @@ internal sealed class DefaultSettingsTableEpicCredentialSource : IEpicCredential
 
     public DefaultSettingsTableEpicCredentialSource(IServiceProvider services)
         => _inner = new SettingsTableEpicCredentialSource(
-            services.GetService(typeof(ISettingsRepository)) as ISettingsRepository);
+            services.GetService(typeof(ISettingsRepository)) as ISettingsRepository,
+            (IEpicSecretProtector)services.GetService(typeof(IEpicSecretProtector))!);
 
     public string Name => _inner.Name;
 
