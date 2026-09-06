@@ -115,6 +115,13 @@ report the limitation and leave Backlog files untouched.
   one another's edits. The coordinating agent owns integration and verification.
 - `Directory.Build.props` sets nullable, implicit usings and `TreatWarningsAsErrors`.
 - Build and test with `dotnet build` and `dotnet test` from the repository root.
+- CI runs Windows Release restore/build/test on pushes and pull requests, with SDK analyzers
+  and direct/transitive NuGet auditing enabled; warnings fail the gate. Migration integrity
+  uses `scripts/Verify-Migrations.ps1`. For a new migration, append its SHA-256 to
+  `src/Winnow.Data/Migrations/hashes.json`: UTF-8 text without BOM, CRLF normalized to LF,
+  all other whitespace retained. Never replace an existing entry. Verify with
+  `./scripts/Verify-Migrations.ps1 -BaselineRef HEAD`; mutation tests are in
+  `scripts/Test-MigrationHashes.ps1`.
 - Run with `dotnet run --project src/Winnow.App`. `-- --seed-sample` seeds demo data.
 - **For any run where you might click something, pass `-- --data-dir <path>`** to redirect the
   database, sidecars, covers, themes and WebView2 profile to a throwaway directory. Otherwise

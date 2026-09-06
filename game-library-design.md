@@ -146,6 +146,22 @@ immediately, and reads may be stale by an unbounded amount.
 **Never write to any Steam file.** Steam Cloud may also overwrite local edits with a newer
 server-side version. Winnow is read-only against all Steam files.
 
+**Local parser limits.** Steam VDF and Epic/GOG local JSON readers use
+`StorefrontParserLimits`: 64 MiB per file and 64 nesting levels by default. Reader constructors
+accept overrides; depth cannot exceed 256. Byte limits apply to the actual bytes read, including
+files that grow during a read. Epic's base64 catalog is bounded before decoding. JSON uses
+`JsonDocumentOptions.MaxDepth`; VDF uses a quote/comment-aware depth preflight before
+ValveKeyValue, which still owns syntax and value parsing. VDF includes are refused so another
+file cannot bypass these limits. Rejected input yields no data. These are Winnow's operating
+limits, not vendor format limits; they do not govern Galaxy's SQLite snapshot or saved HTML
+account-page imports.
+
+Steam manifest install directories must resolve beneath the library's `steamapps/common`
+directory. Rooted paths and parent traversal are rejected. Each library root has its own
+validation and enumeration failure boundary; a bad root logs a warning and leaves other roots
+readable. When a root or manifest cannot be read, missing manifests do not establish an
+uninstall: playtime-only candidates carry unknown install state.
+
 ### 4.2 Steam Web API
 
 Used for enrichment, entitlement backfill and friends data. The key is user-supplied and
@@ -618,6 +634,9 @@ is a no-op.
 
 SQLite. Migrations are embedded resources, checked into the repository, applied on startup by
 DbUp, and **append-only: never edit a shipped migration.**
+`Migrations/hashes.json` records SHA-256 for each SQL script, normalizing CRLF to LF.
+CI verifies file membership and content, and checks existing entries against the previous
+revision so changing a script and its hash together still fails. New migrations append entries.
 
 Facet replacement, list reordering and feed surfacing batches are atomic repository calls.
 Each opens a local transaction when called alone, or a savepoint inside the caller's unit
@@ -881,6 +900,12 @@ twice writes one file. `UserArtCoverSource` is an ordinary `ICoverSource` over a
 provider, so user art reaches a tile through the same pipeline, disk cache and leases as a
 Steam capsule. `ArtKeys.Resolve` (`Winnow.Covers.Igdb`) is the one place a stored art URL
 becomes a `CoverKey`. The file the user picks is read-only input and is never written.
+
+Cover HTTP responses are streamed with a 16 MiB encoded-byte ceiling, including when the
+server omits or understates Content-Length. Before allocating pixels, decoding rejects
+dimensions above 8192 on either axis or 32 Mi pixels total. Negative cache entries carry
+the source-set identity; capability refresh runs before suppressing a miss so configuring
+IGDB can reopen it in the same session. Existing positive disk art remains reusable.
 
 **List membership resolution.** `lists` and `list_items` already existed. Membership stays
 stored per release — adding a game to a list is an explicit act on the entry the user

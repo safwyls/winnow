@@ -160,6 +160,20 @@ dotnet build
 dotnet test
 ```
 
+GitHub Actions runs restore, dependency auditing, an analyzer-enabled Release build and all
+tests on Windows for every push and pull request. Advisory warnings fail the restore,
+including advisories on transitive packages. Test results are retained for seven days.
+The workflow also verifies migration hashes against the previous push or pull-request base.
+Repository administrators can require the `Windows build, tests and migration integrity`
+check in branch protection; the workflow file itself does not configure that setting.
+
+To check migration integrity locally:
+
+```powershell
+./scripts/Verify-Migrations.ps1 -BaselineRef HEAD
+./scripts/Test-MigrationHashes.ps1
+```
+
 No network calls: parser tests run against sanitized captures of real launcher files in
 `tests/fixtures/`, and every HTTP client is tested against canned responses. Fixtures carry
 fake account ids — sanitize anything you add.
