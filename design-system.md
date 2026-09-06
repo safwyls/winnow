@@ -454,12 +454,35 @@ panel's strings were written from the auth spikes instead. TASK-81.
 
 - **The saturation ramp is decorative-redundant.** Idle time also appears as text on hover and
   as a sortable column in list view. A user who cannot perceive the fade loses nothing. The
-  unread badge is likewise backed by the rail count and a tooltip.
+  unread badge is likewise backed by the rail's `Patched` count, by the same bucket name on the
+  back of the tile, and by the tile's accessible name, which states the badge in words and
+  gives the number of updates.
 - **Focus is a brush swap on a border whose thickness never changes** (§10.7). It is drawn per
   control rather than left to Avalonia's global `FocusAdorner`, which measurably underdelivers
   and does not render inside a popup at all. Every focusable control carries a visible ring;
   `Volt` everywhere except on a `Volt` fill, where it is `VoltInk`.
 - Full keyboard grid navigation: arrows, `/` to search, `Enter` to launch.
+- **An accessible name belongs on a control that has an automation peer of its own** — in
+  practice the `UserControl` root, the `Button`, the `TextBox`, the `CheckBox` — and never on a
+  `Border`, a `Panel` or a `Grid`. Avalonia gives those a `NoneAutomationPeer` and Windows
+  prunes it from the control view, the tree a screen reader walks; the element's children still
+  appear, so what is lost is the name alone. Where there is no peer-bearing control to move the
+  name to, the element states `AutomationProperties.AccessibilityView="Control"`, which is
+  consulted before the peer's own answer and puts it back in that tree with its name intact.
+  Verified against Avalonia 11.3.20.
+- **A name on a `TextBlock` is discarded.** `TextBlockAutomationPeer` returns the `Text` and
+  never reads `AutomationProperties.Name`, so a `TextBlock` says its `Text` and nothing else.
+  Put the words in the `Text`.
+- **A value that changes while its surface is on screen travels on
+  `AutomationProperties.ItemStatus`, or on a bound `TextBlock`'s `Text`.** Changing a name at
+  runtime raises no UIA event, so the new one is never announced; `ItemStatus` is the one
+  attached property that raises one.
+- **A count is spelled into the name string** — `Patched since you played: 3 updates.` —
+  because `AutomationProperties.PositionInSet` and `SizeOfSet` compile and are read by nothing.
+- **These four are enforced by a test rather than by review.** The failure is silent: the
+  element keeps its children and nothing throws, so a name that stops arriving looks exactly
+  like a name that does. `AutomationNameReachabilityTests` scans every `.axaml` under
+  `src/Winnow.App` and fails when a name sits where UIA will drop it.
 - **Reduced motion disables the hover saturation animation** — state snaps instead of fading.
 - **When the interface cannot state a proportion, it says what it is doing and what it is
   waiting for, in words, in a status field, and offers Cancel when there is one.** This is the
@@ -628,7 +651,8 @@ long content draw past the card and be cut off at the window edge (measured on A
 
 Avalonia's Fluent ScrollViewer draws its scrollbar over the content while auto-hide is on: the
 content presenter is given both spans, so the bar takes no column of its own (verified against
-Avalonia 11.3.20's own theme). Three inner scroll regions in the modal carry the same problem. In the right column's rest
+Avalonia 11.3.20's own theme). Three inner scroll regions in the modal carry the same
+problem. In the right column's rest
 band, the close glyph on each disclosed section's header row (§10.9, §10.10) and the per-row
 Separate, Ungroup and Patch notes buttons sit under the bar. In the IGDB candidate list
 (§10.9), a bounded region with a bar of its own drawn inside the rest band's content, the
@@ -643,7 +667,8 @@ rather than one per header, so every section the band carries now and every sect
 is clear of the bar without solving it again. The left column's 18px top margin — the gap
 between the cover and the facts — moved onto the ScrollViewer itself, because a `Thickness`
 token cannot be composed with a second value in XAML and a `Margin` on a ScrollViewer is not
-the inert `Padding` case; the gap no longer scrolls away with the content. It is not carried by the `ScrollViewer.inner` class: that class is §9.1's
+the inert `Padding` case; the gap no longer scrolls away with the content. It is not carried
+by the `ScrollViewer.inner` class: that class is §9.1's
 opt-out, saying this scrollbar's edge is a divider of ours rather than the window's, and the
 only property it could set for a gutter is the ScrollViewer's own `Padding`, which
 `ScrollContentPresenter` ignores in measure and in arrange. The cover wall already records the
@@ -1018,7 +1043,8 @@ results, so more than three is the normal case for a common title. A row is 68px
 cover plus padding and rule), so the region shows three rows and half of a fourth; the cut row
 together with the scrollbar is what says there is more rather than the list ending silently.
 The list's content carries `InnerScrollGutter` (§10.1) so the bar does not cover the assign
-controls at the trailing edge. The section's close control is the first Tab stop in the section. Each row's assign control
+controls at the trailing edge. The section's close control is the first Tab stop in the
+section. Each row's assign control
 follows, and a row reached by Tab is scrolled into view, so focus is never left off screen.
 
 **Six states.** Assigned reloads the library and reopens the modal on the same ownership,

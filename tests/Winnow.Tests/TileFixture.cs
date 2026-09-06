@@ -34,7 +34,8 @@ internal static class TileFixture
         string? steamAppId = null,
         string? gogProductId = null,
         EpicLaunchKey? epicLaunchKey = null,
-        string? bucketLabel = null)
+        string? bucketLabel = null,
+        int unreadUpdateCount = 0)
     {
         var entry = TileEntry.For(
             ownershipId: ownershipId,
@@ -49,7 +50,7 @@ internal static class TileFixture
             epicLaunchKey: epicLaunchKey);
 
         return Tile(nowUtc, [entry], workId, bucket, majorUpdateAt,
-            title, coverKey, covers, work, ramp, bucketLabel);
+            title, coverKey, covers, work, ramp, bucketLabel, unreadUpdateCount);
     }
 
     /// <summary>
@@ -70,13 +71,15 @@ internal static class TileFixture
         ICoverLeases? covers = null,
         Work? work = null,
         DormancyRamp? ramp = null,
-        string? bucketLabel = null)
+        string? bucketLabel = null,
+        int unreadUpdateCount = 0)
     {
         // Thresholds tuned so the caller's stated bucket is the one the shared
         // rules produce for these entries: the fixture never invents a bucket
         // the read model would not have given it.
         var game = GameGrouping.Of(
-            resolvedWorkId, entries, majorUpdateAt, ThresholdsFor(bucket, entries, majorUpdateAt));
+            resolvedWorkId, entries, majorUpdateAt, unreadUpdateCount,
+            ThresholdsFor(bucket, entries, majorUpdateAt));
 
         return new GameTileViewModel(
             entries: entries,

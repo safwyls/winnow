@@ -1495,3 +1495,126 @@ Superseded text from §10.9:
 Superseded text from §10.10:
 
 > The rest band is a bounded scroll region and the editor opens below the fold, so pressing the disclosure scrolls the editor into view.
+
+### 2026-09-05 — Accessible names sat where UIA drops them (TASK-129, TASK-30)
+
+`design-system.md` §8. Four surfaces put their accessible name on an element that has no
+automation peer of its own: the game tile (`GameTileView`, on `Border#Lift`), the feed card,
+the rail's fetch-status field and a merge-queue row. The tile is every object on the cover
+wall, so on a real library the great majority of what a screen reader met was nameless. The
+fault had been in place unnoticed on all four, and it was invisible without a test: the
+elements keep their children and nothing throws.
+
+The findings that constrained the fix, verified against Avalonia 11.3.20's source rather than
+assumed:
+
+- `Control.OnCreateAutomationPeer` returns a `NoneAutomationPeer`, and `Border`, `Panel`,
+  `Grid`, `StackPanel`, `DockPanel`, `ContentPresenter` and `ContentControl` do not override
+  it. `NoneAutomationPeer.IsControlElementCore` is false; the Win32 provider maps that onto
+  `UIA_IsControlElementPropertyId`, which is what Windows filters its control view on.
+- `TextBlockAutomationPeer.GetNameCore` returns the `Text` and never calls base, so
+  `AutomationProperties.Name` on a `TextBlock` is silently discarded. A `TextBlock` does raise
+  a UIA name-changed event when its `Text` changes.
+- `AutomationProperties.PositionInSet`, `SizeOfSet`, `IsRequiredForForm`, `IsColumnHeader` and
+  `IsRowHeader` compile and are read by nothing. A search of the whole Avalonia repository
+  returns exactly one hit each: their own declaration.
+- `ControlAutomationPeer` raises a property-changed event for `IsVisible`, `Bounds`,
+  `RenderTransform`, `VisualParent` and `AutomationProperties.ItemStatus`, and for nothing
+  else. Changing a `Name` at runtime announces nothing.
+- `AutomationProperties.AccessibilityView="Control"` is consulted before the peer's own answer,
+  so it restores a pruned element with its name intact. `AutomationControlType.None` then
+  reports as a UIA `Group`, and `ControlTypeOverride` can name it better.
+- An `ItemsControl` reports as a `List` with no items in the control view, because every
+  container is a `ContentPresenter` yielding a `NoneAutomationPeer`. An item's name belongs on
+  the `DataTemplate` root, never on the control.
+- `ContentControlAutomationPeer.GetNameCore` falls back to `Owner.Content?.ToString()`. The
+  rail's bucket rows are `Button`s whose content is a `Grid`, so each announced the literal
+  string "Avalonia.Controls.Grid".
+
+The fix therefore differs per site, because the remedy available differs. Where there was a
+peer-bearing control to move the name onto, it moved: the tile's onto its `UserControl` root,
+the feed card's onto its `Button`. Where there was none, the element states
+`AccessibilityView="Control"` and the name stays where it is: the rail's fetch-status field and
+the merge-queue row. The rail's bucket rows gained names of their own, which also displaces the
+`ToString()` fallback. The feed card gained a live `ItemStatus` for the verdict receipt and its
+replacement countdown, because a name change there would have announced nothing.
+
+TASK-30's count became a phrase rather than a set position. `PositionInSet` and `SizeOfSet`
+being inert, "3 of 12" is not expressible, so the tile's name says "Patched since you played:
+3 updates." The count is carried out of the same `major_update` query aggregate that gives the
+badge its own timestamp, under the same acknowledgement watermark, so the words and the dot
+cannot disagree.
+
+**A game's unread count is the maximum across its store copies, never the sum.** Two copies of
+one game receive the same patches, so adding them would report a number no storefront ever
+pushed.
+
+The rule is held by `tests/Winnow.Tests/Enforcement/AutomationNameReachabilityTests.cs`, which
+scans every `.axaml` under `src/Winnow.App`, rather than by review. The failure mode is silent,
+so there is nothing for a reviewer to notice and nothing for a manual pass to catch on the next
+surface either.
+
+Superseded text from §8:
+
+> The unread badge is likewise backed by the rail count and a tooltip.
+
+### 2026-09-05 — Screenshots and ratings: fetch, store, attribute (TASK-111, TASK-112, TASK-113)
+
+Screenshots and ratings are fetched from IGDB and Steam, stored in `work_images` and
+`work_ratings` (migration 0028), and attributed to their source. Three figures with their
+counts, never a blend: IGDB's own users (`igdb_users`), IGDB's aggregation of external critics
+(`igdb_critics`), and Steam's community reviews (`steam`). Steam keeps its own label ("Very
+Positive") verbatim. Both tables are shaped on `work_maturity` (0024) — one row per (work,
+source), observed and timestamped.
+
+**The payload-version bump was measured, not assumed.** The earlier TASK-121 figure was
+deliberately not quoted, because this change adds more fields than that one did. Measured
+against canned fixtures through the real client: 967 games, 3 requests in batches of
+400/400/167, 184 ms end to end against the local responder, cached payload 636,286 bytes total
+or 658 per game — against 607,276 bytes, 628 per game, for the same games with the six new
+fields absent. About 30 bytes and 4.8% per game, and no change to the request count, because
+an Apicalypse `fields` clause is one request whatever it lists. The network time was not
+measured: no live credentialed IGDB call was made, so the figure is the local cost of the
+shape change and not a round-trip time.
+
+**Screenshots did not get a second image path.** They ride the existing `IgdbCoverSource`, the
+existing `CoverPipeline` and the existing disk cache. The only thing that distinguishes them is
+the size token in the CDN path, chosen from a new `CoverKey` provider `igdb-shot`. Cover and
+Steam keys keep their exact tokens and their exact cache stems, so nothing already cached was
+invalidated. Verified live 2026-09-05 by unauthenticated GETs against `images.igdb.com` using
+`co6m51`: `t_screenshot_huge` returns 200 at 1280x720, 58,654 bytes, while a fabricated token
+returns 404 — so the CDN discriminates between tokens rather than serving anything for any
+path. The same probe reproduced the 2026-08-23 cover figures exactly (264x352 / 9,926 bytes
+and 528x704 / 32,659 bytes).
+
+**A pinned work refetches against its pin rather than re-resolving.** The pin says which game
+it is; the refetch says fetch it again. Re-resolving would let a refetch quietly undo a
+correction the user made by hand. The refetch is additionally held back by a per-work cooldown
+on top of the two clients' existing Polly rate limiters.
+
+Superseded text from `game-library-design.md` §4.4:
+
+> The IGDB response cache carries a payload version per namespace: game payloads at **3**
+> (name, summary, first release date, cover, genres, themes, game modes, player perspectives,
+> platforms, publisher, `game_type`, `parent_game`, `version_parent`, `version_title`),
+> age-rating payloads at **1**, search payloads at **1**. Change a cached shape and bump its
+> version in the same commit, or the cache serves rows with the new field silently empty for
+> the rest of the 30-day TTL. A payload whose version does not match is refetched, and the
+> older payload is still served when no refetch is possible.
+
+Superseded doc comment from `src/Winnow.Covers.Igdb/ArtKeys.cs`:
+
+> IGDB screenshots written into `works.background_url` reach a tile through this same call, so the codebase does not grow a second image path.
+
+Screenshots are now stored as image ids in `work_images` and keyed with
+`CoverKey.IgdbScreenshot`, not written into `background_url`. The surviving point — that there
+is still only one image path — is unchanged.
+
+Superseded comment from `tests/Winnow.Tests/Enforcement/SchemaDisciplineTests.cs` (above the
+`recordedObservations` allow list):
+
+> The one stored score, and it is not a derived value: it is the soft matcher's confidence in one specific pair, recorded with the pair at the moment it was queued, so a human reviewing the queue can see what the machine thought. §6's schema declares it. Re-deriving it later would answer a different question, because the matcher will have changed.
+
+`work_ratings.score` is now a second entry on that list. It is admitted under the same
+principle, not as an exception to it: it is a figure IGDB or Steam published, recorded as
+observed against the work and the source that published it, and nothing in Winnow computes it.

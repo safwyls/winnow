@@ -183,6 +183,10 @@ public sealed class IdentityReadInventoryTests
         new("src/Winnow.App/Services/EnrichmentSyncService.cs", "EnrichAsync", Policy.DoNotResolve,
             "Enrichment targets the row's own ids. See GetFacetTargetsAsync."),
 
+        new("src/Winnow.App/Services/GameRefetchService.cs", "RunAsync", Policy.DoNotResolve,
+            "Re-asks one work's own sources by its own ids. Resolving to a link partner first "
+            + "would ask about the other storefront's copy and write the answer against this row."),
+
         new("src/Winnow.App/Services/SampleDataSeeder.cs", "SeedLibraryAsync", Policy.DoNotResolve,
             "Seeds demo rows. A seeder writes the rows resolution is later computed over."),
 

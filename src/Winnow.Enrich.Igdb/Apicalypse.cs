@@ -104,10 +104,40 @@ public static class Apicalypse
     /// one because a candidate found by id and a candidate found by title are
     /// drawn side by side, and an id row that showed a year and no platforms was
     /// the defect that put it here.</para>
+    ///
+    /// <para><c>screenshots.image_id</c>, <c>artworks.image_id</c>,
+    /// <c>rating</c>, <c>rating_count</c>, <c>aggregated_rating</c> and
+    /// <c>aggregated_rating_count</c> ride the same request for the same
+    /// reason: an Apicalypse <c>fields</c> clause is one request whatever it
+    /// lists. Only <c>image_id</c> is requested for the two image arrays,
+    /// not <c>url</c>/<c>width</c>/<c>height</c>: <c>image_id</c> is the
+    /// durable handle and the size token in the CDN path decides the
+    /// rendition, so a stored URL would carry a size we would only have to
+    /// rewrite. <c>rating</c>/<c>rating_count</c> are IGDB's own user
+    /// body; <c>aggregated_rating</c>/<c>aggregated_rating_count</c> are
+    /// its aggregation of external critics. <c>total_rating</c> and
+    /// <c>total_rating_count</c> exist and are deliberately NOT requested:
+    /// the approved design shows the two figures attributed separately with
+    /// their counts, and a blended figure cannot be attributed to anyone.
+    /// These stay off <see cref="SearchGames"/> and off
+    /// <see cref="AgeRatings"/>, for the isolation reason those two queries
+    /// already state.</para>
+    ///
+    /// <para>Field names verified against IGDB's published protobuf schema,
+    /// fetched unauthenticated from
+    /// <c>https://api.igdb.com/v4/igdbapi.proto</c> on 2026-09-05.
+    /// In <c>message Game</c>: <c>repeated Artwork artworks = 6</c>,
+    /// <c>double aggregated_rating = 3</c>,
+    /// <c>int32 aggregated_rating_count = 4</c>,
+    /// <c>double rating = 30</c>, <c>int32 rating_count = 31</c>,
+    /// <c>repeated Screenshot screenshots = 33</c>.
+    /// <c>message Screenshot</c> and <c>message Artwork</c> share the same
+    /// shape; <c>image_id</c> is a string field in both. No live
+    /// credentialed API call was made.</para>
     /// </summary>
     public static string Games(IEnumerable<long> igdbIds, int limit, int offset)
         => $"""
-            fields name,summary,first_release_date,cover.image_id,cover.url,genres.name,themes.name,game_modes.name,player_perspectives.name,platforms.name,involved_companies.publisher,involved_companies.company.name,game_type.type,parent_game,version_parent,version_title;
+            fields name,summary,first_release_date,cover.image_id,cover.url,genres.name,themes.name,game_modes.name,player_perspectives.name,platforms.name,involved_companies.publisher,involved_companies.company.name,game_type.type,parent_game,version_parent,version_title,screenshots.image_id,artworks.image_id,rating,rating_count,aggregated_rating,aggregated_rating_count;
             where id = {NumberList(igdbIds)};
             limit {Clamp(limit).ToString(CultureInfo.InvariantCulture)};
             offset {offset.ToString(CultureInfo.InvariantCulture)};

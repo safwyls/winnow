@@ -75,16 +75,39 @@ public sealed class IgdbCoverSource : ICoverSource
     public int LookupBatchCount => _lookup.BatchCount;
 
     /// <summary>
-    /// Accepts two key shapes: a Steam appid (resolved via <c>external_games</c>)
-    /// or an IGDB image id (direct CDN fetch, no credentials needed).
+    /// Accepts three key shapes: a Steam appid (resolved via
+    /// <c>external_games</c>), an IGDB cover image id, or an IGDB screenshot
+    /// image id. The last two are direct CDN fetches needing no credentials;
+    /// what the provider decides is one thing only: which size token goes in
+    /// the CDN path. This is deliberately NOT a second image path — the same
+    /// <c>ICoverSource</c>, the same <c>CoverPipeline</c>, the same disk
+    /// cache, the same negative markers.
     /// </summary>
     public bool CanHandle(CoverKey key)
         => (key.Provider == CoverProviders.Steam
             && key.Id.Length > 0
             && key.Id.All(char.IsAsciiDigit))
-           || (key.Provider == CoverProviders.Igdb
+           || (IsImageIdProvider(key.Provider)
                && key.Id.Length > 0
                && key.Id.All(char.IsAsciiLetterOrDigit));
+
+    /// <summary>
+    /// True for providers whose key is an IGDB <c>image_id</c> — cover or
+    /// screenshot. Both go to the same CDN at a different size token.
+    /// </summary>
+    private static bool IsImageIdProvider(string provider)
+        => provider == CoverProviders.Igdb || provider == CoverProviders.IgdbScreenshot;
+
+    /// <summary>
+    /// Picks the CDN size token. Screenshots get
+    /// <see cref="IgdbCoverOptions.ScreenshotSizeToken"/> (16:9 landscape);
+    /// covers get <see cref="IgdbCoverOptions.ImageSizeToken"/> (3:4
+    /// portrait).
+    /// </summary>
+    private string SizeTokenFor(CoverKey key)
+        => key.Provider == CoverProviders.IgdbScreenshot
+            ? _options.ScreenshotSizeToken
+            : _options.ImageSizeToken;
 
     /// <summary>
     /// Resolves <paramref name="appIds"/> to IGDB covers ahead of demand, in
@@ -102,14 +125,16 @@ public sealed class IgdbCoverSource : ICoverSource
             return null;
         }
 
+        var sizeToken = SizeTokenFor(key);
+
         string? url;
-        if (key.Provider == CoverProviders.Igdb)
+        if (IsImageIdProvider(key.Provider))
         {
             // The key IS the asset. No credential check and no lookup: a work
             // that already has a cover_url has been past IGDB once, and asking
             // again to re-learn an id we are holding would put Epic and GOG
             // tiles behind a credential the CDN does not want.
-            url = IgdbImageUrl.ForImageId(key.Id, _options.ImageSizeToken);
+            url = IgdbImageUrl.ForImageId(key.Id, sizeToken);
         }
         else
         {
@@ -121,7 +146,7 @@ public sealed class IgdbCoverSource : ICoverSource
             await EnsurePrewarmedAsync().ConfigureAwait(false);
 
             var coverUrl = await _lookup.GetCoverUrlAsync(key.Id, ct).ConfigureAwait(false);
-            url = IgdbImageUrl.WithSize(coverUrl, _options.ImageSizeToken);
+            url = IgdbImageUrl.WithSize(coverUrl, sizeToken);
         }
 
         if (url is not { Length: > 0 })

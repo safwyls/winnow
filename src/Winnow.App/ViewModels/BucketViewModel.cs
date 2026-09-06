@@ -24,8 +24,20 @@ public partial class BucketViewModel : ObservableObject
     public bool ShowsFlarePip { get; }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(RowOpacity), nameof(CountText))]
+    [NotifyPropertyChangedFor(nameof(RowOpacity), nameof(CountText), nameof(AutomationName))]
     public partial int Count { get; set; }
+
+    /// <summary>
+    /// What a screen reader is told about this row: the bucket, how many games
+    /// are in it, and whether they carry unread updates. The row is a Button
+    /// whose content is a Grid, and a ContentControl peer with no name of its
+    /// own falls back to <c>Content?.ToString()</c> — so before this existed
+    /// the rail announced "Avalonia.Controls.Grid" and nothing else. The count
+    /// is in the string because the name is what a reader hears when it lands
+    /// on the row, and the count is otherwise only in the TextBlocks inside
+    /// it. See <see cref="UnreadCopy.RailBucket"/>.
+    /// </summary>
+    public string AutomationName => UnreadCopy.RailBucket(Name, CountText, ShowsFlarePip);
 
     /// <summary>Whether this bucket is the active selection in the rail (Volt edge).</summary>
     [ObservableProperty]

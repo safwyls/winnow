@@ -547,7 +547,26 @@
                                                             </StackPanel>
                                                         </Grid>
 
-                                                        <!-- ── Candidate rows ────────────── -->
+                                                        <!-- ── Candidate rows ──────────────
+                                                             The row is a focusable Border and
+                                                             the DataTemplate's root, so there
+                                                             is no control to move its name
+                                                             onto: a Border gets a
+                                                             NoneAutomationPeer and UIA drops
+                                                             it from the control view, and the
+                                                             ItemsControl's own containers are
+                                                             ContentPresenters, which are
+                                                             dropped for the same reason — the
+                                                             list reports as a List with no
+                                                             items in it. AccessibilityView
+                                                             puts the row back in the tree with
+                                                             its name, and ControlTypeOverride
+                                                             makes it report as a row of that
+                                                             list rather than as a bare group,
+                                                             which is what None maps to. The
+                                                             fix belongs on the template root;
+                                                             on the ItemsControl it would name
+                                                             the list, not a row. -->
                                                         <ItemsControl ItemsSource="{Binding Rows}">
                                                             <ItemsControl.ItemTemplate>
                                                                 <DataTemplate DataType="vm:MergeRowViewModel">
@@ -562,7 +581,9 @@
                                                                             PointerPressed="OnRowPressed"
                                                                             GotFocus="OnRowFocus"
                                                                             ToolTip.Tip="{Binding DetailsTip}"
-                                                                            AutomationProperties.Name="{Binding DetailsAutomationName}">
+                                                                            AutomationProperties.Name="{Binding DetailsAutomationName}"
+                                                                            AutomationProperties.AccessibilityView="Control"
+                                                                            AutomationProperties.ControlTypeOverride="ListItem">
                                                                         <Grid ColumnDefinitions="2,36,44,*,Auto,94,78,26,36">
 
                                                                             <!-- The selection edge: Volt on the header only. -->

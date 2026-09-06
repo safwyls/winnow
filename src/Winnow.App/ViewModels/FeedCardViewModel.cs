@@ -1,4 +1,4 @@
-using CommunityToolkit.Mvvm.ComponentModel;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Winnow.App.Services;
 
@@ -100,6 +100,7 @@ public partial class FeedCardViewModel : ObservableObject, IDisposable
 
     /// <summary>Whether the receipt is on a clock. False for a receipt with nowhere to go.</summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(StatusAnnouncement))]
     public partial bool IsCountingDown { get; set; }
 
     /// <summary>
@@ -140,7 +141,7 @@ public partial class FeedCardViewModel : ObservableObject, IDisposable
     /// place, its cover and its sentence; what changes is the action line.
     /// </summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ShowActions))]
+    [NotifyPropertyChangedFor(nameof(ShowActions), nameof(StatusAnnouncement))]
     public partial bool IsSetAside { get; set; }
 
     /// <summary>
@@ -148,6 +149,7 @@ public partial class FeedCardViewModel : ObservableObject, IDisposable
     /// a dismissal states what is now true, a snooze states the day it ends.
     /// </summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(StatusAnnouncement))]
     public partial string SetAsideNote { get; set; } = string.Empty;
 
     /// <summary>
@@ -156,7 +158,7 @@ public partial class FeedCardViewModel : ObservableObject, IDisposable
     /// has no date to state.
     /// </summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasSetAsideDate))]
+    [NotifyPropertyChangedFor(nameof(HasSetAsideDate), nameof(StatusAnnouncement))]
     public partial string SetAsideDate { get; set; } = string.Empty;
 
     /// <summary>
@@ -164,12 +166,66 @@ public partial class FeedCardViewModel : ObservableObject, IDisposable
     /// both controls exactly where they were so the user can simply press again.
     /// </summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasProblem))]
+    [NotifyPropertyChangedFor(nameof(HasProblem), nameof(StatusAnnouncement))]
     public partial string? Problem { get; set; }
 
     public bool HasSetAsideDate => SetAsideDate.Length > 0;
 
     public bool HasProblem => Problem is not null;
+
+    /// <summary>
+    /// What a screen reader is told about this card: the tile's own name, then
+    /// the engine's sentence. The sentence is the whole point of a feed card —
+    /// <see cref="Reason"/> has always said it was kept "for the accessible
+    /// name", and until now nothing acted on that — and it was reachable only
+    /// by walking into the card's children.
+    /// <para>One string, and it sits on the Button, because the Button is the
+    /// Tab stop and the one element here with an automation peer of its own.
+    /// The panels and TextBlocks it wraps are pruned from the control view or
+    /// answer with their own text, so a name hung on any of them says nothing
+    /// or says the wrong thing.</para>
+    /// </summary>
+    public string AutomationName
+    {
+        get
+        {
+            var name = Tile.AutomationName;
+            return Reason.Length == 0 ? name : $"{name} {Reason}";
+        }
+    }
+
+    /// <summary>
+    /// Everything about this card that changes after it is drawn, in one
+    /// sentence, bound to <c>AutomationProperties.ItemStatus</c>. It carries
+    /// the failed write first, then the verdict receipt, and says the undo is
+    /// on a clock while the countdown runs. Empty while the card is unanswered,
+    /// so an untouched card announces no state at all.
+    /// <para>ItemStatus and not the name: <c>ControlAutomationPeer</c> raises a
+    /// UIA property-changed event for IsVisible, Bounds, RenderTransform,
+    /// VisualParent and ItemStatus, and for nothing else. Changing a Name at
+    /// runtime announces nothing, so a reader who had already passed the card
+    /// would never learn that the verdict landed, or that it did not.</para>
+    /// </summary>
+    public string StatusAnnouncement
+    {
+        get
+        {
+            if (HasProblem)
+            {
+                return Problem!;
+            }
+
+            if (!IsSetAside)
+            {
+                return string.Empty;
+            }
+
+            var note = HasSetAsideDate ? $"{SetAsideNote} {SetAsideDate}" : SetAsideNote;
+            return IsCountingDown
+                ? $"{note} Undo before this card is replaced."
+                : note;
+        }
+    }
 
     /// <summary>The action line's two states, and they are exclusive.</summary>
     public bool ShowActions => !IsSetAside;

@@ -190,23 +190,136 @@ ever be populated from IGDB.
 
 ---
 
+## Reception — ratings, review summaries and screenshots
+
+These are **not facets**: nothing here is a filter value, and none of it reaches
+`work_facets` or `release_facets`. It is recorded in this document because this
+document is where "which byte on disk did this number come from" is answered, and
+an unattributed score is the thing the design refuses to draw.
+
+Storage: `work_images` and `work_ratings` (migration 0028), not `metadata_cache` —
+the projection is stored the same way facets are.
+
+### IGDB reception
+
+| | |
+|---|---|
+| Endpoint | `POST https://api.igdb.com/v4/games`, Apicalypse body as `text/plain` (§4.4) |
+| Query | `Apicalypse.Games()` in `src/Winnow.Enrich.Igdb/Apicalypse.cs` — the same shared query that already supplies genres and themes, so this costs no additional request |
+| Auth | Twitch client-credentials; token cached ~60 days, refreshed on 401 (§4.4) |
+| Rate limit | 4 req/s, shared Polly limiter on the typed client |
+| Batch | 400 ids per request (`IgdbOptions.BatchSize`) |
+| Cache | `metadata_cache` provider `igdb`, key `game:{igdbId}`, payload version **4**, TTL 30 days |
+
+**Field paths** (response → `IgdbGameDto` → `IgdbGame` → `ReceptionSyncService`):
+
+| Response field | Stored in | Key / source |
+|---|---|---|
+| `screenshots[].image_id` | `work_images` | kind `screenshot` |
+| `artworks[].image_id` | `work_images` | kind `artwork` |
+| `rating` + `rating_count` | `work_ratings` | source `igdb_users` |
+| `aggregated_rating` + `aggregated_rating_count` | `work_ratings` | source `igdb_critics` |
+
+Both scores are on a 0-100 scale.
+
+**How the field names were established.** IGDB's own published protobuf schema,
+fetched unauthenticated (no Client-ID, no Bearer token) from
+`https://api.igdb.com/v4/igdbapi.proto` on 2026-09-05. `message Game` declares
+`repeated Artwork artworks = 6`, `double aggregated_rating = 3`,
+`int32 aggregated_rating_count = 4`, `double rating = 30`,
+`int32 rating_count = 31`, `repeated Screenshot screenshots = 33`.
+`message Screenshot` and `message Artwork` are the same shape and both carry
+`string image_id`. No live credentialed API call was made.
+
+**What IGDB does not provide here:** no review text, no per-review data, no
+label of its own for either figure (Steam has one and IGDB does not, which is
+why `work_ratings.label` is null on both IGDB rows).
+`total_rating`/`total_rating_count` exist and are deliberately not used.
+
+**A new field on the cached payload does not backfill.** Entries written under
+version 3 carry no property for it. Here the version bump makes the whole
+library refetch instead, and the measured cost is 3 requests for 967 games —
+the cached payload grows from 628 to 658 bytes per game, about 4.8%.
+
+### Steam reception
+
+| | |
+|---|---|
+| Endpoint | `GET https://api.steampowered.com/IStoreBrowseService/GetItems/v1/?input_json=…` — the same keyless, undocumented, 100-appid-batched call that already supplies tags and categories |
+| Auth | none |
+| Rate limit | 2 req/s (`SteamStoreOptions.RequestsPerSecond`), Polly limiter on the typed client |
+| Cache | `metadata_cache` provider `steam-store`, key `app:{appid}`, the raw store item body verbatim, TTL 7 days |
+
+**Field paths** (response → `StoreItem` → `ReceptionSyncService`):
+
+| Response field | Stored in | Column |
+|---|---|---|
+| `reviews.summary_filtered.review_count` (fallback `summary_unfiltered`) | `work_ratings` | `rating_count` |
+| `reviews.summary_filtered.percent_positive` | `work_ratings` | `score` |
+| `reviews.summary_filtered.review_score_label` | `work_ratings` | `label` |
+
+Source token: `steam`.
+
+`review_score_label` is Steam's own words ("Very Positive"), stored verbatim
+rather than re-derived from the percentage — the design shows Steam's own label
+with the percentage and count.
+
+**This source is NOT free the way `categories` was.** The `feature` and
+`controller` section above records that no `data_request` flag turns `categories`
+on and that every cached body already carries it. `reviews` is the opposite: it
+needs the `include_reviews: true` flag in `data_request`, so every body cached
+before this change has no `reviews` block. The figure fills in as the 7-day TTL
+turns those bodies over.
+
+**How the field names were established, and the honest gap.** Valve's
+`webui/common.proto` from the SteamDatabase/Protobufs mirror — the same
+published file this repo already cites for `StoreItem_RelatedItems` — read
+2026-09-05. `StoreBrowseItemDataRequest.include_reviews` is a bool at field 9;
+`StoreItem.reviews` is a `StoreItem_Reviews` at field 23;
+`StoreItem_Reviews` carries `summary_filtered = 1`,
+`summary_unfiltered = 2`, `summary_language_specific = 3`;
+`StoreItem_Reviews_StoreReviewSummary` carries `uint32 review_count = 1`,
+`int32 percent_positive = 2`, `int32 review_score = 3` (an enum),
+`string review_score_label = 4`. **Unlike every other Steam field in this
+document, this one is not yet backed by a pinned fixture:**
+`tests/fixtures/steam-store/getitems-v1.json` was captured on 2026-08-23,
+before `include_reviews` was ever sent, and carries no `reviews` block. The
+reader is written from the proto and returns "no figure" for any shape it does
+not recognise, so the cost of being wrong is a missing number rather than a
+wrong one — but recapturing the fixture with `include_reviews: true` is
+outstanding work. The recapture command in `tests/fixtures/steam-store/README.md`
+does not yet carry the flag.
+
+**What Steam does not provide here:** no numeric score out of 100 (only a
+percent positive and a 1-9 `review_score` enum), no review text, and nothing at
+all for an appid with no store page. A second, unrelated Steam source carries a
+review percentage — `common.review_percentage` and `common.review_score` from
+the steamcmd.net PICS mirror, visible in
+`tests/fixtures/update-signals/steamcmd-info-413150.json` — but it carries
+**no count and no label**, so it cannot answer the question this feature asks
+and is not used.
+
+---
+
 ## Refresh cadence
 
 `FacetSyncService.SyncAsync` runs **once per app launch**, on a background task
 after `EnrichmentSyncService`, never gating the window (`Program.cs`; §5.1, §7).
+`ReceptionSyncService` follows the same pattern — cache-first, once per launch,
+zero requests on a warm library — and writes `work_images` and `work_ratings`
+from the same two caches.
 
-It is a **re-read, not a re-fetch**: both clients consult `metadata_cache` before
-the network, so on a warm library the pass costs zero requests, and
-`FacetRepository.SetAsync` compares before it writes, so a warm re-run reports
-zero rows written. What a facet value actually tracks is therefore its cache
-entry's TTL:
+Both are a **re-read, not a re-fetch**: both clients consult `metadata_cache`
+before the network, so on a warm library each pass costs zero requests, and
+each compares before it writes, so a warm re-run reports zero rows written.
+What a value actually tracks is therefore its cache entry's TTL:
 
 | Source | Effective refresh |
 |---|---|
-| Steam store item (tags, categories) | 7 days |
+| Steam store item (tags, categories, reviews) | 7 days |
 | Steam tag vocabulary | 30 days |
 | Steam category vocabulary | 30 days |
-| IGDB game (genres, themes, modes, perspectives) | 30 days |
+| IGDB game (genres, themes, modes, perspectives, ratings, images) | 30 days |
 
 Two safety properties worth not breaking:
 

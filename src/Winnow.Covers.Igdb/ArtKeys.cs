@@ -4,9 +4,9 @@ namespace Winnow.Covers.Igdb;
 /// The one place a stored art URL becomes a <see cref="CoverKey"/>. A
 /// <c>winnow://user-art/</c> reference becomes <see cref="CoverKey.User"/>;
 /// an IGDB image URL becomes <see cref="CoverKey.Igdb"/>; anything else is
-/// null rather than a guess. IGDB screenshots written into
-/// <c>works.background_url</c> reach a tile through this same call, so the
-/// codebase does not grow a second image path.
+/// null rather than a guess. A <c>background_url</c> that happens to be an
+/// IGDB image URL is resolved by this same call, so covers and backgrounds
+/// share one image path.
 /// </summary>
 public static class ArtKeys
 {

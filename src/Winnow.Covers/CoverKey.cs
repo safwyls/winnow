@@ -5,6 +5,14 @@ public static class CoverProviders
 {
     public const string Steam = "steam";
     public const string Igdb = "igdb";
+    /// <summary>
+    /// Provider for IGDB screenshot assets. A separate provider from
+    /// <see cref="Igdb"/> so a cover and a screenshot of the same image id
+    /// produce different <see cref="CoverKey.CacheStem"/> values and are two
+    /// files on disk rather than one file at whichever size was asked for
+    /// first.
+    /// </summary>
+    public const string IgdbScreenshot = "igdb-shot";
     public const string User = "user";
 }
 
@@ -23,6 +31,16 @@ public readonly record struct CoverKey(string Provider, string Id)
     /// because <c>works.igdb_id</c> is UNIQUE and shared across duplicate pairs).
     /// </summary>
     public static CoverKey Igdb(string imageId) => new(CoverProviders.Igdb, imageId);
+
+    /// <summary>
+    /// A key for an IGDB screenshot, keyed by <c>image_id</c>. Uses
+    /// <see cref="CoverProviders.IgdbScreenshot"/> so it fetches at the
+    /// screenshot rendition rather than the cover rendition. IGDB covers are
+    /// 3:4 portrait; screenshots are 16:9 landscape, and
+    /// <c>t_cover_big_2x</c> on a screenshot asset would be the wrong shape
+    /// and the wrong resolution for a strip that expands one shot to a hero.
+    /// </summary>
+    public static CoverKey IgdbScreenshot(string imageId) => new(CoverProviders.IgdbScreenshot, imageId);
 
     /// <summary>
     /// A key for user-supplied art, keyed by the content token (the SHA-256

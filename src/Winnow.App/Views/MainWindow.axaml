@@ -932,10 +932,17 @@
                     <ItemsControl ItemsSource="{Binding Library.Buckets}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="vm:BucketViewModel">
+                                <!-- The row needs a name of its own because
+                                     ContentControlAutomationPeer.GetNameCore
+                                     falls back to Content?.ToString(), and this
+                                     Button's content is the Grid below: without
+                                     one, every bucket announced
+                                     "Avalonia.Controls.Grid". -->
                                 <Button Classes="bucket"
                                         Classes.selected="{Binding IsSelected}"
                                         Classes.rule="{Binding IsRule}"
                                         Opacity="{Binding RowOpacity}"
+                                        AutomationProperties.Name="{Binding AutomationName}"
                                         Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).SelectBucketCommand}"
                                         CommandParameter="{Binding}">
                                     <Grid ColumnDefinitions="2,16,Auto,*,Auto,16">
@@ -1119,7 +1126,22 @@
                  launch (§8 says "offers Cancel where there is one").
                  Pinned in the Grid's Auto row above the gear so there
                  is exactly one of it for the whole window and no screen
-                 can ever draw a second. -->
+                 can ever draw a second.
+
+                 The field is a Border, and a Border gets a NoneAutomationPeer,
+                 which answers false for IsControlElement; UIA's control view —
+                 the tree a screen reader walks — filters on exactly that, so
+                 the name would never arrive. There is no peer-bearing control
+                 inside the field to move it to, only TextBlocks, which answer
+                 with their own Text and discard a name. AccessibilityView is
+                 consulted by ControlAutomationPeer before the peer's own
+                 answer, so "Control" puts the field back in the tree with its
+                 name intact, reported as a named group.
+
+                 The same sentence is also ItemStatus because the count falls a
+                 slice at a time and a Name change raises no UIA event: Avalonia
+                 raises one for IsVisible, Bounds, RenderTransform, VisualParent
+                 and ItemStatus, and for nothing else. -->
             <Border Grid.Row="1"
                     Padding="14,12,14,0"
                     IsVisible="{Binding Fetch.IsActive}">
@@ -1128,7 +1150,9 @@
                         BorderThickness="1"
                         CornerRadius="{StaticResource RadiusControl}"
                         Padding="10,8"
-                        AutomationProperties.Name="{Binding Fetch.AutomationName}">
+                        AutomationProperties.Name="{Binding Fetch.AutomationName}"
+                        AutomationProperties.ItemStatus="{Binding Fetch.AutomationName}"
+                        AutomationProperties.AccessibilityView="Control">
                     <StackPanel Spacing="4">
                         <TextBlock Classes="label" FontSize="10" LetterSpacing="1"
                                    Text="{Binding Fetch.Label}"/>

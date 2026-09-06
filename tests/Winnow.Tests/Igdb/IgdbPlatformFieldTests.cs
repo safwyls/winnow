@@ -154,7 +154,7 @@ public sealed class IgdbPlatformFieldTests
     /// </summary>
     [Fact]
     public void The_game_payload_version_moved_past_the_shape_that_had_no_platforms()
-        => Assert.Equal(3, IgdbClient.GamePayloadVersion);
+        => Assert.Equal(4, IgdbClient.GamePayloadVersion);
 
     /// <summary>
     /// The guarantee the bump must not repeal, and the trap it nearly sprang.

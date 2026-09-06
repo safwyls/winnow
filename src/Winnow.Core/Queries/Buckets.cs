@@ -123,6 +123,7 @@ public sealed class GameGrouping
         long playtimeMinutes,
         DateTime? lastPlayedAt,
         DateTime? majorUpdateAt,
+        int unreadUpdateCount,
         int entryCount)
     {
         ResolvedWorkId = resolvedWorkId;
@@ -130,6 +131,7 @@ public sealed class GameGrouping
         PlaytimeMinutes = playtimeMinutes;
         LastPlayedAt = lastPlayedAt;
         MajorUpdateAt = majorUpdateAt;
+        UnreadUpdateCount = unreadUpdateCount;
         EntryCount = entryCount;
     }
 
@@ -161,6 +163,15 @@ public sealed class GameGrouping
     /// </summary>
     public DateTime? MajorUpdateAt { get; }
 
+    /// <summary>
+    /// How many correlated build pushes this game is behind on. The maximum
+    /// across the group's releases and never the sum: two store copies of one
+    /// game carry the same patches, and adding them would state a number no
+    /// storefront pushed. Filtered by the same acknowledgement watermark as
+    /// <see cref="MajorUpdateAt"/>, and zero whenever that is null.
+    /// </summary>
+    public int UnreadUpdateCount { get; }
+
     /// <summary>How many visible store entries this game has. One is the ordinary case.</summary>
     public int EntryCount { get; }
 
@@ -175,11 +186,17 @@ public sealed class GameGrouping
     /// those figures. There is no constructor that would let a caller pair a
     /// sum with a date it did not derive, or file a game under a bucket its
     /// own playtime does not put it in.
+    ///
+    /// <para>The update count is one more fact that must agree with the
+    /// timestamp beside it, which is why this forces it to zero when there is
+    /// no push: the two come from different columns, and a count standing on
+    /// its own would put a number on a badge that is not being drawn.</para>
     /// </summary>
     public static GameGrouping Of(
         long resolvedWorkId,
         IEnumerable<Winnow.Core.Identity.IPlayedEntry> entries,
         DateTime? majorUpdateAt,
+        int unreadUpdateCount,
         BucketThresholds thresholds)
     {
         var total = Winnow.Core.Identity.CoveragePlaytime.Across(entries);
@@ -191,6 +208,8 @@ public sealed class GameGrouping
             total.PlaytimeMinutes,
             total.LastPlayedAt,
             majorUpdateAt,
+            // No push, no count. The pair is derived here so it cannot disagree.
+            majorUpdateAt is null ? 0 : unreadUpdateCount,
             total.EntryCount);
     }
 }

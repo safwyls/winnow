@@ -205,13 +205,22 @@ stored locally.
   query body and its own cache namespace rather than widening the shared metadata query, so a
   400 costs the search alone. The term is user-typed free text, sanitized into the quoted
   clause rather than rejected.
-- The IGDB response cache carries a payload version per namespace: game payloads at **3**
+- The IGDB response cache carries a payload version per namespace: game payloads at **4**
   (name, summary, first release date, cover, genres, themes, game modes, player perspectives,
-  platforms, publisher, `game_type`, `parent_game`, `version_parent`, `version_title`),
-  age-rating payloads at **1**, search payloads at **1**. Change a cached shape and bump its
-  version in the same commit, or the cache serves rows with the new field silently empty for
-  the rest of the 30-day TTL. A payload whose version does not match is refetched, and the
-  older payload is still served when no refetch is possible.
+  platforms, publisher, `game_type`, `parent_game`, `version_parent`, `version_title`,
+  `screenshots`, `artworks`, `rating`, `rating_count`, `aggregated_rating`,
+  `aggregated_rating_count`), age-rating payloads at **1**, search payloads at **1**. Change a
+  cached shape and bump its version in the same commit, or the cache serves rows with the new
+  field silently empty for the rest of the 30-day TTL. A payload whose version does not match
+  is refetched, and the older payload is still served when no refetch is possible.
+- The shared `games` query now carries `screenshots` and `artworks` as separate image arrays,
+  each row carrying an `image_id`. Only `image_id` is requested: it is the durable handle, and
+  the size token in the CDN path decides the rendition, so a stored URL would carry a size that
+  has to be rewritten on read. `rating`/`rating_count` are IGDB's own users;
+  `aggregated_rating`/`aggregated_rating_count` are its aggregation of external critics.
+  `total_rating`/`total_rating_count` exist and are deliberately not requested — a blended
+  figure cannot be attributed to anyone, and the rule is that a score is shown with its source
+  and its count or not at all.
 
 ### 4.5 Update detection
 
@@ -601,6 +610,14 @@ work_field_sources(work_id FK works ON DELETE CASCADE, field, source, set_at,
 work_maturity(work_id FK works ON DELETE CASCADE, source, ratings, descriptors,
               observed_at, PRIMARY KEY(work_id, source))
 
+-- Reception and media
+work_images(work_id FK works ON DELETE CASCADE, source, kind, image_ids, observed_at,
+            PRIMARY KEY(work_id, source, kind))
+  -- kind ∈ {screenshot, artwork}; image_ids is IGDB image_id values, comma-joined, in IGDB's order
+work_ratings(work_id FK works ON DELETE CASCADE, source, score, rating_count, label, observed_at,
+             PRIMARY KEY(work_id, source))
+  -- source ∈ {igdb_users, igdb_critics, steam}
+
 -- Resolution
 merge_candidates(id, left_release_id, right_release_id, score, signals_json, status)
   -- status ∈ {pending, confirmed, rejected}
@@ -609,6 +626,13 @@ merge_candidates(id, left_release_id, right_release_id, score, signals_json, sta
 metadata_cache(provider, provider_id, payload_json, fetched_at, PRIMARY KEY(provider, provider_id))
 settings(key, value)
 ```
+
+The three rating sources in `work_ratings` are stored apart and never blended; a source with
+no figure gets no row. `label` is Steam's own words ("Very Positive"), stored verbatim rather
+than re-derived from the percentage. `work_ratings.score` is not a derived value: it is a
+figure a third party published, recorded as observed against the work and the source that
+published it, and nothing in Winnow computes it. It sits beside `merge_candidates.score` on
+the enforcement test's short list of recorded observations.
 
 ### 6.1 Derived buckets
 

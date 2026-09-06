@@ -121,6 +121,7 @@ public partial class GameTileViewModel : ObservableObject
         // (§5.2), so the tile derives one from the other rather than being told
         // both and risking disagreement.
         HasUnread = game.Bucket == LibraryBuckets.StaleButPatched;
+        UnreadUpdateCount = game.UnreadUpdateCount;
 
         // Enrichment fills these in behind a library the user is already
         // browsing (§7), so every one of them is legitimately null on a fresh
@@ -206,17 +207,32 @@ public partial class GameTileViewModel : ObservableObject
     public bool HasUnplayedExpansion { get; set; }
 
     /// <summary>
-    /// What a screen reader is told. A collapsed tile names its stores in
-    /// words, because the resting mark is initials and §8 requires anything
-    /// the grid encodes to be available as text. A single-store tile is just
-    /// the title.
+    /// What a screen reader is told: the title, then whatever the tile's marks
+    /// encode. A collapsed tile names its stores in words, because the resting
+    /// mark is initials; a tile that folded expansions says how many and
+    /// whether one has never been played; a badged tile says it has been
+    /// patched. §8 requires anything the grid encodes to be available as text,
+    /// and each of those is drawn as a shape at the density floor. A
+    /// single-store tile with no marks is just the title.
     /// </summary>
     public string AutomationName
     {
         get
         {
             var name = IsMultiStore ? $"{Title}. Owned on {StoreNames}." : Title;
-            return HasGroupedExpansions ? $"{name} {ExpansionMarkText}" : name;
+
+            if (HasGroupedExpansions)
+            {
+                name = $"{name} {ExpansionMarkText}";
+            }
+
+            // The badge's count is part of the sentence because there is no
+            // other channel for it. Avalonia declares PositionInSet and
+            // SizeOfSet and reads neither — one reference each in the 11.3.20
+            // source, their own declaration — so no count on a tile reaches a
+            // screen reader except as part of this string.
+            var unread = UnreadText;
+            return unread.Length == 0 ? name : $"{name} {unread}";
         }
     }
 
@@ -346,6 +362,21 @@ public partial class GameTileViewModel : ObservableObject
 
     /// <summary>Unread-update badge (§5.2) — set from stale-but-patched bucket membership.</summary>
     public bool HasUnread { get; }
+
+    /// <summary>
+    /// How many correlated build pushes landed since the user last played,
+    /// taken from the read model beside <see cref="HasUnread"/> rather than
+    /// counted here. Zero whenever there is no badge, because the query zeroes
+    /// it wherever it has no update timestamp to pair it with.
+    /// </summary>
+    public int UnreadUpdateCount { get; }
+
+    /// <summary>
+    /// The badge in words, for the automation name and for anything else that
+    /// has to state what the dot means. Empty when there is no badge, so the
+    /// name of an unbadged tile is unchanged.
+    /// </summary>
+    public string UnreadText => UnreadCopy.TileBadge(HasUnread, UnreadUpdateCount);
 
     /// <summary>Scrim line: "312h · idle 8mo", or "never opened".</summary>
     public string StatText { get; }

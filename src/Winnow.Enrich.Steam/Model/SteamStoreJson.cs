@@ -67,6 +67,9 @@ internal static class SteamStoreJson
             writer.WriteBoolean("include_assets", true);
             writer.WriteBoolean("include_release", true);
             writer.WriteBoolean("include_platforms", true);
+            // One extra boolean on the keyless, 100-appid-batched call
+            // Winnow already makes — no new endpoint, no new request, no key.
+            writer.WriteBoolean("include_reviews", true);
             writer.WriteEndObject();
 
             writer.WriteEndObject();
@@ -171,6 +174,7 @@ internal static class SteamStoreJson
                 StoreType = ReadStoreType(item),
                 Related = ReadRelatedItems(item),
                 ContentDescriptorIds = ReadContentDescriptorIds(item),
+                Reviews = ReadReviews(item),
             };
         }
         catch (JsonException)
@@ -250,6 +254,75 @@ internal static class SteamStoreJson
         return players.Count == 0 && features.Count == 0 && controllers.Count == 0
             ? SteamStoreCategories.None
             : new SteamStoreCategories(players, features, controllers);
+    }
+
+    /// <summary>
+    /// Reads the <c>reviews</c> block. Prefers <c>summary_filtered</c> — the
+    /// summary Steam's own store page shows — and falls back to
+    /// <c>summary_unfiltered</c>. A missing block, a zero review count, or
+    /// any shape this reader does not recognise all yield
+    /// <see cref="SteamStoreReviewSummary.None"/>. Same discipline as every
+    /// other reader in this file: a shape change degrades to "no data",
+    /// never to an exception in an enrichment pass (§5.1).
+    /// </summary>
+    private static SteamStoreReviewSummary ReadReviews(JsonElement item)
+    {
+        if (!item.TryGetProperty("reviews", out var reviews)
+            || reviews.ValueKind != JsonValueKind.Object)
+        {
+            return SteamStoreReviewSummary.None;
+        }
+
+        return ReadReviewSummary(reviews, "summary_filtered")
+               ?? ReadReviewSummary(reviews, "summary_unfiltered")
+               ?? SteamStoreReviewSummary.None;
+    }
+
+    /// <summary>
+    /// Reads one of the summary sub-objects (<c>summary_filtered</c> or
+    /// <c>summary_unfiltered</c>). Returns null when the sub-object is
+    /// absent or carries no usable data, so the caller can try the next.
+    /// </summary>
+    private static SteamStoreReviewSummary? ReadReviewSummary(JsonElement reviews, string property)
+    {
+        if (!reviews.TryGetProperty(property, out var summary)
+            || summary.ValueKind != JsonValueKind.Object)
+        {
+            return null;
+        }
+
+        var count = summary.TryGetProperty("review_count", out var reviewCount)
+            ? TryReadInt64(reviewCount)
+            : null;
+
+        if (count is not (> 0 and <= int.MaxValue))
+        {
+            return null;
+        }
+
+        var percent = summary.TryGetProperty("percent_positive", out var percentPositive)
+            ? TryReadInt64(percentPositive)
+            : null;
+
+        if (percent is not (>= 0 and <= 100))
+        {
+            return null;
+        }
+
+        var score = summary.TryGetProperty("review_score", out var reviewScore)
+            ? TryReadInt64(reviewScore)
+            : null;
+
+        var label = summary.TryGetProperty("review_score_label", out var reviewScoreLabel)
+                    && reviewScoreLabel.ValueKind == JsonValueKind.String
+            ? reviewScoreLabel.GetString()
+            : null;
+
+        return new SteamStoreReviewSummary((int)count.Value, (int)percent.Value)
+        {
+            ReviewScore = score is >= 0 and <= int.MaxValue ? (int)score.Value : null,
+            Label = string.IsNullOrWhiteSpace(label) ? null : label.Trim(),
+        };
     }
 
     /// <summary>

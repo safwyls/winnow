@@ -240,8 +240,15 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
                 -- retuned" still holds — the acknowledgement is a separate fact
                 -- layered over untouched rows, which is also why the detail
                 -- view can still list every update the user missed.
+                -- The count rides in the same aggregate as the timestamp, under
+                -- the same watermark and the same correlation EXISTS, so it can
+                -- never stand for more patches than the badge does. Counting it
+                -- anywhere else would be a second reading of update_events with
+                -- its own chance of drifting from this one; here it is another
+                -- aggregate over rows already grouped, and costs no extra scan.
                 SELECT push.release_id,
-                       MAX(push.occurred_at) AS occurred_at
+                       MAX(push.occurred_at) AS occurred_at,
+                       COUNT(*)              AS update_count
                 FROM update_events push
                 LEFT JOIN acknowledged ack ON ack.release_id = push.release_id
                 WHERE push.kind = 'build_push'
@@ -539,6 +546,11 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
                    -- LibraryBucketRules.Classify so it can run at two grains
                    -- (per row and per game) without two implementations.
                    mu.occurred_at                      AS MajorUpdateAt,
+                   -- The count beside the timestamp it was aggregated with, so
+                   -- the tile's words and its dot come off one row. Zero when
+                   -- the join found nothing, which is the same case as a null
+                   -- MajorUpdateAt: no qualifying push, no badge, no count.
+                   COALESCE(mu.update_count, 0)        AS UnreadUpdateCount,
                    -- The stored maturity EVIDENCE, verbatim, never a verdict.
                    -- Carried on the row so Consolidate can evaluate
                    -- MaturityRules.IsExplicit in C# over the same rows the
@@ -843,15 +855,26 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
         foreach (var (resolvedWorkId, rows) in members)
         {
             DateTime? update = null;
+
+            // The game's figure is the MAXIMUM across its releases, never the
+            // sum. Two store copies of one game carry the same patches, so
+            // adding them would report a number no storefront ever pushed —
+            // "6 updates" for the three the developer shipped twice.
+            var unread = 0;
             foreach (var row in rows)
             {
                 if (row.MajorUpdateAt is { } at && (update is null || at > update))
                 {
                     update = at;
                 }
+
+                if (row.UnreadUpdateCount > unread)
+                {
+                    unread = row.UnreadUpdateCount;
+                }
             }
 
-            games[resolvedWorkId] = GameGrouping.Of(resolvedWorkId, rows, update, thresholds);
+            games[resolvedWorkId] = GameGrouping.Of(resolvedWorkId, rows, update, unread, thresholds);
         }
 
         var result = new List<OwnershipBucket>(survivors.Count);
@@ -894,6 +917,7 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
         public long PlaytimeMinutes { get; init; }
         public DateTime? LastPlayedAt { get; init; }
         public DateTime? MajorUpdateAt { get; init; }
+        public int UnreadUpdateCount { get; init; }
         public string? Title { get; init; }
         public bool NameIsProvisional { get; init; }
         public int? FirstReleaseYear { get; init; }

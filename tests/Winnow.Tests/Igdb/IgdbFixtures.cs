@@ -215,7 +215,46 @@ public static class IgdbFixtures
         parent_game = (long?)null,
         version_parent = (long?)null,
         version_title = (string?)null,
+
+        // Media and reception, expanded exactly as the shared /games query asks
+        // for them: image rows carrying image_id, and four scalar figures.
+        screenshots = includeRelations
+            ? new[]
+            {
+                new { id = 1, image_id = ScreenshotImageId(id, 1) },
+                new { id = 2, image_id = ScreenshotImageId(id, 2) },
+            }
+            : null,
+        artworks = includeRelations
+            ? new[] { new { id = 3, image_id = ArtworkImageId(id, 1) } }
+            : null,
+        rating = includeRelations ? (double?)78.5 : null,
+        rating_count = includeRelations ? (int?)1204 : null,
+        aggregated_rating = includeRelations ? (double?)84.0 : null,
+        aggregated_rating_count = includeRelations ? (int?)37 : null,
     };
+
+    /// <summary>The screenshot image id this fixture assigns to one game and rank.</summary>
+    public static string ScreenshotImageId(long igdbId, int rank)
+        => "sc" + igdbId.ToString(CultureInfo.InvariantCulture)
+                + rank.ToString(CultureInfo.InvariantCulture);
+
+    /// <summary>The artwork image id this fixture assigns to one game and rank.</summary>
+    public static string ArtworkImageId(long igdbId, int rank)
+        => "ar" + igdbId.ToString(CultureInfo.InvariantCulture)
+                + rank.ToString(CultureInfo.InvariantCulture);
+
+    /// <summary>The IGDB user rating this fixture reports on every expanded game.</summary>
+    public const double UserRating = 78.5;
+
+    /// <summary>The number of IGDB user ratings this fixture reports.</summary>
+    public const int UserRatingCount = 1204;
+
+    /// <summary>The IGDB aggregated critic rating this fixture reports.</summary>
+    public const double CriticRating = 84.0;
+
+    /// <summary>The number of aggregated critic ratings this fixture reports.</summary>
+    public const int CriticRatingCount = 37;
 
     private static string? ClauseAfter(string body, string marker)
     {

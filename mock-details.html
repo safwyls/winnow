@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Winnow — details modal, one restructuring for seven tasks</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,400..800&family=IBM+Plex+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ══ Tokens, taken verbatim from src/Winnow.App/Themes/tokens.axaml ══════
+     The Winnow theme. mock-library.html predates the palette decision and
+     still carries the rejected purple; these are the shipped values. */
+  :root{
+    --well:#050D0E; --ground:#0F1C1E; --surface:#16282A; --raised:#1D3437;
+    --high:#254042; --line:#2B4A4C; --line-soft:rgba(43,74,76,.6);
+    --text:#F0EDE7; --dim:#8FA5A0; --faint:#5A8286;
+    --flare:#FF4D93; --volt:#4DE8C2; --volt-ink:#0C2A24;
+    --amber:#FFB63D; --azure:#57A8F0; --danger:#E04B45;
+    --scrim:rgba(5,13,14,.84);
+    --r-tile:6px; --r-ctl:4px;
+    --card-w:780px;          /* between MinWidth 700 and MaxWidth 860        */
+    --card-h:720px;          /* MaxHeight 720                                */
+    --col-left:200px;        /* fixed; the cover is 200x300                  */
+    --gutter:20px;           /* InnerScrollGutter 0,0,20,0                   */
+  }
+
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#0A1416;color:var(--text);
+       font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:13px;
+       -webkit-font-smoothing:antialiased;padding:40px 32px 80px}
+
+  /* ── type scale (§3) ─────────────────────────────────────────────────── */
+  .disp-l{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;
+          font-size:22px;line-height:26px}
+  .disp-s{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:12px;
+          letter-spacing:.06em;text-transform:uppercase}
+  .body-l{font-size:15px;line-height:22px;font-weight:500}
+  .body{font-size:13px;line-height:18px}
+  .label{font-size:11px;line-height:14px;font-weight:600;letter-spacing:.44px;
+         text-transform:uppercase;color:var(--dim)}
+  .label.section{color:var(--dim)}
+  .data{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;
+        font-size:12px;line-height:16px}
+  .data-s{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;
+          font-size:10px;line-height:12px;color:var(--dim)}
+  .dim{color:var(--dim)}  .txt{color:var(--text)}  .amber{color:var(--amber)}
+  .azure{color:var(--azure)}
+
+  /* ── page chrome for the mock itself (not part of the design) ─────────── */
+  .note{max-width:900px;margin:0 auto 28px;color:var(--dim);line-height:20px;font-size:13px}
+  .note h1{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:24px;
+           color:var(--text);margin-bottom:10px}
+  .note code{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--volt)}
+  .state-label{max-width:900px;margin:44px auto 12px;display:flex;align-items:baseline;gap:12px}
+  .state-label .n{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--volt)}
+  .state-label .t{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:17px}
+  .state-label .d{color:var(--dim);font-size:12px}
+  .new{display:inline-block;background:rgba(77,232,194,.14);color:var(--volt);
+       border:1px solid rgba(77,232,194,.4);border-radius:3px;
+       font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.06em;
+       padding:0 4px;vertical-align:middle;margin-left:6px}
+  .moved{display:inline-block;background:rgba(87,168,240,.12);color:var(--azure);
+         border:1px solid rgba(87,168,240,.4);border-radius:3px;
+         font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.06em;
+         padding:0 4px;vertical-align:middle;margin-left:6px}
+
+  /* ── the modal ───────────────────────────────────────────────────────── */
+  .stage{max-width:900px;margin:0 auto;background:var(--scrim);
+         border-radius:8px;padding:40px;display:flex;justify-content:center}
+  .card{position:relative;width:var(--card-w);max-height:var(--card-h);
+        background:var(--surface);border:1px solid var(--line);
+        border-radius:var(--r-tile);box-shadow:0 18px 48px rgba(0,0,0,.65);
+        overflow:hidden;display:flex}
+  /* §5.5 art-backed surface: the game's own cover under a 92% Surface veil */
+  .card .art-back{position:absolute;inset:0;pointer-events:none}
+  .card .art-back .img{position:absolute;inset:0;background-size:cover;
+                       background-position:center;filter:blur(0px)}
+  .card .art-back .veil{position:absolute;inset:0;background:rgba(22,40,42,.92)}
+
+  .cols{position:relative;display:grid;grid-template-columns:var(--col-left) 1fr;
+        column-gap:26px;padding:24px 26px 0;width:100%;min-height:0}
+
+  /* ── left column: the object ─────────────────────────────────────────── */
+  .left{display:grid;grid-template-rows:auto 1fr;padding-bottom:24px;min-height:0}
+  .cover{height:300px;border-radius:var(--r-tile);overflow:hidden;
+         border:1px solid var(--line-soft);position:relative;
+         background-size:cover;background-position:center}
+  .cover .ph{position:absolute;inset:0;display:flex;align-items:flex-end;padding:16px}
+  .cover .ph span{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;
+                  font-size:22px;line-height:24px;color:#fff}
+  .leftfacts{margin-top:18px;overflow-y:auto;padding-right:var(--gutter);
+             display:flex;flex-direction:column;gap:18px;min-height:0}
+  .fact{display:flex;flex-direction:column;gap:3px;overflow-wrap:anywhere;min-width:0}
+  .linkbtn{color:var(--azure);font-size:12px;cursor:pointer;
+           background:none;border:1px solid transparent;border-radius:var(--r-ctl);
+           padding:5px 8px;margin-left:-8px;font-family:inherit;text-align:left}
+  .linkbtn:hover{background:var(--raised)}
+
+  /* ── right column ────────────────────────────────────────────────────── */
+  .right{display:grid;grid-template-rows:auto auto 1fr;min-height:0}
+  .fixed{display:flex;flex-direction:column;gap:16px}
+
+  /* band 1 */
+  .b1{display:flex;flex-direction:column;gap:6px}
+  .titlerow{display:grid;grid-template-columns:1fr auto;align-items:start}
+  .titlerow h2{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;
+               font-size:26px;line-height:30px;margin-right:12px}
+  .x{background:none;border:1px solid transparent;border-radius:var(--r-ctl);
+     color:var(--dim);font-size:15px;line-height:22px;width:30px;height:30px;
+     cursor:pointer;font-family:inherit}
+  .x:hover{background:var(--raised);color:var(--text)}
+  .idline{display:flex;align-items:center;gap:0;color:var(--dim);font-size:12px}
+  .idline .yr{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums}
+  /* NEW — the reception line (TASK-112) */
+  .reception{display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+             color:var(--dim);font-size:12px}
+  .reception .src{font-size:10px;letter-spacing:.06em;text-transform:uppercase;
+                  font-weight:600;color:var(--faint)}
+  .reception .val{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;
+                  font-size:13px;color:var(--text)}
+  .reception .cnt{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;
+                  font-size:11px;color:var(--dim)}
+  .reception .grp{display:flex;align-items:baseline;gap:6px}
+
+  .chips{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .chip{border:1px solid var(--line);border-radius:3px;padding:3px 7px;
+        font-size:11px;color:var(--dim);line-height:14px}
+  .chip.fill{background:var(--raised);border-color:transparent}
+
+  /* band 2 */
+  .b2{display:grid;grid-template-columns:auto 1fr;column-gap:26px}
+  .played{display:flex;flex-direction:column;gap:2px}
+  .played .n{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;
+             font-size:30px;line-height:34px}
+  .played .l{font-size:10px;letter-spacing:.4px;text-transform:uppercase;
+             font-weight:600;color:var(--dim)}
+  .gap{display:flex;flex-direction:column;gap:7px}
+  .gaphead{display:grid;grid-template-columns:1fr auto;align-items:baseline}
+  .gaphead .l{font-size:10px;letter-spacing:.4px;text-transform:uppercase;
+              font-weight:600;color:var(--dim)}
+  .gaphead .v{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;
+              font-size:14px;color:var(--text)}
+  .ends{display:grid;grid-template-columns:auto 1fr auto}
+
+  /* ── the play histogram (TASK-115) ────────────────────────────────────
+     Hours YOU played, per month. The only honest series in the data: see
+     the analysis. Bars ride the §5.1 dormancy ramp — Line at the far end,
+     Volt at the near one — which is §10.2's own rule kept.                */
+  .hist{display:flex;flex-direction:column;padding-top:14px}
+  .plotwrap{position:relative}
+  .plot{display:flex;align-items:stretch;height:46px}
+  /* ZONE 1 — the amount is known, the shape is not. A flat band, never bars. */
+  .unmeas{position:relative;border-right:1px dashed var(--faint);margin-right:4px}
+  .unmeas .band{position:absolute;left:0;right:4px;bottom:0;height:7px;
+                background:var(--line);border-radius:1px}
+  .unmeas .amt{position:absolute;left:0;top:0;font-family:'IBM Plex Mono',monospace;
+               font-size:9px;color:var(--faint)}
+  /* the last session, marked on the axis wherever it falls */
+  .plotwrap .stop{position:absolute;top:4px;bottom:0;width:2px;background:var(--volt)}
+  .plotwrap .stoplab{position:absolute;top:-13px;font-family:'IBM Plex Mono',monospace;
+                     font-size:9px;color:var(--volt);white-space:nowrap}
+  /* ZONE 2 — measured months. One bar per month, dormancy ramp along the axis. */
+  .meas{flex:1;display:flex;align-items:flex-end;gap:1px;min-width:0}
+  .meas i{flex:1 1 0;min-width:0;border-radius:1px;background:var(--volt)}
+  .base{position:relative;height:9px;margin-top:3px}
+  .base .mark{position:absolute;top:1px;width:7px;height:7px;border-radius:50%;
+              background:var(--flare);box-shadow:0 0 0 2px var(--surface)}
+  .histends{display:grid;grid-template-columns:auto 1fr auto;margin-top:3px}
+
+  /* the Band-2 variant strip at the foot of the page */
+  .variants{max-width:900px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+  .variant{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-tile);
+           padding:18px 20px}
+  .variant .vh{display:flex;align-items:baseline;gap:10px;margin-bottom:12px}
+  .variant .vh .k{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--volt)}
+  .variant .vh .t{font-weight:600;font-size:13px}
+  .variant .vh .w{color:var(--dim);font-size:12px}
+  .variant .inner{max-width:384px}
+
+  /* the plain gap rail, unchanged, for the state that has no lifetime axis */
+  .prail{position:relative;height:14px}
+  .prail .axis{position:absolute;left:0;right:0;top:5px;height:3px;border-radius:2px;
+               background:linear-gradient(90deg,var(--volt),var(--line))}
+  .prail .mark{position:absolute;top:3px;width:7px;height:7px;border-radius:50%;
+               background:var(--flare);box-shadow:0 0 0 2px var(--surface)}
+
+  /* band 3 */
+  .b3{display:flex;align-items:center;gap:10px;flex-wrap:nowrap}
+  .btn{font-family:inherit;font-size:12px;border-radius:var(--r-ctl);cursor:pointer;
+       white-space:nowrap}
+  .btn.launch{background:var(--volt);color:var(--volt-ink);font-weight:700;
+              border:2px solid var(--volt);padding:6px 16px}
+  .btn.link{background:none;border:1px solid transparent;color:var(--azure);padding:6px 9px}
+  .btn.link:hover{background:var(--raised)}
+  .btn.sec{background:none;border:1px solid transparent;color:var(--text);padding:6px 9px}
+  .btn.sec:hover{background:var(--raised)}
+  .btn.sec.open{background:var(--raised);border-color:var(--line)}
+  /* NEW — refetch status line (TASK-113), Band 3, outside the scroll region */
+  .actstatus{font-size:12px;line-height:17px;color:var(--dim);margin-top:-4px}
+  .actstatus.ok{color:var(--text)}
+  .actstatus.bad{color:var(--amber)}
+
+  .divider{height:1px;background:var(--line);margin-top:22px}
+
+  /* band 4 — the rest, a bounded scroll region */
+  .rest{overflow-y:auto;padding-right:var(--gutter);min-height:0;
+        padding-bottom:24px}
+  .sect{display:flex;flex-direction:column;gap:10px;padding-top:22px}
+  .sect:first-child{padding-top:18px}
+  .secthead{display:grid;grid-template-columns:1fr auto;align-items:start}
+
+  .uprow{display:grid;grid-template-columns:16px 1fr auto auto;column-gap:10px;
+         align-items:center;padding:9px 0;border-bottom:1px solid var(--line)}
+  .updot{width:7px;height:7px;border-radius:50%;background:var(--flare)}
+  .updot.off{background:transparent}
+  .uprow .nm{font-size:12px}
+  .uprow .dt{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dim)}
+
+  /* NEW — screenshots, inside ABOUT (TASK-111) */
+  .shots{display:flex;flex-direction:column;gap:8px}
+  .shotstrip{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px}
+  .shot{flex:none;width:120px;height:68px;border-radius:var(--r-ctl);
+        background-size:cover;background-position:center;cursor:pointer;
+        border:1px solid var(--line-soft)}
+  .shot.on{border:2px solid var(--volt)}
+  .hero{width:100%;aspect-ratio:16/9;max-height:200px;border-radius:var(--r-ctl);
+        background-size:cover;background-position:center;border:1px solid var(--line-soft)}
+  .shotcap{font-size:10px;color:var(--faint);font-family:'IBM Plex Mono',monospace}
+
+  .listrow{display:flex;align-items:center;gap:10px;padding:5px 0;font-size:12px}
+  .tick{width:14px;height:14px;border-radius:3px;border:1px solid var(--line);flex:none}
+  .tick.on{background:var(--volt);border-color:var(--volt)}
+
+  .covrow{display:grid;grid-template-columns:52px 1fr auto auto;column-gap:12px;
+          align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+
+  /* the More menu, drawn open */
+  .menu{position:absolute;background:var(--high);border:1px solid var(--line);
+        border-radius:var(--r-ctl);padding:4px;min-width:150px;z-index:9;
+        box-shadow:0 10px 28px rgba(0,0,0,.6)}
+  .menu div{padding:7px 10px;border-radius:3px;font-size:12px;cursor:pointer;
+            border:2px solid transparent}
+  .menu div:hover{background:var(--raised)}
+  .menu div.focus{background:var(--raised);border-color:var(--volt)}
+
+  .cap{max-width:900px;margin:10px auto 0;color:var(--dim);font-size:11px;
+       line-height:17px;font-family:'IBM Plex Mono',monospace}
+</style>
+</head>
+<body>
+
+<div class="note">
+  <h1>Details modal — one restructuring for seven tasks</h1>
+  <p>The modal has been changed five times in one day and grew by accretion; five more tasks
+  want to add to it. This mock proposes landing seven of them together — TASK-111
+  (IGDB screenshots), TASK-112 (ratings and reviews attributed to their source), TASK-113
+  (refetch metadata for one game), TASK-115 (replace the since-you-played bar), TASK-38
+  (surface acquisition facts), TASK-21 (accessibility names and control hierarchy) and
+  TASK-30 (unread counts reachable by a screen reader) — by routing each addition through
+  the taxonomy the modal already has rather than appending a section to the end.</p>
+  <p style="margin-top:10px">The modal already breaks into five regions: the object, what
+  this is, your history, get me in, the rest. Only one of the six additions becomes a new
+  thing in the scrolling band, and even that one (screenshots) rides inside an existing
+  section.</p>
+  <p style="margin-top:10px">Colours, type and geometry are the shipped values from
+  <code>src/Winnow.App/Themes/tokens.axaml</code> and <code>design-system.md</code>, Winnow
+  theme only. <code>mock-library.html</code> predates the palette decision and still carries
+  the rejected purple; this file does not. The card is drawn at 780px, between the shipped
+  <code>MinWidth 700</code> and <code>MaxWidth 860</code>, so the right column is 500px —
+  the middle of the 420 to 580 range measured in
+  <code>docs/spikes/details-action-band-width.md</code>.</p>
+  <p style="margin-top:10px">
+    <span class="new">NEW</span> marks something these tasks add.
+    <span class="moved">MOVED</span> marks something that exists and changes place.
+    Cover art is procedural gradients; publisher art is never reproduced in a mock.</p>
+  <p style="margin-top:10px"><strong style="color:var(--amber)">Every string inside a modal
+  card is a placeholder for a design conversation, not a proposal.</strong> Titles, labels,
+  buttons, menu rows, status sentences, section headings and captions are stand-ins so the
+  layout can be judged. Shipping copy is authored by the docs-writer agent at implementation
+  time.</p>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     STATE 1 — a fully populated game
+     ══════════════════════════════════════════════════════════════════ -->
+<div class="state-label">
+  <span class="n">STATE 1</span>
+  <span class="t">Fully populated</span>
+  <span class="d">Every optional block drawn at once. This is the worst case the structure has to survive.</span>
+</div>
+
+<div class="stage">
+<div class="card">
+  <div class="art-back">
+    <div class="img" style="background:linear-gradient(155deg,#C2410C,#7C2D12)"></div>
+    <div class="veil"></div>
+  </div>
+
+  <div class="cols">
+    <!-- ── right column declared first: Tab reaches Play before an appid ── -->
+    <div class="right" style="grid-column:2">
+      <div class="fixed">
+
+        <!-- Band 1 — what is this -->
+        <div class="b1">
+          <div class="titlerow">
+            <h2>Empyrion: Galactic Survival</h2>
+            <button class="x">&times;</button>
+          </div>
+          <div class="idline">
+            <span class="yr">2020</span><span>&nbsp;· Eleon Game Studios</span>
+          </div>
+          <!-- NEW: the reception line. Each figure names its source and its count. -->
+          <div class="reception">
+            <span class="grp"><span class="src">IGDB</span><span class="val">78</span><span class="cnt">1,204 ratings</span></span>
+            <span style="color:var(--faint)">·</span>
+            <span class="grp"><span class="src">Steam</span><span class="val">91%</span><span class="cnt">41,203 reviews</span></span>
+          </div>
+        </div>
+
+        <div class="chips">
+          <span class="chip">STEAM</span>
+          <span class="chip">GOG</span>
+          <span class="chip fill">Patched</span>
+          <span class="chip fill">Not installed</span>
+        </div>
+
+        <!-- Band 2 — my history -->
+        <div class="b2">
+          <div class="played"><span class="n">37h</span><span class="l">Played</span></div>
+          <div class="gap">
+            <div class="gaphead"><span class="l">Since you played</span><span class="v">9y 7mo</span></div>
+
+            <!-- NEW: hours YOU played, per month. Population activity is not
+                 obtainable (see the analysis), so this is your own counter and
+                 the copy must say so. The block at the left is everything
+                 before Steam Replay's coverage starts: an amount, drawn as a
+                 step, never as a ramp across years nobody measured. -->
+            <div class="hist" id="b1hist"></div>
+
+            <div class="body txt">Your own hours, month by month. Everything before
+              Aug 2022 is one figure, not a shape — Winnow was not watching.</div>
+            <div class="body txt">You last played on 2 Jan 2017, in this game's second year.
+              7 updates have landed in the 9y 7mo since.</div>
+          </div>
+        </div>
+
+        <!-- Band 3 — get me in -->
+        <div class="b3" style="position:relative">
+          <button class="btn launch">Install</button>
+          <button class="btn link">Store page</button>
+          <button class="btn link">All patch notes</button>
+          <button class="btn sec open">More</button>
+
+          <div class="menu" style="top:36px;left:279px">
+            <div>Open folder</div>
+            <div class="focus">Refetch metadata<span class="new">NEW</span></div>
+            <div>Wrong game?</div>
+            <div>Edit details</div>
+            <div>Hide</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Band 4 — the rest -->
+      <div class="rest">
+
+        <!-- updates first: adjacent to the rail in Band 2 that summarises them -->
+        <div class="sect" style="gap:4px">
+          <span class="label section">What landed</span>
+          <div class="uprow"><span class="updot"></span><span class="nm">v1.19.2 Patch</span>
+            <span class="dt">11 Aug 2026</span><button class="btn link" style="padding:2px 6px">Patch notes</button></div>
+          <div class="uprow"><span class="updot"></span><span class="nm">Reforged Galaxy update</span>
+            <span class="dt">2 Mar 2026</span><button class="btn link" style="padding:2px 6px">Patch notes</button></div>
+          <div class="uprow"><span class="updot off"></span><span class="nm">v1.11 hotfix</span>
+            <span class="dt">18 Sep 2024</span><button class="btn link" style="padding:2px 6px">Patch notes</button></div>
+        </div>
+
+        <!-- ABOUT: the description and, inside it, what the game looks like -->
+        <div class="sect">
+          <span class="label section">About</span>
+          <div class="body txt" style="line-height:20px">Empyrion is a 3D open-world
+            space sandbox survival adventure. Build ships, explore planets, and survive
+            hostile environments across a procedurally generated galaxy.</div>
+
+          <!-- NEW: screenshots ride inside ABOUT rather than becoming a section
+               of their own. A hero is drawn only after the user picks a shot. -->
+          <div class="shots">
+            <div class="hero" style="background:linear-gradient(120deg,#1E3A8A,#0891B2)"></div>
+            <div class="shotstrip">
+              <div class="shot on" style="background:linear-gradient(120deg,#1E3A8A,#0891B2)"></div>
+              <div class="shot" style="background:linear-gradient(140deg,#7C2D12,#C2410C)"></div>
+              <div class="shot" style="background:linear-gradient(160deg,#365314,#1A2E05)"></div>
+              <div class="shot" style="background:linear-gradient(110deg,#5B21B6,#1E1B4B)"></div>
+              <div class="shot" style="background:linear-gradient(130deg,#0E7490,#164E63)"></div>
+              <div class="shot" style="background:linear-gradient(150deg,#78716C,#44403C)"></div>
+            </div>
+            <span class="shotcap">6 screenshots from IGDB</span>
+          </div>
+        </div>
+
+        <div class="sect">
+          <span class="label section">Also covers</span>
+          <div style="display:grid;grid-template-columns:auto auto 1fr auto;column-gap:12px;align-items:center">
+            <span class="label" style="font-size:10px">Total</span>
+            <span class="data txt" style="font-size:18px">37h</span>
+            <span class="body dim" style="font-size:12px">across 2 stores · last played 2 Jan 2017</span>
+          </div>
+          <div class="covrow"><span class="chip" style="justify-self:start">STEAM</span>
+            <span class="body">Empyrion: Galactic Survival</span>
+            <span class="data-s">31h</span><span class="data-s">2 Jan 2017</span></div>
+          <div class="covrow"><span class="chip" style="justify-self:start">GOG</span>
+            <span class="body">Empyrion — Galactic Survival</span>
+            <span class="data-s">6h</span><span class="data-s">4 Nov 2016</span></div>
+        </div>
+
+        <div class="sect">
+          <span class="label section">Expansions</span>
+          <div class="body txt" style="font-size:12px">Counted separately. Not added above.</div>
+          <div class="covrow"><span class="chip" style="justify-self:start">STEAM</span>
+            <span class="body">Dark Faction DLC</span>
+            <span class="data-s">2h</span><span class="data-s">7 Jan 2017</span></div>
+        </div>
+
+        <div class="sect">
+          <span class="label section">Lists</span>
+          <div class="listrow"><span class="tick on"></span><span>Co-op night</span></div>
+          <div class="listrow"><span class="tick"></span><span>Under 6 hours</span></div>
+          <div class="listrow"><span class="tick"></span><span>Deck verified</span></div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── left column: the object ────────────────────────────────────── -->
+    <div class="left" style="grid-column:1;grid-row:1">
+      <div class="cover" style="background:linear-gradient(155deg,#C2410C,#7C2D12)"></div>
+      <div class="leftfacts">
+        <div class="fact"><span class="label" style="font-size:10px">Steam appid</span>
+          <span class="data">383120</span></div>
+        <div class="fact"><span class="label" style="font-size:10px">On disk</span>
+          <span class="data-s" style="line-height:15px">D:\SteamLibrary\steamapps\common\Empyrion</span></div>
+        <!-- NEW: acquisition, drawn only when the account import has filled it -->
+        <div class="fact"><span class="label" style="font-size:10px">Acquired</span>
+          <span class="data">4 Nov 2016</span>
+          <span class="body dim" style="font-size:11px">Gift</span></div>
+        <button class="linkbtn">Clear IGDB match</button>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+<div class="cap">Three of the six additions are not sections: the reception line is one row
+in the identity block, the lifetime axis replaces the gap rail in place, and Refetch is a
+menu row whose status is reported on the Band 3 strip. Only screenshots reach Band 4,
+and they ride inside About rather than becoming a section of their own.</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     STATE 2 — a sparse game
+     ══════════════════════════════════════════════════════════════════ -->
+<div class="state-label">
+  <span class="n">STATE 2</span>
+  <span class="t">Sparse</span>
+  <span class="d">Never opened, no rating from either source, no screenshots, no updates, one store. The shape the additions must not damage; four of the six draw nothing at all here.</span>
+</div>
+
+<div class="stage">
+<div class="card" style="max-height:none">
+  <div class="art-back">
+    <div class="img" style="background:linear-gradient(150deg,#3F3A2E,#1C1917)"></div>
+    <div class="veil"></div>
+  </div>
+
+  <div class="cols">
+    <div class="right" style="grid-column:2">
+      <div class="fixed">
+        <div class="b1">
+          <div class="titlerow">
+            <h2>Sable's Grimoire</h2>
+            <button class="x">&times;</button>
+          </div>
+          <div class="idline"><span class="yr">2019</span></div>
+          <!-- no rating from either source: the line is not drawn at all,
+               never a zero and never an empty scale -->
+        </div>
+
+        <div class="chips">
+          <span class="chip">STEAM</span>
+          <span class="chip fill">Never played</span>
+          <span class="chip fill">Not installed</span>
+        </div>
+
+        <div class="b2">
+          <div class="played"><span class="n">0h</span><span class="l">Played</span></div>
+          <div class="gap" style="justify-content:center">
+            <!-- no last-played date means no rail of any kind, lifetime or gap.
+                 The sentence is the whole of Band 2. -->
+            <div class="body txt" style="font-size:13px">You've never opened this.</div>
+            <div class="body txt" style="font-size:12px">Checked once, on 23 Aug 2026.</div>
+          </div>
+        </div>
+
+        <div class="b3" style="position:relative">
+          <button class="btn launch">Install</button>
+          <button class="btn link">Store page</button>
+          <button class="btn sec">More</button>
+        </div>
+        <!-- NEW: the refetch status line. Band 3, outside the scroll region, so
+             it is always on screen; absent entirely at rest. -->
+        <div class="actstatus">Asking IGDB and Steam again…</div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="rest">
+        <div class="sect">
+          <span class="label section">About</span>
+          <div class="body txt" style="line-height:20px">No description yet. Metadata fills
+            in automatically.</div>
+          <!-- no screenshots: nothing is drawn, never an empty frame -->
+        </div>
+
+        <div class="sect">
+          <span class="label section">Lists</span>
+          <div class="body txt" style="font-size:12px;line-height:18px">Select titles in the
+            library and choose Add to list on the action bar.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="left" style="grid-column:1;grid-row:1">
+      <div class="cover" style="background:linear-gradient(150deg,#3F3A2E,#1C1917)"></div>
+      <div class="leftfacts">
+        <div class="fact"><span class="label" style="font-size:10px">Steam appid</span>
+          <span class="data">1052500</span></div>
+        <!-- no ON DISK: not installed. no ACQUIRED: the import has not run. -->
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+<div class="cap">Four of the six additions draw nothing in this state. The modal is one row
+taller than it is today: the refetch status line, visible only while a refetch is running.</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     STATE 3 — no art
+     ══════════════════════════════════════════════════════════════════ -->
+<div class="state-label">
+  <span class="n">STATE 3</span>
+  <span class="t">No art</span>
+  <span class="d">No cover art. The placeholder gradient fills the cover slot, the card is flat (with no art there is nothing to veil, an identity design-system.md §5.5 already asserts), and screenshots are present because cover and screenshots are separate IGDB assets — a game can have one and not the other.</span>
+</div>
+
+<div class="stage">
+<div class="card" style="max-height:none">
+  <!-- No cover means no art layer: ArtVeil over Surface resolves to Surface
+       exactly, so the card is flat with no layout shift (§5.5). -->
+  <div class="cols">
+    <div class="right" style="grid-column:2">
+      <div class="fixed">
+        <div class="b1">
+          <div class="titlerow">
+            <h2>620980</h2>
+            <button class="x">&times;</button>
+          </div>
+          <div class="body dim" style="font-size:12px;line-height:17px">Name not yet
+            available. Showing the app id until metadata loads.</div>
+        </div>
+
+        <div class="chips">
+          <span class="chip">STEAM</span>
+          <span class="chip fill">Started</span>
+          <span class="chip fill">Installed</span>
+        </div>
+
+        <div class="b2">
+          <div class="played"><span class="n">1h 20m</span><span class="l">Played</span></div>
+          <div class="gap">
+            <div class="gaphead"><span class="l">Since you played</span><span class="v">2y 4mo</span></div>
+            <!-- No release date means no lifetime axis, so the rail falls back
+                 to the normalised gap rail it is today. -->
+            <div class="prail">
+              <span class="axis"></span>
+              <span class="mark" style="left:62%"></span>
+              <span class="mark" style="left:88%"></span>
+            </div>
+            <div class="ends"><span class="data-s">3 May 2024</span><span></span>
+              <span class="data-s">today</span></div>
+            <div class="body txt">2 updates landed while you were away.</div>
+          </div>
+        </div>
+
+        <div class="b3" style="position:relative">
+          <button class="btn launch">Play</button>
+          <button class="btn link">Store page</button>
+          <button class="btn link">All patch notes</button>
+          <button class="btn sec">More</button>
+        </div>
+        <div class="actstatus ok">Metadata updated. Name, year and cover changed.</div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="rest">
+        <div class="sect" style="gap:4px">
+          <span class="label section">What landed</span>
+          <div class="uprow"><span class="updot"></span><span class="nm">Build 14201118</span>
+            <span class="dt">2 Feb 2026</span><span></span></div>
+          <div class="uprow"><span class="updot"></span><span class="nm">Build 13877020</span>
+            <span class="dt">9 Nov 2025</span><span></span></div>
+          <div class="body dim" style="font-size:12px;padding-top:8px">No page to read for
+            these updates.</div>
+        </div>
+
+        <div class="sect">
+          <span class="label section">About</span>
+          <div class="body txt" style="line-height:20px">No description yet. Metadata fills
+            in automatically.</div>
+          <!-- Screenshots without a cover: the two are separate IGDB assets and a
+               game can have one and not the other. -->
+          <div class="shots">
+            <div class="shotstrip">
+              <div class="shot" style="background:linear-gradient(120deg,#334155,#0F172A)"></div>
+              <div class="shot" style="background:linear-gradient(140deg,#4C1D95,#1E1B4B)"></div>
+              <div class="shot" style="background:linear-gradient(160deg,#164E63,#083344)"></div>
+            </div>
+            <span class="shotcap">3 screenshots from IGDB</span>
+          </div>
+        </div>
+
+        <div class="sect">
+          <span class="label section">Lists</span>
+          <div class="listrow"><span class="tick"></span><span>Co-op night</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="left" style="grid-column:1;grid-row:1">
+      <!-- §7: the placeholder is the fallback, never a hole. The gradient is
+           derived from the title, and the title is baked into it. -->
+      <div class="cover" style="background:linear-gradient(150deg,#1D3437,#0F1C1E)">
+        <div class="ph"><span>620980</span></div>
+      </div>
+      <div class="leftfacts">
+        <div class="fact"><span class="label" style="font-size:10px">Steam appid</span>
+          <span class="data">620980</span></div>
+        <div class="fact"><span class="label" style="font-size:10px">On disk</span>
+          <span class="data-s" style="line-height:15px">C:\Program Files (x86)\Steam\steamapps\common\Boneworks</span></div>
+        <div class="fact"><span class="label" style="font-size:10px">Acquired</span>
+          <span class="data">21 Dec 2019</span>
+          <span class="body dim" style="font-size:11px">Steam Store</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+<div class="cap">Two independent absences, kept apart. No cover art is not no screenshots:
+cover and screenshots are separate IGDB assets. No release date is not no last-played
+date: State 3 has both a last-played date and a gap rail, but no release date and
+therefore no lifetime axis. The card is flat because there is no art to veil — ArtVeil
+over Surface resolves to Surface exactly, with no layout shift.</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     BAND 2, EVERY WAY IT LANDS
+     ══════════════════════════════════════════════════════════════════ -->
+<div class="state-label">
+  <span class="n">BAND 2</span>
+  <span class="t">One control, four states</span>
+  <span class="d">One control, one time axis from the game's release to today, in two zones. What replaces the gap rail, and what it degrades to when the data thins out.</span>
+</div>
+
+<div class="variants">
+  <div class="variant">
+    <div class="vh"><span class="k">A</span><span class="t">Measured months exist</span>
+      <span class="w">A game still in rotation. The left zone is play whose amount Winnow knows and whose shape it does not — a flat band, never bars, because drawing a slope there would invent a shape nobody measured. The right zone is measured months, one bar each, riding the §5.1 dormancy ramp. Flare marks on the baseline are updates that landed since the last session.</span></div>
+    <div class="inner">
+      <div class="gaphead"><span class="l">Since you played</span><span class="v">4mo</span></div>
+      <div class="hist" id="vA" style="margin-top:7px"></div>
+      <div class="body txt" style="margin-top:7px">Your own hours, month by month. 83h since
+        Aug 2022; 190h before it.</div>
+      <div class="body txt">You last played on 3 May 2026. 2 updates have landed in the 4mo since.</div>
+    </div>
+  </div>
+
+  <div class="variant">
+    <div class="vh"><span class="k">B</span><span class="t">Play predates the record</span>
+      <span class="w">The archetypal Winnow game: dormant, every hour in the unmeasured zone, the measured months all zero. What is drawn is the user's own hours. Per-game player-population activity is not obtainable — not from any endpoint Winnow uses, not from any it is authenticated for, and not from any official Valve or IGDB endpoint.</span></div>
+    <div class="inner">
+      <div class="gaphead"><span class="l">Since you played</span><span class="v">9y 7mo</span></div>
+      <div class="hist" id="vB" style="margin-top:7px"></div>
+      <div class="body txt" style="margin-top:7px">Your own hours, month by month. Everything
+        before Aug 2022 is one figure, not a shape — Winnow was not watching.</div>
+      <div class="body txt">You last played on 2 Jan 2017, in this game's second year. 7 updates
+        have landed in the 9y 7mo since.</div>
+    </div>
+  </div>
+
+  <div class="variant">
+    <div class="vh"><span class="k">C</span><span class="t">No release date, or no series at all</span>
+      <span class="w">No release date or no monthly series at all. Falls back to the shipped gap rail unchanged.</span></div>
+    <div class="inner">
+      <div class="gaphead"><span class="l">Since you played</span><span class="v">2y 4mo</span></div>
+      <div class="prail" style="margin-top:7px">
+        <span class="axis"></span>
+        <span class="mark" style="left:62%"></span>
+        <span class="mark" style="left:88%"></span>
+      </div>
+      <div class="ends" style="margin-top:7px"><span class="data-s">3 May 2024</span><span></span>
+        <span class="data-s">today</span></div>
+      <div class="body txt" style="margin-top:7px">2 updates landed while you were away.</div>
+      <div class="body txt">Checked once, on 23 Aug 2026.</div>
+    </div>
+  </div>
+
+  <div class="variant">
+    <div class="vh"><span class="k">W</span><span class="t">The narrow card</span>
+      <span class="w">Band 1 and Band 3 in a 420px right column, the card at its MinWidth 700. The narrow end of the measured 420 to 580 range.</span></div>
+    <div class="inner" style="max-width:420px;border-left:1px dashed var(--faint);
+         border-right:1px dashed var(--faint);padding:0 0 0 0">
+      <div style="width:420px">
+        <div class="b1" style="margin-bottom:12px">
+          <div class="titlerow"><h2 style="font-size:26px">Empyrion: Galactic Survival</h2>
+            <button class="x">&times;</button></div>
+          <div class="idline"><span class="yr">2020</span><span>&nbsp;· Eleon Game Studios</span></div>
+          <div class="reception">
+            <span class="grp"><span class="src">IGDB</span><span class="val">78</span><span class="cnt">1,204 ratings</span></span>
+            <span style="color:var(--faint)">·</span>
+            <span class="grp"><span class="src">Steam</span><span class="val">91%</span><span class="cnt">41,203 reviews</span></span>
+          </div>
+        </div>
+        <div class="chips" style="margin-bottom:12px">
+          <span class="chip">STEAM</span><span class="chip">GOG</span>
+          <span class="chip fill">Patched</span><span class="chip fill">Not installed</span>
+        </div>
+        <div class="b3">
+          <button class="btn launch">Install</button>
+          <button class="btn link">Store page</button>
+          <button class="btn link">All patch notes</button>
+          <button class="btn sec">More</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="variant">
+    <div class="vh"><span class="k">D</span><span class="t">Never opened</span>
+      <span class="w">Never opened. No rail of any kind, no axis: the sentence is the whole of Band 2.</span></div>
+    <div class="inner">
+      <div class="body txt" style="font-size:13px">You've never opened this.</div>
+      <div class="body txt" style="font-size:12px">Checked once, on 23 Aug 2026.</div>
+    </div>
+  </div>
+</div>
+
+<div class="cap">The left zone is play whose <em>amount</em> Winnow knows and whose
+<em>shape</em> it does not — a flat band, never bars, because drawing a slope across years
+nobody measured would invent evidence. The right zone is measured months, one bar each, on
+the §5.1 dormancy ramp: Line at the far end, Volt at the near one. Flare marks on the
+baseline are updates that landed since the last session — the fact the shipped gap rail
+carries, kept. No release date means no axis; C is the shipped rail unchanged. What is
+drawn is the user's own hours. Per-game player-population activity is not obtainable from
+any endpoint Winnow uses, any it is authenticated for, or any official Valve or IGDB
+endpoint.</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     THE TREE A SCREEN READER GETS
+     ══════════════════════════════════════════════════════════════════ -->
+<div class="state-label">
+  <span class="n">TASK-21 / 30</span>
+  <span class="t">The tree a screen reader gets</span>
+  <span class="d">The same modal as Windows UIA sees it. Measured against the Avalonia 11.3.20 source, not assumed.</span>
+</div>
+
+<div class="variants">
+  <div class="variant">
+    <div class="vh"><span class="t">Today</span><span class="w">What Narrator actually reaches in the shipped modal today.</span></div>
+    <pre style="font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:19px;
+                color:var(--dim);white-space:pre-wrap">Window
+├─ Text     "Empyrion: Galactic Survival"
+├─ Text     "2020 · Eleon Game Studios"
+├─ Button   "Close (Esc)"          <span style="color:var(--amber)">← named only by its tooltip</span>
+├─ Text     "37h"
+├─ Text     "PLAYED"
+├─ <span style="color:var(--amber)">(the gap rail draws 7 unread marks — nothing in the tree)</span>
+├─ Text     "2 updates landed while you were away."
+├─ Button   "Install" · Button "Store page" · Button "All patch notes" · Button "More"
+├─ Text     "ALSO COVERS"          <span style="color:var(--amber)">← reads as body text, not a heading</span>
+├─ List                            <span style="color:var(--amber)">← an empty list: every row is a
+│                                     ContentPresenter, pruned from the tree</span>
+└─ Text     "ABOUT"</pre>
+  </div>
+
+  <div class="variant">
+    <div class="vh"><span class="t">Proposed</span><span class="w">Four attached properties that Avalonia 11.3.20 actually wires to Windows UIA: ControlTypeOverride, HeadingLevel, AccessibilityView and LiveSetting. No custom automation peer, no new control class.</span></div>
+    <pre style="font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:19px;
+                color:var(--dim);white-space:pre-wrap">Window
+├─ <span style="color:var(--volt)">Header  L1</span>  "Empyrion: Galactic Survival"
+├─ Text        "2020 · Eleon Game Studios"
+├─ <span style="color:var(--volt)">Group</span>       "Reception"
+│   └─ Text    "IGDB 78 out of 100, from 1,204 ratings"
+│   └─ Text    "Steam 91 percent positive, from 41,203 reviews"
+├─ Button      "Close this game"
+├─ <span style="color:var(--volt)">Group</span>       "Your history"
+│   └─ Text    "37 hours played"
+│   └─ Text    <span style="color:var(--volt)">"You last played on 2 Jan 2017. 7 updates have landed since."</span>
+├─ <span style="color:var(--volt)">Group</span>       "Actions"
+│   ├─ Button  "Install Empyrion: Galactic Survival"
+│   ├─ Button  "Open the Steam store page" · Button "Read all patch notes"
+│   ├─ Button  "More actions"  →  MenuItem ×5, each already named by its Header
+│   └─ Text    <span style="color:var(--volt)">LiveSetting=Polite</span>  "Metadata updated. Name, year and cover changed."
+├─ <span style="color:var(--volt)">Header  L2</span>  "What landed"
+│   └─ <span style="color:var(--volt)">List</span>
+│       ├─ <span style="color:var(--volt)">ListItem</span> "v1.19.2 Patch, 11 Aug 2026. Unread — landed since you played."
+│       └─ <span style="color:var(--volt)">ListItem</span> "v1.11 hotfix, 18 Sep 2024. Read."
+├─ <span style="color:var(--volt)">Header  L2</span>  "About"
+│   └─ Text    the summary
+│   └─ <span style="color:var(--volt)">List</span> "Screenshots"  →  <span style="color:var(--volt)">ListItem</span> ×6, "Screenshot 1", …
+└─ <span style="color:var(--volt)">Header  L2</span>  "Lists"  →  CheckBox rows, already named</pre>
+  </div>
+</div>
+
+<div class="cap">Everything in the proposed tree is reachable with four attached properties
+that Avalonia 11.3.20 actually wires to Windows UIA: <em>ControlTypeOverride</em>,
+<em>HeadingLevel</em>, <em>AccessibilityView</em> and <em>LiveSetting</em>. Three traps found
+by checking the 11.3.20 source rather than assuming, each of which would have produced code
+that compiles and does nothing: <em>AutomationProperties.Name</em> on a TextBlock is silently
+ignored; <em>PositionInSet</em> and <em>SizeOfSet</em> compile but are wired to nothing, so a
+count has to be spelled into the name string; and changing a Name at runtime raises no UIA
+event, so a live region must be a TextBlock whose Text is bound.</div>
+
+<div class="note" style="margin-top:56px;border-top:1px solid var(--line);padding-top:24px">
+  <p><strong style="color:var(--text)">Not drawn here, deliberately.</strong> Price paid is
+  absent from every state. The IGDB match and metadata editor sections are unchanged and are
+  not redrawn. Focus rings, hover states and the dormancy ramp on cover art are not simulated
+  because this pass does not change them.</p>
+</div>
+
+<script>
+/* The two-zone play axis. Everything here is geometry: the honest-data rules
+   it encodes are argued in the written analysis, not in this file.
+
+   unmeas  fraction of the axis that predates Winnow's monthly coverage
+   stop    where the last session sits, as a fraction of the whole axis
+   months  hours played in each measured month, oldest first
+   marks   updates that landed since the last session, as fractions of the axis
+   ramp    §5.1 turned on its side: Line at the far end, Volt at the near one   */
+function hist(id, o){
+  const el = document.getElementById(id); if(!el) return;
+  const max = Math.max(0.5, ...o.months);
+  const bars = o.months.map((h,i)=>{
+    const t = o.months.length<2 ? 1 : i/(o.months.length-1);   // 0 = oldest
+    // Line #2B4A4C -> Volt #4DE8C2, the ramp the grid already uses
+    const c = [43+(77-43)*t, 74+(232-74)*t, 76+(194-76)*t].map(Math.round);
+    return `<i style="height:${h===0?0:Math.max(6,(h/max)*100)}%;
+             background:rgb(${c[0]},${c[1]},${c[2]})"></i>`;
+  }).join('');
+  el.innerHTML = `
+    <div class="plotwrap">
+      <div class="plot">
+        <div class="unmeas" style="flex:0 0 ${(o.unmeas*100).toFixed(1)}%">
+          <span class="amt">${o.amount}</span>
+          <span class="band"></span>
+        </div>
+        <div class="meas">${bars}</div>
+      </div>
+      <span class="stop" style="left:${(o.stop*100).toFixed(1)}%"></span>
+      <span class="stoplab" style="left:${(o.stop*100).toFixed(1)}%;
+            transform:translateX(${o.stop>.6?'-100%':'0'})">LAST PLAYED</span>
+    </div>
+    <div class="base">${o.marks.map(m=>
+      `<span class="mark" style="left:calc(${(m*100).toFixed(1)}% - 3px)"></span>`).join('')}</div>
+    <div class="histends"><span class="data-s">${o.left}</span><span></span>
+      <span class="data-s">today</span></div>`;
+}
+
+/* Empyrion: released Dec 2015, last session Jan 2017, coverage opens Aug 2022,
+   today Sep 2026. 80 of 130 months predate the record, so the unmeasured zone
+   is 62% of the axis and every one of the 37 hours is inside it. */
+const empyrion = {
+  unmeas:.62, stop:.084, amount:'37h',
+  months:new Array(50).fill(0),
+  marks:[.10,.19,.31,.44,.58,.79,.95],
+  left:'Dec 2015'
+};
+hist('b1hist', empyrion);
+hist('vB', empyrion);
+
+/* A game still in rotation: 190h before coverage, 84h across the measured
+   months, last session four months ago. */
+hist('vA', {
+  unmeas:.47, stop:.952, amount:'190h',
+  months:[4,9,6,0,0,12,18,7,3,0, 0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,
+          0,0,0,0,0,0,0,0,0,0, 2,8,5,0,3,6,0,0,0,0],
+  marks:[.975,.995],
+  left:'Nov 2018'
+});
+</script>
+
+</body>
+</html>

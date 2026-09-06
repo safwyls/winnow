@@ -423,4 +423,74 @@ public class IgdbCoverSourceTests
     [InlineData("https://images.igdb.com/igdb/image/upload/t_cover_big/co 1r76.jpg")]
     public void A_url_that_is_not_an_igdb_image_yields_no_id(string? url)
         => Assert.Null(IgdbImageUrl.ImageId(url));
+
+    // ── screenshots ride the same source at a different rendition ────────────
+
+    [Fact]
+    public async Task A_screenshot_key_is_fetched_at_the_screenshot_rendition()
+    {
+        using var dir = new TempCoverDirectory();
+        var cdn = new FakeCoverCdn();
+        var igdb = new FakeIgdbClient();
+        cdn.AddIgdbCover("sc1abc", TestArt.Capsule(1280, 720), "t_screenshot_huge");
+
+        var source = Source(igdb, cdn, dir.Options());
+
+        Assert.NotNull(await source.TryFetchAsync(CoverKey.IgdbScreenshot("sc1abc")));
+
+        Assert.Equal("/igdb/image/upload/t_screenshot_huge/sc1abc.jpg", Assert.Single(cdn.Requests));
+
+        // The key is the asset, so no credential check and no external_games
+        // lookup — the same property the cover-by-image-id path has.
+        Assert.Equal(0, igdb.BatchCount);
+    }
+
+    [Fact]
+    public async Task A_cover_key_still_asks_for_the_cover_rendition()
+    {
+        using var dir = new TempCoverDirectory();
+        var cdn = new FakeCoverCdn();
+        var igdb = new FakeIgdbClient();
+        cdn.AddIgdbCover("co6m51", TestArt.Capsule(528, 704));
+
+        var source = Source(igdb, cdn, dir.Options());
+
+        Assert.NotNull(await source.TryFetchAsync(CoverKey.Igdb("co6m51")));
+
+        Assert.Equal("/igdb/image/upload/t_cover_big_2x/co6m51.jpg", Assert.Single(cdn.Requests));
+    }
+
+    [Fact]
+    public async Task A_screenshot_and_a_cover_do_not_share_a_disk_cache_entry()
+    {
+        using var dir = new TempCoverDirectory();
+        var options = dir.Options();
+        var cdn = new FakeCoverCdn();
+        var igdb = new FakeIgdbClient();
+        cdn.AddIgdbCover("co6m51", TestArt.Capsule(528, 704));
+        cdn.AddIgdbCover("co6m51", TestArt.Capsule(1280, 720), "t_screenshot_huge");
+
+        using var pipeline = dir.Pipeline(options, Source(igdb, cdn, options));
+
+        Assert.NotNull(await pipeline.GetAsync(CoverKey.Igdb("co6m51"), 320));
+        Assert.NotNull(await pipeline.GetAsync(CoverKey.IgdbScreenshot("co6m51"), 320));
+
+        Assert.Equal(
+            ["/igdb/image/upload/t_cover_big_2x/co6m51.jpg",
+             "/igdb/image/upload/t_screenshot_huge/co6m51.jpg"],
+            cdn.Requests);
+
+        Assert.NotEqual(CoverKey.Igdb("co6m51").CacheStem, CoverKey.IgdbScreenshot("co6m51").CacheStem);
+    }
+
+    [Fact]
+    public void A_screenshot_key_is_handled_and_an_unrecognisable_one_is_not()
+    {
+        using var dir = new TempCoverDirectory();
+        var source = Source(new FakeIgdbClient(), new FakeCoverCdn(), dir.Options());
+
+        Assert.True(source.CanHandle(CoverKey.IgdbScreenshot("sc1abc")));
+        Assert.False(source.CanHandle(CoverKey.IgdbScreenshot("sc 1abc")));
+        Assert.False(source.CanHandle(CoverKey.IgdbScreenshot(string.Empty)));
+    }
 }

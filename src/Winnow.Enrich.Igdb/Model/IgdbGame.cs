@@ -65,6 +65,51 @@ public sealed record IgdbGame(
     public string? VersionTitle { get; init; }
 
     /// <summary>
+    /// IGDB <c>screenshots</c> image ids — the publisher-ordered set of
+    /// screenshot assets distinct from the cover. Init property (not
+    /// positional) under the same rule as <see cref="GameModes"/>: a payload
+    /// cached before the field existed still deserializes, and
+    /// <c>GetGamesAsync</c> keeps serving it as the fallback when no refetch
+    /// is possible. A game can have screenshots and no cover, or a cover and
+    /// no screenshots; the details modal draws them independently.
+    /// </summary>
+    public IReadOnlyList<string> ScreenshotImageIds { get; init; } = NoStrings;
+
+    /// <summary>
+    /// IGDB <c>artworks</c> image ids — distinct from both covers and
+    /// screenshots. Same init-property rule as
+    /// <see cref="ScreenshotImageIds"/>.
+    /// </summary>
+    public IReadOnlyList<string> ArtworkImageIds { get; init; } = NoStrings;
+
+    /// <summary>
+    /// IGDB's own user-body rating, 0–100 scale. Null when IGDB has no user
+    /// rating for this game. Kept separate from <see cref="CriticRating"/>
+    /// on purpose: a score of 90 from four people and a score of 90 from
+    /// four thousand are different claims, which is why the count travels
+    /// with the figure and never separately.
+    /// </summary>
+    public double? UserRating { get; init; }
+
+    /// <summary>
+    /// How many IGDB users rated this game. Null when
+    /// <see cref="UserRating"/> is null.
+    /// </summary>
+    public int? UserRatingCount { get; init; }
+
+    /// <summary>
+    /// IGDB's aggregation of external critics, 0–100 scale. Null when IGDB
+    /// has no critic aggregation for this game.
+    /// </summary>
+    public double? CriticRating { get; init; }
+
+    /// <summary>
+    /// How many external critic sources IGDB aggregated. Null when
+    /// <see cref="CriticRating"/> is null.
+    /// </summary>
+    public int? CriticRatingCount { get; init; }
+
+    /// <summary>
     /// The single parent IGDB names for this game, whichever field carried it.
     /// <see cref="ParentGameId"/> wins over <see cref="VersionParentId"/> when
     /// both are present, because an edition of an expansion belongs under the

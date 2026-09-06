@@ -76,7 +76,7 @@ public class FranchiseAndTasteTests
 
         // One entry, so the game IS the row and the shared rules put it in the
         // same bucket the row names.
-        return row with { Game = GameGrouping.Of(releaseId, [row], null, BucketThresholds.Default) };
+        return row with { Game = GameGrouping.Of(releaseId, [row], null, 0, BucketThresholds.Default) };
     }
 
     [Fact]

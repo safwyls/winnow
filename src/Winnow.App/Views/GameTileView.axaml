@@ -4,7 +4,8 @@
              x:Class="Winnow.App.Views.GameTileView"
              x:DataType="vm:GameTileViewModel"
              Name="Root"
-             ClipToBounds="False">
+             ClipToBounds="False"
+             AutomationProperties.Name="{Binding AutomationName}">
 
     <!--
         The cover tile. Art is the two-layer dormancy cross-fade settled in
@@ -14,6 +15,16 @@
         Borders (title baked into each layer so it fades with its art); when
         real covers land each layer becomes an Image over a decoded bitmap
         and the fade logic is untouched.
+
+        The accessible name is on the UserControl root, not on Border#Lift
+        where it sat until now. Border does not override OnCreateAutomationPeer,
+        so Avalonia gives it a NoneAutomationPeer, whose IsControlElementCore is
+        false; the Win32 provider maps that onto UIA_IsControlElementPropertyId,
+        which is what the control view — the tree a screen reader walks — filters
+        on. The children still appear, so nothing looked broken and nothing
+        threw, and every tile on the wall was nameless. UserControl overrides
+        OnCreateAutomationPeer and gets a UserControlAutomationPeer, which is a
+        control element and reads AutomationProperties.Name.
     -->
 
     <UserControl.Styles>
@@ -244,7 +255,6 @@
 
     <Border Name="Lift" CornerRadius="{StaticResource RadiusTile}" ClipToBounds="False"
             Background="Transparent"
-            AutomationProperties.Name="{Binding AutomationName}"
             Classes.snap="{Binding SnapDormancy}"
             Classes.flipped="{Binding IsFlipped}">
         <Panel>

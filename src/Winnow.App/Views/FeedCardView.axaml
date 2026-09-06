@@ -163,9 +163,19 @@
 
     </UserControl.Styles>
 
+    <!-- The name and the status both ride on the Button. It is the card's Tab
+         stop and the only element here with an automation peer of its own: the
+         Panels, Grids and Borders inside it get a NoneAutomationPeer and are
+         dropped from the control view, and a TextBlock answers with its own
+         Text and discards a name outright. The status is a second attached
+         property because ControlAutomationPeer raises a UIA property-changed
+         event for ItemStatus and not for Name, so a verdict that lands after
+         the card is drawn has nowhere else to be announced. -->
     <Button Name="Card"
             Classes="feedcard"
             Classes.setaside="{Binding IsSetAside}"
+            AutomationProperties.Name="{Binding AutomationName}"
+            AutomationProperties.ItemStatus="{Binding StatusAnnouncement}"
             Command="{Binding Tile.OpenDetailsCommand}"
             CommandParameter="{Binding Tile}">
         <!-- No tooltip; hovering is the resting state of reading this
@@ -375,7 +385,15 @@
              track, 14px at 2px stroke — the badge's own outer diameter,
              so the card has one mark size. On the card's Surface, not
              on the art: the countdown is a fact about the card, and
-             §1/§2 keep the interface out of the cover. -->
+             §1/§2 keep the interface out of the cover.
+
+             The Panel no longer carries an accessible name. It never reached
+             anyone: a Panel gets a NoneAutomationPeer, which reports itself as
+             not a control element, and UIA's control view drops it. What the
+             ring means is now part of the card's ItemStatus, which is the one
+             attached property Avalonia raises a UIA event for and therefore the
+             only place a state that appears mid-read can be announced. The ring
+             itself stays as the determinate visual indicator §8 requires. -->
         <Panel Name="Countdown"
                Width="18" Height="18"
                Background="Transparent"
@@ -383,8 +401,7 @@
                Margin="0,10,10,0"
                IsVisible="{Binding IsCountingDown}"
                Classes.snap="{Binding Tile.SnapDormancy}"
-               ToolTip.Tip="Replaced by the next suggestion. Undo is on the history screen."
-               AutomationProperties.Name="Replacement countdown">
+               ToolTip.Tip="Replaced by the next suggestion. Undo is on the history screen.">
 
             <Ellipse Width="14" Height="14"
                      HorizontalAlignment="Center" VerticalAlignment="Center"

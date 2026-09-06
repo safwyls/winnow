@@ -26,6 +26,21 @@ public sealed class IgdbCoverOptions
     /// </summary>
     public string ImageSizeToken { get; set; } = "t_cover_big_2x";
 
+    /// <summary>
+    /// The IGDB image size token for screenshot assets.
+    ///
+    /// <para><c>t_screenshot_huge</c> is 1280x720 (verified live
+    /// 2026-09-05 by unauthenticated GET against <c>images.igdb.com</c>
+    /// using <c>co6m51</c>: <c>t_screenshot_med</c> 555x312 18,647 B;
+    /// <c>t_screenshot_big</c> 940x529 38,580 B;
+    /// <c>t_screenshot_huge</c> 1280x720 58,654 B; a fabricated
+    /// <c>t_not_a_real_token</c> 404, so the CDN discriminates between
+    /// tokens rather than serving anything for any path). A separate
+    /// rendition from <see cref="ImageSizeToken"/> because covers are
+    /// 3:4 portrait and screenshots are 16:9 landscape.</para>
+    /// </summary>
+    public string ScreenshotSizeToken { get; set; } = "t_screenshot_huge";
+
     /// <summary>Image CDN root. Only the size token is rewritten; the host comes from IGDB's own URL.</summary>
     public string ImageHostPrefix { get; set; } = "https://images.igdb.com/";
 
