@@ -9,7 +9,7 @@ using Xunit;
 namespace Winnow.Tests;
 
 /// <summary>
-/// Cover tile primary actions and card flip, with URIs asserted literally.
+/// Cover tile primary actions, with URIs asserted literally.
 /// </summary>
 public sealed class TileActionsTests
 {
@@ -21,11 +21,15 @@ public sealed class TileActionsTests
     public void Steam_on_disk_plays_and_off_disk_installs()
     {
         Assert.Equal("Play", Tile(ExternalIdProviders.Steam, installed: true).PrimaryActionLabel);
+        Assert.True(Tile(ExternalIdProviders.Steam, installed: true).IsPlayAction);
+        Assert.False(Tile(ExternalIdProviders.Steam, installed: true).IsInstallAction);
         Assert.Equal(
             "steam://run/620",
             Tile(ExternalIdProviders.Steam, installed: true).PrimaryAction!.Uri);
 
         Assert.Equal("Install", Tile(ExternalIdProviders.Steam, installed: false).PrimaryActionLabel);
+        Assert.False(Tile(ExternalIdProviders.Steam, installed: false).IsPlayAction);
+        Assert.True(Tile(ExternalIdProviders.Steam, installed: false).IsInstallAction);
         Assert.Equal(
             "steam://install/620",
             Tile(ExternalIdProviders.Steam, installed: false).PrimaryAction!.Uri);
@@ -350,7 +354,7 @@ public sealed class TileActionsTests
     [Fact]
     public async Task Every_tile_launches_through_the_librarys_own_command()
     {
-        using var fixture = new FlipFixture();
+        using var fixture = new LibraryFixture();
         await fixture.SeedAsync("Anvil");
         var library = await fixture.LoadAsync();
 
@@ -400,160 +404,26 @@ public sealed class TileActionsTests
         Assert.Equal(GameLinkKind.Link, storePage.Kind);
     }
 
-    // ══ The card flip ═══════════════════════════════════════════════════════
+    // ══ Grid command wiring ══════════════════════════════════════════════════
 
     [Fact]
-    public async Task A_click_turns_one_card_over_and_selects_it()
+    public async Task The_grid_actions_carry_the_librarys_own_commands()
     {
-        using var fixture = new FlipFixture();
-        await fixture.SeedAsync("Anvil");
-        var library = await fixture.LoadAsync();
-
-        var anvil = library.VisibleTiles.Single(t => t.Title == "Anvil");
-        library.FlipTileCommand.Execute(anvil);
-
-        Assert.True(anvil.IsFlipped);
-        Assert.Same(anvil, library.FlippedTile);
-        Assert.Same(anvil, library.SelectedTile);
-        Assert.Equal([anvil], library.SelectedTiles);
-    }
-
-    [Fact]
-    public async Task Clicking_the_turned_card_again_turns_it_back()
-    {
-        using var fixture = new FlipFixture();
-        await fixture.SeedAsync("Anvil");
-        var library = await fixture.LoadAsync();
-
-        var anvil = library.VisibleTiles.Single(t => t.Title == "Anvil");
-        library.FlipTileCommand.Execute(anvil);
-        library.FlipTileCommand.Execute(anvil);
-
-        Assert.False(anvil.IsFlipped);
-        Assert.Null(library.FlippedTile);
-    }
-
-    /// <summary>
-    /// Exactly one card is ever face-down. §1 says the art is the interface, and
-    /// a grid of backs is a grid with no art in it.
-    /// </summary>
-    [Fact]
-    public async Task Turning_a_second_card_turns_the_first_one_back()
-    {
-        using var fixture = new FlipFixture();
-        await fixture.SeedAsync("Anvil");
-        await fixture.SeedAsync("Banjo");
-        var library = await fixture.LoadAsync();
-
-        var anvil = library.VisibleTiles.Single(t => t.Title == "Anvil");
-        var banjo = library.VisibleTiles.Single(t => t.Title == "Banjo");
-
-        library.FlipTileCommand.Execute(anvil);
-        library.FlipTileCommand.Execute(banjo);
-
-        Assert.False(anvil.IsFlipped);
-        Assert.True(banjo.IsFlipped);
-        Assert.Same(banjo, library.FlippedTile);
-    }
-
-    /// <summary>
-    /// Arrowing off a turned card turns it back: selection and the flip move
-    /// together, which is what makes the keyboard route out of the back face a
-    /// key the user already knows (§8).
-    /// </summary>
-    [Fact]
-    public async Task Moving_the_selection_turns_the_card_back()
-    {
-        using var fixture = new FlipFixture();
-        await fixture.SeedAsync("Anvil");
-        await fixture.SeedAsync("Banjo");
-        var library = await fixture.LoadAsync();
-
-        var first = library.VisibleTiles[0];
-        library.FlipTileCommand.Execute(first);
-        library.MoveSelection(1);
-
-        Assert.False(first.IsFlipped);
-        Assert.Null(library.FlippedTile);
-    }
-
-    /// <summary>
-    /// The wall is rebuilt under whatever was turned over, and the turned card
-    /// may not even be in the new set.
-    /// </summary>
-    [Fact]
-    public async Task Cutting_the_library_turns_every_card_back()
-    {
-        using var fixture = new FlipFixture();
-        await fixture.SeedAsync("Anvil");
-        await fixture.SeedAsync("Banjo");
-        var library = await fixture.LoadAsync();
-
-        var anvil = library.VisibleTiles.Single(t => t.Title == "Anvil");
-        library.FlipTileCommand.Execute(anvil);
-        library.SearchText = "banjo";
-
-        Assert.False(anvil.IsFlipped);
-        Assert.Null(library.FlippedTile);
-    }
-
-    [Fact]
-    public async Task Leaving_the_grid_turns_every_card_back()
-    {
-        using var fixture = new FlipFixture();
-        await fixture.SeedAsync("Anvil");
-        var library = await fixture.LoadAsync();
-
-        library.FlipTileCommand.Execute(library.VisibleTiles[0]);
-        library.ShowListViewCommand.Execute(null);
-
-        Assert.Null(library.FlippedTile);
-    }
-
-    /// <summary>
-    /// The modal is the richer version of the back face, so the card goes
-    /// face-up on the way in — Escape should return the user to the wall they
-    /// were reading, not to a step they have already taken.
-    /// </summary>
-    [Fact]
-    public async Task Opening_the_details_modal_turns_the_card_back()
-    {
-        using var fixture = new FlipFixture();
-        await fixture.SeedAsync("Anvil");
-        var library = await fixture.LoadAsync();
-
-        var anvil = library.VisibleTiles[0];
-        library.FlipTileCommand.Execute(anvil);
-        await library.OpenDetailsCommand.ExecuteAsync(anvil);
-
-        Assert.False(anvil.IsFlipped);
-        Assert.Null(library.FlippedTile);
-        Assert.True(library.IsDetailsOpen);
-    }
-
-    /// <summary>
-    /// The back face raises the library's own commands rather than reaching for
-    /// a repository (§5.1) — and "Add to list" is the SAME command the command
-    /// bar runs, so the single-game route and the bulk route can never drift.
-    /// </summary>
-    [Fact]
-    public async Task The_back_face_carries_the_librarys_own_commands()
-    {
-        using var fixture = new FlipFixture();
+        using var fixture = new LibraryFixture();
         await fixture.SeedAsync("Anvil");
         var library = await fixture.LoadAsync();
 
         var anvil = library.VisibleTiles[0];
 
-        Assert.Same(library.BeginAddToListCommand, anvil.AddToListCommand);
+        Assert.Same(library.LaunchCommand, anvil.PrimaryActionCommand);
         Assert.Same(library.OpenDetailsCommand, anvil.OpenDetailsCommand);
     }
 
     /// <summary>The §7 name, not the query's key — the rail's own vocabulary.</summary>
     [Fact]
-    public async Task The_back_face_names_the_bucket_the_way_the_rail_does()
+    public async Task The_tile_names_the_bucket_the_way_the_rail_does()
     {
-        using var fixture = new FlipFixture();
+        using var fixture = new LibraryFixture();
         await fixture.SeedAsync("Anvil");
         var library = await fixture.LoadAsync();
 
@@ -592,11 +462,10 @@ public sealed class TileActionsTests
             bucketLabel: "Never played");
 
     /// <summary>
-    /// The smallest real library the flip needs: a migrated SQLite file and the
-    /// real repositories, with no cover cache and no Avalonia application. The
-    /// flip is view-model state, so nothing here has to render.
+    /// The smallest real library the grid command wiring needs: a migrated
+    /// SQLite file and the real repositories.
     /// </summary>
-    private sealed class FlipFixture : IDisposable
+    private sealed class LibraryFixture : IDisposable
     {
         private readonly TempDatabase _db = new();
         private int _appId = 700000;

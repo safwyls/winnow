@@ -93,7 +93,7 @@
              rather than on the elements because §8's reduced-motion setting has
              to be able to take it away, and a local Transitions value would
              outrank any selector trying to. -->
-        <Style Selector="Border#Lift Border#VividArt, Border#Lift Image#VividArtwork, Border#Lift Image#BackVividArtwork">
+        <Style Selector="Border#Lift Border#VividArt, Border#Lift Image#VividArtwork">
             <Setter Property="Transitions">
                 <Transitions>
                     <DoubleTransition Property="Opacity" Duration="0:0:0.14" Easing="CubicEaseOut"/>
@@ -105,159 +105,84 @@
              schedule at all. This is independent of the dimming preference and
              cannot fight it: with dimming off the resting and hovered alphas are
              both 1.0, so there is nothing for either setting to animate. -->
-        <Style Selector="Border#Lift.snap Border#VividArt, Border#Lift.snap Image#VividArtwork, Border#Lift.snap Image#BackVividArtwork">
+        <Style Selector="Border#Lift.snap Border#VividArt, Border#Lift.snap Image#VividArtwork">
             <Setter Property="Transitions">
                 <Transitions/>
             </Setter>
         </Style>
 
-        <!-- Card flip (§5.3). 160ms turn: front squashes in 80ms, back fades
-             in over 80ms. Its controls keep stable hit targets while appearing.
-             Transition-based so it reverses automatically. Resting
-             values are style setters (not local) so reduced-motion and flipped
-             selectors can override them. -->
-
-        <Style Selector="Border#Face">
-            <Setter Property="Opacity" Value="1"/>
-            <Setter Property="RenderTransform" Value="scaleX(1)"/>
-            <Setter Property="Transitions">
-                <Transitions>
-                    <DoubleTransition Property="Opacity" Duration="0:0:0.08" Easing="CubicEaseIn"/>
-                    <TransformOperationsTransition Property="RenderTransform"
-                                                   Duration="0:0:0.08" Easing="CubicEaseIn"/>
-                </Transitions>
-            </Setter>
-        </Style>
-        <Style Selector="Border#Lift.flipped Border#Face">
-            <Setter Property="Opacity" Value="0"/>
-            <Setter Property="RenderTransform" Value="scaleX(0)"/>
-            <!-- A zero-opacity control is still a hit target in Avalonia. The
-                 back is declared after the front and so wins on z-order anyway,
-                 but relying on that would leave a face-down cover quietly
-                 answering presses. -->
-            <Setter Property="IsHitTestVisible" Value="False"/>
-        </Style>
-
-        <Style Selector="Border#Back">
+        <!-- The action dock is always laid out at its final size. Opacity reveals
+             it without moving either hit target; hit testing stays off until the
+             pointer reaches the tile so an invisible button cannot answer the
+             click that merely selects the cover. Keyboard focus reveals the
+             same dock through :focus-within. -->
+        <Style Selector="Border#TileActions">
             <Setter Property="Opacity" Value="0"/>
             <Setter Property="IsHitTestVisible" Value="False"/>
             <Setter Property="Transitions">
                 <Transitions>
-                    <DoubleTransition Property="Opacity" Duration="0:0:0.08"
-                                      Delay="0:0:0.08" Easing="CubicEaseOut"/>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.14" Easing="CubicEaseOut"/>
                 </Transitions>
             </Setter>
         </Style>
-        <Style Selector="Border#Lift.flipped Border#Back">
+        <Style Selector="Border#Lift:pointerover Border#TileActions, Border#Lift:focus-within Border#TileActions">
             <Setter Property="Opacity" Value="1"/>
-            <!-- Face-up, the back is not merely invisible: it must not eat a
-                 press meant for the cover under it. -->
             <Setter Property="IsHitTestVisible" Value="True"/>
         </Style>
-
-        <!-- The badge belongs to the front and leaves with it. Opacity only:
-             it is a 10px dot, and squashing a dot reads as a rendering fault
-             rather than as a turn. -->
-        <Style Selector="Border#Badge">
-            <Setter Property="Opacity" Value="1"/>
-            <Setter Property="Transitions">
-                <Transitions>
-                    <DoubleTransition Property="Opacity" Duration="0:0:0.08" Easing="CubicEaseIn"/>
-                </Transitions>
-            </Setter>
-        </Style>
-        <Style Selector="Border#Lift.flipped Border#Badge">
-            <Setter Property="Opacity" Value="0"/>
+        <Style Selector="Border#Lift.snap Border#TileActions">
+            <Setter Property="Transitions"><Transitions/></Setter>
         </Style>
 
-        <!-- Reduced motion: the card is turned, it does not turn (§8). -->
-        <Style Selector="Border#Lift.snap Border#Face, Border#Lift.snap Border#Back, Border#Lift.snap Border#Badge">
-            <Setter Property="Transitions">
-                <Transitions/>
-            </Setter>
-        </Style>
-
-        <!-- A turned card does not also wake up under the pointer: the hover
-             lift and the scrim belong to the art, and the art is face-down. -->
-        <Style Selector="Border#Lift.flipped:pointerover">
-            <Setter Property="RenderTransform" Value="translateY(0px)"/>
-            <Setter Property="BoxShadow" Value="0 0 0 0 #00000000"/>
-        </Style>
-        <Style Selector="Border#Lift.flipped:pointerover Border#Scrim">
-            <Setter Property="Opacity" Value="0"/>
-        </Style>
-
-        <!-- ── The back's own field and controls ───────────────────────────
-             Everything here is Volt, Line or the text inks. NOT Flare: Flare
-             marks unread updates and the bucket that counts them, and the moment
-             a Play button or a flip affordance wears it the badge on the front
-             of this very tile stops meaning anything (§2, §5.2). -->
-
-        <Style Selector="Border.back-field">
-            <Setter Property="Background" Value="{StaticResource Surface}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="CornerRadius" Value="{StaticResource RadiusTile}"/>
-        </Style>
-
-        <Style Selector="Button.tile-act">
-            <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="FontSize" Value="11"/>
+        <Style Selector="Button.tile-icon">
+            <Setter Property="Width" Value="32"/>
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="MinWidth" Value="32"/>
+            <Setter Property="MinHeight" Value="32"/>
             <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
-            <Setter Property="Padding" Value="0,5"/>
+            <Setter Property="Padding" Value="0"/>
             <Setter Property="BorderThickness" Value="2"/>
-            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Background" Value="{StaticResource Surface}"/>
             <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
             <Setter Property="Foreground" Value="{StaticResource Text}"/>
             <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="HorizontalAlignment" Value="Stretch"/>
             <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
         </Style>
-        <Style Selector="Button.tile-act:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Style Selector="Button.tile-icon:pointerover /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
             <Setter Property="BorderBrush" Value="{StaticResource TextDim}"/>
             <Setter Property="Foreground" Value="{StaticResource Text}"/>
         </Style>
-        <!-- §10.7: the ring is a brush swap on the presenter at a thickness that
-             never changes. Thickening a border on focus reflows the row it sits
-             in, and on a 148px card that is the whole back face moving. -->
-        <Style Selector="Button.tile-act:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
+        <Style Selector="Button.tile-icon:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
         </Style>
-
-        <Style Selector="Button.tile-act.primary">
+        <Style Selector="Button.tile-icon.primary">
             <Setter Property="Background" Value="{StaticResource Volt}"/>
             <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
             <Setter Property="Foreground" Value="{StaticResource VoltInk}"/>
         </Style>
-        <Style Selector="Button.tile-act.primary:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Style Selector="Button.tile-icon.primary:pointerover /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="{StaticResource VoltHover}"/>
             <Setter Property="BorderBrush" Value="{StaticResource VoltHover}"/>
             <Setter Property="Foreground" Value="{StaticResource VoltInk}"/>
         </Style>
-        <Style Selector="Button.tile-act.primary:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Style Selector="Button.tile-icon.primary:pressed /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="{StaticResource VoltPress}"/>
             <Setter Property="BorderBrush" Value="{StaticResource VoltPress}"/>
             <Setter Property="Foreground" Value="{StaticResource VoltInk}"/>
         </Style>
-        <!-- On a Volt fill the ring cannot be Volt, so it is VoltInk (§10.7). -->
-        <Style Selector="Button.tile-act.primary:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
+        <Style Selector="Button.tile-icon.primary:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="BorderBrush" Value="{StaticResource VoltInk}"/>
         </Style>
-
 
     </UserControl.Styles>
 
     <Border Name="Lift" CornerRadius="{StaticResource RadiusTile}" ClipToBounds="False"
             Background="Transparent"
-            Classes.snap="{Binding SnapDormancy}"
-            Classes.flipped="{Binding IsFlipped}">
+            Classes.snap="{Binding SnapDormancy}">
         <Panel>
 
-            <!-- Rounded clip for the art stack. This is the card's FRONT, and it
-                 turns as one thing: the art, the hover scrim and the unread
-                 badge all belong to the cover. -->
+            <!-- Rounded clip for the stable art, hover scrim and actions. -->
             <Border Name="Face"
                     CornerRadius="{StaticResource RadiusTile}" ClipToBounds="True"
                     BorderThickness="1" BorderBrush="{StaticResource LineSoft}">
@@ -397,8 +322,8 @@
                             </Transitions>
                         </Border.Transitions>
                         <StackPanel Spacing="8">
-                            <!-- §5.3: title in Body L, then playtime + idle,
-                                 store badge, one primary action. Four facts. -->
+                            <!-- §5.3: title in Body L, then playtime + idle and
+                                 store badges. Three facts; actions are separate. -->
                             <TextBlock Classes="body-l"
                                        Text="{Binding Title}"
                                        TextWrapping="Wrap" MaxLines="2"
@@ -425,190 +350,45 @@
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
-                            <!-- §5.3's "single primary action, Play, in Volt" has
-                                 MOVED TO THE BACK OF THE CARD, and this is the
-                                 deviation, recorded rather than silent.
-
-                                 It was an inert button here for the whole of M0.
-                                 Making it live would have put a full-width launch
-                                 target in a surface that appears on hover, on the
-                                 same click that turns the card over — so the
-                                 gesture that reveals the actions and the gesture
-                                 that fires one would be the same gesture, half a
-                                 tile apart. §5.3's own reason for capping the
-                                 overlay is that "the tile is a decision surface";
-                                 the decision now leads one click to a face that
-                                 can name the action honestly per store and per
-                                 install state, which an always-"Play" button
-                                 could not. The overlay keeps its facts. -->
                         </StackPanel>
                     </Border>
 
-                </Panel>
-            </Border>
-
-            <!-- ══ The card's BACK ═══════════════════════════════════════════
-                 A few facts worth knowing at a glance, and the actions for this
-                 one game.
-
-                 It carries FOUR facts, which is §5.3's cap for the hover overlay
-                 applied to the other face of the same object: the pile this game
-                 is in, the time on the clock, the day you stopped, and what it is
-                 and where you own it. Not a detail view — the third button is
-                 how you get to that.
-
-                 `Details` is on it because the flip took the gesture that used
-                 to open the modal, and §10 calls that modal the answer to the
-                 four-fact cap. A surface the app depends on for everything the
-                 tile cannot say must not become unreachable by taking away the
-                 only pointer route to it.
-
-                 The bucket name doubles as §8's redundant backing for the unread
-                 dot on the front: a game wearing the Flare badge reads "Patched
-                 since" here, in words, for anyone who cannot resolve a 10px mark.
-
-                 Every number below is Plex Mono with tabular figures — the
-                 `data-s` class carries `FontFeatures="tnum"`. -->
-            <Border Name="Back" Classes="back-field" ClipToBounds="True">
-                <Panel>
-
-                    <!-- The game's own art behind the back face (§5.5). The
-                         same two bitmaps the front face draws, from the same
-                         CoverPresenter on this container, at the same
-                         DisplayAlpha, with the same 140ms restore and the
-                         same reduced-motion snap. One image path, one lease,
-                         one decode: the cover wall's memory bound is
-                         untouched.
-
-                         No cover means both Sources are null, both Images
-                         draw nothing, and ArtVeil over the back-field's own
-                         opaque Surface resolves to Surface exactly — the flat
-                         treatment, with no shift in tone or geometry.
-
-                         The art is under the veil and never hit-tested; the
-                         back's buttons are the only things that answer a
-                         press. -->
-                    <Image Source="{Binding #Root.Cover.Floor}"
-                           Stretch="UniformToFill" IsHitTestVisible="False"/>
-                    <Image Name="BackVividArtwork"
-                           Source="{Binding #Root.Cover.Vivid}"
-                           Stretch="UniformToFill"
-                           Opacity="{Binding DisplayAlpha}"
-                           IsHitTestVisible="False"/>
-
-                    <!-- The veil: the theme's own Surface at ArtVeilAlpha,
-                         a token rather than a literal. The art contributes
-                         what is left. Every ink the back sets text in clears
-                         AA over this field against any cover, in every theme,
-                         walked by ThemeContrastTests. -->
-                    <Border Background="{StaticResource ArtVeil}" IsHitTestVisible="False"/>
-
-                    <DockPanel Margin="10,10,10,10" LastChildFill="True">
-
-                        <StackPanel DockPanel.Dock="Bottom" Spacing="4">
-                            <!-- Play when it is on disk, Install when it is not, and
-                                 NOTHING when this app cannot honestly name either —
-                                 no id for the store, or no answer at all about the
-                                 install state. §10.3: never an inert button.
-
-                                 Volt, because it is the app's one primary-action
-                                 treatment. Never Flare: that colour means "unread"
-                                 and nothing else, and it is on the other side of
-                                 this very card. -->
-                            <Button Classes="tile-act primary"
-                                    Content="{Binding PrimaryActionLabel}"
-                                    ToolTip.Tip="{Binding PrimaryActionHint}"
+                    <!-- Compact actions stay in fixed grid columns at the top-left,
+                         clear of the unread badge. The primary cell remains reserved
+                         when no store action is available, so Details never shifts. -->
+                    <Border Name="TileActions"
+                            HorizontalAlignment="Left" VerticalAlignment="Top"
+                            Margin="8">
+                        <Grid ColumnDefinitions="32,4,32">
+                            <Button Grid.Column="0" Classes="tile-icon primary"
                                     IsVisible="{Binding HasPrimaryAction}"
+                                    ToolTip.Tip="{Binding PrimaryActionHint}"
+                                    AutomationProperties.Name="{Binding PrimaryActionLabel}"
                                     Command="{Binding PrimaryActionCommand}"
-                                    CommandParameter="{Binding}"/>
+                                    CommandParameter="{Binding}">
+                                <Panel Width="16" Height="16">
+                                    <Path Name="PlayGlyph" Data="M 4,2 L 14,8 L 4,14 Z"
+                                          Fill="{Binding $parent[Button].Foreground}"
+                                          IsVisible="{Binding IsPlayAction}"/>
+                                    <Path Name="InstallGlyph" Data="M 7,2 L 9,2 L 9,9 L 12,6 L 14,8 L 8,14 L 2,8 L 4,6 L 7,9 Z"
+                                          Fill="{Binding $parent[Button].Foreground}"
+                                          IsVisible="{Binding IsInstallAction}"/>
+                                </Panel>
+                            </Button>
 
-                            <!-- The single-game route into lists. The command bar's
-                                 button is the bulk route and stays exactly where it
-                                 is (§6, §12.3) — per-card flipping would make "add
-                                 twenty games to a list" twenty flips. -->
-                            <Button Classes="tile-act"
-                                    Content="Add to list"
-                                    ToolTip.Tip="Put this title in a list"
-                                    Command="{Binding AddToListCommand}"/>
-
-                            <Button Classes="tile-act"
-                                    Content="Details"
+                            <Button Grid.Column="2" Classes="tile-icon"
                                     ToolTip.Tip="Full details"
+                                    AutomationProperties.Name="Details"
                                     Command="{Binding OpenDetailsCommand}"
-                                    CommandParameter="{Binding}"/>
-                        </StackPanel>
+                                    CommandParameter="{Binding}">
+                                <Path Width="16" Height="16" Stretch="Uniform"
+                                      Data="M 2,2 L 14,2 L 14,14 L 2,14 Z M 5,5 L 11,5 M 5,8 L 11,8 M 5,11 L 9,11"
+                                      Stroke="{Binding $parent[Button].Foreground}"
+                                      StrokeThickness="1.5"/>
+                            </Button>
+                        </Grid>
+                    </Border>
 
-                        <!-- Facts scroll in the space left by the pinned actions.
-                             Unbounded metadata can otherwise draw over their hit
-                             targets on dense cards with wrapped store chips. -->
-                        <ScrollViewer Name="BackFactsScroll" Classes="inner"
-                                      AutomationProperties.Name="Game facts"
-                                      Margin="0,0,0,6"
-                                      HorizontalScrollBarVisibility="Disabled"
-                                      VerticalScrollBarVisibility="Auto">
-                        <StackPanel Spacing="5" Margin="{StaticResource InnerScrollGutter}">
-                            <TextBlock Text="{Binding Title}"
-                                       FontFamily="{StaticResource DisplayFont}"
-                                       FontWeight="Bold" FontSize="13" LineHeight="15"
-                                       TextWrapping="Wrap" MaxLines="2"
-                                       TextTrimming="CharacterEllipsis"
-                                       Foreground="{StaticResource Text}"/>
-
-                            <TextBlock Classes="label" FontSize="10"
-                                       Text="{Binding BucketLabel}"
-                                       TextTrimming="CharacterEllipsis"/>
-
-                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="6">
-                                <TextBlock Grid.Column="0" Classes="label" FontSize="9"
-                                           Text="PLAYED" VerticalAlignment="Center"/>
-                                <TextBlock Grid.Column="1" Classes="data-s"
-                                           Foreground="{StaticResource Text}"
-                                           HorizontalAlignment="Right"
-                                           Text="{Binding PlaytimeText}"/>
-                            </Grid>
-
-                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="6">
-                                <TextBlock Grid.Column="0" Classes="label" FontSize="9"
-                                           Text="LAST" VerticalAlignment="Center"/>
-                                <TextBlock Grid.Column="1" Classes="data-s"
-                                           HorizontalAlignment="Right"
-                                           TextTrimming="CharacterEllipsis"
-                                           Text="{Binding LastPlayedText}"/>
-                            </Grid>
-
-                            <!-- A year is a number, so it sets in Plex Mono; the stores are
-                                 names, so they wear the outlined chip the overlay uses.
-                            
-                                 Chips wrap rather than pinning to one line beside the year:
-                                 at the density floor two word-chips are wider than the card,
-                                 and a chip clipped mid-glyph reads as a rendering fault. -->
-                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="6">
-                                <TextBlock Grid.Column="0" Classes="data-s"
-                                           VerticalAlignment="Center"
-                                           IsVisible="{Binding HasReleaseYear}"
-                                           Text="{Binding ReleaseYearText}"/>
-                                <ItemsControl Grid.Column="1"
-                                              HorizontalAlignment="Right"
-                                              ItemsSource="{Binding StoreChips}"
-                                              ToolTip.Tip="{Binding StoreNames}">
-                                    <ItemsControl.ItemsPanel>
-                                        <ItemsPanelTemplate>
-                                            <WrapPanel Orientation="Horizontal" ItemSpacing="4" LineSpacing="4"/>
-                                        </ItemsPanelTemplate>
-                                    </ItemsControl.ItemsPanel>
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <Border Classes="store-chip">
-                                                <TextBlock Text="{Binding}"/>
-                                            </Border>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </Grid>
-                        </StackPanel>
-
-                        </ScrollViewer>
-                    </DockPanel>
                 </Panel>
             </Border>
 
@@ -633,11 +413,9 @@
             <!-- Unread-update badge (§5.2): 10px Flare dot, 2px Ground ring,
                  soft glow. Flare appears here and on the rail pip — nowhere else.
 
-                 It belongs to the FRONT and turns with it, but it is declared
-                 outside the clip so its glow is not sheared off at the tile's
-                 corner; the style below fades it with the front instead. The
-                 back restates it in words as the "Patched" bucket name
-                 (§8), so nothing is lost while the card is turned. -->
+                 It is declared outside the clip so its glow is not sheared off
+                 at the tile's corner. The tile's automation name restates the
+                 unread state in words (§8). -->
             <Border Name="Badge"
                     Width="14" Height="14" CornerRadius="7"
                     Background="{StaticResource Flare}"

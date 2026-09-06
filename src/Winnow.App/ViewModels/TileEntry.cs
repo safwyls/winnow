@@ -65,8 +65,8 @@ public sealed record TileEntry : IPlayedEntry
     /// <summary>
     /// The compact resting mark's face — one letter. The front of a tile at
     /// the 108px density floor cannot hold word-chips, so the resting mark
-    /// is initials and the words arrive on hover, on the back face and in
-    /// the modal; see <see cref="StoreNaming.Initial"/>.
+    /// is initials and the words arrive on hover and in the modal; see
+    /// <see cref="StoreNaming.Initial"/>.
     /// </summary>
     public string StoreInitial => StoreNaming.Initial(Store);
 
@@ -138,8 +138,8 @@ public static class StoreNaming
     /// <summary>
     /// The first letter of the display name. The front of a tile at the
     /// 108px density floor cannot hold word-chips, so the resting mark on a
-    /// multi-store tile is initials; the words arrive on hover, on the back
-    /// face and in the modal. The mark is therefore decorative-redundant,
+    /// multi-store tile is initials; the words arrive on hover and in the
+    /// modal. The mark is therefore decorative-redundant,
     /// which §8 requires of anything the grid encodes.
     /// </summary>
     public static string Initial(string store)

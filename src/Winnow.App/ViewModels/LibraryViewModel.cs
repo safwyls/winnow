@@ -1087,18 +1087,12 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
                 covers: _leases,
                 work: display,
                 ramp: Ramp,
-                // The §7 name, so the back of the card says "Never played" and
-                // not "never_played". Resolved here because the rail owns that
-                // vocabulary and the tile should not hold a second copy of it.
+                // The §7 name, shared with the detail view rather than storing a
+                // second copy of the rail's vocabulary.
                 bucketLabel: BucketLabelFor(primaryRow.Game.Bucket));
 
-            // The two commands the back face raises. Wired rather than reached
-            // for: §5.1 keeps a tile a projection of the database, so it holds
-            // the command the library already publishes instead of a route to a
-            // repository. "Add to list" is the SAME command the command bar
-            // runs — the flip is the single-game door onto it, the bar is the
-            // bulk one (§12.3), and two implementations would be two behaviours.
-            tile.AddToListCommand = BeginAddToListCommand;
+            // The compact grid actions raise library-owned commands; the tile
+            // remains a projection and never reaches into repositories itself.
             tile.OpenDetailsCommand = OpenDetailsCommand;
             tile.PrimaryActionCommand = LaunchCommand;
 
@@ -1189,7 +1183,6 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         }
 
         var selectedOwnershipId = SelectedTile?.OwnershipId;
-        var flippedOwnershipId = _flipped?.OwnershipId;
         _allTiles = tiles;
         _coverage = coverage;
 
@@ -1222,7 +1215,6 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         {
             var selected = VisibleTiles.FirstOrDefault(t => t.Covers(selectedId));
             SelectTile(selected);
-            if (selected is not null && flippedOwnershipId == selectedId) FlipTile(selected);
         }
 
         // Background install refresh must also reach a modal that is already open.
@@ -1239,13 +1231,8 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     [RelayCommand]
     private void ShowGridView() => IsGridView = true;
 
-    /// <summary>The flip is the grid's gesture; list view has the command bar (§12.3).</summary>
     [RelayCommand]
-    private void ShowListView()
-    {
-        ClearFlip();
-        IsGridView = false;
-    }
+    private void ShowListView() => IsGridView = false;
 
     /// <summary>Command-bar sort menu.</summary>
     [RelayCommand]
@@ -1325,9 +1312,6 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         }
 
         SelectTile(target);
-
-        // Clear card flip on the way into the modal.
-        ClearFlip();
 
         // Every entry's updates, not just the primary's. The unread badge
         // is the game's bucket, computed from the latest patch anywhere in
@@ -2308,50 +2292,6 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         SelectedTile = tile;
     }
 
-    // ══ The card flip ═══════════════════════════════════════════════════════
-    // Exactly one tile is flipped at a time. State lives on the tile VM.
-
-    /// <summary>The flipped tile, or null. Not observable; the per-tile flag is what the view binds.</summary>
-    private GameTileViewModel? _flipped;
-
-    /// <summary>The turned-over tile, for the keyboard and for tests.</summary>
-    public GameTileViewModel? FlippedTile => _flipped;
-
-    /// <summary>Flips a tile (or unflips if already flipped). Also selects it.</summary>
-    [RelayCommand]
-    public void FlipTile(GameTileViewModel? tile)
-    {
-        if (tile is null)
-        {
-            ClearFlip();
-            return;
-        }
-
-        SelectTile(tile);
-
-        if (ReferenceEquals(_flipped, tile))
-        {
-            ClearFlip();
-            return;
-        }
-
-        ClearFlip();
-        tile.IsFlipped = true;
-        _flipped = tile;
-    }
-
-    /// <summary>Turn every card face-up. Safe to call when none is turned.</summary>
-    public void ClearFlip()
-    {
-        if (_flipped is null)
-        {
-            return;
-        }
-
-        _flipped.IsFlipped = false;
-        _flipped = null;
-    }
-
     /// <summary>
     /// Keyboard navigation: moves selection by <paramref name="delta"/> visible
     /// tiles (±1 = left/right or list row, ±columns = up/down in the grid).
@@ -2391,12 +2331,6 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         if (newValue is not null)
         {
             newValue.IsSelected = true;
-        }
-
-        // Arrowing off a flipped card unflips it.
-        if (!ReferenceEquals(_flipped, newValue))
-        {
-            ClearFlip();
         }
 
         // Grid view: derive SelectedTiles here so keyboard nav keeps "Add to list" visible.
@@ -2501,9 +2435,6 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         {
             return;
         }
-
-        // Unflip before rebuilding; the flipped tile may leave the visible set.
-        ClearFlip();
 
         IEnumerable<GameTileViewModel> query = _allTiles;
         if (SelectedBucket is { } bucket)

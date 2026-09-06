@@ -1169,7 +1169,7 @@ public class ThemeContrastTests
 
     /// <summary>
     /// A game with no art draws no image, so the veil composites onto the
-    /// opaque <c>Surface</c> the back face and the card already paint. The
+    /// opaque <c>Surface</c> the modal already paints. The
     /// veil IS <c>Surface</c>, so that composite is <c>Surface</c> bit-for-bit
     /// and the flat treatment is recovered exactly — no tone step, and nothing
     /// in the tree moves, because the art and the veil are siblings in a Panel
@@ -1235,8 +1235,8 @@ public class ThemeContrastTests
     /// <summary>
     /// 0.92 is the round step past the boundary, not a preference. At 0.91
     /// the default theme's metadata ink measures 4.49:1 over a white cover,
-    /// under AA, so a looser veil would leave the back face and the modal
-    /// unreadable on a pale capsule.
+    /// under AA, so a looser veil would leave the modal unreadable on a pale
+    /// capsule.
     /// </summary>
     [Fact]
     public void One_step_less_veil_would_drop_the_default_theme_under_AA()

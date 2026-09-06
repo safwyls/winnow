@@ -46,7 +46,7 @@ public partial class MainWindow : Window
         LightboxPanel.Closed += (_, _) => DetailsPanel.RestoreLightboxFocus();
 
         // See the card gesture before a child handles it, while leaving the
-        // back's buttons and scrollbar to handle their own presses.
+        // hover actions to handle their own presses.
         TileWall.AddHandler(PointerPressedEvent, OnTilePressed, RoutingStrategies.Tunnel);
 
         RequestBackdrop();
@@ -763,22 +763,9 @@ public partial class MainWindow : Window
                 e.Handled = true;
                 break;
 
-            // §8: the flip has to be reachable without a pointer, or the actions
-            // on the back of the card are mouse-only. Space is the key every
-            // toolkit already spends on "act on the selected thing"; a focused
-            // button answers it first and marks it handled, so pressing Space on
-            // Play launches rather than turning the card back.
-            case Key.Space:
-                FlipSelectedTile();
-                e.Handled = true;
-                break;
-
             case Key.Enter:
                 // §5.3 caps the tile at four facts; Enter is how you get the
-                // rest. It stays the keyboard route to the modal even though the
-                // back face now carries a Details button too — §10 names Enter
-                // and a double click as the two ways in, and the flip took the
-                // pointer one.
+                // rest, alongside the hover action and a double click.
                 _library.OpenDetailsCommand.Execute(_library.SelectedTile);
                 e.Handled = true;
                 break;
@@ -886,17 +873,6 @@ public partial class MainWindow : Window
             return;
         }
 
-        // A turned card is the newest and shallowest thing on the screen — it is
-        // one click old and it is not a cut of the library at all — so it is the
-        // first thing Escape gives back. Focus comes with it, or the next press
-        // would be answered by a button that is no longer showing.
-        if (_library.FlippedTile is not null)
-        {
-            _library.ClearFlip();
-            TakeGridFocus();
-            return;
-        }
-
         if (_library.Filters.IsOpen)
         {
             _library.Filters.IsOpen = false;
@@ -936,8 +912,8 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// A click turns the card over; a double click opens the detail modal.
-    /// Buttons and the facts scrollbar own their presses, even on repeated clicks.
+    /// A click selects the card; a double click opens the detail modal.
+    /// Buttons own their presses, including repeated clicks.
     /// </summary>
     private void OnTilePressed(object? sender, PointerPressedEventArgs e)
         => HandleTilePressed(_library, e);
@@ -972,7 +948,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        library.FlipTileCommand.Execute(tile);
+        library.SelectTile(tile);
     }
 
     /// <summary>
@@ -1130,10 +1106,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        // Moving selection turned any face-down card back over (the library
-        // keeps the two together), which may have just removed the control that
-        // had focus. Take it back to the window so the next arrow key still
-        // reaches this handler rather than falling into nothing.
+        // Keep the grid's arrow-key handler as the keyboard focus moves selection.
         TakeGridFocus();
 
         // The target is usually not realized — selection can jump a hundred
@@ -1142,64 +1115,8 @@ public partial class MainWindow : Window
         TileWall.ScrollIntoView(index);
     }
 
-    // ══ The card flip, from the keyboard ════════════════════════════════════
-    // §8 asks for the whole interface to be reachable without a pointer, and a
-    // flip that only answers a click would put Play, Add to list and Details
-    // behind a mouse. Space turns the selected card over — the key every
-    // toolkit already spends on "act on the thing that is selected" — and focus
-    // follows it in, so Tab walks the three buttons and §8's focus ring shows
-    // where it is. Escape turns it back (see UnwindCut) and returns focus here,
-    // as do the arrow keys by way of moving the selection.
-
-    /// <summary>Turns the selected card over, or back, and takes focus with it.</summary>
-    private void FlipSelectedTile()
-    {
-        if (_library is not { IsGridView: true, SelectedTile: { } tile })
-        {
-            return;
-        }
-
-        _library.FlipTileCommand.Execute(tile);
-
-        if (_library.FlippedTile is null)
-        {
-            TakeGridFocus();
-            return;
-        }
-
-        // Posted at input priority: the class that turns the back face into a
-        // hit-testable, focusable surface is applied on the next layout pass, so
-        // focusing inline would land on a control that is still face-down.
-        Dispatcher.UIThread.Post(FocusFlippedCard, DispatcherPriority.Input);
-    }
-
     /// <summary>
-    /// Puts focus on the first action on the turned card. Silently does nothing
-    /// when the container is not realized — the tile is off screen, which is not
-    /// a state Space can produce, since flipping selects and selection scrolls.
-    /// </summary>
-    private void FocusFlippedCard()
-    {
-        if (_library?.FlippedTile is not { } flipped)
-        {
-            return;
-        }
-
-        foreach (var child in TileWall.Children)
-        {
-            if (child.IsVisible
-                && ReferenceEquals(child.DataContext, flipped)
-                && child.GetVisualDescendants().OfType<Button>().FirstOrDefault(b => b.IsVisible) is { } first)
-            {
-                first.Focus(NavigationMethod.Tab);
-                return;
-            }
-        }
-    }
-
-    /// <summary>
-    /// Focus back on the window, which is where the grid's own key handling
-    /// lives. Called whenever a card goes face-up under a focused button.
+    /// Focus back on the window, which is where the grid's own key handling lives.
     /// </summary>
     private void TakeGridFocus() => Focus();
 }

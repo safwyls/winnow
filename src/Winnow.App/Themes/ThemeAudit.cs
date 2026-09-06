@@ -74,7 +74,7 @@ public static class ThemeAudit
         Floor("Flare on Surface", t["Flare"], t["Surface"], Colorimetry.AaThreshold, "seeds.flare",
             "the unread dot against the rail it sits on");
 
-        // ── §5.5: the art laid behind the back face and the modal ───────────
+        // ── §5.5: the art laid behind the detail modal ───────────────────
         // The veil is Surface at ArtVeilAlpha, so how much art reaches the eye
         // is fixed by the theme's own Surface. A Surface too light for the veil
         // leaves the text on the brightest covers under AA. Walked over every
@@ -86,7 +86,7 @@ public static class ThemeAudit
                 "seeds.surface",
                 string.Create(
                     CultureInfo.InvariantCulture,
-                    $"leaves the text on the tile's back face and in the detail modal at {artBacked:0.00}:1 over the brightest cover a game could have, under the {Colorimetry.AaThreshold:0.0}:1 §8 sets. Both surfaces lay the game's own art behind their information under a veil of this colour, so it is this colour that decides how much art gets through. The theme still loads; on a pale cover the facts will be hard to read."));
+                    $"leaves the text in the detail modal at {artBacked:0.00}:1 over the brightest cover a game could have, under the {Colorimetry.AaThreshold:0.0}:1 §8 sets. The modal lays the game's own art behind its information under a veil of this colour, so it is this colour that decides how much art gets through. The theme still loads; on a pale cover the facts will be hard to read."));
         }
 
         // ── §14: the dark field is load-bearing, and here is what it holds ──

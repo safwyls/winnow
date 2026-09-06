@@ -49,8 +49,8 @@ public sealed record WinnowTheme
         1 - ((1 - MinWallAlpha) / (1 - MinWallAlpha));
 
     /// <summary>
-    /// The dim level for art laid behind the tile's back face and the detail
-    /// modal: the alpha of a veil of the theme's own <c>Surface</c> over the
+    /// The dim level for art laid behind the detail modal: the alpha of a
+    /// veil of the theme's own <c>Surface</c> over the
     /// art. The art contributes <c>1 - ArtVeilAlpha</c>. Walked rather than
     /// assumed: 0.92 is the first whole step at which every text ink clears AA
     /// over the brightest cover the art could be, in all four themes. At 0.91
@@ -544,8 +544,8 @@ public sealed record WinnowTheme
             // any capsule, never a second opaque block on the art.
             ["TileChipGround"] = A(Ground, 0.82),
 
-            // The art veil: the tile's back face and the detail modal paint
-            // the game's own art over their opaque Surface and cover it with
+            // The art veil: the detail modal paints the game's own art over
+            // its opaque Surface and covers it with
             // this. The veil IS Surface, so over that same opaque Surface it
             // resolves to Surface exactly and a game with no art is bit-for-bit
             // the flat treatment. The free parameter is the alpha, and the art

@@ -430,7 +430,7 @@ public partial class GameTileViewModel : ObservableObject
     public Winnow.Core.Queries.FilterableRow Row { get; set; }
         = new(0, 0, string.Empty, [], string.Empty, false, false, null, [], []);
 
-    /// <summary>The §7 bucket name this tile falls in ("Never played"), for the back face.</summary>
+    /// <summary>The §7 bucket name this tile falls in ("Never played"), shared with details.</summary>
     public string BucketLabel { get; }
 
     /// <summary>
@@ -485,6 +485,12 @@ public partial class GameTileViewModel : ObservableObject
     public NoWayIn NoWayIn { get; }
 
     public bool HasPrimaryAction => PrimaryAction is not null;
+
+    /// <summary>True when the compact grid action starts the game.</summary>
+    public bool IsPlayAction => PrimaryAction?.Kind == GameLinkKind.Play;
+
+    /// <summary>True when the compact grid action opens the install flow.</summary>
+    public bool IsInstallAction => PrimaryAction?.Kind == GameLinkKind.Install;
 
     /// <summary>The button's face: "Play" or "Install", named for what it does.</summary>
     public string PrimaryActionLabel => PrimaryAction?.Label ?? string.Empty;
@@ -555,25 +561,12 @@ public partial class GameTileViewModel : ObservableObject
     [ObservableProperty]
     public partial bool IsSelected { get; set; }
 
-    /// <summary>
-    /// Whether the card is flipped to show its back face. Lives on the VM (not
-    /// the container) because the cover wall virtualizes — container state
-    /// doesn't survive recycling. Only one card is flipped at a time.
-    /// </summary>
-    [ObservableProperty]
-    public partial bool IsFlipped { get; set; }
-
-    /// <summary>Add to list, wired by the library. Null in tests.</summary>
     /// <summary>Play/Install command, wired by the library for session tracking.</summary>
     public System.Windows.Input.ICommand? PrimaryActionCommand { get; set; }
 
-    public System.Windows.Input.ICommand? AddToListCommand { get; set; }
-
     /// <summary>
-    /// The detail modal for this game. The back face carries it because the flip
-    /// took the gesture the grid used to open it with, and §10 calls that modal
-    /// the answer to §5.3's four-fact cap — a surface that must not become
-    /// unreachable.
+    /// The detail modal for this game. The hover action and double-click gesture
+    /// both use this library-owned command.
     /// </summary>
     public System.Windows.Input.ICommand? OpenDetailsCommand { get; set; }
 

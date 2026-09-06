@@ -67,10 +67,11 @@ public sealed class InstallActionRefreshTests
         Assert.Null(details.OpenableFolder);
         Assert.Equal(url, Assert.Single(details.Links).Uri);
         library.CloseDetailsCommand.Execute(null);
-        library.FlipTileCommand.Execute(library.SelectedTile);
         await library.LoadCommand.ExecuteAsync(null);
         Assert.Null(library.Details);
-        Assert.Same(Assert.Single(library.VisibleTiles), library.FlippedTile);
-        Assert.True(library.FlippedTile!.IsFlipped);
+        var refreshed = Assert.Single(library.VisibleTiles);
+        Assert.Same(refreshed, library.SelectedTile);
+        Assert.True(refreshed.IsInstallAction);
+        Assert.False(refreshed.IsPlayAction);
     }
 }

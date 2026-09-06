@@ -2118,6 +2118,60 @@ The old MainWindow pointer-handler comment said:
 > Registered on the tunnel route so the double click is caught before the
 > back face's buttons.
 
+## 2026-09-06 — Keep library covers face-up
+
+The library grid no longer turns a cover over to expose a second information surface. Compact
+Play/Install and Details icons appear over the stable cover on hover or keyboard focus, and a
+double click outside those controls still opens Details. This removes transient layout and hit
+targets from the grid without removing either direct action.
+
+The old hover-overlay specification said:
+
+> Bottom-aligned gradient scrim to `Ground` at 92%. Title in Body L, playtime and idle time in
+> Data S. A single primary action, `Play`, in `Volt`.
+>
+> The resting mark uses initials because the density slider's floor is 108px and a row of
+> word-chips is wider than the tile there; the words are reachable on hover, on the back face,
+> in the modal and in the automation name, which satisfies §8's decorative-redundant rule.
+>
+> The back's actions stay pinned below its facts. At the 108px density floor, a wrapped title
+> and multiple store chips can exceed the space above Play/Install, Add to list and Details. The
+> facts therefore scroll inside that remaining space, with the inner scrollbar gutter; they
+> cannot draw over the buttons or intercept their clicks. Buttons and the facts scrollbar own
+> repeated presses. The cover's double-click gesture applies only outside those controls.
+>
+> The flip keeps the back's hit targets still. The front squashes over 80ms, then the back fades
+> in over 80ms at its final size. Interactive back controls never scale during the turn; a click
+> near a visible button edge must hit that button while it is appearing. Reduced motion snaps
+> both faces.
+
+The old art-backed-surface specification said:
+
+> The tile's back face and the detail modal lay the game's own art behind their information.
+> Both surfaces used to be flat `Surface`, so a game lost its identity the moment the user
+> turned it over or opened it.
+>
+> The construction is identical on both. Opaque `Surface` at the bottom, then the game's art,
+> then a veil — `ArtVeil`, the theme's own `Surface` at `ArtVeilAlpha` — then the text. The opaque
+> base stops a half-decoded cover showing the window through the gap between the dormancy ramp's
+> two layers; the same argument §14.4 makes for `TileGround`.
+>
+> The veil IS `Surface`, and that is the whole trick. Over the opaque `Surface` each surface
+> already paints, a veil of `Surface` composites back to `Surface`, bit-for-bit.
+>
+> Which inks are held to 4.5:1. `Text`, `TextDim`, `Azure` and `Amber` — the four these two
+> surfaces set text in. `Flare` is excluded: on these surfaces it is a dot and never a word
+> (§5.2), and WCAG scores a non-text component against 3:1, not 4.5:1. The hovered update row is
+> measured too: `SurfaceRaisedFaint` is the one veil that sits between the ink and the field
+> rather than replacing it, and it moves the worst figure by at most 0.07. Every other hover and
+> focus fill is opaque `SurfaceRaised`, which covers the art entirely and is already held to
+> §8's floor.
+>
+> Both surfaces reuse existing image paths. The tile's back face binds the same
+> `CoverPresenter.Floor` and `CoverPresenter.Vivid` bitmaps the front face draws, from the same
+> presenter, at the same `DisplayAlpha`, with §5.1's 140ms restore and the same reduced-motion
+> snap. One image path, one lease, one decode: the cover wall's memory bound is untouched.
+
 ## Epic namespace misses — 2026-09-06
 
 The store-actions spike previously said: the 11 misses are delisted or giveaway-only titles (Frostpunk, Palia, LOTR Return to Moria, Moonlighter, ABZU, Dauntless, Drawful 2, Torchlight, Unreal Tournament, >observer_, Hob).

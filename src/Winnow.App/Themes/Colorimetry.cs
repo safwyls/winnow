@@ -205,8 +205,8 @@ public static class Colorimetry
 
 
     /// <summary>
-    /// The field the tile's back face and the detail modal put their text on:
-    /// the opaque <c>Surface</c>, then the game's art, then the
+    /// The field the detail modal puts its text on: the opaque
+    /// <c>Surface</c>, then the game's art, then the
     /// <c>ArtVeil</c> — <c>Surface</c> again at
     /// <see cref="WinnowTheme.ArtVeilAlpha"/>.
     ///
@@ -219,8 +219,8 @@ public static class Colorimetry
 
     /// <summary>
     /// The worst any text ink does on the art-backed field, over every cover
-    /// the art could be. The inks are the four these two surfaces set text
-    /// in: <c>Text</c>, <c>TextDim</c>, <c>Azure</c> and <c>Amber</c>.
+    /// the art could be. The modal's inks are <c>Text</c>, <c>TextDim</c>,
+    /// <c>Azure</c> and <c>Amber</c>.
     ///
     /// <para>The art is walked as 256 greys, which is exhaustive rather than
     /// a sample: each channel of the composite is monotone in the art's own

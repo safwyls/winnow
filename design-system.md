@@ -226,7 +226,10 @@ the event row. This is the feature that closes the loop: notice → context → 
 ### 5.3 Hover overlay
 
 Bottom-aligned gradient scrim to `Ground` at 92%. Title in Body L, playtime and
-idle time in Data S. A single primary action, `Play`, in `Volt`.
+idle time in Data S. Two compact icon actions sit at the top-left, clear of the unread badge:
+the available primary action (`Play` for an installed game, `Install` otherwise) and `Details`.
+The actions appear on pointer hover and when keyboard focus enters the tile. Each has a tooltip,
+an accessible name and the standard visible focus treatment from §8.
 
 **Stores are a chip row**, one chip per store the game is owned on, unchanged in appearance for
 a single-store tile. Chips always occupy their own row below the stats. The stat text wraps
@@ -236,7 +239,7 @@ mark at rest on the front, which fades out over 140ms as the overlay rises, exac
 baked placeholder title does. The chips are the one "where you own it" fact, drawn once, so
 the four-fact cap is not breached. The resting mark uses initials because the density slider's
 floor is 108px and a row of word-chips is wider than the tile there; the words are reachable on
-hover, on the back face, in the modal and in the automation name, which satisfies §8's
+hover, in the modal and in the automation name, which satisfies §8's
 decorative-redundant rule.
 
 **A tile that folded an expansion carries a second resting mark**, bottom-right, in the same pip
@@ -250,17 +253,11 @@ and never `Volt`, which is selection.
 
 **Do not show more than four facts.** The tile is a decision surface, not a detail view.
 
-**The back's actions stay pinned below its facts.** At the 108px density floor, a wrapped
-title and multiple store chips can exceed the space above Play/Install, Add to list and
-Details. The facts therefore scroll inside that remaining space, with the inner scrollbar
-gutter; they cannot draw over the buttons or intercept their clicks. Buttons and the facts
-scrollbar own repeated presses. The cover's double-click gesture applies only outside those
-controls.
-
-**The flip keeps the back's hit targets still.** The front squashes over 80ms, then the back
-fades in over 80ms at its final size. Interactive back controls never scale during the turn;
-a click near a visible button edge must hit that button while it is appearing. Reduced motion
-snaps both faces.
+**The cover stays face-up.** Hover and focus reveal actions without replacing, scaling or
+moving the cover, so their hit targets are stable throughout the 140ms overlay transition.
+Each icon has at least a 32px square hit target at the 108px density floor. A press on an icon
+belongs only to that control; a double click elsewhere on the tile opens Details. Selection,
+store marks, expansion marks and the unread badge remain available without revealing actions.
 
 ### 5.4 How the ramp is drawn
 
@@ -284,18 +281,17 @@ item in a row for a trailing gutter when it computes items-per-line for the scro
 packs rows greedily when it places them, so §4's flush-row geometry made the two disagree by one
 column at every window width. `CoverWall`'s remarks carry the measurements.
 
-### 5.5 Art-backed surfaces
+### 5.5 Art-backed detail surface
 
-**The tile's back face and the detail modal lay the game's own art behind their
-information.** Both surfaces used to be flat `Surface`, so a game lost its identity the moment
-the user turned it over or opened it.
+**The detail modal lays the game's own art behind its information.** It used to be flat
+`Surface`, so a game lost its identity the moment the user opened it.
 
-**The construction is identical on both.** Opaque `Surface` at the bottom, then the game's art,
+**The construction is layered.** Opaque `Surface` at the bottom, then the game's art,
 then a veil — `ArtVeil`, the theme's own `Surface` at `ArtVeilAlpha` — then the text. The opaque
 base stops a half-decoded cover showing the window through the gap between the dormancy ramp's
 two layers; the same argument §14.4 makes for `TileGround`.
 
-**The veil IS `Surface`, and that is the whole trick.** Over the opaque `Surface` each surface
+**The veil IS `Surface`, and that is the whole trick.** Over the opaque `Surface` the modal
 already paints, a veil of `Surface` composites back to `Surface`, bit-for-bit. A game with no
 art draws no image and gets the flat treatment exactly — no tone step, and no layout shift,
 because the art and the veil are siblings in a `Panel` and take no space of their own.
@@ -313,8 +309,8 @@ At 0.91 Winnow lands at 4.49:1, one hundredth under AA. Winnow is the theme that
 value, because it has the lightest `Surface` of the cool three. Tungsten is the one theme where
 the binding ink is `Amber` rather than `TextDim`.
 
-**Which inks are held to 4.5:1.** `Text`, `TextDim`, `Azure` and `Amber` — the four these two
-surfaces set text in. `Flare` is excluded: on these surfaces it is a dot and never a word
+**Which inks are held to 4.5:1.** `Text`, `TextDim`, `Azure` and `Amber` — the four inks the
+detail surface sets text in. `Flare` is excluded: on this surface it is a dot and never a word
 (§5.2), and WCAG scores a non-text component against 3:1, not 4.5:1. The hovered update row is
 measured too: `SurfaceRaisedFaint` is the one veil that sits between the ink and the field
 rather than replacing it, and it moves the worst figure by at most 0.07. Every other hover and
@@ -328,12 +324,9 @@ The walk runs at every whole percent of the transparency slider; `Surface` never
 so the veil never walks with it, and `TextDim` brightening under the ink ramp only improves the
 figure. Slider zero is the worst case.
 
-**Both surfaces reuse existing image paths.** The tile's back face binds the same
-`CoverPresenter.Floor` and `CoverPresenter.Vivid` bitmaps the front face draws, from the same
-presenter, at the same `DisplayAlpha`, with §5.1's 140ms restore and the same reduced-motion
-snap. One image path, one lease, one decode: the cover wall's memory bound is untouched. The
-modal binds `GameDetailsViewModel.Cover`, the 200px bitmap it already asks the cover cache for
-at full saturation — §10's rule, that the ramp is a scanning aid and the user has finished
+**The modal reuses its existing image path.** It binds `GameDetailsViewModel.Cover`, the 200px
+bitmap it already asks the cover cache for at full saturation — §10's rule, that the ramp is a
+scanning aid and the user has finished
 scanning. That bitmap is upscaled to a card up to 1582px wide, and the upscale is what softens
 it; Avalonia's effect pipeline is closed (§5.4) and nothing here needs it to be open.
 
