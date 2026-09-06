@@ -419,6 +419,11 @@
          sets Padding="0" and clears the bar with the wall's own margin. -->
     <Thickness x:Key="InnerScrollGutter">0,0,20,0</Thickness>
 
+    <!-- The same clearance turned through ninety degrees, for a region whose
+         bar is horizontal and therefore drawn over the foot of its content
+         rather than over its trailing edge. Same width, same argument. -->
+    <Thickness x:Key="InnerScrollGutterBottom">0,0,0,20</Thickness>
+
     <!-- Fluent binds this to Rectangle.StrokeThickness, which is a double —
          a Thickness here type-casts at runtime, not at build. -->
     <x:Double x:Key="ScrollBarTrackBorderThemeThickness">0</x:Double>

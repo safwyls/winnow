@@ -297,6 +297,16 @@ public static class Program
                         await services.GetRequiredService<IgdbMaturitySync>()
                             .SyncAsync(Shutdown.Token);
 
+                        // Screenshots, artworks and the three reception
+                        // figures. Deliberately not riding EnrichmentSyncService:
+                        // its target query returns only works still missing a
+                        // metadata column, so a fully enriched work would never
+                        // be revisited and would never get screenshots. Both
+                        // halves are cache-first, so a warm library costs no
+                        // requests at all.
+                        await services.GetRequiredService<ReceptionSyncService>()
+                            .SyncAsync(Shutdown.Token);
+
                         await services.GetRequiredService<LibrarySoftMatchSweep>()
                             .SweepAsync(Shutdown.Token);
 
@@ -509,6 +519,15 @@ public static class Program
         // both read this table, so registering it here is what makes a pin
         // survive an automatic enrichment pass.
         services.AddSingleton<IWorkIgdbPinRepository, WorkIgdbPinRepository>();
+
+        // Screenshots, artworks and the three reception figures (migration
+        // 0028). One row per (work, source, kind) and per (work, source), so
+        // IGDB's users, IGDB's critics and Steam's reviewers each keep their
+        // own reading and no figure is ever blended with another. The
+        // enrichment pass and the per-game refetch are the writers; the
+        // details modal is the only reader.
+        services.AddSingleton<IWorkImageRepository, WorkImageRepository>();
+        services.AddSingleton<IWorkRatingRepository, WorkRatingRepository>();
 
         // Per-field provenance (migration 0027). Each user-visible metadata
         // field on a work carries its own source, and that source IS the truth
@@ -822,6 +841,17 @@ public static class Program
 
         services.AddSingleton<EnrichmentSyncService>();
         services.AddSingleton<FacetSyncService>();
+
+        // Reception (migration 0028). The library-wide pass and the App-layer
+        // seam in front of the per-game refetch the details modal offers. The
+        // pass is cache-first through both clients, so a warm library costs
+        // zero requests; the refetch is the one path that bypasses the TTLs,
+        // and it is held back by a per-work cooldown on top of the two
+        // clients' own rate limiters.
+        services.AddSingleton<WorkReceptionWriter>();
+        services.AddSingleton<ReceptionSyncService>();
+        services.AddSingleton<GameRefetchService>();
+        services.AddSingleton<IGameRefetch>(sp => sp.GetRequiredService<GameRefetchService>());
 
         // M2 (§4.5): the two update signals behind "Patched". Both
         // endpoints are keyless, so there is no unconfigured state to handle.

@@ -51,6 +51,17 @@ public static class UnreadCopy
     }
 
     /// <summary>
+    /// The accessible name of one update row in the details modal. The
+    /// <c>Flare</c> dot is a mark and §8's decorative-redundant rule wants the
+    /// same fact as text, so the row's accessible name states in words whether
+    /// it landed since the last session.
+    /// </summary>
+    public static string UpdateRow(string headline, string dateText, bool isUnread) =>
+        isUnread
+            ? $"{headline}, {dateText}. Landed since you played."
+            : $"{headline}, {dateText}.";
+
+    /// <summary>
     /// The accessible name of one rail bucket row. The row is a Button whose
     /// content is a Grid, and <c>ContentControlAutomationPeer.GetNameCore</c>
     /// falls back to <c>Content?.ToString()</c> when the button has no name of
@@ -62,6 +73,7 @@ public static class UnreadCopy
     /// is the one thing the Patched row says that no other row does, which is
     /// exactly what the pip means (§6).</para>
     /// </summary>
+
     public static string RailBucket(string railLabel, string countText, bool showsFlarePip) =>
         showsFlarePip
             ? $"{railLabel}, {countText} games with unread updates"

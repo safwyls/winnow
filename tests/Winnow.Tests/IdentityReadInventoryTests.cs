@@ -91,6 +91,14 @@ public sealed class IdentityReadInventoryTests
             + "here would starve the child of the enrichment whose igdb_id is what fills the "
             + "group."),
 
+        new("src/Winnow.App/ViewModels/LibraryViewModel.cs", "BuildAcquisitionAsync",
+            Policy.DoNotResolve,
+            "Acquisition facts belong to the copy, not to the game. The date a licence arrived "
+            + "and the licence it arrived under are properties of the ownership row the user "
+            + "actually holds, and the details modal draws them in the object column for exactly "
+            + "that reason. Resolving would answer a question about this copy with another "
+            + "copy's licence."),
+
         new("src/Winnow.Data/Repositories/WorkRepository.cs", "GetAllAsync", Policy.DoNotResolve,
             "The unresolved catalogue every enrichment pass walks. Resolving it would hide the "
             + "child from the passes that are supposed to reach it."),

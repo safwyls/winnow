@@ -11,5 +11,5 @@ public static class GameActionBandCopy
     public const string OpenLabel = "More";
 
     /// <summary>Tooltip on the trigger.</summary>
-    public const string OpenTooltip = "Folder, corrections and hide";
+    public const string OpenTooltip = "Folder, metadata, corrections and hide";
 }

@@ -13,6 +13,12 @@
          does not render inside a popup. Everything else is inline in the
          modal's own tree for the same reason.
 
+         A label section heading in Band 4 is earned by a list of rows the
+         user can act on; ABOUT is the single prose exception. A fact about
+         the game goes in Band 1, a fact about this copy goes in the left
+         column, a picture goes inside ABOUT, and an act goes in the More
+         menu with its status on the strip.
+
          Two inks, one line between them. Body prose — a paragraph the
          user reads, a section blurb, the gap rail's caption — takes
          Text, §2's primary ink. Labels, metadata, status lines and
@@ -260,6 +266,44 @@
             <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
         </Style>
 
+        <!-- The refetch status field. TextDim while an act is running and
+             after it lands, Amber when it did not: the same register the rest
+             of this panel uses for a status line and for a refusal. The ink is
+             a class rather than a bound brush, so no view model reaches for a
+             theme resource. -->
+        <Style Selector="TextBlock.actstatus">
+            <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
+        </Style>
+        <Style Selector="TextBlock.actstatus.problem">
+            <Setter Property="Foreground" Value="{StaticResource Amber}"/>
+        </Style>
+
+        <!-- A screenshot thumbnail. A real Button, so it is a Tab stop with
+             the panel's own drawn focus ring; the selected shot keeps a Volt
+             edge on a border whose thickness never changes (§10.7). -->
+        <Style Selector="Button.shot">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="2"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="Button.shot /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="{StaticResource LineSoft}"/>
+            <Setter Property="Padding" Value="0"/>
+        </Style>
+        <Style Selector="Button.shot:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="BorderBrush" Value="{StaticResource TextDim}"/>
+        </Style>
+        <Style Selector="Button.shot.picked /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+        </Style>
+        <Style Selector="Button.shot:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
+        </Style>
+
     </UserControl.Styles>
 
     <Panel>
@@ -328,12 +372,28 @@
                         <StackPanel Grid.Row="0" Spacing="16">
 
                             <!-- ── Band 1: what is this ───────────────────────── -->
-                            <StackPanel Spacing="6">
+                            <!-- The band is a named group in the UIA tree.
+                                 AccessibilityView=Control is what un-prunes a
+                                 StackPanel, whose own peer reports itself out of
+                                 the control view; AutomationControlType.None maps
+                                 to the UIA Group type, so it reads as a named
+                                 group rather than as nothing. Verified against
+                                 the Avalonia 11.3.20 source (TASK-129). -->
+                            <StackPanel Spacing="6"
+                                        AutomationProperties.Name="{Binding IdentityGroupName}"
+                                        AutomationProperties.AccessibilityView="Control">
                                 <Grid ColumnDefinitions="*,Auto">
+                                    <!-- HeadingLevel is one of the four attached
+                                         properties Avalonia 11.3.20 actually
+                                         wires to Windows UIA; the title is the
+                                         modal's level-1 heading. The name comes
+                                         from Text, because a TextBlock peer
+                                         ignores AutomationProperties.Name. -->
                                     <SelectableTextBlock Grid.Column="0"
                                                Classes="display-l copyable"
                                                Focusable="True"
                                                FontSize="26"
+                                               AutomationProperties.HeadingLevel="1"
                                                Text="{Binding Title}"
                                                TextWrapping="Wrap"
                                                LineHeight="30"
@@ -342,6 +402,7 @@
                                             Name="CloseButton"
                                             VerticalAlignment="Top"
                                             Click="OnClosePressed"
+                                            AutomationProperties.Name="{Binding CloseAutomationName}"
                                             ToolTip.Tip="Close (Esc)">
                                         <TextBlock Classes="body-l"
                                                    Foreground="{StaticResource TextDim}"
@@ -367,6 +428,58 @@
                                                IsVisible="{Binding HasPublisher}"
                                                Text="{Binding Publisher}"/>
                                 </StackPanel>
+
+                                <!-- The reception line: up to three figures, each
+                                     named for the population behind it and each
+                                     carrying its count, because a 9 from four
+                                     people and a 9 from four thousand are
+                                     different claims. Never blended, never a
+                                     verdict of Winnow's own. Steam's label is
+                                     not on the line: it arrives with the
+                                     percentage and the count on hover.
+
+                                     No source with a figure means no row in
+                                     work_ratings, which means no line — never a
+                                     zero and never an empty scale.
+
+                                     A WrapPanel, not a horizontal StackPanel:
+                                     "IGDB CRITICS 85 42 critic scores" beside
+                                     two more groups does not fit the 420px
+                                     column at the card's MinWidth, and the
+                                     line's second row is cheaper than trimming
+                                     a count away. -->
+                                <ItemsControl ItemsSource="{Binding Reception.Figures}"
+                                              IsVisible="{Binding ShowReception}"
+                                              AutomationProperties.Name="{Binding Reception.AutomationName}"
+                                              AutomationProperties.AccessibilityView="Control"
+                                              AutomationProperties.ControlTypeOverride="Group">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <WrapPanel Orientation="Horizontal"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="vm:ReceptionFigureViewModel">
+                                            <StackPanel Orientation="Horizontal"
+                                                        Spacing="6"
+                                                        Margin="0,0,14,0"
+                                                        ToolTip.Tip="{Binding Tooltip}"
+                                                        AutomationProperties.Name="{Binding AutomationName}"
+                                                        AutomationProperties.AccessibilityView="Control">
+                                                <TextBlock Classes="label" FontSize="10"
+                                                           VerticalAlignment="Center"
+                                                           Text="{Binding Source}"/>
+                                                <TextBlock Classes="data" FontSize="13"
+                                                           VerticalAlignment="Center"
+                                                           Foreground="{StaticResource Text}"
+                                                           Text="{Binding Value}"/>
+                                                <TextBlock Classes="data-s"
+                                                           VerticalAlignment="Center"
+                                                           Text="{Binding Count}"/>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
 
                                 <!-- A provisional title is an appid wearing a
                                      title's clothes. Saying so is the difference
@@ -421,7 +534,9 @@
                             </StackPanel>
 
                             <!-- ── Band 2: my history ─────────────────────────── -->
-                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="26">
+                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="26"
+                                  AutomationProperties.Name="{Binding HistoryGroupName}"
+                                  AutomationProperties.AccessibilityView="Control">
 
                                 <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Top">
                                     <TextBlock Classes="data"
@@ -430,10 +545,82 @@
                                     <TextBlock Classes="label" FontSize="10" Text="PLAYED"/>
                                 </StackPanel>
 
-                                <!-- The gap: last session → now, with what shipped
-                                     in between. §10's signature. -->
+                                <!-- The lifetime axis: this game's release to
+                                     today, in two zones. The left zone is play
+                                     whose AMOUNT Winnow knows and whose SHAPE it
+                                     does not, drawn as a flat band and never as
+                                     a slope, because the reconstructed series
+                                     stamps everything before Steam Replay's
+                                     coverage as one figure at one instant. The
+                                     right zone is one bar per closed month, from
+                                     the month-end readings that are the only
+                                     genuinely per-month data in the table.
+                                     Sessions are not mixed in: they exist only
+                                     from Winnow's own install and would make a
+                                     game played for years before it look
+                                     dormant for those years. -->
                                 <StackPanel Grid.Column="1" Spacing="7"
-                                            IsVisible="{Binding HasGap}">
+                                            IsVisible="{Binding ShowAxis}">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBlock Grid.Column="0" Classes="label"
+                                                   FontSize="10" Text="SINCE YOU PLAYED"/>
+                                        <TextBlock Grid.Column="1" Classes="data"
+                                                   FontSize="14"
+                                                   Foreground="{StaticResource Text}"
+                                                   Text="{Binding IdleText}"/>
+                                    </Grid>
+
+                                    <views:PlayAxis Bars="{Binding Axis.Bars}"
+                                                    UnmeasuredFraction="{Binding Axis.UnmeasuredFraction}"
+                                                    StopFraction="{Binding Axis.StopFraction}"
+                                                    Marks="{Binding Axis.Marks}"
+                                                    NearBrush="{StaticResource Volt}"
+                                                    FarBrush="{StaticResource Line}"
+                                                    MarkBrush="{StaticResource Flare}"
+                                                    MarkRingBrush="{StaticResource Surface}"
+                                                    ToolTip.Tip="{Binding AxisTooltip}"/>
+
+                                    <Grid ColumnDefinitions="Auto,*,Auto">
+                                        <TextBlock Grid.Column="0" Classes="data-s"
+                                                   Text="{Binding AxisStartText}"/>
+                                        <TextBlock Grid.Column="2" Classes="data-s"
+                                                   Text="today"/>
+                                    </Grid>
+
+                                    <!-- Everything the axis draws is restated in
+                                         words (§10.2, §8), and the words are what
+                                         carry the fact for a reader who cannot
+                                         resolve a 7px dot. The carrier of a fact
+                                         is primary text, so these take .body's
+                                         own Text ink and state no Foreground.
+                                         The first names whose hours these are —
+                                         the user's own, never a player
+                                         population, which no source Winnow can
+                                         reach reports. -->
+                                    <TextBlock Classes="body" FontSize="12"
+                                               LineHeight="17"
+                                               TextWrapping="Wrap"
+                                               Text="{Binding AxisOwnHoursNote}"/>
+
+                                    <TextBlock Classes="body" FontSize="12"
+                                               LineHeight="17"
+                                               TextWrapping="Wrap"
+                                               IsVisible="{Binding ShowAxisUnmeasured}"
+                                               Text="{Binding AxisUnmeasuredNote}"/>
+
+                                    <TextBlock Classes="body" FontSize="12"
+                                               LineHeight="17"
+                                               TextWrapping="Wrap"
+                                               Text="{Binding AxisLastSessionLine}"/>
+                                </StackPanel>
+
+                                <!-- No release year, or fewer than two month-end
+                                     readings, means no axis: there is no measured
+                                     month to draw and a single flat line would be
+                                     the misleading drawing. The shipped gap rail
+                                     stands unchanged in that case. -->
+                                <StackPanel Grid.Column="1" Spacing="7"
+                                            IsVisible="{Binding ShowGapRail}">
                                     <Grid ColumnDefinitions="*,Auto">
                                         <TextBlock Grid.Column="0" Classes="label"
                                                    FontSize="10" Text="SINCE YOU PLAYED"/>
@@ -500,7 +687,9 @@
                                  strip; Open folder, corrections and Hide fold
                                  behind a More button whose MenuFlyout floats
                                  over the modal and reflows nothing. -->
-                            <StackPanel Orientation="Horizontal" Spacing="10">
+                            <StackPanel Orientation="Horizontal" Spacing="10"
+                                        AutomationProperties.Name="{Binding ActionsGroupName}"
+                                        AutomationProperties.AccessibilityView="Control">
                                 <!-- steam://run when it is on disk, steam://install
                                      when it is not. The button is named for what it
                                      does, so it cannot promise the wrong thing. -->
@@ -508,6 +697,7 @@
                                         Name="LaunchButton"
                                         IsVisible="{Binding HasPrimaryAction}"
                                         Content="{Binding PrimaryAction.Label}"
+                                        AutomationProperties.Name="{Binding LaunchAutomationName}"
                                         ToolTip.Tip="{Binding PrimaryAction.Tooltip}"
                                         Command="{Binding Tile.PrimaryActionCommand}"
                                         CommandParameter="{Binding Tile}"/>
@@ -522,6 +712,7 @@
                                         <DataTemplate DataType="vm:GameLink">
                                             <Button Classes="link"
                                                     Click="OnLinkPressed"
+                                                    AutomationProperties.Name="{Binding Tooltip}"
                                                     ToolTip.Tip="{Binding Tooltip}">
                                                 <TextBlock Classes="body" FontSize="12"
                                                            Text="{Binding Label}"/>
@@ -557,6 +748,20 @@
                                                       Header="Open folder"
                                                       IsVisible="{Binding HasOpenableFolder}"
                                                       ToolTip.Tip="{Binding InstallPath}"/>
+
+                                            <!-- Refetch is in the menu and not on the
+                                                 strip: the strip is "get me in", and
+                                                 re-asking a source about this game
+                                                 moves nobody closer to playing it.
+                                                 Its status lands on a line in Band 3
+                                                 outside the rest band's scroll region,
+                                                 so an act started from a popup is
+                                                 answered where it can always be seen. -->
+                                            <MenuItem Name="RefetchItem"
+                                                      Header="{Binding Refetch.MenuLabel}"
+                                                      IsVisible="{Binding ShowRefetch}"
+                                                      Command="{Binding Refetch.RefetchCommand}"
+                                                      ToolTip.Tip="{Binding Refetch.MenuTooltip}"/>
 
                                             <!-- The row keeps one name regardless of
                                                  whether the section is open — the
@@ -603,6 +808,29 @@
                                                Text="{Binding MoreActionsLabel}"/>
                                 </Button>
                             </StackPanel>
+
+                            <!-- The refetch status field. It is a live region:
+                                 changing an AutomationProperties.Name at runtime
+                                 raises no UIA event, but TextBlockAutomationPeer
+                                 raises a Name change whenever Text changes, and
+                                 AutomationNode turns that into a live-region
+                                 event while LiveSetting is not Off (verified
+                                 against the Avalonia 11.3.20 source). So the
+                                 name here IS the bound Text, and no
+                                 AutomationProperties.Name is set.
+
+                                 It sits in Band 3, outside the rest band's
+                                 bounded scroll region, so a status that lands
+                                 while the user is reading the foot of the modal
+                                 is still on screen. Absent entirely at rest. -->
+                            <TextBlock Classes="body actstatus"
+                                       Name="RefetchStatus"
+                                       FontSize="12" LineHeight="17"
+                                       TextWrapping="Wrap"
+                                       AutomationProperties.LiveSetting="Polite"
+                                       Classes.problem="{Binding Refetch.IsProblem, FallbackValue=False}"
+                                       IsVisible="{Binding Refetch.HasStatus, FallbackValue=False}"
+                                       Text="{Binding Refetch.Status}"/>
 
                         </StackPanel>
 
@@ -673,6 +901,7 @@
                                     <TextBlock Grid.Column="0"
                                                Classes="label section"
                                                VerticalAlignment="Center"
+                                               AutomationProperties.HeadingLevel="2"
                                                Text="{Binding SectionHeading}"/>
                                     <Button Grid.Column="1" Classes="quiet"
                                             Name="MatchCloseButton"
@@ -896,302 +1125,32 @@
 
                         <StackPanel Spacing="22" Margin="0,18,0,24">
 
-                            <!-- ALSO COVERS. The user's fourth complaint answered:
-                                 this game also covers these titles. First in the
-                                 band because it is a fact about identity, and it
-                                 draws only when there is coverage to draw.
-
-                                 Every row carries ONE entry's minutes beside THAT
-                                 SAME entry's last-played. The total above them is a
-                                 sum across stores - Winnow's own composite, which no
-                                 source reports - and it carries its own coherent
-                                 date, the latest anywhere in the group. The rows
-                                 stay on screen underneath so the composite can be
-                                 checked against its parts.
-
-                                 Achievements are per release (6.2), on the release's
-                                 own row. There is no combined percentage here and no
-                                 property that could produce one. -->
-                            <StackPanel IsVisible="{Binding ShowCoverage}">
-                            <StackPanel Spacing="10"
-                                        DataContext="{Binding Coverage}"
-                                        x:DataType="vm:GameCoverageViewModel">
-                                <TextBlock Classes="label section" Text="{Binding Heading}"/>
-
-                                <Grid ColumnDefinitions="Auto,Auto,*,Auto" ColumnSpacing="12">
-                                    <TextBlock Grid.Column="0" Classes="label" FontSize="10"
-                                               VerticalAlignment="Center"
-                                               Text="{Binding TotalLabel}"/>
-                                    <TextBlock Grid.Column="1" Classes="data"
-                                               FontSize="18"
-                                               VerticalAlignment="Center"
-                                               Foreground="{StaticResource Text}"
-                                               Text="{Binding TotalPlaytimeText}"/>
-                                    <TextBlock Grid.Column="2" Classes="body" FontSize="12"
-                                               VerticalAlignment="Center"
-                                               TextWrapping="Wrap"
-                                               Foreground="{StaticResource TextDim}"
-                                               Text="{Binding TotalNote}"/>
-                                    <TextBlock Grid.Column="3" Classes="data-s"
-                                               VerticalAlignment="Center"
-                                               Text="{Binding TotalLastPlayedText}"/>
-                                </Grid>
-
-                                <ItemsControl ItemsSource="{Binding Rows}">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate DataType="vm:CoverageRowViewModel">
-                                            <Border BorderBrush="{StaticResource Line}"
-                                                    BorderThickness="0,0,0,1"
-                                                    Padding="0,9">
-                                                <StackPanel Spacing="4">
-                                                    <Grid ColumnDefinitions="52,*,Auto,Auto,Auto"
-                                                          ColumnSpacing="10">
-                                                        <TextBlock Grid.Column="0" Classes="data-s"
-                                                                   VerticalAlignment="Center"
-                                                                   Text="{Binding StoreBadge}"/>
-                                                        <TextBlock Grid.Column="1" Classes="body"
-                                                                   VerticalAlignment="Center"
-                                                                   TextTrimming="CharacterEllipsis"
-                                                                   Text="{Binding Title}"/>
-                                                        <TextBlock Grid.Column="2" Classes="data-s"
-                                                                   VerticalAlignment="Center"
-                                                                   Text="{Binding PlaytimeText}"/>
-                                                        <TextBlock Grid.Column="3" Classes="data-s"
-                                                                   VerticalAlignment="Center"
-                                                                   Text="{Binding LastPlayedText}"/>
-                                                        <Button Grid.Column="4" Classes="quiet"
-                                                                IsVisible="{Binding IsCovered}"
-                                                                AutomationProperties.Name="{Binding SeparateAutomationName}"
-                                                                ToolTip.Tip="{Binding SeparateTooltip}"
-                                                                CommandParameter="{Binding}"
-                                                                Command="{Binding $parent[ItemsControl].((vm:GameCoverageViewModel)DataContext).SeparateCommand}">
-                                                            <TextBlock Classes="body" FontSize="12"
-                                                                       Text="{Binding SeparateLabel}"/>
-                                                        </Button>
-                                                    </Grid>
-
-                                                    <StackPanel IsVisible="{Binding HasAchievements}">
-                                                    <Grid ColumnDefinitions="52,Auto,Auto,*"
-                                                          ColumnSpacing="10"
-                                                          DataContext="{Binding Achievements}"
-                                                          x:DataType="vm:ReleaseAchievementRowViewModel">
-                                                        <TextBlock Grid.Column="1" Classes="label"
-                                                                   FontSize="10"
-                                                                   VerticalAlignment="Center"
-                                                                   Text="{Binding Label}"/>
-                                                        <TextBlock Grid.Column="2" Classes="data-s"
-                                                                   VerticalAlignment="Center"
-                                                                   Text="{Binding CountText}"/>
-                                                        <TextBlock Grid.Column="3" Classes="data-s"
-                                                                   VerticalAlignment="Center"
-                                                                   Text="{Binding PercentText}"/>
-                                                    </Grid>
-                                                    </StackPanel>
-                                                </StackPanel>
-                                            </Border>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-
-                                <TextBlock Classes="body" FontSize="11"
-                                           TextWrapping="Wrap"
-                                           Foreground="{StaticResource Amber}"
-                                           IsVisible="{Binding HasProblem}"
-                                           Text="{Binding Problem}"/>
-                            </StackPanel>
-                            </StackPanel>
-
-                            <!-- EXTENDS.
-                                 The other end of the relation, on a pack's own
-                                 modal. It names the base game and offers the same
-                                 retraction, so the grouping can be undone from
-                                 either side. The link's child is this game, not
-                                 the row, which is why the control retracts the
-                                 right link from here. -->
-                            <StackPanel IsVisible="{Binding ShowExtends}">
-                            <StackPanel Spacing="10"
-                                        DataContext="{Binding Expansions}"
-                                        x:DataType="vm:GameExpansionsViewModel">
-                                <TextBlock Classes="label section" Text="{Binding ExtendsHeading}"/>
-                                <ContentControl Content="{Binding Extends}">
-                                    <ContentControl.ContentTemplate>
-                                        <DataTemplate DataType="vm:ExpansionRowViewModel">
-                                            <Grid ColumnDefinitions="*,Auto,Auto,Auto"
-                                                  ColumnSpacing="10">
-                                                <TextBlock Grid.Column="0" Classes="body"
-                                                           VerticalAlignment="Center"
-                                                           TextTrimming="CharacterEllipsis"
-                                                           Text="{Binding Title}"/>
-                                                <TextBlock Grid.Column="1" Classes="data-s"
-                                                           VerticalAlignment="Center"
-                                                           Text="{Binding PlaytimeText}"/>
-                                                <TextBlock Grid.Column="2" Classes="data-s"
-                                                           VerticalAlignment="Center"
-                                                           Text="{Binding LastPlayedText}"/>
-                                                <Button Grid.Column="3" Classes="quiet"
-                                                        AutomationProperties.Name="{Binding UngroupAutomationName}"
-                                                        ToolTip.Tip="{Binding UngroupTooltip}"
-                                                        CommandParameter="{Binding}"
-                                                        Command="{Binding $parent[ContentControl].((vm:GameExpansionsViewModel)DataContext).UngroupCommand}">
-                                                    <TextBlock Classes="body" FontSize="12"
-                                                               Text="{Binding UngroupLabel}"/>
-                                                </Button>
-                                            </Grid>
-                                        </DataTemplate>
-                                    </ContentControl.ContentTemplate>
-                                </ContentControl>
-                                <TextBlock Classes="body" FontSize="12"
-                                           TextWrapping="Wrap"
-                                           Text="{Binding ExtendsNote}"/>
-                            </StackPanel>
-                            </StackPanel>
-
-                            <!-- EXPANSIONS.
-                                 The same treatment ALSO COVERS uses, with one
-                                 deliberate omission: NO TOTAL. Coverage sums
-                                 because two store entries are one game being
-                                 played; expansions do not, because they are
-                                 separate products and a sum of the two is a figure
-                                 no source reported about either. Each row carries
-                                 its own minutes beside its own last-played, and
-                                 nothing here adds two rows together.
-
-                                 The two sections are never merged: a covered
-                                 title is this same game on another store, an
-                                 expansion is a different product. -->
-                            <StackPanel IsVisible="{Binding ShowExpansions}">
-                            <StackPanel Spacing="10"
-                                        DataContext="{Binding Expansions}"
-                                        x:DataType="vm:GameExpansionsViewModel">
-                                <TextBlock Classes="label section" Text="{Binding Heading}"/>
-                                <TextBlock Classes="body" FontSize="12"
-                                           TextWrapping="Wrap"
-                                           Text="{Binding Note}"/>
-
-                                <ItemsControl ItemsSource="{Binding Expansions}">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate DataType="vm:ExpansionRowViewModel">
-                                            <Border BorderBrush="{StaticResource Line}"
-                                                    BorderThickness="0,0,0,1"
-                                                    Padding="0,9">
-                                                <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto"
-                                                      ColumnSpacing="10">
-                                                    <ItemsControl Grid.Column="0"
-                                                                  VerticalAlignment="Center"
-                                                                  IsVisible="{Binding HasStores}"
-                                                                  ToolTip.Tip="{Binding StoreNames}"
-                                                                  ItemsSource="{Binding StoreChips}">
-                                                        <ItemsControl.ItemsPanel>
-                                                            <ItemsPanelTemplate>
-                                                                <StackPanel Orientation="Horizontal" Spacing="4"/>
-                                                            </ItemsPanelTemplate>
-                                                        </ItemsControl.ItemsPanel>
-                                                        <ItemsControl.ItemTemplate>
-                                                            <DataTemplate>
-                                                                <Border Classes="store-chip">
-                                                                    <TextBlock Text="{Binding}"/>
-                                                                </Border>
-                                                            </DataTemplate>
-                                                        </ItemsControl.ItemTemplate>
-                                                    </ItemsControl>
-                                                    <TextBlock Grid.Column="1" Classes="body"
-                                                               VerticalAlignment="Center"
-                                                               TextTrimming="CharacterEllipsis"
-                                                               Text="{Binding Title}"/>
-                                                    <TextBlock Grid.Column="2" Classes="data-s"
-                                                               VerticalAlignment="Center"
-                                                               Text="{Binding PlaytimeText}"/>
-                                                    <TextBlock Grid.Column="3" Classes="data-s"
-                                                               VerticalAlignment="Center"
-                                                               Text="{Binding LastPlayedText}"/>
-                                                    <Button Grid.Column="4" Classes="quiet"
-                                                            AutomationProperties.Name="{Binding UngroupAutomationName}"
-                                                            ToolTip.Tip="{Binding UngroupTooltip}"
-                                                            CommandParameter="{Binding}"
-                                                            Command="{Binding $parent[ItemsControl].((vm:GameExpansionsViewModel)DataContext).UngroupCommand}">
-                                                        <TextBlock Classes="body" FontSize="12"
-                                                                   Text="{Binding UngroupLabel}"/>
-                                                    </Button>
-                                                </Grid>
-                                            </Border>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-
-                                <TextBlock Classes="body" FontSize="11"
-                                           TextWrapping="Wrap"
-                                           Foreground="{StaticResource Amber}"
-                                           IsVisible="{Binding HasProblem}"
-                                           Text="{Binding Problem}"/>
-                            </StackPanel>
-                            </StackPanel>
-
-                            <!-- LISTS.
-                                 Between EXPANSIONS and ABOUT: one checkbox per
-                                 hand-built list, ticked when the game is already
-                                 a member. Live lists are excluded — they hold a
-                                 rule and find their own members. The section is
-                                 drawn even when the user has no lists yet; §7
-                                 says an empty state is a direction, not a mood,
-                                 so it points at where a list is made. -->
-                            <StackPanel IsVisible="{Binding ShowLists}">
-                            <StackPanel Spacing="10"
-                                        DataContext="{Binding Lists}"
-                                        x:DataType="lists:GameListsViewModel">
-                                <TextBlock Classes="label section" Text="{Binding Heading}"/>
-
-                                <TextBlock Classes="body" FontSize="12"
-                                           TextWrapping="Wrap"
-                                           LineHeight="18"
-                                           IsVisible="{Binding IsEmpty}"
-                                           Text="{Binding EmptyText}"/>
-
-                                <ItemsControl IsVisible="{Binding HasLists}"
-                                              ItemsSource="{Binding Rows}">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate DataType="lists:GameListEntryViewModel">
-                                            <CheckBox Classes="listtick"
-                                                      IsChecked="{Binding IsMember, Mode=TwoWay}"
-                                                      AutomationProperties.Name="{Binding AutomationName}"
-                                                      ToolTip.Tip="{Binding AutomationName}">
-                                                <TextBlock Classes="body" FontSize="12"
-                                                           VerticalAlignment="Center"
-                                                           TextTrimming="CharacterEllipsis"
-                                                           Text="{Binding Name}"/>
-                                            </CheckBox>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </StackPanel>
-                            </StackPanel>
-
-                            <StackPanel Spacing="7">
-                                <TextBlock Classes="label section" Text="ABOUT"/>
-                                <SelectableTextBlock Classes="body copyable"
-                                           Focusable="True"
-                                           LineHeight="20"
-                                           TextWrapping="Wrap"
-                                           IsVisible="{Binding HasSummary}"
-                                           Text="{Binding Summary}"/>
-                                <!-- §7: an empty screen is a direction, not a mood. -->
-                                <TextBlock Classes="body"
-                                           LineHeight="20"
-                                           TextWrapping="Wrap"
-                                           IsVisible="{Binding ShowEmptyBody}"
-                                           Text="{Binding EmptyBodyText}"/>
-                            </StackPanel>
-
                             <!-- Updates list. Patch-notes links only appear when the
                                  update carries a page (§5.2). -->
                             <StackPanel Spacing="4" IsVisible="{Binding HasUpdates}">
-                                <TextBlock Classes="label section" Text="{Binding UpdatesLabel}"/>
+                                <TextBlock Classes="label section" Text="{Binding UpdatesLabel}"
+                                           AutomationProperties.HeadingLevel="2"/>
                                 <ItemsControl ItemsSource="{Binding Updates}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate DataType="vm:UpdateEventViewModel">
+                                            <!-- The row's own name carries the
+                                                 unread fact in words, because the
+                                                 Flare dot is a mark and §8's
+                                                 decorative-redundant rule wants
+                                                 the same fact as text. It goes on
+                                                 the template root with
+                                                 AccessibilityView=Control, which
+                                                 is what un-prunes a Border, and
+                                                 with ControlTypeOverride so the
+                                                 row reports as a list item rather
+                                                 than as a bare group. -->
                                             <Border Classes="updaterow"
                                                     BorderBrush="{StaticResource Line}"
                                                     BorderThickness="0,0,0,1"
-                                                    Padding="0,9">
+                                                    Padding="0,9"
+                                                    AutomationProperties.Name="{Binding AutomationName}"
+                                                    AutomationProperties.AccessibilityView="Control"
+                                                    AutomationProperties.ControlTypeOverride="ListItem">
                                                 <Grid ColumnDefinitions="16,*,Auto,Auto" ColumnSpacing="10">
                                                     <!-- Flare: unread-update marker
                                                          only, here as everywhere. -->
@@ -1287,6 +1246,388 @@
                                            Text="{Binding FlagProblem}"/>
                             </StackPanel>
 
+                            <!-- ABOUT is the band's one prose section, and the
+                                 one place a picture belongs: a screenshot says
+                                 what the game looks like, which is the same
+                                 question the summary answers in words. It is not
+                                 a section of its own, because a heading in this
+                                 band is earned by a list of rows the user can
+                                 act on. -->
+                            <StackPanel Spacing="7">
+                                <TextBlock Classes="label section" Text="{Binding AboutHeading}"
+                                           AutomationProperties.HeadingLevel="2"/>
+                                <SelectableTextBlock Classes="body copyable"
+                                           Focusable="True"
+                                           LineHeight="20"
+                                           TextWrapping="Wrap"
+                                           IsVisible="{Binding HasSummary}"
+                                           Text="{Binding Summary}"/>
+                                <!-- §7: an empty screen is a direction, not a mood. -->
+                                <TextBlock Classes="body"
+                                           LineHeight="20"
+                                           TextWrapping="Wrap"
+                                           IsVisible="{Binding ShowEmptyBody}"
+                                           Text="{Binding EmptyBodyText}"/>
+
+                                <!-- Screenshots. Inline in the modal's own tree,
+                                     never a flyout — §10.7's rule applied again:
+                                     this is a surface to look at, and a popup
+                                     would need a hand-drawn focus mark per
+                                     thumbnail because the global adorner does
+                                     not render inside one.
+
+                                     The hero appears only after a shot is
+                                     picked; nothing is drawn at all when the
+                                     game has no screenshots, which is a property
+                                     of the data — no ids in work_images means no
+                                     view model — rather than of the view.
+
+                                     The strip is a bounded horizontal scroll
+                                     region, so its content takes the horizontal
+                                     form of the same gutter every other bounded
+                                     region here takes: the bar is drawn over the
+                                     content, and 20px is Fluent's swelled track
+                                     plus §4's own spacing step. -->
+                                <StackPanel Spacing="8" IsVisible="{Binding ShowScreenshots}">
+                                <StackPanel Spacing="8"
+                                            DataContext="{Binding Screenshots}"
+                                            x:DataType="vm:GameScreenshotsViewModel">
+
+                                    <Border MaxHeight="200"
+                                            ClipToBounds="True"
+                                            CornerRadius="{StaticResource RadiusControl}"
+                                            BorderThickness="1"
+                                            BorderBrush="{StaticResource LineSoft}"
+                                            IsVisible="{Binding HasHero}"
+                                            AutomationProperties.Name="{Binding HeroAutomationName}"
+                                            AutomationProperties.AccessibilityView="Control">
+                                        <Image Source="{Binding Hero}" Stretch="UniformToFill"/>
+                                    </Border>
+
+                                    <ScrollViewer Classes="inner"
+                                                  GotFocus="OnScreenshotGotFocus"
+                                                  HorizontalScrollBarVisibility="Auto"
+                                                  VerticalScrollBarVisibility="Disabled">
+                                        <ItemsControl ItemsSource="{Binding Shots}"
+                                                      Margin="{StaticResource InnerScrollGutterBottom}"
+                                                      AutomationProperties.Name="{Binding ListAutomationName}"
+                                                      AutomationProperties.AccessibilityView="Control">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <StackPanel Orientation="Horizontal" Spacing="8"/>
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate DataType="vm:GameScreenshotViewModel">
+                                                    <!-- The name and the list-item
+                                                         type go on the DataTemplate
+                                                         root, never on the
+                                                         ItemsControl: every
+                                                         container is a
+                                                         ContentPresenter, whose peer
+                                                         reports itself out of the
+                                                         control view, so a list
+                                                         addressed at the control
+                                                         reports no items at all. -->
+                                                    <Button Classes="shot"
+                                                            Classes.picked="{Binding IsSelected}"
+                                                            Width="120" Height="68"
+                                                            AutomationProperties.Name="{Binding AutomationName}"
+                                                            AutomationProperties.ControlTypeOverride="ListItem"
+                                                            ToolTip.Tip="{Binding Tooltip}"
+                                                            CommandParameter="{Binding}"
+                                                            Command="{Binding $parent[ItemsControl].((vm:GameScreenshotsViewModel)DataContext).SelectCommand}">
+                                                        <Border ClipToBounds="True"
+                                                                CornerRadius="2"
+                                                                Background="{StaticResource SurfaceRaised}">
+                                                            <Image Source="{Binding Image}"
+                                                                   Stretch="UniformToFill"/>
+                                                        </Border>
+                                                    </Button>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </ScrollViewer>
+
+                                    <TextBlock Classes="data-s"
+                                               Text="{Binding Caption}"/>
+                                </StackPanel>
+                                </StackPanel>
+                            </StackPanel>
+
+                            <!-- ALSO COVERS. The user's fourth complaint answered:
+                                 this game also covers these titles. Draws only
+                                 when there is coverage to draw.
+
+                                 Every row carries ONE entry's minutes beside THAT
+                                 SAME entry's last-played. The total above them is a
+                                 sum across stores - Winnow's own composite, which no
+                                 source reports - and it carries its own coherent
+                                 date, the latest anywhere in the group. The rows
+                                 stay on screen underneath so the composite can be
+                                 checked against its parts.
+
+                                 Achievements are per release (6.2), on the release's
+                                 own row. There is no combined percentage here and no
+                                 property that could produce one. -->
+                            <StackPanel IsVisible="{Binding ShowCoverage}">
+                            <StackPanel Spacing="10"
+                                        DataContext="{Binding Coverage}"
+                                        x:DataType="vm:GameCoverageViewModel">
+                                <TextBlock Classes="label section" Text="{Binding Heading}"
+                                           AutomationProperties.HeadingLevel="2"/>
+
+                                <Grid ColumnDefinitions="Auto,Auto,*,Auto" ColumnSpacing="12">
+                                    <TextBlock Grid.Column="0" Classes="label" FontSize="10"
+                                               VerticalAlignment="Center"
+                                               Text="{Binding TotalLabel}"/>
+                                    <TextBlock Grid.Column="1" Classes="data"
+                                               FontSize="18"
+                                               VerticalAlignment="Center"
+                                               Foreground="{StaticResource Text}"
+                                               Text="{Binding TotalPlaytimeText}"/>
+                                    <TextBlock Grid.Column="2" Classes="body" FontSize="12"
+                                               VerticalAlignment="Center"
+                                               TextWrapping="Wrap"
+                                               Foreground="{StaticResource TextDim}"
+                                               Text="{Binding TotalNote}"/>
+                                    <TextBlock Grid.Column="3" Classes="data-s"
+                                               VerticalAlignment="Center"
+                                               Text="{Binding TotalLastPlayedText}"/>
+                                </Grid>
+
+                                <ItemsControl ItemsSource="{Binding Rows}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="vm:CoverageRowViewModel">
+                                            <Border BorderBrush="{StaticResource Line}"
+                                                    BorderThickness="0,0,0,1"
+                                                    Padding="0,9">
+                                                <StackPanel Spacing="4">
+                                                    <Grid ColumnDefinitions="52,*,Auto,Auto,Auto"
+                                                          ColumnSpacing="10">
+                                                        <TextBlock Grid.Column="0" Classes="data-s"
+                                                                   VerticalAlignment="Center"
+                                                                   Text="{Binding StoreBadge}"/>
+                                                        <TextBlock Grid.Column="1" Classes="body"
+                                                                   VerticalAlignment="Center"
+                                                                   TextTrimming="CharacterEllipsis"
+                                                                   Text="{Binding Title}"/>
+                                                        <TextBlock Grid.Column="2" Classes="data-s"
+                                                                   VerticalAlignment="Center"
+                                                                   Text="{Binding PlaytimeText}"/>
+                                                        <TextBlock Grid.Column="3" Classes="data-s"
+                                                                   VerticalAlignment="Center"
+                                                                   Text="{Binding LastPlayedText}"/>
+                                                        <Button Grid.Column="4" Classes="quiet"
+                                                                IsVisible="{Binding IsCovered}"
+                                                                AutomationProperties.Name="{Binding SeparateAutomationName}"
+                                                                ToolTip.Tip="{Binding SeparateTooltip}"
+                                                                CommandParameter="{Binding}"
+                                                                Command="{Binding $parent[ItemsControl].((vm:GameCoverageViewModel)DataContext).SeparateCommand}">
+                                                            <TextBlock Classes="body" FontSize="12"
+                                                                       Text="{Binding SeparateLabel}"/>
+                                                        </Button>
+                                                    </Grid>
+
+                                                    <StackPanel IsVisible="{Binding HasAchievements}">
+                                                    <Grid ColumnDefinitions="52,Auto,Auto,*"
+                                                          ColumnSpacing="10"
+                                                          DataContext="{Binding Achievements}"
+                                                          x:DataType="vm:ReleaseAchievementRowViewModel">
+                                                        <TextBlock Grid.Column="1" Classes="label"
+                                                                   FontSize="10"
+                                                                   VerticalAlignment="Center"
+                                                                   Text="{Binding Label}"/>
+                                                        <TextBlock Grid.Column="2" Classes="data-s"
+                                                                   VerticalAlignment="Center"
+                                                                   Text="{Binding CountText}"/>
+                                                        <TextBlock Grid.Column="3" Classes="data-s"
+                                                                   VerticalAlignment="Center"
+                                                                   Text="{Binding PercentText}"/>
+                                                    </Grid>
+                                                    </StackPanel>
+                                                </StackPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+
+                                <TextBlock Classes="body" FontSize="11"
+                                           TextWrapping="Wrap"
+                                           Foreground="{StaticResource Amber}"
+                                           IsVisible="{Binding HasProblem}"
+                                           Text="{Binding Problem}"/>
+                            </StackPanel>
+                            </StackPanel>
+
+                            <!-- EXTENDS.
+                                 The other end of the relation, on a pack's own
+                                 modal. It names the base game and offers the same
+                                 retraction, so the grouping can be undone from
+                                 either side. The link's child is this game, not
+                                 the row, which is why the control retracts the
+                                 right link from here. -->
+                            <StackPanel IsVisible="{Binding ShowExtends}">
+                            <StackPanel Spacing="10"
+                                        DataContext="{Binding Expansions}"
+                                        x:DataType="vm:GameExpansionsViewModel">
+                                <TextBlock Classes="label section" Text="{Binding ExtendsHeading}"
+                                           AutomationProperties.HeadingLevel="2"/>
+                                <ContentControl Content="{Binding Extends}">
+                                    <ContentControl.ContentTemplate>
+                                        <DataTemplate DataType="vm:ExpansionRowViewModel">
+                                            <Grid ColumnDefinitions="*,Auto,Auto,Auto"
+                                                  ColumnSpacing="10">
+                                                <TextBlock Grid.Column="0" Classes="body"
+                                                           VerticalAlignment="Center"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           Text="{Binding Title}"/>
+                                                <TextBlock Grid.Column="1" Classes="data-s"
+                                                           VerticalAlignment="Center"
+                                                           Text="{Binding PlaytimeText}"/>
+                                                <TextBlock Grid.Column="2" Classes="data-s"
+                                                           VerticalAlignment="Center"
+                                                           Text="{Binding LastPlayedText}"/>
+                                                <Button Grid.Column="3" Classes="quiet"
+                                                        AutomationProperties.Name="{Binding UngroupAutomationName}"
+                                                        ToolTip.Tip="{Binding UngroupTooltip}"
+                                                        CommandParameter="{Binding}"
+                                                        Command="{Binding $parent[ContentControl].((vm:GameExpansionsViewModel)DataContext).UngroupCommand}">
+                                                    <TextBlock Classes="body" FontSize="12"
+                                                               Text="{Binding UngroupLabel}"/>
+                                                </Button>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ContentControl.ContentTemplate>
+                                </ContentControl>
+                                <TextBlock Classes="body" FontSize="12"
+                                           TextWrapping="Wrap"
+                                           Text="{Binding ExtendsNote}"/>
+                            </StackPanel>
+                            </StackPanel>
+
+                            <!-- EXPANSIONS.
+                                 The same treatment ALSO COVERS uses, with one
+                                 deliberate omission: NO TOTAL. Coverage sums
+                                 because two store entries are one game being
+                                 played; expansions do not, because they are
+                                 separate products and a sum of the two is a figure
+                                 no source reported about either. Each row carries
+                                 its own minutes beside its own last-played, and
+                                 nothing here adds two rows together.
+
+                                 The two sections are never merged: a covered
+                                 title is this same game on another store, an
+                                 expansion is a different product. -->
+                            <StackPanel IsVisible="{Binding ShowExpansions}">
+                            <StackPanel Spacing="10"
+                                        DataContext="{Binding Expansions}"
+                                        x:DataType="vm:GameExpansionsViewModel">
+                                <TextBlock Classes="label section" Text="{Binding Heading}"
+                                           AutomationProperties.HeadingLevel="2"/>
+                                <TextBlock Classes="body" FontSize="12"
+                                           TextWrapping="Wrap"
+                                           Text="{Binding Note}"/>
+
+                                <ItemsControl ItemsSource="{Binding Expansions}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="vm:ExpansionRowViewModel">
+                                            <Border BorderBrush="{StaticResource Line}"
+                                                    BorderThickness="0,0,0,1"
+                                                    Padding="0,9">
+                                                <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto"
+                                                      ColumnSpacing="10">
+                                                    <ItemsControl Grid.Column="0"
+                                                                  VerticalAlignment="Center"
+                                                                  IsVisible="{Binding HasStores}"
+                                                                  ToolTip.Tip="{Binding StoreNames}"
+                                                                  ItemsSource="{Binding StoreChips}">
+                                                        <ItemsControl.ItemsPanel>
+                                                            <ItemsPanelTemplate>
+                                                                <StackPanel Orientation="Horizontal" Spacing="4"/>
+                                                            </ItemsPanelTemplate>
+                                                        </ItemsControl.ItemsPanel>
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <Border Classes="store-chip">
+                                                                    <TextBlock Text="{Binding}"/>
+                                                                </Border>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                    <TextBlock Grid.Column="1" Classes="body"
+                                                               VerticalAlignment="Center"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               Text="{Binding Title}"/>
+                                                    <TextBlock Grid.Column="2" Classes="data-s"
+                                                               VerticalAlignment="Center"
+                                                               Text="{Binding PlaytimeText}"/>
+                                                    <TextBlock Grid.Column="3" Classes="data-s"
+                                                               VerticalAlignment="Center"
+                                                               Text="{Binding LastPlayedText}"/>
+                                                    <Button Grid.Column="4" Classes="quiet"
+                                                            AutomationProperties.Name="{Binding UngroupAutomationName}"
+                                                            ToolTip.Tip="{Binding UngroupTooltip}"
+                                                            CommandParameter="{Binding}"
+                                                            Command="{Binding $parent[ItemsControl].((vm:GameExpansionsViewModel)DataContext).UngroupCommand}">
+                                                        <TextBlock Classes="body" FontSize="12"
+                                                                   Text="{Binding UngroupLabel}"/>
+                                                    </Button>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+
+                                <TextBlock Classes="body" FontSize="11"
+                                           TextWrapping="Wrap"
+                                           Foreground="{StaticResource Amber}"
+                                           IsVisible="{Binding HasProblem}"
+                                           Text="{Binding Problem}"/>
+                            </StackPanel>
+                            </StackPanel>
+
+                            <!-- LISTS.
+                                 Between EXPANSIONS and ABOUT: one checkbox per
+                                 hand-built list, ticked when the game is already
+                                 a member. Live lists are excluded — they hold a
+                                 rule and find their own members. The section is
+                                 drawn even when the user has no lists yet; §7
+                                 says an empty state is a direction, not a mood,
+                                 so it points at where a list is made. -->
+                            <StackPanel IsVisible="{Binding ShowLists}">
+                            <StackPanel Spacing="10"
+                                        DataContext="{Binding Lists}"
+                                        x:DataType="lists:GameListsViewModel">
+                                <TextBlock Classes="label section" Text="{Binding Heading}"
+                                           AutomationProperties.HeadingLevel="2"/>
+
+                                <TextBlock Classes="body" FontSize="12"
+                                           TextWrapping="Wrap"
+                                           LineHeight="18"
+                                           IsVisible="{Binding IsEmpty}"
+                                           Text="{Binding EmptyText}"/>
+
+                                <ItemsControl IsVisible="{Binding HasLists}"
+                                              ItemsSource="{Binding Rows}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="lists:GameListEntryViewModel">
+                                            <CheckBox Classes="listtick"
+                                                      IsChecked="{Binding IsMember, Mode=TwoWay}"
+                                                      AutomationProperties.Name="{Binding AutomationName}"
+                                                      ToolTip.Tip="{Binding AutomationName}">
+                                                <TextBlock Classes="body" FontSize="12"
+                                                           VerticalAlignment="Center"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           Text="{Binding Name}"/>
+                                            </CheckBox>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                            </StackPanel>
+
+
                         </StackPanel>
                     </StackPanel>
                     </ScrollViewer>
@@ -1362,6 +1703,36 @@
                                        Text="{Binding InstallPath}"
                                        LineHeight="15"
                                        TextWrapping="Wrap"/>
+                        </StackPanel>
+
+                        <!-- Acquisition. A fact about THIS COPY — when it
+                             arrived and under what licence — so it belongs in
+                             the object column beside the appid and the path,
+                             not in the identity block, which is about the game.
+                             Drawn only for a user who has run the saved-page
+                             import; absent rather than empty for everyone else.
+
+                             Price paid is stored beside these two and is
+                             deliberately never bound here. §7: never be smug.
+                             "$59.99 · never opened" is the sentence this
+                             product must not write. -->
+                        <StackPanel Spacing="3" IsVisible="{Binding ShowAcquisition}">
+                            <TextBlock Classes="label" FontSize="10"
+                                       Text="{Binding AcquiredLabel}"/>
+                        <StackPanel Spacing="3"
+                                    DataContext="{Binding Acquisition}"
+                                    x:DataType="vm:GameAcquisitionViewModel">
+                            <SelectableTextBlock Classes="data copyable"
+                                       Focusable="False"
+                                       HorizontalAlignment="Left"
+                                       IsVisible="{Binding HasDate}"
+                                       Text="{Binding DateText}"/>
+                            <TextBlock Classes="body" FontSize="11"
+                                       TextWrapping="Wrap"
+                                       Foreground="{StaticResource TextDim}"
+                                       IsVisible="{Binding HasLicence}"
+                                       Text="{Binding LicenseText}"/>
+                        </StackPanel>
                         </StackPanel>
 
                         <!-- Clear: returns the work to automatic metadata

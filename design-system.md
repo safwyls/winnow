@@ -619,21 +619,21 @@ so `Escape` returns them to exactly the row they were reading.
 ┌─ 200px ────┬──────────────────────────────────────────────────┐
 │            │  Empyrion: Galactic Survival                 [×] │  1 WHAT IS THIS
 │  cover     │  2020 · Eleon Game Studios                       │
-│  200×300   │  [STEAM] [Patched] [Not installed]               │
+│  200×300   │  IGDB USERS 78 / 1,204 · STEAM 91% / 41,203    │
+│            │  [STEAM] [Patched] [Not installed]               │
 │            │                                                  │
 │            │  37h    SINCE YOU PLAYED               9y 7mo    │  2 MY HISTORY
-│            │  PLAYED ├────────────────────────────────●●┤     │    the gap rail
-│            │         2 Jan 2017                     today     │
-│            │         2 updates landed while you were away.    │
-│            │         Checked once, on 23 Aug 2026.            │
+│            │  PLAYED ┆▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁┤     │    lifetime axis
+│            │         Dec 2015                       today     │
 │            │                                                  │
 │            │  [Install] [Store page] [All patch notes] [More] │  3 GET ME IN
 │ STEAM APPID├──────────────────────────────────────────────────┤
-│ 383120     │  ABOUT                                (scrolls)  │  4 THE REST
-│            │  Empyrion – Galactic Survival is a 3D open…      │
-│ ON DISK    │                                                  │
-│ C:\…       │  SINCE YOU PLAYED                                │
-│            │  ● v1.19.2 Patch        11 Aug 2026  Patch notes │
+│ 383120     │  UPDATES                              (scrolls)  │  4 THE REST
+│ ON DISK    │  ● v1.19.2 Patch        11 Aug 2026  Patch notes │
+│ C:\…       │  ABOUT                                           │
+│ ACQUIRED   │  …text…   [thumb] [thumb] [thumb] →              │
+│ 4 Nov 2016 │  ALSO COVERS · EXPANSIONS · LISTS                │
+│ Gift       │                                                  │
 └────────────┴──────────────────────────────────────────────────┘
 ```
 
@@ -651,15 +651,18 @@ long content draw past the card and be cut off at the window edge (measured on A
 
 Avalonia's Fluent ScrollViewer draws its scrollbar over the content while auto-hide is on: the
 content presenter is given both spans, so the bar takes no column of its own (verified against
-Avalonia 11.3.20's own theme). Three inner scroll regions in the modal carry the same
+Avalonia 11.3.20's own theme). Four inner scroll regions in the modal carry the same
 problem. In the right column's rest
 band, the close glyph on each disclosed section's header row (§10.9, §10.10) and the per-row
 Separate, Ungroup and Patch notes buttons sit under the bar. In the IGDB candidate list
 (§10.9), a bounded region with a bar of its own drawn inside the rest band's content, the
 swelled 12px track covered roughly 8px of each row's assign control behind a 4px content
 margin; its gutter does not double-count against the rest band's, because the two regions
-scroll independently. In the left column, a wrapped ON DISK path could run under its bar. All
-three carry the same 20px right margin on their content; the token is `InnerScrollGutter`. 20
+scroll independently. In the left column, a wrapped ON DISK path could run under its bar. In
+the screenshot thumbnail strip in ABOUT, a horizontal bar is drawn over the foot of the strip
+rather than over its trailing edge. The three vertical regions carry the same 20px right margin
+on their content; the token is `InnerScrollGutter`. The horizontal strip carries the same 20px
+as a bottom margin; the token is `InnerScrollGutterBottom`. 20
 is 12, the width Fluent's track swells to under the pointer, plus 8, §4's own spacing step —
 the 8 is what makes the clearance read as deliberate space rather than as a control that merely
 stopped touching the bar. In the rest band the gutter is one margin on the band's content
@@ -678,33 +681,124 @@ content already carries, which is worse than an explicit margin because it would
 on exactly the regions that need it. The modal's own close button, beside the title in Band 1,
 is outside the scroll region and needs none of this.
 
-### 10.2 Signature: the gap rail
+**Below the year and publisher, the identity block carries a reception line.** Up to three
+attributed figures, in this order: IGDB's own user rating, IGDB's aggregation of external
+critics, and Steam's review summary. Each draws a short uppercase source attribution, the
+value, and the count of people behind it — IGDB USERS 78 / 1,204 ratings; IGDB CRITICS 85 /
+42 critic scores; STEAM 91% / 41,203 reviews. The count is on the line, not only in the
+tooltip, because a 9 from four people and a 9 from four thousand are different claims. The
+three are never blended and Winnow computes no verdict of its own: they are three populations
+answering three different questions. Steam's own words ("Very Positive") are not on the line;
+they arrive with the percentage and the count on hover. A source with no figure writes no row
+in `work_ratings`, so it contributes nothing, and when no source has a figure the line is not
+drawn at all — never a zero, never an empty scale. The value takes `Text` and the attribution
+and count take `TextDim`. `TextFaint` is not available here for the reason §10.3 already gives
+for section headings. The line is a `WrapPanel`: measured, the three figures sum to 564px and
+the right column is 420px at the card's `MinWidth`, so the line takes a second row at that
+width and a single row at 580px (`docs/spikes/details-modal-additions-width.md`). A second row
+is cheaper than trimming a count away.
 
-**The one thing Winnow can draw that nothing else can.** Storefronts hold your last-played date
-and they hold a game's patch history; nobody puts them on the same axis. The rail runs from
-your last session to now, with the updates that landed in between marked on it.
+**The rest band's order is:** corrections (IGDB MATCH, EDIT DETAILS), UPDATES, ABOUT with
+screenshots inside it, ALSO COVERS, EXTENDS, EXPANSIONS, LISTS. The governing rule: **a
+`label section` heading in Band 4 is earned by a list of rows the user can act on. ABOUT is
+the single prose exception. A fact about the game goes in Band 1; a fact about this copy goes
+in the left column; a picture goes inside ABOUT; an act goes in the More menu with its status
+on the strip.** UPDATES moved to the top of the band because it is what Band 2's axis
+summarises and the two should be adjacent. Its heading is the constant `UPDATES`, whether or
+not anything landed since the last session. It previously took `SINCE YOU PLAYED` in one state
+and `UPDATE HISTORY` in the other, and the first of those is Band 2's own rail label, so one
+modal said the same words about two different things; the rail keeps the name.
 
-- **The rule is §5.1's dormancy ramp turned on its side** — `Volt` at the last-played end
-  fading to `Line` at today, half faded at the half-way point. The user has been looking at
-  desaturating capsules for weeks; this is the one screen with room to say why.
-- **Marks are `Flare`**, legal here and only here in the panel, because they are literally
-  §5.2's unread signal plotted in time instead of stacked in a tile corner. **Capped at 14**;
-  past that a rail is a smear, and the list below stays the exhaustive record.
-- **The rail is normalised, never scaled to duration.** A 14-day gap and a 9-year gap draw the
-  same length, with the span stated as a number beside it. Scaling would make most rails
-  invisible and would be a second, competing encoding of a fact the digits already carry.
+**Screenshots sit inside ABOUT, not in a section of their own.** A horizontal thumbnail strip
+at 120x68, with a caption naming the count and the source. Picking a thumbnail expands that
+shot to a hero above the strip, inline in the modal's own tree — never a popup, §10.7's rule
+applied again, because a popup would need a hand-drawn focus mark per thumbnail. Each thumbnail
+is a real `Button`, so it is a Tab stop with the panel's drawn ring, and a thumbnail reached by
+Tab is scrolled into view — the same arrangement the IGDB candidate list (§10.9) uses. A game
+with no screenshots draws nothing at all, never an empty frame; that is a property of the data:
+no ids in `work_images` means no view model. The images ride the existing cover cache under a
+`CoverKey.IgdbScreenshot`, which resolves to `t_screenshot_huge` — an IGDB cover is 3:4 and a
+screenshot is 16:9, so the provider is what picks the size token; there is no second image path.
+The strip is a bounded horizontal scroll region, the fourth such region in the modal.
+
+**Accessibility: the modal's own tree.** Band 1, Band 2, Band 3 and the reception line are
+named groups — `AutomationProperties.Name` plus `AccessibilityView="Control"`, which is what
+un-prunes a panel whose own peer reports itself out of the control view;
+`AutomationControlType.None` maps to the UIA Group type. The title is a level-1 heading and
+every section heading is level 2, through `AutomationProperties.HeadingLevel`. Update rows and
+screenshot thumbnails carry `ControlTypeOverride="ListItem"` on the DataTemplate root — never
+on the ItemsControl, whose containers are ContentPresenters that report themselves out of the
+control view, so a list addressed at the control reports no items (§8). An update row's name
+states in words whether it landed since the last session, because the `Flare` dot is a mark
+and §8's decorative-redundant rule wants the same fact as text. `AutomationProperties.Name` is
+never placed on a `TextBlock`: its peer ignores the property and returns `Text` instead (§8).
+All four attached properties — `AccessibilityView`, `HeadingLevel`, `ControlTypeOverride` and
+`LiveSetting` — were verified wired to Windows UIA in the Avalonia 11.3.20 source.
+
+### 10.2 The lifetime axis
+
+**The one thing Winnow can draw that nothing else can.** Storefronts hold your playtime and
+they hold a game's patch history; nobody puts them on the same axis. For a game with a release
+year and at least two month-end playtime readings, Band 2 draws one time axis from the game's
+release to today, in two zones.
+
+- **The left zone is play whose amount Winnow knows and whose shape it does not.**
+  `SteamPlaytimeBackfillService` reconstructs a month-end cumulative series from Steam Replay,
+  and everything before the first covered month is stamped as one figure at one instant — the
+  floor point in `PlaytimeSeriesReconstruction.cs`. It is drawn as a flat band with a dashed
+  boundary, never as bars and never as a slope, because a slope across that span would invent a
+  month-by-month pattern nobody measured.
+- **The right zone is one bar per closed month.** A bar spans the true time between two
+  consecutive readings and its height is the play gained between them, so a stretch the backfill
+  did not cover draws as one wide bar carrying the whole stretch's hours rather than being
+  silently compressed into the ordinal sequence.
+- **Only month-end readings are differenced.** A live snapshot is written only while Winnow is
+  running, so a user who closes it for three weeks gets three weeks of accumulated play stamped
+  on one instant; a chart from those deltas would draw a spike on the day the app reopened, not
+  on the days the play happened. Snapshots that are not stamped at a month end contribute no
+  bar at all.
+- **Sessions are not mixed in.** They exist only from Winnow's own install and only for
+  processes it watched, so overlaying them would make a game heavily played for four years
+  before that install look dormant for those four years. Two data sets, two coverage windows,
+  two questions.
+- **The last session is a `Volt` stop mark on the axis.** Update marks are `Flare` on the
+  baseline, capped at 14, the same signal the gap rail carried and placed on the whole axis
+  rather than on the gap alone.
+- **The bars ride §5.1's ramp turned on its side**, `Line` at the release end to `Volt` at
+  today. This runs the opposite way to the gap rail's own ramp: the gap rail encodes a
+  dormancy that begins at a single known moment, the last session, so `Volt` sits there; the
+  lifetime axis has no such single moment and encodes recency, so `Volt` sits at today. The
+  gap rail's rule is unchanged where the gap rail still draws.
+- **What is drawn is the user's own hours.** Per-game player-population activity is not
+  obtainable — the whole finding is in `docs/spikes/activity-graph-data-availability.md` — and
+  the copy under the axis says whose hours these are so the reader cannot mistake it for a
+  population curve.
 - **Everything it draws is restated in words underneath** (§8). A user who cannot resolve a 7px
-  dot loses nothing.
-- **No last-played date, no rail.** Two different absences, kept apart by the copy: *"You've
-  never opened this."* and *"Steam has no date for your last session."*
+  dot or a 3px bar loses nothing.
 
-**It is deliberately not a playtime chart.** The obvious move is a line through
-`playtime_snapshots`, and on a real library that table holds one reading per game — measured,
-611 of 616 — so a line through one point is a decoration pretending to be evidence. What the
-snapshots honestly support is a sentence: *"Checked 12 times since 23 Aug 2026 — up 1h 7m."*
-The delta is between the first and last reading Winnow holds, which is the part it actually
-watched happen, not the total Steam already knew. At one reading it says so; at zero it says
-nothing at all.
+**Four states.**
+
+1. Measured months exist. The axis draws both zones, the bars carry the ramp, and the copy
+   states the user's own hours and their coverage.
+2. Every hour predates the record and the measured months are all zero. The flat band fills
+   the axis, the bars are empty, and the copy says so.
+3. No release year, or fewer than two month-end readings. The shipped gap rail draws unchanged:
+   normalised from the last session to today, `Volt` at the last-played end fading to `Line` at
+   today, with update marks in `Flare`, capped at 14, and the span stated as a number beside
+   it. The rail is normalised, never scaled to duration — a 14-day gap and a 9-year gap draw
+   the same length — because scaling would be a second, competing encoding of a fact the digits
+   already carry. The record sentence still stands: *"Checked 12 times since 23 Aug 2026 — up
+   1h 7m."* The delta is between the first and last reading Winnow holds, which is the part it
+   actually watched happen, not the total Steam already knew. At one reading it says so; at
+   zero it says nothing at all.
+4. No last-played date at all. The sentence is the whole of Band 2 and there is no rail of any
+   kind. Two different absences, kept apart by the copy: *"You've never opened this."* and
+   *"Steam has no date for your last session."*
+
+**The axis starts at 1 January of `works.first_release_year`**, and the axis's left label is
+that year. Winnow stores a release year, not a release date, so the axis cannot start at a
+month and does not pretend to. A series or a last session that predates the stated year extends
+the axis back to that month rather than being clipped off the left edge.
 
 ### 10.3 Getting in
 
@@ -714,12 +808,13 @@ uninstalled 60GB game promises something the next hour will not deliver. **No ap
 primary action at all, never an inert button.**
 
 Beside it, `Store page` and `All patch notes` in `Azure`, and the `More` control — four
-controls on the strip. `More` opens a menu whose rows are `Open folder`, `Wrong game?`,
+controls on the strip. `More` opens a menu whose rows are `Open folder`, `Refetch metadata`, `Wrong game?`,
 `Edit details` and `Hide`, in that order. A row is drawn only when it has something to do:
-`Open folder` when the game is on disk, `Wrong game?` and `Edit details` when their controls
-exist, `Hide` when the library handed its command over. A row with nothing behind it is not
-drawn rather than drawn inert. The trigger's face does not change — the menu owns whether it
-is open, so the button always reads `More`. Its tooltip is `Folder, corrections and hide`.
+`Open folder` when the game is on disk, `Refetch metadata` when enrichment services are
+registered, `Wrong game?` and `Edit details` when their controls exist, `Hide` when the library
+handed its command over. A row with nothing behind it is not drawn rather than drawn inert. The
+trigger's face does not change — the menu owns whether it is open, so the button always reads
+`More`. Its tooltip is `Folder, metadata, corrections and hide`.
 
 **A row's name does not change with the state of what it opens.** The row opens; the surface
 it opens carries its own close control — a `×` glyph in the trailing Auto column of the
@@ -732,7 +827,7 @@ scroll region, so it is always drawn.
 
 **A heading that names a section is set in `TextDim`**, the same ink as the `×` glyph beside
 it, so the header reads as chrome rather than as the section's own content. The set is IGDB
-MATCH, EDIT DETAILS, ALSO COVERS, EXTENDS, EXPANSIONS, LISTS, ABOUT and the updates heading.
+MATCH, EDIT DETAILS, UPDATES, ABOUT, ALSO COVERS, EXTENDS, EXPANSIONS and LISTS.
 A label that names a value — PLAYED and SINCE YOU PLAYED on the gap rail, STEAM APPID, ON
 DISK, the coverage total's label, and the per-field labels in the editor — is a different thing
 and is not in that set. The ink is stated at the heading by the class `label section`, declared
@@ -826,11 +921,28 @@ both that it passes that test and that the strip is re-measured and still fits 4
 `docs/spikes/details-action-band-width.md` for the measurements.
 
 **Keyboard.** Tab order on the strip follows declaration order (§10.7): primary action,
-`Store page`, `All patch notes`, `More`. The four menu rows are never Tab stops; they are
+`Store page`, `All patch notes`, `More`. The five menu rows are never Tab stops; they are
 reached by opening the menu. Opening it puts focus on the first row that is drawn, skipping
 any that is not. Up and Down walk every drawn row in declaration order and wrap round rather
 than dead-ending. Enter runs the row and closes the menu. Escape closes it. Both routes hand
 focus back to the trigger.
+
+**Refetch metadata is in the menu, not on the strip.** Re-asking a source moves nobody closer
+to playing this game now, which is the strip's own test stated above. Its status is reported in
+words on a line in Band 3, outside the rest band's bounded scroll region, so an act started
+from the menu is answered where it can always be seen. The line is absent entirely at rest. It
+is `TextDim` while running and after a result lands, and `Amber` for a refusal, which is the
+register the rest of the panel already uses. Progress is words and never a percentage: no total
+is knowable in advance. A refetch that wrote something reloads the library and reopens the
+modal carrying its confirmation, the same arrangement §10.9 already describes for a landed
+assignment and for the same reason — the reception line and the cover are computed when the
+library loads.
+
+**The refetch status field is a live region.** Changing an `AutomationProperties.Name` at
+runtime raises no UIA event, but `TextBlockAutomationPeer` raises a Name change whenever `Text`
+changes and `AutomationNode` turns that into a live-region event while `LiveSetting` is not
+`Off` — verified against the Avalonia 11.3.20 source. The field is therefore a `TextBlock`
+whose `Text` is bound and which sets no `AutomationProperties.Name` at all.
 
 The folder goes through the launcher's directory entry point as a path, never a `file:` URI.
 
@@ -863,13 +975,18 @@ not by the table it lives in.
 
 ### 10.5 What is absent, and why
 
-`acquired_at`, `license_type` and `price_paid_cents` are in the schema and are populated only
-for a user who has run the saved-page import; `platform` and `edition_note` are empty for every
-row Steam's local files produce. **None of them is bound in this panel.** Purchase facts belong
-to the account stats screen, which is where they are read, and a row that appears for some
-users and not others in a panel about one game is worse than a row that is simply elsewhere.
-`account_ref` is populated and still absent, because showing a user their own Steam account id
-is noise.
+The left column's ACQUIRED block draws the date and the licence type in words when the parser
+recognises one — Steam Store, Complimentary, Gift or guest pass, Retail key. An unrecognised
+licence says nothing rather than showing a stored token. It draws only for a user who has run
+the saved-page import, and is absent rather than empty for everyone else. It is in the object
+column because it is a fact about this copy — this ownership row — rather than about the game,
+which is the same split §10.1 draws between the two columns.
+
+**`price_paid_cents` is deliberately never bound in this modal.** §7's "never be smug" is the
+reason: "$59.99 · never opened" is the sentence this product must not write. Price belongs to
+the export and the account stats screen. `platform` and `edition_note` are empty for every row
+Steam's local files produce and are not bound. `account_ref` is populated and still absent,
+because showing a user their own Steam account id is noise.
 
 **Achievements are not here.** No data exists yet, and `game-library-design.md` §6.2's rule
 stands regardless: never a blended cross-platform completion figure. When they land they are

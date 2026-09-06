@@ -1,11 +1,11 @@
 ---
 id: TASK-113
 title: Refetch metadata for one game from the details view
-status: In Progress
+status: Done
 assignee:
-  - '@enrichment-api'
+  - '@avalonia-ui'
 created_date: '2026-09-05 02:50'
-updated_date: '2026-09-06 00:27'
+updated_date: '2026-09-06 01:57'
 labels:
   - ui
   - enrichment
@@ -25,24 +25,27 @@ Note the interaction with TASK-89: a pinned work must refetch against its pinned
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 The details modal offers a refetch for one game
-- [ ] #2 A pinned work refetches against its pinned IGDB id and the pin survives
-- [ ] #3 The control reports what happened — updated, nothing new, or could not reach the source
-- [ ] #4 It respects the existing rate limits and cannot be used to hammer a source
-- [ ] #5 Progress is stated in words, per the indeterminate-progress rule settled in TASK-79
+- [x] #1 The details modal offers a refetch for one game
+- [x] #2 A pinned work refetches against its pinned IGDB id and the pin survives
+- [x] #3 The control reports what happened — updated, nothing new, or could not reach the source
+- [x] #4 It respects the existing rate limits and cannot be used to hammer a source
+- [x] #5 Progress is stated in words, per the indeterminate-progress rule settled in TASK-79
 <!-- AC:END -->
 
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-ENRICHMENT HALF (the service; the More-menu row and status TextBlock are the UI half).
-1. GameRefetchService in Winnow.App/Services, alongside EnrichmentSyncService (§5.1: the sync services live there because they need repositories Core cannot reference). Modelled on IgdbMaturitySync's soft-fail discipline.
-2. RefetchAsync(workId) re-asks BOTH sources for one work, bypassing the 30-day/7-day TTLs by passing cacheTtl: TimeSpan.Zero — IgdbClient.Cutoff and SteamStoreClient.Cutoff both read a non-positive TTL as DateTime.MaxValue, i.e. 'nothing cached counts', which is the supported force-refetch path and not a cache bypass hack.
-3. AC#2 — a pinned work refetches against its pinned IGDB id. IWorkIgdbPinRepository.GetAsync(workId) returns the pin; when present, go straight to GetGamesAsync(pinnedId) and never call ResolveByExternalIdsAsync. The pin is read, never written, so it survives.
-4. AC#4 — two independent brakes. The Polly rate limiters on both typed clients still apply (IGDB 4 req/s, Steam 2 req/s), and a per-work cooldown refuses a second refetch of the same work inside RefetchOptions.Cooldown (default 5 min) with a distinct outcome the UI can word.
-5. AC#3/#5 — GameRefetchOutcome { Updated, NothingNew, NotConfigured, Unreachable, Unresolved, TooSoon, WorkNotFound } with a GameRefetchResult carrying counts. Every outcome is a word, never a percentage: no total is knowable in advance.
-6. Registration: one AddSingleton line in Program.cs's App-seams block. Reported rather than edited if it can be avoided.
-7. Tests against canned fixtures only.
+UI HALF of the combined details-modal pass (TASK-111/112/113/115/38/21/30 land as ONE edit to GameDetailsView.axaml + GameDetailsViewModel, per the approved design at mock-details.html).
+1. Wire the seams that already exist but are unregistered: IWorkImageRepository, IWorkRatingRepository, WorkReceptionWriter, ReceptionSyncService (called beside the maturity syncs) and GameRefetchService in Program.cs. Nothing new is fetched here.
+2. Band 1 gains a reception line under year/publisher: GameReceptionViewModel over work_ratings, three attributed figures (igdb_users, igdb_critics, steam) each with its count. Steam carries its own label + percentage + count on hover. No row, no line.
+3. Band 2 replaces the gap rail in place with a release-to-today PlayAxis (new custom Control beside GapRail). Two zones: a flat band for the pre-coverage amount (shape unknown, never a slope) and one bar per measured month. Measured months are the month-end points only (snapshots stamped at SteamPlaytimeHistory.MonthEnd), which are the backfilled series; live snapshots are never differenced. Sessions are not mixed in. Marks are the unread updates, placed on the whole axis. No release year or fewer than two month-end points falls back to the shipped gap rail; no last-played date keeps the sentence-only branch.
+4. Band 3 gains a Refetch metadata row in the More menu (order: Open folder, Refetch metadata, Wrong game?, Edit details, Hide) with its status on a bound-Text TextBlock in Band 3 OUTSIDE the scroll region, LiveSetting=Polite.
+5. Band 4 reorders to corrections, updates, ABOUT+screenshots, ALSO COVERS, EXTENDS, EXPANSIONS, LISTS. The update list is renamed so it stops colliding with Band 2 SINCE YOU PLAYED. Screenshots ride inside ABOUT as a thumbnail strip that expands one shot to a hero, inline, no popup, on CoverKey.IgdbScreenshot through the existing cover cache.
+6. Left column gains ACQUIRED (acquired_at + license_type) under ON DISK. price_paid_cents is never read into this modal.
+7. TASK-21/30 modal half: HeadingLevel on the title and the section headings, named Groups via AccessibilityView=Control on the band containers, ControlTypeOverride=ListItem on update and screenshot template roots with the unread count spelled into the name, names on the close/launch/link buttons. All four attached properties verified wired to Windows UIA in the Avalonia 11.3.20 source; AutomationProperties.Name is never placed on a TextBlock.
+8. Re-measure the reception line and the strip at the 420px column in a headless Skia harness at 11.3.20, per docs/spikes/details-action-band-width.md.
+9. All prose delegated to docs-writer. design-system.md 10.1/10.2/10.3/10.5 rewritten; every superseded sentence appended to docs/decisions.md.
+10. Verify: dotnet build Winnow.slnx -p:BaseOutputPath=C:\Temp\winnow-modal\ -m:1, then dotnet test per project --no-build.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -58,4 +61,69 @@ DESIGN DECISIONS, 2026-09-05, from the combined details-modal design pass (mock 
 - The update list is renamed so it stops colliding with the Band 2 rail; the rail keeps SINCE YOU PLAYED. Mock placeholder is "What landed" and a better name is welcome.
 - TASK-115 ships BOTH halves in one pass: the release-to-today axis AND the backfilled monthly bars.
 - The rule that governs future additions: a label section heading in Band 4 is earned by a list of rows the user can act on, ABOUT being the single prose exception. A fact about the game goes in Band 1; a fact about this copy goes in the left column; a picture goes inside ABOUT; an act goes in the More menu with its status on the strip.
+
+UI HALF LANDED as one edit to GameDetailsView.axaml and GameDetailsViewModel, plus the view models
+and the one custom control the new bands needed.
+
+WIRING. The enrichment half shipped in fd53bc9 but nothing was registered. Program.cs now registers
+IWorkImageRepository/IWorkRatingRepository, WorkReceptionWriter, ReceptionSyncService and
+GameRefetchService (behind a new IGameRefetch seam, the arrangement IIgdbAssignmentService already
+has), and calls ReceptionSyncService.SyncAsync in the startup pass beside the two maturity syncs.
+LibraryViewModel gained three optional seams and reads the ratings, the images and the ownership
+rows when the modal opens.
+
+BAND 1. GameReceptionViewModel over work_ratings: three attributed figures in a fixed order (IGDB
+users, IGDB critics, Steam), each with its count on the line. Steam's own label is off the line and
+on hover. A source with no figure writes no row, so absence is a property of the data; no figure at
+all means no line. Drawn in a WrapPanel because the three figures measure 564px and the right column
+is 420px at the card's MinWidth - measured, not estimated.
+
+BAND 2. views/PlayAxis.cs, a custom-drawn control beside GapRail, over PlayAxisSeries. Both halves
+shipped in this pass. Only month-end snapshots are differenced: those are the backfilled Steam
+Replay readings and the only genuinely per-month data in the table. The floor point becomes a flat
+band with a dashed boundary - an amount with no shape - and never a slope. Each bar spans the true
+time between two readings, so an uncovered stretch draws wide rather than being compressed into an
+ordinal sequence. Sessions are not an input. No release year or fewer than two month-end readings
+falls back to the shipped gap rail; no last-played date keeps the sentence-only branch.
+
+BAND 3. Refetch metadata is a More-menu row (Open folder, Refetch metadata, Wrong game?, Edit
+details, Hide) with its status on a TextBlock in Band 3 outside the rest band's scroll region. The
+field is a live region by bound Text with LiveSetting=Polite and no AutomationProperties.Name,
+because a Name change raises no UIA event while TextBlockAutomationPeer raises one on a Text change.
+An outcome that wrote something reopens the modal carrying its confirmation.
+
+BAND 4. Order is now corrections, UPDATES, ABOUT with the screenshots inside it, ALSO COVERS,
+EXTENDS, EXPANSIONS, LISTS. Screenshots are a horizontal thumbnail strip that expands one shot to a
+hero above it, inline, no popup, on CoverKey.IgdbScreenshot through the existing cover cache. The
+strip is the modal's fourth bounded scroll region and takes InnerScrollGutterBottom, a new token.
+
+LEFT COLUMN. ACQUIRED under ON DISK: the date and the licence in words. price_paid_cents is never
+read, and a test asserts no member of either the acquisition view model or the details view model
+names a price.
+
+ACCESSIBILITY. Named groups on Bands 1-3 and the reception line via AccessibilityView=Control;
+HeadingLevel 1 on the title and 2 on every section heading; ControlTypeOverride=ListItem on the
+update-row and thumbnail template roots, never on the ItemsControl; the unread fact spelled into an
+update row's name. All four attached properties were verified wired to Windows UIA in the Avalonia
+11.3.20 source.
+
+MEASURED, not estimated. docs/spikes/details-modal-additions-width.md records a headless Skia harness
+at the app's own 11.3.20, hosting every control in a real window so Fluent's templates apply. It
+reproduced TASK-123's shipped strip figures exactly (347/357px), which is what makes the new numbers
+trustworthy. Reception figures 184/210/170px, summing to 564; two rows at 420 and 500, one at 580.
+Six thumbnails 760px, three whole ones visible at 420. The ACQUIRED block 180x49 in the object
+column's 180px of content.
+
+CONTRAST. No new ink. The line takes Text for the value and TextDim for the attribution and the
+count, both already walked over all 256 greys at every slider position. Measured with the repo's own
+Colorimetry: Text 13.11/16.44/14.76/13.42 flat and 10.34/13.75/11.90/10.61 over the brightest cover;
+TextDim 5.88/6.82/6.44/6.10 and 4.63/5.71/5.19/4.83. The mock sets the source attribution in
+TextFaint, which measures 3.63/3.60/3.31/3.28 flat and 2.86/3.01/2.67/2.60 over art - under AA
+everywhere - so it was refused and a test now pins the refusal.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Refetch metadata is a row in the details modal's More menu, between Open folder and Wrong game?, with its status reported in words on a line in Band 3 outside the rest band's bounded scroll region so an act started from a popup is answered where it can always be seen. The row is in the menu and not on the strip because the strip is 'get me in' and re-asking a source moves nobody closer to playing this game now. The status field is a live region by mechanism rather than by hope: changing an AutomationProperties.Name at runtime raises no UIA event, but TextBlockAutomationPeer raises a Name change whenever Text changes and AutomationNode turns that into a live-region event while LiveSetting is not Off - verified against the Avalonia 11.3.20 source - so the field is a TextBlock whose Text is bound and which sets no Name at all. Every outcome is a word and never a percentage: no total is knowable in advance. A refusal is Amber, a running or landed act is TextDim. An outcome that wrote something reloads the library and reopens the modal carrying its confirmation, because the reception line and the cover are computed when the library loads. Verified by GameRefetchViewModelTests (nothing said until something is asked, every outcome is a word with no percentage, only a write reopens, a carried confirmation survives the reopen) and by GameRefetchServiceTests for the service half - the pin is used and survives, the cache is bypassed by TimeSpan.Zero rather than by a hack, and the per-work cooldown refuses a second refetch without a request. DetailsModalStructureTests pins the five menu rows in order and the live-region field's placement. Build succeeded, 0 warnings, 0 errors; 3373 / 152 / 82 passing. What a running app would add: watching a real refetch report its outcome.
+<!-- SECTION:FINAL_SUMMARY:END -->

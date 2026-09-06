@@ -52,6 +52,16 @@ public sealed class GameRefetchOptions
 }
 
 /// <summary>
+/// The App-layer seam the details modal's view model takes, so it holds an
+/// interface rather than the concrete service — the same arrangement
+/// <see cref="IIgdbAssignmentService"/> has.
+/// </summary>
+public interface IGameRefetch
+{
+    Task<GameRefetchResult> RefetchAsync(long workId, CancellationToken ct = default);
+}
+
+/// <summary>
 /// Re-asks both sources about one work. A pinned work refetches against its
 /// pinned IGDB id and is never re-resolved; an unpinned work refetches
 /// against the IGDB id it already resolved to. Re-resolution is the
@@ -74,7 +84,7 @@ public sealed class GameRefetchOptions
 /// the caller's token is rethrown, because the caller asking to stop is not
 /// a failure.</para>
 /// </summary>
-public sealed class GameRefetchService
+public sealed class GameRefetchService : IGameRefetch
 {
     private static readonly TimeSpan ForceRefetch = TimeSpan.Zero;
 

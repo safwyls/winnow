@@ -68,6 +68,7 @@ public sealed partial class UpdateEventViewModel : ObservableObject
     /// </summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsUnread))]
+    [NotifyPropertyChangedFor(nameof(AutomationName))]
     public partial bool IsAcknowledged { get; set; }
 
     /// <summary>
@@ -80,6 +81,13 @@ public sealed partial class UpdateEventViewModel : ObservableObject
     /// the badge stops meaning anything.</para>
     /// </summary>
     public bool IsUnread => IsSinceYouPlayed && !IsAcknowledged;
+
+    /// <summary>
+    /// The row's accessible name. The <c>Flare</c> dot is a mark and §8's
+    /// decorative-redundant rule wants the same fact as text, so the name states
+    /// in words whether this update landed since the last session.
+    /// </summary>
+    public string AutomationName => UnreadCopy.UpdateRow(Headline, DateText, IsUnread);
 
     public static UpdateEventViewModel Create(UpdateEvent updateEvent, DateTime? lastPlayedUtc = null)
     {

@@ -378,7 +378,7 @@ public sealed class LibraryViewModelTests
 
         // Two landed after the 2017 session; the 2024 one did too. All three
         // are after it, so all three are marks and the section says so.
-        Assert.Equal("SINCE YOU PLAYED", details.UpdatesLabel);
+        Assert.Equal("UPDATES", details.UpdatesLabel);
         Assert.Equal("3 updates landed while you were away.", details.GapCaption);
         Assert.Equal(3, details.RailMarks.Count);
 
@@ -423,7 +423,7 @@ public sealed class LibraryViewModelTests
         await library.OpenDetailsCommand.ExecuteAsync(library.VisibleTiles[0]);
 
         var details = library.Details!;
-        Assert.Equal("UPDATE HISTORY", details.UpdatesLabel);
+        Assert.Equal("UPDATES", details.UpdatesLabel);
         Assert.Equal("No updates recorded in that stretch.", details.GapCaption);
         Assert.Empty(details.RailMarks);
         Assert.Single(details.Updates);

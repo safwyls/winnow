@@ -1132,6 +1132,42 @@ public class ThemeContrastTests
     }
 
     /// <summary>
+    /// The reception line introduces no ink. Its value takes <c>Text</c> and
+    /// its source attribution and count take <c>TextDim</c>, the two inks the
+    /// modal already holds and the two the tests above already walk. The mock
+    /// this line was built from sets the source attribution in the faint ink;
+    /// that is what this test refuses. At slider zero, Winnow / Nightshift /
+    /// Tungsten / Box art: <c>TextFaint</c> measures 3.63 / 3.60 / 3.31 / 3.28
+    /// on the flat card and 2.86 / 3.01 / 2.67 / 2.60 over the brightest cover
+    /// the art-backed card of §5.5 can carry — under AA in every theme before
+    /// the art is involved at all. The attribution is 10px SemiBold and the
+    /// count 10px, neither of which is WCAG large text, so the 4.5:1 bar
+    /// applies and the 3:1 allowance does not.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(ThemeIds))]
+    public void The_reception_line_introduces_no_ink_below_the_floor(string id)
+    {
+        var theme = WinnowThemes.ById(id);
+        var t = theme.Tokens(transparency: 0);
+        var field = Over(t["ArtVeil"], White);
+
+        foreach (var ink in new[] { t["Text"], t["TextDim"] })
+        {
+            Assert.True(
+                Contrast(ink, t["Surface"]) >= 4.5,
+                $"{id}: a reception run measures {Contrast(ink, t["Surface"]):0.00}:1 on the flat card");
+            Assert.True(
+                Contrast(ink, field) >= 4.5,
+                $"{id}: a reception run measures {Contrast(ink, field):0.00}:1 over the brightest cover");
+        }
+
+        Assert.True(
+            Contrast(t["TextFaint"], field) < 4.5,
+            $"{id}: TextFaint measures {Contrast(t["TextFaint"], field):0.00}:1 over the brightest cover");
+    }
+
+    /// <summary>
     /// A game with no art draws no image, so the veil composites onto the
     /// opaque <c>Surface</c> the back face and the card already paint. The
     /// veil IS <c>Surface</c>, so that composite is <c>Surface</c> bit-for-bit

@@ -43,6 +43,8 @@ public partial class GameDetailsViewModel : ObservableObject
 
     private readonly DateTime _nowUtc;
 
+    private readonly IReadOnlyList<PlaytimeSnapshot> _snapshots;
+
     private bool _busy;
 
     public GameDetailsViewModel(
@@ -62,8 +64,16 @@ public partial class GameDetailsViewModel : ObservableObject
         Core.Reading.IPatchNotesReader? patchNotes = null,
         GameIgdbMatchViewModel? igdbMatch = null,
         GameMetadataEditorViewModel? metadataEditor = null,
-        System.Windows.Input.ICommand? hideGame = null)
+        System.Windows.Input.ICommand? hideGame = null,
+        IReadOnlyList<WorkRating>? ratings = null,
+        IReadOnlyList<WorkImages>? images = null,
+        IReadOnlyList<Ownership>? ownerships = null,
+        GameRefetchViewModel? refetch = null)
     {
+        Reception = GameReceptionViewModel.From(ratings);
+        Screenshots = GameScreenshotsViewModel.From(images, covers);
+        Acquisition = GameAcquisitionViewModel.From(ownerships);
+        Refetch = refetch;
         HideCommand = hideGame;
         _patchNotes = patchNotes;
         IgdbMatch = igdbMatch;
@@ -88,7 +98,8 @@ public partial class GameDetailsViewModel : ObservableObject
         FlagIsRaised = tile.HasUnread;
         DismissalStands = acknowledgedThrough is not null;
 
-        RecordLine = BuildRecordLine(snapshots ?? [], nowUtc);
+        _snapshots = snapshots ?? [];
+        RecordLine = BuildRecordLine(_snapshots, nowUtc);
         (PrimaryAction, Links) = BuildLinks(tile);
 
         // Derives acknowledged state, rail marks, and caption.
@@ -198,6 +209,12 @@ public partial class GameDetailsViewModel : ObservableObject
 
     public bool HasPublisher => Publisher is not null;
 
+    /// <summary>Band 1's reception line: up to three attributed figures, never blended.</summary>
+    public GameReceptionViewModel? Reception { get; }
+
+    /// <summary>Drawn only when at least one source contributed a figure.</summary>
+    public bool ShowReception => Reception is { HasFigures: true };
+
     public string StoreBadge => Tile.StoreBadge;
 
     /// <summary>Every store this game is owned on, as chip faces (TASK-70.6).</summary>
@@ -252,6 +269,51 @@ public partial class GameDetailsViewModel : ObservableObject
 
     public bool HasRailMarks => RailMarks.Count > 0;
 
+    /// <summary>The lifetime axis series, recomputed on each watermark change.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowAxis))]
+    [NotifyPropertyChangedFor(nameof(ShowGapRail))]
+    [NotifyPropertyChangedFor(nameof(ShowAxisUnmeasured))]
+    [NotifyPropertyChangedFor(nameof(AxisUnmeasuredNote))]
+    [NotifyPropertyChangedFor(nameof(AxisStartText))]
+    public partial PlayAxisSeries Axis { get; set; } = PlayAxisSeries.None;
+
+    /// <summary>True when the axis has enough data to draw. False falls back to the gap rail.</summary>
+    public bool ShowAxis => HasGap && Axis.CanDraw;
+
+    /// <summary>True when the gap rail should be drawn instead of the axis.</summary>
+    public bool ShowGapRail => HasGap && !Axis.CanDraw;
+
+    /// <summary>Accessible name for the lifetime axis control.</summary>
+    public string AxisAutomationName => PlayAxisCopy.AxisAutomationName;
+
+    /// <summary>Tooltip for the lifetime axis control.</summary>
+    public string AxisTooltip => PlayAxisCopy.AxisTooltip;
+
+    /// <summary>Sentence stating whose hours these are — the user's own, never a player population.</summary>
+    public string AxisOwnHoursNote => PlayAxisCopy.OwnHoursNote;
+
+    /// <summary>True when unmeasured play exists before the coverage boundary.</summary>
+    public bool ShowAxisUnmeasured => Axis.HasUnmeasured;
+
+    /// <summary>Sentence describing the unmeasured zone: an amount and the date it covers through.</summary>
+    public string AxisUnmeasuredNote => Axis.HasUnmeasured
+        ? PlayAxisCopy.UnmeasuredNote(
+            SpanText(Axis.UnmeasuredMinutes),
+            Axis.CoverageStartUtc.ToLocalTime().ToString("MMM yyyy"))
+        : string.Empty;
+
+    /// <summary>Left-edge label: the release year.</summary>
+    public string AxisStartText => Axis.CanDraw
+        ? Axis.AxisStartUtc.Year.ToString("D4")
+        : string.Empty;
+
+    /// <summary>Sentence restating in words what the axis draws: last session, idle time, missed updates.</summary>
+    public string AxisLastSessionLine => PlayAxisCopy.LastSessionLine(
+        LastPlayedText,
+        IdleText,
+        Updates.Count(u => u.IsSinceYouPlayed));
+
     /// <summary>Gap rail caption: counts updates since last play, distinguishing unread from read.</summary>
     public string GapCaption
     {
@@ -288,10 +350,13 @@ public partial class GameDetailsViewModel : ObservableObject
 
     public bool HasUpdates => Updates.Count > 0;
 
-    /// <summary>"SINCE YOU PLAYED" when gap updates exist, otherwise "UPDATE HISTORY".</summary>
-    public string UpdatesLabel => Updates.Any(u => u.IsSinceYouPlayed)
-        ? "SINCE YOU PLAYED"
-        : "UPDATE HISTORY";
+    /// <summary>
+    /// The update list's heading, constant whether or not anything landed since
+    /// the last session. SINCE YOU PLAYED is Band 2's own rail label; one modal
+    /// was saying the same words about two different things, so the list took a
+    /// name of its own.
+    /// </summary>
+    public string UpdatesLabel => GameDetailsCopy.UpdatesHeading;
 
     /// <summary>True when at least one update carries a readable link.</summary>
     public bool HasNotesPage => Updates.Any(u => u.HasLink);
@@ -462,7 +527,16 @@ public partial class GameDetailsViewModel : ObservableObject
         }
 
         RailMarks = BuildRailMarks(Updates, LastPlayedUtc, _nowUtc);
+
+        Axis = PlayAxisSeries.Build(
+            _snapshots,
+            Tile.ReleaseYear,
+            LastPlayedUtc,
+            [.. Updates.Where(u => u.IsUnread).Select(u => u.OccurredAtUtc)],
+            _nowUtc);
+
         OnPropertyChanged(nameof(GapCaption));
+        OnPropertyChanged(nameof(AxisLastSessionLine));
     }
 
     /// <summary>Reloads the library after a flag change so bucket counts update.</summary>
@@ -512,7 +586,48 @@ public partial class GameDetailsViewModel : ObservableObject
     /// <summary>Tooltip on Hide, shared with the library's context menu.</summary>
     public string HideTooltip => LibrarySettingsCopy.HideTooltip;
 
+    /// <summary>Accessible group name for Band 1.</summary>
+    public string IdentityGroupName => GameDetailsCopy.IdentityGroupName;
+
+    /// <summary>Accessible group name for Band 2.</summary>
+    public string HistoryGroupName => GameDetailsCopy.HistoryGroupName;
+
+    /// <summary>Accessible group name for Band 3.</summary>
+    public string ActionsGroupName => GameDetailsCopy.ActionsGroupName;
+
+    /// <summary>Accessible name for the modal's close button.</summary>
+    public string CloseAutomationName => GameDetailsCopy.CloseAutomationName;
+
+    /// <summary>Value label for the ACQUIRED block in the object column.</summary>
+    public string AcquiredLabel => GameDetailsCopy.AcquiredLabel;
+
+    /// <summary>Section heading for ABOUT in Band 4.</summary>
+    public string AboutHeading => GameDetailsCopy.AboutHeading;
+
+    /// <summary>Accessible name for the launch button, e.g. "Install Empyrion: Galactic Survival".</summary>
+    public string LaunchAutomationName => PrimaryAction is { } action
+        ? GameDetailsCopy.LaunchAutomationName(action.Label, Title)
+        : string.Empty;
+
     // ── Body ────────────────────────────────────────────────────────────────
+
+    /// <summary>The screenshot strip inside ABOUT. Null when no screenshots exist.</summary>
+    public GameScreenshotsViewModel? Screenshots { get; }
+
+    /// <summary>Drawn only when screenshots exist.</summary>
+    public bool ShowScreenshots => Screenshots is { HasShots: true };
+
+    /// <summary>The ACQUIRED block in the left column. Null when neither date nor licence exists.</summary>
+    public GameAcquisitionViewModel? Acquisition { get; }
+
+    /// <summary>Drawn only when an acquisition fact exists.</summary>
+    public bool ShowAcquisition => Acquisition is not null;
+
+    /// <summary>The More-menu refetch row and its status field. Null when no refetch service is registered.</summary>
+    public GameRefetchViewModel? Refetch { get; }
+
+    /// <summary>Drawn only when a refetch service is available.</summary>
+    public bool ShowRefetch => Refetch is not null;
 
     public string? Summary => Tile.Summary;
 

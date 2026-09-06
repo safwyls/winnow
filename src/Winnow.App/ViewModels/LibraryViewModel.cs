@@ -176,6 +176,14 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     /// </summary>
     private IReadOnlyDictionary<long, Work> _workById = new Dictionary<long, Work>();
 
+    private readonly IWorkRatingRepository? _workRatings;
+
+    private readonly IWorkImageRepository? _workImages;
+
+    private readonly Services.IGameRefetch? _refetch;
+
+    private string? _refetchNote;
+
     private bool _loaded;
 
     /// <summary>
@@ -209,8 +217,14 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         Core.Reading.IPatchNotesReader? patchNotes = null,
         Services.IIgdbAssignmentService? igdb = null,
         Services.IWorkMetadataEditService? metadataEdits = null,
-        Services.IImageFilePicker? imagePicker = null)
+        Services.IImageFilePicker? imagePicker = null,
+        IWorkRatingRepository? workRatings = null,
+        IWorkImageRepository? workImages = null,
+        Services.IGameRefetch? refetch = null)
     {
+        _workRatings = workRatings;
+        _workImages = workImages;
+        _refetch = refetch;
         _igdb = igdb;
         _metadataEdits = metadataEdits;
         _imagePicker = imagePicker;
@@ -1298,6 +1312,16 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             ? []
             : await _snapshots.GetByOwnershipAsync(target.OwnershipId);
 
+        var workId = GameWorkIdFor(target);
+
+        IReadOnlyList<WorkRating> ratings = _workRatings is null || workId is null
+            ? []
+            : await _workRatings.GetForWorkAsync(workId.Value);
+
+        IReadOnlyList<WorkImages> images = _workImages is null || workId is null
+            ? []
+            : await _workImages.GetForWorkAsync(workId.Value);
+
         Details = new GameDetailsViewModel(
             target,
             BucketLabelFor(target.Bucket),
@@ -1311,7 +1335,44 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             patchNotes: _patchNotes,
             igdbMatch: await BuildIgdbMatchAsync(target),
             metadataEditor: BuildMetadataEditor(target),
-            hideGame: HideGameCommand);
+            hideGame: HideGameCommand,
+            ratings: ratings,
+            images: images,
+            ownerships: await BuildAcquisitionAsync(target),
+            refetch: BuildRefetch(workId));
+    }
+
+    private async Task<IReadOnlyList<Ownership>> BuildAcquisitionAsync(GameTileViewModel target)
+    {
+        var rows = new List<Ownership>();
+        foreach (var ownershipId in target.OwnershipIds)
+        {
+            if (await _ownerships.GetAsync(ownershipId) is { } ownership)
+            {
+                rows.Add(ownership);
+            }
+        }
+
+        return rows;
+    }
+
+    private GameRefetchViewModel? BuildRefetch(long? workId)
+    {
+        if (_refetch is null || workId is null)
+        {
+            return null;
+        }
+
+        var note = _refetchNote;
+        _refetchNote = null;
+
+        return new GameRefetchViewModel(_refetch, workId.Value, AfterRefetchAsync, note);
+    }
+
+    private async Task AfterRefetchAsync(string note)
+    {
+        _refetchNote = note;
+        await ReopenDetailsAsync();
     }
 
     /// <summary>

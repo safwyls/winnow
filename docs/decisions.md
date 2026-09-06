@@ -1618,3 +1618,64 @@ Superseded comment from `tests/Winnow.Tests/Enforcement/SchemaDisciplineTests.cs
 `work_ratings.score` is now a second entry on that list. It is admitted under the same
 principle, not as an exception to it: it is a figure IGDB or Steam published, recorded as
 observed against the work and the source that published it, and nothing in Winnow computes it.
+
+### 2026-09-05 — The details modal restructured for seven additions (TASK-111, TASK-112, TASK-113, TASK-115, TASK-38, TASK-21, TASK-30)
+
+`design-system.md` §10.1, §10.2, §10.3, §10.5;
+`src/Winnow.App/Views/GameDetailsView.axaml`.
+
+Seven additions landed together: a reception line of attributed ratings (TASK-112), a lifetime
+axis replacing the gap rail for games with sufficient data (TASK-115), a refetch-metadata menu
+row with a live status line (TASK-113), an ACQUIRED block in the left column (TASK-38),
+screenshots inside ABOUT (TASK-111), and accessibility names and heading levels across the
+modal (TASK-21, TASK-30). The rest band's section order changed, and the update list heading
+became the constant `UPDATES`.
+
+Superseded text from `src/Winnow.App/Views/GameDetailsView.axaml`, the ALSO COVERS comment:
+
+> First in the band because it is a fact about identity, and it draws only when there is coverage to draw.
+
+The "first in the band" half is reversed: ALSO COVERS now follows the update list and ABOUT.
+The "draws only when there is coverage" half still stands.
+
+Superseded text from §10.2:
+
+> **It is deliberately not a playtime chart.** The obvious move is a line through `playtime_snapshots`, and on a real library that table holds one reading per game — measured, 611 of 616 — so a line through one point is a decoration pretending to be evidence.
+
+The snapshot table now holds a multi-year monthly series per game for any install that has run
+the Steam Replay backfill. The lifetime axis draws that series as a two-zone chart: a flat band
+for the pre-coverage span whose amount is known but whose shape is not, and one bar per
+measured month for the rest. The gap rail is preserved as the fallback for games with no release
+year or fewer than two month-end readings.
+
+Superseded text from §10.3, the tooltip:
+
+> Its tooltip is `Folder, corrections and hide`.
+
+The menu gained `Refetch metadata` as its second row, so the tooltip is now `Folder, metadata,
+corrections and hide`.
+
+Superseded text from §10.3, the menu-row list:
+
+> `More` opens a menu whose rows are `Open folder`, `Wrong game?`, `Edit details` and `Hide`, in that order.
+
+The menu's rows are now `Open folder`, `Refetch metadata`, `Wrong game?`, `Edit details` and
+`Hide`, in that order.
+
+Superseded text from §10.5:
+
+> `acquired_at`, `license_type` and `price_paid_cents` are in the schema and are populated only for a user who has run the saved-page import; `platform` and `edition_note` are empty for every row Steam's local files produce. **None of them is bound in this panel.** Purchase facts belong to the account stats screen, which is where they are read, and a row that appears for some users and not others in a panel about one game is worse than a row that is simply elsewhere.
+
+`acquired_at` and `license_type` are now bound in the left column's ACQUIRED block for users
+who have run the saved-page import. `price_paid_cents` remains unbound, for the reason §7
+gives: the sentence this product must not write. The reasoning that a row appearing for some
+users is worse than a row elsewhere no longer holds for facts about the copy that are in the
+copy's own column; it still holds for the money.
+
+Superseded text from §10.1:
+
+> Three inner scroll regions in the modal carry the same problem.
+
+The screenshot thumbnail strip in ABOUT is the fourth inner scroll region. It scrolls
+horizontally, and its content carries `InnerScrollGutterBottom` — the same 20px as the vertical
+regions' `InnerScrollGutter`, turned through ninety degrees.

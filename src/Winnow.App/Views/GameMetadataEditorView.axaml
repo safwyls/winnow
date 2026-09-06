@@ -166,6 +166,7 @@
             <TextBlock Grid.Column="0"
                        Classes="label section"
                        VerticalAlignment="Center"
+                       AutomationProperties.HeadingLevel="2"
                        Text="{Binding SectionHeading}"/>
             <Button Grid.Column="1" Classes="quiet"
                     VerticalAlignment="Top"

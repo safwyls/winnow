@@ -264,7 +264,7 @@ public sealed class GameDetailsViewModelTests
         Assert.False(details.HasRailMarks);
         Assert.Equal(2, details.Updates.Count);
         Assert.DoesNotContain(details.Updates, u => u.IsSinceYouPlayed);
-        Assert.Equal("UPDATE HISTORY", details.UpdatesLabel);
+        Assert.Equal("UPDATES", details.UpdatesLabel);
 
         // "recorded", not "nothing shipped": polling is staggered across days,
         // so an empty rail can mean a quiet decade or a turn that has not come
@@ -273,7 +273,7 @@ public sealed class GameDetailsViewModelTests
     }
 
     [Fact]
-    public void A_missed_update_renames_the_section_and_marks_its_row()
+    public void A_missed_update_marks_its_row_and_leaves_the_heading_alone()
     {
         var updates = new[]
         {
@@ -283,7 +283,7 @@ public sealed class GameDetailsViewModelTests
 
         var details = Details(Tile(lastPlayed: Now.AddDays(-30)), updates);
 
-        Assert.Equal("SINCE YOU PLAYED", details.UpdatesLabel);
+        Assert.Equal("UPDATES", details.UpdatesLabel);
         Assert.Equal("1 update landed while you were away.", details.GapCaption);
         Assert.True(details.Updates[0].IsSinceYouPlayed);
         Assert.False(details.Updates[1].IsSinceYouPlayed);

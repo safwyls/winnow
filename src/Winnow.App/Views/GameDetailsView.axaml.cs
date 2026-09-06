@@ -102,6 +102,10 @@ public partial class GameDetailsView : UserControl
         // Candidate thumbnails decode at the width they are drawn at, and
         // the scaling is a fact of the window rather than of the view model.
         details.IgdbMatch?.SetCoverScaling(scaling);
+
+        // Screenshot thumbnails decode at the width they are drawn at, for the
+        // same reason and off the same fact about the window.
+        details.Screenshots?.RequestThumbnails(scaling);
     }
 
     /// <summary>
@@ -170,6 +174,16 @@ public partial class GameDetailsView : UserControl
     /// GotFocus bubbles from the rows.
     /// </summary>
     private void OnCandidateGotFocus(object? sender, GotFocusEventArgs e)
+    {
+        (e.Source as Control)?.BringIntoView();
+    }
+
+    /// <summary>
+    /// The screenshot strip scrolls sideways, so a thumbnail reached by Tab can
+    /// be off the right edge of the region. Same mechanism as the IGDB candidate
+    /// list: focus is never left where it cannot be seen.
+    /// </summary>
+    private void OnScreenshotGotFocus(object? sender, GotFocusEventArgs e)
     {
         (e.Source as Control)?.BringIntoView();
     }
