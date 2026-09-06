@@ -283,8 +283,9 @@ public sealed class GameReceptionViewModelTests
 }
 
 /// <summary>
-/// The screenshot strip: artwork exclusion, publisher order, the hero selection
-/// model, and the "nothing rather than an empty frame" rule.
+/// The screenshot strip: artwork exclusion, publisher order, the "nothing
+/// rather than an empty frame" rule, and the fact that a thumbnail opens the
+/// lightbox overlay.
 /// </summary>
 public sealed class GameScreenshotsViewModelTests
 {
@@ -331,17 +332,22 @@ public sealed class GameScreenshotsViewModelTests
         Assert.All(shots.Shots, s => Assert.Equal(CoverProviders.IgdbScreenshot, s.Key.Provider));
     }
 
+    /// <summary>Nothing is open until a thumbnail is pressed. Pressing one
+    /// opens the lightbox on that shot and marks it in the strip.</summary>
     [Fact]
-    public void Nothing_is_expanded_until_a_shot_is_picked()
+    public void Picking_a_thumbnail_opens_the_lightbox_on_that_shot()
     {
+        var lightbox = new ScreenshotLightboxViewModel();
         var shots = GameScreenshotsViewModel.From(
-            [Images(ImageKinds.Screenshot, "co6m51,ab12cd")], covers: null);
+            [Images(ImageKinds.Screenshot, "co6m51,ab12cd")], covers: null, lightbox);
 
-        Assert.False(shots!.HasHero);
+        Assert.Same(lightbox, shots!.Lightbox);
+        Assert.False(lightbox.IsOpen);
         Assert.All(shots.Shots, s => Assert.False(s.IsSelected));
 
         shots.SelectCommand.Execute(shots.Shots[1]);
 
+        Assert.True(lightbox.IsOpen);
         Assert.False(shots.Shots[0].IsSelected);
         Assert.True(shots.Shots[1].IsSelected);
     }

@@ -28,33 +28,30 @@
          Text, so omitting the override IS the correct declaration.
          Adding a Foreground to a prose TextBlock is the mistake. -->
 
-    <!-- The card and the hero scale against the window, not the
-         display: the window is what the user sized, and a display-relative
-         card would overflow a small window on a big screen. There is a
-         mechanical reason too — a Window's own Bounds never depend on
-         what is inside it, so a cap bound to it cannot feed back into
-         layout, while a cap bound to the modal's own host could.
+    <!-- The card scales against the window, not the display: the window
+         is what the user sized, and a display-relative card would
+         overflow a small window on a big screen. There is a mechanical
+         reason too — a Window's own Bounds never depend on what is
+         inside it, so a cap bound to it cannot feed back into layout,
+         while a cap bound to the modal's own host could.
 
          Each cap is a fraction of the window, floored at the absolute
-         value the modal shipped with. The fractions, floors and the
-         width ceiling are measured values from
-         docs/spikes/details-modal-scale.md, not chosen ones.
+         value the modal shipped with. The fractions and the floors are
+         measured values from docs/spikes/details-modal-scale.md, not
+         chosen ones.
 
-         CardWidthCap: half the window. The ceiling is the card width
-         at which the hero is drawn at the native resolution IGDB's
-         t_screenshot_huge delivers; past it every pixel is upscale.
-         Nothing else in the card rewards more width — the object
-         column is a fixed 200 and prose is bounded by the reading
-         measure (design-system.md §3).
+         CardWidthCap: half the window, capped at 1582. The number stays
+         but no longer has a derivation: it was the card width at which
+         the in-modal hero reached IGDB's native 1280x720, and the hero
+         is gone (screenshots now open in the lightbox overlay). What
+         still argues for a ceiling is that nothing in the card rewards
+         more width: the object column is a fixed 200 and prose is
+         bounded by the reading measure (design-system.md §3).
 
          CardHeightCap: two-thirds of the window. No ceiling, because
          nothing in the card has a native height that stops rewarding
          growth — the bands are bounded scroll regions, so more height
          is more content on screen.
-
-         HeroHeightCap: three-tenths of the window. The fraction
-         reproduces roughly what shipped at the smallest window and
-         grows from there.
 
          At the card's MinWidth of 700 the right column is still
          420px — the width every measurement in design-system.md §10.1
@@ -63,7 +60,6 @@
     <UserControl.Resources>
         <conv:ScaledLength x:Key="CardWidthCap" Fraction="0.5" Least="860" Most="1582"/>
         <conv:ScaledLength x:Key="CardHeightCap" Fraction="0.667" Least="720"/>
-        <conv:ScaledLength x:Key="HeroHeightCap" Fraction="0.3" Least="200"/>
     </UserControl.Resources>
 
     <UserControl.Styles>
@@ -1332,18 +1328,18 @@
                                            IsVisible="{Binding ShowEmptyBody}"
                                            Text="{Binding EmptyBodyText}"/>
 
-                                <!-- Screenshots. Inline in the modal's own tree,
-                                     never a flyout — §10.7's rule applied again:
-                                     this is a surface to look at, and a popup
-                                     would need a hand-drawn focus mark per
-                                     thumbnail because the global adorner does
-                                     not render inside one.
+                                <!-- Screenshots. The strip stays here as the
+                                     entry point; pressing a thumbnail opens the
+                                     lightbox, the full-window overlay declared
+                                     beside this view in MainWindow.axaml
+                                     (§10.7). The hero that used to expand above
+                                     the strip is gone, and its window-fraction
+                                     cap with it.
 
-                                     The hero appears only after a shot is
-                                     picked; nothing is drawn at all when the
-                                     game has no screenshots, which is a property
-                                     of the data — no ids in work_images means no
-                                     view model — rather than of the view.
+                                     Nothing is drawn at all when the game has no
+                                     screenshots, which is a property of the data
+                                     — no ids in work_images means no view model
+                                     — rather than of the view.
 
                                      The strip is a bounded horizontal scroll
                                      region, so its content takes the horizontal
@@ -1351,29 +1347,14 @@
                                      region here takes: the bar is drawn over the
                                      content, and 20px is Fluent's swelled track
                                      plus §4's own spacing step. -->
-                                <StackPanel Spacing="8" IsVisible="{Binding ShowScreenshots}">
+                                <!-- Two panels, not one: x:DataType applies to
+                                     the element's own bindings, so IsVisible has
+                                     to be read against the modal's view model
+                                     before DataContext moves to the strip's. -->
+                                <StackPanel IsVisible="{Binding ShowScreenshots}">
                                 <StackPanel Spacing="8"
                                             DataContext="{Binding Screenshots}"
                                             x:DataType="vm:GameScreenshotsViewModel">
-
-                                    <!-- The hero draws the whole shot — Uniform,
-                                         not UniformToFill, which cropped the frame.
-                                         Left-aligned so the box takes the shot's
-                                         own width instead of the column's, leaving
-                                         no empty bars beside the picture. The cap
-                                         comes from the window via HeroHeightCap. -->
-                                    <Border MaxHeight="{Binding $parent[Window].Bounds.Height,
-                                                                Converter={StaticResource HeroHeightCap}}"
-                                            HorizontalAlignment="Left"
-                                            ClipToBounds="True"
-                                            CornerRadius="{StaticResource RadiusControl}"
-                                            BorderThickness="1"
-                                            BorderBrush="{StaticResource LineSoft}"
-                                            IsVisible="{Binding HasHero}"
-                                            AutomationProperties.Name="{Binding HeroAutomationName}"
-                                            AutomationProperties.AccessibilityView="Control">
-                                        <Image Source="{Binding Hero}" Stretch="Uniform"/>
-                                    </Border>
 
                                     <ScrollViewer Classes="inner"
                                                   GotFocus="OnScreenshotGotFocus"
@@ -1403,6 +1384,7 @@
                                                     <Button Classes="shot"
                                                             Classes.picked="{Binding IsSelected}"
                                                             Width="120" Height="68"
+                                                            Click="OnShotPressed"
                                                             AutomationProperties.Name="{Binding AutomationName}"
                                                             AutomationProperties.ControlTypeOverride="ListItem"
                                                             ToolTip.Tip="{Binding Tooltip}"

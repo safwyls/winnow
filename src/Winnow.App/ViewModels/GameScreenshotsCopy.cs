@@ -1,10 +1,9 @@
 namespace Winnow.App.ViewModels;
 
 /// <summary>
-/// Copy for the screenshot strip inside the ABOUT section of the details
-/// modal. A horizontal row of thumbnails from IGDB; picking one expands it
-/// to a hero image above the strip, inline. A game with no screenshots
-/// draws nothing at all.
+/// Copy for the screenshot strip inside ABOUT. A horizontal row of thumbnails
+/// from IGDB; picking one opens the lightbox overlay, which gives the shot the
+/// whole window. A game with no screenshots draws nothing at all.
 /// </summary>
 public static class GameScreenshotsCopy
 {
@@ -21,10 +20,8 @@ public static class GameScreenshotsCopy
     public static string ThumbnailAutomationName(int position, int count) =>
         $"Screenshot {position} of {count}";
 
-    /// <summary>Tooltip on a thumbnail, saying what pressing it does.</summary>
+    /// <summary>Tooltip on a thumbnail, stating what pressing it does and
+    /// the shot's position in the strip.</summary>
     public static string ThumbnailTooltip(int position, int count) =>
-        $"Expand screenshot {position} of {count}";
-
-    /// <summary>Accessible name for the expanded hero image.</summary>
-    public const string HeroAutomationName = "Expanded screenshot";
+        $"View screenshot {position} of {count}";
 }

@@ -78,6 +78,13 @@ public partial class GameDetailsView : UserControl
     protected override void OnDataContextChanged(EventArgs e)
     {
         base.OnDataContextChanged(e);
+
+        // A new subject means the remembered thumbnail belongs to a game that
+        // is no longer on screen. The strip's buttons are recycled containers,
+        // so keeping the reference would hand focus to whatever shot now sits
+        // in that slot.
+        _lightboxOrigin = null;
+
         RequestCover();
     }
 
@@ -186,6 +193,50 @@ public partial class GameDetailsView : UserControl
     private void OnScreenshotGotFocus(object? sender, GotFocusEventArgs e)
     {
         (e.Source as Control)?.BringIntoView();
+    }
+
+    /// <summary>
+    /// The thumbnail the lightbox was opened from. Remembered on the press
+    /// rather than read back from the view model, because the overlay's own
+    /// selection moves as the user navigates and focus goes back to where the
+    /// user left rather than to where they got to.
+    /// </summary>
+    private Control? _lightboxOrigin;
+
+    private void OnShotPressed(object? sender, RoutedEventArgs e)
+        => _lightboxOrigin = sender as Control;
+
+    /// <summary>
+    /// Puts focus back on the thumbnail that opened the lightbox, once the
+    /// overlay has gone. Nothing happens when the modal itself is on its way
+    /// out: the lightbox closes with it, and the library owns where focus goes
+    /// then. The thumbnail is scrolled back into view for the same reason
+    /// <see cref="OnScreenshotGotFocus"/> exists — the strip may have been
+    /// scrolled since.
+    /// </summary>
+    public void RestoreLightboxFocus()
+    {
+        if (!IsVisible || _lightboxOrigin is not { } origin)
+        {
+            return;
+        }
+
+        Dispatcher.UIThread.Post(
+            () =>
+            {
+                // Checked again here, not only above: the modal's own IsVisible
+                // is written by a binding that runs after the overlay has gone,
+                // so a lightbox closing because the modal closed reaches this
+                // method while the modal still reports itself visible.
+                if (!IsVisible)
+                {
+                    return;
+                }
+
+                origin.BringIntoView();
+                origin.Focus(NavigationMethod.Tab);
+            },
+            DispatcherPriority.Input);
     }
 
     /// <summary>

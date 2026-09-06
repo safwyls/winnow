@@ -194,11 +194,11 @@ public sealed class DetailsModalStructureTests
         Assert.DoesNotMatch(@"Max(Width|Height)=""\d", card.Value);
     }
 
-    /// <summary>
-    /// The three fractions, their floors and the 1582 ceiling are
-    /// measured, not chosen; <c>docs/spikes/details-modal-scale.md</c>
-    /// is where they come from.
-    /// </summary>
+    /// <summary>The two fractions and their floors are measured values from
+    /// <c>docs/spikes/details-modal-scale.md</c>. No hero height cap must
+    /// appear: the screenshot opens in the lightbox overlay, which is capped
+    /// against the shot's native size rather than against a fraction of the
+    /// window.</summary>
     [Fact]
     public void The_scaling_resources_carry_the_measured_numbers()
     {
@@ -212,32 +212,24 @@ public sealed class DetailsModalStructureTests
             @"<conv:ScaledLength x:Key=""CardHeightCap"" Fraction=""0.667"" Least=""720""/>",
             markup,
             StringComparison.Ordinal);
-        Assert.Contains(
-            @"<conv:ScaledLength x:Key=""HeroHeightCap"" Fraction=""0.3"" Least=""200""/>",
-            markup,
-            StringComparison.Ordinal);
+        Assert.DoesNotContain("HeroHeightCap", markup, StringComparison.Ordinal);
     }
 
-    /// <summary>
-    /// <c>UniformToFill</c> is what the user reported: it cropped the
-    /// frame. It must not come back. The box stays left-aligned and
-    /// window-capped so the shot takes its own width without empty bars.
-    /// </summary>
+    /// <summary>The thumbnail strip stays in ABOUT as the entry point, and
+    /// every thumbnail is a real <c>Button</c> with a Tab stop and a drawn
+    /// focus ring. The hero that used to expand above the strip is gone, and
+    /// its window-fraction cap with it.</summary>
     [Fact]
-    public void The_hero_draws_the_whole_shot_and_grows_with_the_window()
+    public void The_strip_stays_and_the_hero_is_gone()
     {
         var markup = RepositoryTree.Read(View);
 
-        var hero = Regex.Match(
-            markup,
-            @"<Border MaxHeight=""\{Binding \$parent\[Window\]\.Bounds\.Height,(.*?)</Border>",
-            RegexOptions.Singleline);
+        Assert.Contains("Button Classes=\"shot\"", markup, StringComparison.Ordinal);
+        Assert.Contains("{Binding ListAutomationName}", markup, StringComparison.Ordinal);
 
-        Assert.True(hero.Success, "The screenshot hero no longer takes its cap from the window.");
-        Assert.Contains("Converter={StaticResource HeroHeightCap}", hero.Value, StringComparison.Ordinal);
-        Assert.Contains("HorizontalAlignment=\"Left\"", hero.Value, StringComparison.Ordinal);
-        Assert.Contains("Stretch=\"Uniform\"", hero.Value, StringComparison.Ordinal);
-        Assert.DoesNotContain("UniformToFill", hero.Value, StringComparison.Ordinal);
+        Assert.DoesNotContain("HasHero", markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("HeroAutomationName", markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("{Binding Hero}", markup, StringComparison.Ordinal);
     }
 
     /// <summary>

@@ -5,10 +5,12 @@ using Xunit;
 namespace Winnow.Tests;
 
 /// <summary>
-/// Tests <see cref="ScaledLength"/> at real window sizes: the card's cap
-/// is half the window between the 860 it shipped with and the measured
-/// 1582 ceiling, height is two-thirds and never below 720, and the hero
-/// is three-tenths and never below 200.
+/// <see cref="ScaledLength"/> at real window sizes. The card's width cap is half
+/// the window between the 860 it shipped with and the 1582 ceiling; its height
+/// is two-thirds and never below 720. The hero's own cap is gone: the
+/// screenshot opens in the lightbox overlay, which is capped against the shot's
+/// native size rather than against a fraction of the window
+/// (design-system.md §10.7).
 /// </summary>
 public sealed class DetailsModalScaleTests
 {
@@ -16,13 +18,12 @@ public sealed class DetailsModalScaleTests
 
     private static readonly ScaledLength CardHeight = new() { Fraction = 0.667, Least = 720 };
 
-    private static readonly ScaledLength HeroHeight = new() { Fraction = 0.3, Least = 200 };
-
-    /// <summary>
-    /// The card's width cap is half the window, floored at 860 and
-    /// capped at 1582 — the width at which the hero is drawn at the
-    /// native resolution IGDB delivers.
-    /// </summary>
+    /// <summary>The card's width cap is half the window, floored at 860 and
+    /// capped at 1582. The 1582 stays as a number but no longer has a
+    /// derivation: it was the card width at which the in-modal hero reached
+    /// IGDB's native 1280x720, and the hero is gone. What still argues for a
+    /// ceiling is that nothing in the card rewards more width: the object column
+    /// is a fixed 200 and prose is bounded by the reading measure.</summary>
     [Theory]
     [InlineData(1200, 860)]
     [InlineData(1280, 860)]
@@ -55,22 +56,6 @@ public sealed class DetailsModalScaleTests
         => Assert.Equal(expected, CardHeight.Apply(window), 2);
 
     /// <summary>
-    /// The hero's height cap is three-tenths of the window, floored at
-    /// 200. The fraction reproduces roughly what shipped at the
-    /// smallest window and grows from there.
-    /// </summary>
-    [Theory]
-    [InlineData(640, 200)]
-    [InlineData(667, 200.1)]
-    [InlineData(820, 246)]
-    [InlineData(1080, 324)]
-    [InlineData(1440, 432)]
-    [InlineData(2160, 648)]
-    public void The_hero_takes_three_tenths_of_the_window_height_and_never_less_than_the_200_it_had(
-        double window, double expected)
-        => Assert.Equal(expected, HeroHeight.Apply(window), 2);
-
-    /// <summary>
     /// The width floor must stay above the card's <c>MinWidth</c> of 700,
     /// which is what keeps the 420px right column the narrowest case any
     /// measurement has to hold for.
@@ -96,7 +81,6 @@ public sealed class DetailsModalScaleTests
     {
         Assert.Equal(860, CardWidth.Apply(window), 2);
         Assert.Equal(720, CardHeight.Apply(window), 2);
-        Assert.Equal(200, HeroHeight.Apply(window), 2);
     }
 
     /// <summary>

@@ -667,6 +667,22 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
 
     public bool IsDetailsOpen => Details is not null;
 
+    /// <summary>
+    /// The screenshot lightbox, one instance for the life of this view model.
+    /// It lives here rather than on <see cref="Details"/> so the window can
+    /// bind <c>Library.Lightbox.IsOpen</c> down a path that is never null — an
+    /// <c>IsVisible</c> binding that resolves to <c>UnsetValue</c> falls back
+    /// to the property's default of <c>true</c>, so a null path would draw an
+    /// empty overlay over the library.
+    /// </summary>
+    public ScreenshotLightboxViewModel Lightbox { get; } = new();
+
+    // Every route that replaces or drops the modal — closing, hiding,
+    // reopening after a refetch or an assignment — takes the overlay down
+    // with it. One hook here rather than a call at each site, so a route
+    // added later cannot leave an orphaned overlay over the library.
+    partial void OnDetailsChanged(GameDetailsViewModel? value) => Lightbox.Close();
+
     // ══ The cut bar ═════════════════════════════════════════════════════════
     // One strip under the command bar that says what you are looking at. It is
     // the seam between the rail and the panel: the bucket appears here as the
@@ -1339,7 +1355,8 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             ratings: ratings,
             images: images,
             ownerships: await BuildAcquisitionAsync(target),
-            refetch: BuildRefetch(workId));
+            refetch: BuildRefetch(workId),
+            lightbox: Lightbox);
     }
 
     private async Task<IReadOnlyList<Ownership>> BuildAcquisitionAsync(GameTileViewModel target)

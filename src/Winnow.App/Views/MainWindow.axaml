@@ -2000,6 +2000,20 @@
                                DataContext="{Binding Library.Details}"
                                IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Library.IsDetailsOpen}"/>
 
+        <!-- ── Screenshot lightbox (§10.7) ───────────────────────────────────
+             Declared after the modal and spanning the same three columns, so
+             it draws over it. It is an ordinary child of the window's own
+             Grid — in the window's visual tree, where drawn focus rings work
+             — not a Popup, which would be its own root with no adorner layer.
+
+             IsOpen is bound off Library, not off Library.Details, because a
+             binding whose path passes through a null resolves to UnsetValue
+             and IsVisible would fall back to its default of true. -->
+        <views:ScreenshotLightboxView Name="LightboxPanel"
+                                      Grid.Column="0" Grid.ColumnSpan="3"
+                                      DataContext="{Binding Library.Lightbox}"
+                                      IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Library.Lightbox.IsOpen}"/>
+
     </Grid>
     </Grid>
     </Panel>

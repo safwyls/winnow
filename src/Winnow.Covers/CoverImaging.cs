@@ -10,12 +10,20 @@ namespace Winnow.Covers;
 public static class CoverImaging
 {
     /// <summary>
-    /// Display widths we actually decode at. Snapping means the density slider
-    /// and DPI changes cannot start an endless re-decode treadmill, and the
-    /// memory cache stays keyed by a small, finite set. 160 covers a 148 DIP
-    /// tile at 1x, 320 at 2x, 640 at 4x.
+    /// Display widths the cache decodes at. Snapping to a fixed set means the
+    /// density slider and DPI changes cannot start an endless re-decode
+    /// treadmill, and the memory cache stays keyed by a small, finite set.
+    /// <para>160 covers a 148 DIP tile at 1x, 320 at 2x, 640 at 4x. Those
+    /// five buckets are the grid's. 1280 is the screenshot lightbox's and
+    /// nothing else reaches it: it is the native width of IGDB's
+    /// <c>t_screenshot_huge</c>, the only asset the application draws larger
+    /// than a cover, and the overlay caps the shot at that size
+    /// (design-system.md §10.7). Without it the widest decode is 640 and the
+    /// lightbox would draw a two-times upscale at its own cap.</para>
+    /// <para>Decoding never upscales past the source, so a 1200x1800 Steam
+    /// capsule asked for at 1280 still decodes at 1200.</para>
     /// </summary>
-    public static readonly int[] WidthBuckets = [160, 240, 320, 480, 640];
+    public static readonly int[] WidthBuckets = [160, 240, 320, 480, 640, 1280];
 
     public static int SnapWidth(double requestedPixels)
     {

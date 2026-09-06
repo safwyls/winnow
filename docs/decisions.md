@@ -1768,6 +1768,91 @@ Superseded text from §5.5:
 
 > That bitmap is upscaled to a card up to 860px wide, and the upscale is what softens it
 
+### 2026-09-06 — Screenshots open in a lightbox overlay, not inside the modal (TASK-134)
+
+`design-system.md` §10.1 and §10.7.
+
+TASK-133 made the in-modal hero draw the whole frame rather than a cropped strip. That fixed
+the cropping but not the framing: a screenshot competing for room with the reception line, the
+axis, the action band and six sections is still a screenshot in a crowded column. The user's
+direction after seeing the scaled modal: "rather than have them appear inside the details modal
+i think we should do a popover image that dims the background and has a close button and
+left/right navigation. bringing the focus onto the image and not smashing it in between the
+other controls in the details modal."
+
+The answer is a full-window **overlay**, declared in `MainWindow.axaml` as a sibling of
+`GameDetailsView` in the window's own `Grid`, after it so it draws over it. Never a `Popup` or
+a `Flyout`. §10.7's ban on flyouts is about popups having no adorner layer, so `FocusAdorner`
+draws nothing in one; the detail modal is not a popup either, which is exactly why its focus
+rings work, and the lightbox is the same pattern one layer up. §10.7 now records that reasoning
+so the next reader does not have to re-derive it.
+
+The frame is capped at 1282 x 722 — 1280 x 720 plus a 1px border each side — because 1280x720
+is the native size of IGDB's `t_screenshot_huge`. `Stretch="Uniform"`, so a smaller window
+shrinks the whole frame rather than cropping. Native is reached from a window of about
+1424 x 864 up; at the app's own minimum window the shot is 6.3 times the area of the hero it
+replaces, at the default window 6.9 times, and even at 3840x2160, where the hero was largest,
+1.24 times.
+
+**This entry supersedes part of the TASK-133 entry above.** That entry states that 1582 is the
+card width at which the hero is drawn at its native 1280x720, and describes a third
+`ScaledLength` resource, `HeroHeightCap`, at three-tenths of the window with a floor of 200.
+The hero and that resource are gone. The 1582 ceiling itself stays, but it is now retained
+rather than derived: what still argues for a ceiling is that nothing in the card rewards more
+width — the object column is a fixed 200px and prose is bounded by the reading measure (§3). A
+future pass wanting a different ceiling would have to measure a new reason for one.
+
+One finding discovered rather than assumed: `CoverImaging.WidthBuckets` topped out at 640
+pixels, so the in-modal hero was already a 640-wide decode upscaled — at 3840x2160 it was
+drawn 1148px wide from a 640px bitmap, which is not what "drawn pixel-for-pixel" in the
+superseded §10.1 text implied. A 1280 bucket was added so the lightbox draws at native. That
+also retired the comment on `CoverImagingTests`'s widest snap case, which read
+`// clamped: no display needs more than the capsule holds` and is no longer true.
+
+The evidence is in `docs/spikes/screenshot-lightbox-scale.md`.
+
+Superseded text from §10.1:
+
+> **The card scales against the window, not the display.** Three named `ScaledLength` resources
+> at the top of the view — `CardWidthCap`, `CardHeightCap` and `HeroHeightCap` — each bound to
+> `$parent[Window].Bounds`. A `ScaledLength` carries a `Fraction`, a `Least` floor and an
+> optional `Most` ceiling, so each cap is one named object rather than a number buried in a
+> layout attribute. All three are unit-tested at seven window sizes
+> (`tests/Winnow.Tests/DetailsModalScaleTests.cs`).
+
+> **1582 is the card width at which the screenshot hero fills its native resolution.** IGDB's
+> `t_screenshot_huge` is 1280x720. At 1582 the hero image is exactly 1280px wide and drawn
+> pixel-for-pixel (the box is 1282px — 1px border each side); past it every further pixel is
+> upscale. Nothing else in the card rewards more width: the left column is a fixed 200px, and
+> prose is bounded by the reading measure (§3). See `docs/spikes/details-modal-scale.md` for the
+> measurements.
+
+Only the second sentence of the following paragraph was replaced — with "Picking a thumbnail
+opens the lightbox (§10.7)." — while the rest of the paragraph was only re-wrapped and
+survives unchanged. The second paragraph was deleted entirely.
+
+> at 120x68, with a caption naming the count and the source. Picking a thumbnail expands that
+> shot to a hero above the strip, inline in the modal's own tree — never a popup, §10.7's rule
+> applied again, because a popup would need a hand-drawn focus mark per thumbnail. Each thumbnail
+> is a real `Button`, so it is a Tab stop with the panel's drawn ring, and a thumbnail reached by
+> Tab is scrolled into view — the same arrangement the IGDB candidate list (§10.9) uses. A game
+> with no screenshots draws nothing at all, never an empty frame; that is a property of the data:
+> no ids in `work_images` means no view model. The images ride the existing cover cache under a
+> `CoverKey.IgdbScreenshot`, which resolves to `t_screenshot_huge` — an IGDB cover is 3:4 and a
+> screenshot is 16:9, so the provider is what picks the size token; there is no second image path.
+> The strip is a bounded horizontal scroll region, the fourth such region in the modal.
+>
+> The hero uses `Stretch="Uniform"` — the whole frame, never cropped — and is left-aligned so it
+> takes the shot's own width instead of the column's, with no empty bars beside it. Its height
+> cap is `HeroHeightCap`: three-tenths of the window's height, never below the 200px it had.
+> Three-tenths reproduces roughly what shipped at the smallest window and grows from there: 200px
+> was 0.29 of the modal host's height at a 720-tall window. The cost is stated honestly: the
+> drawn box is narrower than the old full-width crop, because a whole 16:9 frame in a
+> height-capped box is narrower than a horizontal strip that fills the column. From the default
+> window up the shot's area is larger, and at 3840x2160 it is nearly three times the area; at the
+> app's smallest window it is smaller in area but is the whole picture rather than a slice of it.
+
+
 ## 2026-09-06 — Agent instructions for Astra (TASK-140)
 
 The user requested direct prose authorship without a docs-writer agent. Shared writing

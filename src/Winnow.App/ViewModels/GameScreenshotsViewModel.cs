@@ -42,14 +42,13 @@ public sealed partial class GameScreenshotViewModel : ObservableObject
 }
 
 /// <summary>
-/// The screenshot strip inside ABOUT. Thumbnails are requested once, when the
-/// modal asks for its cover, and the hero is requested at the wider rendition
-/// only for the shot the user picks, with the thumbnail standing in until it
-/// arrives. Nothing is expanded until a shot is picked.
-///
-/// <para>Artwork rows are a different <see cref="ImageKinds"/> value and are not
-/// screenshots. No ids means no view model, which is what makes "nothing rather
-/// than an empty frame" a property of the data.</para>
+/// The screenshot strip inside ABOUT (design-system.md §10.1). Thumbnails are
+/// requested once, when the modal asks for its cover.
+/// <para>Picking a thumbnail opens the lightbox, the full-window overlay that
+/// gives the shot the whole frame. Artwork rows are a different
+/// <c>ImageKinds</c> value and are not screenshots. No ids means no view model,
+/// which is what makes "nothing rather than an empty frame" a property of the
+/// data.</para>
 /// </summary>
 public sealed partial class GameScreenshotsViewModel : ObservableObject
 {
@@ -59,19 +58,22 @@ public sealed partial class GameScreenshotsViewModel : ObservableObject
     /// <summary>Thumbnail height, 16:9 at <see cref="ThumbnailWidth"/>.</summary>
     public const double ThumbnailHeight = 68;
 
-    /// <summary>Hero width in device-independent pixels. The wider rendition.</summary>
-    public const double HeroWidth = 580;
-
     private readonly ICoverCache? _covers;
+
+    private readonly ScreenshotLightboxViewModel? _lightbox;
 
     private double _scaling = 1.0;
 
     private bool _requested;
 
-    private GameScreenshotsViewModel(IReadOnlyList<GameScreenshotViewModel> shots, ICoverCache? covers)
+    private GameScreenshotsViewModel(
+        IReadOnlyList<GameScreenshotViewModel> shots,
+        ICoverCache? covers,
+        ScreenshotLightboxViewModel? lightbox)
     {
         Shots = shots;
         _covers = covers;
+        _lightbox = lightbox;
         Caption = GameScreenshotsCopy.Caption(shots.Count);
     }
 
@@ -87,23 +89,23 @@ public sealed partial class GameScreenshotsViewModel : ObservableObject
     /// <summary>Accessible name for the thumbnail strip.</summary>
     public string ListAutomationName => GameScreenshotsCopy.ListAutomationName;
 
-    /// <summary>Accessible name for the hero image.</summary>
-    public string HeroAutomationName => GameScreenshotsCopy.HeroAutomationName;
-
-    /// <summary>The picked shot at hero resolution. Null until a shot is selected.</summary>
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasHero))]
-    public partial Bitmap? Hero { get; set; }
-
-    /// <summary>True once the user has picked a shot.</summary>
-    public bool HasHero => Hero is not null;
+    /// <summary>
+    /// The overlay a thumbnail opens. Null only in tests that build a strip
+    /// without one; the application always hands one down from the library view
+    /// model, which is what lets the window bind <c>Library.Lightbox.IsOpen</c>
+    /// without a null path.
+    /// </summary>
+    public ScreenshotLightboxViewModel? Lightbox => _lightbox;
 
     /// <summary>
     /// Builds the strip from the stored image rows. Returns null when no
     /// screenshot ids exist, which is what makes "nothing rather than an empty
     /// frame" a property of the data.
     /// </summary>
-    public static GameScreenshotsViewModel? From(IReadOnlyList<WorkImages>? images, ICoverCache? covers)
+    public static GameScreenshotsViewModel? From(
+        IReadOnlyList<WorkImages>? images,
+        ICoverCache? covers,
+        ScreenshotLightboxViewModel? lightbox = null)
     {
         var ids = images
             ?.Where(row => row.Source == ImageSources.Igdb && row.Kind == ImageKinds.Screenshot)
@@ -120,7 +122,7 @@ public sealed partial class GameScreenshotsViewModel : ObservableObject
             .Select((id, index) => new GameScreenshotViewModel(id, index + 1, ids.Length))
             .ToArray();
 
-        return new GameScreenshotsViewModel(shots, covers);
+        return new GameScreenshotsViewModel(shots, covers, lightbox);
     }
 
     /// <summary>
@@ -150,6 +152,11 @@ public sealed partial class GameScreenshotsViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// Opens the lightbox on the pressed thumbnail. The overlay owns the
+    /// selection mark from here on, so the strip keeps showing which shot is up
+    /// as the user navigates.
+    /// </summary>
     [RelayCommand]
     private void Select(GameScreenshotViewModel? shot)
     {
@@ -158,31 +165,17 @@ public sealed partial class GameScreenshotsViewModel : ObservableObject
             return;
         }
 
-        foreach (var candidate in Shots)
+        if (_lightbox is null)
         {
-            candidate.IsSelected = ReferenceEquals(candidate, shot);
-        }
-
-        if (_covers is null)
-        {
-            Hero = shot.Image;
-            return;
-        }
-
-        if (_covers.TryGet(shot.Key, HeroWidth * _scaling, out var cached))
-        {
-            Hero = cached.Vivid;
-            return;
-        }
-
-        Hero = shot.Image;
-        _ = LoadAsync(shot, HeroWidth * _scaling, art =>
-        {
-            if (shot.IsSelected)
+            foreach (var candidate in Shots)
             {
-                Hero = art;
+                candidate.IsSelected = ReferenceEquals(candidate, shot);
             }
-        });
+
+            return;
+        }
+
+        _lightbox.Open(Shots, shot, _covers, _scaling);
     }
 
     private async Task LoadAsync(GameScreenshotViewModel shot, double width, Action<Bitmap> apply)

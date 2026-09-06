@@ -39,6 +39,11 @@ public partial class MainWindow : Window
 
         DetailsPanel.CloseRequested += (_, _) => _library?.CloseDetailsCommand.Execute(null);
 
+        // When the lightbox closes, focus goes back to the thumbnail it was
+        // opened from, regardless of which of the four exits was taken. The
+        // modal refuses the restore when the modal itself is on the way out.
+        LightboxPanel.Closed += (_, _) => DetailsPanel.RestoreLightboxFocus();
+
         // Tunnel, not bubble: this handler must see a press before the buttons
         // on a turned card's back face do. See OnTilePressed.
         TileWall.AddHandler(PointerPressedEvent, OnTilePressed, RoutingStrategies.Tunnel);
@@ -539,6 +544,32 @@ public partial class MainWindow : Window
         {
             prompt.CancelCommand.Execute(null);
             e.Handled = true;
+            return;
+        }
+
+        // The screenshot lightbox sits above the modal and answers first:
+        // Escape closes the overlay and leaves the modal standing (§12.4's
+        // one-layer-per-press rule). Left and Right walk the shots and wrap.
+        // The return is unconditional, so no key reaches the modal or the
+        // library while the overlay is up.
+        if (_library?.Lightbox is { IsOpen: true } lightbox)
+        {
+            switch (e.Key)
+            {
+                case Key.Escape:
+                    lightbox.CloseCommand.Execute(null);
+                    e.Handled = true;
+                    break;
+                case Key.Left:
+                    lightbox.PreviousCommand.Execute(null);
+                    e.Handled = true;
+                    break;
+                case Key.Right:
+                    lightbox.NextCommand.Execute(null);
+                    e.Handled = true;
+                    break;
+            }
+
             return;
         }
 

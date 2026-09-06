@@ -68,10 +68,11 @@ public partial class GameDetailsViewModel : ObservableObject
         IReadOnlyList<WorkRating>? ratings = null,
         IReadOnlyList<WorkImages>? images = null,
         IReadOnlyList<Ownership>? ownerships = null,
-        GameRefetchViewModel? refetch = null)
+        GameRefetchViewModel? refetch = null,
+        ScreenshotLightboxViewModel? lightbox = null)
     {
         Reception = GameReceptionViewModel.From(ratings);
-        Screenshots = GameScreenshotsViewModel.From(images, covers);
+        Screenshots = GameScreenshotsViewModel.From(images, covers, lightbox);
         Acquisition = GameAcquisitionViewModel.From(ownerships);
         Refetch = refetch;
         HideCommand = hideGame;

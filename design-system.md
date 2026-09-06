@@ -657,11 +657,11 @@ it. The divider spans the right column only, because the left one keeps going. T
 fills the ~130px of nothing a game with no last-played date used to leave beside a 300px cover,
 which read as broken rather than as sparse.
 
-**The card scales against the window, not the display.** Three named `ScaledLength` resources
-at the top of the view — `CardWidthCap`, `CardHeightCap` and `HeroHeightCap` — each bound to
+**The card scales against the window, not the display.** Two named `ScaledLength` resources
+at the top of the view — `CardWidthCap` and `CardHeightCap` — each bound to
 `$parent[Window].Bounds`. A `ScaledLength` carries a `Fraction`, a `Least` floor and an
 optional `Most` ceiling, so each cap is one named object rather than a number buried in a
-layout attribute. All three are unit-tested at seven window sizes
+layout attribute. Both are unit-tested at seven window sizes
 (`tests/Winnow.Tests/DetailsModalScaleTests.cs`).
 
 - `MinWidth` = 700, unchanged. `Margin` = 40, unchanged.
@@ -676,12 +676,14 @@ display-relative card would overflow a small window on a large screen. Why `Wind
 they never depend on what is inside the window, so a cap bound to them cannot feed back into
 layout, while a cap bound to the modal's own host could.
 
-**1582 is the card width at which the screenshot hero fills its native resolution.** IGDB's
-`t_screenshot_huge` is 1280x720. At 1582 the hero image is exactly 1280px wide and drawn
-pixel-for-pixel (the box is 1282px — 1px border each side); past it every further pixel is
-upscale. Nothing else in the card rewards more width: the left column is a fixed 200px, and
-prose is bounded by the reading measure (§3). See `docs/spikes/details-modal-scale.md` for the
-measurements.
+**1582 is retained rather than derived.** It was the card width at which the in-modal
+screenshot hero reached the native 1280x720 of IGDB's `t_screenshot_huge`; that hero has moved
+to the lightbox (§10.7), which is sized against the window rather than against the card, so the
+number no longer follows from anything inside the card. Nothing else in the card rewards more
+width: the left column is a fixed 200px, and prose is bounded by the reading measure (§3). A
+future pass wanting a different ceiling would have to measure a new reason for one; leaving the
+number where it is costs nothing and re-deriving it buys nothing. See
+`docs/spikes/details-modal-scale.md` for the measurements that produced it.
 
 **There is deliberately no height ceiling.** Nothing in the card has a native height that
 stops rewarding growth: the rest band and the left column are bounded scroll regions, so more
@@ -773,26 +775,15 @@ and `UPDATE HISTORY` in the other, and the first of those is Band 2's own rail l
 modal said the same words about two different things; the rail keeps the name.
 
 **Screenshots sit inside ABOUT, not in a section of their own.** A horizontal thumbnail strip
-at 120x68, with a caption naming the count and the source. Picking a thumbnail expands that
-shot to a hero above the strip, inline in the modal's own tree — never a popup, §10.7's rule
-applied again, because a popup would need a hand-drawn focus mark per thumbnail. Each thumbnail
-is a real `Button`, so it is a Tab stop with the panel's drawn ring, and a thumbnail reached by
-Tab is scrolled into view — the same arrangement the IGDB candidate list (§10.9) uses. A game
-with no screenshots draws nothing at all, never an empty frame; that is a property of the data:
-no ids in `work_images` means no view model. The images ride the existing cover cache under a
-`CoverKey.IgdbScreenshot`, which resolves to `t_screenshot_huge` — an IGDB cover is 3:4 and a
-screenshot is 16:9, so the provider is what picks the size token; there is no second image path.
-The strip is a bounded horizontal scroll region, the fourth such region in the modal.
-
-The hero uses `Stretch="Uniform"` — the whole frame, never cropped — and is left-aligned so it
-takes the shot's own width instead of the column's, with no empty bars beside it. Its height
-cap is `HeroHeightCap`: three-tenths of the window's height, never below the 200px it had.
-Three-tenths reproduces roughly what shipped at the smallest window and grows from there: 200px
-was 0.29 of the modal host's height at a 720-tall window. The cost is stated honestly: the
-drawn box is narrower than the old full-width crop, because a whole 16:9 frame in a
-height-capped box is narrower than a horizontal strip that fills the column. From the default
-window up the shot's area is larger, and at 3840x2160 it is nearly three times the area; at the
-app's smallest window it is smaller in area but is the whole picture rather than a slice of it.
+at 120x68, with a caption naming the count and the source. Picking a thumbnail opens the
+lightbox (§10.7). Each thumbnail is a real `Button`, so it is a Tab stop with the panel's drawn
+ring, and a thumbnail reached by Tab is scrolled into view — the same arrangement the IGDB
+candidate list (§10.9) uses. A game with no screenshots draws nothing at all, never an empty
+frame; that is a property of the data: no ids in `work_images` means no view model. The images
+ride the existing cover cache under a `CoverKey.IgdbScreenshot`, which resolves to
+`t_screenshot_huge` — an IGDB cover is 3:4 and a screenshot is 16:9, so the provider is what
+picks the size token; there is no second image path. The strip is a bounded horizontal scroll
+region, the fourth such region in the modal.
 
 **Accessibility: the modal's own tree.** Band 1, Band 2, Band 3 and the reception line are
 named groups — `AutomationProperties.Name` plus `AccessibilityView="Control"`, which is what
@@ -1135,6 +1126,90 @@ menu draws its own mark inside the item template and therefore never needed the 
 Everything else stays in the modal's own tree — the IGDB search and its candidate list
 (§10.9), the per-field editor (§10.10), the list ticks — because those are surfaces to read
 and type in, where a hand-drawn ring per control would be the whole cost of the surface.
+
+**The screenshot lightbox is an overlay, not a popup.** §10.7's ban is on popups: a popup is
+its own root with no adorner layer, so `FocusAdorner` draws nothing inside one and every ring
+would have to be hand-drawn per control. The detail modal is not a popup either —
+`MainWindow.axaml` hosts `GameDetailsView` as a child spanning all columns of the window's own
+`Grid`, and that is exactly why its focus rings work. The lightbox is the same pattern one
+layer up: an ordinary child of that same Grid, declared after the modal so it draws over it, in
+the window's visual tree. The rings draw there for the same reason they draw in the modal, and
+nothing is hand-drawn. The lightbox is therefore not a second exception alongside the action
+band's menu. The menu is an exception because it is a popup that draws its own mark; the
+lightbox needs no exception at all. A `Popup` or a `Flyout` here would be the mistake, and it
+is held by a test (`tests/Winnow.Tests/Enforcement/ScreenshotLightboxStructureTests.cs`) rather
+than by review, because the failure is silent — the rings would simply stop drawing.
+
+**The ground.** The `ModalScrim` token, the same one the modal's own scrim takes, lying over
+that scrim rather than replacing it. Two stacked passes of the theme's Well at 84% compose to
+roughly 97%, which is what puts the library and the card out of the way. No second token, so
+nothing new has to be kept in step across the four themes.
+
+**The frame.** Capped at 1282 x 722: 1280 x 720 plus the 1px border on each side. 1280x720 is
+the native size of IGDB's `t_screenshot_huge`, the rendition `CoverKey.IgdbScreenshot` resolves
+to, so past it every pixel is upscale — the same argument that produced the card's own width
+ceiling, now applied where it belongs. `Stretch="Uniform"`, so a window too small to give the
+shot its native size shrinks the whole frame rather than cropping it; `UniformToFill` is the
+crop the user reported and must not come back. There is deliberately no window fraction here:
+the cap is the picture's own size, not a share of the window, because a full-window overlay has
+room to spare from a very ordinary window upward.
+
+**What a window produces:**
+
+| window | overlay | shot drawn | the hero it replaces |
+|---|---|---|---|
+| 1200x640 (the app's own minimum) | 1200 x 604 | 882 x 496 | 352 x 198 |
+| 1280x820 (default) | 1280 x 784 | 1136 x 639 | 434 x 244 |
+| 1440x900 | 1440 x 864 | 1280 x 720 | — |
+| 1600x900 | 1600 x 864 | 1280 x 720 | 476 x 268 |
+| 1920x1080 | 1920 x 1044 | 1280 x 720 | 572 x 322 |
+| 2560x1440 | 2560 x 1404 | 1280 x 720 | 764 x 430 |
+| 3440x1440 | 3440 x 1404 | 1280 x 720 | 764 x 430 |
+| 3840x2160 | 3840 x 2124 | 1280 x 720 | 1148 x 646 |
+
+The shot is drawn at its native size from an overlay of 1424 x 828 upward, which is a window
+of about 1424 x 864 once the title bar is taken off — so from 1440x900 up. Below that the
+whole frame shrinks uniformly. At the app's own minimum window the shot is 6.3 times the area
+of the hero it replaces, at the default window 6.9 times, and even at 3840x2160, where the
+hero was largest, 1.24 times.
+
+**The decode.** `CoverImaging.WidthBuckets` used to top out at 640 pixels, so the in-modal hero
+was already a 640-wide decode upscaled — at 3840x2160 it was drawn 1148px wide from a 640px
+bitmap. A 1280 bucket was added so the lightbox draws the shot at its native size rather than
+at a two-times upscale. 1280 is the native width of `t_screenshot_huge`, the only asset the
+application draws larger than a cover, and nothing else reaches it; decoding never upscales
+past the source, so a 1200x1800 Steam capsule asked for at 1280 still decodes at 1200.
+
+**Controls and keyboard.** A close control, and back/forward navigation across that game's
+shots. Navigation wraps in both directions, the answer §10.3 already gives for Up and Down in
+the action menu. A game with a single screenshot draws no navigation at all rather than two
+inert controls, which is the rule §10.3 already applies to that menu's rows. `Escape` closes,
+`Left` and `Right` navigate; they are answered by the window in a layer above the modal's own,
+so one press of `Escape` closes the lightbox and leaves the modal standing — §12.4's
+one-layer-per-press rule applied here. Only a press that lands on the scrim itself closes, the
+same guard the modal's own scrim carries.
+
+**Focus.** `KeyboardNavigation.TabNavigation="Cycle"` on the overlay panel — the same trap the
+modal's card already carries, one layer up — so Tab cannot reach the modal beneath. Focus moves
+to the close control when the overlay appears, with `NavigationMethod.Tab` so the drawn ring is
+visible; a plain `Focus()` sets focus without marking it visible, which is an overlay taking
+focus without showing where it went. On close, focus returns to the thumbnail the lightbox was
+opened from, and that thumbnail is scrolled back into view because the strip scrolls sideways.
+It returns to the originating thumbnail rather than to the one now showing; the strip's own
+mark follows the overlay, so the two can differ after the user has navigated, and the mark is
+what shows where they got to.
+
+**Accessibility.** The surface says it is a dialog and which shot of how many is showing.
+Avalonia 11.3.20 has no `AutomationProperties.IsDialog`, so the overlay takes
+`AutomationProperties.ControlTypeOverride="Window"` — verified to compile against 11.3.20 —
+and both the role and the count are spelled into `AutomationProperties.Name`, which is the same
+answer §8 already gives for a count when `PositionInSet` and `SizeOfSet` are read by nothing.
+Because changing a `Name` at runtime raises no UIA event, navigating would otherwise be silent,
+so the position also rides the caption under the image: a bound `TextBlock` with
+`LiveSetting="Polite"` and no `AutomationProperties.Name` of its own, exactly the arrangement
+§10.3's refetch status field uses and for the reason recorded there.
+
+See `docs/spikes/screenshot-lightbox-scale.md` for the measurements.
 
 **Tab order follows the tree, not `TabIndex`.** Avalonia's tab navigation walks declaration
 order and ignores `TabIndex` on a non-focusable container — measured, not assumed. The right
