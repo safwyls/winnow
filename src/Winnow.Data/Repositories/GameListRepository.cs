@@ -233,7 +233,8 @@ public sealed class GameListRepository : IGameListRepository
     public async Task ReorderAsync(
         long listId, IReadOnlyList<long> releaseIdsInOrder, CancellationToken ct = default)
     {
-        using var lease = _factory.Lease();
+        using var batch = new RepositoryWriteBatch(_factory);
+        var lease = batch.Lease;
 
         var current = (await lease.Connection.QueryAsync<long>(new CommandDefinition(
             "SELECT release_id FROM list_items WHERE list_id = @listId ORDER BY position;",
@@ -241,6 +242,7 @@ public sealed class GameListRepository : IGameListRepository
 
         if (current.Count == 0)
         {
+            batch.Commit();
             return;
         }
 
@@ -281,5 +283,7 @@ public sealed class GameListRepository : IGameListRepository
                 new { listId, releaseId = ordered[position], position },
                 transaction: lease.Transaction, cancellationToken: ct));
         }
+
+        batch.Commit();
     }
 }

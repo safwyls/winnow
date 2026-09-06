@@ -116,7 +116,8 @@ public sealed class FacetRepository : IFacetRepository
         // Desired state, keyed by facet id. Assignments with no usable key are dropped.
         var desired = new Dictionary<long, int?>();
 
-        using var lease = _factory.Lease();
+        using var batch = new RepositoryWriteBatch(_factory);
+        var lease = batch.Lease;
 
         foreach (var assignment in facets)
         {
@@ -149,6 +150,7 @@ public sealed class FacetRepository : IFacetRepository
         if (existing.Count == desired.Count
             && desired.All(kv => existing.TryGetValue(kv.Key, out var rank) && rank == kv.Value))
         {
+            batch.Commit();
             return 0;
         }
 
@@ -179,6 +181,7 @@ public sealed class FacetRepository : IFacetRepository
                 new { scopeId, facetId, rank }, transaction: lease.Transaction, cancellationToken: ct));
         }
 
+        batch.Commit();
         return written;
     }
 

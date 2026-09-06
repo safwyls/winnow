@@ -619,6 +619,12 @@ is a no-op.
 SQLite. Migrations are embedded resources, checked into the repository, applied on startup by
 DbUp, and **append-only: never edit a shipped migration.**
 
+Facet replacement, list reordering and feed surfacing batches are atomic repository calls.
+Each opens a local transaction when called alone, or a savepoint inside the caller's unit
+of work. A failed batch rolls back its own writes even when the caller catches the failure;
+a successful batch never commits the caller's transaction. Facet vocabulary creation and
+assignment replacement belong to the same batch.
+
 ```sql
 -- Canonical identity
 works(id, igdb_id UNIQUE, name, sort_name, first_release_year, summary, cover_url, background_url)

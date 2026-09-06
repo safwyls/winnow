@@ -89,7 +89,8 @@ public sealed class FeedFeedbackRepository : IFeedFeedbackRepository
             return;
         }
 
-        using var lease = _factory.Lease();
+        using var batch = new RepositoryWriteBatch(_factory);
+        var lease = batch.Lease;
         foreach (var surfacing in surfacings)
         {
             // OR IGNORE against the (release_id, surfaced_on) primary key:
@@ -108,6 +109,8 @@ public sealed class FeedFeedbackRepository : IFeedFeedbackRepository
                 },
                 transaction: lease.Transaction, cancellationToken: ct));
         }
+
+        batch.Commit();
     }
 
     public async Task<IReadOnlyList<FeedSurfacing>> GetSurfacedSinceAsync(
