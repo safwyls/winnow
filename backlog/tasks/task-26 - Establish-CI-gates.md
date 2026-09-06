@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-08-29 21:53'
-updated_date: '2026-09-06 23:27'
+updated_date: '2026-09-06 23:42'
 labels:
   - infra
 milestone: m-4
@@ -47,6 +47,8 @@ Final integrated Release build passed with zero warnings and errors; all 3813 te
 Hosted reports show two passing recommendation tests taking 5m38 and 4m22; Windows main suite remains active. Reopened to diagnose and complete hosted verification rather than treating a quiet Test step as success.
 
 Retained TRX identified four expensive fixture setups: 170-game maturity history, 200-game shortlist, 1200 cache writes, and 1000 identity-model games. Wrapped setup writes in existing unit-of-work scopes committed before measured reads/assertions; retained all counts/assertions and left the deliberate 2003-lease legacy benchmark unchanged. 28 affected tests pass locally. Added normal console test progress alongside TRX and five-minute hang diagnostics.
+
+The cached-library comparison also paid for repeated WAL teardown because its test factory is unpooled while the app uses pooling. Holding one idle connection during that test preserves 1000 games and all 2003 legacy leases, without a read transaction or altered assertions. Two snapshot tests pass; the measured test is 1.915s locally (legacy1740.9ms/2003leases, bulk18.5ms/1lease), versus49.655s in the earlier full local report. Current hosted run is being allowed to finish before this follow-up is pushed.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary

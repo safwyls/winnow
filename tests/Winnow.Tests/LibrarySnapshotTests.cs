@@ -33,6 +33,9 @@ public sealed class LibrarySnapshotTests(ITestOutputHelper output)
     {
         using var db = new TempDatabase();
         LibraryReadFixtures.Seed(db, 1000);
+        // The app's pool keeps WAL handles alive between reads. Keep one idle
+        // handle here so unpooled test leases do not measure WAL teardown too.
+        using var keeper = db.Factory.Open();
         var observed = new LibraryReadTrackingFactory(db.Factory);
         var queries = new LibraryQueryRepository(observed);
         var works = new WorkRepository(observed);
