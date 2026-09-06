@@ -1746,3 +1746,24 @@ Superseded text from §10.3:
 
 > there is nothing to press. Three sentences, one per cause: the install state was never read,
 > the store's identifier is not held, or the store has no install route at all.
+
+### 2026-09-05 — The details modal scales against the window (TASK-133)
+
+`design-system.md` §3, §5.5, §10.1. The card carried three absolute caps — `MinWidth="700"
+MaxWidth="860" MaxHeight="720"` — with no relation to the window. On a 4K display the card
+was about a fifth of the screen's width and the screenshot hero was not fully visible. The
+card now scales against the window: `MaxWidth` is half the window's width (floor 860, ceiling
+1582), `MaxHeight` is two-thirds of the window's height (floor 720, no ceiling). The two
+floors reproduce the shipped card exactly at every window size the app allows. The ceiling of
+1582 is the card width at which the screenshot hero is drawn at its native 1280x720
+(`t_screenshot_huge`); past it every pixel is upscale. The caps are expressed as three named
+`ScaledLength` resources bound to `$parent[Window].Bounds`, and all three are unit-tested at
+seven window sizes. The hero image changed from `Stretch="UniformToFill"` (a cropped
+horizontal strip) to `Stretch="Uniform"` (the whole frame), left-aligned, with a height cap
+at three-tenths of the window (floor 200). A prose measure token was added to §3:
+`ProseMeasure` = 410px, applied by the `.prose` class. The evidence is in
+`docs/spikes/details-modal-scale.md`.
+
+Superseded text from §5.5:
+
+> That bitmap is upscaled to a card up to 860px wide, and the upscale is what softens it

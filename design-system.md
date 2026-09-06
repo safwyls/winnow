@@ -119,6 +119,20 @@ Data S       10px / 12  Plex Mono Regular, tnum
 `TextBlock.LetterSpacing` is in device pixels, so convert the `em` figures above at the size
 they are applied.
 
+### Prose measure
+
+`ProseMeasure` = 410px in `tokens.axaml`. 66 characters of Plus Jakarta Sans Body 13/18 and
+72 characters of the paragraph body at 12/18 — both inside the 45-75 character band a reading
+measure is drawn from, so one number serves both prose sizes. Measured against the
+repository's own font files, shaped by Skia: 66 characters at Body 13 measure 410px, 45
+characters at Body 13 measure 275px, 66 characters at Body 12 measure 379px.
+
+The `.prose` class applies it: `MaxWidth` from the token, `HorizontalAlignment="Left"` so the
+maximum does not centre the paragraph away from the column's left edge under the default
+Stretch, and `TextWrapping="Wrap"`. It governs a prose run — a paragraph the reader reads. It
+does not govern the merge card's 840px (§6), which is a two-column comparison width, and it
+does not govern the Stores panel's 720px, which is a card width holding controls and rows.
+
 ---
 
 ## 4. Layout
@@ -306,7 +320,7 @@ presenter, at the same `DisplayAlpha`, with §5.1's 140ms restore and the same r
 snap. One image path, one lease, one decode: the cover wall's memory bound is untouched. The
 modal binds `GameDetailsViewModel.Cover`, the 200px bitmap it already asks the cover cache for
 at full saturation — §10's rule, that the ramp is a scanning aid and the user has finished
-scanning. That bitmap is upscaled to a card up to 860px wide, and the upscale is what softens
+scanning. That bitmap is upscaled to a card up to 1582px wide, and the upscale is what softens
 it; Avalonia's effect pipeline is closed (§5.4) and nothing here needs it to be open.
 
 **A user theme can break this.** `ThemeAudit` warns when `Colorimetry.WorstArtBackedContrast`
@@ -643,6 +657,55 @@ it. The divider spans the right column only, because the left one keeps going. T
 fills the ~130px of nothing a game with no last-played date used to leave beside a 300px cover,
 which read as broken rather than as sparse.
 
+**The card scales against the window, not the display.** Three named `ScaledLength` resources
+at the top of the view — `CardWidthCap`, `CardHeightCap` and `HeroHeightCap` — each bound to
+`$parent[Window].Bounds`. A `ScaledLength` carries a `Fraction`, a `Least` floor and an
+optional `Most` ceiling, so each cap is one named object rather than a number buried in a
+layout attribute. All three are unit-tested at seven window sizes
+(`tests/Winnow.Tests/DetailsModalScaleTests.cs`).
+
+- `MinWidth` = 700, unchanged. `Margin` = 40, unchanged.
+- `MaxWidth` = half the window's width, never below 860, never above 1582.
+- `MaxHeight` = two-thirds of the window's height, never below 720. No ceiling.
+
+The two floors are exactly what the card had when it carried fixed caps, so no window size the
+app allows (its own minimum is 1200x640) produces a smaller card than shipped. The card is
+content-sized between its floor and its cap: it is only as wide as its content asks for within
+that range. Why the window and not the display: the window is what the user sized, and a
+display-relative card would overflow a small window on a large screen. Why `Window.Bounds`:
+they never depend on what is inside the window, so a cap bound to them cannot feed back into
+layout, while a cap bound to the modal's own host could.
+
+**1582 is the card width at which the screenshot hero fills its native resolution.** IGDB's
+`t_screenshot_huge` is 1280x720. At 1582 the hero image is exactly 1280px wide and drawn
+pixel-for-pixel (the box is 1282px — 1px border each side); past it every further pixel is
+upscale. Nothing else in the card rewards more width: the left column is a fixed 200px, and
+prose is bounded by the reading measure (§3). See `docs/spikes/details-modal-scale.md` for the
+measurements.
+
+**There is deliberately no height ceiling.** Nothing in the card has a native height that
+stops rewarding growth: the rest band and the left column are bounded scroll regions, so more
+height is more content on screen rather than more empty card.
+
+**What a window produces:**
+
+| window | card cap | right column |
+|---|---|---|
+| 1200x640 (the app's own minimum) | 860 x 720 | 580 |
+| 1280x820 (default) | 860 x 720 | 580 |
+| 1600x900 | 860 x 720 | 580 |
+| 1920x1080 | 960 x 720 | 680 |
+| 2560x1440 | 1280 x 960 | 1000 |
+| 3440x1440 | 1582 x 960 | 1302 |
+| 3840x2160 | 1582 x 1441 | 1302 |
+
+**What the right column's width means for the next addition.** The right column is 420px at
+the card's `MinWidth` and never narrower. That is the width every measurement in this section
+and in §10.3 was taken against. A control or a row added to the right column must still fit
+420px and may assume nothing wider. Above the minimum the column is 580px at the width floor
+and 1302px at the ceiling. The reception line is one row at 580px and at every width above it,
+and two rows at 420px, so the `WrapPanel` is still the right panel and no figure changes.
+
 **Each column's lower part is a bounded scroll region.** The right column scrolls the rest band;
 the left column scrolls the facts under the cover. Both sit in star rows so each is bounded by
 whatever height the card has and scrolls inside it. An Auto row is measured against infinity, so
@@ -720,6 +783,16 @@ no ids in `work_images` means no view model. The images ride the existing cover 
 `CoverKey.IgdbScreenshot`, which resolves to `t_screenshot_huge` — an IGDB cover is 3:4 and a
 screenshot is 16:9, so the provider is what picks the size token; there is no second image path.
 The strip is a bounded horizontal scroll region, the fourth such region in the modal.
+
+The hero uses `Stretch="Uniform"` — the whole frame, never cropped — and is left-aligned so it
+takes the shot's own width instead of the column's, with no empty bars beside it. Its height
+cap is `HeroHeightCap`: three-tenths of the window's height, never below the 200px it had.
+Three-tenths reproduces roughly what shipped at the smallest window and grows from there: 200px
+was 0.29 of the modal host's height at a 720-tall window. The cost is stated honestly: the
+drawn box is narrower than the old full-width crop, because a whole 16:9 frame in a
+height-capped box is narrower than a horizontal strip that fills the column. From the default
+window up the shot's area is larger, and at 3840x2160 it is nearly three times the area; at the
+app's smallest window it is smaller in area but is the whole picture rather than a slice of it.
 
 **Accessibility: the modal's own tree.** Band 1, Band 2, Band 3 and the reception line are
 named groups — `AutomationProperties.Name` plus `AccessibilityView="Control"`, which is what

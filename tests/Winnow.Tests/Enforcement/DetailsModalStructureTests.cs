@@ -172,4 +172,88 @@ public sealed class DetailsModalStructureTests
         Assert.Equal(3, Regex.Matches(markup, @"\{StaticResource InnerScrollGutter\}").Count);
         Assert.Single(Regex.Matches(markup, @"\{StaticResource InnerScrollGutterBottom\}"));
     }
+
+    /// <summary>
+    /// The original fault: absolute pixels on the card.
+    /// <c>MinWidth="700"</c> and <c>Margin="40"</c> must stay, both caps
+    /// must come from the scaling resources, and no <c>MaxWidth</c> or
+    /// <c>MaxHeight</c> on the card may be a literal number again.
+    /// </summary>
+    [Fact]
+    public void The_card_is_capped_against_the_window_and_not_by_a_number_in_the_file()
+    {
+        var markup = RepositoryTree.Read(View);
+
+        var card = Regex.Match(markup, @"<Border Name=""Card""(.*?)>", RegexOptions.Singleline);
+        Assert.True(card.Success, "The modal's card border is gone.");
+
+        Assert.Contains("MinWidth=\"700\"", card.Value, StringComparison.Ordinal);
+        Assert.Contains("Margin=\"40\"", card.Value, StringComparison.Ordinal);
+        Assert.Contains("Converter={StaticResource CardWidthCap}", card.Value, StringComparison.Ordinal);
+        Assert.Contains("Converter={StaticResource CardHeightCap}", card.Value, StringComparison.Ordinal);
+        Assert.DoesNotMatch(@"Max(Width|Height)=""\d", card.Value);
+    }
+
+    /// <summary>
+    /// The three fractions, their floors and the 1582 ceiling are
+    /// measured, not chosen; <c>docs/spikes/details-modal-scale.md</c>
+    /// is where they come from.
+    /// </summary>
+    [Fact]
+    public void The_scaling_resources_carry_the_measured_numbers()
+    {
+        var markup = RepositoryTree.Read(View);
+
+        Assert.Contains(
+            @"<conv:ScaledLength x:Key=""CardWidthCap"" Fraction=""0.5"" Least=""860"" Most=""1582""/>",
+            markup,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            @"<conv:ScaledLength x:Key=""CardHeightCap"" Fraction=""0.667"" Least=""720""/>",
+            markup,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            @"<conv:ScaledLength x:Key=""HeroHeightCap"" Fraction=""0.3"" Least=""200""/>",
+            markup,
+            StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// <c>UniformToFill</c> is what the user reported: it cropped the
+    /// frame. It must not come back. The box stays left-aligned and
+    /// window-capped so the shot takes its own width without empty bars.
+    /// </summary>
+    [Fact]
+    public void The_hero_draws_the_whole_shot_and_grows_with_the_window()
+    {
+        var markup = RepositoryTree.Read(View);
+
+        var hero = Regex.Match(
+            markup,
+            @"<Border MaxHeight=""\{Binding \$parent\[Window\]\.Bounds\.Height,(.*?)</Border>",
+            RegexOptions.Singleline);
+
+        Assert.True(hero.Success, "The screenshot hero no longer takes its cap from the window.");
+        Assert.Contains("Converter={StaticResource HeroHeightCap}", hero.Value, StringComparison.Ordinal);
+        Assert.Contains("HorizontalAlignment=\"Left\"", hero.Value, StringComparison.Ordinal);
+        Assert.Contains("Stretch=\"Uniform\"", hero.Value, StringComparison.Ordinal);
+        Assert.DoesNotContain("UniformToFill", hero.Value, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// ABOUT's two prose runs carry the <c>.prose</c> class, and the
+    /// <c>ProseMeasure</c> token still holds the measured 410.
+    /// </summary>
+    [Fact]
+    public void The_prose_runs_take_the_reading_measure()
+    {
+        var markup = RepositoryTree.Read(View);
+
+        Assert.Contains("Classes=\"body prose copyable\"", markup, StringComparison.Ordinal);
+        Assert.Contains("Classes=\"body prose\"", markup, StringComparison.Ordinal);
+
+        var tokens = RepositoryTree.Read("src/Winnow.App/Themes/tokens.axaml");
+        Assert.Contains("<x:Double x:Key=\"ProseMeasure\">410</x:Double>", tokens, StringComparison.Ordinal);
+        Assert.Contains("{StaticResource ProseMeasure}", tokens, StringComparison.Ordinal);
+    }
 }

@@ -497,6 +497,13 @@
     <x:Double x:Key="LabelSize">11</x:Double>
     <x:Double x:Key="DataSize">12</x:Double>
     <x:Double x:Key="DataSSize">10</x:Double>
+    <!-- The reading measure (design-system.md §3). Measured in the
+         shipped face: 66 characters of prose measure 410px at Body 13
+         and 379px at 12, so one token at 410 is 66 characters at 13/20
+         and 72 at 12/18 — both inside the 45-75 character band a
+         reading measure is drawn from, which is why the system states
+         one number rather than one per size. -->
+    <x:Double x:Key="ProseMeasure">410</x:Double>
 
     <!-- ══ Spacing (4px base) ═════════════════════════════════════════════ -->
     <x:Double x:Key="Space1">4</x:Double>
@@ -577,6 +584,19 @@
             <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
             <Setter Property="FontSize" Value="{StaticResource BodySize}"/>
             <Setter Property="Foreground" Value="{StaticResource Text}"/>
+        </Style>
+
+        <!-- A prose run — a paragraph the reader reads. Carries the
+             reading measure as a MaxWidth, left-aligned because a
+             maximum under the default Stretch centres the paragraph
+             away from the column's left edge. Worn today by the
+             details modal's ABOUT summary and its empty-body line,
+             which are the runs that would otherwise stretch to the
+             full right column. -->
+        <Style Selector=":is(TextBlock).prose">
+            <Setter Property="MaxWidth" Value="{StaticResource ProseMeasure}"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
         </Style>
 
         <Style Selector=":is(TextBlock).label">

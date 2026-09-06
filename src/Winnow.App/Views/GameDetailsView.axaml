@@ -1,6 +1,7 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+﻿<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Winnow.App.ViewModels"
+             xmlns:conv="using:Winnow.App.Converters"
              xmlns:views="using:Winnow.App.Views"
              xmlns:lists="using:Winnow.App.ViewModels.Lists"
              x:Class="Winnow.App.Views.GameDetailsView"
@@ -26,6 +27,44 @@
          Foreground of its own: the .body type style already gives it
          Text, so omitting the override IS the correct declaration.
          Adding a Foreground to a prose TextBlock is the mistake. -->
+
+    <!-- The card and the hero scale against the window, not the
+         display: the window is what the user sized, and a display-relative
+         card would overflow a small window on a big screen. There is a
+         mechanical reason too — a Window's own Bounds never depend on
+         what is inside it, so a cap bound to it cannot feed back into
+         layout, while a cap bound to the modal's own host could.
+
+         Each cap is a fraction of the window, floored at the absolute
+         value the modal shipped with. The fractions, floors and the
+         width ceiling are measured values from
+         docs/spikes/details-modal-scale.md, not chosen ones.
+
+         CardWidthCap: half the window. The ceiling is the card width
+         at which the hero is drawn at the native resolution IGDB's
+         t_screenshot_huge delivers; past it every pixel is upscale.
+         Nothing else in the card rewards more width — the object
+         column is a fixed 200 and prose is bounded by the reading
+         measure (design-system.md §3).
+
+         CardHeightCap: two-thirds of the window. No ceiling, because
+         nothing in the card has a native height that stops rewarding
+         growth — the bands are bounded scroll regions, so more height
+         is more content on screen.
+
+         HeroHeightCap: three-tenths of the window. The fraction
+         reproduces roughly what shipped at the smallest window and
+         grows from there.
+
+         At the card's MinWidth of 700 the right column is still
+         420px — the width every measurement in design-system.md §10.1
+         and §10.3 was taken against. A future addition may assume
+         nothing wider. -->
+    <UserControl.Resources>
+        <conv:ScaledLength x:Key="CardWidthCap" Fraction="0.5" Least="860" Most="1582"/>
+        <conv:ScaledLength x:Key="CardHeightCap" Fraction="0.667" Least="720"/>
+        <conv:ScaledLength x:Key="HeroHeightCap" Fraction="0.3" Least="200"/>
+    </UserControl.Resources>
 
     <UserControl.Styles>
 
@@ -314,14 +353,20 @@
         <Border Name="Scrim" Background="{StaticResource ModalScrim}" PointerPressed="OnScrimPressed"/>
 
         <!-- Tab cycles inside the card. A modal that leaks focus into the
-             library behind it is a modal in appearance only (§8). -->
+             library behind it is a modal in appearance only (§8).
+             MaxWidth and MaxHeight come from the scaling resources
+             above rather than from literals here. -->
         <Border Name="Card"
                 Background="{StaticResource Surface}"
                 BorderBrush="{StaticResource Line}"
                 BorderThickness="1"
                 CornerRadius="{StaticResource RadiusTile}"
                 BoxShadow="0 18 48 0 #A6000000"
-                MinWidth="700" MaxWidth="860" MaxHeight="720"
+                MinWidth="700"
+                MaxWidth="{Binding $parent[Window].Bounds.Width,
+                                   Converter={StaticResource CardWidthCap}}"
+                MaxHeight="{Binding $parent[Window].Bounds.Height,
+                                    Converter={StaticResource CardHeightCap}}"
                 Margin="40"
                 KeyboardNavigation.TabNavigation="Cycle"
                 HorizontalAlignment="Center" VerticalAlignment="Center">
@@ -335,8 +380,8 @@
                      and the user has finished scanning). One request, one
                      decode, no second image path.
 
-                     That bitmap is 200px wide and this card is up to 860,
-                     so the upscale is what softens it. Avalonia's effect
+                     That bitmap is 200px wide and the card scales up
+                     to 1582, so the upscale is what softens it. Avalonia's effect
                      pipeline is closed (§5.4) and nothing here needs it
                      to be open.
 
@@ -1276,16 +1321,14 @@
                             <StackPanel Spacing="7">
                                 <TextBlock Classes="label section" Text="{Binding AboutHeading}"
                                            AutomationProperties.HeadingLevel="2"/>
-                                <SelectableTextBlock Classes="body copyable"
+                                <SelectableTextBlock Classes="body prose copyable"
                                            Focusable="True"
                                            LineHeight="20"
-                                           TextWrapping="Wrap"
                                            IsVisible="{Binding HasSummary}"
                                            Text="{Binding Summary}"/>
                                 <!-- §7: an empty screen is a direction, not a mood. -->
-                                <TextBlock Classes="body"
+                                <TextBlock Classes="body prose"
                                            LineHeight="20"
-                                           TextWrapping="Wrap"
                                            IsVisible="{Binding ShowEmptyBody}"
                                            Text="{Binding EmptyBodyText}"/>
 
@@ -1313,7 +1356,15 @@
                                             DataContext="{Binding Screenshots}"
                                             x:DataType="vm:GameScreenshotsViewModel">
 
-                                    <Border MaxHeight="200"
+                                    <!-- The hero draws the whole shot — Uniform,
+                                         not UniformToFill, which cropped the frame.
+                                         Left-aligned so the box takes the shot's
+                                         own width instead of the column's, leaving
+                                         no empty bars beside the picture. The cap
+                                         comes from the window via HeroHeightCap. -->
+                                    <Border MaxHeight="{Binding $parent[Window].Bounds.Height,
+                                                                Converter={StaticResource HeroHeightCap}}"
+                                            HorizontalAlignment="Left"
                                             ClipToBounds="True"
                                             CornerRadius="{StaticResource RadiusControl}"
                                             BorderThickness="1"
@@ -1321,7 +1372,7 @@
                                             IsVisible="{Binding HasHero}"
                                             AutomationProperties.Name="{Binding HeroAutomationName}"
                                             AutomationProperties.AccessibilityView="Control">
-                                        <Image Source="{Binding Hero}" Stretch="UniformToFill"/>
+                                        <Image Source="{Binding Hero}" Stretch="Uniform"/>
                                     </Border>
 
                                     <ScrollViewer Classes="inner"
