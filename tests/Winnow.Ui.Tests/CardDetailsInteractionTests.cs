@@ -31,26 +31,25 @@ public sealed class CardDetailsInteractionTests
     public async Task Hover_reveals_fixed_compact_actions(double width)
     {
         using var fixture = await CardFixture.CreateAsync(width, reducedMotion: false);
-        var actions = fixture.TileView.FindControl<Border>("TileActions")!;
+        var primaryHost = fixture.TileView.FindControl<Border>("PrimaryActionHost")!;
+        var detailsHost = fixture.TileView.FindControl<Border>("DetailsActionHost")!;
         var primary = fixture.Button("Play");
         var details = fixture.Button("Details");
-        var primaryOrigin = primary.TranslatePoint(default, actions)!.Value;
-        var detailsOrigin = details.TranslatePoint(default, actions)!.Value;
+        var primaryOrigin = primary.TranslatePoint(default, primaryHost)!.Value;
+        var detailsOrigin = details.TranslatePoint(default, detailsHost)!.Value;
 
-        Assert.Equal(0, actions.Opacity);
-        Assert.False(actions.IsHitTestVisible);
+        AssertHidden(primaryHost, detailsHost);
 
         fixture.Window.MouseMove(fixture.Position(fixture.TileView, new Point(width / 2, 80)));
         Flush();
         await Task.Delay(180);
         Flush();
 
-        Assert.Equal(1, actions.Opacity);
-        Assert.True(actions.IsHitTestVisible);
+        AssertRevealed(primaryHost, detailsHost);
         Assert.Equal(new Size(32, 32), primary.Bounds.Size);
-        Assert.Equal(new Size(32, 32), details.Bounds.Size);
-        Assert.Equal(primaryOrigin, primary.TranslatePoint(default, actions)!.Value);
-        Assert.Equal(detailsOrigin, details.TranslatePoint(default, actions)!.Value);
+        Assert.Equal(new Size(40, 40), details.Bounds.Size);
+        Assert.Equal(primaryOrigin, primary.TranslatePoint(default, primaryHost)!.Value);
+        Assert.Equal(detailsOrigin, details.TranslatePoint(default, detailsHost)!.Value);
         Assert.Equal("Launch through Steam", ToolTip.GetTip(primary));
         Assert.Equal("Full details", ToolTip.GetTip(details));
     }
@@ -71,12 +70,19 @@ public sealed class CardDetailsInteractionTests
         var stat = scrim.GetVisualDescendants().OfType<TextBlock>().Single(t => t.Text == fixture.Tile.StatText);
         var statOrigin = stat.TranslatePoint(default, scrim)!.Value;
         var textBounds = new Rect(statOrigin, new Size(stat.TextLayout.Width, stat.TextLayout.Height));
-        foreach (var chip in scrim.GetVisualDescendants().OfType<Border>().Where(b => b.Classes.Contains("store-chip")))
+        var primary = fixture.Button("Play");
+        var primaryBounds = new Rect(primary.TranslatePoint(default, scrim)!.Value, primary.Bounds.Size);
+        var chips = scrim.GetVisualDescendants().OfType<Border>().Where(b => b.Classes.Contains("store-chip")).ToArray();
+        foreach (var chip in chips)
         {
             var chipBounds = new Rect(chip.TranslatePoint(default, scrim)!.Value, chip.Bounds.Size);
             Assert.False(textBounds.Intersects(chipBounds),
                 $"Stat {textBounds} overlaps chip {chipBounds} at width {width}");
+            Assert.False(primaryBounds.Intersects(chipBounds),
+                $"Primary action {primaryBounds} overlaps chip {chipBounds} at width {width}");
         }
+        Assert.Equal(chips.Max(chip => chip.TranslatePoint(default, scrim)!.Value.Y + chip.Bounds.Height),
+            primaryBounds.Bottom, precision: 1);
         Assert.True(scrim.Bounds.Height <= fixture.TileView.Bounds.Height);
         if (Environment.GetEnvironmentVariable("WINNOW_UI_CAPTURE_DIR") is { } directory)
         {
@@ -92,16 +98,159 @@ public sealed class CardDetailsInteractionTests
         using var fixture = await CardFixture.CreateAsync(148);
         fixture.Window.MouseMove(new Point(600, 400));
         Flush();
-        var actions = fixture.TileView.FindControl<Border>("TileActions")!;
+        var primaryHost = fixture.TileView.FindControl<Border>("PrimaryActionHost")!;
+        var detailsHost = fixture.TileView.FindControl<Border>("DetailsActionHost")!;
         var details = fixture.Button("Details");
 
-        Assert.Equal(0, actions.Opacity);
+        AssertHidden(primaryHost, detailsHost);
         Assert.True(details.Focus(NavigationMethod.Tab));
         Flush();
 
         Assert.True(details.IsKeyboardFocusWithin);
-        Assert.Equal(1, actions.Opacity);
-        Assert.True(actions.IsHitTestVisible);
+        AssertRevealed(primaryHost, detailsHost);
+    }
+
+    [AvaloniaFact]
+    public async Task Pointer_click_then_exit_does_not_pin_the_reveal()
+    {
+        using var fixture = await CardFixture.CreateAsync(148, reducedMotion: false);
+        var primaryHost = fixture.TileView.FindControl<Border>("PrimaryActionHost")!;
+        var detailsHost = fixture.TileView.FindControl<Border>("DetailsActionHost")!;
+
+        fixture.Click(fixture.Button("Play"));
+        AssertRevealed(primaryHost, detailsHost);
+
+        fixture.Window.MouseMove(new Point(600, 400));
+        await Task.Delay(180);
+        Flush();
+
+        AssertHidden(primaryHost, detailsHost);
+    }
+
+    [AvaloniaFact]
+    public async Task First_press_hits_the_action_revealed_by_that_pointer_move()
+    {
+        using var fixture = await CardFixture.CreateAsync(148);
+        var presses = 0;
+        fixture.Tile.PrimaryActionCommand = new RelayCommand(() => presses++);
+        fixture.TileView.DataContext = null;
+        fixture.TileView.DataContext = fixture.Tile;
+        Flush();
+
+        var primaryHost = fixture.TileView.FindControl<Border>("PrimaryActionHost")!;
+        var detailsHost = fixture.TileView.FindControl<Border>("DetailsActionHost")!;
+        var button = fixture.Button("Play");
+        var buttonPoint = fixture.Position(button, new Point(16, 16));
+
+        for (var attempt = 1; attempt <= 12; attempt++)
+        {
+            fixture.Window.MouseMove(new Point(600, 400));
+            Flush();
+            AssertHidden(primaryHost, detailsHost);
+
+            // One move reveals the control; the immediately following press
+            // must hit that newly revealed button, not the tile beneath it.
+            fixture.Window.MouseMove(buttonPoint);
+            fixture.Window.MouseDown(buttonPoint, MouseButton.Left);
+            fixture.Window.MouseUp(buttonPoint, MouseButton.Left);
+            Flush();
+
+            Assert.Equal(attempt, presses);
+            AssertRevealed(primaryHost, detailsHost);
+            Assert.False(fixture.Library.IsDetailsOpen);
+        }
+    }
+
+    [AvaloniaFact]
+    public async Task Captured_button_dragged_outside_does_not_restore_hover()
+    {
+        using var fixture = await CardFixture.CreateAsync(148);
+        var primaryHost = fixture.TileView.FindControl<Border>("PrimaryActionHost")!;
+        var detailsHost = fixture.TileView.FindControl<Border>("DetailsActionHost")!;
+        var button = fixture.Button("Play");
+        var buttonPoint = fixture.Position(button, new Point(16, 16));
+        var outside = new Point(600, 400);
+
+        fixture.Window.MouseMove(buttonPoint);
+        fixture.Window.MouseDown(buttonPoint, MouseButton.Left);
+        fixture.Window.MouseMove(outside);
+        fixture.Window.MouseUp(outside, MouseButton.Left);
+        Flush();
+
+        Assert.False(fixture.Tile.IsPointerOver);
+        AssertHidden(primaryHost, detailsHost);
+    }
+
+    [AvaloniaFact]
+    public async Task Rebind_and_detach_clear_outgoing_hover_and_action_hit_targets()
+    {
+        using var fixture = await CardFixture.CreateAsync(148);
+        var outgoing = fixture.Tile;
+        var primaryHost = fixture.TileView.FindControl<Border>("PrimaryActionHost")!;
+        var detailsHost = fixture.TileView.FindControl<Border>("DetailsActionHost")!;
+        var coverPoint = fixture.Position(fixture.TileView, new Point(74, 80));
+
+        fixture.Window.MouseMove(coverPoint);
+        Flush();
+        Assert.True(outgoing.IsPointerOver);
+        AssertRevealed(primaryHost, detailsHost);
+
+        fixture.TileView.DataContext = null;
+        Flush();
+        Assert.False(outgoing.IsPointerOver);
+        AssertHidden(primaryHost, detailsHost);
+
+        fixture.TileView.DataContext = outgoing;
+        Flush();
+        AssertHidden(primaryHost, detailsHost);
+
+        // The pointer stayed geometrically inside during recycling. Its first
+        // move restores the reveal, and the first press remains responsive.
+        var presses = 0;
+        outgoing.PrimaryActionCommand = new RelayCommand(() => presses++);
+        fixture.TileView.DataContext = null;
+        fixture.TileView.DataContext = outgoing;
+        Flush();
+        var button = fixture.Button("Play");
+        var buttonPoint = fixture.Position(button, new Point(16, 16));
+        fixture.Window.MouseMove(buttonPoint);
+        fixture.Window.MouseDown(buttonPoint, MouseButton.Left);
+        fixture.Window.MouseUp(buttonPoint, MouseButton.Left);
+        Flush();
+        Assert.Equal(1, presses);
+        Assert.True(outgoing.IsPointerOver);
+        AssertRevealed(primaryHost, detailsHost);
+
+        fixture.Window.Content = null;
+        Flush();
+        Assert.False(outgoing.IsPointerOver);
+        AssertHidden(primaryHost, detailsHost);
+    }
+
+    [AvaloniaFact]
+    public async Task Keyboard_focused_action_does_not_transfer_to_rebound_tile()
+    {
+        using var fixture = await CardFixture.CreateAsync(148);
+        fixture.Window.MouseMove(new Point(600, 400));
+        Flush();
+        var primaryHost = fixture.TileView.FindControl<Border>("PrimaryActionHost")!;
+        var detailsHost = fixture.TileView.FindControl<Border>("DetailsActionHost")!;
+        var details = fixture.Button("Details");
+
+        Assert.True(details.Focus(NavigationMethod.Tab));
+        Flush();
+        Assert.True(fixture.TileView.IsKeyboardFocusWithin);
+        AssertRevealed(primaryHost, detailsHost);
+
+        fixture.TileView.DataContext = null;
+        Flush();
+        Assert.False(fixture.TileView.IsKeyboardFocusWithin);
+        AssertHidden(primaryHost, detailsHost);
+
+        fixture.TileView.DataContext = fixture.Tile;
+        Flush();
+        Assert.False(fixture.TileView.IsKeyboardFocusWithin);
+        AssertHidden(primaryHost, detailsHost);
     }
 
     [AvaloniaFact]
@@ -117,6 +266,56 @@ public sealed class CardDetailsInteractionTests
     [AvaloniaTheory]
     [InlineData(108)]
     [InlineData(148)]
+    public async Task Unread_badge_clears_the_details_fold(double width)
+    {
+        using var fixture = await CardFixture.CreateAsync(width, played: true, unread: true);
+        var detailsHost = fixture.TileView.FindControl<Border>("DetailsActionHost")!;
+        var badge = fixture.TileView.FindControl<Border>("Badge")!;
+        fixture.Window.MouseMove(fixture.Position(fixture.TileView, new Point(74, 80)));
+        Flush();
+
+        Assert.True(badge.IsVisible);
+        var detailsBounds = new Rect(detailsHost.TranslatePoint(default, fixture.TileView)!.Value, detailsHost.Bounds.Size);
+        var badgeBounds = new Rect(badge.TranslatePoint(default, fixture.TileView)!.Value, badge.Bounds.Size);
+        Assert.False(detailsBounds.Intersects(badgeBounds),
+            $"Unread badge {badgeBounds} overlaps Details fold {detailsBounds}.");
+
+        if (Environment.GetEnvironmentVariable("WINNOW_UI_CAPTURE_DIR") is { } directory)
+        {
+            await Task.Delay(180);
+            Flush();
+            Directory.CreateDirectory(directory);
+            using var frame = fixture.Window.CaptureRenderedFrame();
+            frame!.Save(Path.Combine(directory, $"card-unread-fold-{width}.png"));
+        }
+    }
+
+    [AvaloniaFact]
+    public async Task Grouped_expansion_mark_yields_the_bottom_right_corner_to_the_primary_action()
+    {
+        using var fixture = await CardFixture.CreateAsync(108);
+        fixture.Tile.GroupedExpansionCount = 2;
+        fixture.TileView.DataContext = null;
+        fixture.TileView.DataContext = fixture.Tile;
+        Flush();
+        var mark = fixture.TileView.FindControl<Border>("ExpansionMark")!;
+        var primaryHost = fixture.TileView.FindControl<Border>("PrimaryActionHost")!;
+
+        Assert.True(mark.IsVisible);
+        Assert.Equal(1, mark.Opacity);
+        Assert.Equal(0, primaryHost.Opacity);
+
+        fixture.Window.MouseMove(fixture.Position(fixture.TileView, new Point(54, 80)));
+        await Task.Delay(180);
+        Flush();
+
+        Assert.Equal(0, mark.Opacity);
+        Assert.Equal(1, primaryHost.Opacity);
+    }
+
+    [AvaloniaTheory]
+    [InlineData(108)]
+    [InlineData(148)]
     public async Task Details_icon_owns_its_hit_area_and_opens_after_each_reopen(double width)
     {
         using var fixture = await CardFixture.CreateAsync(width);
@@ -125,6 +324,9 @@ public sealed class CardDetailsInteractionTests
         for (var attempt = 0; attempt < 3; attempt++)
         {
             var button = fixture.Button("Details");
+            fixture.Window.MouseMove(new Point(600, 400));
+            fixture.Window.MouseMove(fixture.Position(button, new Point(20, 20)));
+            Flush();
             for (var frame = 0; frame < 100 && !button.IsEffectivelyEnabled; frame++)
             {
                 await Task.Delay(10);
@@ -219,6 +421,24 @@ public sealed class CardDetailsInteractionTests
         Dispatcher.UIThread.RunJobs();
     }
 
+    private static void AssertHidden(params Border[] hosts)
+    {
+        Assert.All(hosts, host =>
+        {
+            Assert.Equal(0, host.Opacity);
+            Assert.False(host.IsHitTestVisible);
+        });
+    }
+
+    private static void AssertRevealed(params Border[] hosts)
+    {
+        Assert.All(hosts, host =>
+        {
+            Assert.InRange(host.Opacity, 0.99, 1);
+            Assert.True(host.IsHitTestVisible);
+        });
+    }
+
     private sealed class CardFixture : IDisposable
     {
         private readonly TempDatabase _database = new();
@@ -233,7 +453,8 @@ public sealed class CardDetailsInteractionTests
             bool reducedMotion = true,
             bool singleStore = false,
             bool played = false,
-            bool installed = true)
+            bool installed = true,
+            bool unread = false)
         {
             var fixture = new CardFixture();
             var works = new WorkRepository(fixture._database.Factory);
@@ -253,8 +474,11 @@ public sealed class CardDetailsInteractionTests
                     TileEntry.For(ownership + 1, release, work, "gog", 0, null),
                     TileEntry.For(ownership + 2, release, work, "epic", 0, null),
                 };
-            fixture.Tile = TileFixture.Tile(DateTime.UtcNow,
-                singleStore ? entries[..1] : entries, work, played ? LibraryBuckets.Retired : LibraryBuckets.NeverPlayed,
+            var now = DateTime.UtcNow;
+            fixture.Tile = TileFixture.Tile(now,
+                singleStore ? entries[..1] : entries, work,
+                unread ? LibraryBuckets.StaleButPatched : played ? LibraryBuckets.Retired : LibraryBuckets.NeverPlayed,
+                majorUpdateAt: unread ? now.AddDays(-1) : null,
                 title: "A deliberately long game title occupying two lines",
                 work: new Work { Name = "Fixture", FirstReleaseYear = 2006 },
                 ramp: new DormancyRamp { ReducedMotion = reducedMotion });

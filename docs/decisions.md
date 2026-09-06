@@ -2172,6 +2172,32 @@ The old art-backed-surface specification said:
 > presenter, at the same `DisplayAlpha`, with §5.1's 140ms restore and the same reduced-motion
 > snap. One image path, one lease, one decode: the cover wall's memory bound is untouched.
 
+## 2026-09-06 — Separate pointer hover from keyboard action focus
+
+The first face-up action dock used `:pointerover` and `:focus-within` to control both opacity
+and hit testing. A pointer click focuses a button, so leaving the card still satisfied
+`:focus-within`; a recycled container could then carry the focused, revealed action to its new
+game. The view now tracks pointer presence and Tab or directional focus separately, clears the
+outgoing state on rebind and detach, and uses pointer geometry while capture is active. The
+controls remain at their final size while the reveal fades.
+
+Play/Install now occupies the bottom-right of the store-chip row. Details is a 40px top-right
+folded corner, and the unread badge sits immediately below it so the two targets never overlap.
+
+The visual specification previously said:
+
+> 10px `Flare` dot, top-right, 8px inset, with a 2px `Ground`-coloured ring so it reads against
+> any cover. Optional soft outer glow at 30% opacity.
+>
+> Bottom-aligned gradient scrim to `Ground` at 92%. Title in Body L, playtime and idle time in
+> Data S. Two compact icon actions sit at the top-left, clear of the unread badge: the available
+> primary action (`Play` for an installed game, `Install` otherwise) and `Details`. The actions
+> appear on pointer hover and when keyboard focus enters the tile. Each has a tooltip, an
+> accessible name and the standard visible focus treatment from §8.
+>
+> Hover and focus reveal actions without replacing, scaling or moving the cover, so their hit
+> targets are stable throughout the 140ms overlay transition.
+
 ## Epic namespace misses — 2026-09-06
 
 The store-actions spike previously said: the 11 misses are delisted or giveaway-only titles (Frostpunk, Palia, LOTR Return to Moria, Moonlighter, ABZU, Dauntless, Drawful 2, Torchlight, Unreal Tournament, >observer_, Hob).

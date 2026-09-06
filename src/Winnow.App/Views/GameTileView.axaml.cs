@@ -29,9 +29,13 @@ public partial class GameTileView : UserControl
     /// <summary>The view model this container is currently showing art for.</summary>
     private GameTileViewModel? _bound;
 
+    private bool _pointerInside;
+    private bool _keyboardActionFocus;
+
     public GameTileView()
     {
         InitializeComponent();
+        AddHandler(GotFocusEvent, OnDescendantGotFocus, RoutingStrategies.Bubble);
     }
 
     /// <summary>
@@ -45,22 +49,49 @@ public partial class GameTileView : UserControl
     protected override void OnPointerEntered(PointerEventArgs e)
     {
         base.OnPointerEntered(e);
-        SetHover(true);
+        _pointerInside = true;
+        ApplyInteractionState();
     }
 
     protected override void OnPointerExited(PointerEventArgs e)
     {
         base.OnPointerExited(e);
-        SetHover(false);
+        _pointerInside = false;
+        ApplyInteractionState();
+    }
+
+    protected override void OnPointerMoved(PointerEventArgs e)
+    {
+        base.OnPointerMoved(e);
+
+        // A recycled container deliberately forgets its old hover. Avalonia
+        // may not raise PointerEntered when the pointer is still over the same
+        // visual after its data context changes, so the first subsequent move
+        // re-establishes the new tile's reveal state. Derive it from geometry:
+        // a pressed button can retain capture and route moves here after exit.
+        var pointerInside = new Avalonia.Rect(Bounds.Size).Contains(e.GetPosition(this));
+        if (_pointerInside != pointerInside)
+        {
+            _pointerInside = pointerInside;
+            ApplyInteractionState();
+        }
+    }
+
+    protected override void OnPropertyChanged(Avalonia.AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+
+        if (change.Property == IsKeyboardFocusWithinProperty && change.NewValue is false)
+        {
+            _keyboardActionFocus = false;
+            ApplyInteractionState();
+        }
     }
 
     protected override void OnDataContextChanged(EventArgs e)
     {
+        var outgoing = _bound;
         base.OnDataContextChanged(e);
-
-        // Containers are recycled: a tile scrolled away while hovered would
-        // otherwise hand its stale vivid state to the next game.
-        SetHover(IsPointerOver);
 
         // Recycling swaps the data context without ever detaching, so this — not
         // OnDetachedFromVisualTree — is the common path that retargets the
@@ -69,8 +100,24 @@ public partial class GameTileView : UserControl
         // meaning anything.
         if (!ReferenceEquals(_bound, DataContext))
         {
+            if (outgoing is not null)
+            {
+                outgoing.IsPointerOver = false;
+            }
+
+            // A focused action must never become the same button acting on a
+            // different game after recycling. Move focus to the stable root and
+            // let the next Tab deliberately enter the new tile.
+            if (IsKeyboardFocusWithin)
+            {
+                TopLevel.GetTopLevel(this)?.Focus(NavigationMethod.Unspecified);
+            }
+
             _bound = DataContext as GameTileViewModel;
+            _pointerInside = false;
+            _keyboardActionFocus = false;
             Cover.Target(_bound?.CoverKey, _bound?.Leases);
+            ApplyInteractionState();
         }
 
         if (this.GetVisualRoot() is not null)
@@ -82,15 +129,24 @@ public partial class GameTileView : UserControl
     protected override void OnAttachedToVisualTree(Avalonia.VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
+        ClearDetachedActionState(PrimaryActionHost);
+        ClearDetachedActionState(DetailsActionHost);
         _bound = DataContext as GameTileViewModel;
+        _pointerInside = IsPointerOver;
         Cover.Target(_bound?.CoverKey, _bound?.Leases);
+        ApplyInteractionState();
         RequestCover();
     }
 
     protected override void OnDetachedFromVisualTree(Avalonia.VisualTreeAttachmentEventArgs e)
     {
-        base.OnDetachedFromVisualTree(e);
+        _pointerInside = false;
+        _keyboardActionFocus = false;
+        ApplyInteractionState();
+        HideDetachedAction(PrimaryActionHost);
+        HideDetachedAction(DetailsActionHost);
         Cover.Release();
+        base.OnDetachedFromVisualTree(e);
     }
 
     private void RequestCover()
@@ -108,12 +164,37 @@ public partial class GameTileView : UserControl
         Cover.Request(width * scaling);
     }
 
-    private void SetHover(bool value)
+    private void OnDescendantGotFocus(object? sender, GotFocusEventArgs e)
+    {
+        // Pointer focus is not a reason to pin hover chrome after the pointer
+        // leaves. Tab and directional navigation are: without the reveal their
+        // focused action and focus ring would both be invisible.
+        _keyboardActionFocus = e.NavigationMethod is NavigationMethod.Tab or NavigationMethod.Directional;
+        ApplyInteractionState();
+    }
+
+    private void ApplyInteractionState()
     {
         if (DataContext is GameTileViewModel tile)
         {
-            tile.IsPointerOver = value;
+            tile.IsPointerOver = _pointerInside;
         }
+
+        Lift.Classes.Set("actions-visible", _pointerInside || _keyboardActionFocus);
+    }
+
+    private static void HideDetachedAction(Border host)
+    {
+        // Once detached there is no style owner to finish an opacity transition
+        // or apply the class change. Pin the inert state until reattachment.
+        host.Opacity = 0;
+        host.IsHitTestVisible = false;
+    }
+
+    private static void ClearDetachedActionState(Border host)
+    {
+        host.ClearValue(OpacityProperty);
+        host.ClearValue(IsHitTestVisibleProperty);
     }
 
     // Play / Install moved off this class in M3b. It is a command on the view

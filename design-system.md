@@ -207,8 +207,9 @@ you the before and after, and it feels good.
 
 ### 5.2 Unread badge
 
-10px `Flare` dot, top-right, 8px inset, with a 2px `Ground`-coloured ring so it reads against
-any cover. Optional soft outer glow at 30% opacity.
+10px `Flare` dot on the right edge, 8px inset and immediately below the Details fold's 40px hit
+region, with a 2px `Ground`-coloured ring so it reads against any cover. Optional soft outer
+glow at 30% opacity. The offset keeps the alert and the folded-corner action as separate targets.
 
 Present only when a major update landed after the user's last session — both signals from
 `game-library-design.md` §4.5, build push *and* announcement.
@@ -225,11 +226,12 @@ the event row. This is the feature that closes the loop: notice → context → 
 
 ### 5.3 Hover overlay
 
-Bottom-aligned gradient scrim to `Ground` at 92%. Title in Body L, playtime and
-idle time in Data S. Two compact icon actions sit at the top-left, clear of the unread badge:
-the available primary action (`Play` for an installed game, `Install` otherwise) and `Details`.
-The actions appear on pointer hover and when keyboard focus enters the tile. Each has a tooltip,
-an accessible name and the standard visible focus treatment from §8.
+Bottom-aligned gradient scrim to `Ground` at 92%. Title in Body L, playtime and idle time in
+Data S. The available primary action (`Play` for an installed game, `Install` otherwise) is a
+32px icon at bottom-right, in the store-chip row. `Details` is the folded top-right corner: a
+40px square hit target whose visible triangle follows the cover edge. The actions appear on
+pointer hover and on Tab or directional focus. Each has a tooltip, an accessible name and the
+standard visible focus treatment from §8.
 
 **Stores are a chip row**, one chip per store the game is owned on, unchanged in appearance for
 a single-store tile. Chips always occupy their own row below the stats. The stat text wraps
@@ -253,8 +255,11 @@ and never `Volt`, which is selection.
 
 **Do not show more than four facts.** The tile is a decision surface, not a detail view.
 
-**The cover stays face-up.** Hover and focus reveal actions without replacing, scaling or
-moving the cover, so their hit targets are stable throughout the 140ms overlay transition.
+**The cover stays face-up.** Pointer hover and keyboard action focus reveal controls without
+replacing, scaling or moving the cover, so their hit targets are stable throughout the 140ms
+overlay transition. Pointer focus from clicking an action does not pin the reveal after exit.
+The realized `GameTileView` owns that distinction and clears hover, focus and hit targets when
+it is rebound or detached; pointer capture is resolved from the pointer's actual tile geometry.
 Each icon has at least a 32px square hit target at the 108px density floor. A press on an icon
 belongs only to that control; a double click elsewhere on the tile opens Details. Selection,
 store marks, expansion marks and the unread badge remain available without revealing actions.

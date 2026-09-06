@@ -49,7 +49,7 @@
         <Style Selector="Border#Scrim">
             <Setter Property="Opacity" Value="0"/>
         </Style>
-        <Style Selector="Border#Lift:pointerover Border#Scrim">
+        <Style Selector="Border#Lift.actions-visible Border#Scrim">
             <Setter Property="Opacity" Value="1"/>
         </Style>
 
@@ -80,12 +80,20 @@
                 </Transitions>
             </Setter>
         </Style>
-        <Style Selector="Border#Lift:pointerover ItemsControl#RestingChips">
+        <Style Selector="Border#Lift.actions-visible ItemsControl#RestingChips, Border#Lift.actions-visible Border#ExpansionMark">
             <Setter Property="Opacity" Value="0"/>
         </Style>
-        <Style Selector="Border#Lift.snap ItemsControl#RestingChips">
+        <Style Selector="Border#Lift.snap ItemsControl#RestingChips, Border#Lift.snap Border#ExpansionMark">
             <Setter Property="Transitions">
                 <Transitions/>
+            </Setter>
+        </Style>
+        <Style Selector="Border#ExpansionMark">
+            <Setter Property="Opacity" Value="1"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.14" Easing="CubicEaseOut"/>
+                </Transitions>
             </Setter>
         </Style>
 
@@ -114,9 +122,9 @@
         <!-- The action dock is always laid out at its final size. Opacity reveals
              it without moving either hit target; hit testing stays off until the
              pointer reaches the tile so an invisible button cannot answer the
-             click that merely selects the cover. Keyboard focus reveals the
-             same dock through :focus-within. -->
-        <Style Selector="Border#TileActions">
+             click that merely selects the cover. Code-behind reveals the same
+             controls for Tab or directional focus without pinning pointer focus. -->
+        <Style Selector="Border.tile-action">
             <Setter Property="Opacity" Value="0"/>
             <Setter Property="IsHitTestVisible" Value="False"/>
             <Setter Property="Transitions">
@@ -125,11 +133,11 @@
                 </Transitions>
             </Setter>
         </Style>
-        <Style Selector="Border#Lift:pointerover Border#TileActions, Border#Lift:focus-within Border#TileActions">
+        <Style Selector="Border#Lift.actions-visible Border.tile-action">
             <Setter Property="Opacity" Value="1"/>
             <Setter Property="IsHitTestVisible" Value="True"/>
         </Style>
-        <Style Selector="Border#Lift.snap Border#TileActions">
+        <Style Selector="Border#Lift.snap Border.tile-action">
             <Setter Property="Transitions"><Transitions/></Setter>
         </Style>
 
@@ -173,6 +181,24 @@
         </Style>
         <Style Selector="Button.tile-icon.primary:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="BorderBrush" Value="{StaticResource VoltInk}"/>
+        </Style>
+
+        <Style Selector="Button.details-fold">
+            <Setter Property="Width" Value="40"/>
+            <Setter Property="Height" Value="40"/>
+            <Setter Property="MinWidth" Value="40"/>
+            <Setter Property="MinHeight" Value="40"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CornerRadius" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="Button.details-fold:pointerover Path.fold-field">
+            <Setter Property="Fill" Value="{StaticResource SurfaceHigh}"/>
+        </Style>
+        <Style Selector="Button.details-fold:focus-visible Path#FoldFocus">
+            <Setter Property="Opacity" Value="1"/>
         </Style>
 
     </UserControl.Styles>
@@ -260,10 +286,10 @@
                          placeholder title does, so the same corner never
                          carries two versions of one fact.
 
-                         The words are in the tooltip, in the scrim, on the back
-                         face and in the modal, and the automation name says
-                         them too, so this mark is decorative-redundant per §8
-                         rather than the only place the fact exists.
+                         The words are in the tooltip, in the scrim and in the
+                         modal, and the automation name says them too, so this
+                         mark is decorative-redundant per §8 rather than the
+                         only place the fact exists.
 
                          Never Flare and never Volt: a chip is where the game
                          lives, not an alarm and not a selection (§2). -->
@@ -333,60 +359,79 @@
                                        TextWrapping="Wrap" MaxLines="2"
                                        TextTrimming="CharacterEllipsis"
                                        ToolTip.Tip="{Binding StatText}"/>
-                            <!-- Even one word-chip crowds the stat at minimum density.
-                                 Keep each fact in its own bounded row at every width. -->
-                            <ItemsControl ItemsSource="{Binding StoreChips}"
-                                          ToolTip.Tip="{Binding StoreNames}">
-                                <ItemsControl.ItemsPanel>
-                                    <ItemsPanelTemplate>
-                                        <WrapPanel Orientation="Horizontal" ItemSpacing="4" LineSpacing="4"/>
-                                    </ItemsPanelTemplate>
-                                </ItemsControl.ItemsPanel>
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <Border Classes="store-chip">
-                                            <TextBlock Text="{Binding}"/>
-                                        </Border>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
+                            <!-- Store words keep the left side of the bottom row;
+                                 the fixed primary target owns the right. At the
+                                 density floor chips wrap inside their column and
+                                 never paint under the action. -->
+                            <Grid ColumnDefinitions="*,32" ColumnSpacing="8">
+                                <ItemsControl Grid.Column="0"
+                                              ItemsSource="{Binding StoreChips}"
+                                              ToolTip.Tip="{Binding StoreNames}"
+                                              VerticalAlignment="Bottom">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <WrapPanel Orientation="Horizontal" ItemSpacing="4" LineSpacing="4"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Classes="store-chip">
+                                                <TextBlock Text="{Binding}"/>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+
+                                <Border Name="PrimaryActionHost" Grid.Column="1"
+                                        Classes="tile-action"
+                                        VerticalAlignment="Bottom">
+                                    <Button Classes="tile-icon primary"
+                                            IsVisible="{Binding HasPrimaryAction}"
+                                            ToolTip.Tip="{Binding PrimaryActionHint}"
+                                            AutomationProperties.Name="{Binding PrimaryActionLabel}"
+                                            Command="{Binding PrimaryActionCommand}"
+                                            CommandParameter="{Binding}">
+                                        <Panel Width="16" Height="16">
+                                            <Path Name="PlayGlyph" Data="M 4,2 L 14,8 L 4,14 Z"
+                                                  Fill="{Binding $parent[Button].Foreground}"
+                                                  IsVisible="{Binding IsPlayAction}"/>
+                                            <Path Name="InstallGlyph" Data="M 7,2 L 9,2 L 9,9 L 12,6 L 14,8 L 8,14 L 2,8 L 4,6 L 7,9 Z"
+                                                  Fill="{Binding $parent[Button].Foreground}"
+                                                  IsVisible="{Binding IsInstallAction}"/>
+                                        </Panel>
+                                    </Button>
+                                </Border>
+                            </Grid>
                         </StackPanel>
                     </Border>
 
-                    <!-- Compact actions stay in fixed grid columns at the top-left,
-                         clear of the unread badge. The primary cell remains reserved
-                         when no store action is available, so Details never shifts. -->
-                    <Border Name="TileActions"
-                            HorizontalAlignment="Left" VerticalAlignment="Top"
-                            Margin="8">
-                        <Grid ColumnDefinitions="32,4,32">
-                            <Button Grid.Column="0" Classes="tile-icon primary"
-                                    IsVisible="{Binding HasPrimaryAction}"
-                                    ToolTip.Tip="{Binding PrimaryActionHint}"
-                                    AutomationProperties.Name="{Binding PrimaryActionLabel}"
-                                    Command="{Binding PrimaryActionCommand}"
-                                    CommandParameter="{Binding}">
-                                <Panel Width="16" Height="16">
-                                    <Path Name="PlayGlyph" Data="M 4,2 L 14,8 L 4,14 Z"
-                                          Fill="{Binding $parent[Button].Foreground}"
-                                          IsVisible="{Binding IsPlayAction}"/>
-                                    <Path Name="InstallGlyph" Data="M 7,2 L 9,2 L 9,9 L 12,6 L 14,8 L 8,14 L 2,8 L 4,6 L 7,9 Z"
-                                          Fill="{Binding $parent[Button].Foreground}"
-                                          IsVisible="{Binding IsInstallAction}"/>
-                                </Panel>
-                            </Button>
-
-                            <Button Grid.Column="2" Classes="tile-icon"
-                                    ToolTip.Tip="Full details"
-                                    AutomationProperties.Name="Details"
-                                    Command="{Binding OpenDetailsCommand}"
-                                    CommandParameter="{Binding}">
-                                <Path Width="16" Height="16" Stretch="Uniform"
-                                      Data="M 2,2 L 14,2 L 14,14 L 2,14 Z M 5,5 L 11,5 M 5,8 L 11,8 M 5,11 L 9,11"
-                                      Stroke="{Binding $parent[Button].Foreground}"
-                                      StrokeThickness="1.5"/>
-                            </Button>
-                        </Grid>
+                    <!-- Details is the folded corner of the cover. The visible
+                         triangle is deliberately smaller than its fixed 40px
+                         button, so recognition and hit geometry are independent. -->
+                    <Border Name="DetailsActionHost" Classes="tile-action"
+                            HorizontalAlignment="Right" VerticalAlignment="Top">
+                        <Button Classes="details-fold"
+                                ToolTip.Tip="Full details"
+                                AutomationProperties.Name="Details"
+                                Command="{Binding OpenDetailsCommand}"
+                                CommandParameter="{Binding}">
+                            <Panel Width="40" Height="40">
+                                <Path Classes="fold-field"
+                                      Data="M 0,0 L 40,0 L 40,40 Z"
+                                      Fill="{StaticResource SurfaceRaised}"/>
+                                <Path Data="M 0,0 L 40,40"
+                                      Stroke="{StaticResource Line}" StrokeThickness="1"/>
+                                <Path Width="12" Height="12" Margin="21,5,7,23"
+                                      Stretch="Uniform"
+                                      Data="M 2,2 L 10,2 L 10,10 L 2,10 Z M 4,4 L 8,4 M 4,6 L 8,6 M 4,8 L 7,8"
+                                      Stroke="{StaticResource Text}"
+                                      StrokeThickness="1.3"/>
+                                <Path Name="FoldFocus"
+                                      Data="M 1,1 L 39,1 L 39,39 Z"
+                                      Stroke="{StaticResource Volt}" StrokeThickness="2"
+                                      Opacity="0"/>
+                            </Panel>
+                        </Button>
                     </Border>
 
                 </Panel>
@@ -422,7 +467,7 @@
                     BorderBrush="{StaticResource Ground}" BorderThickness="2"
                     BoxShadow="{DynamicResource BadgeGlow}"
                     HorizontalAlignment="Right" VerticalAlignment="Top"
-                    Margin="0,8,8,0"
+                    Margin="0,44,8,0"
                     IsVisible="{Binding HasUnread}"/>
 
         </Panel>
