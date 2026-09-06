@@ -74,6 +74,8 @@ Each one is load-bearing for an install that predates the 2026-08-28 rename.
   never calls ingest or enrichment directly.
 - `tests/Winnow.Tests` — xUnit on temp-file SQLite databases. Parser tests use the sanitized
   real fixtures in `tests/fixtures/steam/`.
+- `tests/Winnow.Ui.Tests` — isolated Avalonia headless pointer and keyboard tests with real
+  fonts and templates. Use temporary data and never start the production host.
 
 ## Agent instructions and writing
 

@@ -14,6 +14,24 @@ public sealed class StorefrontClient(HttpClient http, StorefrontCache cache, Tim
     public async Task RefreshEpicAsync(CancellationToken ct = default)
         => await FetchAsync("epic", EpicMappingUrl, ct);
 
+    /// <summary>The bulk map omits active products; ask Epic by namespace for those misses.</summary>
+    public async Task RefreshEpicNamespacesAsync(IEnumerable<string> namespaces, CancellationToken ct = default)
+    {
+        await RefreshEpicAsync(ct);
+        var bulk = ParseEpic((await cache.GetAsync("epic", ct))?.Payload);
+        foreach (var ns in namespaces.Distinct(StringComparer.Ordinal))
+        {
+            if (!IsNamespace(ns) || bulk.ContainsKey(ns)) continue;
+            var query = "query { Catalog { catalogNs(namespace:\"" + ns
+                + "\") { mappings(pageType:\"productHome\") { pageSlug pageType } } } }";
+            await FetchAsync("epic-namespace:" + ns,
+                "https://store.epicgames.com/graphql?query=" + Uri.EscapeDataString(query), ct);
+        }
+    }
+
+    private static bool IsNamespace(string ns)
+        => ns.Length is > 0 and <= 64 && ns.All(c => char.IsAsciiLetterOrDigit(c) || c is '.' or '_' or '-');
+
     public async Task RefreshGogAsync(string id, CancellationToken ct = default)
     {
         if (id.Length is > 0 and <= 12 && id.All(char.IsAsciiDigit))
@@ -39,6 +57,8 @@ public sealed class StorefrontClient(HttpClient http, StorefrontCache cache, Tim
             if (parsed.RootElement.ValueKind != JsonValueKind.Object) return;
             if (key.StartsWith("gog:", StringComparison.Ordinal)
                 && (!parsed.RootElement.TryGetProperty("id", out var id) || id.ToString() != key[4..])) return;
+            if (key.StartsWith("epic-namespace:", StringComparison.Ordinal)
+                && !TryParseEpicNamespace(payload, out _)) return;
             await cache.SaveAsync(key, payload, time.GetUtcNow().UtcDateTime, ct);
         }
         catch (HttpRequestException) { }
@@ -57,12 +77,46 @@ public sealed class StorefrontClient(HttpClient http, StorefrontCache cache, Tim
             {
                 if (property.Value.ValueKind != JsonValueKind.String) continue;
                 var slug = property.Value.GetString();
-                if (slug is { Length: > 0 and <= 200 } && slug.All(c => char.IsAsciiLetterOrDigit(c) || c is '-' or '_'))
-                    result[property.Name] = "https://store.epicgames.com/p/" + slug;
+                if (EpicStoreUrl(slug) is { } url) result[property.Name] = url;
             }
         }
         catch (JsonException) { }
         return result;
+    }
+
+    private static string? EpicStoreUrl(string? slug)
+        => slug is { Length: > 0 and <= 200 } && slug.All(c => char.IsAsciiLetterOrDigit(c) || c is '-' or '_')
+            ? "https://store.epicgames.com/p/" + slug : null;
+
+    /// <summary>Accept only an unambiguous product-home mapping, never an offer or a title-derived slug.</summary>
+    public static bool TryParseEpicNamespace(string? payload, out string? storeUrl)
+    {
+        storeUrl = null;
+        try
+        {
+            using var document = JsonDocument.Parse(payload ?? "{}");
+            var root = document.RootElement;
+            if (root.ValueKind != JsonValueKind.Object || root.TryGetProperty("errors", out _)
+                || !root.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Object
+                || !data.TryGetProperty("Catalog", out var catalog) || catalog.ValueKind != JsonValueKind.Object
+                || !catalog.TryGetProperty("catalogNs", out var ns)) return false;
+            if (ns.ValueKind == JsonValueKind.Null) return true;
+            if (ns.ValueKind != JsonValueKind.Object || !ns.TryGetProperty("mappings", out var mappings)) return false;
+            if (mappings.ValueKind == JsonValueKind.Null) return true;
+            if (mappings.ValueKind != JsonValueKind.Array) return false;
+            var urls = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var mapping in mappings.EnumerateArray())
+            {
+                if (mapping.ValueKind == JsonValueKind.Object
+                    && mapping.TryGetProperty("pageType", out var type) && type.ValueKind == JsonValueKind.String
+                    && type.GetString() == "productHome"
+                    && mapping.TryGetProperty("pageSlug", out var slug) && slug.ValueKind == JsonValueKind.String
+                    && EpicStoreUrl(slug.GetString()) is { } url) urls.Add(url);
+            }
+            if (urls.Count == 1) storeUrl = urls.Single();
+            return true;
+        }
+        catch (JsonException) { return false; }
     }
 
     public static StorefrontDetails ParseGog(string? payload)

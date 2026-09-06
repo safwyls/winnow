@@ -23,5 +23,6 @@
     <Project Path="tests/Winnow.Covers.Tests/Winnow.Covers.Tests.csproj" />
     <Project Path="tests/Winnow.Recommend.Tests/Winnow.Recommend.Tests.csproj" />
     <Project Path="tests/Winnow.Tests/Winnow.Tests.csproj" />
+    <Project Path="tests/Winnow.Ui.Tests/Winnow.Ui.Tests.csproj" />
   </Folder>
 </Solution>

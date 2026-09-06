@@ -7,7 +7,7 @@ namespace Winnow.App.Services;
 
 /// <summary>Warms storefront responses behind first paint. The UI reads StorefrontCache only.</summary>
 public sealed class StorefrontSyncService(ISqliteConnectionFactory factory, StorefrontClient client,
-    ILogger<StorefrontSyncService> logger)
+    ILogger<StorefrontSyncService> logger, IEpicLaunchKeys? epicLaunchKeys = null)
 {
     public async Task SyncAsync(CancellationToken ct = default)
     {
@@ -30,7 +30,17 @@ public sealed class StorefrontSyncService(ISqliteConnectionFactory factory, Stor
                 WHERE e.provider IN ('epic', 'gog')
                 """, transaction: lease.Transaction, cancellationToken: ct))).ToArray();
         }
-        if (targets.Any(t => t.Provider == "epic")) await client.RefreshEpicAsync(ct);
+        if (targets.Any(t => t.Provider == "epic"))
+        {
+            if (epicLaunchKeys is null) await client.RefreshEpicAsync(ct);
+            else
+            {
+                var keys = await epicLaunchKeys.GetAllAsync(ct);
+                var namespaces = targets.Where(t => t.Provider == "epic" && keys.ContainsKey(t.Id))
+                    .Select(t => keys[t.Id].Namespace);
+                await client.RefreshEpicNamespacesAsync(namespaces, ct);
+            }
+        }
         foreach (var target in targets.Where(t => t.Provider == "gog")) await client.RefreshGogAsync(target.Id, ct);
     }
 

@@ -77,7 +77,7 @@ The live `catcache.bin` (297 entries) was decoded and its top-level and `customA
 
 ### The route that would work, partially — verified-by-execution
 
-`https://store-content.ak.epicgames.com/api/content/productmapping` is public and unauthenticated, needs no key and no headers, and returned HTTP 200 / 68,473 bytes / 1,283 entries: a flat JSON object mapping catalog **namespace** to store **slug** (`{"fn":"fortnite","crab":"satisfactory","min":"hades",...}`). Measured against this machine's real library it covers 56 of 67 owned base games (84%); the 11 misses are delisted or giveaway-only titles (Frostpunk, Palia, LOTR Return to Moria, Moonlighter, ABZU, Dauntless, Drawful 2, Torchlight, Unreal Tournament, >observer_, Hob). Slug validity was confirmed with a negative control against `https://store-content.ak.epicgames.com/api/en-US/content/products/{slug}`: 200 for `soma`, `this-war-of-mine`, `tiny-tinas-wonderlands` and `world-war-z`; 404 for `winnow-bogus-slug-xyz`.
+`https://store-content.ak.epicgames.com/api/content/productmapping` is public and unauthenticated, needs no key and no headers, and returned HTTP 200 / 68,473 bytes / 1,283 entries: a flat JSON object mapping catalog **namespace** to store **slug** (`{"fn":"fortnite","crab":"satisfactory","min":"hades",...}`). Measured against this machine's real library it covers 56 of 67 owned base games (84%); the 11 misses are Frostpunk, Palia, LOTR Return to Moria, Moonlighter, ABZU, Dauntless, Drawful 2, Torchlight, Unreal Tournament, >observer_ and Hob. A missing entry does not prove delisting: the namespace lookup below resolves eight of them to product pages. Slug validity was confirmed with a negative control against `https://store-content.ak.epicgames.com/api/en-US/content/products/{slug}`: 200 for `soma`, `this-war-of-mine`, `tiny-tinas-wonderlands` and `world-war-z`; 404 for `winnow-bogus-slug-xyz`.
 
 The initial programmatic probe returned 403. On 2026-09-06 the browser opened `https://store.epicgames.com/p/soma` and showed the SOMA page title, heading and game description. An age gate was present and was left untouched. The public URL template is now **verified-by-execution**.
 
@@ -190,3 +190,62 @@ scroll offset to 150 px. The temporary harness and inspected image were at
 cached Epic mappings, GOG product URLs and safe text extraction, invalid identifiers and URLs,
 negative caching, stale fallback, cancellation, mismatched product responses and the Polly
 retry/permit boundary. No HTTP test calls a live service.
+
+## Moonlighter: static-map miss and launcher failure — 2026-09-06
+
+TASK-141 was reported after the storefront work landed. The investigation copied Winnow's
+SQLite database and sidecars, Epic's catalog/manifests and the launcher log to
+`C:/Temp/winnow-moonlighter` before reading them. No launcher files were modified and no
+install request or download was initiated by the investigation.
+
+Moonlighter's stored key agrees with `catcache.bin`: namespace
+`bec822fb982843c3be794d440728336b`, catalog item `4255c34fbbb746ca8a982f1245c0e490`, artifact
+`Eagle`. Its single releaseInfo entry supports both Mac and Windows. It is uninstalled and has
+no install path. The missing Store page is independent of those correct launch identifiers.
+
+### The missing store page — verified by execution
+
+The copied bulk mapping covers 56 of 67 Epic games and omits Moonlighter. An anonymous exact
+namespace query to Epic's GraphQL endpoint returned HTTP 200 and a 102-byte body containing
+`pageSlug: moonlighter`, `pageType: productHome`. The request and cache rules live in
+`game-library-design.md` §4.8. The public
+[Moonlighter page](https://store.epicgames.com/p/moonlighter) was then retrieved with its title
+and game description. Browser automation was unavailable for this follow-up; the public URL
+shape had already been confirmed in a browser during TASK-132.
+
+A single aliased query over all eleven missing namespaces returned eight product-home slugs:
+ABZU, Palia, Moonlighter, Hob, Frostpunk, Torchlight, Return to Moria and Drawful 2. Dauntless and
+Unreal Tournament returned empty mappings; observer returned null mappings. The combined
+measured coverage is 64 of 67 (about 96%), not universal coverage. This also disproves the
+previous inference that every static-map miss was a delisted or giveaway-only product.
+
+The fix asks by persisted namespace only when the bulk map misses. It never derives a slug
+from a title, so a user rename cannot change the result. Canned fixtures retain the exact
+Moonlighter catalog identifiers and its anonymous mapping response. Tests cover the fallback,
+negative results, GraphQL errors, invalid namespaces, ambiguous mappings and offer-only rows.
+
+### Install — accepted by the launcher, not verified as working
+
+The copied user-action log shows this sequence (UTC):
+
+- 18:14:00.929: `FAppInstallUriHandler` accepts Winnow's complete Moonlighter URI.
+- 18:14:00.974: Epic refreshes entitlement because its cache reports NotOwned.
+- 18:14:01.825: entitlement refresh succeeds, the catalog item resolves, and install is
+  dispatched. In that same timestamp Epic reports alert `AI-NE`, with no user message defined.
+- 18:14:20 and 18:14:38: Epic reports valid app/main-app builds and the Moonlighter destination;
+  it requests the game's manifest. Those lines do not prove a visible or usable selector.
+- Repeated clicks are rejected because the same handler is still processing. At 18:24:01.780
+  its 600-second selector backstop times out.
+
+The URI and identifiers are therefore not the observed failure. The failure occurs after
+Epic accepts them. The exact meaning of `AI-NE` was not found in official documentation;
+stale entitlement/UI state is a hypothesis, not a decoded error or a proven root cause. The
+install URI remains unchanged, and this investigation does not claim an installation or a
+working confirmation screen.
+
+[Epic's application-not-owned guidance](https://www.epicgames.com/help/c-32735058/c-36403860/a13533694)
+recommends trying the game from the Epic Library, checking the owning account, and checking
+pending launcher updates. It does not name `AI-NE`, so it is recovery guidance rather than
+proof of that code's meaning. Repeated Winnow clicks cannot clear Epic's already-processing
+state. TASK-141's install-confirmation criterion remains unchecked pending successful user
+verification through the launcher.

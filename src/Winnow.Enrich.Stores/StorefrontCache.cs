@@ -41,6 +41,9 @@ public sealed class StorefrontCache(ISqliteConnectionFactory factory) : IStorefr
                     result["epic:" + item.Key] = new(item.Value, null);
             else if (row.Id.StartsWith("gog:", StringComparison.Ordinal))
                 result[row.Id] = StorefrontClient.ParseGog(row.Payload);
+            else if (row.Id.StartsWith("epic-namespace:", StringComparison.Ordinal)
+                && StorefrontClient.TryParseEpicNamespace(row.Payload, out var url) && url is not null)
+                result.TryAdd("epic:" + row.Id["epic-namespace:".Length..], new(url, null));
         }
         return result;
     }

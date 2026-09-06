@@ -18,6 +18,98 @@ public sealed class StorefrontTests
     private const string Gog = """{"id":1207658871,"links":{"product_card":"https://www.gog.com/game/panzer_general_2"},"changelog":"<h4>Internal Update</h4><ul><li>Cloud Saves support</li></ul><script>bad()</script>"}""";
 
     [Fact]
+    public async Task Namespace_lookup_fills_a_bulk_map_miss_without_guessing_from_the_title()
+    {
+        const string ns = "bec822fb982843c3be794d440728336b";
+        using var db = new TempDatabase();
+        var cache = new StorefrontCache(db.Factory);
+        var payload = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "fixtures", "storefront", "epic-namespace-moonlighter.json"));
+        using var handler = new FixtureHandler(n => Response(n == 1 ? Epic : payload));
+        using var http = new HttpClient(handler);
+        var client = new StorefrontClient(http, cache, TimeProvider.System);
+        await client.RefreshEpicNamespacesAsync(["fn", ns, ns, "not/a/namespace", "unsafe\""]);
+        Assert.Equal(2, handler.Urls.Count);
+        Assert.Contains("catalogNs(namespace:\"" + ns + "\")", Uri.UnescapeDataString(handler.Urls[1]));
+        Assert.DoesNotContain("Moonlighter", handler.Urls[1], StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("https://store.epicgames.com/p/moonlighter", (await cache.ReadAllAsync())["epic:" + ns].StoreUrl);
+        await client.RefreshEpicNamespacesAsync([ns]);
+        Assert.Equal(2, handler.Urls.Count);
+    }
+
+    [Fact]
+    public async Task Sync_uses_persisted_namespaces_for_bulk_map_misses()
+    {
+        const string ns = "bec822fb982843c3be794d440728336b";
+        using var db = new TempDatabase();
+        using (var lease = db.Factory.Lease())
+            await lease.Connection.ExecuteAsync("""
+                INSERT INTO works(id,name) VALUES(1,'A user-renamed title');
+                INSERT INTO releases(id,work_id,name) VALUES(1,1,'A user-renamed title');
+                INSERT INTO external_ids(release_id,provider,provider_id) VALUES(1,'epic','catalog-id');
+                INSERT INTO ownerships(id,release_id,store) VALUES(1,1,'epic');
+                """);
+        await new SqliteEpicLaunchKeyStore(db.Factory).SaveAsync([new("catalog-id", ns, "Eagle")]);
+        var cache = new StorefrontCache(db.Factory);
+        var payload = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "fixtures", "storefront", "epic-namespace-moonlighter.json"));
+        using var handler = new FixtureHandler(n => Response(n == 1 ? Epic : payload));
+        using var http = new HttpClient(handler);
+        await new StorefrontSyncService(db.Factory, new(http, cache, TimeProvider.System), NullLogger<StorefrontSyncService>.Instance,
+            new SqliteEpicLaunchKeys(db.Factory)).SyncAsync();
+        Assert.Equal(2, handler.Urls.Count);
+        Assert.Equal("https://store.epicgames.com/p/moonlighter", (await cache.ReadAllAsync())["epic:" + ns].StoreUrl);
+    }
+
+    [Theory]
+    [InlineData("""{"data":{"Catalog":{"catalogNs":null}}}""")]
+    [InlineData("""{"data":{"Catalog":{"catalogNs":{"mappings":null}}}}""")]
+    [InlineData("""{"data":{"Catalog":{"catalogNs":{"mappings":[]}}}}""")]
+    public async Task Namespace_lookup_caches_confirmed_absence(string payload)
+    {
+        using var db = new TempDatabase();
+        var cache = new StorefrontCache(db.Factory);
+        using var handler = new FixtureHandler(n => Response(n == 1 ? Epic : payload));
+        using var http = new HttpClient(handler);
+        var client = new StorefrontClient(http, cache, TimeProvider.System);
+        await client.RefreshEpicNamespacesAsync(["missing"]);
+        await client.RefreshEpicNamespacesAsync(["missing"]);
+        Assert.Equal(2, handler.Urls.Count);
+        Assert.False((await cache.ReadAllAsync()).ContainsKey("epic:missing"));
+    }
+
+    [Fact]
+    public async Task Graphql_errors_do_not_replace_a_stale_mapping()
+    {
+        using var db = new TempDatabase();
+        var cache = new StorefrontCache(db.Factory);
+        var payload = """{"data":{"Catalog":{"catalogNs":{"mappings":[{"pageSlug":"example","pageType":"productHome"}]}}}}""";
+        await cache.SaveAsync("epic", Epic, DateTime.UtcNow);
+        await cache.SaveAsync("epic-namespace:example", payload, DateTime.UtcNow.AddDays(-2));
+        using var handler = new FixtureHandler(_ => Response("""{"errors":[{"message":"temporarily unavailable"}],"data":{"Catalog":{"catalogNs":null}}}"""));
+        using var http = new HttpClient(handler);
+        await new StorefrontClient(http, cache, TimeProvider.System).RefreshEpicNamespacesAsync(["example"]);
+        Assert.Equal("https://store.epicgames.com/p/example", (await cache.ReadAllAsync())["epic:example"].StoreUrl);
+    }
+
+    [Theory]
+    [InlineData("offer", "dlc", "productHome", "base-game", "https://store.epicgames.com/p/base-game")]
+    [InlineData("productHome", "one", "productHome", "two", null)]
+    [InlineData("productHome", "../bad", "offer", "dlc", null)]
+    public void Namespace_mapping_requires_one_valid_product_home(string type1, string slug1, string type2, string slug2, string? expected)
+    {
+        var payload = JsonSerializer.Serialize(new { data = new { Catalog = new { catalogNs = new { mappings = new[] {
+            new { pageType = type1, pageSlug = slug1 }, new { pageType = type2, pageSlug = slug2 } } } } } });
+        Assert.True(StorefrontClient.TryParseEpicNamespace(payload, out var url));
+        Assert.Equal(expected, url);
+    }
+
+    [Theory]
+    [InlineData("{}")]
+    [InlineData("[]")]
+    [InlineData("{\"data\":{\"Catalog\":{\"catalogNs\":{\"mappings\":7}}}}")]
+    public void Malformed_namespace_envelopes_are_rejected(string payload)
+        => Assert.False(StorefrontClient.TryParseEpicNamespace(payload, out _));
+
+    [Fact]
     public async Task Sync_uses_owned_store_ids_and_warms_the_read_only_projection()
     {
         using var db = new TempDatabase();
@@ -31,10 +123,11 @@ public sealed class StorefrontTests
         var cache = new StorefrontCache(db.Factory);
         using var handler = new FixtureHandler(n => Response(n == 1 ? Epic : Gog));
         using var http = new HttpClient(handler);
-        var sync = new StorefrontSyncService(db.Factory, new(http, cache, TimeProvider.System), NullLogger<StorefrontSyncService>.Instance);
+        await new SqliteEpicLaunchKeyStore(db.Factory).SaveAsync([new("catalog-id", "fn", "Fortnite")]);
+        var sync = new StorefrontSyncService(db.Factory, new(http, cache, TimeProvider.System), NullLogger<StorefrontSyncService>.Instance,
+            new SqliteEpicLaunchKeys(db.Factory));
         await sync.SyncAsync();
         Assert.Equal(2, handler.Urls.Count);
-        await new SqliteEpicLaunchKeyStore(db.Factory).SaveAsync([new("catalog-id", "fn", "Fortnite")]);
         var library = new LibraryViewModel(new LibraryQueryRepository(db.Factory),
             new OwnershipRepository(db.Factory), new ReleaseRepository(db.Factory), new WorkRepository(db.Factory),
             new UpdateEventRepository(db.Factory), epicLaunchKeys: new SqliteEpicLaunchKeys(db.Factory), storefrontCache: cache);

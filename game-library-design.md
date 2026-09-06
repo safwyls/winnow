@@ -388,6 +388,16 @@ honoured up to 30 seconds. HTTP 403 and 404 are not retried. Each request is bou
 90-second HttpClient timeout and a 2 MiB response buffer. These are Winnow's operating choices,
 not claimed vendor limits. Endpoint measurements are in `docs/spikes/store-actions-per-launcher.md`.
 
+The bulk Epic map is incomplete even for active products. For owned namespaces it omits,
+issue an anonymous GET to `https://store.epicgames.com/graphql` with the URL-encoded query
+`query { Catalog { catalogNs(namespace:"<namespace>") { mappings(pageType:"productHome") { pageSlug pageType } } } }`.
+Only persisted, validated namespace identifiers enter that query; titles never form slugs.
+Cache each answer under `epic-namespace:<namespace>` in the same cache provider, lifetime and
+HTTP policy as the bulk response. Accept one distinct safe `productHome` slug; offer mappings
+and ambiguous answers yield no link. A null namespace or null/empty mappings is a cached
+negative result. GraphQL errors or malformed envelopes retain a prior answer. The bulk map
+keeps precedence when it later includes the namespace.
+
 ---
 
 ## 5. Architecture

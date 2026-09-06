@@ -553,7 +553,15 @@
                                     CommandParameter="{Binding}"/>
                         </StackPanel>
 
-                        <StackPanel Spacing="5">
+                        <!-- Facts scroll in the space left by the pinned actions.
+                             Unbounded metadata can otherwise draw over their hit
+                             targets on dense cards with wrapped store chips. -->
+                        <ScrollViewer Name="BackFactsScroll" Classes="inner"
+                                      AutomationProperties.Name="Game facts"
+                                      Margin="0,0,0,6"
+                                      HorizontalScrollBarVisibility="Disabled"
+                                      VerticalScrollBarVisibility="Auto">
+                        <StackPanel Spacing="5" Margin="{StaticResource InnerScrollGutter}">
                             <TextBlock Text="{Binding Title}"
                                        FontFamily="{StaticResource DisplayFont}"
                                        FontWeight="Bold" FontSize="13" LineHeight="15"
@@ -614,6 +622,7 @@
                             </Grid>
                         </StackPanel>
 
+                        </ScrollViewer>
                     </DockPanel>
                 </Panel>
             </Border>

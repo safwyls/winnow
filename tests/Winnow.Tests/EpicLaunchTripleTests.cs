@@ -19,6 +19,31 @@ namespace Winnow.Tests;
 /// </summary>
 public class EpicLaunchTripleTests
 {
+    [Fact]
+    public async Task Moonlighter_keeps_the_same_complete_key_the_launcher_resolved()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "winnow-moonlighter-fixture-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(root, "Catalog"));
+            Directory.CreateDirectory(Path.Combine(root, "Manifests"));
+            var json = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "fixtures", "epic", "moonlighter-catalog-entry.json"));
+            File.WriteAllText(Path.Combine(root, "Catalog", "catcache.bin"), Convert.ToBase64String(json));
+            var scan = new EpicLibrarySource(dataRoot: root).ScanLibrary();
+            var triple = Assert.Single(scan.LaunchTriples);
+            Assert.Equal("bec822fb982843c3be794d440728336b", triple.CatalogNamespace);
+            Assert.Equal("4255c34fbbb746ca8a982f1245c0e490", triple.CatalogItemId);
+            Assert.Equal("Eagle", triple.AppName);
+            Assert.False(Assert.Single(scan.Candidates).Installed);
+            using var db = new TempDatabase();
+            await new SqliteEpicLaunchKeyStore(db.Factory).SaveAsync(scan.LaunchTriples);
+            var key = (await new SqliteEpicLaunchKeys(db.Factory).GetAllAsync())[triple.CatalogItemId];
+            Assert.Equal("com.epicgames.launcher://apps/bec822fb982843c3be794d440728336b%3A4255c34fbbb746ca8a982f1245c0e490%3AEagle?action=install",
+                StoreActions.PrimaryFor("epic", false, null, null, key)?.Uri);
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
     private const string FezId = "7a70b499513441c792b541d53505e0b2";
     private const string FezNamespace = "41f47fd0d3e248bc938a5815d6d64daa";
     private const string CelesteId = "38c07a09dc174b69b756aa51890c3dd4";

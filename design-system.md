@@ -248,6 +248,13 @@ and never `Volt`, which is selection.
 
 **Do not show more than four facts.** The tile is a decision surface, not a detail view.
 
+**The back's actions stay pinned below its facts.** At the 108px density floor, a wrapped
+title and multiple store chips can exceed the space above Play/Install, Add to list and
+Details. The facts therefore scroll inside that remaining space, with the inner scrollbar
+gutter; they cannot draw over the buttons or intercept their clicks. Buttons and the facts
+scrollbar own repeated presses. The cover's double-click gesture applies only outside those
+controls.
+
 ### 5.4 How the ramp is drawn
 
 Avalonia has no CSS `filter`, and **it has no public API for authoring custom effects** — the

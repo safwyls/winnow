@@ -2106,3 +2106,19 @@ Superseded spike statements:
 - verified-by-execution (route exists); slug not stored; slug from productmapping would unlock it
 - none shipped; changelog from `api.gog.com` would unlock it
 - What Winnow lacks is not a route but the **slug**, which it does not store.
+
+## 2026-09-06 — Keep card facts out of the action hit targets
+
+At 108x162, the back's unbounded metadata could draw its year and store chips over the
+Details button. Those pixels hit metadata and flipped the card, although a button was
+visible underneath. Facts now scroll in the space above pinned actions. Repeated presses
+on a button or scrollbar belong to that control rather than the cover's double-click gesture.
+The old MainWindow pointer-handler comment said:
+
+> Registered on the tunnel route so the double click is caught before the
+> back face's buttons.
+
+## Epic namespace misses — 2026-09-06
+
+The store-actions spike previously said: the 11 misses are delisted or giveaway-only titles (Frostpunk, Palia, LOTR Return to Moria, Moonlighter, ABZU, Dauntless, Drawful 2, Torchlight, Unreal Tournament, >observer_, Hob).
+The mapping is incomplete; eight of those titles still have product-home mappings. The correction replaces the unsupported classification with the measured namespace results.

@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
@@ -44,8 +45,8 @@ public partial class MainWindow : Window
         // modal refuses the restore when the modal itself is on the way out.
         LightboxPanel.Closed += (_, _) => DetailsPanel.RestoreLightboxFocus();
 
-        // Tunnel, not bubble: this handler must see a press before the buttons
-        // on a turned card's back face do. See OnTilePressed.
+        // See the card gesture before a child handles it, while leaving the
+        // back's buttons and scrollbar to handle their own presses.
         TileWall.AddHandler(PointerPressedEvent, OnTilePressed, RoutingStrategies.Tunnel);
 
         RequestBackdrop();
@@ -936,12 +937,14 @@ public partial class MainWindow : Window
 
     /// <summary>
     /// A click turns the card over; a double click opens the detail modal.
-    /// Registered on the tunnel route so the double click is caught before the
-    /// back face's buttons.
+    /// Buttons and the facts scrollbar own their presses, even on repeated clicks.
     /// </summary>
     private void OnTilePressed(object? sender, PointerPressedEventArgs e)
+        => HandleTilePressed(_library, e);
+
+    private static void HandleTilePressed(LibraryViewModel? library, PointerPressedEventArgs e)
     {
-        if (_library is null
+        if (library is null
             || e.Source is not Control source
             || source.FindAncestorOfType<GameTileView>(includeSelf: true) is not
                 { DataContext: GameTileViewModel tile })
@@ -949,28 +952,27 @@ public partial class MainWindow : Window
             return;
         }
 
+        if (!e.GetCurrentPoint(source).Properties.IsLeftButtonPressed)
+        {
+            library.SelectTile(tile);
+            return;
+        }
+
+        if (source.FindAncestorOfType<Button>(includeSelf: true) is not null
+            || source.FindAncestorOfType<RangeBase>(includeSelf: true) is not null)
+        {
+            library.SelectTile(tile);
+            return;
+        }
+
         if (e.ClickCount >= 2)
         {
-            // Takes the press away from the back face before it is offered one.
-            _library.OpenDetailsCommand.Execute(tile);
+            library.OpenDetailsCommand.Execute(tile);
             e.Handled = true;
             return;
         }
 
-        if (!e.GetCurrentPoint(source).Properties.IsLeftButtonPressed)
-        {
-            _library.SelectTile(tile);
-            return;
-        }
-
-        // A press on one of the back's own controls belongs to that control.
-        if (source.FindAncestorOfType<Button>(includeSelf: true) is not null)
-        {
-            _library.SelectTile(tile);
-            return;
-        }
-
-        _library.FlipTileCommand.Execute(tile);
+        library.FlipTileCommand.Execute(tile);
     }
 
     /// <summary>
