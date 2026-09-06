@@ -1,11 +1,11 @@
 ---
 id: TASK-26
 title: Establish CI gates
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-08-29 21:53'
-updated_date: '2026-09-06 23:42'
+updated_date: '2026-09-06 23:45'
 labels:
   - infra
 milestone: m-4
@@ -49,10 +49,12 @@ Hosted reports show two passing recommendation tests taking 5m38 and 4m22; Windo
 Retained TRX identified four expensive fixture setups: 170-game maturity history, 200-game shortlist, 1200 cache writes, and 1000 identity-model games. Wrapped setup writes in existing unit-of-work scopes committed before measured reads/assertions; retained all counts/assertions and left the deliberate 2003-lease legacy benchmark unchanged. 28 affected tests pass locally. Added normal console test progress alongside TRX and five-minute hang diagnostics.
 
 The cached-library comparison also paid for repeated WAL teardown because its test factory is unpooled while the app uses pooling. Holding one idle connection during that test preserves 1000 games and all 2003 legacy leases, without a read transaction or altered assertions. Two snapshot tests pass; the measured test is 1.915s locally (legacy1740.9ms/2003leases, bulk18.5ms/1lease), versus49.655s in the earlier full local report. Current hosted run is being allowed to finish before this follow-up is pushed.
+
+Hosted CI run 34066965706 at d021b6e completed successfully: Windows 3932 passed, two Linux-only facts skipped there; Ubuntu two passed. Windows Test took13.8677minutes and now reports individual test progress. The former 5m38 maturity case completed in4s and former4m22 shortlist case in3s; cache bulk test1s, identity realistic-library test35s. The additional cached-read WAL keeper was separately verified with both snapshot tests passing locally; production code is unchanged.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
 
 <!-- SECTION:FINAL_SUMMARY:BEGIN -->
-Added Windows push/PR CI for audited restore, analyzer-enabled Release build, all tests, immutable migration checks, and retained TRX results. Workflow lint and equivalent local checks pass. First hosted execution awaits a push; branch protection remains an administrator setting.
+Windows and Ubuntu CI passed at https://github.com/safwyls/winnow/actions/runs/34066965706. Batched four expensive fixture setups, preserved workload sizes and assertions, and enabled visible test results and hang diagnostics. All 3,932 Windows tests and both Ubuntu smoke tests passed. The Windows Test step took about 14 minutes. The final cached-read test-only adjustment also passed its two focused local tests.
 <!-- SECTION:FINAL_SUMMARY:END -->
