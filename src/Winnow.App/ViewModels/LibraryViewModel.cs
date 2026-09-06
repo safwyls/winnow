@@ -1582,13 +1582,20 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             return false;
         }
 
-        await _identityLinks.LinkAsync(new IdentityLinkRequest
+        try
         {
-            ParentWorkId = parentWorkId,
-            ChildWorkIds = [childWorkId],
-            Kind = IdentityLinkKinds.SameGame,
-            Source = IdentityLinkSources.User,
-        });
+            await _identityLinks.LinkAsync(new IdentityLinkRequest
+            {
+                ParentWorkId = parentWorkId,
+                ChildWorkIds = [childWorkId],
+                Kind = IdentityLinkKinds.SameGame,
+                Source = IdentityLinkSources.User,
+            });
+        }
+        catch (IdentityLinkRefusedException)
+        {
+            return false;
+        }
 
         return true;
     }

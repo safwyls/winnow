@@ -403,6 +403,12 @@ dock card at bottom-left reports what the last act did, carries Undo, dismisses 
 seconds, and never takes focus. Past link acts appear as resolved strips in their section, so
 the queue is the retraction surface for every relation and there is no history list.
 
+A same-game candidate is omitted when either work is already an expansion or variant child.
+Such a work already has the identity graph's one permitted parent, so presenting it as a new
+header offers an answer the repository must refuse. If a card becomes structurally stale after
+the queue loads, the refusal removes that card and appears in the dock as a no-change notice;
+the notice has no Undo because no link act was written.
+
 Keyboard: Up and Down walk the candidate rows across every pending card, Space makes the row
 the header, `S`/`Enter` answers Same game, `D` answers Different games, and `Escape` returns to
 the library. The radio and the checkbox are Tab stops of their own.

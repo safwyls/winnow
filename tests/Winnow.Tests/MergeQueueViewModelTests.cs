@@ -332,6 +332,73 @@ public sealed class MergeQueueViewModelTests
 
     // ── Same game ────────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// TASK-147. Operation Arrowhead is already a child of Arma 2. A soft
+    /// match against its obsolete beta therefore cannot become a depth-one
+    /// same-game link with Operation Arrowhead as the header. Expansion and
+    /// variant children are both excluded before candidate edges are grouped.
+    /// </summary>
+    [Theory]
+    [InlineData(IdentityLinkKinds.ExpansionOf)]
+    [InlineData(IdentityLinkKinds.VariantOf)]
+    public async Task A_non_same_game_child_is_not_offered_as_a_same_game_parent(string kind)
+    {
+        using var fixture = new MergeQueueFixture();
+        var arma = await fixture.CreateReleaseAsync(new SeedSide("Arma 2", 2009, "Bohemia Interactive"));
+        var arrowhead = await fixture.CreateReleaseAsync(
+            new SeedSide("Arma 2: Operation Arrowhead", 2010, "Bohemia Interactive"));
+        var beta = await fixture.CreateReleaseAsync(
+            new SeedSide("Arma 2: Operation Arrowhead Beta (Obsolete)", 2010, "Bohemia Interactive"));
+
+        await fixture.LinkAsync(arma, arrowhead, kind);
+        var candidateId = await fixture.QueueScoredPairAsync(arrowhead, beta);
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+
+        Assert.DoesNotContain(
+            queue.Sections
+                .Where(section => section.Kind is MergeSectionKind.Stores or MergeSectionKind.Editions)
+                .SelectMany(section => section.Cards),
+            card => card.IsPending
+                && card.Rows.Any(row => row.WorkId == arrowhead.WorkId));
+        Assert.Equal(MergeCandidateStatuses.Pending, await fixture.StatusOfAsync(candidateId));
+    }
+
+    /// <summary>
+    /// The queue can become stale after it loads. The repository remains the
+    /// final structural guard, but its refusal is consumed as a failed user
+    /// action: the stale card leaves, a no-change notice appears, and there is
+    /// no Undo because no act was written.
+    /// </summary>
+    [Fact]
+    public async Task A_stale_card_refusal_is_nonfatal_and_removes_the_card()
+    {
+        using var fixture = new MergeQueueFixture();
+        var (left, right) = await fixture.CreatePairAsync(Prey, Prey);
+        var candidateId = await fixture.QueueScoredPairAsync(left, right);
+
+        var queue = fixture.CreateViewModel();
+        await queue.LoadCommand.ExecuteAsync(null);
+        var section = Section(queue, MergeSectionKind.Editions);
+        var card = Assert.Single(section.Cards);
+        Assert.Equal(left.WorkId, card.ParentWorkId);
+
+        var baseGame = await fixture.CreateReleaseAsync(
+            new SeedSide("Arma 2", 2009, "Bohemia Interactive"));
+        await fixture.LinkAsync(baseGame, left, IdentityLinkKinds.ExpansionOf);
+
+        await queue.SameGameCommand.ExecuteAsync(card);
+
+        Assert.Empty(section.Cards);
+        Assert.Equal(1, fixture.ActCount());
+        Assert.Equal(MergeCandidateStatuses.Pending, await fixture.StatusOfAsync(candidateId));
+        Assert.True(queue.IsDockOpen);
+        Assert.False(queue.CanUndoDock);
+        Assert.Equal(MergeCopy.DockLinkRefusedTitle, queue.DockTitle);
+        Assert.Equal(MergeCopy.DockLinkRefusedNote, queue.DockNote);
+    }
+
     [Fact]
     public async Task Same_game_writes_one_act_under_the_header_and_leaves_a_strip_in_place()
     {

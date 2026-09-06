@@ -368,6 +368,10 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     public partial bool IsDockOpen { get; private set; }
 
+    /// <summary>False for a refusal notice, which has no act to undo.</summary>
+    [ObservableProperty]
+    public partial bool CanUndoDock { get; private set; }
+
     /// <summary>The dock's title line.</summary>
     [ObservableProperty]
     public partial string DockTitle { get; private set; } = string.Empty;
@@ -448,8 +452,22 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
     private void ShowDock(UndoRun run, string title, string note)
     {
         _run = run;
+        CanUndoDock = true;
         DockTitle = title;
         DockNote = note;
+        IsDockOpen = true;
+
+        _dockTimer?.Dispose();
+        _dockTimer = _clock.CreateTimer(
+            _ => _post(() => CloseDock(forget: true)), null, DockFor, Timeout.InfiniteTimeSpan);
+    }
+
+    private void ShowRefusalDock()
+    {
+        _run = null;
+        CanUndoDock = false;
+        DockTitle = MergeCopy.DockLinkRefusedTitle;
+        DockNote = MergeCopy.DockLinkRefusedNote;
         IsDockOpen = true;
 
         _dockTimer?.Dispose();
@@ -465,6 +483,7 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
         if (forget)
         {
             _run = null;
+            CanUndoDock = false;
         }
     }
 
@@ -620,7 +639,14 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
 
         // Latch before the await so a double click cannot write twice.
         card.IsDecided = true;
-        var linked = await LinkAsync(card, ct);
+        var linked = await TryLinkAsync(card, ct);
+        if (linked is null)
+        {
+            RemoveRefusedCard(card);
+            ShowRefusalDock();
+            return;
+        }
+
         card.MarkResolved(linked.ActId);
 
         RefreshCounts();
@@ -748,6 +774,12 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
         }
 
         var linked = await LinkAllAsync(cards, ct);
+        if (linked.Count == 0)
+        {
+            ShowRefusalDock();
+            return;
+        }
+
         ShowDock(
             new UndoRun(UndoKind.Merge, linked, []),
             linked.Count == 1
@@ -770,6 +802,12 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
         }
 
         var linked = await LinkAllAsync(cards, ct);
+        if (linked.Count == 0)
+        {
+            ShowRefusalDock();
+            return;
+        }
+
         ShowDock(
             new UndoRun(UndoKind.Merge, linked, []),
             linked.Count == 1
@@ -793,7 +831,13 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
             }
 
             card.IsDecided = true;
-            var act = await LinkAsync(card, ct);
+            var act = await TryLinkAsync(card, ct);
+            if (act is null)
+            {
+                RemoveRefusedCard(card);
+                continue;
+            }
+
             card.MarkResolved(act.ActId);
             linked.Add(act);
         }
@@ -805,6 +849,37 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
         }
 
         return linked;
+    }
+
+    private async Task<LinkedAct?> TryLinkAsync(MergeCardViewModel card, CancellationToken ct)
+    {
+        try
+        {
+            return await LinkAsync(card, ct);
+        }
+        catch (IdentityLinkRefusedException)
+        {
+            return null;
+        }
+    }
+
+    private void RemoveRefusedCard(MergeCardViewModel card)
+    {
+        card.IsDecided = false;
+        AdvanceFocusFrom(card);
+
+        if (_sectionOfCard.Remove(card, out var section))
+        {
+            section.Remove(card);
+        }
+
+        card.PropertyChanged -= OnCardChanged;
+        foreach (var row in card.Rows)
+        {
+            _cardOfRow.Remove(row);
+        }
+
+        RefreshCounts();
     }
 
     // The link, then the proposals the answer left outside it. Both are
@@ -1053,6 +1128,14 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
         var proposals = new List<MergeGroupProposal>(pending.Count);
         foreach (var candidate in pending)
         {
+            if (!library.WorkOfRelease.TryGetValue(candidate.LeftReleaseId, out var leftWorkId)
+                || !library.WorkOfRelease.TryGetValue(candidate.RightReleaseId, out var rightWorkId)
+                || HasNonSameGameParent(leftWorkId, resolution)
+                || HasNonSameGameParent(rightWorkId, resolution))
+            {
+                continue;
+            }
+
             var payload = MergeEdgeViewModel.Parse(candidate);
             payloads[candidate.Id] = payload;
             proposals.Add(new MergeGroupProposal
@@ -1144,6 +1227,10 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
 
         return cards;
     }
+
+    private static bool HasNonSameGameParent(long workId, IdentityResolution resolution)
+        => resolution.Expansions.BaseOf(workId) is not null
+            || resolution.Variants.ParentOf(workId) is not null;
 
     private static bool SameTitles(IReadOnlyList<MergeRowViewModel> rows)
     {

@@ -1887,6 +1887,7 @@
                         <Button Grid.Column="1" Classes="act quiet"
                                 FontSize="12" Padding="10,3" BorderThickness="1"
                                 VerticalAlignment="Center"
+                                IsVisible="{Binding CanUndoDock}"
                                 Content="{Binding UndoButtonText}"
                                 ToolTip.Tip="{Binding UndoTooltip}"
                                 Command="{Binding UndoCommand}"/>

@@ -269,6 +269,40 @@ public sealed class IgdbAssignmentModalTests : IDisposable
         Assert.Equal(2, library.VisibleTiles.Count);
     }
 
+    /// <summary>
+    /// TASK-147. The details flow shares the same repository and therefore
+    /// needs the same user-action boundary as the queue. A structural
+    /// refusal becomes the control's existing no-change sentence while the
+    /// offer stays available; it does not escape the async command.
+    /// </summary>
+    [Fact]
+    public async Task A_refused_details_link_stays_in_the_modal()
+    {
+        var holder = await SeedAsync(title: "Prey", igdbId: 5678, coverUrl: RightCover, year: 2017);
+        var wrong = await SeedAsync(title: "Prey", igdbId: 1234, steamAppId: "3900");
+
+        var realLinks = new IdentityLinkRepository(_db.Factory);
+        var library = new LibraryViewModel(
+            _queries, _ownerships, _releases, _works, _updates,
+            identityLinks: new RefusingIdentityLinks(realLinks),
+            igdb: new PinningAssignmentService(_pins, works: _works));
+
+        await library.LoadCommand.ExecuteAsync(null);
+        var tile = library.VisibleTiles.Single(t => t.OwnershipId == wrong.OwnershipId);
+        await library.OpenDetailsCommand.ExecuteAsync(tile);
+
+        var match = library.Details!.IgdbMatch!;
+        await match.SearchCommand.ExecuteAsync(null);
+        await match.AssignCommand.ExecuteAsync(match.Candidates[0]);
+        Assert.Equal(holder.WorkId, match.Claim!.WorkId);
+
+        await match.LinkClaimCommand.ExecuteAsync(null);
+
+        Assert.True(match.ShowClaim);
+        Assert.Equal(GameIgdbMatchCopy.LinkFailedText, match.Problem);
+        Assert.Empty(await realLinks.GetHistoryAsync());
+    }
+
     private async Task<LibraryViewModel> LoadAsync(IIgdbAssignmentService service)
     {
         var library = new LibraryViewModel(
@@ -410,6 +444,33 @@ public sealed class IgdbAssignmentModalTests : IDisposable
     }
 
     private sealed record SeededGame(long WorkId, long ReleaseId, long OwnershipId);
+
+    private sealed class RefusingIdentityLinks(IIdentityLinkRepository inner)
+        : IIdentityLinkRepository
+    {
+        public Task<IdentityResolution> GetResolutionAsync(CancellationToken ct = default)
+            => inner.GetResolutionAsync(ct);
+
+        public Task<long> LinkAsync(IdentityLinkRequest request, CancellationToken ct = default)
+            => throw new IdentityLinkRefusedException(
+                IdentityLinkRefusal.ParentIsAlreadyAChild,
+                "The chosen parent is already a child.");
+
+        public Task<bool> RetractActAsync(
+            long actId, string? note = null, CancellationToken ct = default)
+            => inner.RetractActAsync(actId, note, ct);
+
+        public Task<bool> RetractLinkAsync(
+            long childWorkId, string? note = null, CancellationToken ct = default)
+            => inner.RetractLinkAsync(childWorkId, note, ct);
+
+        public Task<IReadOnlyList<IdentityLink>> GetHistoryAsync(
+            long? workId = null, CancellationToken ct = default)
+            => inner.GetHistoryAsync(workId, ct);
+
+        public Task<IReadOnlyList<IdentityAct>> GetActsAsync(CancellationToken ct = default)
+            => inner.GetActsAsync(ct);
+    }
 
     /// <summary>
     /// Stands in for the IGDB half only. The search answers from a canned
