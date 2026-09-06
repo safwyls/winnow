@@ -44,7 +44,7 @@ public sealed class IgdbCoverSource : ICoverSource
     private Task? _prewarm;
 
     // A cheap synchronous view of an asynchronous fact. Only SourceSetId reads
-    // it, and only TryFetchAsync writes it — which is why CanHandle stays about
+    // it; capability refresh and fetching write it. CanHandle stays about
     // key shape: a source that stopped being asked could never notice that it
     // had become able to answer.
     private int _configuration = Unknown;
@@ -65,6 +65,14 @@ public sealed class IgdbCoverSource : ICoverSource
     }
 
     public string Name => "igdb-cover";
+
+    public async ValueTask RefreshCapabilityAsync(CoverKey key, CancellationToken ct = default)
+    {
+        if (key.Provider == CoverProviders.Steam)
+        {
+            _ = await IsConfiguredAsync(ct).ConfigureAwait(false);
+        }
+    }
 
     /// <inheritdoc/>
     public string SourceSetId => Volatile.Read(ref _configuration) == NotConfigured
@@ -156,7 +164,7 @@ public sealed class IgdbCoverSource : ICoverSource
         }
 
         var client = _clients.CreateClient(HttpClientName);
-        using var response = await client.GetAsync(url, ct).ConfigureAwait(false);
+        using var response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
 
         // 404 from the image CDN means this image id is not there — an answer
         // about existence, and a normal one. Anything else is a transport
@@ -170,7 +178,7 @@ public sealed class IgdbCoverSource : ICoverSource
         }
 
         response.EnsureSuccessStatusCode();
-        var bytes = await response.Content.ReadAsByteArrayAsync(ct).ConfigureAwait(false);
+        var bytes = await CoverDownload.ReadAsync(response.Content, ct).ConfigureAwait(false);
         return bytes.Length > 0 ? bytes : null;
     }
 

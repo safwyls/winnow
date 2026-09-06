@@ -26,6 +26,9 @@ public interface ICoverSource
     /// </summary>
     string SourceSetId => Name;
 
+    /// <summary>Refreshes capability before a negative marker can suppress a request.</summary>
+    ValueTask RefreshCapabilityAsync(CoverKey key, CancellationToken ct = default) => ValueTask.CompletedTask;
+
     /// <summary>
     /// Whether this source can answer for the key's provider/id shape. Shape
     /// only — never configuration or availability, which belong in

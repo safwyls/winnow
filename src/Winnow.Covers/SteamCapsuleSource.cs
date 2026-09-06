@@ -49,7 +49,7 @@ public sealed class SteamCapsuleSource : ICoverSource
         foreach (var file in CapsuleFiles)
         {
             var url = $"{_options.SteamCdnBaseUrl.TrimEnd('/')}/{key.Id}/{file}";
-            using var response = await client.GetAsync(url, ct).ConfigureAwait(false);
+            using var response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
 
             // 404 = this app has no capsule of this shape. That is an answer
             // about existence — normal, not an error — and the caller records it
@@ -69,7 +69,7 @@ public sealed class SteamCapsuleSource : ICoverSource
             // back. Surfaced as a transport failure instead: the pipeline logs
             // it, caches nothing, and the next realization tries again.
             response.EnsureSuccessStatusCode();
-            var bytes = await response.Content.ReadAsByteArrayAsync(ct).ConfigureAwait(false);
+            var bytes = await CoverDownload.ReadAsync(response.Content, ct).ConfigureAwait(false);
             if (bytes.Length > 0)
             {
                 return bytes;

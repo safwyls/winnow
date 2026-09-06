@@ -9,6 +9,14 @@ namespace Winnow.Covers;
 /// </summary>
 public static class CoverImaging
 {
+    // Covers and screenshots fit comfortably below these allocation ceilings.
+    public const int MaxDimension = 8192;
+    public const long MaxPixels = 32L * 1024 * 1024;
+
+    private static bool ValidDimensions(int width, int height)
+        => width is > 0 and <= MaxDimension && height is > 0 and <= MaxDimension
+           && (long)width * height <= MaxPixels;
+
     /// <summary>
     /// Display widths the cache decodes at. Snapping to a fixed set means the
     /// density slider and DPI changes cannot start an endless re-decode
@@ -48,7 +56,7 @@ public static class CoverImaging
     public static SKBitmap? DecodeToWidth(byte[] encoded, int targetWidth)
     {
         ArgumentNullException.ThrowIfNull(encoded);
-        if (encoded.Length == 0 || targetWidth <= 0)
+        if (encoded.Length == 0 || encoded.Length > CoverDownload.MaxBytes || targetWidth <= 0)
         {
             return null;
         }
@@ -61,7 +69,7 @@ public static class CoverImaging
         }
 
         var source = codec.Info;
-        if (source.Width <= 0 || source.Height <= 0)
+        if (!ValidDimensions(source.Width, source.Height))
         {
             return null;
         }
@@ -80,6 +88,11 @@ public static class CoverImaging
                 decodeSize = candidate;
                 break;
             }
+        }
+
+        if (!ValidDimensions(decodeSize.Width, decodeSize.Height) || !ValidDimensions(width, height))
+        {
+            return null;
         }
 
         var decodeInfo = new SKImageInfo(decodeSize.Width, decodeSize.Height, SKColorType.Bgra8888, SKAlphaType.Premul);
