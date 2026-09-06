@@ -78,13 +78,13 @@ jobs:
         run: dotnet build --configuration Release --no-restore -warnaserror
 
       - name: Test
-        run: dotnet test --configuration Release --no-build --logger trx --results-directory TestResults
+        run: dotnet test --configuration Release --no-build --logger trx --results-directory TestResults --blame-hang-timeout 5m --blame-hang-dump-type mini
 
       - name: Keep test results
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: test-results
-          path: TestResults/**/*.trx
+          path: TestResults/**
           if-no-files-found: ignore
           retention-days: 7
