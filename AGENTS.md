@@ -126,6 +126,9 @@ report the limitation and leave Backlog files untouched.
   test inactivity timeout captures a mini dump so a stalled host can be investigated.
 - A separate Ubuntu CI job runs `tests/Winnow.Monitor.Linux.Tests` against real native
   processes and a synthetic Proton environment. Those tests explicitly skip on non-Linux hosts.
+- Release packaging lives in `packaging/`; `docs/releases.md` owns build and publication
+  instructions. Tag releases must pass the reusable CI gate and both installer smoke checks
+  before creating a draft release. Smoke scripts install only on disposable GitHub runners.
 - Run with `dotnet run --project src/Winnow.App`. `-- --seed-sample` seeds demo data.
 - **For any run where you might click something, pass `-- --data-dir <path>`** to redirect the
   database, sidecars, covers, themes and WebView2 profile to a throwaway directory. Otherwise

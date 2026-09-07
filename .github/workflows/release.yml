@@ -1,0 +1,170 @@
+name: Release builds
+
+on:
+  push:
+    branches: [main, 'codex/**']
+    tags: ['v*']
+    paths:
+      - '.github/workflows/release.yml'
+      - '.github/workflows/ci.yml'
+      - 'packaging/**'
+      - 'src/**'
+      - 'Directory.Build.props'
+  pull_request:
+    paths:
+      - '.github/workflows/release.yml'
+      - '.github/workflows/ci.yml'
+      - 'packaging/**'
+      - 'src/**'
+      - 'Directory.Build.props'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Build-only version, for example 0.1.0-beta.1 (no v prefix)'
+        required: true
+        default: '0.1.0-beta.1'
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  version:
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Validate release version
+        id: version
+        shell: pwsh
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          ./packaging/Test-Version.ps1
+          $version = if ($env:GITHUB_REF.StartsWith('refs/tags/')) {
+            $env:GITHUB_REF_NAME.Substring(1)
+          } elseif ($env:GITHUB_EVENT_NAME -eq 'workflow_dispatch') {
+            $env:INPUT_VERSION
+          } else {
+            "0.0.0-ci.$env:GITHUB_RUN_NUMBER"
+          }
+          $release = ./packaging/Resolve-Version.ps1 -Version $version
+          "version=$($release.Version)" >> $env:GITHUB_OUTPUT
+          "prerelease=$($release.Prerelease.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
+
+  verify:
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    uses: ./.github/workflows/ci.yml
+
+  build:
+    needs: version
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-2025
+            runtime: win-x64
+          - os: ubuntu-24.04
+            runtime: linux-x64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    env:
+      RELEASE_VERSION: ${{ needs.version.outputs.version }}
+      RELEASE_RUNTIME: ${{ matrix.runtime }}
+      DOTNET_NOLOGO: true
+      DOTNET_CLI_TELEMETRY_OPTOUT: true
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          dotnet-version: '10.0.x'
+      - name: Publish self-contained application
+        shell: pwsh
+        run: ./packaging/Publish.ps1 -Runtime $env:RELEASE_RUNTIME -Version $env:RELEASE_VERSION -Commit $env:GITHUB_SHA -OutputDirectory artifacts/publish
+      - name: Package Windows installer and archive
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./packaging/windows/New-WindowsPackage.ps1 -PublishDirectory artifacts/publish -OutputDirectory artifacts/packages -Version $env:RELEASE_VERSION
+      - name: Verify Windows install, upgrade and uninstall
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./packaging/windows/Test-WindowsInstaller.ps1 -InstallerPath "artifacts/packages/Winnow-$env:RELEASE_VERSION-win-x64-setup.exe"
+      - name: Package Linux installer and archive
+        if: runner.os == 'Linux'
+        shell: bash
+        run: bash packaging/linux/build.sh artifacts/publish artifacts/packages "$RELEASE_VERSION"
+      - name: Verify Linux package and startup
+        if: runner.os == 'Linux'
+        shell: bash
+        run: bash packaging/linux/smoke-test.sh artifacts/packages "$RELEASE_VERSION"
+      - name: Keep installable packages
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: packages-${{ matrix.runtime }}
+          path: artifacts/packages/*
+          if-no-files-found: error
+          retention-days: 14
+      - name: Keep Linux startup diagnostics on failure
+        if: failure() && runner.os == 'Linux'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: linux-package-startup-log
+          path: ${{ runner.temp }}/winnow-linux-smoke.*/winnow.log
+          if-no-files-found: ignore
+          retention-days: 7
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [version, verify, build]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RELEASE_TAG: ${{ github.ref_name }}
+      RELEASE_VERSION: ${{ needs.version.outputs.version }}
+      IS_PRERELEASE: ${{ needs.version.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          pattern: packages-*
+          merge-multiple: true
+          path: release-assets
+      - name: Validate assets and calculate checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd release-assets
+          for suffix in win-x64-setup.exe win-x64.zip linux-x64.deb linux-x64.tar.gz; do
+            test -s "Winnow-$RELEASE_VERSION-$suffix"
+          done
+          sha256sum Winnow-* > SHA256SUMS
+      - name: Create or update draft release
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" --json isDraft > existing-release.json 2>/dev/null; then
+            test "$(jq -r .isDraft existing-release.json)" = true || {
+              echo 'Refusing to replace assets on an already published release.' >&2
+              exit 1
+            }
+            gh release upload "$RELEASE_TAG" release-assets/* --clobber
+          else
+            options=(--verify-tag --draft --title "Winnow $RELEASE_VERSION" --notes-file packaging/release-notes.md)
+            if [ "$IS_PRERELEASE" = true ]; then options+=(--prerelease); fi
+            gh release create "$RELEASE_TAG" "${options[@]}" release-assets/*
+          fi

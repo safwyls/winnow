@@ -27,7 +27,18 @@ whether it's been patched since you last tried. Winnow does.
 
 ### Install and run
 
-Requires the [.NET 10 SDK](https://dotnet.microsoft.com/download).
+Release packages include the .NET runtime. When a beta release is published, download it
+from [GitHub Releases](https://github.com/safwyls/winnow/releases):
+
+- **Windows x64:** run the `-setup.exe` installer, or extract the `.zip` and run `Winnow.exe`.
+  The installer runs per user and preserves library data when removed. Windows packages
+  are currently unsigned. Embedded sign-in requires the Evergreen WebView2 Runtime.
+- **Linux x64:** the `.deb` targets Ubuntu 24.04 with a desktop session. Install it with
+  `sudo apt install ./Winnow-<version>-linux-x64.deb`, then launch Winnow from the app menu
+  or run `winnow`. The `.tar.gz` is a portable alternative: extract it and run `./winnow`.
+  Portable builds need the native libraries listed in [release instructions](docs/releases.md).
+
+To run from source, install the [.NET 10 SDK](https://dotnet.microsoft.com/download):
 
 ```powershell
 git clone https://github.com/safwyls/winnow.git
@@ -35,8 +46,10 @@ cd winnow
 dotnet run --project src/Winnow.App
 ```
 
-Windows only in practice — Epic and GOG discovery uses the registry, credentials use DPAPI,
-and session detection is Windows-shaped. It builds elsewhere; it will find less.
+Linux builds have limited storefront integration: Epic/GOG discovery targets Windows
+launcher locations, embedded sign-in uses Windows WebView2, and credential persistence
+requires the Windows DPAPI protector. Linux native session detection and Steam compatibility
+path attribution have Ubuntu smoke coverage; actual Wine/Proton game compatibility varies.
 
 Diagnostics are saved under `%LOCALAPPDATA%\Winnow\logs` (or the selected `--data-dir`).
 Five rolling files retain roughly 5 MiB. Logs omit identity values, paths, credentials and
@@ -170,6 +183,11 @@ including advisories on transitive packages. Test results are retained for seven
 The workflow also verifies migration hashes against the previous push or pull-request base.
 Repository administrators can require the `Windows build, tests and migration integrity`
 check in branch protection; the workflow file itself does not configure that setting.
+
+The separate **Release builds** workflow packages Windows and Linux x64 applications.
+Branch/PR and manual runs keep installer artifacts; a `vX.Y.Z[-prerelease]` tag also runs
+the CI gate and creates a draft GitHub Release with SHA-256 checksums after both package
+smoke checks pass. See [release instructions](docs/releases.md) for builds and publication.
 
 To check migration integrity locally:
 

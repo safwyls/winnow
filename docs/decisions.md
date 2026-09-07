@@ -2416,3 +2416,13 @@ Superseded docs/spikes/steam-gdpr-export.md text:
 > **`ExternalLicenses` specifically: UNKNOWN.** No page by that name appears in the 2022 SteamTracking index. Probing `help.steampowered.com/en/accountdata/ExternalLicenses` anonymously is non-discriminating; every path under `/accountdata/`, including a deliberately bogus one, returns the same login redirect. §4.7 rests its third-party-key story on this file; that footing is currently unverified.
 
 > Whether `ExternalLicenses` exists at all, and if so its columns.
+
+### TASK-148: distributable builds and platform limits (2026-09-06)
+
+The release workflow publishes self-contained Windows/Linux x64 packages. README install instructions distinguish packaged downloads from source builds and document the Linux limits that remain in the source.
+
+Superseded README.md text:
+
+> Requires the [.NET 10 SDK](https://dotnet.microsoft.com/download).
+
+> Windows only in practice — Epic and GOG discovery uses the registry, credentials use DPAPI, and session detection is Windows-shaped. It builds elsewhere; it will find less.
