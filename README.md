@@ -196,6 +196,33 @@ To check migration integrity locally:
 ./scripts/Test-MigrationHashes.ps1
 ```
 
+### Working on the UI
+
+**The XAML previewer renders populated views.** In Rider, open any `.axaml` under
+`src/Winnow.App/Views/` and choose *Editor and Preview*; the same works in Visual Studio's
+Avalonia previewer. Every view assigns itself a design-time view model when it detects the
+previewer, so the details modal, the cover wall, the feed and the settings screens all draw
+with data rather than empty frames.
+
+The data is a fabricated eight-game library in
+[`src/Winnow.App/Design/`](src/Winnow.App/Design/PreviewData.cs) — real domain records folded
+through the same code the SQLite read model uses, with no database, filesystem or network
+touch. One game per rail bucket, a two-store game for the chip treatment, an unread patch,
+and GOG patch notes for the expander. `tests/Winnow.Ui.Tests/DesignTimePreviewTests.cs`
+attaches the preview data to every previewable view, so a change that breaks the preview
+fails a test.
+
+For click-through rather than pictures, run the app against a throwaway library:
+
+```powershell
+dotnet run --project src/Winnow.App -- --data-dir C:\Temp\winnow-play --seed-sample
+```
+
+`--data-dir` redirects the database, covers and sign-in state away from your real library;
+`--seed-sample` fills it with demo games. `WINNOW_UI_CAPTURE_DIR=<dir>` makes the UI tests
+drop rendered frames there, and `dotnet run -- --theme=<id> --open-library` style flags
+(DEBUG builds) land the window on a state worth screenshotting.
+
 No network calls: parser tests run against sanitized captures of real launcher files in
 `tests/fixtures/`, and every HTTP client is tested against canned responses. Fixtures carry
 fake account ids — sanitize anything you add.

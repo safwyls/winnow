@@ -36,6 +36,13 @@ public partial class GameTileView : UserControl
     {
         InitializeComponent();
         AddHandler(GotFocusEvent, OnDescendantGotFocus, RoutingStrategies.Bubble);
+
+        // The previewer gets a populated tile; runtime leaves the DataContext
+        // to the wall's container recycling. See Design/PreviewData.cs.
+        if (Avalonia.Controls.Design.IsDesignMode)
+        {
+            DataContext = Design.PreviewData.Tile;
+        }
     }
 
     /// <summary>

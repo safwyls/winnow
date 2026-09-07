@@ -11,7 +11,19 @@ namespace Winnow.App.Views;
 /// </summary>
 public partial class FilterPanelView : UserControl
 {
-    public FilterPanelView() => InitializeComponent();
+    public FilterPanelView()
+    {
+        InitializeComponent();
+
+        // The previewer gets the panel over the fabricated library, loaded the
+        // way the shell would load it; runtime leaves the DataContext to the
+        // shell. See Design/PreviewData.cs.
+        if (Avalonia.Controls.Design.IsDesignMode)
+        {
+            DataContext = Design.PreviewData.Filters;
+            _ = Design.PreviewData.LoadShellAsync();
+        }
+    }
 
 #if DEBUG
     /// <summary>

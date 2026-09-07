@@ -33,6 +33,13 @@ public partial class FeedCardView : UserControl
     public FeedCardView()
     {
         InitializeComponent();
+
+        // The previewer gets a populated card; runtime leaves the DataContext
+        // to the shelf. See Design/PreviewData.cs.
+        if (Avalonia.Controls.Design.IsDesignMode)
+        {
+            DataContext = Design.PreviewData.FeedCard;
+        }
     }
 
     /// <summary>

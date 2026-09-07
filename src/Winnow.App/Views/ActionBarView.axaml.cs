@@ -18,6 +18,15 @@ public partial class ActionBarView : UserControl
     {
         InitializeComponent();
         DataContextChanged += OnDataContextChanged;
+
+        // The previewer gets the bar over the fabricated library, loaded the
+        // way the shell would load it; runtime leaves the DataContext to the
+        // shell. See Design/PreviewData.cs.
+        if (Avalonia.Controls.Design.IsDesignMode)
+        {
+            DataContext = Design.PreviewData.Library;
+            _ = Design.PreviewData.LoadShellAsync();
+        }
     }
 
     /// <summary>

@@ -22,6 +22,13 @@ public partial class MergeQueueView : UserControl
     public MergeQueueView()
     {
         InitializeComponent();
+
+        // The previewer gets the screen in its empty-queue state; runtime
+        // leaves the DataContext to the shell. See Design/PreviewData.cs.
+        if (Avalonia.Controls.Design.IsDesignMode)
+        {
+            DataContext = Design.PreviewData.MergeQueue;
+        }
     }
 
     protected override void OnDataContextChanged(EventArgs e)

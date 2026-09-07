@@ -23,6 +23,13 @@ public partial class StoresView : UserControl
     public StoresView()
     {
         InitializeComponent();
+
+        // The previewer gets the panel in its not-connected state; runtime
+        // leaves the DataContext to the shell. See Design/PreviewData.cs.
+        if (Avalonia.Controls.Design.IsDesignMode)
+        {
+            DataContext = Design.PreviewData.Stores;
+        }
     }
 
     /// <summary>

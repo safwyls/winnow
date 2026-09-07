@@ -27,6 +27,16 @@ public partial class FeedView : UserControl
         LayoutUpdated += (_, _) => QueueObservation();
         Page.ScrollChanged += (_, _) => QueueObservation();
         _observer.Tick += (_, _) => ObserveViewport();
+
+        // The previewer gets a populated feed. Its cards resolve against the
+        // shared preview library, which only has tiles once its load has run,
+        // so the load is kicked here the way the shell would drive it on open.
+        // See Design/PreviewData.cs.
+        if (Avalonia.Controls.Design.IsDesignMode)
+        {
+            DataContext = Design.PreviewData.Feed;
+            _ = Design.PreviewData.LoadShellAsync();
+        }
     }
 
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)

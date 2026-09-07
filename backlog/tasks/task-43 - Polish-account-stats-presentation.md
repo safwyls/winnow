@@ -4,13 +4,14 @@ title: Polish account stats presentation
 status: To Do
 assignee: []
 created_date: '2026-08-29 21:55'
+updated_date: '2026-09-06 20:57'
 labels:
   - ui
   - data
 dependencies:
   - TASK-38
 priority: low
-ordinal: 93000
+ordinal: 169000
 ---
 
 ## Description

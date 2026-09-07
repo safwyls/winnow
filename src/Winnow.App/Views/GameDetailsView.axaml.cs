@@ -19,6 +19,13 @@ public partial class GameDetailsView : UserControl
         InitializeComponent();
         WireMenuRows();
         MetadataEditorView.CloseRequested += OnSectionClosed;
+
+        // The previewer gets the populated modal; runtime leaves the
+        // DataContext to the shell. See Design/PreviewData.cs.
+        if (Avalonia.Controls.Design.IsDesignMode)
+        {
+            DataContext = Design.PreviewData.GameDetails;
+        }
     }
 
     /// <summary>

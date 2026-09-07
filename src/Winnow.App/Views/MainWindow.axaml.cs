@@ -55,6 +55,15 @@ public partial class MainWindow : Window
         // the state handler stays inert until the tree is up.
         _chromeReady = true;
         UpdateWindowStateChrome();
+
+        // The previewer gets the populated shell; runtime leaves the
+        // DataContext to App.OnFrameworkInitializationCompleted. OnOpened
+        // fires in the previewer exactly as it does on screen, which is what
+        // drives the loads. See Design/PreviewData.cs.
+        if (Avalonia.Controls.Design.IsDesignMode)
+        {
+            DataContext = Design.PreviewData.Shell;
+        }
     }
 
     // ══ Window chrome ═══════════════════════════════════════════════════════

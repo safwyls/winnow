@@ -21,6 +21,13 @@ public partial class RowCoverView : UserControl
     public RowCoverView()
     {
         InitializeComponent();
+
+        // The previewer gets a populated row; runtime leaves the DataContext
+        // to the list's container recycling. See Design/PreviewData.cs.
+        if (Avalonia.Controls.Design.IsDesignMode)
+        {
+            DataContext = Design.PreviewData.Tile;
+        }
     }
 
     /// <summary>

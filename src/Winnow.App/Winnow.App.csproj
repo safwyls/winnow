@@ -26,13 +26,6 @@
          carries the generator and the measurements behind the small sizes. -->
     <ApplicationIcon>Assets\Icons\dragon.ico</ApplicationIcon>
 
-    <!-- Emitted transitively by the WebView2 package via Winnow.Auth.WebView (its
-         targets reference the unused WPF wrapper, which drags WindowsBase
-         5.0.0.0). Cosmetic: MSB3277 is an MSBuild warning, not a C# one, so
-         TreatWarningsAsErrors does not promote it — verified by building both
-         ways rather than assumed. Silenced so a real warning is not lost in the
-         noise. -->
-    <MSBuildWarningsAsMessages>MSB3277</MSBuildWarningsAsMessages>
   </PropertyGroup>
 
   <ItemGroup>
@@ -47,6 +40,10 @@
          which is exactly how the TASK-54 disclosure bug would have escaped
          again. Same reasoning as Winnow.Covers and Winnow.Recommend. -->
     <InternalsVisibleTo Include="Winnow.Tests" />
+    <!-- The design-time preview data (Design/) is internal; the headless UI
+         tests attach it to its views so a constructor change cannot silently
+         leave the previewer empty again. -->
+    <InternalsVisibleTo Include="Winnow.Ui.Tests" />
   </ItemGroup>
 
   <!-- Git-ignored local credentials, copied next to the executable so

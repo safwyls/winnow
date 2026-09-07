@@ -16,5 +16,12 @@ public partial class AccountStatsView : UserControl
     public AccountStatsView()
     {
         InitializeComponent();
+
+        // The previewer gets the populated screen; runtime leaves the
+        // DataContext to the shell. See Design/PreviewData.cs.
+        if (Avalonia.Controls.Design.IsDesignMode)
+        {
+            DataContext = Design.PreviewData.AccountStats;
+        }
     }
 }
