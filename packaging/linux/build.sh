@@ -59,7 +59,7 @@ trap 'rm -rf -- "$stage_root"' EXIT
 portable_name="Winnow-$version-linux-x64"
 deb_name="Winnow-$version-linux-x64.deb"
 tar_name="$portable_name.tar.gz"
-deb_version=${version/-/~}
+deb_version=${version/-/\~}
 
 write_launcher() {
     local destination=$1

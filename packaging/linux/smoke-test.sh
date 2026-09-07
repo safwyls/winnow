@@ -28,7 +28,7 @@ package_dir=$(CDPATH= cd -- "$package_dir" && pwd -P)
 artifact_name="Winnow-$version-linux-x64"
 deb_path=$package_dir/$artifact_name.deb
 tar_path=$package_dir/$artifact_name.tar.gz
-deb_version=${version/-/~}
+deb_version=${version/-/\~}
 [[ -f $deb_path ]] || fail "missing Debian package: $deb_path"
 [[ -f $tar_path ]] || fail "missing portable archive: $tar_path"
 command -v dpkg-deb >/dev/null || fail "dpkg-deb is required"

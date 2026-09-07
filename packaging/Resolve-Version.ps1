@@ -2,7 +2,7 @@
 param([Parameter(Mandatory)][string]$Version)
 
 $ErrorActionPreference = 'Stop'
-if ($Version -cnotmatch '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$') {
+if ($Version -cnotmatch '\A(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?\z') {
     throw 'Use X.Y.Z or X.Y.Z-prerelease, without a v prefix or build metadata.'
 }
 $parts = $Version.Split('-', 2)
