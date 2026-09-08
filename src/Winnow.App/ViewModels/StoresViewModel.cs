@@ -203,7 +203,7 @@ public partial class StoresViewModel : ObservableObject
         nameof(SteamStatusNeedsAttention), nameof(SteamTabNeedsAttention),
         nameof(SteamWebApiStateText), nameof(SteamWebApiIsOn),
         nameof(SteamSignInIsInUse), nameof(SteamApiKeyIsInUse), nameof(MethodInUseTooltip),
-        nameof(SteamConnectionMessage),
+        nameof(SteamConnectionMessage), nameof(SteamSessionHeading),
         nameof(SteamApiKeyStatusMessage), nameof(SteamApiKeyStateText),
         nameof(ShowSteamBothCredentials), nameof(SteamConnectionSummaryMessage),
         nameof(SteamSignedInAccountText), nameof(ShowSteamSignedInAccount),
@@ -225,7 +225,7 @@ public partial class StoresViewModel : ObservableObject
         nameof(SteamStatusLabel), nameof(SteamStatusIsLive), nameof(SteamStatusNeedsAttention),
         nameof(SteamTabNeedsAttention),
         nameof(SteamSessionHealthMessage), nameof(ShowSteamSessionAttention),
-        nameof(SteamSignInStateText), nameof(ShowSteamSessionCalmHealth),
+        nameof(SteamSignInStateText), nameof(SteamSessionHeading), nameof(ShowSteamSessionCalmHealth),
         nameof(SteamSignInButtonText), nameof(ShowSteamSignedIn), nameof(ShowSteamSignInAction))]
     public partial SteamSessionHealth SteamSessionState { get; set; } = SteamSessionHealth.NotSignedIn;
 
@@ -395,6 +395,10 @@ public partial class StoresViewModel : ObservableObject
 
     public string SteamSignInHeading => SteamConnectionCopy.SignInHeading;
 
+    public string SteamSessionHeading => SteamHasSession && SteamSessionState is not SteamSessionHealth.Expired
+        ? SteamConnectionCopy.SignedInHeading
+        : SteamConnectionCopy.SignInHeading;
+
     public string SteamSignInGivesMessage => SteamConnectionCopy.SignInGives;
 
     public string SteamSignInCostsMessage => SteamConnectionCopy.SignInCosts;
@@ -484,7 +488,8 @@ public partial class StoresViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(ShowSteamSignInNotice))]
     public partial string? SteamSignInNoticeMessage { get; set; }
 
-    public bool ShowSteamSignInNotice => !string.IsNullOrWhiteSpace(SteamSignInNoticeMessage);
+    public bool ShowSteamSignInNotice => !string.IsNullOrWhiteSpace(SteamSignInNoticeMessage)
+        && SteamSignInNoticeMessage != SteamConnectionCopy.OutcomeSignedIn;
 
     /// <summary>Something went wrong and the sentence says what. Amber, never Flare.</summary>
     [ObservableProperty]

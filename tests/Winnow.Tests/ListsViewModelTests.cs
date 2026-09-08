@@ -66,6 +66,44 @@ public sealed class ListsViewModelTests
         Assert.Equal(2, (await fixture.GameLists.GetAllItemsAsync()).Count);
     }
 
+    [Fact]
+    public async Task Details_add_to_list_targets_the_open_game_and_refreshes_membership()
+    {
+        using var fixture = new ListFixture();
+        var hades = await fixture.SeedAsync("Hades");
+        var celeste = await fixture.SeedAsync("Celeste");
+        var library = await fixture.LoadAsync();
+        library.SelectedTiles = [library.TileForRelease(celeste)!];
+        await library.OpenDetailsCommand.ExecuteAsync(library.TileForRelease(hades));
+        var details = library.Details!;
+        Assert.True(details.ShowAddToList);
+        details.AddToListCommand!.Execute(null);
+        Assert.Equal("Add Hades to", library.Prompt!.Question);
+        library.Prompt.Text = "Next";
+        await library.Prompt.ConfirmCommand.ExecuteAsync(null);
+        Assert.Same(details, library.Details);
+        Assert.Equal([hades], library.Lists.Lists.Single().ReleaseIds);
+        Assert.True(Assert.Single(details.Lists!.Rows).IsMember);
+        details.AddToListCommand.Execute(null);
+        library.Prompt!.CancelCommand.Execute(null);
+        Assert.Same(details, library.Details);
+    }
+
+    [Fact]
+    public async Task Footer_creates_an_empty_static_list_without_adding_the_current_selection()
+    {
+        using var fixture = new ListFixture();
+        await fixture.SeedAsync("Hades");
+        var library = await fixture.LoadAsync();
+        library.SelectedTiles = [.. library.VisibleTiles];
+        library.Lists.IsCreateMenuOpen = true;
+        library.BeginCreateListCommand.Execute(null);
+        Assert.False(library.Lists.IsCreateMenuOpen);
+        library.Prompt!.Text = "Later";
+        await library.Prompt.ConfirmCommand.ExecuteAsync(null);
+        Assert.Empty(Assert.Single(library.Lists.Lists).ReleaseIds);
+    }
+
     // ── The empty state is a direction ──────────────────────────────────────
 
     [Fact]
@@ -80,7 +118,7 @@ public sealed class ListsViewModelTests
         Assert.True(library.Lists.ShowListsHeader);
         Assert.False(library.Lists.HasLiveLists);
         Assert.Equal(
-            "No lists yet. Select titles to create one, or save a filter as a live list.",
+            "No lists yet. Choose New list below to create a static or live list.",
             library.Lists.EmptyMessageText);
     }
 

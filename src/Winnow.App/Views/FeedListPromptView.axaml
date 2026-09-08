@@ -3,8 +3,8 @@
              xmlns:lists="using:Winnow.App.ViewModels.Lists"
              x:Class="Winnow.App.Views.FeedListPromptView"
              x:DataType="lists:ActionPromptViewModel"
-             AutomationProperties.Name="Add game to list"
-             AutomationProperties.ControlTypeOverride="Group">
+             AutomationProperties.Name="{Binding Question}"
+             AutomationProperties.ControlTypeOverride="Window">
     <UserControl.Styles>
         <Style Selector="TextBox">
             <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
@@ -23,34 +23,58 @@
         <Style Selector="TextBox /template/ TextBlock#PART_Watermark">
             <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
         </Style>
+        <Style Selector="Button.act.danger">
+            <Setter Property="Background" Value="{StaticResource Danger}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Danger}"/>
+            <Setter Property="Foreground" Value="{StaticResource DangerInk}"/>
+        </Style>
+        <Style Selector="Button.act.danger:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource DangerHover}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource DangerHover}"/>
+            <Setter Property="Foreground" Value="{StaticResource DangerInk}"/>
+        </Style>
+        <Style Selector="Button.act.danger:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="BorderBrush" Value="{StaticResource DangerInk}"/>
+        </Style>
     </UserControl.Styles>
-    <StackPanel Spacing="8" KeyDown="OnPromptKeyDown">
-        <TextBlock Classes="body" Text="{Binding Question}" TextWrapping="Wrap"/>
-        <ScrollViewer MaxHeight="162" Classes="inner" HorizontalScrollBarVisibility="Disabled"
-                      IsVisible="{Binding HasChoices}">
-            <ItemsControl ItemsSource="{Binding Choices}" Margin="{StaticResource InnerScrollGutter}">
-                <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <WrapPanel ItemSpacing="8" LineSpacing="8"/>
-                    </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="lists:GameListViewModel">
-                        <Button Classes="act quiet" Content="{Binding Name}"
-                                AutomationProperties.Name="{Binding AutomationName}"
-                                Command="{Binding $parent[ItemsControl].((lists:ActionPromptViewModel)DataContext).ChooseCommand}"
-                                CommandParameter="{Binding}"/>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
-        </ScrollViewer>
-        <WrapPanel ItemSpacing="8" LineSpacing="8">
-            <TextBox Name="PromptInput" Width="230"
-                     AutomationProperties.Name="{Binding InputWatermark}"
-                     Watermark="{Binding InputWatermark}" Text="{Binding Text, Mode=TwoWay}"/>
-            <Button Classes="act primary" Content="{Binding ConfirmLabel}"
-                    Command="{Binding ConfirmCommand}"/>
-            <Button Classes="act quiet" Content="Cancel" Command="{Binding CancelCommand}"/>
-        </WrapPanel>
-    </StackPanel>
+    <Grid KeyboardNavigation.TabNavigation="Cycle" KeyDown="OnPromptKeyDown">
+        <Border Background="{StaticResource ModalScrim}" PointerPressed="OnScrimPressed"/>
+        <Border Width="480" MaxWidth="{Binding $parent[UserControl].Bounds.Width}"
+                Margin="24" Padding="24" HorizontalAlignment="Center" VerticalAlignment="Center"
+                Background="{StaticResource Surface}" BorderBrush="{StaticResource Line}"
+                BorderThickness="1" CornerRadius="{StaticResource RadiusPane}">
+            <StackPanel Spacing="16">
+                <TextBlock Classes="body-l" Text="{Binding Question}" TextWrapping="Wrap"/>
+                <ScrollViewer MaxHeight="240" Classes="inner" HorizontalScrollBarVisibility="Disabled"
+                              IsVisible="{Binding HasChoices}">
+                    <ItemsControl ItemsSource="{Binding Choices}" Margin="{StaticResource InnerScrollGutter}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="lists:GameListViewModel">
+                                <Button Classes="act quiet" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                                        Margin="0,0,0,6" AutomationProperties.Name="{Binding AutomationName}"
+                                        ToolTip.Tip="{Binding Name}"
+                                        Command="{Binding $parent[ItemsControl].((lists:ActionPromptViewModel)DataContext).ChooseCommand}"
+                                        CommandParameter="{Binding}">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Grid.Column="1" Classes="data-s" Margin="12,0,0,0" Text="{Binding CountText}"/>
+                                    </Grid>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+                <TextBox Name="PromptInput" IsVisible="{Binding HasInput}"
+                         AutomationProperties.Name="{Binding InputWatermark}"
+                         Watermark="{Binding InputWatermark}" Text="{Binding Text, Mode=TwoWay}"/>
+                <TextBlock Classes="body" Foreground="{StaticResource TextDim}" TextWrapping="Wrap"
+                           IsVisible="{Binding HasNote}" Text="{Binding Note}"/>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+                    <Button Name="CancelButton" Classes="act quiet" Content="Cancel" Command="{Binding CancelCommand}"/>
+                    <Button Classes="act" Classes.primary="{Binding !IsDestructive}" Classes.danger="{Binding IsDestructive}"
+                            Content="{Binding ConfirmLabel}" Command="{Binding ConfirmCommand}"/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+    </Grid>
 </UserControl>

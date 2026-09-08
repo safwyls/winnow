@@ -732,8 +732,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     public partial bool IsCut { get; set; }
 
     /// <summary>
-    /// The transient half of the strip — naming a live list, picking a list to
-    /// add to, confirming a delete. Replaces the cut bar while it is up.
+    /// The modal for naming a list, choosing a membership target or confirming a delete.
     /// </summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsPromptOpen), nameof(ShowCutBar), nameof(ShowActionBar))]
@@ -741,9 +740,9 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
 
     public bool IsPromptOpen => Prompt is not null;
 
-    public bool ShowCutBar => Prompt is null && IsCut;
+    public bool ShowCutBar => IsCut;
 
-    public bool ShowActionBar => Prompt is not null || IsCut;
+    public bool ShowActionBar => IsCut;
 
     /// <summary>Whether saving the current cut as a live list is a meaningful act.</summary>
     public bool CanSaveLiveList => !BuildFilter().IsEmpty;
@@ -1364,7 +1363,8 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             ownerships: await BuildAcquisitionAsync(target),
             refetch: BuildRefetch(workId),
             lightbox: Lightbox,
-            journal: await BuildJournalAsync(target));
+            journal: await BuildJournalAsync(target),
+            addToList: new RelayCommand(() => BeginAddToListFor([target])));
     }
 
     /// <summary>
@@ -2050,15 +2050,14 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     [RelayCommand(CanExecute = nameof(HasSelection))]
     private void BeginAddToList()
     {
-        var picked = SelectedTiles.Select(t => t.ReleaseId).ToList();
-        if (picked.Count == 0)
-        {
-            return;
-        }
+        BeginAddToListFor(SelectedTiles);
+    }
 
-        var target = SelectedTiles.Count == 1
-            ? SelectedTiles[0].Title
-            : $"{SelectedTiles.Count:N0} titles";
+    private void BeginAddToListFor(IReadOnlyList<GameTileViewModel> tiles)
+    {
+        var picked = tiles.Select(t => t.ReleaseId).ToList();
+        if (picked.Count == 0) return;
+        var target = tiles.Count == 1 ? tiles[0].Title : $"{tiles.Count:N0} titles";
 
         Prompt = new ActionPromptViewModel(
             question: $"Add {target} to",
@@ -2067,10 +2066,10 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             {
                 var created = await Lists.CreateListAsync(prompt.Text, picked);
                 Prompt = null;
-                if (created is not null)
-                {
+                if (Details is { } details)
+                    details.Lists = await BuildListsAsync(details.Tile);
+                else if (created is not null)
                     OpenList(created);
-                }
             },
             cancel: () => Prompt = null,
             inputWatermark: "New list name",
@@ -2080,13 +2079,33 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
                 await Lists.AddToListAsync(list, picked);
                 Prompt = null;
                 ApplyFilter();
+                if (Details is { } details)
+                    details.Lists = await BuildListsAsync(details.Tile);
             });
+    }
+
+    [RelayCommand]
+    private void BeginCreateList()
+    {
+        Lists.IsCreateMenuOpen = false;
+        Prompt = new ActionPromptViewModel(
+            question: "Name this list",
+            confirmLabel: "Create list",
+            confirm: async prompt =>
+            {
+                await Lists.CreateListAsync(prompt.Text, []);
+                Prompt = null;
+            },
+            cancel: () => Prompt = null,
+            inputWatermark: "List name");
     }
 
     /// <summary>Prompts the user to name and save the current filter as a live list.</summary>
     [RelayCommand]
     private void BeginSaveLiveList()
-        => Prompt = new ActionPromptViewModel(
+    {
+        Lists.IsCreateMenuOpen = false;
+        Prompt = new ActionPromptViewModel(
             question: "Name this live list",
             confirmLabel: "Save",
             confirm: async prompt =>
@@ -2102,6 +2121,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             inputWatermark: "Live list name",
             initialText: SuggestedListName(),
             note: "It finds its own members every time your library changes.");
+    }
 
     /// <summary>Rewrites the open live list's rules to the filter now in force.</summary>
     [RelayCommand]

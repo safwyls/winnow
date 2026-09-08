@@ -1042,13 +1042,23 @@
                             BorderBrush="{StaticResource Line}"
                             BorderThickness="0,1,0,0"
                             IsVisible="{Binding Library.Lists.ShowListsHeader}">
-                        <TextBlock AutomationProperties.HeadingLevel="2" Classes="label"
-                                   FontSize="10"
-                                   LetterSpacing="1.4"
-                                   Text="LISTS"/>
+                        <Button Classes="listrow" Padding="0" MinHeight="32"
+                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                                Command="{Binding Library.Lists.ToggleListsCommand}"
+                                AutomationProperties.Name="LISTS"
+                                AutomationProperties.ItemStatus="{Binding Library.Lists.ListsSectionState}"
+                                ToolTip.Tip="Expand or collapse lists">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Classes="label" FontSize="10" LetterSpacing="1.4"
+                                           VerticalAlignment="Center" Text="LISTS"/>
+                                <TextBlock Grid.Column="1" Classes="body" VerticalAlignment="Center"
+                                           Text="{Binding Library.Lists.ListsDisclosure}"/>
+                            </Grid>
+                        </Button>
                     </Border>
 
-                    <ItemsControl ItemsSource="{Binding Library.Lists.Lists}">
+                    <ItemsControl ItemsSource="{Binding Library.Lists.Lists}"
+                                  IsVisible="{Binding Library.Lists.AreListsExpanded}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="lists:GameListViewModel">
                                 <Button AutomationProperties.Name="{Binding AutomationName}" AutomationProperties.ItemStatus="{Binding AutomationName}" Classes="listrow"
@@ -1079,6 +1089,7 @@
 
                     <!-- The empty state is a direction, not a mood (§7): both
                          routes in, in the order they are discoverable. -->
+                    <Panel IsVisible="{Binding Library.Lists.AreListsExpanded}">
                     <TextBlock Margin="18,4,16,0"
                                Classes="body"
                                FontSize="12"
@@ -1087,19 +1098,30 @@
                                Foreground="{StaticResource TextDim}"
                                IsVisible="{Binding Library.Lists.HasNoLists}"
                                Text="{Binding Library.Lists.EmptyMessageText}"/>
+                    </Panel>
 
                     <Border Margin="16,20,16,8"
                             Padding="0,14,0,0"
                             BorderBrush="{StaticResource Line}"
                             BorderThickness="0,1,0,0"
                             IsVisible="{Binding Library.Lists.HasLiveLists}">
-                        <TextBlock AutomationProperties.HeadingLevel="2" Classes="label"
-                                   FontSize="10"
-                                   LetterSpacing="1.4"
-                                   Text="LIVE LISTS"/>
+                        <Button Classes="listrow" Padding="0" MinHeight="32"
+                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                                Command="{Binding Library.Lists.ToggleLiveListsCommand}"
+                                AutomationProperties.Name="LIVE LISTS"
+                                AutomationProperties.ItemStatus="{Binding Library.Lists.LiveListsSectionState}"
+                                ToolTip.Tip="Expand or collapse live lists">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Classes="label" FontSize="10" LetterSpacing="1.4"
+                                           VerticalAlignment="Center" Text="LIVE LISTS"/>
+                                <TextBlock Grid.Column="1" Classes="body" VerticalAlignment="Center"
+                                           Text="{Binding Library.Lists.LiveListsDisclosure}"/>
+                            </Grid>
+                        </Button>
                     </Border>
 
-                    <ItemsControl ItemsSource="{Binding Library.Lists.LiveLists}">
+                    <ItemsControl ItemsSource="{Binding Library.Lists.LiveLists}"
+                                  IsVisible="{Binding Library.Lists.AreLiveListsExpanded}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="lists:GameListViewModel">
                                 <Button AutomationProperties.Name="{Binding AutomationName}" AutomationProperties.ItemStatus="{Binding AutomationName}" Classes="listrow"
@@ -1185,25 +1207,41 @@
                 </Border>
             </Border>
 
-            <!-- The gear. A glyph and no label: the four sections name
-                 themselves once the surface is open, and every other rail
-                 row is a library cut, which this is not. Pinned in the
-                 Grid's Auto row so it cannot be scrolled past. -->
+            <!-- Creation and settings stay reachable while the lists scroll. -->
             <Border Grid.Row="2"
                     Padding="14,10"
                     BorderBrush="{StaticResource Line}"
                     BorderThickness="0,1,0,0">
-                <Button Name="SettingsButton"
+                <StackPanel Spacing="8">
+                    <StackPanel IsVisible="{Binding Library.Lists.IsCreateMenuOpen}" Spacing="4">
+                        <Button Classes="listrow" Content="Static list" FontFamily="{StaticResource BodyFont}" FontSize="{StaticResource BodySize}" Padding="8,0"
+                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                Command="{Binding Library.BeginCreateListCommand}"
+                                ToolTip.Tip="Choose the games yourself. Add or remove titles whenever you like."/>
+                        <Button Classes="listrow" Content="Live list" FontFamily="{StaticResource BodyFont}" FontSize="{StaticResource BodySize}" Padding="8,0"
+                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                Command="{Binding Library.BeginSaveLiveListCommand}"
+                                ToolTip.Tip="Save the current library filters. Matching games update automatically."/>
+                    </StackPanel>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Button Name="NewListButton" Classes="listrow" Content="+ New list" FontFamily="{StaticResource BodyFont}" FontSize="{StaticResource BodySize}" Padding="8,0"
+                                HorizontalAlignment="Left"
+                                Command="{Binding Library.Lists.ToggleCreateMenuCommand}"
+                                AutomationProperties.Name="New list"
+                                ToolTip.Tip="Create a static or live list"/>
+                <Button Grid.Column="1" Name="SettingsButton"
                         Classes="railglyph"
                         Classes.on="{Binding IsSettingsVisible}"
                         Command="{Binding ShowSettingsCommand}"
-                        HorizontalAlignment="Left"
+                        HorizontalAlignment="Right"
                         AutomationProperties.Name="Settings"
                         ToolTip.Tip="Platforms, library, appearance and application">
                     <Path Data="F0 M 12.95,6.10 L 15.22,6.40 L 15.22,9.60 L 12.95,9.90 L 12.84,10.16 L 14.24,11.98 L 11.98,14.24 L 10.16,12.84 L 9.90,12.95 L 9.60,15.22 L 6.40,15.22 L 6.10,12.95 L 5.84,12.84 L 4.02,14.24 L 1.76,11.98 L 3.16,10.16 L 3.05,9.90 L 0.78,9.60 L 0.78,6.40 L 3.05,6.10 L 3.16,5.84 L 1.76,4.02 L 4.02,1.76 L 5.84,3.16 L 6.10,3.05 L 6.40,0.78 L 9.60,0.78 L 9.90,3.05 L 10.16,3.16 L 11.98,1.76 L 14.24,4.02 L 12.84,5.84 Z M 5.50,8.00 A 2.50,2.50 0 1 0 10.50,8.00 A 2.50,2.50 0 1 0 5.50,8.00 Z"
                           Stretch="Uniform"
                           Width="16" Height="16"/>
                 </Button>
+                    </Grid>
+                </StackPanel>
             </Border>
 
             </Grid>
@@ -2080,6 +2118,14 @@
                 </DataTemplate>
             </views:LazyPane.PaneTemplate>
         </views:LazyPane>
+
+        <Panel Grid.ColumnSpan="3" IsVisible="{Binding Library.IsPromptOpen}">
+            <views:FeedListPromptView DataContext="{Binding Library.Prompt}"/>
+        </Panel>
+
+        <Panel Grid.ColumnSpan="3" IsVisible="{Binding Feed.IsListPromptOpen}">
+            <views:FeedListPromptView DataContext="{Binding Feed.ListPrompt}"/>
+        </Panel>
 
         <!-- ── Screenshot lightbox (§10.7) ───────────────────────────────────
              Declared after the modal and spanning the same three columns, so

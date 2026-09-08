@@ -496,7 +496,7 @@
                             <StackPanel Orientation="Horizontal" Spacing="10">
                                 <TextBlock AutomationProperties.HeadingLevel="2" Classes="display-l" FontSize="16"
                                            VerticalAlignment="Center"
-                                           Text="{Binding SteamSignInHeading}"/>
+                                           Text="{Binding SteamSessionHeading}"/>
                                 <TextBlock Classes="para lead"
                                            VerticalAlignment="Center"
                                            Text="{Binding SteamSignInStateText}"/>
@@ -538,18 +538,6 @@
                                            Text="{Binding SteamSignInUnavailableMessage}"/>
                             </Border>
 
-                            <!-- Signed in: the way out. The account it signed in
-                                 as, whether the visibility filter was unlocked
-                                 by it, and what signing out removes are all in
-                                 the disclosure — none of them is a thing to
-                                 act on. -->
-                            <Button Classes="act quiet"
-                                    HorizontalAlignment="Left"
-                                    IsVisible="{Binding ShowSteamSignedIn}"
-                                    Content="{Binding SteamSignOutButtonText}"
-                                    AutomationProperties.Name="{Binding SteamSignOutButtonText}"
-                                    Command="{Binding SignOutOfSteamCommand}"/>
-
                             <!-- The permission, and the action it gates.
                                  UNTICKED on every install. The checkbox stays
                                  here because it is a control; the sentence
@@ -563,12 +551,19 @@
                                  §4.7 condition 3's "read before acting" is a
                                  property of the flow instead of a hope about
                                  the order someone reads a card in. -->
-                            <StackPanel Spacing="10" IsVisible="{Binding ShowSteamSignInAction}">
+                            <StackPanel Orientation="Horizontal" Spacing="12">
                                 <Button Classes="act primary"
                                         HorizontalAlignment="Left"
+                                        IsVisible="{Binding ShowSteamSignInAction}"
                                         Content="{Binding SteamSignInButtonText}"
                                         AutomationProperties.Name="{Binding SteamSignInButtonText}"
                                         Command="{Binding OpenSignInConsentCommand}"/>
+                                <Button Classes="act quiet"
+                                        HorizontalAlignment="Left"
+                                        IsVisible="{Binding ShowSteamSignedIn}"
+                                        Content="{Binding SteamSignOutButtonText}"
+                                        AutomationProperties.Name="{Binding SteamSignOutButtonText}"
+                                        Command="{Binding SignOutOfSteamCommand}"/>
                             </StackPanel>
 
                             <!-- Text progress: a Volt-edged field saying where to

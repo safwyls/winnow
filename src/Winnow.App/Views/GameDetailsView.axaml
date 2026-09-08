@@ -755,7 +755,7 @@
                                  strip; Open folder, corrections and Hide fold
                                  behind a More button whose MenuFlyout floats
                                  over the modal and reflows nothing. -->
-                            <StackPanel Orientation="Horizontal" Spacing="10"
+                            <WrapPanel ItemSpacing="10" LineSpacing="8"
                                         AutomationProperties.Name="{Binding ActionsGroupName}"
                                         AutomationProperties.AccessibilityView="Control">
                                 <!-- steam://run when it is on disk, steam://install
@@ -769,6 +769,10 @@
                                         ToolTip.Tip="{Binding PrimaryAction.Tooltip}"
                                         Command="{Binding Tile.PrimaryActionCommand}"
                                         CommandParameter="{Binding Tile}"/>
+
+                                <Button Name="AddToListButton" Classes="secondary" Content="Add to list"
+                                        AutomationProperties.Name="Add to list" ToolTip.Tip="Add this game to a list"
+                                        IsVisible="{Binding ShowAddToList}" Command="{Binding AddToListCommand}"/>
 
                                 <ItemsControl ItemsSource="{Binding Links}">
                                     <ItemsControl.ItemsPanel>
@@ -880,7 +884,7 @@
                                     <TextBlock Classes="body" FontSize="12"
                                                Text="{Binding MoreActionsLabel}"/>
                                 </Button>
-                            </StackPanel>
+                            </WrapPanel>
 
                             <!-- Drawn only when the band has no primary action
                                  and no links — stating why Band 3 cannot get

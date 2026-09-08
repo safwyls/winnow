@@ -17,6 +17,10 @@ public partial class FeedListPromptView : UserControl
         if (DataContext is not ActionPromptViewModel prompt)
         {
             var target = _returnFocus;
+            // Rail creation hides its choice buttons before opening the dialog.
+            // Return to their persistent disclosure when that origin is gone.
+            if (target is not { IsEffectivelyVisible: true })
+                target = (TopLevel.GetTopLevel(this) as Window)?.FindControl<Button>("NewListButton");
             _returnFocus = null;
             Dispatcher.UIThread.Post(() =>
             {
@@ -28,9 +32,19 @@ public partial class FeedListPromptView : UserControl
         Dispatcher.UIThread.Post(() =>
         {
             if (!ReferenceEquals(DataContext, prompt) || !IsEffectivelyVisible) return;
-            PromptInput.Focus(NavigationMethod.Tab);
-            PromptInput.SelectAll();
+            if (prompt.HasInput)
+            {
+                PromptInput.Focus(NavigationMethod.Tab);
+                PromptInput.SelectAll();
+            }
+            else CancelButton.Focus(NavigationMethod.Tab);
         }, DispatcherPriority.Input);
+    }
+
+    private void OnScrimPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (DataContext is ActionPromptViewModel prompt) prompt.CancelCommand.Execute(null);
+        e.Handled = true;
     }
 
     private void OnPromptKeyDown(object? sender, KeyEventArgs e)

@@ -11,11 +11,10 @@
          confusion this screen can produce: the panel can be closed and the rail
          scrolled past, and then 41 of 926 games look like the whole hoard. -->
 
-    <!-- Strip between command bar and art. Two modes, never both:
+    <!-- Strip between command bar and art:
          · CUT BAR — shows active filters as chips (list, bucket, panel rules)
            with a total→filtered count. Chips indicate provenance (user vs list).
-         · PROMPT — naming/picking/deleting a list. A strip, not a flyout,
-           because FocusAdorner cannot render inside a popup (§10.7). -->
+         List prompts use the shared modal in the shell. -->
 
     <UserControl.Styles>
 
@@ -97,72 +96,6 @@
         </Style>
         <Style Selector="Button.strip.danger:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="BorderBrush" Value="{StaticResource DangerInk}"/>
-        </Style>
-
-        <!-- A list to add to, offered as a target rather than as a menu row. -->
-        <Style Selector="Button.listchip">
-            <Setter Property="Padding" Value="10,4"/>
-            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="VerticalAlignment" Value="Center"/>
-        </Style>
-        <Style Selector="Button.listchip /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
-        </Style>
-        <Style Selector="Button.listchip:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
-        </Style>
-        <Style Selector="Button.listchip:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
-        </Style>
-
-        <!-- The chip's own dismiss. 18px is the smallest square that is still a
-             target; the glyph inside it is 7. -->
-        <!-- Button.chipx moved to Themes/controls.axaml with Border.chip. -->
-
-        <!-- The prompt's field. Wider and warmer than the panel's find fields:
-             this one is where a name is written, not where a list is sieved. -->
-        <Style Selector="TextBox.prompt">
-            <Setter Property="Height" Value="28"/>
-            <Setter Property="MinHeight" Value="28"/>
-            <Setter Property="Width" Value="230"/>
-            <Setter Property="Padding" Value="9,0"/>
-            <Setter Property="VerticalContentAlignment" Value="Center"/>
-            <Setter Property="VerticalAlignment" Value="Center"/>
-            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
-            <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
-            <Setter Property="FontSize" Value="{StaticResource BodySize}"/>
-            <Setter Property="Foreground" Value="{StaticResource Text}"/>
-            <Setter Property="SelectionBrush" Value="{StaticResource VoltSelection}"/>
-            <Setter Property="CaretBrush" Value="{StaticResource Volt}"/>
-        </Style>
-        <!-- ChromeFieldOnGround: the same field fill the command bar's search
-             box takes, because both bars are inside the library pane and a field
-             on either of them is a field on the pane's ground. Past the ink ramp
-             it paints nothing at all - the pane already admits exactly what the
-             art field admits, and there is no second translucency available above
-             it (WinnowTheme.MinPaneFieldAlpha). Line draws the field; Volt says it
-             has the caret. -->
-        <Style Selector="TextBox.prompt /template/ Border#PART_BorderElement">
-            <Setter Property="Background" Value="{StaticResource ChromeFieldOnGround}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
-            <Setter Property="BorderThickness" Value="1"/>
-        </Style>
-        <Style Selector="TextBox.prompt:pointerover /template/ Border#PART_BorderElement">
-            <Setter Property="Background" Value="{StaticResource ChromeFieldOnGround}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
-        </Style>
-        <Style Selector="TextBox.prompt:focus /template/ Border#PART_BorderElement">
-            <Setter Property="Background" Value="{StaticResource ChromeFieldOnGround}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
-        </Style>
-        <Style Selector="TextBox.prompt /template/ TextBlock#PART_Watermark">
-            <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
         </Style>
 
     </UserControl.Styles>
@@ -311,90 +244,6 @@
                 </StackPanel>
             </Grid>
 
-            <!-- ══ Prompt ══════════════════════════════════════════════════
-                 Visibility is on this panel, which still sees the library; the
-                 grid inside re-roots onto the prompt. One element cannot do
-                 both — a DataContext set on an element applies to every binding
-                 on it, IsVisible included. -->
-            <Panel IsVisible="{Binding IsPromptOpen}">
-            <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto"
-                  DataContext="{Binding Prompt}"
-                  x:DataType="lists:ActionPromptViewModel">
-
-                <TextBlock Grid.Column="0"
-                           Classes="body-l"
-                           FontSize="13"
-                           Margin="0,0,12,0"
-                           Text="{Binding Question}"
-                           VerticalAlignment="Center"/>
-
-                <!-- Existing lists first, then the field that makes a new one:
-                     the common answer is one you already have. -->
-                <ItemsControl Grid.Column="1"
-                              Margin="0,0,10,0"
-                              VerticalAlignment="Center"
-                              IsVisible="{Binding HasChoices}"
-                              ItemsSource="{Binding Choices}">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <WrapPanel Orientation="Horizontal"/>
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate DataType="lists:GameListViewModel">
-                            <Button AutomationProperties.Name="{Binding AutomationName}" AutomationProperties.ItemStatus="{Binding AutomationName}" Classes="listchip" Margin="0,2,7,2"
-                                    Command="{Binding $parent[ItemsControl].((lists:ActionPromptViewModel)DataContext).ChooseCommand}"
-                                    CommandParameter="{Binding}">
-                                <StackPanel Orientation="Horizontal" Spacing="8">
-                                    <TextBlock Classes="body" FontSize="12"
-                                               Text="{Binding Name}"
-                                               VerticalAlignment="Center"/>
-                                    <TextBlock Classes="data-s"
-                                               Text="{Binding CountText}"
-                                               VerticalAlignment="Center"/>
-                                </StackPanel>
-                            </Button>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-
-                <TextBox AutomationProperties.Name="{Binding InputWatermark}" Grid.Column="2"
-                         Name="PromptInput"
-                         Classes="prompt"
-                         Margin="0,0,8,0"
-                         IsVisible="{Binding HasInput}"
-                         Watermark="{Binding InputWatermark}"
-                         Text="{Binding Text, Mode=TwoWay}"
-                         KeyDown="OnPromptKeyDown"/>
-
-                <TextBlock Grid.Column="3"
-                           Classes="body"
-                           FontSize="12"
-                           Margin="6,0,12,0"
-                           Foreground="{StaticResource TextDim}"
-                           TextTrimming="CharacterEllipsis"
-                           IsVisible="{Binding HasNote}"
-                           Text="{Binding Note}"
-                           VerticalAlignment="Center"/>
-
-                <StackPanel Grid.Column="4" Orientation="Horizontal"
-                            Spacing="6" VerticalAlignment="Center">
-                    <Button Classes="strip primary"
-                            Content="{Binding ConfirmLabel}"
-                            Command="{Binding ConfirmCommand}"
-                            IsVisible="{Binding !IsDestructive}"/>
-                    <Button Classes="strip danger"
-                            Content="{Binding ConfirmLabel}"
-                            Command="{Binding ConfirmCommand}"
-                            IsVisible="{Binding IsDestructive}"/>
-                    <Button Classes="strip"
-                            Content="Cancel"
-                            Command="{Binding CancelCommand}"/>
-                </StackPanel>
-            </Grid>
-            </Panel>
-
         </Panel>
     </Border>
-
 </UserControl>

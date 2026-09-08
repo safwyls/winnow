@@ -4,8 +4,8 @@ using CommunityToolkit.Mvvm.Input;
 namespace Winnow.App.ViewModels.Lists;
 
 /// <summary>
-/// Inline prompt strip above the grid for transient actions: naming a list,
-/// picking a list to add to, or confirming a delete. Replaces the cut bar while active.
+/// Shared modal prompt for naming a list, picking a membership target,
+/// or confirming a delete.
 /// </summary>
 public partial class ActionPromptViewModel : ObservableObject
 {

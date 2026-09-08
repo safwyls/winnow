@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using Winnow.Core.Domain;
 using Winnow.Core.Queries;
 using Winnow.Core.Repositories;
@@ -14,6 +15,31 @@ namespace Winnow.App.ViewModels.Lists;
 public partial class ListsViewModel : ObservableObject
 {
     private readonly IGameListRepository? _lists;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ListsDisclosure), nameof(ListsSectionState))]
+    public partial bool AreListsExpanded { get; set; } = true;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(LiveListsDisclosure), nameof(LiveListsSectionState))]
+    public partial bool AreLiveListsExpanded { get; set; } = true;
+
+    [ObservableProperty]
+    public partial bool IsCreateMenuOpen { get; set; }
+
+    public string ListsDisclosure => AreListsExpanded ? "⌄" : "›";
+    public string LiveListsDisclosure => AreLiveListsExpanded ? "⌄" : "›";
+    public string ListsSectionState => AreListsExpanded ? "Expanded" : "Collapsed";
+    public string LiveListsSectionState => AreLiveListsExpanded ? "Expanded" : "Collapsed";
+
+    [RelayCommand]
+    private void ToggleLists() => AreListsExpanded = !AreListsExpanded;
+
+    [RelayCommand]
+    private void ToggleLiveLists() => AreLiveListsExpanded = !AreLiveListsExpanded;
+
+    [RelayCommand]
+    private void ToggleCreateMenu() => IsCreateMenuOpen = !IsCreateMenuOpen;
 
     internal event EventHandler? MembershipChanged;
 
@@ -58,7 +84,7 @@ public partial class ListsViewModel : ObservableObject
 
     /// <summary>Empty-state guidance text.</summary>
     public const string EmptyMessage =
-        "No lists yet. Select titles to create one, or save a filter as a live list.";
+        "No lists yet. Choose New list below to create a static or live list.";
 
     /// <summary>Bindable accessor for <see cref="EmptyMessage"/>.</summary>
     public string EmptyMessageText => EmptyMessage;
