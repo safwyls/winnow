@@ -1,11 +1,11 @@
 ---
 id: TASK-156
 title: Version Winnow and complete GitHub release verification
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-09-08 03:19'
-updated_date: '2026-09-08 04:20'
+updated_date: '2026-09-08 04:38'
 labels: []
 dependencies: []
 ordinal: 188000
@@ -21,7 +21,7 @@ Give installed and development builds traceable versions in Settings and complet
 <!-- AC:BEGIN -->
 - [x] #1 Settings displays application version and source build identity
 - [x] #2 Development, CI and tagged packages use consistent version metadata
-- [ ] #3 GitHub CI and both installer smoke checks pass and a draft release contains verified assets
+- [x] #3 GitHub CI and both installer smoke checks pass and a draft release contains verified assets
 - [x] #4 Main requires up-to-date pull requests and passing Windows and Linux CI, while releases remain tag-triggered
 <!-- AC:END -->
 
@@ -48,3 +48,9 @@ Final PR run 34184642522 hit the 30-minute job limit. Artifact includes recommen
 
 The minidump locates the recommendation stall in CrowdedLibrary fixture initialization inside SQLite writes. 151 of 155 tests had completed; four were waiting for fixture setup. Batched the same 217-game fixture through the existing transaction helper. All 155 recommendation tests pass in 19 seconds with five-minute hang detection enabled. Windows CI now has a 45-minute overall budget for slower runners; no checks or inactivity guards were removed.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Implemented shared versioning and selectable version/source identity in Application settings. Fixed the navigation-test database teardown race and batched the crowded recommendation fixture after dump analysis identified slow setup writes. All 4,012 local tests passed; all 155 recommendation tests passed after batching. GitHub CI runs 34186677252 and 34186679987 pass with the 45-minute job budget and unchanged five-minute inactivity guard. Tagged run 34183493083 passed CI and both installer smoke checks, creating the beta.2 draft; all four assets match SHA256SUMS. Main requires up-to-date PRs with passing Windows/Linux CI, including administrators; releases remain tag-triggered.
+<!-- SECTION:FINAL_SUMMARY:END -->
