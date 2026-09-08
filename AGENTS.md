@@ -116,7 +116,7 @@ report the limitation and leave Backlog files untouched.
 - `Directory.Build.props` sets nullable, implicit usings and `TreatWarningsAsErrors`.
 - Build and test with `dotnet build` and `dotnet test` from the repository root.
 - CI runs Windows Release restore/build/test on pushes and pull requests, with SDK analyzers
-  and direct/transitive NuGet auditing enabled; warnings fail the gate. Migration integrity
+  and direct/transitive NuGet auditing enabled; warnings fail the gate. Windows CI
   and Linux session checks are required by `main` branch protection. Changes reach `main`
   through an up-to-date pull request; this also applies to administrators. No additional
   approving reviewer is required. Force pushes and branch deletion are disabled. Migration integrity
