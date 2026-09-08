@@ -34,6 +34,10 @@ public partial class MainWindow : Window
     private DateTime _lastTitleBarPress = DateTime.MinValue;
     private PixelPoint _lastTitleBarPoint;
     private bool _allowClose;
+    private bool _detailsWereOpen;
+    private bool _detailsOpenedFromGrid;
+    private Vector _detailsViewportOffset;
+    private IReadOnlyList<GameTileViewModel>? _detailsVisibleSource;
 
     internal bool StartHidden { get; init; }
 
@@ -324,6 +328,8 @@ public partial class MainWindow : Window
 
         _shell = DataContext as MainWindowViewModel;
         _library = _shell?.Library;
+        _detailsWereOpen = _library?.IsDetailsOpen == true;
+        _detailsVisibleSource = null;
 
         // The theme service reaches the window through the shell rather than
         // through the container, so the window keeps one source of state and a
@@ -1154,6 +1160,52 @@ public partial class MainWindow : Window
         }
     }
 
+    private void OnAlphabetJumpClick(object? sender, RoutedEventArgs e)
+    {
+        if (_library is null
+            || sender is not Button
+            {
+                DataContext: AlphabetSectionViewModel { IsAvailable: true } section,
+            })
+        {
+            return;
+        }
+
+        // The spine is an alphabetic breakdown, so activating it establishes
+        // the order it describes before locating the requested section.
+        _library.Sort = LibrarySort.NameAscending;
+        Dispatcher.UIThread.Post(() => ScrollToAlphabetSection(section.Label), DispatcherPriority.Background);
+        e.Handled = true;
+    }
+
+    private void ScrollToAlphabetSection(string label)
+    {
+        if (_library is null)
+        {
+            return;
+        }
+
+        var index = _library.VisibleTiles
+            .Select((tile, index) => (tile, index))
+            .FirstOrDefault(pair => LibraryViewModel.AlphabetSectionFor(pair.tile.Title) == label)
+            .index;
+
+        if (index < 0 || index >= _library.VisibleTiles.Count
+            || LibraryViewModel.AlphabetSectionFor(_library.VisibleTiles[index].Title) != label)
+        {
+            return;
+        }
+
+        if (_library.IsGridView)
+        {
+            TileWall.ScrollIntoView(index);
+        }
+        else
+        {
+            ListRows.ScrollIntoView(index);
+        }
+    }
+
     private void OnLibraryPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         switch (e.PropertyName)
@@ -1168,6 +1220,18 @@ public partial class MainWindow : Window
                 break;
 
             case nameof(LibraryViewModel.Details):
+                var detailsAreOpen = _library?.IsDetailsOpen == true;
+                if (detailsAreOpen && !_detailsWereOpen)
+                {
+                    CaptureDetailsViewport();
+                }
+                else if (!detailsAreOpen && _detailsWereOpen)
+                {
+                    RestoreDetailsViewport();
+                }
+
+                _detailsWereOpen = detailsAreOpen;
+
                 // Focus follows the modal, so Escape and Tab reach it wherever
                 // the user's focus happened to be (§8).
                 if (_library is { IsDetailsOpen: true })
@@ -1179,6 +1243,53 @@ public partial class MainWindow : Window
 
                 break;
         }
+    }
+
+    private void CaptureDetailsViewport()
+    {
+        if (_library is null)
+        {
+            return;
+        }
+
+        _detailsOpenedFromGrid = _library.IsGridView;
+        _detailsVisibleSource = _library.VisibleTiles;
+        _detailsViewportOffset = _detailsOpenedFromGrid
+            ? GridScroll.Offset
+            : ListRows.Scroll?.Offset ?? default;
+    }
+
+    private void RestoreDetailsViewport()
+    {
+        if (_library is null
+            || _library.IsGridView != _detailsOpenedFromGrid
+            || !ReferenceEquals(_detailsVisibleSource, _library.VisibleTiles))
+        {
+            _detailsVisibleSource = null;
+            return;
+        }
+
+        var offset = _detailsViewportOffset;
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (_library is null
+                || _library.IsGridView != _detailsOpenedFromGrid
+                || !ReferenceEquals(_detailsVisibleSource, _library.VisibleTiles))
+            {
+                return;
+            }
+
+            if (_detailsOpenedFromGrid)
+            {
+                GridScroll.Offset = offset;
+            }
+            else if (ListRows.Scroll is { } listScroll)
+            {
+                listScroll.Offset = offset;
+            }
+
+            _detailsVisibleSource = null;
+        }, DispatcherPriority.Background);
     }
 
     /// <summary>Sends both views back to the top after a set or view change.</summary>

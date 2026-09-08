@@ -175,6 +175,39 @@
             <Setter Property="Margin" Value="0"/>
         </Style>
 
+        <!-- The alphabet spine is navigation, not a second scrollbar. Its
+             fixed #/A-Z map stays still; unavailable stops dim in place. -->
+        <Style Selector="Button.alphaindex">
+            <Setter Property="MinWidth" Value="24"/>
+            <Setter Property="MinHeight" Value="16"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="CornerRadius" Value="2"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
+            <Setter Property="FontFamily" Value="{StaticResource DataFont}"/>
+            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="Button.alphaindex /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="CornerRadius" Value="2"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="TextElement.Foreground" Value="{StaticResource TextDim}"/>
+        </Style>
+        <Style Selector="Button.alphaindex:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource SurfaceRaised}"/>
+            <Setter Property="TextElement.Foreground" Value="{StaticResource Text}"/>
+        </Style>
+        <Style Selector="Button.alphaindex:disabled">
+            <Setter Property="Opacity" Value="0.36"/>
+            <Setter Property="Cursor" Value="Arrow"/>
+        </Style>
+        <Style Selector="Button.alphaindex:disabled /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="TextElement.Foreground" Value="{StaticResource TextDim}"/>
+        </Style>
+
         <!-- ══ Rail bucket (§6) ══════════════════════════════════════════════
              Hover and selection both fill SurfaceRaised; selection adds the
              2px Volt left edge. Zero-count rows dim to 40% — never hide, so
@@ -1628,12 +1661,14 @@
 
                 <!-- Cover wall. -->
                 <ScrollViewer Name="GridScroll"
+                              Classes="inner"
                               IsVisible="{Binding Library.ShowGrid}"
                               HorizontalScrollBarVisibility="Disabled"
                               VerticalScrollBarVisibility="Auto"
+                              Margin="0,0,34,0"
                               Padding="0">
                     <!-- Custom CoverWall (not ItemsRepeater) — see CoverWall.
-                         24px right margin clears the scrollbar overlay + resize inset. -->
+                         24px right margin clears its scrollbar overlay. -->
                     <views:CoverWall Name="TileWall"
                                      Margin="20,20,24,20"
                                      Spacing="16"
@@ -1655,6 +1690,7 @@
                      Virtualized. PaneGround (opaque) because text must not
                      sit on a translucent field. -->
                 <Grid RowDefinitions="30,*" IsVisible="{Binding Library.ShowList}"
+                      Margin="0,0,34,0"
                       Background="{StaticResource PaneGround}">
 
                     <!-- Column headers. Click to sort; click active to flip. -->
@@ -1816,6 +1852,34 @@
                                HorizontalAlignment="Center"
                                VerticalAlignment="Center"
                                Text="{Binding Library.EmptyMessage}"/>
+                </Border>
+
+                <!-- Fixed-position #/A-Z navigation for large libraries. The
+                     10px right inset stays outside Windows' resize band. -->
+                <Border Width="24"
+                        Margin="0,6,10,10"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Stretch"
+                        Background="{StaticResource PaneGround}"
+                        IsVisible="{Binding Library.HasAlphabetSections}"
+                        ZIndex="2">
+                    <ItemsControl ItemsSource="{Binding Library.AlphabetSections}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <UniformGrid Rows="27"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="vm:AlphabetSectionViewModel">
+                                <Button Classes="alphaindex"
+                                        Content="{Binding Label}"
+                                        IsEnabled="{Binding IsAvailable}"
+                                        AutomationProperties.Name="{Binding AutomationName}"
+                                        ToolTip.Tip="{Binding AutomationName}"
+                                        Click="OnAlphabetJumpClick"/>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
                 </Border>
 
             </Panel>

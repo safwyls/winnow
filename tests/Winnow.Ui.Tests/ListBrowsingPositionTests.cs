@@ -1,7 +1,11 @@
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
+using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Threading;
+using Avalonia.Interactivity;
+using Avalonia.VisualTree;
 using Winnow.App.Design;
 using Winnow.App.ViewModels.Lists;
 using Winnow.App.ViewModels;
@@ -67,4 +71,117 @@ public sealed class ListBrowsingPositionTests
             window.Close();
         }
     }
+
+    [AvaloniaTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Closing_details_restores_the_scrolled_library_position(bool grid)
+    {
+        var (library, shell) = await LoadedLibraryAsync(grid);
+        var window = new MainWindow { Width = 1200, Height = 640, DataContext = shell };
+        try
+        {
+            window.Show();
+            Flush();
+            var scroll = ScrollFor(window, grid);
+            ((Control)scroll).MaxHeight = 160;
+            Flush();
+            scroll.Offset = new Vector(0, 200);
+            Flush();
+            var before = scroll.Offset;
+            Assert.True(before.Y > 0);
+
+            await library.OpenDetailsCommand.ExecuteAsync(library.VisibleTiles.Last());
+            Flush();
+            // Exercise the close-time restore rather than merely proving that
+            // opening details happens not to disturb this synthetic viewport.
+            scroll.Offset = default;
+            Flush();
+            Assert.Equal(0, scroll.Offset.Y);
+            library.CloseDetailsCommand.Execute(null);
+            Flush();
+
+            Assert.Equal(before, scroll.Offset);
+        }
+        finally
+        {
+            library.CloseDetailsCommand.Execute(null);
+            window.Close();
+        }
+    }
+
+    [AvaloniaTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Alphabet_spine_switches_to_name_order_and_jumps_the_active_view(bool grid)
+    {
+        var (library, shell) = await LoadedLibraryAsync(grid);
+        var window = new MainWindow { Width = 1200, Height = 640, DataContext = shell };
+        try
+        {
+            window.Show();
+            Flush();
+            var scroll = ScrollFor(window, grid);
+            ((Control)scroll).MaxHeight = 160;
+            Flush();
+            Assert.Equal(0, scroll.Offset.Y);
+
+            var buttons = window.GetVisualDescendants().OfType<Button>().ToArray();
+            var jumpToT = buttons.Single(button => AutomationProperties.GetName(button) == "Jump to T");
+            var jumpToA = buttons.Single(button => AutomationProperties.GetName(button) == "Jump to A");
+            var jumpToSymbols = buttons.Single(button =>
+                AutomationProperties.GetName(button) == "Jump to numbers and symbols");
+            Assert.True(jumpToT.IsEnabled);
+            Assert.False(jumpToA.IsEnabled);
+            Assert.False(jumpToSymbols.IsEnabled);
+
+            jumpToT.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Flush();
+
+            Assert.Equal(LibrarySort.NameAscending, library.Sort);
+            Assert.True(scroll.Offset.Y > 0);
+            Assert.StartsWith("T", library.VisibleTiles.Last().Title, StringComparison.OrdinalIgnoreCase);
+
+            if (Environment.GetEnvironmentVariable("WINNOW_UI_CAPTURE_DIR") is { } directory)
+            {
+                Directory.CreateDirectory(directory);
+                using var frame = window.CaptureRenderedFrame();
+                frame!.Save(Path.Combine(directory, $"alphabet-{(grid ? "grid" : "list")}.png"));
+            }
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    [Theory]
+    [InlineData("Élan", "E")]
+    [InlineData("  Zelda", "Z")]
+    [InlineData("123 Robots", "#")]
+    [InlineData("™Game", "#")]
+    public void Alphabet_sections_fold_diacritics_and_group_non_letters(string title, string expected)
+        => Assert.Equal(expected, LibraryViewModel.AlphabetSectionFor(title));
+
+    private static async Task<(LibraryViewModel Library, MainWindowViewModel Shell)> LoadedLibraryAsync(bool grid)
+    {
+        var library = new LibraryViewModel(new PreviewLibraryQueryRepository(),
+            new PreviewOwnershipRepository(), new PreviewReleaseRepository(),
+            new PreviewWorkRepository(), new PreviewUpdateEventRepository());
+        var shell = new MainWindowViewModel(library, PreviewData.MergeQueue, PreviewData.Stores,
+            PreviewData.Appearance, new FeedViewModel(new PreviewFeedService(), library),
+            PreviewData.AccountStats, PreviewData.LibrarySettings,
+            applicationSettings: PreviewData.ApplicationSettings);
+        await library.LoadCommand.ExecuteAsync(null);
+        shell.ShowLibraryCommand.Execute(null);
+        if (grid) library.ShowGridViewCommand.Execute(null);
+        else library.ShowListViewCommand.Execute(null);
+        return (library, shell);
+    }
+
+    private static ScrollViewer ScrollFor(MainWindow window, bool grid)
+        => grid ? window.FindControl<ScrollViewer>("GridScroll")!
+            : (ScrollViewer)window.FindControl<ListBox>("ListRows")!.Scroll!;
+
+    private static void Flush() => Dispatcher.UIThread.RunJobs();
 }

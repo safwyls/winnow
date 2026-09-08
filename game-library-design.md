@@ -226,7 +226,8 @@ stored locally.
 - A title search is the `search "…"` clause on the same `games` endpoint. It rides its own
   query body and its own cache namespace rather than widening the shared metadata query, so a
   400 costs the search alone. The term is user-typed free text, sanitized into the quoted
-  clause rather than rejected.
+  clause rather than rejected. Copyright, registered-trademark, trademark and service-mark
+  decoration is removed before the query and cache key are built; the stored title is unchanged.
 - The IGDB response cache carries a payload version per namespace: game payloads at **4**
   (name, summary, first release date, cover, genres, themes, game modes, player perspectives,
   platforms, publisher, `game_type`, `parent_game`, `version_parent`, `version_title`,

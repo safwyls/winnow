@@ -1,4 +1,6 @@
 using System.ComponentModel;
+using System.Globalization;
+using System.Text;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Winnow.App.Services;
@@ -533,6 +535,10 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     public partial IReadOnlyList<GameTileViewModel> VisibleTiles { get; set; } = [];
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasAlphabetSections))]
+    public partial IReadOnlyList<AlphabetSectionViewModel> AlphabetSections { get; set; } = [];
+
+    [ObservableProperty]
     public partial string SearchText { get; set; } = string.Empty;
 
     [ObservableProperty]
@@ -760,6 +766,8 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     public bool ShowGrid => EmptyMessage is null && IsGridView;
 
     public bool ShowList => EmptyMessage is null && !IsGridView;
+
+    public bool HasAlphabetSections => AlphabetSections.Any(section => section.IsAvailable);
 
     /// <summary>Command-bar button face: the order currently in force.</summary>
     public string SortLabel => LabelFor(Sort);
@@ -2519,9 +2527,53 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             SelectedCount = SelectedTile is null ? 0 : 1;
             SelectedTiles = SelectedTile is null ? [] : [SelectedTile];
         }
+
+        var alphabetSections = BuildAlphabetSections(visible);
+        if (!AlphabetSections.SequenceEqual(alphabetSections))
+        {
+            AlphabetSections = alphabetSections;
+        }
+
         EmptyMessage = BuildEmptyMessage(visible.Count, search);
         RefreshListCounts();
         RefreshCutBar(visible.Count);
+    }
+
+    private static IReadOnlyList<AlphabetSectionViewModel> BuildAlphabetSections(
+        IReadOnlyList<GameTileViewModel> tiles)
+    {
+        var available = tiles.Select(tile => AlphabetSectionFor(tile.Title)).ToHashSet();
+        return [
+            new("#", available.Contains("#")),
+            .. Enumerable.Range('A', 26)
+                .Select(value => ((char)value).ToString())
+                .Select(label => new AlphabetSectionViewModel(label, available.Contains(label))),
+        ];
+    }
+
+    /// <summary>
+    /// Maps a title to the fixed #/A-Z spine. Latin letters with diacritics
+    /// fold onto their base letter; numbers, symbols and other scripts use #.
+    /// </summary>
+    internal static string AlphabetSectionFor(string? title)
+    {
+        if (string.IsNullOrWhiteSpace(title))
+        {
+            return "#";
+        }
+
+        foreach (var rune in title.TrimStart().Normalize(NormalizationForm.FormD).EnumerateRunes())
+        {
+            if (Rune.GetUnicodeCategory(rune) == UnicodeCategory.NonSpacingMark)
+            {
+                continue;
+            }
+
+            var upper = Rune.ToUpperInvariant(rune).Value;
+            return upper is >= 'A' and <= 'Z' ? ((char)upper).ToString() : "#";
+        }
+
+        return "#";
     }
 
     /// <summary>Returns tiles matching the filter. Keyed on ownership id (not release) to preserve cross-store dupes.</summary>
