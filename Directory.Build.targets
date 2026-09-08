@@ -1,0 +1,34 @@
+<Project>
+
+  <!--
+    Every project in this repository transitively imports the WebView2 package's
+    buildTransitive targets through Winnow.Auth.WebView, and those targets
+    unconditionally <Reference> the package's unused WPF and WinForms wrapper
+    assemblies from a top-level <Choose> block with no opt-out property (the
+    targets file was read looking for one). Neither wrapper is used —
+    Winnow.Auth.WebView hosts WebView2 through Avalonia's NativeControlHost —
+    yet RAR resolves both into the output directory and Winnow.deps.json of
+    every referencing project.
+
+    That broke the Avalonia previewer (TASK-149): the designer's XAML compiler
+    reflects over every assembly in the graph, reaches the WPF wrapper's
+    PresentationFramework 5.0.0.0 dependency, which a plain net10.0 Avalonia app
+    does not carry, and throws FileNotFoundException before rendering. It also
+    produced the MSB3277 WindowsBase 4.0.0.0/5.0.0.0 conflict RAR used to warn
+    about in every consuming project.
+
+    A target rather than a top-level ItemGroup because the package adds the
+    items at evaluation time and this file cannot assume it is evaluated after
+    them; running before ResolveAssemblyReferences removes them wherever RAR is
+    about to resolve the graph. Remove matches by identity because the package
+    uses absolute-path ItemSpecs, which Remove's glob patterns do not match
+    (verified: "**\Microsoft.Web.WebView2.Wpf.dll" removed nothing).
+  -->
+  <Target Name="DropWebView2UiWrappers" BeforeTargets="ResolveAssemblyReferences">
+    <ItemGroup>
+      <Reference Remove="@(Reference)" Condition="$([System.String]::new('%(Reference.Identity)').EndsWith('Microsoft.Web.WebView2.Wpf.dll'))" />
+      <Reference Remove="@(Reference)" Condition="$([System.String]::new('%(Reference.Identity)').EndsWith('Microsoft.Web.WebView2.WinForms.dll'))" />
+    </ItemGroup>
+  </Target>
+
+</Project>
