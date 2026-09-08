@@ -127,6 +127,8 @@ report the limitation and leave Backlog files untouched.
   `scripts/Test-MigrationHashes.ps1`.
 - Windows CI prints completed tests and retains TRX plus hang diagnostics. A five-minute
   test inactivity timeout captures a mini dump so a stalled host can be investigated.
+  The job has a 45-minute overall budget to accommodate slower runners while keeping that
+  inactivity check in place.
 - A separate Ubuntu CI job runs `tests/Winnow.Monitor.Linux.Tests` against real native
   processes and a synthetic Proton environment. Those tests explicitly skip on non-Linux hosts.
 - Release packaging lives in `packaging/`; `docs/releases.md` owns build and publication
