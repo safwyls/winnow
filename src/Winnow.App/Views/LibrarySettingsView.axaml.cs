@@ -30,11 +30,31 @@ public partial class LibrarySettingsView : UserControl
     /// Hands the window's render scaling to the view model so candidate
     /// thumbnails decode at the width they are drawn at. The scaling belongs
     /// to the window, not to the view model.
+    ///
+    /// <para>Both entry points are needed and neither is enough alone: the
+    /// screen is built the first time it is opened (<see cref="LazyPane"/>) and
+    /// a control built from a template is attached BEFORE its DataContext
+    /// binding resolves — measured, not assumed — so the attach may find no
+    /// view model, while the context change may arrive before there is a
+    /// window to read a scaling from. The same pair, for the same reason, is in
+    /// <see cref="GameMetadataEditorView"/>.</para>
     /// </summary>
     protected override void OnAttachedToVisualTree(Avalonia.VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
 
+        ApplyCoverScaling();
+    }
+
+    protected override void OnDataContextChanged(EventArgs e)
+    {
+        base.OnDataContextChanged(e);
+
+        ApplyCoverScaling();
+    }
+
+    private void ApplyCoverScaling()
+    {
         if (DataContext is LibrarySettingsViewModel library)
         {
             library.SetCoverScaling(TopLevel.GetTopLevel(this)?.RenderScaling ?? 1.0);

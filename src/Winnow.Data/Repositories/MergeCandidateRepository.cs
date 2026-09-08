@@ -74,6 +74,24 @@ public sealed class MergeCandidateRepository : IMergeCandidateRepository
         return rows.AsList();
     }
 
+    /// <summary>
+    /// The same question <see cref="GetPendingAsync"/> asks — same status, same
+    /// <c>work_id</c> predicate — counted in the database instead of projected
+    /// into rows, so the two must be kept matching.
+    /// </summary>
+    public async Task<int> CountPendingAsync(CancellationToken ct = default)
+    {
+        using var lease = _factory.Lease();
+        return await lease.Connection.ExecuteScalarAsync<int>(new CommandDefinition("""
+            SELECT COUNT(*)
+            FROM merge_candidates c
+            JOIN releases l ON l.id = c.left_release_id
+            JOIN releases r ON r.id = c.right_release_id
+            WHERE c.status = 'pending'
+              AND l.work_id <> r.work_id;
+            """, transaction: lease.Transaction, cancellationToken: ct));
+    }
+
     public async Task<IReadOnlyList<MergeCandidate>> GetAllAsync(CancellationToken ct = default)
     {
         using var lease = _factory.Lease();

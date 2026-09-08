@@ -670,15 +670,15 @@ public sealed class FeedReserveTests
     {
         private readonly Dictionary<(CoverKey Key, int Width), CoverArt> _memory = [];
 
-        public void Put(CoverKey key, int width) => _memory[(key, width)] = new CoverArt(null!, null!);
+        public void Put(CoverKey key, int width) => _memory[(key, width)] = new CoverArt(null!, null);
 
-        public bool TryGet(CoverKey key, double displayWidthPixels, out CoverArt art)
+        public bool TryGet(CoverKey key, double displayWidthPixels, CoverLayers layers, out CoverArt art)
             => _memory.TryGetValue((key, CoverImaging.SnapWidth(displayWidthPixels)), out art!);
 
         public Task<CoverArt?> GetAsync(
-            CoverKey key, double displayWidthPixels, CancellationToken ct = default)
+            CoverKey key, double displayWidthPixels, CoverLayers layers, CancellationToken ct = default)
             => Task.FromResult<CoverArt?>(
-                TryGet(key, displayWidthPixels, out var art) ? art : null);
+                TryGet(key, displayWidthPixels, layers, out var art) ? art : null);
     }
 
     /// <summary>An engine that returns one shelf of a stated depth, so the service's slice is visible.</summary>

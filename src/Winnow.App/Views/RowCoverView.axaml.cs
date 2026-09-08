@@ -46,7 +46,7 @@ public partial class RowCoverView : UserControl
         if (!ReferenceEquals(_bound, DataContext))
         {
             _bound = DataContext as GameTileViewModel;
-            Cover.Target(_bound?.CoverKey, _bound?.Leases);
+            Cover.Target(_bound?.CoverKey, _bound?.Leases, _bound?.Ramp);
         }
 
         if (this.GetVisualRoot() is not null)
@@ -59,7 +59,7 @@ public partial class RowCoverView : UserControl
     {
         base.OnAttachedToVisualTree(e);
         _bound = DataContext as GameTileViewModel;
-        Cover.Target(_bound?.CoverKey, _bound?.Leases);
+        Cover.Target(_bound?.CoverKey, _bound?.Leases, _bound?.Ramp);
         RequestCover();
     }
 

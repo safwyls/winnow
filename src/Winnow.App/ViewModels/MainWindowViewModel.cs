@@ -156,6 +156,22 @@ public partial class MainWindowViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(IsLibraryVisible), nameof(IsFilterPanelVisible))]
     public partial bool IsMergeQueueVisible { get; set; }
 
+    /// <summary>
+    /// The merge screen's own load trigger. Building it costs a full library
+    /// snapshot with non-game entries plus an expansion scan over every work,
+    /// so it happens when the pane is shown rather than with the window — the
+    /// rail row carries no count, and every other surface reads its own rows
+    /// (TASK-152.5).
+    /// </summary>
+    partial void OnIsMergeQueueVisibleChanged(bool value)
+    {
+        MergeQueue.IsPaneVisible = value;
+        if (value)
+        {
+            _ = MergeQueue.EnsureLoadedAsync();
+        }
+    }
+
     /// <summary>The Platforms panel, the settings surface's first section.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(

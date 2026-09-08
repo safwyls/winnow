@@ -458,7 +458,6 @@ public sealed class ExpansionLinkTests
         {
             var library = new LibraryViewModel(
                 Queries, Ownerships, Releases, Works, Updates,
-                covers: null,
                 identityLinks: Links);
 
             await library.LoadCommand.ExecuteAsync(null);

@@ -1767,21 +1767,31 @@
         </Border>
 
         <!-- ── Merge confirm queue (§5.3 step 3 / §6) ────────────────────── -->
-        <Border Classes="screenpane"
-                BorderBrush="{StaticResource Line}"
-                IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsMergeQueueVisible}">
-            <views:MergeQueueView Name="MergeQueue"
-                                  DataContext="{Binding MergeQueue}"/>
-        </Border>
+        <views:LazyPane IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsMergeQueueVisible}">
+            <views:LazyPane.PaneTemplate>
+                <DataTemplate DataType="vm:MainWindowViewModel">
+                    <Border Classes="screenpane"
+                            BorderBrush="{StaticResource Line}">
+                        <views:MergeQueueView Name="MergeQueue"
+                                              DataContext="{Binding MergeQueue}"/>
+                    </Border>
+                </DataTemplate>
+            </views:LazyPane.PaneTemplate>
+        </views:LazyPane>
 
         <!-- The STATS screen, the rail's ACCOUNT row. Same terms as every other
              screen pane: one Border, one IsVisible, no command bar. -->
-        <Border Classes="screenpane"
-                BorderBrush="{StaticResource Line}"
-                IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsAccountStatsVisible}">
-            <views:AccountStatsView Name="AccountStatsPanel"
-                                    DataContext="{Binding AccountStats}"/>
-        </Border>
+        <views:LazyPane IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsAccountStatsVisible}">
+            <views:LazyPane.PaneTemplate>
+                <DataTemplate DataType="vm:MainWindowViewModel">
+                    <Border Classes="screenpane"
+                            BorderBrush="{StaticResource Line}">
+                        <views:AccountStatsView Name="AccountStatsPanel"
+                                                DataContext="{Binding AccountStats}"/>
+                    </Border>
+                </DataTemplate>
+            </views:LazyPane.PaneTemplate>
+        </views:LazyPane>
 
         <!-- ══ THE SETTINGS SURFACE ════════════════════════════════════════
              Three sections — Platforms, Library, Appearance — opened by the
@@ -1850,16 +1860,35 @@
                     </StackPanel>
                 </Border>
 
+                <!-- Each section is built the first time it is opened
+                     (views:LazyPane). The header above stays eager: it is the
+                     switch between them, so it is on screen whenever any of
+                     them is. -->
                 <Panel Grid.Row="1">
-                    <views:StoresView Name="StoresPanel"
-                                      DataContext="{Binding Stores}"
-                                      IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsStoresVisible}"/>
-                    <views:LibrarySettingsView Name="LibrarySettingsPanel"
-                                               DataContext="{Binding LibrarySettings}"
-                                               IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsLibrarySettingsVisible}"/>
-                    <views:AppearanceView Name="AppearancePanel"
-                                          DataContext="{Binding Appearance}"
-                                          IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsAppearanceVisible}"/>
+                    <views:LazyPane IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsStoresVisible}">
+                        <views:LazyPane.PaneTemplate>
+                            <DataTemplate DataType="vm:MainWindowViewModel">
+                                <views:StoresView Name="StoresPanel"
+                                                  DataContext="{Binding Stores}"/>
+                            </DataTemplate>
+                        </views:LazyPane.PaneTemplate>
+                    </views:LazyPane>
+                    <views:LazyPane IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsLibrarySettingsVisible}">
+                        <views:LazyPane.PaneTemplate>
+                            <DataTemplate DataType="vm:MainWindowViewModel">
+                                <views:LibrarySettingsView Name="LibrarySettingsPanel"
+                                                           DataContext="{Binding LibrarySettings}"/>
+                            </DataTemplate>
+                        </views:LazyPane.PaneTemplate>
+                    </views:LazyPane>
+                    <views:LazyPane Name="AppearancePanel"
+                                    IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsAppearanceVisible}">
+                        <views:LazyPane.PaneTemplate>
+                            <DataTemplate DataType="vm:MainWindowViewModel">
+                                <views:AppearanceView DataContext="{Binding Appearance}"/>
+                            </DataTemplate>
+                        </views:LazyPane.PaneTemplate>
+                    </views:LazyPane>
                 </Panel>
 
             </Grid>
@@ -2003,18 +2032,38 @@
         </Panel>
 
         <!-- ══ FILTER PANEL ════════════════════════════════════════════════
-             Last in Tab walk (rightmost on screen). -->
-        <views:FilterPanelView Grid.Column="2"
-                               Name="FilterPanel"
-                               DataContext="{Binding Library.Filters}"
-                               IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsFilterPanelVisible}"/>
+             Last in Tab walk (rightmost on screen). Built the first time it is
+             opened, like every screen the shell can open (views:LazyPane). The
+             saving here alone is small — the groups inside are templated per
+             facet, so a closed panel was about fifteen controls — and it is
+             behind one anyway so the rule has no exception to remember. -->
+        <views:LazyPane Grid.Column="2"
+                        Name="FilterPanel"
+                        IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsFilterPanelVisible}">
+            <views:LazyPane.PaneTemplate>
+                <DataTemplate DataType="vm:MainWindowViewModel">
+                    <views:FilterPanelView DataContext="{Binding Library.Filters}"/>
+                </DataTemplate>
+            </views:LazyPane.PaneTemplate>
+        </views:LazyPane>
 
         <!-- ── Game detail modal ─────────────────────────────────────────────
-             Spans all columns. Enter/double-click opens; Escape closes. -->
-        <views:GameDetailsView Name="DetailsPanel"
-                               Grid.Column="0" Grid.ColumnSpan="3"
-                               DataContext="{Binding Library.Details}"
-                               IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Library.IsDetailsOpen}"/>
+             Spans all columns. Enter/double-click opens; Escape closes.
+
+             Built on first open (views:LazyPane) and kept afterwards. It is
+             the largest view in the app and the one a session may never ask
+             for, so it is also the pane that most repaid deferring; the window
+             reaches it through DetailsPanel.Pane, and wires CloseRequested when
+             it appears. -->
+        <views:LazyPane Name="DetailsPanel"
+                        Grid.Column="0" Grid.ColumnSpan="3"
+                        IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Library.IsDetailsOpen}">
+            <views:LazyPane.PaneTemplate>
+                <DataTemplate DataType="vm:MainWindowViewModel">
+                    <views:GameDetailsView DataContext="{Binding Library.Details}"/>
+                </DataTemplate>
+            </views:LazyPane.PaneTemplate>
+        </views:LazyPane>
 
         <!-- ── Screenshot lightbox (§10.7) ───────────────────────────────────
              Declared after the modal and spanning the same three columns, so
@@ -2025,10 +2074,15 @@
              IsOpen is bound off Library, not off Library.Details, because a
              binding whose path passes through a null resolves to UnsetValue
              and IsVisible would fall back to its default of true. -->
-        <views:ScreenshotLightboxView Name="LightboxPanel"
-                                      Grid.Column="0" Grid.ColumnSpan="3"
-                                      DataContext="{Binding Library.Lightbox}"
-                                      IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Library.Lightbox.IsOpen}"/>
+        <views:LazyPane Name="LightboxPanel"
+                        Grid.Column="0" Grid.ColumnSpan="3"
+                        IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Library.Lightbox.IsOpen}">
+            <views:LazyPane.PaneTemplate>
+                <DataTemplate DataType="vm:MainWindowViewModel">
+                    <views:ScreenshotLightboxView DataContext="{Binding Library.Lightbox}"/>
+                </DataTemplate>
+            </views:LazyPane.PaneTemplate>
+        </views:LazyPane>
 
     </Grid>
     </Grid>

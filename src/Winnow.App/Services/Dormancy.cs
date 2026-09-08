@@ -76,10 +76,15 @@ public static class Dormancy
 /// <para>This is a valve on the ramp, not a bypass of it. <see cref="Dormancy"/>
 /// still computes the whole §5.1 curve; when <see cref="DimsDormantCovers"/> is
 /// off this resolves it to 1.0, which lands the two-layer cross-fade on the
-/// vivid layer at full opacity. Nothing about the cover cache changes: the
-/// pre-computed floor variants stay on disk, stay loaded under the vivid layer,
-/// and stay valid, so turning dimming back on is one property write and the next
-/// paint — never a reload and never a re-render of the cache.</para>
+/// vivid layer at full opacity.</para>
+///
+/// <para>The one thing that does follow from the valve is how much is decoded.
+/// A vivid layer at full opacity covers the floor variant exactly, so while
+/// dimming is off a two-layer surface asks the cover cache for the vivid layer
+/// alone and the wall holds one bitmap per cover instead of two. The stored
+/// variants stay on disk and stay valid; turning dimming back on asks for the
+/// pair at the width already on screen, and the vivid art stays up while it
+/// arrives, so the toggle costs a decode rather than a reload.</para>
 ///
 /// <para>With dimming off the hover restore is a no-op by construction rather
 /// than by a special case: the resting alpha and the hovered alpha are both 1.0,

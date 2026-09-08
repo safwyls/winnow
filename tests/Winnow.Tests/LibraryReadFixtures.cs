@@ -31,6 +31,7 @@ public sealed class LibraryReadTrackingFactory(ISqliteConnectionFactory inner) :
     public string ConnectionString => inner.ConnectionString;
     public SqliteConnection Open() => inner.Open();
     public IUnitOfWork Begin() => inner.Begin();
+    public void ReleasePooledConnections() => inner.ReleasePooledConnections();
     public DbLease Lease()
     {
         BeforeLease?.Invoke();

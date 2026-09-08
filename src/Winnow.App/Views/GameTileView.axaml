@@ -254,9 +254,10 @@
 
                     <!-- Layer 2: vivid art; opacity carries the dormancy ramp,
                          hover animates it to 1.0 in 140ms. With dimming turned
-                         off the ramp resolves to 1.0 and this layer simply
-                         covers the floor layer — the floor variant is still
-                         there, still cached, still valid. -->
+                         off the ramp resolves to 1.0 and this layer covers the
+                         floor layer exactly — which is why the presenter stops
+                         asking for the floor variant at all while it is off,
+                         and asks again the moment it is turned back on. -->
                     <Border Name="VividArt"
                             Background="{Binding VividBrush}" Opacity="{Binding DisplayAlpha}"
                             IsVisible="{Binding #Root.Cover.ShowPlaceholder}">

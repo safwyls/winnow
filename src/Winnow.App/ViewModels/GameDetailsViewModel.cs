@@ -13,7 +13,7 @@ namespace Winnow.App.ViewModels;
 /// Game detail modal (§5.3). Shows identity, play history, updates, and
 /// launch actions. Null fields render as absent rows, not placeholders.
 /// </summary>
-public partial class GameDetailsViewModel : ObservableObject
+public partial class GameDetailsViewModel : ObservableObject, IDisposable
 {
     /// <summary>Cover at a size worth looking at, on the same 2:3 capsule geometry.</summary>
     public const double CoverWidth = 200;
@@ -23,7 +23,12 @@ public partial class GameDetailsViewModel : ObservableObject
     /// <summary>Max update marks on the gap rail before it overflows to the list.</summary>
     private const int MaxRailMarks = 14;
 
-    private readonly ICoverCache? _covers;
+    /// <summary>
+    /// The modal's own cover, leased. Vivid only: §5.5 draws the art at full
+    /// saturation behind the information, so the floor variant would be a
+    /// second decode of every cover a user opens and nothing would draw it.
+    /// </summary>
+    private readonly LeasedCover _cover;
 
     /// <summary>Update flag service. Null hides the mark-as-read control.</summary>
     private readonly IUpdateFlagService? _flags;
@@ -53,7 +58,7 @@ public partial class GameDetailsViewModel : ObservableObject
         IReadOnlyList<UpdateEventViewModel> updates,
         DateTime nowUtc,
         IReadOnlyList<PlaytimeSnapshot>? snapshots = null,
-        ICoverCache? covers = null,
+        ICoverLeases? covers = null,
         IReadOnlyList<UpdateEvent>? updateEvents = null,
         DateTime? acknowledgedThrough = null,
         IUpdateFlagService? updateFlags = null,
@@ -85,9 +90,9 @@ public partial class GameDetailsViewModel : ObservableObject
         Coverage = coverage;
         Expansions = expansions;
         Tile = tile;
+        _cover = new LeasedCover(covers, tile.CoverKey, CoverLayers.Vivid, art => Cover = art?.Vivid);
         BucketLabel = bucketLabel;
         Updates = updates;
-        _covers = covers;
         _nowUtc = nowUtc;
         _events = updateEvents ?? [];
         _flags = updateFlags;
@@ -696,31 +701,20 @@ public partial class GameDetailsViewModel : ObservableObject
     public IBrush PlaceholderBrush => Tile.VividBrush;
 
     /// <summary>Requests the cover at full saturation for the given display width.</summary>
-    public void RequestCover(double displayWidthPixels)
+    public void RequestCover(double displayWidthPixels) => _cover.Request(displayWidthPixels);
+
+    /// <summary>
+    /// The modal is closed and this view model is dropped. Releases every lease
+    /// the modal and its sections hold, which is what lets the decoded-memory
+    /// cache free art the user is no longer looking at. The library disposes
+    /// the outgoing instance when <c>Details</c> changes.
+    /// </summary>
+    public void Dispose()
     {
-        if (_covers is null || Tile.CoverKey is not { } key)
-        {
-            return;
-        }
-
-        if (_covers.TryGet(key, displayWidthPixels, out var cached))
-        {
-            Cover = cached.Vivid;
-            return;
-        }
-
-        _ = LoadCoverAsync(key, displayWidthPixels);
-    }
-
-    private async Task LoadCoverAsync(CoverKey key, double displayWidthPixels)
-    {
-        var art = await _covers!.GetAsync(key, displayWidthPixels).ConfigureAwait(false);
-        if (art is null)
-        {
-            return;
-        }
-
-        Dispatcher.UIThread.Post(() => Cover = art.Vivid);
+        _cover.Dispose();
+        Screenshots?.Dispose();
+        IgdbMatch?.Dispose();
+        MetadataEditor?.Dispose();
     }
 
     // ── Construction helpers ────────────────────────────────────────────────

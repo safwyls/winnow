@@ -57,7 +57,6 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     /// Cover art. Optional so the view still composes (on procedural art) when
     /// the host has not called <c>AddCoverCache</c> — DI fills the default.
     /// </summary>
-    private readonly ICoverCache? _covers;
 
     /// <summary>
     /// What a tile hands to any surface that wants to show its art — each
@@ -209,7 +208,6 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         IReleaseRepository releases,
         IWorkRepository works,
         IUpdateEventRepository updateEvents,
-        ICoverCache? covers = null,
         DormancyRamp? ramp = null,
         IPlaytimeSnapshotRepository? snapshots = null,
         IFacetRepository? facets = null,
@@ -249,7 +247,6 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         _works = works;
         _updateEvents = updateEvents;
         _sessions = sessions;
-        _covers = covers;
         _leases = leases;
         _snapshots = snapshots;
         _facetRepository = facets;
@@ -693,7 +690,19 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     // reopening after a refetch or an assignment — takes the overlay down
     // with it. One hook here rather than a call at each site, so a route
     // added later cannot leave an orphaned overlay over the library.
-    partial void OnDetailsChanged(GameDetailsViewModel? value) => Lightbox.Close();
+    // The outgoing modal is disposed here for the same reason: its cover, its
+    // screenshot thumbnails, its IGDB candidate rows and its metadata previews
+    // are all held under leases, and a lease nobody releases is decoded art the
+    // memory cache may not free.
+    partial void OnDetailsChanged(GameDetailsViewModel? oldValue, GameDetailsViewModel? newValue)
+    {
+        Lightbox.Close();
+
+        if (!ReferenceEquals(oldValue, newValue))
+        {
+            oldValue?.Dispose();
+        }
+    }
 
     // ══ The cut bar ═════════════════════════════════════════════════════════
     // One strip under the command bar that says what you are looking at. It is
@@ -1342,7 +1351,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             updates,
             DateTime.UtcNow,
             snapshots: history,
-            covers: _covers,
+            covers: _leases,
             coverage: await BuildCoverageAsync(target),
             expansions: BuildExpansions(target),
             lists: await BuildListsAsync(target),
@@ -1435,7 +1444,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             workId,
             target.Title,
             pin: await _igdb.GetPinAsync(workId),
-            covers: _covers,
+            covers: _leases,
             afterChange: AfterIgdbChangeAsync,
             note: note,
             linkSameGame: _identityLinks is null
@@ -1467,7 +1476,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         return new GameMetadataEditorViewModel(
             _metadataEdits,
             workId,
-            covers: _covers,
+            covers: _leases,
             picker: _imagePicker,
             afterArtChange: AfterMetadataArtChangeAsync,
             afterTextChange: (field, value) => AfterMetadataTextChangeAsync(workId, field, value),

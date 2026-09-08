@@ -123,6 +123,13 @@ public sealed class CoverDiskCache
 
     public bool TryReadFloor(CoverKey key, out byte[] bytes) => TryRead(FloorPath(key), out bytes);
 
+    /// <summary>
+    /// Whether a stored floor variant exists, without reading it. The decode
+    /// path asks this before it decides to generate one; reading the file to
+    /// answer the same question cost a second full read of every floor variant.
+    /// </summary>
+    public bool HasFloor(CoverKey key) => File.Exists(FloorPath(key));
+
     public void WriteSource(CoverKey key, byte[] bytes)
     {
         EnsureRoot();

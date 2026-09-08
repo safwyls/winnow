@@ -49,7 +49,7 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
     private readonly LibraryExpansionScan _expansions;
     private readonly IExpansionRefusalRepository _expansionRefusals;
     private readonly ILibraryQueryRepository _libraryQueries;
-    private readonly ICoverCache? _covers;
+    private readonly ICoverLeases? _covers;
     private readonly IResolveStateRepository? _resolveState;
 
     /// <summary>
@@ -71,6 +71,16 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
     private UndoRun? _run;
     private bool _disposed;
 
+    /// <summary>The queue's inputs have moved since the cards on screen were built.</summary>
+    private bool _stale;
+
+    /// <summary>
+    /// How many pending candidates the last completed load saw, so a cheap
+    /// COUNT can answer "has the queue moved?" without rebuilding the screen.
+    /// Negative until the first load.
+    /// </summary>
+    private int _pendingAtLoad = -1;
+
     /// <summary>
     /// The link, ownership and library-query repositories are required, not
     /// optional. A type registered in the container and resolved nowhere is
@@ -87,7 +97,7 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
         LibraryExpansionScan expansions,
         IExpansionRefusalRepository expansionRefusals,
         ILibraryQueryRepository libraryQueries,
-        ICoverCache? covers = null,
+        ICoverLeases? covers = null,
         IResolveStateRepository? resolveState = null,
         Services.IIgdbAssignmentService? igdb = null,
         TimeProvider? clock = null,
@@ -273,6 +283,7 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
         }
 
         RefreshCounts();
+        RequestCovers(_coverWidthPixels);
 
         // The cursor must not stay on a card the filter just hid, or S would
         // answer a card the user cannot see.
@@ -413,6 +424,7 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
             }
 
             linked.Card.MarkPending();
+            linked.Card.RequestCovers(_coverWidthPixels);
             if (_sectionOfCard.TryGetValue(linked.Card, out var section))
             {
                 section.Refresh();
@@ -489,6 +501,53 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
 
     // ── Loading ──────────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Whether the merge pane is on screen. The shell sets it. Building this
+    /// screen costs a full library snapshot with non-game entries included plus
+    /// an expansion scan over every work, and the startup pipeline used to pay
+    /// for both behind a hidden pane on every launch (TASK-152.5).
+    /// </summary>
+    public bool IsPaneVisible { get; set; }
+
+    /// <summary>
+    /// Builds the queue if it has never been built, or if a change has been
+    /// noted since. Called when the pane is shown.
+    /// </summary>
+    public async Task EnsureLoadedAsync(CancellationToken ct = default)
+    {
+        if (_loaded && !_stale)
+        {
+            return;
+        }
+
+        await LoadAsync(ct);
+    }
+
+    /// <summary>
+    /// Notes that the queue's inputs may have moved, for the price of a COUNT.
+    /// Rebuilds at once when the pane is showing; otherwise records the change
+    /// so the next time it is shown rebuilds.
+    ///
+    /// <para>The count is the same question <c>GetPendingAsync</c> asks, and
+    /// <see cref="HasCompletedSweep"/> is the other half: after the startup
+    /// pipeline's soft-match sweep the empty sections have to stop saying the
+    /// matcher has not run, even on a library where the sweep queued nothing.</para>
+    /// </summary>
+    public async Task NoteQueueMayHaveMovedAsync(CancellationToken ct = default)
+    {
+        var pending = await _candidates.CountPendingAsync(ct);
+        if (_loaded && !_stale && pending == _pendingAtLoad && HasCompletedSweep)
+        {
+            return;
+        }
+
+        _stale = true;
+        if (IsPaneVisible)
+        {
+            await LoadAsync(ct);
+        }
+    }
+
     [RelayCommand]
     private async Task LoadAsync(CancellationToken ct)
     {
@@ -545,10 +604,12 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
             cards.AddRange(await BuildSameGameCardsAsync(pending, library, resolution, now, ct));
             cards.AddRange(await BuildExpansionCardsAsync(scan, library, now, ct));
             cards.AddRange(await BuildStandingCardsAsync(standing, releasesOfWork, library, now, ct));
-            return (hasCompletedSweep, cards);
+            return (hasCompletedSweep, cards, pendingCount: pending.Count);
         }, ct);
 
         HasCompletedSweep = loaded.hasCompletedSweep;
+        _pendingAtLoad = loaded.pendingCount;
+        _stale = false;
         _loaded = true;
         Place(loaded.cards);
 
@@ -561,6 +622,14 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
         foreach (var existing in _sectionOfCard.Keys)
         {
             existing.PropertyChanged -= OnCardChanged;
+
+            // A reload builds fresh cards, so the outgoing ones will never be
+            // drawn again and their rows' leases are what would otherwise keep
+            // an answered proposal's covers decoded for the rest of the session.
+            if (!cards.Contains(existing))
+            {
+                existing.ReleaseCovers();
+            }
         }
 
         _cardOfRow.Clear();
@@ -767,6 +836,9 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
         }
 
         card.MarkPending();
+
+        // A card that is pending again draws its rows, thumbnails and all.
+        card.RequestCovers(_coverWidthPixels);
         RefreshCounts();
         Focus(card.Rows[0]);
     }
@@ -1105,7 +1177,17 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
 
     // ── Covers ───────────────────────────────────────────────────────────────
 
-    /// <summary>Sets the display resolution for cover decoding.</summary>
+    /// <summary>
+    /// Sets the display resolution for cover decoding and asks for the covers
+    /// the user can actually see: the rows of the sections the kind filter is
+    /// showing, on the cards that are still asking a question. The screen is
+    /// not virtualized, so before this it decoded every row of every card in
+    /// every section the moment the queue loaded — hidden sections, answered
+    /// cards that draw no thumbnail, and a load that happened while the pane
+    /// itself was not on screen. The view asks again when a hidden pane is
+    /// shown, <see cref="SelectKind"/> asks again when the filter changes, and
+    /// undoing an answer asks for that card, so nothing stays blank.
+    /// </summary>
     public void RequestCovers(double displayWidthPixels)
     {
         if (displayWidthPixels <= 0)
@@ -1116,9 +1198,21 @@ public partial class MergeQueueViewModel : ObservableObject, IDisposable
         _coverWidthPixels = displayWidthPixels;
         foreach (var section in Sections)
         {
+            if (!section.IsVisible)
+            {
+                continue;
+            }
+
             foreach (var card in section.Cards)
             {
-                card.RequestCovers(displayWidthPixels);
+                // A resolved card draws its strip, not its rows: the whole
+                // pending sub-tree including the thumbnails is behind
+                // IsPending in the markup, so its covers would be decoded for
+                // nothing until the user undoes the answer.
+                if (card.IsPending)
+                {
+                    card.RequestCovers(displayWidthPixels);
+                }
             }
         }
     }

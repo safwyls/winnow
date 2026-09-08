@@ -26,4 +26,10 @@ public interface ISqliteConnectionFactory : IUnitOfWorkFactory
     /// <see cref="Open"/> so that enlisting is invisible to them.
     /// </summary>
     DbLease Lease();
+
+    /// <summary>
+    /// Closes every idle pooled connection. Memory management only: a
+    /// connection in use is untouched and the next lease reopens as usual.
+    /// </summary>
+    void ReleasePooledConnections();
 }

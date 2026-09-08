@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Winnow.App.Services;
 using Winnow.App.ViewModels;
 using Winnow.Covers;
 using Xunit;
@@ -12,9 +13,9 @@ namespace Winnow.Tests;
 /// visible feed card, a small feed request overwriting larger wall art, and a
 /// load landing on a container that has since been recycled onto another game.
 ///
-/// <para>The payload is a <see cref="CoverArt"/> with null layers: no test in
-/// this project starts a rendering platform, and nothing here looks inside the
-/// pair. Each surface is driven through a queue standing in for the dispatcher,
+/// <para>The payload is a <see cref="CoverArt"/> carrying a vivid layer
+/// only: no test in this project starts a rendering platform, so a real pair
+/// cannot be built, and nothing here looks inside the layers. Each surface is driven through a queue standing in for the dispatcher,
 /// so a result lands exactly when the test says it does and no Avalonia
 /// dispatcher has to exist.</para>
 /// </summary>
@@ -23,7 +24,7 @@ public sealed class CoverPresenterTests
     private static readonly CoverKey Half = CoverKey.Steam("620");
     private static readonly CoverKey Life = CoverKey.Steam("70");
 
-    private static CoverArt Art() => new(null!, null!);
+    private static CoverArt Art() => new(null!, null);
 
     [Fact]
     public void Recycling_the_wall_tile_leaves_the_feed_cards_art_alone()
@@ -133,7 +134,7 @@ public sealed class CoverPresenterTests
     {
         var cache = new FakeCoverCache();
         var art = Art();
-        cache.Memory[(Half, 160)] = art;
+        cache.Memory[new FakeCoverCache.Slot(Half, 160, CoverLayers.VividAndFloor)] = art;
         var pool = new CoverLeasePool(cache);
 
         var wall = new Surface(Half, pool);
@@ -170,15 +171,112 @@ public sealed class CoverPresenterTests
         Assert.Equal(0, pool.LiveSlots);
     }
 
+    // ── The floor layer is only decoded when it can be seen ──────────────────
+
+    /// <summary>
+    /// With the ramp dimming covers, a tile stacks the floor variant under its
+    /// vivid art and needs both decoded — the shape the wall has always asked
+    /// for, restated here because the next test turns it off.
+    /// </summary>
+    [Fact]
+    public void A_dimming_wall_asks_for_both_layers()
+    {
+        var cache = new FakeCoverCache();
+        var pool = new CoverLeasePool(cache);
+        var wall = new Surface(Half, pool, new DormancyRamp { DimsDormantCovers = true });
+
+        Assert.Equal(CoverLayers.VividAndFloor, wall.Presenter.Layers);
+
+        wall.Presenter.Request(148);
+
+        Assert.Equal([CoverLayers.VividAndFloor], cache.Asked);
+    }
+
+    /// <summary>
+    /// With dimming off the vivid layer is drawn at full opacity, so the floor
+    /// variant is a bitmap nobody can see. The wall then holds one decode per
+    /// cover instead of two.
+    /// </summary>
+    [Fact]
+    public void A_wall_with_dimming_off_asks_for_the_vivid_layer_only()
+    {
+        var cache = new FakeCoverCache();
+        var pool = new CoverLeasePool(cache);
+        var wall = new Surface(Half, pool, new DormancyRamp { DimsDormantCovers = false });
+
+        Assert.Equal(CoverLayers.Vivid, wall.Presenter.Layers);
+
+        wall.Presenter.Request(148);
+        cache.Complete(Half, 160, Art(), CoverLayers.Vivid);
+        wall.Settle();
+
+        Assert.Equal([CoverLayers.Vivid], cache.Asked);
+        Assert.NotNull(wall.Presenter.Art);
+        Assert.Null(wall.Presenter.Floor);
+    }
+
+    /// <summary>
+    /// Turning dimming back on makes the floor visible under art that was
+    /// decoded without it. The pair is requested at the width already on
+    /// screen, and the vivid art stays up while it arrives — the toggle is
+    /// still a repaint, never a blank wall.
+    /// </summary>
+    [Fact]
+    public void Turning_dimming_on_asks_for_the_floor_at_the_width_on_screen()
+    {
+        var cache = new FakeCoverCache();
+        var pool = new CoverLeasePool(cache);
+        var ramp = new DormancyRamp { DimsDormantCovers = false };
+        var wall = new Surface(Half, pool, ramp);
+
+        wall.Presenter.Request(148);
+        var vividOnly = Art();
+        cache.Complete(Half, 160, vividOnly, CoverLayers.Vivid);
+        wall.Settle();
+
+        ramp.DimsDormantCovers = true;
+
+        Assert.Equal([CoverLayers.Vivid, CoverLayers.VividAndFloor], cache.Asked);
+        Assert.Same(vividOnly, wall.Presenter.Art);
+
+        var pair = Art();
+        cache.Complete(Half, 160, pair, CoverLayers.VividAndFloor);
+        wall.Settle();
+
+        Assert.Same(pair, wall.Presenter.Art);
+        Assert.Equal(160, wall.Presenter.PresentedWidth);
+    }
+
+    /// <summary>
+    /// The other direction costs nothing: art that carries a floor still
+    /// answers a vivid-only surface, so turning dimming off never re-decodes.
+    /// </summary>
+    [Fact]
+    public void Turning_dimming_off_does_not_ask_again()
+    {
+        var cache = new FakeCoverCache();
+        var pool = new CoverLeasePool(cache);
+        var ramp = new DormancyRamp { DimsDormantCovers = true };
+        var wall = new Surface(Half, pool, ramp);
+
+        wall.Presenter.Request(148);
+        cache.Complete(Half, 160, Art(), CoverLayers.VividAndFloor);
+        wall.Settle();
+
+        ramp.DimsDormantCovers = false;
+
+        Assert.Equal([CoverLayers.VividAndFloor], cache.Asked);
+    }
+
     /// <summary>One consumer: its presenter and the queue standing in for the dispatcher.</summary>
     private sealed class Surface
     {
         private readonly ConcurrentQueue<Action> _posted = new();
 
-        public Surface(CoverKey key, ICoverLeases leases)
+        public Surface(CoverKey key, ICoverLeases leases, DormancyRamp? ramp = null)
         {
             Presenter = new CoverPresenter(_posted.Enqueue);
-            Presenter.Target(key, leases);
+            Presenter.Target(key, leases, ramp);
         }
 
         public CoverPresenter Presenter { get; }
@@ -197,15 +295,18 @@ public sealed class CoverPresenterTests
     /// <summary>Hands out one <see cref="TaskCompletionSource{TResult}"/> per slot, completed by the test.</summary>
     private sealed class FakeCoverCache : ICoverCache
     {
-        private readonly Dictionary<(CoverKey Key, int Width), TaskCompletionSource<CoverArt?>> _pending = [];
+        private readonly Dictionary<Slot, TaskCompletionSource<CoverArt?>> _pending = [];
 
-        public Dictionary<(CoverKey Key, int Width), CoverArt> Memory { get; } = [];
+        public Dictionary<Slot, CoverArt> Memory { get; } = [];
 
         public int Requests { get; private set; }
 
-        public bool TryGet(CoverKey key, double displayWidthPixels, out CoverArt art)
+        /// <summary>The layers each load asked for, in order.</summary>
+        public List<CoverLayers> Asked { get; } = [];
+
+        public bool TryGet(CoverKey key, double displayWidthPixels, CoverLayers layers, out CoverArt art)
         {
-            if (Memory.TryGetValue((key, CoverImaging.SnapWidth(displayWidthPixels)), out var hit))
+            if (Memory.TryGetValue(new Slot(key, CoverImaging.SnapWidth(displayWidthPixels), layers), out var hit))
             {
                 art = hit;
                 return true;
@@ -215,10 +316,12 @@ public sealed class CoverPresenterTests
             return false;
         }
 
-        public Task<CoverArt?> GetAsync(CoverKey key, double displayWidthPixels, CancellationToken ct = default)
+        public Task<CoverArt?> GetAsync(
+            CoverKey key, double displayWidthPixels, CoverLayers layers, CancellationToken ct = default)
         {
             Requests++;
-            var slot = (key, CoverImaging.SnapWidth(displayWidthPixels));
+            Asked.Add(layers);
+            var slot = new Slot(key, CoverImaging.SnapWidth(displayWidthPixels), layers);
             if (!_pending.TryGetValue(slot, out var source))
             {
                 source = new TaskCompletionSource<CoverArt?>();
@@ -228,10 +331,15 @@ public sealed class CoverPresenterTests
             return source.Task;
         }
 
-        public void Complete(CoverKey key, int width, CoverArt? art)
+        public void Complete(
+            CoverKey key, int width, CoverArt? art, CoverLayers layers = CoverLayers.VividAndFloor)
         {
-            _pending[(key, width)].SetResult(art);
-            _pending.Remove((key, width));
+            var slot = new Slot(key, width, layers);
+            _pending[slot].SetResult(art);
+            _pending.Remove(slot);
         }
+
+        /// <summary>What the cache keys on: cover, width bucket and layers.</summary>
+        internal readonly record struct Slot(CoverKey Key, int Width, CoverLayers Layers);
     }
 }

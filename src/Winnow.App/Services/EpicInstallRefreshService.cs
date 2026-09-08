@@ -4,17 +4,32 @@ using Microsoft.Extensions.Logging;
 namespace Winnow.App.Services;
 
 /// <summary>Publishes stable launcher manifest changes through local sync and the normal library reload.</summary>
+/// <param name="baseline">
+/// Shared record of what the local scans have already read. Optional; without
+/// it the first stable read at launch scans the files the startup pipeline has
+/// just scanned, which is the duplicate this parameter exists to remove.
+/// </param>
+/// <param name="source">Which half of that record this watcher owns.</param>
 public class StableInstallRefreshService(
     Func<string?> readFingerprint,
     Func<CancellationToken, Task> sync,
     Func<CancellationToken, Task> refresh,
     ILogger logger,
     TimeProvider? timeProvider = null,
-    bool enabled = true) : BackgroundService
+    bool enabled = true,
+    LibraryScanBaseline? baseline = null,
+    LibraryScanSource source = LibraryScanSource.Steam) : BackgroundService
 {
     public static readonly TimeSpan Interval = TimeSpan.FromSeconds(2);
     private string? _pending;
     private string? _applied;
+
+    /// <summary>
+    /// Whether the launch-time question has been settled. Kept apart from
+    /// <see cref="_applied"/>, which a failed publish clears: a genuine change
+    /// that failed to resolve must be retried, never adopted.
+    /// </summary>
+    private bool _launchSettled;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -42,6 +57,24 @@ public class StableInstallRefreshService(
                 return;
             }
             if (current == _applied) return;
+
+            // A first stable read at launch is not a change. The startup
+            // pipeline scans these same files as the window opens, so wait for
+            // it and then adopt its answer; a manifest that moved in between
+            // does not match what that pass covered and publishes as usual.
+            if (!_launchSettled && baseline is not null)
+            {
+                if (baseline.PassExpected) return;
+                _launchSettled = true;
+                if (baseline.Covered(source, current))
+                {
+                    _applied = current;
+                    return;
+                }
+            }
+
+            _launchSettled = true;
+
             // The scan may write before a later read or reload fails. Even a return
             // to the previous fingerprint must then reconcile those writes.
             _applied = null;
@@ -71,8 +104,10 @@ public sealed class EpicInstallRefreshService(
     Func<CancellationToken, Task> refresh,
     ILogger<EpicInstallRefreshService> logger,
     TimeProvider? timeProvider = null,
-    bool enabled = true)
-    : StableInstallRefreshService(readFingerprint, sync, refresh, logger, timeProvider, enabled);
+    bool enabled = true,
+    LibraryScanBaseline? baseline = null)
+    : StableInstallRefreshService(
+        readFingerprint, sync, refresh, logger, timeProvider, enabled, baseline, LibraryScanSource.Epic);
 
 public sealed class SteamInstallRefreshService(
     Func<string?> readFingerprint,
@@ -80,5 +115,7 @@ public sealed class SteamInstallRefreshService(
     Func<CancellationToken, Task> refresh,
     ILogger<SteamInstallRefreshService> logger,
     TimeProvider? timeProvider = null,
-    bool enabled = true)
-    : StableInstallRefreshService(readFingerprint, sync, refresh, logger, timeProvider, enabled);
+    bool enabled = true,
+    LibraryScanBaseline? baseline = null)
+    : StableInstallRefreshService(
+        readFingerprint, sync, refresh, logger, timeProvider, enabled, baseline, LibraryScanSource.Steam);

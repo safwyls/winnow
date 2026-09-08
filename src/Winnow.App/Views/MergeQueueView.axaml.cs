@@ -19,9 +19,13 @@ public partial class MergeQueueView : UserControl
 {
     private MergeQueueViewModel? _queue;
 
+    /// <summary>Whether the covers have been asked for since the pane was last shown.</summary>
+    private bool _covered;
+
     public MergeQueueView()
     {
         InitializeComponent();
+        LayoutUpdated += OnLayoutUpdated;
 
         // The previewer gets the screen in its empty-queue state; runtime
         // leaves the DataContext to the shell. See Design/PreviewData.cs.
@@ -46,6 +50,7 @@ public partial class MergeQueueView : UserControl
             _queue.FocusRequested += OnFocusRequested;
         }
 
+        _covered = false;
         RequestCovers();
     }
 
@@ -53,6 +58,28 @@ public partial class MergeQueueView : UserControl
     {
         base.OnAttachedToVisualTree(e);
         _queue = DataContext as MergeQueueViewModel;
+        RequestCovers();
+    }
+
+    // The pane is realized behind its parent's IsVisible at startup, so
+    // becoming visible is the moment its covers are worth decoding — and the
+    // pane's own IsVisible never changes, so a layout pass is what notices.
+    // Avalonia 11 exposes IsEffectivelyVisible as a plain property, not an
+    // observable one, which is why this is polled here rather than subscribed to.
+    private void OnLayoutUpdated(object? sender, EventArgs e)
+    {
+        if (!IsEffectivelyVisible)
+        {
+            _covered = false;
+            return;
+        }
+
+        if (_covered)
+        {
+            return;
+        }
+
+        _covered = true;
         RequestCovers();
     }
 
@@ -147,7 +174,10 @@ public partial class MergeQueueView : UserControl
 
     private void RequestCovers()
     {
-        if (_queue is null)
+        // Nothing to decode for a pane the user cannot see. The queue is not
+        // virtualized, so every row would otherwise decode its thumbnail while
+        // the screen was behind the library.
+        if (_queue is null || !IsEffectivelyVisible)
         {
             return;
         }

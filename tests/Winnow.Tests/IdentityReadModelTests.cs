@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Globalization;
 using Winnow.App.ViewModels;
 using Winnow.Core.Domain;
@@ -574,7 +574,6 @@ public sealed class IdentityReadModelTests
         public LibraryViewModel CreateViewModel()
             => new(
                 Queries, Ownerships, Releases, Works, Updates,
-                covers: null,
                 identityLinks: Links,
                 achievements: Achievements);
 

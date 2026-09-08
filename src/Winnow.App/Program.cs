@@ -227,10 +227,29 @@ public static class Program
                 startup = Task.Run(async () =>
                 {
                     var services = host.Services;
+                    // Returns the burst's pooled page caches and GC regions while
+                    // the pipeline runs, and once more when it ends.
+                    using var trim = Services.StartupMemoryTrim.Start(services, Shutdown.Token);
                     try
                     {
-                        var local = await services.GetRequiredService<ILocalLibrarySync>()
-                            .SyncAsync(Shutdown.Token);
+                        // Declared around the local pass only, and released in a
+                        // finally: the two manifest watchers hold their first
+                        // stable read while this runs rather than scanning the
+                        // same files two seconds later, so a pass that throws
+                        // must not leave them waiting for ever (TASK-152.5).
+                        var scans = services.GetRequiredService<LibraryScanBaseline>();
+                        var firstScan = scans.Expect();
+                        LibrarySyncReport local;
+                        try
+                        {
+                            local = await services.GetRequiredService<ILocalLibrarySync>()
+                                .SyncAsync(Shutdown.Token);
+                        }
+                        finally
+                        {
+                            firstScan.Dispose();
+                        }
+
                         if (local.Candidates > 0)
                         {
                             await RefreshLibraryAsync(services);
@@ -338,12 +357,15 @@ public static class Program
                             await RefreshLibraryAsync(services);
                         }
 
-                        // MainWindow loads the queue on open, before the sweep
-                        // has run, so the rail's REVIEW count and the empty
-                        // state are both stale until this reload.
+                        // The soft-match sweep above may have queued candidates,
+                        // and has certainly changed the empty sections' copy,
+                        // which says whether the matcher has run. A COUNT
+                        // settles both; the screen itself is rebuilt only if
+                        // its pane is showing, and otherwise the next time it
+                        // is shown (TASK-152.5).
                         await Dispatcher.UIThread.InvokeAsync(() =>
                             services.GetRequiredService<MergeQueueViewModel>()
-                                .LoadCommand.ExecuteAsync(null));
+                                .NoteQueueMayHaveMovedAsync(Shutdown.Token));
 
                         // Optional storefront links follow the existing metadata passes;
                         // a slow storefront must not hold up titles, covers, or facets.
@@ -619,6 +641,18 @@ public static class Program
         // backfill, and on a library where that has never run no Epic game can
         // offer any action at all.
         services.AddSingleton<IEpicLaunchKeyStore, SqliteEpicLaunchKeyStore>();
+
+        // TASK-152.5. Four triggers can start a local scan within a second of
+        // launch, and every one of them used to, over byte-identical files.
+        // They coalesce onto the first pass through this, which records the
+        // launcher fingerprints each pass covered. Built from the same readers
+        // the two manifest watchers below poll, so "already covered" and
+        // "changed" are the same question asked of the same bytes.
+        services.AddSingleton<EpicManifestStateReader>();
+        services.AddSingleton(sp => new LibraryScanBaseline(
+            sp.GetRequiredService<SteamLibrarySource>().ReadInstallFingerprint,
+            sp.GetRequiredService<EpicManifestStateReader>().ReadFingerprint));
+
         services.AddSingleton<LocalLibrarySyncService>();
         services.AddSingleton<RemoteOwnershipSyncService>();
 
@@ -642,14 +676,16 @@ public static class Program
             _ => RefreshLibraryAsync(sp),
             sp.GetRequiredService<ILogger<SteamInstallRefreshService>>(),
             sp.GetRequiredService<TimeProvider>(),
-            enabled: sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<SnapshotSchedulerOptions>>().Value.Enabled));
+            enabled: sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<SnapshotSchedulerOptions>>().Value.Enabled,
+            baseline: sp.GetRequiredService<LibraryScanBaseline>()));
         services.AddHostedService(sp => new EpicInstallRefreshService(
-            new EpicManifestStateReader().ReadFingerprint,
+            sp.GetRequiredService<EpicManifestStateReader>().ReadFingerprint,
             ct => sp.GetRequiredService<LocalLibrarySyncService>().SyncEpicAsync(ct),
             _ => RefreshLibraryAsync(sp),
             sp.GetRequiredService<ILogger<EpicInstallRefreshService>>(),
             sp.GetRequiredService<TimeProvider>(),
-            enabled: sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<SnapshotSchedulerOptions>>().Value.Enabled));
+            enabled: sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<SnapshotSchedulerOptions>>().Value.Enabled,
+            baseline: sp.GetRequiredService<LibraryScanBaseline>()));
 
         // M3 (§5.2 mechanism A): the process watcher — the first writer the
         // `sessions` table has ever had. Polls for game starts, takes an OS

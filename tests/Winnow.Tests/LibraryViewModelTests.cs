@@ -1254,7 +1254,6 @@ public sealed class LibraryViewModelTests
         public LibraryViewModel CreateViewModel(DormancyRamp? ramp = null, bool withSnapshots = true)
             => new(
                 Queries, Ownerships, Releases, Works, Updates,
-                covers: null,
                 ramp: ramp,
                 snapshots: withSnapshots ? Snapshots : null);
 

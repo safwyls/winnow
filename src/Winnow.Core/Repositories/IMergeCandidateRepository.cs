@@ -18,6 +18,15 @@ public interface IMergeCandidateRepository
     Task<IReadOnlyList<MergeCandidate>> GetPendingAsync(CancellationToken ct = default);
 
     /// <summary>
+    /// How many rows <see cref="GetPendingAsync"/> would return, without
+    /// returning them. Building the merge screen costs a full library snapshot
+    /// and an expansion scan on top of the rows themselves; a caller that only
+    /// needs to know whether the queue has moved — the startup pipeline, after
+    /// the soft-match sweep, with the pane hidden — asks this instead.
+    /// </summary>
+    Task<int> CountPendingAsync(CancellationToken ct = default);
+
+    /// <summary>
     /// Every row, whatever its status, in id order. The resolver preloads this
     /// into a canonical-pair dictionary so a sweep costs ONE query rather than a
     /// <see cref="FindByPairAsync"/> per compared pair — at the configured

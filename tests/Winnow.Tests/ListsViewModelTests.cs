@@ -824,7 +824,7 @@ public sealed class ListsViewModelTests
         {
             var library = new LibraryViewModel(
                 Queries, Ownerships, Releases, Works, Updates,
-                covers: null, ramp: null, snapshots: null,
+                ramp: null, snapshots: null,
                 facets: Facets, lists: GameLists);
             await library.LoadCommand.ExecuteAsync(null);
             return library;

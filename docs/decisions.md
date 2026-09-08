@@ -2426,3 +2426,51 @@ Superseded README.md text:
 > Requires the [.NET 10 SDK](https://dotnet.microsoft.com/download).
 
 > Windows only in practice — Epic and GOG discovery uses the registry, credentials use DPAPI, and session detection is Windows-shaped. It builds elsewhere; it will find less.
+
+### TASK-152.1: the empty-library sync run measures an imported library (2026-09-07)
+
+The startup pipeline imports what the launchers hold, so a pristine data directory holds 707 works within a second of launch. The ~95 MB between "empty library with sync" and "empty library with `--no-sync`" is that library plus the pipeline's working set, not memory the pipeline leaves behind: the same directory relaunched with `--no-sync` costs more than the sync run that built it. Pooled SQLite page caches were measured and are not the native-heap growth either — the pipeline never holds more than 10 connections at once. `docs/spikes/memory-footprint.md` §6 records both measurements.
+
+Superseded docs/spikes/memory-footprint.md text:
+
+> | **Startup pipeline residue** (memory that stays after the pipeline finishes) | **~95–100** | empty sync minus empty `--no-sync`; only 15–25 on the real library because the library itself already paid for some of it |
+
+> **Native heap growth without any covers.** The empty library with sync carries about 51 MB of NT heap segments against 16 MB for the same library without sync and 3 MB for the bare window. There are no bitmaps in that run. Candidates, in order of likelihood: pooled `Microsoft.Data.Sqlite` connections (every repository call leases a pooled connection, `PRAGMA cache_size` is never set, and the startup burst opens several at once), the copied GOG Galaxy database, and TLS/HTTP buffers. This was not attributed further and is the first thing TASK-152.1 should pin down.
+
+> | 1 | Return what the startup pipeline leaves behind: GC committed slack, native heap growth (pooled SQLite page caches first), and the JIT'd pipeline code | empty sync vs empty `--no-sync`: 235 vs 142 MB | 50–90 MB | TASK-152.1 |
+
+> | 6 | Small, safe: `PRAGMA cache_size`, `SqliteConnection.ClearPool` after the burst; drop `summary` / `background_url` from the snapshot works read; skip the redundant floor-file existence read in `CoverPipeline.TryDecodeFromDisk` | code reading | 5–15 MB | folded into 152.1 / 152.2 |
+
+### TASK-152.5: startup reads once, and Tier 1 process polling (2026-09-07)
+
+Four triggers could start a local scan within a second of a launch, and every one of them did, over byte-identical files. `LibraryScanBaseline` records the launcher install fingerprints each completed scan-and-resolve pass covered, read before the pass rather than after, and the remote backfill and the two manifest watchers adopt that answer instead of scanning again. A fingerprint that moved in between does not match and still publishes, which is the guarantee that keeps the watchers worth having.
+
+The merge screen is built when its pane is shown, not with the window: its rail row carries no count, so nothing outside the pane read a screen that cost a full library snapshot plus an expansion scan over every work. The startup pipeline asks `IMergeCandidateRepository.CountPendingAsync` instead. The window no longer scores the feed either — every completed `LibraryViewModel` load already raises `TilesChanged`, and asking again both scored the library twice over and cancelled the pass the first ask had started, because `AsyncRelayCommand` cancels the previous execution's token when it is re-entered.
+
+Tier 1 process discovery now reads pids and image names out of one `NtQuerySystemInformation` snapshot on Windows. `Process.GetProcesses()` reads that same snapshot but materialises a `Process`, a `ProcessInfo` and a `ThreadInfo` per thread of every process — 1.3 MB of garbage every five seconds on a 702-process machine, against 84 KB for the walk.
+
+Superseded game-library-design.md text:
+
+> *Tier 1 — discovery, polled at 5s.* Enumerate via `Process.GetProcesses()`.
+
+Superseded src/Winnow.App/Views/MainWindow.axaml.cs comments:
+
+> The rail's REVIEW count has to be right before the user looks at it, so the queue loads with the window rather than on first visit.
+
+> M8, and LAST on purpose. The scoring pass is ~60 ms over a thousand games (Winnow.App.Services.IFeedService carries the measurement), and it needs the library's tiles to exist before it can build a card.
+
+Superseded src/Winnow.App/Program.cs comment:
+
+> MainWindow loads the queue on open, before the sweep has run, so the rail's REVIEW count and the empty state are both stale until this reload.
+
+### TASK-152.2: the dormancy floor layer is decoded only where it is drawn (2026-09-07)
+
+A cover request now states which layers it needs. The surfaces that stack two images — wall tile, list row, feed card, merge row — ask for the pair, and only while the ramp is dimming anything; the detail modal, the screenshot strip, the lightbox, the IGDB candidate rows and the metadata previews ask for the vivid layer alone. The decoded-memory cache is keyed by layers as well as by cover and width bucket, it owns disposal (eviction frees the pixels unless a lease says a surface is still drawing them), its budget is 32 MiB sized from a measured screenful rather than 128 MiB, and decode concurrency is bounded. `docs/spikes/memory-footprint.md` §6 has the before-and-after figures.
+
+Superseded docs/spikes/avalonia-dormancy-rendering.md text:
+
+> - Cost: one extra decoded bitmap per *visible* tile (~130 KB at 148×222 @1x → roughly 13–30 MB for 100 visible tiles incl. 2x DPI) and one cheap CPU pass per cover at decode. No render-thread code, no custom-op lifetime bugs, plays cleanly with virtualization recycling.
+
+### TASK-152: the remaining memory gap to Playnite is accepted (2026-09-07)
+
+After TASK-152.1 through 152.5, the 1,039-game library sits at 206 MB private bytes 90 s after launch with the startup pipeline running (289 MB before), and about 330-370 MB after a full scroll of the grid (507 MB before). The umbrella task asked for 200 MB or an accepted explanation; the last 6 MB, and the distance to Playnite's 175 MB, are accepted. docs/spikes/memory-footprint.md section 2 measured the floor: a bare Avalonia 11 window with Skia, ANGLE/D3D11 and WinUI composition costs 120-137 MB private on this machine before any Winnow code runs, and Playnite, as a WPF application, rides the rendering stack Windows already has loaded. That floor is the price of the cross-platform UI and is not something Winnow's own code can reduce; the work stops here rather than trading the Avalonia backend for parity on one platform.

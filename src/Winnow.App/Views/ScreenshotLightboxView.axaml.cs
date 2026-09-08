@@ -13,7 +13,9 @@ namespace Winnow.App.Views;
 /// originating thumbnail. Both hang off <c>IsVisible</c> rather than off the
 /// close button, because there are four ways out — the close control, a press
 /// on the scrim, Escape, and the modal closing underneath — and only one of
-/// them passes through a control in this view.
+/// them passes through a control in this view. The first appearance of a
+/// session is the one exception, and it is the attach below: the overlay is
+/// built the first time it is opened, so it arrives already visible.
 /// </summary>
 public partial class ScreenshotLightboxView : UserControl
 {
@@ -26,6 +28,23 @@ public partial class ScreenshotLightboxView : UserControl
     /// focus to the originating thumbnail on this event.</summary>
     public event EventHandler? Closed;
 
+    /// <summary>
+    /// The first appearance of a session, which <see cref="OnPropertyChanged"/>
+    /// cannot see: the overlay is built the first time it is opened
+    /// (<see cref="LazyPane"/>), so it arrives already visible and its
+    /// <c>IsVisible</c> never turns on. Every later open is a real change and is
+    /// taken below.
+    /// </summary>
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+
+        if (IsVisible)
+        {
+            TakeFocus();
+        }
+    }
+
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
@@ -37,18 +56,22 @@ public partial class ScreenshotLightboxView : UserControl
 
         if (change.GetNewValue<bool>())
         {
-            // Keep focus inside the overlay without an initial keyboard ring.
-            // Tabbing still reveals the ring through :focus-visible. Wait until
-            // the controls have been laid out before moving focus.
-            Dispatcher.UIThread.Post(
-                () => CloseButton.Focus(NavigationMethod.Pointer),
-                DispatcherPriority.Input);
-
+            TakeFocus();
             return;
         }
 
         Closed?.Invoke(this, EventArgs.Empty);
     }
+
+    /// <summary>
+    /// Keeps focus inside the overlay without an initial keyboard ring. Tabbing
+    /// still reveals the ring through <c>:focus-visible</c>. Posted, so the
+    /// controls have been laid out before focus moves.
+    /// </summary>
+    private void TakeFocus()
+        => Dispatcher.UIThread.Post(
+            () => CloseButton.Focus(NavigationMethod.Pointer),
+            DispatcherPriority.Input);
 
     /// <summary>
     /// Only a press that lands on the scrim itself closes. Without the source

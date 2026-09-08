@@ -83,6 +83,14 @@ public readonly record struct LocalLibraryScan(
     /// </summary>
     public IReadOnlyList<EpicLaunchTriple> EpicLaunchTriples { get; init; } = [];
 
+    /// <summary>
+    /// The launcher install state this scan read, so a later pass handed the
+    /// same scan can tell whether the files have moved since. Null when no
+    /// <see cref="LibraryScanBaseline"/> is wired up, which reports every state
+    /// as moved and re-reads exactly as the pass did before.
+    /// </summary>
+    public LibraryScanState? Covered { get; init; }
+
     public int Count => Steam.Count + Epic.Count + Gog.Count;
 
     public IEnumerable<CandidateOwnership> All => Steam.Concat(Epic).Concat(Gog);
@@ -104,6 +112,7 @@ public sealed class LocalLibrarySyncService : ILocalLibrarySync
     private readonly ILogger<LocalLibrarySyncService> _logger;
     private readonly IEpicLaunchKeyStore? _epicLaunchKeys;
     private readonly Winnow.Core.Repositories.ISteamInstallStateRepository? _steamInstallState;
+    private readonly LibraryScanBaseline? _baseline;
 
     public LocalLibrarySyncService(
         SteamLibrarySource steam,
@@ -113,7 +122,8 @@ public sealed class LocalLibrarySyncService : ILocalLibrarySync
         LibrarySyncGate gate,
         ILogger<LocalLibrarySyncService> logger,
         IEpicLaunchKeyStore? epicLaunchKeys = null,
-        Winnow.Core.Repositories.ISteamInstallStateRepository? steamInstallState = null)
+        Winnow.Core.Repositories.ISteamInstallStateRepository? steamInstallState = null,
+        LibraryScanBaseline? baseline = null)
     {
         _steam = steam;
         _epic = epic;
@@ -123,6 +133,7 @@ public sealed class LocalLibrarySyncService : ILocalLibrarySync
         _logger = logger;
         _epicLaunchKeys = epicLaunchKeys;
         _steamInstallState = steamInstallState;
+        _baseline = baseline;
     }
 
     /// <summary>
@@ -170,14 +181,55 @@ public sealed class LocalLibrarySyncService : ILocalLibrarySync
         return scan with { Epic = epic.Candidates, EpicLaunchTriples = epic.LaunchTriples };
     }
 
+    /// <summary>
+    /// Brings a scan's Steam and Epic halves up to date, per store and only
+    /// where the install fingerprint says the files have moved. The backfill
+    /// waits on HTTP holding a scan the local pass already paid for, and used to
+    /// re-read every appmanifest on the way back in case an install completed
+    /// while it waited; when nothing moved that read produced a byte-identical
+    /// answer. The fingerprints are read before the scan, so a rewrite during
+    /// the pass reads as moved rather than as covered.
+    /// </summary>
     internal async Task<LocalLibraryScan> RefreshInstallStateAsync(LocalLibraryScan scan, CancellationToken ct)
     {
-        var steam = _steam.Scan(out var complete);
-        if (complete && _steamInstallState is not null)
-            await _steamInstallState.ClearMissingAsync(
-                steam.Where(candidate => candidate.Installed != false).Select(candidate => candidate.ProviderId).ToArray(), ct)
-                .ConfigureAwait(false);
-        return RefreshEpic(scan with { Steam = steam });
+        var now = _baseline?.Read() ?? default;
+        var covered = scan.Covered;
+
+        if (Moved(covered?.Steam, now.Steam))
+        {
+            var steam = _steam.Scan(out var complete);
+            if (complete && _steamInstallState is not null)
+                await _steamInstallState.ClearMissingAsync(
+                    steam.Where(candidate => candidate.Installed != false).Select(candidate => candidate.ProviderId).ToArray(), ct)
+                    .ConfigureAwait(false);
+            scan = scan with { Steam = steam };
+        }
+
+        if (Moved(covered?.Epic, now.Epic))
+        {
+            scan = RefreshEpic(scan);
+        }
+
+        return scan with { Covered = now };
+
+        // A reader answering null cannot say the state is unchanged: null means
+        // "no complete inventory to compare", so it always re-reads.
+        static bool Moved(string? covered, string? current)
+            => current is null || !string.Equals(covered, current, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Publishes what a completed pass covered, so the manifest watchers can
+    /// adopt it instead of scanning the same files again. Called by the remote
+    /// backfill too: it resolves its own union, but the scan underneath it is
+    /// this one's.
+    /// </summary>
+    internal void PublishScanBaseline(LocalLibraryScan scan)
+    {
+        if (scan.Covered is { } covered)
+        {
+            _baseline?.Publish(covered);
+        }
     }
 
     private async Task<LibrarySyncReport> ResolveScanAsync(
@@ -189,6 +241,9 @@ public sealed class LocalLibrarySyncService : ILocalLibrarySync
 
         if (scan.Count == 0)
         {
+            // Published even here: a machine with no launcher installed is a
+            // state the watchers must not keep re-reading either.
+            PublishScanBaseline(scan);
             _logger.LogInformation("Local library sync found no candidates; nothing to resolve.");
             return new LibrarySyncReport(0, null, stopwatch.Elapsed, scan);
         }
@@ -199,6 +254,7 @@ public sealed class LocalLibrarySyncService : ILocalLibrarySync
         // the remote job stored. Recording that as an observation would put a
         // permanent sawtooth in playtime_snapshots at 15-minute intervals.
         var result = await _resolver.ResolveAsync([.. scan.All], ct, PlaytimeView.LowerBound);
+        PublishScanBaseline(scan);
         stopwatch.Stop();
 
         _logger.LogInformation(
@@ -357,6 +413,7 @@ public sealed class RemoteOwnershipSyncService : IRemoteOwnershipSync
 
         if (candidates.Count == 0)
         {
+            _local.PublishScanBaseline(scan);
             _logger.LogInformation("Remote ownership sync found no candidates; nothing to resolve.");
             return new LibrarySyncReport(0, null, stopwatch.Elapsed, scan);
         }
@@ -367,6 +424,7 @@ public sealed class RemoteOwnershipSyncService : IRemoteOwnershipSync
         // no-op on the normal path and keeps the series monotonic on the
         // abnormal one.
         var result = await _resolver.ResolveAsync(candidates, ct, PlaytimeView.LowerBound);
+        _local.PublishScanBaseline(scan);
         stopwatch.Stop();
 
         _logger.LogInformation(

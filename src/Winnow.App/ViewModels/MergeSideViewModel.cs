@@ -21,9 +21,16 @@ namespace Winnow.App.ViewModels;
 /// fading one side by how long ago it was played would be a second visual
 /// language answering a question nobody asked.</para>
 /// </summary>
-public partial class MergeSideViewModel : ObservableObject, IMergeMemberFacts
+public partial class MergeSideViewModel : ObservableObject, IMergeMemberFacts, IDisposable
 {
-    private readonly ICoverCache? _covers;
+    private readonly ICoverLeases? _leases;
+
+    /// <summary>
+    /// The row's thumbnail, leased. Both layers: a merge row fades on the same
+    /// rule its tile does (<see cref="MergeRowViewModel.DormancyAlpha"/>), so
+    /// the floor variant is drawn here.
+    /// </summary>
+    private LeasedCover? _art;
 
     public MergeSideViewModel(
         long releaseId,
@@ -31,7 +38,7 @@ public partial class MergeSideViewModel : ObservableObject, IMergeMemberFacts
         int? year = null,
         string? publisher = null,
         CoverKey? coverKey = null,
-        ICoverCache? covers = null,
+        ICoverLeases? covers = null,
         IReadOnlyList<string>? stores = null)
     {
         ReleaseId = releaseId;
@@ -39,7 +46,7 @@ public partial class MergeSideViewModel : ObservableObject, IMergeMemberFacts
         Year = year;
         Publisher = string.IsNullOrWhiteSpace(publisher) ? null : publisher;
         CoverKey = coverKey;
-        _covers = covers;
+        _leases = covers;
 
         var ordered = stores is null
             ? []
@@ -113,33 +120,22 @@ public partial class MergeSideViewModel : ObservableObject, IMergeMemberFacts
     /// <summary>Asks the cache for the art at the width it will be drawn at, off-thread.</summary>
     public void RequestCover(double displayWidthPixels)
     {
-        if (_covers is null || CoverKey is not { } key || Cover is not null)
+        _art ??= new LeasedCover(_leases, CoverKey, CoverLayers.VividAndFloor, art =>
         {
-            return;
-        }
+            CoverFloor = art?.Floor;
+            Cover = art?.Vivid;
+        });
 
-        if (_covers.TryGet(key, displayWidthPixels, out var cached))
-        {
-            CoverFloor = cached.Floor;
-            Cover = cached.Vivid;
-            return;
-        }
-
-        _ = LoadCoverAsync(key, displayWidthPixels);
+        _art.Request(displayWidthPixels);
     }
 
-    private async Task LoadCoverAsync(CoverKey key, double displayWidthPixels)
+    /// <summary>
+    /// Releases the thumbnail's lease. The queue does this when a reload
+    /// replaces the cards, so answered rows stop pinning decoded art.
+    /// </summary>
+    public void Dispose()
     {
-        var art = await _covers!.GetAsync(key, displayWidthPixels).ConfigureAwait(false);
-        if (art is null)
-        {
-            return;
-        }
-
-        Dispatcher.UIThread.Post(() =>
-        {
-            CoverFloor = art.Floor;
-            Cover = art.Vivid;
-        });
+        _art?.Dispose();
+        _art = null;
     }
 }

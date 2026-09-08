@@ -52,13 +52,23 @@
 - **Hover restore** = animate vivid layer's Opacity to 1.0 with a 140ms `DoubleTransition`
   (GPU-composited, identical on Windows/Linux/macOS). Reduced motion: clear `Transitions`.
   "Disable ramp" setting: force α = 1.
-- Cost: one extra decoded bitmap per *visible* tile (~130 KB at 148×222 @1x → roughly 13–30 MB for
-  100 visible tiles incl. 2x DPI) and one cheap CPU pass per cover at decode. No render-thread code,
-  no custom-op lifetime bugs, plays cleanly with virtualization recycling.
+- Cost: one extra decoded bitmap per *visible* tile, and one cheap CPU pass per cover at decode.
+  No render-thread code, no custom-op lifetime bugs, plays cleanly with virtualization recycling.
+  **The cost was measured in 2026-09 and it is higher than estimated here**: a tile decodes at
+  the width bucket ≥ its display width, so a 148-DIP tile at 100 % DPI is 160×240×4 = 150 KB a
+  layer, 300 KB a pair, and at 200 % DPI 1.23 MB a pair. `docs/spikes/memory-footprint.md` §2.5
+  and §6 carry the figures and what was done about them.
 
 **Fallback/escalation trigger:** move to approach (2) (`ICustomDrawOperation` per tile) only if
 profiling shows the doubled bitmap memory is unacceptable at max density, or design later demands a
 matrix path the two-endpoint lerp can't express (e.g. hue cool-shift independent of saturation).
+
+> **The memory half of that trigger fired in 2026-09, and approach (2) was still not the
+> answer.** Profiling (`docs/spikes/memory-footprint.md`) found 613 decoded pairs alive after a
+> scroll of a 965-game library, so TASK-152.2 made the second layer *optional* rather than
+> replacing the two-layer draw: a request states which layers it needs, only the surfaces that
+> stack two images ask for both, and none of them do while the ramp is switched off. The draw is
+> unchanged, so nothing here about the cross-fade, the alpha or the hover restore has moved.
 
 ### Code sketch
 

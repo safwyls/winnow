@@ -14,8 +14,10 @@ namespace Winnow.App.ViewModels;
 /// — an IGDB cover is 3:4 and a screenshot is 16:9, so the provider is what picks
 /// the size token, and there is no second image path.
 /// </summary>
-public sealed partial class GameScreenshotViewModel : ObservableObject
+public sealed partial class GameScreenshotViewModel : ObservableObject, IDisposable
 {
+    private LeasedCover? _thumbnail;
+
     public GameScreenshotViewModel(string imageId, int position, int total)
     {
         Key = CoverKey.IgdbScreenshot(imageId);
@@ -39,6 +41,25 @@ public sealed partial class GameScreenshotViewModel : ObservableObject
     /// <summary>True when this shot is the one the user picked for the hero view.</summary>
     [ObservableProperty]
     public partial bool IsSelected { get; set; }
+
+    /// <summary>
+    /// Asks for the thumbnail at the width the strip draws it. Vivid only: a
+    /// screenshot is never dimmed, so the floor variant would be a second
+    /// decode — and, on a first fetch, a second file on disk — that nothing
+    /// draws.
+    /// </summary>
+    internal void RequestThumbnail(ICoverLeases? leases, double displayWidthPixels)
+    {
+        _thumbnail ??= new LeasedCover(leases, Key, CoverLayers.Vivid, art => Image = art?.Vivid);
+        _thumbnail.Request(displayWidthPixels);
+    }
+
+    /// <summary>Releases the thumbnail's lease. The strip does this when the modal closes.</summary>
+    public void Dispose()
+    {
+        _thumbnail?.Dispose();
+        _thumbnail = null;
+    }
 }
 
 /// <summary>
@@ -50,7 +71,7 @@ public sealed partial class GameScreenshotViewModel : ObservableObject
 /// which is what makes "nothing rather than an empty frame" a property of the
 /// data.</para>
 /// </summary>
-public sealed partial class GameScreenshotsViewModel : ObservableObject
+public sealed partial class GameScreenshotsViewModel : ObservableObject, IDisposable
 {
     /// <summary>Thumbnail width in device-independent pixels.</summary>
     public const double ThumbnailWidth = 120;
@@ -58,7 +79,7 @@ public sealed partial class GameScreenshotsViewModel : ObservableObject
     /// <summary>Thumbnail height, 16:9 at <see cref="ThumbnailWidth"/>.</summary>
     public const double ThumbnailHeight = 68;
 
-    private readonly ICoverCache? _covers;
+    private readonly ICoverLeases? _covers;
 
     private readonly ScreenshotLightboxViewModel? _lightbox;
 
@@ -68,7 +89,7 @@ public sealed partial class GameScreenshotsViewModel : ObservableObject
 
     private GameScreenshotsViewModel(
         IReadOnlyList<GameScreenshotViewModel> shots,
-        ICoverCache? covers,
+        ICoverLeases? covers,
         ScreenshotLightboxViewModel? lightbox)
     {
         Shots = shots;
@@ -104,7 +125,7 @@ public sealed partial class GameScreenshotsViewModel : ObservableObject
     /// </summary>
     public static GameScreenshotsViewModel? From(
         IReadOnlyList<WorkImages>? images,
-        ICoverCache? covers,
+        ICoverLeases? covers,
         ScreenshotLightboxViewModel? lightbox = null)
     {
         var ids = images
@@ -142,13 +163,20 @@ public sealed partial class GameScreenshotsViewModel : ObservableObject
 
         foreach (var shot in Shots)
         {
-            if (_covers.TryGet(shot.Key, ThumbnailWidth * _scaling, out var cached))
-            {
-                shot.Image = cached.Vivid;
-                continue;
-            }
+            shot.RequestThumbnail(_covers, ThumbnailWidth * _scaling);
+        }
+    }
 
-            _ = LoadAsync(shot, ThumbnailWidth * _scaling, art => shot.Image = art);
+    /// <summary>
+    /// Releases every thumbnail's lease. Called when the detail modal that owns
+    /// the strip is dropped; the lightbox keeps its own lease and closes with
+    /// the modal for the same reason.
+    /// </summary>
+    public void Dispose()
+    {
+        foreach (var shot in Shots)
+        {
+            shot.Dispose();
         }
     }
 
@@ -176,16 +204,5 @@ public sealed partial class GameScreenshotsViewModel : ObservableObject
         }
 
         _lightbox.Open(Shots, shot, _covers, _scaling);
-    }
-
-    private async Task LoadAsync(GameScreenshotViewModel shot, double width, Action<Bitmap> apply)
-    {
-        var art = await _covers!.GetAsync(shot.Key, width).ConfigureAwait(false);
-        if (art is null)
-        {
-            return;
-        }
-
-        Dispatcher.UIThread.Post(() => apply(art.Vivid));
     }
 }

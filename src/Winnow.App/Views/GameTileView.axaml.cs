@@ -123,7 +123,7 @@ public partial class GameTileView : UserControl
             _bound = DataContext as GameTileViewModel;
             _pointerInside = false;
             _keyboardActionFocus = false;
-            Cover.Target(_bound?.CoverKey, _bound?.Leases);
+            Cover.Target(_bound?.CoverKey, _bound?.Leases, _bound?.Ramp);
             ApplyInteractionState();
         }
 
@@ -140,7 +140,7 @@ public partial class GameTileView : UserControl
         ClearDetachedActionState(DetailsActionHost);
         _bound = DataContext as GameTileViewModel;
         _pointerInside = IsPointerOver;
-        Cover.Target(_bound?.CoverKey, _bound?.Leases);
+        Cover.Target(_bound?.CoverKey, _bound?.Leases, _bound?.Ramp);
         ApplyInteractionState();
         RequestCover();
     }

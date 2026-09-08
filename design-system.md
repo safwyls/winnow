@@ -275,7 +275,13 @@ cover and one floor variant generated at `0.22 / 0.68` with the −6° rotation 
 Escalate to per-state bitmap variants, or to a matrix path, only if profiling shows the doubled
 bitmap memory is unacceptable. **Do not attempt per-frame pixel manipulation on the UI thread.**
 
-A settings toggle disables the ramp entirely by forcing `α = 1` (§8).
+A settings toggle disables the ramp entirely by forcing `α = 1` (§8). **With the ramp off the
+floor variant is not decoded**, because a vivid layer at full opacity covers it exactly; the
+stored variant stays on disk and turning the ramp back on asks for it at the width already on
+screen, so the toggle costs a decode rather than a reload. Every surface that draws art at full
+saturation — the detail modal (§5.5), the screenshot strip and its lightbox (§10.1), the IGDB
+candidate rows (§10.9) and the metadata previews (§10.10) — asks for the vivid layer alone for
+the same reason.
 
 **Covers are virtualized and decoded off-thread at display resolution, not full size.** A
 1,200-tile grid of 600×900 source bitmaps decoded eagerly will exhaust memory.

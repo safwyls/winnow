@@ -38,12 +38,11 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
 
-        DetailsPanel.CloseRequested += (_, _) => _library?.CloseDetailsCommand.Execute(null);
-
-        // When the lightbox closes, focus goes back to the thumbnail it was
-        // opened from, regardless of which of the four exits was taken. The
-        // modal refuses the restore when the modal itself is on the way out.
-        LightboxPanel.Closed += (_, _) => DetailsPanel.RestoreLightboxFocus();
+        // The modal and the lightbox are built the first time they are shown
+        // (LazyPane), so their events are wired when they appear rather than
+        // here — a launch that never opens a game builds neither.
+        DetailsPanel.Materialized += OnDetailsMaterialized;
+        LightboxPanel.Materialized += OnLightboxMaterialized;
 
         // See the card gesture before a child handles it, while leaving the
         // hover actions to handle their own presses.
@@ -63,6 +62,30 @@ public partial class MainWindow : Window
         if (Avalonia.Controls.Design.IsDesignMode)
         {
             DataContext = Design.PreviewData.Shell;
+        }
+    }
+
+    /// <summary>The detail modal, once a game has been opened; null before that.</summary>
+    private GameDetailsView? DetailsView => DetailsPanel.Pane as GameDetailsView;
+
+    private void OnDetailsMaterialized(object? sender, EventArgs e)
+    {
+        if (DetailsView is { } details)
+        {
+            details.CloseRequested += (_, _) => _library?.CloseDetailsCommand.Execute(null);
+        }
+    }
+
+    /// <summary>
+    /// When the lightbox closes, focus goes back to the thumbnail it was opened
+    /// from, regardless of which of the four exits was taken. The modal refuses
+    /// the restore when the modal itself is on the way out.
+    /// </summary>
+    private void OnLightboxMaterialized(object? sender, EventArgs e)
+    {
+        if (LightboxPanel.Pane is ScreenshotLightboxView lightbox)
+        {
+            lightbox.Closed += (_, _) => DetailsView?.RestoreLightboxFocus();
         }
     }
 
@@ -293,12 +316,12 @@ public partial class MainWindow : Window
             await library.LoadCommand.ExecuteAsync(null);
         }
 
-        // The rail's REVIEW count has to be right before the user looks at it,
-        // so the queue loads with the window rather than on first visit.
-        if (_shell?.MergeQueue is { } queue)
-        {
-            await queue.LoadCommand.ExecuteAsync(null);
-        }
+        // The merge queue is NOT loaded here. Its rail row carries no count —
+        // MERGES is a screen row like FEED, and the pending count lives on the
+        // screen's own header — so nothing outside the pane reads it, and
+        // building it costs a full library snapshot with non-game entries plus
+        // an expansion scan over every work. MainWindowViewModel loads it when
+        // the pane is shown (TASK-152.5).
 
         // §8's dimming preference. After the library, deliberately: it is one
         // row out of a settings table and the wall is already built, so reading
@@ -350,17 +373,19 @@ public partial class MainWindow : Window
             }
         }
 
-        // M8, and LAST on purpose. The scoring pass is ~60 ms over a thousand
-        // games (Winnow.App.Services.IFeedService carries the measurement), and
-        // it needs the library's tiles to exist before it can build a card —
-        // the feed renders the library's own tiles rather than a second
-        // projection of them (IGameTileSource).
+        // M8. The feed is NOT scored from here. It needs the library's tiles to
+        // exist before it can build a card — the feed renders the library's own
+        // tiles rather than a second projection of them (IGameTileSource) — and
+        // it already gets exactly that: every completed LibraryViewModel load
+        // raises TilesChanged, and the feed re-scores on it. Asking again here
+        // scored the library twice over, and worse, AsyncRelayCommand cancels
+        // the previous execution's token when it is re-entered, so the second
+        // ask killed the pass the first one had started (TASK-152.5).
         //
-        // Nothing above it waits on it: the window is up, the wall is built and
-        // the rail is populated by the time this runs, and the feed says what it
-        // is doing until it answers. The service moves the work off this thread;
-        // awaiting here only sequences it after the reads it depends on.
-        if (_shell?.Feed is { } feed)
+        // A shell with no library view model is the one case with nothing to
+        // ride on, and it is also the case where the feed has nothing to score:
+        // it reports the library as unloaded and says so on screen.
+        if (_library is null && _shell?.Feed is { } feed)
         {
             await feed.LoadCommand.ExecuteAsync(null);
         }
@@ -481,7 +506,7 @@ public partial class MainWindow : Window
                 out var offset))
         {
             Avalonia.Threading.Dispatcher.UIThread.Post(
-                () => FilterPanel.ScrollTo(offset),
+                () => (FilterPanel.Pane as FilterPanelView)?.ScrollTo(offset),
                 Avalonia.Threading.DispatcherPriority.Background);
         }
 
@@ -501,7 +526,7 @@ public partial class MainWindow : Window
                 out var appearanceOffset))
         {
             Avalonia.Threading.Dispatcher.UIThread.Post(
-                () => AppearancePanel.ScrollTo(appearanceOffset),
+                () => (AppearancePanel.Pane as AppearanceView)?.ScrollTo(appearanceOffset),
                 Avalonia.Threading.DispatcherPriority.Background);
         }
 #endif
@@ -1082,7 +1107,9 @@ public partial class MainWindow : Window
                 // the user's focus happened to be (§8).
                 if (_library is { IsDetailsOpen: true })
                 {
-                    Dispatcher.UIThread.Post(() => DetailsPanel.Focus(), DispatcherPriority.Input);
+                    // Posted, so the modal's own IsVisible binding has run and
+                    // built the pane by the time there is something to focus.
+                    Dispatcher.UIThread.Post(() => DetailsView?.Focus(), DispatcherPriority.Input);
                 }
 
                 break;

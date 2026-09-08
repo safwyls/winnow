@@ -177,6 +177,8 @@ internal sealed class PreviewMergeCandidateRepository : IMergeCandidateRepositor
     public Task<IReadOnlyList<MergeCandidate>> GetPendingAsync(CancellationToken ct = default)
         => Task.FromResult<IReadOnlyList<MergeCandidate>>([]);
 
+    public Task<int> CountPendingAsync(CancellationToken ct = default) => Task.FromResult(0);
+
     public Task<IReadOnlyList<MergeCandidate>> GetAllAsync(CancellationToken ct = default)
         => Task.FromResult<IReadOnlyList<MergeCandidate>>([]);
 

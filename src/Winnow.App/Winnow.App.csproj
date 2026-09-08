@@ -33,6 +33,19 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- TASK-152.4: on the R2R-published win-x64 build, real library, with
+         the startup pipeline skipped (no sync), two runs, System.GC.
+         ConserveMemory=9 dropped private bytes from ~266-283 MB to
+         ~242-253 MB and GC committed from ~86-97 MB to ~61-65 MB, against
+         ~1-2 MB from level 5. See the Follow-up section of
+         docs/spikes/memory-footprint.md. Scoped to a win-x64 publish (the
+         RuntimeIdentifier packaging/Publish.ps1 sets): unmeasured for
+         linux-x64, and not applied to a plain `dotnet run`/`dotnet build`
+         where no RuntimeIdentifier is set. -->
+    <RuntimeHostConfigurationOption Include="System.GC.ConserveMemory" Value="9" Condition="'$(RuntimeIdentifier)' == 'win-x64'" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- The settings keys the backfill writes its completion markers under, and
          the parse that reads them back. They are internal because nothing
          outside this assembly may write them, and a test that reproduced the

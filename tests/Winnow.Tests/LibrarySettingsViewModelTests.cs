@@ -364,7 +364,6 @@ public sealed class LibrarySettingsViewModelTests : IDisposable
     private LibraryViewModel CreateLibrary()
         => new(
             _queries, _ownerships, _releases, _works, _updates,
-            covers: null,
             hidden: _hidden);
 
     private LibrarySettingsViewModel CreateSettings(LibraryViewModel library)

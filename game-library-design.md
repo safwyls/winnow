@@ -565,9 +565,14 @@ but not built.
 
 Two tiers. **Polling is for discovery only, never for exit detection.**
 
-*Tier 1 — discovery, polled at 5s.* Enumerate via `Process.GetProcesses()`. Map executables to
-releases using `installdir` from `appmanifest_*.acf` cross-referenced with
-`libraryfolders.vdf` paths, plus Epic and GOG install locations.
+*Tier 1 — discovery, polled at 5s.* Enumerate pids and image names, and nothing else. On Windows
+that is one `NtQuerySystemInformation(SystemProcessInformation)` snapshot walked into a reusable
+pinned buffer. `Process.GetProcesses()` reads the same snapshot but materialises a `Process`, a
+`ProcessInfo` and a `ThreadInfo` for every thread of every process on the machine, which was
+1.3 MB of garbage per poll on the author's 702-process machine. Elsewhere the enumeration stays
+`Process.GetProcesses()`: Linux needs one bounded `/proc/<pid>/environ` read per process for the
+Proton marker anyway. Map executables to releases using `installdir` from `appmanifest_*.acf`
+cross-referenced with `libraryfolders.vdf` paths, plus Epic and GOG install locations.
 
 **Filter on `Process.ProcessName` against the known-executables set before resolving any full
 path.** Resolving `MainModule.FileName` is substantially more expensive than the enumeration

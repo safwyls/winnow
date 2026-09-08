@@ -2,7 +2,12 @@
 
 `Release builds` packages self-contained .NET 10 applications for Windows x64 and Linux
 x64. It leaves trimming and single-file publishing disabled because Winnow uses reflection,
-embedded migrations, Avalonia resources, and native libraries.
+embedded migrations, Avalonia resources, and native libraries. The Windows x64 build is
+also ReadyToRun-compiled and ships with `System.GC.ConserveMemory=9`; both measured a real
+reduction in resident memory and (for ReadyToRun) startup time over the plain JIT build,
+at the cost of a larger package — see the TASK-152.4 follow-up in
+`docs/spikes/memory-footprint.md`. Linux x64 was not measured and keeps its prior,
+non-ReadyToRun publish.
 
 ## Artifacts
 

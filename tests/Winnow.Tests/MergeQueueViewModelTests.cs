@@ -42,6 +42,104 @@ public sealed class MergeQueueViewModelTests
     private static readonly SeedSide CivIvBeyond =
         new("Sid Meier's Civilization IV: Beyond the Sword", 2007, "2K");
 
+    // ── When the screen is built ─────────────────────────────────────────────
+    // TASK-152.5. Building it costs a full library snapshot with non-game
+    // entries plus an expansion scan over every work, and the startup pipeline
+    // reaches its reload point with the pane hidden on every launch.
+
+    [Fact]
+    public async Task A_hidden_pane_answers_a_library_change_with_a_count_and_builds_nothing()
+    {
+        using var fixture = new MergeQueueFixture();
+        var counting = fixture.CountingCandidates();
+        var queue = fixture.CreateViewModel(candidates: counting);
+
+        await queue.NoteQueueMayHaveMovedAsync();
+
+        // One COUNT, no rows, no cards, and the sweep state untouched.
+        Assert.Equal(1, counting.PendingCounts);
+        Assert.Equal(0, counting.PendingReads);
+        Assert.False(queue.IsLoaded);
+    }
+
+    [Fact]
+    public async Task Showing_the_pane_after_a_change_builds_the_screen_once()
+    {
+        using var fixture = new MergeQueueFixture();
+        var counting = fixture.CountingCandidates();
+        var queue = fixture.CreateViewModel(candidates: counting);
+
+        await queue.NoteQueueMayHaveMovedAsync();
+        await queue.EnsureLoadedAsync();
+
+        Assert.True(queue.IsLoaded);
+        Assert.Equal(1, counting.PendingReads);
+
+        // Shown again with nothing changed in between: the cards on screen are
+        // already the answer.
+        await queue.EnsureLoadedAsync();
+        Assert.Equal(1, counting.PendingReads);
+    }
+
+    [Fact]
+    public async Task A_change_while_the_pane_is_showing_rebuilds_at_once()
+    {
+        using var fixture = new MergeQueueFixture();
+        var pair = await fixture.CreatePairAsync(Prey, Prey);
+        var counting = fixture.CountingCandidates();
+        var queue = fixture.CreateViewModel(candidates: counting);
+
+        queue.IsPaneVisible = true;
+        await queue.EnsureLoadedAsync();
+        Assert.Equal(1, counting.PendingReads);
+        Assert.Equal(0, queue.PendingCount);
+
+        // What the startup pipeline's soft-match sweep does behind the screen.
+        await fixture.QueueScoredPairAsync(pair.Left, pair.Right);
+        await queue.NoteQueueMayHaveMovedAsync();
+
+        Assert.Equal(2, counting.PendingReads);
+        Assert.Equal(1, queue.PendingCount);
+    }
+
+    [Fact]
+    public async Task An_unmoved_queue_that_has_been_swept_is_not_rebuilt()
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.ResolveState.SetLastSoftMatchSweepAsync(DateTimeOffset.UtcNow);
+        var counting = fixture.CountingCandidates();
+        var queue = fixture.CreateViewModel(candidates: counting);
+
+        queue.IsPaneVisible = true;
+        await queue.EnsureLoadedAsync();
+        Assert.True(queue.HasCompletedSweep);
+        Assert.Equal(1, counting.PendingReads);
+
+        // The sweep queued nothing and the screen already knows it has run, so
+        // the rebuild would place exactly the cards that are already placed.
+        await queue.NoteQueueMayHaveMovedAsync();
+
+        Assert.Equal(1, counting.PendingReads);
+        Assert.Equal(1, counting.PendingCounts);
+    }
+
+    [Fact]
+    public async Task The_pending_count_query_agrees_with_the_pending_read()
+    {
+        using var fixture = new MergeQueueFixture();
+        Assert.Equal(0, await fixture.Candidates.CountPendingAsync());
+
+        var pair = await fixture.CreatePairAsync(Prey, Prey);
+        await fixture.QueueScoredPairAsync(pair.Left, pair.Right);
+
+        // The COUNT stands in for the read on every hidden-pane path, so the
+        // two have to be the same question: same status, same work_id predicate.
+        Assert.Equal(
+            (await fixture.Candidates.GetPendingAsync()).Count,
+            await fixture.Candidates.CountPendingAsync());
+        Assert.Equal(1, await fixture.Candidates.CountPendingAsync());
+    }
+
     // ── Empty states ─────────────────────────────────────────────────────────
 
     [Fact]
@@ -1160,6 +1258,91 @@ public sealed class MergeQueueViewModelTests
         Assert.False(stores.IsSelected);
     }
 
+    /// <summary>
+    /// The screen is not virtualized: every row of every card exists the moment
+    /// the queue loads, so asking for covers row by row decoded the whole queue
+    /// at startup — while the pane was still behind the library, including the
+    /// sections the filter was hiding. Covers are now asked for per visible
+    /// section, and asked for again when the filter changes.
+    /// </summary>
+    [Fact]
+    public async Task Covers_are_asked_for_per_visible_section()
+    {
+        using var fixture = new MergeQueueFixture();
+        await fixture.QueueScoredPairAsync(
+            await fixture.CreateReleaseAsync(Prey, store: "steam"),
+            await fixture.CreateReleaseAsync(Prey, store: "epic"));
+        await fixture.QueuePairAsync(Witcher, WitcherGoty);
+
+        var leases = new CountingLeases();
+        var queue = fixture.CreateViewModel(covers: leases);
+        await queue.LoadCommand.ExecuteAsync(null);
+
+        // Loading asks for nothing: the view decides when, because only the
+        // view knows whether the pane is on screen and at what render scaling.
+        Assert.Empty(leases.Acquired);
+
+        var rowsIn = (MergeSectionKind kind) => Section(queue, kind)
+            .Cards.Sum(card => card.Rows.Count(row => row.Side.CoverKey is not null));
+
+        // Filter to one section, then ask: the hidden sections' rows are not
+        // decoded for a screen the user is not looking at.
+        queue.SelectKindCommand.Execute(
+            queue.KindOptions.Single(option => option.Kind == MergeSectionKind.Stores));
+        queue.RequestCovers(MergeQueueViewModel.CoverWidth);
+
+        var shown = rowsIn(MergeSectionKind.Stores);
+        Assert.Equal(shown, leases.Acquired.Count);
+
+        // A merge row fades on the same rule its tile does, so it is one of the
+        // few surfaces that does need the floor variant.
+        Assert.All(leases.Acquired, layers => Assert.Equal(CoverLayers.VividAndFloor, layers));
+
+        // Clearing the filter shows the rest, and those rows are asked for the
+        // first time here.
+        leases.Acquired.Clear();
+        queue.ClearKindCommand.Execute(null);
+
+        var rest = rowsIn(MergeSectionKind.Editions);
+        Assert.True(rest > 0, "the fixture queued no edition pair");
+        Assert.Equal(rest, leases.Acquired.Count);
+    }
+
+    /// <summary>Records what each surface asked the cover cache for.</summary>
+    private sealed class CountingLeases : ICoverLeases
+    {
+        public List<CoverLayers> Acquired { get; } = [];
+
+        public ICoverLease Acquire(
+            CoverKey key, double displayWidthPixels, CoverLayers layers = CoverLayers.VividAndFloor)
+        {
+            Acquired.Add(layers);
+            return new Lease(key, CoverImaging.SnapWidth(displayWidthPixels), layers);
+        }
+
+        private sealed class Lease(CoverKey key, int width, CoverLayers layers) : ICoverLease
+        {
+            public CoverKey Key => key;
+
+            public int Width => width;
+
+            public CoverLayers Layers => layers;
+
+            public bool TryGetArt(out CoverArt art)
+            {
+                art = null!;
+                return false;
+            }
+
+            public Task<CoverArt?> GetAsync(CancellationToken ct = default)
+                => new TaskCompletionSource<CoverArt?>().Task;
+
+            public void Dispose()
+            {
+            }
+        }
+    }
+
     // ── Rows read the library's own read model ───────────────────────────────
 
     [Fact]
@@ -1901,6 +2084,15 @@ public sealed class MergeQueueViewModelTests
             return inner.GetPendingAsync(ct);
         }
 
+        /// <summary>Counted apart from <see cref="PendingReads"/>, because it returns no rows.</summary>
+        public int PendingCounts { get; private set; }
+
+        public Task<int> CountPendingAsync(CancellationToken ct = default)
+        {
+            PendingCounts++;
+            return inner.CountPendingAsync(ct);
+        }
+
         public Task<IReadOnlyList<MergeCandidate>> GetAllAsync(CancellationToken ct = default)
             => inner.GetAllAsync(ct);
 
@@ -2016,7 +2208,8 @@ public sealed class MergeQueueViewModelTests
         public MergeQueueViewModel CreateViewModel(
             bool withResolveState = true,
             IMergeCandidateRepository? candidates = null,
-            IReadOnlyList<long>? pinnedWorkIds = null)
+            IReadOnlyList<long>? pinnedWorkIds = null,
+            ICoverLeases? covers = null)
             => new(
                 candidates ?? Candidates,
                 Releases,
@@ -2026,7 +2219,7 @@ public sealed class MergeQueueViewModelTests
                 new LibraryExpansionScan(Releases, Links, ExpansionRefusals),
                 ExpansionRefusals,
                 new LibraryQueryRepository(_db.Factory),
-                covers: null,
+                covers: covers,
                 resolveState: withResolveState ? ResolveState : null,
                 igdb: pinnedWorkIds is null ? null : new PinnedWorksOnly(pinnedWorkIds),
                 clock: Clock,

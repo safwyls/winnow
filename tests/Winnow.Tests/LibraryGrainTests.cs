@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using Winnow.App.ViewModels;
 using Winnow.App.ViewModels.Filters;
 using Winnow.App.Views;
@@ -814,7 +814,6 @@ public sealed class LibraryGrainTests
         {
             var library = new LibraryViewModel(
                 Queries, Ownerships, Releases, Works, Updates,
-                covers: null,
                 lists: Lists,
                 identityLinks: Links)
             {

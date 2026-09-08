@@ -440,6 +440,15 @@ public partial class MergeCardViewModel : ObservableObject
         }
     }
 
+    /// <summary>Releases every row's cover lease. Called when this card is replaced.</summary>
+    public void ReleaseCovers()
+    {
+        foreach (var row in Rows)
+        {
+            row.Side.Dispose();
+        }
+    }
+
     /// <summary>Puts the header back where the ladder put it. Used by tests.</summary>
     internal void ResetHeader()
     {

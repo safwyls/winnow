@@ -19,7 +19,7 @@ namespace Winnow.App.ViewModels;
 /// <para>Navigation wraps in both directions, the same answer §10.3's action
 /// menu gives for Up and Down.</para>
 /// </summary>
-public sealed partial class ScreenshotLightboxViewModel : ObservableObject
+public sealed partial class ScreenshotLightboxViewModel : ObservableObject, IDisposable
 {
     /// <summary>
     /// Drawn width cap in device-independent pixels. 1280x720 is the native
@@ -36,16 +36,20 @@ public sealed partial class ScreenshotLightboxViewModel : ObservableObject
     /// </summary>
     public const double ImageHeight = 720;
 
-    private ICoverCache? _covers;
+    private ICoverLeases? _covers;
+
+    /// <summary>
+    /// The wide rendition on screen, leased. Vivid only, at 1280 px the largest
+    /// decode in the app: a floor variant of a screenshot nobody dims would be
+    /// another 3.7 MB per shot.
+    /// </summary>
+    private LeasedCover? _shown;
 
     private IReadOnlyList<GameScreenshotViewModel> _shots = [];
 
     private double _scaling = 1.0;
 
     private int _index;
-
-    // Guards a load that lands after the user has already navigated on.
-    private int _generation;
 
     /// <summary>True while the overlay is up. The window binds the view's
     /// <c>IsVisible</c> to this.</summary>
@@ -105,7 +109,7 @@ public sealed partial class ScreenshotLightboxViewModel : ObservableObject
     public void Open(
         IReadOnlyList<GameScreenshotViewModel> shots,
         GameScreenshotViewModel shot,
-        ICoverCache? covers,
+        ICoverLeases? covers,
         double scaling)
     {
         ArgumentNullException.ThrowIfNull(shots);
@@ -149,9 +153,20 @@ public sealed partial class ScreenshotLightboxViewModel : ObservableObject
         }
 
         IsOpen = false;
+
+        // Image first, lease second: the wide rendition may be freed the moment
+        // the lease goes, so the binding has to have let go of it (CoverArt).
         Image = null;
-        _generation++;
+        _shown?.Dispose();
+        _shown = null;
     }
+
+    /// <summary>
+    /// Releases the wide rendition's lease. The overlay lives as long as the
+    /// library view model, so this is for a host that is shutting down; a user
+    /// closing the overlay releases the same lease through <see cref="Close"/>.
+    /// </summary>
+    public void Dispose() => Close();
 
     /// <summary>Steps back one shot, wrapping from the first to the last.
     /// The left arrow key is the keyboard equivalent.</summary>
@@ -187,41 +202,24 @@ public sealed partial class ScreenshotLightboxViewModel : ObservableObject
         AutomationName = ScreenshotLightboxCopy.DialogAutomationName(index + 1, _shots.Count);
         Caption = ScreenshotLightboxCopy.Caption(index + 1, _shots.Count);
 
-        var token = ++_generation;
-
-        if (_covers is null)
-        {
-            Image = shot.Image;
-            return;
-        }
-
-        if (_covers.TryGet(shot.Key, ImageWidth * _scaling, out var cached))
-        {
-            Image = cached.Vivid;
-            return;
-        }
-
         // The thumbnail stands in while the wide rendition decodes, so
-        // navigation never draws an empty frame.
+        // navigation never draws an empty frame. It belongs to the strip's own
+        // lease, which outlives the overlay.
         Image = shot.Image;
 
-        _ = LoadAsync(shot, ImageWidth * _scaling, art =>
+        // One lease per shot shown: the previous shot's wide rendition is
+        // released here, which is the whole reason navigating a strip does not
+        // accumulate 3.7 MB decodes.
+        var previous = _shown;
+        _shown = new LeasedCover(_covers, shot.Key, CoverLayers.Vivid, art =>
         {
-            if (token == _generation)
+            if (art is not null)
             {
-                Image = art;
+                Image = art.Vivid;
             }
         });
-    }
 
-    private async Task LoadAsync(GameScreenshotViewModel shot, double width, Action<Bitmap> apply)
-    {
-        var art = await _covers!.GetAsync(shot.Key, width).ConfigureAwait(false);
-        if (art is null)
-        {
-            return;
-        }
-
-        Dispatcher.UIThread.Post(() => apply(art.Vivid));
+        _shown.Request(ImageWidth * _scaling);
+        previous?.Dispose();
     }
 }

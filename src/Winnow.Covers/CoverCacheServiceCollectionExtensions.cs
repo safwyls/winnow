@@ -2,6 +2,7 @@ using System.Net;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Http.Resilience;
+using Microsoft.Extensions.Logging;
 using Polly;
 
 namespace Winnow.Covers;
@@ -50,10 +51,17 @@ public static class CoverCacheServiceCollectionExtensions
         services.TryAddEnumerable(ServiceDescriptor.Singleton<ICoverSource, SteamCapsuleSource>());
         services.TryAddSingleton<CoverDiskCache>();
         services.TryAddSingleton<CoverPipeline>();
-        services.TryAddSingleton<ICoverCache, CoverCache>();
+        // Constructed by hand so the cache keeps its own default for how a
+        // disposal reaches the UI thread, rather than being handed one by the
+        // container's constructor selection.
+        services.TryAddSingleton<ICoverCache>(sp => new CoverCache(
+            sp.GetRequiredService<CoverPipeline>(),
+            sp.GetRequiredService<CoverCacheOptions>(),
+            sp.GetService<ILogger<CoverCache>>()));
 
         // One pool for the process: leases are the refcount over (cover, width
-        // bucket), so a second instance would be a second, independent count.
+        // bucket, layers), so a second instance would be a second, independent
+        // count — and the count is what decides when decoded pixels are freed.
         services.TryAddSingleton<ICoverLeases, CoverLeasePool>();
 
         return services;

@@ -32,7 +32,7 @@ namespace Winnow.App.ViewModels;
 /// work id means no control at all, which is the pre-TASK-89 modal
 /// exactly.</para>
 /// </summary>
-public partial class GameIgdbMatchViewModel : ObservableObject
+public partial class GameIgdbMatchViewModel : ObservableObject, IDisposable
 {
     /// <summary>Candidate thumbnail width, matching the merge queue's candidate-cover geometry.</summary>
     public const double CandidateCoverWidth = 34;
@@ -40,7 +40,7 @@ public partial class GameIgdbMatchViewModel : ObservableObject
     public const double CandidateCoverHeight = CandidateCoverWidth * 1.5;
 
     private readonly IIgdbAssignmentService _service;
-    private readonly ICoverCache? _covers;
+    private readonly ICoverLeases? _covers;
 
     /// <summary>
     /// Reloads the library and reopens this modal on the same ownership,
@@ -75,7 +75,7 @@ public partial class GameIgdbMatchViewModel : ObservableObject
         long workId,
         string title,
         WorkIgdbPin? pin = null,
-        ICoverCache? covers = null,
+        ICoverLeases? covers = null,
         Func<string, Task>? afterChange = null,
         string? note = null,
         Func<long, Task<bool>>? linkSameGame = null)
@@ -92,6 +92,43 @@ public partial class GameIgdbMatchViewModel : ObservableObject
         Query = title ?? string.Empty;
         IsPinned = pin is not null;
         Note = note;
+    }
+
+    /// <summary>
+    /// Releases every candidate row's lease. The detail modal that owns this
+    /// control disposes it when it closes; a new search does the same for the
+    /// rows it replaces, through the two change hooks below.
+    /// </summary>
+    public void Dispose()
+    {
+        foreach (var candidate in Candidates)
+        {
+            candidate.Dispose();
+        }
+
+        Claim?.Dispose();
+    }
+
+    /// <summary>A replaced candidate list is a list of rows nothing will draw again.</summary>
+    partial void OnCandidatesChanged(
+        IReadOnlyList<IgdbCandidateViewModel> oldValue, IReadOnlyList<IgdbCandidateViewModel> newValue)
+    {
+        foreach (var candidate in oldValue)
+        {
+            if (!newValue.Contains(candidate))
+            {
+                candidate.Dispose();
+            }
+        }
+    }
+
+    /// <inheritdoc cref="OnCandidatesChanged"/>
+    partial void OnClaimChanged(IgdbClaimViewModel? oldValue, IgdbClaimViewModel? newValue)
+    {
+        if (!ReferenceEquals(oldValue, newValue))
+        {
+            oldValue?.Dispose();
+        }
     }
 
     /// <summary>Whether the search surface is disclosed.</summary>
@@ -573,17 +610,21 @@ public partial class GameIgdbMatchViewModel : ObservableObject
 /// <see cref="IgdbCandidateViewModel"/> when the claiming-game row
 /// needed the same art loading without the candidate-specific facts.
 /// </summary>
-public abstract partial class IgdbCoverRowViewModel : ObservableObject
+public abstract partial class IgdbCoverRowViewModel : ObservableObject, IDisposable
 {
-    private readonly ICoverCache? _covers;
+    /// <summary>
+    /// The row's 34x51 thumbnail, leased. Vivid only: a candidate row is a
+    /// judgement about identity and is never dimmed.
+    /// </summary>
+    private readonly LeasedCover _art;
 
-    protected IgdbCoverRowViewModel(string? coverUrl, ICoverCache? covers)
+    protected IgdbCoverRowViewModel(string? coverUrl, ICoverLeases? covers)
     {
-        _covers = covers;
-
         CoverKey = IgdbImageUrl.ImageId(coverUrl) is { } imageId
             ? Winnow.Covers.CoverKey.Igdb(imageId)
             : null;
+
+        _art = new LeasedCover(covers, CoverKey, CoverLayers.Vivid, art => Cover = art?.Vivid);
     }
 
     /// <summary>Null when IGDB named no cover, or named one whose URL does not carry an image id.</summary>
@@ -598,32 +639,10 @@ public abstract partial class IgdbCoverRowViewModel : ObservableObject
     public bool ShowPlaceholder => Cover is null;
 
     /// <summary>Asks the cache for the art at the width it will be drawn at, off-thread.</summary>
-    public void RequestCover(double displayWidthPixels)
-    {
-        if (_covers is null || CoverKey is not { } key || Cover is not null || displayWidthPixels <= 0)
-        {
-            return;
-        }
+    public void RequestCover(double displayWidthPixels) => _art.Request(displayWidthPixels);
 
-        if (_covers.TryGet(key, displayWidthPixels, out var cached))
-        {
-            Cover = cached.Vivid;
-            return;
-        }
-
-        _ = LoadCoverAsync(key, displayWidthPixels);
-    }
-
-    private async Task LoadCoverAsync(CoverKey key, double displayWidthPixels)
-    {
-        var art = await _covers!.GetAsync(key, displayWidthPixels).ConfigureAwait(false);
-        if (art is null)
-        {
-            return;
-        }
-
-        Dispatcher.UIThread.Post(() => Cover = art.Vivid);
-    }
+    /// <summary>Releases the row's lease. The list that built the row disposes it when it replaces it.</summary>
+    public void Dispose() => _art.Dispose();
 }
 
 /// <summary>
@@ -636,7 +655,7 @@ public sealed partial class IgdbClaimViewModel : IgdbCoverRowViewModel
 {
     private readonly IgdbClaimingGame _holder;
 
-    public IgdbClaimViewModel(IgdbClaimingGame holder, ICoverCache? covers = null)
+    public IgdbClaimViewModel(IgdbClaimingGame holder, ICoverLeases? covers = null)
         : base(holder?.CoverUrl, covers)
     {
         ArgumentNullException.ThrowIfNull(holder);
@@ -678,7 +697,7 @@ public partial class IgdbCandidateViewModel : IgdbCoverRowViewModel
     private readonly IgdbCandidate _candidate;
 
     public IgdbCandidateViewModel(
-        IgdbCandidate candidate, ICoverCache? covers = null, bool isIdMatch = false)
+        IgdbCandidate candidate, ICoverLeases? covers = null, bool isIdMatch = false)
         : base(candidate?.CoverUrl, covers)
     {
         ArgumentNullException.ThrowIfNull(candidate);

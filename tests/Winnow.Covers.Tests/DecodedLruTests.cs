@@ -19,6 +19,9 @@ public class DecodedLruTests
 
     private static DecodedLru<string, Payload> Lru(long maxBytes) => new(maxBytes);
 
+    private static DecodedLru<string, Payload> Lru(long maxBytes, List<Payload> evicted)
+        => new(maxBytes, evicted.Add);
+
     [Fact]
     public void An_admitted_entry_is_a_hit_and_counts_its_bytes()
     {
@@ -126,6 +129,74 @@ public class DecodedLruTests
         Assert.Equal(5000, lru.Bytes);
 
         lru.Clear();
+    }
+
+    // ── Eviction is where pixels are freed ───────────────────────────────────
+
+    /// <summary>
+    /// The whole reason eviction is observable: the value is native pixels
+    /// behind a finalizer, and the owner has to be told so it can release its
+    /// hold rather than wait for a gen-2 collection to notice.
+    /// </summary>
+    [Fact]
+    public void An_evicted_value_is_handed_to_its_owner_in_eviction_order()
+    {
+        var evicted = new List<Payload>();
+        var lru = Lru(1000, evicted);
+
+        lru.Admit("a", new Payload("a"), 400);
+        lru.Admit("b", new Payload("b"), 400);
+        Assert.Empty(evicted);
+
+        lru.Admit("c", new Payload("c"), 400);
+
+        Assert.Single(evicted);
+        Assert.Equal("a", evicted[0].Name);
+
+        // A budget that needs two evictions reports two, oldest first.
+        evicted.Clear();
+        lru.Admit("big", new Payload("big"), 900);
+
+        Assert.Equal(["b", "c"], evicted.Select(p => p.Name));
+
+        lru.Clear();
+    }
+
+    [Fact]
+    public void Clear_reports_every_held_value_as_an_eviction()
+    {
+        var evicted = new List<Payload>();
+        var lru = Lru(1000, evicted);
+        lru.Admit("a", new Payload("a"), 400);
+        lru.Admit("b", new Payload("b"), 400);
+
+        lru.Clear();
+
+        Assert.Equal(2, evicted.Count);
+        Assert.Equal(0, lru.Bytes);
+    }
+
+    /// <summary>
+    /// A value that was never admitted is never reported as evicted — the
+    /// caller still owns it, and reporting it would release a hold twice.
+    /// </summary>
+    [Fact]
+    public void A_rejected_duplicate_is_returned_rather_than_evicted()
+    {
+        var evicted = new List<Payload>();
+        var lru = Lru(1000, evicted);
+        var held = new Payload("first");
+        lru.Admit("a", held, 400);
+
+        var duplicate = new Payload("second");
+        var cached = lru.Admit("a", duplicate, 400);
+
+        Assert.Same(held, cached);
+        Assert.Empty(evicted);
+
+        lru.Clear();
+        Assert.Single(evicted);
+        Assert.Same(held, evicted[0]);
     }
 
     /// <summary>

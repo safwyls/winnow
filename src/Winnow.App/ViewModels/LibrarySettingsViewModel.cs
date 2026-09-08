@@ -49,7 +49,7 @@ public partial class LibrarySettingsViewModel : ObservableObject
 
     private readonly IIgdbAssignmentService? _igdb;
 
-    private readonly ICoverCache? _covers;
+    private readonly ICoverLeases? _covers;
 
     /// <summary>Guards against write-back while the stored preference is being read.</summary>
     private bool _loading;
@@ -73,7 +73,7 @@ public partial class LibrarySettingsViewModel : ObservableObject
         IExecutableFilePicker? executables = null,
         IExecutableInspector? inspector = null,
         IIgdbAssignmentService? igdb = null,
-        ICoverCache? covers = null,
+        ICoverLeases? covers = null,
         AcquisitionExport? acquisitionExport = null,
         IAcquisitionExportDestination? exportDestination = null)
     {

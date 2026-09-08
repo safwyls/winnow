@@ -511,7 +511,7 @@ public partial class GameTileViewModel : ObservableObject
     /// Resting vivid-layer opacity from the §5.1 ramp: α = (S − 0.22) / 0.78 —
     /// or 1.0 when the user has turned dimming off. Resolved on read rather than
     /// baked at construction, so flipping the preference repaints the wall
-    /// without rebuilding a tile or disturbing the cover cache.
+    /// without rebuilding a tile.
     /// </summary>
     public double DormancyAlpha => _ramp.VividAlphaFor(LastPlayedUtc, _nowUtc);
 
@@ -543,6 +543,14 @@ public partial class GameTileViewModel : ObservableObject
     internal ICoverLeases? Leases { get; }
 
     /// <summary>
+    /// The ramp every surface showing this game resolves dormancy through.
+    /// Surfaces hand it to their own <see cref="CoverPresenter"/>, which needs
+    /// it to know whether the floor layer is visible and therefore worth
+    /// decoding.
+    /// </summary>
+    internal DormancyRamp Ramp => _ramp;
+
+    /// <summary>
     /// A new cover presenter for this game, already targeted at its key and
     /// lease source. Owned by the caller and released independently of every
     /// other surface's presenter.
@@ -550,7 +558,7 @@ public partial class GameTileViewModel : ObservableObject
     internal CoverPresenter NewCoverPresenter()
     {
         var presenter = new CoverPresenter();
-        presenter.Target(CoverKey, Leases);
+        presenter.Target(CoverKey, Leases, _ramp);
         return presenter;
     }
 
@@ -585,9 +593,11 @@ public partial class GameTileViewModel : ObservableObject
 
     /// <summary>
     /// The ramp's state changed under a tile that is already built. Re-reading
-    /// the two derived values is the whole of it — the art layers, the cover
-    /// cache and the decoded bitmaps are all untouched, which is why the toggle
-    /// costs a repaint rather than a reload.
+    /// the derived values is the whole of it here: no tile is rebuilt and no
+    /// cache entry is invalidated. Each realized surface's own
+    /// <see cref="CoverPresenter"/> watches the ramp too, because turning
+    /// dimming back on makes the floor layer visible under art that was decoded
+    /// without it.
     /// </summary>
     public void RefreshDormancy()
     {

@@ -5,17 +5,20 @@ using SkiaSharp;
 
 namespace Winnow.Covers;
 
-/// <summary>The vivid/floor pair for one cover, at one display width.</summary>
-public sealed class CoverBitmaps(SKBitmap vivid, SKBitmap floor) : IDisposable
+/// <summary>
+/// The decoded layers for one cover, at one display width. <see cref="Floor"/>
+/// is null when the caller asked for <see cref="CoverLayers.Vivid"/> alone.
+/// </summary>
+public sealed class CoverBitmaps(SKBitmap vivid, SKBitmap? floor) : IDisposable
 {
     public SKBitmap Vivid { get; } = vivid;
 
-    public SKBitmap Floor { get; } = floor;
+    public SKBitmap? Floor { get; } = floor;
 
     public void Dispose()
     {
         Vivid.Dispose();
-        Floor.Dispose();
+        Floor?.Dispose();
     }
 }
 
@@ -79,15 +82,16 @@ public sealed class CoverPipeline : IDisposable
     }
 
     /// <summary>
-    /// The vivid/floor pair at <paramref name="width"/> pixels, or
-    /// <see langword="null"/> when no source has art. Never throws for a missing
+    /// The layers named by <paramref name="layers"/> at <paramref name="width"/>
+    /// pixels, or <see langword="null"/> when no source has art. Never throws for a missing
     /// cover; transport failures are logged and answered as "not yet", so the
     /// caller keeps its placeholder and we retry on the next realization.
     /// <para>The returned bitmaps are the caller's to own and dispose;
     /// de-duplication of concurrent requests belongs to <see cref="CoverCache"/>,
     /// which shares one immutable result rather than one disposable one.</para>
     /// </summary>
-    public async Task<CoverBitmaps?> GetAsync(CoverKey key, int width, CancellationToken ct = default)
+    public async Task<CoverBitmaps?> GetAsync(
+        CoverKey key, int width, CoverLayers layers = CoverLayers.VividAndFloor, CancellationToken ct = default)
     {
         // Callers are responsible for getting off the UI thread before they get
         // here — CoverCache does it with Task.Run. Task.Yield() would NOT be
@@ -96,7 +100,7 @@ public sealed class CoverPipeline : IDisposable
         // back on the thread that has to keep the grid scrolling.
         try
         {
-            if (TryDecodeFromDisk(key, width) is { } cached)
+            if (TryDecodeFromDisk(key, width, layers) is { } cached)
             {
                 return cached;
             }
@@ -124,8 +128,17 @@ public sealed class CoverPipeline : IDisposable
             }
 
             _disk.WriteSource(key, bytes);
-            WriteFloorVariant(key, bytes);
-            return Decode(bytes, key, width);
+
+            // The stored floor variant is written only for a request that needs
+            // the floor. A key that is only ever drawn at full saturation — an
+            // IGDB screenshot, say — costs no colour-matrix pass and no second
+            // file, and the first two-layer request for it writes one then.
+            if (layers == CoverLayers.VividAndFloor)
+            {
+                WriteFloorVariant(key, bytes);
+            }
+
+            return Decode(bytes, key, width, layers);
         }
         catch (OperationCanceledException)
         {
@@ -167,31 +180,40 @@ public sealed class CoverPipeline : IDisposable
         }
     }
 
-    private CoverBitmaps? TryDecodeFromDisk(CoverKey key, int width)
+    private CoverBitmaps? TryDecodeFromDisk(CoverKey key, int width, CoverLayers layers)
     {
         if (!_disk.TryReadSource(key, out var source))
         {
             return null;
         }
 
-        if (!_disk.TryReadFloor(key, out _))
+        // HasFloor, not TryReadFloor: this is an existence check, and reading
+        // the whole variant here only to read it again in Decode was two file
+        // reads per cover per display size.
+        if (layers == CoverLayers.VividAndFloor && !_disk.HasFloor(key))
         {
             WriteFloorVariant(key, source);
         }
 
-        return Decode(source, key, width);
+        return Decode(source, key, width, layers);
     }
 
     /// <summary>
-    /// Decodes vivid at display width, and the floor from its stored variant so
-    /// the colour-matrix pass is not repeated on every display size.
+    /// Decodes vivid at display width, and — only when the caller asked for it
+    /// — the floor from its stored variant, so the colour-matrix pass is not
+    /// repeated on every display size.
     /// </summary>
-    private CoverBitmaps? Decode(byte[] source, CoverKey key, int width)
+    private CoverBitmaps? Decode(byte[] source, CoverKey key, int width, CoverLayers layers)
     {
         var vivid = CoverImaging.DecodeToWidth(source, width);
         if (vivid is null)
         {
             return null;
+        }
+
+        if (layers == CoverLayers.Vivid)
+        {
+            return new CoverBitmaps(vivid, null);
         }
 
         SKBitmap? floor = null;

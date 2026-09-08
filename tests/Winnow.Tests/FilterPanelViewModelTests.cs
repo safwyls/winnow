@@ -319,7 +319,7 @@ public sealed class FilterPanelViewModelTests
 
         public LibraryViewModel Create()
             => new(Queries, Ownerships, Releases, Works, Updates,
-                covers: null, ramp: null, snapshots: null,
+                ramp: null, snapshots: null,
                 facets: Facets, lists: GameLists);
 
         public async Task<LibraryViewModel> LoadAsync()

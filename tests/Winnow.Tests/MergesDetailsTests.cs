@@ -40,8 +40,7 @@ public sealed class MergesDetailsTests
             ownerships,
             releases,
             works,
-            new UpdateEventRepository(db.Factory),
-            covers: null);
+            new UpdateEventRepository(db.Factory));
         var queue = new MergeQueueViewModel(
             candidates, releases, works, links, ownerships,
             new LibraryExpansionScan(releases, links, refusals),
@@ -86,8 +85,7 @@ public sealed class MergesDetailsTests
             ownerships,
             releases,
             works,
-            new UpdateEventRepository(db.Factory),
-            covers: null);
+            new UpdateEventRepository(db.Factory));
         await library.LoadCommand.ExecuteAsync(null);
 
         // A release the library has no ownership row for, as the sample

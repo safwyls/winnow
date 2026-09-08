@@ -6,6 +6,22 @@ namespace Winnow.Data;
 public sealed class SqliteConnectionFactory : ISqliteConnectionFactory
 {
     /// <summary>
+    /// Page cache per connection, in KiB. SQLite reads a negative
+    /// <c>cache_size</c> as a byte budget rather than a page count.
+    ///
+    /// <para>SQLite's own default is 2 MiB, and that is per connection, not per
+    /// database: pooling keeps a connection open after the call that leased it
+    /// returned, so the ceiling is 2 MiB times however many the pool holds.
+    /// This is a bound, not a saving — measured against the default it made no
+    /// difference to the process's native heap, because these queries never
+    /// fill a cache that size (docs/spikes/memory-footprint.md §6.2). Every
+    /// query here is an explicit-column read the OS file cache already backs,
+    /// so what the smaller budget drops is pages a finished query would have
+    /// kept, and stage timings did not move.</para>
+    /// </summary>
+    internal const int PageCacheKib = 256;
+
+    /// <summary>
     /// The open unit of work for the current async flow, if any. Ambient rather
     /// than threaded through every method so that enlisting does not change the
     /// shape of a single call site. Held per factory instance (not statically)
@@ -49,9 +65,12 @@ public sealed class SqliteConnectionFactory : ISqliteConnectionFactory
             // WAL is persistent per-database, but issuing it per-connection is
             // cheap and keeps the guarantee independent of who created the file.
             // foreign_keys is per-connection; the connection string already set
-            // it, the explicit pragma makes the requirement visible.
+            // it, the explicit pragma makes the requirement visible. cache_size
+            // is per-connection too, and re-issued here because a connection
+            // handed back by the pool arrives with whatever it last had.
             using var command = connection.CreateCommand();
-            command.CommandText = "PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;";
+            command.CommandText = "PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;"
+                + $" PRAGMA cache_size = -{PageCacheKib};";
             command.ExecuteNonQuery();
         }
         catch
@@ -67,6 +86,20 @@ public sealed class SqliteConnectionFactory : ISqliteConnectionFactory
 
         return connection;
     }
+
+    /// <summary>
+    /// Closes every idle pooled connection, releasing the page cache and
+    /// per-connection schema each one holds.
+    ///
+    /// <para><c>ClearAllPools</c> is process-wide, which is why the
+    /// <c>pooling</c> parameter's doc comment warns tests off it — but the app
+    /// opens exactly one pooled database, this one, so process-wide and
+    /// factory-wide are the same set here. A connection already leased keeps
+    /// working across the call, and the next lease reopens;
+    /// <c>SqliteConnectionFactoryTests</c> holds a lease across it to keep that
+    /// true.</para>
+    /// </summary>
+    public void ReleasePooledConnections() => SqliteConnection.ClearAllPools();
 
     public DbLease Lease()
     {

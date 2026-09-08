@@ -106,12 +106,10 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
         // stored preference, so the label is correct before the toggle is
         // used. Zero on any library with no maturity evidence stored, which
         // is every library until enrichment has run.
-        var shown = await QueryAsync(
-            thresholds with { ShowExplicitContent = true }, scopeOverride: null, ct);
-        var hidden = await QueryAsync(
-            thresholds with { ShowExplicitContent = false }, scopeOverride: null, ct);
-
-        return Math.Max(0, DistinctGames(shown) - DistinctGames(hidden));
+        return await CountHiddenInOnePassAsync(
+            thresholds with { ShowExplicitContent = true },
+            thresholds with { ShowExplicitContent = false },
+            ct);
     }
 
     /// <inheritdoc/>
@@ -123,12 +121,31 @@ public sealed class LibraryQueryRepository : ILibraryQueryRepository
             return 0;
         }
 
-        var uncapped = await QueryAsync(
+        return await CountHiddenInOnePassAsync(
             thresholds with { MaturityCap = BucketThresholds.NoMaturityCap },
-            scopeOverride: null, ct);
-        var capped = await QueryAsync(thresholds, scopeOverride: null, ct);
+            thresholds,
+            ct);
+    }
 
-        return Math.Max(0, DistinctGames(uncapped) - DistinctGames(capped));
+    /// <summary>
+    /// The both-ways subtraction over ONE read of the bucket rows. The maturity
+    /// cap and the explicit filter are decided in C# over evidence the query
+    /// carries out — <see cref="Parameters"/> never sees either — so the two
+    /// sides differ only in how the same rows are consolidated, and running the
+    /// whole query twice bought the same rows twice. Both callers vary exactly
+    /// one such threshold and nothing the SQL reads; the account scope is the
+    /// one filter that IS in the SQL and still needs its two reads.
+    /// </summary>
+    private async Task<int> CountHiddenInOnePassAsync(
+        BucketThresholds shown, BucketThresholds hidden, CancellationToken ct)
+    {
+        using var lease = _factory.Lease();
+        var rows = (await lease.Connection.QueryAsync<BucketRow>(new CommandDefinition(
+            BucketSql, Parameters(shown, scopeOverride: null),
+            transaction: lease.Transaction, cancellationToken: ct))).AsList();
+
+        return Math.Max(
+            0, DistinctGames(Consolidate(rows, shown)) - DistinctGames(Consolidate(rows, hidden)));
     }
 
     private static int DistinctGames(IReadOnlyList<OwnershipBucket> rows)

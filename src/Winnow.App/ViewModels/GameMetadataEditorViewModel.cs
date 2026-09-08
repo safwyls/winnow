@@ -25,10 +25,10 @@ namespace Winnow.App.ViewModels;
 /// IWorkMetadataEditService registered or no resolved work id the row is
 /// not drawn at all.</para>
 /// </summary>
-public partial class GameMetadataEditorViewModel : ObservableObject
+public partial class GameMetadataEditorViewModel : ObservableObject, IDisposable
 {
     private readonly IWorkMetadataEditService _service;
-    private readonly ICoverCache? _covers;
+    private readonly ICoverLeases? _covers;
     private readonly IImageFilePicker? _picker;
 
     /// <summary>
@@ -58,7 +58,7 @@ public partial class GameMetadataEditorViewModel : ObservableObject
         IWorkMetadataEditService service,
         long workId,
         WorkMetadataSnapshot? snapshot = null,
-        ICoverCache? covers = null,
+        ICoverLeases? covers = null,
         IImageFilePicker? picker = null,
         Func<string, Task>? afterArtChange = null,
         Func<string, string?, Task>? afterTextChange = null,
@@ -257,7 +257,7 @@ public partial class GameMetadataEditorViewModel : ObservableObject
     /// <summary>Resolves a stored art URL to a <see cref="CoverKey"/> for the preview.</summary>
     internal CoverKey? ArtKeyFor(string? value) => _service.ArtKeyFor(value);
 
-    internal ICoverCache? Covers => _covers;
+    internal ICoverLeases? Covers => _covers;
 
     internal double Scaling => _scaling;
 
@@ -347,7 +347,13 @@ public partial class GameMetadataEditorViewModel : ObservableObject
                 : new MetadataTextRowViewModel(this, state));
         }
 
+        var outgoing = Rows;
         Rows = rows;
+        foreach (var row in outgoing)
+        {
+            row.Dispose();
+        }
+
         RequestPreviews();
     }
 
@@ -366,6 +372,18 @@ public partial class GameMetadataEditorViewModel : ObservableObject
             row.NotifyCommands();
         }
     }
+
+    /// <summary>
+    /// Releases every art row's preview lease. The detail modal that owns the
+    /// editor disposes it when it closes.
+    /// </summary>
+    public void Dispose()
+    {
+        foreach (var row in Rows)
+        {
+            row.Dispose();
+        }
+    }
 }
 
 /// <summary>
@@ -376,7 +394,7 @@ public partial class GameMetadataEditorViewModel : ObservableObject
 /// Status are per row, not per form, because the message lands under the field
 /// it concerns (§16.3).
 /// </summary>
-public abstract partial class MetadataFieldRowViewModel : ObservableObject
+public abstract partial class MetadataFieldRowViewModel : ObservableObject, IDisposable
 {
     private readonly GameMetadataEditorViewModel _editor;
 
@@ -390,6 +408,11 @@ public abstract partial class MetadataFieldRowViewModel : ObservableObject
         Value = state.Value;
         Source = state.Source;
         Draft = InitialDraft(state.Value);
+    }
+
+    /// <summary>Releases whatever the row holds. Only an art row holds anything.</summary>
+    public virtual void Dispose()
+    {
     }
 
     /// <summary>The <see cref="WorkFields"/> constant this row edits.</summary>
@@ -665,6 +688,13 @@ public sealed partial class MetadataTextRowViewModel : MetadataFieldRowViewModel
 /// </summary>
 public sealed partial class MetadataArtRowViewModel : MetadataFieldRowViewModel
 {
+    /// <summary>
+    /// The row's preview, leased. Vivid only, and replaced rather than reused
+    /// when the field's value changes, because the new value is a different
+    /// cover key.
+    /// </summary>
+    private LeasedCover? _preview;
+
     public MetadataArtRowViewModel(GameMetadataEditorViewModel editor, WorkMetadataField state)
         : base(editor, state)
     {
@@ -706,10 +736,12 @@ public sealed partial class MetadataArtRowViewModel : MetadataFieldRowViewModel
     /// <summary>Rides the existing cover-cache image path and adds no new one.</summary>
     public override void RequestPreview()
     {
-        Preview = null;
+        // Dispose clears Preview, so the row shows its placeholder from here
+        // until the new key resolves — the same as before this held a lease.
+        _preview?.Dispose();
+        _preview = null;
 
-        if (Editor.Covers is not { } covers
-            || Editor.ArtKeyFor(Value) is not { } key)
+        if (Editor.ArtKeyFor(Value) is not { } key)
         {
             return;
         }
@@ -720,13 +752,18 @@ public sealed partial class MetadataArtRowViewModel : MetadataFieldRowViewModel
             return;
         }
 
-        if (covers.TryGet(key, widthPixels, out var cached))
-        {
-            Preview = cached.Vivid;
-            return;
-        }
+        _preview = new LeasedCover(
+            Editor.Covers, key, CoverLayers.Vivid, art => Preview = art?.Vivid);
 
-        _ = LoadPreviewAsync(covers, key, widthPixels);
+        _preview.Request(widthPixels);
+    }
+
+    /// <summary>Releases the preview's lease.</summary>
+    public override void Dispose()
+    {
+        _preview?.Dispose();
+        _preview = null;
+        base.Dispose();
     }
 
     protected override async Task ApplyAsync(CancellationToken ct)
@@ -805,14 +842,4 @@ public sealed partial class MetadataArtRowViewModel : MetadataFieldRowViewModel
         await Editor.AfterArtChangeAsync(note);
     }
 
-    private async Task LoadPreviewAsync(ICoverCache covers, CoverKey key, double widthPixels)
-    {
-        var art = await covers.GetAsync(key, widthPixels).ConfigureAwait(false);
-        if (art is null)
-        {
-            return;
-        }
-
-        Dispatcher.UIThread.Post(() => Preview = art.Vivid);
-    }
 }

@@ -34,7 +34,12 @@ public sealed class ScreenshotLightboxStructureTests
 
     /// <summary>The overlay is declared in the window's own <c>Grid</c> after
     /// the detail modal and spanning the same three columns, so it is in the
-    /// window's visual tree and draws over the modal.</summary>
+    /// window's visual tree and draws over the modal.
+    ///
+    /// <para>Both are built on first show (<c>views:LazyPane</c>, TASK-152.3),
+    /// so the column span and the visibility binding are read off the named
+    /// container that holds the overlay rather than off the overlay's own
+    /// tag.</para></summary>
     [Fact]
     public void It_is_declared_in_the_windows_grid_after_the_modal()
     {
@@ -47,19 +52,19 @@ public sealed class ScreenshotLightboxStructureTests
         Assert.True(overlay >= 0, "The screenshot lightbox is no longer hosted in the window's grid.");
         Assert.True(overlay > modal, "The lightbox is declared before the modal, so it draws underneath it.");
 
-        var tag = Regex.Match(
+        var host = Regex.Match(
             markup,
-            @"<views:ScreenshotLightboxView(.*?)/>",
+            @"<views:LazyPane Name=""LightboxPanel""(.*?)>",
             RegexOptions.Singleline);
 
-        Assert.True(tag.Success);
-        Assert.Contains("Grid.ColumnSpan=\"3\"", tag.Value, StringComparison.Ordinal);
+        Assert.True(host.Success, "The lightbox is no longer hosted in a pane named LightboxPanel.");
+        Assert.Contains("Grid.ColumnSpan=\"3\"", host.Value, StringComparison.Ordinal);
 
         // Bound off Library, never off Library.Details: a binding whose path
         // passes through a null resolves to UnsetValue, and IsVisible would
-        // fall back to its own default of true.
-        Assert.Contains("Library.Lightbox.IsOpen", tag.Value, StringComparison.Ordinal);
-        Assert.DoesNotContain("Details.", tag.Value, StringComparison.Ordinal);
+        // fall back to its own default.
+        Assert.Contains("Library.Lightbox.IsOpen", host.Value, StringComparison.Ordinal);
+        Assert.DoesNotContain("Details.", host.Value, StringComparison.Ordinal);
     }
 
     /// <summary>Tab cannot reach the modal underneath while the overlay is up.

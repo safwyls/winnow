@@ -1,6 +1,8 @@
+using System.ComponentModel;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
+using Winnow.App.Services;
 using Winnow.Covers;
 
 namespace Winnow.App.ViewModels;
@@ -10,6 +12,14 @@ namespace Winnow.App.ViewModels;
 /// and the lease behind what is on screen. Never shared between surfaces — the
 /// tile model holds the identity (which work, which <see cref="CoverKey"/>, and
 /// the lease source); this holds what is on screen for exactly one consumer.
+///
+/// <para>This is the two-layer surface: the floor variant under the vivid art,
+/// the vivid layer's opacity carrying the §5.1 ramp. It asks the cache for both
+/// layers only while the ramp is dimming anything — with dimming off the vivid
+/// layer is drawn at full opacity and the floor is a bitmap nobody can see, so
+/// the request drops to <see cref="CoverLayers.Vivid"/> and the wall holds one
+/// decode per cover instead of two. Turning dimming back on re-requests the
+/// pair, which is why the ramp is watched here rather than read once.</para>
 /// </summary>
 public sealed class CoverPresenter : ObservableObject, IDisposable
 {
@@ -20,6 +30,7 @@ public sealed class CoverPresenter : ObservableObject, IDisposable
 
     private ICoverLeases? _leases;
     private CoverKey? _key;
+    private DormancyRamp? _ramp;
 
     /// <summary>The lease behind <see cref="Art"/>; kept so the pool entry outlives the load.</summary>
     private ICoverLease? _held;
@@ -64,7 +75,12 @@ public sealed class CoverPresenter : ObservableObject, IDisposable
     /// <summary>Vivid layer, decoded at display resolution. Null until art arrives.</summary>
     public Bitmap? Vivid => _art?.Vivid;
 
-    /// <summary>Floor variant (sat 0.22 / bright 0.60), pre-computed by the cover cache.</summary>
+    /// <summary>
+    /// Floor variant (§5.1's 0.22 / 0.68 endpoint), pre-computed by the cover
+    /// cache. Null while the ramp is off and this surface asked for the vivid
+    /// layer alone; an <c>Image</c> bound to null draws nothing, which is the
+    /// same thing a vivid layer at full opacity leaves visible.
+    /// </summary>
     public Bitmap? Floor => _art?.Floor;
 
     public bool HasCover => _art is not null;
@@ -76,23 +92,40 @@ public sealed class CoverPresenter : ObservableObject, IDisposable
     public int PresentedWidth => _presentedWidth;
 
     /// <summary>
+    /// The layers this surface needs decoded: both while the ramp dims dormant
+    /// covers, the vivid layer alone when the user has turned dimming off,
+    /// because then the floor variant is never visible under it.
+    /// </summary>
+    public CoverLayers Layers => _ramp is null || _ramp.DimsDormantCovers
+        ? CoverLayers.VividAndFloor
+        : CoverLayers.Vivid;
+
+    /// <summary>
     /// Points this surface at a game. A different cover identity bumps the
     /// generation: everything in flight for the old one is abandoned and its
     /// results cannot land here afterwards.
     /// </summary>
-    public void Target(CoverKey? key, ICoverLeases? leases)
+    /// <param name="ramp">
+    /// The ramp this surface resolves dormancy through, so the presenter knows
+    /// whether the floor layer is visible at all. Null asks for both layers,
+    /// which is the safe answer for a surface with no ramp of its own.
+    /// </param>
+    public void Target(CoverKey? key, ICoverLeases? leases, DormancyRamp? ramp = null)
     {
         if (_disposed)
         {
             return;
         }
 
-        if (Nullable.Equals(_key, key) && ReferenceEquals(_leases, leases))
+        if (Nullable.Equals(_key, key)
+            && ReferenceEquals(_leases, leases)
+            && ReferenceEquals(_ramp, ramp))
         {
             return;
         }
 
         Release();
+        Watch(ramp);
         _key = key;
         _leases = leases;
     }
@@ -112,10 +145,12 @@ public sealed class CoverPresenter : ObservableObject, IDisposable
         }
 
         var width = CoverImaging.SnapWidth(displayWidthPixels);
+        var layers = Layers;
 
-        // Already showing this bucket or a larger one: a smaller cut of the same
-        // art is never worth a re-decode, and never worth a downgrade.
-        if (_art is not null && width <= _presentedWidth)
+        // Already showing this bucket or a larger one, with the layers this
+        // surface draws: a smaller cut of the same art is never worth a
+        // re-decode, and never worth a downgrade.
+        if (_art is not null && width <= _presentedWidth && _art.Satisfies(layers))
         {
             return;
         }
@@ -126,7 +161,7 @@ public sealed class CoverPresenter : ObservableObject, IDisposable
         }
 
         var generation = _generation;
-        var lease = _leases.Acquire(key, width);
+        var lease = _leases.Acquire(key, width, layers);
 
         if (lease.TryGetArt(out var hit))
         {
@@ -153,11 +188,14 @@ public sealed class CoverPresenter : ObservableObject, IDisposable
         _cancellation?.Dispose();
         _cancellation = null;
 
-        _held?.Dispose();
-        _held = null;
-
+        // Art first, lease second: releasing the last lease on an evicted cover
+        // frees its pixels, so the binding has to have let go of them before
+        // that can happen (CoverArt states the invariant).
         _presentedWidth = 0;
         Art = null;
+
+        _held?.Dispose();
+        _held = null;
     }
 
     public void Dispose()
@@ -168,7 +206,54 @@ public sealed class CoverPresenter : ObservableObject, IDisposable
         }
 
         Release();
+        Watch(null);
         _disposed = true;
+    }
+
+    /// <summary>
+    /// One subscription per realized surface, not per tile: the wall has a few
+    /// dozen containers alive at once and the ramp is a single shared object.
+    /// </summary>
+    private void Watch(DormancyRamp? ramp)
+    {
+        if (ReferenceEquals(_ramp, ramp))
+        {
+            return;
+        }
+
+        if (_ramp is not null)
+        {
+            _ramp.PropertyChanged -= OnRampChanged;
+        }
+
+        _ramp = ramp;
+
+        if (_ramp is not null)
+        {
+            _ramp.PropertyChanged += OnRampChanged;
+        }
+    }
+
+    /// <summary>
+    /// The user turned dimming on while this surface was showing a vivid-only
+    /// decode. The floor layer is visible again, so ask for the pair at the
+    /// width already on screen; the vivid art stays up until it arrives.
+    /// </summary>
+    private void OnRampChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is not (nameof(DormancyRamp.DimsDormantCovers) or null))
+        {
+            return;
+        }
+
+        if (_disposed || _art is null || _art.Satisfies(Layers))
+        {
+            return;
+        }
+
+        var width = _presentedWidth;
+        _pending.Remove(width);
+        Request(width);
     }
 
     private async Task LoadAsync(ICoverLease lease, int generation, int width, CancellationToken ct)
@@ -197,7 +282,9 @@ public sealed class CoverPresenter : ObservableObject, IDisposable
         }
 
         // Three ways a result loses: no art, a generation this surface has
-        // retired, or a bucket smaller than what is already on screen.
+        // retired, or a bucket smaller than what is already on screen. A pair
+        // arriving at the presented width is not a loser — that is the ramp
+        // being turned back on under a vivid-only decode.
         if (art is null || generation != _generation || (_art is not null && width < _presentedWidth))
         {
             lease.Dispose();
