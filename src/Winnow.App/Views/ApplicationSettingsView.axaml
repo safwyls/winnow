@@ -107,15 +107,13 @@
                         <StackPanel Spacing="5">
                             <TextBlock Classes="body-l" Text="Version"/>
                             <SelectableTextBlock FontFamily="{StaticResource DataFont}"
-                                                 Text="{Binding ApplicationVersion}"
-                                                 AutomationProperties.Name="Application version"/>
+                                                 Text="{Binding ApplicationVersion}"/>
                         </StackPanel>
                         <StackPanel Spacing="5">
                             <TextBlock Classes="body" Foreground="{StaticResource TextDim}" Text="Source commit"/>
                             <SelectableTextBlock FontFamily="{StaticResource DataFont}"
                                                  Foreground="{StaticResource TextDim}" TextWrapping="Wrap"
-                                                 Text="{Binding BuildCommit}"
-                                                 AutomationProperties.Name="Source commit"/>
+                                                 Text="{Binding BuildCommit}"/>
                         </StackPanel>
                     </StackPanel>
                 </Border>
