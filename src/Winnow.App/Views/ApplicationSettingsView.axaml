@@ -97,6 +97,26 @@
 
                 <TextBlock Classes="problem" IsVisible="{Binding HasProblem}"
                            Text="{Binding Problem}" AutomationProperties.LiveSetting="Polite"/>
+
+                <TextBlock Classes="label" FontSize="10" LetterSpacing="1.4"
+                           Margin="0,6,0,0" AutomationProperties.HeadingLevel="2"
+                           Text="ABOUT WINNOW"/>
+                <Border Classes="card" AutomationProperties.Name="About Winnow"
+                        AutomationProperties.AccessibilityView="Control">
+                    <StackPanel Spacing="12">
+                        <StackPanel Spacing="5">
+                            <TextBlock Classes="body-l" Text="Version"/>
+                            <SelectableTextBlock FontFamily="{StaticResource DataFont}"
+                                                 Text="{Binding ApplicationVersion}"/>
+                        </StackPanel>
+                        <StackPanel Spacing="5">
+                            <TextBlock Classes="body" Foreground="{StaticResource TextDim}" Text="Source commit"/>
+                            <SelectableTextBlock FontFamily="{StaticResource DataFont}"
+                                                 Foreground="{StaticResource TextDim}" TextWrapping="Wrap"
+                                                 Text="{Binding BuildCommit}"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
             </StackPanel>
         </ScrollViewer>
     </Grid>

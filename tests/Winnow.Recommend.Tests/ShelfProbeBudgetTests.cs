@@ -98,7 +98,11 @@ public class ShelfProbeBudgetTests : IClassFixture<ShelfProbeBudgetTests.Crowded
     {
         public RecommendHarness Harness { get; } = new();
 
-        public async Task InitializeAsync()
+        // Commit the fixture together: thousands of individual durable writes can
+        // exhaust the test runner's inactivity timeout before the first test starts.
+        public Task InitializeAsync() => Harness.SeedBatchAsync(SeedAsync);
+
+        private async Task SeedAsync()
         {
             for (var i = 0; i < 90; i++)
             {

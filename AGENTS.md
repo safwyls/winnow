@@ -116,7 +116,10 @@ report the limitation and leave Backlog files untouched.
 - `Directory.Build.props` sets nullable, implicit usings and `TreatWarningsAsErrors`.
 - Build and test with `dotnet build` and `dotnet test` from the repository root.
 - CI runs Windows Release restore/build/test on pushes and pull requests, with SDK analyzers
-  and direct/transitive NuGet auditing enabled; warnings fail the gate. Migration integrity
+  and direct/transitive NuGet auditing enabled; warnings fail the gate. Windows CI
+  and Linux session checks are required by `main` branch protection. Changes reach `main`
+  through an up-to-date pull request; this also applies to administrators. No additional
+  approving reviewer is required. Force pushes and branch deletion are disabled. Migration integrity
   uses `scripts/Verify-Migrations.ps1`. For a new migration, append its SHA-256 to
   `src/Winnow.Data/Migrations/hashes.json`: UTF-8 text without BOM, CRLF normalized to LF,
   all other whitespace retained. Never replace an existing entry. Verify with
@@ -124,6 +127,8 @@ report the limitation and leave Backlog files untouched.
   `scripts/Test-MigrationHashes.ps1`.
 - Windows CI prints completed tests and retains TRX plus hang diagnostics. A five-minute
   test inactivity timeout captures a mini dump so a stalled host can be investigated.
+  The job has a 45-minute overall budget to accommodate slower runners while keeping that
+  inactivity check in place.
 - A separate Ubuntu CI job runs `tests/Winnow.Monitor.Linux.Tests` against real native
   processes and a synthetic Proton environment. Those tests explicitly skip on non-Linux hosts.
 - Release packaging lives in `packaging/`; `docs/releases.md` owns build and publication

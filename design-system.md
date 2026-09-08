@@ -2405,13 +2405,17 @@ what appears in the library.
 It is not under APPEARANCE, which changes material and layout and no data. It is not under
 PLATFORMS, which is about connecting to a store; this is about what to do with what arrived.
 
-APPLICATION holds operating-system behavior rather than library content or visual material.
+APPLICATION holds operating-system behavior and application build information.
 Its **NOTIFICATION AREA** card has separate, off-by-default toggles for hiding Winnow when it
 is minimized and keeping it running when its window is closed. The notification-area menu
 offers **Open Winnow** and **Exit**; Exit always closes the process even when close-to-tray is
 on. Its **STARTUP** card offers **Start with Windows**. That registration is per-user and
 starts Winnow quietly in the notification area after sign-in. Unsupported systems disable
 the toggle and say why.
+
+Its **ABOUT WINNOW** card shows **Version** and **Source commit** as selectable Data-font
+text. The version retains prerelease labels; builds without source metadata say `Unavailable`
+for the commit.
 
 The acquisition export card offers **Export acquisition CSV**, followed by a polite status
 line for completion, cancellation or failure. Its explanation states that missing facts stay

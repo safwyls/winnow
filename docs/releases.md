@@ -9,6 +9,18 @@ at the cost of a larger package — see the TASK-152.4 follow-up in
 `docs/spikes/memory-footprint.md`. Linux x64 was not measured and keeps its prior,
 non-ReadyToRun publish.
 
+## Application version
+
+`Version.props` owns the three-part version base (currently `0.1.0`). Ordinary builds
+append `-dev`; CI packages append `-ci.<run number>`. A tag such as `v0.1.0-beta.1`
+supplies the release version. Manual builds and tags must use the base in `Version.props`;
+update that file when starting a new release series. Package builds embed the source commit
+in the assembly informational version and use the numeric base for Windows file versions.
+
+**Settings → Application → About Winnow** shows the running application's version and
+selectable source commit directly from its assembly, without depending on an adjacent file.
+Source archives built without Git metadata show `Unavailable` for the commit.
+
 ## Artifacts
 
 | Asset | Use |
@@ -28,7 +40,8 @@ directory; Debian prereleases use `~` so they sort before the corresponding stab
 ## Build without publishing
 
 Pushes to `main` and `codex/**`, and pull requests, build packages when application,
-packaging, or workflow files change. Their version is `0.0.0-ci.<run number>`. Download
+packaging, version, SDK, dependency configuration, or workflow files change. Their version is
+`<version base>-ci.<run number>`. Download
 `packages-win-x64` and `packages-linux-x64` from the workflow's artifacts, retained for 14 days.
 
 Once the workflow is on the default branch, **Actions → Release builds → Run workflow**
@@ -57,6 +70,11 @@ database files. Installer smoke scripts are restricted to GitHub Actions because
 and uninstall the package. Their application launches use throwaway `--data-dir` paths.
 
 ## Create a release
+
+`main` requires an up-to-date pull request with the Windows build/test/migration check and
+the Linux native/Proton session check passing. Protection also applies to administrators;
+no additional approving reviewer is required. Force pushes and deletion of `main` are disabled.
+Merging a pull request produces build artifacts; only a version tag creates a draft release.
 
 After reviewing a commit on main, create and push its version tag, for example:
 
