@@ -158,7 +158,7 @@ public class UserThemeStoreTests : IDisposable
         await service.LoadAsync();
 
         Assert.Equal(WinnowThemes.Default.Id, service.Theme.Id);
-        Assert.Equal(5, service.Catalogue.Count);
+        Assert.Equal(WinnowThemes.All.Count + 1, service.Catalogue.Count);
 
         var mine = Assert.Single(service.Catalogue, t => t.Id == "mine");
         service.SelectTheme(mine);
@@ -272,7 +272,7 @@ public class UserThemeStoreTests : IDisposable
         var service = new ThemeService(settings, new UserThemeStore(_dir));
         await service.LoadAsync();
 
-        Assert.Equal(0, service.Transparency);
+        Assert.Equal(ThemeService.DefaultTransparency, service.Transparency);
 
         service.SelectTheme(Assert.Single(service.Catalogue, t => t.Id == "open"));
         await service.PendingSave;
@@ -343,6 +343,8 @@ public class UserThemeStoreTests : IDisposable
             defaults: """ "transparency": 40, "backdrop": "mica", "reach": "chrome-and-wall", "layout": "floating" """));
 
         var settings = new FakeSettings();
+        await settings.SetAsync(ThemeService.WallSettingKey, "false");
+        await settings.SetAsync(ThemeService.LayoutSettingKey, "flush");
         var service = new ThemeService(settings, new UserThemeStore(_dir));
         await service.LoadAsync();
 
@@ -384,6 +386,31 @@ public class UserThemeStoreTests : IDisposable
 
         Assert.Null(appearance.PrepareThemeFolder());
         Assert.False(appearance.HasThemeFolder);
+    }
+
+    [Fact]
+    public async Task A_local_copy_of_a_bundled_theme_keeps_its_edits_and_saved_selection()
+    {
+        Directory.CreateDirectory(_dir);
+        var path = Path.Combine(_dir, "my-bottle.json");
+        var text = Theme("bottle-green", "My bottle", volt: "#AADD33");
+        await File.WriteAllTextAsync(path, text);
+        var settings = new FakeSettings();
+        await settings.SetAsync(ThemeService.ThemeSettingKey, "bottle-green");
+
+        var service = new ThemeService(settings, new UserThemeStore(_dir));
+        await service.LoadAsync();
+
+        Assert.Equal("My bottle", service.Theme.Name);
+        Assert.Single(service.Catalogue, t => t.Id == "bottle-green");
+        Assert.True(service.Theme.IsUserTheme);
+        Assert.DoesNotContain(service.Diagnostics, d => d.IsError);
+        Assert.Equal(text, await File.ReadAllTextAsync(path));
+
+        File.Delete(path);
+        service.ReloadUserThemes();
+        Assert.Equal("Bottle green", service.Theme.Name);
+        Assert.False(service.Theme.IsUserTheme);
     }
 
     private static string Theme(

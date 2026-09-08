@@ -3,9 +3,8 @@ using Avalonia.Media;
 namespace Winnow.App.Themes;
 
 /// <summary>
-/// The four themes that ship. Each differs on temperature, chroma strategy,
-/// value structure and material so a rail thumbnail alone identifies the theme.
-/// Volt is always the room at full voltage; Flare is always the unreachable hue.
+/// The calibrated house palettes and bundled authored themes. Authored themes
+/// retain their palette and defaults; their audit findings remain visible.
 /// </summary>
 public static class WinnowThemes
 {
@@ -171,10 +170,16 @@ public static class WinnowThemes
         TranslucentTextFaint = C("#838C95"),
     };
 
-    /// <summary>In the order the settings screen draws them. The default leads,
-    /// then the two cool rooms, then the warm one and the neutral one — so no two
-    /// adjacent cards are the same argument.</summary>
-    public static readonly IReadOnlyList<WinnowTheme> All = [Winnow, Nightshift, Tungsten, BoxArt];
+    /// <summary>The four house palettes covered by the dark-field contrast measurements.</summary>
+    public static readonly IReadOnlyList<WinnowTheme> Calibrated = [Winnow, Nightshift, Tungsten, BoxArt];
+
+    private static readonly (IReadOnlyList<WinnowTheme> Themes, IReadOnlyList<ThemeDiagnostic> Diagnostics)
+        Authored = LoadAuthored();
+
+    /// <summary>In settings order, with the default first and each Dawn beside its dark variant.</summary>
+    public static readonly IReadOnlyList<WinnowTheme> All = [.. Calibrated, .. Authored.Themes];
+
+    public static IReadOnlyList<ThemeDiagnostic> Diagnostics => Authored.Diagnostics;
 
     public static WinnowTheme Default => Winnow;
 
@@ -197,4 +202,29 @@ public static class WinnowThemes
             ?? (string.Equals(id, LegacyDefaultId, StringComparison.Ordinal) ? Winnow : Default);
 
     private static Color C(string hex) => Color.Parse(hex);
+
+    private static (IReadOnlyList<WinnowTheme>, IReadOnlyList<ThemeDiagnostic>) LoadAuthored()
+    {
+        string[] ids = ["bottle-green", "silkcircuit", "silkcircuit-dawn", "rose-pine", "rose-pine-dawn"];
+        var themes = new List<WinnowTheme>();
+        var diagnostics = new List<ThemeDiagnostic>();
+        foreach (var id in ids)
+        {
+            var fileName = id + ".json";
+            using var stream = typeof(WinnowThemes).Assembly.GetManifestResourceStream(
+                "Winnow.App.Themes.Bundled." + fileName)
+                ?? throw new InvalidOperationException($"Bundled theme {fileName} is missing.");
+            using var reader = new StreamReader(stream);
+            var result = ThemeJson.Parse(fileName, reader.ReadToEnd());
+            if (result.Theme is null)
+            {
+                throw new InvalidOperationException($"Bundled theme {fileName} is invalid.");
+            }
+
+            themes.Add(result.Theme with { SourceFile = null });
+            diagnostics.AddRange(result.Diagnostics);
+        }
+
+        return (themes, diagnostics);
+    }
 }

@@ -38,7 +38,7 @@ public class ThemeContrastTests
     public static TheoryData<string> ThemeIds()
     {
         var data = new TheoryData<string>();
-        foreach (var theme in WinnowThemes.All)
+        foreach (var theme in WinnowThemes.Calibrated)
         {
             data.Add(theme.Id);
         }
@@ -82,11 +82,11 @@ public class ThemeContrastTests
 
         foreach (var transparency in Range())
         {
-            var t = theme.Tokens(transparency);
+            var t = theme.Tokens(transparency, layout: WinnowLayout.Flush);
             Assert.Equal(t["ChromeSurface"], t["CaptionFill"]);
         }
 
-        var opaque = theme.Tokens(transparency: 0);
+        var opaque = theme.Tokens(transparency: 0, layout: WinnowLayout.Flush);
         Assert.Equal(theme.Surface, opaque["CaptionFill"]);
         Assert.True(
             Luminance(opaque["WallGround"]) < Luminance(opaque["CaptionFill"]),
@@ -121,7 +121,7 @@ public class ThemeContrastTests
     public void Zero_is_the_opaque_palette_exactly(string id)
     {
         var theme = WinnowThemes.ById(id);
-        var t = theme.Tokens(transparency: 0);
+        var t = theme.Tokens(transparency: 0, layout: WinnowLayout.Flush);
 
         Assert.Equal(theme.Surface, t["ChromeSurface"]);
         Assert.Equal(theme.Ground, t["PaneGround"]);

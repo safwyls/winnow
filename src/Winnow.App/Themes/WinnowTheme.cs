@@ -141,16 +141,13 @@ public sealed record WinnowTheme
     public required Color TranslucentTextDim { get; init; }
     public required Color TranslucentTextFaint { get; init; }
 
-    // ── Provenance, for themes that came out of a file ──────────────────────
-    // Both null on the four built-ins, so nothing about them changes: the
-    // record is still twenty-four colours and three strings, and every existing
-    // construction site still compiles unchanged because neither is `required`.
+    // ── Authored defaults and local-file provenance ────────────────────────
 
     /// <summary>
     /// What this theme asks the rest of the Appearance screen to be set to when
-    /// it is picked. <c>null</c> on every built-in, which is what keeps the
-    /// shipped four behaving exactly as they did before the JSON engine
-    /// existed. See <see cref="ThemeAppearanceDefaults"/>.
+    /// it is picked. The four calibrated palettes leave the current appearance
+    /// settings in place; authored palettes may supply their own opening
+    /// position. See <see cref="ThemeAppearanceDefaults"/>.
     /// </summary>
     public ThemeAppearanceDefaults? Defaults { get; init; }
 

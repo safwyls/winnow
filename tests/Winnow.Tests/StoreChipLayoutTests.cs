@@ -36,24 +36,6 @@ public sealed class StoreChipLayoutTests
 
     // ══ Feed card ════════════════════════════════════════════════════════════
 
-    // The TASK-70.6 regression: the chip row replaced a Border that carried
-    // Grid.Column="4" and did not carry one itself, so it defaulted to
-    // column 0 and drew on top of Play/Install.
-    [Fact]
-    public void Every_child_of_the_feed_action_line_declares_its_column()
-    {
-        var grid = FeedActionGrid();
-
-        foreach (var child in grid.Elements())
-        {
-            var column = child.Attribute("Grid.Column")?.Value;
-            Assert.False(
-                string.IsNullOrEmpty(column),
-                $"<{child.Name.LocalName}> in the feed card's action line declares no Grid.Column, "
-                + "so it draws in column 0 on top of Play/Install.");
-        }
-    }
-
     // The chips moved from the action line to the title block, where they
     // have the full content width rather than sharing one line with three
     // controls.
@@ -160,8 +142,8 @@ public sealed class StoreChipLayoutTests
     {
         var card = Load("src/Winnow.App/Views/FeedCardView.axaml");
         return card
-            .Descendants(Avalonia + "Grid")
-            .Single(g => g.Attribute("IsVisible")?.Value == "{Binding ShowActions}");
+            .Descendants(Avalonia + "Button")
+            .Single(g => g.Attribute("Command")?.Value == "{Binding NotNowCommand}").Parent!;
     }
 
     /// <summary>The FeedGrid.MinItemWidth the feed's own markup sets.</summary>

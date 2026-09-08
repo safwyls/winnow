@@ -1,6 +1,6 @@
 # Winnow — Design System
 
-**Applies to:** Avalonia 11+ desktop client, dark-only
+**Applies to:** Avalonia 11+ desktop client, dark by default with optional light themes
 **Companion files:** `src/Winnow.App/Themes/tokens.axaml` (the token dictionary),
 `mock-library.html` (visual target)
 
@@ -149,7 +149,7 @@ does not govern the Stores panel's 720px, which is a card width holding controls
 │    Never 412 │   └────┘  └────┘  └────┘  └────┘  └────┘  └────┘       │
 │    Started186│    vivid   vivid   faded   vivid   faded   vivid       │
 │    Played 391│                                                        │
-│    Won't run │   ┌────┐  ┌────┐  ┌────┐  ┌────┐  ┌────┐  ┌────┐       │
+│              │   ┌────┐  ┌────┐  ┌────┐  ┌────┐  ┌────┐  ┌────┐       │
 │              │   │▓▓▓▓│  │    │  │▓▓▓▓│  │    │● │▓▓▓▓│  │▓▓▓▓│       │
 │  ── LISTS ── │   └────┘  └────┘  └────┘  └────┘  └────┘  └────┘       │
 │  Co-op night │                                                        │
@@ -464,7 +464,8 @@ carries one fact wrapped in reasoning, the fact stays and the reasoning moves he
 | Bucket: never opened | `Never played` | `Pile of shame` |
 | Bucket: refund line to retired | `Started` | `Barely played`, `Bounced off` |
 | Bucket: high playtime | `Played out` | `Completed` |
-| Bucket: unrunnable | `Won't run` | `Dead` |
+| Bucket: unrunnable (hidden from the rail until the signal is viable) | `Won't run` | `Dead` |
+| Steam account statistics rail row | `STEAM STATS` | `STATS` |
 | Badge tooltip | `3 updates since you played` | `New content available!` |
 | Journal prompt | `How was that?` | `Rate your session!` |
 | Card answer | `Same game` / `Different games` | `Merge records` / `Cancel` |
@@ -1806,6 +1807,11 @@ hand-built list, ticked when the game is already a member, resolved through `sam
 in SQL so the answer is for the game and not the store entry. Live lists are not offered — a
 live list finds its own members and there is nothing to tick.
 
+Feed cards also offer **Add to list**. A prompt in the feed header names the game and offers
+existing manual lists or a new list name. It uses the same list persistence as the library;
+live lists remain excluded. Keyboard focus moves into the prompt, Enter confirms a new list,
+and Escape cancels.
+
 **Deleting asks first, and the question says what survives:** *"Delete "Couch co-op night"? The
 titles stay in your library."* `Danger` appears on its confirm button and nowhere else on
 the strip. Deleting a hand-added game (§16) is the other destructive act in the application.
@@ -1852,8 +1858,8 @@ in place — focus is §10.7's brush swap, and translucency is §14.
 
 ## 14. Themes and translucency
 
-**Dark-only is still true; one-palette is not.** Four themes ship, the default is unchanged,
-and a transparency **slider** sits beside them. Both settings live on the rail's
+**Nine themes ship; Winnow remains the default palette.**
+A transparency **slider** sits beside them. Both settings live on the rail's
 `SETTINGS › APPEARANCE` screen and persist in `settings`.
 
 ### 14.1 What a theme may change, and what it may not
@@ -1864,13 +1870,13 @@ one job's colour on a second one.**
 
 **`Flare` is the load-bearing case.** It marks unread updates and the bucket that counts them,
 in every theme, and **no theme's `Volt`, `Amber`, `Azure` or `Danger` may equal it.**
-`ThemeContrastTests` asserts that per theme, along with a minimum hue separation from `Danger`
+`ThemeContrastTests` asserts that for the original four calibrated themes, along with a minimum hue separation from `Danger`
 (24°, the gap §2 already accepts for the default pair) and from `Volt` (60°).
 
-**Two rules of construction carry across the table.** Every theme's `Volt` is its own room at
+**Two rules of construction carry across the original four themes.** Each one's `Volt` is its own room at
 full voltage. And every theme's `Flare` is the one hue that room cannot produce.
 
-### 14.1.1 The four themes, and the axes that separate them
+### 14.1.1 The four calibrated themes, and the axes that separate them
 
 A room is separated by four things, and hue is the least of them. A set that differs in hue and
 value alone reads as four settings of one theme.
@@ -1908,10 +1914,18 @@ and by where each appears. Box art has no second saturated colour to spend, so `
 `Azure` sit 29° apart and are separated by lightness instead: `Volt` is a near-white at 17:1
 against the art field, `Azure` a mid steel.
 
-**No light theme, deliberately.** §9 inverts the platform's caption order, §5.3's tile scrim
-fades to `Ground`, and §5.1's dormancy floor was calibrated against dark capsules on a dark
-field. A light theme is not this table with the steps reversed; it is a second pass over all
-three, and half of one would break the ramp that is the product's whole encoding.
+**Five authored themes also ship:** Bottle green, SilkCircuit, SilkCircuit Dawn, Rosé Pine,
+and Rosé Pine Dawn. Their palettes and appearance defaults match the authored theme files.
+The Dawn variants are light and default to solid backgrounds. The contrast and dormancy
+measurements for the original four do not certify these authored palettes: §5.1's dormancy
+floor was calibrated against dark capsules on a dark field. Theme audit warnings remain
+available in one disclosure, collapsed by default, labelled **Some themes may affect legibility.**
+Theme file errors remain visible without expanding it.
+An existing local theme with the same authored ID takes precedence without adding a duplicate
+choice. Removing that local file restores the bundled palette.
+
+In Appearance, restoring focus after inactive-window scrolling preserves the scroll offset.
+Tab and directional keyboard navigation still bring the focused control into view.
 
 ### 14.2 Two tiers, and one free quantity
 
@@ -1981,10 +1995,13 @@ nothing; and it grows to 10% as the pane opens up and there is more under it to 
 **The slider is 0 to 100, stored as a whole percent under `appearance.transparency`.** A stored
 `true` migrates to 25; a stored `false` to 0.
 
-**Zero is a real position, not an off state dressed as one.** It is the default, it is
+**Zero is a real position, not an off state dressed as one.** It is
 bit-for-bit the opaque palette with nothing carrying alpha, and it is the answer for anyone who
 wants §8's floor with no argument — which is why the label under that end of the track is a
 word, `SOLID`, and not an absence.
+
+Without saved preferences, Windows starts at 30% Acrylic and other platforms at solid.
+Authored theme defaults may override the quantity. Saved preferences take precedence.
 
 #### What fixes the ground
 
@@ -2055,7 +2072,7 @@ the window's ground, in the floating layout. `Colorimetry.AaCeiling` **walks bot
 reports the worse**, so the mark means one thing whichever layout is up and flipping the layout
 can never invalidate it.
 
-**Over a dark desktop the number never gets worse**, at any position, in any theme: the
+**Over a dark desktop the number never gets worse** for the original four calibrated themes: the
 composite is darker than `Ground`, so opening a surface deepens the ground its labels sit on.
 `ThemeContrastTests` asserts that across the range.
 
@@ -2170,7 +2187,8 @@ screen than one quantity with a stated relation, and the pane's share is forced 
 relation is in the table above and the identity in §14.2.
 
 Both preferences persist beside theme and transparency, under `appearance.backdrop`
-(`acrylic` / `mica`, unset reads as acrylic) and `appearance.wall` (unset reads as *off*).
+(`acrylic` / `mica`, unset reads as acrylic) and `appearance.wall` (unset reads as *on*).
+The reach choices put **Everything but covers** first, followed by **Frame and sidebars**.
 
 ### 14.7 The panes take one ramp, and the fields take none
 
@@ -2239,7 +2257,7 @@ caption being measured on the most open surface in the window.
 
 ## 15. The floating layout
 
-**A second arrangement, behind a setting, default off.** The panes may meet edge to edge as
+**Floating is the default arrangement.** The panes may meet edge to edge as
 they always have, or the **content** regions may detach into rounded cards with a uniform gap
 around each, on a window ground that runs unbroken behind the caption and every gap.
 
@@ -2353,11 +2371,12 @@ the layout changes bound out of the view model: the ground, the margin, the radi
 `Line` falls.
 
 **A layout card is repainted from whichever theme is up.** A theme card draws its own fixed
-palette, because four of them side by side ask *which room*; two layout cards ask *what would
+palette, because the theme choices ask *which room*; two layout cards ask *what would
 this arrangement look like in the room I am already in*, and a card frozen in the default
 palette would answer a question nobody asked.
 
-Persisted under `appearance.layout` (`flush` / `floating`; unset reads as flush). The debug
+Floating appears first, to the left of Flush.
+Persisted under `appearance.layout` (`flush` / `floating`; unset reads as floating). The debug
 capture flag is `--layout=flush|floating`, session-only and sealed against writing.
 
 ### 15.6 What it moves

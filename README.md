@@ -23,7 +23,7 @@ whether it's been patched since you last tried. Winnow does.
 - **Patch tracking.** Games updated since you last played them.
 - **Launch and session tracking.** Click Play; the game starts and nothing else happens.
   Winnow records when you actually played, which storefronts don't retain.
-- **Themes and transparency**, including a drop-in JSON theme format.
+- **Nine bundled themes and transparency**, including Bottle green, SilkCircuit and Rosé Pine with Dawn variants, plus a drop-in JSON theme format.
 
 ### Install and run
 

@@ -404,6 +404,9 @@ public sealed class AccountStatsViewModelTests
         using var db = new TempDatabase();
         var shell = Shell(db, DetachedAccountStats.Create());
 
+        Assert.Equal("STEAM STATS", shell.AccountStats.RailRow);
+        Assert.DoesNotContain(shell.Library.Buckets, bucket => bucket.Key == LibraryViewModel.WontRunKey);
+
         await shell.ToggleAccountStatsCommand.ExecuteAsync(null);
         Assert.True(shell.IsAccountStatsVisible);
 

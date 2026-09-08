@@ -1014,6 +1014,7 @@ public static class Program
         services.AddSingleton<IFeedService, FeedService>();
         services.AddSingleton<IGameTileSource>(
             sp => sp.GetRequiredService<LibraryViewModel>());
+        services.AddSingleton(sp => sp.GetRequiredService<LibraryViewModel>().Lists);
         services.AddSingleton<FeedViewModel>();
 
         // MainWindowViewModel takes MergeQueueViewModel as a required

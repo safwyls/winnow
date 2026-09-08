@@ -30,6 +30,7 @@
 
   <ItemGroup>
     <AvaloniaResource Include="Assets\**" />
+    <EmbeddedResource Include="Themes\Bundled\*.json" />
   </ItemGroup>
 
   <ItemGroup>
@@ -111,6 +112,5 @@
   </ItemGroup>
 
 </Project>
-
 
 

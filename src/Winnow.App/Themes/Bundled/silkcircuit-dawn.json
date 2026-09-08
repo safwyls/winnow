@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "id": "silkcircuit-dawn",
+  "name": "SilkCircuit Dawn",
+  "reason": "SilkCircuit in daylight: lavender-white glass, deep-cyan selection, and vivid pink reserved for unread updates.",
+  "seeds": {
+    "ground": "#F4F0FA",
+    "surface": "#FAF8FF",
+    "text": "#30263D",
+    "flare": "#C12A83",
+    "volt": "#005F57",
+    "amber": "#8A6500",
+    "azure": "#7E2BD5",
+    "danger": "#C4384F"
+  },
+  "structure": {
+    "elevation": 0.05,
+    "wellDepth": 0.95,
+    "edge": 1.3,
+    "dimValue": 0.46,
+    "dimChroma": 0.75,
+    "voltInkContrast": 7.0,
+    "faintValue": 0.62,
+    "faintChroma": 0.55
+  },
+  "translucency": {
+    "chromeInk": 1.0,
+    "groundInk": 1.0,
+    "dimLift": 1.0,
+    "faintLift": 1.0
+  },
+  "defaults": {
+    "transparency": 0
+  },
+  "overrides": {
+    "Well": "#E9E2F2",
+    "SurfaceRaised": "#EEE8F7",
+    "SurfaceHigh": "#E2D9EF",
+    "Line": "#CEC1DE",
+    "TextDim": "#665874",
+    "TextFaint": "#92839F",
+    "VoltInk": "#FFFFFF",
+    "VoltHover": "#087A70",
+    "VoltPress": "#004A44",
+    "DangerHover": "#D65367",
+    "DangerPress": "#A6273C",
+    "DangerInk": "#FFFFFF",
+    "TranslucentSurface": "#FFFFFF",
+    "TranslucentChromeGround": "#FFFFFF",
+    "TranslucentTextDim": "#665874",
+    "TranslucentTextFaint": "#7F6E8D"
+  }
+}

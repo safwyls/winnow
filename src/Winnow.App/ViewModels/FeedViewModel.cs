@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Winnow.App.Services;
+using Winnow.App.ViewModels.Lists;
 
 namespace Winnow.App.ViewModels;
 
@@ -34,6 +35,7 @@ public partial class FeedViewModel : ObservableObject
     private readonly IGameTileSource? _tiles;
     private readonly TimeProvider _clock;
     private readonly Action<Action> _post;
+    private readonly ListsViewModel? _lists;
 
     private ITimer? _ticker;
     private long _tickedAt;
@@ -72,10 +74,12 @@ public partial class FeedViewModel : ObservableObject
         IFeedService feed,
         IGameTileSource? tiles = null,
         TimeProvider? clock = null,
-        Action<Action>? post = null)
+        Action<Action>? post = null,
+        ListsViewModel? lists = null)
     {
         _feed = feed;
         _tiles = tiles;
+        _lists = lists;
         _clock = clock ?? TimeProvider.System;
         _post = post ?? (action => Avalonia.Threading.Dispatcher.UIThread.Post(action));
 
@@ -102,6 +106,59 @@ public partial class FeedViewModel : ObservableObject
 
     /// <summary>Sections in presentation order — the engine's claim order, strongest story first.</summary>
     public System.Collections.ObjectModel.ObservableCollection<FeedShelfViewModel> Shelves { get; } = [];
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsListPromptOpen))]
+    public partial ActionPromptViewModel? ListPrompt { get; set; }
+
+    public bool IsListPromptOpen => ListPrompt is not null;
+
+    [ObservableProperty]
+    public partial string? ListStatus { get; set; }
+
+    private void BeginAddToList(GameTileViewModel tile)
+    {
+        if (_lists is null) return;
+        ListStatus = null;
+        ActionPromptViewModel? activePrompt = null;
+        activePrompt = new ActionPromptViewModel(
+            question: $"Add {tile.Title} to",
+            confirmLabel: "New list",
+            confirm: async prompt =>
+            {
+                try
+                {
+                    var created = await _lists.CreateListAsync(prompt.Text, [tile.ReleaseId]);
+                    if (created is null || !ReferenceEquals(ListPrompt, activePrompt)) return;
+                    ListStatus = $"Added {tile.Title} to {created.Name}.";
+                    ListPrompt = null;
+                }
+                catch
+                {
+                    if (ReferenceEquals(ListPrompt, activePrompt))
+                        ListStatus = "Couldn't save that list. Try again.";
+                }
+            },
+            cancel: () => ListPrompt = null,
+            inputWatermark: "New list name",
+            choices: [.. _lists.Lists],
+            choose: async list =>
+            {
+                try
+                {
+                    await _lists.AddToListAsync(list, [tile.ReleaseId]);
+                    if (!ReferenceEquals(ListPrompt, activePrompt)) return;
+                    ListStatus = $"Added {tile.Title} to {list.Name}.";
+                    ListPrompt = null;
+                }
+                catch
+                {
+                    if (ReferenceEquals(ListPrompt, activePrompt))
+                        ListStatus = "Couldn't add that game. Try again.";
+                }
+            });
+        ListPrompt = activePrompt;
+    }
 
     /// <summary>The screen's own name. Directive rather than clever: it says what the screen is for.</summary>
     public string Title => "Where to start";
@@ -362,7 +419,8 @@ public partial class FeedViewModel : ObservableObject
     /// <summary>Builds one card, stamped with its pass and wired to this screen.</summary>
     private FeedCardViewModel NewCard(GameTileViewModel tile, string reason, long generation, long releaseId)
     {
-        var card = new FeedCardViewModel(tile, reason, _feed) { Generation = generation, SurfacingReleaseId = releaseId };
+        var card = new FeedCardViewModel(tile, reason, _feed, _lists is null ? null : BeginAddToList)
+            { Generation = generation, SurfacingReleaseId = releaseId };
 
         card.VerdictChanged += OnCardVerdictChanged;
         return card;

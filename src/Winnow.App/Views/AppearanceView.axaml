@@ -171,6 +171,7 @@
 
         <ScrollViewer Grid.Row="1"
                       Name="ScreenScroll"
+                      BringIntoViewOnFocusChange="False"
                       HorizontalScrollBarVisibility="Disabled"
                       VerticalScrollBarVisibility="Auto">
             <StackPanel Margin="24,16,24,28" MaxWidth="920"
@@ -408,13 +409,46 @@
                              Validation printed here (not logged) so authors can
                              see why a file was skipped. Errors first; verdict
                              stated in words as well as colour (§8). -->
-                        <StackPanel Spacing="10" IsVisible="{Binding HasProblems}">
+                        <StackPanel Spacing="10" IsVisible="{Binding HasErrors}">
                             <Border Height="1" Background="{StaticResource Line}" Margin="0,2"/>
 
                             <TextBlock Classes="label" FontSize="10" LetterSpacing="1.4"
                                        Text="{Binding ProblemsHeading}"/>
 
-                            <ItemsControl ItemsSource="{Binding Problems}">
+                            <ItemsControl ItemsSource="{Binding Errors}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:ThemeProblemViewModel">
+                                        <Border Classes="problem"
+                                                Classes.failed="{Binding IsError}"
+                                                Background="{StaticResource Ground}"
+                                                CornerRadius="{StaticResource RadiusControl}"
+                                                Padding="14,11" Margin="0,0,0,8">
+                                            <StackPanel Spacing="5">
+                                                <Grid ColumnDefinitions="*,Auto">
+                                                    <TextBlock Grid.Column="0"
+                                                               Classes="data-s"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               Text="{Binding Where}"/>
+                                                    <TextBlock Grid.Column="1"
+                                                               Classes="label verdict" FontSize="9" LetterSpacing="1"
+                                                               VerticalAlignment="Center"
+                                                               Text="{Binding Verdict}"/>
+                                                </Grid>
+                                                <TextBlock Classes="para" Text="{Binding Message}"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                        <StackPanel Spacing="10" IsVisible="{Binding HasWarnings}">
+                            <Button Name="ThemeWarningsToggle" Classes="act quiet"
+                                    Foreground="{StaticResource Amber}"
+                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                    Command="{Binding ToggleThemeWarningsCommand}"
+                                    Content="{Binding ThemeWarningsLabel}"
+                                    AutomationProperties.Name="Theme legibility warnings"/>
+                            <ItemsControl ItemsSource="{Binding Warnings}" IsVisible="{Binding ShowThemeWarnings}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="vm:ThemeProblemViewModel">
                                         <Border Classes="problem"
