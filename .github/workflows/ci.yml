@@ -2,6 +2,7 @@ name: CI
 
 on:
   push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
   workflow_call:
@@ -78,8 +79,15 @@ jobs:
       - name: Build with analyzers
         run: dotnet build --configuration Release --no-restore -warnaserror
 
+      - name: Verify test timing summary
+        run: ./scripts/Test-TestResultSummary.ps1
+
       - name: Test
         run: dotnet test --configuration Release --no-build --logger trx --logger "console;verbosity=normal" --results-directory TestResults --blame-hang-timeout 5m --blame-hang-dump-type mini
+
+      - name: Summarize test timing
+        if: always()
+        run: ./scripts/Summarize-TestResults.ps1 -ResultsDirectory TestResults -OutputPath $env:GITHUB_STEP_SUMMARY -Append
 
       - name: Keep test results
         if: always()

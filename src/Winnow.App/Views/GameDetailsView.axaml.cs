@@ -17,6 +17,7 @@ public partial class GameDetailsView : UserControl
     public GameDetailsView()
     {
         InitializeComponent();
+        ScreenshotScroll.AddHandler(PointerWheelChangedEvent, OnScreenshotWheel, RoutingStrategies.Tunnel);
         WireMenuRows();
         MetadataEditorView.CloseRequested += OnSectionClosed;
 
@@ -203,6 +204,22 @@ public partial class GameDetailsView : UserControl
     private void OnScreenshotGotFocus(object? sender, GotFocusEventArgs e)
     {
         (e.Source as Control)?.BringIntoView();
+    }
+
+    private void OnScreenshotWheel(object? sender, PointerWheelEventArgs e)
+    {
+        if (e.Delta.X != 0 || e.Delta.Y == 0 || e.KeyModifiers.HasFlag(KeyModifiers.Shift)
+            || e.Source is not Control source || TopLevel.GetTopLevel(this) is not { } root)
+        {
+            return;
+        }
+
+        // Use the presenter's native Shift-wheel handling so wheel distance and
+        // trackpad precision stay consistent with the other scroll regions.
+        e.Handled = true;
+        source.RaiseEvent(new PointerWheelEventArgs(source, e.Pointer, root,
+            e.GetPosition(root), e.Timestamp, e.GetCurrentPoint(root).Properties,
+            e.KeyModifiers | KeyModifiers.Shift, e.Delta));
     }
 
     /// <summary>

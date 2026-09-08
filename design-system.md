@@ -263,6 +263,10 @@ it is rebound or detached; pointer capture is resolved from the pointer's actual
 Each icon has at least a 32px square hit target at the 108px density floor. A press on an icon
 belongs only to that control; a double click elsewhere on the tile opens Details. Selection,
 store marks, expansion marks and the unread badge remain available without revealing actions.
+Hover and keyboard action focus also draw the promo site's 2px Volt border highlight. The
+ring sits inside the tile with a 1px Ground separator so edge tiles remain unclipped. It
+shares the existing selection ring: leaving a selected tile keeps that ring visible.
+Tile dimensions and spacing do not change.
 
 ### 5.4 How the ramp is drawn
 
@@ -823,7 +827,9 @@ frame; that is a property of the data: no ids in `work_images` means no view mod
 ride the existing cover cache under a `CoverKey.IgdbScreenshot`, which resolves to
 `t_screenshot_huge` — an IGDB cover is 3:4 and a screenshot is 16:9, so the provider is what
 picks the size token; there is no second image path. The strip is a bounded horizontal scroll
-region, the fourth such region in the modal.
+region, the fourth such region in the modal. An ordinary mouse wheel scrolls it horizontally;
+Shift-wheel and horizontal trackpad input also work. At either edge, wheel input stays with
+the strip rather than scrolling the details body.
 
 **Accessibility: the modal's own tree.** Band 1, Band 2, Band 3 and the reception line are
 named groups — `AutomationProperties.Name` plus `AccessibilityView="Control"`, which is what
@@ -998,8 +1004,8 @@ carrier of a fact is primary text. The no-rail sentence itself ("You've never op
 "Steam has no date for your last session."), which is the whole of what Band 2 says when there
 is no rail. The EXTENDS blurb ("A separate game, grouped for display.") and the EXPANSIONS
 blurb ("Counted separately. Not added above."), both directly under a section heading — the
-pair that prompted the change. The LISTS empty state ("Select titles in the library and choose
-Add to list on the action bar."), a direction the user acts on (§7). The ABOUT summary — the
+pair that prompted the change. The LISTS empty state ("Choose Add to list above to create a
+list for this game."), a direction the user acts on (§7). The ABOUT summary — the
 game's own description — and the empty-body line that stands in the same slot ("No description
 yet. Metadata fills in automatically."). The metadata editor's intro ("Each field tracks its
 own source, so editing one leaves the rest alone."). The no-way-in sentence in Band 3
@@ -1734,9 +1740,11 @@ Both kinds recount on every library load. A manual list drops a count when one o
 consolidated away or filtered out as a non-game entry; a live list's number moving on its own
 *is* the feature.
 
-`LISTS` is the heading that always exists, because it is where a first list lands; `LIVE LISTS`
-appears only once there is one. Empty: *"No lists yet. Select titles and choose Add to list, or
-filter the library and save the result as a live list."*
+`LISTS` and `LIVE LISTS` have collapsible headings with vector chevrons; their expanded state lasts
+for the session. The empty rail says: *"No lists yet. Choose New list below to create a static
+or live list."* The footer keeps **New list** on the left and the settings cog on the right.
+New list pairs its label with a vector list-plus icon and offers **Static list** (choose games yourself) and **Live list** (save the current
+library filters, with membership updating automatically), with a tooltip explaining each.
 
 **The rail's grammar, which any rearrangement must preserve:** everything above the divider is
 a subset of ALL GAMES; below it, content precedes work queue precedes configuration.
@@ -1782,17 +1790,16 @@ A manual list opens in **`List order`**, a sort row that exists only while one i
 leaving the list puts the previous order back. `Move up` and `Move down` go dead at the ends of
 the list rather than staying lit and doing nothing.
 
-### 12.3 The action bar, and why there are no flyouts
+### 12.3 Shared list modal
 
-Naming a live list, picking a list to add to, renaming one and confirming a delete all happen
-in **the same strip**, replacing the cut bar while they are up.
-
-This is not a stylistic preference. Avalonia's global `FocusAdorner` does not render inside a
-popup — a popup is its own root and has no adorner layer — so every control in a menu here
-would need its ring hand-drawn, which is §10.7's standing reason. The detail panel has one popup — the action band's menu —
-and it is not a counter-example, because the menu draws its own mark inside the item template
-rather than relying on the adorner layer. In the window's own tree, the focus ring and a linear tab order both come free, and the
-question sits directly above the thing it is about.
+Naming a list, picking a list to add to, renaming one and confirming a delete use a shared
+modal in the window's visual tree. The cut bar continues to describe the current filters.
+The modal has a bounded, vertically scrollable list of 44px targets. Each row has a vector
+list icon, name, mono count and trailing add icon. The rows and new-list field share both
+edges; the scrollbar occupies the card padding. A divider separates existing lists from
+creation. Long names truncate with their full name in a tooltip. Cancel / confirm sit below.
+Focus stays within the modal and returns to its invoking control when it closes. Adding to
+an existing or new list preserves the current view, scroll position and selection.
 
 `Enter` confirms, `Escape` cancels, and focus follows the prompt into its field. The save
 prompt opens with the rules read out as a suggested name ("Started · RPG"), because a rail
@@ -1807,14 +1814,22 @@ hand-built list, ticked when the game is already a member, resolved through `sam
 in SQL so the answer is for the game and not the store entry. Live lists are not offered — a
 live list finds its own members and there is nothing to tick.
 
-Feed cards also offer **Add to list**. A prompt in the feed header names the game and offers
-existing manual lists or a new list name. It uses the same list persistence as the library;
-live lists remain excluded. Keyboard focus moves into the prompt, Enter confirms a new list,
-and Escape cancels.
+Feed cards and every game details view also offer **Add to list**, opening the same modal
+for that game independently of library selection. Existing static lists and a new-list name
+are available; live lists remain excluded. Adding a game from details refreshes its membership
+checkboxes and leaves details open. Escape dismisses only the list modal.
+
+Feed feedback occupies a dedicated right-hand column: bookmark-plus **Add to list** in Azure,
+clock **Not now** in Amber, and circle-minus **Not interested** in TextDim. Each 32px icon
+button has a tooltip and accessible name. Install / Play has its own line below the card text.
+The bookmark and its inset plus are symmetric around the same centerline as the other icons.
+
+In a static list, the game context menu offers **Remove from list**, acting on the selected
+games and leaving them in the library. Live lists determine their own membership.
 
 **Deleting asks first, and the question says what survives:** *"Delete "Couch co-op night"? The
 titles stay in your library."* `Danger` appears on its confirm button and nowhere else on
-the strip. Deleting a hand-added game (§16) is the other destructive act in the application.
+the modal. Deleting a hand-added game (§16) is the other destructive act in the application.
 
 ### 12.4 `Escape` unwinds the cut, one layer per press
 
@@ -2420,6 +2435,11 @@ PLATFORMS is the store-connection screen. APPEARANCE is §14 and §15 — theme,
 layout. LIBRARY holds four cards: **ACQUISITION EXPORT**, **EXPLICIT CONTENT**,
 **HIDDEN GAMES**, **ADDED BY HAND**. Export saves the stored facts; the other three control
 what appears in the library.
+
+
+Steam connection settings use **Signed in** as the session heading while connected or renewing.
+When renewal requires another sign-in, **Sign out** sits to the right of **Sign in again**.
+A successful sign-in does not add a second confirmation block; actionable notices remain visible.
 
 It is not under APPEARANCE, which changes material and layout and no data. It is not under
 PLATFORMS, which is about connecting to a store; this is about what to do with what arrived.

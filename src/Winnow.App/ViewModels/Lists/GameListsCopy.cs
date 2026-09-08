@@ -21,7 +21,7 @@ public static class GameListsCopy
     /// lists. An empty state is a direction (§7): points at the action bar.
     /// </summary>
     public const string EmptyText =
-        "Select titles in the library and choose Add to list on the action bar.";
+        "Choose Add to list above to create a list for this game.";
 
     /// <summary>
     /// Accessible name for an unticked checkbox. <c>{0}</c> is the list name.

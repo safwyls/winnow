@@ -609,20 +609,20 @@ What §6 used to say, verbatim:
 > **Merge confirm queue.** Two covers side by side at 200×300, signal diff between them (title
 > distance, year delta, publisher). Actions are `Same game` / `Different games` — never
 > "Merge"/"Cancel", which asks the user to reason about the data model instead of about games.
-> 
+>
 > **Each member states its store.** The store is the fact that decides whether a pair is one
 > game on two storefronts. Every member carries its stores in the same outlined chip the tiles
 > wear: 1px `Line`, radius 3, body face 9px, `TextDim`. Placement differs by density because the
 > space does:
-> 
+>
 > - **Pair layout** (`MergeMemberTemplate`, a fixed 200px column): the chips take their own line
 >   under the year and entry numbers, in a `WrapPanel` so three chips (123.1px) never clip at
 >   200px.
 > - **Roster rows** (`MergeRosterRowTemplate`): the chips lead the metadata line, ahead of year,
 >   entries and publisher, so down a roster the stores form a column at one constant x.
-> 
+>
 > Members with no ownership row draw no chip row and keep the two-part automation name.
-> 
+>
 > **The card has a maximum width of 840px and is centred.** The roster density sets the ceiling,
 > not the pair: card chrome 44 + cover 200 + gutter 28 + roster row minimum 526.0 (member chrome
 > 30, checkbox 16 + 14, chip cover 64, two 14px margins, the condensed evidence line at 271.7,
@@ -2539,3 +2539,45 @@ Superseded design-system.md and README.md text:
 > **A second arrangement, behind a setting, default off.** The panes may meet edge to edge as
 > palette, because four of them side by side ask *which room*; two layout cards ask *what would
 > Persisted under `appearance.layout` (`flush` / `floating`; unset reads as flush). The debug
+
+
+## 2026-09-08 — Shared list modal and compact feed feedback
+
+The list picker now serves the library, feed and details without an unbounded action strip.
+The following visual-spec text was replaced:
+
+> `LISTS` is the heading that always exists, because it is where a first list lands; `LIVE LISTS`
+> appears only once there is one. Empty: *"No lists yet. Select titles and choose Add to list, or
+> filter the library and save the result as a live list."*
+
+> ### 12.3 The action bar, and why there are no flyouts
+>
+> Naming a live list, picking a list to add to, renaming one and confirming a delete all happen
+> in **the same strip**, replacing the cut bar while they are up.
+>
+> This is not a stylistic preference. Avalonia's global `FocusAdorner` does not render inside a
+> popup — a popup is its own root and has no adorner layer — so every control in a menu here
+> would need its ring hand-drawn, which is §10.7's standing reason. The detail panel has one popup — the action band's menu —
+> and it is not a counter-example, because the menu draws its own mark inside the item template
+> rather than relying on the adorner layer. In the window's own tree, the focus ring and a linear tab order both come free, and the
+> question sits directly above the thing it is about.
+>
+>
+
+> Feed cards also offer **Add to list**. A prompt in the feed header names the game and offers
+> existing manual lists or a new list name. It uses the same list persistence as the library;
+> live lists remain excluded. Keyboard focus moves into the prompt, Enter confirms a new list,
+> and Escape cancels.
+
+> pair that prompted the change. The LISTS empty state ("Select titles in the library and choose
+> Add to list on the action bar."), a direction the user acts on (§7).
+
+
+## 2026-09-08 — Keep browsing while adding games to lists
+
+Membership recounts preserve the existing visible collection when its sequence is unchanged.
+Creating a list from Add to list keeps the current browsing context instead of opening it.
+The modal uses aligned rows and a separate creation area. Previous visual-spec text:
+
+> The modal has a bounded, vertically scrollable list of targets, followed by a new-list field
+> and Cancel / confirm buttons. Long names truncate with their full name in a tooltip.

@@ -25,6 +25,36 @@ namespace Winnow.Ui.Tests;
 public sealed class CardDetailsInteractionTests
 {
     [AvaloniaFact]
+    public async Task Hover_border_preserves_selection_and_clears_when_the_tile_is_recycled()
+    {
+        using var fixture = await CardFixture.CreateAsync(148, reducedMotion: true);
+        var ring = fixture.TileView.FindControl<Border>("InteractionRing")!;
+        var size = fixture.TileView.Bounds.Size;
+        fixture.Window.MouseMove(new Point(600, 400));
+        Flush();
+        Assert.False(ring.IsVisible);
+        fixture.Window.MouseMove(fixture.Position(fixture.TileView, new Point(74, 80)));
+        Flush();
+        Assert.True(ring.IsVisible);
+        Assert.Equal(size, fixture.TileView.Bounds.Size);
+        Assert.Equal(new Thickness(2), ring.BorderThickness);
+        Assert.False(ring.IsHitTestVisible);
+        fixture.Window.MouseMove(new Point(600, 400));
+        Flush();
+        Assert.False(ring.IsVisible);
+        fixture.Tile.IsSelected = true;
+        Flush();
+        Assert.True(ring.IsVisible);
+        fixture.Tile.IsSelected = false;
+        fixture.Button("Details").Focus(NavigationMethod.Tab);
+        Flush();
+        Assert.True(ring.IsVisible);
+        fixture.TileView.DataContext = null;
+        Flush();
+        Assert.False(ring.IsVisible);
+    }
+
+    [AvaloniaFact]
     public async Task Reduced_motion_snaps_every_animated_tile_state()
     {
         using var fixture = await CardFixture.CreateAsync(148, reducedMotion: true);

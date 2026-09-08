@@ -118,9 +118,7 @@
             <Setter Property="MinWidth" Value="0"/>
         </Style>
 
-        <!-- ══ The two feedback controls ═══════════════════════════════════
-             "Not interested" and "Not now". TextDim at rest, full Text on
-             card hover/focus-within. Constant border for focus ring. -->
+        <!-- Feedback has its own lane so install labels never compete for width. -->
         <Style Selector="Button.cardaside">
             <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
@@ -159,14 +157,21 @@
         <Style Selector="Button.cardaside:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
         </Style>
+        <Style Selector="Button.cardfeedback">
+            <Setter Property="Width" Value="32"/>
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="Padding" Value="6"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
 
         <!-- A card the user has answered. Only the art dims (text stays
              full ink). State also stated in words on the receipt line (§8). -->
         <Style Selector="Button.feedcard.setaside Panel#Art">
             <Setter Property="Opacity" Value="0.42"/>
         </Style>
-        <!-- Keep the wrapped action line measured while its receipt is shown. -->
-        <Style Selector="WrapPanel.cardactions.setaside">
+        <!-- Keep the action geometry measured while its receipt is shown. -->
+        <Style Selector="Panel.cardactions.setaside, StackPanel.cardactions.setaside">
             <Setter Property="Opacity" Value="0"/>
         </Style>
 
@@ -191,7 +196,7 @@
         <!-- No tooltip; hovering is the resting state of reading this
              screen, so a tooltip would cover adjacent cards' sentences. -->
         <Panel>
-        <Grid Margin="14" ColumnDefinitions="108,14,*">
+        <Grid Margin="14" ColumnDefinitions="108,14,*,8,32">
 
             <!-- ══ The art ══════════════════════════════════════════════════
                  Two-layer dormancy cross-fade and unread badge, same as the
@@ -265,49 +270,28 @@
 
                 <!-- ══ The action line ═════════════════════════
                      Pinned to the bottom so rows of cards align. Holds Play
-                     and the two feedback controls. On act, swaps for a
+                     alone. On act, swaps for a
                      receipt with Undo (same height, no reflow). -->
                 <Panel DockPanel.Dock="Bottom" Margin="0,10,0,0">
 
                     <!-- The unanswered state. -->
-                    <WrapPanel Orientation="Horizontal" Classes="cardactions"
+                    <Panel Classes="cardactions"
                                Classes.setaside="{Binding IsSetAside}"
-                               ItemSpacing="4" LineSpacing="4"
                                IsEnabled="{Binding ShowActions}"
                                IsHitTestVisible="{Binding ShowActions}">
 
                         <!-- Play/Install, or hidden if no action can be
                              honestly named (§10.3). -->
-                        <Button Grid.Column="0"
+                        <Button Name="PrimaryAction"
                                 Classes="act primary cardact"
-                                Margin="0,0,8,0"
+                                HorizontalAlignment="Left"
                                 Content="{Binding Tile.PrimaryActionLabel}"
                                 ToolTip.Tip="{Binding Tile.PrimaryActionHint}"
                                 IsVisible="{Binding Tile.HasPrimaryAction}"
                                 Command="{Binding Tile.PrimaryActionCommand}"
                                 CommandParameter="{Binding Tile}"/>
 
-                        <!-- The durable verdict. Not styled as destructive. -->
-                        <Button Grid.Column="1"
-                                Classes="cardaside"
-                                Content="Not interested"
-                                IsVisible="{Binding CanGiveFeedback}"
-                                Command="{Binding NotInterestedCommand}"/>
-
-                        <!-- The deferral. Separate control because it is a
-                             separate intent (§6b). -->
-                        <Button Grid.Column="2"
-                                Classes="cardaside"
-                                Content="Not now"
-                                IsVisible="{Binding CanGiveFeedback}"
-                                Command="{Binding NotNowCommand}"/>
-
-                        <Button Name="AddToList"
-                                Classes="cardaside"
-                                Content="Add to list"
-                                IsVisible="{Binding CanAddToList}"
-                                Command="{Binding AddToListCommand}"/>
-                    </WrapPanel>
+                    </Panel>
 
                     <!-- The receipt. Date in Plex Mono, prose in body face. -->
                     <Grid ColumnDefinitions="*,Auto"
@@ -347,29 +331,16 @@
                            Text="{Binding Problem}"/>
 
                 <StackPanel Spacing="6">
-                    <!-- 24px right margin reserves the countdown ring's
-                         lane permanently. Appearing only with the receipt
-                         would re-wrap the title under the reader and
-                         could change the card's height; the receipt was
-                         built to swap with no reflow. -->
+                    <!-- The countdown shares the feedback lane, leaving the
+                         title's measure unchanged when a receipt appears. -->
                     <TextBlock Text="{Binding Tile.Title}"
                                FontFamily="{StaticResource DisplayFont}"
                                FontWeight="Bold" FontSize="15" LineHeight="17"
                                TextWrapping="Wrap" MaxLines="2"
                                TextTrimming="CharacterEllipsis"
-                               Margin="0,0,24,0"
                                Foreground="{StaticResource Text}"/>
 
-                    <!-- Store chips sit under the title, not in the action
-                         line. The TASK-70.6 commit that replaced the single
-                         store Border with an ItemsControl dropped the
-                         Grid.Column, so the chips drew in column 0 on top of
-                         Play/Install. Restoring the column was necessary but
-                         not sufficient: at the 420px minimum card width the
-                         right column is 270px, the action line already needs
-                         235.8px, and one STEAM chip is 44.0px, so the chips
-                         cannot share that line. Moving them here gives them
-                         the full 270px, where three chips measure 123.1px. -->
+                    <!-- Store chips have their own wrapping row beneath the title. -->
                     <ItemsControl ItemsSource="{Binding Tile.StoreChips}"
                                   ToolTip.Tip="{Binding Tile.StoreNames}"
                                   HorizontalAlignment="Left">
@@ -398,6 +369,37 @@
                 </StackPanel>
 
             </DockPanel>
+
+            <StackPanel Grid.Column="4" Name="FeedbackActions" Spacing="8"
+                        VerticalAlignment="Center" Classes="cardactions"
+                        Classes.setaside="{Binding IsSetAside}"
+                        IsEnabled="{Binding ShowActions}"
+                        IsHitTestVisible="{Binding ShowActions}">
+                <Button Name="AddToList" Classes="cardaside cardfeedback"
+                        ToolTip.Tip="Add to list" AutomationProperties.Name="Add to list"
+                        IsVisible="{Binding CanAddToList}"
+                        Command="{Binding AddToListCommand}">
+                    <Path Width="16" Height="16" Stretch="Uniform"
+                          Stroke="{StaticResource Azure}" StrokeThickness="1.6"
+                          Data="M 3,1 L 13,1 L 13,15 L 8,12 L 3,15 Z M 8,4 L 8,9 M 5.5,6.5 L 10.5,6.5"/>
+                </Button>
+                <Button Name="NotNow" Classes="cardaside cardfeedback"
+                        ToolTip.Tip="Not now" AutomationProperties.Name="Not now"
+                        IsVisible="{Binding CanGiveFeedback}"
+                        Command="{Binding NotNowCommand}">
+                    <Path Width="16" Height="16" Stretch="Uniform"
+                          Stroke="{StaticResource Amber}" StrokeThickness="1.6"
+                          Data="M 8,1 A 7,7 0 1 1 7.99,1 Z M 8,4 L 8,8 L 11,10"/>
+                </Button>
+                <Button Name="NotInterested" Classes="cardaside cardfeedback"
+                        ToolTip.Tip="Not interested" AutomationProperties.Name="Not interested"
+                        IsVisible="{Binding CanGiveFeedback}"
+                        Command="{Binding NotInterestedCommand}">
+                    <Path Width="16" Height="16" Stretch="Uniform"
+                          Stroke="{StaticResource TextDim}" StrokeThickness="1.6"
+                          Data="M 8,1 A 7,7 0 1 1 7.99,1 Z M 4,8 L 12,8"/>
+                </Button>
+            </StackPanel>
         </Grid>
 
         <!-- Determinate countdown ring (§8). Azure sweep on a LineSoft

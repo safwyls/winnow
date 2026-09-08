@@ -34,23 +34,25 @@ public sealed class ExplicitContentTests : IDisposable
 
     private static readonly BucketThresholds Showing = Hiding with { ShowExplicitContent = true };
 
-    private readonly TempDatabase _db = new();
-    private readonly WorkRepository _works;
-    private readonly ReleaseRepository _releases;
-    private readonly OwnershipRepository _ownerships;
-    private readonly WorkMaturityRepository _maturity;
-    private readonly LibraryQueryRepository _library;
+    // More than half of this class is pure vocabulary/rule coverage. Keep its
+    // database lazy so each of those theory rows tests only the rule it names;
+    // persistence and filter cases still get an isolated production-shaped DB.
+    private readonly Lazy<DatabaseFixture> _fixture = new();
 
-    public ExplicitContentTests()
+    private TempDatabase _db => _fixture.Value.Database;
+    private WorkRepository _works => _fixture.Value.Works;
+    private ReleaseRepository _releases => _fixture.Value.Releases;
+    private OwnershipRepository _ownerships => _fixture.Value.Ownerships;
+    private WorkMaturityRepository _maturity => _fixture.Value.Maturity;
+    private LibraryQueryRepository _library => _fixture.Value.Library;
+
+    public void Dispose()
     {
-        _works = new WorkRepository(_db.Factory);
-        _releases = new ReleaseRepository(_db.Factory);
-        _ownerships = new OwnershipRepository(_db.Factory);
-        _maturity = new WorkMaturityRepository(_db.Factory);
-        _library = new LibraryQueryRepository(_db.Factory);
+        if (_fixture.IsValueCreated)
+        {
+            _fixture.Value.Dispose();
+        }
     }
-
-    public void Dispose() => _db.Dispose();
 
     // ── The rule ────────────────────────────────────────────────────────────
 
@@ -498,5 +500,26 @@ public sealed class ExplicitContentTests : IDisposable
         });
 
         return (workId, releaseId, ownershipId);
+    }
+
+    private sealed class DatabaseFixture : IDisposable
+    {
+        public DatabaseFixture()
+        {
+            Works = new WorkRepository(Database.Factory);
+            Releases = new ReleaseRepository(Database.Factory);
+            Ownerships = new OwnershipRepository(Database.Factory);
+            Maturity = new WorkMaturityRepository(Database.Factory);
+            Library = new LibraryQueryRepository(Database.Factory);
+        }
+
+        public TempDatabase Database { get; } = new();
+        public WorkRepository Works { get; }
+        public ReleaseRepository Releases { get; }
+        public OwnershipRepository Ownerships { get; }
+        public WorkMaturityRepository Maturity { get; }
+        public LibraryQueryRepository Library { get; }
+
+        public void Dispose() => Database.Dispose();
     }
 }

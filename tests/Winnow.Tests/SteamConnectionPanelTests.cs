@@ -35,6 +35,7 @@ public class SteamConnectionPanelTests
         Assert.Equal(SteamConnectionCopy.StatusNoConnection, panel.SteamStatusLabel);
         Assert.Equal(SteamConnectionCopy.NothingConnectedCost, panel.SteamConnectionMessage);
         Assert.Equal(SteamConnectionCopy.HealthNotSignedIn, panel.SteamSessionHealthMessage);
+        Assert.Equal(SteamConnectionCopy.SignInHeading, panel.SteamSessionHeading);
 
         // A connection nobody has made is not an error and must not wear the
         // error treatment. TASK-80 is to give that state a named role.
@@ -83,6 +84,7 @@ public class SteamConnectionPanelTests
         // Working: the account and the way out, and nothing to press.
         Assert.True(panel.ShowSteamSignedIn);
         Assert.False(panel.ShowSteamSignInAction);
+        Assert.Equal(SteamConnectionCopy.SignedInHeading, panel.SteamSessionHeading);
     }
 
     [Fact]
@@ -219,6 +221,8 @@ public class SteamConnectionPanelTests
         // account was recorded, and the pages were never asked for.
         Assert.True(host.Session.Requested.ConsentGranted);
         Assert.Equal(SteamConnectionCopy.OutcomeSignedIn, host.Panel.SteamSignInNoticeMessage);
+        Assert.False(host.Panel.ShowSteamSignInNotice);
+        Assert.Equal(SteamConnectionCopy.SignedInHeading, host.Panel.SteamSessionHeading);
         Assert.False(host.Panel.ShowSteamSignInProblem);
         Assert.True(host.Panel.SteamHasSession);
         Assert.True(host.Panel.SteamSignInConfirmedAccount);
@@ -306,6 +310,7 @@ public class SteamConnectionPanelTests
         await host.Panel.SignInToSteamCommand.ExecuteAsync(null);
 
         Assert.Equal(SteamConnectionCopy.OutcomeNoRefreshToken, host.Panel.SteamSignInNoticeMessage);
+        Assert.True(host.Panel.ShowSteamSignInNotice);
         Assert.False(host.Panel.ShowSteamSignInProblem);
         Assert.True(host.Panel.SteamHasSession);
     }

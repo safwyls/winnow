@@ -83,10 +83,6 @@
                                    Text="{Binding History.CountText}"/>
                     </StackPanel>
                 </Button>
-                <Panel Grid.Row="1" Grid.ColumnSpan="2" Margin="0,16,0,0"
-                       IsVisible="{Binding IsListPromptOpen}">
-                    <views:FeedListPromptView DataContext="{Binding ListPrompt}"/>
-                </Panel>
                 <TextBlock Grid.Row="2" Grid.ColumnSpan="2" Margin="0,8,0,0"
                            Classes="body" Text="{Binding ListStatus}" TextWrapping="Wrap"
                            IsVisible="{Binding ListStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"

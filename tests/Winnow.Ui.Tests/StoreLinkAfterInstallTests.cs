@@ -142,7 +142,7 @@ public sealed class StoreLinkAfterInstallTests
                 button.DataContext is GameLink { Label: "Store page" });
             var bounds = BoundsInWindow(store, window);
             var links = model.Links;
-            AssertReadableAndClickable(store, window, bounds);
+            await AssertReadableAndClickableAfterLayoutAsync(store, window, bounds);
 
             launch.Focus(NavigationMethod.Tab);
             var click = BoundsInWindow(launch, window).Center;
@@ -154,7 +154,7 @@ public sealed class StoreLinkAfterInstallTests
             Assert.True(command.IsRunning);
             Assert.False(launch.IsEffectivelyEnabled);
             Assert.Same(links, model.Links);
-            AssertReadableAndClickable(store, window, bounds);
+            await AssertReadableAndClickableAfterLayoutAsync(store, window, bounds);
 
             dispatch.SetResult(LaunchDispatch.HandedOff);
             await command.ExecutionTask!;
@@ -164,10 +164,9 @@ public sealed class StoreLinkAfterInstallTests
             Flush();
             Assert.False(command.IsRunning);
             Assert.Same(links, model.Links);
-            AssertReadableAndClickable(store, window, bounds);
+            await AssertReadableAndClickableAfterLayoutAsync(store, window, bounds);
             Assert.True(store.Focus(NavigationMethod.Tab));
-            Flush();
-            AssertReadableAndClickable(store, window, bounds);
+            await AssertReadableAndClickableAfterLayoutAsync(store, window, bounds);
 
             if (Environment.GetEnvironmentVariable("WINNOW_UI_CAPTURE_DIR") is { } directory)
             {
@@ -196,6 +195,30 @@ public sealed class StoreLinkAfterInstallTests
         Assert.True(label.Bounds.Height > 0);
         var hit = window.InputHitTest(expectedBounds.Center) as Control;
         Assert.Same(store, hit?.FindAncestorOfType<Button>(includeSelf: true));
+    }
+
+    private static async Task AssertReadableAndClickableAfterLayoutAsync(
+        Button store, Window window, Rect expectedBounds)
+    {
+        // Headless rendering and the input tree settle on separate dispatcher
+        // passes. At large window sizes the visual can already have final
+        // bounds while InputHitTest still sees the prior tree for one pass.
+        // Drain actual layout/render work instead of sleeping for an arbitrary
+        // duration, then retain the exact same hit-target assertion.
+        for (var pass = 0; pass < 4; pass++)
+        {
+            Flush();
+            var hit = window.InputHitTest(expectedBounds.Center) as Control;
+            if (ReferenceEquals(store, hit?.FindAncestorOfType<Button>(includeSelf: true)))
+            {
+                AssertReadableAndClickable(store, window, expectedBounds);
+                return;
+            }
+
+            await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
+        }
+
+        AssertReadableAndClickable(store, window, expectedBounds);
     }
 
     private static Rect BoundsInWindow(Control control, Window window)

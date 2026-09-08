@@ -112,6 +112,7 @@ public static class SteamConnectionCopy
     /// <summary>Method A heading. Sentence case, matching the API key
     /// heading's weight.</summary>
     public const string SignInHeading = "Sign in to Steam";
+    public const string SignedInHeading = "Signed in";
 
     /// <summary>What the sign-in provides: account identification and
     /// optional purchase-history access.</summary>

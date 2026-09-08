@@ -636,14 +636,15 @@ public partial class MainWindow : Window
             return;
         }
 
-        // The cut bar's prompt is the shallowest layer that can still swallow
-        // Escape: it is asking a question, and backing out of a question must
-        // work from wherever the caret happens to be. It sits ABOVE the detail
-        // modal in this chain only because the two are never up together.
-        if (_library?.Prompt is { } prompt && e.Key == Key.Escape)
+        // Prompt keys must not also navigate the screen underneath.
+        var prompt = _library?.Prompt ?? _shell?.Feed.ListPrompt;
+        if (prompt is not null)
         {
-            prompt.CancelCommand.Execute(null);
-            e.Handled = true;
+            if (e.Key == Key.Escape)
+            {
+                prompt.CancelCommand.Execute(null);
+                e.Handled = true;
+            }
             return;
         }
 

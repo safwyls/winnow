@@ -19,6 +19,12 @@ public sealed class FeedImpressionTests
     public async Task Add_to_list_from_a_scrolled_card_focuses_the_picker_and_escape_returns_to_the_card()
     {
         using var fixture = await Fixture.CreateAsync();
+        fixture.Window.Content = null;
+        var promptView = new FeedListPromptView();
+        var promptHost = new Panel { DataContext = fixture.Feed, Children = { promptView } };
+        promptHost.Bind(Visual.IsVisibleProperty, new Avalonia.Data.Binding("IsListPromptOpen"));
+        promptView.Bind(StyledElement.DataContextProperty, new Avalonia.Data.Binding("ListPrompt"));
+        fixture.Window.Content = new Grid { Children = { fixture.Container, promptHost } };
         fixture.Window.Width = 1024;
         fixture.Window.Show();
         await FlushAsync();

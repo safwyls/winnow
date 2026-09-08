@@ -75,7 +75,8 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
         IReadOnlyList<Ownership>? ownerships = null,
         GameRefetchViewModel? refetch = null,
         ScreenshotLightboxViewModel? lightbox = null,
-        GameJournalViewModel? journal = null)
+        GameJournalViewModel? journal = null,
+        System.Windows.Input.ICommand? addToList = null)
     {
         Reception = GameReceptionViewModel.From(ratings);
         Screenshots = GameScreenshotsViewModel.From(images, covers, lightbox);
@@ -83,6 +84,7 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
         Refetch = refetch;
         Journal = journal;
         HideCommand = hideGame;
+        AddToListCommand = addToList;
         _patchNotes = patchNotes;
         IgdbMatch = igdbMatch;
         MetadataEditor = metadataEditor;
@@ -159,7 +161,9 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
     /// <summary>Drawn only when this game is itself a pack, so the grouping can be undone from either end.</summary>
     public bool ShowExtends => Expansions is { HasBase: true };
 
-    public Lists.GameListsViewModel? Lists { get; }
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowLists))]
+    public partial Lists.GameListsViewModel? Lists { get; set; }
 
     public bool ShowLists => Lists is not null;
 
@@ -617,6 +621,10 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
     /// rather than inert (§10.3).
     /// </summary>
     public System.Windows.Input.ICommand? HideCommand { get; }
+
+    public System.Windows.Input.ICommand? AddToListCommand { get; }
+
+    public bool ShowAddToList => AddToListCommand is not null;
 
     /// <summary>The Hide row draws only when the library handed over its command.</summary>
     public bool ShowHide => HideCommand is not null;
