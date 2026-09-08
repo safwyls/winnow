@@ -268,6 +268,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
 
         Filters = new FilterPanelViewModel(ApplyFilter);
         Lists = new ListsViewModel(lists);
+        Lists.MembershipChanged += (_, _) => ApplyFilter();
 
         Ramp = ramp ?? new DormancyRamp();
 
@@ -284,7 +285,6 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             new BucketViewModel(LibraryBuckets.NeverPlayed, "Never played"),
             new BucketViewModel(LibraryBuckets.Bounced, "Started"),
             new BucketViewModel(LibraryBuckets.Retired, "Played out"),
-            new BucketViewModel(WontRunKey, "Won't run"),
         ];
 
         // §4: the view mode is remembered per session — and so is the order, for

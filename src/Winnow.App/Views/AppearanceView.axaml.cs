@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.Input;
 using Avalonia.Platform.Storage;
 using Winnow.App.ViewModels;
 
@@ -8,20 +9,31 @@ namespace Winnow.App.Views;
 /// <summary>
 /// Code-behind for the Appearance screen. All state lives on
 /// <see cref="ViewModels.AppearanceViewModel"/> and every other interaction is a
-/// command; the one handler here exists because opening a folder needs the
-/// window's platform launcher, which a view model cannot reach.
+/// command. View handlers own platform folder launching and keyboard scrolling.
 /// </summary>
 public partial class AppearanceView : UserControl
 {
     public AppearanceView()
     {
         InitializeComponent();
+        ScreenScroll.AddHandler(GotFocusEvent, OnScreenFocusChanged);
 
         // The previewer gets the populated screen; runtime leaves the
         // DataContext to the shell. See Design/PreviewData.cs.
         if (Avalonia.Controls.Design.IsDesignMode)
         {
             DataContext = Design.PreviewData.Appearance;
+        }
+    }
+
+    private void OnScreenFocusChanged(object? sender, GotFocusEventArgs e)
+    {
+        // Window activation restores the old focused control after inactive
+        // wheel scrolling. Only deliberate keyboard navigation should reveal it.
+        if (e.NavigationMethod is NavigationMethod.Tab or NavigationMethod.Directional
+            && e.Source is Control control)
+        {
+            control.BringIntoView();
         }
     }
 

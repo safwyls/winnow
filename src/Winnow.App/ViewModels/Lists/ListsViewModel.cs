@@ -15,6 +15,8 @@ public partial class ListsViewModel : ObservableObject
 {
     private readonly IGameListRepository? _lists;
 
+    internal event EventHandler? MembershipChanged;
+
     public ListsViewModel(IGameListRepository? lists = null)
         => _lists = lists;
 
@@ -143,6 +145,7 @@ public partial class ListsViewModel : ObservableObject
 
         Insert(Lists, list);
         RaiseSectionState();
+        MembershipChanged?.Invoke(this, EventArgs.Empty);
         return list;
     }
 
@@ -191,6 +194,7 @@ public partial class ListsViewModel : ObservableObject
         }
 
         list.ReleaseIds = next;
+        MembershipChanged?.Invoke(this, EventArgs.Empty);
     }
 
     public async Task RemoveFromListAsync(

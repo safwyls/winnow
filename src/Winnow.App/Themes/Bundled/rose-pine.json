@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "id": "rose-pine",
+  "name": "Rosé Pine",
+  "reason": "Rosé Pine's dark botanical room: aubergine chrome, rose selection, and iris reserved for unread updates.",
+  "seeds": {
+    "ground": "#191724",
+    "surface": "#1F1D2E",
+    "text": "#E0DEF4",
+    "flare": "#C4A7E7",
+    "volt": "#EBBCBA",
+    "amber": "#F6C177",
+    "azure": "#9CCFD8",
+    "danger": "#EB6F92"
+  },
+  "structure": {
+    "elevation": 0.05,
+    "wellDepth": 0.55,
+    "edge": 1.55,
+    "dimValue": 0.67,
+    "dimChroma": 0.48,
+    "voltInkContrast": 9.0,
+    "faintValue": 0.53,
+    "faintChroma": 0.72
+  },
+  "translucency": {
+    "chromeInk": 0.48,
+    "groundInk": 0.44,
+    "dimLift": 1.14,
+    "faintLift": 1.2
+  },
+  "overrides": {
+    "Well": "#0F0E16",
+    "SurfaceHigh": "#393552",
+    "Line": "#403D52",
+    "TextDim": "#908CAA",
+    "TextFaint": "#6E6A86",
+    "VoltInk": "#191724",
+    "VoltHover": "#F0CCCA",
+    "VoltPress": "#D5A4A3",
+    "DangerHover": "#F083A2",
+    "DangerPress": "#CA587A",
+    "DangerInk": "#FFF3F7",
+    "TranslucentSurface": "#0E0D16",
+    "TranslucentTextDim": "#AAA6C1",
+    "TranslucentTextFaint": "#85819D"
+  }
+}

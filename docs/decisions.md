@@ -2513,3 +2513,29 @@ Previous design-system.md sentence: APPLICATION holds operating-system behavior 
 
 Previous docs/releases.md sentences: Pushes to main and codex/**, and pull requests, build packages when application, packaging, or workflow files change. Their version is 0.0.0-ci.<run number>.
 
+
+### TASK-160: appearance, rail and feed polish (2026-09-07)
+
+The rail hides the unrunnable signal pending further work and names Steam statistics explicitly. Floating and Windows 30% Acrylic across every pane become unset defaults, while saved preferences and authored theme defaults remain effective. Five authored palettes join the original four, with their audit warnings behind one disclosure. Feed cards reuse manual-list persistence.
+
+Superseded design-system.md and README.md text:
+
+> - **Themes and transparency**, including a drop-in JSON theme format.
+> **Applies to:** Avalonia 11+ desktop client, dark-only
+> │    Won't run │   ┌────┐  ┌────┐  ┌────┐  ┌────┐  ┌────┐  ┌────┐       │
+> | Bucket: unrunnable | `Won't run` | `Dead` |
+> **Dark-only is still true; one-palette is not.** Four themes ship, the default is unchanged,
+> and a transparency **slider** sits beside them. Both settings live on the rail's
+> `ThemeContrastTests` asserts that per theme, along with a minimum hue separation from `Danger`
+> **Two rules of construction carry across the table.** Every theme's `Volt` is its own room at
+> ### 14.1.1 The four themes, and the axes that separate them
+> **No light theme, deliberately.** §9 inverts the platform's caption order, §5.3's tile scrim
+> fades to `Ground`, and §5.1's dormancy floor was calibrated against dark capsules on a dark
+> field. A light theme is not this table with the steps reversed; it is a second pass over all
+> three, and half of one would break the ramp that is the product's whole encoding.
+> **Zero is a real position, not an off state dressed as one.** It is the default, it is
+> **Over a dark desktop the number never gets worse**, at any position, in any theme: the
+> (`acrylic` / `mica`, unset reads as acrylic) and `appearance.wall` (unset reads as *off*).
+> **A second arrangement, behind a setting, default off.** The panes may meet edge to edge as
+> palette, because four of them side by side ask *which room*; two layout cards ask *what would
+> Persisted under `appearance.layout` (`flush` / `floating`; unset reads as flush). The debug

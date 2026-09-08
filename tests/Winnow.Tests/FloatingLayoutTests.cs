@@ -317,8 +317,8 @@ public class FloatingLayoutTests
             }
         }
 
-        // And the floating caption is the surface that sets it — the flush one
-        // holds far past here, so the mark is floating's number in every theme.
+        // The flush caption holds past the mark, unless both layouts clear
+        // the entire slider, as a bundled light palette can.
         var flushCeiling = 0;
         for (var percent = 0; percent <= 100; percent++)
         {
@@ -333,21 +333,20 @@ public class FloatingLayoutTests
         }
 
         Assert.True(
-            flushCeiling > ceiling,
+            ceiling == 100 ? flushCeiling == 100 : flushCeiling > ceiling,
             $"{id}: the flush caption fails at {flushCeiling}%, not past the mark at {ceiling}%");
     }
 
     [Fact]
     public void An_unknown_stored_layout_reads_as_unset()
     {
-        // A preference written by a later version must not stop the app, and the
-        // safe answer is the arrangement every measurement was taken against.
+        // A preference written by a later version falls back to the current default.
         Assert.Equal(WinnowLayout.Flush, WinnowLayouts.ById("flush"));
         Assert.Equal(WinnowLayout.Floating, WinnowLayouts.ById("floating"));
         Assert.Equal(WinnowLayouts.Default, WinnowLayouts.ById("islands"));
         Assert.Equal(WinnowLayouts.Default, WinnowLayouts.ById("tiles-2029"));
         Assert.Equal(WinnowLayouts.Default, WinnowLayouts.ById(null));
-        Assert.Equal(WinnowLayout.Flush, WinnowLayouts.Default);
+        Assert.Equal(WinnowLayout.Floating, WinnowLayouts.Default);
         Assert.Equal("floating", WinnowLayouts.Id(WinnowLayout.Floating));
         Assert.Equal("flush", WinnowLayouts.Id(WinnowLayout.Flush));
     }
@@ -367,9 +366,28 @@ public class FloatingLayoutTests
     }
 
     [Fact]
+    public async Task Existing_solid_flush_preferences_survive_new_defaults()
+    {
+        var settings = new StubSettings
+        {
+            [ThemeService.LayoutSettingKey] = "flush",
+            [ThemeService.TransparencySettingKey] = "0",
+            [ThemeService.WallSettingKey] = "false",
+            [ThemeService.BackdropSettingKey] = "mica",
+        };
+        var service = new ThemeService(settings);
+        await service.LoadAsync();
+        Assert.Equal(WinnowLayout.Flush, service.Layout);
+        Assert.Equal(0, service.Transparency);
+        Assert.False(service.WallTranslucent);
+        Assert.Equal(WinnowBackdrop.Mica, service.Backdrop);
+        Assert.Empty(settings.Writes);
+    }
+
+    [Fact]
     public async Task Choosing_a_layout_writes_it_once()
     {
-        var settings = new StubSettings();
+        var settings = new StubSettings { [ThemeService.LayoutSettingKey] = "flush" };
         var service = new ThemeService(settings);
         await service.LoadAsync();
 

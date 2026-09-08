@@ -8,8 +8,7 @@
 public enum WinnowLayout
 {
     /// <summary>Panes meet edge to edge, divided by a 1px rule. The layout every
-    /// measurement in design-system.md §14 was taken against, and the
-    /// default.</summary>
+    /// original measurement in design-system.md §14 was taken against.</summary>
     Flush,
 
     /// <summary>Content panes are rounded cards with a uniform gap around them,
@@ -22,13 +21,11 @@ public enum WinnowLayout
 /// each one.</summary>
 public static class WinnowLayouts
 {
-    /// <summary>What an unset preference reads as. Flush, because it is what the
-    /// app has always looked like and it is the arrangement every contrast
-    /// measurement in §14 was taken against.</summary>
-    public const WinnowLayout Default = WinnowLayout.Flush;
+    /// <summary>What an unset preference reads as.</summary>
+    public const WinnowLayout Default = WinnowLayout.Floating;
 
     public static IReadOnlyList<WinnowLayout> All { get; } =
-        [WinnowLayout.Flush, WinnowLayout.Floating];
+        [WinnowLayout.Floating, WinnowLayout.Flush];
 
     /// <summary>Stable id. Persisted; never localised.</summary>
     public static string Id(WinnowLayout layout) => layout switch
@@ -39,6 +36,7 @@ public static class WinnowLayouts
 
     public static WinnowLayout ById(string? id) => id switch
     {
+        "flush" => WinnowLayout.Flush,
         "floating" => WinnowLayout.Floating,
         _ => Default,
     };

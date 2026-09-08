@@ -1,5 +1,6 @@
 using System.Globalization;
 using Winnow.App.ViewModels;
+using Winnow.App.Services;
 using Winnow.App.ViewModels.Filters;
 using Winnow.Core.Domain;
 using Winnow.Core.Queries;
@@ -23,6 +24,47 @@ namespace Winnow.Tests;
 public sealed class ListsViewModelTests
 {
     private static readonly DateTime Now = new(2026, 8, 25, 12, 0, 0, DateTimeKind.Utc);
+
+    [Fact]
+    public async Task Feed_card_adds_only_its_game_to_an_existing_or_new_manual_list()
+    {
+        using var fixture = new ListFixture();
+        var hades = await fixture.SeedAsync("Hades");
+        var celeste = await fixture.SeedAsync("Celeste");
+        var library = await fixture.LoadAsync();
+        var manual = await library.Lists.CreateListAsync("Friday", []);
+        await library.Lists.CreateLiveListAsync("Automatic", new LibraryFilter());
+        library.SelectedTile = library.TileForRelease(celeste);
+        var tile = library.TileForRelease(hades)!;
+        var snapshot = new FeedSnapshot(
+            [new FeedShelf("ready", "Ready", "Try these", [new FeedItem(tile.OwnershipId, hades, tile.Title, "Ready to play.")])],
+            2, FeedConfidence.Established, false);
+        var feed = new FeedViewModel(new FakeFeedService(snapshot), library, lists: library.Lists);
+        await feed.LoadCommand.ExecuteAsync(null);
+        var card = Assert.Single(Assert.Single(feed.Shelves).Cards);
+
+        card.AddToListCommand.Execute(null);
+        Assert.Equal("Add Hades to", feed.ListPrompt!.Question);
+        Assert.Same(manual, Assert.Single(feed.ListPrompt.Choices));
+        await feed.ListPrompt.ChooseCommand.ExecuteAsync(manual);
+        Assert.Null(feed.ListPrompt);
+        Assert.Equal([hades], manual!.ReleaseIds);
+        Assert.Equal([hades], (await fixture.GameLists.GetAllItemsAsync()).Select(i => i.ReleaseId));
+        Assert.Equal(celeste, library.SelectedTile!.ReleaseId);
+
+        card.AddToListCommand.Execute(null);
+        feed.ListPrompt!.Text = "Next up";
+        await feed.ListPrompt.ConfirmCommand.ExecuteAsync(null);
+        Assert.Null(feed.ListPrompt);
+        Assert.Equal([hades], library.Lists.Lists.Single(l => l.Name == "Next up").ReleaseIds);
+        Assert.Null(library.Lists.Open);
+        Assert.False(card.IsSetAside);
+
+        card.AddToListCommand.Execute(null);
+        feed.ListPrompt!.CancelCommand.Execute(null);
+        Assert.Null(feed.ListPrompt);
+        Assert.Equal(2, (await fixture.GameLists.GetAllItemsAsync()).Count);
+    }
 
     // ── The empty state is a direction ──────────────────────────────────────
 

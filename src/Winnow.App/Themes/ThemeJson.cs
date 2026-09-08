@@ -142,7 +142,7 @@ public static class ThemeJson
                 $"\"{id}\" is not a usable id. Expected lower-case letters, digits and hyphens, starting with a letter or digit, at most {MaxIdLength} characters - it is stored in a settings row and shows up in no user-visible place.");
             id = string.Empty;
         }
-        else if (WinnowThemes.All.Any(t => string.Equals(t.Id, id, StringComparison.Ordinal)))
+        else if (WinnowThemes.Calibrated.Any(t => string.Equals(t.Id, id, StringComparison.Ordinal)))
         {
             Error(
                 "id",

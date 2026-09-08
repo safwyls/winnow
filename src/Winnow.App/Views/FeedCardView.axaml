@@ -165,6 +165,10 @@
         <Style Selector="Button.feedcard.setaside Panel#Art">
             <Setter Property="Opacity" Value="0.42"/>
         </Style>
+        <!-- Keep the wrapped action line measured while its receipt is shown. -->
+        <Style Selector="WrapPanel.cardactions.setaside">
+            <Setter Property="Opacity" Value="0"/>
+        </Style>
 
     </UserControl.Styles>
 
@@ -266,8 +270,11 @@
                 <Panel DockPanel.Dock="Bottom" Margin="0,10,0,0">
 
                     <!-- The unanswered state. -->
-                    <Grid ColumnDefinitions="Auto,Auto,Auto,*"
-                          IsVisible="{Binding ShowActions}">
+                    <WrapPanel Orientation="Horizontal" Classes="cardactions"
+                               Classes.setaside="{Binding IsSetAside}"
+                               ItemSpacing="4" LineSpacing="4"
+                               IsEnabled="{Binding ShowActions}"
+                               IsHitTestVisible="{Binding ShowActions}">
 
                         <!-- Play/Install, or hidden if no action can be
                              honestly named (§10.3). -->
@@ -295,7 +302,12 @@
                                 IsVisible="{Binding CanGiveFeedback}"
                                 Command="{Binding NotNowCommand}"/>
 
-                    </Grid>
+                        <Button Name="AddToList"
+                                Classes="cardaside"
+                                Content="Add to list"
+                                IsVisible="{Binding CanAddToList}"
+                                Command="{Binding AddToListCommand}"/>
+                    </WrapPanel>
 
                     <!-- The receipt. Date in Plex Mono, prose in body face. -->
                     <Grid ColumnDefinitions="*,Auto"

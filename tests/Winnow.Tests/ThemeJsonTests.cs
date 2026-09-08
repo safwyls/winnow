@@ -21,6 +21,17 @@ public class ThemeJsonTests
         return data;
     }
 
+    public static TheoryData<string> CalibratedIds()
+    {
+        var data = new TheoryData<string>();
+        foreach (var theme in WinnowThemes.Calibrated)
+        {
+            data.Add(theme.Id);
+        }
+
+        return data;
+    }
+
     // ══ The forcing function ════════════════════════════════════════════════
 
     /// <summary>
@@ -102,7 +113,7 @@ public class ThemeJsonTests
     /// The derivation lands within 12 units of every hand-tuned built-in colour.
     /// </summary>
     [Theory]
-    [MemberData(nameof(BuiltInIds))]
+    [MemberData(nameof(CalibratedIds))]
     public void The_derivation_lands_beside_every_builtin(string id)
     {
         var theme = WinnowThemes.ById(id);
@@ -129,7 +140,7 @@ public class ThemeJsonTests
     /// ink levels).
     /// </summary>
     [Theory]
-    [MemberData(nameof(BuiltInIds))]
+    [MemberData(nameof(CalibratedIds))]
     public void The_derivation_reproduces_every_builtins_structure(string id)
     {
         var theme = WinnowThemes.ById(id);
@@ -502,7 +513,7 @@ public class ThemeJsonTests
     // ══ The contrast report ═════════════════════════════════════════════════
 
     [Theory]
-    [MemberData(nameof(BuiltInIds))]
+    [MemberData(nameof(CalibratedIds))]
     public void The_report_agrees_with_the_sliders_own_mark(string id)
     {
         var theme = WinnowThemes.ById(id);
@@ -557,11 +568,14 @@ public class ThemeJsonTests
         Assert.Equal(100, theme.Defaults?.Transparency);
     }
 
-    /// <summary>The built-ins declare no opening position, which is what keeps
+    /// <summary>The calibrated palettes declare no opening position, which keeps
     /// them behaving exactly as they did before this existed.</summary>
     [Theory]
-    [MemberData(nameof(BuiltInIds))]
-    public void No_builtin_carries_defaults(string id)
+    [InlineData("winnow")]
+    [InlineData("nightshift")]
+    [InlineData("tungsten")]
+    [InlineData("box-art")]
+    public void No_calibrated_palette_carries_defaults(string id)
     {
         Assert.Null(WinnowThemes.ById(id).Defaults);
         Assert.False(WinnowThemes.ById(id).IsUserTheme);

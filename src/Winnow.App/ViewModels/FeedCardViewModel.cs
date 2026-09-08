@@ -19,20 +19,28 @@ public partial class FeedCardViewModel : ObservableObject, IDisposable
     /// offering them and swallowing the click is not.
     /// </summary>
     private readonly IFeedService? _feed;
+    private readonly Action<GameTileViewModel>? _addToList;
 
     private bool _busy;
 
     /// <summary>Unheld time this receipt has been standing.</summary>
     private TimeSpan _counted;
 
-    public FeedCardViewModel(GameTileViewModel tile, string reason, IFeedService? feed = null)
+    public FeedCardViewModel(GameTileViewModel tile, string reason, IFeedService? feed = null,
+        Action<GameTileViewModel>? addToList = null)
     {
         Tile = tile;
         Cover = tile.NewCoverPresenter();
         Reason = reason;
         ReasonRuns = ReasonText.Split(reason);
         _feed = feed;
+        _addToList = addToList;
     }
+
+    public bool CanAddToList => _addToList is not null;
+
+    [RelayCommand(CanExecute = nameof(CanAddToList))]
+    private void AddToList() => _addToList?.Invoke(Tile);
 
     /// <summary>
     /// The library's own tile. Shared instance, not a copy — see

@@ -16,6 +16,45 @@ namespace Winnow.Ui.Tests;
 public sealed class FeedImpressionTests
 {
     [AvaloniaFact]
+    public async Task Add_to_list_from_a_scrolled_card_focuses_the_picker_and_escape_returns_to_the_card()
+    {
+        using var fixture = await Fixture.CreateAsync();
+        fixture.Window.Width = 1024;
+        fixture.Window.Show();
+        await FlushAsync();
+        fixture.Page.Offset = new Vector(0, fixture.Page.Extent.Height);
+        await FlushAsync();
+        var card = fixture.View.GetVisualDescendants().OfType<FeedCardView>().Last();
+        var button = card.FindControl<Button>("AddToList")!;
+        var actions = (Panel)button.Parent!;
+        var visibleButtons = actions.Children.OfType<Button>().Where(b => b.IsVisible).ToArray();
+        foreach (var first in visibleButtons)
+        {
+            Assert.True(first.Bounds.Right <= actions.Bounds.Width);
+            foreach (var second in visibleButtons.Where(b => !ReferenceEquals(b, first)))
+                Assert.False(first.Bounds.Intersects(second.Bounds));
+        }
+        Assert.True(button.Focus(NavigationMethod.Tab), $"visible={button.IsEffectivelyVisible} enabled={button.IsEffectivelyEnabled} focusable={button.Focusable} canAdd={((FeedCardViewModel)card.DataContext!).CanAddToList}");
+        await FlushAsync();
+        Assert.Same(button, fixture.Window.FocusManager!.GetFocusedElement());
+        fixture.Window.KeyPressQwerty(PhysicalKey.Space, RawInputModifiers.None);
+        fixture.Window.KeyReleaseQwerty(PhysicalKey.Space, RawInputModifiers.None);
+        await FlushAsync();
+
+        Assert.NotNull(fixture.Feed.ListPrompt);
+        var input = Assert.IsType<TextBox>(fixture.Window.FocusManager!.GetFocusedElement());
+        Assert.Equal("New list name", input.Watermark);
+        var position = input.TranslatePoint(default, fixture.Window)!.Value;
+        Assert.InRange(position.Y, 0, fixture.Window.Height - input.Bounds.Height);
+
+        fixture.Window.KeyPressQwerty(PhysicalKey.Escape, RawInputModifiers.None);
+        fixture.Window.KeyReleaseQwerty(PhysicalKey.Escape, RawInputModifiers.None);
+        await FlushAsync();
+        Assert.Null(fixture.Feed.ListPrompt);
+        Assert.Same(button, fixture.Window.FocusManager.GetFocusedElement());
+    }
+
+    [AvaloniaFact]
     public async Task Only_cards_intersecting_the_live_viewport_are_recorded_and_scroll_records_new_cards()
     {
         using var fixture = await Fixture.CreateAsync();
@@ -185,8 +224,12 @@ public sealed class FeedImpressionTests
         {
             var fixture = new Fixture();
             for (var i = 1; i <= 13; i++)
+            {
                 fixture._tiles[i] = TileFixture.Tile(fixture.Clock.Now.UtcDateTime, i, i, i, $"Fixture {i}");
-            fixture.Feed = new FeedViewModel(fixture.Service, fixture, fixture.Clock);
+                fixture._tiles[i].OpenDetailsCommand = new CommunityToolkit.Mvvm.Input.RelayCommand(() => { });
+            }
+            fixture.Feed = new FeedViewModel(fixture.Service, fixture, fixture.Clock,
+                lists: new Winnow.App.ViewModels.Lists.ListsViewModel());
             await fixture.Feed.LoadCommand.ExecuteAsync(null);
             fixture.View.DataContext = fixture.Feed;
             fixture.Container.Child = fixture.View;

@@ -28,27 +28,27 @@ public sealed class ThemeService
     public const string BackdropSettingKey = "appearance.backdrop";
 
     /// <summary>Whether the cover wall's field opens up along with the chrome.
-    /// Unset reads as false — the previous default, and a real preference.</summary>
+    /// Unset includes every pane; covers remain opaque.</summary>
     public const string WallSettingKey = "appearance.wall";
 
     /// <summary>How the window is put together: <c>flush</c> or
-    /// <c>floating</c>. Unset reads as flush (<see cref="WinnowLayouts.Default"/>),
-    /// which is what the app has always looked like and what every contrast
-    /// figure in §14 was measured against.</summary>
+    /// <c>floating</c>. Unset reads as <see cref="WinnowLayouts.Default"/>.</summary>
     public const string LayoutSettingKey = "appearance.layout";
 
     /// <summary>What a stored <c>true</c> becomes when migrating from the old boolean toggle.</summary>
     public const int MigratedTransparency = 25;
 
+    public static int DefaultTransparency => OperatingSystem.IsWindows() ? 30 : 0;
+
     private readonly ISettingsRepository? _settings;
     private readonly UserThemeStore? _userThemes;
     private IReadOnlyList<WinnowTheme> _catalogue = WinnowThemes.All;
-    private IReadOnlyList<ThemeDiagnostic> _diagnostics = [];
+    private IReadOnlyList<ThemeDiagnostic> _diagnostics = WinnowThemes.Diagnostics;
     private WinnowTheme _theme = WinnowThemes.Default;
-    private int _transparency;
+    private int _transparency = DefaultTransparency;
     private WinnowBackdrop _backdrop = WinnowBackdrops.Default;
     private WinnowBackdrop _activeBackdrop = WinnowBackdrop.None;
-    private bool _wallTranslucent;
+    private bool _wallTranslucent = true;
     private WinnowLayout _layout = WinnowLayouts.Default;
     private bool _loading;
     private bool _sessionOverride;
@@ -72,8 +72,8 @@ public sealed class ThemeService
     public WinnowTheme Theme => _theme;
 
     /// <summary>
-    /// Every theme that can be picked: the four built-ins first, then user themes
-    /// from the themes folder in file-name order.
+    /// Every theme that can be picked: bundled palettes first, with local copies
+    /// taking precedence, then other user themes in file-name order.
     /// </summary>
     public IReadOnlyList<WinnowTheme> Catalogue => _catalogue;
 
@@ -140,7 +140,7 @@ public sealed class ThemeService
     public Task PendingSave { get; private set; } = Task.CompletedTask;
 
     /// <summary>
-    /// Reads both stored preferences and paints them. Anything unparseable
+    /// Reads stored appearance preferences and paints them. Anything unparseable
     /// leaves the default standing: the store returns exactly what was written
     /// and takes no position on bad text, so this one does.
     /// </summary>
@@ -175,24 +175,21 @@ public sealed class ThemeService
             // setting it keeps taking back: it gets to say what it wants the
             // first time it is picked (see SelectTheme), and after that the
             // user's own answer is the one on disk and the one that comes back.
-            // The four built-ins declare nothing here, so every one of these
-            // falls through to exactly the expression it had before.
+            // Themes without an opening position use the application defaults.
             var wants = _theme.Defaults;
 
             _transparency = storedTransparency is not null
                 ? ParseTransparency(storedTransparency)
-                : wants?.Transparency ?? 0;
+                : wants?.Transparency ?? DefaultTransparency;
 
             _backdrop = storedBackdrop is not null
                 ? WinnowBackdrops.ById(storedBackdrop)
                 : wants?.Backdrop ?? WinnowBackdrops.Default;
 
-            // Unparseable reads as false, which is the previous behaviour and
-            // the conservative one: a wall that opens up unasked is a surprise,
-            // a wall that stays solid is what the app has always looked like.
+            // Preserve the existing false fallback for malformed stored values.
             _wallTranslucent = storedWall is not null
                 ? bool.TryParse(storedWall, out var wall) && wall
-                : wants?.WallTranslucent ?? false;
+                : wants?.WallTranslucent ?? true;
 
             // Same rule as every other appearance key: anything unparseable
             // leaves the default standing rather than throwing, because the
@@ -278,8 +275,7 @@ public sealed class ThemeService
         // — every one of these writes a settings row, so the next launch reads
         // back what they left rather than what the theme asked for.
         //
-        // Null on all four built-ins, so this is a no-op for them and the
-        // shipped set behaves exactly as it always did.
+        // Themes without an opening position keep the current choices.
         ApplyOpeningPosition(theme.Defaults);
 
         Apply();
@@ -376,8 +372,17 @@ public sealed class ThemeService
         var seeding = _userThemes.EnsureSeeded();
         var (themes, diagnostics) = _userThemes.Load();
 
-        _catalogue = themes.Count == 0 ? WinnowThemes.All : [.. WinnowThemes.All, .. themes];
-        _diagnostics = [.. seeding, .. diagnostics];
+        // A local authored copy predating bundling keeps its edits and its saved id.
+        var localById = themes.ToDictionary(t => t.Id, StringComparer.Ordinal);
+        _catalogue = [
+            .. WinnowThemes.All.Select(t => localById.GetValueOrDefault(t.Id, t)),
+            .. themes.Where(t => !WinnowThemes.All.Any(b => b.Id == t.Id)),
+        ];
+        _diagnostics = [
+            .. WinnowThemes.Diagnostics.Where(d => !localById.ContainsKey(Path.GetFileNameWithoutExtension(d.File))),
+            .. seeding,
+            .. diagnostics,
+        ];
     }
 
     /// <summary>

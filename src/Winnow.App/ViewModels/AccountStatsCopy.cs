@@ -12,7 +12,7 @@ public static class AccountStatsCopy
 
     /// <summary>Rail row label. Uppercase, matching the other Display S caps
     /// rows in the rail.</summary>
-    public const string RailRow = "STATS";
+    public const string RailRow = "STEAM STATS";
 
     /// <summary>Rail row tooltip. No trailing period.</summary>
     public const string RailTooltip =

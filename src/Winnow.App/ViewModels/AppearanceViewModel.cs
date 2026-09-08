@@ -37,13 +37,13 @@ public partial class AppearanceViewModel : ObservableObject
         Reach =
         [
             new AppearanceOptionViewModel(
-                false,
-                "Frame and sidebars",
-                "Title bar, rail and filter panel. The library stays solid."),
-            new AppearanceOptionViewModel(
                 true,
                 "Everything but covers",
                 "All panes at one level. Covers stay solid."),
+            new AppearanceOptionViewModel(
+                false,
+                "Frame and sidebars",
+                "Title bar, rail and filter panel. The library stays solid."),
         ];
 
         Layouts =
@@ -177,6 +177,24 @@ public partial class AppearanceViewModel : ObservableObject
     public IReadOnlyList<ThemeProblemViewModel> Problems { get; private set; } = [];
 
     public bool HasProblems => Problems.Count > 0;
+
+    public IEnumerable<ThemeProblemViewModel> Errors => Problems.Where(p => p.IsError);
+    public IEnumerable<ThemeProblemViewModel> Warnings => Problems.Where(p => !p.IsError);
+    public bool HasErrors => Errors.Any();
+    public bool HasWarnings => Warnings.Any();
+
+    [ObservableProperty]
+    public partial bool ShowThemeWarnings { get; set; }
+
+    public string ThemeWarningsLabel => ShowThemeWarnings
+        ? "▾ Some themes may affect legibility."
+        : "▸ Some themes may affect legibility.";
+
+    partial void OnShowThemeWarningsChanged(bool value)
+        => OnPropertyChanged(nameof(ThemeWarningsLabel));
+
+    [RelayCommand]
+    private void ToggleThemeWarnings() => ShowThemeWarnings = !ShowThemeWarnings;
 
     public string ProblemsHeading
     {
@@ -403,6 +421,10 @@ public partial class AppearanceViewModel : ObservableObject
         OnPropertyChanged(nameof(UserThemeCount));
         OnPropertyChanged(nameof(UserThemeSummary));
         OnPropertyChanged(nameof(Problems));
+        OnPropertyChanged(nameof(Errors));
+        OnPropertyChanged(nameof(Warnings));
+        OnPropertyChanged(nameof(HasErrors));
+        OnPropertyChanged(nameof(HasWarnings));
         OnPropertyChanged(nameof(HasProblems));
         OnPropertyChanged(nameof(ProblemsHeading));
 
