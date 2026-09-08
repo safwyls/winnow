@@ -263,6 +263,10 @@ it is rebound or detached; pointer capture is resolved from the pointer's actual
 Each icon has at least a 32px square hit target at the 108px density floor. A press on an icon
 belongs only to that control; a double click elsewhere on the tile opens Details. Selection,
 store marks, expansion marks and the unread badge remain available without revealing actions.
+Hover and keyboard action focus also draw the promo site's 2px Volt border highlight. The
+ring sits inside the tile with a 1px Ground separator so edge tiles remain unclipped. It
+shares the existing selection ring: leaving a selected tile keeps that ring visible.
+Tile dimensions and spacing do not change.
 
 ### 5.4 How the ramp is drawn
 

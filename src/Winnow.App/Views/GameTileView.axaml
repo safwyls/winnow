@@ -28,6 +28,12 @@
     -->
 
     <UserControl.Styles>
+        <Style Selector="Border#InteractionRing">
+            <Setter Property="IsVisible" Value="False"/>
+        </Style>
+        <Style Selector="Border#Lift.actions-visible Border#InteractionRing, Border#InteractionRing.selected">
+            <Setter Property="IsVisible" Value="True"/>
+        </Style>
         <Style Selector="Border#Lift">
             <Setter Property="RenderTransform" Value="translateY(0px)"/>
             <Setter Property="BoxShadow" Value="0 0 0 0 #00000000"/>
@@ -443,7 +449,7 @@
                 </Panel>
             </Border>
 
-            <!-- Keyboard/pointer selection ring (§8's 2px Volt edge).
+            <!-- Hover, keyboard action focus and selection share a 2px Volt edge.
                  Drawn INSIDE the tile's own bounds. The mock's
                  `outline-offset:1px` puts it 3px outside, which the grid then
                  clips on the first/last column and the top/bottom row — the
@@ -451,12 +457,12 @@
                  since a half-drawn ring reads as a rendering fault rather than
                  as selection. Inverting the offset inward keeps the ring and
                  its 1px separator complete on every tile, and costs 3px of art
-                 on the selected tile only. Tile pitch is untouched, so nothing
+                 on the highlighted tile only. Tile pitch is untouched, so nothing
                  reflows. -->
-            <Border BorderBrush="{StaticResource Volt}" BorderThickness="2"
+            <Border Name="InteractionRing" BorderBrush="{StaticResource Volt}" BorderThickness="2"
                     CornerRadius="{StaticResource RadiusTile}"
                     IsHitTestVisible="False"
-                    IsVisible="{Binding IsSelected}">
+                    Classes.selected="{Binding IsSelected}">
                 <Border BorderBrush="{StaticResource Ground}" BorderThickness="1"
                         CornerRadius="4"/>
             </Border>
