@@ -2581,3 +2581,10 @@ The modal uses aligned rows and a separate creation area. Previous visual-spec t
 
 > The modal has a bounded, vertically scrollable list of targets, followed by a new-list field
 > and Cancel / confirm buttons. Long names truncate with their full name in a tooltip.
+
+## 2026-09-08 — Optically center the feed bookmark
+
+The bookmark's pointed outline carries more visual weight to the left than the circular feed
+icons, so its vector shifts right by one pixel inside the unchanged button bounds. The visual
+spec previously said: “The bookmark and its inset plus are symmetric around the same
+centerline as the other icons.”

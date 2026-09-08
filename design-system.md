@@ -1822,7 +1822,8 @@ checkboxes and leaves details open. Escape dismisses only the list modal.
 Feed feedback occupies a dedicated right-hand column: bookmark-plus **Add to list** in Azure,
 clock **Not now** in Amber, and circle-minus **Not interested** in TextDim. Each 32px icon
 button has a tooltip and accessible name. Install / Play has its own line below the card text.
-The bookmark and its inset plus are symmetric around the same centerline as the other icons.
+The bookmark and its inset plus use a 1px optical correction to share the apparent centerline
+of the circular feedback icons.
 
 In a static list, the game context menu offers **Remove from list**, acting on the selected
 games and leaving them in the library. Live lists determine their own membership.
