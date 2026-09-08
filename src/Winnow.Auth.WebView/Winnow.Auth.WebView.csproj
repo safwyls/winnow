@@ -29,22 +29,11 @@
     <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>Winnow.Auth.WebView</RootNamespace>
 
-    <!--
-      MSB3277 is emitted by this build and is COSMETIC. The WebView2 package's
-      build/Common.targets unconditionally <Reference>s its WPF and WinForms
-      wrapper assemblies with no opt-out property (the targets file was read
-      looking for one), and the WPF wrapper drags WindowsBase 5.0.0.0 against the
-      framework's 4.0.0.0.
-
-      TreatWarningsAsErrors does NOT promote this: it is a C# compiler setting
-      and MSB3277 is an MSBuild warning. Confirmed by building both ways rather
-      than reasoned about. Silenced here as a message so a real warning is not
-      lost in twelve lines of assembly-resolution noise. Neither wrapper is used
-      — this project hosts WebView2 through Avalonia's NativeControlHost.
-    -->
-    <MSBuildWarningsAsMessages>MSB3277</MSBuildWarningsAsMessages>
   </PropertyGroup>
 
+  <!-- The WebView2 package's unused WPF/WinForms wrapper references are removed
+       repo-wide by DropWebView2UiWrappers in Directory.Build.targets; see the
+       rationale there. -->
   <ItemGroup>
     <!--
       Avalonia, for NativeControlHost and the window the browser lives in. NOT

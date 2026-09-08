@@ -244,14 +244,15 @@
                     </Panel>
                 </Border>
 
-                <!-- Unread badge (§5.2), outside clip for glow. Flare's one
+                <!-- Unread badge (§5.2), outside clip for glow and fixed to
+                     the same top-left corner as the library tile. Flare's one
                      use: an update landed after last session. -->
                 <Border Width="14" Height="14" CornerRadius="7"
                         Background="{StaticResource Flare}"
                         BorderBrush="{StaticResource Ground}" BorderThickness="2"
                         BoxShadow="{DynamicResource BadgeGlow}"
-                        HorizontalAlignment="Right" VerticalAlignment="Top"
-                        Margin="0,6,6,0"
+                        HorizontalAlignment="Left" VerticalAlignment="Top"
+                        Margin="8,8,0,0"
                         IsVisible="{Binding Tile.HasUnread}"/>
             </Panel>
 

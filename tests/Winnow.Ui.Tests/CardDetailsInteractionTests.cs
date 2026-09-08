@@ -293,17 +293,19 @@ public sealed class CardDetailsInteractionTests
     [AvaloniaTheory]
     [InlineData(108)]
     [InlineData(148)]
-    public async Task Unread_badge_clears_the_details_fold(double width)
+    public async Task Unread_badge_sits_in_the_top_left_corner(double width)
     {
         using var fixture = await CardFixture.CreateAsync(width, played: true, unread: true);
+        var lift = fixture.TileView.FindControl<Border>("Lift")!;
         var detailsHost = fixture.TileView.FindControl<Border>("DetailsActionHost")!;
         var badge = fixture.TileView.FindControl<Border>("Badge")!;
         fixture.Window.MouseMove(fixture.Position(fixture.TileView, new Point(74, 80)));
         Flush();
 
         Assert.True(badge.IsVisible);
-        var detailsBounds = new Rect(detailsHost.TranslatePoint(default, fixture.TileView)!.Value, detailsHost.Bounds.Size);
-        var badgeBounds = new Rect(badge.TranslatePoint(default, fixture.TileView)!.Value, badge.Bounds.Size);
+        var detailsBounds = new Rect(detailsHost.TranslatePoint(default, lift)!.Value, detailsHost.Bounds.Size);
+        var badgeBounds = new Rect(badge.TranslatePoint(default, lift)!.Value, badge.Bounds.Size);
+        Assert.Equal(new Point(8, 8), badgeBounds.Position);
         Assert.False(detailsBounds.Intersects(badgeBounds),
             $"Unread badge {badgeBounds} overlaps Details fold {detailsBounds}.");
 
@@ -313,7 +315,7 @@ public sealed class CardDetailsInteractionTests
             Flush();
             Directory.CreateDirectory(directory);
             using var frame = fixture.Window.CaptureRenderedFrame();
-            frame!.Save(Path.Combine(directory, $"card-unread-fold-{width}.png"));
+            frame!.Save(Path.Combine(directory, $"card-unread-top-left-{width}.png"));
         }
     }
 

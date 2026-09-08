@@ -2427,6 +2427,29 @@ Superseded README.md text:
 
 > Windows only in practice — Epic and GOG discovery uses the registry, credentials use DPAPI, and session detection is Windows-shaped. It builds elsewhere; it will find less.
 
+### TASK-149: Avalonia previewer and the WebView2 wrappers (2026-09-07)
+
+The WebView2 package's unused WPF/WinForms wrappers are dropped at build time in `Winnow.Auth.WebView` (a `DropWebView2UiWrappers` target removes the package targets' `Reference` items before `ResolveAssemblyReferences`). They no longer reach compile, output, `Winnow.deps.json` or the Avalonia previewer; the `MSB3277` suppressions in `Winnow.Auth.WebView.csproj` and `Winnow.App.csproj` are retired.
+
+Superseded docs/spikes/embedded-auth.md text:
+
+> So it is cosmetic, and `MSBuildWarningsAsMessages=MSB3277` silences it cleanly.
+
+> `MSB3277` appears and, as §2(b) says, does not break the build.
+
+### TASK-149 (follow-up): the wrapper removal is repository-wide (2026-09-07)
+
+The first cut put the `DropWebView2UiWrappers` target in `Winnow.Auth.WebView.csproj`, which left the warning and the wrapper DLLs in every project that imports the package's `buildTransitive` targets — `Winnow.App` and the test projects included. The target now lives in `Directory.Build.targets` and applies to every project; it also matches the wrapper items by identity with an `EndsWith` condition, because `Remove`'s glob patterns do not match the absolute-path ItemSpecs the package uses.
+
+Superseded docs/decisions.md text (the TASK-149 entry above):
+
+> The WebView2 package's unused WPF/WinForms wrappers are dropped at build time in `Winnow.Auth.WebView` (a `DropWebView2UiWrappers` target removes the package targets' `Reference` items before `ResolveAssemblyReferences`).
+
+### 2026-09-07 — Move the unread badge to the tile's top-left corner
+
+Superseded visual-spec text:
+
+> 10px `Flare` dot on the right edge, 8px inset and immediately below the Details fold's 40px hit region, with a 2px `Ground`-coloured ring so it reads against any cover. Optional soft outer glow at 30% opacity. The offset keeps the alert and the folded-corner action as separate targets.
 ### TASK-153: Add Application settings for tray and startup behavior (2026-09-07)
 
 Superseded visual-spec text:
@@ -2482,3 +2505,4 @@ Superseded docs/spikes/avalonia-dormancy-rendering.md text:
 ### TASK-152: the remaining memory gap to Playnite is accepted (2026-09-07)
 
 After TASK-152.1 through 152.5, the 1,039-game library sits at 206 MB private bytes 90 s after launch with the startup pipeline running (289 MB before), and about 330-370 MB after a full scroll of the grid (507 MB before). The umbrella task asked for 200 MB or an accepted explanation; the last 6 MB, and the distance to Playnite's 175 MB, are accepted. docs/spikes/memory-footprint.md section 2 measured the floor: a bare Avalonia 11 window with Skia, ANGLE/D3D11 and WinUI composition costs 120-137 MB private on this machine before any Winnow code runs, and Playnite, as a WPF application, rides the rendering stack Windows already has loaded. That floor is the price of the cross-platform UI and is not something Winnow's own code can reduce; the work stops here rather than trading the Avalonia backend for parity on one platform.
+

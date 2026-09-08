@@ -462,7 +462,8 @@
             </Border>
 
             <!-- Unread-update badge (§5.2): 10px Flare dot, 2px Ground ring,
-                 soft glow. Flare appears here and on the rail pip — nowhere else.
+                 soft glow in the top-left corner. Flare appears here and on
+                 the rail pip — nowhere else.
 
                  It is declared outside the clip so its glow is not sheared off
                  at the tile's corner. The tile's automation name restates the
@@ -472,8 +473,8 @@
                     Background="{StaticResource Flare}"
                     BorderBrush="{StaticResource Ground}" BorderThickness="2"
                     BoxShadow="{DynamicResource BadgeGlow}"
-                    HorizontalAlignment="Right" VerticalAlignment="Top"
-                    Margin="0,44,8,0"
+                    HorizontalAlignment="Left" VerticalAlignment="Top"
+                    Margin="8,8,0,0"
                     IsVisible="{Binding HasUnread}"/>
 
         </Panel>

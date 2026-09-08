@@ -111,7 +111,27 @@ is an *MSBuild* warning and is not promoted:
 | `+ MSBuildWarningsAsMessages=MSB3277` | **Build succeeded**, 0 errors, **0 warnings** |
 | `+ NoWarn=MSB3277` | **Build succeeded**, 0 errors |
 
-So it is cosmetic, and `MSBuildWarningsAsMessages=MSB3277` silences it cleanly.
+So it was cosmetic, and `MSBuildWarningsAsMessages=MSB3277` silenced it — until TASK-149
+(2026-09-07) found a second cost. RAR resolves the wrapper references into every referencing
+project's output directory and `Winnow.deps.json`, and the Avalonia previewer process reflects
+over that graph: the XAML compiler's xmlns resolver resolves the WPF wrapper's
+`PresentationFramework 5.0.0.0` dependency, which a plain `net10.0` Avalonia app does not
+carry, and the previewer dies with `FileNotFoundException` before rendering anything.
+
+The fix is a repository-wide `DropWebView2UiWrappers` target in `Directory.Build.targets`,
+hooked with `BeforeTargets="ResolveAssemblyReferences"`, that drops the two wrapper
+`Reference` items in every project, because the package ships its
+targets under `buildTransitive/` and every project that transitively references
+`Winnow.Auth.WebView` — `Winnow.App`, the test projects — imports them too and reproduces the
+same problem in its own output and deps.json. So the wrappers reach neither compile, output,
+deps.json nor the previewer, and `MSB3277` is gone with them; both
+`MSBuildWarningsAsMessages` suppressions were retired. One measurement worth keeping: `Remove`
+with a `**\Microsoft.Web.WebView2.Wpf.dll` glob removed nothing — the package uses
+absolute-path ItemSpecs and the glob does not match them — so the target matches by identity
+with an `EndsWith` condition. Verified by building the full solution: zero `MSB3277`, no
+`Microsoft.Web.WebView2.Wpf` or `.WinForms` DLLs in any output, no such entries in
+`Winnow.deps.json`, `Core.dll` and the three `WebView2Loader` RIDs intact, full test suite
+green.
 
 **(c) The TFM must become `net10.0-windows`.** `Winnow.App` is `net10.0` today. This is the
 strongest argument for putting the browser host in its own small Windows-only project rather
@@ -130,7 +150,8 @@ than in `Winnow.App` directly — see §7.
 > three RIDs of `WebView2Loader.dll` to output, and
 > `CoreWebView2Environment.GetAvailableBrowserVersionString()` returns **151.0.4129.107** at
 > runtime from a non-Windows TFM. `MSB3277` appears and, as §2(b) says, does not break the
-> build.
+> build. (At the time it did — it no longer appears since TASK-149 removed the wrappers; see
+> §2(b).)
 
 ### Dependency cost, measured
 
@@ -138,8 +159,8 @@ than in `Winnow.App` directly — see §7.
 |---|---|
 | Package | `Microsoft.Web.WebView2` **1.0.4129.50** |
 | nupkg | 9.25 MB (mostly headers/native loaders for C++ consumers) |
-| **Actually copied to output** | **~2.06 MB**, of which **~1.26 MB is DLLs** and ~0.80 MB is XML doc files (trimmable) |
-| Breakdown | `Core.dll` 698 KB · `Wpf.dll` 84 KB · `WinForms.dll` 39 KB (both unused) · `WebView2Loader.dll` ×3 RIDs 441 KB |
+| **Actually copied to output** | **~1.94 MB** as of TASK-149 (2026-09-07), after `Winnow.Auth.WebView` stops the wrapper references; **~2.06 MB** when measured 2026-08-26, of which **~1.26 MB is DLLs** and ~0.80 MB is XML doc files (trimmable) |
+| Breakdown | `Core.dll` 698 KB · `WebView2Loader.dll` ×3 RIDs 441 KB · (removed since TASK-149: `Wpf.dll` 84 KB · `WinForms.dll` 39 KB, both unused) |
 | Runtime prerequisite | **Evergreen WebView2 Runtime.** Present on this machine at **151.0.4129.107**, preinstalled, no install step performed |
 | Ships a browser? | **No.** The Chromium engine is the OS-provided runtime |
 

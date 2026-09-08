@@ -78,6 +78,42 @@ public sealed class VisualDisciplineTests
     }
 
     [Fact]
+    public void Every_cover_badge_uses_the_same_top_left_corner()
+    {
+        var failures = new List<string>();
+
+        foreach (var file in RepositoryTree.Files("src/Winnow.App", "*.axaml"))
+        {
+            var document = System.Xml.Linq.XDocument.Parse(RepositoryTree.Read(file));
+            var badges = document
+                .Descendants()
+                .Where(element => element.Attribute("BoxShadow")?.Value.Contains("BadgeGlow", StringComparison.Ordinal) == true);
+
+            foreach (var badge in badges)
+            {
+                if (badge.Attribute("HorizontalAlignment")?.Value == "Left"
+                    && badge.Attribute("VerticalAlignment")?.Value == "Top"
+                    && badge.Attribute("Margin")?.Value == "8,8,0,0")
+                {
+                    continue;
+                }
+
+                failures.Add(
+                    $"{file} places a cover badge at "
+                    + $"{badge.Attribute("HorizontalAlignment")?.Value ?? "(unset)"}/"
+                    + $"{badge.Attribute("VerticalAlignment")?.Value ?? "(unset)"} with margin "
+                    + $"{badge.Attribute("Margin")?.Value ?? "(unset)"}.");
+            }
+        }
+
+        Assert.True(
+            failures.Count == 0,
+            "Every cover-level unread badge must sit 8px from the top-left corner "
+            + "(design-system.md §5.2).\n"
+            + string.Join("\n", failures));
+    }
+
+    [Fact]
     public void There_is_no_filter_group_for_games_with_updates()
     {
         // A "has updates" group would be a second door onto the rail's

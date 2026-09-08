@@ -207,9 +207,9 @@ you the before and after, and it feels good.
 
 ### 5.2 Unread badge
 
-10px `Flare` dot on the right edge, 8px inset and immediately below the Details fold's 40px hit
-region, with a 2px `Ground`-coloured ring so it reads against any cover. Optional soft outer
-glow at 30% opacity. The offset keeps the alert and the folded-corner action as separate targets.
+10px `Flare` dot in the top-left corner, 8px inset, with a 2px `Ground`-coloured ring so it
+reads against any cover. Optional soft outer glow at 30% opacity. The opposite corner keeps
+the alert clear of the top-right Details fold.
 
 Present only when a major update landed after the user's last session — both signals from
 `game-library-design.md` §4.5, build push *and* announcement.
