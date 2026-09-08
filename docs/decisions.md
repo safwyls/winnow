@@ -2427,6 +2427,14 @@ Superseded README.md text:
 
 > Windows only in practice — Epic and GOG discovery uses the registry, credentials use DPAPI, and session detection is Windows-shaped. It builds elsewhere; it will find less.
 
+### TASK-153: Add Application settings for tray and startup behavior (2026-09-07)
+
+Superseded visual-spec text:
+
+> The gear at the foot of the rail opens `SETTINGS`, which holds three screens in this order:
+> **PLATFORMS**, **LIBRARY**, **APPEARANCE**. Each is drawn the same way: a 48px header lining
+> up with the command bar and the filter panel's header, its own scroll, cards on `PaneGround`.
+
 ### TASK-152.1: the empty-library sync run measures an imported library (2026-09-07)
 
 The startup pipeline imports what the launchers hold, so a pristine data directory holds 707 works within a second of launch. The ~95 MB between "empty library with sync" and "empty library with `--no-sync`" is that library plus the pipeline's working set, not memory the pipeline leaves behind: the same directory relaunched with `--no-sync` costs more than the sync run that built it. Pooled SQLite page caches were measured and are not the native-heap growth either — the pipeline never holds more than 10 connections at once. `docs/spikes/memory-footprint.md` §6 records both measurements.

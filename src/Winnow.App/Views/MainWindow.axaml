@@ -1185,7 +1185,7 @@
                 </Border>
             </Border>
 
-            <!-- The gear. A glyph and no label: the three sections name
+            <!-- The gear. A glyph and no label: the four sections name
                  themselves once the surface is open, and every other rail
                  row is a library cut, which this is not. Pinned in the
                  Grid's Auto row so it cannot be scrolled past. -->
@@ -1199,7 +1199,7 @@
                         Command="{Binding ShowSettingsCommand}"
                         HorizontalAlignment="Left"
                         AutomationProperties.Name="Settings"
-                        ToolTip.Tip="Platforms, library and appearance">
+                        ToolTip.Tip="Platforms, library, appearance and application">
                     <Path Data="F0 M 12.95,6.10 L 15.22,6.40 L 15.22,9.60 L 12.95,9.90 L 12.84,10.16 L 14.24,11.98 L 11.98,14.24 L 10.16,12.84 L 9.90,12.95 L 9.60,15.22 L 6.40,15.22 L 6.10,12.95 L 5.84,12.84 L 4.02,14.24 L 1.76,11.98 L 3.16,10.16 L 3.05,9.90 L 0.78,9.60 L 0.78,6.40 L 3.05,6.10 L 3.16,5.84 L 1.76,4.02 L 4.02,1.76 L 5.84,3.16 L 6.10,3.05 L 6.40,0.78 L 9.60,0.78 L 9.90,3.05 L 10.16,3.16 L 11.98,1.76 L 14.24,4.02 L 12.84,5.84 Z M 5.50,8.00 A 2.50,2.50 0 1 0 10.50,8.00 A 2.50,2.50 0 1 0 5.50,8.00 Z"
                           Stretch="Uniform"
                           Width="16" Height="16"/>
@@ -1794,11 +1794,11 @@
         </views:LazyPane>
 
         <!-- ══ THE SETTINGS SURFACE ════════════════════════════════════════
-             Three sections — Platforms, Library, Appearance — opened by the
+             Four sections — Platforms, Library, Appearance, Application — opened by the
              gear at the foot of the rail. Purchases was a section until TASK-59
              folded it into the Steam card on Platforms. Library holds what the
              library shows: hidden games, explicit content and hand-added games.
-             The three sections switch through a segmented control that reuses
+             The four sections switch through a segmented control that reuses
              the command bar's grid/list toggle grammar (same bordered field,
              same ChromeRaised fill, Volt on the active label), in a 48px header
              that lines up with the command bar and the filter panel's header
@@ -1855,6 +1855,14 @@
                                         ToolTip.Tip="Theme and transparency">
                                     <TextBlock Classes="display-s" Text="APPEARANCE"/>
                                 </Button>
+                                <Button AutomationProperties.Name="{Binding ApplicationSettings.SegmentLabel}"
+                                        Classes="seg tab"
+                                        Classes.on="{Binding IsApplicationSettingsVisible}"
+                                        Command="{Binding ShowApplicationSettingsCommand}"
+                                        ToolTip.Tip="{Binding ApplicationSettings.SegmentTooltip}">
+                                    <TextBlock Classes="display-s"
+                                               Text="{Binding ApplicationSettings.SegmentLabel}"/>
+                                </Button>
                             </StackPanel>
                         </Border>
                     </StackPanel>
@@ -1886,6 +1894,14 @@
                         <views:LazyPane.PaneTemplate>
                             <DataTemplate DataType="vm:MainWindowViewModel">
                                 <views:AppearanceView DataContext="{Binding Appearance}"/>
+                            </DataTemplate>
+                        </views:LazyPane.PaneTemplate>
+                    </views:LazyPane>
+                    <views:LazyPane IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsApplicationSettingsVisible}">
+                        <views:LazyPane.PaneTemplate>
+                            <DataTemplate DataType="vm:MainWindowViewModel">
+                                <views:ApplicationSettingsView Name="ApplicationSettingsPanel"
+                                                               DataContext="{Binding ApplicationSettings}"/>
                             </DataTemplate>
                         </views:LazyPane.PaneTemplate>
                     </views:LazyPane>

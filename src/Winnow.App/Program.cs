@@ -879,6 +879,13 @@ public static class Program
         services.AddSingleton<ThemeService>();
         services.AddSingleton<AppearanceViewModel>();
 
+        // Window lifetime and per-user startup registration. The view model is
+        // loaded before MainWindow exists so the first caption gesture already
+        // observes the saved preference; the OS operation stays behind a seam
+        // so view-model and headless tests never touch the real Run key.
+        services.AddSingleton<IStartupRegistration, WindowsStartupRegistration>();
+        services.AddSingleton<ApplicationSettingsViewModel>();
+
         // The settings surface's third section, SETTINGS › LIBRARY. What is in
         // the library: the explicit-content filter, the games the user hid and
         // the games they added by hand. Not under Appearance (material and

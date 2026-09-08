@@ -1,0 +1,103 @@
+<UserControl AutomationProperties.Name="Application settings"
+             AutomationProperties.ControlTypeOverride="Group"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Winnow.App.ViewModels"
+             x:Class="Winnow.App.Views.ApplicationSettingsView"
+             x:DataType="vm:ApplicationSettingsViewModel">
+
+    <UserControl.Styles>
+        <Style Selector="Border.card">
+            <Setter Property="Background" Value="{StaticResource Surface}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusControl}"/>
+            <Setter Property="Padding" Value="20"/>
+        </Style>
+        <Style Selector=":is(TextBlock).problem">
+            <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Foreground" Value="{StaticResource Amber}"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto,*" Background="{StaticResource PaneGround}">
+        <Border Grid.Row="0" Padding="24,20,24,18"
+                BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1">
+            <StackPanel Spacing="7">
+                <TextBlock AutomationProperties.HeadingLevel="1"
+                           Classes="display-l" Text="{Binding Title}"/>
+                <TextBlock Classes="body" MaxWidth="640" HorizontalAlignment="Left"
+                           TextWrapping="Wrap" LineHeight="19"
+                           Foreground="{StaticResource TextDim}"
+                           Text="{Binding IntroMessage}"/>
+            </StackPanel>
+        </Border>
+
+        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled"
+                      VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="24,16,24,28" MaxWidth="920"
+                        HorizontalAlignment="Left" Spacing="14">
+                <TextBlock Classes="label" FontSize="10" LetterSpacing="1.4"
+                           AutomationProperties.HeadingLevel="2"
+                           Text="NOTIFICATION AREA"/>
+                <Border Classes="card" AutomationProperties.Name="Notification area behavior"
+                        AutomationProperties.AccessibilityView="Control">
+                    <StackPanel Spacing="18">
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="20">
+                            <StackPanel Grid.Column="0" Spacing="5">
+                                <TextBlock Classes="body-l" Text="Minimize to notification area"/>
+                                <TextBlock Classes="para" Foreground="{StaticResource TextDim}"
+                                           TextWrapping="Wrap"
+                                           Text="Hides Winnow from the taskbar when you minimize it."/>
+                            </StackPanel>
+                            <ToggleSwitch Grid.Column="1" VerticalAlignment="Center"
+                                          IsChecked="{Binding MinimizeToTray, Mode=TwoWay}"
+                                          OnContent="Minimize to notification area"
+                                          OffContent="Minimize to notification area"
+                                          AutomationProperties.Name="Minimize to notification area"/>
+                        </Grid>
+                        <Border Height="1" Background="{StaticResource Line}"/>
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="20">
+                            <StackPanel Grid.Column="0" Spacing="5">
+                                <TextBlock Classes="body-l" Text="Close to notification area"/>
+                                <TextBlock Classes="para" Foreground="{StaticResource TextDim}"
+                                           TextWrapping="Wrap"
+                                           Text="Keeps Winnow running when you close its window. Use Exit from the tray menu to quit."/>
+                            </StackPanel>
+                            <ToggleSwitch Grid.Column="1" VerticalAlignment="Center"
+                                          IsChecked="{Binding CloseToTray, Mode=TwoWay}"
+                                          OnContent="Close to notification area"
+                                          OffContent="Close to notification area"
+                                          AutomationProperties.Name="Close to notification area"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <TextBlock Classes="label" FontSize="10" LetterSpacing="1.4"
+                           Margin="0,6,0,0" AutomationProperties.HeadingLevel="2"
+                           Text="STARTUP"/>
+                <Border Classes="card" AutomationProperties.Name="Startup behavior"
+                        AutomationProperties.AccessibilityView="Control">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="20">
+                        <StackPanel Grid.Column="0" Spacing="5">
+                            <TextBlock Classes="body-l" Text="Start with Windows"/>
+                            <TextBlock Classes="para" Foreground="{StaticResource TextDim}"
+                                       TextWrapping="Wrap" Text="{Binding StartupNote}"/>
+                        </StackPanel>
+                        <ToggleSwitch Grid.Column="1" VerticalAlignment="Center"
+                                      IsEnabled="{Binding IsStartupSupported}"
+                                      IsChecked="{Binding StartWithWindows, Mode=TwoWay}"
+                                      OnContent="Start with Windows"
+                                      OffContent="Start with Windows"
+                                      AutomationProperties.Name="Start with Windows"/>
+                    </Grid>
+                </Border>
+
+                <TextBlock Classes="problem" IsVisible="{Binding HasProblem}"
+                           Text="{Binding Problem}" AutomationProperties.LiveSetting="Polite"/>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

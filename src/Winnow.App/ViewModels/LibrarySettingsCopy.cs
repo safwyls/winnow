@@ -7,7 +7,7 @@ namespace Winnow.App.ViewModels;
 /// the library's context menu and details modal carry. Three controls answer one
 /// question — what is in the library: the explicit-content toggle (TASK-88),
 /// the hidden-games list (TASK-87) and the hand-added games form (TASK-99).
-/// The screen sits beside Platforms and Appearance rather than inside either,
+/// The screen sits beside Platforms, Appearance and Application rather than inside another,
 /// because connecting to a store and choosing a theme are different questions
 /// from deciding what the library shows.
 /// </summary>

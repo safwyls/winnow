@@ -12,7 +12,7 @@ namespace Winnow.App.ViewModels;
 
 /// <summary>
 /// SETTINGS › LIBRARY, the settings surface's third section beside Platforms and
-/// Appearance. Three cards, one question — what is in the library: the
+/// Appearance and Application. Three cards, one question — what is in the library: the
 /// explicit-content filter, the games the user hid, and the games they added by
 /// hand. Every dependency is optional, so a host that skipped one gets a card
 /// that is empty rather than a screen that will not open.

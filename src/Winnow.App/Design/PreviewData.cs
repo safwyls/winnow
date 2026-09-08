@@ -35,6 +35,7 @@ internal static class PreviewData
     private static MergeQueueViewModel? _mergeQueue;
     private static AccountStatsViewModel? _accountStats;
     private static LibrarySettingsViewModel? _librarySettings;
+    private static ApplicationSettingsViewModel? _applicationSettings;
     private static GameTileViewModel? _tile;
     private static GameDetailsViewModel? _gameDetails;
     private static FeedCardViewModel? _feedCard;
@@ -58,7 +59,8 @@ internal static class PreviewData
         Appearance,
         Feed,
         AccountStats,
-        LibrarySettings);
+        LibrarySettings,
+        applicationSettings: ApplicationSettings);
 
     /// <summary>The landing screen's feed, resolved against <see cref="Library"/>'s tiles.</summary>
     public static FeedViewModel Feed => _feed ??= new FeedViewModel(new PreviewFeedService(), Library);
@@ -80,6 +82,10 @@ internal static class PreviewData
     /// <summary>SETTINGS › LIBRARY with no services, its plainest state.</summary>
     public static LibrarySettingsViewModel LibrarySettings =>
         _librarySettings ??= new LibrarySettingsViewModel();
+
+    /// <summary>SETTINGS › APPLICATION with the shipped, opt-in defaults.</summary>
+    public static ApplicationSettingsViewModel ApplicationSettings =>
+        _applicationSettings ??= new ApplicationSettingsViewModel();
 
     /// <summary>The command bar's filter panel, bound to <see cref="Library"/>.</summary>
     public static ViewModels.Filters.FilterPanelViewModel Filters => Library.Filters;

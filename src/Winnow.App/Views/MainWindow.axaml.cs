@@ -33,6 +33,13 @@ public partial class MainWindow : Window
     private bool _chromeReady;
     private DateTime _lastTitleBarPress = DateTime.MinValue;
     private PixelPoint _lastTitleBarPoint;
+    private bool _allowClose;
+
+    internal bool StartHidden { get; init; }
+
+    internal bool IsHiddenInTray { get; private set; }
+
+    internal event EventHandler? TrayStateChanged;
 
     public MainWindow()
     {
@@ -231,7 +238,59 @@ public partial class MainWindow : Window
         if (_chromeReady && change.Property == WindowStateProperty)
         {
             UpdateWindowStateChrome();
+
+            if (WindowState == WindowState.Minimized
+                && _shell?.ApplicationSettings.MinimizeToTray == true)
+            {
+                Dispatcher.UIThread.Post(HideToTray);
+            }
         }
+    }
+
+    protected override void OnClosing(WindowClosingEventArgs e)
+    {
+        if (!_allowClose
+            && e.CloseReason == WindowCloseReason.WindowClosing
+            && _shell?.ApplicationSettings.CloseToTray == true)
+        {
+            e.Cancel = true;
+            HideToTray();
+        }
+
+        base.OnClosing(e);
+    }
+
+    internal void RestoreFromTray()
+    {
+        ShowInTaskbar = true;
+        if (!IsVisible)
+        {
+            Show();
+        }
+
+        WindowState = WindowState.Normal;
+        IsHiddenInTray = false;
+        Activate();
+        TrayStateChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    internal void ExitFromTray()
+    {
+        _allowClose = true;
+        Close();
+    }
+
+    private void HideToTray()
+    {
+        if (IsHiddenInTray)
+        {
+            return;
+        }
+
+        ShowInTaskbar = false;
+        Hide();
+        IsHiddenInTray = true;
+        TrayStateChanged?.Invoke(this, EventArgs.Empty);
     }
 
     /// <summary>
@@ -285,6 +344,11 @@ public partial class MainWindow : Window
     protected override async void OnOpened(EventArgs e)
     {
         base.OnOpened(e);
+
+        if (StartHidden)
+        {
+            HideToTray();
+        }
 
         // N02. The only async void in the tree that sequences load-bearing
         // startup work, so the only one that runs without an event boundary:

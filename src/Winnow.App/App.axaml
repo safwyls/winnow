@@ -3,6 +3,24 @@
              x:Class="Winnow.App.App"
              RequestedThemeVariant="Dark">
 
+    <!-- Application-level by design: the icon must outlive a hidden window. -->
+    <TrayIcon.Icons>
+        <TrayIcons>
+            <TrayIcon Icon="/Assets/Icons/dragon.ico"
+                      ToolTipText="Winnow"
+                      IsVisible="False"
+                      Clicked="OnTrayClicked">
+                <TrayIcon.Menu>
+                    <NativeMenu>
+                        <NativeMenuItem Header="Open Winnow" Click="OnOpenFromTray"/>
+                        <NativeMenuItemSeparator/>
+                        <NativeMenuItem Header="Exit" Click="OnExitFromTray"/>
+                    </NativeMenu>
+                </TrayIcon.Menu>
+            </TrayIcon>
+        </TrayIcons>
+    </TrayIcon.Icons>
+
     <Application.Styles>
         <FluentTheme />
         <!-- Shared components: the composites drawn by more than one screen.

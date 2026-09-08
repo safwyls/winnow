@@ -9,7 +9,7 @@ namespace Winnow.App.ViewModels;
 
 /// <summary>
 /// Window shell: hosts the Feed, library, merge queue, STATS and the settings
-/// surface (Platforms, Library, Appearance). The rail navigates between the
+/// surface (Platforms, Library, Appearance, Application). The rail navigates between the
 /// first four; the gear at its foot opens the settings surface. One screen at a
 /// time.
 ///
@@ -17,7 +17,8 @@ namespace Winnow.App.ViewModels;
 /// Appearance and Purchases. TASK-59 folded Purchases into the Steam card on
 /// Platforms, leaving two. The Library section added later (hidden games,
 /// explicit content, hand-added games) brings the count back to three but is
-/// not a reinstatement of Purchases. This type no longer knows the import
+/// not a reinstatement of Purchases. Application was added for window and OS
+/// startup behavior. This type no longer knows the import
 /// screen exists; <see cref="StoresViewModel"/> owns it now and refreshes it
 /// when the Platforms section opens.</para>
 /// </summary>
@@ -35,7 +36,8 @@ public partial class MainWindowViewModel : ObservableObject
         FetchStatusViewModel? fetch = null,
         ISettingsRepository? settings = null,
         Services.SessionJournalService? journal = null,
-        ILibraryQueryRepository? libraryQueries = null)
+        ILibraryQueryRepository? libraryQueries = null,
+        ApplicationSettingsViewModel? applicationSettings = null)
     {
         Fetch = fetch ?? new FetchStatusViewModel();
         Library = library;
@@ -45,6 +47,7 @@ public partial class MainWindowViewModel : ObservableObject
         Feed = feed;
         AccountStats = accountStats;
         LibrarySettings = librarySettings;
+        ApplicationSettings = applicationSettings ?? new ApplicationSettingsViewModel();
 
         // Hiding a game, unhiding one, adding one by hand and turning the
         // explicit filter on all change which rows the bucket query returns, so
@@ -124,6 +127,7 @@ public partial class MainWindowViewModel : ObservableObject
         Stores,
         Appearance,
         Library,
+        Application,
     }
 
     public FetchStatusViewModel Fetch { get; }
@@ -151,6 +155,9 @@ public partial class MainWindowViewModel : ObservableObject
 
     /// <summary>SETTINGS › LIBRARY — hidden games, explicit content, hand-added games.</summary>
     public LibrarySettingsViewModel LibrarySettings { get; }
+
+    /// <summary>SETTINGS › APPLICATION — window lifetime and Windows sign-in.</summary>
+    public ApplicationSettingsViewModel ApplicationSettings { get; }
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsLibraryVisible), nameof(IsFilterPanelVisible))]
@@ -190,6 +197,12 @@ public partial class MainWindowViewModel : ObservableObject
         nameof(IsLibraryVisible), nameof(IsFilterPanelVisible), nameof(IsSettingsVisible))]
     public partial bool IsLibrarySettingsVisible { get; set; }
 
+    /// <summary>The Application screen, the settings surface's fourth section.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(
+        nameof(IsLibraryVisible), nameof(IsFilterPanelVisible), nameof(IsSettingsVisible))]
+    public partial bool IsApplicationSettingsVisible { get; set; }
+
     /// <summary>The STATS screen, opened from the rail's ACCOUNT › STATS row.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsLibraryVisible), nameof(IsFilterPanelVisible))]
@@ -208,11 +221,13 @@ public partial class MainWindowViewModel : ObservableObject
     /// surface's visibility to this, and the gear's lit state to it.
     /// </summary>
     public bool IsSettingsVisible =>
-        IsStoresVisible || IsAppearanceVisible || IsLibrarySettingsVisible;
+        IsStoresVisible || IsAppearanceVisible || IsLibrarySettingsVisible
+        || IsApplicationSettingsVisible;
 
     public bool IsLibraryVisible =>
         !IsMergeQueueVisible && !IsStoresVisible && !IsAppearanceVisible
-        && !IsLibrarySettingsVisible && !IsAccountStatsVisible && !IsFeedVisible;
+        && !IsLibrarySettingsVisible && !IsApplicationSettingsVisible
+        && !IsAccountStatsVisible && !IsFeedVisible;
 
     /// <summary>The filter panel is part of the library screen, not of the window.</summary>
     public bool IsFilterPanelVisible => IsLibraryVisible && Library.Filters.IsOpen;
@@ -285,6 +300,10 @@ public partial class MainWindowViewModel : ObservableObject
                 await ShowLibrarySettingsAsync();
                 break;
 
+            case SettingsSection.Application:
+                ShowApplicationSettings();
+                break;
+
             default:
                 await ShowStoresAsync();
                 break;
@@ -316,6 +335,15 @@ public partial class MainWindowViewModel : ObservableObject
         _settingsSection = SettingsSection.Appearance;
         ShowLibraryPane();
         IsAppearanceVisible = true;
+    }
+
+    /// <summary>The settings surface's Application section; state is already loaded at startup.</summary>
+    [RelayCommand]
+    private void ShowApplicationSettings()
+    {
+        _settingsSection = SettingsSection.Application;
+        ShowLibraryPane();
+        IsApplicationSettingsVisible = true;
     }
 
     /// <summary>
@@ -364,6 +392,7 @@ public partial class MainWindowViewModel : ObservableObject
         IsStoresVisible = false;
         IsAppearanceVisible = false;
         IsLibrarySettingsVisible = false;
+        IsApplicationSettingsVisible = false;
         IsAccountStatsVisible = false;
         IsFeedVisible = false;
 

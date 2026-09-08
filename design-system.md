@@ -2392,9 +2392,10 @@ Two, and neither is fatal:
 
 ## 16. The settings surface
 
-The gear at the foot of the rail opens `SETTINGS`, which holds three screens in this order:
-**PLATFORMS**, **LIBRARY**, **APPEARANCE**. Each is drawn the same way: a 48px header lining
-up with the command bar and the filter panel's header, its own scroll, cards on `PaneGround`.
+The gear at the foot of the rail opens `SETTINGS`, which holds four screens in this order:
+**PLATFORMS**, **LIBRARY**, **APPEARANCE**, **APPLICATION**. Each is drawn the same way: a
+48px header lining up with the command bar and the filter panel's header, its own scroll,
+cards on `PaneGround`.
 
 PLATFORMS is the store-connection screen. APPEARANCE is §14 and §15 — theme, transparency,
 layout. LIBRARY holds four cards: **ACQUISITION EXPORT**, **EXPLICIT CONTENT**,
@@ -2403,6 +2404,14 @@ what appears in the library.
 
 It is not under APPEARANCE, which changes material and layout and no data. It is not under
 PLATFORMS, which is about connecting to a store; this is about what to do with what arrived.
+
+APPLICATION holds operating-system behavior rather than library content or visual material.
+Its **NOTIFICATION AREA** card has separate, off-by-default toggles for hiding Winnow when it
+is minimized and keeping it running when its window is closed. The notification-area menu
+offers **Open Winnow** and **Exit**; Exit always closes the process even when close-to-tray is
+on. Its **STARTUP** card offers **Start with Windows**. That registration is per-user and
+starts Winnow quietly in the notification area after sign-in. Unsupported systems disable
+the toggle and say why.
 
 The acquisition export card offers **Export acquisition CSV**, followed by a polite status
 line for completion, cancellation or failure. Its explanation states that missing facts stay

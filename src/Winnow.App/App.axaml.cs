@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Winnow.App.Services;
@@ -11,9 +12,15 @@ namespace Winnow.App;
 
 public partial class App : Application
 {
+    private MainWindow? _mainWindow;
+    private ApplicationSettingsViewModel? _applicationSettings;
+    private TrayIcon? _trayIcon;
+    private bool _backgroundStart;
+
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
+        _trayIcon = TrayIcon.GetIcons(this)?.SingleOrDefault();
 
         // tokens.axaml carries its text styles as a keyed resource (a
         // ResourceDictionary cannot hold an unkeyed Styles block); promote
@@ -40,13 +47,78 @@ public partial class App : Application
             var theme = services.GetRequiredService<ThemeService>();
             ApplyStartupTheme(theme);
 
-            desktop.MainWindow = new MainWindow
+            _applicationSettings = services.GetRequiredService<ApplicationSettingsViewModel>();
+            ApplyStartupApplicationSettings(_applicationSettings);
+
+            _backgroundStart = Environment.GetCommandLineArgs()
+                .Contains("--background", StringComparer.Ordinal);
+
+            _mainWindow = new MainWindow
             {
                 DataContext = services.GetRequiredService<MainWindowViewModel>(),
+                StartHidden = _backgroundStart,
             };
+            _mainWindow.TrayStateChanged += (_, _) => UpdateTrayVisibility();
+            _applicationSettings.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(ApplicationSettingsViewModel.TrayIconWanted))
+                {
+                    UpdateTrayVisibility();
+                }
+            };
+
+            desktop.MainWindow = _mainWindow;
+            UpdateTrayVisibility();
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    private void OnTrayClicked(object? sender, EventArgs e) => RestoreMainWindow();
+
+    private void OnOpenFromTray(object? sender, EventArgs e) => RestoreMainWindow();
+
+    private void OnExitFromTray(object? sender, EventArgs e)
+    {
+        if (_trayIcon is not null)
+        {
+            _trayIcon.IsVisible = false;
+        }
+        _mainWindow?.ExitFromTray();
+    }
+
+    private void RestoreMainWindow()
+    {
+        _backgroundStart = false;
+        _mainWindow?.RestoreFromTray();
+        UpdateTrayVisibility();
+    }
+
+    private void UpdateTrayVisibility()
+    {
+        if (_trayIcon is not null)
+        {
+            _trayIcon.IsVisible = _backgroundStart
+                || _mainWindow?.IsHiddenInTray == true
+                || _applicationSettings?.TrayIconWanted == true;
+        }
+    }
+
+    private static void ApplyStartupApplicationSettings(ApplicationSettingsViewModel settings)
+    {
+        try
+        {
+            // OnFrameworkInitializationCompleted owns the UI thread. Start the
+            // asynchronous repository read on the pool so its continuation is
+            // not waiting for the dispatcher we are synchronously holding.
+            Task.Run(() => settings.LoadAsync()).GetAwaiter().GetResult();
+        }
+        catch (Exception ex)
+        {
+            Program.AppHost?.Services.GetService<ILoggerFactory>()
+                ?.CreateLogger(typeof(App).FullName!)
+                .LogWarning(ex, "The stored application behavior could not be read; using defaults.");
+        }
     }
 
     /// <summary>
