@@ -14,6 +14,10 @@ param(
 $ErrorActionPreference = 'Stop'
 $release = & "$PSScriptRoot/Resolve-Version.ps1" -Version $Version
 $repo = Split-Path $PSScriptRoot -Parent
+[xml]$versionProps = Get-Content -LiteralPath (Join-Path $repo 'Version.props')
+if ($release.Numeric -ne $versionProps.Project.PropertyGroup.VersionPrefix) {
+    throw 'Package version must use the base declared in Version.props.'
+}
 $output = [IO.Path]::GetFullPath($OutputDirectory)
 if ((Test-Path -LiteralPath $output) -and (Get-ChildItem -LiteralPath $output -Force | Select-Object -First 1)) {
     throw 'Publish output must be empty so stale files cannot enter a release.'
@@ -36,6 +40,7 @@ if ($Runtime -eq 'win-x64') { $readyToRun = @('-p:PublishReadyToRun=true') }
     "-p:BaseOutputPath=$buildOutput" "-p:Version=$Version" `
     "-p:AssemblyVersion=$($release.Numeric).0" "-p:FileVersion=$($release.Numeric).0" `
     "-p:SourceRevisionId=$Commit" -p:PublishTrimmed=false -p:PublishSingleFile=false `
+    -p:ContinuousIntegrationBuild=true `
     @readyToRun @ExtraProperties -warnaserror
 if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed ($LASTEXITCODE)." }
 if (Get-ChildItem -LiteralPath $output -Recurse -File | Where-Object { $_.Name -eq 'appsettings.local.json' -or $_.Name -like '*.secrets.json' -or $_.Extension -eq '.db' }) {
@@ -48,5 +53,9 @@ foreach ($required in @($binary, 'Winnow.dll', 'Winnow.runtimeconfig.json', 'Win
 }
 $config = Get-Content -LiteralPath (Join-Path $output 'Winnow.runtimeconfig.json') -Raw | ConvertFrom-Json
 if (!$config.runtimeOptions.includedFrameworks) { throw 'The published app is not self-contained.' }
+$identity = [Diagnostics.FileVersionInfo]::GetVersionInfo((Join-Path $output 'Winnow.dll'))
+if ($identity.ProductVersion -cne "$Version+$Commit" -or $identity.FileVersion -ne "$($release.Numeric).0") {
+    throw "Published assembly identity does not match the package: $($identity.ProductVersion), $($identity.FileVersion)."
+}
 @{ version = $Version; runtime = $Runtime; commit = $Commit.ToLowerInvariant() } |
     ConvertTo-Json | Set-Content -LiteralPath (Join-Path $output 'release-info.json') -Encoding utf8NoBOM

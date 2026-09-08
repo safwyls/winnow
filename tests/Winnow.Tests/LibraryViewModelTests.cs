@@ -704,10 +704,14 @@ public sealed class LibraryViewModelTests
 
         var library = fixture.CreateViewModel();
         await library.LoadCommand.ExecuteAsync(null);
+        var mergeQueue = fixture.CreateMergeQueue();
+        // Opening the pane starts its lazy load; finish that database work before
+        // testing navigation so fixture disposal cannot race an outstanding read.
+        await mergeQueue.EnsureLoadedAsync();
 
         var shell = new MainWindowViewModel(
             library,
-            fixture.CreateMergeQueue(),
+            mergeQueue,
             DetachedStores.Create(),
             DetachedAppearance.Create(),
             DetachedFeed.Create(),

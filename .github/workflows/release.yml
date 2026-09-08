@@ -10,6 +10,9 @@ on:
       - 'packaging/**'
       - 'src/**'
       - 'Directory.Build.props'
+      - 'Version.props'
+      - 'global.json'
+      - 'NuGet.Config'
   pull_request:
     paths:
       - '.github/workflows/release.yml'
@@ -17,6 +20,9 @@ on:
       - 'packaging/**'
       - 'src/**'
       - 'Directory.Build.props'
+      - 'Version.props'
+      - 'global.json'
+      - 'NuGet.Config'
   workflow_dispatch:
     inputs:
       version:
@@ -49,14 +55,19 @@ jobs:
           INPUT_VERSION: ${{ inputs.version }}
         run: |
           ./packaging/Test-Version.ps1
+          [xml]$versionProps = Get-Content Version.props
+          $versionPrefix = $versionProps.Project.PropertyGroup.VersionPrefix
           $version = if ($env:GITHUB_REF.StartsWith('refs/tags/')) {
             $env:GITHUB_REF_NAME.Substring(1)
           } elseif ($env:GITHUB_EVENT_NAME -eq 'workflow_dispatch') {
             $env:INPUT_VERSION
           } else {
-            "0.0.0-ci.$env:GITHUB_RUN_NUMBER"
+            "$versionPrefix-ci.$env:GITHUB_RUN_NUMBER"
           }
           $release = ./packaging/Resolve-Version.ps1 -Version $version
+          if ($release.Numeric -ne $versionPrefix) {
+            throw "Version must use the $versionPrefix base declared in Version.props."
+          }
           "version=$($release.Version)" >> $env:GITHUB_OUTPUT
           "prerelease=$($release.Prerelease.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
 

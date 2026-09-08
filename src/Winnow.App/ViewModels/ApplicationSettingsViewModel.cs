@@ -23,6 +23,8 @@ public partial class ApplicationSettingsViewModel : ObservableObject
     }
 
     public string Title => "Application";
+    public string ApplicationVersion => ApplicationBuildInfo.Current.Version;
+    public string BuildCommit => ApplicationBuildInfo.Current.Commit;
     public string IntroMessage =>
         "Choose where Winnow waits when you are not browsing your library.";
     public string SegmentLabel => "APPLICATION";

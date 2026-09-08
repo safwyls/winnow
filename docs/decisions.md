@@ -2506,3 +2506,10 @@ Superseded docs/spikes/avalonia-dormancy-rendering.md text:
 
 After TASK-152.1 through 152.5, the 1,039-game library sits at 206 MB private bytes 90 s after launch with the startup pipeline running (289 MB before), and about 330-370 MB after a full scroll of the grid (507 MB before). The umbrella task asked for 200 MB or an accepted explanation; the last 6 MB, and the distance to Playnite's 175 MB, are accepted. docs/spikes/memory-footprint.md section 2 measured the floor: a bare Avalonia 11 window with Skia, ANGLE/D3D11 and WinUI composition costs 120-137 MB private on this machine before any Winnow code runs, and Playnite, as a WPF application, rides the rendering stack Windows already has loaded. That floor is the price of the cross-platform UI and is not something Winnow's own code can reduce; the work stops here rather than trading the Avalonia backend for parity on one platform.
 
+
+### Application build identity (2026-09-07)
+
+Previous design-system.md sentence: APPLICATION holds operating-system behavior rather than library content or visual material.
+
+Previous docs/releases.md sentences: Pushes to main and codex/**, and pull requests, build packages when application, packaging, or workflow files change. Their version is 0.0.0-ci.<run number>.
+
