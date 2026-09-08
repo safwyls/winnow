@@ -45,26 +45,39 @@
                 BorderThickness="1" CornerRadius="{StaticResource RadiusPane}">
             <StackPanel Spacing="16">
                 <TextBlock Classes="body-l" Text="{Binding Question}" TextWrapping="Wrap"/>
-                <ScrollViewer MaxHeight="240" Classes="inner" HorizontalScrollBarVisibility="Disabled"
+                <!-- Keep the scrollbar in the card padding so rows and the field share an edge. -->
+                <ScrollViewer MaxHeight="240" Classes="inner" Margin="0,0,-20,0" HorizontalScrollBarVisibility="Disabled"
                               IsVisible="{Binding HasChoices}">
                     <ItemsControl ItemsSource="{Binding Choices}" Margin="{StaticResource InnerScrollGutter}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="lists:GameListViewModel">
                                 <Button Classes="act quiet" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
-                                        Margin="0,0,0,6" AutomationProperties.Name="{Binding AutomationName}"
+                                        MinHeight="{StaticResource ListRowHeight}" Padding="12,8" Margin="0,0,0,8"
+                                        AutomationProperties.Name="{Binding AutomationName}"
                                         ToolTip.Tip="{Binding Name}"
                                         Command="{Binding $parent[ItemsControl].((lists:ActionPromptViewModel)DataContext).ChooseCommand}"
                                         CommandParameter="{Binding}">
-                                    <Grid ColumnDefinitions="*,Auto">
-                                        <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis"/>
-                                        <TextBlock Grid.Column="1" Classes="data-s" Margin="12,0,0,0" Text="{Binding CountText}"/>
+                                    <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                                        <Canvas Width="16" Height="16" Margin="0,0,12,0" VerticalAlignment="Center"
+                                                IsHitTestVisible="False">
+                                            <Path Data="M 1,3 H 3 M 6,3 H 15 M 1,8 H 3 M 6,8 H 15 M 1,13 H 3 M 6,13 H 15"
+                                                  Stroke="{StaticResource TextDim}" StrokeThickness="1.5"/>
+                                        </Canvas>
+                                        <TextBlock Grid.Column="1" Text="{Binding Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="2" Classes="data" Margin="12,0,0,0" Text="{Binding CountText}"
+                                                   Foreground="{StaticResource TextDim}" VerticalAlignment="Center"/>
+                                        <Canvas Grid.Column="3" Width="16" Height="16" Margin="16,0,0,0" VerticalAlignment="Center"
+                                                IsHitTestVisible="False">
+                                            <Path Data="M 8,2 V 14 M 2,8 H 14" Stroke="{StaticResource Azure}" StrokeThickness="1.5"/>
+                                        </Canvas>
                                     </Grid>
                                 </Button>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
                 </ScrollViewer>
-                <TextBox Name="PromptInput" IsVisible="{Binding HasInput}"
+                <Border Height="1" Background="{StaticResource Line}" IsVisible="{Binding HasChoices}"/>
+                <TextBox Name="PromptInput" IsVisible="{Binding HasInput}" MinHeight="40"
                          AutomationProperties.Name="{Binding InputWatermark}"
                          Watermark="{Binding InputWatermark}" Text="{Binding Text, Mode=TwoWay}"/>
                 <TextBlock Classes="body" Foreground="{StaticResource TextDim}" TextWrapping="Wrap"

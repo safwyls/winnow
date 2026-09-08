@@ -1051,8 +1051,12 @@
                             <Grid ColumnDefinitions="*,Auto">
                                 <TextBlock Classes="label" FontSize="10" LetterSpacing="1.4"
                                            VerticalAlignment="Center" Text="LISTS"/>
-                                <TextBlock Grid.Column="1" Classes="body" VerticalAlignment="Center"
-                                           Text="{Binding Library.Lists.ListsDisclosure}"/>
+                                <Panel Grid.Column="1" Width="16" Height="16" VerticalAlignment="Center">
+                                    <Path Data="M 4,6 L 8,10 L 12,6" Stroke="{StaticResource TextDim}" StrokeThickness="1.6"
+                                          IsVisible="{Binding Library.Lists.AreListsExpanded}"/>
+                                    <Path Data="M 6,4 L 10,8 L 6,12" Stroke="{StaticResource TextDim}" StrokeThickness="1.6"
+                                          IsVisible="{Binding !Library.Lists.AreListsExpanded}"/>
+                                </Panel>
                             </Grid>
                         </Button>
                     </Border>
@@ -1114,8 +1118,12 @@
                             <Grid ColumnDefinitions="*,Auto">
                                 <TextBlock Classes="label" FontSize="10" LetterSpacing="1.4"
                                            VerticalAlignment="Center" Text="LIVE LISTS"/>
-                                <TextBlock Grid.Column="1" Classes="body" VerticalAlignment="Center"
-                                           Text="{Binding Library.Lists.LiveListsDisclosure}"/>
+                                <Panel Grid.Column="1" Width="16" Height="16" VerticalAlignment="Center">
+                                    <Path Data="M 4,6 L 8,10 L 12,6" Stroke="{StaticResource TextDim}" StrokeThickness="1.6"
+                                          IsVisible="{Binding Library.Lists.AreLiveListsExpanded}"/>
+                                    <Path Data="M 6,4 L 10,8 L 6,12" Stroke="{StaticResource TextDim}" StrokeThickness="1.6"
+                                          IsVisible="{Binding !Library.Lists.AreLiveListsExpanded}"/>
+                                </Panel>
                             </Grid>
                         </Button>
                     </Border>
@@ -1224,11 +1232,18 @@
                                 ToolTip.Tip="Save the current library filters. Matching games update automatically."/>
                     </StackPanel>
                     <Grid ColumnDefinitions="*,Auto">
-                        <Button Name="NewListButton" Classes="listrow" Content="+ New list" FontFamily="{StaticResource BodyFont}" FontSize="{StaticResource BodySize}" Padding="8,0"
+                        <Button Name="NewListButton" Classes="listrow" FontFamily="{StaticResource BodyFont}" FontSize="{StaticResource BodySize}" Padding="8,0"
                                 HorizontalAlignment="Left"
                                 Command="{Binding Library.Lists.ToggleCreateMenuCommand}"
                                 AutomationProperties.Name="New list"
-                                ToolTip.Tip="Create a static or live list"/>
+                                ToolTip.Tip="Create a static or live list">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <Path Width="16" Height="16" VerticalAlignment="Center"
+                                      Stroke="{StaticResource TextDim}" StrokeThickness="1.6"
+                                      Data="M 2,3 L 14,3 M 2,7 L 8,7 M 2,11 L 6,11 M 12,7 L 12,15 M 8,11 L 16,11"/>
+                                <TextBlock Text="New list" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
                 <Button Grid.Column="1" Name="SettingsButton"
                         Classes="railglyph"
                         Classes.on="{Binding IsSettingsVisible}"
@@ -1598,6 +1613,9 @@
                                  Opening="OnLibraryContextMenuOpening">
                         <MenuItem Header="{Binding Library.AddToListLabel}"
                                   Command="{Binding Library.BeginAddToListCommand}"/>
+                        <MenuItem Header="Remove from list"
+                                  IsVisible="{Binding Library.CanEditOpenList}"
+                                  Command="{Binding Library.RemoveFromOpenListCommand}"/>
                         <!-- Hide acts on the whole picked set, exactly as
                              Add to list does, and names the count once there
                              is more than one. Reversible from

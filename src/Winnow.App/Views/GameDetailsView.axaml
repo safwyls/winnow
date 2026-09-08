@@ -1405,8 +1405,9 @@
                                             DataContext="{Binding Screenshots}"
                                             x:DataType="vm:GameScreenshotsViewModel">
 
-                                    <ScrollViewer Classes="inner"
+                                    <ScrollViewer x:Name="ScreenshotScroll" Classes="inner"
                                                   GotFocus="OnScreenshotGotFocus"
+                                                  IsScrollChainingEnabled="False"
                                                   HorizontalScrollBarVisibility="Auto"
                                                   VerticalScrollBarVisibility="Disabled">
                                         <ItemsControl ItemsSource="{Binding Shots}"

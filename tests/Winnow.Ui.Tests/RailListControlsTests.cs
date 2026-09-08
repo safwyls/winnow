@@ -18,6 +18,50 @@ namespace Winnow.Ui.Tests;
 public sealed class RailListControlsTests
 {
     [AvaloniaFact]
+    public void Context_menu_offers_removal_only_for_a_static_list_selection()
+    {
+        var shell = PreviewData.Shell;
+        var library = shell.Library;
+        var originalOpen = library.Lists.Open;
+        var originalSelection = library.SelectedTiles;
+        var window = new MainWindow();
+        try
+        {
+            window.Show();
+            window.DataContext = shell;
+            Flush();
+            var menu = window.GetVisualDescendants().OfType<Panel>()
+                .Select(panel => panel.ContextMenu).Single(context => context is not null)!;
+            // The popup inherits its owner only when opened. Supplying that context
+            // here lets us exercise membership visibility without opening a native popup.
+            menu.DataContext = shell;
+            var remove = menu.Items.OfType<MenuItem>().Single(item => Equals(item.Header, "Remove from list"));
+            library.Lists.Open = null;
+            library.SelectedTiles = [PreviewData.Tile];
+            Flush();
+            Assert.False(remove.IsVisible);
+            library.Lists.Open = new GameListViewModel(GameList.Live("Live", LibraryFilter.Empty));
+            library.SelectedTiles = [PreviewData.Tile];
+            Flush();
+            Assert.False(remove.IsVisible);
+            library.Lists.Open = new GameListViewModel(GameList.Manual("Static"));
+            library.SelectedTiles = [PreviewData.Tile];
+            Flush();
+            Assert.True(remove.IsVisible);
+            Assert.Same(library.RemoveFromOpenListCommand, remove.Command);
+            library.SelectedTiles = [];
+            Flush();
+            Assert.False(remove.IsVisible);
+        }
+        finally
+        {
+            library.Lists.Open = originalOpen;
+            library.SelectedTiles = originalSelection;
+            window.Close();
+        }
+    }
+
+    [AvaloniaFact]
     public void Sections_collapse_independently_and_footer_creates_either_kind()
     {
         var shell = PreviewData.Shell;

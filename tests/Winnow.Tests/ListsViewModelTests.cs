@@ -104,6 +104,36 @@ public sealed class ListsViewModelTests
         Assert.Empty(Assert.Single(library.Lists.Lists).ReleaseIds);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Adding_to_lists_keeps_the_browsing_context_collection_and_multi_selection(bool createNew)
+    {
+        using var fixture = new ListFixture();
+        var hades = await fixture.SeedAsync("Hades");
+        var celeste = await fixture.SeedAsync("Celeste");
+        var library = await fixture.LoadAsync();
+        var source = await library.Lists.CreateListAsync("Browsing", [hades, celeste]);
+        var target = await library.Lists.CreateListAsync("Later", []);
+        library.OpenListCommand.Execute(source);
+        var visible = library.VisibleTiles;
+        library.SelectedTiles = [.. visible];
+        var selection = library.SelectedTiles;
+        library.BeginAddToListCommand.Execute(null);
+        if (createNew)
+        {
+            library.Prompt!.Text = "New destination";
+            await library.Prompt.ConfirmCommand.ExecuteAsync(null);
+            target = library.Lists.Lists.Single(list => list.Name == "New destination");
+        }
+        else await library.Prompt!.ChooseCommand.ExecuteAsync(target);
+        Assert.Same(source, library.Lists.Open);
+        Assert.Same(visible, library.VisibleTiles);
+        Assert.Same(selection, library.SelectedTiles);
+        Assert.Equal(new[] { hades, celeste }.Order(), target!.ReleaseIds.Order());
+        Assert.Equal(2, target.Count);
+    }
+
     // ── The empty state is a direction ──────────────────────────────────────
 
     [Fact]

@@ -823,7 +823,9 @@ frame; that is a property of the data: no ids in `work_images` means no view mod
 ride the existing cover cache under a `CoverKey.IgdbScreenshot`, which resolves to
 `t_screenshot_huge` — an IGDB cover is 3:4 and a screenshot is 16:9, so the provider is what
 picks the size token; there is no second image path. The strip is a bounded horizontal scroll
-region, the fourth such region in the modal.
+region, the fourth such region in the modal. An ordinary mouse wheel scrolls it horizontally;
+Shift-wheel and horizontal trackpad input also work. At either edge, wheel input stays with
+the strip rather than scrolling the details body.
 
 **Accessibility: the modal's own tree.** Band 1, Band 2, Band 3 and the reception line are
 named groups — `AutomationProperties.Name` plus `AccessibilityView="Control"`, which is what
@@ -1734,10 +1736,10 @@ Both kinds recount on every library load. A manual list drops a count when one o
 consolidated away or filtered out as a non-game entry; a live list's number moving on its own
 *is* the feature.
 
-`LISTS` and `LIVE LISTS` have collapsible headings with chevrons; their expanded state lasts
+`LISTS` and `LIVE LISTS` have collapsible headings with vector chevrons; their expanded state lasts
 for the session. The empty rail says: *"No lists yet. Choose New list below to create a static
 or live list."* The footer keeps **New list** on the left and the settings cog on the right.
-New list offers **Static list** (choose games yourself) and **Live list** (save the current
+New list pairs its label with a vector list-plus icon and offers **Static list** (choose games yourself) and **Live list** (save the current
 library filters, with membership updating automatically), with a tooltip explaining each.
 
 **The rail's grammar, which any rearrangement must preserve:** everything above the divider is
@@ -1788,9 +1790,12 @@ the list rather than staying lit and doing nothing.
 
 Naming a list, picking a list to add to, renaming one and confirming a delete use a shared
 modal in the window's visual tree. The cut bar continues to describe the current filters.
-The modal has a bounded, vertically scrollable list of targets, followed by a new-list field
-and Cancel / confirm buttons. Long names truncate with their full name in a tooltip.
-Focus stays within the modal and returns to its invoking control when it closes.
+The modal has a bounded, vertically scrollable list of 44px targets. Each row has a vector
+list icon, name, mono count and trailing add icon. The rows and new-list field share both
+edges; the scrollbar occupies the card padding. A divider separates existing lists from
+creation. Long names truncate with their full name in a tooltip. Cancel / confirm sit below.
+Focus stays within the modal and returns to its invoking control when it closes. Adding to
+an existing or new list preserves the current view, scroll position and selection.
 
 `Enter` confirms, `Escape` cancels, and focus follows the prompt into its field. The save
 prompt opens with the rules read out as a suggested name ("Started · RPG"), because a rail
@@ -1813,6 +1818,10 @@ checkboxes and leaves details open. Escape dismisses only the list modal.
 Feed feedback occupies a dedicated right-hand column: bookmark-plus **Add to list** in Azure,
 clock **Not now** in Amber, and circle-minus **Not interested** in TextDim. Each 32px icon
 button has a tooltip and accessible name. Install / Play has its own line below the card text.
+The bookmark and its inset plus are symmetric around the same centerline as the other icons.
+
+In a static list, the game context menu offers **Remove from list**, acting on the selected
+games and leaving them in the library. Live lists determine their own membership.
 
 **Deleting asks first, and the question says what survives:** *"Delete "Couch co-op night"? The
 titles stay in your library."* `Danger` appears on its confirm button and nowhere else on

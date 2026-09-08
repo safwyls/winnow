@@ -2571,3 +2571,13 @@ The following visual-spec text was replaced:
 
 > pair that prompted the change. The LISTS empty state ("Select titles in the library and choose
 > Add to list on the action bar."), a direction the user acts on (§7).
+
+
+## 2026-09-08 — Keep browsing while adding games to lists
+
+Membership recounts preserve the existing visible collection when its sequence is unchanged.
+Creating a list from Add to list keeps the current browsing context instead of opening it.
+The modal uses aligned rows and a separate creation area. Previous visual-spec text:
+
+> The modal has a bounded, vertically scrollable list of targets, followed by a new-list field
+> and Cancel / confirm buttons. Long names truncate with their full name in a tooltip.

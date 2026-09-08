@@ -2064,12 +2064,10 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             confirmLabel: "New list",
             confirm: async prompt =>
             {
-                var created = await Lists.CreateListAsync(prompt.Text, picked);
+                await Lists.CreateListAsync(prompt.Text, picked);
                 Prompt = null;
                 if (Details is { } details)
                     details.Lists = await BuildListsAsync(details.Tile);
-                else if (created is not null)
-                    OpenList(created);
             },
             cancel: () => Prompt = null,
             inputWatermark: "New list name",
@@ -2078,7 +2076,6 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             {
                 await Lists.AddToListAsync(list, picked);
                 Prompt = null;
-                ApplyFilter();
                 if (Details is { } details)
                     details.Lists = await BuildListsAsync(details.Tile);
             });
@@ -2509,15 +2506,19 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         Filters.Recount(filter => Matching(baseline, filter));
 
         var visible = Order(Matching(baseline, Filters.ToFilter())).ToList();
-        VisibleTiles = visible;
-
-        if (SelectedTile is { } selected && !visible.Contains(selected))
+        // Membership recounts often leave the displayed games unchanged. Keep
+        // the same source so the views retain their scroll position and selection.
+        if (!VisibleTiles.SequenceEqual(visible))
         {
-            SelectTile(null);
-        }
+            VisibleTiles = visible;
+            if (SelectedTile is { } selected && !visible.Contains(selected))
+            {
+                SelectTile(null);
+            }
 
-        SelectedCount = SelectedTile is null ? 0 : 1;
-        SelectedTiles = SelectedTile is null ? [] : [SelectedTile];
+            SelectedCount = SelectedTile is null ? 0 : 1;
+            SelectedTiles = SelectedTile is null ? [] : [SelectedTile];
+        }
         EmptyMessage = BuildEmptyMessage(visible.Count, search);
         RefreshListCounts();
         RefreshCutBar(visible.Count);

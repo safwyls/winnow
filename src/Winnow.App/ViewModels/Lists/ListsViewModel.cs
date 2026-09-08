@@ -17,18 +17,16 @@ public partial class ListsViewModel : ObservableObject
     private readonly IGameListRepository? _lists;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ListsDisclosure), nameof(ListsSectionState))]
+    [NotifyPropertyChangedFor(nameof(ListsSectionState))]
     public partial bool AreListsExpanded { get; set; } = true;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(LiveListsDisclosure), nameof(LiveListsSectionState))]
+    [NotifyPropertyChangedFor(nameof(LiveListsSectionState))]
     public partial bool AreLiveListsExpanded { get; set; } = true;
 
     [ObservableProperty]
     public partial bool IsCreateMenuOpen { get; set; }
 
-    public string ListsDisclosure => AreListsExpanded ? "⌄" : "›";
-    public string LiveListsDisclosure => AreLiveListsExpanded ? "⌄" : "›";
     public string ListsSectionState => AreListsExpanded ? "Expanded" : "Collapsed";
     public string LiveListsSectionState => AreLiveListsExpanded ? "Expanded" : "Collapsed";
 

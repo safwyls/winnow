@@ -15,6 +15,32 @@ namespace Winnow.Ui.Tests;
 public sealed class ListPromptModalTests
 {
     [AvaloniaFact]
+    public void Short_list_choices_align_with_the_name_field_without_a_scrollbar()
+    {
+        var choices = new[] { "Backlog", "Where did I get these?" }.Select((name, index) =>
+            new GameListViewModel(GameList.Manual(name) with { Id = index + 1 })).ToArray();
+        using var fixture = new PromptFixture(new ActionPromptViewModel(
+            "Add Age of Wonders 4 to", "New list", _ => Task.CompletedTask, () => { },
+            inputWatermark: "New list name", choices: choices, choose: _ => Task.CompletedTask));
+        var input = fixture.View.FindControl<TextBox>("PromptInput")!;
+        var scroll = fixture.View.GetVisualDescendants().OfType<ScrollViewer>()
+            .Single(view => view.Content is ItemsControl);
+        Assert.Equal(scroll.Viewport.Height, scroll.Extent.Height);
+        foreach (var button in scroll.GetVisualDescendants().OfType<Button>())
+        {
+            Assert.Equal(input.Bounds.Width, button.Bounds.Width, precision: 1);
+            Assert.Equal(input.TranslatePoint(default, fixture.Window)!.Value.X,
+                button.TranslatePoint(default, fixture.Window)!.Value.X, precision: 1);
+        }
+        if (Environment.GetEnvironmentVariable("WINNOW_UI_CAPTURE_DIR") is { } directory)
+        {
+            Directory.CreateDirectory(directory);
+            using var frame = fixture.Window.CaptureRenderedFrame();
+            frame!.Save(Path.Combine(directory, "list-modal-short.png"));
+        }
+    }
+
+    [AvaloniaFact]
     public void Many_long_lists_scroll_without_pushing_actions_out_of_a_short_window()
     {
         var choices = Enumerable.Range(1, 40).Select(index => new GameListViewModel(
@@ -31,7 +57,13 @@ public sealed class ListPromptModalTests
             .Where(button => button.DataContext is GameListViewModel).ToArray();
         Assert.Equal(choices.Length, listButtons.Length);
         foreach (var button in listButtons)
+        {
             Assert.True(button.Bounds.Width <= scroll.Viewport.Width);
+            var input = fixture.View.FindControl<TextBox>("PromptInput")!;
+            Assert.Equal(input.Bounds.Width, button.Bounds.Width, precision: 1);
+            Assert.Equal(input.TranslatePoint(default, fixture.Window)!.Value.X,
+                button.TranslatePoint(default, fixture.Window)!.Value.X, precision: 1);
+        }
         Assert.True(listButtons[^1].Focus(NavigationMethod.Tab));
         Flush();
         Assert.True(scroll.Offset.Y > 0);
