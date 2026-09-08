@@ -76,7 +76,8 @@ public class MigrationTests
     [Fact]
     public void Migration_applies_cleanly_to_fresh_temp_file_database()
     {
-        using var db = new TempDatabase();
+        using var db = new TempDatabase(migrate: false);
+        db.Initializer.Initialize();
         using var conn = db.Factory.Open();
 
         var tables = conn.Query<string>(

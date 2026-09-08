@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Globalization;
+using Dapper;
 using Winnow.App.ViewModels;
 using Winnow.Core.Domain;
 using Winnow.Core.Identity;
@@ -503,10 +504,9 @@ public sealed class IdentityReadModelTests
 
         // 200 links: a fifth of the library is a cross-store duplicate, which is
         // far past anything the author's own library holds.
-        for (var i = 0; i + 1 < 400; i += 2)
-        {
-            await fixture.LinkAsync(parent: works[i].WorkId, child: works[i + 1].WorkId);
-        }
+        await fixture.SeedLinksAsync(
+            Enumerable.Range(0, 200)
+                .Select(i => (Parent: works[i * 2].WorkId, Child: works[(i * 2) + 1].WorkId)));
 
         await fixture.Queries.GetOwnershipBucketsAsync(BucketThresholds.Default);
 
@@ -583,6 +583,44 @@ public sealed class IdentityReadModelTests
                 ParentWorkId = parent,
                 ChildWorkIds = [child],
             });
+
+        /// <summary>
+        /// Seeds the large read-performance shape in one transaction. The test
+        /// measures link resolution, not the command repository (whose write
+        /// behavior has its own contract suite), so 200 independent durable
+        /// commits would add disk timing without adding signal here.
+        /// </summary>
+        public async Task SeedLinksAsync(IEnumerable<(long Parent, long Child)> links)
+        {
+            using var scope = _db.Factory.Begin();
+            using var lease = _db.Factory.Lease();
+
+            var actId = await lease.Connection.ExecuteScalarAsync<long>(
+                """
+                INSERT INTO identity_acts (kind, performed_at, note)
+                VALUES ('link', @performedAt, 'read-model performance fixture')
+                RETURNING id;
+                """,
+                new { performedAt = Now },
+                lease.Transaction);
+
+            await lease.Connection.ExecuteAsync(
+                """
+                INSERT INTO identity_links (
+                    act_id, child_work_id, parent_work_id, kind, source, applied_at)
+                VALUES (@actId, @Child, @Parent, 'same_game', 'user', @appliedAt);
+                """,
+                links.Select(link => new
+                {
+                    actId,
+                    link.Child,
+                    link.Parent,
+                    appliedAt = Now,
+                }),
+                lease.Transaction);
+
+            scope.Commit();
+        }
 
         public async Task<SameGameResolution> ResolutionAsync()
             => (await Links.GetResolutionAsync()).SameGame;
