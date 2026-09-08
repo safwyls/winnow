@@ -117,6 +117,9 @@ report the limitation and leave Backlog files untouched.
 - Build and test with `dotnet build` and `dotnet test` from the repository root.
 - CI runs Windows Release restore/build/test on pushes and pull requests, with SDK analyzers
   and direct/transitive NuGet auditing enabled; warnings fail the gate. Migration integrity
+  and Linux session checks are required by `main` branch protection. Changes reach `main`
+  through an up-to-date pull request; this also applies to administrators. No additional
+  approving reviewer is required. Force pushes and branch deletion are disabled. Migration integrity
   uses `scripts/Verify-Migrations.ps1`. For a new migration, append its SHA-256 to
   `src/Winnow.Data/Migrations/hashes.json`: UTF-8 text without BOM, CRLF normalized to LF,
   all other whitespace retained. Never replace an existing entry. Verify with

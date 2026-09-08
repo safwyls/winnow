@@ -71,6 +71,11 @@ and uninstall the package. Their application launches use throwaway `--data-dir`
 
 ## Create a release
 
+`main` requires an up-to-date pull request with the Windows build/test/migration check and
+the Linux native/Proton session check passing. Protection also applies to administrators;
+no additional approving reviewer is required. Force pushes and deletion of `main` are disabled.
+Merging a pull request produces build artifacts; only a version tag creates a draft release.
+
 After reviewing a commit on main, create and push its version tag, for example:
 
 ```bash

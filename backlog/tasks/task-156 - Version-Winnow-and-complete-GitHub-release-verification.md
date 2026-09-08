@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-09-08 03:19'
-updated_date: '2026-09-08 03:23'
+updated_date: '2026-09-08 03:28'
 labels: []
 dependencies: []
 ordinal: 188000
@@ -22,16 +22,21 @@ Give installed and development builds traceable versions in Settings and complet
 - [ ] #1 Settings displays application version and source build identity
 - [ ] #2 Development, CI and tagged packages use consistent version metadata
 - [ ] #3 GitHub CI and both installer smoke checks pass and a draft release contains verified assets
+- [ ] #4 Main requires up-to-date pull requests and passing Windows and Linux CI, while releases remain tag-triggered
 <!-- AC:END -->
 
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
 Inspect current packaging and CI failures; add central version metadata and Settings display; fix observed gate failures; verify locally, push a branch and verify GitHub workflows; create a beta draft through the gated tag workflow.
+
+Apply GitHub main branch protection with required Windows/Linux checks, enforce it for administrators, and retain tag-triggered draft releases as requested.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
 Added Version.props, assembly-derived Settings build identity, package metadata validation and release version checks. Fixed GitHub failure caused by a navigation test racing its temporary database teardown; 45 related tests pass. Release solution build passes with zero warnings/errors; complete tests and GitHub release verification pending.
+
+All 4,012 local tests passed after the accessibility correction; the two Linux-only tests correctly skip on Windows. Main branch protection applied and read back from GitHub: strict Windows/Linux checks, PR required, zero mandatory approvers, administrators included, force pushes/deletion disabled. Release candidate beta.2 is undergoing gated GitHub verification; beta.1 was stopped before any release was created.
 <!-- SECTION:NOTES:END -->
