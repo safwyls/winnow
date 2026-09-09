@@ -525,24 +525,55 @@ panel's strings were written from the auth spikes instead. TASK-81.
 
 ### Fullscreen and controller navigation
 
-Fullscreen reuses the shell and its dialogs, with the caption hidden and a persistent footer
-outside the dialog layers. The rail offers Fullscreen; F11 and Menu / Start toggle it from
-any screen. Exiting restores the preceding normal or maximized state. The footer shows a
-local-time clock, controller status when connected, and an Exit fullscreen button.
+**Design review, not implemented.** Fullscreen is a separate TV-distance interface with its
+own composition, components, navigation and focus model. The user rejected scaling the
+desktop shell on 2026-09-09. Image mockups precede implementation; the details below are the
+first proposal for review. The desktop specifications elsewhere in this document continue
+to govern the desktop path.
 
-The shell scales uniformly from 1 to 1.5, limited by 1200 logical pixels of width and 688
-of height (640 for content plus 48 for the footer). Small displays retain the desktop scale.
-It uses the same theme tokens, control templates and focus rings. Controller focus uses
-keyboard focus styling and scrolls controls into view. D-pad and left stick navigate;
-LB/RB follow the control order inside the current dialog or popup; A activates and B backs
-out one layer. Right-stick vertical movement scrolls long bodies without moving focus.
+The shared identity is the teal palette, three font families, cover art, dormancy and unread
+markers. Fullscreen gets its own type and spacing scale. Start with a 1920×1080 reference
+canvas, 5% safe margins, 64px game titles, 32px section headings and 28px body text; essential
+labels stay at least 24px. These are design starting points, not measured distance guarantees.
+4K increases rendering resolution rather than content density. Validate readability from the
+actual seating position before accepting the scale.
 
-A on an editable field, or Y while it is focused, opens a keyboard above the content and
-below the fullscreen footer. It includes case, punctuation, caret movement and deletion.
-Its selected key uses a fixed-width Volt border; the text preview masks password fields.
-Done or B closes text entry and restores visible focus to the original field. Escape closes
-text entry before any underlying dialog. Native file dialogs and store sign-in are separate
-input surfaces and do not inherit these controls.
+**For you** opens on a focused recommendation in a horizontal cover shelf. A large title,
+one-sentence reason and game artwork above the shelf follow the selection. Up/down changes
+shelves; left/right moves among their games. The selected cover has the only focus ring.
+The current top-level section uses an underline, visually distinct from focus. No desktop
+rail, density control, hover actions or small cover buttons appear here.
+
+**Library** uses a regular cover grid and a short row of collection choices. A dedicated
+filter page carries large choices and an explicit Apply action. Search is a dedicated page
+with its own keyboard and results. **Game details** is a full page, with Play as its initial
+focus and overview, updates and journal as separate sections. **Activity** and **Settings**
+use large ordered rows, with focused values changed directly. Long content is paged or
+scrolled within an explicit reading region. Each section remembers its game and focus
+position; Back restores the exact origin, including after viewing details.
+
+| Input | Proposed behavior |
+|---|---|
+| D-pad / left stick | Move through explicit neighbors; no free cursor or inferred desktop tab order |
+| LB / RB | Switch For you, Library, Activity and Settings at the root; switch local sections on a game page |
+| A | Open the focused game or activate the focused action; opening details never launches |
+| B | Close the top layer or return one level; root never exits immediately |
+| X | Play the selected installed game from a browse screen; unavailable shortcuts are omitted |
+| Y | Open a short contextual action sheet, including list, snooze and hide actions where applicable |
+| View | Open search from browsing |
+| Menu | Open a quick menu with controller help, readability settings and Return to desktop |
+
+The footer shows only actions available in the current state. It uses positional controller
+glyphs appropriate to the connected device. Clock and optional battery status sit in a quiet
+top corner. Unknown battery state is omitted. Nested sheets trap focus and restore it on
+close. Destructive actions require confirmation; unplugging a controller preserves position
+and provides a reconnect message with keyboard fallback. Reduced motion removes travel and
+zoom while retaining immediate selection feedback.
+
+Before implementation, review the home composition and game page, then mock the library,
+filters, text entry, settings, journal, empty states and controller disconnect. Native file
+selection and embedded sign-in need an explicit controller-accessible design; falling back
+to a desktop dialog does not satisfy M10. Do not mark those paths covered by the first mock.
 
 ### Keyboard and assistive technology
 

@@ -595,6 +595,16 @@ reachable from the first-paint path.**
 
 #### Controller input
 
+**Presentation direction, agreed 2026-09-09; implementation pending design review.** Desktop
+and fullscreen are separate UI paths. Each owns its views, presentation view models, focus
+graph, navigation history, dialogs and text-entry layout. Fullscreen must not navigate the
+desktop visual tree or reuse desktop control templates merely to avoid maintaining a second
+surface. Share domain records, repositories, application services, validation and action
+semantics for launch, install, lists, journal, settings and recommendation explanations.
+Share palette and font identities; keep layout, spacing and type scales surface-specific.
+The existing input-source/filter code is a candidate for reuse, subject to the approved
+controller model. Image mockups and review precede new UI implementation.
+
 Controller input lives in `Winnow.App.Services`, independent of ingest and process monitoring.
 The window polls a read-only source at 33 ms while open. Windows loads XInput from the system
 directory; Linux reads nonblocking joydev events using kernel-reported button and axis maps.

@@ -90,6 +90,13 @@ separate prose author and no prose handoff required to finish a change.
 - Write clear, concise sentences with familiar words and active verbs. Lead with the result
   or fact; add the explanation needed to understand it. Use lists for actual steps or parallel
   items, and omit filler, sales language and repeated summaries.
+- Desktop and fullscreen are separate presentation paths. For each user-facing feature or
+  behavior change, assess both surfaces, keep shared application behavior consistent, and
+  record implementation and verification for each in the same Backlog task. A desktop fix
+  does not establish fullscreen coverage. During the fullscreen design phase, record any
+  required counterpart in its design work; after both paths exist, deliver both or explicitly
+  document an agreed exception. Architecture owns the sharing boundary; the visual spec owns
+  each surface's interaction and layout.
 - Verify behavior in the source before documenting it. State limitations and distinguish
   measured results from assumptions. Preserve an existing document's structure and voice.
 - Keep rules in the document that owns the domain, historical rationale in `docs/decisions.md`,

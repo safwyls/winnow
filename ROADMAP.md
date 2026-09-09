@@ -58,7 +58,7 @@ work was taken up, not the order it was planned.
 | M5 | Historical playtime backfill | Historical playtime backfills; the feed measurably improves on a cold library | built; backfill tested, feed improvement awaiting live validation against the user's key |
 | M6 | Export (JSON + CSV) | JSON is complete and re-readable; CSV covers a defined set of views | acquisition CSV shipped; full JSON/import deferred; exit criterion to be restated |
 | M9 | Install / uninstall management | Install and uninstall delegate to the owning store client and reflect state back | shipped; Steam delegates directly, Epic and GOG expose launcher management where direct uninstall is unsupported |
-| M10 | Full-screen mode + gamepad navigation | The whole app is navigable on a controller at 10 feet | fullscreen, controller navigation and text entry implemented; physical-device and complete controller-only operation validation pending; native dialogs and embedded sign-in retain their own input requirements |
+| M10 | Full-screen mode + gamepad navigation | The whole app is navigable on a controller at 10 feet | design reset: separate TV-distance UI; mockups and user review before implementation; scaled-desktop approach rejected |
 
 ### Pre-beta hardening
 

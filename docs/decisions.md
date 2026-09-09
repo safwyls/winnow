@@ -3278,3 +3278,33 @@ The M10 roadmap row previously said:
 
 Physical-controller validation and controller-only access to external input surfaces remain
 unverified; implementing the shell does not establish those broader exit criteria.
+
+### 2026-09-09 — Separate fullscreen design requested
+
+The user rejected adapting the desktop shell for controller use and requested a separate TV-distance interface, with image mockups and design review before implementation. Desktop and fullscreen will share application behavior while maintaining separate presentation and interaction paths. The prior visual specification said:
+
+### Fullscreen and controller navigation
+
+Fullscreen reuses the shell and its dialogs, with the caption hidden and a persistent footer
+outside the dialog layers. The rail offers Fullscreen; F11 and Menu / Start toggle it from
+any screen. Exiting restores the preceding normal or maximized state. The footer shows a
+local-time clock, controller status when connected, and an Exit fullscreen button.
+
+The shell scales uniformly from 1 to 1.5, limited by 1200 logical pixels of width and 688
+of height (640 for content plus 48 for the footer). Small displays retain the desktop scale.
+It uses the same theme tokens, control templates and focus rings. Controller focus uses
+keyboard focus styling and scrolls controls into view. D-pad and left stick navigate;
+LB/RB follow the control order inside the current dialog or popup; A activates and B backs
+out one layer. Right-stick vertical movement scrolls long bodies without moving focus.
+
+A on an editable field, or Y while it is focused, opens a keyboard above the content and
+below the fullscreen footer. It includes case, punctuation, caret movement and deletion.
+Its selected key uses a fixed-width Volt border; the text preview masks password fields.
+Done or B closes text entry and restores visible focus to the original field. Escape closes
+text entry before any underlying dialog. Native file dialogs and store sign-in are separate
+input surfaces and do not inherit these controls.
+
+
+The roadmap previously described the first implementation as:
+
+> | M10 | Full-screen mode + gamepad navigation | The whole app is navigable on a controller at 10 feet | fullscreen, controller navigation and text entry implemented; physical-device and complete controller-only operation validation pending; native dialogs and embedded sign-in retain their own input requirements |
