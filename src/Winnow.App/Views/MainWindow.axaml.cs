@@ -333,6 +333,7 @@ public partial class MainWindow : Window
         if (_library is not null)
         {
             _library.PropertyChanged -= OnLibraryPropertyChanged;
+            _library.PropertyChanging -= OnLibraryPropertyChanging;
         }
 
         if (_theme is not null)
@@ -358,6 +359,7 @@ public partial class MainWindow : Window
         if (_library is not null)
         {
             _library.PropertyChanged += OnLibraryPropertyChanged;
+            _library.PropertyChanging += OnLibraryPropertyChanging;
         }
     }
 
@@ -1484,6 +1486,17 @@ public partial class MainWindow : Window
         }
     }
 
+    private Vector? _hideViewportOffset;
+
+    private void OnLibraryPropertyChanging(object? sender, PropertyChangingEventArgs e)
+    {
+        if (e.PropertyName == nameof(LibraryViewModel.VisibleTiles))
+        {
+            _hideViewportOffset = _library?.IsPreservingViewport == true
+                ? ActiveLibraryScroll()?.Offset : null;
+        }
+    }
+
     private void OnLibraryPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         switch (e.PropertyName)
@@ -1494,9 +1507,25 @@ public partial class MainWindow : Window
             // user looking at empty space below the content.
             case nameof(LibraryViewModel.VisibleTiles):
             case nameof(LibraryViewModel.IsGridView):
-                ResetScroll();
+                var preservedOffset = e.PropertyName == nameof(LibraryViewModel.VisibleTiles)
+                    ? _hideViewportOffset : null;
+                _hideViewportOffset = null;
+                var source = _library?.VisibleTiles;
+                var scroll = ActiveLibraryScroll();
+                if (preservedOffset is null)
+                {
+                    ResetScroll();
+                }
                 Dispatcher.UIThread.Post(() =>
                 {
+                    // Restore after the replacement source has been laid out;
+                    // ScrollViewer clamps the offset if the last row disappeared.
+                    if (preservedOffset is { } offset && scroll is not null
+                        && ReferenceEquals(source, _library?.VisibleTiles)
+                        && ReferenceEquals(scroll, ActiveLibraryScroll()))
+                    {
+                        scroll.Offset = offset;
+                    }
                     TrackListScroll();
                     UpdateAlphabetLocation();
                 }, DispatcherPriority.Background);

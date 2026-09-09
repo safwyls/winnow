@@ -809,7 +809,11 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     public bool ShowIdleSortDown => Sort == LibrarySort.DormantLongest;
 
     [RelayCommand]
-    private async Task LoadAsync()
+    private Task LoadAsync() => LoadLibraryAsync();
+
+    internal bool IsPreservingViewport { get; private set; }
+
+    private async Task LoadLibraryAsync(bool preserveViewport = false)
     {
         var thresholds = BucketThresholds.Default with
         {
@@ -1240,7 +1244,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         MarkRailSelection();
 
         _loaded = true;
-        ApplyFilter();
+        ApplyFilter(preserveViewport);
         if (selectedOwnershipId is { } selectedId)
         {
             var selected = VisibleTiles.FirstOrDefault(t => t.Covers(selectedId));
@@ -2000,7 +2004,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         Details = null;
         SelectedTiles = [];
         SelectedCount = 0;
-        await LoadAsync();
+        await LoadLibraryAsync(preserveViewport: true);
     }
 
     // ══ Lists ═══════════════════════════════════════════════════════════════
@@ -2521,7 +2525,9 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     }
 
     /// <summary>Applies all filter terms (bucket, list, panel, search) and rebuilds the visible set.</summary>
-    private void ApplyFilter()
+    private void ApplyFilter() => ApplyFilter(preserveViewport: false);
+
+    private void ApplyFilter(bool preserveViewport)
     {
         if (!_loaded || _suspended > 0)
         {
@@ -2557,7 +2563,15 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         // the same source so the views retain their scroll position and selection.
         if (!VisibleTiles.SequenceEqual(visible))
         {
-            VisibleTiles = visible;
+            IsPreservingViewport = preserveViewport;
+            try
+            {
+                VisibleTiles = visible;
+            }
+            finally
+            {
+                IsPreservingViewport = false;
+            }
             if (SelectedTile is { } selected && !visible.Contains(selected))
             {
                 SelectTile(null);
