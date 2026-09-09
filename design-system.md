@@ -534,17 +534,21 @@ The shared identity is the teal palette, three font families, cover art, dormanc
 markers. Fullscreen gets its own type and spacing scale. Start with a 1920×1080 reference
 canvas, 5% safe margins, 64px game titles, 32px section headings and 28px body text; essential
 labels stay at least 24px. These are design starting points, not measured distance guarantees.
-4K increases rendering resolution rather than content density. Validate readability from the
-actual seating position before accepting the scale.
+4K increases rendering resolution rather than content density. Fit ultrawide is an optional
+fullscreen preference: it expands the reference canvas horizontally to the display aspect
+ratio while keeping the 1080px reference height and uniform scaling. The default retains the
+16:9 composition. Validate readability from the actual seating position before accepting the scale.
 
 **For you** opens on a focused recommendation in a horizontal cover shelf. A large title,
 one-sentence reason and game artwork above the shelf follow the selection. Up/down changes
 shelves; left/right moves among their games. The selected cover has the only focus ring.
-The current top-level section uses an underline, visually distinct from focus. No desktop
+Text actions have transparent backgrounds and a mint underline on focus. The current top-level
+section has a persistent underline; the focused cover retains its outline. No desktop
 rail, density control, hover actions or small cover buttons appear here.
 
 **Library** uses a regular cover grid and a short row of collection choices. A dedicated
-filter page carries large choices and an explicit Apply action. Search is a dedicated page
+filter page groups large choices with persistent actions: Y applies and closes from anywhere,
+and B discards the draft. Search is a dedicated page
 with its own keyboard and results. **Game details** is a full page, with Play as its initial
 focus and overview, updates and journal as separate sections. **Activity** and **Settings**
 use large ordered rows, with focused values changed directly. Long content is paged or
@@ -562,8 +566,10 @@ position; Back restores the exact origin, including after viewing details.
 | View | Open search from browsing |
 | Menu | Open a quick menu with Settings and Exit fullscreen; controller help is in Settings |
 
-The footer shows actions available in the current state. The current input sources use
-Xbox-style button labels; device-specific glyph families are not detected. Clock and optional battery status sit in a quiet
+The footer shows actions available in the current state using bundled Kenney vector controller
+glyphs. Paging prompts sit at the right edge. The current input sources use Xbox-style
+button shapes; device-specific glyph families are not detected. The dragon mark sits beside
+the Winnow title. Controller input hides the mouse cursor; mouse movement or a click restores it. Clock and optional battery status sit in a quiet
 top corner. Unknown battery state is omitted. Nested sheets trap focus and restore it on
 close. Destructive actions require confirmation; unplugging a controller preserves position
 and provides a reconnect message with keyboard fallback. Reduced motion removes travel and
@@ -580,9 +586,13 @@ composition for each task. The mock images are design references, not evidence o
 
 **Library** trades the home's large featured artwork for two rows of six covers at the
 reference size. Titles sit below the covers. The focused game remains clear through its
-mint outline; unread dots and dormancy retain their shared meaning. Up from the first row
-reaches All games, Installed, Never played, Patched and My lists. Triggers page through the
-collection while preserving the focused column where possible. Y opens Filter & sort; View
+mint outline; unread dots and dormancy retain their shared meaning. A dimmed landscape
+backdrop follows the selected game. Covers sit in compact columns sized to the available
+height, with smaller gaps and headings to give artwork more room. Browse uses 5:6 cover
+frames with uniform cropping, matching the mock; it does not stretch images or change desktop covers. Up from the first row
+on the first page reaches the collection choices. At grid edges, down advances a page and
+up returns to the previous page, preserving the column where possible. Triggers also page
+through the collection. Y opens Filter & sort; View
 opens Search. Opening a game and returning restores the collection, page and exact game.
 Actual density remains subject to distance testing and may reduce at larger text settings.
 
@@ -592,7 +602,9 @@ chronological rows occupy the left side and the selected event's art, facts and 
 occupy the right. The implementation reads saved sessions and notes plus raw update signals
 for games visible in the fullscreen library. A opens session actions or the update's game;
 X edits the selected session's note when applicable. Triggers change the visible Monday-based
-week and cannot advance past the current week. The note editor offers deliberate Save and
+week; left/right does the same from the event region. Neither can advance past the current
+week. Sessions and Journal have distinct empty-state copy: Journal requires a saved note or
+rating. Activity and Settings use quiet original SVG backdrops with theme-colored paths. The note editor offers deliberate Save and
 Cancel actions and an optional one-to-five rating. Library summary provides the current
 visible game count and separate reading pages for captured Steam account statistics; it
 retains the shared rules for mixed currencies and wallet credit.
@@ -602,7 +614,9 @@ rows expose a label and current value; left/right changes bounded values, A open
 or activates toggles, and B returns. Appearance has a readable live sample. Fullscreen owns
 its text scale (100–140% in ten-point steps), screen margins (0–10% in one-point steps),
 motion, theme and dormancy preferences. Defaults are 100%, 5%, motion enabled, Winnow and
-cover dimming enabled. These preferences do not change desktop appearance, library facts or
+cover dimming enabled; Fit ultrawide defaults off. Boolean settings use visible switch tracks
+and thumbs with an On/Off status. Controller help shows a controller diagram with action
+callouts. These preferences do not change desktop appearance, library facts or
 recommendations. Content visibility, platform credentials, journal opt-in and application
 startup settings use the same value and validation in both UIs. Reset requires a confirmation
 naming the affected appearance settings. Library tools has TV-owned forms for manual games,
@@ -632,7 +646,7 @@ an external website workflow, while entering and saving it stays inside the TV i
 | Supporting view | Composition and focus contract |
 |---|---|
 | Search | Dedicated keyboard and results regions; an explicit control moves between them; return preserves query and selected result |
-| Filter & sort | Large groups and choices, result count, explicit Apply and Clear; B discards uncommitted edits |
+| Filter & sort | Grouped choices, result count and persistent Apply/Clear/Cancel actions; Y applies and closes, B discards uncommitted edits |
 | My lists / live lists | Large list rows with counts; opening restores the list's browsing position; naming uses dedicated text entry |
 | Contextual actions | Short ordered sheet for the selected game; cancel restores that game; destructive actions get their own confirmation |
 | Game updates | Large update headlines and dates, then a full reading page; marks unread state according to the shared application rules |

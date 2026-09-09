@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500">
+  <title>Standard game controller</title>
+  <path d="M178 120 C100 116 83 191 64 292 L34 415 C24 468 78 484 111 449 L229 341 L570 341 L688 449 C721 484 776 468 766 415 L735 292 C716 191 700 116 622 120 L530 134 L270 134 Z" fill="#16282A" data-fill="Surface" stroke="#8FA5A0" data-stroke="TextDim" stroke-width="4"/>
+  <path d="M139 119 L151 82 Q200 56 260 79 L267 123 M535 123 L542 79 Q600 56 650 82 L663 119" fill="none" stroke="#8FA5A0" data-stroke="TextDim" stroke-width="5"/>
+  <path d="M143 98 L263 99 M539 99 L657 98" fill="none" stroke="#8FA5A0" data-stroke="TextDim" stroke-width="3"/>
+  <path d="M127 220 A56 56 0 1 0 239 220 A56 56 0 1 0 127 220 Z M142 220 A41 41 0 1 0 224 220 A41 41 0 1 0 142 220 Z M440 308 A56 56 0 1 0 552 308 A56 56 0 1 0 440 308 Z M455 308 A41 41 0 1 0 537 308 A41 41 0 1 0 455 308 Z" fill="none" stroke="#8FA5A0" data-stroke="TextDim" stroke-width="3"/>
+  <path d="M263 264 L299 264 L299 297 L332 297 L332 333 L299 333 L299 366 L263 366 L263 333 L230 333 L230 297 L263 297 Z" fill="#1D3437" data-fill="SurfaceRaised" stroke="#8FA5A0" data-stroke="TextDim" stroke-width="3"/>
+  <path d="M322 208 L346 208 L346 228 L322 228 Z M330 200 L354 200 L354 220 M447 201 L472 201 M447 213 L472 213 M447 225 L472 225" fill="none" stroke="#8FA5A0" data-stroke="TextDim" stroke-width="3"/>
+</svg>

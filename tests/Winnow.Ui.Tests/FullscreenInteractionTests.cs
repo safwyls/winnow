@@ -17,6 +17,68 @@ namespace Winnow.Ui.Tests;
 public sealed class FullscreenInteractionTests
 {
     [AvaloniaFact]
+    public void Controller_hides_cursor_until_mouse_moves_and_exit_restores_it()
+    {
+        var window = new MainWindow { DataContext = PreviewData.Shell };
+        try
+        {
+            window.Show();
+            Dispatcher.UIThread.RunJobs();
+            var search = window.FindControl<TextBox>("SearchBox")!;
+            var searchPoint = search.TranslatePoint(new Point(search.Bounds.Width / 2, search.Bounds.Height / 2), window)!.Value;
+            window.MouseMove(searchPoint);
+            var hovered = Assert.IsAssignableFrom<InputElement>(window.GetValue(TopLevel.PointerOverElementProperty));
+            using var originalCursor = new Cursor(StandardCursorType.Ibeam);
+            hovered.Cursor = originalCursor;
+            window.HandleGamepad(GamepadButtons.Down);
+            Assert.NotSame(originalCursor, hovered.Cursor);
+            window.MouseMove(searchPoint + new Vector(1, 0));
+            Assert.Same(originalCursor, hovered.Cursor);
+            window.ToggleFullscreen();
+            Dispatcher.UIThread.RunJobs();
+            window.MouseMove(new Point(20, 20));
+            var mouseCursor = window.Cursor;
+            window.HandleGamepad(GamepadButtons.Down);
+            Assert.NotEqual(mouseCursor, window.Cursor);
+            window.MouseMove(new Point(30, 20));
+            Assert.Equal(mouseCursor, window.Cursor);
+            window.HandleGamepad(GamepadButtons.Down);
+            window.ToggleFullscreen();
+            Assert.Equal(mouseCursor, window.Cursor);
+        }
+        finally { window.ExitFromTray(); }
+    }
+
+    [AvaloniaFact]
+    public void Ultrawide_fit_expands_canvas_without_stretching_type_and_restores_reference_layout()
+    {
+        var library = new App.ViewModels.LibraryViewModel(new PreviewLibraryQueryRepository(),
+            new PreviewOwnershipRepository(), new PreviewReleaseRepository(), new PreviewWorkRepository(), new PreviewUpdateEventRepository());
+        var context = new FullscreenContext(library, new App.ViewModels.FeedViewModel(new PreviewFeedService(), library), PreviewData.Shell);
+        using var television = new FullscreenView(context);
+        var window = new Window { Width = 2560, Height = 1080, Content = television };
+        window.Show();
+        try
+        {
+            Dispatcher.UIThread.RunJobs();
+            var canvas = Assert.IsType<Grid>(Assert.IsType<Viewbox>(television.Content).Child);
+            Assert.Equal(1920, canvas.Width);
+            context.SetFitUltrawide(true);
+            Dispatcher.UIThread.RunJobs();
+            Assert.InRange(canvas.Width, 2559, 2561);
+            Assert.Equal(1080, canvas.Height);
+            Capture(window, "ultrawide");
+            window.Width = 3440; window.Height = 1440;
+            Dispatcher.UIThread.RunJobs();
+            Assert.InRange(canvas.Width, 2579, 2581);
+            context.SetFitUltrawide(false);
+            Dispatcher.UIThread.RunJobs();
+            Assert.Equal(1920, canvas.Width);
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaFact]
     public void Fullscreen_hosts_a_separate_interface_and_search_keyboard_at_minimum_window_size()
     {
         var window = new MainWindow { DataContext = PreviewData.Shell, Width = 1200, Height = 688 };

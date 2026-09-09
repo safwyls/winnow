@@ -42,6 +42,17 @@ public sealed class FullscreenBrowseState
         return true;
     }
 
+    public bool MoveGridEdge(int delta, int columns, IReadOnlyList<long> releases)
+    {
+        var column = PositionOnPage % columns;
+        if (!MovePage(delta, releases)) return false;
+        var count = Math.Min(PageSize, releases.Count - Page * PageSize);
+        var row = delta > 0 ? 0 : (count - 1) / columns;
+        PositionOnPage = Math.Min(row * columns + column, count - 1);
+        SelectedReleaseId = releases[Page * PageSize + PositionOnPage];
+        return true;
+    }
+
     private static int IndexOf(IReadOnlyList<long> releases, long release)
     {
         for (var i = 0; i < releases.Count; i++)

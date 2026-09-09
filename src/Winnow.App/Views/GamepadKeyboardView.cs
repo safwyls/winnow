@@ -43,7 +43,8 @@ public sealed class GamepadKeyboardView : Border
         if (television) heading.FontSize = 28;
         heading[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("Text");
         heading[!TextBlock.FontFamilyProperty] = new DynamicResourceExtension("BodyFont");
-        stack.Children.Add(heading);
+        stack.Children.Add(television
+            ? Fullscreen.FullscreenGlyphs.Hints("Dpad  Move    A  Type    B  Close") : heading);
         _preview = new TextBlock { Name = "GamepadTextPreview", MaxHeight = 48, TextWrapping = Avalonia.Media.TextWrapping.Wrap };
         if (television) { _preview.FontSize = 28; _preview.MaxHeight = 80; }
         _preview[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("Text");

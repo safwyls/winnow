@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1728 800">
+  <title>Paths through a mountain landscape</title>
+  <path d="M480 800 L900 260 L1060 470 L1240 170 L1728 800 Z" fill="#1D3437" data-fill="SurfaceRaised" opacity=".65"/>
+  <path d="M780 800 L1160 460 L1280 550 L1510 280 L1728 510 L1728 800 Z" fill="#2B4A4C" data-fill="Line" opacity=".5"/>
+  <path d="M820 800 C900 650 1220 800 1150 645 S890 560 1100 430 S1440 340 1460 160" fill="none" stroke="#8FA5A0" data-stroke="TextDim" stroke-width="3" opacity=".25"/>
+  <path d="M950 800 C1090 670 1430 730 1390 590 S1180 480 1420 390 S1680 290 1710 190" fill="none" stroke="#8FA5A0" data-stroke="TextDim" stroke-width="2" opacity=".18"/>
+  <path d="M1290 240 A150 150 0 1 0 1590 240 A150 150 0 1 0 1290 240 Z" fill="none" stroke="#2B4A4C" data-stroke="Line" stroke-width="2"/>
+</svg>

@@ -19,6 +19,37 @@ namespace Winnow.Ui.Tests;
 public sealed class FullscreenActivityTests
 {
     [AvaloniaFact]
+    public async Task Empty_sections_explain_their_content_and_horizontal_navigation_changes_weeks_outside_tabs()
+    {
+        using var db = new TempDatabase();
+        LibraryReadFixtures.Seed(db, 4);
+        using var services = new ServiceCollection().AddSingleton<IOwnershipRepository>(new OwnershipRepository(db.Factory))
+            .AddSingleton<ISessionRepository>(new SessionRepository(db.Factory)).BuildServiceProvider();
+        var context = new FullscreenContext(PreviewData.Library, PreviewData.Feed, PreviewData.Shell, services);
+        using var page = new FullscreenActivityPage(context);
+        var window = new Window { Width = 1920, Height = 1080, Content = page };
+        try
+        {
+            window.Show(); Dispatcher.UIThread.RunJobs(); await page.PendingRefresh; Dispatcher.UIThread.RunJobs(); page.FocusInitial();
+            Assert.Contains(page.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "No sessions this week");
+            page.Handle(GamepadButtons.Left); Dispatcher.UIThread.RunJobs();
+            Assert.Equal(1, page.WeekOffset);
+            page.Handle(GamepadButtons.Right); page.Handle(GamepadButtons.Right); Dispatcher.UIThread.RunJobs();
+            Assert.Equal(0, page.WeekOffset);
+            page.Handle(GamepadButtons.Up); Dispatcher.UIThread.RunJobs();
+            page.Handle(GamepadButtons.Right);
+            Assert.Equal(0, page.WeekOffset);
+            page.GetVisualDescendants().OfType<Button>().Single(b => Equals(b.Content, "Journal")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Dispatcher.UIThread.RunJobs();
+            Assert.Contains(page.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "No journal entries this week");
+            Assert.DoesNotContain(page.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "No sessions this week");
+            Assert.Equal("LT / RT  Change week", page.RightHints);
+            Assert.DoesNotContain("LT", page.Hints);
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaFact]
     public async Task Library_reload_refreshes_notes_preserves_session_and_removes_hidden_games()
     {
         using var db = new TempDatabase();

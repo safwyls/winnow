@@ -3399,3 +3399,38 @@ a separate presentation over shared operations. Prior design-only statements wer
 > Library, Activity and Settings have image concepts for this review. Supporting views in the
 > table are an interaction inventory, not finished mocks; review search, filtering and text
 > entry next, followed by library tools and external input boundaries.
+
+
+## 2026-09-09 — Fullscreen visual refinement
+
+The user requested closer fidelity to the reviewed TV mock after using the implementation.
+The visual spec now records controller glyphs, underline actions, direct apply and navigation
+shortcuts, switch controls, backdrops and an optional wider canvas. Desktop presentation
+remains independent. The following text was replaced in `design-system.md`:
+
+> 4K increases rendering resolution rather than content density. Validate readability from the
+> actual seating position before accepting the scale.
+
+> The current top-level section uses an underline, visually distinct from focus.
+
+> The footer shows actions available in the current state. The current input sources use
+> Xbox-style button labels; device-specific glyph families are not detected.
+
+> A dedicated
+> filter page carries large choices and an explicit Apply action.
+
+> Triggers change the visible Monday-based
+> week and cannot advance past the current week.
+
+> cover dimming enabled. These preferences do not change desktop appearance, library facts or
+
+> | Filter & sort | Large groups and choices, result count, explicit Apply and Clear; B discards uncommitted edits |
+
+> mint outline; unread dots and dormancy retain their shared meaning. Up from the first row
+> reaches All games, Installed, Never played, Patched and My lists. Triggers page through the
+> collection while preserving the focused column where possible.
+
+The initial implementation count in the verification report is now labelled as historical
+evidence rather than the final result after the visual follow-up. It previously said:
+
+> The final Release run passed 4,273 tests, including 177 UI tests.

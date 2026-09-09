@@ -622,6 +622,9 @@ with independent presentation state. Manual-game and identity tools construct th
 `LibrarySettingsViewModel` and `MergeQueueViewModel` from DI; editor state and focus do not
 leak into desktop tools. Shared settings remain common application state. Fullscreen appearance
 uses `fullscreen.*` settings and local resource overrides instead of changing the desktop theme.
+The optional ultrawide setting expands the TV reference canvas width to the viewport aspect
+ratio while retaining its reference height and uniform scaling. Controller prompts use a
+bundled CC0 vector subset; ambient page art uses bundled original SVG path geometry.
 `IWebViewInputSupport` lets the app supply controller chrome before a native browser is
 attached. Steam sign-in, Epic consent/sign-in and the patch-notes reader opt into it through
 DI. Desktop calls retain their existing presentation. TV browser windows poll their own

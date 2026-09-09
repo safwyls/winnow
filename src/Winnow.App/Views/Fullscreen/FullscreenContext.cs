@@ -27,7 +27,7 @@ public sealed class FullscreenContext : IDisposable
     public Func<string, string, Task<string?>>? SaveFilePicker { get; set; }
     private readonly SemaphoreSlim _writes = new(1);
     private double _textScale = 1, _safeMargin = 5;
-    private bool _reducedMotion, _dimCovers = true;
+    private bool _reducedMotion, _fitUltrawide, _dimCovers = true;
     private string _themeId = "winnow";
     private bool _openingGame;
     private bool _disposed, _refreshPending, _active;
@@ -36,6 +36,8 @@ public sealed class FullscreenContext : IDisposable
     public double SafeMarginPercent { get => _safeMargin; set { _safeMargin = Math.Clamp(value, 0, 10); Preference("safe-margin", _safeMargin.ToString(CultureInfo.InvariantCulture)); } }
     public bool ReducedMotion { get => _reducedMotion; set { _reducedMotion = value; Library.Ramp.ReducedMotion = value; Preference("reduced-motion", value.ToString()); } }
     public bool DimCovers { get => _dimCovers; set { _dimCovers = value; Library.Ramp.DimsDormantCovers = value; Preference("dim-covers", value.ToString()); } }
+    public bool FitUltrawide => _fitUltrawide;
+    public void SetFitUltrawide(bool value) { _fitUltrawide = value; Preference("fit-ultrawide", value.ToString()); }
     public string ThemeId { get => _themeId; set { if (!Themes.Any(t => t.Id == value)) return; _themeId = value; Preference("theme", value); } }
     public IReadOnlyList<WinnowTheme> Themes => Shared.Appearance.Service.Catalogue;
 
@@ -63,6 +65,7 @@ public sealed class FullscreenContext : IDisposable
             if (double.TryParse(await settings.GetAsync("fullscreen.safe-margin"), CultureInfo.InvariantCulture, out var margin)) _safeMargin = Math.Clamp(margin, 0, 10);
             if (bool.TryParse(await settings.GetAsync("fullscreen.reduced-motion"), out var motion)) _reducedMotion = motion;
             if (bool.TryParse(await settings.GetAsync("fullscreen.dim-covers"), out var dim)) _dimCovers = dim;
+            if (bool.TryParse(await settings.GetAsync("fullscreen.fit-ultrawide"), out var fit)) _fitUltrawide = fit;
             if (await settings.GetAsync("fullscreen.theme") is { } theme && Themes.Any(t => t.Id == theme)) _themeId = theme;
         }
         if (_disposed) return;

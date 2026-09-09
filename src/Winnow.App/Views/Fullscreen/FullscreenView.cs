@@ -30,7 +30,8 @@ public sealed class FullscreenView : UserControl, IDisposable
     private readonly Grid _canvas = new() { Width = 1920, Height = 1080 };
     private readonly TextBlock _clock = FullscreenUi.Text("", 24);
     private readonly TextBlock _status = FullscreenUi.Text("Controller disconnected", 24, "TextDim");
-    private readonly TextBlock _hints = FullscreenUi.Text("", 24, "TextDim");
+    private readonly ContentControl _hints = new();
+    private readonly ContentControl _rightHints = new() { HorizontalAlignment = HorizontalAlignment.Right };
     private readonly TextBlock _launch = FullscreenUi.Text("", 28);
     private readonly Button[] _tabs;
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromSeconds(15) };
@@ -50,11 +51,11 @@ public sealed class FullscreenView : UserControl, IDisposable
         Styles.Add(new Style(s => s.OfType<Button>().Class("tv-action"))
         {
             Setters = {
-                new Setter(TemplatedControl.BackgroundProperty, new DynamicResourceExtension("Surface")),
+                new Setter(TemplatedControl.BackgroundProperty, Brushes.Transparent),
                 new Setter(TemplatedControl.ForegroundProperty, new DynamicResourceExtension("Text")),
                 new Setter(TemplatedControl.BorderBrushProperty, Brushes.Transparent),
-                new Setter(TemplatedControl.BorderThicknessProperty, new Thickness(3)),
-                new Setter(TemplatedControl.CornerRadiusProperty, new CornerRadius(6)),
+                new Setter(TemplatedControl.BorderThicknessProperty, new Thickness(0, 0, 0, 3)),
+                new Setter(TemplatedControl.CornerRadiusProperty, new CornerRadius(0)),
                 new Setter(TemplatedControl.TemplateProperty, new FuncControlTemplate<Button>((button, _) =>
                 {
                     var border = new Border();
@@ -62,17 +63,18 @@ public sealed class FullscreenView : UserControl, IDisposable
                     border.Bind(Border.BorderBrushProperty, new Binding(nameof(Button.BorderBrush)) { Source = button });
                     border.Bind(Border.BorderThicknessProperty, new Binding(nameof(Button.BorderThickness)) { Source = button });
                     border.Bind(Border.PaddingProperty, new Binding(nameof(Button.Padding)) { Source = button });
-                    border.CornerRadius = new CornerRadius(6);
                     var presenter = new ContentPresenter { VerticalContentAlignment = VerticalAlignment.Center };
                     presenter.Bind(ContentPresenter.ContentProperty, new Binding(nameof(Button.Content)) { Source = button });
                     border.Child = presenter; return border;
                 }))
             }
         });
-        Styles.Add(new Style(s => s.OfType<Button>().Class("tv-action").Class(":focus"))
-        { Setters = { new Setter(TemplatedControl.BorderBrushProperty, new DynamicResourceExtension("Volt")), new Setter(TemplatedControl.BackgroundProperty, new DynamicResourceExtension("SurfaceRaised")) } });
+        Styles.Add(new Style(s => s.OfType<Button>().Class("tv-action").Class(":pointerover"))
+        { Setters = { new Setter(TemplatedControl.BorderBrushProperty, new DynamicResourceExtension("TextDim")) } });
         Styles.Add(new Style(s => s.OfType<Button>().Class("tv-action").Class("current"))
-        { Setters = { new Setter(TemplatedControl.ForegroundProperty, new DynamicResourceExtension("Volt")) } });
+        { Setters = { new Setter(TemplatedControl.ForegroundProperty, new DynamicResourceExtension("Text")), new Setter(TemplatedControl.BorderBrushProperty, new DynamicResourceExtension("TextDim")) } });
+        Styles.Add(new Style(s => s.OfType<Button>().Class("tv-action").Class(":focus"))
+        { Setters = { new Setter(TemplatedControl.BorderBrushProperty, new DynamicResourceExtension("Volt")), new Setter(TemplatedControl.ForegroundProperty, new DynamicResourceExtension("Volt")) } });
         _roots = [new FullscreenBrowsePage(context, true), new FullscreenBrowsePage(context, false), new FullscreenActivityPage(context), new FullscreenSettingsPage(context)];
         _tabs = new[] { "For you", "Library", "Activity", "Settings" }.Select((label, index) => FullscreenUi.Button(label, () => SelectSection(index))).ToArray();
         foreach (var tab in _tabs)
@@ -87,11 +89,14 @@ public sealed class FullscreenView : UserControl, IDisposable
         brand[!TextBlock.FontFamilyProperty] = new DynamicResourceExtension("DisplayFont");
         brand.FontWeight = FontWeight.Bold;
         _clock[!TextBlock.FontFamilyProperty] = new DynamicResourceExtension("DataFont");
-        header.Children.Add(brand);
+        var lockup = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 14, VerticalAlignment = VerticalAlignment.Center };
+        lockup.Children.Add(FullscreenGlyphs.Icon("Winnow", 42));
+        lockup.Children.Add(brand);
+        header.Children.Add(lockup);
         var nav = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 16, HorizontalAlignment = HorizontalAlignment.Center };
-        nav.Children.Add(FullscreenUi.Text("LB", 24, "TextDim"));
+        nav.Children.Add(FullscreenGlyphs.Icon("LB"));
         foreach (var tab in _tabs) nav.Children.Add(tab);
-        nav.Children.Add(FullscreenUi.Text("RB", 24, "TextDim"));
+        nav.Children.Add(FullscreenGlyphs.Icon("RB"));
         Grid.SetColumn(nav, 1); header.Children.Add(nav);
         _status.Margin = new Thickness(16, 0, 24, 0);
         Grid.SetColumn(_status, 2); header.Children.Add(_status);
@@ -99,6 +104,7 @@ public sealed class FullscreenView : UserControl, IDisposable
         _safe.Children.Add(header); Grid.SetRow(_body, 1); _safe.Children.Add(_body);
         var footer = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), VerticalAlignment = VerticalAlignment.Bottom };
         footer.Children.Add(_hints);
+        Grid.SetColumn(_rightHints, 1); footer.Children.Add(_rightHints);
         Grid.SetRow(footer, 2); _safe.Children.Add(footer);
         _canvas.Children.Add(_safe); _canvas.Children.Add(_overlay);
         _launch.HorizontalAlignment = HorizontalAlignment.Center;
@@ -108,6 +114,7 @@ public sealed class FullscreenView : UserControl, IDisposable
         _canvas.Children.Add(_launch);
         _canvas[!Panel.BackgroundProperty] = new DynamicResourceExtension("Ground");
         Content = new Viewbox { Stretch = Stretch.Uniform, Child = _canvas };
+        SizeChanged += (_, _) => FitCanvas();
         Background = Brushes.Black;
         context.PageRequested += Push;
         context.BackRequested += Back;
@@ -130,8 +137,15 @@ public sealed class FullscreenView : UserControl, IDisposable
     {
         var theme = _context.Themes.FirstOrDefault(t => t.Id == _context.ThemeId) ?? _context.Themes.First();
         foreach (var (key, color) in theme.Tokens(0)) Resources[key] = new SolidColorBrush(color);
-        _safe.Margin = new Thickness(1920 * _context.SafeMarginPercent / 100, 1080 * _context.SafeMarginPercent / 100);
+        FitCanvas();
         ApplyTextSize();
+    }
+    private void FitCanvas()
+    {
+        // Keep pixel proportions and the TV type scale while opening horizontal space on wide displays.
+        _canvas.Width = _context.FitUltrawide && Bounds.Height > 0
+            ? Math.Max(1920, 1080 * Bounds.Width / Bounds.Height) : 1920;
+        _safe.Margin = new Thickness(_canvas.Width * _context.SafeMarginPercent / 100, 1080 * _context.SafeMarginPercent / 100);
     }
     private void ApplyTextSize()
     {
@@ -245,7 +259,11 @@ public sealed class FullscreenView : UserControl, IDisposable
         }
         PageChanged(this, EventArgs.Empty); FocusPage();
     }
-    private void PageChanged(object? sender, EventArgs e) => _hints.Text = CurrentPage.Hints;
+    private void PageChanged(object? sender, EventArgs e)
+    {
+        _hints.Content = FullscreenGlyphs.Hints(CurrentPage.Hints);
+        _rightHints.Content = FullscreenGlyphs.Hints(CurrentPage.RightHints);
+    }
     public void FocusPage() => Dispatcher.UIThread.Post(() =>
     {
         if (!_disposed && _keyboard is null && IsEffectivelyVisible && TopLevel.GetTopLevel(this) is not null) CurrentPage.FocusInitial();

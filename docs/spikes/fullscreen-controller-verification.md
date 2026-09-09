@@ -3,7 +3,7 @@
 The fullscreen implementation was checked on Windows on 2026-09-09. This records the
 verification method and its limits; `design-system.md` owns the interaction contracts.
 
-The final Release run passed 4,273 tests, including 177 UI tests. Two Linux-native tests
+The initial implementation Release run passed 4,273 tests, including 177 UI tests. Two Linux-native tests
 skipped on Windows. The solution Release build completed with zero warnings and errors.
 
 ## Automated checks
@@ -53,6 +53,36 @@ the real bitmap path. Generated design mockups are not runtime screenshots.
 Inspection caught an early capture before the focus frame, crowded placeholder titles and
 retained inactive tab underlines. The implementation keeps chrome within the safe area while
 body text grows; headings and the header/footer retain their reference sizes.
+
+## Visual refinement checks
+
+Follow-up Release verification passed 4,284 tests: 4,096 non-UI tests and 188 UI tests.
+Two Linux-native cases skipped on Windows. The final solution build had zero warnings and
+errors. The complete UI suite passed after correcting the render-timing check described below.
+
+The follow-up polish uses bundled Kenney CC0 controller glyphs, transparent underline
+controls, a dragon wordmark, themed original SVG backdrops and a persisted ultrawide-fit
+preference. Browse covers use 5:6 frames with uniform cropping and compact spacing.
+
+Added interaction checks cover directional grid page edges with retained columns, selected
+library backdrops, filter application from nested choices, cancellation, persistent filter
+actions at 140% text/1280×720, directional week changes, distinct empty states, switch values,
+controller help, ultrawide persistence/layout, and restoring a text field's I-beam cursor
+when the mouse resumes. Cursor behavior is checked on the shared window; the visual controls
+and appearance preference belong only to fullscreen. Existing desktop tests remain part of
+the UI suite.
+
+Rendered home, library, activity, settings, controller help and filter views were inspected,
+including maximum text size and a wide canvas. The initial render pass exposed and corrected
+browse text encoding and excess cover spacing. Reference and large-text captures use fake
+records and fallback art; selected-background lease tests establish the real art path.
+
+An intermittent feed-impression test initially checked the hit-test scene before the next
+100ms observation cycle. The test now commits layout and waits for that existing timer.
+Two consecutive full UI runs passed after this correction. A subsequent scaled-canvas case
+also caught a coordinate mismatch: both tile corners now transform into window coordinates
+when checking visibility. The final 188-test UI run covers both reference and 720p scaling;
+production visibility and obscured-shelf checks remain intact.
 
 ## Remaining device checks
 

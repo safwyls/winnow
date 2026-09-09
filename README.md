@@ -74,6 +74,11 @@ game-detail screens, designed for a TV. Press F11 or choose **Exit fullscreen** 
 controller's quick menu to restore the previous window state. Desktop and fullscreen retain
 separate browsing positions, filters and appearance preferences.
 
+Fullscreen Appearance includes **Fit ultrawide displays** to use the full screen width
+without stretching text. Controller input hides the cursor; moving or clicking the mouse
+restores it. In Filter & sort, **Y** applies and closes and **B** cancels. D-pad/left-stick
+up/down crosses library page edges; left/right in Activity changes weeks.
+
 - **D-pad / left stick:** navigate games and controls.
 - **A / south button:** select; on an editable text field, open the on-screen keyboard.
 - **B / east button:** back; closes text entry before the underlying dialog.

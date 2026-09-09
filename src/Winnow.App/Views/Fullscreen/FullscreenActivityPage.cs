@@ -18,6 +18,8 @@ public sealed class FullscreenActivityPage : FullscreenPage
     private ActivityEntry? _selected;
     private string _section = "Sessions";
     private int _week;
+    internal int WeekOffset => _week;
+    private bool _tabsFocused;
     private bool _loaded;
     private bool _dirty = true;
     private bool _loading;
@@ -29,7 +31,8 @@ public sealed class FullscreenActivityPage : FullscreenPage
     private bool _disposed;
     private string _status = "Reading your activity…";
     public override string Title => "Activity";
-    public override string Hints => $"A  Open event{(_selected?.Session is null ? "" : "     X  Edit note")}{(string.IsNullOrWhiteSpace(_selected?.Note?.Note) ? "" : "     Y  Read note")}     LT / RT  Change week";
+    public override string Hints => _selected is null ? "A  Select" : $"A  Open event{(_selected.Session is null ? "" : "     X  Edit note")}{(string.IsNullOrWhiteSpace(_selected.Note?.Note) ? "" : "     Y  Read note")}";
+    public override string RightHints => "LT / RT  Change week";
 
     public FullscreenActivityPage(FullscreenContext context) : base(context)
     {
@@ -111,14 +114,14 @@ public sealed class FullscreenActivityPage : FullscreenPage
     {
         if (_disposed) return;
         var tabs = new[] { "Sessions", "Updates", "Journal" }.Select(label =>
-            FullscreenUi.Button(label == _section ? $"{label}  •" : label, () => { _section = label; Render(); FocusInitial(); })).ToArray();
+            FullscreenUi.Button(label, () => { _section = label; Render(); FocusInitial(); })).ToArray();
         var tabBar = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 24 };
-        foreach (var tab in tabs) tabBar.Children.Add(tab);
+        foreach (var tab in tabs) { tab.Classes.Set("current", Equals(tab.Content, _section)); tab.GotFocus += (_, _) => _tabsFocused = true; tabBar.Children.Add(tab); }
         var start = DateTime.Today.AddDays(-(((int)DateTime.Today.DayOfWeek + 6) % 7) - _week * 7);
         var list = new StackPanel { Spacing = 16 };
         list.Children.Add(FullscreenUi.Text(_week == 0 ? "THIS WEEK" : $"{start:d MMM} – {start.AddDays(6):d MMM yyyy}", 24, "TextDim"));
         var rows = _entries.Where(e => e.At.ToLocalTime() >= start && e.At.ToLocalTime() < start.AddDays(7))
-            .Where(e => _section == "Updates" ? e.Update is not null : e.Session is not null && (_section != "Journal" || e.Note is not null)).ToArray();
+            .Where(e => _section == "Updates" ? e.Update is not null : e.Session is not null && (_section != "Journal" || HasJournal(e.Note))).ToArray();
         var buttons = new List<Control[]> { tabs };
         _initial = null;
         foreach (var row in rows)
@@ -128,14 +131,26 @@ public sealed class FullscreenActivityPage : FullscreenPage
             var content = new Grid { ColumnDefinitions = new ColumnDefinitions("144,*"), ColumnSpacing = 24 };
             content.Children.Add(new FullscreenCover(row.Tile) { Height = 112, Width = 144 });
             var words = FullscreenUi.Stack(FullscreenUi.Text(row.Tile.Title, 32), FullscreenHistoryTypography.Data($"{row.At.ToLocalTime():ddd d MMM} · {row.At.ToLocalTime():t}   {row.Description}", 24));
-            if (row.Note is not null) words.Children.Add(FullscreenUi.Text("Journal entry", 24, "TextDim"));
+            if (HasJournal(row.Note)) words.Children.Add(FullscreenUi.Text("Journal entry", 24, "TextDim"));
             Grid.SetColumn(words, 1); content.Children.Add(words); button.Content = content;
-            button.GotFocus += (_, _) => { _initial = button; Select(row); };
+            button.GotFocus += (_, _) => { _tabsFocused = false; _initial = button; Select(row); };
             if (_initial is null || row == _selected) _initial = button;
             list.Children.Add(button); buttons.Add([button]);
         }
-        if (rows.Length == 0) list.Children.Add(FullscreenUi.Text(_status));
+        if (rows.Length == 0)
+        {
+            var empty = _section switch
+            {
+                "Journal" => ("No journal entries this week", "Your notes and ratings appear here. Choose a session and press X to add one."),
+                "Updates" => ("No updates this week", "Updates for your visible games appear here as they arrive. Choose an earlier week to look back."),
+                _ => ("No sessions this week", "Play a game to start your history, or choose an earlier week.")
+            };
+            list.Children.Add(FullscreenUi.Text(_loaded ? empty.Item1 : _status, 32));
+            if (_loaded) list.Children.Add(FullscreenUi.Text(empty.Item2, 28, "TextDim"));
+        }
         var summary = FullscreenUi.Button("Library summary", () => Context.Push(new FullscreenLibrarySummaryPage(Context)));
+        summary.GotFocus += (_, _) => _tabsFocused = false;
+        _initial ??= summary;
         list.Children.Add(summary); buttons.Add([summary]);
         var columns = new Grid { ColumnDefinitions = new ColumnDefinitions("*,*"), ColumnSpacing = 48 };
         if (_preview.Parent is ScrollViewer previous) previous.Content = null;
@@ -144,7 +159,7 @@ public sealed class FullscreenActivityPage : FullscreenPage
         Grid.SetColumn(previewScroll, 1); columns.Children.Add(previewScroll);
         var layout = new Grid { RowDefinitions = new RowDefinitions("Auto,Auto,*"), RowSpacing = 24 };
         layout.Children.Add(FullscreenUi.Text("Your activity", 64)); Grid.SetRow(tabBar, 1); layout.Children.Add(tabBar);
-        Grid.SetRow(columns, 2); layout.Children.Add(columns); Content = layout;
+        Grid.SetRow(columns, 2); layout.Children.Add(columns); Content = FullscreenAmbientBackdrop.Behind(layout, "activity");
         SetFocusRows(buttons.ToArray());
         Select(rows.FirstOrDefault(r => r == _selected) ?? rows.FirstOrDefault());
     }
@@ -159,7 +174,7 @@ public sealed class FullscreenActivityPage : FullscreenPage
     private void Select(ActivityEntry? row)
     {
         _selected = row; _preview.Children.Clear();
-        if (row is null) return;
+        if (row is null) { Changed(); return; }
         _preview.Children.Add(new FullscreenCover(row.Tile) { Height = 300, HorizontalAlignment = HorizontalAlignment.Stretch });
         _preview.Children.Add(FullscreenUi.Text(row.Tile.Title, 48));
         _preview.Children.Add(FullscreenHistoryTypography.Data($"{row.At.ToLocalTime():f}\n{row.Description}", 28));
@@ -184,8 +199,8 @@ public sealed class FullscreenActivityPage : FullscreenPage
             Context.Push(new FullscreenDetailsReadingPage(Context, selected.Tile.Title, note));
             return true;
         }
-        if ((buttons & GamepadButtons.PagePrevious) != 0) { _week++; Render(); FocusInitial(); return true; }
-        if ((buttons & GamepadButtons.PageNext) != 0) { _week = Math.Max(0, _week - 1); Render(); FocusInitial(); return true; }
+        if ((buttons & GamepadButtons.PagePrevious) != 0 || !_tabsFocused && buttons.HasFlag(GamepadButtons.Left)) { _week++; Render(); FocusInitial(); return true; }
+        if ((buttons & GamepadButtons.PageNext) != 0 || !_tabsFocused && buttons.HasFlag(GamepadButtons.Right)) { _week = Math.Max(0, _week - 1); Render(); FocusInitial(); return true; }
         if ((buttons & GamepadButtons.Play) != 0 && _selected?.Session is { } session)
         {
             var row = _selected;
@@ -194,6 +209,8 @@ public sealed class FullscreenActivityPage : FullscreenPage
         }
         return base.Handle(buttons);
     }
+
+    private static bool HasJournal(SessionNote? note) => note?.Rating is not null || !string.IsNullOrWhiteSpace(note?.Note);
 
     private sealed class ActivityEntry(GameTileViewModel tile, DateTime at, Session? session, SessionNote? note, UpdateEvent? update, string store)
     {

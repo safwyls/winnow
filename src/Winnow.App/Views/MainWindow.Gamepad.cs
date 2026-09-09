@@ -18,9 +18,24 @@ public partial class MainWindow
     private readonly Stopwatch _gamepadTime = Stopwatch.StartNew();
     private DispatcherTimer? _gamepadTimer;
     private GamepadKeyboardView? _gamepadKeyboard;
+    private static readonly Cursor ControllerCursor = new(StandardCursorType.None);
+    private Point? _lastMousePosition;
+    private IDisposable? _hoverCursorOverride;
+    private bool _controllerCursorHidden;
 
     private void InitializeGamepad()
     {
+        AddHandler(PointerMovedEvent, (_, e) =>
+        {
+            var position = e.GetPosition(this);
+            if (_lastMousePosition != position) RestoreMouseCursor();
+            _lastMousePosition = position;
+        }, RoutingStrategies.Tunnel, handledEventsToo: true);
+        AddHandler(PointerPressedEvent, (_, _) => RestoreMouseCursor(), RoutingStrategies.Tunnel, handledEventsToo: true);
+        PropertyChanged += (_, e) =>
+        {
+            if (_controllerCursorHidden && e.Property == PointerOverElementProperty) HideHoveredCursor();
+        };
         AddHandler(KeyDownEvent, (_, e) =>
         {
             if (_gamepadKeyboard is { } keyboard && e.Key is Key.Escape or Key.Tab)
@@ -39,6 +54,7 @@ public partial class MainWindow
         };
         Closed += (_, _) =>
         {
+            RestoreMouseCursor();
             _gamepadTimer?.Stop();
             _gamepadSource?.Dispose();
             DisposeFullscreen();
@@ -58,6 +74,10 @@ public partial class MainWindow
     // headless tests exercise exactly the dispatch used by a physical controller.
     internal void HandleGamepad(GamepadButtons buttons)
     {
+        if (buttons == GamepadButtons.None) return;
+        _controllerCursorHidden = true;
+        Cursor = ControllerCursor;
+        HideHoveredCursor();
         if (IsFullscreen && _tvView is { } television)
         {
             television.Handle(buttons);
@@ -137,6 +157,22 @@ public partial class MainWindow
             return;
         }
         MoveGamepadSpatial(scope, current, key);
+    }
+
+    private void HideHoveredCursor()
+    {
+        _hoverCursorOverride?.Dispose();
+        // Text fields may set their own I-beam. A disposable priority override preserves it exactly.
+        _hoverCursorOverride = GetValue(PointerOverElementProperty) is InputElement hovered
+            ? hovered.SetValue(CursorProperty, ControllerCursor, Avalonia.Data.BindingPriority.Animation) : null;
+    }
+
+    private void RestoreMouseCursor()
+    {
+        _controllerCursorHidden = false;
+        _hoverCursorOverride?.Dispose();
+        _hoverCursorOverride = null;
+        ClearValue(CursorProperty);
     }
 
     private Control GamepadScope()

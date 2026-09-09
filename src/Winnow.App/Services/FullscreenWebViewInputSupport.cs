@@ -44,13 +44,18 @@ public sealed class FullscreenWebViewInputSupport : IWebViewInputSupport
         return null;
     }
 
+    private sealed class ControllerCaption : ContentControl
+    {
+        public string Text { set => Content = FullscreenGlyphs.Hints(value); }
+    }
+
     private sealed class BrowserInputPanel : Grid, IDisposable
     {
         private readonly Window _window;
         private readonly WebView2Host? _browser;
         private readonly bool _reading;
         private readonly ContentControl _keyboardArea = new();
-        private readonly TextBlock _status;
+        private readonly ControllerCaption _status;
         private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromMilliseconds(33) };
         private readonly Stopwatch _clock = Stopwatch.StartNew();
         private readonly GamepadInputFilter _filter = new();
@@ -77,7 +82,7 @@ public sealed class FullscreenWebViewInputSupport : IWebViewInputSupport
             }
             else Children.Add(content);
             Grid.SetRow(_keyboardArea, 1); Children.Add(_keyboardArea);
-            _status = FullscreenUi.Text(browser is null ? "← / →  Choose     A  Select     LT / RT  Read     B  Cancel" : reading ? "↑ ↓  Scroll     LB / RB  Links     A  Open     B  Close" : "↑ ↓  Field     A  Select     X  Check     Y  Type     View  Backspace     B Cancel", 24);
+            _status = new ControllerCaption { Text = browser is null ? "← / →  Choose     A  Select     LT / RT  Read     B  Cancel" : reading ? "↑ ↓  Scroll     LB / RB  Links     A  Open     B  Close" : "↑ ↓  Field     A  Select     X  Check     Y  Type     View  Backspace     B Cancel" };
             _status.Margin = new Thickness(48, 16); Grid.SetRow(_status, 2); Children.Add(_status);
             _timer.Tick += Tick;
             if (browser is not null) browser.ControllerNavigationStarted += OnNavigation;

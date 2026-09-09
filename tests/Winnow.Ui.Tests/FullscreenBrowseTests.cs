@@ -43,6 +43,26 @@ public sealed class FullscreenBrowseTests
     }
 
     [Fact]
+    public void Grid_edges_enter_the_nearest_row_and_preserve_column_in_both_directions()
+    {
+        var releases = Enumerable.Range(1, 27).Select(i => (long)i).ToArray();
+        var state = new FullscreenBrowseState();
+        state.Select(8, 7);
+        state.Reconcile(releases);
+        Assert.True(state.MoveGridEdge(1, 6, releases));
+        Assert.Equal(14, state.SelectedReleaseId);
+        Assert.Equal(1, state.PositionOnPage);
+        Assert.True(state.MoveGridEdge(-1, 6, releases));
+        Assert.Equal(8, state.SelectedReleaseId);
+        Assert.Equal(7, state.PositionOnPage);
+        state.Select(24, 11);
+        state.Reconcile(releases);
+        Assert.True(state.MoveGridEdge(1, 6, releases));
+        Assert.Equal(27, state.SelectedReleaseId);
+        Assert.False(state.MoveGridEdge(1, 6, releases));
+    }
+
+    [Fact]
     public void Reload_follows_game_identity_when_sorting_changes()
     {
         var state = new FullscreenBrowseState();
@@ -122,6 +142,123 @@ public sealed class FullscreenBrowseTests
             Dispatcher.UIThread.RunJobs();
             page.FocusInitial();
             Assert.Equal(library.VisibleTiles[7].AutomationName, AutomationProperties.GetName((Control)window.FocusManager.GetFocusedElement()!));
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaFact]
+    public async Task Library_dpad_crosses_pages_and_restores_the_previous_row()
+    {
+        var library = CreateLibrary();
+        await library.LoadCommand.ExecuteAsync(null);
+        library.VisibleTiles = Enumerable.Range(1, 24).Select(id => TileFixture.Tile(DateTime.UtcNow, releaseId: id, title: $"Game {id}")).ToArray();
+        using var context = new FullscreenContext(library, new FeedViewModel(new PreviewFeedService(), library), PreviewData.Shell);
+        var page = new FullscreenBrowsePage(context, false);
+        var window = new Window { Width = 1920, Height = 1080, Content = page };
+        window.Show();
+        try
+        {
+            Dispatcher.UIThread.RunJobs();
+            page.FocusInitial();
+            page.Handle(GamepadButtons.Right);
+            page.Handle(GamepadButtons.Down);
+            page.Handle(GamepadButtons.Down);
+            Dispatcher.UIThread.RunJobs();
+            Assert.Equal(library.VisibleTiles[13].AutomationName, AutomationProperties.GetName((Control)window.FocusManager!.GetFocusedElement()!));
+            page.Handle(GamepadButtons.Up);
+            Dispatcher.UIThread.RunJobs();
+            Assert.Equal(library.VisibleTiles[7].AutomationName, AutomationProperties.GetName((Control)window.FocusManager.GetFocusedElement()!));
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaFact]
+    public async Task Filter_shortcut_applies_from_the_top_and_cancel_keeps_the_previous_sort()
+    {
+        var library = CreateLibrary();
+        await library.LoadCommand.ExecuteAsync(null);
+        using var context = new FullscreenContext(library, new FeedViewModel(new PreviewFeedService(), library), PreviewData.Shell);
+        var page = new FullscreenBrowseFiltersPage(context);
+        var window = new Window { Width = 1920, Height = 1080, Content = page };
+        var stack = new Stack<Control>();
+        context.PageRequested += next => { stack.Push((Control)window.Content!); window.Content = next; };
+        var exits = 0;
+        context.BackRequested += () => { if (stack.Count > 0) window.Content = stack.Pop(); else exits++; };
+        window.Show();
+        try
+        {
+            Dispatcher.UIThread.RunJobs();
+            var original = library.Sort;
+            var selected = library.SortOptions.First(option => option.Sort != original);
+            Click(window, $"Sort · {library.SortLabel}");
+            Click(window, selected.Label);
+            Assert.Equal(original, library.Sort);
+            page.FocusInitial();
+            Assert.True(page.Handle(GamepadButtons.Keyboard));
+            Assert.Equal(selected.Sort, library.Sort);
+            Assert.Equal(1, exits);
+            page = new FullscreenBrowseFiltersPage(context);
+            window.Content = page;
+            Dispatcher.UIThread.RunJobs();
+            Click(window, $"Sort · {library.SortLabel}");
+            Click(window, library.SortOptions.First(option => option.Sort == original).Label);
+            Click(window, "Cancel");
+            Assert.Equal(selected.Sort, library.Sort);
+            Assert.Equal(2, exits);
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaFact]
+    public async Task Library_selection_replaces_its_dimmed_backdrop()
+    {
+        var library = CreateLibrary();
+        await library.LoadCommand.ExecuteAsync(null);
+        using var context = new FullscreenContext(library, new FeedViewModel(new PreviewFeedService(), library), PreviewData.Shell);
+        var page = new FullscreenBrowsePage(context, false);
+        var window = new Window { Width = 1920, Height = 1080, Content = page };
+        window.Show();
+        try
+        {
+            Dispatcher.UIThread.RunJobs();
+            page.FocusInitial();
+            var previous = Assert.Single(page.GetVisualDescendants().OfType<FullscreenBackdrop>());
+            page.Handle(GamepadButtons.Right);
+            Dispatcher.UIThread.RunJobs();
+            var current = Assert.Single(page.GetVisualDescendants().OfType<FullscreenBackdrop>());
+            Assert.NotSame(previous, current);
+            Assert.Null(previous.GetVisualParent());
+            Assert.Equal(.45, Assert.IsType<ContentControl>(current.Parent).Opacity);
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaFact]
+    public async Task Filter_apply_stays_visible_at_large_text_without_scrolling()
+    {
+        var library = CreateLibrary();
+        await library.LoadCommand.ExecuteAsync(null);
+        using var context = new FullscreenContext(library, new FeedViewModel(new PreviewFeedService(), library), PreviewData.Shell);
+        context.TextScale = 1.4;
+        using var television = new FullscreenView(context);
+        var window = new Window { Width = 1280, Height = 720, Content = television };
+        window.Show();
+        try
+        {
+            Dispatcher.UIThread.RunJobs();
+            context.Push(new FullscreenBrowseFiltersPage(context));
+            Dispatcher.UIThread.RunJobs();
+            AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+            var apply = Assert.Single(television.GetVisualDescendants().OfType<Button>(), button => AutomationProperties.GetName(button) == "Apply");
+            var bottom = apply.TranslatePoint(new Point(apply.Bounds.Width, apply.Bounds.Height), window)!.Value;
+            Assert.InRange(bottom.Y, 1, window.ClientSize.Height);
+            Assert.DoesNotContain(apply.GetVisualAncestors(), control => control is ScrollViewer);
+            if (Environment.GetEnvironmentVariable("WINNOW_UI_CAPTURE_DIR") is { } directory)
+            {
+                Directory.CreateDirectory(directory);
+                using var image = window.CaptureRenderedFrame();
+                image!.Save(Path.Combine(directory, "fullscreen-filters-large-text-1280.png"));
+            }
         }
         finally { window.Close(); }
     }
@@ -234,8 +371,10 @@ public sealed class FullscreenBrowseTests
         finally { window.Close(); }
     }
 
-    [AvaloniaFact]
-    public async Task Fullscreen_records_only_the_visible_feed_shelf_as_surfaced()
+    [AvaloniaTheory]
+    [InlineData(1920, 1080)]
+    [InlineData(1280, 720)]
+    public async Task Fullscreen_records_only_the_visible_feed_shelf_as_surfaced(int width, int height)
     {
         var library = CreateLibrary();
         await library.LoadCommand.ExecuteAsync(null);
@@ -244,7 +383,9 @@ public sealed class FullscreenBrowseTests
         await feed.LoadCommand.ExecuteAsync(null);
         var context = new FullscreenContext(library, feed, PreviewData.Shell);
         var page = new FullscreenBrowsePage(context, true);
-        var window = new Window { Width = 1920, Height = 1080, Content = page };
+        page.Width = 1920;
+        page.Height = 1080;
+        var window = new Window { Width = width, Height = height, Content = new Viewbox { Child = page } };
         Assert.Empty(service.Surfaced);
         window.Show();
         try
@@ -252,17 +393,29 @@ public sealed class FullscreenBrowseTests
             Dispatcher.UIThread.RunJobs();
             AvaloniaHeadlessPlatform.ForceRenderTimerTick();
             page.FocusInitial();
-            Dispatcher.UIThread.RunJobs();
+            await FlushFeedObservationAsync();
+            Assert.True(window.IsActive);
             Assert.Equal(feed.Shelves[0].Cards.Count, service.Surfaced.Count);
             Assert.All(service.Surfaced, id => Assert.Contains(feed.Shelves[0].Cards, card => card.Tile.ReleaseId == id));
             page.Handle(GamepadButtons.Down);
             Dispatcher.UIThread.RunJobs();
             AvaloniaHeadlessPlatform.ForceRenderTimerTick();
             page.FocusInitial();
-            Dispatcher.UIThread.RunJobs();
+            await FlushFeedObservationAsync();
             Assert.Equal(feed.Shelves.Sum(shelf => shelf.Cards.Count), service.Surfaced.Count);
         }
         finally { window.Close(); }
+    }
+
+    private static async Task FlushFeedObservationAsync()
+    {
+        // Compact cells resize during layout. Commit those bounds to the hit-test scene,
+        // then allow the same 100ms observation timer used after an overlay closes to tick.
+        Dispatcher.UIThread.RunJobs();
+        AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+        Dispatcher.UIThread.RunJobs();
+        await Task.Delay(150);
+        Dispatcher.UIThread.RunJobs();
     }
 
     private sealed class HistoryFeed(long releaseId) : IFeedService

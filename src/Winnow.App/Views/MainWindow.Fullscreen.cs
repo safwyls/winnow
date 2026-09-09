@@ -50,6 +50,7 @@ public partial class MainWindow
         }
         else if (!fullscreen && _presentingTv)
         {
+            RestoreMouseCursor();
             _presentingTv = false;
             TvHost.Content = null;
             RefreshDesktopAfterFullscreen();

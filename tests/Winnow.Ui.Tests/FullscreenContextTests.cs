@@ -36,6 +36,10 @@ public sealed class FullscreenContextTests
         Assert.NotSame(PreviewData.Library.Journal, context.Library.Journal);
         Assert.Same(titleLookup, PreviewData.Library.Journal.TitleFor);
         await context.LoadAsync();
+        context.SetFitUltrawide(true);
+        Assert.Equal("True", settings.Values["fullscreen.fit-ultrawide"]);
+        await context.LoadAsync();
+        Assert.True(context.FitUltrawide);
         var desktopQuery = PreviewData.Library.SearchText;
         context.Library.SearchText = "does not exist";
         Assert.Equal(desktopQuery, PreviewData.Library.SearchText);

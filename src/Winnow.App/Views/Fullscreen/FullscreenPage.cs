@@ -17,6 +17,7 @@ public abstract class FullscreenPage : UserControl, IDisposable
     private Control? _focused;
     public virtual string Title => "Winnow";
     public virtual string Hints => "A  Select     B  Back";
+    public virtual string RightHints => string.Empty;
     public event EventHandler? PageChanged;
     protected FullscreenPage(FullscreenContext context) { Context = context; }
     public virtual void Dispose() { GC.SuppressFinalize(this); }
@@ -106,6 +107,7 @@ public static class FullscreenUi
     public static Button Button(string label, Action action)
     {
         var button = new Button { Content = label, FontSize = 28, MinHeight = 64,
+            FocusAdorner = null,
             Padding = new Thickness(24, 12), HorizontalContentAlignment = HorizontalAlignment.Left,
             HorizontalAlignment = HorizontalAlignment.Stretch };
         button.Classes.Add("tv-action");
