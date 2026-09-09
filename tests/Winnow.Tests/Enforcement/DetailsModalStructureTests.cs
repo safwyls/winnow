@@ -13,40 +13,36 @@ public sealed class DetailsModalStructureTests
 {
     private const string View = "src/Winnow.App/Views/GameDetailsView.axaml";
 
-    /// <summary>
-    /// The order §10.1 fixes: corrections, then what shipped, then the prose
-    /// and the pictures inside it, then the three grouping sections, then the
-    /// lists. Read off the markup, because the order the file declares IS the
-    /// order the band draws and the order Tab walks.
-    /// </summary>
+    /// <summary>Tabs partition content by purpose while preserving the reading order within each.</summary>
     [Fact]
-    public void The_rest_band_declares_its_sections_in_the_order_the_design_fixes()
+    public void Tabs_keep_their_stable_order_and_own_their_content()
     {
-        var markup = RepositoryTree.Read(View);
-
-        string[] anchors =
-        [
-            "{Binding IgdbMatch.OpenLabel}",
-            "{Binding MetadataEditor.OpenLabel}",
-            "{Binding UpdatesLabel}",
-            "{Binding AboutHeading}",
-            "IsVisible=\"{Binding ShowCoverage}\"",
-            "IsVisible=\"{Binding ShowExtends}\"",
-            "IsVisible=\"{Binding ShowExpansions}\"",
-            "IsVisible=\"{Binding ShowLists}\"",
-        ];
-
-        var positions = anchors
-            .Select(a => (Anchor: a, At: markup.IndexOf(a, StringComparison.Ordinal)))
-            .ToList();
-
-        Assert.All(positions, p => Assert.True(p.At >= 0, $"{View} no longer contains {p.Anchor}"));
-
-        for (var i = 1; i < positions.Count; i++)
+        var document = System.Xml.Linq.XDocument.Parse(RepositoryTree.Read(View));
+        var tabs = document.Descendants().Where(element => element.Name.LocalName == "TabItem").ToList();
+        Assert.Equal(["OverviewTab", "ActivityTab", "LibraryTab"],
+            tabs.Select(tab => (string?)tab.Attribute("Name")));
+        foreach (var tab in tabs)
         {
-            Assert.True(
-                positions[i].At > positions[i - 1].At,
-                $"{positions[i].Anchor} is declared before {positions[i - 1].Anchor} in {View}");
+            var name = (string)tab.Attribute("Name")!;
+            Assert.Contains("{x:Static vm:GameDetailsCopy." + name + "}", tab.ToString(), StringComparison.Ordinal);
+        }
+
+        string[][] anchors =
+        [
+            ["{Binding AboutHeading}", "{Binding ShowExtends}", "{Binding ShowExpansions}"],
+            ["{Binding UpdatesLabel}", "{Binding Journal}"],
+            ["{Binding ShowCopyBreakdown}", "{Binding ShowLists}"],
+        ];
+        for (var index = 0; index < tabs.Count; index++)
+        {
+            var markup = tabs[index].ToString();
+            foreach (var anchor in anchors[index])
+            {
+                Assert.Contains(anchor, markup, StringComparison.Ordinal);
+                foreach (var other in tabs.Where(tab => tab != tabs[index]))
+                    Assert.DoesNotContain(anchor, other.ToString(), StringComparison.Ordinal);
+            }
+            Assert.Single(tabs[index].Elements(), element => element.Name.LocalName == "ScrollViewer");
         }
     }
 
@@ -107,11 +103,9 @@ public sealed class DetailsModalStructureTests
         Assert.Contains("Text=\"{Binding Refetch.Status}\"", field.Value, StringComparison.Ordinal);
         Assert.DoesNotContain("AutomationProperties.Name", field.Value, StringComparison.Ordinal);
 
-        // Outside the rest band's ScrollViewer: an act started from a popup is
-        // answered where it can always be seen.
-        var scroll = markup.IndexOf("<ScrollViewer Grid.Row=\"2\"", StringComparison.Ordinal);
-        Assert.True(scroll > 0);
-        Assert.True(field.Index < scroll, "The refetch status moved inside the rest band's scroll region.");
+        var document = System.Xml.Linq.XDocument.Parse(markup);
+        var status = document.Descendants().Single(element => (string?)element.Attribute("Name") == "RefetchStatus");
+        Assert.DoesNotContain(status.Ancestors(), ancestor => ancestor.Name.LocalName == "ScrollViewer");
     }
 
     /// <summary>
@@ -160,8 +154,8 @@ public sealed class DetailsModalStructureTests
 
     /// <summary>
     /// Every bounded scroll region in the modal clears its own bar, because
-    /// Fluent draws the bar over the content rather than beside it. The three
-    /// vertical regions take the trailing gutter; the screenshot strip, whose
+    /// Fluent draws the bar over the content rather than beside it. Each
+    /// vertical region takes the trailing gutter; the screenshot strip, whose
     /// bar is horizontal, takes the same width at its foot.
     /// </summary>
     [Fact]
@@ -169,7 +163,14 @@ public sealed class DetailsModalStructureTests
     {
         var markup = RepositoryTree.Read(View);
 
-        Assert.Equal(3, Regex.Matches(markup, @"\{StaticResource InnerScrollGutter\}").Count);
+        var document = System.Xml.Linq.XDocument.Parse(markup);
+        foreach (var scroll in document.Descendants().Where(element => element.Name.LocalName == "ScrollViewer"))
+        {
+            var horizontal = (string?)scroll.Attribute("HorizontalScrollBarVisibility") == "Auto";
+            var gutter = horizontal ? "InnerScrollGutterBottom" : "InnerScrollGutter";
+            Assert.Equal("{StaticResource " + gutter + "}",
+                (string?)scroll.Elements().First().Attribute("Margin"));
+        }
         Assert.Single(Regex.Matches(markup, @"\{StaticResource InnerScrollGutterBottom\}"));
     }
 

@@ -1454,7 +1454,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     }
 
     /// <summary>
-    /// Builds the left column's IGDB reassignment control, or null when no
+    /// Builds the focused IGDB reassignment control, or null when no
     /// assignment service is registered or the tile resolves to no work id.
     /// Uses the same resolved work id the LISTS and EXPANSIONS sections
     /// derive, so all three answer for the game rather than for a store
@@ -1485,7 +1485,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     }
 
     /// <summary>
-    /// Builds the right column's per-field metadata editor, or null when no
+    /// Builds the focused per-field metadata editor, or null when no
     /// edit service is registered or the tile resolves to no work id. Uses
     /// the same resolved work id <see cref="BuildIgdbMatchAsync"/> uses,
     /// through <c>GameWorkIdFor</c>, so the editor writes the row the lists,
@@ -1669,13 +1669,14 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     }
 
     /// <summary>
-    /// Reloads the library and reopens the detail modal on the ownership it
-    /// was already showing. Nothing reopens when that game is no longer in
-    /// the library.
+    /// Reloads the library and reopens the detail modal on the ownership and
+    /// tab it was already showing. Nothing reopens when that game is no
+    /// longer in the library.
     /// </summary>
     private async Task ReopenDetailsAsync()
     {
         var ownershipId = Details?.Tile.OwnershipId;
+        var selectedTabIndex = Details?.SelectedTabIndex ?? 0;
         await LoadAsync();
 
         if (ownershipId is not { } id)
@@ -1692,6 +1693,10 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         if (reopened is not null)
         {
             await OpenDetailsAsync(reopened);
+            if (Details is { } details)
+            {
+                details.SelectedTabIndex = selectedTabIndex;
+            }
         }
     }
 

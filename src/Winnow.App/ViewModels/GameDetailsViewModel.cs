@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
@@ -115,7 +116,66 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
 
         // Derives acknowledged state, rail marks, and caption.
         ApplyWatermark(acknowledgedThrough);
+        if (IgdbMatch is not null) IgdbMatch.PropertyChanged += OnToolPropertyChanged;
+        if (MetadataEditor is not null) MetadataEditor.PropertyChanged += OnToolPropertyChanged;
     }
+
+    [ObservableProperty]
+    public partial int SelectedTabIndex { get; set; }
+
+    public bool IsMetadataFocused => MetadataEditor is { IsOpen: true };
+    public bool IsMatchFocused => IgdbMatch is { IsOpen: true };
+    public bool IsFocusedView => IsMetadataFocused || IsMatchFocused;
+    public bool ShowDetailsTabs => !IsFocusedView;
+
+    private void OnToolPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (ReferenceEquals(sender, IgdbMatch) && e.PropertyName == nameof(GameIgdbMatchViewModel.ShowPinned))
+            OnPropertyChanged(nameof(HasTechnicalFacts));
+        // Only an explicit open/close changes navigation. Background metadata
+        // notifications must not reopen a tool or disturb the selected tab.
+        if (e.PropertyName != nameof(GameMetadataEditorViewModel.IsOpen)) return;
+        if (ReferenceEquals(sender, MetadataEditor) && IsMetadataFocused)
+            IgdbMatch?.CloseCommand.Execute(null);
+        else if (ReferenceEquals(sender, IgdbMatch) && IsMatchFocused)
+            MetadataEditor?.CloseCommand.Execute(null);
+        OnPropertyChanged(nameof(IsMetadataFocused));
+        OnPropertyChanged(nameof(IsMatchFocused));
+        OnPropertyChanged(nameof(IsFocusedView));
+        OnPropertyChanged(nameof(ShowDetailsTabs));
+    }
+
+    [RelayCommand]
+    private void BackToDetails()
+    {
+        MetadataEditor?.CloseCommand.Execute(null);
+        IgdbMatch?.CloseCommand.Execute(null);
+    }
+
+    [RelayCommand]
+    private void ShowActivity() => SelectedTabIndex = 1;
+
+    public string OverviewHistoryText => HasGap
+        ? $"Last played {LastPlayedText} · {IdleText} ago"
+        : NoGapText;
+
+    public int UnreadUpdateCount => Updates.Count(update => update.IsUnread);
+    public bool HasUnreadUpdates => UnreadUpdateCount > 0;
+    public string UpdatesShortcutText => GameDetailsCopy.UpdatesSincePlayed(UnreadUpdateCount);
+    public string ActivityTabAutomationName => HasUnreadUpdates
+        ? $"{GameDetailsCopy.ActivityTab}: {UpdatesShortcutText}"
+        : GameDetailsCopy.ActivityTab;
+    public bool HasNoUpdates => !HasUpdates && !HasGogPatchNotes;
+
+    public bool ShowCopyBreakdown => Coverage is { Rows.Count: > 0 };
+    public bool ShowOwnCopies => !ShowCopyBreakdown;
+    public IReadOnlyList<DetailsCopyRow> OwnCopies => Tile.Entries.Select(entry => new DetailsCopyRow(
+        entry.StoreName,
+        entry.Installed is null ? null : entry.Installed.Value ? "Installed" : "Not installed",
+        GameTileViewModel.BuildPlaytimeText(entry.PlaytimeMinutes),
+        entry.LastPlayedAt is { } played ? UpdateEventViewModel.LocalDateText(played) : null)).ToArray();
+
+    public bool HasTechnicalFacts => HasSteamAppId || HasInstallPath || IgdbMatch is { ShowPinned: true };
 
     /// <summary>The tile this describes — title, store, art and the stat strings all come from it.</summary>
     public GameTileViewModel Tile { get; private set; }
@@ -168,33 +228,25 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
     public bool ShowLists => Lists is not null;
 
     /// <summary>
-    /// The IGDB reassignment control, in the left column under the cover
-    /// art and the install path. Null when no assignment service is
-    /// registered or the tile has no work id, and then the modal is exactly
-    /// what it was before TASK-89.
+    /// The focused IGDB matching tool. Null when no assignment service is
+    /// registered or the game has no work id.
     /// </summary>
     public GameIgdbMatchViewModel? IgdbMatch { get; }
 
     public bool ShowIgdbMatch => IgdbMatch is not null;
 
     /// <summary>
-    /// The per-field metadata editor, disclosed from an "Edit details" link
-    /// in the action band and drawn full width in the right column's rest
-    /// band, under the IGDB reassignment control. Null when no
-    /// <see cref="Services.IWorkMetadataEditService"/> is registered or the
-    /// tile resolves to no work id, and then the modal is exactly what it
-    /// was before TASK-119.
+    /// The focused per-field metadata editor. Its instance stays alive when
+    /// returning to a tab so unsaved field drafts survive navigation.
     /// </summary>
     public GameMetadataEditorViewModel? MetadataEditor { get; }
 
     /// <summary>
-    /// Gates the null case only. The editor view self-gates on its own
-    /// <c>IsOpen</c>, so this decides whether the surface exists at all,
-    /// not whether it is disclosed.
+    /// Whether the optional editor is available; navigation is controlled by IsOpen.
     /// </summary>
     public bool ShowMetadataEditor => MetadataEditor is not null;
 
-    // ── Band 1: what is this ────────────────────────────────────────────────
+    // ── Identity ────────────────────────────────────────────────
 
     public string Title => Tile.Title;
 
@@ -234,7 +286,7 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
 
     public bool HasPublisher => Publisher is not null;
 
-    /// <summary>Band 1's reception line: up to three attributed figures, never blended.</summary>
+    /// <summary>Overview's reception line: up to three attributed figures, never blended.</summary>
     public GameReceptionViewModel? Reception { get; }
 
     /// <summary>Drawn only when at least one source contributed a figure.</summary>
@@ -265,7 +317,7 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
 
     public bool HasInstallPath => InstallPath is not null;
 
-    // ── Band 2: my history with it ──────────────────────────────────────────
+    // ── Your history ──────────────────────────────────────────
 
     /// <summary>Total on the clock — the one number big enough to read from across the room.</summary>
     public string PlaytimeText => Tile.PlaytimeText;
@@ -372,7 +424,7 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
 
     public bool HasRecordLine => RecordLine.Length > 0;
 
-    // ── Band 3: what happened while I was away ──────────────────────────────
+    // ── Updates ──────────────────────────────
 
     /// <summary>Newest first — the update the user missed most recently is the one they want.</summary>
     public IReadOnlyList<UpdateEventViewModel> Updates { get; }
@@ -381,7 +433,7 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
 
     /// <summary>
     /// The update list's heading, constant whether or not anything landed since
-    /// the last session. SINCE YOU PLAYED is Band 2's own rail label; one modal
+    /// the last session. SINCE YOU PLAYED is the history rail's label; one modal
     /// was saying the same words about two different things, so the list took a
     /// name of its own.
     /// </summary>
@@ -566,12 +618,16 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
 
         OnPropertyChanged(nameof(GapCaption));
         OnPropertyChanged(nameof(AxisLastSessionLine));
+        OnPropertyChanged(nameof(UnreadUpdateCount));
+        OnPropertyChanged(nameof(HasUnreadUpdates));
+        OnPropertyChanged(nameof(UpdatesShortcutText));
+        OnPropertyChanged(nameof(ActivityTabAutomationName));
     }
 
     /// <summary>Reloads the library after a flag change so bucket counts update.</summary>
     private Task ReloadLibraryAsync() => _reloadLibrary?.Invoke() ?? Task.CompletedTask;
 
-    // ── Band 4: get me in ───────────────────────────────────────────────────
+    // ── Actions ───────────────────────────────────────────────────
 
     /// <summary>Play or Install link, from the tile. Null when no honest action is available.</summary>
     public GameLink? PrimaryAction { get; private set; }
@@ -592,11 +648,7 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
     public bool HasGogPatchNotes => !string.IsNullOrWhiteSpace(GogPatchNotes);
 
     /// <summary>
-    /// The sentence Band 3 draws when there is no primary action and no
-    /// links — stating why the band cannot get the user in. Null when the
-    /// band does have a way in; a band with a store page in its links is
-    /// not a band with no way in. Takes <c>Text</c> ink, not <c>TextDim</c>,
-    /// because it carries the fact in the way §10.2's no-rail sentence does.
+    /// Explains why no primary action or outbound link is available for this copy.
     /// </summary>
     public string? NoWayInSentence { get; private set; }
 
@@ -633,28 +685,31 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
     /// <summary>The Hide row draws only when the library handed over its command.</summary>
     public bool ShowHide => HideCommand is not null;
 
+    public bool HasMoreActions => HasLinks || HasManagementAction || HasOpenableFolder
+        || ShowRefetch || ShowIgdbMatch || ShowMetadataEditor || ShowHide;
+
     /// <summary>Hide label — always singular, because this modal shows one game.</summary>
     public string HideLabel => LibrarySettingsCopy.HideDetailsButton;
 
     /// <summary>Tooltip on Hide, shared with the library's context menu.</summary>
     public string HideTooltip => LibrarySettingsCopy.HideTooltip;
 
-    /// <summary>Accessible group name for Band 1.</summary>
+    /// <summary>Accessible group name for the header.</summary>
     public string IdentityGroupName => GameDetailsCopy.IdentityGroupName;
 
-    /// <summary>Accessible group name for Band 2.</summary>
+    /// <summary>Accessible group name for the Activity history.</summary>
     public string HistoryGroupName => GameDetailsCopy.HistoryGroupName;
 
-    /// <summary>Accessible group name for Band 3.</summary>
+    /// <summary>Accessible group name for the header actions.</summary>
     public string ActionsGroupName => GameDetailsCopy.ActionsGroupName;
 
     /// <summary>Accessible name for the modal's close button.</summary>
     public string CloseAutomationName => GameDetailsCopy.CloseAutomationName;
 
-    /// <summary>Value label for the ACQUIRED block in the object column.</summary>
+    /// <summary>Value label for the ACQUIRED block in Library.</summary>
     public string AcquiredLabel => GameDetailsCopy.AcquiredLabel;
 
-    /// <summary>Section heading for ABOUT in Band 4.</summary>
+    /// <summary>Section heading for ABOUT in Overview.</summary>
     public string AboutHeading => GameDetailsCopy.AboutHeading;
 
     /// <summary>Accessible name for the launch button, e.g. "Install Empyrion: Galactic Survival".</summary>
@@ -670,7 +725,7 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
     /// <summary>Drawn only when screenshots exist.</summary>
     public bool ShowScreenshots => Screenshots is { HasShots: true };
 
-    /// <summary>The ACQUIRED block in the left column. Null when neither date nor licence exists.</summary>
+    /// <summary>The ACQUIRED block in Library. Null when neither date nor licence exists.</summary>
     public GameAcquisitionViewModel? Acquisition { get; }
 
     /// <summary>Drawn only when an acquisition fact exists.</summary>
@@ -690,6 +745,30 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
     public string? Summary => Tile.Summary;
 
     public bool HasSummary => Summary is not null;
+
+    public const int SummaryPreviewLength = 360;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SummaryText))]
+    [NotifyPropertyChangedFor(nameof(SummaryDisclosureLabel))]
+    public partial bool IsSummaryExpanded { get; set; }
+
+    public bool CanExpandSummary => Summary is { Length: > SummaryPreviewLength };
+
+    public string? SummaryText
+    {
+        get
+        {
+            if (Summary is not { } summary || IsSummaryExpanded || !CanExpandSummary) return Summary;
+            var end = summary.LastIndexOf(' ', SummaryPreviewLength);
+            return summary[..(end > 0 ? end : SummaryPreviewLength)].TrimEnd() + "…";
+        }
+    }
+
+    public string SummaryDisclosureLabel => IsSummaryExpanded ? GameDetailsCopy.ReadLess : GameDetailsCopy.ReadMore;
+
+    [RelayCommand]
+    private void ToggleSummary() => IsSummaryExpanded = !IsSummaryExpanded;
 
     /// <summary>Placeholder when no summary is available yet.</summary>
     public string EmptyBodyText => "No description yet. Metadata fills in automatically.";
@@ -723,6 +802,8 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
     /// </summary>
     public void Dispose()
     {
+        if (IgdbMatch is not null) IgdbMatch.PropertyChanged -= OnToolPropertyChanged;
+        if (MetadataEditor is not null) MetadataEditor.PropertyChanged -= OnToolPropertyChanged;
         _cover.Dispose();
         Screenshots?.Dispose();
         IgdbMatch?.Dispose();
@@ -812,4 +893,10 @@ public partial class GameDetailsViewModel : ObservableObject, IDisposable
 
         return (primary, links, sentence);
     }
+}
+
+public sealed record DetailsCopyRow(string Store, string? InstallState, string Playtime, string? LastPlayed)
+{
+    public bool HasInstallState => InstallState is not null;
+    public bool HasLastPlayed => LastPlayed is not null;
 }

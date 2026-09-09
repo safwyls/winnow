@@ -27,6 +27,7 @@ public sealed class VisualDisciplineTests
     private static readonly string[] UnreadBindings =
     [
         "IsUnread",         // the detail view's per-update pip
+        "UpdatesShortcutText", // the details Overview shortcut names its unread count
         "HasUnread",        // the feed card and the roster row
         "ShowsFlarePip",    // the rail's Patched since bucket
         "MarkBrush",        // the gap rail's marks

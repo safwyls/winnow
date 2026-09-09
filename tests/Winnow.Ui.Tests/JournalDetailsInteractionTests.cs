@@ -36,7 +36,7 @@ public sealed class JournalDetailsInteractionTests
             },
         ], promptEnabled: true, repository);
         var tile = TileFixture.Tile(now, ownershipId: 1, bucket: LibraryBuckets.Bounced, title: "Bluebird");
-        var model = new GameDetailsViewModel(tile, "Started", [], now, journal: journal);
+        var model = new GameDetailsViewModel(tile, "Started", [], now, journal: journal) { SelectedTabIndex = 1 };
         var view = new GameDetailsView { DataContext = model };
         var window = new Window { Width = 1200, Height = 640, Content = view };
         window.Show();
@@ -55,6 +55,12 @@ public sealed class JournalDetailsInteractionTests
                 AutomationProperties.GetName(box) == "Journal note");
             Assert.True(note.IsEffectivelyVisible);
             note.Text = "Found the key behind the waterfall.";
+            model.SelectedTabIndex = 2;
+            Flush();
+            model.SelectedTabIndex = 1;
+            Flush();
+            Assert.Equal("Found the key behind the waterfall.", journal.Entries[0].DraftNote);
+            Assert.True(journal.Entries[0].IsEditing);
             Click(Button(view, "Save"), window);
             await journal.Entries[0].SaveCommand.ExecutionTask!;
             Flush();
@@ -84,7 +90,7 @@ public sealed class JournalDetailsInteractionTests
         var journal = new GameJournalViewModel([], promptEnabled: false, new JournalRepository());
         var model = new GameDetailsViewModel(
             TileFixture.Tile(now, ownershipId: 1, bucket: LibraryBuckets.NeverPlayed, title: "Bluebird"),
-            "Never played", [], now, journal: journal);
+            "Never played", [], now, journal: journal) { SelectedTabIndex = 1 };
         var view = new GameDetailsView { DataContext = model };
         var window = new Window { Width = 1200, Height = 640, Content = view };
         window.Show();
@@ -106,6 +112,8 @@ public sealed class JournalDetailsInteractionTests
 
     private static void Click(Control control, Window window)
     {
+        control.BringIntoView();
+        Flush();
         var point = control.TranslatePoint(
             new Point(control.Bounds.Width / 2, control.Bounds.Height / 2), window)!.Value;
         window.MouseMove(point);
@@ -120,7 +128,7 @@ public sealed class JournalDetailsInteractionTests
         Dispatcher.UIThread.RunJobs();
     }
 
-    private sealed class JournalRepository : ISessionRepository
+    internal sealed class JournalRepository : ISessionRepository
     {
         public List<SessionNote> Saved { get; } = [];
         public List<long> Deleted { get; } = [];

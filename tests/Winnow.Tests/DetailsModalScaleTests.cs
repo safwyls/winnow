@@ -21,9 +21,8 @@ public sealed class DetailsModalScaleTests
     /// <summary>The card's width cap is half the window, floored at 860 and
     /// capped at 1582. The 1582 stays as a number but no longer has a
     /// derivation: it was the card width at which the in-modal hero reached
-    /// IGDB's native 1280x720, and the hero is gone. What still argues for a
-    /// ceiling is that nothing in the card rewards more width: the object column
-    /// is a fixed 200 and prose is bounded by the reading measure.</summary>
+    /// IGDB's native 1280x720. The tabbed modal retains that ceiling, and prose
+    /// remains bounded by the reading measure.</summary>
     [Theory]
     [InlineData(1200, 860)]
     [InlineData(1280, 860)]
@@ -41,7 +40,7 @@ public sealed class DetailsModalScaleTests
 
     /// <summary>
     /// The card's height cap is two-thirds of the window, floored at 720.
-    /// No ceiling: the bands are bounded scroll regions, so more height
+    /// No ceiling: the tabs are bounded scroll regions, so more height
     /// is more content on screen.
     /// </summary>
     [Theory]
@@ -57,8 +56,7 @@ public sealed class DetailsModalScaleTests
 
     /// <summary>
     /// The width floor must stay above the card's <c>MinWidth</c> of 700,
-    /// which is what keeps the 420px right column the narrowest case any
-    /// measurement has to hold for.
+    /// so a capped modal remains wide enough for its controls.
     /// </summary>
     [Fact]
     public void The_width_floor_stays_above_the_cards_own_minimum()
