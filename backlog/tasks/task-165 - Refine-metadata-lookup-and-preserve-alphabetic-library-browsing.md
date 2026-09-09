@@ -5,7 +5,7 @@ status: Done
 assignee:
   - '@codex'
 created_date: '2026-09-08 23:44'
-updated_date: '2026-09-09 00:41'
+updated_date: '2026-09-09 01:00'
 labels: []
 dependencies: []
 references:
@@ -32,6 +32,7 @@ Improve large-library browsing in three related ways: strip copyright and tradem
 - [x] #5 The alphabet spine sits immediately left of the native scrollbar, is hidden for non-name sorts, and preserves ascending or descending name order when used
 - [x] #6 The alphabetical scroll control keeps the native thumb and lets pointer users press and drag across the letter spine to scrub through available title sections
 - [x] #7 Pointer hover over the alphabet expands the adjacent native scrollbar; pointer press and vertical drag continuously maps to the scrollable extent like dragging its thumb, while nearby letters form a restrained horizontal wave that snaps under reduced motion.
+- [x] #8 The spine uses slightly larger glyphs and the ordinary arrow cursor, while the current scroll location has a persistent glow whose intensity falls off across neighboring alphabet stops in grid and list views.
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -44,6 +45,8 @@ Improve large-library browsing in three related ways: strip copyright and tradem
 6. Treat the alphabet spine and adjacent native thumb as one scroll control: capture pointer drags on the spine, map crossed rows to available title sections without altering sort direction, retain button activation for keyboard use, and verify drag behavior in both layouts.
 
 7. Replace section-step dragging with proportional ScrollViewer offset scrubbing, collapse the gap to the native scrollbar, visually engage its thumb from alphabet hover, and add a Niagara-inspired horizontal wave centered on the pointer with reduced-motion coverage.
+
+8. Increase alphabet legibility, restore the ordinary arrow cursor, and derive persistent location-emphasis classes from the active scroll viewer's offset so the current stop glows with a diminishing neighboring halo in both layouts.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -62,10 +65,14 @@ Second follow-up complete: the alphabet strip and native thumb now behave as one
 Third follow-up requested: replace the clunky section jumps with true thumb-equivalent continuous scrubbing, minimal rail gap, hover linkage to the native scrollbar, and a restrained Niagara-style letter wave.
 
 Third follow-up complete: the spine's hit area now meets the scrollbar with a 0-2px tested layout gap and right-aligned glyphs. Hover applies the scrollbar's engaged class and expands its thumb to at least 8px. Dragging maps pointer Y directly to the ScrollViewer's scrollable extent; a midpoint drag is asserted at 48-52% in both grid and list layouts. The nearest letter pulls 13px left with 9/5/2px neighboring falloff, and reduced-motion mode removes the 70ms transform transition. Rendered grid/list captures were inspected. Zero-warning build and all 4,103 Windows tests passed; 2 Linux-only monitor tests skipped as expected.
+
+Fourth follow-up requested: slightly larger alphabet text, no resize cursor over the spine, and a current-scroll-position glow with outward dimming.
+
+Fourth follow-up complete: alphabet glyphs increased from 10px to 11px and both enabled and disabled stops now retain the arrow cursor. Grid and list scroll-change events derive the current visible title section from the active offset; that stop receives a compact theme-derived Volt halo while three neighbors fall back through Volt, Text, and TextDim. Pointer wave and location glow remain independent. Headless coverage asserts typography, cursor, current-section mapping, center and neighbor classes, and glow fill in both layouts. Rendered captures were inspected. Zero-warning build and all 4,103 Windows tests passed; 2 Linux-only monitor tests skipped as expected.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
 
 <!-- SECTION:FINAL_SUMMARY:BEGIN -->
-Removed metadata title decoration, added alphabetical navigation, and preserved detail-close position. The finished alphabet rail now touches and wakes the native scrollbar: hovering expands the thumb, dragging continuously tracks the full scroll extent in either name direction, and a restrained four-letter wave follows the pointer with a no-transition reduced-motion mode. Verified with rendered grid/list captures, exact gap/thumb/offset/wave/motion assertions, a zero-warning build, and 4,103 passing tests with 2 expected Linux-only skips.
+Removed metadata title decoration, added alphabetical navigation, and preserved detail-close position. The alphabet rail now uses clearer 11px glyphs and the ordinary arrow cursor; its continuous thumb-equivalent scrub retains the Niagara-style pointer wave while a separate theme-aware glow follows the current visible title and dims across neighboring stops. Verified with rendered grid/list captures, exact interaction and location assertions, a zero-warning build, and 4,103 passing tests with 2 expected Linux-only skips.
 <!-- SECTION:FINAL_SUMMARY:END -->

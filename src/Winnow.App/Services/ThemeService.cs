@@ -629,6 +629,10 @@ public sealed class ThemeService
         // same reason the dot is: it IS the dot.
         resources["BadgeGlow"] = Glow(tokens["FlareGlow"], 10);
         resources["PipGlow"] = Glow(tokens["FlareSoft"], 8);
+
+        // The alphabet rail's current-location halo is the selection colour,
+        // not Flare: it marks where the viewport is, never unread state.
+        resources["AlphabetLocationGlow"] = Glow(tokens["VoltEdgeSoft"], 7);
     }
 
     private static BoxShadows Glow(Color colour, double blur)

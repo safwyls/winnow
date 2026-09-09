@@ -148,10 +148,13 @@ rest against the native scrollbar; that scrollbar keeps the window's 10px resize
 neither control overlays cover art nor enters the OS hit-test band. Pointer entry over the spine
 expands the native thumb. Pressing and dragging there maps continuously across the same scrollable
 extent as dragging the thumb rather than stepping between title sections. Around the pointer the
-nearest letter pulls 13px into the library and three neighbors follow with a short falloff, the
-desktop version of Niagara Launcher's Wave Alphabet; the 70ms settling transition is removed under
-reduced motion. The spine reverses to `Z–A` with the sort so downward motion always moves down the
-library. Each stop remains a named button with the standard visible focus treatment.
+nearest 11px letter pulls 13px into the library and three neighbors follow with a short falloff,
+the desktop version of Niagara Launcher's Wave Alphabet; the 70ms settling transition is removed
+under reduced motion. The pointer remains the ordinary arrow. Independently, the letter matching
+the current visible title carries a compact Volt halo, and three neighbors step outward through
+Volt, Text and TextDim so location remains legible when the pointer leaves. The spine reverses to
+`Z–A` with the sort so downward motion always moves down the library. Each stop remains a named
+button with the standard visible focus treatment.
 
 ```
 ┌──────────────┬────────────────────────────────────────────────────────┐

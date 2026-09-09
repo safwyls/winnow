@@ -6,6 +6,7 @@ using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Threading;
 using Avalonia.Interactivity;
+using Avalonia.Media;
 using Avalonia.VisualTree;
 using Winnow.App.Design;
 using Winnow.App.ViewModels.Lists;
@@ -132,6 +133,7 @@ public sealed class ListBrowsingPositionTests
             library.Sort = LibrarySort.NameAscending;
             Flush();
             Assert.True(spine.IsVisible);
+            Assert.Contains("Arrow", spine.Cursor!.ToString()!, StringComparison.OrdinalIgnoreCase);
             var scrollbar = scroll.GetVisualDescendants().OfType<ScrollBar>()
                 .Single(bar => bar.Orientation == Avalonia.Layout.Orientation.Vertical);
             var spineBounds = new Rect(spine.TranslatePoint(default, window)!.Value, spine.Bounds.Size);
@@ -148,6 +150,14 @@ public sealed class ListBrowsingPositionTests
             Assert.True(jumpToT.IsEnabled);
             Assert.False(jumpToA.IsEnabled);
             Assert.False(jumpToSymbols.IsEnabled);
+            Assert.Equal(11, jumpToT.FontSize);
+            var initialSection = LibraryViewModel.AlphabetSectionFor(library.VisibleTiles[0].Title);
+            var currentLocation = spine.GetVisualDescendants().OfType<Button>().Single(button =>
+                button.DataContext is AlphabetSectionViewModel section && section.Label == initialSection);
+            Assert.Contains("alphalocation4", currentLocation.Classes);
+            var currentGlyph = currentLocation.GetVisualDescendants().OfType<Border>()
+                .Single(border => border.Classes.Contains("alphaglyph"));
+            Assert.NotEqual(Brushes.Transparent, currentGlyph.Background);
 
             window.MouseMove(PointOnAlphabet(window, spine, 20));
             Flush();
@@ -175,6 +185,22 @@ public sealed class ListBrowsingPositionTests
             var scrollableHeight = scroll.Extent.Height - scroll.Viewport.Height;
             Assert.True(scrollableHeight > 0);
             Assert.InRange(scroll.Offset.Y / scrollableHeight, 0.48, 0.52);
+            var expectedTile = library.VisibleTiles[(int)Math.Round(
+                scroll.Offset.Y / scrollableHeight * (library.VisibleTiles.Count - 1))];
+            var expectedSection = LibraryViewModel.AlphabetSectionFor(expectedTile.Title);
+            var locationButtons = spine.GetVisualDescendants().OfType<Button>().ToArray();
+            var locationIndex = Array.FindIndex(locationButtons, button =>
+                button.DataContext is AlphabetSectionViewModel section && section.Label == expectedSection);
+            Assert.True(locationIndex >= 0);
+            Assert.Contains("alphalocation4", locationButtons[locationIndex].Classes);
+            if (locationIndex > 0)
+            {
+                Assert.Contains("alphalocation3", locationButtons[locationIndex - 1].Classes);
+            }
+            if (locationIndex < locationButtons.Length - 1)
+            {
+                Assert.Contains("alphalocation3", locationButtons[locationIndex + 1].Classes);
+            }
 
             library.Sort = LibrarySort.NameDescending;
             Flush();

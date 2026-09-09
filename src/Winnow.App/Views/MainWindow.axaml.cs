@@ -40,6 +40,7 @@ public partial class MainWindow : Window
     private IReadOnlyList<GameTileViewModel>? _detailsVisibleSource;
     private bool _alphabetDragging;
     private ScrollBar? _engagedAlphabetScrollBar;
+    private ScrollViewer? _trackedListScroll;
 
     internal bool StartHidden { get; init; }
 
@@ -70,6 +71,7 @@ public partial class MainWindow : Window
         AlphabetSpine.PointerEntered += OnAlphabetPointerEntered;
         AlphabetSpine.PointerExited += OnAlphabetPointerExited;
         AlphabetSpine.PointerCaptureLost += OnAlphabetPointerCaptureLost;
+        GridScroll.ScrollChanged += OnAlphabetScrollChanged;
 
         RequestBackdrop();
 
@@ -362,6 +364,9 @@ public partial class MainWindow : Window
     protected override async void OnOpened(EventArgs e)
     {
         base.OnOpened(e);
+
+        TrackListScroll();
+        UpdateAlphabetLocation();
 
         if (StartHidden)
         {
@@ -1272,6 +1277,34 @@ public partial class MainWindow : Window
     private ScrollViewer? ActiveLibraryScroll()
         => _library?.IsGridView == true ? GridScroll : ListRows.Scroll as ScrollViewer;
 
+    private void TrackListScroll()
+    {
+        var scroll = ListRows.Scroll as ScrollViewer;
+        if (_trackedListScroll == scroll)
+        {
+            return;
+        }
+
+        if (_trackedListScroll is not null)
+        {
+            _trackedListScroll.ScrollChanged -= OnAlphabetScrollChanged;
+        }
+
+        _trackedListScroll = scroll;
+        if (_trackedListScroll is not null)
+        {
+            _trackedListScroll.ScrollChanged += OnAlphabetScrollChanged;
+        }
+    }
+
+    private void OnAlphabetScrollChanged(object? sender, ScrollChangedEventArgs e)
+    {
+        if (ReferenceEquals(sender, ActiveLibraryScroll()))
+        {
+            UpdateAlphabetLocation();
+        }
+    }
+
     private void SetAlphabetScrollBarEngaged(bool engaged)
     {
         var scrollBar = ActiveLibraryScroll()?.GetVisualDescendants()
@@ -1337,6 +1370,61 @@ public partial class MainWindow : Window
         }
     }
 
+    private void UpdateAlphabetLocation()
+    {
+        var buttons = AlphabetSpine.GetVisualDescendants().OfType<Button>().ToArray();
+        foreach (var button in buttons)
+        {
+            SetAlphabetLocation(button, double.PositiveInfinity);
+        }
+
+        var scroll = ActiveLibraryScroll();
+        if (_library is null || scroll is null || buttons.Length == 0 || _library.VisibleTiles.Count == 0)
+        {
+            return;
+        }
+
+        var maximum = Math.Max(0, scroll.Extent.Height - scroll.Viewport.Height);
+        var proportion = maximum <= 0 ? 0 : Math.Clamp(scroll.Offset.Y / maximum, 0, 1);
+        var tileIndex = Math.Clamp(
+            (int)Math.Round(proportion * (_library.VisibleTiles.Count - 1)),
+            0,
+            _library.VisibleTiles.Count - 1);
+        var section = LibraryViewModel.AlphabetSectionFor(_library.VisibleTiles[tileIndex].Title);
+        var sections = _library.DisplayedAlphabetSections.ToArray();
+        var locationRow = Array.FindIndex(sections, candidate => candidate.Label == section);
+        if (locationRow < 0)
+        {
+            return;
+        }
+
+        for (var row = 0; row < buttons.Length; row++)
+        {
+            SetAlphabetLocation(buttons[row], Math.Abs(row - locationRow));
+        }
+    }
+
+    private static void SetAlphabetLocation(Button button, double distance)
+    {
+        button.Classes.Remove("alphalocation1");
+        button.Classes.Remove("alphalocation2");
+        button.Classes.Remove("alphalocation3");
+        button.Classes.Remove("alphalocation4");
+
+        var strength = distance switch
+        {
+            < 0.5 => 4,
+            < 1.5 => 3,
+            < 2.5 => 2,
+            < 3.5 => 1,
+            _ => 0,
+        };
+        if (strength > 0)
+        {
+            button.Classes.Add($"alphalocation{strength}");
+        }
+    }
+
     private void ScrollToAlphabetSection(string label)
     {
         if (_library is null)
@@ -1376,6 +1464,15 @@ public partial class MainWindow : Window
             case nameof(LibraryViewModel.VisibleTiles):
             case nameof(LibraryViewModel.IsGridView):
                 ResetScroll();
+                Dispatcher.UIThread.Post(() =>
+                {
+                    TrackListScroll();
+                    UpdateAlphabetLocation();
+                }, DispatcherPriority.Background);
+                break;
+
+            case nameof(LibraryViewModel.Sort):
+                Dispatcher.UIThread.Post(UpdateAlphabetLocation, DispatcherPriority.Background);
                 break;
 
             case nameof(LibraryViewModel.Details):

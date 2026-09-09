@@ -187,10 +187,10 @@
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
             <Setter Property="FontFamily" Value="{StaticResource DataFont}"/>
-            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="FontSize" Value="11"/>
             <Setter Property="HorizontalContentAlignment" Value="Right"/>
             <Setter Property="RenderTransform" Value="translateX(0px)"/>
-            <Setter Property="Cursor" Value="SizeNorthSouth"/>
+            <Setter Property="Cursor" Value="Arrow"/>
         </Style>
         <Style Selector="Button.alphaindex /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Padding" Value="0,2,0,0"/>
@@ -204,7 +204,7 @@
         </Style>
         <Style Selector="Button.alphaindex:disabled">
             <Setter Property="Opacity" Value="0.36"/>
-            <Setter Property="Cursor" Value="SizeNorthSouth"/>
+            <Setter Property="Cursor" Value="Arrow"/>
         </Style>
         <Style Selector="Button.alphaindex:disabled /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="Transparent"/>
@@ -236,6 +236,25 @@
         </Style>
         <Style Selector="Button.alphaindex.alphawave4 /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="TextElement.Foreground" Value="{StaticResource Text}"/>
+        </Style>
+
+        <!-- Persistent viewport location. The halo belongs only to the current
+             stop; neighboring ink walks back to the resting TextDim. -->
+        <Style Selector="Border.alphaglyph">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.alphaindex.alphalocation2 /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="TextElement.Foreground" Value="{StaticResource Text}"/>
+        </Style>
+        <Style Selector="Button.alphaindex.alphalocation3 /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="TextElement.Foreground" Value="{StaticResource Volt}"/>
+        </Style>
+        <Style Selector="Button.alphaindex.alphalocation4 /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="TextElement.Foreground" Value="{StaticResource VoltHover}"/>
+        </Style>
+        <Style Selector="Button.alphaindex.alphalocation4 Border.alphaglyph">
+            <Setter Property="Background" Value="{StaticResource VoltSelectionSoft}"/>
+            <Setter Property="BoxShadow" Value="{DynamicResource AlphabetLocationGlow}"/>
         </Style>
 
         <!-- Pointer entry over the letters deliberately wakes the sibling
@@ -1899,7 +1918,7 @@
                         HorizontalAlignment="Right"
                         VerticalAlignment="Stretch"
                         Background="{StaticResource PaneGround}"
-                        Cursor="SizeNorthSouth"
+                        Cursor="Arrow"
                         ToolTip.Tip="Drag to scroll the library"
                         IsVisible="{Binding Library.ShowAlphabetSpine}"
                         ZIndex="2">
@@ -1912,11 +1931,20 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="vm:AlphabetSectionViewModel">
                                 <Button Classes="alphaindex"
-                                        Content="{Binding Label}"
                                         IsEnabled="{Binding IsAvailable}"
                                         AutomationProperties.Name="{Binding AutomationName}"
                                         ToolTip.Tip="{Binding Tooltip}"
-                                        Click="OnAlphabetJumpClick"/>
+                                        Click="OnAlphabetJumpClick">
+                                    <Border Classes="alphaglyph"
+                                            MinWidth="12"
+                                            Height="14"
+                                            Padding="1,0"
+                                            CornerRadius="7">
+                                        <TextBlock Text="{Binding Label}"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"/>
+                                    </Border>
+                                </Button>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
