@@ -145,7 +145,10 @@ stops fixed, and dims unavailable sections without removing them. Activating a s
 the active name-sort direction and brings the first visible title in that section into view;
 `#` owns titles that begin with a number or symbol. The spine takes its own 24px column while
 the scrollbar keeps the window's 10px resize inset, so neither overlays cover art nor enters
-the OS hit-test band. Each stop is a named button with the standard visible focus treatment.
+the OS hit-test band. Together they are one scroll control: the native thumb provides precise
+continuous scrolling, while pressing and dragging over the spine scrubs through the available
+title sections. The spine reverses to `Z–A` with the sort so downward motion always moves down
+the library. Each stop remains a named button with the standard visible focus treatment.
 
 ```
 ┌──────────────┬────────────────────────────────────────────────────────┐

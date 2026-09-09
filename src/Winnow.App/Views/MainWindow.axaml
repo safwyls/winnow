@@ -187,7 +187,7 @@
             <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
             <Setter Property="FontFamily" Value="{StaticResource DataFont}"/>
             <Setter Property="FontSize" Value="10"/>
-            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Cursor" Value="SizeNorthSouth"/>
         </Style>
         <Style Selector="Button.alphaindex /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Padding" Value="0"/>
@@ -201,7 +201,7 @@
         </Style>
         <Style Selector="Button.alphaindex:disabled">
             <Setter Property="Opacity" Value="0.36"/>
-            <Setter Property="Cursor" Value="Arrow"/>
+            <Setter Property="Cursor" Value="SizeNorthSouth"/>
         </Style>
         <Style Selector="Button.alphaindex:disabled /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="Transparent"/>
@@ -1861,9 +1861,11 @@
                         HorizontalAlignment="Right"
                         VerticalAlignment="Stretch"
                         Background="{StaticResource PaneGround}"
+                        Cursor="SizeNorthSouth"
+                        ToolTip.Tip="Drag to scrub the alphabet"
                         IsVisible="{Binding Library.ShowAlphabetSpine}"
                         ZIndex="2">
-                    <ItemsControl ItemsSource="{Binding Library.AlphabetSections}">
+                    <ItemsControl ItemsSource="{Binding Library.DisplayedAlphabetSections}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
                                 <UniformGrid Rows="27"/>
@@ -1875,7 +1877,7 @@
                                         Content="{Binding Label}"
                                         IsEnabled="{Binding IsAvailable}"
                                         AutomationProperties.Name="{Binding AutomationName}"
-                                        ToolTip.Tip="{Binding AutomationName}"
+                                        ToolTip.Tip="{Binding Tooltip}"
                                         Click="OnAlphabetJumpClick"/>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>

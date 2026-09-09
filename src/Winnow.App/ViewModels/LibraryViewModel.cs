@@ -535,7 +535,8 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
     public partial IReadOnlyList<GameTileViewModel> VisibleTiles { get; set; } = [];
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasAlphabetSections), nameof(ShowAlphabetSpine))]
+    [NotifyPropertyChangedFor(
+        nameof(HasAlphabetSections), nameof(ShowAlphabetSpine), nameof(DisplayedAlphabetSections))]
     public partial IReadOnlyList<AlphabetSectionViewModel> AlphabetSections { get; set; } = [];
 
     [ObservableProperty]
@@ -598,7 +599,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         nameof(ShowTitleSortUp), nameof(ShowTitleSortDown),
         nameof(ShowPlaytimeSortUp), nameof(ShowPlaytimeSortDown),
         nameof(ShowIdleSortUp), nameof(ShowIdleSortDown),
-        nameof(ShowAlphabetSpine))]
+        nameof(ShowAlphabetSpine), nameof(DisplayedAlphabetSections))]
     public partial LibrarySort Sort { get; set; } = LibrarySort.DormantLongest;
 
     [ObservableProperty]
@@ -772,6 +773,15 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
 
     public bool ShowAlphabetSpine => HasAlphabetSections
         && Sort is LibrarySort.NameAscending or LibrarySort.NameDescending;
+
+    /// <summary>
+    /// The drag surface follows the list's direction, so moving down the spine
+    /// always moves down the alphabetically sorted library.
+    /// </summary>
+    public IEnumerable<AlphabetSectionViewModel> DisplayedAlphabetSections
+        => Sort == LibrarySort.NameDescending
+            ? AlphabetSections.Reverse()
+            : AlphabetSections;
 
     /// <summary>Command-bar button face: the order currently in force.</summary>
     public string SortLabel => LabelFor(Sort);

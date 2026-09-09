@@ -9,4 +9,6 @@ public sealed record AlphabetSectionViewModel(string Label, bool IsAvailable)
     public string AutomationName => Label == "#"
         ? "Jump to numbers and symbols"
         : $"Jump to {Label}";
+
+    public string Tooltip => $"{AutomationName}. Drag to scrub the alphabet.";
 }

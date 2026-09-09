@@ -38,6 +38,8 @@ public partial class MainWindow : Window
     private bool _detailsOpenedFromGrid;
     private Vector _detailsViewportOffset;
     private IReadOnlyList<GameTileViewModel>? _detailsVisibleSource;
+    private bool _alphabetDragging;
+    private int _lastAlphabetDragRow = -1;
 
     internal bool StartHidden { get; init; }
 
@@ -58,6 +60,14 @@ public partial class MainWindow : Window
         // See the card gesture before a child handles it, while leaving the
         // hover actions to handle their own presses.
         TileWall.AddHandler(PointerPressedEvent, OnTilePressed, RoutingStrategies.Tunnel);
+
+        // The letters and native thumb read as one scroll control. Buttons own
+        // click and keyboard activation; the surrounding spine sees pointer
+        // input first so a held press can scrub across their boundaries.
+        AlphabetSpine.AddHandler(PointerPressedEvent, OnAlphabetPointerPressed, RoutingStrategies.Tunnel);
+        AlphabetSpine.AddHandler(PointerMovedEvent, OnAlphabetPointerMoved, RoutingStrategies.Tunnel);
+        AlphabetSpine.AddHandler(PointerReleasedEvent, OnAlphabetPointerReleased, RoutingStrategies.Tunnel);
+        AlphabetSpine.PointerCaptureLost += OnAlphabetPointerCaptureLost;
 
         RequestBackdrop();
 
@@ -1175,6 +1185,80 @@ public partial class MainWindow : Window
         // direction: Z-A is as deliberate a browsing order as A-Z.
         Dispatcher.UIThread.Post(() => ScrollToAlphabetSection(section.Label), DispatcherPriority.Background);
         e.Handled = true;
+    }
+
+    private void OnAlphabetPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (!e.GetCurrentPoint(AlphabetSpine).Properties.IsLeftButtonPressed)
+        {
+            return;
+        }
+
+        _alphabetDragging = true;
+        _lastAlphabetDragRow = -1;
+        e.Pointer.Capture(AlphabetSpine);
+        ScrubAlphabet(e.GetPosition(AlphabetSpine));
+        e.Handled = true;
+    }
+
+    private void OnAlphabetPointerMoved(object? sender, PointerEventArgs e)
+    {
+        if (!_alphabetDragging)
+        {
+            return;
+        }
+
+        ScrubAlphabet(e.GetPosition(AlphabetSpine));
+        e.Handled = true;
+    }
+
+    private void OnAlphabetPointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (!_alphabetDragging)
+        {
+            return;
+        }
+
+        ScrubAlphabet(e.GetPosition(AlphabetSpine));
+        _alphabetDragging = false;
+        _lastAlphabetDragRow = -1;
+        e.Pointer.Capture(null);
+        e.Handled = true;
+    }
+
+    private void OnAlphabetPointerCaptureLost(object? sender, PointerCaptureLostEventArgs e)
+    {
+        _alphabetDragging = false;
+        _lastAlphabetDragRow = -1;
+    }
+
+    private void ScrubAlphabet(Point position)
+    {
+        if (_library is null || AlphabetSpine.Bounds.Height <= 0)
+        {
+            return;
+        }
+
+        var sections = _library.DisplayedAlphabetSections.ToArray();
+        if (sections.Length == 0)
+        {
+            return;
+        }
+
+        var row = Math.Clamp(
+            (int)Math.Floor(position.Y / AlphabetSpine.Bounds.Height * sections.Length),
+            0,
+            sections.Length - 1);
+        if (row == _lastAlphabetDragRow)
+        {
+            return;
+        }
+
+        _lastAlphabetDragRow = row;
+        if (sections[row].IsAvailable)
+        {
+            ScrollToAlphabetSection(sections[row].Label);
+        }
     }
 
     private void ScrollToAlphabetSection(string label)

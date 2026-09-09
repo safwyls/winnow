@@ -156,10 +156,17 @@ public sealed class ListBrowsingPositionTests
             Assert.True(scroll.Offset.Y > 0);
             Assert.StartsWith("T", library.VisibleTiles.Last().Title, StringComparison.OrdinalIgnoreCase);
 
+            scroll.Offset = default;
+            Flush();
+            DragAlphabet(window, spine, fromRow: 2, toRow: 20);
+            Assert.True(scroll.Offset.Y > 0);
+
             library.Sort = LibrarySort.NameDescending;
             Flush();
             scroll.Offset = default;
-            var jumpToC = buttons.Single(button => AutomationProperties.GetName(button) == "Jump to C");
+            var descendingButtons = window.GetVisualDescendants().OfType<Button>().ToArray();
+            var jumpToC = descendingButtons.Single(button =>
+                AutomationProperties.GetName(button) == "Jump to C");
             jumpToC.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             Flush();
             Assert.Equal(LibrarySort.NameDescending, library.Sort);
@@ -209,6 +216,22 @@ public sealed class ListBrowsingPositionTests
     private static ScrollViewer ScrollFor(MainWindow window, bool grid)
         => grid ? window.FindControl<ScrollViewer>("GridScroll")!
             : (ScrollViewer)window.FindControl<ListBox>("ListRows")!.Scroll!;
+
+    private static void DragAlphabet(Window window, Border spine, int fromRow, int toRow)
+    {
+        Point At(int row) => spine.TranslatePoint(
+            new Point(spine.Bounds.Width / 2, spine.Bounds.Height * (row + 0.5) / 27),
+            window)!.Value;
+
+        var start = At(fromRow);
+        var end = At(toRow);
+        window.MouseMove(start);
+        window.MouseDown(start, Avalonia.Input.MouseButton.Left);
+        window.MouseMove(end);
+        Flush();
+        window.MouseUp(end, Avalonia.Input.MouseButton.Left);
+        Flush();
+    }
 
     private static void Flush() => Dispatcher.UIThread.RunJobs();
 }
