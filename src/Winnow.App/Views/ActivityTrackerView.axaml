@@ -34,7 +34,24 @@
         <Style Selector="RadioButton.range:focus-visible /template/ Border#RangeBorder">
             <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
         </Style>
-        <Style Selector="Expander.recorded-hours /template/ ToggleButton#ExpanderHeader">
+        <Style Selector="Expander.recorded-hours">
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <StackPanel>
+                        <ToggleButton Name="ExpanderHeader" Classes="records-toggle"
+                                      Content="{TemplateBinding Header}"
+                                      IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+                                      HorizontalAlignment="Left"/>
+                        <ContentPresenter Content="{TemplateBinding Content}"
+                                          HorizontalContentAlignment="Stretch"
+                                          IsVisible="{TemplateBinding IsExpanded}" Margin="0,10,0,0"/>
+                    </StackPanel>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        <Style Selector="ToggleButton.records-toggle">
             <Setter Property="FontFamily" Value="{StaticResource BodyFont}"/>
             <Setter Property="FontSize" Value="12"/>
             <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
@@ -42,6 +59,28 @@
             <Setter Property="BorderBrush" Value="Transparent"/>
             <Setter Property="MinHeight" Value="26"/>
             <Setter Property="Padding" Value="0,3"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border Name="DisclosureBorder" Padding="{TemplateBinding Padding}"
+                            Background="Transparent" BorderBrush="Transparent" BorderThickness="1">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <Path Name="DisclosureArrow" Data="M 0,0 L 4,4 L 0,8 Z"
+                                  Fill="{TemplateBinding Foreground}" Width="8" Height="8"
+                                  VerticalAlignment="Center"/>
+                            <ContentPresenter Content="{TemplateBinding Content}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        <Style Selector="ToggleButton.records-toggle:checked /template/ Path#DisclosureArrow">
+            <Setter Property="Data" Value="M 0,0 L 8,0 L 4,4 Z"/>
+        </Style>
+        <Style Selector="ToggleButton.records-toggle:pointerover">
+            <Setter Property="Foreground" Value="{StaticResource Text}"/>
+        </Style>
+        <Style Selector="ToggleButton.records-toggle:focus-visible /template/ Border#DisclosureBorder">
+            <Setter Property="BorderBrush" Value="{StaticResource Volt}"/>
         </Style>
     </UserControl.Styles>
     <StackPanel Spacing="8">
@@ -96,7 +135,15 @@
             <ItemsControl ItemsSource="{Binding Series.Bars}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:ActivityTimelineBar">
-                        <TextBlock Classes="body" FontSize="12" Text="{Binding Label}" TextWrapping="Wrap" Margin="0,3"/>
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16" Margin="0,0,0,6"
+                              ToolTip.Tip="{Binding Label}">
+                            <TextBlock FontFamily="{StaticResource DataFont}" FontFeatures="tnum"
+                                       Foreground="{StaticResource TextDim}" FontSize="12"
+                                       Text="{Binding RecordDate}" TextWrapping="Wrap"/>
+                            <TextBlock Grid.Column="1" FontFamily="{StaticResource DataFont}" FontFeatures="tnum"
+                                       Foreground="{StaticResource TextDim}" FontSize="12"
+                                       Text="{Binding RecordedHours}" HorizontalAlignment="Right"/>
+                        </Grid>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>

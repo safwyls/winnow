@@ -4,7 +4,11 @@ using Winnow.Core.Domain;
 namespace Winnow.App.ViewModels;
 
 public sealed record ActivityTimelineBar(DateTime StartUtc, DateTime EndUtc, double Hours,
-    bool IsTracked, string Label);
+    bool IsTracked, string Label)
+{
+    public string RecordDate => Label.Split('·')[0].Trim();
+    public string RecordedHours => Hours.ToString("0.##", CultureInfo.CurrentCulture) + "h";
+}
 
 public sealed record ActivityTimelineCoverage(DateTime StartUtc, DateTime EndUtc);
 

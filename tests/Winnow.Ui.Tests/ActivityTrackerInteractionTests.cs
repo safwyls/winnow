@@ -55,6 +55,9 @@ public sealed class ActivityTrackerInteractionTests
             Assert.True(lifetime.IsChecked);
             Click(lifetime, window);
             Assert.True(lifetime.IsChecked);
+            var disclosure = view.FindControl<Expander>("RecordedHoursDisclosure")!;
+            Click(disclosure.GetVisualDescendants().OfType<ToggleButton>().Single(), window);
+            Assert.True(disclosure.IsExpanded);
             var directory = Environment.GetEnvironmentVariable("WINNOW_UI_CAPTURE_DIR");
             if (!string.IsNullOrWhiteSpace(directory))
             {
