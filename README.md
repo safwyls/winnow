@@ -82,8 +82,8 @@ up/down crosses library page edges; left/right in Activity changes weeks.
 - **D-pad / left stick:** navigate games and controls.
 - **A / south button:** select; on an editable text field, open the on-screen keyboard.
 - **B / east button:** back; closes text entry before the underlying dialog.
-- **LB / RB:** switch main screens; switch local sections on a game page.
-- **LT / RT:** page through games or activity.
+- **LB / RB:** switch main screens at the root.
+- **LT / RT:** switch local sections or shelves in Home, Library, Activity, Settings and game details.
 - **X / west button:** play the selected installed game.
 - **Y / north button:** the contextual action shown in the footer.
 - **View / Back button:** search from browsing.

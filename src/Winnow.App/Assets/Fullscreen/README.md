@@ -1,8 +1,9 @@
 # Fullscreen vector art
 
 Original Winnow artwork: `activity.svg` draws a quiet mountain landscape and paths;
-`settings.svg` draws concentric contours; `controller.svg` supplies the controller outline
-used in the input map. These are decorative illustrations, not activity data.
+`settings.svg` draws concentric contours. `controller.svg` adapts the bundled Kenney CC0
+Xbox Series controller silhouette into a themed outline for the input map (see
+`../Controller/License.txt`). These are decorative illustrations, not activity data.
 
 `FullscreenVectorArt` reads only the paths in these bundled SVGs. Their `data-fill` and
 `data-stroke` attributes name the shared theme brushes; SVG colour attributes make the

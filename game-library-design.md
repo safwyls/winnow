@@ -609,6 +609,12 @@ header. Detaching that layer releases its artwork lease; the detail page still o
 content and focus rows. Browse page capacity is presentation state and reflows around the
 selected release identity when the available columns change.
 
+Fullscreen IGDB landscapes use an `igdb-backdrop` cache key and the documented
+`t_1080p_2x` rendition, separate from desktop screenshot assets. Decode buckets extend to
+1920, 2560 and 3840 pixels, bounded by source dimensions and the shared memory budget.
+Resizing requests the appropriate display-sized lease. Desktop covers and screenshot
+renditions remain unchanged; both presentations share lease and eviction behavior.
+
 Controller input lives in `Winnow.App.Services`, independent of ingest and process monitoring.
 The window polls a read-only source at 33 ms while open. Windows loads XInput from the system
 directory; Linux reads nonblocking joydev events using kernel-reported button and axis maps.

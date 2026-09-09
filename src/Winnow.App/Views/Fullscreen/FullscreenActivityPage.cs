@@ -31,8 +31,8 @@ public sealed class FullscreenActivityPage : FullscreenPage
     private bool _disposed;
     private string _status = "Reading your activity…";
     public override string Title => "Activity";
-    public override string Hints => _selected is null ? "A  Select" : $"A  Open event{(_selected.Session is null ? "" : "     X  Edit note")}{(string.IsNullOrWhiteSpace(_selected.Note?.Note) ? "" : "     Y  Read note")}";
-    public override string RightHints => "LT / RT  Change week";
+    public override string Hints => (_selected is null ? "A  Select" : $"A  Open event{(_selected.Session is null ? "" : "     X  Edit note")}{(string.IsNullOrWhiteSpace(_selected.Note?.Note) ? "" : "     Y  Read note")}") + "     ← / →  Change week";
+    public override string RightHints => "LT / RT  Section";
 
     public FullscreenActivityPage(FullscreenContext context) : base(context)
     {
@@ -199,8 +199,15 @@ public sealed class FullscreenActivityPage : FullscreenPage
             Context.Push(new FullscreenDetailsReadingPage(Context, selected.Tile.Title, note));
             return true;
         }
-        if ((buttons & GamepadButtons.PagePrevious) != 0 || !_tabsFocused && buttons.HasFlag(GamepadButtons.Left)) { _week++; Render(); FocusInitial(); return true; }
-        if ((buttons & GamepadButtons.PageNext) != 0 || !_tabsFocused && buttons.HasFlag(GamepadButtons.Right)) { _week = Math.Max(0, _week - 1); Render(); FocusInitial(); return true; }
+        if ((buttons & (GamepadButtons.PagePrevious | GamepadButtons.PageNext)) != 0)
+        {
+            string[] sections = ["Sessions", "Updates", "Journal"];
+            var direction = buttons.HasFlag(GamepadButtons.PageNext) ? 1 : -1;
+            _section = sections[(Array.IndexOf(sections, _section) + direction + sections.Length) % sections.Length];
+            Render(); FocusInitial(); return true;
+        }
+        if (!_tabsFocused && buttons.HasFlag(GamepadButtons.Left)) { _week++; Render(); FocusInitial(); return true; }
+        if (!_tabsFocused && buttons.HasFlag(GamepadButtons.Right)) { _week = Math.Max(0, _week - 1); Render(); FocusInitial(); return true; }
         if ((buttons & GamepadButtons.Play) != 0 && _selected?.Session is { } session)
         {
             var row = _selected;

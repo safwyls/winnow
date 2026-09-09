@@ -112,7 +112,10 @@ public class CoverImagingTests
     [InlineData(592, 640)]   // 4x
     [InlineData(641, 1280)]  // past every grid bucket: the screenshot lightbox's own
     [InlineData(1280, 1280)] // t_screenshot_huge at its native width
-    [InlineData(2560, 1280)] // clamped: nothing is drawn wider than the shot is
+    [InlineData(1920, 1920)]
+    [InlineData(2560, 2560)]
+    [InlineData(3840, 3840)]
+    [InlineData(7680, 3840)] // bounded full-canvas decode
     public void Display_widths_snap_to_a_finite_set_of_buckets(double requested, int expected)
         => Assert.Equal(expected, CoverImaging.SnapWidth(requested));
 

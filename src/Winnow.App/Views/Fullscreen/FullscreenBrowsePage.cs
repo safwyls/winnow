@@ -81,7 +81,7 @@ public sealed class FullscreenBrowsePage : FullscreenPage
     public override string Hints => _feed
         ? $"A  {(_selected is null ? "Choose" : "Open game")}{PlayHint}    Y  More    View  Search    ↑ ↓  Change shelf"
         : $"A  Open game{PlayHint}    Y  Filter & sort    View  Search";
-    public override string RightHints => _feed ? string.Empty : $"LT / RT  Page {_state.Page + 1} / {_state.PageCount(Context.Library.VisibleTiles.Count)}";
+    public override string RightHints => _feed ? "LT / RT  Shelf" : "LT / RT  Collection";
     private string PlayHint => _selected is { IsOnDisk: true, IsPlayAction: true } ? "    X  Play" : string.Empty;
 
     public override void FocusInitial()
@@ -157,11 +157,25 @@ public sealed class FullscreenBrowsePage : FullscreenPage
                 && _state.MoveGridEdge(down ? 1 : -1, _columns, Context.Library.VisibleTiles.Select(t => t.ReleaseId).ToArray()))
             { Rebuild(); FocusInitial(); return true; }
         }
-        if (!_feed && (buttons.HasFlag(GamepadButtons.PageNext) || buttons.HasFlag(GamepadButtons.PagePrevious)))
+        if (buttons.HasFlag(GamepadButtons.PageNext) || buttons.HasFlag(GamepadButtons.PagePrevious))
         {
-            if (_state.MovePage(buttons.HasFlag(GamepadButtons.PageNext) ? 1 : -1,
-                    Context.Library.VisibleTiles.Select(t => t.ReleaseId).ToArray()))
-            { Rebuild(); FocusInitial(); }
+            var direction = buttons.HasFlag(GamepadButtons.PageNext) ? 1 : -1;
+            if (_feed)
+            {
+                var count = Context.Feed.Shelves.Count;
+                if (count > 0) { _shelf = (_shelf + direction + count) % count; Rebuild(); FocusInitial(); }
+            }
+            else
+            {
+                string[] collections = ["all", "installed", "never", "patched"];
+                var current = Context.Library.SelectedBucket?.Key switch
+                {
+                    LibraryBuckets.NeverPlayed => 2,
+                    LibraryBuckets.StaleButPatched => 3,
+                    _ => Context.Library.Filters.ToFilter().Installed == true ? 1 : 0
+                };
+                ChooseCollection(collections[(current + direction + collections.Length) % collections.Length]);
+            }
             return true;
         }
         return base.Handle(buttons);
@@ -502,6 +516,8 @@ public sealed class FullscreenCover : Border
     private CoverPresenter? _presenter;
     private readonly Image _floor = new() { Stretch = Stretch.UniformToFill };
     private readonly Image _vivid = new() { Stretch = Stretch.UniformToFill };
+    private readonly FullscreenCoverPadding _floorPadding = new();
+    private readonly FullscreenCoverPadding _vividPadding = new();
     private readonly TextBlock _placeholder;
     private bool _selected;
 
@@ -522,7 +538,7 @@ public sealed class FullscreenCover : Border
         _placeholder.TextTrimming = TextTrimming.WordEllipsis;
         _placeholder.Margin = new Thickness(16);
         _placeholder.VerticalAlignment = VerticalAlignment.Bottom;
-        var layers = new Panel { Children = { _floor, _vivid, _placeholder } };
+        var layers = new Panel { Children = { _floorPadding, _vividPadding, _floor, _vivid, _placeholder } };
         if (tile.HasUnread && !background)
         {
             var dot = new Border { Width = 18, Height = 18, CornerRadius = new CornerRadius(9), HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(12) };
@@ -547,6 +563,8 @@ public sealed class FullscreenCover : Border
             _presenter.PropertyChanged -= OnArtChanged;
             _floor.Source = null;
             _vivid.Source = null;
+            _floorPadding.Source = null;
+            _vividPadding.Source = null;
             _presenter.Dispose();
             _presenter = null;
         };
@@ -586,6 +604,12 @@ public sealed class FullscreenCover : Border
         _floor.Source = _presenter?.Floor;
         _vivid.Source = _presenter?.Vivid;
         _vivid.Opacity = _selected || _background ? 1 : _tile.DormancyAlpha;
+        if (!_background)
+        {
+            _floorPadding.Source = _presenter?.Floor;
+            _vividPadding.Source = _presenter?.Vivid;
+            _vividPadding.Opacity = _vivid.Opacity;
+        }
         _placeholder.IsVisible = _presenter?.HasCover != true && !_background;
     }
 }

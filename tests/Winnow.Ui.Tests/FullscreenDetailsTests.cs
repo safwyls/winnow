@@ -24,9 +24,10 @@ namespace Winnow.Ui.Tests;
 public sealed class FullscreenDetailsTests
 {
     [AvaloniaTheory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public void Cinematic_details_lease_saved_landscape_across_the_canvas_and_release_on_close(bool userBackground)
+    [InlineData(true, false)]
+    [InlineData(false, false)]
+    [InlineData(true, true)]
+    public void Cinematic_details_lease_saved_landscape_across_the_canvas_and_release_on_close(bool userBackground, bool longTitle)
     {
         // An original geometric landscape exercises real bitmap decoding/display without live library art.
         using var pixels = new RenderTargetBitmap(new PixelSize(1600, 900));
@@ -45,7 +46,8 @@ public sealed class FullscreenDetailsTests
                 Geometry.Parse("M 0,760 L 260,550 L 600,760 L 1050,510 L 1330,700 L 1600,580 L 1600,900 L 0,900 Z"));
         }
         var leases = new DetailLeases(new CoverArt(pixels, pixels));
-        var work = new Work { Id = 1, Name = "A distant shore", Summary = "Explore the mountain coast and find your way home.",
+        var work = new Work { Id = 1, Name = longTitle ? "A distant shore: the journey beyond the mountains and the forgotten coast" : "A distant shore",
+            Summary = string.Join(" ", Enumerable.Repeat("Explore the mountain coast and find your way home.", 12)),
             BackgroundUrl = userBackground ? UserArtRef.Format("landscape") : null };
         var images = new DetailImages();
         using var services = new ServiceCollection().AddSingleton<ICoverLeases>(leases)
@@ -67,7 +69,7 @@ public sealed class FullscreenDetailsTests
             Assert.Equal(1920, backdrop.Bounds.Width);
             Assert.Equal(1080, backdrop.Bounds.Height);
             Assert.Same(pixels, Assert.Single(backdrop.Children.OfType<Image>()).Source);
-            Assert.Contains(userBackground ? CoverKey.User("landscape") : CoverKey.IgdbScreenshot("detailshot"), leases.Keys);
+            Assert.Contains(userBackground ? CoverKey.User("landscape") : CoverKey.IgdbBackdrop("detailshot"), leases.Keys);
             Assert.Equal(userBackground ? 0 : 1, images.Reads);
             var hero = Assert.IsType<Grid>(Assert.IsType<Grid>(view.CurrentPage.Content).Children[0]);
             Assert.Empty(hero.GetVisualDescendants().OfType<Image>());
@@ -77,8 +79,12 @@ public sealed class FullscreenDetailsTests
                 AvaloniaHeadlessPlatform.ForceRenderTimerTick();
                 Dispatcher.UIThread.RunJobs();
                 using var frame = window.CaptureRenderedFrame();
-                frame!.Save(Path.Combine(directory, "fullscreen-details-landscape.png"));
+                frame!.Save(Path.Combine(directory, longTitle ? "fullscreen-details-long-title.png" : "fullscreen-details-landscape.png"));
             }
+            window.Width = 3840;
+            window.Height = 2160;
+            Dispatcher.UIThread.RunJobs();
+            Assert.Contains(leases.Requests, request => request.Key == (userBackground ? CoverKey.User("landscape") : CoverKey.IgdbBackdrop("detailshot")) && request.Width >= 3840);
             context.TextScale = 1.4;
             window.Width = 1280;
             window.Height = 720;
@@ -86,6 +92,31 @@ public sealed class FullscreenDetailsTests
             var layout = Assert.IsType<Grid>(view.CurrentPage.Content);
             Assert.True(hero.Bounds.Bottom <= layout.Children[1].Bounds.Top);
             Assert.True(layout.Children[2].Bounds.Height > 100);
+            Assert.Empty(view.CurrentPage.GetVisualDescendants().OfType<ScrollViewer>());
+            var strip = Assert.Single(view.CurrentPage.GetVisualDescendants().OfType<Grid>(), grid => grid.Name == "FullscreenOverviewScreenshots");
+            Assert.Equal(2, strip.Children.Count);
+            foreach (var button in strip.Children.OfType<Button>())
+            {
+                var position = button.TranslatePoint(default, layout)!.Value;
+                Assert.True(button.Bounds.Height >= 150);
+                Assert.True(position.Y + button.Bounds.Height <= layout.Bounds.Height + 1);
+                button.Focus();
+                Assert.Same(button, window.FocusManager!.GetFocusedElement());
+            }
+            if (longTitle && Environment.GetEnvironmentVariable("WINNOW_UI_CAPTURE_DIR") is { } scaledDirectory)
+            {
+                AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                Dispatcher.UIThread.RunJobs();
+                using var frame = window.CaptureRenderedFrame();
+                frame!.Save(Path.Combine(scaledDirectory, "fullscreen-details-long-title-140.png"));
+            }
+            var about = Assert.Single(view.CurrentPage.GetVisualDescendants().OfType<Button>(), button => Equals(button.Content, "About game"));
+            about.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+            Dispatcher.UIThread.RunJobs();
+            Assert.IsType<FullscreenDetailsReadingPage>(view.CurrentPage);
+            Assert.Contains(view.CurrentPage.GetVisualDescendants().OfType<TextBlock>(), block => block.Text == work.Summary);
+            view.Back();
+
             window.Content = null;
             details.Dispose();
             Assert.Equal(0, leases.Active);
@@ -120,8 +151,9 @@ public sealed class FullscreenDetailsTests
     {
         public int Active { get; private set; }
         public List<CoverKey> Keys { get; } = [];
+        public List<(CoverKey Key, double Width)> Requests { get; } = [];
         public ICoverLease Acquire(CoverKey key, double width, CoverLayers layers = CoverLayers.VividAndFloor)
-        { Active++; Keys.Add(key); return new DetailLease(this, art, key, CoverImaging.SnapWidth(width), layers); }
+        { Active++; Keys.Add(key); Requests.Add((key, width)); return new DetailLease(this, art, key, CoverImaging.SnapWidth(width), layers); }
         private sealed class DetailLease(DetailLeases owner, CoverArt art, CoverKey key, int width, CoverLayers layers) : ICoverLease
         {
             private bool _disposed;
@@ -304,7 +336,7 @@ public sealed class FullscreenDetailsTests
         try
         {
             Dispatcher.UIThread.RunJobs();
-            page.Handle(GamepadButtons.Previous);
+            page.Handle(GamepadButtons.PagePrevious);
             Dispatcher.UIThread.RunJobs();
             var ungroup = Assert.Single(page.GetVisualDescendants().OfType<Button>(), button =>
                 Avalonia.Automation.AutomationProperties.GetName(button) == row.UngroupAutomationName);
@@ -323,7 +355,7 @@ public sealed class FullscreenDetailsTests
     }
 
     [AvaloniaFact]
-    public void Opening_details_focuses_play_without_launching_and_bumpers_own_local_sections()
+    public void Opening_details_focuses_play_without_launching_and_triggers_own_local_sections()
     {
         var now = DateTime.UtcNow;
         using var details = new GameDetailsViewModel(TileFixture.Tile(now, title: "Across the room"), "Never played", [], now);
@@ -338,12 +370,12 @@ public sealed class FullscreenDetailsTests
             Assert.IsType<Button>(window.FocusManager!.GetFocusedElement());
             var first = (Button)window.FocusManager.GetFocusedElement()!;
             Assert.Equal(details.PrimaryAction?.Label ?? "More", first.Content);
-            Assert.True(page.Handle(GamepadButtons.Next));
+            Assert.True(page.Handle(GamepadButtons.PageNext));
             Assert.Equal(1, page.SelectedSection);
             Assert.Equal(0, details.SelectedTabIndex);
-            Assert.True(page.Handle(GamepadButtons.Previous));
+            Assert.True(page.Handle(GamepadButtons.PagePrevious));
             Assert.Equal(0, page.SelectedSection);
-            Assert.True(page.Handle(GamepadButtons.Previous));
+            Assert.True(page.Handle(GamepadButtons.PagePrevious));
             Assert.Equal(3, page.SelectedSection);
         }
         finally { window.Close(); }

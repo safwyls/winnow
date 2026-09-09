@@ -52,9 +52,12 @@ public sealed class FullscreenSettingsTests
             for (var i = 0; i < 3; i++) television.Handle(GamepadButtons.Next);
             Dispatcher.UIThread.RunJobs();
             var settings = Assert.IsType<FullscreenSettingsPage>(television.CurrentPage);
-            settings.GetVisualDescendants().OfType<Button>().Single(b => Equals(b.Content, "Controller")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            settings.Handle(GamepadButtons.PageNext);
             Dispatcher.UIThread.RunJobs();
-            Assert.Single(settings.GetVisualDescendants().OfType<Canvas>(), c => c.Width == 800);
+            var diagram = Assert.Single(settings.GetVisualDescendants().OfType<Canvas>(), c => c.Name == "FullscreenControllerDiagram");
+            Assert.Equal(Avalonia.Media.Stretch.Uniform, Assert.IsType<Viewbox>(diagram.Parent).Stretch);
+            var outline = Assert.IsType<Avalonia.Controls.Shapes.Path>(diagram.Children[0]);
+            Assert.InRange(outline.Data!.Bounds.Width / outline.Data.Bounds.Height, 1.4, 1.5);
             Assert.Contains(settings.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "D-pad or left stick.");
             Assert.Contains(settings.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "Open a game or choice.");
             Capture(window, "controller-large-text");
@@ -62,6 +65,10 @@ public sealed class FullscreenSettingsTests
             var scrolling = settings.GetVisualDescendants().OfType<ScrollViewer>().Single();
             Assert.True(scrolling.Extent.Height <= scrolling.Viewport.Height || scrolling.Offset.Y > 0);
             Capture(window, "controller-large-text-scrolled");
+            settings.Handle(GamepadButtons.PageNext); Dispatcher.UIThread.RunJobs();
+            Assert.Contains(settings.GetVisualDescendants().OfType<Button>(), b => AutomationProperties.GetName(b) == "Journal after playing");
+            settings.Handle(GamepadButtons.PagePrevious); Dispatcher.UIThread.RunJobs();
+            Assert.Contains(settings.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "LT / RT switches local sections.");
         }
         finally { window.Close(); }
     }

@@ -446,6 +446,20 @@ public class IgdbCoverSourceTests
     }
 
     [Fact]
+    public async Task Fullscreen_backdrop_uses_high_resolution_without_reusing_screenshot_cache()
+    {
+        using var dir = new TempCoverDirectory();
+        var cdn = new FakeCoverCdn();
+        var igdb = new FakeIgdbClient();
+        cdn.AddIgdbCover("sc1abc", TestArt.Capsule(1920, 1080), "t_1080p_2x");
+        var source = Source(igdb, cdn, dir.Options());
+        Assert.NotNull(await source.TryFetchAsync(CoverKey.IgdbBackdrop("sc1abc")));
+        Assert.Equal("/igdb/image/upload/t_1080p_2x/sc1abc.jpg", Assert.Single(cdn.Requests));
+        Assert.NotEqual(CoverKey.IgdbScreenshot("sc1abc").CacheStem, CoverKey.IgdbBackdrop("sc1abc").CacheStem);
+        Assert.Equal(0, igdb.BatchCount);
+    }
+
+    [Fact]
     public async Task A_cover_key_still_asks_for_the_cover_rendition()
     {
         using var dir = new TempCoverDirectory();

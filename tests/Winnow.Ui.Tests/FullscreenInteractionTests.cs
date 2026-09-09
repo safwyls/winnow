@@ -17,6 +17,34 @@ namespace Winnow.Ui.Tests;
 public sealed class FullscreenInteractionTests
 {
     [AvaloniaFact]
+    public void Hovered_and_current_actions_have_no_underline_when_focus_moves_elsewhere()
+    {
+        var context = new FullscreenContext(PreviewData.Library, PreviewData.Feed, PreviewData.Shell);
+        using var television = new FullscreenView(context);
+        var window = new Window { Width = 1920, Height = 1080, Content = television };
+        window.Show();
+        try
+        {
+            television.Handle(GamepadButtons.Previous);
+            Dispatcher.UIThread.RunJobs();
+            var actions = television.CurrentPage.GetVisualDescendants().OfType<Button>().ToArray();
+            var margins = actions.Single(b => Avalonia.Automation.AutomationProperties.GetName(b) == "Screen margins");
+            var point = margins.TranslatePoint(new Point(margins.Bounds.Width / 2, margins.Bounds.Height / 2), window)!.Value;
+            window.MouseMove(point);
+            margins.Focus();
+            television.Handle(GamepadButtons.Down);
+            Dispatcher.UIThread.RunJobs();
+            Assert.NotSame(margins, window.FocusManager!.GetFocusedElement());
+            Assert.Equal(0, Assert.IsAssignableFrom<Avalonia.Media.ISolidColorBrush>(margins.BorderBrush).Color.A);
+            foreach (var current in actions.Where(b => b.Classes.Contains("current") && !b.IsFocused))
+                Assert.Equal(0, Assert.IsAssignableFrom<Avalonia.Media.ISolidColorBrush>(current.BorderBrush).Color.A);
+            var focused = Assert.IsAssignableFrom<Button>(window.FocusManager.GetFocusedElement());
+            Assert.NotEqual(0, Assert.IsAssignableFrom<Avalonia.Media.ISolidColorBrush>(focused.BorderBrush).Color.A);
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaFact]
     public async Task Details_backdrop_fills_canvas_and_back_header_restores_its_origin()
     {
         var library = new App.ViewModels.LibraryViewModel(new PreviewLibraryQueryRepository(),

@@ -3460,3 +3460,34 @@ It previously said:
 > The follow-up polish uses bundled Kenney CC0 controller glyphs, transparent underline
 > controls, a dragon wordmark, themed original SVG backdrops and a persisted ultrawide-fit
 > preference. Browse covers use 5:6 frames with uniform cropping and compact spacing.
+
+## 2026-09-09 — Focus-only underlines and local trigger navigation
+
+Fullscreen reserves the underline for focus, maps triggers to local sections, and keeps
+screenshot previews visible in a bounded overview. Desktop presentation stays independent.
+The corrected fullscreen visual specification previously said:
+
+> Text actions have transparent backgrounds and a mint underline on focus. The current top-level
+> section has a persistent underline; the focused cover retains its outline.
+> LB / RB: Switch For you, Library, Activity and Settings at the root; switch local sections on a game page.
+> Paging prompts sit at the right edge.
+> Stable 2:3 frames use uniform fitting so user-supplied art keeps its whole image even when its proportions differ.
+> Triggers also page through the collection.
+> Artwork has its own display-sized lease.
+> The game title starts at 96px and wraps to at most two lines in a bounded left region.
+> The hero grows for long titles and large text. Overview separates the history/return reason
+> from the description and screenshots with a vertical rule; history leads use 48px display
+> type and descriptions use 32px body type. Local sections and all management actions remain
+> controller-accessible. Long overview content scrolls below the stable header and actions.
+> Triggers change the visible Monday-based week; left/right does the same from the event region.
+> Neither can advance past the current week.
+
+README previously said:
+
+> **LB / RB:** switch main screens; switch local sections on a game page.
+> **LT / RT:** page through games or activity.
+
+Fullscreen landscapes have a separate cache provider so previously downloaded 720p screenshots
+cannot satisfy high-resolution background requests. Desktop screenshot downloads retain their
+existing rendition. IGDB documents 1080p and its 2x suffix at
+[Images](https://api-docs.igdb.com/#images); source resolution still limits visible detail.

@@ -542,8 +542,8 @@ ratio while keeping the 1080px reference height and uniform scaling. The default
 **For you** opens on a focused recommendation in a horizontal cover shelf. A large title,
 one-sentence reason and game artwork above the shelf follow the selection. Up/down changes
 shelves; left/right moves among their games. The selected cover has the only focus ring.
-Text actions have transparent backgrounds and a mint underline on focus. The current top-level
-section has a persistent underline; the focused cover retains its outline. No desktop
+Text actions have transparent backgrounds and a mint underline only on focus. Hover leaves
+no underline; current sections use bold text. The focused cover retains its outline. No desktop
 rail, density control, hover actions or small cover buttons appear here.
 
 **Library** uses a regular cover grid and a short row of collection choices. A dedicated
@@ -558,7 +558,8 @@ position; Back restores the exact origin, including after viewing details.
 | Input | Behavior |
 |---|---|
 | D-pad / left stick | Move through explicit neighbors; no free cursor or inferred desktop tab order |
-| LB / RB | Switch For you, Library, Activity and Settings at the root; switch local sections on a game page |
+| LB / RB | Switch For you, Library, Activity and Settings at the root |
+| LT / RT | Switch local sections or shelves in Home, Library, Activity, Settings and game details |
 | A | Open the focused game or activate the focused action; opening details never launches |
 | B | Close the top layer or return one level; root never exits immediately |
 | X | Play the selected installed game from a browse screen; unavailable shortcuts are omitted |
@@ -567,7 +568,7 @@ position; Back restores the exact origin, including after viewing details.
 | Menu | Open a quick menu with Settings and Exit fullscreen; controller help is in Settings |
 
 The footer shows actions available in the current state using bundled Kenney vector controller
-glyphs. Paging prompts sit at the right edge. The current input sources use Xbox-style
+glyphs. Local section and paging prompts sit at the right edge. The current input sources use Xbox-style
 button shapes; device-specific glyph families are not detected. The dragon mark sits beside
 the Winnow title. Controller input hides the mouse cursor; mouse movement or a click restores it. Clock and optional battery status sit in a quiet
 top corner. Unknown battery state is omitted. Nested sheets trap focus and restore it on
@@ -587,7 +588,8 @@ composition for each task. The mock images are design references, not evidence o
 **Library** uses two rows of complete portrait covers. The column count responds to available
 width, row height and text size; wider displays show more games instead of stretching or
 cropping artwork. Stable 2:3 frames use uniform fitting so user-supplied art keeps its whole
-image even when its proportions differ. Titles sit below the covers, with a mint outline on
+image even when its proportions differ. Padding takes the average color of the adjoining
+artwork edge, with separate vivid and dormant colors. Titles sit below the covers, with a mint outline on
 the focused game. Unread dots and dormancy retain their shared meaning. A dimmed landscape
 backdrop follows the selection. Home and search use the same uncropped art treatment; home
 only shows the recommendations actually returned by the feed.
@@ -595,30 +597,32 @@ only shows the recommendations actually returned by the feed.
 Resizing recomputes page capacity while keeping the selected release anchored. Up from the
 first row on the first page reaches the collection choices. At grid edges, down advances a
 page and up returns to the previous page, preserving the column where possible. Triggers
-also page through the collection. Y opens Filter & sort; View opens Search. Opening a game
+cycle All games, Installed, Never played and Patched collections; My lists remains an explicit
+picker. Y opens Filter & sort; View opens Search. Opening a game
 and returning restores the collection and selected game.
 
 **Game details** uses a landscape backdrop across the full canvas, including the header.
 A dark left and top veil protects the title and status text; a vertical fade settles into
 Ground before the overview content. Prefer the saved game background, then an available
-landscape screenshot, then a quiet cover fallback. Artwork has its own display-sized lease.
+landscape screenshot, then a quiet cover fallback. Artwork has its own display-sized lease
+and high-resolution cache entry; its source quality remains the upper limit on sharpness.
 The header shows B and the previous page name plus controller status and the clock. The
 root navigation and wordmark return when leaving details.
 
-The game title starts at 96px and wraps to at most two lines in a bounded left region. The
+The game title starts at 96px, uses 72px for long names and wraps to at most two lines in a bounded left region. The
 primary action is larger than adjacent actions while retaining transparent underline focus.
-The hero grows for long titles and large text. Overview separates the history/return reason
-from the description and screenshots with a vertical rule; history leads use 48px display
-type and descriptions use 32px body type. Local sections and all management actions remain
-controller-accessible. Long overview content scrolls below the stable header and actions.
+Overview is a bounded composition without a scroll fold. A vertical rule separates the
+history/return reason and Play history/About game actions from a two-line synopsis and two
+visible screenshot previews. About game opens the full description, publisher and reception
+in a reading page. LT/RT changes local sections; all management actions remain controller-accessible.
 
 **Activity** is a personal history view. Sessions, Updates and Journal are local choices
 reached with directional navigation; bumpers continue switching the main screens. Large
 chronological rows occupy the left side and the selected event's art, facts and user note
 occupy the right. The implementation reads saved sessions and notes plus raw update signals
 for games visible in the fullscreen library. A opens session actions or the update's game;
-X edits the selected session's note when applicable. Triggers change the visible Monday-based
-week; left/right does the same from the event region. Neither can advance past the current
+X edits the selected session's note when applicable. Triggers change local sections;
+left/right changes the Monday-based week from the event region and cannot advance past the current
 week. Sessions and Journal have distinct empty-state copy: Journal requires a saved note or
 rating. Activity and Settings use quiet original SVG backdrops with theme-colored paths. The note editor offers deliberate Save and
 Cancel actions and an optional one-to-five rating. Library summary provides the current

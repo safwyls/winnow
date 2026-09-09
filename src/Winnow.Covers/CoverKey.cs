@@ -13,6 +13,7 @@ public static class CoverProviders
     /// first.
     /// </summary>
     public const string IgdbScreenshot = "igdb-shot";
+    public const string IgdbBackdrop = "igdb-backdrop";
     public const string User = "user";
 }
 
@@ -41,6 +42,9 @@ public readonly record struct CoverKey(string Provider, string Id)
     /// and the wrong resolution for a strip that expands one shot to a hero.
     /// </summary>
     public static CoverKey IgdbScreenshot(string imageId) => new(CoverProviders.IgdbScreenshot, imageId);
+
+    /// <summary>Full-canvas landscape rendition, isolated from the smaller screenshot cache.</summary>
+    public static CoverKey IgdbBackdrop(string imageId) => new(CoverProviders.IgdbBackdrop, imageId);
 
     /// <summary>
     /// A key for user-supplied art, keyed by the content token (the SHA-256

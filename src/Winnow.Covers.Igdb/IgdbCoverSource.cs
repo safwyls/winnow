@@ -104,7 +104,7 @@ public sealed class IgdbCoverSource : ICoverSource
     /// screenshot. Both go to the same CDN at a different size token.
     /// </summary>
     private static bool IsImageIdProvider(string provider)
-        => provider == CoverProviders.Igdb || provider == CoverProviders.IgdbScreenshot;
+        => provider is CoverProviders.Igdb or CoverProviders.IgdbScreenshot or CoverProviders.IgdbBackdrop;
 
     /// <summary>
     /// Picks the CDN size token. Screenshots get
@@ -113,9 +113,12 @@ public sealed class IgdbCoverSource : ICoverSource
     /// portrait).
     /// </summary>
     private string SizeTokenFor(CoverKey key)
-        => key.Provider == CoverProviders.IgdbScreenshot
-            ? _options.ScreenshotSizeToken
-            : _options.ImageSizeToken;
+        => key.Provider switch
+        {
+            CoverProviders.IgdbBackdrop => _options.BackdropSizeToken,
+            CoverProviders.IgdbScreenshot => _options.ScreenshotSizeToken,
+            _ => _options.ImageSizeToken
+        };
 
     /// <summary>
     /// Resolves <paramref name="appIds"/> to IGDB covers ahead of demand, in

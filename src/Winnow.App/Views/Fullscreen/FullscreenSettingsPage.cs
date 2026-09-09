@@ -13,6 +13,7 @@ namespace Winnow.App.Views.Fullscreen;
 
 public sealed class FullscreenSettingsPage : FullscreenPage
 {
+    private static readonly string[] Sections = ["Appearance", "Controller", "Library", "Platforms", "Application"];
     private string _section = "Appearance";
     private readonly Dictionary<Control, Action<int>> _adjustments = [];
     private readonly List<Action> _valueRefreshers = [];
@@ -23,6 +24,7 @@ public sealed class FullscreenSettingsPage : FullscreenPage
     public Task PendingLibraryRefresh { get; private set; } = Task.CompletedTask;
     public override string Title => "Settings";
     public override string Hints => _section == "Appearance" ? "← / →  Adjust     A  Select     Y  Reset page" : "A  Select     B  Back";
+    public override string RightHints => "LT / RT  Section";
 
     public FullscreenSettingsPage(FullscreenContext context) : base(context)
     {
@@ -43,7 +45,7 @@ public sealed class FullscreenSettingsPage : FullscreenPage
         _adjustments.Clear();
         _valueRefreshers.Clear();
         _initial = null;
-        var tabs = new[] { "Appearance", "Controller", "Library", "Platforms", "Application" }.Select(label =>
+        var tabs = Sections.Select(label =>
             FullscreenUi.Button(label, () => { _section = label; Render(); FocusInitial(); })).ToArray();
         var nav = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 16 };
         foreach (var tab in tabs) { tab.Classes.Set("current", Equals(tab.Content, _section)); nav.Children.Add(tab); tab.GotFocus += (_, _) => _focused = tab; }
@@ -168,11 +170,18 @@ public sealed class FullscreenSettingsPage : FullscreenPage
         }
         var layout = new Grid { RowDefinitions = new RowDefinitions("Auto,Auto,*"), RowSpacing = 24 };
         layout.Children.Add(FullscreenUi.Text("Make yourself comfortable", 64)); Grid.SetRow(nav, 1); layout.Children.Add(nav); Grid.SetRow(main, 2); layout.Children.Add(main);
+        _initial ??= tabs[Array.IndexOf(Sections, _section)];
         Content = FullscreenAmbientBackdrop.Behind(layout, "settings"); SetFocusRows(focus.ToArray()); Changed();
     }
 
     public override bool Handle(GamepadButtons buttons)
     {
+        if ((buttons & (GamepadButtons.PagePrevious | GamepadButtons.PageNext)) != 0)
+        {
+            var direction = buttons.HasFlag(GamepadButtons.PageNext) ? 1 : -1;
+            _section = Sections[(Array.IndexOf(Sections, _section) + direction + Sections.Length) % Sections.Length];
+            Render(); FocusInitial(); return true;
+        }
         if (_focused?.IsFocused == true && _adjustments.TryGetValue(_focused, out var adjust))
         {
             if ((buttons & GamepadButtons.Left) != 0) { adjust(-1); return true; }
@@ -197,9 +206,10 @@ public sealed class FullscreenSettingsPage : FullscreenPage
     private static Control ControllerDiagram()
     {
         var art = FullscreenVectorArt.Load("controller");
-        foreach (var (label, x, y) in new[] { ("Y", 582d, 150d), ("X", 532d, 200d), ("B", 632d, 200d), ("A", 582d, 250d) })
+        art.Name = "FullscreenControllerDiagram";
+        foreach (var (label, x, y) in new[] { ("Y", 41d, 19d), ("X", 37d, 23d), ("B", 45d, 23d), ("A", 41d, 27d) })
         {
-            var icon = FullscreenGlyphs.Icon(label, 44);
+            var icon = FullscreenGlyphs.Icon(label, 4);
             Canvas.SetLeft(icon, x); Canvas.SetTop(icon, y); art.Children.Add(icon);
         }
         var diagram = new Grid { ColumnDefinitions = new ColumnDefinitions("*,1.6*,*"), ColumnSpacing = 24 };
@@ -218,7 +228,7 @@ public sealed class FullscreenSettingsPage : FullscreenPage
             return panel;
         }
         diagram.Children.Add(Callouts(("LB", "Main screens", "LB / RB switches sections."),
-            ("LT", "Pages & weeks", "LT / RT moves through time or games."),
+            ("LT", "Tabs & shelves", "LT / RT switches local sections."),
             ("Dpad", "Move", "D-pad or left stick."),
             ("View", "Search", "Find a game.")));
         var center = new Viewbox { Child = art, Stretch = Stretch.Uniform, VerticalAlignment = VerticalAlignment.Center };

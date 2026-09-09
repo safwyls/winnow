@@ -120,6 +120,36 @@ public sealed class FullscreenBrowseTests
     }
 
     [AvaloniaFact]
+    public async Task Triggers_switch_library_collections_and_leave_desktop_filters_alone()
+    {
+        var library = CreateLibrary();
+        var desktop = CreateLibrary();
+        await library.LoadCommand.ExecuteAsync(null);
+        using var context = new FullscreenContext(library, new FeedViewModel(new PreviewFeedService(), library), PreviewData.Shell);
+        using var page = new FullscreenBrowsePage(context, false);
+        var window = new Window { Width = 1920, Height = 1080, Content = page };
+        try
+        {
+            window.Show(); Dispatcher.UIThread.RunJobs(); page.FocusInitial();
+            page.Handle(GamepadButtons.PageNext); Dispatcher.UIThread.RunJobs();
+            Assert.True(library.Filters.ToFilter().Installed);
+            page.Handle(GamepadButtons.PageNext); Dispatcher.UIThread.RunJobs();
+            Assert.Equal(LibraryBuckets.NeverPlayed, library.SelectedBucket?.Key);
+            page.Handle(GamepadButtons.PageNext); Dispatcher.UIThread.RunJobs();
+            Assert.Equal(LibraryBuckets.StaleButPatched, library.SelectedBucket?.Key);
+            page.Handle(GamepadButtons.PageNext); Dispatcher.UIThread.RunJobs();
+            Assert.Null(library.SelectedBucket);
+            Assert.Null(library.Filters.ToFilter().Installed);
+            page.Handle(GamepadButtons.PagePrevious); Dispatcher.UIThread.RunJobs();
+            Assert.Equal(LibraryBuckets.StaleButPatched, library.SelectedBucket?.Key);
+            Assert.Equal("LT / RT  Collection", page.RightHints);
+            Assert.Null(desktop.SelectedBucket);
+            Assert.Null(desktop.Filters.ToFilter().Installed);
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaFact]
     public async Task Library_resize_adds_columns_without_cropping_or_losing_the_selected_game()
     {
         var library = CreateLibrary();
@@ -133,7 +163,8 @@ public sealed class FullscreenBrowseTests
         {
             Dispatcher.UIThread.RunJobs();
             page.FocusInitial();
-            page.Handle(GamepadButtons.PageNext);
+            page.Handle(GamepadButtons.Down);
+            page.Handle(GamepadButtons.Down);
             Dispatcher.UIThread.RunJobs();
             var selected = AutomationProperties.GetName((Control)window.FocusManager!.GetFocusedElement()!);
             var initialColumns = CoverColumns(page);
@@ -520,12 +551,13 @@ public sealed class FullscreenBrowseTests
             Assert.True(window.IsActive);
             Assert.Equal(feed.Shelves[0].Cards.Count, service.Surfaced.Count);
             Assert.All(service.Surfaced, id => Assert.Contains(feed.Shelves[0].Cards, card => card.Tile.ReleaseId == id));
-            page.Handle(GamepadButtons.Down);
+            page.Handle(GamepadButtons.PageNext);
             Dispatcher.UIThread.RunJobs();
             AvaloniaHeadlessPlatform.ForceRenderTimerTick();
             page.FocusInitial();
             await FlushFeedObservationAsync();
             Assert.Equal(feed.Shelves.Sum(shelf => shelf.Cards.Count), service.Surfaced.Count);
+            Assert.Equal("LT / RT  Shelf", page.RightHints);
         }
         finally { window.Close(); }
     }
@@ -612,7 +644,7 @@ public sealed class FullscreenBrowseTests
         try
         {
             Dispatcher.UIThread.RunJobs();
-            Assert.Contains(CoverKey.IgdbScreenshot("tv_screenshot"), leases.Keys);
+            Assert.Contains(CoverKey.IgdbBackdrop("tv_screenshot"), leases.Keys);
             var image = Assert.Single(backdrop.Children.OfType<Image>());
             Assert.Same(pixels, image.Source);
             Assert.True(leases.Active > 0);

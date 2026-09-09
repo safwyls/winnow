@@ -106,7 +106,34 @@ identity through reflow, partial pages and directional navigation. A synthetic 6
 fills both rows so fixture scarcity cannot hide spacing defects. Desktop cover composition
 and application action semantics remain unchanged.
 
-## Remaining device checks
+## Focus, local navigation and bounded overview revision
+
+The 2026-09-09 follow-up passed 199 UI tests, 112 cover-pipeline tests and 3,828 core/app
+tests in Release. The solution Release build passed with no warnings or errors. Commands
+used `--artifacts-path C:/Temp/winnow-tv-final -c Release -m:1` and the three corresponding
+test project paths. The first integrated UI run exposed two stale test expectations for
+the replaced controller geometry and backdrop cache key; the corrected full run passed.
+
+New checks move focus away from a hovered Screen margins control and verify its underline
+clears, exercise trigger section changes and desktop filter isolation, sample rendered
+cover padding pixels, and verify cover lease cleanup. Existing desktop tests remain part
+of the UI and core/app runs; desktop layouts, screenshot downloads and action semantics
+were not changed. Fullscreen and desktop continue as separate maintained presentation paths.
+
+Inspected captures from the headless renderer:
+
+- `C:/Temp/winnow-navigation-polish-renders/fullscreen-controller-large-text.png`: proportional
+  vector controller, section focus and readable callouts at 720p/140%.
+- `C:/Temp/winnow-details-controller-captures/fullscreen-details-long-title-140.png`: long title
+  and synopsis with both screenshot buttons fully above the footer. Bounds assertions check
+  their visibility and focusability; About game opens the complete description.
+
+Backdrop tests verify a 4K window requests the 3840px decode bucket and releases leases on
+detach. The IGDB source test verifies the separate high-resolution URL and cache identity.
+The chosen rendition follows [IGDB's documented image sizes](https://api-docs.igdb.com/#images).
+Synthetic artwork proves layout and request behavior, not live publisher source quality.
+
+### Remaining device checks
 
 No physical controller or TV seating-distance test was performed in this environment. Check
 the controller's device mapping, repeated navigation, reconnect, actual battery reporting,

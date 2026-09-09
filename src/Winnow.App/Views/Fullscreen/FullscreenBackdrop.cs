@@ -62,23 +62,31 @@ public sealed class FullscreenBackdrop : Panel
                 {
                     var work = await works.GetAsync(tile.Primary.WorkId);
                     if (UserArtRef.Token(work?.BackgroundUrl) is { } token) key = CoverKey.User(token);
-                    else if (IgdbImageUrl.ImageId(work?.BackgroundUrl) is { } id) key = CoverKey.IgdbScreenshot(id);
+                    else if (IgdbImageUrl.ImageId(work?.BackgroundUrl) is { } id) key = CoverKey.IgdbBackdrop(id);
                 }
                 if (key is null && context.Services?.GetService<IWorkImageRepository>() is { } images)
                 {
                     var rows = await images.GetForWorkAsync(tile.Primary.WorkId);
                     var id = rows.Where(row => row.Source == ImageSources.Igdb && row.Kind == ImageKinds.Screenshot).SelectMany(row => row.Ids).FirstOrDefault();
-                    if (id is not null) key = CoverKey.IgdbScreenshot(id);
+                    if (id is not null) key = CoverKey.IgdbBackdrop(id);
                 }
                 if (generation != _generation || key is null) return;
                 _lease = new LeasedCover(context.Services?.GetService<ICoverLeases>(), key, CoverLayers.Vivid,
                     art => { image.Source = art?.Vivid; fallback.IsVisible = art?.Vivid is null; });
-                var top = TopLevel.GetTopLevel(this);
-                var scale = top is null ? 1 : Math.Abs(this.TransformToVisual(top)?.M11 ?? 1) * top.RenderScaling;
-                _lease.Request(Math.Max(1100, Bounds.Width) * scale);
+                RequestDisplaySize();
             }
             catch (Exception) { /* Unavailable artwork retains the ordinary cover fallback. */ }
         };
+        // A Viewbox can change pixel scale without changing this reference canvas size.
+        LayoutUpdated += (_, _) => RequestDisplaySize();
         DetachedFromVisualTree += (_, _) => { _generation++; _lease?.Dispose(); _lease = null; image.Source = null; };
+    }
+
+    private void RequestDisplaySize()
+    {
+        var top = TopLevel.GetTopLevel(this);
+        if (top is null || Bounds.Width <= 0) return;
+        var scale = Math.Abs(this.TransformToVisual(top)?.M11 ?? 1) * top.RenderScaling;
+        _lease?.Request(Math.Max(Bounds.Width, Bounds.Height * 16 / 9) * scale);
     }
 }

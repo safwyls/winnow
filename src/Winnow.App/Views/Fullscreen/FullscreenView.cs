@@ -75,10 +75,8 @@ public sealed class FullscreenView : UserControl, IDisposable
                 }))
             }
         });
-        Styles.Add(new Style(s => s.OfType<Button>().Class("tv-action").Class(":pointerover"))
-        { Setters = { new Setter(TemplatedControl.BorderBrushProperty, new DynamicResourceExtension("TextDim")) } });
         Styles.Add(new Style(s => s.OfType<Button>().Class("tv-action").Class("current"))
-        { Setters = { new Setter(TemplatedControl.ForegroundProperty, new DynamicResourceExtension("Text")), new Setter(TemplatedControl.BorderBrushProperty, new DynamicResourceExtension("TextDim")) } });
+        { Setters = { new Setter(TemplatedControl.FontWeightProperty, FontWeight.Bold) } });
         Styles.Add(new Style(s => s.OfType<Button>().Class("tv-action").Class(":focus"))
         { Setters = { new Setter(TemplatedControl.BorderBrushProperty, new DynamicResourceExtension("Volt")), new Setter(TemplatedControl.ForegroundProperty, new DynamicResourceExtension("Volt")) } });
         _roots = [new FullscreenBrowsePage(context, true), new FullscreenBrowsePage(context, false), new FullscreenActivityPage(context), new FullscreenSettingsPage(context)];
@@ -86,7 +84,7 @@ public sealed class FullscreenView : UserControl, IDisposable
         foreach (var tab in _tabs)
         {
             var label = FullscreenUi.Text(tab.Content?.ToString() ?? "", 28);
-            tab.Content = new Border { Child = label, Padding = new Thickness(0, 0, 0, 8), BorderThickness = new Thickness(0, 0, 0, 3) };
+            tab.Content = label;
             tab.Background = Brushes.Transparent;
             tab.Padding = new Thickness(12, 8);
         }
@@ -273,12 +271,7 @@ public sealed class FullscreenView : UserControl, IDisposable
         {
             _tabs[i].Opacity = i == _section ? 1 : .7;
             _tabs[i].IsEnabled = _stack.Count == 0;
-            if (_tabs[i].Content is Border underline)
-            {
-                underline[!Border.BorderBrushProperty] = new DynamicResourceExtension("Volt");
-                underline.BorderThickness = new Thickness(0, 0, 0, i == _section ? 3 : 0);
-                underline.Padding = new Thickness(0, 0, 0, i == _section ? 8 : 11);
-            }
+            _tabs[i].Classes.Set("current", i == _section);
         }
         PageChanged(this, EventArgs.Empty); FocusPage();
     }
