@@ -132,6 +132,7 @@ public sealed class ListBrowsingPositionTests
             var alphabetStops = window.FindControl<ItemsControl>("AlphabetStops")!;
             var sortNotches = window.FindControl<ItemsControl>("SortNotches")!;
             Assert.True(spine.IsVisible);
+            Assert.True(spine.Background is null || Equals(spine.Background, Brushes.Transparent));
             Assert.False(alphabetStops.IsVisible);
             Assert.True(sortNotches.IsVisible);
             var notches = sortNotches.GetVisualDescendants().OfType<Border>()

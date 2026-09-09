@@ -1912,7 +1912,7 @@
                         Margin="0,6,12,10"
                         HorizontalAlignment="Right"
                         VerticalAlignment="Stretch"
-                        Background="{StaticResource PaneGround}"
+                        Background="Transparent"
                         Cursor="Arrow"
                         ToolTip.Tip="{Binding Library.BrowseSpineTooltip}"
                         IsVisible="{Binding Library.ShowBrowseSpine}"
