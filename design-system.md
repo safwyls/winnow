@@ -541,7 +541,9 @@ ratio while keeping the 1080px reference height and uniform scaling. The default
 16:9 composition. Validate readability from the actual seating position before accepting the scale.
 
 **For you** opens on a focused recommendation in a horizontal cover shelf. A large title,
-one-sentence reason and game artwork above the shelf follow the selection. Up/down changes
+one-sentence reason and game artwork above the shelf follow the selection. The reason reserves
+two lines at the chosen text size and truncates overflow with an ellipsis, so description
+length does not resize the cover shelf. Up/down changes
 shelves; left/right moves among their games. The selected cover has the only focus ring.
 Text actions have transparent backgrounds and a mint underline on focus. Hover leaves
 no underline; current sections and collections use bold text and a neutral underline.
@@ -2562,6 +2564,12 @@ offers **Open Winnow** and **Exit**; Exit always closes the process even when cl
 on. Its **STARTUP** card offers **Start with Windows**. That registration is per-user and
 starts Winnow quietly in the notification area after sign-in. Unsupported systems disable
 the toggle and say why.
+
+Application settings on both desktop and fullscreen also offer **Start in fullscreen**,
+off by default. It opens the TV interface on the next normal launch; changing it does not
+switch the current view. Windows sign-in and explicit background launches retain tray-first
+behavior. Exiting fullscreen restores the desktop, and reopening a hidden window does not
+reapply the startup preference.
 
 Its **ABOUT WINNOW** card shows **Version** and **Source commit** as selectable Data-font
 text. The version retains prerelease labels; builds without source metadata say `Unavailable`

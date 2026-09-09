@@ -273,7 +273,17 @@ public sealed class FullscreenBrowsePage : FullscreenPage
     {
         _selected = card.Tile;
         var reason = FullscreenUi.Text(card.IsSetAside ? card.SetAsideNote : card.Reason, 28);
+        reason.Name = "FullscreenHomeReason";
         reason.MaxLines = 2;
+        reason.TextTrimming = TextTrimming.WordEllipsis;
+        void SizeReason()
+        {
+            reason.LineHeight = reason.FontSize * 9 / 7;
+            reason.Height = reason.LineHeight * 2;
+        }
+        // A short reason reserves the same space as a long one, including after text scaling.
+        reason.PropertyChanged += (_, e) => { if (e.Property == TextBlock.FontSizeProperty) SizeReason(); };
+        SizeReason();
         var title = FullscreenUi.Text(card.Tile.Title, 64);
         title.MaxLines = 2;
         title.TextTrimming = TextTrimming.WordEllipsis;

@@ -9,6 +9,7 @@ public partial class ApplicationSettingsViewModel : ObservableObject
 {
     internal const string MinimizeToTraySettingKey = "application.minimize_to_tray";
     internal const string CloseToTraySettingKey = "application.close_to_tray";
+    internal const string StartInFullscreenSettingKey = "application.start_in_fullscreen";
 
     private readonly ISettingsRepository? _settings;
     private readonly IStartupRegistration? _startup;
@@ -42,6 +43,12 @@ public partial class ApplicationSettingsViewModel : ObservableObject
     public partial bool StartWithWindows { get; set; }
 
     [ObservableProperty]
+    public partial bool StartInFullscreen { get; set; }
+
+    public string FullscreenStartupNote =>
+        "Open fullscreen next time you launch Winnow. Windows sign-in still starts quietly in the notification area.";
+
+    [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasProblem))]
     public partial string? Problem { get; private set; }
 
@@ -71,7 +78,10 @@ public partial class ApplicationSettingsViewModel : ObservableObject
                 ? null
                 : await _settings.GetAsync(CloseToTraySettingKey, ct);
             var startup = _startup?.IsSupported == true && _startup.IsEnabled();
-            return (minimize, close, startup);
+            var fullscreen = _settings is null
+                ? null
+                : await _settings.GetAsync(StartInFullscreenSettingKey, ct);
+            return (minimize, close, startup, fullscreen);
         }, ct);
 
         _loading = true;
@@ -80,6 +90,7 @@ public partial class ApplicationSettingsViewModel : ObservableObject
             MinimizeToTray = Parse(stored.minimize);
             CloseToTray = Parse(stored.close);
             StartWithWindows = stored.startup;
+            StartInFullscreen = Parse(stored.fullscreen);
             Problem = null;
         }
         finally
@@ -109,6 +120,14 @@ public partial class ApplicationSettingsViewModel : ObservableObject
         if (!_loading && _startup?.IsSupported == true)
         {
             PendingSave = SaveStartupAsync(value);
+        }
+    }
+
+    partial void OnStartInFullscreenChanged(bool value)
+    {
+        if (!_loading && _settings is not null)
+        {
+            PendingSave = SavePreferenceAsync(StartInFullscreenSettingKey, value);
         }
     }
 

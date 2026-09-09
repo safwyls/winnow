@@ -76,6 +76,10 @@ separate browsing positions, filters and layout preferences. Theme selection is 
 updates both surfaces immediately. Fullscreen text size ranges from 70% to 140%, with −/+
 buttons for mouse adjustment and left/right adjustment on a controller.
 
+Enable **Start in fullscreen** in **Settings → Application** on either surface to use the
+TV interface on the next launch. It defaults off. Windows sign-in and explicit background
+launches still start quietly in the notification area.
+
 Fullscreen Appearance includes **Fit ultrawide displays** to use the full screen width
 without stretching text. Controller input hides the cursor; moving or clicking the mouse
 restores it. In Filter & sort, **Y** applies and closes and **B** cancels. D-pad/left-stick

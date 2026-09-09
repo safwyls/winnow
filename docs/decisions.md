@@ -3541,3 +3541,12 @@ The visual specification's reference-size sentence previously said:
 
 > Start with a 1920×1080 reference canvas, 5% safe margins, 64px game titles, 32px section
 > headings and 28px body text; essential labels stay at least 24px.
+
+### 2026-09-09 — Fullscreen startup and stable Home descriptions
+
+The shared startup preference applies only on normal launch; background launches retain
+quiet tray behavior. Home descriptions now reserve two lines at the selected text size,
+including empty descriptions, so switching recommendations cannot resize the shelf because
+of description length. The visual specification previously said:
+
+> A large title, one-sentence reason and game artwork above the shelf follow the selection.

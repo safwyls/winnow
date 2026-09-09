@@ -184,6 +184,7 @@ public sealed class FullscreenSettingsPage : FullscreenPage
         else
         {
             var app = Context.Shared.ApplicationSettings;
+            Toggle("Start in fullscreen", app.FullscreenStartupNote, () => app.StartInFullscreen, value => app.StartInFullscreen = value);
             Toggle("Minimize to tray", "Keep Winnow running when minimized.", () => app.MinimizeToTray, value => app.MinimizeToTray = value);
             Toggle("Close to tray", "Keep Winnow running when its window is closed.", () => app.CloseToTray, value => app.CloseToTray = value);
             if (app.IsStartupSupported) Toggle("Start with Windows", "Start Winnow when you sign in.", () => app.StartWithWindows, value => app.StartWithWindows = value);

@@ -12,6 +12,7 @@ public partial class MainWindow
     private FullscreenView? _tvView;
     private FullscreenContext? _tvContext;
     private bool _presentingTv;
+    private bool _startupPresentationApplied;
     internal bool IsFullscreen => WindowState == WindowState.FullScreen;
     private void InitializeFullscreen()
     {
@@ -22,6 +23,14 @@ public partial class MainWindow
         }, RoutingStrategies.Tunnel);
     }
     private void DisposeFullscreen() { _fullscreenReady = false; _tvView?.Dispose(); _tvContext?.Dispose(); }
+    private void ApplyStartupPresentation()
+    {
+        if (_startupPresentationApplied) return;
+        _startupPresentationApplied = true;
+        // Background launches retain the tray-first contract, even when normal launches use fullscreen.
+        if (!StartHidden && _shell?.ApplicationSettings.StartInFullscreen == true && !IsFullscreen)
+            ToggleFullscreen();
+    }
     internal void ToggleFullscreen()
     {
         if (IsFullscreen) WindowState = _beforeFullscreen;

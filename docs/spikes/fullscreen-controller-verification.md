@@ -195,6 +195,17 @@ view-model updates; no real Steam or Epic login was performed.
 
 ### Remaining device checks
 
+The startup and Home-description follow-up passed all 226 Release UI tests in 34 seconds
+using `--artifacts-path C:/Temp/winnow-startup-agent`, plus all six
+`ApplicationSettingsViewModelTests` using `C:/Temp/winnow-startup-core`. The solution Release
+build passed with zero warnings and errors. Tests exercise the shared desktop/TV startup
+toggle, persistence of both values, normal-launch TV entry, return to desktop, reopening
+without reapplying the preference, and background-launch precedence. Home tests switch among
+empty, short and overflowing descriptions at 70%, 100% and 140% text size, asserting identical
+cover bounds, the reserved two-line height and at most two rendered lines. Desktop feed
+layout is unchanged; only the TV hero reserves this space. These are headless checks, not
+a new physical controller run.
+
 No physical controller or TV seating-distance test was performed in this environment. Check
 the controller's device mapping, repeated navigation, reconnect, actual battery reporting,
 4K rendering and return from a launched game on the target machine. The WebView2 bridge needs

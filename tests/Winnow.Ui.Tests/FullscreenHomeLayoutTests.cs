@@ -1,6 +1,8 @@
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.Threading;
+using Avalonia.Media;
+using Avalonia.VisualTree;
 using Winnow.App.Design;
 using Winnow.App.Services;
 using Winnow.App.ViewModels;
@@ -11,6 +13,39 @@ namespace Winnow.Ui.Tests;
 
 public sealed class FullscreenHomeLayoutTests
 {
+    [AvaloniaTheory]
+    [InlineData(.7)]
+    [InlineData(1)]
+    [InlineData(1.4)]
+    public void Description_length_preserves_home_cover_geometry(double scale)
+    {
+        using var feed = new FeedViewModel(new PreviewFeedService(), PreviewData.Library);
+        feed.Shelves.Add(new FeedShelfViewModel("reasons", "Ready to play", "",
+            new[] { "", "A new update arrived.", string.Join(" ", Enumerable.Repeat("Explore new regions and finish your adventure.", 30)) }
+                .Select(reason => new FeedCardViewModel(PreviewData.Tile, reason))));
+        using var context = new FullscreenContext(PreviewData.Library, feed, PreviewData.Shell) { TextScale = scale };
+        using var television = new FullscreenView(context);
+        var window = new Window { Width = 1280, Height = 720, Content = television };
+        try
+        {
+            window.Show(); Dispatcher.UIThread.RunJobs();
+            var covers = television.GetVisualDescendants().OfType<FullscreenCover>().Select(c => c.Bounds).ToArray();
+            Assert.NotEmpty(covers);
+            for (var i = 0; i < 3; i++)
+            {
+                var reason = television.GetVisualDescendants().OfType<TextBlock>().Single(t => t.Name == "FullscreenHomeReason");
+                Assert.Equal(72 * scale, reason.Height, 6);
+                Assert.Equal(2, reason.MaxLines);
+                Assert.Equal(TextTrimming.WordEllipsis, reason.TextTrimming);
+                Assert.True(reason.TextLayout.TextLines.Count <= 2);
+                Assert.Equal(covers, television.GetVisualDescendants().OfType<FullscreenCover>().Select(c => c.Bounds).ToArray());
+                television.Handle(GamepadButtons.Right);
+                Dispatcher.UIThread.RunJobs();
+            }
+        }
+        finally { window.Close(); }
+    }
+
     [AvaloniaTheory]
     [InlineData(1280, 720)]
     [InlineData(3840, 2160)]

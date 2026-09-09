@@ -17,6 +17,37 @@ namespace Winnow.Ui.Tests;
 public sealed class FullscreenSettingsTests
 {
     [AvaloniaFact]
+    public void Fullscreen_startup_setting_is_shared_with_desktop_application_toggle()
+    {
+        var settings = PreviewData.ApplicationSettings;
+        settings.StartInFullscreen = false;
+        var context = new FullscreenContext(PreviewData.Library, PreviewData.Feed, PreviewData.Shell);
+        var page = new FullscreenSettingsPage(context);
+        var desktop = new Winnow.App.Views.ApplicationSettingsView { DataContext = settings };
+        var window = new Window { Width = 1920, Height = 1080, Content = page };
+        var desktopWindow = new Window { Content = desktop };
+        try
+        {
+            window.Show(); desktopWindow.Show(); Dispatcher.UIThread.RunJobs();
+            for (var i = 0; i < 4; i++) page.Handle(GamepadButtons.PageNext);
+            Dispatcher.UIThread.RunJobs();
+            var tvToggle = page.GetVisualDescendants().OfType<Button>().Single(b => AutomationProperties.GetName(b) == "Start in fullscreen");
+            tvToggle.Focus(); page.Handle(GamepadButtons.Accept);
+            Assert.True(settings.StartInFullscreen);
+            var desktopToggle = desktop.GetVisualDescendants().OfType<ToggleSwitch>().Single(b => AutomationProperties.GetName(b) == "Start in fullscreen");
+            Assert.True(desktopToggle.IsChecked);
+            desktopToggle.IsChecked = false;
+            Assert.False(settings.StartInFullscreen);
+            // Reopening Application reads the same shared state.
+            page.Handle(GamepadButtons.PagePrevious); page.Handle(GamepadButtons.PageNext);
+            Dispatcher.UIThread.RunJobs();
+            tvToggle = page.GetVisualDescendants().OfType<Button>().Single(b => AutomationProperties.GetName(b) == "Start in fullscreen");
+            Assert.Equal("Off", AutomationProperties.GetItemStatus(tvToggle));
+        }
+        finally { settings.StartInFullscreen = false; desktopWindow.Close(); window.Close(); page.Dispose(); }
+    }
+
+    [AvaloniaFact]
     public void Switches_report_state_and_direction_sets_a_value_without_repeated_toggling()
     {
         var context = new FullscreenContext(PreviewData.Library, PreviewData.Feed, PreviewData.Shell);

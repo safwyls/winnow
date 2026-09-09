@@ -10,6 +10,29 @@ namespace Winnow.Ui.Tests;
 public sealed class TrayWindowInteractionTests
 {
     [AvaloniaFact]
+    public void Fullscreen_startup_opens_tv_and_can_return_to_desktop_without_reapplying_preference()
+    {
+        var settings = PreviewData.ApplicationSettings;
+        settings.StartInFullscreen = true;
+        var window = new MainWindow { DataContext = PreviewData.Shell };
+        try
+        {
+            window.Show();
+            Assert.True(window.IsFullscreen);
+            Assert.True(window.FindControl<Control>("TvHost")!.IsVisible);
+            window.ToggleFullscreen();
+            Assert.Equal(WindowState.Normal, window.WindowState);
+            Assert.True(window.FindControl<Control>("DesktopHost")!.IsVisible);
+            window.Hide(); window.Show();
+            Assert.False(window.IsFullscreen);
+            settings.StartInFullscreen = false;
+            settings.StartInFullscreen = true;
+            Assert.False(window.IsFullscreen);
+        }
+        finally { settings.StartInFullscreen = false; window.ExitFromTray(); }
+    }
+
+    [AvaloniaFact]
     public async Task Minimize_to_tray_hides_the_window_and_restore_returns_it_to_the_taskbar()
     {
         var settings = PreviewData.ApplicationSettings;
@@ -79,14 +102,20 @@ public sealed class TrayWindowInteractionTests
 
         try
         {
+            settings.StartInFullscreen = true;
             window.Show();
 
             Assert.True(window.IsHiddenInTray);
             Assert.False(window.IsVisible);
             Assert.False(window.ShowInTaskbar);
+            Assert.False(window.IsFullscreen);
+            window.RestoreFromTray();
+            Assert.True(window.IsVisible);
+            Assert.False(window.IsFullscreen);
         }
         finally
         {
+            settings.StartInFullscreen = false;
             window.ExitFromTray();
         }
     }

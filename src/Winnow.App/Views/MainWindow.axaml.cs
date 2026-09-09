@@ -371,6 +371,8 @@ public partial class MainWindow : Window
     {
         base.OnOpened(e);
 
+        ApplyStartupPresentation();
+
         TrackListScroll();
         UpdateAlphabetLocation();
 

@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - codex
 created_date: '2026-08-29 21:52'
-updated_date: '2026-09-09 22:49'
+updated_date: '2026-09-09 23:10'
 labels:
   - ui
   - accessibility
@@ -45,6 +45,8 @@ Controller polish: make underline exclusive to focus (remove latent hover/curren
 Follow-up: center root navigation independently of status/clock widths; fit controller guide at16:9 including large text; restore selected section/collection underline without hover underline; use horizontal detail overview focus neighbors; revise shared keyboard to standard key arrangement with X backspace and RT Enter. Verify both keyboard surfaces, focused navigation/layout checks and full UI suite; update specs and decisions.
 
 Audit fullscreen crash evidence and fix confirmed failure; correct Steam/Epic status lifecycle and all platform action focus directions; synchronize theme across surfaces; allow70-140%fullscreen text with mouse decrement/increment; replace Activity art with intentional vector composition; move desktopfullscreen entry to icon beside settings. Verify regression tests for each surface, finalbuild/fullUI; document confirmed crashcause or unresolvedevidence separately.
+
+Add shared persisted Start in fullscreen option to Application settings on desktop and TV, apply only on startup with defined tray precedence and normal exit behavior. Stabilize Home hero reason at two lines with overflow truncation so selection changes retain cover geometry. Verify startup persistence/entry and text-size-aware Home layout, document both surfaces, run Release build and UI regressions.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -79,4 +81,6 @@ Follow-up completed: root navigation stays centered independently of clock/contr
 Hang investigation: WindowsApplication events1001/1002 at2026-09-09 15:36:43 recordedAppHangB1/closure, not a managedexception; no newdump. User clarified changingtheme thenreturningHome. Read-onlysettings inspection showed140%text,2%margins,fitoff. Reproduced a runawayHome rebuild with longtitle/reason at both720p and4K: unscalednewcontrols produceonecovercapacity, late textscalingproducesanother, queuedrebuildrepeats. Regressionfails at80PageChangedevents within4s beforefix. Applyingtextscale on PageChanged beforefirstlayout stabilizescapacity (verificationinprogress).
 
 Completed this revision. Activity uses an original open-journal vector. Desktop fullscreen entry is an accessible icon beside Settings. Steam/Epic platform pages and summaries refresh on entry and bind to the shared account state; vertical consent, API-key and import actions now navigate vertically. Sign-out no longer pops two pages. Both surfaces share ThemeService and appearance.theme; fullscreen ignores its old theme override and reset preserves the shared theme. Text size supports 70–140% with mouse minus/plus controls and controller adjustment. Final hang fix coalesces cover-capacity calculation after text scaling and layout settle; the earlier synchronous scaling attempt was insufficient and was removed. Long Home fixtures failed before the fix and pass afterward at 720p and 4K, including the reported theme-change/return sequence. The Windows report identifies a hang, with no new exception dump; this matching reproduced mechanism is fixed without claiming it was the only possible cause. Validation: 221 Release UI tests pass in 36 seconds; final solution Release build has zero warnings/errors. Desktop and fullscreen behavior, platform navigation, mouse controls and shared state are covered. No live account sign-in or physical controller check was performed. Specs, README, decisions and verification evidence updated; broad TASK-4 hardware/provider criteria remain open.
+
+Added shared persisted Start in fullscreen in desktop and TV Application settings. Defaults off and applies once on the next normal launch; background/Windows startup stays tray-first. Returning to desktop and reopening do not reapply it. Fullscreen Home descriptions reserve two scaled lines and ellipsize overflow; desktop feed layout remains unchanged. Verified 226 Release UI tests, six application-settings tests, and solution Release build with zero warnings/errors. Tests cover shared toggles, persistence, startup/tray precedence, and stable cover bounds with empty/short/long descriptions at 70/100/140 percent. Updated README, visual spec, decisions and verification evidence. Broad physical-controller acceptance remains open.
 <!-- SECTION:NOTES:END -->
