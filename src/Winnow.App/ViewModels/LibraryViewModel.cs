@@ -1993,7 +1993,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
 
     // ══ Lists ═══════════════════════════════════════════════════════════════
 
-    /// <summary>Opens a list: manual adds an AND term, live restores its saved rules into the panel.</summary>
+    /// <summary>Opens a list from its own membership or saved rules, without carrying the previous bucket.</summary>
     [RelayCommand]
     private void OpenList(GameListViewModel? list) => Batched(() =>
     {
@@ -2005,6 +2005,9 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             return;
         }
 
+        // A rail bucket describes the place we just left, not an extra term the
+        // user added to this list. Live lists restore their own saved bucket below.
+        SelectedBucket = null;
         Lists.Select(list);
 
         if (list.IsLive)

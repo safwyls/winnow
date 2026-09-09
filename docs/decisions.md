@@ -2616,3 +2616,12 @@ The following text was replaced in the governing documents:
 
 > **Will-it-run / Dead bucket**: §6.1 lists Dead (delisted, no viable platform); nothing
 > ingests that fact yet. When it exists it becomes hard exclusion #6.
+
+## 2026-09-09 — User lists replace the previous predefined bucket
+
+Opening a user-created list now starts from the list itself. A manual list shows its stored
+membership, while a live list restores its saved rules, including any bucket saved as part of
+those rules. The visual spec previously said:
+
+> **A manual list is one more AND term** over the library, not a separate screen, so the rail,
+> the panel and the search box all still work inside it.

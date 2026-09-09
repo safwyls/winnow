@@ -176,6 +176,26 @@ public sealed class ListsViewModelTests
     }
 
     [Fact]
+    public async Task Opening_a_manual_list_leaves_the_predefined_bucket_behind()
+    {
+        using var fixture = new ListFixture();
+        var started = await fixture.SeedAsync("Hades", minutes: 300);
+        var neverPlayed = await fixture.SeedAsync("Tunic");
+
+        var library = await fixture.LoadAsync();
+        var list = await library.Lists.CreateListAsync("Friday night", [started, neverPlayed]);
+        library.SelectBucketCommand.Execute(
+            library.Buckets.Single(b => b.Key == LibraryBuckets.Bounced));
+        Assert.Equal(["Hades"], fixture.Titles(library));
+
+        library.OpenListCommand.Execute(list);
+
+        Assert.Null(library.SelectedBucket);
+        Assert.Equal(["Hades", "Tunic"], fixture.Titles(library));
+        Assert.Equal(["Friday night"], library.CutChips.Select(c => c.Label));
+    }
+
+    [Fact]
     public async Task Leaving_a_list_puts_the_previous_order_back()
     {
         using var fixture = new ListFixture();
@@ -356,6 +376,29 @@ public sealed class ListsViewModelTests
         Assert.True(reloaded.Filters.IsOpen);
         Assert.Equal(["Disco Elysium"], fixture.Titles(reloaded));
         Assert.False(reloaded.IsLiveListEdited);
+    }
+
+    [Fact]
+    public async Task Opening_a_live_list_without_a_bucket_leaves_the_predefined_bucket_behind()
+    {
+        using var fixture = new ListFixture();
+        await fixture.SeedAsync("Disco Elysium", genres: ["RPG"]);
+        await fixture.SeedAsync("Hades", minutes: 300, genres: ["Action"]);
+
+        var library = await fixture.LoadAsync();
+        fixture.Check(library, FilterPanelViewModel.GenreKey, "RPG");
+        var live = await library.Lists.CreateLiveListAsync("RPGs", library.Filters.ToFilter());
+        library.Filters.ClearCommand.Execute(null);
+        library.SelectBucketCommand.Execute(
+            library.Buckets.Single(b => b.Key == LibraryBuckets.Bounced));
+        Assert.Equal(["Hades"], fixture.Titles(library));
+
+        library.OpenListCommand.Execute(live);
+
+        Assert.Null(library.SelectedBucket);
+        Assert.Equal(["Disco Elysium"], fixture.Titles(library));
+        Assert.Equal(live!.Filter, library.Filters.ToFilter());
+        Assert.False(library.IsLiveListEdited);
     }
 
     [Fact]

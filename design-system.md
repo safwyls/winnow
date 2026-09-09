@@ -1780,8 +1780,9 @@ a subset of ALL GAMES; below it, content precedes work queue precedes configurat
 
 ### 12.2 A list composes, a live list restores
 
-**A manual list is one more AND term** over the library, not a separate screen, so the rail,
-the panel and the search box all still work inside it.
+**A manual list opens from its stored membership, not the bucket the user happened to be
+viewing.** Selecting one clears the previous bucket. The panel and the search box can still
+narrow the list after it opens.
 
 **A live list adds no term at all.** Opening one pours its saved rules back into the rail and
 the panel, so the user is looking at the filter that defines it and can edit it in place. That
