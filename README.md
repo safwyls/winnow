@@ -69,21 +69,28 @@ days, so a game enters that bucket when its slot comes up.
 ### Fullscreen and controllers
 
 Choose **Fullscreen** at the foot of the rail, press **F11**, or press the controller's
-**Menu / Start** button. Repeat to return to the previous window state. Fullscreen enlarges
-the interface when the display has room and shows a clock and available controller status.
+**Menu / Start** button. Fullscreen has its own For you, Library, Activity, Settings and
+game-detail screens, designed for a TV. Press F11 or choose **Exit fullscreen** in the
+controller's quick menu to restore the previous window state. Desktop and fullscreen retain
+separate browsing positions, filters and appearance preferences.
 
 - **D-pad / left stick:** navigate games and controls.
 - **A / south button:** select; on an editable text field, open the on-screen keyboard.
 - **B / east button:** back; closes text entry before the underlying dialog.
-- **LB / RB:** previous / next control, including secondary actions.
-- **Y / north button:** open text entry for the focused field.
+- **LB / RB:** switch main screens; switch local sections on a game page.
+- **LT / RT:** page through games or activity.
+- **X / west button:** play the selected installed game.
+- **Y / north button:** the contextual action shown in the footer.
+- **View / Back button:** search from browsing.
+- **Menu / Start:** open the quick menu.
 - **Right stick up / down:** scroll long content.
 
 Windows supports XInput controllers; Linux supports controllers exposed through readable
 `/dev/input/js*` devices. Battery status appears when XInput supplies it. Input pauses while
 Winnow is inactive, and held buttons must be released after reconnecting or returning from
-a game. External launcher windows, native file dialogs, and embedded store sign-in retain
-their own input requirements. Physical-controller compatibility is not yet validated.
+a game. A fullscreen file browser supports controller selection. External launchers and
+third-party authentication challenges retain their own input requirements.
+Physical-controller compatibility and readability at your seating distance need device validation.
 
 ### Connecting platforms
 
@@ -271,8 +278,9 @@ One document owns each domain, and [`AGENTS.md`](AGENTS.md) carries the full lis
 Settings → Library offers an acquisition CSV export with title, store, acquisition date,
 licence and price paid. Missing values stay blank; prices are stored cents without a currency.
 
-Merge *execution* (the queue records intent; nothing applies it), full JSON export/import, install
-management, and full-screen gamepad navigation. [`ROADMAP.md`](ROADMAP.md) §5 lists the
+Merge *execution* (the queue records intent; nothing applies it), full JSON export/import and install
+management remain deferred. Fullscreen has its own UI; physical controller and TV-distance
+validation remain open. [`ROADMAP.md`](ROADMAP.md) §5 lists the
 carried debt against its backlog tasks.
 
 ### A note on shipped credentials

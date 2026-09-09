@@ -29,7 +29,7 @@ public static class WebViewAuthServiceCollectionExtensions
 
         services.AddSingleton<IInteractiveAuthPrompt>(sp => new WebView2AuthPrompt(
             profileRoot,
-            sp.GetService<ILogger<WebView2AuthPrompt>>()));
+            sp.GetService<ILogger<WebView2AuthPrompt>>(), sp.GetService<IWebViewInputSupport>()));
 
         return services;
     }

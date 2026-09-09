@@ -1,100 +1,89 @@
-using System.Globalization;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
-using Avalonia.Media;
-using Avalonia.Threading;
+using Winnow.App.Views.Fullscreen;
+using Winnow.App.ViewModels;
 
 namespace Winnow.App.Views;
 
 public partial class MainWindow
 {
     private WindowState _beforeFullscreen = WindowState.Normal;
-    private DispatcherTimer? _fullscreenClockTimer;
     private bool _fullscreenReady;
-
+    private FullscreenView? _tvView;
+    private FullscreenContext? _tvContext;
+    private bool _presentingTv;
     internal bool IsFullscreen => WindowState == WindowState.FullScreen;
-
     private void InitializeFullscreen()
     {
         _fullscreenReady = true;
-        _fullscreenClockTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(30) };
-        _fullscreenClockTimer.Tick += OnFullscreenClockTick;
-        UpdateFullscreenPresentation();
-    }
-
-    private void DisposeFullscreen()
-    {
-        _fullscreenReady = false;
-        if (_fullscreenClockTimer is { } timer)
+        AddHandler(KeyDownEvent, (_, e) =>
         {
-            timer.Stop();
-            timer.Tick -= OnFullscreenClockTick;
-        }
-        _fullscreenClockTimer = null;
+            if (IsFullscreen && e.Key != Avalonia.Input.Key.F11 && _tvView?.HandleKey(e) == true) e.Handled = true;
+        }, RoutingStrategies.Tunnel);
     }
-
+    private void DisposeFullscreen() { _fullscreenReady = false; _tvView?.Dispose(); _tvContext?.Dispose(); }
     internal void ToggleFullscreen()
     {
-        if (IsFullscreen)
-        {
-            WindowState = _beforeFullscreen;
-        }
+        if (IsFullscreen) WindowState = _beforeFullscreen;
         else
         {
-            _beforeFullscreen = WindowState == WindowState.Maximized
-                ? WindowState.Maximized : WindowState.Normal;
+            _beforeFullscreen = WindowState == WindowState.Maximized ? WindowState.Maximized : WindowState.Normal;
+            _gamepadKeyboard?.Close();
             WindowState = WindowState.FullScreen;
         }
         UpdateFullscreenPresentation();
-        if (FocusManager?.GetFocusedElement() is not Control focused ||
-            !focused.IsEffectivelyVisible || ReferenceEquals(focused, this))
-            FocusFirst(GamepadScope());
     }
-
     private void OnFullscreenPressed(object? sender, RoutedEventArgs e) => ToggleFullscreen();
-
-    internal void UpdateGamepadStatus(string? status)
-    {
-        GamepadStatus.Text = status;
-        GamepadStatus.IsVisible = !string.IsNullOrWhiteSpace(status);
-        FullscreenHints.Text = GamepadStatus.IsVisible
-            ? "D-pad · Move    A · Select    B · Back    LB/RB · Controls    Y · Type    Right stick · Scroll"
-            : "F11 · Exit fullscreen";
-    }
-
-    private void OnFullscreenClockTick(object? sender, EventArgs e) => UpdateFullscreenClock();
-
-    private void UpdateFullscreenClock()
-        => FullscreenClock.Text = DateTime.Now.ToString("t", CultureInfo.CurrentCulture);
-
+    internal void UpdateGamepadStatus(string? status) => _tvView?.UpdateController(status);
     private void UpdateFullscreenPresentation()
     {
-        if (!_fullscreenReady)
-        {
-            return;
-        }
-
+        if (!_fullscreenReady) return;
         var fullscreen = IsFullscreen;
-        TitleBar.IsVisible = !fullscreen;
-        ShellRows.RowDefinitions[0].Height = fullscreen ? new GridLength(0) : new GridLength(36);
-        FullscreenBar.IsVisible = fullscreen;
-        EnterFullscreenButton.IsVisible = !fullscreen;
-
-        // Keep the command bar's measured minimum width and the modal's usable
-        // height. Larger screens enlarge the whole interface, including focus.
-        var scale = fullscreen ? CalculateFullscreenScale(Bounds.Width, Bounds.Height) : 1;
-        FullscreenScaleHost.LayoutTransform = new ScaleTransform(scale, scale);
-        if (fullscreen)
+        DesktopHost.IsVisible = !fullscreen;
+        TvHost.IsVisible = fullscreen;
+        if (fullscreen && !_presentingTv)
         {
-            UpdateFullscreenClock();
-            _fullscreenClockTimer?.Start();
+            _presentingTv = true;
+            EnsureTelevision();
+            TvHost.Content = _tvView;
+            _tvView?.FocusPage();
         }
-        else
+        else if (!fullscreen && _presentingTv)
         {
-            _fullscreenClockTimer?.Stop();
+            _presentingTv = false;
+            TvHost.Content = null;
+            RefreshDesktopAfterFullscreen();
         }
     }
-
-    internal static double CalculateFullscreenScale(double width, double height)
-        => Math.Clamp(Math.Min(width / 1200, height / 688), 1, 1.5);
+    private async void EnsureTelevision()
+    {
+        if (_tvView is not null)
+        {
+            try { if (_tvContext is not null) await _tvContext.RefreshAsync(); }
+            catch (Exception) { _tvContext?.Notify("Could not refresh your library. Try again."); }
+            return;
+        }
+        if (DataContext is not MainWindowViewModel shared) return;
+        if (Program.AppHost?.Services is { } services)
+            _tvContext = FullscreenContext.Create(services, shared);
+        else
+        {
+            // Preview and headless hosts have no production service container.
+            var library = new LibraryViewModel(new Design.PreviewLibraryQueryRepository(),
+                new Design.PreviewOwnershipRepository(), new Design.PreviewReleaseRepository(),
+                new Design.PreviewWorkRepository(), new Design.PreviewUpdateEventRepository());
+            _tvContext = new FullscreenContext(library, new FeedViewModel(new Design.PreviewFeedService(), library), shared);
+        }
+        _tvView = new FullscreenView(_tvContext);
+        _tvView.ExitRequested += ToggleFullscreen;
+        _tvView.QuitRequested += ExitFromTray;
+        TvHost.Content = _tvView;
+        try { await _tvContext.LoadAsync(); }
+        catch (Exception) { _tvContext.Notify("Could not load your library. Return to fullscreen to try again."); }
+    }
+    private async void RefreshDesktopAfterFullscreen()
+    {
+        try { if (_shell is not null) await _shell.Library.LoadCommand.ExecuteAsync(null); }
+        catch (Exception ex) { System.Diagnostics.Trace.TraceError($"Library refresh after fullscreen failed: {ex}"); }
+    }
 }

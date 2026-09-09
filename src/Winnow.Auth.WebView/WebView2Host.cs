@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using System.Text.Json;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Platform;
@@ -22,6 +23,8 @@ public sealed class WebView2Host : NativeControlHost
 
     private IntPtr _childWindow;
     private CoreWebView2Controller? _controller;
+    private bool _inputEnabled = true;
+    public event EventHandler? ControllerNavigationStarted;
 
     /// <param name="userDataFolder">
     /// Where Chromium keeps its profile. Must be supplied and must be writable:
@@ -55,6 +58,32 @@ public sealed class WebView2Host : NativeControlHost
     /// cannot be created.
     /// </summary>
     public Task<CoreWebView2Controller> Ready => _ready.Task;
+
+    /// <summary>Keyboard input to the browser's focused element; never reads page content.</summary>
+    public async Task SendControllerKeyAsync(string key, int virtualKey, bool shift = false)
+    {
+        if (!_inputEnabled) return;
+        var controller = await Ready;
+        if (!_inputEnabled) return;
+        controller.MoveFocus(CoreWebView2MoveFocusReason.Programmatic);
+        var browser = controller.CoreWebView2;
+        await browser.CallDevToolsProtocolMethodAsync("Input.dispatchKeyEvent", JsonSerializer.Serialize(new
+        { type = "rawKeyDown", key, windowsVirtualKeyCode = virtualKey, modifiers = shift ? 8 : 0 }));
+        await browser.CallDevToolsProtocolMethodAsync("Input.dispatchKeyEvent", JsonSerializer.Serialize(new
+        { type = "keyUp", key, windowsVirtualKeyCode = virtualKey, modifiers = shift ? 8 : 0 }));
+    }
+
+    /// <summary>Inserts only text the user just composed; credentials already in the page are never read.</summary>
+    public async Task InsertControllerTextAsync(string text)
+    {
+        if (!_inputEnabled) return;
+        var controller = await Ready;
+        if (!_inputEnabled) return;
+        controller.MoveFocus(CoreWebView2MoveFocusReason.Programmatic);
+        await controller.CoreWebView2.CallDevToolsProtocolMethodAsync("Input.insertText", JsonSerializer.Serialize(new { text }));
+    }
+
+    public async Task SetControllerZoomAsync(double zoom) => (await Ready).ZoomFactor = Math.Clamp(zoom, 1, 3);
 
     /// <summary>
     /// Completes once the controller has been closed and the child window
@@ -159,6 +188,7 @@ public sealed class WebView2Host : NativeControlHost
     /// </summary>
     public void SetInputEnabled(bool enabled)
     {
+        _inputEnabled = enabled;
         if (!OperatingSystem.IsWindows() || _childWindow == IntPtr.Zero)
         {
             return;
@@ -220,6 +250,7 @@ public sealed class WebView2Host : NativeControlHost
             }
 
             _controller = controller;
+            controller.CoreWebView2.NavigationStarting += (_, _) => ControllerNavigationStarted?.Invoke(this, EventArgs.Empty);
 
             // The first arrange almost always ran before this completed, so its
             // Bounds assignment was skipped. Without this line the browser is

@@ -364,7 +364,7 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
             return;
         }
 
-        var outcome = await _launcher.LaunchAsync(tile.OwnershipId, action);
+        var outcome = await _launcher.LaunchAsync(tile.PlayableEntry.OwnershipId, action);
 
         // Only a Play is worth acknowledging. An Install hands off to a download
         // the store will show its own progress for, over minutes or hours; a
@@ -378,11 +378,11 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
         switch (outcome)
         {
             case Services.LaunchDispatch.HandedOff:
-                LaunchStatus.Waiting(tile.OwnershipId, tile.Title);
+                LaunchStatus.Waiting(tile.PlayableEntry.OwnershipId, tile.Title);
                 break;
 
             case Services.LaunchDispatch.Refused:
-                LaunchStatus.Refused(tile.Title, StoreName(tile.Store));
+                LaunchStatus.Refused(tile.Title, StoreName(tile.PlayableEntry.Store));
                 break;
 
             case Services.LaunchDispatch.AlreadyRunning:
@@ -418,6 +418,9 @@ public partial class LibraryViewModel : ObservableObject, IStoreTitleCounts, IGa
 
     /// <inheritdoc/>
     public bool HasTiles => _allTiles.Count > 0;
+
+    /// <summary>The current visible-policy snapshot before presentation filters and sorting.</summary>
+    public IReadOnlyList<GameTileViewModel> AllTiles => _allTiles;
 
     /// <summary>
     /// The tile for an ownership, out of the set this view model has already

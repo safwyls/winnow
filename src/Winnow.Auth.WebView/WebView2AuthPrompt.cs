@@ -76,10 +76,12 @@ public sealed class WebView2AuthPrompt : IInteractiveAuthPrompt
     /// for an installed app.
     /// </param>
     /// <param name="log">Optional. Never given a code, a token or a URL query.</param>
-    public WebView2AuthPrompt(string profileRoot, ILogger<WebView2AuthPrompt>? log = null)
+    private readonly IWebViewInputSupport? _input;
+    public WebView2AuthPrompt(string profileRoot, ILogger<WebView2AuthPrompt>? log = null, IWebViewInputSupport? input = null)
     {
         _profileRoot = profileRoot;
         _log = log ?? NullLogger<WebView2AuthPrompt>.Instance;
+        _input = input;
     }
 
     /// <inheritdoc/>
@@ -198,6 +200,7 @@ public sealed class WebView2AuthPrompt : IInteractiveAuthPrompt
 
         var host = new WebView2Host(Path.Combine(_profileRoot, Sanitize(request.ProfileKey)));
         var window = BuildConsentWindow(request, consent);
+        if (_input is not null && window.Content is Control notice) { window.Content = null; window.Content = _input.Wrap(window, notice); }
 
         window.Closed += (_, _) =>
         {
@@ -236,7 +239,7 @@ public sealed class WebView2AuthPrompt : IInteractiveAuthPrompt
             // below this point changes, and the browser is still created by the
             // very next statement.
             PrepareForBrowser(window);
-            window.Content = host;
+            window.Content = _input?.Wrap(window, host, host) ?? host;
 
             CoreWebView2Controller controller;
             try

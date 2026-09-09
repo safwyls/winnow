@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - codex
 created_date: '2026-08-29 21:52'
-updated_date: '2026-09-09 18:05'
+updated_date: '2026-09-09 18:58'
 labels:
   - ui
   - accessibility
@@ -27,16 +27,14 @@ Implement the M10 deliverable: a 10-foot UI navigable entirely by gamepad. This 
 - [ ] #1 Every screen and interaction is reachable via gamepad
 - [ ] #2 Focus is always visible
 - [ ] #3 No mouse or keyboard is required for any operation
-- [ ] #4 The full-screen surface shows a clock
-- [ ] #5 Connected controller battery level is shown when the platform reports it, and the absence of that reading is not treated as an error
+- [x] #4 The full-screen surface shows a clock
+- [x] #5 Connected controller battery level is shown when the platform reports it, and the absence of that reading is not treated as an error
 <!-- AC:END -->
 
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-Design reset requested by user: 1. Establish a separate TV-distance fullscreen information architecture and controller focus model. 2. Produce image mockups of the recommendation home and game detail screen for discussion, without writing application or prototype code. 3. Document dual desktop/fullscreen UI maintenance and shared domain behavior. 4. Review and iterate with the user before implementation. Existing scaled-desktop implementation is superseded as the intended M10 design.
-
-Continue design review with Library, Activity and Settings image mockups using the accepted home identity; record secondary-screen coverage and unresolved controller flows before implementation.
+Implementation authorized after mock review. 1. Build an independent fullscreen host, presentation context, explicit controller focus/navigation, and shared TV components. 2. Implement For you and paged Library with real art, search, filters, lists and game actions. 3. Implement full-page game details, updates, journal, screenshots and management flows. 4. Implement Activity and TV-native Settings/library tools backed by shared application behavior. 5. Integrate fullscreen entry/exit, input mappings, text entry, clock/battery and lifecycle without disturbing desktop state. 6. Validate real rendered screens against mocks, controller-only headless flows, desktop regressions and Release build; update governing docs and record any native/hardware limitations honestly.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -55,4 +53,8 @@ User responded positively to the initial visual direction and requested the othe
 Extended the design review to Library, Activity and Settings. The visual spec now records each composition plus a supporting-view inventory covering search, filter/sort, lists, context actions, updates, journal editing, library tools, account summary, platform sign-in, quick menu and recovery states. Mock data and generated imagery are illustrative; controller flow and distance validation remain pending. No application or prototype code changed.
 
 Saved the five-screen concept set under docs/mockups/fullscreen-v2 with generation prompts and a review index. Visually checked all three new screens; corrected Library sort copy and journal icon color. Mockups remain design proposals; application code is unchanged.
+
+User has explicitly authorized full implementation of the reviewed separate UI. Design-review implementation pause is lifted; retain dual presentation paths and shared action semantics.
+
+Implemented the reviewed standalone TV presentation: independent Home/Library/Activity/Settings/details, explicit focus rows and retained navigation, scoped appearance, file/text entry, lists and feedback history, journal/history/achievements, metadata/identity/manual tools, platform configuration/import/export, and controller input for embedded browser windows. Removed the retired desktop scaling/footer adapter. Shared launch attribution now uses the playable store copy on both surfaces. Full Release verification: 4273 tests passed (177 UI); 2 Linux-native tests skipped on Windows. Solution Release build: zero warnings/errors. Main-screen render inspection includes 1920x1080, 1280x720 and maximum body text; art lease/lifecycle tests cover bitmap behavior. Verification method and limitations: docs/spikes/fullscreen-controller-verification.md. AC 1-3 remain open for physical-controller, actual seating distance and live native/provider validation; CAPTCHA, phone approval, external key registration and launcher windows retain their own input requirements. No claim of universal controller-only external operation.
 <!-- SECTION:NOTES:END -->

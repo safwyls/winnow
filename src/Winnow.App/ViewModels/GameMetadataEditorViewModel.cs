@@ -794,6 +794,13 @@ public sealed partial class MetadataArtRowViewModel : MetadataFieldRowViewModel
             return;
         }
 
+        await ImportFileAsync(path, ct);
+    }
+
+    /// <summary>Imports a path selected by either presentation's file picker.</summary>
+    internal async Task ImportFileAsync(string path, CancellationToken ct = default)
+    {
+        if (Editor.IsBusy) return;
         Editor.Enter();
         try
         {

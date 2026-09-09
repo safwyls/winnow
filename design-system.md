@@ -525,11 +525,10 @@ panel's strings were written from the auth spikes instead. TASK-81.
 
 ### Fullscreen and controller navigation
 
-**Design review, not implemented.** Fullscreen is a separate TV-distance interface with its
-own composition, components, navigation and focus model. The user rejected scaling the
-desktop shell on 2026-09-09. Image mockups precede implementation; the details below are the
-first proposal for review. The desktop specifications elsewhere in this document continue
-to govern the desktop path.
+Fullscreen is a separate TV-distance interface with its own composition, components,
+navigation and focus model. The reviewed mock set in `docs/mockups/fullscreen-v2/` guides
+this implementation. The desktop specifications elsewhere in this document continue to
+govern the desktop path; features must be maintained and verified in both presentations.
 
 The shared identity is the teal palette, three font families, cover art, dormancy and unread
 markers. Fullscreen gets its own type and spacing scale. Start with a 1920×1080 reference
@@ -552,7 +551,7 @@ use large ordered rows, with focused values changed directly. Long content is pa
 scrolled within an explicit reading region. Each section remembers its game and focus
 position; Back restores the exact origin, including after viewing details.
 
-| Input | Proposed behavior |
+| Input | Behavior |
 |---|---|
 | D-pad / left stick | Move through explicit neighbors; no free cursor or inferred desktop tab order |
 | LB / RB | Switch For you, Library, Activity and Settings at the root; switch local sections on a game page |
@@ -561,25 +560,23 @@ position; Back restores the exact origin, including after viewing details.
 | X | Play the selected installed game from a browse screen; unavailable shortcuts are omitted |
 | Y | Invoke the labelled contextual action: More on For you, Filter & sort in Library, or Reset page in appearance; confirmation protects destructive changes |
 | View | Open search from browsing |
-| Menu | Open a quick menu with controller help, readability settings and Return to desktop |
+| Menu | Open a quick menu with Settings and Exit fullscreen; controller help is in Settings |
 
-The footer shows only actions available in the current state. It uses positional controller
-glyphs appropriate to the connected device. Clock and optional battery status sit in a quiet
+The footer shows actions available in the current state. The current input sources use
+Xbox-style button labels; device-specific glyph families are not detected. Clock and optional battery status sit in a quiet
 top corner. Unknown battery state is omitted. Nested sheets trap focus and restore it on
 close. Destructive actions require confirmation; unplugging a controller preserves position
 and provides a reconnect message with keyboard fallback. Reduced motion removes travel and
 zoom while retaining immediate selection feedback.
 
-Before implementation, review the home composition and game page, then mock the library,
-filters, text entry, settings, journal, empty states and controller disconnect. Native file
-selection and embedded sign-in need an explicit controller-accessible design; falling back
-to a desktop dialog does not satisfy M10. Do not mark those paths covered by the first mock.
+Search, staged filtering, text entry, journal editing and a paged file browser use their own
+fullscreen pages. Native and third-party windows need separate controller validation;
+falling back to a desktop dialog does not satisfy M10.
 
-#### Other fullscreen views — design review
+#### Other fullscreen views
 
-The user endorsed the initial visual direction and requested the remaining views. Continue
-with the same typography, safe area, focus treatment and controller glyphs; each screen has
-its own composition. These proposals do not establish implemented behavior or device testing.
+The remaining screens use the same typography, safe area and focus treatment, with a separate
+composition for each task. The mock images are design references, not evidence of device testing.
 
 **Library** trades the home's large featured artwork for two rows of six covers at the
 reference size. Titles sit below the covers. The focused game remains clear through its
@@ -592,19 +589,45 @@ Actual density remains subject to distance testing and may reduce at larger text
 **Activity** is a personal history view. Sessions, Updates and Journal are local choices
 reached with directional navigation; bumpers continue switching the main screens. Large
 chronological rows occupy the left side and the selected event's art, facts and user note
-occupy the right. A opens the event; X edits the selected session's note when applicable.
-Triggers change the visible time period. Account-wide statistics remain reachable through
-a separate Library summary page, without crowding the session history with charts.
+occupy the right. The implementation reads saved sessions and notes plus raw update signals
+for games visible in the fullscreen library. A opens session actions or the update's game;
+X edits the selected session's note when applicable. Triggers change the visible Monday-based
+week and cannot advance past the current week. The note editor offers deliberate Save and
+Cancel actions and an optional one-to-five rating. Library summary provides the current
+visible game count and separate reading pages for captured Steam account statistics; it
+retains the shared rules for mixed currencies and wallet credit.
 
 **Settings** has Appearance, Controller, Library, Platforms and Application sections. Large
 rows expose a label and current value; left/right changes bounded values, A opens pickers
-or activates toggles, and B returns. Appearance has a readable live sample. Text size,
-screen margins and motion have fullscreen-specific preferences. The proposed fullscreen
-appearance page also permits its own theme and dormancy presentation; these do not change
-library facts or recommendation behavior. Shared settings such as content visibility,
-platform credentials and journal opt-in have the same value and validation in both UIs.
-Reset requires a confirmation naming the settings affected. Platform status has no Winnow
-account or cloud-sync fiction.
+or activates toggles, and B returns. Appearance has a readable live sample. Fullscreen owns
+its text scale (100–140% in ten-point steps), screen margins (0–10% in one-point steps),
+motion, theme and dormancy preferences. Defaults are 100%, 5%, motion enabled, Winnow and
+cover dimming enabled. These preferences do not change desktop appearance, library facts or
+recommendations. Content visibility, platform credentials, journal opt-in and application
+startup settings use the same value and validation in both UIs. Reset requires a confirmation
+naming the affected appearance settings. Library tools has TV-owned forms for manual games,
+hidden games and identity proposals. Identity answers use the existing validated operations;
+resolved groups offer Separate again. Platform pages show real connection status and sign-in
+and sign-out actions. When opened from fullscreen, the secure browser uses a fullscreen window
+at 150% browser zoom. Up/down moves to the previous/next field, A selects, X checks an option,
+and triggers page the document. Y opens a masked text composer in a reserved region below the
+browser; Done inserts only the newly composed text and B discards it. Page navigation discards
+unfinished text so it cannot arrive in a different document. B closes the browser after text
+entry is closed. Embedded patch notes use the same window bridge with up/down scrolling and
+bumper link navigation. Provider CAPTCHAs, third-party sign-in pages and phone approval can
+still require their own input; real provider/controller validation remains required before
+claiming complete controller-only sign-in.
+
+Steam configuration includes a masked, surface-local API key draft, save and confirmed
+removal, account ownership scope, and the shared sign-in consent with optional purchase
+capture. Purchase history supports embedded sign-in and selecting several saved HTML pages;
+an explicit Read action starts the latter import and a reading page exposes every reported
+count, skipped item and warning. Acquisition CSV export uses the TV directory and filename
+chooser with overwrite confirmation. Manual game forms offer executable inspection and
+metadata candidates through the shared commands. Identity tools include kind and sort,
+selection and confirmed bulk grouping, with exact matching limited by the shared rules.
+The Steam API key registration link opens the system browser; obtaining that credential is
+an external website workflow, while entering and saving it stays inside the TV interface.
 
 | Supporting view | Composition and focus contract |
 |---|---|
@@ -616,15 +639,14 @@ account or cloud-sync fiction.
 | Game journal / note editor | Session-linked entries; editor has a readable text area and deliberate Save/Cancel actions with controller text entry |
 | Library tools | Reachable from Library actions: hidden games, add game, possible identity matches and metadata corrections; one focused operation per page |
 | Library summary | Reachable from Activity; readable summary pages, with detailed analytics progressively disclosed |
-| Platforms / sign-in | Large status and action rows; the embedded sign-in and native-file-selection boundaries require separate controller-accessible flow designs |
-| Quick menu | Return to desktop, controller help and readability access; B closes it and restores focus |
+| Platforms / sign-in | Large status, configuration and action rows; controller browser input and fullscreen file selection use separate adapters over shared operations |
+| Quick menu | Resume, Exit fullscreen and confirmed Quit; Settings is available at root level so switching cannot discard a nested editor; B restores focus |
 | Empty / unavailable / disconnected | One clear explanation and recovery action; preserve selection and never redirect input to an obscured surface |
 
-Library, Activity and Settings have image concepts for this review. Supporting views in the
-table are an interaction inventory, not finished mocks; review search, filtering and text
-entry next, followed by library tools and external input boundaries. All cover art, history,
-counts and battery readings in generated images are illustrative. Generated pixels do not
-establish actual sorting, measured text sizes, data provenance or supported device behavior.
+The image concepts cover the five main screens. Supporting views implement the contracts
+above without separate generated mock images. All cover art, history, counts and battery
+readings in generated images are illustrative. Generated pixels do not establish actual
+sorting, measured text sizes, data provenance or supported device behavior.
 
 ### Keyboard and assistive technology
 

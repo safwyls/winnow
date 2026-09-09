@@ -127,11 +127,13 @@ public sealed class WebView2SteamSignInSession : ISteamSignInSession
     /// refresh token's only durable home is the encrypted session store.
     /// </param>
     /// <param name="log">Optional. Never given a token, a cookie or a document.</param>
+    private readonly IWebViewInputSupport? _input;
     public WebView2SteamSignInSession(
-        string? profileRoot = null, ILogger<WebView2SteamSignInSession>? log = null)
+        string? profileRoot = null, ILogger<WebView2SteamSignInSession>? log = null, IWebViewInputSupport? input = null)
     {
         _profileRoot = string.IsNullOrWhiteSpace(profileRoot) ? Path.GetTempPath() : profileRoot;
         _log = log ?? NullLogger<WebView2SteamSignInSession>.Instance;
+        _input = input;
     }
 
     /// <inheritdoc/>
@@ -308,6 +310,7 @@ public sealed class WebView2SteamSignInSession : ISteamSignInSession
 
         var banner = BuildBanner();
         var window = BuildWindow(host, banner, status);
+        if (_input is not null && window.Content is Control content) { window.Content = null; window.Content = _input.Wrap(window, content, host); }
         var closed = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
         var run = new RunState(

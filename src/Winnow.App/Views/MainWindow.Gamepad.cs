@@ -58,6 +58,11 @@ public partial class MainWindow
     // headless tests exercise exactly the dispatch used by a physical controller.
     internal void HandleGamepad(GamepadButtons buttons)
     {
+        if (IsFullscreen && _tvView is { } television)
+        {
+            television.Handle(buttons);
+            return;
+        }
         if (buttons.HasFlag(GamepadButtons.Menu))
         {
             ToggleFullscreen();

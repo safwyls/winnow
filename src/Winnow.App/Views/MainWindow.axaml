@@ -868,8 +868,7 @@
     <Panel Margin="{Binding $parent[Window].OffScreenMargin}">
     <!-- ShellGround here (not on Row=1) so every pane composites over it
          exactly once. A second coat would break MinPaneAlpha's arithmetic. -->
-    <LayoutTransformControl Name="FullscreenScaleHost">
-    <Grid Name="ShellRows" RowDefinitions="36,*,Auto" Background="{StaticResource ShellGround}">
+    <Grid Name="DesktopHost" RowDefinitions="36,*" Background="{StaticResource ShellGround}">
 
         <!-- ══ TITLE BAR ═══════════════════════════════════════════════════
              CaptionFill: ground in floating layout, rail tone in flush (see
@@ -2317,22 +2316,8 @@
         </views:LazyPane>
 
     </Grid>
-        <Border Name="FullscreenBar" Grid.Row="2" IsVisible="False"
-                Background="{StaticResource Surface}" BorderBrush="{StaticResource Line}"
-                BorderThickness="0,1,0,0" Padding="16,8">
-            <Grid ColumnDefinitions="Auto,*,Auto,Auto">
-                <TextBlock Name="FullscreenClock" Classes="data" VerticalAlignment="Center"/>
-                <TextBlock Name="FullscreenHints" Grid.Column="1" Classes="body"
-                           Margin="24,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
-                           Text="F11 · Exit fullscreen"/>
-                <TextBlock Name="GamepadStatus" Grid.Column="2" Classes="body" IsVisible="False"
-                           Margin="0,0,16,0" VerticalAlignment="Center"/>
-                <Button Name="ExitFullscreenButton" Grid.Column="3" Classes="act quiet"
-                        Padding="12,4" Content="Exit fullscreen" Click="OnFullscreenPressed" ToolTip.Tip="Exit fullscreen (F11)"/>
-            </Grid>
-        </Border>
     </Grid>
-    </LayoutTransformControl>
+    <ContentControl Name="TvHost" IsVisible="False" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/>
     </Panel>
 
 </Window>

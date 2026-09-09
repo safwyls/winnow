@@ -3315,3 +3315,87 @@ The extended mock set gives Y a labelled action appropriate to the current scree
 first-pass controller table previously said:
 
 > | Y | Open a short contextual action sheet, including list, snooze and hide actions where applicable |
+
+### 2026-09-09 — Fullscreen activity and settings implementation
+
+Activity now reads saved session history and journal notes, and Settings owns its fullscreen
+appearance choices and TV tool forms. Secure platform sign-in remains an explicit keyboard
+and pointer boundary. The visual proposal previously said:
+
+> **Activity** is a personal history view. Sessions, Updates and Journal are local choices
+> reached with directional navigation; bumpers continue switching the main screens. Large
+> chronological rows occupy the left side and the selected event's art, facts and user note
+> occupy the right. A opens the event; X edits the selected session's note when applicable.
+> Triggers change the visible time period. Account-wide statistics remain reachable through
+> a separate Library summary page, without crowding the session history with charts.
+
+> **Settings** has Appearance, Controller, Library, Platforms and Application sections. Large
+> rows expose a label and current value; left/right changes bounded values, A opens pickers
+> or activates toggles, and B returns. Appearance has a readable live sample. Text size,
+> screen margins and motion have fullscreen-specific preferences. The proposed fullscreen
+> appearance page also permits its own theme and dormancy presentation; these do not change
+> library facts or recommendation behavior. Shared settings such as content visibility,
+> platform credentials and journal opt-in have the same value and validation in both UIs.
+> Reset requires a confirmation naming the settings affected. Platform status has no Winnow
+> account or cloud-sync fiction.
+
+The first implementation draft kept sign-in outside the TV input path. A host-owned browser
+input bridge now covers ordinary form navigation, masked composition and reading without
+reading credentials or changing auth policy. The draft sentences were:
+
+> Platform pages show real connection status and sign-out actions. Connecting Steam or Epic
+> still requires the secure sign-in window with keyboard and pointer; the fullscreen page
+> states that boundary and directs users to the quick menu's Return to desktop action. This
+> remains an exception to controller-only coverage, not a completed TV sign-in flow.
+
+> Secure platform sign-in remains an external input boundary requiring keyboard and pointer;
+> the TV platform page states this limitation rather than embedding the desktop settings view.
+
+### Fullscreen implementation after mock review (2026-09-09)
+
+The user approved full implementation of the five-screen mock set. The dedicated TV host
+owns its navigation stack, focus graph, text entry and presentation state. Desktop remains
+a separate presentation over shared operations. Prior design-only statements were replaced:
+
+> **Design review, not implemented.** Fullscreen is a separate TV-distance interface with its
+> own composition, components, navigation and focus model. The user rejected scaling the
+> desktop shell on 2026-09-09. Image mockups precede implementation; the details below are the
+> first proposal for review. The desktop specifications elsewhere in this document continue
+> to govern the desktop path.
+
+> **Presentation direction, agreed 2026-09-09; implementation pending design review.** Desktop
+> and fullscreen are separate UI paths.
+
+> The existing input-source/filter code is a candidate for reuse, subject to the approved
+> controller model. Image mockups and review precede new UI implementation.
+
+> Before implementation, review the home composition and game page, then mock the library,
+> filters, text entry, settings, journal, empty states and controller disconnect. Native file
+> selection and embedded sign-in need an explicit controller-accessible design; falling back
+> to a desktop dialog does not satisfy M10. Do not mark those paths covered by the first mock.
+
+> The user endorsed the initial visual direction and requested the remaining views. Continue
+> with the same typography, safe area, focus treatment and controller glyphs; each screen has
+> its own composition. These proposals do not establish implemented behavior or device testing.
+
+> Repeat to return to the previous window state. Fullscreen enlarges the interface when the
+> display has room and shows a clock and available controller status.
+
+> The footer shows only actions available in the current state. It uses positional controller
+> glyphs appropriate to the connected device.
+
+> M10 status: design reset: separate TV-distance UI; mockups and user review before implementation;
+> scaled-desktop approach rejected.
+
+> Merge *execution* (the queue records intent; nothing applies it), full JSON export/import, install
+> management, and full-screen gamepad navigation.
+
+> The user endorsed the initial home direction. The remaining screens are proposals for review.
+
+> The next design reviews cover search and filtering, text entry, list and metadata tools,
+> and controller-accessible sign-in/file selection. The screen inventory in the visual spec
+> records these separately from the completed image concepts.
+
+> Library, Activity and Settings have image concepts for this review. Supporting views in the
+> table are an interaction inventory, not finished mocks; review search, filtering and text
+> entry next, followed by library tools and external input boundaries.

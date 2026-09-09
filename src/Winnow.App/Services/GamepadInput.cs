@@ -5,7 +5,8 @@ public enum GamepadButtons
 {
     None = 0, Up = 1, Down = 2, Left = 4, Right = 8,
     Accept = 16, Back = 32, Previous = 64, Next = 128, Menu = 256, Keyboard = 512,
-    ScrollUp = 1024, ScrollDown = 2048
+    ScrollUp = 1024, ScrollDown = 2048,
+    Play = 4096, Search = 8192, PagePrevious = 16384, PageNext = 32768
 }
 
 public readonly record struct GamepadSnapshot(GamepadButtons Buttons, string? BatteryStatus);
@@ -74,23 +75,37 @@ internal static class GamepadMapping
     internal static GamepadButtons Scroll(int y) => Math.Abs(y) < Deadzone
         ? GamepadButtons.None : y > 0 ? GamepadButtons.ScrollUp : GamepadButtons.ScrollDown;
 
-    internal static GamepadButtons XInput(ushort buttons, short x, short y, short rightY = 0)
+    internal static GamepadButtons XInput(ushort buttons, short x, short y, short rightY = 0,
+        byte leftTrigger = 0, byte rightTrigger = 0)
     {
         var result = (GamepadButtons)(buttons & 15);
         if ((buttons & 0x1000) != 0) result |= GamepadButtons.Accept;
         if ((buttons & 0x2000) != 0) result |= GamepadButtons.Back;
+        if ((buttons & 0x4000) != 0) result |= GamepadButtons.Play;
+        if ((buttons & 0x0020) != 0) result |= GamepadButtons.Search;
         if ((buttons & 0x0100) != 0) result |= GamepadButtons.Previous;
         if ((buttons & 0x0200) != 0) result |= GamepadButtons.Next;
         if ((buttons & 0x0010) != 0) result |= GamepadButtons.Menu;
         if ((buttons & 0x8000) != 0) result |= GamepadButtons.Keyboard;
-        return result | Stick(x, y) | Scroll(rightY);
+        return result | Stick(x, y) | Scroll(rightY) | Triggers(leftTrigger, rightTrigger);
     }
+
+    // XInput's documented threshold also applies after joydev's signed-axis normalization.
+    internal static GamepadButtons Triggers(byte left, byte right) =>
+        (left > 30 ? GamepadButtons.PagePrevious : GamepadButtons.None) |
+        (right > 30 ? GamepadButtons.PageNext : GamepadButtons.None);
+
+    internal static GamepadButtons LinuxTriggers(short? left, short? right) => Triggers(
+        left is { } l ? (byte)(((int)l + 32768) * 255 / 65535) : (byte)0,
+        right is { } r ? (byte)(((int)r + 32768) * 255 / 65535) : (byte)0);
 
     internal static GamepadButtons LinuxButton(ushort code) => code switch
     {
         0x130 => GamepadButtons.Accept, 0x131 => GamepadButtons.Back,
-        0x133 => GamepadButtons.Keyboard, 0x136 => GamepadButtons.Previous,
+        0x133 => GamepadButtons.Keyboard, 0x134 => GamepadButtons.Play,
+        0x13a => GamepadButtons.Search, 0x136 => GamepadButtons.Previous,
         0x137 => GamepadButtons.Next, 0x13b => GamepadButtons.Menu,
+        0x138 => GamepadButtons.PagePrevious, 0x139 => GamepadButtons.PageNext,
         0x220 => GamepadButtons.Up, 0x221 => GamepadButtons.Down,
         0x222 => GamepadButtons.Left, 0x223 => GamepadButtons.Right,
         _ => GamepadButtons.None

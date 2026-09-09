@@ -11,7 +11,7 @@ namespace Winnow.App.ViewModels;
 /// (working, ready, quiet, broken). Scoring runs after library load, not on
 /// the startup path.
 /// </summary>
-public partial class FeedViewModel : ObservableObject
+public partial class FeedViewModel : ObservableObject, IDisposable
 {
     private const string WorkingMessage =
         "Building the feed…";
@@ -49,6 +49,7 @@ public partial class FeedViewModel : ObservableObject
 
     /// <summary>An invalidation that arrived during a load, waiting to be answered by the next one.</summary>
     private bool _reloadPending;
+    private bool _disposed;
 
     /// <summary>A backfill is reading; another was asked for while it read.</summary>
     private bool _backfilling;
@@ -230,6 +231,7 @@ public partial class FeedViewModel : ObservableObject
     [RelayCommand]
     private async Task LoadAsync(CancellationToken ct)
     {
+        if (_disposed) return;
         do
         {
             // Claimed before the read, not after. An invalidation that arrives
@@ -252,6 +254,10 @@ public partial class FeedViewModel : ObservableObject
             {
                 snapshot = await _feed.GetShelvesAsync(ct);
             }
+            catch (OperationCanceledException) when (_disposed)
+            {
+                return;
+            }
             catch (OperationCanceledException)
             {
                 throw;
@@ -262,6 +268,7 @@ public partial class FeedViewModel : ObservableObject
                 snapshot = FeedSnapshot.Unavailable;
             }
 
+            if (_disposed) return;
             Apply(snapshot);
             IsLoading = false;
 
@@ -278,6 +285,7 @@ public partial class FeedViewModel : ObservableObject
     /// </summary>
     private void RequestReload()
     {
+        if (_disposed) return;
         if (LoadCommand.IsRunning)
         {
             _reloadPending = true;
@@ -494,7 +502,7 @@ public partial class FeedViewModel : ObservableObject
     /// </summary>
     private void StartTicker()
     {
-        if (_ticker is not null || !IsCountingDown())
+        if (_disposed || _ticker is not null || !IsCountingDown())
         {
             return;
         }
@@ -511,6 +519,7 @@ public partial class FeedViewModel : ObservableObject
     /// </summary>
     private void OnTick()
     {
+        if (_disposed) return;
         var now = _clock.GetTimestamp();
         var elapsed = _clock.GetElapsedTime(_tickedAt, now);
         _tickedAt = now;
@@ -527,6 +536,24 @@ public partial class FeedViewModel : ObservableObject
     {
         _ticker?.Dispose();
         _ticker = null;
+    }
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+        ++_generation;
+        _reloadPending = false;
+        _backfillPending = false;
+        LoadCommand.Cancel();
+        History.LoadCommand.Cancel();
+        StopTicker();
+        if (_tiles is not null) _tiles.TilesChanged -= OnTilesChanged;
+        History.VerdictRevoked -= OnVerdictRevoked;
+        foreach (var shelf in Shelves)
+            foreach (var card in shelf.Cards) { Detach(card); card.Dispose(); }
+        Shelves.Clear();
+        GC.SuppressFinalize(this);
     }
 
     /// <summary>How often the clock is advanced, which is where §8's reduced-motion rule lands.</summary>

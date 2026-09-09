@@ -595,15 +595,15 @@ reachable from the first-paint path.**
 
 #### Controller input
 
-**Presentation direction, agreed 2026-09-09; implementation pending design review.** Desktop
-and fullscreen are separate UI paths. Each owns its views, presentation view models, focus
+Desktop and fullscreen are separate UI paths. Each owns its views, presentation view models, focus
 graph, navigation history, dialogs and text-entry layout. Fullscreen must not navigate the
 desktop visual tree or reuse desktop control templates merely to avoid maintaining a second
 surface. Share domain records, repositories, application services, validation and action
 semantics for launch, install, lists, journal, settings and recommendation explanations.
 Share palette and font identities; keep layout, spacing and type scales surface-specific.
-The existing input-source/filter code is a candidate for reuse, subject to the approved
-controller model. Image mockups and review precede new UI implementation.
+The fullscreen host reuses the input-source/filter code and dispatches to explicit focus rows
+owned by each page. It creates independent library, feed, list and dormancy state over the
+shared repositories and action services. It never scales or navigates the desktop tree.
 
 Controller input lives in `Winnow.App.Services`, independent of ingest and process monitoring.
 The window polls a read-only source at 33 ms while open. Windows loads XInput from the system
@@ -612,6 +612,27 @@ Discovery retries every two seconds. Battery readings are optional and queried e
 seconds on Windows; Linux joydev does not report battery state. The input filter suppresses
 held buttons on reconnect or activation and repeats navigation after 400 ms, then every 110 ms.
 Only the active, visible window dispatches actions. Closing disposes the native source.
+
+Fullscreen Activity reads ownerships, sessions, notes and update events from repositories,
+filtered through its own visible library tile source. The current repository contracts require
+per-ownership session/note reads and per-release update reads; those reads run off the UI thread.
+This is not a constant-query bulk history operation. Session-note edits write through
+`ISessionRepository`, and account summaries reuse the currency-safe `AccountStatsViewModel`
+with independent presentation state. Manual-game and identity tools construct their own
+`LibrarySettingsViewModel` and `MergeQueueViewModel` from DI; editor state and focus do not
+leak into desktop tools. Shared settings remain common application state. Fullscreen appearance
+uses `fullscreen.*` settings and local resource overrides instead of changing the desktop theme.
+`IWebViewInputSupport` lets the app supply controller chrome before a native browser is
+attached. Steam sign-in, Epic consent/sign-in and the patch-notes reader opt into it through
+DI. Desktop calls retain their existing presentation. TV browser windows poll their own
+read-only controller source while active and dispose it on close or content replacement.
+Input goes through ordered WebView2 DevTools keyboard and text-insertion methods; this bridge
+does not inspect the DOM, read field values or change the existing origin gates and capture
+policies. The local composer is always masked and cleared on insertion, cancellation or
+navigation. It occupies layout space beside the native HWND, rather than overlaying it.
+Programmatic controller input obeys the host's input-disabled state during token capture.
+Provider-specific CAPTCHA, third-party sign-in and phone approval remain external validation
+boundaries. The Windows-only WebView2 availability rules remain unchanged.
 
 ### 5.2 Session detection
 

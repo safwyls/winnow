@@ -658,10 +658,16 @@ public partial class MainWindow : Window
 
     protected override void OnKeyDown(KeyEventArgs e)
     {
+        if (e.Handled) return;
         if (e.Key == Key.F11)
         {
             ToggleFullscreen();
             e.Handled = true;
+            return;
+        }
+        if (IsFullscreen)
+        {
+            if (_tvView?.HandleKey(e) == true) e.Handled = true;
             return;
         }
         base.OnKeyDown(e);

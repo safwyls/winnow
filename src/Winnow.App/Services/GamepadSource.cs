@@ -70,7 +70,8 @@ internal sealed class WindowsGamepadSource : IGamepadSource
             _battery = _getBattery is not null && _getBattery(index, 0, out var battery) == 0
                 ? BatteryLabel(battery.Type, battery.Level) : null;
         }
-        return new(GamepadMapping.XInput(state.Buttons, state.LeftX, state.LeftY, state.RightY), _battery);
+        return new(GamepadMapping.XInput(state.Buttons, state.LeftX, state.LeftY, state.RightY,
+            state.LeftTrigger, state.RightTrigger), _battery);
     }
 
     internal static string? BatteryLabel(byte type, byte level) => type switch
@@ -157,19 +158,22 @@ internal sealed class LinuxGamepadSource : IGamepadSource
         for (var i = 0; i < _buttons.Length; i++)
             if (_buttons[i]) result |= GamepadMapping.LinuxButton(BitConverter.ToUInt16(_buttonMap, i * 2));
         int x = 0, y = 0, rightY = 0, hatX = 0, hatY = 0;
+        short? leftTrigger = null, rightTrigger = null;
         for (var i = 0; i < Math.Min(_axisCount[0], _axes.Length); i++)
         {
             switch (_axes[i])
             {
                 case 0: x = _axisValues[i]; break;
                 case 1: y = -_axisValues[i]; break;
+                case 2: leftTrigger = _axisValues[i]; break;
                 case 4: rightY = -_axisValues[i]; break;
+                case 5: rightTrigger = _axisValues[i]; break;
                 case 16: hatX = _axisValues[i]; break;
                 case 17: hatY = -_axisValues[i]; break;
             }
         }
         return new(result | GamepadMapping.Stick(x, y) | GamepadMapping.Stick(hatX, hatY) |
-            GamepadMapping.Scroll(rightY), null);
+            GamepadMapping.Scroll(rightY) | GamepadMapping.LinuxTriggers(leftTrigger, rightTrigger), null);
     }
 
     private void CloseDevice()

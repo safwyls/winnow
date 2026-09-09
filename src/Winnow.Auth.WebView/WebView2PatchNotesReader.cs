@@ -64,12 +64,14 @@ public sealed class WebView2PatchNotesReader : IPatchNotesReader
     private TextBlock? _address;
     private TextBlock? _problem;
 
-    public WebView2PatchNotesReader(string profileRoot, ILogger<WebView2PatchNotesReader>? log = null)
+    private readonly IWebViewInputSupport? _input;
+    public WebView2PatchNotesReader(string profileRoot, ILogger<WebView2PatchNotesReader>? log = null, IWebViewInputSupport? input = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(profileRoot);
 
         _profileFolder = Path.Combine(profileRoot, ProfileFolderName);
         _log = log ?? NullLogger<WebView2PatchNotesReader>.Instance;
+        _input = input;
     }
 
     /// <summary>
@@ -139,6 +141,7 @@ public sealed class WebView2PatchNotesReader : IPatchNotesReader
         // accumulate a browsing session from incidental page views.
         var host = new WebView2Host(_profileFolder, inPrivate: true);
         var window = BuildWindow(title, host);
+        if (_input is not null && window.Content is Control content) { window.Content = null; window.Content = _input.Wrap(window, content, host, reading: true); }
 
         window.Closed += (_, _) =>
         {

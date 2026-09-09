@@ -69,11 +69,13 @@ public sealed class WebView2SteamPageHarvester : ISteamAccountPageHarvester
     /// and deleted afterwards. This is not a place anything accumulates.
     /// </param>
     /// <param name="log">Optional. Never given page content, a URL query or a credential.</param>
+    private readonly IWebViewInputSupport? _input;
     public WebView2SteamPageHarvester(
-        string? profileRoot = null, ILogger<WebView2SteamPageHarvester>? log = null)
+        string? profileRoot = null, ILogger<WebView2SteamPageHarvester>? log = null, IWebViewInputSupport? input = null)
     {
         _profileRoot = string.IsNullOrWhiteSpace(profileRoot) ? Path.GetTempPath() : profileRoot;
         _log = log ?? NullLogger<WebView2SteamPageHarvester>.Instance;
+        _input = input;
     }
 
     /// <inheritdoc/>
@@ -244,6 +246,7 @@ public sealed class WebView2SteamPageHarvester : ISteamAccountPageHarvester
 
         var banner = BuildBanner();
         var window = BuildWindow(host, banner, status);
+        if (_input is not null && window.Content is Control content) { window.Content = null; window.Content = _input.Wrap(window, content, host); }
         var closed = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
         var run = new RunState(

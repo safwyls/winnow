@@ -30,7 +30,7 @@ public static class SteamSignInServiceCollectionExtensions
 
         services.AddSingleton<ISteamSignInSession>(sp => new WebView2SteamSignInSession(
             profileRoot,
-            sp.GetService<ILogger<WebView2SteamSignInSession>>()));
+            sp.GetService<ILogger<WebView2SteamSignInSession>>(), sp.GetService<IWebViewInputSupport>()));
 
         return services;
     }

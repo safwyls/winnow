@@ -92,6 +92,39 @@ public sealed class GamepadInputTests
         Assert.Equal(GamepadButtons.Back, GamepadMapping.LinuxButton(0x131));
         Assert.Equal(GamepadButtons.Keyboard, GamepadMapping.LinuxButton(0x133));
         Assert.Equal(GamepadButtons.Menu, GamepadMapping.LinuxButton(0x13b));
+        Assert.Equal(GamepadButtons.Play, GamepadMapping.XInput(0x4000, 0, 0));
+        Assert.Equal(GamepadButtons.Play, GamepadMapping.LinuxButton(0x134));
+        Assert.Equal(GamepadButtons.Search, GamepadMapping.XInput(0x0020, 0, 0));
+        Assert.Equal(GamepadButtons.Search, GamepadMapping.LinuxButton(0x13a));
+    }
+
+    [Fact]
+    public void TriggerMappingsIgnoreRestAndExposeBothPagesIndependently()
+    {
+        Assert.Equal(GamepadButtons.None, GamepadMapping.XInput(0, 0, 0, leftTrigger: 30, rightTrigger: 30));
+        Assert.Equal(GamepadButtons.PagePrevious, GamepadMapping.XInput(0, 0, 0, leftTrigger: 31));
+        Assert.Equal(GamepadButtons.PageNext, GamepadMapping.XInput(0, 0, 0, rightTrigger: 255));
+        Assert.Equal(GamepadButtons.None, GamepadMapping.LinuxTriggers(null, null));
+        Assert.Equal(GamepadButtons.None, GamepadMapping.LinuxTriggers(short.MinValue, short.MinValue));
+        Assert.Equal(GamepadButtons.PagePrevious, GamepadMapping.LinuxTriggers(short.MaxValue, short.MinValue));
+        Assert.Equal(GamepadButtons.PageNext, GamepadMapping.LinuxTriggers(null, short.MaxValue));
+        Assert.Equal(GamepadButtons.PagePrevious | GamepadButtons.PageNext,
+            GamepadMapping.LinuxTriggers(short.MaxValue, short.MaxValue));
+        Assert.Equal(GamepadButtons.PagePrevious, GamepadMapping.LinuxButton(0x138));
+        Assert.Equal(GamepadButtons.PageNext, GamepadMapping.LinuxButton(0x139));
+    }
+
+    [Fact]
+    public void LaunchSearchAndPagingAreSuppressedOnReconnectAndNeverRepeatWhileHeld()
+    {
+        var filter = new GamepadInputFilter();
+        var buttons = GamepadButtons.Play | GamepadButtons.Search | GamepadButtons.PageNext;
+        Assert.Equal(GamepadButtons.None, filter.Update(new(buttons, null), true, TimeSpan.Zero));
+        filter.Update(new(GamepadButtons.None, null), true, TimeSpan.FromSeconds(1));
+        Assert.Equal(buttons, filter.Update(new(buttons, null), true, TimeSpan.FromSeconds(2)));
+        Assert.Equal(GamepadButtons.None, filter.Update(new(buttons, null), true, TimeSpan.FromSeconds(3)));
+        filter.Update(null, true, TimeSpan.FromSeconds(4));
+        Assert.Equal(GamepadButtons.None, filter.Update(new(buttons, null), true, TimeSpan.FromSeconds(5)));
     }
 
     [Theory]

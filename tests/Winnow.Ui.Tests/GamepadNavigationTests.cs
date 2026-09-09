@@ -163,7 +163,13 @@ public sealed class GamepadNavigationTests
             Assert.Same(search, window.FocusManager!.GetFocusedElement());
             window.HandleGamepad(GamepadButtons.Menu);
             Assert.True(window.IsFullscreen);
+            Dispatcher.UIThread.RunJobs();
             window.HandleGamepad(GamepadButtons.Menu);
+            Assert.True(window.IsFullscreen);
+            var television = Assert.IsType<App.Views.Fullscreen.FullscreenView>(window.FindControl<ContentControl>("TvHost")!.Content);
+            Assert.Equal("Quick menu", television.CurrentPage.Title);
+            window.KeyPressQwerty(PhysicalKey.F11, RawInputModifiers.None);
+            window.KeyReleaseQwerty(PhysicalKey.F11, RawInputModifiers.None);
             Assert.False(window.IsFullscreen);
         }
         finally

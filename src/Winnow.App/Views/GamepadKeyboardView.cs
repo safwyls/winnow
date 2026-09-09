@@ -26,12 +26,12 @@ public sealed class GamepadKeyboardView : Border
 
     public event EventHandler? Closed;
 
-    public GamepadKeyboardView(TextBox target)
+    public GamepadKeyboardView(TextBox target, bool television = false)
     {
         _target = target;
         HorizontalAlignment = HorizontalAlignment.Center;
         VerticalAlignment = VerticalAlignment.Bottom;
-        MaxWidth = 920;
+        MaxWidth = television ? 1500 : 920;
         Margin = new Thickness(16);
         Padding = new Thickness(16);
         CornerRadius = new CornerRadius(12);
@@ -40,10 +40,12 @@ public sealed class GamepadKeyboardView : Border
         this[!BorderBrushProperty] = new DynamicResourceExtension("Line");
         var stack = new StackPanel { Spacing = 6 };
         var heading = new TextBlock { Text = "Text entry · D-pad to move · A to type · B to close", Margin = new Thickness(0, 0, 0, 6) };
+        if (television) heading.FontSize = 28;
         heading[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("Text");
         heading[!TextBlock.FontFamilyProperty] = new DynamicResourceExtension("BodyFont");
         stack.Children.Add(heading);
         _preview = new TextBlock { Name = "GamepadTextPreview", MaxHeight = 48, TextWrapping = Avalonia.Media.TextWrapping.Wrap };
+        if (television) { _preview.FontSize = 28; _preview.MaxHeight = 80; }
         _preview[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("Text");
         _preview[!TextBlock.FontFamilyProperty] = new DynamicResourceExtension("BodyFont");
         stack.Children.Add(_preview);
@@ -74,6 +76,7 @@ public sealed class GamepadKeyboardView : Border
                     BorderThickness = new Thickness(2)
                 };
                 button[!Button.FontFamilyProperty] = new DynamicResourceExtension("BodyFont");
+                if (television) { button.FontSize = 28; button.MinHeight = 64; }
                 button.Click += (_, _) => { _row = r; _column = c; Activate(); Refresh(); };
                 Grid.SetColumn(button, column);
                 grid.Children.Add(button);
