@@ -1,3 +1,4 @@
+import { sitePath } from '@/lib/site-path';
 import { ArrowRight, Download, ShieldCheck } from 'lucide-react';
 import StoryDemos from './StoryDemos';
 
@@ -19,7 +20,7 @@ export default function Home() {
         <Brand />
         <nav aria-label="Primary navigation">
           <a href="#why">Why Winnow</a>
-          <a href="/developers/">For developers</a>
+          <a href={sitePath('/developers/')}>For developers</a>
           <a className="nav-cta" href={releasesUrl}>Download</a>
         </nav>
       </header>
@@ -37,7 +38,7 @@ export default function Home() {
         </div>
 
         <div className="library-stage" aria-label="Winnow library showing dormant games as faded cover art">
-          <div className="screenshot-crop"><img src="/assets/library-grid.png" alt="A game cover grid with older, dormant games visibly faded" /></div>
+          <div className="screenshot-crop"><img src={sitePath('/assets/library-grid.png')} alt="A game cover grid with older, dormant games visibly faded" /></div>
         </div>
       </section>
 
@@ -65,7 +66,7 @@ export default function Home() {
         <p>Free during beta · source available on GitHub</p>
       </section>
 
-      <footer><Brand /><p>Local-first game discovery for the library you already own.</p><div><a href="/developers/">Developers</a><a href="https://github.com/safwyls/winnow">GitHub</a></div></footer>
+      <footer><Brand /><p>Local-first game discovery for the library you already own.</p><div><a href={sitePath('/developers/')}>Developers</a><a href="https://github.com/safwyls/winnow">GitHub</a></div></footer>
     </main>
   );
 }

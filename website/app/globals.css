@@ -1,10 +1,10 @@
 @import 'tailwindcss';
 
-@font-face { font-family: 'Bricolage'; src: url('/assets/fonts/BricolageGrotesque-Bold.ttf') format('truetype'); font-weight: 700; font-display: swap; }
-@font-face { font-family: 'Jakarta'; src: url('/assets/fonts/PlusJakartaSans-Regular.ttf') format('truetype'); font-weight: 400; font-display: swap; }
-@font-face { font-family: 'Jakarta'; src: url('/assets/fonts/PlusJakartaSans-Medium.ttf') format('truetype'); font-weight: 500; font-display: swap; }
-@font-face { font-family: 'Jakarta'; src: url('/assets/fonts/PlusJakartaSans-SemiBold.ttf') format('truetype'); font-weight: 600; font-display: swap; }
-@font-face { font-family: 'Plex Mono'; src: url('/assets/fonts/IBMPlexMono-Regular.ttf') format('truetype'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'Bricolage'; src: url('../public/assets/fonts/BricolageGrotesque-Bold.ttf') format('truetype'); font-weight: 700; font-display: swap; }
+@font-face { font-family: 'Jakarta'; src: url('../public/assets/fonts/PlusJakartaSans-Regular.ttf') format('truetype'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'Jakarta'; src: url('../public/assets/fonts/PlusJakartaSans-Medium.ttf') format('truetype'); font-weight: 500; font-display: swap; }
+@font-face { font-family: 'Jakarta'; src: url('../public/assets/fonts/PlusJakartaSans-SemiBold.ttf') format('truetype'); font-weight: 600; font-display: swap; }
+@font-face { font-family: 'Plex Mono'; src: url('../public/assets/fonts/IBMPlexMono-Regular.ttf') format('truetype'); font-weight: 400; font-display: swap; }
 
 :root {
   --well: #050d0e; --ground: #0f1c1e; --surface: #16282a; --raised: #1d3437;
@@ -21,7 +21,7 @@ a:focus-visible { outline: 2px solid var(--volt); outline-offset: 4px; border-ra
 .shell { width: var(--shell); margin-inline: auto; }
 .site-header { width: var(--shell); height: 80px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); }
 .brand { display: inline-flex; align-items: center; gap: 11px; font: 700 1.2rem/1 'Bricolage', sans-serif; letter-spacing: .01em; }
-.brand-mark { display: inline-block; width: 27px; height: 27px; background: var(--volt); mask: url('/assets/dragon.svg') center / contain no-repeat; -webkit-mask: url('/assets/dragon.svg') center / contain no-repeat; }
+.brand-mark { display: inline-block; width: 27px; height: 27px; background: var(--volt); mask: url('../public/assets/dragon.svg') center / contain no-repeat; -webkit-mask: url('../public/assets/dragon.svg') center / contain no-repeat; }
 .brand-mark.mini { width: 14px; height: 14px; }
 .site-header nav { display: flex; align-items: center; gap: 28px; font-size: .9rem; font-weight: 600; }
 .site-header nav > a:not(.nav-cta) { color: var(--dim); transition: color 140ms ease; }
